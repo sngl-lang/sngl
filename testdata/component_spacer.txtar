@@ -144,24 +144,24 @@ func (m *Model) SetTerminalSize(w, h int) {
 }
 
 func GrowOf(flex *float64, display string) float64 {
-	var __lt1 float64
+	var __lt0 float64
 	if (flex == nil) || (display == "none") {
-		__lt1 = 0.0
+		__lt0 = 0.0
 	} else {
-		__lt1 = (*(flex))
+		__lt0 = (*(flex))
 	}
-	return __lt1
+	return __lt0
 }
 
 func CellsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
-	var __lt4 int
+	var __lt3 int
 	if px <= 0.0 {
-		__lt4 = 0
+		__lt3 = 0
 	} else {
-		__lt4 = max(1, (int(px) / 8))
+		__lt3 = max(1, (int(px) / 8))
 	}
-	return __lt4
+	return __lt3
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -189,13 +189,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt5 bool
+	var __lt4 bool
 	if s.BorderWidth != nil {
-		__lt5 = (PxOf(s.BorderWidth) > 0.0)
+		__lt4 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt4 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt5 {
+	if __lt4 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -219,13 +219,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt6 int
+		var __lt5 int
 		if s.MaxLines == nil {
-			__lt6 = 0
+			__lt5 = 0
 		} else {
-			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt5 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
 	}
 	return l
 }
@@ -910,7 +910,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7b71495f2434fb28c53c46cbb73bb676
+pass sha256:d2ac63e246fe38997eecee433052c9ab
 -- run/go/fyne --
 pass sha256:08f3756a805716a6b504b604a06f65e7
 -- run/go/gtk4 --

@@ -182,13 +182,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt2 bool
+	var __lt1 bool
 	if s.BorderWidth != nil {
-		__lt2 = (PxOf(s.BorderWidth) > 0.0)
+		__lt1 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt2 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt1 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt2 {
+	if __lt1 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -212,13 +212,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt3 int
+		var __lt2 int
 		if s.MaxLines == nil {
-			__lt3 = 0
+			__lt2 = 0
 		} else {
-			__lt3 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt2 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
 	}
 	return l
 }
@@ -657,14 +657,13 @@ import us.duckfam.git.jonathan.sngl.i18n.I18n
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
@@ -680,7 +679,6 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 class MainScreenState {
     var __ctx_locale by mutableStateOf(I18n.defaultLocale())
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     var count by mutableStateOf(0)
     var label by mutableStateOf("")
 }
@@ -1798,13 +1796,13 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a55bdba76abca2760ca8276d969de49c
+pass sha256:4186e38d7fa57d19753ac0df9fc087e7
 -- run/go/fyne --
 pass sha256:02c29a19d8e168acdd196a917cf1ae21
 -- run/go/gtk4 --
 pass sha256:945c4351a1c3f2a91dc9e262837bec53
 -- run/kotlin/android --
-pass sha256:511de5a92f81148b0b9e336cb4fc4e5b
+pass sha256:62c75c26ee1d1864cdfbdcd7999da786
 -- run/none/html --
 pass sha256:2903c323df14d80d717cd6e173e9c041
 -- testrun/html/none/component_i18n_plural.sngl/main/1 --

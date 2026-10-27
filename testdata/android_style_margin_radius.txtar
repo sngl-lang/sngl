@@ -59,7 +59,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.LocalTextStyle
@@ -303,7 +302,7 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Column(modifier = flexed(styleModifier(Style(margin = Measurement(px = 12.0), borderRadius = Measurement(px = 6.0)), true), null, { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding()) {
+        Column(modifier = flexed(styleModifier(Style(margin = Measurement(px = 12.0), borderRadius = Measurement(px = 6.0)), true), null, snglFlexShare).safeDrawingPadding()) {
             Text(text = "literal", modifier = flexed(styleModifier(Style(margin = Measurement(px = 4.0), flex = 1.0, borderRadius = Measurement(px = 2.0)), true), 1.0, { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {}, modifier = flexed((if ((held == Style())) Modifier else styleModifier(held, false)), held.flex, { w: Float -> Modifier.weight(w).fillMaxWidth() }), colors = ButtonDefaults.buttonColors(containerColor = (if ((held.background == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = held.background!!.r.toInt(), green = held.background!!.g.toInt(), blue = held.background!!.b.toInt(), alpha = held.background!!.a.toInt())), contentColor = (if ((held.color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = held.color!!.r.toInt(), green = held.color!!.g.toInt(), blue = held.color!!.b.toInt(), alpha = held.color!!.a.toInt()))), shape = (if ((held.borderRadius == null)) CircleShape else RoundedCornerShape(Dp((held.borderRadius!!.px + (16.0 * (held.borderRadius!!.em + held.borderRadius!!.rem))).toFloat())))) {
                 Text(text = "held", modifier = Modifier)
@@ -320,7 +319,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun Tally(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
+fun Tally(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShare) {
     var n by remember { mutableStateOf(0) }
 
     Button(onClick = {
@@ -384,5 +383,29 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
 fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
 
 fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
+package test.sngl.app
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+
+// LocalFlexShare is what a child's flex is a share of in a Column the
+// generated code writes rather than a vbox -- a window's nodes, a page's, a
+// window's content arriving through a slot -- provided in that Column's
+// content, where weight is in scope. A slot's content is composed where the
+// slot is invoked, so it reads the Column it lands in, which no closure its
+// caller wrote could name.
+val LocalFlexShare = compositionLocalOf<((Float) -> Modifier)?> { null }
+
+// snglFlexShare is sngl:ui's flexShare where no vbox or hbox provides one:
+// the written Column's share, else the screen. A value rather than a
+// composable read, since a test build holds the context in a state class
+// built outside composition; the modifier reads LocalFlexShare where the node
+// it is on is composed.
+val snglFlexShare: (Float) -> Modifier = { w ->
+    Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
+}
 -- run/kotlin/android --
-pass sha256:67b73d0a3e8ff12fec141a974a9121ad
+pass sha256:f918bb65fdad48dd30712c8df55e7ac0

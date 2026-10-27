@@ -195,28 +195,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func FitOf(whiteSpace string, overflow string, display string) tui.Fit {
-	var __lt0 int
-	switch whiteSpace {
-	case "nowrap":
-		__lt0 = 1
-	case "pre":
-		__lt0 = 2
-	default:
-		__lt0 = 0
-	}
-	fit := tui.Fit{Wrap: __lt0, Clip: (((overflow == "hidden") || (overflow == "scroll")) || (overflow == "auto")), Hidden: (display == "none")}
-	return fit
-}
-
 func GrowOf(flex *float64, display string) float64 {
-	var __lt1 float64
+	var __lt0 float64
 	if (flex == nil) || (display == "none") {
-		__lt1 = 0.0
+		__lt0 = 0.0
 	} else {
-		__lt1 = (*(flex))
+		__lt0 = (*(flex))
 	}
-	return __lt1
+	return __lt0
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -244,13 +230,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt2 bool
+	var __lt1 bool
 	if s.BorderWidth != nil {
-		__lt2 = (PxOf(s.BorderWidth) > 0.0)
+		__lt1 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt2 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt1 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt2 {
+	if __lt1 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -274,15 +260,28 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt3 int
+		var __lt2 int
 		if s.MaxLines == nil {
-			__lt3 = 0
+			__lt2 = 0
 		} else {
-			__lt3 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt2 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
 	}
 	return l
+}
+
+func WrapOf(whiteSpace string) int {
+	var __lt3 int
+	switch whiteSpace {
+	case "nowrap":
+		__lt3 = 1
+	case "pre":
+		__lt3 = 2
+	default:
+		__lt3 = 0
+	}
+	return __lt3
 }
 
 func AlignOf(a string) lipgloss.Position {
@@ -544,7 +543,7 @@ func (m Model) View() tea.View {
 		contentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("tint"))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
-		contentPart_2 = tui.Render(BoxLook(m.s, true), FitOf(m.s.WhiteSpace, m.s.Overflow, m.s.Display), fmt.Sprint("styled"))
+		contentPart_2 = tui.Render(BoxLook(m.s, true), tui.Fit{Wrap: WrapOf(m.s.WhiteSpace), Clip: (((m.s.Overflow == "hidden") || (m.s.Overflow == "scroll")) || (m.s.Overflow == "auto")), Hidden: (m.s.Display == "none")}, fmt.Sprint("styled"))
 		if contentPart_2 != "" {
 			contentParts = append(contentParts, contentPart_2)
 		}
@@ -587,12 +586,12 @@ func (m Model) View() tea.View {
 		var contentPart_15 string
 		_ = __lt18
 		_ = __lt19
-		contentPart_15 = tui.Render(BoxLook(__lt14, true), FitOf(__lt15.WhiteSpace, __lt16.Overflow, __lt17.Display), fmt.Sprint("picked"))
+		contentPart_15 = tui.Render(BoxLook(__lt14, true), tui.Fit{Wrap: WrapOf(__lt15.WhiteSpace), Clip: (((__lt16.Overflow == "hidden") || (__lt16.Overflow == "scroll")) || (__lt16.Overflow == "auto")), Hidden: (__lt17.Display == "none")}, fmt.Sprint("picked"))
 		if contentPart_15 != "" {
 			contentParts = append(contentParts, contentPart_15)
 		}
 		var contentPart_16 string
-		contentPart_16 = tui.Render(BoxLook(m.kept[0], true), FitOf(m.kept[0].WhiteSpace, m.kept[0].Overflow, m.kept[0].Display), fmt.Sprint("kept"))
+		contentPart_16 = tui.Render(BoxLook(m.kept[0], true), tui.Fit{Wrap: WrapOf(m.kept[0].WhiteSpace), Clip: (((m.kept[0].Overflow == "hidden") || (m.kept[0].Overflow == "scroll")) || (m.kept[0].Overflow == "auto")), Hidden: (m.kept[0].Display == "none")}, fmt.Sprint("kept"))
 		if contentPart_16 != "" {
 			contentParts = append(contentParts, contentPart_16)
 		}
@@ -601,7 +600,7 @@ func (m Model) View() tea.View {
 		for _, r := range m.rows {
 			_ = r
 			var contentPart_17Item string
-			contentPart_17Item = tui.Render(BoxLook(m.s, true), FitOf(m.s.WhiteSpace, m.s.Overflow, m.s.Display), fmt.Sprint(r))
+			contentPart_17Item = tui.Render(BoxLook(m.s, true), tui.Fit{Wrap: WrapOf(m.s.WhiteSpace), Clip: (((m.s.Overflow == "hidden") || (m.s.Overflow == "scroll")) || (m.s.Overflow == "auto")), Hidden: (m.s.Display == "none")}, fmt.Sprint(r))
 			if contentPart_17Item != "" {
 				contentPart_17Items = append(contentPart_17Items, contentPart_17Item)
 			}
@@ -1706,13 +1705,14 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.ui.Modifier
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.TextUnit
@@ -1960,23 +1960,25 @@ fun MainScreen() {
             }
         }
         Column {
-            Button(onClick = {
-                s = Style(color = Color(b = 255), fontSize = Measurement(px = 20.0), fontWeight = SnglFontWeight.BOLD)
-                on = !on
-            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
-                Text(text = "swap", modifier = Modifier)
-            }
-            Button(onClick = {
-                s = s.copy(color = Color(g = 255))
-                (listOf("a", "b")).let { __v -> rows.clear(); rows.addAll(__v) }
-            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
-                Text(text = "tint", modifier = Modifier)
-            }
-            Text(text = "styled", modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, true)), s.flex, { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((s.color != null) || (s.fontSize != null)) || (s.fontWeight != SnglFontWeight.UNSET)) || (s.fontStyle != SnglFontStyle.UNSET)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((s.color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color!!.r.toInt(), green = s.color!!.g.toInt(), blue = s.color!!.b.toInt(), alpha = s.color!!.a.toInt())), fontSize = (if ((s.fontSize == null)) TextUnit.Unspecified else TextUnit((s.fontSize!!.px + (16.0 * (s.fontSize!!.em + s.fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))), overflow = (if ((s.maxLines == null)) TextOverflow.Clip else TextOverflow.Ellipsis), softWrap = (when (s.whiteSpace) { SnglWhiteSpace.NOWRAP, SnglWhiteSpace.PRE -> false; SnglWhiteSpace.UNSET, SnglWhiteSpace.NORMAL, SnglWhiteSpace.PREWRAP, SnglWhiteSpace.PRELINE -> true }), maxLines = (if ((s.maxLines == null)) Int.MAX_VALUE else s.maxLines!!))
-            Text(text = "picked", modifier = modifierOf((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))), { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding(), style = LocalTextStyle.current.merge(textStyle((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))))))
-            Text(text = "kept", modifier = flexed((if ((kept[0] == Style())) Modifier else styleModifier(kept[0], true)), kept[0].flex, { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((kept[0].color != null) || (kept[0].fontSize != null)) || (kept[0].fontWeight != SnglFontWeight.UNSET)) || (kept[0].fontStyle != SnglFontStyle.UNSET)) || (kept[0].fontFamily != "")) || (kept[0].textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((kept[0].color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = kept[0].color!!.r.toInt(), green = kept[0].color!!.g.toInt(), blue = kept[0].color!!.b.toInt(), alpha = kept[0].color!!.a.toInt())), fontSize = (if ((kept[0].fontSize == null)) TextUnit.Unspecified else TextUnit((kept[0].fontSize!!.px + (16.0 * (kept[0].fontSize!!.em + kept[0].fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (kept[0].fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (kept[0].fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (kept[0].fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (kept[0].textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))), overflow = (if ((kept[0].maxLines == null)) TextOverflow.Clip else TextOverflow.Ellipsis), softWrap = (when (kept[0].whiteSpace) { SnglWhiteSpace.NOWRAP, SnglWhiteSpace.PRE -> false; SnglWhiteSpace.UNSET, SnglWhiteSpace.NORMAL, SnglWhiteSpace.PREWRAP, SnglWhiteSpace.PRELINE -> true }), maxLines = (if ((kept[0].maxLines == null)) Int.MAX_VALUE else kept[0].maxLines!!))
-            for (r in rows) {
-                Text(text = r, modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, true)), s.flex, { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((s.color != null) || (s.fontSize != null)) || (s.fontWeight != SnglFontWeight.UNSET)) || (s.fontStyle != SnglFontStyle.UNSET)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((s.color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color!!.r.toInt(), green = s.color!!.g.toInt(), blue = s.color!!.b.toInt(), alpha = s.color!!.a.toInt())), fontSize = (if ((s.fontSize == null)) TextUnit.Unspecified else TextUnit((s.fontSize!!.px + (16.0 * (s.fontSize!!.em + s.fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))), overflow = (if ((s.maxLines == null)) TextOverflow.Clip else TextOverflow.Ellipsis), softWrap = (when (s.whiteSpace) { SnglWhiteSpace.NOWRAP, SnglWhiteSpace.PRE -> false; SnglWhiteSpace.UNSET, SnglWhiteSpace.NORMAL, SnglWhiteSpace.PREWRAP, SnglWhiteSpace.PRELINE -> true }), maxLines = (if ((s.maxLines == null)) Int.MAX_VALUE else s.maxLines!!))
+            CompositionLocalProvider(LocalFlexShare provides { w: Float -> Modifier.weight(w).fillMaxWidth() }) {
+                Button(onClick = {
+                    s = Style(color = Color(b = 255), fontSize = Measurement(px = 20.0), fontWeight = SnglFontWeight.BOLD)
+                    on = !on
+                }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                    Text(text = "swap", modifier = Modifier)
+                }
+                Button(onClick = {
+                    s = s.copy(color = Color(g = 255))
+                    (listOf("a", "b")).let { __v -> rows.clear(); rows.addAll(__v) }
+                }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                    Text(text = "tint", modifier = Modifier)
+                }
+                Text(text = "styled", modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, true)), s.flex, snglFlexShare).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((s.color != null) || (s.fontSize != null)) || (s.fontWeight != SnglFontWeight.UNSET)) || (s.fontStyle != SnglFontStyle.UNSET)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((s.color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color!!.r.toInt(), green = s.color!!.g.toInt(), blue = s.color!!.b.toInt(), alpha = s.color!!.a.toInt())), fontSize = (if ((s.fontSize == null)) TextUnit.Unspecified else TextUnit((s.fontSize!!.px + (16.0 * (s.fontSize!!.em + s.fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))), overflow = (if ((s.maxLines == null)) TextOverflow.Clip else TextOverflow.Ellipsis), softWrap = (when (s.whiteSpace) { SnglWhiteSpace.NOWRAP, SnglWhiteSpace.PRE -> false; SnglWhiteSpace.UNSET, SnglWhiteSpace.NORMAL, SnglWhiteSpace.PREWRAP, SnglWhiteSpace.PRELINE -> true }), maxLines = (if ((s.maxLines == null)) Int.MAX_VALUE else s.maxLines!!))
+                Text(text = "picked", modifier = modifierOf((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))), snglFlexShare).safeDrawingPadding(), style = LocalTextStyle.current.merge(textStyle((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))))))
+                Text(text = "kept", modifier = flexed((if ((kept[0] == Style())) Modifier else styleModifier(kept[0], true)), kept[0].flex, snglFlexShare).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((kept[0].color != null) || (kept[0].fontSize != null)) || (kept[0].fontWeight != SnglFontWeight.UNSET)) || (kept[0].fontStyle != SnglFontStyle.UNSET)) || (kept[0].fontFamily != "")) || (kept[0].textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((kept[0].color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = kept[0].color!!.r.toInt(), green = kept[0].color!!.g.toInt(), blue = kept[0].color!!.b.toInt(), alpha = kept[0].color!!.a.toInt())), fontSize = (if ((kept[0].fontSize == null)) TextUnit.Unspecified else TextUnit((kept[0].fontSize!!.px + (16.0 * (kept[0].fontSize!!.em + kept[0].fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (kept[0].fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (kept[0].fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (kept[0].fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (kept[0].textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))), overflow = (if ((kept[0].maxLines == null)) TextOverflow.Clip else TextOverflow.Ellipsis), softWrap = (when (kept[0].whiteSpace) { SnglWhiteSpace.NOWRAP, SnglWhiteSpace.PRE -> false; SnglWhiteSpace.UNSET, SnglWhiteSpace.NORMAL, SnglWhiteSpace.PREWRAP, SnglWhiteSpace.PRELINE -> true }), maxLines = (if ((kept[0].maxLines == null)) Int.MAX_VALUE else kept[0].maxLines!!))
+                for (r in rows) {
+                    Text(text = r, modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, true)), s.flex, snglFlexShare).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((s.color != null) || (s.fontSize != null)) || (s.fontWeight != SnglFontWeight.UNSET)) || (s.fontStyle != SnglFontStyle.UNSET)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((s.color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color!!.r.toInt(), green = s.color!!.g.toInt(), blue = s.color!!.b.toInt(), alpha = s.color!!.a.toInt())), fontSize = (if ((s.fontSize == null)) TextUnit.Unspecified else TextUnit((s.fontSize!!.px + (16.0 * (s.fontSize!!.em + s.fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))), overflow = (if ((s.maxLines == null)) TextOverflow.Clip else TextOverflow.Ellipsis), softWrap = (when (s.whiteSpace) { SnglWhiteSpace.NOWRAP, SnglWhiteSpace.PRE -> false; SnglWhiteSpace.UNSET, SnglWhiteSpace.NORMAL, SnglWhiteSpace.PREWRAP, SnglWhiteSpace.PRELINE -> true }), maxLines = (if ((s.maxLines == null)) Int.MAX_VALUE else s.maxLines!!))
+                }
             }
         }
     }
@@ -2040,6 +2042,30 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
 fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
 
 fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
+package test.sngl.app
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+
+// LocalFlexShare is what a child's flex is a share of in a Column the
+// generated code writes rather than a vbox -- a window's nodes, a page's, a
+// window's content arriving through a slot -- provided in that Column's
+// content, where weight is in scope. A slot's content is composed where the
+// slot is invoked, so it reads the Column it lands in, which no closure its
+// caller wrote could name.
+val LocalFlexShare = compositionLocalOf<((Float) -> Modifier)?> { null }
+
+// snglFlexShare is sngl:ui's flexShare where no vbox or hbox provides one:
+// the written Column's share, else the screen. A value rather than a
+// composable read, since a test build holds the context in a state class
+// built outside composition; the modifier reads LocalFlexShare where the node
+// it is on is composed.
+val snglFlexShare: (Float) -> Modifier = { w ->
+    Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
+}
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from style.sngl; DO NOT EDIT. -->
 
@@ -2393,12 +2419,12 @@ body { display: flex; flex-direction: column; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:797c0ab9b85404a516c679eac26f8d23
+pass sha256:a6602fca7b2aafc1121019e802df6fcb
 -- run/go/fyne --
 pass sha256:896589c56fdba5cbfee8245c389ee245
 -- run/go/gtk4 --
 pass sha256:ee93853504ebfa86d6a6c431b7e4b0a1
 -- run/kotlin/android --
-pass sha256:3d42b686f771bc79dfbc192de5c77119
+pass sha256:5a33f7cf428ae6842ce01438135757bf
 -- run/none/html --
 pass sha256:9cd5748eb4bf12f6e7e2d614386ff9d2

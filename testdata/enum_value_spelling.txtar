@@ -285,13 +285,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt3 bool
+	var __lt2 bool
 	if s.BorderWidth != nil {
-		__lt3 = (PxOf(s.BorderWidth) > 0.0)
+		__lt2 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt3 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt2 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt3 {
+	if __lt2 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -315,13 +315,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt4 int
+		var __lt3 int
 		if s.MaxLines == nil {
-			__lt4 = 0
+			__lt3 = 0
 		} else {
-			__lt4 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt3 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt4))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
 	}
 	return l
 }
@@ -741,7 +741,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.foundation.layout.fillMaxSize
 
 data class Look(
     var weight: SnglFontWeight = SnglFontWeight.UNSET
@@ -839,7 +838,7 @@ fun MainScreen() {
             }
             Text(text = ((((((((mood.toString() + " ") + mood.toString()) + " ") + w.toString()) + " ") + look.weight.toString()) + " ") + shape(none.size)), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             if (open) {
-                Row(__ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, label = { a ->
+                Row(label = { a ->
                     Text(text = a.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 })
             }
@@ -848,7 +847,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun Row(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, label: (@Composable (SnglTextAlign) -> Unit)? = null) {
+fun Row(label: (@Composable (SnglTextAlign) -> Unit)? = null) {
     var taps by remember { mutableStateOf(0) }
 
     Button(onClick = {
@@ -1041,8 +1040,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b924cd521c9e37f21be73b51232923a0
+pass sha256:883aafc9b348457c6f083037b7ba64d3
 -- run/kotlin/android --
-pass sha256:bc242dea6fc159b7dec274ab00c406b8
+pass sha256:daaace21a0f1f10f18c60f25864f1605
 -- run/none/html --
 pass sha256:88c2c7869f6229c15a89ecb8a3776aa8

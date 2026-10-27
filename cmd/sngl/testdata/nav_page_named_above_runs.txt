@@ -92,7 +92,7 @@ ui.window(title="Library") {
     library()
 }
 -- testrun/android/kotlin/app.sngl/library/1 --
-sha256:2b5ff636ad955089c8a86e4cdf5dfdab
+sha256:ed4241b809c47754361a06e94b11c794
 {
   "results": [
     {
@@ -110,7 +110,7 @@ sha256:2b5ff636ad955089c8a86e4cdf5dfdab
   ]
 }
 -- testrun/bubbletea/go/app.sngl/library/1 --
-sha256:9ab61f3ed6dd6bb45a8cf97bfc8136d9
+sha256:9943e1aa27b0a25122eaf219ff8bfa2d
 {
   "results": [
     {

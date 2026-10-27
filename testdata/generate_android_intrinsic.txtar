@@ -318,13 +318,13 @@ fun MainScreen() {
                 Spacer(modifier = styleModifier(Style(height = Measurement(px = 8.0)), true))
                 Text(text = "hi", modifier = styleModifier(Style(padding = Measurement(px = 1.0)), true), style = TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit(20.0f, TextUnitType.Sp), fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified))
             }
-            Row(modifier = flexed(styleModifier(Style(padding = Measurement(px = 2.0)), true), null, { w: Float -> Modifier.fillMaxSize() })) {
+            Row(modifier = flexed(styleModifier(Style(padding = Measurement(px = 2.0)), true), null, snglFlexShare)) {
                 Text(text = "wrapped", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
             SnglScroll(modifier = Modifier, onReachEnd = {}) {
                 Text(text = "scrolled", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
-            Box(modifier = flexed(styleModifier(Style(padding = Measurement(px = 3.0)), true), null, { w: Float -> Modifier.fillMaxSize() })) {
+            Box(modifier = flexed(styleModifier(Style(padding = Measurement(px = 3.0)), true), null, snglFlexShare)) {
                 Text(text = "layered", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
         }
@@ -385,6 +385,30 @@ fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
 fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
 
 fun flexed(m: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if (((flex == null) || (flex!! <= 0.0))) m else m.then(share(flex!!.toFloat())))
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
+package test.sngl.app
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+
+// LocalFlexShare is what a child's flex is a share of in a Column the
+// generated code writes rather than a vbox -- a window's nodes, a page's, a
+// window's content arriving through a slot -- provided in that Column's
+// content, where weight is in scope. A slot's content is composed where the
+// slot is invoked, so it reads the Column it lands in, which no closure its
+// caller wrote could name.
+val LocalFlexShare = compositionLocalOf<((Float) -> Modifier)?> { null }
+
+// snglFlexShare is sngl:ui's flexShare where no vbox or hbox provides one:
+// the written Column's share, else the screen. A value rather than a
+// composable read, since a test build holds the context in a state class
+// built outside composition; the modifier reads LocalFlexShare where the node
+// it is on is composed.
+val snglFlexShare: (Float) -> Modifier = { w ->
+    Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
+}
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglScroll.kt --
 package test.sngl.app
 
@@ -425,4 +449,4 @@ fun SnglScroll(
     Column(modifier.verticalScroll(state).onSizeChanged { height = it.height }, content = content)
 }
 -- run/kotlin/android --
-pass sha256:9829acc2294170c2eb9d3b9b55b59ab3
+pass sha256:a6d65b4406735d89d7e8a88cb0cc6d05

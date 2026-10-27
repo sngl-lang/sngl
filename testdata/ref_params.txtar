@@ -352,13 +352,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt2 bool
+	var __lt1 bool
 	if s.BorderWidth != nil {
-		__lt2 = (PxOf(s.BorderWidth) > 0.0)
+		__lt1 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt2 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt1 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt2 {
+	if __lt1 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -382,13 +382,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt3 int
+		var __lt2 int
 		if s.MaxLines == nil {
-			__lt3 = 0
+			__lt2 = 0
 		} else {
-			__lt3 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt2 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
 	}
 	return l
 }
@@ -730,8 +730,8 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var st__inst0 by remember { mutableStateOf(Stack()) }
-    val all__inst0 = remember { mutableStateListOf(Stack(), Stack()) }
+    var st__inst0 by remember { mutableStateOf(Stack(items = listOf<Int>())) }
+    val all__inst0 = remember { mutableStateListOf(Stack(items = listOf<Int>()), Stack(items = listOf<Int>())) }
     var k__inst0 by remember { mutableStateOf(0) }
     var out__inst0 by remember { mutableStateOf("") }
     var visible__inst0 by remember { mutableStateOf(true) }
@@ -824,7 +824,7 @@ fun fill(s: Stack): Stack {
 
 fun reset(s: Stack): Stack {
     var s__own = s
-    s__own = Stack()
+    s__own = Stack(items = listOf<Int>())
     return s__own
 }
 
@@ -963,8 +963,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d16d97464764204f6126497602b87d85
+pass sha256:1be485fd2d887d834b4fd5b2d2f811b2
 -- run/kotlin/android --
-pass sha256:126c224b27f1d67a469c10efce7204e8
+pass sha256:4bd502e0bf28fd2558d40b93656ac65a
 -- run/none/html --
 pass sha256:53d4af66e329afa15f0191774bdb4bc4

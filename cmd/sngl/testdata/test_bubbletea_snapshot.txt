@@ -31,7 +31,7 @@ func testInitialSnapshotMatches(t Test, c counter) {
 window {
 }
 -- testrun/bubbletea/go/app.sngl/counter/1 --
-sha256:db622b09bd39f74df625a5d6bfc0de95
+sha256:9bf26e20c4bdff21735765be53c845f1
 {
   "results": [
     {
@@ -44,7 +44,7 @@ sha256:db622b09bd39f74df625a5d6bfc0de95
   }
 }
 -- testrun/bubbletea/go/app.sngl/counter/2 --
-sha256:7209beed5b37aa50c5f0358f3a8aa1b2
+sha256:5b78602549780ac1fc4837cf1f803ee0
 {
   "results": [
     {

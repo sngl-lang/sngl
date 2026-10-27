@@ -177,7 +177,7 @@ func testHarnessPush(t test.Test, c saver) {
     t.assert(c.out.value == "1:1")
 }
 -- testrun/android/kotlin/app.sngl/gated/1 --
-sha256:df6320374f285d107b64cb704fe8ce25
+sha256:2e0b6962a87792262baf2460e5ae338b
 {
   "results": [
     {
@@ -187,7 +187,7 @@ sha256:df6320374f285d107b64cb704fe8ce25
   ]
 }
 -- testrun/android/kotlin/app.sngl/saver/1 --
-sha256:5a493fc170e58b574f71d19f7a25f8e3
+sha256:d1bc133f3f1b18ff76b16f022cdea126
 {
   "results": [
     {
@@ -217,7 +217,7 @@ sha256:5a493fc170e58b574f71d19f7a25f8e3
   ]
 }
 -- testrun/android/kotlin/app.sngl/scalar/1 --
-sha256:6de1e076dcbdb648984de2da9410a076
+sha256:0b6a07a59a5093278dc796e60b795a22
 {
   "results": [
     {
@@ -235,7 +235,7 @@ sha256:6de1e076dcbdb648984de2da9410a076
   ]
 }
 -- testrun/bubbletea/go/app.sngl/gated/1 --
-sha256:6658137bb869a680eb1f0f86474534df
+sha256:e8a65223c2ffe51e272769ba975c06a6
 {
   "results": [
     {
@@ -245,7 +245,7 @@ sha256:6658137bb869a680eb1f0f86474534df
   ]
 }
 -- testrun/bubbletea/go/app.sngl/saver/1 --
-sha256:d371f11735af1b108233cc07171cf75e
+sha256:e6403281c7eae40fcad27f3bdbc94052
 {
   "results": [
     {
@@ -275,7 +275,7 @@ sha256:d371f11735af1b108233cc07171cf75e
   ]
 }
 -- testrun/bubbletea/go/app.sngl/scalar/1 --
-sha256:cdf70125aebc280ac326c549eabfcea9
+sha256:132f1734259f750f52c11b77d3664471
 {
   "results": [
     {

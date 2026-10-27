@@ -248,13 +248,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
-	var __lt4 int
+	var __lt3 int
 	if px <= 0.0 {
-		__lt4 = 0
+		__lt3 = 0
 	} else {
-		__lt4 = max(1, (int(px) / 16))
+		__lt3 = max(1, (int(px) / 16))
 	}
-	return __lt4
+	return __lt3
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -282,13 +282,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt5 bool
+	var __lt4 bool
 	if s.BorderWidth != nil {
-		__lt5 = (PxOf(s.BorderWidth) > 0.0)
+		__lt4 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt4 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt5 {
+	if __lt4 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -312,13 +312,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt6 int
+		var __lt5 int
 		if s.MaxLines == nil {
-			__lt6 = 0
+			__lt5 = 0
 		} else {
-			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt5 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
 	}
 	return l
 }
@@ -3093,8 +3093,6 @@ package test.sngl.app
 
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -3104,6 +3102,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.ui.platform.testTag
@@ -3130,7 +3129,7 @@ val SnglInstances = mutableMapOf<String, Map<String, (List<Any?>) -> Any?>>()
 class MainScreenState {
     init { SnglPresent.clear() }
     init { SnglInstances.clear() }
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
     var show by mutableStateOf(true)
     val names = mutableStateListOf("a", "b")
     var open__inst0 by mutableStateOf(true)
@@ -3166,7 +3165,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 }
 
 @Composable
-fun Badge__site0(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __sngl: String = "") {
+fun Badge__site0(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShare, __sngl: String = "") {
     var hits by remember { mutableStateOf(0) }
 
     DisposableEffect(__sngl) {
@@ -3188,7 +3187,7 @@ fun Badge__site0(label: String = "", __ctx_flexShare: (Float) -> androidx.compos
 }
 
 @Composable
-fun Badge__site1(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __copy: String = "", __sngl: String = "") {
+fun Badge__site1(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShare, __copy: String = "", __sngl: String = "") {
     var hits by remember { mutableStateOf(0) }
 
     DisposableEffect(__sngl) {
@@ -3210,7 +3209,7 @@ fun Badge__site1(label: String = "", __ctx_flexShare: (Float) -> androidx.compos
 }
 
 @Composable
-fun Badge__site2(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __sngl: String = "") {
+fun Badge__site2(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShare, __sngl: String = "") {
     var hits by remember { mutableStateOf(0) }
 
     DisposableEffect(__sngl) {
@@ -3229,6 +3228,30 @@ fun Badge__site2(label: String = "", __ctx_flexShare: (Float) -> androidx.compos
     if ((hits >= 2)) {
         Text(text = "done", modifier = Modifier.testTag("done"), style = LocalTextStyle.current.merge(TextStyle.Default))
     }
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
+package test.sngl.app
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+
+// LocalFlexShare is what a child's flex is a share of in a Column the
+// generated code writes rather than a vbox -- a window's nodes, a page's, a
+// window's content arriving through a slot -- provided in that Column's
+// content, where weight is in scope. A slot's content is composed where the
+// slot is invoked, so it reads the Column it lands in, which no closure its
+// caller wrote could name.
+val LocalFlexShare = compositionLocalOf<((Float) -> Modifier)?> { null }
+
+// snglFlexShare is sngl:ui's flexShare where no vbox or hbox provides one:
+// the written Column's share, else the screen. A value rather than a
+// composable read, since a test build holds the context in a state class
+// built outside composition; the modifier reads LocalFlexShare where the node
+// it is on is composed.
+val snglFlexShare: (Float) -> Modifier = { w ->
+    Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
 // Code generated by sngl (android) from app.sngl; DO NOT EDIT.
@@ -4008,12 +4031,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:fa3582028bcea17329c56b1ed72bd233
+pass sha256:ca07e1838a398d31c55336184120e92f
 -- run/go/fyne --
 pass sha256:a85171300ef273fb5dcdfbcf2d012812
 -- run/go/gtk4 --
 pass sha256:d27d763882ebc58eeb9d181677cc85c5
 -- run/kotlin/android --
-pass sha256:60f63acafb2d8a4ae23587a392ad32af
+pass sha256:d5dd82fb070167d446bbc113adf7bd94
 -- run/none/html --
 pass sha256:20f3f6e032a875883b0e0eda58333b6c

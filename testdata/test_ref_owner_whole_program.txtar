@@ -225,70 +225,60 @@ func LookOf(s Style) lipgloss.Style {
 }
 
 func FitOf(whiteSpace string, overflow string, display string) tui.Fit {
-	var __lt0 int
-	switch whiteSpace {
-	case "nowrap":
-		__lt0 = 1
-	case "pre":
-		__lt0 = 2
-	default:
-		__lt0 = 0
-	}
-	fit := tui.Fit{Wrap: __lt0, Clip: (((overflow == "hidden") || (overflow == "scroll")) || (overflow == "auto")), Hidden: (display == "none")}
-	return fit
+	return tui.Fit{Wrap: WrapOf(whiteSpace), Clip: (((overflow == "hidden") || (overflow == "scroll")) || (overflow == "auto")), Hidden: (display == "none")}
 }
 
 func GrowOf(flex *float64, display string) float64 {
-	var __lt1 float64
+	var __lt0 float64
 	if (flex == nil) || (display == "none") {
-		__lt1 = 0.0
+		__lt0 = 0.0
 	} else {
-		__lt1 = (*(flex))
+		__lt0 = (*(flex))
+	}
+	return __lt0
+}
+
+func CrossOf(a string) float64 {
+	var __lt1 float64
+	switch a {
+	case "center":
+		__lt1 = 0.5
+	case "end":
+		__lt1 = 1.0
+	default:
+		__lt1 = 0.0
 	}
 	return __lt1
 }
 
-func CrossOf(a string) float64 {
-	var __lt2 float64
-	switch a {
+func JustifyOf(j string) int {
+	var __lt2 int
+	switch j {
 	case "center":
-		__lt2 = 0.5
+		__lt2 = 1
 	case "end":
-		__lt2 = 1.0
+		__lt2 = 2
+	case "spaceBetween":
+		__lt2 = 3
+	case "spaceAround":
+		__lt2 = 4
+	case "spaceEvenly":
+		__lt2 = 5
 	default:
-		__lt2 = 0.0
+		__lt2 = 0
 	}
 	return __lt2
 }
 
-func JustifyOf(j string) int {
-	var __lt3 int
-	switch j {
-	case "center":
-		__lt3 = 1
-	case "end":
-		__lt3 = 2
-	case "spaceBetween":
-		__lt3 = 3
-	case "spaceAround":
-		__lt3 = 4
-	case "spaceEvenly":
-		__lt3 = 5
-	default:
-		__lt3 = 0
-	}
-	return __lt3
-}
-
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
-	var __lt4 int
+	var __lt3 int
 	if px <= 0.0 {
-		__lt4 = 0
+		__lt3 = 0
 	} else {
-		__lt4 = max(1, (int(px) / 16))
+		__lt3 = max(1, (int(px) / 16))
 	}
-	return __lt4
+	return __lt3
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -316,13 +306,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt5 bool
+	var __lt4 bool
 	if s.BorderWidth != nil {
-		__lt5 = (PxOf(s.BorderWidth) > 0.0)
+		__lt4 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt4 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt5 {
+	if __lt4 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -346,15 +336,28 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt6 int
+		var __lt5 int
 		if s.MaxLines == nil {
-			__lt6 = 0
+			__lt5 = 0
 		} else {
-			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt5 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
 	}
 	return l
+}
+
+func WrapOf(whiteSpace string) int {
+	var __lt6 int
+	switch whiteSpace {
+	case "nowrap":
+		__lt6 = 1
+	case "pre":
+		__lt6 = 2
+	default:
+		__lt6 = 0
+	}
+	return __lt6
 }
 
 func PxOf(m__r1 *Measurement) float64 {
@@ -2642,14 +2645,15 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.Arrangement
@@ -2896,33 +2900,35 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             }
         }
         Column {
-            Column(modifier = Modifier.safeDrawingPadding()) {
-                Button(onClick = {
-                    state.shown__inst0 = !state.shown__inst0
-                }, modifier = Modifier.testTag("ts"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
-                    Text(text = "s", modifier = Modifier)
-                }
-                if (state.shown__inst0) {
-                    Badge(label = "m", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
+            CompositionLocalProvider(LocalFlexShare provides { w: Float -> Modifier.weight(w).fillMaxWidth() }) {
+                Column(modifier = Modifier.safeDrawingPadding()) {
                     Button(onClick = {
-                        state.mh__inst0 = (state.mh__inst0 + 1)
-                    }, modifier = Modifier.testTag("k"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
-                        Text(text = ("mk" + state.mh__inst0.toString()), modifier = Modifier)
+                        state.shown__inst0 = !state.shown__inst0
+                    }, modifier = Modifier.testTag("ts"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                        Text(text = "s", modifier = Modifier)
+                    }
+                    if (state.shown__inst0) {
+                        Badge(label = "m", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
+                        Button(onClick = {
+                            state.mh__inst0 = (state.mh__inst0 + 1)
+                        }, modifier = Modifier.testTag("k"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                            Text(text = ("mk" + state.mh__inst0.toString()), modifier = Modifier)
+                        }
                     }
                 }
-            }
-            Column(modifier = Modifier.safeDrawingPadding()) {
-                Button(onClick = {
-                    state.on__inst0 = !state.on__inst0
-                }, modifier = Modifier.testTag("tp"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
-                    Text(text = "p", modifier = Modifier)
-                }
-                if (state.on__inst0) {
-                    Badge(label = "p", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
+                Column(modifier = Modifier.safeDrawingPadding()) {
                     Button(onClick = {
-                        state.ph__inst0 = (state.ph__inst0 + 1)
-                    }, modifier = Modifier.testTag("k__own0"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
-                        Text(text = ("pk" + state.ph__inst0.toString()), modifier = Modifier)
+                        state.on__inst0 = !state.on__inst0
+                    }, modifier = Modifier.testTag("tp"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                        Text(text = "p", modifier = Modifier)
+                    }
+                    if (state.on__inst0) {
+                        Badge(label = "p", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
+                        Button(onClick = {
+                            state.ph__inst0 = (state.ph__inst0 + 1)
+                        }, modifier = Modifier.testTag("k__own0"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                            Text(text = ("pk" + state.ph__inst0.toString()), modifier = Modifier)
+                        }
                     }
                 }
             }
@@ -2931,7 +2937,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 }
 
 @Composable
-fun Badge(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
+fun Badge(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShare) {
     var hits by remember { mutableStateOf(0) }
 
     Button(onClick = {
@@ -3011,6 +3017,30 @@ fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.u
 fun columnSpacing(j: SnglJustification, gap: androidx.compose.ui.unit.Dp): androidx.compose.foundation.layout.Arrangement.Vertical = (when (j) { SnglJustification.SPACEBETWEEN -> Arrangement.SpaceBetween; SnglJustification.SPACEAROUND -> Arrangement.SpaceAround; SnglJustification.SPACEEVENLY -> Arrangement.SpaceEvenly; SnglJustification.CENTER -> Arrangement.spacedBy(gap, Alignment.CenterVertically); SnglJustification.END -> Arrangement.spacedBy(gap, Alignment.Bottom); SnglJustification.UNSET, SnglJustification.START -> Arrangement.spacedBy(gap) })
 
 fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
+package test.sngl.app
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+
+// LocalFlexShare is what a child's flex is a share of in a Column the
+// generated code writes rather than a vbox -- a window's nodes, a page's, a
+// window's content arriving through a slot -- provided in that Column's
+// content, where weight is in scope. A slot's content is composed where the
+// slot is invoked, so it reads the Column it lands in, which no closure its
+// caller wrote could name.
+val LocalFlexShare = compositionLocalOf<((Float) -> Modifier)?> { null }
+
+// snglFlexShare is sngl:ui's flexShare where no vbox or hbox provides one:
+// the written Column's share, else the screen. A value rather than a
+// composable read, since a test build holds the context in a state class
+// built outside composition; the modifier reads LocalFlexShare where the node
+// it is on is composed.
+val snglFlexShare: (Float) -> Modifier = { w ->
+    Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
+}
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
 // Code generated by sngl (android) from app.sngl; DO NOT EDIT.
 
@@ -3544,12 +3574,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f4ac8cabe162c2776e5d49ab4dd1c921
+pass sha256:2121ff74015b7caa5c6972af5c9e1eab
 -- run/go/fyne --
 pass sha256:c804e636f72e1053d2606c7350dd576a
 -- run/go/gtk4 --
 pass sha256:b0bb6d32f666bb08b07bf25785603d71
 -- run/kotlin/android --
-pass sha256:23dbcc454f53f455a89a1279500f3bc6
+pass sha256:a5da3ef0578bdc91907711e5adef8b1e
 -- run/none/html --
 pass sha256:762d29033f522521016217560be72b9f

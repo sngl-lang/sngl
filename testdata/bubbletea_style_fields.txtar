@@ -189,50 +189,36 @@ func (m *Model) resizeWidgets() {
 	m.widget0.SetWidth(tui.WidgetWidth(m.width))
 }
 
-func FitOf(whiteSpace string, overflow string, display string) tui.Fit {
-	var __lt0 int
-	switch whiteSpace {
-	case "nowrap":
-		__lt0 = 1
-	case "pre":
-		__lt0 = 2
-	default:
-		__lt0 = 0
-	}
-	fit := tui.Fit{Wrap: __lt0, Clip: (((overflow == "hidden") || (overflow == "scroll")) || (overflow == "auto")), Hidden: (display == "none")}
-	return fit
-}
-
 func GrowOf(flex *float64, display string) float64 {
-	var __lt1 float64
+	var __lt0 float64
 	if (flex == nil) || (display == "none") {
-		__lt1 = 0.0
+		__lt0 = 0.0
 	} else {
-		__lt1 = (*(flex))
+		__lt0 = (*(flex))
 	}
-	return __lt1
+	return __lt0
 }
 
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
-	var __lt4 int
+	var __lt3 int
 	if px <= 0.0 {
-		__lt4 = 0
+		__lt3 = 0
 	} else {
-		__lt4 = max(1, (int(px) / 16))
+		__lt3 = max(1, (int(px) / 16))
 	}
-	return __lt4
+	return __lt3
 }
 
 func CellsOf(m__r1 *Measurement) int {
 	var px float64 = PxOf(m__r1)
-	var __lt5 int
+	var __lt4 int
 	if px <= 0.0 {
-		__lt5 = 0
+		__lt4 = 0
 	} else {
-		__lt5 = max(1, (int(px) / 8))
+		__lt4 = max(1, (int(px) / 8))
 	}
-	return __lt5
+	return __lt4
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -260,13 +246,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt6 bool
+	var __lt5 bool
 	if s.BorderWidth != nil {
-		__lt6 = (PxOf(s.BorderWidth) > 0.0)
+		__lt5 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt6 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt6 {
+	if __lt5 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -290,15 +276,28 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt7 int
+		var __lt6 int
 		if s.MaxLines == nil {
-			__lt7 = 0
+			__lt6 = 0
 		} else {
-			__lt7 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt7))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
 	}
 	return l
+}
+
+func WrapOf(whiteSpace string) int {
+	var __lt7 int
+	switch whiteSpace {
+	case "nowrap":
+		__lt7 = 1
+	case "pre":
+		__lt7 = 2
+	default:
+		__lt7 = 0
+	}
+	return __lt7
 }
 
 func PxOf(m__r2 *Measurement) float64 {
@@ -579,12 +578,12 @@ func (m Model) View() tea.View {
 		contentChildren = append(contentChildren, tui.Fixed(content_0))
 		contentChildren = append(contentChildren, tui.Grow(GrowOf(m.opaque.Flex, m.opaque.Display), func(content_1Cells int) string {
 			var content_1 string
-			content_1 = tui.Render(tui.Sized(BoxLook(m.opaque, true), false, content_1Cells), FitOf(m.opaque.WhiteSpace, m.opaque.Overflow, m.opaque.Display), fmt.Sprint("var"))
+			content_1 = tui.Render(tui.Sized(BoxLook(m.opaque, true), false, content_1Cells), tui.Fit{Wrap: WrapOf(m.opaque.WhiteSpace), Clip: (((m.opaque.Overflow == "hidden") || (m.opaque.Overflow == "scroll")) || (m.opaque.Overflow == "auto")), Hidden: (m.opaque.Display == "none")}, fmt.Sprint("var"))
 			return content_1
 		}))
 		contentChildren = append(contentChildren, tui.Grow(GrowOf(m.faint.Flex, m.faint.Display), func(content_2Cells int) string {
 			var content_2 string
-			content_2 = tui.Render(tui.Sized(BoxLook(m.faint, true), false, content_2Cells), FitOf(m.faint.WhiteSpace, m.faint.Overflow, m.faint.Display), fmt.Sprint("prop"))
+			content_2 = tui.Render(tui.Sized(BoxLook(m.faint, true), false, content_2Cells), tui.Fit{Wrap: WrapOf(m.faint.WhiteSpace), Clip: (((m.faint.Overflow == "hidden") || (m.faint.Overflow == "scroll")) || (m.faint.Overflow == "auto")), Hidden: (m.faint.Display == "none")}, fmt.Sprint("prop"))
 			return content_2
 		}))
 		var content_3 string
@@ -674,4 +673,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:6d5e4dee4268fb373b4aad5428e57a11
+pass sha256:6db663c4c6dfca73d00f9993da854efb

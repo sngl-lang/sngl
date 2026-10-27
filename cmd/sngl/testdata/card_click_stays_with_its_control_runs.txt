@@ -57,7 +57,7 @@ ui.window {
     cardWithButton
 }
 -- testrun/android/kotlin/app.sngl/cardWithButton/1 --
-sha256:516962e2c627a0091b3e77d82233b85d
+sha256:9d35486556f5c4ee08cf8eb228a2d8a5
 {
   "results": [
     {
@@ -71,7 +71,7 @@ sha256:516962e2c627a0091b3e77d82233b85d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/cardWithButton/1 --
-sha256:da01a1196ee4bd8953feeb7dc077eb85
+sha256:115ae0144af63259fbd3766b71ec8155
 {
   "results": [
     {

@@ -41,7 +41,7 @@ func testAColorPrintsAsItsHex(t test.Test, c page) {
     t.assert(c.lit.value == "#336699")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:fb6b6657b51b39c35168c01aa5109cb9
+sha256:4924eff1089a46bc92813c5fa66a9052
 {
   "results": [
     {
@@ -51,7 +51,7 @@ sha256:fb6b6657b51b39c35168c01aa5109cb9
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:b72c907f94214009454ea87939c1127e
+sha256:bdf91aceb056c5c1ec5f7ded74e29729
 {
   "results": [
     {

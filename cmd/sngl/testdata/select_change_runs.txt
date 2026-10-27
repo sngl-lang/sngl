@@ -68,7 +68,7 @@ func testChangeReachesThroughAnInstance(t test.Test, c wrapped) {
     t.assert(c.inner.chosen == "Cherry")
 }
 -- testrun/android/kotlin/app.sngl/chooser/1 --
-sha256:c1c959fee988e1d1130f13d8f3fcbf1b
+sha256:ce386ffe2193ce043f40393fb22addf4
 {
   "results": [
     {
@@ -78,7 +78,7 @@ sha256:c1c959fee988e1d1130f13d8f3fcbf1b
   ]
 }
 -- testrun/android/kotlin/app.sngl/wrapped/1 --
-sha256:367e14417e006140bf12961bc0235cb9
+sha256:47785a66be95bd6d9b0839f8e35c7752
 {
   "results": [
     {
@@ -88,7 +88,7 @@ sha256:367e14417e006140bf12961bc0235cb9
   ]
 }
 -- testrun/bubbletea/go/app.sngl/chooser/1 --
-sha256:0c7a6d1da508304713804354e0e7edc9
+sha256:efa638e68b0bd59fe47c492afb9558fb
 {
   "results": [
     {
@@ -98,7 +98,7 @@ sha256:0c7a6d1da508304713804354e0e7edc9
   ]
 }
 -- testrun/bubbletea/go/app.sngl/wrapped/1 --
-sha256:199830537598e0c00b0ecb54edb6e9e1
+sha256:72708bbdad4f99b958a4551399cf0402
 {
   "results": [
     {

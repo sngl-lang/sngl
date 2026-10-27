@@ -202,24 +202,24 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
-	var __lt4 int
+	var __lt3 int
 	if px <= 0.0 {
-		__lt4 = 0
+		__lt3 = 0
 	} else {
-		__lt4 = max(1, (int(px) / 16))
+		__lt3 = max(1, (int(px) / 16))
 	}
-	return __lt4
+	return __lt3
 }
 
 func CellsOf(m__r1 *Measurement) int {
 	var px float64 = PxOf(m__r1)
-	var __lt5 int
+	var __lt4 int
 	if px <= 0.0 {
-		__lt5 = 0
+		__lt4 = 0
 	} else {
-		__lt5 = max(1, (int(px) / 8))
+		__lt4 = max(1, (int(px) / 8))
 	}
-	return __lt5
+	return __lt4
 }
 
 func TokenColor(p Palette, kind string) snglcolor.Color {
@@ -281,13 +281,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt9 bool
+	var __lt8 bool
 	if s.BorderWidth != nil {
-		__lt9 = (PxOf(s.BorderWidth) > 0.0)
+		__lt8 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt9 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt8 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt9 {
+	if __lt8 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -311,13 +311,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt10 int
+		var __lt9 int
 		if s.MaxLines == nil {
-			__lt10 = 0
+			__lt9 = 0
 		} else {
-			__lt10 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt9 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt10))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt9))
 	}
 	return l
 }
@@ -9618,7 +9618,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:72489902bef8613bb21a8fba374edccf
+pass sha256:42d0a31ef9a4d96fdbce9791b7f2b5da
 -- run/go/fyne --
 pass sha256:a1c9706bce75cdaf840f7e56f0e9723d
 -- run/none/html --

@@ -174,82 +174,68 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func FitOf(whiteSpace string, overflow string, display string) tui.Fit {
-	var __lt0 int
-	switch whiteSpace {
-	case "nowrap":
-		__lt0 = 1
-	case "pre":
-		__lt0 = 2
-	default:
-		__lt0 = 0
+func GrowOf(flex *float64, display string) float64 {
+	var __lt0 float64
+	if (flex == nil) || (display == "none") {
+		__lt0 = 0.0
+	} else {
+		__lt0 = (*(flex))
 	}
-	fit := tui.Fit{Wrap: __lt0, Clip: (((overflow == "hidden") || (overflow == "scroll")) || (overflow == "auto")), Hidden: (display == "none")}
-	return fit
+	return __lt0
 }
 
-func GrowOf(flex *float64, display string) float64 {
+func CrossOf(a string) float64 {
 	var __lt1 float64
-	if (flex == nil) || (display == "none") {
+	switch a {
+	case "center":
+		__lt1 = 0.5
+	case "end":
+		__lt1 = 1.0
+	default:
 		__lt1 = 0.0
-	} else {
-		__lt1 = (*(flex))
 	}
 	return __lt1
 }
 
-func CrossOf(a string) float64 {
-	var __lt2 float64
-	switch a {
+func JustifyOf(j string) int {
+	var __lt2 int
+	switch j {
 	case "center":
-		__lt2 = 0.5
+		__lt2 = 1
 	case "end":
-		__lt2 = 1.0
+		__lt2 = 2
+	case "spaceBetween":
+		__lt2 = 3
+	case "spaceAround":
+		__lt2 = 4
+	case "spaceEvenly":
+		__lt2 = 5
 	default:
-		__lt2 = 0.0
+		__lt2 = 0
 	}
 	return __lt2
 }
 
-func JustifyOf(j string) int {
+func RowsOf(m__r0 *Measurement) int {
+	var px float64 = PxOf(m__r0)
 	var __lt3 int
-	switch j {
-	case "center":
-		__lt3 = 1
-	case "end":
-		__lt3 = 2
-	case "spaceBetween":
-		__lt3 = 3
-	case "spaceAround":
-		__lt3 = 4
-	case "spaceEvenly":
-		__lt3 = 5
-	default:
+	if px <= 0.0 {
 		__lt3 = 0
+	} else {
+		__lt3 = max(1, (int(px) / 16))
 	}
 	return __lt3
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
+func CellsOf(m__r1 *Measurement) int {
+	var px float64 = PxOf(m__r1)
 	var __lt4 int
 	if px <= 0.0 {
 		__lt4 = 0
 	} else {
-		__lt4 = max(1, (int(px) / 16))
+		__lt4 = max(1, (int(px) / 8))
 	}
 	return __lt4
-}
-
-func CellsOf(m__r1 *Measurement) int {
-	var px float64 = PxOf(m__r1)
-	var __lt5 int
-	if px <= 0.0 {
-		__lt5 = 0
-	} else {
-		__lt5 = max(1, (int(px) / 8))
-	}
-	return __lt5
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -277,13 +263,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt6 bool
+	var __lt5 bool
 	if s.BorderWidth != nil {
-		__lt6 = (PxOf(s.BorderWidth) > 0.0)
+		__lt5 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt6 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt6 {
+	if __lt5 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -307,15 +293,28 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt7 int
+		var __lt6 int
 		if s.MaxLines == nil {
-			__lt7 = 0
+			__lt6 = 0
 		} else {
-			__lt7 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt7))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
 	}
 	return l
+}
+
+func WrapOf(whiteSpace string) int {
+	var __lt7 int
+	switch whiteSpace {
+	case "nowrap":
+		__lt7 = 1
+	case "pre":
+		__lt7 = 2
+	default:
+		__lt7 = 0
+	}
+	return __lt7
 }
 
 func PxOf(m__r2 *Measurement) float64 {
@@ -570,7 +569,7 @@ func (m Model) View() tea.View {
 			content_4_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("as a value"))
 			content_4Children = append(content_4Children, tui.Fixed(content_4_1))
 			content_4 = tui.Join(false, lipgloss.Position(CrossOf(m.held.AlignItems)), JustifyOf(m.held.JustifyContent), RowsOf(m.held.Gap), content_4H, content_4Children)
-			content_4 = tui.Render(content_4Look.AlignHorizontal(lipgloss.Position(CrossOf(m.held.AlignItems))), FitOf(m.held.WhiteSpace, m.held.Overflow, m.held.Display), content_4)
+			content_4 = tui.Render(content_4Look.AlignHorizontal(lipgloss.Position(CrossOf(m.held.AlignItems))), tui.Fit{Wrap: WrapOf(m.held.WhiteSpace), Clip: (((m.held.Overflow == "hidden") || (m.held.Overflow == "scroll")) || (m.held.Overflow == "auto")), Hidden: (m.held.Display == "none")}, content_4)
 			return content_4
 		}))
 		var content_5 string
@@ -606,4 +605,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:059933f8e292816b23e632907f4f31e5
+pass sha256:3f39b4c6293a08f1783cf573eaa32498

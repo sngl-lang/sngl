@@ -217,8 +217,6 @@ func newTestComponent() *Model {
 
 package test.sngl.app
 
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -228,6 +226,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
@@ -247,7 +246,6 @@ fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
 class MainScreenState {
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     var shown by mutableStateOf("")
 }
 
@@ -425,6 +423,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:15813eb7acac030295a4c83b412b6ef3
 -- run/kotlin/android --
-pass sha256:c60d76ef5ac9be4da7298a6f548f1d99
+pass sha256:85592f607e4a5246868d27a9fea63862
 -- run/none/html --
 pass sha256:fdd27e231db29be79807b2064a1d0a16

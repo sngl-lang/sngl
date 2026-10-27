@@ -48,14 +48,15 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.ui.Modifier
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.Badge
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.zIndex
@@ -293,13 +294,15 @@ fun MainScreen() {
             }
         }
         Column {
-            Button(onClick = {
-                kind__inst0 = "fire"
-            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
-                Text(text = "Fire", modifier = Modifier)
-            }
-            Badge(modifier = flexed((if ((Style(color = typeInk(kind__inst0), background = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144))) == Style())) Modifier else styleModifier(Style(color = typeInk(kind__inst0), background = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144))), false)), null, { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding(), containerColor = androidx.compose.ui.graphics.Color(red = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144)).r.toInt(), green = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144)).g.toInt(), blue = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144)).b.toInt(), alpha = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144)).a.toInt()), contentColor = androidx.compose.ui.graphics.Color(red = typeInk(kind__inst0).r.toInt(), green = typeInk(kind__inst0).g.toInt(), blue = typeInk(kind__inst0).b.toInt(), alpha = typeInk(kind__inst0).a.toInt())) {
-                Text(text = kind__inst0, modifier = Modifier)
+            CompositionLocalProvider(LocalFlexShare provides { w: Float -> Modifier.weight(w).fillMaxWidth() }) {
+                Button(onClick = {
+                    kind__inst0 = "fire"
+                }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                    Text(text = "Fire", modifier = Modifier)
+                }
+                Badge(modifier = flexed((if ((Style(color = typeInk(kind__inst0), background = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144))) == Style())) Modifier else styleModifier(Style(color = typeInk(kind__inst0), background = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144))), false)), null, snglFlexShare).safeDrawingPadding(), containerColor = androidx.compose.ui.graphics.Color(red = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144)).r.toInt(), green = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144)).g.toInt(), blue = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144)).b.toInt(), alpha = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144)).a.toInt()), contentColor = androidx.compose.ui.graphics.Color(red = typeInk(kind__inst0).r.toInt(), green = typeInk(kind__inst0).g.toInt(), blue = typeInk(kind__inst0).b.toInt(), alpha = typeInk(kind__inst0).a.toInt())) {
+                    Text(text = kind__inst0, modifier = Modifier)
+                }
             }
         }
     }
@@ -366,5 +369,29 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
 fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
 
 fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
+package test.sngl.app
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+
+// LocalFlexShare is what a child's flex is a share of in a Column the
+// generated code writes rather than a vbox -- a window's nodes, a page's, a
+// window's content arriving through a slot -- provided in that Column's
+// content, where weight is in scope. A slot's content is composed where the
+// slot is invoked, so it reads the Column it lands in, which no closure its
+// caller wrote could name.
+val LocalFlexShare = compositionLocalOf<((Float) -> Modifier)?> { null }
+
+// snglFlexShare is sngl:ui's flexShare where no vbox or hbox provides one:
+// the written Column's share, else the screen. A value rather than a
+// composable read, since a test build holds the context in a state class
+// built outside composition; the modifier reads LocalFlexShare where the node
+// it is on is composed.
+val snglFlexShare: (Float) -> Modifier = { w ->
+    Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
+}
 -- run/kotlin/android --
-pass sha256:1dfea7ca1d3613d33694124320317477
+pass sha256:a803e65792780350a19db54c73523fb2

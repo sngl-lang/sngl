@@ -1353,10 +1353,9 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.material3.Button
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -1607,12 +1606,12 @@ fun MainScreen() {
         }
         Column {
             for (i in items) {
-                Show__int(xs = listOf(i), w = __anon_v_853006(v = i), __ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, onChose = { w ->
+                Show__int(xs = listOf(i), w = __anon_v_853006(v = i), onChose = { w ->
                     got = w.v
                 })
             }
             for (s in names) {
-                Show__string(xs = listOf(s), w = __anon_v_ba918a(v = s), __ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, onChose = { w ->
+                Show__string(xs = listOf(s), w = __anon_v_ba918a(v = s), onChose = { w ->
                     said = w.v
                 })
             }
@@ -1621,7 +1620,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun Show__int(xs: List<Int> = listOf<Int>(), w: __anon_v_853006 = __anon_v_853006(), __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, onChose: ((__anon_v_853006) -> Unit)? = null) {
+fun Show__int(xs: List<Int> = listOf<Int>(), w: __anon_v_853006 = __anon_v_853006(), onChose: ((__anon_v_853006) -> Unit)? = null) {
     var held by remember { mutableStateOf(w.copy()) }
     var hits by remember { mutableStateOf(0) }
     val boxed by remember { derivedStateOf { __anon_v_853006(v = held.v) } }
@@ -1636,7 +1635,7 @@ fun Show__int(xs: List<Int> = listOf<Int>(), w: __anon_v_853006 = __anon_v_85300
 }
 
 @Composable
-fun Show__string(xs: List<String> = listOf<String>(), w: __anon_v_ba918a = __anon_v_ba918a(), __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, onChose: ((__anon_v_ba918a) -> Unit)? = null) {
+fun Show__string(xs: List<String> = listOf<String>(), w: __anon_v_ba918a = __anon_v_ba918a(), onChose: ((__anon_v_ba918a) -> Unit)? = null) {
     var held by remember { mutableStateOf(w.copy()) }
     var hits by remember { mutableStateOf(0) }
     val boxed by remember { derivedStateOf { __anon_v_ba918a(v = held.v) } }
@@ -1949,6 +1948,6 @@ pass sha256:385c46b6cb425e6299dcffe391627c47
 -- run/go/gtk4 --
 pass sha256:b471a6d2c84993f5690b68d87a3e43b0
 -- run/kotlin/android --
-pass sha256:927ba8058e0b9d6e60769d3372d402c2
+pass sha256:e07310517a0801cba2d077ff185deff1
 -- run/none/html --
 pass sha256:f1d0105c4d7445fff7411be17f86d0d4

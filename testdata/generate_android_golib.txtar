@@ -147,10 +147,11 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -398,11 +399,13 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = golib.Golib.Fib(k__inst0).toString(), modifier = modifierOf(Style(), { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding(), style = LocalTextStyle.current.merge(textStyle(Style())), overflow = clampOverflow(null), softWrap = softWrapOf(SnglWhiteSpace.UNSET), maxLines = linesOf(null))
-            Button(onClick = {
-                k__inst0 = (k__inst0 + 1)
-            }, modifier = surfaceModifierOf(Style(), { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = colorOf(null), contentColor = colorOf(null)), shape = buttonShapeOf(Style())) {
-                Text(text = "+", modifier = Modifier)
+            CompositionLocalProvider(LocalFlexShare provides { w: Float -> Modifier.weight(w).fillMaxWidth() }) {
+                Text(text = golib.Golib.Fib(k__inst0).toString(), modifier = modifierOf(Style(), snglFlexShare).safeDrawingPadding(), style = LocalTextStyle.current.merge(textStyle(Style())), overflow = clampOverflow(null), softWrap = softWrapOf(SnglWhiteSpace.UNSET), maxLines = linesOf(null))
+                Button(onClick = {
+                    k__inst0 = (k__inst0 + 1)
+                }, modifier = surfaceModifierOf(Style(), snglFlexShare).safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = colorOf(null), contentColor = colorOf(null)), shape = buttonShapeOf(Style())) {
+                    Text(text = "+", modifier = Modifier)
+                }
             }
         }
     }

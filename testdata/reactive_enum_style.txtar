@@ -215,43 +215,43 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
-	var __lt4 int
+	var __lt3 int
 	if px <= 0.0 {
-		__lt4 = 0
+		__lt3 = 0
 	} else {
-		__lt4 = max(1, (int(px) / 16))
+		__lt3 = max(1, (int(px) / 16))
 	}
-	return __lt4
+	return __lt3
 }
 
 func SeedOf(s Style) SpanStyle {
-	var __lt5 snglcolor.Color
+	var __lt4 snglcolor.Color
 	if s.Color == nil {
-		__lt5 = snglcolor.Color{}
+		__lt4 = snglcolor.Color{}
 	} else {
-		__lt5 = (*(s.Color))
+		__lt4 = (*(s.Color))
 	}
-	var __lt6 string
+	var __lt5 string
 	switch s.FontWeight {
 	case "bold", "bolder":
-		__lt6 = "bold"
+		__lt5 = "bold"
 	case "lighter":
-		__lt6 = "lighter"
+		__lt5 = "lighter"
+	case "normal":
+		__lt5 = "normal"
+	default:
+		__lt5 = "inherit"
+	}
+	var __lt6 string
+	switch s.FontStyle {
+	case "italic", "oblique":
+		__lt6 = "italic"
 	case "normal":
 		__lt6 = "normal"
 	default:
 		__lt6 = "inherit"
 	}
-	var __lt7 string
-	switch s.FontStyle {
-	case "italic", "oblique":
-		__lt7 = "italic"
-	case "normal":
-		__lt7 = "normal"
-	default:
-		__lt7 = "inherit"
-	}
-	return SpanStyle{Color: __lt5, FontSize: Measurement{Px: 0}, FontWeight: __lt6, FontStyle: __lt7}
+	return SpanStyle{Color: __lt4, FontSize: Measurement{Px: 0}, FontWeight: __lt5, FontStyle: __lt6}
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -279,13 +279,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt8 bool
+	var __lt7 bool
 	if s.BorderWidth != nil {
-		__lt8 = (PxOf(s.BorderWidth) > 0.0)
+		__lt7 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt8 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt7 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt8 {
+	if __lt7 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -309,13 +309,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt9 int
+		var __lt8 int
 		if s.MaxLines == nil {
-			__lt9 = 0
+			__lt8 = 0
 		} else {
-			__lt9 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt8 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt9))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt8))
 	}
 	return l
 }
@@ -1059,6 +1059,6 @@ fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.u
 
 fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
 -- run/go/bubbletea --
-pass sha256:06adff0e7a298f780e07659f8bc092ed
+pass sha256:cf6e532d6a0affc4432fbf479c8574e3
 -- run/kotlin/android --
 pass sha256:75132b5ec05291323762f882d91d2280

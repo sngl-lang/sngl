@@ -52,7 +52,7 @@ func testAPanelReadsTheLocale(t test.Test, c page) {
     t.assert(c.lang != null && c.lang.value == "fr")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:ddc89b911cab8b9648f93da42eceafc2
+sha256:fc14ebbcaad375ca1f2c3a4cb46a931a
 {
   "results": [
     {
@@ -62,7 +62,7 @@ sha256:ddc89b911cab8b9648f93da42eceafc2
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:53b28b4ddd5007723ce6abc94cadbfd4
+sha256:e6c38ab626006f63b4bc04b76950e614
 {
   "results": [
     {

@@ -197,13 +197,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
-	var __lt4 int
+	var __lt3 int
 	if px <= 0.0 {
-		__lt4 = 0
+		__lt3 = 0
 	} else {
-		__lt4 = max(1, (int(px) / 16))
+		__lt3 = max(1, (int(px) / 16))
 	}
-	return __lt4
+	return __lt3
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -231,13 +231,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt5 bool
+	var __lt4 bool
 	if s.BorderWidth != nil {
-		__lt5 = (PxOf(s.BorderWidth) > 0.0)
+		__lt4 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt4 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt5 {
+	if __lt4 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -261,13 +261,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt6 int
+		var __lt5 int
 		if s.MaxLines == nil {
-			__lt6 = 0
+			__lt5 = 0
 		} else {
-			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt5 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
 	}
 	return l
 }
@@ -915,7 +915,6 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 	c.__n0.SetText(((c.label + " ") + fmt.Sprint(c.__model.total)))
 	c.__n0.OnTapped = func() {
 		c.__model.total = (c.__model.total + 10)
-		c.__n0.SetText(((c.label + " ") + fmt.Sprint(c.__model.total)))
 		c.__model.__n2.SetText(fmt.Sprint(c.__model.total))
 		c.__model.__refreshPage_total()
 	}
@@ -926,14 +925,12 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 
 func (c *RowInstance) __effect0_mount() {
 	c.__model.total = (c.__model.total + 1)
-	c.__n0.SetText(((c.label + " ") + fmt.Sprint(c.__model.total)))
 	c.__model.__n2.SetText(fmt.Sprint(c.__model.total))
 	c.__model.__refreshPage_total()
 }
 
 func (c *RowInstance) __effect0_unmount() {
 	c.__model.total = (c.__model.total - 1)
-	c.__n0.SetText(((c.label + " ") + fmt.Sprint(c.__model.total)))
 	c.__model.__n2.SetText(fmt.Sprint(c.__model.total))
 	c.__model.__refreshPage_total()
 }
@@ -1192,7 +1189,6 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.label + " ") + fmt.Sprint(c.__model.total)))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.__model.total = (c.__model.total + 10)
-		gtk4rt.ButtonSetLabel(c.__n0, ((c.label + " ") + fmt.Sprint(c.__model.total)))
 		gtk4rt.LabelSetLabel(c.__model.__n2, fmt.Sprint(c.__model.total))
 		c.__model.__refreshPage_total()
 	})
@@ -1204,14 +1200,12 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 
 func (c *RowInstance) __effect0_mount() {
 	c.__model.total = (c.__model.total + 1)
-	gtk4rt.ButtonSetLabel(c.__n0, ((c.label + " ") + fmt.Sprint(c.__model.total)))
 	gtk4rt.LabelSetLabel(c.__model.__n2, fmt.Sprint(c.__model.total))
 	c.__model.__refreshPage_total()
 }
 
 func (c *RowInstance) __effect0_unmount() {
 	c.__model.total = (c.__model.total - 1)
-	gtk4rt.ButtonSetLabel(c.__n0, ((c.label + " ") + fmt.Sprint(c.__model.total)))
 	gtk4rt.LabelSetLabel(c.__model.__n2, fmt.Sprint(c.__model.total))
 	c.__model.__refreshPage_total()
 }
@@ -1428,7 +1422,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun Row(name: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
+fun Row(name: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShare) {
     var label by remember { mutableStateOf((name + ":")) }
 
     DisposableEffect(name) {
@@ -1442,6 +1436,30 @@ fun Row(name: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modif
     }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = ((label + " ") + total.toString()), modifier = Modifier)
     }
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
+package test.sngl.app
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+
+// LocalFlexShare is what a child's flex is a share of in a Column the
+// generated code writes rather than a vbox -- a window's nodes, a page's, a
+// window's content arriving through a slot -- provided in that Column's
+// content, where weight is in scope. A slot's content is composed where the
+// slot is invoked, so it reads the Column it lands in, which no closure its
+// caller wrote could name.
+val LocalFlexShare = compositionLocalOf<((Float) -> Modifier)?> { null }
+
+// snglFlexShare is sngl:ui's flexShare where no vbox or hbox provides one:
+// the written Column's share, else the screen. A value rather than a
+// composable read, since a test build holds the context in a state class
+// built outside composition; the modifier reads LocalFlexShare where the node
+// it is on is composed.
+val snglFlexShare: (Float) -> Modifier = { w ->
+    Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -1494,13 +1512,11 @@ body { font-family: system-ui, sans-serif; }
     let __slot02 = [];
     function __effect0_mount() {
       state.total = state.total + 1;
-      __n0.textContent = label + " " + String(state.total);
       __n2.textContent = String(state.total);
       __refreshPage_total();
     }
     function __effect0_unmount() {
       state.total = state.total - 1;
-      __n0.textContent = label + " " + String(state.total);
       __n2.textContent = String(state.total);
       __refreshPage_total();
     }
@@ -1577,7 +1593,6 @@ body { font-family: system-ui, sans-serif; }
     __n6.disabled = false;
     __n6.addEventListener("click", () => {
       state.total = state.total + 10;
-      __n0.textContent = label + " " + String(state.total);
       __n2.textContent = String(state.total);
       __refreshPage_total();
     });
@@ -1681,12 +1696,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3994762ec90eff835cf841c249402d76
+pass sha256:cf9b2df7bb2af358496c6323bdddf7c7
 -- run/go/fyne --
-pass sha256:c308623bcfd14d2a67d548ef2d793865
+pass sha256:d1545720c26294c7cd02205a0b429ef6
 -- run/go/gtk4 --
-pass sha256:a31e31d3394aa1bc45d7c17d0167b14e
+pass sha256:e2a59e2586c7cca67f54032d2d64ced7
 -- run/kotlin/android --
-pass sha256:24c9e2d370ed6a2d1cbe6c004fd1623f
+pass sha256:b111612665e3b548bd5e9c8424e7a0b1
 -- run/none/html --
-pass sha256:0c6eddb25a02c5339a3267196aa40007
+pass sha256:5805b36f8d0c751a2b85e038e3248198

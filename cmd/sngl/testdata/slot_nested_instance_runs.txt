@@ -57,7 +57,7 @@ func testSwitchingDropsTheFirstPanel(t test.Test, c main) {
     t.assert(c.flavor == null)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:01238f2b6e70a214247604bea75df37a
+sha256:c41ecd2442d44b27eb3ad2fa7b1530d7
 {
   "results": [
     {
@@ -67,7 +67,7 @@ sha256:01238f2b6e70a214247604bea75df37a
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:e3c1bba7e2206a9f5d7d6019252d44b3
+sha256:b4ae1e8ca091d148970dee1dd2b50696
 {
   "results": [
     {

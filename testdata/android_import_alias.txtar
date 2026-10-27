@@ -59,9 +59,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text as Text_2
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
@@ -89,8 +88,8 @@ fun MainScreen() {
             }
         }
         for (l in listOf("a", "b")) {
-            Card(__ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, content = {
-                Text(label = l, __ctx_flexShare = { w: Float -> Modifier.fillMaxSize() })
+            Card(__ctx_flexShare = snglFlexShare, content = {
+                Text(label = l, __ctx_flexShare = snglFlexShare)
                 Text_2(text = "Material's", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             })
         }
@@ -98,7 +97,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun Text(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
+fun Text(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShare) {
     var taps by remember { mutableStateOf(0) }
 
     Button(onClick = {
@@ -109,7 +108,7 @@ fun Text(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Mod
 }
 
 @Composable
-fun Card(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, content: (@Composable () -> Unit)? = null) {
+fun Card(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShare, content: (@Composable () -> Unit)? = null) {
     var open by remember { mutableStateOf(true) }
 
     if (open) {
@@ -118,5 +117,29 @@ fun Card(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, content: (@Co
         }
     }
 }
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
+package test.sngl.app
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+
+// LocalFlexShare is what a child's flex is a share of in a Column the
+// generated code writes rather than a vbox -- a window's nodes, a page's, a
+// window's content arriving through a slot -- provided in that Column's
+// content, where weight is in scope. A slot's content is composed where the
+// slot is invoked, so it reads the Column it lands in, which no closure its
+// caller wrote could name.
+val LocalFlexShare = compositionLocalOf<((Float) -> Modifier)?> { null }
+
+// snglFlexShare is sngl:ui's flexShare where no vbox or hbox provides one:
+// the written Column's share, else the screen. A value rather than a
+// composable read, since a test build holds the context in a state class
+// built outside composition; the modifier reads LocalFlexShare where the node
+// it is on is composed.
+val snglFlexShare: (Float) -> Modifier = { w ->
+    Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
+}
 -- run/kotlin/android --
-pass sha256:a9712a800ca7c783624528209a3c7502
+pass sha256:4194854967b4e84ec3935ea215deca27
