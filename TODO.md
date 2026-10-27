@@ -121,49 +121,51 @@ Each is a commit series on the branch; one MR, so CI runs once.
 
 ### Next part
 
-`style-unset` is MR !280, pushed through `c086f85f6` with `go tool verify`
-passing. The part before this one made running programs agree with the
-interpreter: a write to page state reaches every live instance reading it
-(a refresh each carries, `__refreshPage_<v>`), a test counts a looped `#id`
-read whole, html keeps a side the build wrote and updates a named node once,
-and a test reads a bound two-way prop through the instance. The prompt for
-the next part:
+`style-unset` is MR !280, pushed through the commit that wrote this, with
+`go tool verify` passing. The part before this one: a test's write redraws
+what reads it (`__wrote_<v>`), a run-time writer is updated once, a partly
+held Style's color folds with its alpha, android's written Columns give a
+flex child its share (`LocalFlexShare`), bubbletea grows a child under an
+`if` or a `for` and passes over hidden stops in loops and boxes, and the
+select's cross-target gaps are #295. The prompt for the next part:
 
 ```text
-Continue on branch style-unset in the primary checkout (no worktree), MR !280,
-pushed through c086f85f6 with verify passing. If !280 has merged, branch
-target-agreement from a fresh origin/main instead (merge, never rebase). Look
-at `git status` and `git log --oneline -8` first.
+Continue on branch style-unset in the primary checkout (no worktree), MR !280.
+If !280 has merged, branch target-agreement from a fresh origin/main instead
+(merge, never rebase). Look at `git status` and `git log --oneline -8` first.
 
 Read TODO.md's "Found on the way, not yet fixed" under "Style fields,
 translated in SNGL". This part is where a target still shows something other
-than the interpreter:
+than the interpreter, or does more work than it needs:
 
-1. A test's own write of its instance's state, `c.p = 8px`, redraws nothing
-   on fyne, gtk4 or html: a field write on the Model or the page's `state`,
-   where a handler's write is followed by its readers' updates and the
-   page's refresh (internal/lower/page_refresh.go). Read design/testing.md
-   and design/instances.md, and say how a test's write should reach the
-   readers -- the updates passReactivity gives a handler's write, the Model's
-   setter, or something better -- and ask before building it.
-2. A writer that is itself a component built at run time updates its own
-   readers twice: once by its write's own updates and once through the
-   page's refresh. Drop one where the other covers it.
-3. On android a Column the Go writes rather than an override -- a window's
-   content arriving through a slot, a nav page of several nodes -- provides
-   no `flexShare`, so a `flex` child there fills the screen.
-4. On bubbletea a `flex` child under an `if` or a `for` is joined at its own
-   size, and a focusable node displayed none in a loop slot, or inside a
-   container displayed none, is still counted as a focus stop.
-5. android's select honors none of `disabled`, `multiple`, `@focus`,
-   `@blur`.
+1. On android a child a caller writes into the slot of a vbox inside a
+   component built at run time reads the caller's flexShare, not the vbox's:
+   the composable is handed the caller's `__ctx_flexShare`, and the slot's
+   content is the caller's lambda. Read design/language.md's *Slot content
+   stands under the providers its component wraps the slot in* and say
+   whether the vbox should provide LocalFlexShare as the written Columns do,
+   or collectSlotEnv should hand the content the callee's value, and ask
+   before building it.
+2. On bubbletea a growing child holding a loop's focus stop or canvas is
+   still joined at its own size, since the closure it renders in would count
+   its copies after its later siblings'.
+3. On fyne a widget added to a container already under a Box's theme keeps
+   the theme it had until that Box refreshes; a render slot appending into a
+   styled vbox meets it.
+4. The shake keeps a library body reachable through a node handle's
+   component type, so `#d` on a datepicker keeps gtk4's `LookOf` and its
+   helpers though nothing calls them.
+5. The optimizer interprets a const function per call, and a lambda call
+   snapshots the environment: a `.filter(func…)` in a function folded per
+   node was most of a 7 GB increase on the docs site. Measure it first
+   (design/performance.md).
 
-For each, write the fixture first -- a testdata/*.sngl, a golden, or a
-cmd/sngl/testdata/*_runs.txt that runs it on every target it concerns -- and
-confirm it fails before the fix. Read the design/ file for the area before
-changing it, and update it and TODO.md as each lands. One commit per item
-plus a rerecord commit. Fix bugs you meet on the way where the fix is clear,
-and say so; ask where it touches what the language means.
+For each, write the fixture first -- a testdata/*.sngl, a golden, a Go run
+test, or a cmd/sngl/testdata/*_runs.txt that runs it on every target it
+concerns -- and confirm it fails before the fix. Read the design/ file for
+the area before changing it, and update it and TODO.md as each lands. One
+commit per item plus a rerecord commit. Fix bugs you meet on the way where
+the fix is clear, and say so; ask where it touches what the language means.
 
 Then run `go tool verify -update` with ANDROID_HOME=/home/claude/Android/Sdk
 in the background and don't edit files while it runs. If it fails on stale
@@ -269,15 +271,12 @@ platform's `unstyled` list in the same commit.
   was answered already. What failed was a test reading the bound one through
   the instance, `c.p.a`, which no compiled target named; it reads what the call
   site bound now.
-- android's select was noted honoring none of `disabled`, `multiple`,
+- Done: android's select, noted honoring none of `disabled`, `multiple`,
   `@focus`, `@blur`. `disabled` it honors (the field and the click, since
   `8577daae0`), and a test's `change` chooses on a disabled select on every
-  target, the interpreter included. The rest is no gap of android's
-  (Jonathan's call, left for a part of its own): `multiple` is honored by no
-  target, the interpreter included, and a select's `@focus` and `@blur`
-  reach a handler only on html -- a test's `c.pick.focus()` fails on the
-  interpreter and android, and does not build on bubbletea, fyne or gtk4
-  (`c.pickFocus undefined`).
+  target, the interpreter included. The rest is no gap of android's and is
+  filed as #295: `multiple` is honored by no target, and a select's `@focus`
+  and `@blur` reach a handler only on html.
 - On fyne a widget added to a container already under a Box's theme keeps
   the theme it had until that Box refreshes, Fyne's ThemeOverride rule; a
   render slot appending into a styled vbox meets it.
