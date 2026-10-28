@@ -216,9 +216,20 @@ static int sngl_flex_sizes(GtkWidget *box, GtkOrientation o, int along, int acro
     return weights > 0 ? 0 : spare;
 }
 
+// As GtkBoxLayout asks: of constant size where every child is, else the way
+// most of them trade one length for the other.
 static GtkSizeRequestMode sngl_flex_mode(GtkWidget *box) {
-    (void)box;
-    return GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH;
+    int hfw = 0, wfh = 0;
+    for (GtkWidget *c = gtk_widget_get_first_child(box); c; c = gtk_widget_get_next_sibling(c)) {
+        if (!gtk_widget_should_layout(c)) continue;
+        switch (gtk_widget_get_request_mode(c)) {
+        case GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH: hfw++; break;
+        case GTK_SIZE_REQUEST_WIDTH_FOR_HEIGHT: wfh++; break;
+        default: break;
+        }
+    }
+    if (!hfw && !wfh) return GTK_SIZE_REQUEST_CONSTANT_SIZE;
+    return wfh > hfw ? GTK_SIZE_REQUEST_WIDTH_FOR_HEIGHT : GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH;
 }
 
 static void sngl_flex_measure(GtkWidget *box, GtkOrientation o, int for_size,
@@ -293,6 +304,14 @@ static void sngl_flex_allocate(GtkWidget *box, int width, int height, int baseli
     g_ptr_array_unref(kids);
 }
 
+// Gives a box GTK's own layout back, spaced as its look says.
+static void sngl_box_release(GtkWidget *box, SnglLook *l) {
+    GtkLayoutManager *own = l->box_layout;
+    l->box_layout = NULL;
+    if (l->spaced) gtk_box_layout_set_spacing(GTK_BOX_LAYOUT(own), l->spacing);
+    gtk_widget_set_layout_manager(box, own);
+}
+
 static void sngl_box_update(GtkWidget *box) {
     if (!box || !GTK_IS_BOX(box)) return;
     SnglLook *l = sngl_look_of(box);
@@ -305,10 +324,7 @@ static void sngl_box_update(GtkWidget *box) {
         l->box_layout = g_object_ref(own);
         gtk_widget_set_layout_manager(box, gtk_custom_layout_new(sngl_flex_mode, sngl_flex_measure, sngl_flex_allocate));
     } else if (!need && ours) {
-        GtkLayoutManager *own = l->box_layout;
-        l->box_layout = NULL;
-        if (l->spaced) gtk_box_layout_set_spacing(GTK_BOX_LAYOUT(own), l->spacing);
-        gtk_widget_set_layout_manager(box, own);
+        sngl_box_release(box, l);
     } else if (ours) {
         gtk_widget_queue_resize(box);
     }
@@ -410,6 +426,18 @@ static void sngl_look_watch_parent(GtkWidget *w, SnglLook *l) {
 static void sngl_look_place_kids(GtkWidget *box) {
     for (GtkWidget *c = gtk_widget_get_first_child(box); c; c = gtk_widget_get_next_sibling(c))
         sngl_look_place(c);
+}
+
+// GtkBox sets its orientation on its layout manager, so a box gtk4rt lays
+// out is turned with GTK's layout back in place, and taken again if it still
+// asks; the children's shares then run along the new axis.
+void sngl_set_orientation(GtkWidget *w, GtkOrientation o) {
+    SnglLook *l = GTK_IS_BOX(w) ? sngl_look_of(w) : NULL;
+    if (l && l->box_layout) sngl_box_release(w, l);
+    gtk_orientable_set_orientation(GTK_ORIENTABLE(w), o);
+    if (!l) return;
+    sngl_look_place_kids(w);
+    sngl_box_update(w);
 }
 
 static void sngl_look_kids_changed(GListModel *m, guint pos, guint removed, guint added, gpointer box) {
@@ -618,6 +646,21 @@ static GtkAllocation sngl_allocation(GtkWidget *w) {
 static int sngl_is_box_layout(GtkWidget *w) {
     return GTK_IS_BOX_LAYOUT(gtk_widget_get_layout_manager(w));
 }
+static GtkSizeRequestMode sngl_probe_wfh_mode(GtkWidget *w) { (void)w; return GTK_SIZE_REQUEST_WIDTH_FOR_HEIGHT; }
+static void sngl_probe_wfh_measure(GtkWidget *w, GtkOrientation o, int for_size,
+        int *min, int *nat, int *min_base, int *nat_base) {
+    (void)w; (void)o; (void)for_size; (void)min_base; (void)nat_base;
+    *min = *nat = 10;
+}
+static void sngl_probe_wfh_allocate(GtkWidget *w, int width, int height, int baseline) {
+    (void)w; (void)width; (void)height; (void)baseline;
+}
+// A widget asking for its width for the height it has.
+static GtkWidget *sngl_probe_width_for_height(void) {
+    GtkWidget *w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_set_layout_manager(w, gtk_custom_layout_new(sngl_probe_wfh_mode, sngl_probe_wfh_measure, sngl_probe_wfh_allocate));
+    return w;
+}
 static gboolean sngl_probe_tick(gpointer data) { (void)data; return G_SOURCE_CONTINUE; }
 static void sngl_probe_pump(int ms) {
     gint64 deadline = g_get_monotonic_time() + (gint64)ms * 1000;
@@ -786,6 +829,10 @@ func allocatedHeight(w Handle) int { return int(allocation(w).height) }
 func boxLaidOutByGTK(w Handle) bool {
 	return C.sngl_is_box_layout(widget(w)) != 0
 }
+
+func requestMode(w Handle) int { return int(C.gtk_widget_get_request_mode(widget(w))) }
+
+func widthForHeight() Handle { return Handle(unsafe.Pointer(C.sngl_probe_width_for_height())) }
 
 // State flags painted takes, as GtkStateFlags has them.
 const (

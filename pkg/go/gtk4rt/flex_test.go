@@ -127,3 +127,69 @@ func TestLookSharesAColumnsHeight(t *testing.T) {
 		t.Errorf("a column's child is %d wide, want the column's 50", wa)
 	}
 }
+
+// A box gtk4rt lays out asks its children the way GTK's own box does: of
+// constant size where they all are, width for height where most of them are.
+// It always said height for width, so GTK never asked it a width for the
+// height it had.
+func TestLookAsksItsChildrenAsGTKsBoxWould(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("gtk4 needs an X11/Wayland display")
+	}
+	Init()
+	box := func(weighted bool, wide bool) Handle {
+		row := BoxNew(OrientationHorizontal, 0)
+		Retain(row)
+		a, b := BoxNew(OrientationHorizontal, 0), BoxNew(OrientationHorizontal, 0)
+		if weighted {
+			SetLook(a, Look{Grow: 1})
+			SetLook(b, Look{Grow: 3})
+		}
+		BoxAppend(row, a)
+		BoxAppend(row, b)
+		if wide {
+			BoxAppend(row, widthForHeight())
+		}
+		return row
+	}
+	for _, wide := range []bool{false, true} {
+		gtks, ours := box(false, wide), box(true, wide)
+		if boxLaidOutByGTK(ours) {
+			t.Fatal("weights 1 and 3: GTK lays the box out")
+		}
+		if g, o := requestMode(gtks), requestMode(ours); g != o {
+			t.Errorf("holding a width-for-height child %v: GTK's box asks in mode %d, gtk4rt's in %d", wide, g, o)
+		}
+	}
+}
+
+// A box gtk4rt lays out turned to a column is a column. GtkBox sets its
+// orientation on its layout manager, which was gtk4rt's and is no
+// GtkBoxLayout, so the turn was lost and the box stayed a row.
+func TestLookTurnsABoxItLaysOut(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("gtk4 needs an X11/Wayland display")
+	}
+	Init()
+	box := BoxNew(OrientationHorizontal, 0)
+	Retain(box)
+	SetLook(box, Look{Spaced: true, Spacing: 10})
+	a, b := BoxNew(OrientationHorizontal, 0), BoxNew(OrientationHorizontal, 0)
+	SetLook(a, Look{Grow: 1})
+	SetLook(b, Look{Grow: 3})
+	BoxAppend(box, a)
+	BoxAppend(box, b)
+	OrientableSetOrientation(box, OrientationVertical)
+	if h, v := expands(a); h || !v {
+		t.Errorf("turned to a column: the first child expands h=%v v=%v, want v only", h, v)
+	}
+	allocate(box, 50, 410)
+	if ha, hb := allocatedHeight(a), allocatedHeight(b); ha != 100 || hb != 300 {
+		t.Errorf("weights 1 and 3 of 400 down the turned box: heights %d and %d, want 100 and 300", ha, hb)
+	}
+	OrientableSetOrientation(box, OrientationHorizontal)
+	allocate(box, 410, 50)
+	if wa, wb := allocatedWidth(a), allocatedWidth(b); wa != 100 || wb != 300 {
+		t.Errorf("turned back to a row: widths %d and %d, want 100 and 300", wa, wb)
+	}
+}
