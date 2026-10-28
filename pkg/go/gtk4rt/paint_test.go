@@ -91,3 +91,26 @@ func TestLookReplacesAFramesBorder(t *testing.T) {
 		t.Errorf("border-style none: left edge %08x, want nothing drawn", got)
 	}
 }
+
+// A flow's run and a label given the same font size are the same height:
+// both are pixels, the run's through font_desc and the label's through CSS,
+// where a run's `size` is in points.
+func TestLookFontSizeAgreesWithARun(t *testing.T) {
+	paintable(t)
+	col := BoxNew(OrientationVertical, 0)
+	Retain(col)
+	styled, run, pointed := LabelNew("Hg"), FlowNew(), FlowNew()
+	SetLook(styled, Look{Css: "font-size: 32px; "})
+	LabelSetMarkup(run, `<span font_desc="32px">Hg</span>`)
+	LabelSetMarkup(pointed, `<span size="32768">Hg</span>`)
+	for _, l := range []Handle{styled, run, pointed} {
+		BoxAppend(col, l)
+	}
+	painted(col, 0)
+	if hs, hr := allocatedHeight(styled), allocatedHeight(run); hs != hr {
+		t.Errorf("a label at font-size 32px is %d tall, a run at 32px %d", hs, hr)
+	}
+	if hr, hp := allocatedHeight(run), allocatedHeight(pointed); hp <= hr {
+		t.Errorf("a run at 32pt is %d tall, no taller than one at 32px (%d)", hp, hr)
+	}
+}
