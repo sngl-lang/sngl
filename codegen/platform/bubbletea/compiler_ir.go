@@ -1174,7 +1174,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 // is open. Handlers inside an Overlay primitive get NO guard — overlay-content
 // buttons (e.g. a modal's Close) stay live while the overlay captures input.
 func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string, invokerSink btInvokerSink) {
-	emitIRButtonHandlersWalk(b, stmts, info, gc, bgGuard, false, invokerSink)
+	emitIRButtonHandlersWalk(b, stmts, nil, info, gc, bgGuard, false, invokerSink)
 }
 
 // btInvokerSink records one (node, event) pair a test can drive. nil where
@@ -1183,10 +1183,11 @@ type btInvokerSink func(inv btEventInvoker)
 
 // emitIRButtonHandlersWalk traverses visual IR emitting KeyEnter cases for
 // button/checkbox handlers. A for-loop is a loop slot as a whole, answered by
-// emitLoopSlotHandlers. bgGuard is appended to each case unless inOverlay is
+// emitLoopSlotHandlers, which is handed the view's temps written before it.
+// bgGuard is appended to each case unless inOverlay is
 // set (overlay-content handlers stay unguarded so they keep working while the
 // overlay is open).
-func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string, inOverlay bool, invokerSink btInvokerSink) {
+func emitIRButtonHandlersWalk(b *strings.Builder, stmts, temps []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string, inOverlay bool, invokerSink btInvokerSink) {
 	overlayGuard := bgGuard
 	if inOverlay {
 		overlayGuard = ""
@@ -1205,16 +1206,20 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		syncMutatedInputs(b, block, info.widgets, info.binds, gc)
 	}
 
+	temps = slices.Clip(temps)
 	for _, s := range stmts {
+		if keepsTemps(s) {
+			temps = append(temps, s)
+		}
 		switch n := s.(type) {
 		case *ir.For:
-			emitLoopSlotHandlers(b, n, info, gc, overlayGuard, invokerSink)
+			emitLoopSlotHandlers(b, n, tempsFor(n, temps), info, gc, overlayGuard, invokerSink)
 		case *ir.If, *ir.Match:
 			for _, blk := range ir.TransparentBlocks(n) {
-				emitIRButtonHandlersWalk(b, *blk, info, gc, bgGuard, inOverlay, invokerSink)
+				emitIRButtonHandlersWalk(b, *blk, temps, info, gc, bgGuard, inOverlay, invokerSink)
 			}
 		case *ir.ErrorBoundary:
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, bgGuard, inOverlay, invokerSink)
+			emitIRButtonHandlersWalk(b, n.Children, temps, info, gc, bgGuard, inOverlay, invokerSink)
 		case *ir.NodeInst:
 			// Blueprint-driven activation: an inlined Styled primitive that
 			// carries Event records maps each event name to a key. The user's
@@ -1242,7 +1247,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			// descend into an Overlay primitive with inOverlay set (drops bgGuard).
 			childInOverlay := inOverlay || btIntrinsic(n) == "Overlay"
 			for _, s := range ir.SuppliedContent(n) {
-				emitIRButtonHandlersWalk(b, s.Body, info, gc, bgGuard, childInOverlay, invokerSink)
+				emitIRButtonHandlersWalk(b, s.Body, temps, info, gc, bgGuard, childInOverlay, invokerSink)
 			}
 		case *ir.SlotInst:
 			// Slot expansion happens elsewhere; no buttons inside the marker.

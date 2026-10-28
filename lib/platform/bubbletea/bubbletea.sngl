@@ -269,6 +269,41 @@ const component ui.button[platform](text, style) {
     ) {}
 }
 
+// A tab is a focusable label in tui.TabLook's box, which enter presses, and the
+// bar is joined over the panels' box, its bottom edge carried on to that box's
+// right edge: both grow across a row, a Layout having no stretch. Every panel
+// is drawn in the box and all but the selected one hidden.
+const component ui.tabs[platform](selected, variant, style, @change, items) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display)) {
+        Layout(join=JoinDir.horizontal, look=newStyle()) {
+            for var k, t = items {
+                Styled(
+                    content = t.label,
+                    focus = Focus{enabled=!t.disabled},
+                    events = [Event{on="click", key="enter"}],
+                    look = tabLook(k == selected, k == 0, t.disabled, string(variant)),
+                    @click {
+                        selected = k
+                        change(k)
+                    },
+                ) {}
+            }
+            if variant == ui.TabsVariant.underline {
+                Styled(content="\n", look=tabGap(), grow=1.0) {}
+            }
+        }
+        Layout(join=JoinDir.horizontal, look=newStyle()) {
+            Layout(join=JoinDir.vertical, look=tabPanel(string(variant)), grow=1.0) {
+                for var k, t = items {
+                    Layout(join=JoinDir.vertical, look=newStyle(), fit=Fit{hidden=k != selected}) {
+                        t.content
+                    }
+                }
+            }
+        }
+    }
+}
+
 // An image is a box holding the source it shows, or the placeholder where it
 // holds none. A drawing is a canvas, as one is anywhere in a terminal; a
 // picture a URL names is drawn in half-block cells fitted into a box of
@@ -810,6 +845,15 @@ const func roundedBorder() Border
 
 #[go.native(_lipgloss, "lipgloss.DoubleBorder")]
 const func doubleBorder() Border
+
+#[go.native(_tui, "tui.TabLook")]
+const func tabLook(selected bool, first bool, disabled bool, variant string) Look
+
+#[go.native(_tui, "tui.TabGap")]
+const func tabGap() Look
+
+#[go.native(_tui, "tui.TabPanel")]
+const func tabPanel(variant string) Look
 
 #[go.native(_tui, "tui.DashedBorder")]
 const func dashedBorder() Border

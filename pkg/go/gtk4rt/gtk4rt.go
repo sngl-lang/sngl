@@ -365,6 +365,10 @@ func BoxAppend(box, child Handle) {
 		AppAttach(child)
 		return
 	}
+	if t := tabsOf[box]; t != nil {
+		t.add(child)
+		return
+	}
 	if adopted(box, child) {
 		return
 	}
@@ -375,6 +379,10 @@ func BoxAppend(box, child Handle) {
 func BoxRemove(box, child Handle) {
 	if box == App {
 		AppDetach(child)
+		return
+	}
+	if t := tabsOf[box]; t != nil {
+		t.remove(child)
 		return
 	}
 	if t := topOf(box); t != nil && t.icon != nil && t.icon.pic == child {
@@ -422,7 +430,7 @@ func ParentOf(w Handle) Handle {
 // InsertBefore puts child into box immediately before anchor, or at the end
 // of box when box does not hold anchor.
 func InsertBefore(box, anchor, child Handle) {
-	if box == App || anchor == nil || C.gtk_widget_get_parent(widget(anchor)) != widget(box) {
+	if box == App || tabsOf[box] != nil || anchor == nil || C.gtk_widget_get_parent(widget(anchor)) != widget(box) {
 		BoxAppend(box, child)
 		return
 	}

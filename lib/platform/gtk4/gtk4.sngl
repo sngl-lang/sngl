@@ -398,6 +398,21 @@ const component ui.scroll[platform](style, direction, @reachEnd, content) {
     }
 }
 
+// A tab is a page of a GtkStack, which a GtkStackSwitcher shows a button
+// for. `variant` is the switcher's look, which GTK's theme draws.
+const component ui.tabs[platform](selected, style, @change, items) {
+    Tabs(selected=selected, look=lookOf(style)) {
+        for var k, t = items {
+            TabPage(title=t.label, disabled=t.disabled, @change {
+                selected = k
+                change(k)
+            }) {
+                t.content
+            }
+        }
+    }
+}
+
 // --- Indicators ---
 
 // GtkProgressBar's fraction is 0..1, so the value is measured against max here
@@ -1193,6 +1208,107 @@ func _set_Scroll_direction(w Scroll, direction string) {
 #[gen.protocol(on)]
 func _on_Scroll(sw Scroll, reachEnd func()) {
     _rtScrollOnReachEnd(sw, reachEnd)
+}
+
+// A `ui.tabs`: gtk4rt's box of a GtkStackSwitcher over a GtkStack. Each
+// TabPage it holds is a page of the stack, and `selected` the one shown.
+#[marks.intrinsic("gtk4:Tabs")]
+component Tabs(
+    selected int,
+    look     gtk.Look,
+    pages    ...component ui.node,
+) ui.node
+
+// One tab: its panel, a page the switcher shows a button titled `title` for.
+// The user choosing it is no GTK signal on it but the stack's visible child
+// changing, which gtk4rt reports as `@change`, and only the user's. Named
+// for the tabs' event it raises, which is what a test's press of it calls.
+#[marks.intrinsic("gtk4:TabPage")]
+component TabPage(
+    title    string,
+    disabled bool = false,
+    @change(),
+    content  ...component ui.node,
+) ui.node
+
+#[go.native(_rtPkg, "gtk4rt.TabsNew")]
+func _rtTabsNew() Tabs
+
+#[go.native(_rtPkg, "gtk4rt.TabsSetSelected")]
+func _rtTabsSetSelected(t Tabs, k int)
+
+#[go.native(_rtPkg, "gtk4rt.BoxAppend")]
+func _rtTabsAppend(t Tabs, page ui.node)
+
+#[go.native(_rtPkg, "gtk4rt.BoxRemove")]
+func _rtTabsRemove(t Tabs, page ui.node)
+
+#[go.native(_rtPkg, "gtk4rt.TabPageNew")]
+func _rtTabPageNew() TabPage
+
+#[go.native(_rtPkg, "gtk4rt.TabPageSetTitle")]
+func _rtTabPageSetTitle(p TabPage, title string)
+
+#[go.native(_rtPkg, "gtk4rt.TabPageSetDisabled")]
+func _rtTabPageSetDisabled(p TabPage, disabled bool)
+
+#[go.native(_rtPkg, "gtk4rt.TabPageOnShown")]
+func _rtTabPageOnShown(p TabPage, fn func())
+
+#[go.native(_rtPkg, "gtk4rt.BoxAppend")]
+func _rtTabPageAppend(p TabPage, child ui.node)
+
+#[go.native(_rtPkg, "gtk4rt.BoxRemove")]
+func _rtTabPageRemove(p TabPage, child ui.node)
+
+#[gen.protocol(create)]
+func _create_Tabs() Tabs {
+    return _rtTabsNew()
+}
+
+#[gen.protocol(append)]
+func _append_Tabs(parent Tabs, page ui.node) {
+    _rtTabsAppend(parent, page)
+}
+
+#[gen.protocol(remove)]
+func _remove_Tabs(parent Tabs, page ui.node) {
+    _rtTabsRemove(parent, page)
+}
+
+#[gen.protocol(set)]
+func _set_Tabs_selected(t Tabs, selected int) {
+    _rtTabsSetSelected(t, selected)
+}
+
+#[gen.protocol(create)]
+func _create_TabPage() TabPage {
+    return _rtTabPageNew()
+}
+
+#[gen.protocol(append)]
+func _append_TabPage(parent TabPage, child ui.node) {
+    _rtTabPageAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_TabPage(parent TabPage, child ui.node) {
+    _rtTabPageRemove(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_TabPage_title(p TabPage, title string) {
+    _rtTabPageSetTitle(p, title)
+}
+
+#[gen.protocol(set)]
+func _set_TabPage_disabled(p TabPage, disabled bool) {
+    _rtTabPageSetDisabled(p, disabled)
+}
+
+#[gen.protocol(on)]
+func _on_TabPage(p TabPage, change func()) {
+    _rtTabPageOnShown(p, change)
 }
 
 // The picture a URL names, decoded once: a file the program carries at once,

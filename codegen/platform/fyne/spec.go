@@ -201,6 +201,9 @@ func decodeSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	if sp := menuSpecFor(tag, props); sp != nil {
 		return sp, nil
 	}
+	if sp := tabsSpecFor(tag, props); sp != nil {
+		return sp, nil
+	}
 	raw := props[specPropName]
 	if raw == nil {
 		return nil, fmt.Errorf("fyne primitive %s was instantiated without a %s record", tag, specPropName)

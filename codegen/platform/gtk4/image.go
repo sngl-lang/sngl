@@ -34,6 +34,14 @@ const (
 	backTag      = "Back"
 )
 
+// tabsTag and tabPageTag are gtk4.sngl's `Tabs` and `TabPage`, gtk4rt's
+// GtkStackSwitcher over a GtkStack and one page of it, which take children
+// as a box does.
+const (
+	tabsTag    = "Tabs"
+	tabPageTag = "TabPage"
+)
+
 // imagePictureProp is `ImageUrl`'s picture, the owned value its source derives
 // from the URL (gtk4.sngl's `Picture`).
 const imagePictureProp = "picture"
@@ -46,7 +54,7 @@ func imagePrimitive(tag string) bool {
 // says how a child is appended to it.
 func primitiveCType(tag string) string {
 	switch tag {
-	case toplevelTag, imageTag, menuEntryTag:
+	case toplevelTag, imageTag, menuEntryTag, tabsTag, tabPageTag:
 		return "GtkBox"
 	case imageURLTag, imageDrawingTag:
 		return "GtkPicture"

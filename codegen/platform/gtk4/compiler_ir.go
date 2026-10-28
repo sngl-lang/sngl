@@ -298,7 +298,7 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 
 func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err error) {
 	c.wrapped = wrapped
-	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), scrolls: collectScrolls(c.ctx.Pkg), menuEntries: collectPrimitives(c.ctx.Pkg, menuEntryTag), backs: collectPrimitives(c.ctx.Pkg, backTag), toplevelIcons: map[string]string{}}
+	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), scrolls: collectScrolls(c.ctx.Pkg), menuEntries: collectPrimitives(c.ctx.Pkg, menuEntryTag), backs: collectPrimitives(c.ctx.Pkg, backTag), tabPages: collectPrimitives(c.ctx.Pkg, tabPageTag), toplevelIcons: map[string]string{}}
 	if !wrapped {
 		if err := refuseCgoVisibleWrites(c.ctx.Pkg, c.shared.toplevels); err != nil {
 			c.shared.fail(err)

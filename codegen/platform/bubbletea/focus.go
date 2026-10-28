@@ -164,7 +164,7 @@ func (w *viewWalk) counted(n *ir.NodeInst, gc *golang.GoIRContext, body func()) 
 
 // emitLoopSlotHandlers' cases are closures so that finding the node the cursor
 // names ends the walk however deep the loops are.
-func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *golang.GoIRContext, guard string, invokerSink btInvokerSink) {
+func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, temps []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, guard string, invokerSink btInvokerSink) {
 	lf, ok := firstLoopFocus([]ir.Stmt{f})
 	if !ok {
 		return
@@ -200,7 +200,7 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 				}
 				invokerSink(btEventInvoker{
 					IDLabel: id.ID, SnglEvent: ev.On, SlotIdx: lf.slot, KeyExpr: teaKeyMsg(ev.Key),
-					Cursor: lf.cursor, Copies: loopCopies(f, lf, n, id, isLoopFocus, gc), Keyed: id.Prop(ir.CopyProp) != nil,
+					Cursor: lf.cursor, Copies: loopCopies(f, temps, lf, n, id, isLoopFocus, gc), Keyed: id.Prop(ir.CopyProp) != nil,
 				})
 			}
 		})
@@ -228,7 +228,7 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 			})
 		}
 		w.line("%s := 0", lf.pos)
-		w.stmts([]ir.Stmt{f}, gc)
+		w.stmts(append(temps, f), gc)
 		b.WriteString("\t\t\t}()\n")
 	}
 }
@@ -241,7 +241,7 @@ const copyOrdinal = "struct{ key string; pos int }"
 // carries (named's ir.CopyProp; "" where no test indexes it): the loop walked
 // as View walks it, counting the slot's focusable nodes, noting where n's
 // copies fall. named is n itself, or the node triggerOwners found above it.
-func loopCopies(f *ir.For, lf loopFocus, n, named *ir.NodeInst, isLoopFocus func(*ir.NodeInst) bool, gc *golang.GoIRContext) string {
+func loopCopies(f *ir.For, temps []ir.Stmt, lf loopFocus, n, named *ir.NodeInst, isLoopFocus func(*ir.NodeInst) bool, gc *golang.GoIRContext) string {
 	var b strings.Builder
 	b.WriteString("func() []" + copyOrdinal + " {\n")
 	w := &viewWalk{b: &b, indent: 2, wants: isLoopFocus}
@@ -259,7 +259,7 @@ func loopCopies(f *ir.For, lf loopFocus, n, named *ir.NodeInst, isLoopFocus func
 	}
 	w.line("var __at []%s", copyOrdinal)
 	w.line("%s := 0", lf.pos)
-	w.stmts([]ir.Stmt{f}, gc)
+	w.stmts(append(temps, f), gc)
 	w.line("return __at")
 	b.WriteString("\t}()")
 	return b.String()

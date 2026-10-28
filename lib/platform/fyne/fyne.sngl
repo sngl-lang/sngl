@@ -101,6 +101,26 @@ component MenuEntry(
     entries  ...component ui.node,
 ) ui.node
 
+// A `ui.tabs`: fynelayout's AppTabs, an item per TabPage among its children,
+// and `selected` the one shown.
+#[intrinsic("fyne:Tabs")]
+component Tabs(
+    selected int,
+    look     Look,
+    pages    ...component ui.node,
+) ui.node
+
+// One tab: its panel, which the AppTabs shows under a tab titled `title`.
+// `@change` is the user choosing it, named for the tabs' event it raises,
+// which is what a test's press of it calls.
+#[intrinsic("fyne:TabPage")]
+component TabPage(
+    title    string,
+    disabled bool = false,
+    @change(),
+    content  ...component ui.node,
+) ui.node
+
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one. Its menu's entries are
 // drawn two deep: a top-level entry and its submenu. A window whose call site
@@ -570,6 +590,19 @@ const component ui.hbox[platform](style, children) {
 const component ui.stack[platform](style, layers) {
     VBox(style=style) {
         layers
+    }
+}
+
+const component ui.tabs[platform](selected, style, @change, items) {
+    Tabs(selected=selected, look=lookOf(style)) {
+        for var k, t = items {
+            TabPage(title=t.label, disabled=t.disabled, @change {
+                selected = k
+                change(k)
+            }) {
+                t.content
+            }
+        }
     }
 }
 

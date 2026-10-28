@@ -590,6 +590,16 @@ trigger runs its call site's handler) and `ui.tabs` met both;
 `modifier` so the copy carries its testTag. `cmd/sngl/testdata/tabs_runs.txt`
 runs it on all six, through an instance as well.
 
+Where the pressed node is a primitive the override writes, rather than a
+component whose own override re-raises its event, the handler's
+`ComponentEvent` is the tabs' `change` it raises, and that is what gtk4 and
+fyne name the invoker for (`codegen.TriggerEventName`). A button's is `click`,
+the name its own override hands on, which NamePresses also wrote, and the two
+agreed by that alone. gtk4's and fyne's `TabPage` therefore declares its event
+`@change`: a page whose event was `@shown` was pressed as `shown` and invoked
+as `change`, and the test's call named a method nobody wrote.
+testdata/tabs_look.txtar.
+
 **A menu entry is picked by pressing what the window drew for it.** A
 test reaches an entry as a record through the window's data slot,
 `c.main.menu[1].children[2].select()`, and the interpreter runs the record's
@@ -623,15 +633,28 @@ whose `display` is `none` unless its tab is selected. It rendered the selected
 one alone under `if k == selected`, so leaving a tab dropped its panel and
 coming back started it again: a counter at zero, a query asked again. A null
 test asks whether a node is mounted, so a node of a panel not shown is
-present (`tabs_runs.txt`, `tabs_panel_presence_runs.txt`). Each target hides
-the box its own way: fyne and gtk4 by `hidden`; html keeps a `role=tabpanel`
-per tab with all but one `hidden`; bubbletea gives a Layout `hidden`, which
-draws nothing while its children still render, and a growing one takes none
-of the free space -- `display` was one of what its styles left unanswered.
-bubbletea's Tab still stops on a hidden panel's controls, as it does on a
-branch not taken: `walkForSlots` gathers static stops ungated.
+present (`tabs_runs.txt`, `tabs_panel_presence_runs.txt`). The interpreter
+keeps that body; every other target overrides it, and shows one panel its own
+way. gtk4's `Tabs` is gtk4rt's GtkStackSwitcher over a GtkStack, each panel a
+`TabPage` the stack holds; fyne's is fynelayout's AppTabs, each panel a
+`TabPage` whose box is an item's content; html keeps a `role=tabpanel` per tab
+with all but one `hidden`; bubbletea puts each panel in a Layout whose
+`fit.hidden` draws nothing while its children still render, under a bar of
+tui.TabLook boxes. bubbletea's Tab still stops on a hidden panel's controls, as
+it does on a branch not taken: `walkForSlots` gathers static stops ungated.
 
-On fyne and gtk4 each panel's box is lifted into an instance of its own
+A page reaches the stack, or the AppTabs, however the render slot of the
+strip's loop hands it to the tabs: gtk4rt's `BoxAppend`, `InsertBefore` and
+`BoxRemove` route a child of a `Tabs` to its stack, and fynelayout's `Tabs`
+is a widget drawing the AppTabs whose `Container` -- the box the slot inserts
+into, drawn nowhere -- holds the pages, its layout making their items the
+AppTabs'. A `Tabs` that embedded the box drew nothing, since Fyne walks into a
+`*fyne.Container` and a widget and nothing else. GTK and Fyne report the
+program's own change of the page shown as they do the user's, so each runtime
+fires a page's `@change` only for a page the program did not select.
+testdata/tabs_look.txtar and cmd/sngl/testdata/tabs_look_runs.txt.
+
+On fyne and gtk4 each panel's page is lifted into an instance of its own
 (`liftSlotBodies`), one per tab, which put two gaps in reach. Each one's
 render cleared the Model's `__present_<id>` for an instance only another
 builds, so after a switch the counter in the first panel read as gone; a

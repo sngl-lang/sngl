@@ -95,6 +95,9 @@ func presenceWalk(stmts []ir.Stmt, id string, loops []*ir.For, answer func([]*ir
 			if len(body) > 0 || len(els) > 0 {
 				cp := *n
 				cp.Body, cp.Else = body, els
+				// A copy key the walk reads is in its IR; a widget's walks
+				// reading it as text are not this one.
+				cp.KeyRead = false
 				out = append(out, &cp)
 			}
 			found = found || inBody || inElse
