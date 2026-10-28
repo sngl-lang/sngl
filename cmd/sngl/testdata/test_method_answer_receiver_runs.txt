@@ -47,7 +47,7 @@ func testAMethodsAnswerIsAReceiver(t test.Test, c host) {
     t.assert(c.g.loud().map(func(s string) => string.length(s)).join(",") == "2,2")
 }
 -- testrun/android/kotlin/app.sngl/host/1 --
-sha256:ef860aeab8262897aa99f750db9fdb0e
+sha256:8e99f7928888070f07c672e8433022bd
 {
   "results": [
     {
@@ -57,7 +57,7 @@ sha256:ef860aeab8262897aa99f750db9fdb0e
   ]
 }
 -- testrun/bubbletea/go/app.sngl/host/1 --
-sha256:54602d1c22386bc42f16e1ee6144188d
+sha256:66de83c18d508fe3ba4a50c3cd1bfab8
 {
   "results": [
     {
@@ -67,7 +67,7 @@ sha256:54602d1c22386bc42f16e1ee6144188d
   ]
 }
 -- testrun/fyne/go/app.sngl/host/1 --
-sha256:8becb751935b8e67b07e9bcd923e2b6e
+sha256:de73d1ea02c3cc5f27a865e446b79f8d
 {
   "results": [
     {
@@ -77,7 +77,7 @@ sha256:8becb751935b8e67b07e9bcd923e2b6e
   ]
 }
 -- testrun/gtk4/go/app.sngl/host/1 --
-sha256:af717bf2184f3e20f47574d8e860365b
+sha256:e01885910a5858aa2bd2165ca85c9cbf
 {
   "results": [
     {
@@ -87,7 +87,7 @@ sha256:af717bf2184f3e20f47574d8e860365b
   ]
 }
 -- testrun/html/none/app.sngl/host/1 --
-sha256:dec9aa551251865c69d3c61fc451b821
+sha256:f4e35ad1396da0f504796735b33dd69a
 {
   "results": [
     {

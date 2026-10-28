@@ -128,6 +128,13 @@ import (
 	"os"
 )
 
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -157,54 +164,54 @@ type Failure struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	Overflow       string
@@ -273,20 +280,22 @@ func OrZero(r Result__int) int {
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
-	if (s == Style{}) {
+	if func(_a1, _b2 Style) bool {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
-	if words && (s.Color != snglcolor.Color{}) {
-		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	if words && (s.Color != nil) {
+		l = l.Foreground(lipgloss.Color((*(s.Color)).Hex()))
 	}
-	if (s.Background != snglcolor.Color{}) {
-		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	if s.Background != nil {
+		l = l.Background(lipgloss.Color((*(s.Background)).Hex()))
 	}
 	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
 		l = l.Bold(true)
 	}
-	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != nil) && ((*(s.Opacity)) < 1.0)) {
 		l = l.Faint(true)
 	}
 	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
@@ -295,10 +304,16 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt1 bool
+	if s.BorderWidth != nil {
+		__lt1 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt1 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt1 {
 		l = l.Border(BorderOf(s))
-		if (s.BorderColor != snglcolor.Color{}) {
-			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		if s.BorderColor != nil {
+			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
 	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
@@ -309,111 +324,121 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
 	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
 	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
-	if (s.Width != Measurement{Px: 0}) {
+	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
-	if (s.Height != Measurement{Px: 0}) {
+	if s.Height != nil {
 		l = l.Height(RowsOf(s.Height))
 	}
-	if (s.MaxWidth != Measurement{Px: 0}) {
+	if s.MaxWidth != nil {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
-	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt0 int
-		if s.MaxLines == 0 {
-			__lt0 = 0
+	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
+		var __lt2 int
+		if s.MaxLines == nil {
+			__lt2 = 0
 		} else {
-			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt2 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt0))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt1 lipgloss.Position
+	var __lt4 lipgloss.Position
 	switch a {
 	case "center":
-		__lt1 = lipgloss.Center
+		__lt4 = lipgloss.Center
 	case "right":
-		__lt1 = lipgloss.Right
+		__lt4 = lipgloss.Right
 	default:
-		__lt1 = lipgloss.Left
+		__lt4 = lipgloss.Left
 	}
-	return __lt1
+	return __lt4
+}
+
+func PxOf(m__r0 *Measurement) float64 {
+	var __lt5 float64
+	if m__r0 == nil {
+		__lt5 = 0.0
+	} else {
+		__lt5 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
+	}
+	return __lt5
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt2 lipgloss.Border
+	var __lt6 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt2 = lipgloss.DoubleBorder()
+		__lt6 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt2 = tui.DashedBorder()
+		__lt6 = tui.DashedBorder()
 	default:
-		var __lt3 lipgloss.Border
-		if (s.BorderRadius != Measurement{Px: 0}) {
-			__lt3 = lipgloss.RoundedBorder()
+		var __lt7 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt7 = lipgloss.RoundedBorder()
 		} else {
-			__lt3 = lipgloss.NormalBorder()
+			__lt7 = lipgloss.NormalBorder()
 		}
-		__lt2 = __lt3
-	}
-	return __lt2
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt5 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt5 = own
-	} else {
-		var __lt4 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt4 = axis
-		} else {
-			__lt4 = all
-		}
-		__lt5 = __lt4
-	}
-	return CellsOf(__lt5)
-}
-
-func CellsOf(m__r0 Measurement) int {
-	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt6 int
-	if px <= 0.0 {
-		__lt6 = 0
-	} else {
-		__lt6 = max(1, (int(px) / 8))
+		__lt6 = __lt7
 	}
 	return __lt6
 }
 
-func RowsOf(m__r1 Measurement) int {
-	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
-	var __lt7 int
-	if px <= 0.0 {
-		__lt7 = 0
+func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+	var __lt9 *Measurement
+	if own != nil {
+		__lt9 = own
 	} else {
-		__lt7 = max(1, (int(px) / 16))
-	}
-	return __lt7
-}
-
-func LineCap(height__r0 int, lines int) int {
-	var __lt9 int
-	if height__r0 == 0 {
-		__lt9 = lines
-	} else {
-		var __lt8 int
-		if lines == 0 {
-			__lt8 = height__r0
+		var __lt8 *Measurement
+		if axis != nil {
+			__lt8 = axis
 		} else {
-			__lt8 = min(height__r0, lines)
+			__lt8 = all
 		}
 		__lt9 = __lt8
 	}
-	return __lt9
+	return CellsOf(__lt9)
+}
+
+func CellsOf(m__r1 *Measurement) int {
+	var px float64 = PxOf(m__r1)
+	var __lt10 int
+	if px <= 0.0 {
+		__lt10 = 0
+	} else {
+		__lt10 = max(1, (int(px) / 8))
+	}
+	return __lt10
+}
+
+func RowsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt11 int
+	if px <= 0.0 {
+		__lt11 = 0
+	} else {
+		__lt11 = max(1, (int(px) / 16))
+	}
+	return __lt11
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt13 int
+	if height__r0 == 0 {
+		__lt13 = lines
+	} else {
+		var __lt12 int
+		if lines == 0 {
+			__lt12 = height__r0
+		} else {
+			__lt12 = min(height__r0, lines)
+		}
+		__lt13 = __lt12
+	}
+	return __lt13
 }
 
 func (m *Model) __focusNext() {
@@ -531,16 +556,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			var __lt13 Shape
+			var __lt17 Shape
 			switch {
 			case (m.shape__inst0.tag == 0):
-				__lt13 = Shape{tag: 1, Circle: 1.0}
+				__lt17 = Shape{tag: 1, Circle: 1.0}
 			case (m.shape__inst0.tag == 1):
-				__lt13 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
+				__lt17 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
 			default:
-				__lt13 = Shape{tag: 0}
+				__lt17 = Shape{tag: 0}
 			}
-			m.shape__inst0 = __lt13
+			m.shape__inst0 = __lt17
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.result__inst0 = Half(3)
 		}
@@ -575,42 +600,42 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
-		contentPart_0 = BoxLook(Style{}, true).Render(fmt.Sprint(fmt.Sprint(Area(m.shape__inst0))))
+		contentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(Area(m.shape__inst0))))
 		contentParts = append(contentParts, contentPart_0)
-		var __lt10 string
+		var __lt14 string
 		switch {
 		case (m.result__inst0.tag == 0):
-			__lt10 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
+			__lt14 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
 		default:
-			__lt10 = ("failed: " + m.result__inst0.Failed.Message)
+			__lt14 = ("failed: " + m.result__inst0.Failed.Message)
 		}
 		var contentPart_3 string
-		contentPart_3 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt10))
+		contentPart_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt14))
 		contentParts = append(contentParts, contentPart_3)
-		var __lt11 string
+		var __lt15 string
 		switch {
 		case (m.shape__inst0.tag == 1):
-			__lt11 = "round"
+			__lt15 = "round"
 		default:
-			__lt11 = "not round"
+			__lt15 = "not round"
 		}
 		var contentPart_6 string
-		contentPart_6 = BoxLook(Style{}, true).Render(fmt.Sprint(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt11) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2})))))
+		contentPart_6 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt15) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2})))))
 		contentParts = append(contentParts, contentPart_6)
-		var __lt12 string
+		var __lt16 string
 		switch {
 		case (m.shape__inst0.tag == 1):
-			__lt12 = fmt.Sprint(m.shape__inst0.Circle)
+			__lt16 = fmt.Sprint(m.shape__inst0.Circle)
 		default:
-			__lt12 = "none"
+			__lt16 = "none"
 		}
 		var contentPart_9 string
-		contentPart_9 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt12))
+		contentPart_9 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt16))
 		contentParts = append(contentParts, contentPart_9)
 		var contentPart_10 string
 		switch {
 		case (m.shape__inst0.tag == 1):
-			contentPart_10 = BoxLook(Style{}, true).Render(fmt.Sprint(("radius " + fmt.Sprint(m.shape__inst0.Circle))))
+			contentPart_10 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("radius " + fmt.Sprint(m.shape__inst0.Circle))))
 		default:
 		}
 		if contentPart_10 != "" {
@@ -622,7 +647,7 @@ func (m Model) View() tea.View {
 		if contentPart_11Focused {
 			contentPart_11Prefix = ">"
 		}
-		contentPart_11 = BoxLook(Style{}, true).Render(contentPart_11Prefix + " " + fmt.Sprint("Grow"))
+		contentPart_11 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(contentPart_11Prefix + " " + fmt.Sprint("Grow"))
 		contentParts = append(contentParts, contentPart_11)
 		var contentPart_12 string
 		contentPart_12Focused := (m.__focusID == 1)
@@ -630,7 +655,7 @@ func (m Model) View() tea.View {
 		if contentPart_12Focused {
 			contentPart_12Prefix = ">"
 		}
-		contentPart_12 = BoxLook(Style{}, true).Render(contentPart_12Prefix + " " + fmt.Sprint("Odd"))
+		contentPart_12 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(contentPart_12Prefix + " " + fmt.Sprint("Odd"))
 		contentParts = append(contentParts, contentPart_12)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
@@ -815,43 +840,17 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) grow_click_handler() {
-	var __lt10 Shape
+	var __lt13 Shape
 	switch {
 	case (m.shape__inst0.tag == 0):
-		__lt10 = Shape{tag: 1, Circle: 1.0}
+		__lt13 = Shape{tag: 1, Circle: 1.0}
 	case (m.shape__inst0.tag == 1):
-		__lt10 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
+		__lt13 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
 	default:
-		__lt10 = Shape{tag: 0}
+		__lt13 = Shape{tag: 0}
 	}
-	m.shape__inst0 = __lt10
+	m.shape__inst0 = __lt13
 	m.shownArea.SetText(fmt.Sprint(Area(m.shape__inst0)))
-	var __lt11 string
-	if m.shape__inst0.tag == 1 {
-		__lt11 = "round"
-	} else {
-		__lt11 = "not round"
-	}
-	m.facts.SetText(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt11) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
-	var __lt12 string
-	if m.shape__inst0.tag == 1 {
-		__lt12 = fmt.Sprint(m.shape__inst0.Circle)
-	} else {
-		__lt12 = "none"
-	}
-	m.radius.SetText(__lt12)
-	m.__renderSlot0(m.__n0.Container)
-}
-
-func (m *Model) odd_click_handler() {
-	m.result__inst0 = Half(3)
-	var __lt13 string
-	if m.result__inst0.tag == 0 {
-		__lt13 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
-	} else {
-		__lt13 = ("failed: " + m.result__inst0.Failed.Message)
-	}
-	m.outcome.SetText(__lt13)
 	var __lt14 string
 	if m.shape__inst0.tag == 1 {
 		__lt14 = "round"
@@ -859,6 +858,32 @@ func (m *Model) odd_click_handler() {
 		__lt14 = "not round"
 	}
 	m.facts.SetText(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt14) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	var __lt15 string
+	if m.shape__inst0.tag == 1 {
+		__lt15 = fmt.Sprint(m.shape__inst0.Circle)
+	} else {
+		__lt15 = "none"
+	}
+	m.radius.SetText(__lt15)
+	m.__renderSlot0(m.__n0.Container)
+}
+
+func (m *Model) odd_click_handler() {
+	m.result__inst0 = Half(3)
+	var __lt16 string
+	if m.result__inst0.tag == 0 {
+		__lt16 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
+	} else {
+		__lt16 = ("failed: " + m.result__inst0.Failed.Message)
+	}
+	m.outcome.SetText(__lt16)
+	var __lt17 string
+	if m.shape__inst0.tag == 1 {
+		__lt17 = "round"
+	} else {
+		__lt17 = "not round"
+	}
+	m.facts.SetText(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt17) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 }
 
 // growClick invokes the OnTapped callback on the #grow widget; for tests.
@@ -920,32 +945,32 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.shownArea = widget.NewLabel("")
 	m.shownArea.SetText(fmt.Sprint(Area(m.shape__inst0)))
 	m.__n0.Add(m.shownArea)
-	var __lt7 string
+	var __lt10 string
 	if m.result__inst0.tag == 0 {
-		__lt7 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
+		__lt10 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
 	} else {
-		__lt7 = ("failed: " + m.result__inst0.Failed.Message)
+		__lt10 = ("failed: " + m.result__inst0.Failed.Message)
 	}
 	m.outcome = widget.NewLabel("")
-	m.outcome.SetText(__lt7)
+	m.outcome.SetText(__lt10)
 	m.__n0.Add(m.outcome)
-	var __lt8 string
+	var __lt11 string
 	if m.shape__inst0.tag == 1 {
-		__lt8 = "round"
+		__lt11 = "round"
 	} else {
-		__lt8 = "not round"
+		__lt11 = "not round"
 	}
 	m.facts = widget.NewLabel("")
-	m.facts.SetText(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt8) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	m.facts.SetText(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt11) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 	m.__n0.Add(m.facts)
-	var __lt9 string
+	var __lt12 string
 	if m.shape__inst0.tag == 1 {
-		__lt9 = fmt.Sprint(m.shape__inst0.Circle)
+		__lt12 = fmt.Sprint(m.shape__inst0.Circle)
 	} else {
-		__lt9 = "none"
+		__lt12 = "none"
 	}
 	m.radius = widget.NewLabel("")
-	m.radius.SetText(__lt9)
+	m.radius.SetText(__lt12)
 	m.__n0.Add(m.radius)
 	m.__renderSlot0(m.__n0.Container)
 	m.grow = widget.NewButton("", nil)
@@ -1175,43 +1200,17 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) grow_clicked_handler() {
-	var __lt18 Shape
+	var __lt21 Shape
 	switch {
 	case (m.shape__inst0.tag == 0):
-		__lt18 = Shape{tag: 1, Circle: 1.0}
+		__lt21 = Shape{tag: 1, Circle: 1.0}
 	case (m.shape__inst0.tag == 1):
-		__lt18 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
+		__lt21 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
 	default:
-		__lt18 = Shape{tag: 0}
+		__lt21 = Shape{tag: 0}
 	}
-	m.shape__inst0 = __lt18
+	m.shape__inst0 = __lt21
 	gtk4rt.LabelSetLabel(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
-	var __lt19 string
-	if m.shape__inst0.tag == 1 {
-		__lt19 = "round"
-	} else {
-		__lt19 = "not round"
-	}
-	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt19) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
-	var __lt20 string
-	if m.shape__inst0.tag == 1 {
-		__lt20 = fmt.Sprint(m.shape__inst0.Circle)
-	} else {
-		__lt20 = "none"
-	}
-	gtk4rt.LabelSetLabel(m.radius, __lt20)
-	m.__renderSlot0(m.__n0)
-}
-
-func (m *Model) odd_clicked_handler() {
-	m.result__inst0 = Half(3)
-	var __lt21 string
-	if m.result__inst0.tag == 0 {
-		__lt21 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
-	} else {
-		__lt21 = ("failed: " + m.result__inst0.Failed.Message)
-	}
-	gtk4rt.LabelSetLabel(m.outcome, __lt21)
 	var __lt22 string
 	if m.shape__inst0.tag == 1 {
 		__lt22 = "round"
@@ -1219,6 +1218,32 @@ func (m *Model) odd_clicked_handler() {
 		__lt22 = "not round"
 	}
 	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt22) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	var __lt23 string
+	if m.shape__inst0.tag == 1 {
+		__lt23 = fmt.Sprint(m.shape__inst0.Circle)
+	} else {
+		__lt23 = "none"
+	}
+	gtk4rt.LabelSetLabel(m.radius, __lt23)
+	m.__renderSlot0(m.__n0)
+}
+
+func (m *Model) odd_clicked_handler() {
+	m.result__inst0 = Half(3)
+	var __lt24 string
+	if m.result__inst0.tag == 0 {
+		__lt24 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
+	} else {
+		__lt24 = ("failed: " + m.result__inst0.Failed.Message)
+	}
+	gtk4rt.LabelSetLabel(m.outcome, __lt24)
+	var __lt25 string
+	if m.shape__inst0.tag == 1 {
+		__lt25 = "round"
+	} else {
+		__lt25 = "not round"
+	}
+	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt25) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -1305,34 +1330,34 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetLabel(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
 	gtk4rt.LabelSetXAlign(m.shownArea, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.shownArea)
-	var __lt15 string
+	var __lt18 string
 	if m.result__inst0.tag == 0 {
-		__lt15 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
+		__lt18 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
 	} else {
-		__lt15 = ("failed: " + m.result__inst0.Failed.Message)
+		__lt18 = ("failed: " + m.result__inst0.Failed.Message)
 	}
 	m.outcome = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.outcome, __lt15)
+	gtk4rt.LabelSetLabel(m.outcome, __lt18)
 	gtk4rt.LabelSetXAlign(m.outcome, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.outcome)
-	var __lt16 string
+	var __lt19 string
 	if m.shape__inst0.tag == 1 {
-		__lt16 = "round"
+		__lt19 = "round"
 	} else {
-		__lt16 = "not round"
+		__lt19 = "not round"
 	}
 	m.facts = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt16) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt19) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 	gtk4rt.LabelSetXAlign(m.facts, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.facts)
-	var __lt17 string
+	var __lt20 string
 	if m.shape__inst0.tag == 1 {
-		__lt17 = fmt.Sprint(m.shape__inst0.Circle)
+		__lt20 = fmt.Sprint(m.shape__inst0.Circle)
 	} else {
-		__lt17 = "none"
+		__lt20 = "none"
 	}
 	m.radius = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.radius, __lt17)
+	gtk4rt.LabelSetLabel(m.radius, __lt20)
 	gtk4rt.LabelSetXAlign(m.radius, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.radius)
 	m.__renderSlot0(m.__n0)
@@ -1668,14 +1693,9 @@ body { font-family: system-ui, sans-serif; }
     $2.textContent = String(area(state.held)) + " " + String(orZero(state.result__inst0)) + " " + (state.shape__inst0.tag === "circle" ? "round" : "not round") + " " + String(((a, b) => a == null || b == null ? a === b : a.tag === b.tag && (a.tag === "ok" ? a.value === b.value : a.tag === "failed" ? a.value.message === b.value.message && a.value.code === b.value.code : true))(state.result__inst0, { tag: "ok", value: 2 }));
     $3.textContent = state.shape__inst0.tag === "circle" ? String(state.shape__inst0.value) : "none";
     __renderSlot0(__slotAnchor_0);
-    $0.textContent = String(area(state.shape__inst0));
-    $2.textContent = String(area(state.held)) + " " + String(orZero(state.result__inst0)) + " " + (state.shape__inst0.tag === "circle" ? "round" : "not round") + " " + String(((a, b) => a == null || b == null ? a === b : a.tag === b.tag && (a.tag === "ok" ? a.value === b.value : a.tag === "failed" ? a.value.message === b.value.message && a.value.code === b.value.code : true))(state.result__inst0, { tag: "ok", value: 2 }));
-    $3.textContent = state.shape__inst0.tag === "circle" ? String(state.shape__inst0.value) : "none";
   });
   $5.addEventListener("click", function() {
     state.result__inst0 = half(3);
-    $1.textContent = state.result__inst0.tag === "ok" ? "ok " + String(state.result__inst0.value) : "failed: " + state.result__inst0.value.message;
-    $2.textContent = String(area(state.held)) + " " + String(orZero(state.result__inst0)) + " " + (state.shape__inst0.tag === "circle" ? "round" : "not round") + " " + String(((a, b) => a == null || b == null ? a === b : a.tag === b.tag && (a.tag === "ok" ? a.value === b.value : a.tag === "failed" ? a.value.message === b.value.message && a.value.code === b.value.code : true))(state.result__inst0, { tag: "ok", value: 2 }));
     $1.textContent = state.result__inst0.tag === "ok" ? "ok " + String(state.result__inst0.value) : "failed: " + state.result__inst0.value.message;
     $2.textContent = String(area(state.held)) + " " + String(orZero(state.result__inst0)) + " " + (state.shape__inst0.tag === "circle" ? "round" : "not round") + " " + String(((a, b) => a == null || b == null ? a === b : a.tag === b.tag && (a.tag === "ok" ? a.value === b.value : a.tag === "failed" ? a.value.message === b.value.message && a.value.code === b.value.code : true))(state.result__inst0, { tag: "ok", value: 2 }));
   });
@@ -1691,12 +1711,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:853d0e0bf8789d24bb9868cff41498e8
+pass sha256:a92742ed49df69a3ebea2f0ca046a416
 -- run/go/fyne --
-pass sha256:c6e5dcccc76b0ccc3e80e9c2230a70c8
+pass sha256:a59b159ba8d4013b95d801fb72e02108
 -- run/go/gtk4 --
-pass sha256:4a9e17f1247a00084ffa514642b3f4e0
+pass sha256:2bbc573ba26bfaaaf8972401eb55c97c
 -- run/kotlin/android --
 pass sha256:5faa3d6b53c5f7838a062aeaa21ea061
 -- run/none/html --
-pass sha256:f4205853389b8cbf99791add57ee00d4
+pass sha256:cc52f69bb6850ddc76176d786042d5eb

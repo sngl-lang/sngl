@@ -111,7 +111,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 					})
 					gtk4rt.ImageFrameOnLoad(__n2, func() {
 					})
-					gtk4rt.ImageFrameOnError(__n2, func(m__r2 string) {
+					gtk4rt.ImageFrameOnError(__n2, func(m__r3 string) {
 					})
 					var __n3 *__file_state0Instance
 					if len(m.__inst0_live) > __inst0_i {
@@ -331,7 +331,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n4, 1)
-	gtk4rt.BoxSetSpacing(m.__n4, 6)
+	gtk4rt.SetLook(m.__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__renderSlot0(m.__n4)
 	m.__n5 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n5, "toggle")
@@ -348,4 +348,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/gtk4 --
-pass sha256:2fd8f6cbe0b4186febbc2e73718bd506
+pass sha256:1185a7a1ac3bdc58d966e83c52eba588

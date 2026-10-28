@@ -1806,7 +1806,7 @@ pass sha256:62c75c26ee1d1864cdfbdcd7999da786
 -- run/none/html --
 pass sha256:2903c323df14d80d717cd6e173e9c041
 -- testrun/html/none/component_i18n_plural.sngl/main/1 --
-sha256:b44ae8f5c1265d22dad8c6864e64600b
+sha256:33b568d49385aa2882199ff3718986a0
 {
   "results": [
     {

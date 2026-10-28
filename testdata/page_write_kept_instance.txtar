@@ -532,7 +532,7 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	c.__n0 = gtk4rt.ButtonNew()
+	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, c.__prop_name)
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.taps += 1
@@ -540,7 +540,7 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 			c.__inst0_live[__inst0_live_ui].Set__p1(c.taps)
 		}
 	})
-	c.__n1 = gtk4rt.LabelNew("")
+	c.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n1, ((c.__prop_name + " ") + fmt.Sprint(c.__model.shown)))
 	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
 	gtk4rt.BoxAppend(c.__root, c.__n0)
@@ -658,7 +658,7 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 int) *__child
 	c.__prop___p1 = __a___p1
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__n2 = gtk4rt.LabelNew("")
+	c.__n2 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n2, ((c.__prop___p0 + " ") + fmt.Sprint(c.__prop___p1)))
 	gtk4rt.LabelSetXAlign(c.__n2, 0.0)
 	c.Root = c.__n2
@@ -722,7 +722,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n3, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n3, m.__n3_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n3, m.__n3_visible_handler)
-	m.__n6 = gtk4rt.ButtonNew()
+	m.__n6 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n6, "toggle")
 	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(m.__n3, m.__n6)
@@ -739,4 +739,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:e7ada5f69f865a5c2ef51a40ba142e2a
 -- run/go/gtk4 --
-pass sha256:72a272801908605707ba6d5d371cc3ff
+pass sha256:fcb721c51ca5d11e820aa8b2e9798419

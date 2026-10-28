@@ -75,12 +75,6 @@ import (
 	"os"
 )
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
 // Model holds the state for this SNGL UI.
 type Model struct {
 	loud           bool
@@ -235,12 +229,6 @@ package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	loud           bool
@@ -316,7 +304,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n7 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n7, 1)
-	gtk4rt.BoxSetSpacing(m.__n7, 6)
+	gtk4rt.SetLook(m.__n7, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__renderSlot0(m.__n7)
 	m.flip = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.flip, "flip")
@@ -450,8 +438,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:415abf8a6410a69818bd4c252651cfd5
+pass sha256:4c1f832abba6abdc5382f93882ed5e59
 -- run/go/gtk4 --
-pass sha256:9ad6ca5e7c497b762afd1ef35fdbb45f
+pass sha256:34f67560c62bfce7d4a80bb1949fea06
 -- run/none/html --
 pass sha256:ba52abe04e3f9225e47b3ba4f48b5f1f

@@ -1315,7 +1315,7 @@ pass sha256:1cec4e7fdb03a72fd038a2087e8b8939
 -- run/none/html --
 pass sha256:bbe761aaf1dfe0de5558c2281753c9bc
 -- testrun/html/none/component_instance_teardown_nested.sngl/main/1 --
-sha256:cf94c99ce9ea6a49d47ac81ae73a17de
+sha256:a93635de691aee8af1aafa3617f3437f
 {
   "results": [
     {

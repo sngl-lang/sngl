@@ -418,7 +418,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_set_line_width(ctx, C.double(1.0))
 	C.cairo_set_line_cap(ctx, LineCapFunc("butt"))
 	C.cairo_set_line_join(ctx, LineJoinFunc("miter"))
-	Source(ctx, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+	Source(ctx, snglcolor.Color{})
 	C.cairo_stroke(ctx)
 	C.cairo_restore(ctx)
 }
@@ -493,4 +493,4 @@ func (m *Model) listReachEnd() {
 	gtk4rt.ScrollReachEnd(gtk4rt.Handle(unsafe.Pointer(m.list)))
 }
 -- run/go/gtk4 --
-pass sha256:540d9e13050f4426da9c5e7637523ce3
+pass sha256:61fe962f85a191fe3dfbe7f60f58c6b0

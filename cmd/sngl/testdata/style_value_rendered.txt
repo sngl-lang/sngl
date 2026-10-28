@@ -54,7 +54,7 @@ window {
     main
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:511b3ed64805ad007923a16bcf2772eb
+sha256:fe01f4c356119db4ea1de1f09d7ac7ba
 {
   "results": [
     {

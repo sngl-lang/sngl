@@ -444,7 +444,7 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 int) *__chi
 	c.__slot1 = nil
 	c.__n2 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n2, 0)
-	gtk4rt.BoxSetSpacing(c.__n2, 6)
+	gtk4rt.SetLook(c.__n2, gtk4rt.Look{Spaced: true, Spacing: 6})
 	c.__renderSlot0(c.__n2)
 	c.Root = c.__n2
 	gtk4rt.Retain(c.Root)
@@ -538,7 +538,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n4, 1)
-	gtk4rt.BoxSetSpacing(m.__n4, 6)
+	gtk4rt.SetLook(m.__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.bump = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.bump, "bump")
 	gtk4rt.Connect(m.bump, "clicked", m.bump_clicked_handler)
@@ -747,6 +747,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:f72547735f4874faa52e10ec51f96072
 -- run/go/gtk4 --
-pass sha256:aecd708fb5b9f3a40e0dec83afe3d401
+pass sha256:1ba16e1466526d55b37e60ec356cc3de
 -- run/none/html --
 pass sha256:ba732a6b4c34f18e1a9acc75c933fae6

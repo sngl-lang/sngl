@@ -626,7 +626,7 @@ func (m *Model) __n1_click_handler() {
 func (m *Model) __n1_load_handler() {
 }
 
-func (m *Model) __n1_failed_handler(m__r4 string) {
+func (m *Model) __n1_failed_handler(m__r3 string) {
 }
 
 func (m *Model) Src() string {
@@ -951,13 +951,13 @@ pass sha256:95a51ed3ad58cd1efa61d7ebf6c7222b
 -- run/go/fyne --
 pass sha256:17afab8533ea1bc07556e6c841a4be3e
 -- run/go/gtk4 --
-pass sha256:4bb1c06ce5c09aaf69d460fe0ebd6435
+pass sha256:69f5c338e22e06417af1c34fdc0bbbb7
 -- run/kotlin/android --
 pass sha256:6966f170fd915e7cf44c446f8954ca86
 -- run/none/html --
 pass sha256:074722e35605bcac4f79aedfe83f3e3b
 -- testrun/html/none/component_image.sngl/main/1 --
-sha256:9a59d14b13aea21d308484bcd708c8ed
+sha256:185075b82aa10b14e29de31582bf90df
 {
   "results": [
     {

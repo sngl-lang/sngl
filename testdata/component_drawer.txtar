@@ -632,7 +632,7 @@ pass sha256:ef0fec2460aff3b0d7f8b9630d6e8f42
 -- run/none/html --
 pass sha256:e2048a9cbcf7430b9075581b44b4ab0d
 -- testrun/html/none/component_drawer.sngl/main/1 --
-sha256:7e8adca9b141b4dfab4b27b21b2e11ab
+sha256:c50d576b08f887700f9c6682f1c5f759
 {
   "results": [
     {

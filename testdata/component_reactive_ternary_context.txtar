@@ -66,6 +66,13 @@ import (
 	"os"
 )
 
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -73,54 +80,54 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	Overflow       string
@@ -154,32 +161,34 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 Measurement) int {
-	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt1 int
+func RowsOf(m__r0 *Measurement) int {
+	var px float64 = PxOf(m__r0)
+	var __lt3 int
 	if px <= 0.0 {
-		__lt1 = 0
+		__lt3 = 0
 	} else {
-		__lt1 = max(1, (int(px) / 16))
+		__lt3 = max(1, (int(px) / 16))
 	}
-	return __lt1
+	return __lt3
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
-	if (s == Style{}) {
+	if func(_a1, _b2 Style) bool {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
-	if words && (s.Color != snglcolor.Color{}) {
-		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	if words && (s.Color != nil) {
+		l = l.Foreground(lipgloss.Color((*(s.Color)).Hex()))
 	}
-	if (s.Background != snglcolor.Color{}) {
-		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	if s.Background != nil {
+		l = l.Background(lipgloss.Color((*(s.Background)).Hex()))
 	}
 	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
 		l = l.Bold(true)
 	}
-	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != nil) && ((*(s.Opacity)) < 1.0)) {
 		l = l.Faint(true)
 	}
 	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
@@ -188,10 +197,16 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt4 bool
+	if s.BorderWidth != nil {
+		__lt4 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt4 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt4 {
 		l = l.Border(BorderOf(s))
-		if (s.BorderColor != snglcolor.Color{}) {
-			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		if s.BorderColor != nil {
+			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
 	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
@@ -202,100 +217,110 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
 	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
 	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
-	if (s.Width != Measurement{Px: 0}) {
+	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
-	if (s.Height != Measurement{Px: 0}) {
+	if s.Height != nil {
 		l = l.Height(RowsOf(s.Height))
 	}
-	if (s.MaxWidth != Measurement{Px: 0}) {
+	if s.MaxWidth != nil {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
-	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt2 int
-		if s.MaxLines == 0 {
-			__lt2 = 0
+	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
+		var __lt5 int
+		if s.MaxLines == nil {
+			__lt5 = 0
 		} else {
-			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt5 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
 	}
 	return l
 }
 
+func PxOf(m__r1 *Measurement) float64 {
+	var __lt7 float64
+	if m__r1 == nil {
+		__lt7 = 0.0
+	} else {
+		__lt7 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+	}
+	return __lt7
+}
+
 func AlignOf(a string) lipgloss.Position {
-	var __lt3 lipgloss.Position
+	var __lt8 lipgloss.Position
 	switch a {
 	case "center":
-		__lt3 = lipgloss.Center
+		__lt8 = lipgloss.Center
 	case "right":
-		__lt3 = lipgloss.Right
+		__lt8 = lipgloss.Right
 	default:
-		__lt3 = lipgloss.Left
-	}
-	return __lt3
-}
-
-func BorderOf(s Style) lipgloss.Border {
-	var __lt4 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt4 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt4 = tui.DashedBorder()
-	default:
-		var __lt5 lipgloss.Border
-		if (s.BorderRadius != Measurement{Px: 0}) {
-			__lt5 = lipgloss.RoundedBorder()
-		} else {
-			__lt5 = lipgloss.NormalBorder()
-		}
-		__lt4 = __lt5
-	}
-	return __lt4
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
-		} else {
-			__lt6 = all
-		}
-		__lt7 = __lt6
-	}
-	return CellsOf(__lt7)
-}
-
-func CellsOf(m__r1 Measurement) int {
-	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
-	var __lt8 int
-	if px <= 0.0 {
-		__lt8 = 0
-	} else {
-		__lt8 = max(1, (int(px) / 8))
+		__lt8 = lipgloss.Left
 	}
 	return __lt8
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt10 int
-	if height__r0 == 0 {
-		__lt10 = lines
-	} else {
-		var __lt9 int
-		if lines == 0 {
-			__lt9 = height__r0
+func BorderOf(s Style) lipgloss.Border {
+	var __lt9 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt9 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt9 = tui.DashedBorder()
+	default:
+		var __lt10 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt10 = lipgloss.RoundedBorder()
 		} else {
-			__lt9 = min(height__r0, lines)
+			__lt10 = lipgloss.NormalBorder()
 		}
-		__lt10 = __lt9
+		__lt9 = __lt10
 	}
-	return __lt10
+	return __lt9
+}
+
+func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+	var __lt12 *Measurement
+	if own != nil {
+		__lt12 = own
+	} else {
+		var __lt11 *Measurement
+		if axis != nil {
+			__lt11 = axis
+		} else {
+			__lt11 = all
+		}
+		__lt12 = __lt11
+	}
+	return CellsOf(__lt12)
+}
+
+func CellsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt13 int
+	if px <= 0.0 {
+		__lt13 = 0
+	} else {
+		__lt13 = max(1, (int(px) / 8))
+	}
+	return __lt13
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt15 int
+	if height__r0 == 0 {
+		__lt15 = lines
+	} else {
+		var __lt14 int
+		if lines == 0 {
+			__lt14 = height__r0
+		} else {
+			__lt14 = min(height__r0, lines)
+		}
+		__lt15 = __lt14
+	}
+	return __lt15
 }
 
 func (m *Model) __focusNext() {
@@ -363,28 +388,28 @@ func (m Model) View() tea.View {
 	if content_0Focused {
 		content_0Prefix = ">"
 	}
-	content_0 = BoxLook(Style{}, true).Render(content_0Prefix + " " + fmt.Sprint("toggle"))
+	content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("toggle"))
 	contentChildren = append(contentChildren, content_0)
-	var __lt11 string
+	var __lt16 string
 	if m.dark {
-		__lt11 = "dark"
+		__lt16 = "dark"
 	} else {
-		__lt11 = "light"
+		__lt16 = "light"
 	}
 	var content_3 string
-	content_3 = BoxLook(Style{}, true).Render(fmt.Sprint(("outer: " + __lt11)))
+	content_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("outer: " + __lt16)))
 	contentChildren = append(contentChildren, content_3)
-	var __lt12 string
+	var __lt17 string
 	if m.dark {
-		__lt12 = "dark"
+		__lt17 = "dark"
 	} else {
-		__lt12 = "light"
+		__lt17 = "light"
 	}
 	var content_6 string
-	content_6 = BoxLook(Style{}, true).Render(fmt.Sprint(("sibling: " + __lt12)))
+	content_6 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("sibling: " + __lt17)))
 	contentChildren = append(contentChildren, content_6)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = BoxLook(Style{}, true).Render(content)
+	content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -443,22 +468,39 @@ func New() *Model {
 	return m
 }
 
+func (m *Model) __wrote_dark() {
+	var __lt10 string
+	if m.dark {
+		__lt10 = "dark"
+	} else {
+		__lt10 = "light"
+	}
+	m.__n0.SetText(("outer: " + __lt10))
+	var __lt11 string
+	if m.dark {
+		__lt11 = "dark"
+	} else {
+		__lt11 = "light"
+	}
+	m.__n1.SetText(("sibling: " + __lt11))
+}
+
 func (m *Model) __n3_click_handler() {
 	m.dark = !m.dark
-	var __lt7 string
+	var __lt12 string
 	if m.dark {
-		__lt7 = "dark"
+		__lt12 = "dark"
 	} else {
-		__lt7 = "light"
+		__lt12 = "light"
 	}
-	m.__n0.SetText(("outer: " + __lt7))
-	var __lt8 string
+	m.__n0.SetText(("outer: " + __lt12))
+	var __lt13 string
 	if m.dark {
-		__lt8 = "dark"
+		__lt13 = "dark"
 	} else {
-		__lt8 = "light"
+		__lt13 = "light"
 	}
-	m.__n1.SetText(("sibling: " + __lt8))
+	m.__n1.SetText(("sibling: " + __lt13))
 }
 
 func (m *Model) Dark() bool {
@@ -476,23 +518,23 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.SetText("toggle")
 	m.__n3.OnTapped = m.__n3_click_handler
 	m.__n2.Add(m.__n3)
-	var __lt9 string
+	var __lt14 string
 	if m.dark {
-		__lt9 = "dark"
+		__lt14 = "dark"
 	} else {
-		__lt9 = "light"
+		__lt14 = "light"
 	}
 	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(("outer: " + __lt9))
+	m.__n0.SetText(("outer: " + __lt14))
 	m.__n2.Add(m.__n0)
-	var __lt10 string
+	var __lt15 string
 	if m.dark {
-		__lt10 = "dark"
+		__lt15 = "dark"
 	} else {
-		__lt10 = "light"
+		__lt15 = "light"
 	}
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(("sibling: " + __lt10))
+	m.__n1.SetText(("sibling: " + __lt15))
 	m.__n2.Add(m.__n1)
 	content := fyne.CanvasObject(m.__n2)
 	return content
@@ -517,6 +559,7 @@ func TestThemeToggles(t *testing.T) {
 	_ = c
 	if !((c.dark == false)) { t.Errorf("assert failed: %s", "(c.dark == false)") }
 	c.dark = true
+	c.__wrote_dark()
 	if !((c.dark == true)) { t.Errorf("assert failed: %s", "(c.dark == true)") }
 }
 
@@ -566,22 +609,39 @@ func New() *Model {
 	return m
 }
 
+func (m *Model) __wrote_dark() {
+	var __lt19 string
+	if m.dark {
+		__lt19 = "dark"
+	} else {
+		__lt19 = "light"
+	}
+	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt19))
+	var __lt20 string
+	if m.dark {
+		__lt20 = "dark"
+	} else {
+		__lt20 = "light"
+	}
+	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt20))
+}
+
 func (m *Model) __n3_clicked_handler() {
 	m.dark = !m.dark
-	var __lt16 string
+	var __lt21 string
 	if m.dark {
-		__lt16 = "dark"
+		__lt21 = "dark"
 	} else {
-		__lt16 = "light"
+		__lt21 = "light"
 	}
-	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt16))
-	var __lt17 string
+	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt21))
+	var __lt22 string
 	if m.dark {
-		__lt17 = "dark"
+		__lt22 = "dark"
 	} else {
-		__lt17 = "light"
+		__lt22 = "light"
 	}
-	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt17))
+	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt22))
 }
 
 func (m *Model) Dark() bool {
@@ -599,29 +659,29 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	__n2 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n2, 1)
-	gtk4rt.BoxSetSpacing(__n2, 6)
+	gtk4rt.SetLook(__n2, gtk4rt.Look{Spaced: true, Spacing: 6})
 	__n3 := gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(__n3, "toggle")
 	gtk4rt.Connect(__n3, "clicked", m.__n3_clicked_handler)
 	gtk4rt.BoxAppend(__n2, __n3)
-	var __lt18 string
+	var __lt23 string
 	if m.dark {
-		__lt18 = "dark"
+		__lt23 = "dark"
 	} else {
-		__lt18 = "light"
+		__lt23 = "light"
 	}
 	m.__n0 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt18))
+	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt23))
 	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	gtk4rt.BoxAppend(__n2, m.__n0)
-	var __lt19 string
+	var __lt24 string
 	if m.dark {
-		__lt19 = "dark"
+		__lt24 = "dark"
 	} else {
-		__lt19 = "light"
+		__lt24 = "light"
 	}
 	m.__n1 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt19))
+	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt24))
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(__n2, m.__n1)
 	gtk4rt.BoxAppend(m.__root, __n2)
@@ -640,8 +700,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -650,6 +708,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
@@ -664,7 +723,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
 class MainScreenState {
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
     var dark by mutableStateOf(false)
 }
 
@@ -681,6 +740,30 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
         Text(text = ("outer: " + (if (state.dark) "dark" else "light")), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         Text(text = ("sibling: " + (if (state.dark) "dark" else "light")), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     }
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
+package test.sngl.app
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+
+// LocalFlexShare is what a child's flex is a share of in a Column the
+// generated code writes rather than a vbox -- a window's nodes, a page's, a
+// window's content arriving through a slot -- provided in that Column's
+// content, where weight is in scope. A slot's content is composed where the
+// slot is invoked, so it reads the Column it lands in, which no closure its
+// caller wrote could name.
+val LocalFlexShare = compositionLocalOf<((Float) -> Modifier)?> { null }
+
+// snglFlexShare is sngl:ui's flexShare where no vbox or hbox provides one:
+// the written Column's share, else the screen. A value rather than a
+// composable read, since a test build holds the context in a state class
+// built outside composition; the modifier reads LocalFlexShare where the node
+// it is on is composed.
+val snglFlexShare: (Float) -> Modifier = { w ->
+    Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
 // Code generated by sngl (android) from component_reactive_ternary_context.sngl; DO NOT EDIT.
@@ -760,6 +843,13 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
+  function __wrote_dark() {
+    __n0.textContent = "outer: " + (state.dark ? "dark" : "light");
+    __n1.textContent = "sibling: " + (state.dark ? "dark" : "light");
+  }
+  if (typeof window !== "undefined") {
+    Object.assign(window, { __wrote_dark });
+  }
   var $1 = document.getElementById("$1");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
@@ -779,17 +869,17 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2bb5ecf22bf4597d657fcb06b7892d19
+pass sha256:7f1eda600d7a30748a51ba05d52023d1
 -- run/go/fyne --
-pass sha256:7facd906216767304266c3856b896ee2
+pass sha256:c74bec998e0514f1e19401f49ce574a9
 -- run/go/gtk4 --
-pass sha256:eb7386b4efe073281d621342d9be29ac
+pass sha256:fdb415830c2b6cd76ef5ef4e65e9e3d0
 -- run/kotlin/android --
-pass sha256:4901c5b481509fa084b31a3d1d344c19
+pass sha256:2fb5f964f9479dafe4b2b9e44eb0d471
 -- run/none/html --
-pass sha256:bfc0b38133928f496a44abb96be06620
+pass sha256:7f1eb60128fc0d359a5be939d43d1c81
 -- testrun/html/none/component_reactive_ternary_context.sngl/main/1 --
-sha256:9404f3510e747d07550768929db39c80
+sha256:c7eb109f77d4c31ff81f445aff0ba3de
 {
   "results": [
     {

@@ -226,7 +226,7 @@ window {
     main
 }
 -- testrun/android/kotlin/buttons.sngl/main/1 --
-sha256:23a6f5642796e2c3b85c3491d8a0ed1b
+sha256:dd66acac384555f2e344063d696ee518
 {
   "results": [
     {
@@ -236,7 +236,7 @@ sha256:23a6f5642796e2c3b85c3491d8a0ed1b
   ]
 }
 -- testrun/android/kotlin/counters.sngl/main/1 --
-sha256:6786e1e2632ff1fdfa2b3091aa63a687
+sha256:136de56e859b76eb5e840ed19bf1f3b9
 {
   "results": [
     {
@@ -246,7 +246,7 @@ sha256:6786e1e2632ff1fdfa2b3091aa63a687
   ]
 }
 -- testrun/android/kotlin/recursion.sngl/main/1 --
-sha256:3b93692b528957bbe72b51af4499b813
+sha256:7954c72844e43215f072f3b8dbcddde7
 {
   "results": [
     {
@@ -256,7 +256,7 @@ sha256:3b93692b528957bbe72b51af4499b813
   ]
 }
 -- testrun/bubbletea/go/recursion.sngl/main/1 --
-sha256:d4973398b253a21c076f7d09cb9bf28b
+sha256:bd628164fe0a6ca4ad00e0de9a6b3dbd
 {
   "results": [
     {
@@ -296,7 +296,7 @@ sha256:073615d53203cbf44b1a667d02ba1e91
   ]
 }
 -- testrun/gtk4/go/buttons.sngl/main/1 --
-sha256:c856b8ebc05240e7bed57c8ec7a12123
+sha256:66070a904953fd0776923ab4a02c8ce4
 {
   "results": [
     {
@@ -306,7 +306,7 @@ sha256:c856b8ebc05240e7bed57c8ec7a12123
   ]
 }
 -- testrun/gtk4/go/counters.sngl/main/1 --
-sha256:6faf9a3f4e7348da032ec5704bdbe78f
+sha256:e761a28bc20fbccaec7b2d3ac99a347e
 {
   "results": [
     {
@@ -316,7 +316,7 @@ sha256:6faf9a3f4e7348da032ec5704bdbe78f
   ]
 }
 -- testrun/gtk4/go/recursion.sngl/main/1 --
-sha256:d8a838f4a4dd59eeff5a044a3fc06e93
+sha256:b7755f2d470674a10920d7658998f8a5
 {
   "results": [
     {
@@ -326,7 +326,7 @@ sha256:d8a838f4a4dd59eeff5a044a3fc06e93
   ]
 }
 -- testrun/html/none/buttons.sngl/main/1 --
-sha256:5b330bf01d856372be0de566626b9c2f
+sha256:215e2fcc99bef451132c27af274ef578
 {
   "results": [
     {
@@ -336,7 +336,7 @@ sha256:5b330bf01d856372be0de566626b9c2f
   ]
 }
 -- testrun/html/none/counters.sngl/main/1 --
-sha256:c695d92ec4485f2ee1fd929b86e6c074
+sha256:0066391140a26ba4d61c4c5e40133c0a
 {
   "results": [
     {
@@ -346,7 +346,7 @@ sha256:c695d92ec4485f2ee1fd929b86e6c074
   ]
 }
 -- testrun/html/none/recursion.sngl/main/1 --
-sha256:bf186851579a19b34a29fd0845f15188
+sha256:aa92a0cecca56a2cefa4263005e3eda3
 {
   "results": [
     {

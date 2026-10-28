@@ -208,7 +208,7 @@ func (m *Model) __n4_click_handler() {
 func (m *Model) __n4_load_handler() {
 }
 
-func (m *Model) __n4_failed_handler(m__r0 string) {
+func (m *Model) __n4_failed_handler(m__r1 string) {
 }
 
 func (m *Model) __n5_click_handler() {
@@ -217,7 +217,7 @@ func (m *Model) __n5_click_handler() {
 func (m *Model) __n5_load_handler() {
 }
 
-func (m *Model) __n5_failed_handler(m__r0 string) {
+func (m *Model) __n5_failed_handler(m__r1 string) {
 }
 
 func (m *Model) __n6_clicked_handler() {
@@ -268,7 +268,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n3 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n3, 1)
-	gtk4rt.BoxSetSpacing(m.__n3, 6)
+	gtk4rt.SetLook(m.__n3, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n4 = gtk4rt.ImageFrameNew()
 	gtk4rt.ImageFrameSetFit(m.__n4, "contain")
 	gtk4rt.ImageFrameOnClick(m.__n4, m.__n4_click_handler)
@@ -303,4 +303,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/gtk4 --
-pass sha256:ffb6f31edd71f388e7966edf65bb769f
+pass sha256:22aa235722bb6ba39ed98cf25bae8a18

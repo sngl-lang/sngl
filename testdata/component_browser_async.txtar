@@ -132,7 +132,7 @@ window.__sngl_boot();
 -- run/none/html --
 pass sha256:cf4060965c3daee357cddeba4014fed8
 -- testrun/html/none/component_browser_async.sngl/direct/1 --
-sha256:3ede18fae0772cc4ffaedcfca029b4b4
+sha256:3d69527d5b00bbac3cbc2b6ddc0c1ced
 {
   "results": [
     {
@@ -142,7 +142,7 @@ sha256:3ede18fae0772cc4ffaedcfca029b4b4
   ]
 }
 -- testrun/html/none/component_browser_async.sngl/stored/1 --
-sha256:4a82e3349998f61221efd3679d8bd2c9
+sha256:cd531695b5028ee667353f8a28335117
 {
   "results": [
     {

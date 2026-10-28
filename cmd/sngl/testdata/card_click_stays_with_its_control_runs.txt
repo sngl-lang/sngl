@@ -113,7 +113,7 @@ sha256:6163ce770dd15bbe735373560a5ccfc4
   ]
 }
 -- testrun/html/none/app.sngl/cardWithButton/1 --
-sha256:31b42b33690cb262640313ec98aac711
+sha256:b0bed764275bc6cd5c56397bd8d794a4
 {
   "results": [
     {

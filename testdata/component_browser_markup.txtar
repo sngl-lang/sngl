@@ -782,7 +782,7 @@ window.__sngl_boot();
 -- run/none/html --
 pass sha256:c01150fc2bdc6beda8ca9052817d57ff
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:2a2181c48329cf41216d18ca014f4942
+sha256:06e77c1d5985dc56cc1212530b23c4e9
 {
   "results": [
     {

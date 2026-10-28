@@ -512,10 +512,10 @@ func newFlipInstance(__model *Model, __a_n int) *FlipInstance {
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	c.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n4, gtk4rt.OrientationVertical)
+	c.__n4 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(c.__n4, 1)
 	gtk4rt.SetLook(c.__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
-	c.go__r0 = gtk4rt.ButtonNew()
+	c.go__r0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.go__r0, "flip")
 	gtk4rt.Connect(c.go__r0, "clicked", func() {
 		c.flips = (c.flips + 1)
@@ -524,7 +524,7 @@ func newFlipInstance(__model *Model, __a_n int) *FlipInstance {
 		c.__model.__refreshPage_shown()
 	})
 	gtk4rt.BoxAppend(c.__n4, c.go__r0)
-	c.line = gtk4rt.LabelNew("")
+	c.line = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.line, ((fmt.Sprint(c.__prop_n) + " ") + fmt.Sprint(c.__model.shown)))
 	gtk4rt.LabelSetXAlign(c.line, 0.0)
 	gtk4rt.BoxAppend(c.__n4, c.line)
@@ -638,7 +638,7 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	c.__prop___p0 = __a___p0
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, (fmt.Sprint(c.__prop___p0) + " extra"))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.Root = c.__n0
@@ -689,10 +689,10 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
-	m.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n6, gtk4rt.OrientationVertical)
+	m.__n6 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n6, 1)
 	gtk4rt.SetLook(m.__n6, gtk4rt.Look{Spaced: true, Spacing: 6})
-	m.__n2 = gtk4rt.LabelNew("")
+	m.__n2 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n2, fmt.Sprint(m.shown))
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n6, m.__n2)
@@ -971,6 +971,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:5224c56c6b1b03022697f8f78db9f760
 -- run/go/gtk4 --
-pass sha256:81171de5eef9d1b2ab8fe25a872ad3cb
+pass sha256:55fc6ddef4dd39f3d38e169e4178e4a3
 -- run/none/html --
 pass sha256:f235757220114d4cf1386a00f57d4314

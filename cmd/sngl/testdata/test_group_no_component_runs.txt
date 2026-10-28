@@ -206,7 +206,7 @@ sha256:86592666f4773b3b9ec373eae1325b15
   ]
 }
 -- testrun/html/none/built.sngl/_/1 --
-sha256:942e8c0a1c67e86215f33cff3d17b026
+sha256:57313e0629abaad80efe3e0bd58c06fe
 {
   "results": [
     {
@@ -216,7 +216,7 @@ sha256:942e8c0a1c67e86215f33cff3d17b026
   ]
 }
 -- testrun/html/none/focus.sngl/_/1 --
-sha256:942e8c0a1c67e86215f33cff3d17b026
+sha256:57313e0629abaad80efe3e0bd58c06fe
 {
   "results": [
     {
@@ -226,7 +226,7 @@ sha256:942e8c0a1c67e86215f33cff3d17b026
   ]
 }
 -- testrun/html/none/focus.sngl/panel/1 --
-sha256:7ad7b76e178980c484510abe71951e98
+sha256:ec66210a02f2509d6081468d1473b38f
 {
   "results": [
     {

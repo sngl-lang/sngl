@@ -265,7 +265,7 @@ func (m *Model) __bar_members() []Entry {
 		}})
 	}
 	if m.n > 0 {
-		__members = append(__members, Entry{Full: ("n=" + fmt.Sprint(m.n)), Color: "", Click: func(__e0 int) {
+		__members = append(__members, Entry{Full: ("n=" + fmt.Sprint(m.n)), Click: func(__e0 int) {
 		}})
 	}
 	return __members
@@ -527,7 +527,7 @@ func (m *Model) __bar_members() []Entry {
 		}})
 	}
 	if m.n > 0 {
-		__members = append(__members, Entry{Full: ("n=" + fmt.Sprint(m.n)), Color: "", Click: func(__e0 int) {
+		__members = append(__members, Entry{Full: ("n=" + fmt.Sprint(m.n)), Click: func(__e0 int) {
 		}})
 	}
 	return __members
@@ -662,6 +662,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:c10ff28607424c4b609cfb6abbdf69ee
+pass sha256:e6b01cc0c45cd2f3163d61d1f4649133
 -- run/go/gtk4 --
-pass sha256:05686640a09979527e0af41a4b0748c4
+pass sha256:aea9ef51a51896f4ce4bc557108c83fe

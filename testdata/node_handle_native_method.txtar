@@ -367,7 +367,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_visible_handler)
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
 	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n1)), 1)
-	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n1)), 6)
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.bar = (*C.GtkProgressBar)(unsafe.Pointer(gtk4rt.New("GtkProgressBar")))
 	gtk4rt.SetFloat(gtk4rt.Handle(unsafe.Pointer(m.bar)), "fraction", 0.0)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.bar)))
@@ -386,4 +386,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:4f3def5521772ad9ffaccc2640b6b316
+pass sha256:72041d55c7b185ce95f15a8f4804f259

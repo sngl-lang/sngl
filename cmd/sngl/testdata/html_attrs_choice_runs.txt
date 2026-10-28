@@ -43,7 +43,7 @@ func testFlip(t test.Test, c box) {
     t.snapshot("narrow_again")
 }
 -- testrun/html/none/app.sngl/box/1 --
-sha256:3592e5e9d1872be70715f8b2bca02335
+sha256:40a0c251cb82a104fa44a3e2dfeb5710
 {
   "results": [
     {

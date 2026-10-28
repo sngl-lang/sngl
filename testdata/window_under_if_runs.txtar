@@ -308,29 +308,29 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				__inst0_next := []*__window_state1__slot0Instance{}
 				var __inst0_i int = 0
 				if m.details {
-					var __n3 *__window_state1__slot0Instance
+					var __n4 *__window_state1__slot0Instance
 					if len(m.__inst0_live) > __inst0_i {
-						__n3 = m.__inst0_live[__inst0_i]
-						__n3.SetClosed(func() {
+						__n4 = m.__inst0_live[__inst0_i]
+						__n4.SetClosed(func() {
 							m.details = false
 							m.__renderSlot0(fynelayout.App)
 						})
-						__n3.SetTitle("Load")
+						__n4.SetTitle("Load")
 					} else {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n3__new := new__window_state1__slot0Instance(m, true, "Load", func() {
+						__n4__new := new__window_state1__slot0Instance(m, true, "Load", func() {
 							m.details = false
 							m.__renderSlot0(fynelayout.App)
 						})
-						__n3 = __n3__new
+						__n4 = __n4__new
 					}
-					__inst0_next = append(__inst0_next, __n3)
+					__inst0_next = append(__inst0_next, __n4)
 					__inst0_i = (__inst0_i + 1)
-					__n3__el := __n3.Root
-					fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
-					m.__slot0 = append(m.__slot0, __n3__el)
+					__n4__el := __n4.Root
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
+					m.__slot0 = append(m.__slot0, __n4__el)
 				}
 				for __inst0_i_d, _ := range m.__inst0_live {
 					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -564,7 +564,7 @@ type __window_state1__slot0Instance struct {
 	__slot0                []fyne.CanvasObject
 	__slot0_at             fyne.CanvasObject
 	__n1                   *fynelayout.Toplevel
-	__n5                   *CounterInstance
+	__n3                   *CounterInstance
 }
 
 func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool, __a_title string, __a_closed func()) *__window_state1__slot0Instance {
@@ -586,12 +586,12 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 		c.visible = __visible
 		c.__n1.SetVisible(c.visible)
 	}
-	__n4 := widget.NewLabel("")
-	__n4.SetText("load")
-	c.__n1.Add(__n4)
-	c.__n5 = newCounterInstance(c.__model)
-	__n5__el := c.__n5.Root
-	c.__n1.Add(__n5__el)
+	__n5 := widget.NewLabel("")
+	__n5.SetText("load")
+	c.__n1.Add(__n5)
+	c.__n3 = newCounterInstance(c.__model)
+	__n3__el := c.__n3.Root
+	c.__n1.Add(__n3__el)
 	c.Root = c.__n1
 	return c
 }
@@ -610,7 +610,7 @@ func (c *__window_state1__slot0Instance) SetClosed(__v func()) {
 }
 
 func (c *__window_state1__slot0Instance) Destroy() {
-	c.__n5.Destroy()
+	c.__n3.Destroy()
 }
 
 func main() {
@@ -808,29 +808,29 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				__inst0_next := []*__window_state1__slot0Instance{}
 				var __inst0_i int = 0
 				if m.details {
-					var __n3 *__window_state1__slot0Instance
+					var __n4 *__window_state1__slot0Instance
 					if len(m.__inst0_live) > __inst0_i {
-						__n3 = m.__inst0_live[__inst0_i]
-						__n3.SetClosed(func() {
+						__n4 = m.__inst0_live[__inst0_i]
+						__n4.SetClosed(func() {
 							m.details = false
 							m.__renderSlot0(gtk4rt.App)
 						})
-						__n3.SetTitle("Load")
+						__n4.SetTitle("Load")
 					} else {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n3__new := new__window_state1__slot0Instance(m, true, "Load", func() {
+						__n4__new := new__window_state1__slot0Instance(m, true, "Load", func() {
 							m.details = false
 							m.__renderSlot0(gtk4rt.App)
 						})
-						__n3 = __n3__new
+						__n4 = __n4__new
 					}
-					__inst0_next = append(__inst0_next, __n3)
+					__inst0_next = append(__inst0_next, __n4)
 					__inst0_i = (__inst0_i + 1)
-					__n3__el := __n3.Root
-					gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
-					m.__slot0 = append(m.__slot0, __n3__el)
+					__n4__el := __n4.Root
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n4__el)
+					m.__slot0 = append(m.__slot0, __n4__el)
 				}
 				for __inst0_i_d, _ := range m.__inst0_live {
 					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -984,7 +984,7 @@ type __window_state1__slot0Instance struct {
 	__slot0                []gtk4rt.Handle
 	__slot0_at             gtk4rt.Handle
 	__n1                   gtk4rt.Handle
-	__n5                   *CounterInstance
+	__n3                   *CounterInstance
 }
 
 func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool, __a_title string, __a_closed func()) *__window_state1__slot0Instance {
@@ -1005,13 +1005,13 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 		c.visible = __visible
 		gtk4rt.ToplevelSetVisible(c.__n1, c.visible)
 	})
-	__n4 := gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(__n4, "load")
-	gtk4rt.LabelSetXAlign(__n4, 0.0)
-	gtk4rt.BoxAppend(c.__n1, __n4)
-	c.__n5 = newCounterInstance(c.__model)
-	__n5__el := c.__n5.Root
-	gtk4rt.BoxAppend(c.__n1, __n5__el)
+	__n5 := gtk4rt.New("GtkLabel")
+	gtk4rt.LabelSetLabel(__n5, "load")
+	gtk4rt.LabelSetXAlign(__n5, 0.0)
+	gtk4rt.BoxAppend(c.__n1, __n5)
+	c.__n3 = newCounterInstance(c.__model)
+	__n3__el := c.__n3.Root
+	gtk4rt.BoxAppend(c.__n1, __n3__el)
 	c.Root = c.__n1
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1031,7 +1031,7 @@ func (c *__window_state1__slot0Instance) SetClosed(__v func()) {
 }
 
 func (c *__window_state1__slot0Instance) teardown() {
-	c.__n5.Destroy()
+	c.__n3.Destroy()
 }
 
 func (c *__window_state1__slot0Instance) Destroy() {
@@ -1103,6 +1103,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/fyne --
-pass sha256:00de47a2bab79c40ca611d219bfc5ee7
+pass sha256:9f9515c737245fc4bbc8a04a80ea810e
 -- run/go/gtk4 --
-pass sha256:bb5005ba5b4230c2191bc2f3270c94c6
+pass sha256:a59ef3379f87fe5cc5396f77cb10d591

@@ -65,7 +65,7 @@ func testReadsThroughAMethodReadingAContext(t test.Test, c host) {
     t.assert(c.g.noisy[1][0].value == "c!")
 }
 -- testrun/android/kotlin/app.sngl/host/1 --
-sha256:833a14691019acc84b407b069859fab8
+sha256:bdd242553b2a82da97269ac2527d04da
 {
   "results": [
     {
@@ -79,7 +79,7 @@ sha256:833a14691019acc84b407b069859fab8
   ]
 }
 -- testrun/bubbletea/go/app.sngl/host/1 --
-sha256:67cb1f8b7ee1a9f6f90d573864a59171
+sha256:94a7b6225e5d2d9885fcce48ac71bf61
 {
   "results": [
     {
@@ -93,7 +93,7 @@ sha256:67cb1f8b7ee1a9f6f90d573864a59171
   ]
 }
 -- testrun/fyne/go/app.sngl/host/1 --
-sha256:d9592f9c5189df4935ac6213a4b74dd1
+sha256:df09273efaae0c9a6ccf95ffdfc0d5fc
 {
   "results": [
     {
@@ -107,7 +107,7 @@ sha256:d9592f9c5189df4935ac6213a4b74dd1
   ]
 }
 -- testrun/gtk4/go/app.sngl/host/1 --
-sha256:5008fabd064bed737df004e5f376eb8a
+sha256:dbe0b4d8bd8689f23acf0a45313ca1eb
 {
   "results": [
     {
@@ -121,7 +121,7 @@ sha256:5008fabd064bed737df004e5f376eb8a
   ]
 }
 -- testrun/html/none/app.sngl/host/1 --
-sha256:05c6c05166b149420a7523e4b38e8aea
+sha256:23ddf6585698c15862902532310cbf26
 {
   "results": [
     {

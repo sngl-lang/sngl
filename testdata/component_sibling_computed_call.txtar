@@ -684,7 +684,7 @@ pass sha256:286db4c172031a42b217f8b09dc2f1cc
 -- run/none/html --
 pass sha256:60c53a794e1e1340e3c58a85819e472a
 -- testrun/html/none/component_sibling_computed_call.sngl/main/1 --
-sha256:d2a5e0c11bbc08f09f1cdf209314ae87
+sha256:187e1ff81ae70b478be8625325c694a8
 {
   "results": [
     {

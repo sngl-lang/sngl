@@ -1128,7 +1128,7 @@ pass sha256:83ec30ea69c637fb75b20f9e2798d292
 -- run/none/html --
 pass sha256:651bba1bd9c8a72856643604bce8834f
 -- testrun/html/none/component_nested_func.sngl/main/1 --
-sha256:caff1048c74cc4471dc654e8aec823b3
+sha256:794431a276da7c27fd4d2b7b43e92b82
 {
   "results": [
     {

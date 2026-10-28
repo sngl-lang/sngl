@@ -217,7 +217,7 @@ sha256:29f3f95c30860e2b32c5347b999690e4
   ]
 }
 -- testrun/html/none/app.sngl/_/1 --
-sha256:1a2f40cfd239c4ae436604e2cfa935ff
+sha256:bad98f9debce6156e338eaeb313d08ec
 {
   "results": [
     {
@@ -226,10 +226,14 @@ sha256:1a2f40cfd239c4ae436604e2cfa935ff
       "Failures": [
         {
           "Message": "(s.n === 4)"
+        },
+        {
+          "Message": "(s.n === 5)"
         }
       ],
       "Log": [
-        "(s.n === 4)"
+        "(s.n === 4)",
+        "(s.n === 5)"
       ]
     },
     {

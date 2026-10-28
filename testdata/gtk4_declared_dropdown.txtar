@@ -375,7 +375,7 @@ func (m *Model) __effect0_mount() {
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []__anon_drop_labels_ffa5ce{}
-	m.__effect0_desired = append(m.__effect0_desired, __anon_drop_labels_ffa5ce{Labels: strings.Join(func() []string {
+	m.__effect0_desired = append(m.__effect0_desired, __anon_drop_labels_ffa5ce{Drop: m.drop, Labels: strings.Join(func() []string {
 		__out := make([]string, len(slices.Concat(func() []Choice__record {
 			__out := make([]Choice__record, len(m.fruits))
 			for __i, __item := range m.fruits {
@@ -393,7 +393,7 @@ func (m *Model) __effect0_down() {
 			__out[__i] = func(o Choice__record) string { return o.Label }(__item)
 		}
 		return __out
-	}(), "\n"), Drop: m.drop})
+	}(), "\n")})
 }
 
 func (m *Model) __effect0_up() {
@@ -505,7 +505,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_set_line_width(ctx, C.double(1.0))
 	C.cairo_set_line_cap(ctx, LineCapFunc("butt"))
 	C.cairo_set_line_join(ctx, LineJoinFunc("miter"))
-	Source(ctx, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+	Source(ctx, snglcolor.Color{})
 	C.cairo_stroke(ctx)
 	C.cairo_restore(ctx)
 }
@@ -577,4 +577,4 @@ func (m *Model) dropChange(v string) {
 	gtk4rt.DropDownSelect(gtk4rt.Handle(unsafe.Pointer(m.drop)), v)
 }
 -- run/go/gtk4 --
-pass sha256:e2dae520609f1d3619231eea2e7b6663
+pass sha256:7e00ce3b853f8ad1c54b3ee969888c88

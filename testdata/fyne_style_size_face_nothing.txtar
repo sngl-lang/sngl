@@ -60,6 +60,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -217,7 +218,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n4 = fynelayout.NewImage()
 	m.__n4__box = fynelayout.NewBox(m.__n4)
 	m.__n4.SetFit("contain")
-	m.__n4__box.SetLook(fynelayout.Look{Width: 96.0, Height: 48.0})
+	m.__n4__box.SetLook(fynelayout.Look{Width: 96.0, Height: 48.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 	m.__n4.OnTapped = m.__n4_click_handler
 	m.__n4.OnLoad = m.__n4_load_handler
 	m.__n4.OnError = m.__n4_failed_handler
@@ -228,7 +229,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n6 = widget.NewLabel("")
 	m.__n6__box = fynelayout.NewBox(m.__n6)
 	m.__n6.SetText("Heading")
-	m.__n6__box.SetLook(fynelayout.Look{Width: 120.0, Bold: true})
+	m.__n6__box.SetLook(fynelayout.Look{Width: 120.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}, Bold: true})
 	m.__n3.Add(m.__n6__box)
 	m.__n2.Add(m.__n3)
 	m.__renderSlot0(m.__n2)
@@ -554,7 +555,7 @@ func (m *Model) __n5_click_handler() {
 func (m *Model) __n5_load_handler() {
 }
 
-func (m *Model) __n5_failed_handler(m__r2 string) {
+func (m *Model) __n5_failed_handler(m__r3 string) {
 }
 
 func (m *Model) __n7_clicked_handler() {
@@ -695,10 +696,10 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n3 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n3, 1)
-	gtk4rt.BoxSetSpacing(m.__n3, 6)
+	gtk4rt.SetLook(m.__n3, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n4, 0)
-	gtk4rt.BoxSetSpacing(m.__n4, 6)
+	gtk4rt.SetLook(m.__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n5 = gtk4rt.ImageFrameNew()
 	gtk4rt.ImageFrameSetFit(m.__n5, "contain")
 	gtk4rt.SetLook(m.__n5, gtk4rt.Look{Width: 96.0, Height: 48.0})
@@ -732,6 +733,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:de0e23a28b96437f24df38d91646dbea
+pass sha256:172e496e7ab63b7d692b03c4a24e16e4
 -- run/go/gtk4 --
-pass sha256:f97080fb86f4d3c6650e64c09d5df261
+pass sha256:616accbd75c3adbf2f0176a8be2632d6

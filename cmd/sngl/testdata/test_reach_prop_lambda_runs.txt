@@ -78,7 +78,7 @@ sha256:1656eafd151706a245a18661bd53b5bc
   ]
 }
 -- testrun/html/none/app.sngl/wrapped/1 --
-sha256:87965d2b9e7a47d2eb2098fc74597e1c
+sha256:70cc1de5a0831102c4bc98e4033691c3
 {
   "results": [
     {
