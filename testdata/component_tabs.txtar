@@ -66,10 +66,6 @@ import (
 	"os"
 )
 
-func snglSome[T any](v T) *T {
-	return &v
-}
-
 func snglOptEqual[T comparable](p, q *T) bool {
 	if p == nil || q == nil {
 		return p == q
@@ -175,38 +171,6 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func GrowOf(flex *float64, display string) float64 {
-	var __lt0 float64
-	if (flex == nil) || (display == "none") {
-		__lt0 = 0.0
-	} else {
-		__lt0 = (*(flex))
-	}
-	return __lt0
-}
-
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
-	} else {
-		__lt3 = max(1, (int(px) / 16))
-	}
-	return __lt3
-}
-
-func CellsOf(m__r1 *Measurement) int {
-	var px float64 = PxOf(m__r1)
-	var __lt4 int
-	if px <= 0.0 {
-		__lt4 = 0
-	} else {
-		__lt4 = max(1, (int(px) / 8))
-	}
-	return __lt4
-}
-
 func BoxLook(s Style, words bool) lipgloss.Style {
 	if func(_a1, _b2 Style) bool {
 		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.ListStyleType == _b2.ListStyleType)
@@ -232,13 +196,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt5 bool
+	var __lt0 bool
 	if s.BorderWidth != nil {
-		__lt5 = (PxOf(s.BorderWidth) > 0.0)
+		__lt0 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt0 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt5 {
+	if __lt0 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -262,95 +226,119 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt6 int
+		var __lt1 int
 		if s.MaxLines == nil {
-			__lt6 = 0
+			__lt1 = 0
 		} else {
-			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt1 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt1))
 	}
 	return l
 }
 
-func PxOf(m__r2 *Measurement) float64 {
-	var __lt8 float64
-	if m__r2 == nil {
-		__lt8 = 0.0
-	} else {
-		__lt8 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
-	}
-	return __lt8
-}
-
 func AlignOf(a string) lipgloss.Position {
-	var __lt9 lipgloss.Position
+	var __lt3 lipgloss.Position
 	switch a {
 	case "center":
-		__lt9 = lipgloss.Center
+		__lt3 = lipgloss.Center
 	case "right":
-		__lt9 = lipgloss.Right
+		__lt3 = lipgloss.Right
 	default:
-		__lt9 = lipgloss.Left
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func PxOf(m__r0 *Measurement) float64 {
+	var __lt4 float64
+	if m__r0 == nil {
+		__lt4 = 0.0
+	} else {
+		__lt4 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
+	}
+	return __lt4
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt5 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt5 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt5 = tui.DashedBorder()
+	default:
+		var __lt6 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt6 = lipgloss.RoundedBorder()
+		} else {
+			__lt6 = lipgloss.NormalBorder()
+		}
+		__lt5 = __lt6
+	}
+	return __lt5
+}
+
+func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+	var __lt8 *Measurement
+	if own != nil {
+		__lt8 = own
+	} else {
+		var __lt7 *Measurement
+		if axis != nil {
+			__lt7 = axis
+		} else {
+			__lt7 = all
+		}
+		__lt8 = __lt7
+	}
+	return CellsOf(__lt8)
+}
+
+func CellsOf(m__r1 *Measurement) int {
+	var px float64 = PxOf(m__r1)
+	var __lt9 int
+	if px <= 0.0 {
+		__lt9 = 0
+	} else {
+		__lt9 = max(1, (int(px) / 8))
 	}
 	return __lt9
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt10 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt10 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt10 = tui.DashedBorder()
-	default:
-		var __lt11 lipgloss.Border
-		if s.BorderRadius != nil {
-			__lt11 = lipgloss.RoundedBorder()
-		} else {
-			__lt11 = lipgloss.NormalBorder()
-		}
-		__lt10 = __lt11
+func RowsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt10 int
+	if px <= 0.0 {
+		__lt10 = 0
+	} else {
+		__lt10 = max(1, (int(px) / 16))
 	}
 	return __lt10
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt13 *Measurement
-	if own != nil {
-		__lt13 = own
-	} else {
-		var __lt12 *Measurement
-		if axis != nil {
-			__lt12 = axis
-		} else {
-			__lt12 = all
-		}
-		__lt13 = __lt12
-	}
-	return CellsOf(__lt13)
-}
-
 func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
+	var __lt12 int
 	if height__r0 == 0 {
-		__lt15 = lines
+		__lt12 = lines
 	} else {
-		var __lt14 int
+		var __lt11 int
 		if lines == 0 {
-			__lt14 = height__r0
+			__lt11 = height__r0
 		} else {
-			__lt14 = min(height__r0, lines)
+			__lt11 = min(height__r0, lines)
 		}
-		__lt15 = __lt14
+		__lt12 = __lt11
 	}
-	return __lt15
+	return __lt12
 }
 
 func (m *Model) __focusLoop0_len() int {
 	var __focusCount int = 0
-	for range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
-		__focusCount = (__focusCount + 1)
+	for _, t__r0 := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+		if !t__r0.Disabled {
+			__focusCount = (__focusCount + 1)
+		}
 	}
 	return __focusCount
 }
@@ -462,19 +450,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				for k, t__r0 := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
 					_ = k
 					_ = t__r0
-					var __lt16 string
-					_ = __lt16
-					if k == m.idx {
-						__lt16 = "bold"
-					} else {
-						__lt16 = "normal"
+					if !t__r0.Disabled {
+						if m.__focusLoop0_cursor == __focusPos0 {
+							m.idx = k
+							m.changed = k
+							return
+						}
+						__focusPos0++
 					}
-					if m.__focusLoop0_cursor == __focusPos0 {
-						m.idx = k
-						m.changed = k
-						return
-					}
-					__focusPos0++
 				}
 			}()
 		}
@@ -486,10 +469,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	contentLook := BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
-	_, contentH := tui.Inner(contentLook, tui.Avail(m.width), m.height)
-	var contentChildren []tui.Part
+	contentW, _ := tui.Inner(contentLook, tui.Avail(m.width), m.height)
+	var contentChildren []string
 	var content_0 string
-	var content_0Children []string
+	content_0Look := lipgloss.NewStyle()
+	content_0W, _ := tui.Inner(content_0Look, contentW, 0)
+	var content_0Children []tui.Part
 	var content_0_0 string
 	__focusPos0 := 0
 	_ = __focusPos0
@@ -498,73 +483,76 @@ func (m Model) View() tea.View {
 		_ = k
 		_ = t__r0
 		var content_0_0Item string
-		var __lt16 string
-		if k == m.idx {
-			__lt16 = "bold"
-		} else {
-			__lt16 = "normal"
-		}
 		content_0_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
 		content_0_0ItemPrefix := " "
 		if content_0_0ItemFocused {
 			content_0_0ItemPrefix = ">"
 		}
-		content_0_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt16, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0_0ItemPrefix + " " + fmt.Sprint(t__r0.Label))
-		__focusPos0++
+		content_0_0Item = tui.TabLook((k == m.idx), (k == 0), t__r0.Disabled, "underline").Render(content_0_0ItemPrefix + " " + fmt.Sprint(t__r0.Label))
+		if !t__r0.Disabled {
+			__focusPos0++
+		}
 		content_0_0Items = append(content_0_0Items, content_0_0Item)
 	}
-	content_0_0 = tui.Spaced(true, lipgloss.Top, 1, content_0_0Items...)
+	content_0_0 = tui.Spaced(true, lipgloss.Top, 0, content_0_0Items...)
 	if content_0_0 != "" {
-		content_0Children = append(content_0Children, content_0_0)
+		content_0Children = append(content_0Children, tui.Fixed(content_0_0))
 	}
-	content_0 = tui.Spaced(true, lipgloss.Top, 1, content_0Children...)
-	content_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0)
-	contentChildren = append(contentChildren, tui.Fixed(content_0))
-	for k, t__r1 := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
-		_ = k
-		_ = t__r1
-		var __lt17 string
-		if k == m.idx {
-			__lt17 = "flex"
-		} else {
-			__lt17 = "none"
-		}
-		var __lt18 string
-		if k == m.idx {
-			__lt18 = "flex"
-		} else {
-			__lt18 = "none"
-		}
-		var __lt19 string
-		if k == m.idx {
-			__lt19 = "flex"
-		} else {
-			__lt19 = "none"
-		}
-		contentChildren = append(contentChildren, tui.Grow(GrowOf(nil, __lt19), func(content_1_b6Cells int) string {
-			var content_1_b6 string
-			var content_1_b6Children []string
-			var content_1_b6_0 string
+	content_0Children = append(content_0Children, tui.Grow(1.0, func(content_0_1Cells int) string {
+		var content_0_1 string
+		content_0_1 = tui.Sized(tui.TabGap(), true, content_0_1Cells).Render(fmt.Sprint("\n"))
+		return content_0_1
+	}))
+	content_0 = tui.Join(true, lipgloss.Top, 0, 0, content_0W, content_0Children)
+	content_0 = content_0Look.Render(content_0)
+	contentChildren = append(contentChildren, content_0)
+	var content_1 string
+	content_1Look := lipgloss.NewStyle()
+	content_1W, _ := tui.Inner(content_1Look, contentW, 0)
+	var content_1Children []tui.Part
+	content_1Children = append(content_1Children, tui.Grow(1.0, func(content_1_0Cells int) string {
+		var content_1_0 string
+		var content_1_0Children []string
+		var content_1_0_0 string
+		var content_1_0_0Items []string
+		for k, t__r1 := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+			_ = k
+			_ = t__r1
+			var content_1_0_0Item string
+			var content_1_0_0ItemChildren []string
+			var content_1_0_0Item_0 string
 			if t__r1.__id == 0 {
-				content_1_b6_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Overview content"))
+				content_1_0_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Overview content"))
 			} else {
 				if t__r1.__id == 1 {
-					content_1_b6_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Detail content"))
+					content_1_0_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Detail content"))
 				} else {
 					if t__r1.__id == 2 {
-						content_1_b6_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Settings content"))
+						content_1_0_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Settings content"))
 					}
 				}
 			}
-			if content_1_b6_0 != "" {
-				content_1_b6Children = append(content_1_b6Children, content_1_b6_0)
+			if content_1_0_0Item_0 != "" {
+				content_1_0_0ItemChildren = append(content_1_0_0ItemChildren, content_1_0_0Item_0)
 			}
-			content_1_b6 = lipgloss.JoinVertical(lipgloss.Left, content_1_b6Children...)
-			content_1_b6 = tui.Render(tui.Sized(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt17, ListStyleType: "unset"}, true), false, content_1_b6Cells), tui.Fit{Hidden: (__lt18 == "none")}, content_1_b6)
-			return content_1_b6
-		}))
-	}
-	content = tui.Join(false, lipgloss.Left, 0, 0, contentH, contentChildren)
+			content_1_0_0Item = lipgloss.JoinVertical(lipgloss.Left, content_1_0_0ItemChildren...)
+			content_1_0_0Item = tui.Render(lipgloss.NewStyle(), tui.Fit{Hidden: (k != m.idx)}, content_1_0_0Item)
+			if content_1_0_0Item != "" {
+				content_1_0_0Items = append(content_1_0_0Items, content_1_0_0Item)
+			}
+		}
+		content_1_0_0 = tui.Spaced(false, lipgloss.Left, 0, content_1_0_0Items...)
+		if content_1_0_0 != "" {
+			content_1_0Children = append(content_1_0Children, content_1_0_0)
+		}
+		content_1_0 = lipgloss.JoinVertical(lipgloss.Left, content_1_0Children...)
+		content_1_0 = tui.Sized(tui.TabPanel("underline"), true, content_1_0Cells).Render(content_1_0)
+		return content_1_0
+	}))
+	content_1 = tui.Join(true, lipgloss.Top, 0, 0, content_1W, content_1Children)
+	content_1 = content_1Look.Render(content_1)
+	contentChildren = append(contentChildren, content_1)
+	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	content = contentLook.Render(content)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -603,19 +591,11 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
-	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
-
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
 
 type Tab__record struct {
 	Label    string
@@ -623,81 +603,16 @@ type Tab__record struct {
 	__id     int
 }
 
-type Style struct {
-	Padding        *Measurement
-	PaddingTop     *Measurement
-	PaddingRight   *Measurement
-	PaddingBottom  *Measurement
-	PaddingLeft    *Measurement
-	PaddingX       *Measurement
-	PaddingY       *Measurement
-	Margin         *Measurement
-	MarginTop      *Measurement
-	MarginRight    *Measurement
-	MarginBottom   *Measurement
-	MarginLeft     *Measurement
-	MarginX        *Measurement
-	MarginY        *Measurement
-	Gap            *Measurement
-	Width          *Measurement
-	MinWidth       *Measurement
-	Height         *Measurement
-	MaxWidth       *Measurement
-	MaxHeight      *Measurement
-	Flex           *float64
-	FlexDirection  string
-	AlignItems     string
-	JustifyContent string
-	Position       string
-	Top            *Measurement
-	Bottom         *Measurement
-	Left           *Measurement
-	Right          *Measurement
-	ZIndex         *int
-	Color          *snglcolor.Color
-	FontSize       *Measurement
-	FontFamily     string
-	FontWeight     string
-	FontStyle      string
-	TextAlign      string
-	MaxLines       *int
-	WhiteSpace     string
-	Background     *snglcolor.Color
-	BorderRadius   *Measurement
-	BorderColor    *snglcolor.Color
-	BorderWidth    *Measurement
-	Border         string
-	BorderBottom   string
-	BorderLeft     string
-	BorderCollapse string
-	BorderStyle    string
-	Opacity        *float64
-	Cursor         string
-	Display        string
-	ListStyleType  string
-}
-
 // Model holds the state for this SNGL UI.
 type Model struct {
-	idx            int
-	changed        int
-	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
-	__inst0_live   []*__child0Instance
-	__rendering0   bool
-	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__inst1_live   []*__child1Instance
-	__rendering1   bool
-	__renderAgain1 bool
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
+	idx     int
+	changed int
 
-	__n4      *fyne.Container
-	__n5      *fyne.Container
-	__n5__box *fynelayout.Box
+	__n0 *fynelayout.Tabs
+	__n1 *fynelayout.TabPage
+	__n2 *widget.Label
+	__n3 *widget.Label
+	__n4 *widget.Label
 }
 
 // New creates a Model with default values.
@@ -705,295 +620,11 @@ func New() *Model {
 	m := &Model{}
 	m.idx = 0
 	m.changed = -1
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__inst0_live = []*__child0Instance{}
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__inst1_live = []*__child1Instance{}
-	m.__rendering1 = false
-	m.__renderAgain1 = false
-	m.__slot2 = nil
-	m.__slot2_at = nil
 	return m
 }
 
-func LookOf(s Style) fynelayout.Look {
-	var __lt0 float32
-	if s.Flex == nil {
-		__lt0 = 0.0
-	} else {
-		__lt0 = float32((*(s.Flex)))
-	}
-	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Cursor: CursorOf(s.Cursor), Hidden: (s.Display == "none")}
-	return look
-}
-
-func Side(all *Measurement, axis *Measurement, own *Measurement) float32 {
-	var __lt2 *Measurement
-	if own != nil {
-		__lt2 = own
-	} else {
-		var __lt1 *Measurement
-		if axis != nil {
-			__lt1 = axis
-		} else {
-			__lt1 = all
-		}
-		__lt2 = __lt1
-	}
-	return Inset(__lt2)
-}
-
-func Inset(m__r0 *Measurement) float32 {
-	var __lt3 float32
-	if m__r0 == nil {
-		__lt3 = 0.0
-	} else {
-		__lt3 = float32(max(((*(m__r0)).Px + (14.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0))
-	}
-	return __lt3
-}
-
-func CrossOf(a string) int {
-	var __lt4 int
-	switch a {
-	case "start":
-		__lt4 = 1
-	case "center":
-		__lt4 = 2
-	case "end":
-		__lt4 = 3
-	default:
-		__lt4 = 0
-	}
-	return __lt4
-}
-
-func JustifyOf(j string) int {
-	var __lt5 int
-	switch j {
-	case "center":
-		__lt5 = 1
-	case "end":
-		__lt5 = 2
-	case "spaceBetween":
-		__lt5 = 3
-	case "spaceAround":
-		__lt5 = 4
-	case "spaceEvenly":
-		__lt5 = 5
-	default:
-		__lt5 = 0
-	}
-	return __lt5
-}
-
-func Paint(c__r0 *snglcolor.Color) snglcolor.Color {
-	var __lt6 snglcolor.Color
-	if c__r0 == nil {
-		__lt6 = snglcolor.Color{}
-	} else {
-		__lt6 = (*(c__r0))
-	}
-	return __lt6
-}
-
-func TextAlignOf(a string) int {
-	var __lt7 int
-	switch a {
-	case "left", "justify":
-		__lt7 = 1
-	case "center":
-		__lt7 = 2
-	case "right":
-		__lt7 = 3
-	default:
-		__lt7 = 0
-	}
-	return __lt7
-}
-
-func WrapOf(w string) int {
-	var __lt8 int
-	switch w {
-	case "pre", "nowrap":
-		__lt8 = 1
-	case "preWrap", "preLine":
-		__lt8 = 2
-	default:
-		__lt8 = 0
-	}
-	return __lt8
-}
-
-func CursorOf(name string) int {
-	var __lt9 int
-	switch name {
-	case "", "auto":
-		__lt9 = 0
-	case "text", "vertical-text":
-		__lt9 = 2
-	case "crosshair", "cell":
-		__lt9 = 3
-	case "pointer":
-		__lt9 = 4
-	case "ew-resize", "col-resize", "e-resize", "w-resize":
-		__lt9 = 5
-	case "ns-resize", "row-resize", "n-resize", "s-resize":
-		__lt9 = 6
-	case "none":
-		__lt9 = 7
-	default:
-		__lt9 = 1
-	}
-	return __lt9
-}
-
-func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	if m.__rendering0 {
-		m.__renderAgain0 = true
-	} else {
-		m.__rendering0 = true
-		m.__renderAgain0 = true
-		func() {
-			defer func() {
-				m.__rendering0 = false
-			}()
-			for m.__renderAgain0 {
-				m.__renderAgain0 = false
-				for _, __entry := range m.__slot0 {
-					fynelayout.Remove(__parent, __entry)
-				}
-				m.__slot0 = nil
-				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-				__inst0_next := []*__child0Instance{}
-				var __inst0_i int = 0
-				for k, t := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
-					var __n2 *__child0Instance
-					if len(m.__inst0_live) > __inst0_i {
-						__n2 = m.__inst0_live[__inst0_i]
-						__n2.Set__on0(func() {
-							m.idx = k
-							for __inst0_live_ui, _ := range m.__inst0_live {
-								m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
-							}
-							for __inst1_live_ui, _ := range m.__inst1_live {
-								m.__inst1_live[__inst1_live_ui].Set__p1(m.idx)
-							}
-							m.changed = k
-						})
-						__n2.Set__p0(t)
-						__n2.Set__p1(k)
-						__n2.Set__p2(m.idx)
-					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
-						}
-						__n2__new := new__child0Instance(m, t, k, m.idx, func() {
-							m.idx = k
-							for __inst0_live_ui, _ := range m.__inst0_live {
-								m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
-							}
-							for __inst1_live_ui, _ := range m.__inst1_live {
-								m.__inst1_live[__inst1_live_ui].Set__p1(m.idx)
-							}
-							m.changed = k
-						})
-						__n2 = __n2__new
-					}
-					__inst0_next = append(__inst0_next, __n2)
-					__inst0_i = (__inst0_i + 1)
-					__n2__el := __n2.Root
-					fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
-					m.__slot0 = append(m.__slot0, __n2__el)
-				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
-					}
-				}
-				m.__inst0_live = __inst0_next
-			}
-		}()
-	}
-}
-
-func (m *Model) __renderSlot1(__parent *fyne.Container) {
-	if m.__rendering1 {
-		m.__renderAgain1 = true
-	} else {
-		m.__rendering1 = true
-		m.__renderAgain1 = true
-		func() {
-			defer func() {
-				m.__rendering1 = false
-			}()
-			for m.__renderAgain1 {
-				m.__renderAgain1 = false
-				for _, __entry := range m.__slot1 {
-					fynelayout.Remove(__parent, __entry)
-				}
-				m.__slot1 = nil
-				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-				__inst1_next := []*__child1Instance{}
-				var __inst1_i int = 0
-				for k, t := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
-					var __n3 *__child1Instance
-					if len(m.__inst1_live) > __inst1_i {
-						__n3 = m.__inst1_live[__inst1_i]
-						__n3.Set__p0(k)
-						__n3.Set__p1(m.idx)
-						__n3.Set__p2(t)
-					} else {
-						if len(m.__inst1_live) > __inst1_i {
-							m.__inst1_live[__inst1_i].Destroy()
-						}
-						__n3__new := new__child1Instance(m, k, m.idx, t)
-						__n3 = __n3__new
-					}
-					__inst1_next = append(__inst1_next, __n3)
-					__inst1_i = (__inst1_i + 1)
-					__n3__el := __n3.Root
-					fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__el)
-					m.__slot1 = append(m.__slot1, __n3__el)
-				}
-				for __inst1_i_d, _ := range m.__inst1_live {
-					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-					if __inst1_i_j >= __inst1_i {
-						m.__inst1_live[__inst1_i_j].Destroy()
-					}
-				}
-				m.__inst1_live = __inst1_next
-			}
-		}()
-	}
-}
-
 func (m *Model) __wrote_idx() {
-	for __inst0_live_ui, _ := range m.__inst0_live {
-		m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
-	}
-	for __inst1_live_ui, _ := range m.__inst1_live {
-		m.__inst1_live[__inst1_live_ui].Set__p1(m.idx)
-	}
-}
-
-func (m *Model) __snglTeardown() {
-	for __inst1_live_di, _ := range m.__inst1_live {
-		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
-		m.__inst1_live[__inst1_live_dj].Destroy()
-	}
-	m.__inst1_live = []*__child1Instance{}
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
-	}
-	m.__inst0_live = []*__child0Instance{}
+	m.__n0.SetSelected(m.idx)
 }
 
 func (m *Model) Idx() int {
@@ -1014,213 +645,39 @@ func (m *Model) SetChanged(v int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n4 = fynelayout.NewVBox()
-	m.__n5 = fynelayout.NewHBox()
-	m.__n5__box = fynelayout.NewBox(m.__n5)
-	m.__n5__box.SetLook(fynelayout.Look{Gap: 4.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
-	m.__renderSlot0(m.__n5)
-	m.__n4.Add(m.__n5__box)
-	m.__renderSlot1(m.__n4)
-	content := fyne.CanvasObject(m.__n4)
-	return content
-}
-
-// __child0Instance is one live instance of the __child0 component.
-type __child0Instance struct {
-	Root         fyne.CanvasObject
-	__model      *Model
-	__prop___p0  Tab__record
-	__prop___p1  int
-	__prop___p2  int
-	__prop___on0 func()
-	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
-	__slot2      []fyne.CanvasObject
-	__slot2_at   fyne.CanvasObject
-	__n0         *widget.Button
-	__n0__box    *fynelayout.Box
-}
-
-func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a___p2 int, __a___on0 func()) *__child0Instance {
-	c := &__child0Instance{}
-	c.__model = __model
-	c.__prop___p0 = __a___p0
-	c.__prop___p1 = __a___p1
-	c.__prop___p2 = __a___p2
-	c.__prop___on0 = __a___on0
-	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	var __lt12 string
-	if c.__prop___p1 == c.__prop___p2 {
-		__lt12 = "bold"
-	} else {
-		__lt12 = "normal"
-	}
-	c.__n0 = widget.NewButton("", nil)
-	c.__n0__box = fynelayout.NewBox(c.__n0)
-	c.__n0.SetText(c.__prop___p0.Label)
-	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt12, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
-	c.__n0.OnTapped = func() {
-		c.__prop___on0()
-	}
-	c.Root = c.__n0__box
-	return c
-}
-
-func (c *__child0Instance) Set__p0(__v Tab__record) {
-	c.__prop___p0 = __v
-	c.__n0.SetText(c.__prop___p0.Label)
-}
-
-func (c *__child0Instance) Set__p1(__v int) {
-	c.__prop___p1 = __v
-	var __lt10 string
-	if c.__prop___p1 == c.__prop___p2 {
-		__lt10 = "bold"
-	} else {
-		__lt10 = "normal"
-	}
-	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt10, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
-}
-
-func (c *__child0Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
-	var __lt11 string
-	if c.__prop___p1 == c.__prop___p2 {
-		__lt11 = "bold"
-	} else {
-		__lt11 = "normal"
-	}
-	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt11, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
-}
-
-func (c *__child0Instance) Set__on0(__v func()) {
-	c.__prop___on0 = __v
-}
-
-func (c *__child0Instance) Destroy() {}
-
-// __child1Instance is one live instance of the __child1 component.
-type __child1Instance struct {
-	Root           fyne.CanvasObject
-	__model        *Model
-	__prop___p0    int
-	__prop___p1    int
-	__prop___p2    Tab__record
-	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__rendering2   bool
-	__renderAgain2 bool
-	__n1           *fyne.Container
-	__n1__box      *fynelayout.Box
-}
-
-func new__child1Instance(__model *Model, __a___p0 int, __a___p1 int, __a___p2 Tab__record) *__child1Instance {
-	c := &__child1Instance{}
-	c.__model = __model
-	c.__prop___p0 = __a___p0
-	c.__prop___p1 = __a___p1
-	c.__prop___p2 = __a___p2
-	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__rendering2 = false
-	c.__renderAgain2 = false
-	var __lt15 string
-	if c.__prop___p0 == c.__prop___p1 {
-		__lt15 = "flex"
-	} else {
-		__lt15 = "none"
-	}
-	c.__n1 = fynelayout.NewVBox()
-	c.__n1__box = fynelayout.NewBox(c.__n1)
-	c.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt15, ListStyleType: "unset"}))
-	c.__renderSlot2(c.__n1)
-	c.Root = c.__n1__box
-	return c
-}
-
-func (c *__child1Instance) Set__p0(__v int) {
-	c.__prop___p0 = __v
-	var __lt13 string
-	if c.__prop___p0 == c.__prop___p1 {
-		__lt13 = "flex"
-	} else {
-		__lt13 = "none"
-	}
-	c.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt13, ListStyleType: "unset"}))
-}
-
-func (c *__child1Instance) Set__p1(__v int) {
-	c.__prop___p1 = __v
-	var __lt14 string
-	if c.__prop___p0 == c.__prop___p1 {
-		__lt14 = "flex"
-	} else {
-		__lt14 = "none"
-	}
-	c.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt14, ListStyleType: "unset"}))
-}
-
-func (c *__child1Instance) Set__p2(__v Tab__record) {
-	c.__prop___p2 = __v
-	c.__renderSlot2(c.__n1)
-}
-
-func (c *__child1Instance) __renderSlot2(__parent *fyne.Container) {
-	if c.__rendering2 {
-		c.__renderAgain2 = true
-	} else {
-		c.__rendering2 = true
-		c.__renderAgain2 = true
-		func() {
-			defer func() {
-				c.__rendering2 = false
-			}()
-			for c.__renderAgain2 {
-				c.__renderAgain2 = false
-				for _, __entry := range c.__slot2 {
-					fynelayout.Remove(__parent, __entry)
-				}
-				c.__slot2 = nil
-				c.__slot2_at = fynelayout.SlotAnchor(__parent, c.__slot2_at)
-				if c.__prop___p2.__id == 0 {
-					__n6 := widget.NewLabel("")
-					__n6.SetText("Overview content")
-					fynelayout.InsertBefore(__parent, c.__slot2_at, __n6)
-					c.__slot2 = append(c.__slot2, __n6)
-				} else {
-					if c.__prop___p2.__id == 1 {
-						__n7 := widget.NewLabel("")
-						__n7.SetText("Detail content")
-						fynelayout.InsertBefore(__parent, c.__slot2_at, __n7)
-						c.__slot2 = append(c.__slot2, __n7)
-					} else {
-						if c.__prop___p2.__id == 2 {
-							__n8 := widget.NewLabel("")
-							__n8.SetText("Settings content")
-							fynelayout.InsertBefore(__parent, c.__slot2_at, __n8)
-							c.__slot2 = append(c.__slot2, __n8)
-						}
-					}
+	m.__n0 = fynelayout.NewTabs()
+	m.__n0.SetSelected(m.idx)
+	for k, t := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+		m.__n1 = fynelayout.NewTabPage()
+		m.__n1.SetTitle(t.Label)
+		m.__n1.SetDisabled(t.Disabled)
+		m.__n1.OnChange = func() {
+			m.idx = k
+			m.__n0.SetSelected(m.idx)
+			m.changed = k
+		}
+		if t.__id == 0 {
+			m.__n2 = widget.NewLabel("")
+			m.__n2.SetText("Overview content")
+			m.__n1.Add(m.__n2)
+		} else {
+			if t.__id == 1 {
+				m.__n3 = widget.NewLabel("")
+				m.__n3.SetText("Detail content")
+				m.__n1.Add(m.__n3)
+			} else {
+				if t.__id == 2 {
+					m.__n4 = widget.NewLabel("")
+					m.__n4.SetText("Settings content")
+					m.__n1.Add(m.__n4)
 				}
 			}
-		}()
+		}
+		m.__n0.Add(m.__n1)
 	}
+	content := fyne.CanvasObject(m.__n0)
+	return content
 }
-
-func (c *__child1Instance) Destroy() {}
 
 func main() {
 	a := app.New()
@@ -1229,7 +686,6 @@ func main() {
 	w.SetContent(m.BuildUI())
 	w.Resize(fyne.NewSize(480, 640))
 	w.ShowAndRun()
-	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/go/fyne/model_test.go --
@@ -1268,31 +724,16 @@ package main
 import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
-	var m *Model
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		m = New()
-		return m.BuildUI(app)
+		return New().BuildUI(app)
 	})
-	if m != nil {
-		m.__snglTeardown()
-	}
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from component_tabs.sngl; DO NOT EDIT.
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-	"duckfam.us/sngl/pkg/go/snglcolor"
-	"fmt"
-)
-
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 type Tab__record struct {
 	Label    string
@@ -1300,77 +741,12 @@ type Tab__record struct {
 	__id     int
 }
 
-type Style struct {
-	Padding        *Measurement
-	PaddingTop     *Measurement
-	PaddingRight   *Measurement
-	PaddingBottom  *Measurement
-	PaddingLeft    *Measurement
-	PaddingX       *Measurement
-	PaddingY       *Measurement
-	Margin         *Measurement
-	MarginTop      *Measurement
-	MarginRight    *Measurement
-	MarginBottom   *Measurement
-	MarginLeft     *Measurement
-	MarginX        *Measurement
-	MarginY        *Measurement
-	Gap            *Measurement
-	Width          *Measurement
-	MinWidth       *Measurement
-	Height         *Measurement
-	MaxWidth       *Measurement
-	MaxHeight      *Measurement
-	Flex           *float64
-	FlexDirection  string
-	AlignItems     string
-	JustifyContent string
-	Position       string
-	Top            *Measurement
-	Bottom         *Measurement
-	Left           *Measurement
-	Right          *Measurement
-	ZIndex         *int
-	Color          *snglcolor.Color
-	FontSize       *Measurement
-	FontFamily     string
-	FontWeight     string
-	FontStyle      string
-	TextAlign      string
-	MaxLines       *int
-	WhiteSpace     string
-	Background     *snglcolor.Color
-	BorderRadius   *Measurement
-	BorderColor    *snglcolor.Color
-	BorderWidth    *Measurement
-	Border         string
-	BorderBottom   string
-	BorderLeft     string
-	BorderCollapse string
-	BorderStyle    string
-	Opacity        *float64
-	Cursor         string
-	Display        string
-	ListStyleType  string
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	idx            int
-	changed        int
-	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
-	__inst0_live   []*__child0Instance
-	__rendering0   bool
-	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__inst1_live   []*__child1Instance
-	__rendering1   bool
-	__renderAgain1 bool
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
+	idx     int
+	changed int
+	__n0    gtk4rt.Handle
+	__root  gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -1379,615 +755,11 @@ func New() *Model {
 	m := &Model{}
 	m.idx = 0
 	m.changed = -1
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__inst0_live = []*__child0Instance{}
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__inst1_live = []*__child1Instance{}
-	m.__rendering1 = false
-	m.__renderAgain1 = false
-	m.__slot2 = nil
-	m.__slot2_at = nil
 	return m
 }
 
-func BoxLookOf(s Style, otherwise int) gtk4rt.Look {
-	look := LookHidden(s, (s.Display == "none"), true, SpacingOf(s, otherwise))
-	return look
-}
-
-func LookOf(s Style) gtk4rt.Look {
-	look := LookHidden(s, (s.Display == "none"), false, 0)
-	return look
-}
-
-func LookHidden(s Style, hidden bool, spaced bool, spacing int) gtk4rt.Look {
-	var __lt0 float64
-	if s.Flex == nil {
-		__lt0 = 0.0
-	} else {
-		__lt0 = (*(s.Flex))
-	}
-	var __lt1 int
-	if s.MaxLines == nil {
-		__lt1 = 0
-	} else {
-		__lt1 = (*(s.MaxLines))
-	}
-	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor, Justify: JustifyOf(s.JustifyContent), Spaced: spaced, Spacing: spacing}
-	return look
-}
-
-func SpacingOf(s Style, otherwise int) int {
-	var __lt2 int
-	if s.Gap == nil {
-		__lt2 = otherwise
-	} else {
-		__lt2 = int(Inset(s.Gap))
-	}
-	return __lt2
-}
-
-func CssOf(s Style) string {
-	var __lt3 string
-	if s.Opacity == nil {
-		__lt3 = ""
-	} else {
-		__lt3 = fmt.Sprint((*(s.Opacity)))
-	}
-	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(s.MinWidth))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Length(s.FontSize))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(s.BorderRadius))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(s.BorderWidth))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt3))
-	return css
-}
-
-func Inset(m__r0 *Measurement) float64 {
-	var __lt4 float64
-	if m__r0 == nil {
-		__lt4 = 0.0
-	} else {
-		__lt4 = max(((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
-	}
-	return __lt4
-}
-
-func CrossOf(a string) int {
-	var __lt5 int
-	switch a {
-	case "start":
-		__lt5 = 1
-	case "center":
-		__lt5 = 2
-	case "end":
-		__lt5 = 3
-	case "baseline":
-		__lt5 = 4
-	default:
-		__lt5 = 0
-	}
-	return __lt5
-}
-
-func TextAlignOf(a string) int {
-	var __lt6 int
-	switch a {
-	case "center":
-		__lt6 = 1
-	case "right":
-		__lt6 = 2
-	case "justify":
-		__lt6 = 3
-	case "left":
-		__lt6 = 4
-	default:
-		__lt6 = 0
-	}
-	return __lt6
-}
-
-func WrapOf(w string) int {
-	var __lt7 int
-	switch w {
-	case "pre", "nowrap":
-		__lt7 = 1
-	case "preWrap", "preLine":
-		__lt7 = 2
-	default:
-		__lt7 = 0
-	}
-	return __lt7
-}
-
-func JustifyOf(j string) int {
-	var __lt8 int
-	switch j {
-	case "center":
-		__lt8 = 1
-	case "end":
-		__lt8 = 2
-	case "spaceBetween":
-		__lt8 = 3
-	case "spaceAround":
-		__lt8 = 4
-	case "spaceEvenly":
-		__lt8 = 5
-	default:
-		__lt8 = 0
-	}
-	return __lt8
-}
-
-func Decl(name string, value string) string {
-	var __lt9 string
-	if value == "" {
-		__lt9 = ""
-	} else {
-		__lt9 = (((name + ": ") + value) + "; ")
-	}
-	return __lt9
-}
-
-func Side(all *Measurement, axis *Measurement, own *Measurement) string {
-	var __lt11 *Measurement
-	if own != nil {
-		__lt11 = own
-	} else {
-		var __lt10 *Measurement
-		if axis != nil {
-			__lt10 = axis
-		} else {
-			__lt10 = all
-		}
-		__lt11 = __lt10
-	}
-	return Length(__lt11)
-}
-
-func Length(m__r1 *Measurement) string {
-	var __lt12 string
-	if m__r1 == nil {
-		__lt12 = ""
-	} else {
-		__lt12 = (fmt.Sprint(Inset(m__r1)) + "px")
-	}
-	return __lt12
-}
-
-func CssColor(c__r0 *snglcolor.Color) string {
-	var __lt13 string
-	if c__r0 == nil {
-		__lt13 = ""
-	} else {
-		__lt13 = (*(c__r0)).Hex()
-	}
-	return __lt13
-}
-
-func WeightOf(w string) string {
-	var __lt14 string
-	switch w {
-	case "normal":
-		__lt14 = "normal"
-	case "bold":
-		__lt14 = "bold"
-	case "bolder":
-		__lt14 = "bolder"
-	case "lighter":
-		__lt14 = "lighter"
-	default:
-		__lt14 = ""
-	}
-	return __lt14
-}
-
-func SlantOf(s string) string {
-	var __lt15 string
-	switch s {
-	case "normal":
-		__lt15 = "normal"
-	case "italic":
-		__lt15 = "italic"
-	case "oblique":
-		__lt15 = "oblique"
-	default:
-		__lt15 = ""
-	}
-	return __lt15
-}
-
-func LineOf(s Style) string {
-	var __lt16 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt16 = "solid"
-	case "dashed":
-		__lt16 = "dashed"
-	case "dotted":
-		__lt16 = "dotted"
-	case "double":
-		__lt16 = "double"
-	case "none":
-		__lt16 = "none"
-	default:
-		var __lt17 string
-		if s.BorderWidth != nil {
-			__lt17 = "solid"
-		} else {
-			__lt17 = ""
-		}
-		__lt16 = __lt17
-	}
-	return __lt16
-}
-
-func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	if m.__rendering0 {
-		m.__renderAgain0 = true
-	} else {
-		m.__rendering0 = true
-		m.__renderAgain0 = true
-		func() {
-			defer func() {
-				m.__rendering0 = false
-			}()
-			for m.__renderAgain0 {
-				m.__renderAgain0 = false
-				for _, __entry := range m.__slot0 {
-					gtk4rt.BoxRemove(parent, __entry)
-				}
-				m.__slot0 = nil
-				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-				__inst0_next := []*__child0Instance{}
-				var __inst0_i int = 0
-				for k, t := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
-					var __n2 *__child0Instance
-					if len(m.__inst0_live) > __inst0_i {
-						__n2 = m.__inst0_live[__inst0_i]
-						__n2.Set__on0(func() {
-							m.idx = k
-							for __inst0_live_ui, _ := range m.__inst0_live {
-								m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
-							}
-							for __inst1_live_ui, _ := range m.__inst1_live {
-								m.__inst1_live[__inst1_live_ui].Set__p1(m.idx)
-							}
-							m.changed = k
-						})
-						__n2.Set__p0(t)
-						__n2.Set__p1(k)
-						__n2.Set__p2(m.idx)
-					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
-						}
-						__n2__new := new__child0Instance(m, t, k, m.idx, func() {
-							m.idx = k
-							for __inst0_live_ui, _ := range m.__inst0_live {
-								m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
-							}
-							for __inst1_live_ui, _ := range m.__inst1_live {
-								m.__inst1_live[__inst1_live_ui].Set__p1(m.idx)
-							}
-							m.changed = k
-						})
-						__n2 = __n2__new
-					}
-					__inst0_next = append(__inst0_next, __n2)
-					__inst0_i = (__inst0_i + 1)
-					__n2__el := __n2.Root
-					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
-					m.__slot0 = append(m.__slot0, __n2__el)
-				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
-					}
-				}
-				m.__inst0_live = __inst0_next
-			}
-		}()
-	}
-}
-
-func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
-	if m.__rendering1 {
-		m.__renderAgain1 = true
-	} else {
-		m.__rendering1 = true
-		m.__renderAgain1 = true
-		func() {
-			defer func() {
-				m.__rendering1 = false
-			}()
-			for m.__renderAgain1 {
-				m.__renderAgain1 = false
-				for _, __entry := range m.__slot1 {
-					gtk4rt.BoxRemove(parent, __entry)
-				}
-				m.__slot1 = nil
-				m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-				__inst1_next := []*__child1Instance{}
-				var __inst1_i int = 0
-				for k, t := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
-					var __n3 *__child1Instance
-					if len(m.__inst1_live) > __inst1_i {
-						__n3 = m.__inst1_live[__inst1_i]
-						__n3.Set__p0(k)
-						__n3.Set__p1(m.idx)
-						__n3.Set__p2(t)
-					} else {
-						if len(m.__inst1_live) > __inst1_i {
-							m.__inst1_live[__inst1_i].Destroy()
-						}
-						__n3__new := new__child1Instance(m, k, m.idx, t)
-						__n3 = __n3__new
-					}
-					__inst1_next = append(__inst1_next, __n3)
-					__inst1_i = (__inst1_i + 1)
-					__n3__el := __n3.Root
-					gtk4rt.InsertBefore(parent, m.__slot1_at, __n3__el)
-					m.__slot1 = append(m.__slot1, __n3__el)
-				}
-				for __inst1_i_d, _ := range m.__inst1_live {
-					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-					if __inst1_i_j >= __inst1_i {
-						m.__inst1_live[__inst1_i_j].Destroy()
-					}
-				}
-				m.__inst1_live = __inst1_next
-			}
-		}()
-	}
-}
-
 func (m *Model) __wrote_idx() {
-	for __inst0_live_ui, _ := range m.__inst0_live {
-		m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
-	}
-	for __inst1_live_ui, _ := range m.__inst1_live {
-		m.__inst1_live[__inst1_live_ui].Set__p1(m.idx)
-	}
-}
-
-func (m *Model) __snglTeardown() {
-	for __inst1_live_di, _ := range m.__inst1_live {
-		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
-		m.__inst1_live[__inst1_live_dj].Destroy()
-	}
-	m.__inst1_live = []*__child1Instance{}
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
-	}
-	m.__inst0_live = []*__child0Instance{}
-}
-
-// __child0Instance is one live instance of the __child0 component.
-type __child0Instance struct {
-	Root         gtk4rt.Handle
-	__model      *Model
-	__prop___p0  Tab__record
-	__prop___p1  int
-	__prop___p2  int
-	__prop___on0 func()
-	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
-	__slot2      []gtk4rt.Handle
-	__slot2_at   gtk4rt.Handle
-	__n0         gtk4rt.Handle
-}
-
-func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a___p2 int, __a___on0 func()) *__child0Instance {
-	c := &__child0Instance{}
-	c.__model = __model
-	c.__prop___p0 = __a___p0
-	c.__prop___p1 = __a___p1
-	c.__prop___p2 = __a___p2
-	c.__prop___on0 = __a___on0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	var __lt20 string
-	if c.__prop___p1 == c.__prop___p2 {
-		__lt20 = "bold"
-	} else {
-		__lt20 = "normal"
-	}
-	c.__n0 = gtk4rt.New("GtkButton")
-	gtk4rt.ButtonSetLabel(c.__n0, c.__prop___p0.Label)
-	gtk4rt.SetLook(c.__n0, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt20, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
-	gtk4rt.Connect(c.__n0, "clicked", func() {
-		c.__prop___on0()
-	})
-	c.Root = c.__n0
-	gtk4rt.Retain(c.Root)
-	return c
-}
-
-func (c *__child0Instance) Set__p0(__v Tab__record) {
-	c.__prop___p0 = __v
-	gtk4rt.ButtonSetLabel(c.__n0, c.__prop___p0.Label)
-}
-
-func (c *__child0Instance) Set__p1(__v int) {
-	c.__prop___p1 = __v
-	var __lt18 string
-	if c.__prop___p1 == c.__prop___p2 {
-		__lt18 = "bold"
-	} else {
-		__lt18 = "normal"
-	}
-	gtk4rt.SetLook(c.__n0, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt18, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
-}
-
-func (c *__child0Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
-	var __lt19 string
-	if c.__prop___p1 == c.__prop___p2 {
-		__lt19 = "bold"
-	} else {
-		__lt19 = "normal"
-	}
-	gtk4rt.SetLook(c.__n0, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt19, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
-}
-
-func (c *__child0Instance) Set__on0(__v func()) {
-	c.__prop___on0 = __v
-}
-
-func (c *__child0Instance) Destroy() {
-	if c.Root != nil {
-		gtk4rt.Release(c.Root)
-		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-}
-
-// __child1Instance is one live instance of the __child1 component.
-type __child1Instance struct {
-	Root           gtk4rt.Handle
-	__model        *Model
-	__prop___p0    int
-	__prop___p1    int
-	__prop___p2    Tab__record
-	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__rendering2   bool
-	__renderAgain2 bool
-	__n1           gtk4rt.Handle
-}
-
-func new__child1Instance(__model *Model, __a___p0 int, __a___p1 int, __a___p2 Tab__record) *__child1Instance {
-	c := &__child1Instance{}
-	c.__model = __model
-	c.__prop___p0 = __a___p0
-	c.__prop___p1 = __a___p1
-	c.__prop___p2 = __a___p2
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__rendering2 = false
-	c.__renderAgain2 = false
-	var __lt23 string
-	if c.__prop___p0 == c.__prop___p1 {
-		__lt23 = "flex"
-	} else {
-		__lt23 = "none"
-	}
-	c.__n1 = gtk4rt.New("GtkBox")
-	gtk4rt.OrientableSetOrientation(c.__n1, 1)
-	gtk4rt.SetLook(c.__n1, BoxLookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt23, ListStyleType: "unset"}, 6))
-	c.__renderSlot2(c.__n1)
-	c.Root = c.__n1
-	gtk4rt.Retain(c.Root)
-	return c
-}
-
-func (c *__child1Instance) Set__p0(__v int) {
-	c.__prop___p0 = __v
-	var __lt21 string
-	if c.__prop___p0 == c.__prop___p1 {
-		__lt21 = "flex"
-	} else {
-		__lt21 = "none"
-	}
-	gtk4rt.SetLook(c.__n1, BoxLookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt21, ListStyleType: "unset"}, 6))
-}
-
-func (c *__child1Instance) Set__p1(__v int) {
-	c.__prop___p1 = __v
-	var __lt22 string
-	if c.__prop___p0 == c.__prop___p1 {
-		__lt22 = "flex"
-	} else {
-		__lt22 = "none"
-	}
-	gtk4rt.SetLook(c.__n1, BoxLookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt22, ListStyleType: "unset"}, 6))
-}
-
-func (c *__child1Instance) Set__p2(__v Tab__record) {
-	c.__prop___p2 = __v
-	c.__renderSlot2(c.__n1)
-}
-
-func (c *__child1Instance) __renderSlot2(parent gtk4rt.Handle) {
-	if c.__rendering2 {
-		c.__renderAgain2 = true
-	} else {
-		c.__rendering2 = true
-		c.__renderAgain2 = true
-		func() {
-			defer func() {
-				c.__rendering2 = false
-			}()
-			for c.__renderAgain2 {
-				c.__renderAgain2 = false
-				for _, __entry := range c.__slot2 {
-					gtk4rt.BoxRemove(parent, __entry)
-				}
-				c.__slot2 = nil
-				c.__slot2_at = gtk4rt.SlotAnchor(parent, c.__slot2_at)
-				if c.__prop___p2.__id == 0 {
-					__n6 := gtk4rt.New("GtkLabel")
-					gtk4rt.LabelSetLabel(__n6, "Overview content")
-					gtk4rt.LabelSetXAlign(__n6, 0.0)
-					gtk4rt.InsertBefore(parent, c.__slot2_at, __n6)
-					c.__slot2 = append(c.__slot2, __n6)
-				} else {
-					if c.__prop___p2.__id == 1 {
-						__n7 := gtk4rt.New("GtkLabel")
-						gtk4rt.LabelSetLabel(__n7, "Detail content")
-						gtk4rt.LabelSetXAlign(__n7, 0.0)
-						gtk4rt.InsertBefore(parent, c.__slot2_at, __n7)
-						c.__slot2 = append(c.__slot2, __n7)
-					} else {
-						if c.__prop___p2.__id == 2 {
-							__n8 := gtk4rt.New("GtkLabel")
-							gtk4rt.LabelSetLabel(__n8, "Settings content")
-							gtk4rt.LabelSetXAlign(__n8, 0.0)
-							gtk4rt.InsertBefore(parent, c.__slot2_at, __n8)
-							c.__slot2 = append(c.__slot2, __n8)
-						}
-					}
-				}
-			}
-		}()
-	}
-}
-
-func (c *__child1Instance) Destroy() {
-	if c.Root != nil {
-		gtk4rt.Release(c.Root)
-		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
+	gtk4rt.TabsSetSelected(m.__n0, m.idx)
 }
 
 func (m *Model) Idx() int {
@@ -2011,16 +783,40 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n4 := gtk4rt.New("GtkBox")
-	gtk4rt.OrientableSetOrientation(__n4, 1)
-	gtk4rt.SetLook(__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
-	__n5 := gtk4rt.New("GtkBox")
-	gtk4rt.OrientableSetOrientation(__n5, 0)
-	gtk4rt.SetLook(__n5, gtk4rt.Look{Spaced: true, Spacing: 4})
-	m.__renderSlot0(__n5)
-	gtk4rt.BoxAppend(__n4, __n5)
-	m.__renderSlot1(__n4)
-	gtk4rt.BoxAppend(m.__root, __n4)
+	m.__n0 = gtk4rt.TabsNew()
+	gtk4rt.TabsSetSelected(m.__n0, m.idx)
+	for k, t := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+		__n1 := gtk4rt.TabPageNew()
+		gtk4rt.TabPageSetTitle(__n1, t.Label)
+		gtk4rt.TabPageSetDisabled(__n1, t.Disabled)
+		gtk4rt.TabPageOnShown(__n1, func() {
+			m.idx = k
+			gtk4rt.TabsSetSelected(m.__n0, m.idx)
+			m.changed = k
+		})
+		if t.__id == 0 {
+			__n2 := gtk4rt.New("GtkLabel")
+			gtk4rt.LabelSetLabel(__n2, "Overview content")
+			gtk4rt.LabelSetXAlign(__n2, 0.0)
+			gtk4rt.BoxAppend(__n1, __n2)
+		} else {
+			if t.__id == 1 {
+				__n3 := gtk4rt.New("GtkLabel")
+				gtk4rt.LabelSetLabel(__n3, "Detail content")
+				gtk4rt.LabelSetXAlign(__n3, 0.0)
+				gtk4rt.BoxAppend(__n1, __n3)
+			} else {
+				if t.__id == 2 {
+					__n4 := gtk4rt.New("GtkLabel")
+					gtk4rt.LabelSetLabel(__n4, "Settings content")
+					gtk4rt.LabelSetXAlign(__n4, 0.0)
+					gtk4rt.BoxAppend(__n1, __n4)
+				}
+			}
+		}
+		gtk4rt.BoxAppend(m.__n0, __n1)
+	}
+	gtk4rt.BoxAppend(m.__root, m.__n0)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -2935,11 +1731,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ab3695d57ea93f56c027778a02eabb96
+pass sha256:00aec65b232fbefba40229e3c66fb756
 -- run/go/fyne --
-pass sha256:ab7e6e6f250d658a9209afe93f322dbd
+pass sha256:5c30b8ad07227dfc898a06bbe9a983b7
 -- run/go/gtk4 --
-pass sha256:b3e654534a9a41fd833db0d9030e10b4
+pass sha256:1052783f934d745bfbc0a569baae8515
 -- run/kotlin/android --
 pass sha256:7a1aa3caac605826be29aa74f3cba75c
 -- run/none/html --

@@ -217,7 +217,7 @@ sha256:1ad72a3e57171a6c986d3a7c8d9fe116
   ]
 }
 -- testrun/bubbletea/go/app.sngl/panels/1 --
-sha256:5493c5344a19f92ece3026b84c5fff9e
+sha256:f99c7eb41dff45511053864f7351294c
 {
   "results": [
     {
@@ -235,7 +235,7 @@ sha256:5493c5344a19f92ece3026b84c5fff9e
   ]
 }
 -- testrun/bubbletea/go/shown.sngl/shown/1 --
-sha256:c45d618c70aad2fcbd3422a57d9f238d
+sha256:7b27e5c9706e2dd1f3aeb1d6afb9ffbf
 {
   "results": [
     {
@@ -244,11 +244,11 @@ sha256:c45d618c70aad2fcbd3422a57d9f238d
     }
   ],
   "snapshots": {
-    "second.ansi": "PiBPbmUgG1sxbSAgVHdvG1ttIApzZWNvbmQgcGFuZWw="
+    "second.ansi": "4pWt4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pWu4pWt4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pWuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAK4pSCID4gT25lIOKUguKUgiAgIFR3byDilIIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIArilJzilIDilIDilIDilIDilIDilIDilIDilLTilJggICAgICAg4pSU4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pWuCuKUgnNlY29uZCBwYW5lbCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIOKUggrilbDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDila8="
   }
 }
 -- testrun/fyne/go/app.sngl/panels/1 --
-sha256:2b552a17e708d6efb6ba434777e913e6
+sha256:a276c300734fb8e9b8c98f50c817e276
 {
   "results": [
     {
@@ -266,7 +266,7 @@ sha256:2b552a17e708d6efb6ba434777e913e6
   ]
 }
 -- testrun/gtk4/go/app.sngl/panels/1 --
-sha256:1792c3713f119a177d50694137313c46
+sha256:1be07e2220d2df93e4eaf0217089b800
 {
   "results": [
     {
