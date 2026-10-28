@@ -365,7 +365,7 @@ fun MainScreen() {
                 Text(text = ((a.x.toString() + " ") + t.size.toString()), modifier = Modifier_2, style = LocalTextStyle.current.merge(TextStyle_2.Default))
                 for (l in listOf("a", "b")) {
                     Dialog(__ctx_flexShare = { w: Float -> Modifier_2.weight(w).fillMaxWidth() }, content = {
-                        Modifier(label = l, __ctx_flexShare = { w: Float -> Modifier_2.weight(w).fillMaxWidth() })
+                        Modifier(label = l, __ctx_flexShare = { w: Float -> Modifier_2.fillMaxSize() })
                     })
                 }
                 if (shown) {
@@ -521,4 +521,4 @@ fun SnglScroll(
     Column(modifier.verticalScroll(state).onSizeChanged { height = it.height }, content = content)
 }
 -- run/kotlin/android --
-pass sha256:2be762c0a4162654b746cab0e4ffd887
+pass sha256:95d083d68f188052e1d88735f580bb46

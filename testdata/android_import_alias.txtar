@@ -59,8 +59,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
-import androidx.compose.material3.Text as Text_2
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.Text as Text_2
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
@@ -89,7 +90,7 @@ fun MainScreen() {
         }
         for (l in listOf("a", "b")) {
             Card(__ctx_flexShare = snglFlexShare, content = {
-                Text(label = l, __ctx_flexShare = snglFlexShare)
+                Text(label = l, __ctx_flexShare = { w: Float -> Modifier.fillMaxSize() })
                 Text_2(text = "Material's", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             })
         }
@@ -142,4 +143,4 @@ val snglFlexShare: (Float) -> Modifier = { w ->
     Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
 }
 -- run/kotlin/android --
-pass sha256:4194854967b4e84ec3935ea215deca27
+pass sha256:dbbbf18a0ce1a03418123f72d584897c

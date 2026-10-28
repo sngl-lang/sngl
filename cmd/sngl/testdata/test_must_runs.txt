@@ -1,23 +1,40 @@
-# t.must is an assert that stops the test where it fails.
+# t.must is an assert that stops the test where it fails; t.assert records
+# the failure and goes on.
 #
 # The Go lowering answered only t.assert and wrote a comment for t.must, so a
 # local read only by a must was declared and not used and the test program
-# failed to build, and a must that held nothing passed.
+# failed to build, and a must that held nothing passed. Kotlin's wrote the
+# same comment, so android ran on past a failed must. html stopped there only
+# because its agent's assertTrue, which a must was routed through, is fatal;
+# a must is its fatal now. Each runs verbose, which writes every failure the
+# test logged.
 
 ! sngl test --platform=none app.sngl
-stdout 'not ok +2 tests, 1 failures'
-! sngl test --platform=bubbletea --language=go app.sngl
-stdout 'not ok +2 tests, 1 failures'
+stdout 'not ok +3 tests, 2 failures'
+stdout 'wanted 5, got 1'
+! stdout 'wanted 3, got 1'
+! sngl test -v --platform=bubbletea --language=go app.sngl
+stdout 'not ok +3 tests, 2 failures'
 stdout 'must failed: \(s.N == 2\)'
-! stdout 'assert failed'
-! sngl test --platform=fyne --language=go app.sngl
-stdout 'not ok +2 tests, 1 failures'
+stdout 'assert failed: \(s.N == 5\)'
+! stdout 'assert failed: \(s.N == 3\)'
+! sngl test -v --platform=fyne --language=go app.sngl
+stdout 'not ok +3 tests, 2 failures'
 stdout 'must failed: \(s.N == 2\)'
-! stdout 'assert failed'
-! sngl test --platform=gtk4 --language=go app.sngl
-stdout 'not ok +2 tests, 1 failures'
+stdout 'assert failed: \(s.N == 5\)'
+! stdout 'assert failed: \(s.N == 3\)'
+! sngl test -v --platform=gtk4 --language=go app.sngl
+stdout 'not ok +3 tests, 2 failures'
 stdout 'must failed: \(s.N == 2\)'
-! stdout 'assert failed'
+stdout 'assert failed: \(s.N == 5\)'
+! stdout 'assert failed: \(s.N == 3\)'
+! sngl test -v --platform=html app.sngl
+stdout 'not ok +3 tests, 2 failures'
+! stdout '\(s.n === 3\)'
+! sngl test -v --platform=android --language=kotlin app.sngl
+stdout 'not ok +3 tests, 2 failures'
+stdout '\(s.n == 5\)'
+! stdout '\(s.n == 3\)'
 
 -- app.sngl --
 import test "sngl:test"
@@ -38,13 +55,73 @@ func testMustStops(t test.Test) {
     t.assert(s.n == 3)
 }
 
+func testAssertGoesOn(t test.Test) {
+    var s = S{n=1}
+    t.assert(s.n == 4)
+    t.assert(s.n == 5)
+}
+
 ui.window {
     ui.text(value="x")
 }
--- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:864e97325371decfd92de9f65d285a82
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:a55b6682f30d010fbb495ac6cdf22bc0
 {
   "results": [
+    {
+      "Desc": "AssertGoesOn",
+      "Error": "(s.n == 4)",
+      "Failures": [
+        {
+          "Message": "(s.n == 4)"
+        },
+        {
+          "Message": "(s.n == 5)"
+        }
+      ],
+      "Log": [
+        "(s.n == 4)",
+        "(s.n == 5)"
+      ]
+    },
+    {
+      "Desc": "MustHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "MustStops",
+      "Error": "(s.n == 2)",
+      "Failures": [
+        {
+          "Message": "(s.n == 2)"
+        }
+      ],
+      "Log": [
+        "(s.n == 2)"
+      ]
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:358d9414b081a0bee4ea347c1af823cc
+{
+  "results": [
+    {
+      "Desc": "AssertGoesOn",
+      "Error": "assert failed: (s.N == 4)",
+      "Failures": [
+        {
+          "Message": "assert failed: (s.N == 4)"
+        },
+        {
+          "Message": "assert failed: (s.N == 5)"
+        }
+      ],
+      "Log": [
+        "assert failed: (s.N == 4)",
+        "assert failed: (s.N == 5)"
+      ]
+    },
     {
       "Desc": "MustHolds",
       "Passed": true
@@ -64,9 +141,25 @@ sha256:864e97325371decfd92de9f65d285a82
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:a2a640b54000f1065ae0687b18b561bd
+sha256:c8601615e8e105489be5a7bc6b84035a
 {
   "results": [
+    {
+      "Desc": "AssertGoesOn",
+      "Error": "assert failed: (s.N == 4)",
+      "Failures": [
+        {
+          "Message": "assert failed: (s.N == 4)"
+        },
+        {
+          "Message": "assert failed: (s.N == 5)"
+        }
+      ],
+      "Log": [
+        "assert failed: (s.N == 4)",
+        "assert failed: (s.N == 5)"
+      ]
+    },
     {
       "Desc": "MustHolds",
       "Passed": true
@@ -86,9 +179,25 @@ sha256:a2a640b54000f1065ae0687b18b561bd
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:57fb77b08c3969a581bf26f00740bfd1
+sha256:29f3f95c30860e2b32c5347b999690e4
 {
   "results": [
+    {
+      "Desc": "AssertGoesOn",
+      "Error": "assert failed: (s.N == 4)",
+      "Failures": [
+        {
+          "Message": "assert failed: (s.N == 4)"
+        },
+        {
+          "Message": "assert failed: (s.N == 5)"
+        }
+      ],
+      "Log": [
+        "assert failed: (s.N == 4)",
+        "assert failed: (s.N == 5)"
+      ]
+    },
     {
       "Desc": "MustHolds",
       "Passed": true
@@ -103,6 +212,40 @@ sha256:57fb77b08c3969a581bf26f00740bfd1
       ],
       "Log": [
         "must failed: (s.N == 2)"
+      ]
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:1a2f40cfd239c4ae436604e2cfa935ff
+{
+  "results": [
+    {
+      "Desc": "AssertGoesOn",
+      "Error": "(s.n === 4)",
+      "Failures": [
+        {
+          "Message": "(s.n === 4)"
+        }
+      ],
+      "Log": [
+        "(s.n === 4)"
+      ]
+    },
+    {
+      "Desc": "MustHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "MustStops",
+      "Error": "(s.n === 2)",
+      "Failures": [
+        {
+          "Message": "(s.n === 2)"
+        }
+      ],
+      "Log": [
+        "(s.n === 2)"
       ]
     }
   ]

@@ -44,11 +44,12 @@ func init() {
 	// A test body is lowered by testlower.go, which answers these first. A
 	// test function emitted into a page as an ordinary function calls the
 	// method on the harness's t object instead.
-	// The agent's T fails a test through assertTrue, which a helper taking a
-	// `Test` reaches here.
-	for _, id := range []string{ir.TestAssertID, ir.TestMustID} {
-		reg(id, func(a []string) string { return a[0] + ".assertTrue(" + a[1] + ", " + strconv.Quote(a[1]) + ")" })
-	}
+	// The agent's T fails a test through assertTrue and stops it through
+	// fatal, which a helper taking a `Test` reaches here.
+	reg(ir.TestAssertID, func(a []string) string { return a[0] + ".assertTrue(" + a[1] + ", " + strconv.Quote(a[1]) + ")" })
+	// Led by `!`, which continues no line before it as `(` would where the
+	// emitter writes no semicolon.
+	reg(ir.TestMustID, func(a []string) string { return "!(" + a[1] + ") && " + a[0] + ".fatal(" + strconv.Quote(a[1]) + ")" })
 	// A test body awaits t.wait where it stands (testlower.go); anywhere else
 	// the call is in a function that cannot await, so the test fails saying so
 	// rather than running on without waiting.
