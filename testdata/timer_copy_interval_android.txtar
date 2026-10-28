@@ -93,7 +93,7 @@ fun MainScreen() {
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
             TabRow(selectedTabIndex = idx__inst0) {
-                for ((k, t) in listOf(Tab__record(label = "One", disabled = false, __id = 0)).withIndex()) {
+                for ((k, t) in listOf(Tab__record(label = "One")).withIndex()) {
                     Tab(modifier = Modifier, selected = (k == idx__inst0), enabled = !t.disabled, onClick = {
                         idx__inst0 = k
                     }, text = {
@@ -101,7 +101,7 @@ fun MainScreen() {
                     })
                 }
             }
-            for ((k, t) in listOf(Tab__record(label = "One", disabled = false, __id = 0)).withIndex()) {
+            for ((k, t) in listOf(Tab__record(label = "One")).withIndex()) {
                 if ((k == idx__inst0)) {
                     if ((t.__id == 0)) {
                         for ((i, n) in ticks__inst0.withIndex()) {
@@ -130,4 +130,4 @@ fun __timer_state1(interval: Long, enabled: Boolean, onTick: (() -> Unit)? = nul
     }
 }
 -- run/kotlin/android --
-pass sha256:3aa02892e619e954e3cf41c8e3946fb4
+pass sha256:b487d254920d3bfbad05bbe09039c429

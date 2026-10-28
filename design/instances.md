@@ -569,7 +569,11 @@ write-back, `@input` and `@change` there with the loop's variables bound; the
 focus sync focuses that copy and blurs the rest. It used to be one model field
 for every copy: each row showed and edited one text, the write-back wrote
 whichever var the first handler assigned, and a handler reading the loop
-variable did not compile (`bubbletea/loop_widget_run_test.go`).
+variable did not compile (`bubbletea/loop_widget_run_test.go`). Only a model
+whose value bubbletea sets is set from its cell (`copyTakesValue`): a table's
+`selected` cell, which passImplicitState gives it, is no value a `tui.Table`
+takes, and handing it to the accessor anyway did not compile
+(`cmd/sngl/testdata/table_under_for_runs.txt`).
 
 **A loop's focus stops are the focusable nodes it renders**, not its
 iterations. bubbletea's `passFocusOrder` makes the outermost `for` holding one
@@ -590,7 +594,27 @@ marked together and Enter runs the handler as written. That handler runs where
 no slot argument is bound, so a focusable node there whose handler, or a
 branch around it, reads one is refused (`refuseFocusReadingSlotArgs`,
 `bubbletea/focus_recursion_run_test.go`,
-`cmd/sngl/testdata/bubbletea_focus_reads_slot_argument.txt`). A canvas under a loop is the same shape: its
+`cmd/sngl/testdata/bubbletea_focus_reads_slot_argument.txt`). **A stop
+that draws nothing is passed over.** passFocusOrder asks of each stop what
+says it is drawn -- the branches around it and its `Focus` record's `enabled`
+(`style.display != none` in every bubbletea override), and of a loop slot
+that its loop renders a stop -- and where any stop may not be, builds
+`__focusShown`: Tab steps again while the stop reached is not shown, at most
+once per other stop, and New and every Update end by settling focus off a stop
+that stopped being shown, telling the widgets only when it moved, since a
+textinput's Focus restarts its blink. A stop under a branch not taken was a
+stop with nothing drawn, and Enter there ran a hidden button's handler. The
+pass runs before NoTernary, so a condition is still an expression over state
+rather than a temp the view declared; one naming a loop's variable or a local
+is left out (`bubbletea/focus_run_test.go`'s
+`TestFocusPassesOverStopsNotDrawn`). A box displayed none is a branch around
+what it holds, its `fit` record's `hidden` read as the condition (`fitHidden`,
+through the `fitOf` call the optimizer leaves standing where an argument is a
+ternary), and a stop a loop renders is one only while its own record is
+enabled and no box between it and the loop hides it: passFocusOrder puts that
+condition on the node (`__focusCounted`), and the loop's count, the view's
+ordinal and Update's walk each number the stop only while it holds. Before,
+both were stops with nothing drawn (`TestFocusPassesOverHiddenStopsInLoopsAndBoxes`). A canvas under a loop is the same shape: its
 drawing reads the iteration's variables, so it is written inline as the
 rasterizer View hands tui rather than as a `_canvasDrawN` method, with a
 surface and a kitty image ID per copy, and the transmit reaches each copy
@@ -632,14 +656,31 @@ is written through a context requiring its imports of the file
 `cmd/sngl/testdata/i18n_test_state_class_runs.txt`). A composable built on
 its own that reads the page's state reads the class the test made, which the
 file holds (`lateinit var state`) and each new one replaces
-(`cmd/sngl/testdata/instance_reads_page_state_runs.txt`). What is still
-missing on the three mutation targets is the other direction: a write to page
-state updates the nodes of the scope that wrote it and of the page, and not
-those of *other* live instances reading it, so their views go stale until they
-are rebuilt. A write in a component's body is given no update of another
-component's nodes at all (`reachable` in passReactivity): it named them, and
-the other's panel instances, through its own record, and fyne and gtk4 did not
-build (`cmd/sngl/testdata/page_state_other_instance_runs.txt`).
+(`cmd/sngl/testdata/instance_reads_page_state_runs.txt`). The other direction, a write to page state reaching
+every live instance reading it, goes through what holds each one too
+(`internal/lower/page_refresh.go`). A write's own updates name only the
+nodes of the scope that wrote it and of the page (`reachable` in
+passReactivity): a component's nodes and panel instances are fields of its
+record, which a write elsewhere named through its own record or the Model,
+and fyne and gtk4 did not build
+(`cmd/sngl/testdata/page_state_other_instance_runs.txt`,
+`testdata/page_write_kept_instance.txtar`). So each component built at run
+time that reads a page var `v`, in its own body or through an instance it
+holds, carries a refresh for it, `__set___page_<v>`: a setter with no prop
+behind it, reached through UpdateComponent as a prop's is, which runs the
+updates a write of `v` in its own body would and hands the call on to every
+instance it holds that has one -- those its slots' registries keep, and one
+at a position of its own, a recursion's, by its handle. The page's
+`__refreshPage_<v>` starts it from the page's own, the root component's in a
+build rooted at one, and every write of `v` calls it after its own updates.
+The instance reads `v` where it stands, so a handler of its own sees what was
+written, and what a registry holds is what is reached: an instance destroyed
+has left it. A row's own state survives, being patched rather than rebuilt
+(`cmd/sngl/testdata/page_write_reaches_instance_runs.txt`). A writer that is
+itself such an instance runs none of its own updates beside the refresh,
+which reaches it as it reaches every other reader (`pageRefresh.reaches`):
+it updated each of its readers twice, once by its write's own updates and
+once through the page (`testdata/page_write_by_reader_once.txtar`).
 
 **An html instance is a closure, and its body is laid out the way the page's
 markup is.** Its component's own `func`s are closures beside its vars, called

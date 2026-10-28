@@ -136,11 +136,7 @@ func (st *reactivityState) closeSlotPlacement(sp *slotPlacement) []ir.Stmt {
 				Left:  callListIndexOf(varRef(sp.slot), eRef()),
 				Right: intLiteralLit(0),
 			},
-			Body: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-				Type: ir.TypVoid,
-				Func: st.intrinsics[ir.NodeOpRemoveChild],
-				Args: []ir.CallArg{{Value: sp.parent}, {Value: eRef()}},
-			}}},
+			Body: []ir.Stmt{st.childOp(ir.ProtocolRemove, sp.parent, eRef())},
 		}},
 	}}
 }

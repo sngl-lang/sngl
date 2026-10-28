@@ -58,7 +58,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<canvas id="$0" style="height:100px;width:100px" height="100" width="100">
+<canvas id="$0" height="100" width="100">
 </canvas>
 <span>r is 5</span>
 
@@ -73,7 +73,7 @@ body { font-family: system-ui, sans-serif; }
   }
   function _canvasDraw0(ctx) {
     ctx.save();
-    paintStyle(ctx, { fill: { a: 0, r: 0, g: 0, b: 0 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 0, g: 0, b: 0, a: 0 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(10, 10, 5, 0, 6.283185307179586);
     ctx.restore();
@@ -125,4 +125,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:747cde81b61a9dad062741fbc739a1e9
+pass sha256:20a7babe5430fe5b0af203e4dbaccc18

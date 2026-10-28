@@ -63,6 +63,13 @@ import (
 	"strings"
 )
 
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -96,54 +103,54 @@ type Style__draw struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	Overflow       string
@@ -185,22 +192,20 @@ var _canvasSurface0 snglcanvas.Surface
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, Style__draw{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
-	var __lt10 []_step__record
+	ApplyStyle(ctx, Style__draw{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	var __lt14 []_step__record
 	if m.closed__inst0 {
-		__lt10 = []_step__record{_step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}
+		__lt14 = []_step__record{_step__record{Op: "close"}}
 	} else {
-		__lt10 = []_step__record{}
+		__lt14 = []_step__record{}
 	}
-	for _, c := range slices.Concat([]_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}, func() []_step__record {
+	for _, c := range slices.Concat([]_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0}}, func() []_step__record {
 		__out := make([]_step__record, len(m.corners__inst0))
 		for __i, __item := range m.corners__inst0 {
-			__out[__i] = func(c Point) _step__record {
-				return _step__record{Op: "lineTo", X: c.X, Y: c.Y, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}
-			}(__item)
+			__out[__i] = func(c Point) _step__record { return _step__record{Op: "lineTo", X: c.X, Y: c.Y} }(__item)
 		}
 		return __out
-	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}}, __lt10) {
+	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, R: 4.0}}, __lt14) {
 		if c.Op == "moveTo" {
 			ctx.MoveTo(c.X, c.Y)
 		}
@@ -243,20 +248,22 @@ func ApplyStyle(ctx *snglcanvas.Context, style Style__draw) {
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
-	if (s == Style{}) {
+	if func(_a1, _b2 Style) bool {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
-	if words && (s.Color != snglcolor.Color{}) {
-		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	if words && (s.Color != nil) {
+		l = l.Foreground(lipgloss.Color((*(s.Color)).Hex()))
 	}
-	if (s.Background != snglcolor.Color{}) {
-		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	if s.Background != nil {
+		l = l.Background(lipgloss.Color((*(s.Background)).Hex()))
 	}
 	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
 		l = l.Bold(true)
 	}
-	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != nil) && ((*(s.Opacity)) < 1.0)) {
 		l = l.Faint(true)
 	}
 	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
@@ -265,10 +272,16 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt1 bool
+	if s.BorderWidth != nil {
+		__lt1 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt1 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt1 {
 		l = l.Border(BorderOf(s))
-		if (s.BorderColor != snglcolor.Color{}) {
-			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		if s.BorderColor != nil {
+			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
 	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
@@ -279,111 +292,121 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
 	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
 	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
-	if (s.Width != Measurement{Px: 0}) {
+	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
-	if (s.Height != Measurement{Px: 0}) {
+	if s.Height != nil {
 		l = l.Height(RowsOf(s.Height))
 	}
-	if (s.MaxWidth != Measurement{Px: 0}) {
+	if s.MaxWidth != nil {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
-	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt0 int
-		if s.MaxLines == 0 {
-			__lt0 = 0
+	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
+		var __lt2 int
+		if s.MaxLines == nil {
+			__lt2 = 0
 		} else {
-			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt2 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCapFunc(RowsOf(s.MaxHeight), __lt0))
+		l = l.MaxHeight(LineCapFunc(RowsOf(s.MaxHeight), __lt2))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt1 lipgloss.Position
+	var __lt4 lipgloss.Position
 	switch a {
 	case "center":
-		__lt1 = lipgloss.Center
+		__lt4 = lipgloss.Center
 	case "right":
-		__lt1 = lipgloss.Right
+		__lt4 = lipgloss.Right
 	default:
-		__lt1 = lipgloss.Left
+		__lt4 = lipgloss.Left
 	}
-	return __lt1
+	return __lt4
+}
+
+func PxOf(m__r0 *Measurement) float64 {
+	var __lt5 float64
+	if m__r0 == nil {
+		__lt5 = 0.0
+	} else {
+		__lt5 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
+	}
+	return __lt5
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt2 lipgloss.Border
+	var __lt6 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt2 = lipgloss.DoubleBorder()
+		__lt6 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt2 = tui.DashedBorder()
+		__lt6 = tui.DashedBorder()
 	default:
-		var __lt3 lipgloss.Border
-		if (s.BorderRadius != Measurement{Px: 0}) {
-			__lt3 = lipgloss.RoundedBorder()
+		var __lt7 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt7 = lipgloss.RoundedBorder()
 		} else {
-			__lt3 = lipgloss.NormalBorder()
+			__lt7 = lipgloss.NormalBorder()
 		}
-		__lt2 = __lt3
-	}
-	return __lt2
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt5 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt5 = own
-	} else {
-		var __lt4 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt4 = axis
-		} else {
-			__lt4 = all
-		}
-		__lt5 = __lt4
-	}
-	return CellsOf(__lt5)
-}
-
-func CellsOf(m__r0 Measurement) int {
-	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt6 int
-	if px <= 0.0 {
-		__lt6 = 0
-	} else {
-		__lt6 = max(1, (int(px) / 8))
+		__lt6 = __lt7
 	}
 	return __lt6
 }
 
-func RowsOf(m__r1 Measurement) int {
-	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
-	var __lt7 int
-	if px <= 0.0 {
-		__lt7 = 0
+func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+	var __lt9 *Measurement
+	if own != nil {
+		__lt9 = own
 	} else {
-		__lt7 = max(1, (int(px) / 16))
-	}
-	return __lt7
-}
-
-func LineCapFunc(height__r0 int, lines int) int {
-	var __lt9 int
-	if height__r0 == 0 {
-		__lt9 = lines
-	} else {
-		var __lt8 int
-		if lines == 0 {
-			__lt8 = height__r0
+		var __lt8 *Measurement
+		if axis != nil {
+			__lt8 = axis
 		} else {
-			__lt8 = min(height__r0, lines)
+			__lt8 = all
 		}
 		__lt9 = __lt8
 	}
-	return __lt9
+	return CellsOf(__lt9)
+}
+
+func CellsOf(m__r1 *Measurement) int {
+	var px float64 = PxOf(m__r1)
+	var __lt10 int
+	if px <= 0.0 {
+		__lt10 = 0
+	} else {
+		__lt10 = max(1, (int(px) / 8))
+	}
+	return __lt10
+}
+
+func RowsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt11 int
+	if px <= 0.0 {
+		__lt11 = 0
+	} else {
+		__lt11 = max(1, (int(px) / 16))
+	}
+	return __lt11
+}
+
+func LineCapFunc(height__r0 int, lines int) int {
+	var __lt13 int
+	if height__r0 == 0 {
+		__lt13 = lines
+	} else {
+		var __lt12 int
+		if lines == 0 {
+			__lt12 = height__r0
+		} else {
+			__lt12 = min(height__r0, lines)
+		}
+		__lt13 = __lt12
+	}
+	return __lt13
 }
 
 func (m *Model) __focusNext() {
@@ -500,7 +523,7 @@ func (m Model) View() tea.View {
 		if contentPart_1Focused {
 			contentPart_1Prefix = ">"
 		}
-		contentPart_1 = BoxLook(Style{}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("close"))
+		contentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("close"))
 		contentParts = append(contentParts, contentPart_1)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
@@ -614,22 +637,20 @@ func (m *Model) __n2_click_handler() {
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, Style{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
-	var __lt7 []_step__record
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	var __lt10 []_step__record
 	if m.closed__inst0 {
-		__lt7 = []_step__record{_step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}
+		__lt10 = []_step__record{_step__record{Op: "close"}}
 	} else {
-		__lt7 = []_step__record{}
+		__lt10 = []_step__record{}
 	}
-	for _, c__r1 := range slices.Concat([]_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}, func() []_step__record {
+	for _, c__r1 := range slices.Concat([]_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0}}, func() []_step__record {
 		__out := make([]_step__record, len(m.corners__inst0))
 		for __i, __item := range m.corners__inst0 {
-			__out[__i] = func(c__r2 Point) _step__record {
-				return _step__record{Op: "lineTo", X: c__r2.X, Y: c__r2.Y, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}
-			}(__item)
+			__out[__i] = func(c__r2 Point) _step__record { return _step__record{Op: "lineTo", X: c__r2.X, Y: c__r2.Y} }(__item)
 		}
 		return __out
-	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}}, __lt7) {
+	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, R: 4.0}}, __lt10) {
 		if c__r1.Op == "moveTo" {
 			ctx.MoveTo(c__r1.X, c__r1.Y)
 		}
@@ -948,11 +969,6 @@ func _snglCairoScale(cr *C.cairo_t, pw, ph, w, h int, mode string) {
 	C.cairo_scale(cr, C.double(sx), C.double(sy))
 }
 
-var (
-	__cstr0 = C.CString("close")
-	__cstr1 = C.CString("clicked")
-)
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -1060,18 +1076,17 @@ func TangentArc(from Point, corner Point, to Point, r float64) Arc {
 	}
 	var half float64 = (math.Abs(turn) / 2.0)
 	if ((r <= 0.0) || (half < 0.0001)) || (half > 1.5706) {
-		return Arc{Degenerate: true, Tangent1: corner, Tangent2: corner, Center: corner, Start: 0.0, Sweep: 0.0}
+		return Arc{Degenerate: true, Tangent1: corner, Tangent2: corner, Center: corner}
 	}
 	var reach float64 = (r / math.Tan(half))
 	t1 := Point{X: (corner.X + (reach * math.Cos(a1))), Y: (corner.Y + (reach * math.Sin(a1)))}
 	t2 := Point{X: (corner.X + (reach * math.Cos(a2))), Y: (corner.Y + (reach * math.Sin(a2)))}
-	var __cse0 float64 = math.Sin(half)
-	c__r2 := Point{X: (corner.X + ((r / __cse0) * math.Cos((a1 + (turn / 2.0))))), Y: (corner.Y + ((r / __cse0) * math.Sin((a1 + (turn / 2.0)))))}
+	c__r2 := PointPolar(corner, (r / math.Sin(half)), (a1 + (turn / 2.0)))
 	var sweep float64 = (3.141592653589793 - math.Abs(turn))
 	if turn > 0.0 {
 		sweep = -sweep
 	}
-	return Arc{Tangent1: t1, Tangent2: t2, Center: c__r2, Start: math.Atan2((t1.Y - c__r2.Y), (t1.X - c__r2.X)), Sweep: sweep, Degenerate: false}
+	return Arc{Tangent1: t1, Tangent2: t2, Center: c__r2, Start: math.Atan2((t1.Y - c__r2.Y), (t1.X - c__r2.X)), Sweep: sweep}
 }
 
 func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
@@ -1098,11 +1113,16 @@ func LineJoinFunc(join string) C.cairo_line_join_t {
 	return C.cairo_line_join_t(C.int(0))
 }
 
+func PointPolar(center Point, radius float64, angle float64) Point {
+	return Point{X: (center.X + (radius * math.Cos(angle))), Y: (center.Y + (radius * math.Sin(angle)))}
+}
+
 func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
 }
 
 func (m *Model) __n2_clicked_handler() {
@@ -1111,23 +1131,21 @@ func (m *Model) __n2_clicked_handler() {
 }
 
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
-	at := Point{X: 0.0, Y: 0.0}
+	at := Point{}
 	C.cairo_save(ctx)
-	var __lt15 []_step__record
+	var __lt18 []_step__record
 	if m.closed__inst0 {
-		__lt15 = []_step__record{_step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}
+		__lt18 = []_step__record{_step__record{Op: "close"}}
 	} else {
-		__lt15 = []_step__record{}
+		__lt18 = []_step__record{}
 	}
-	for _, c__r3 := range slices.Concat([]_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}, func() []_step__record {
+	for _, c__r3 := range slices.Concat([]_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0}}, func() []_step__record {
 		__out := make([]_step__record, len(m.corners__inst0))
 		for __i, __item := range m.corners__inst0 {
-			__out[__i] = func(c__r4 Point) _step__record {
-				return _step__record{Op: "lineTo", X: c__r4.X, Y: c__r4.Y, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}
-			}(__item)
+			__out[__i] = func(c__r4 Point) _step__record { return _step__record{Op: "lineTo", X: c__r4.X, Y: c__r4.Y} }(__item)
 		}
 		return __out
-	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}}, __lt15) {
+	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, R: 4.0}}, __lt18) {
 		if c__r3.Op == "moveTo" {
 			C.cairo_move_to(ctx, C.double(c__r3.X), C.double(c__r3.Y))
 			at = Point{X: c__r3.X, Y: c__r3.Y}
@@ -1147,7 +1165,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 			C.cairo_close_path(ctx)
 		}
 	}
-	Paint(ctx, Style{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -1180,7 +1198,10 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n0 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
+	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_closed_handler)
+	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_visible_handler)
 	m.__n1 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n1, C.int(60))
 	C.gtk_drawing_area_set_content_height(m.__n1, C.int(40))
@@ -1190,10 +1211,9 @@ func (m *Model) buildWidgetTree() {
 	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n1), C.int((len(snglDrawFuncs) - 1)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
-	m.__n2 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n2)), __cstr0)
-	snglCallbacks = append(snglCallbacks, m.__n2_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n2), __cstr1, C.int((len(snglCallbacks) - 1)))
+	m.__n2 = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
+	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "close")
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "clicked", m.__n2_clicked_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
@@ -1203,6 +1223,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
+	gtk4rt.ToplevelTitleWindow(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
@@ -1265,9 +1286,9 @@ data class Point(
 
 data class Arc(
     var degenerate: Boolean = false,
-    var tangent1: Point = Point(x = 0.0, y = 0.0),
-    var tangent2: Point = Point(x = 0.0, y = 0.0),
-    var center: Point = Point(x = 0.0, y = 0.0),
+    var tangent1: Point = Point(),
+    var tangent2: Point = Point(),
+    var center: Point = Point(),
     var start: Double = 0.0,
     var sweep: Double = 0.0
 )
@@ -1378,8 +1399,8 @@ fun MainScreen() {
         Column {
             Canvas(modifier = Modifier.size(60.dp, 40.dp)) {
                 var p: androidx.compose.ui.graphics.Path = Path()
-                var at = Point(x = 0.0, y = 0.0)
-                for (c in listOf(_step__record(op = SnglPathOp.MOVETO, x = 4.0, y = 12.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), *corners__inst0.map({ c: Point -> _step__record(op = SnglPathOp.LINETO, x = c.x, y = c.y, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0) }).toTypedArray(), _step__record(op = SnglPathOp.BEZIERTO, x = 56.0, y = 36.0, cx1 = 34.0, cy1 = 12.0, cx2 = 44.0, cy2 = 12.0, r = 0.0), _step__record(op = SnglPathOp.ARCTO, x = 40.0, y = 12.0, cx1 = 56.0, cy1 = 12.0, cx2 = 0.0, cy2 = 0.0, r = 4.0), *(if (closed__inst0) listOf(_step__record(op = SnglPathOp.CLOSE, x = 0.0, y = 0.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0)) else listOf<_step__record>()).toTypedArray())) {
+                var at = Point()
+                for (c in listOf(_step__record(x = 4.0, y = 12.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), *corners__inst0.map({ c: Point -> _step__record(op = SnglPathOp.LINETO, x = c.x, y = c.y, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0) }).toTypedArray(), _step__record(op = SnglPathOp.BEZIERTO, x = 56.0, y = 36.0, cx1 = 34.0, cy1 = 12.0, cx2 = 44.0, cy2 = 12.0, r = 0.0), _step__record(op = SnglPathOp.ARCTO, x = 40.0, y = 12.0, cx1 = 56.0, cy1 = 12.0, cx2 = 0.0, cy2 = 0.0, r = 4.0), *(if (closed__inst0) listOf(_step__record(op = SnglPathOp.CLOSE, x = 0.0, y = 0.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0)) else listOf<_step__record>()).toTypedArray())) {
                     if ((c.op == SnglPathOp.MOVETO)) {
                         p.moveTo(c.x.toFloat(), c.y.toFloat())
                     }
@@ -1425,19 +1446,20 @@ fun tangentArc(from: Point, corner: Point, to: Point, r: Double): Arc {
     }
     var half = (kotlin.math.abs(turn) / 2.0)
     if ((((r <= 0.0) || (half < 0.0001)) || (half > 1.5706))) {
-    	return Arc(degenerate = true, tangent1 = corner, tangent2 = corner, center = corner, start = 0.0, sweep = 0.0)
+    	return Arc(degenerate = true, tangent1 = corner, tangent2 = corner, center = corner)
     }
     var reach = (r / Math.tan(half))
     var t1 = Point(x = (corner.x + (reach * Math.cos(a1))), y = (corner.y + (reach * Math.sin(a1))))
     var t2 = Point(x = (corner.x + (reach * Math.cos(a2))), y = (corner.y + (reach * Math.sin(a2))))
-    var __cse0 = Math.sin(half)
-    var c = Point(x = (corner.x + ((r / __cse0) * Math.cos((a1 + (turn / 2.0))))), y = (corner.y + ((r / __cse0) * Math.sin((a1 + (turn / 2.0))))))
+    var c = corner.polar((r / Math.sin(half)), (a1 + (turn / 2.0)))
     var sweep = (3.141592653589793 - kotlin.math.abs(turn))
     if ((turn > 0.0)) {
     	sweep = -sweep
     }
-    return Arc(tangent1 = t1, tangent2 = t2, center = c, start = Math.atan2((t1.y - c.y), (t1.x - c.x)), sweep = sweep, degenerate = false)
+    return Arc(tangent1 = t1, tangent2 = t2, center = c, start = Math.atan2((t1.y - c.y), (t1.x - c.x)), sweep = sweep)
 }
+
+fun Point.polar(radius: Double, angle: Double): Point = Point(x = (this.x + (radius * Math.cos(angle))), y = (this.y + (radius * Math.sin(angle))))
 
 fun strokeCap(cap: SnglLineCap): androidx.compose.ui.graphics.StrokeCap {
     if ((cap == SnglLineCap.ROUND)) {
@@ -1620,7 +1642,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<canvas id="$0" style="height:40px;width:60px" height="40" width="60">
+<canvas id="$0" height="40" width="60">
 </canvas>
 <button id="$1">
   <span>close</span>
@@ -1638,7 +1660,7 @@ body { font-family: system-ui, sans-serif; }
   }
   function _canvasDraw0(ctx) {
     ctx.save();
-    paintStyle(ctx, { stroke: { r: 153, g: 51, b: 102, a: 255 }, strokeWidth: 2, fill: { a: 0, r: 0, g: 0, b: 0 }, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 0, g: 0, b: 0, a: 0 }, stroke: { r: 153, g: 51, b: 102, a: 255 }, strokeWidth: 2, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.lineCap = "butt";
     ctx.lineJoin = "miter";
     ctx.beginPath();
@@ -1714,12 +1736,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:324a5ee184e86178cb8ef8d2da62213e
+pass sha256:a0e57b1d25223290d597c910f064bfc4
 -- run/go/fyne --
-pass sha256:e23a0966eee6cc3500d750365b598d04
+pass sha256:65d65bd43bd516f33398d5c3b584ee27
 -- run/go/gtk4 --
-pass sha256:82f60b00b83d32636d4be744bcf9add6
+pass sha256:89f264efdfd22761faa0bbd50b9d9352
 -- run/kotlin/android --
-pass sha256:14498a9a2d8878adfb2fa243e11ee351
+pass sha256:fdd530f8d8d3ba09bf8119df58254bbf
 -- run/none/html --
-pass sha256:1b724ec157a8c3cd94f39feda735322c
+pass sha256:e7a97635a33907e91336debbd158dd39

@@ -68,7 +68,7 @@ func testPlain(t test.Test, c plain) {
     t.assert(c.t.value == "x")
 }
 -- testrun/android/kotlin/app.sngl/greeting/1 --
-sha256:fff22cba07e9e6c2739086c0cb8a0629
+sha256:308d1f1145f15ba510333d0cf4d535db
 {
   "results": [
     {
@@ -78,7 +78,7 @@ sha256:fff22cba07e9e6c2739086c0cb8a0629
   ]
 }
 -- testrun/android/kotlin/app.sngl/plain/1 --
-sha256:38c6e8935d3b866f8533399e86f4eab8
+sha256:7e3e38af064cf3ebaaa5159af3653e68
 {
   "results": [
     {
@@ -88,7 +88,7 @@ sha256:38c6e8935d3b866f8533399e86f4eab8
   ]
 }
 -- testrun/bubbletea/go/app.sngl/greeting/1 --
-sha256:0f1e575d722ae6e16b586b6c9e75293d
+sha256:a21f28a124288947089145ffa85352da
 {
   "results": [
     {
@@ -98,7 +98,7 @@ sha256:0f1e575d722ae6e16b586b6c9e75293d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/plain/1 --
-sha256:dd9b6bdab8a1543059fe6b771120d2bd
+sha256:98db64d3d9b07a771dfef6eb24e04348
 {
   "results": [
     {
@@ -128,7 +128,7 @@ sha256:6510846dd774216dfae06cc1660a7bbf
   ]
 }
 -- testrun/gtk4/go/app.sngl/greeting/1 --
-sha256:9f4c69e3d5e9dd3845e5e39000ce2c9d
+sha256:80133b0deb03bf93f0438bb9e6631653
 {
   "results": [
     {
@@ -138,7 +138,7 @@ sha256:9f4c69e3d5e9dd3845e5e39000ce2c9d
   ]
 }
 -- testrun/gtk4/go/app.sngl/plain/1 --
-sha256:dac3bfd0d5003815cd3b5ec78d8ec5be
+sha256:3dec580416524130eab285cd779fd275
 {
   "results": [
     {
@@ -148,7 +148,7 @@ sha256:dac3bfd0d5003815cd3b5ec78d8ec5be
   ]
 }
 -- testrun/html/none/app.sngl/greeting/1 --
-sha256:026707675a1020809da47ff9cb47ca7a
+sha256:c6e18558c4e95644379bfb5cf7623a65
 {
   "results": [
     {
@@ -158,7 +158,7 @@ sha256:026707675a1020809da47ff9cb47ca7a
   ]
 }
 -- testrun/html/none/app.sngl/plain/1 --
-sha256:f412d85c193507484c6737d685add925
+sha256:aa79c755738efb577d55329820e87cbb
 {
   "results": [
     {

@@ -36,8 +36,11 @@ func Grow(grow float64, render func(cells int) string) Part {
 
 // Join lays parts out along an axis, gap cells apart, and hands each growing
 // part its share of what the fixed ones leave of avail cells. An avail of zero
-// is a box whose extent nothing knows, where each part takes its own.
-func Join(horizontal bool, align lipgloss.Position, gap int, avail int, parts []Part) string {
+// is a box whose extent nothing knows, where each part takes its own. Where
+// nothing grows, justify places the parts in what they leave, as CSS's
+// justify-content: 0 at the start, 1 centered, 2 at the end, 3 spaced between,
+// 4 around and 5 evenly.
+func Join(horizontal bool, align lipgloss.Position, justify int, gap int, avail int, parts []Part) string {
 	size := lipgloss.Height
 	if horizontal {
 		size = lipgloss.Width
@@ -56,6 +59,7 @@ func Join(horizontal bool, align lipgloss.Position, gap int, avail int, parts []
 	if len(parts) > 1 {
 		free -= gap * (len(parts) - 1)
 	}
+	grows := shares > 0
 	texts := make([]string, 0, len(parts))
 	for _, p := range parts {
 		text := p.text
@@ -72,7 +76,61 @@ func Join(horizontal bool, align lipgloss.Position, gap int, avail int, parts []
 		}
 		texts = append(texts, text)
 	}
-	return joinSpaced(horizontal, align, gap, texts)
+	if grows || free <= 0 || justify == 0 || len(texts) == 0 {
+		return joinSpaced(horizontal, align, gap, texts)
+	}
+	return joinJustified(horizontal, align, justify, gap, free, texts)
+}
+
+// joinJustified joins texts with free cells placed as justify says: before
+// them, between them, around each or evenly.
+func joinJustified(horizontal bool, align lipgloss.Position, justify, gap, free int, texts []string) string {
+	n := len(texts)
+	lead, between, extra := 0, 0, 0
+	switch justify {
+	case 1:
+		lead = free / 2
+	case 2:
+		lead = free
+	case 3:
+		if n == 1 {
+			break
+		}
+		between, extra = free/(n-1), free%(n-1)
+	case 4:
+		lead = free / (2 * n)
+		between = 2 * lead
+	case 5:
+		lead = free / (n + 1)
+		between = lead
+	}
+	blank := func(cells int) string {
+		if horizontal {
+			return strings.Repeat(" ", cells)
+		}
+		return strings.Repeat("\n", cells-1)
+	}
+	out := make([]string, 0, 2*n+1)
+	if lead > 0 {
+		out = append(out, blank(lead))
+	}
+	for i, t := range texts {
+		if i > 0 {
+			// The first gaps take what dividing the free space left over.
+			cells := gap + between
+			if i <= extra {
+				cells++
+			}
+			if cells > 0 {
+				out = append(out, blank(cells))
+			}
+		}
+		out = append(out, t)
+	}
+	if horizontal {
+		return lipgloss.JoinHorizontal(align, out...)
+	}
+	return lipgloss.JoinVertical(align, out...)
 }
 
 // Spaced joins texts along an axis, gap cells apart.

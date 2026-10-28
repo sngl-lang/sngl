@@ -115,6 +115,13 @@ import (
 	"os"
 )
 
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -122,54 +129,54 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	Overflow       string
@@ -245,20 +252,22 @@ func (m *Model) roll__inst0() string {
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
-	if (s == Style{}) {
+	if func(_a1, _b2 Style) bool {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
-	if words && (s.Color != snglcolor.Color{}) {
-		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	if words && (s.Color != nil) {
+		l = l.Foreground(lipgloss.Color((*(s.Color)).Hex()))
 	}
-	if (s.Background != snglcolor.Color{}) {
-		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	if s.Background != nil {
+		l = l.Background(lipgloss.Color((*(s.Background)).Hex()))
 	}
 	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
 		l = l.Bold(true)
 	}
-	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != nil) && ((*(s.Opacity)) < 1.0)) {
 		l = l.Faint(true)
 	}
 	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
@@ -267,10 +276,16 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt2 bool
+	if s.BorderWidth != nil {
+		__lt2 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt2 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt2 {
 		l = l.Border(BorderOf(s))
-		if (s.BorderColor != snglcolor.Color{}) {
-			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		if s.BorderColor != nil {
+			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
 	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
@@ -281,111 +296,121 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
 	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
 	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
-	if (s.Width != Measurement{Px: 0}) {
+	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
-	if (s.Height != Measurement{Px: 0}) {
+	if s.Height != nil {
 		l = l.Height(RowsOf(s.Height))
 	}
-	if (s.MaxWidth != Measurement{Px: 0}) {
+	if s.MaxWidth != nil {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
-	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt1 int
-		if s.MaxLines == 0 {
-			__lt1 = 0
+	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
+		var __lt3 int
+		if s.MaxLines == nil {
+			__lt3 = 0
 		} else {
-			__lt1 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt3 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt1))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt2 lipgloss.Position
+	var __lt5 lipgloss.Position
 	switch a {
 	case "center":
-		__lt2 = lipgloss.Center
+		__lt5 = lipgloss.Center
 	case "right":
-		__lt2 = lipgloss.Right
+		__lt5 = lipgloss.Right
 	default:
-		__lt2 = lipgloss.Left
+		__lt5 = lipgloss.Left
 	}
-	return __lt2
+	return __lt5
+}
+
+func PxOf(m__r0 *Measurement) float64 {
+	var __lt6 float64
+	if m__r0 == nil {
+		__lt6 = 0.0
+	} else {
+		__lt6 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
+	}
+	return __lt6
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt3 lipgloss.Border
+	var __lt7 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt3 = lipgloss.DoubleBorder()
+		__lt7 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt3 = tui.DashedBorder()
+		__lt7 = tui.DashedBorder()
 	default:
-		var __lt4 lipgloss.Border
-		if (s.BorderRadius != Measurement{Px: 0}) {
-			__lt4 = lipgloss.RoundedBorder()
+		var __lt8 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt8 = lipgloss.RoundedBorder()
 		} else {
-			__lt4 = lipgloss.NormalBorder()
+			__lt8 = lipgloss.NormalBorder()
 		}
-		__lt3 = __lt4
-	}
-	return __lt3
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt6 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt6 = own
-	} else {
-		var __lt5 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt5 = axis
-		} else {
-			__lt5 = all
-		}
-		__lt6 = __lt5
-	}
-	return CellsOf(__lt6)
-}
-
-func CellsOf(m__r0 Measurement) int {
-	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt7 int
-	if px <= 0.0 {
-		__lt7 = 0
-	} else {
-		__lt7 = max(1, (int(px) / 8))
+		__lt7 = __lt8
 	}
 	return __lt7
 }
 
-func RowsOf(m__r1 Measurement) int {
-	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
-	var __lt8 int
-	if px <= 0.0 {
-		__lt8 = 0
+func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+	var __lt10 *Measurement
+	if own != nil {
+		__lt10 = own
 	} else {
-		__lt8 = max(1, (int(px) / 16))
-	}
-	return __lt8
-}
-
-func LineCap(height__r0 int, lines int) int {
-	var __lt10 int
-	if height__r0 == 0 {
-		__lt10 = lines
-	} else {
-		var __lt9 int
-		if lines == 0 {
-			__lt9 = height__r0
+		var __lt9 *Measurement
+		if axis != nil {
+			__lt9 = axis
 		} else {
-			__lt9 = min(height__r0, lines)
+			__lt9 = all
 		}
 		__lt10 = __lt9
 	}
-	return __lt10
+	return CellsOf(__lt10)
+}
+
+func CellsOf(m__r1 *Measurement) int {
+	var px float64 = PxOf(m__r1)
+	var __lt11 int
+	if px <= 0.0 {
+		__lt11 = 0
+	} else {
+		__lt11 = max(1, (int(px) / 8))
+	}
+	return __lt11
+}
+
+func RowsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt12 int
+	if px <= 0.0 {
+		__lt12 = 0
+	} else {
+		__lt12 = max(1, (int(px) / 16))
+	}
+	return __lt12
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt14 int
+	if height__r0 == 0 {
+		__lt14 = lines
+	} else {
+		var __lt13 int
+		if lines == 0 {
+			__lt13 = height__r0
+		} else {
+			__lt13 = min(height__r0, lines)
+		}
+		__lt14 = __lt13
+	}
+	return __lt14
 }
 
 func (m *Model) __focusNext() {
@@ -520,14 +545,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			default:
 				m.status__inst0 = "active"
 			}
-			var __lt13 string
+			var __lt17 string
 			switch m.roll__inst0() {
 			case "active":
-				__lt13 = m.label(m.status__inst0)
+				__lt17 = m.label(m.status__inst0)
 			default:
-				__lt13 = "rolled"
+				__lt17 = "rolled"
 			}
-			m.last__inst0 = __lt13
+			m.last__inst0 = __lt17
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -540,36 +565,36 @@ func (m Model) View() tea.View {
 		var contentPart_0 string
 		switch m.status__inst0 {
 		case "active":
-			contentPart_0 = BoxLook(Style{}, true).Render(fmt.Sprint("on"))
+			contentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("on"))
 		case "inactive":
-			contentPart_0 = BoxLook(Style{}, true).Render(fmt.Sprint("off"))
+			contentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("off"))
 		default:
-			contentPart_0 = BoxLook(Style{}, true).Render(fmt.Sprint("waiting"))
+			contentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("waiting"))
 		}
 		if contentPart_0 != "" {
 			contentParts = append(contentParts, contentPart_0)
 		}
-		var __lt11 string
+		var __lt15 string
 		switch m.status__inst0 {
 		case "active":
-			__lt11 = "on"
+			__lt15 = "on"
 		default:
-			__lt11 = "not on"
+			__lt15 = "not on"
 		}
 		var contentPart_3 string
-		contentPart_3 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt11))
+		contentPart_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt15))
 		contentParts = append(contentParts, contentPart_3)
-		var __lt12 string
+		var __lt16 string
 		switch {
 		case (m.rolls__inst0 > 10):
-			__lt12 = "many"
+			__lt16 = "many"
 		case (m.rolls__inst0 > 0):
-			__lt12 = Describe(m.rolls__inst0)
+			__lt16 = Describe(m.rolls__inst0)
 		default:
-			__lt12 = "none"
+			__lt16 = "none"
 		}
 		var contentPart_6 string
-		contentPart_6 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt12))
+		contentPart_6 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt16))
 		contentParts = append(contentParts, contentPart_6)
 		var contentPart_7 string
 		contentPart_7Focused := (m.__focusID == 0)
@@ -577,10 +602,10 @@ func (m Model) View() tea.View {
 		if contentPart_7Focused {
 			contentPart_7Prefix = ">"
 		}
-		contentPart_7 = BoxLook(Style{}, true).Render(contentPart_7Prefix + " " + fmt.Sprint("Roll"))
+		contentPart_7 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(contentPart_7Prefix + " " + fmt.Sprint("Roll"))
 		contentParts = append(contentParts, contentPart_7)
 		var contentPart_8 string
-		contentPart_8 = BoxLook(Style{}, true).Render(fmt.Sprint(m.last__inst0))
+		contentPart_8 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.last__inst0))
 		contentParts = append(contentParts, contentPart_8)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
@@ -743,43 +768,43 @@ func (m *Model) __n7_click_handler() {
 	switch m.roll__inst0() {
 	case "active":
 		m.status__inst0 = "inactive"
-		var __lt13 string
+		var __lt16 string
 		if m.status__inst0 == "active" {
-			__lt13 = "on"
+			__lt16 = "on"
 		} else {
-			__lt13 = "not on"
+			__lt16 = "not on"
 		}
-		m.__n1.SetText(__lt13)
+		m.__n1.SetText(__lt16)
 		m.__renderSlot0(m.__n0.Container)
 	case "inactive":
 		m.status__inst0 = "pending"
-		var __lt14 string
+		var __lt17 string
 		if m.status__inst0 == "active" {
-			__lt14 = "on"
+			__lt17 = "on"
 		} else {
-			__lt14 = "not on"
+			__lt17 = "not on"
 		}
-		m.__n1.SetText(__lt14)
+		m.__n1.SetText(__lt17)
 		m.__renderSlot0(m.__n0.Container)
 	default:
 		m.status__inst0 = "active"
-		var __lt15 string
+		var __lt18 string
 		if m.status__inst0 == "active" {
-			__lt15 = "on"
+			__lt18 = "on"
 		} else {
-			__lt15 = "not on"
+			__lt18 = "not on"
 		}
-		m.__n1.SetText(__lt15)
+		m.__n1.SetText(__lt18)
 		m.__renderSlot0(m.__n0.Container)
 	}
-	var __lt16 string
+	var __lt19 string
 	switch m.roll__inst0() {
 	case "active":
-		__lt16 = m.label(m.status__inst0)
+		__lt19 = m.label(m.status__inst0)
 	default:
-		__lt16 = "rolled"
+		__lt19 = "rolled"
 	}
-	m.last__inst0 = __lt16
+	m.last__inst0 = __lt19
 	m.__n3.SetText(m.last__inst0)
 }
 
@@ -834,29 +859,29 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__renderSlot0(m.__n0.Container)
-	var __lt10 string
+	var __lt13 string
 	if m.status__inst0 == "active" {
-		__lt10 = "on"
+		__lt13 = "on"
 	} else {
-		__lt10 = "not on"
+		__lt13 = "not on"
 	}
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(__lt10)
+	m.__n1.SetText(__lt13)
 	m.__n0.Add(m.__n1)
-	var __lt12 string
+	var __lt15 string
 	if m.rolls__inst0 > 10 {
-		__lt12 = "many"
+		__lt15 = "many"
 	} else {
-		var __lt11 string
+		var __lt14 string
 		if m.rolls__inst0 > 0 {
-			__lt11 = Describe(m.rolls__inst0)
+			__lt14 = Describe(m.rolls__inst0)
 		} else {
-			__lt11 = "none"
+			__lt14 = "none"
 		}
-		__lt12 = __lt11
+		__lt15 = __lt14
 	}
 	m.__n2 = widget.NewLabel("")
-	m.__n2.SetText(__lt12)
+	m.__n2.SetText(__lt15)
 	m.__n0.Add(m.__n2)
 	m.__n7 = widget.NewButton("", nil)
 	m.__n7.SetText("Roll")
@@ -995,20 +1020,20 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 				if m.status__inst0 == "active" {
-					__n4 := gtk4rt.LabelNew("")
+					__n4 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n4, "on")
 					gtk4rt.LabelSetXAlign(__n4, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n4)
 					m.__slot0 = append(m.__slot0, __n4)
 				} else {
 					if m.status__inst0 == "inactive" {
-						__n5 := gtk4rt.LabelNew("")
+						__n5 := gtk4rt.New("GtkLabel")
 						gtk4rt.LabelSetLabel(__n5, "off")
 						gtk4rt.LabelSetXAlign(__n5, 0.0)
 						gtk4rt.InsertBefore(parent, m.__slot0_at, __n5)
 						m.__slot0 = append(m.__slot0, __n5)
 					} else {
-						__n6 := gtk4rt.LabelNew("")
+						__n6 := gtk4rt.New("GtkLabel")
 						gtk4rt.LabelSetLabel(__n6, "waiting")
 						gtk4rt.LabelSetXAlign(__n6, 0.0)
 						gtk4rt.InsertBefore(parent, m.__slot0_at, __n6)
@@ -1032,43 +1057,43 @@ func (m *Model) __n7_clicked_handler() {
 	switch m.roll__inst0() {
 	case "active":
 		m.status__inst0 = "inactive"
-		var __lt21 string
+		var __lt24 string
 		if m.status__inst0 == "active" {
-			__lt21 = "on"
+			__lt24 = "on"
 		} else {
-			__lt21 = "not on"
+			__lt24 = "not on"
 		}
-		gtk4rt.LabelSetLabel(m.__n1, __lt21)
+		gtk4rt.LabelSetLabel(m.__n1, __lt24)
 		m.__renderSlot0(m.__n0)
 	case "inactive":
 		m.status__inst0 = "pending"
-		var __lt22 string
+		var __lt25 string
 		if m.status__inst0 == "active" {
-			__lt22 = "on"
+			__lt25 = "on"
 		} else {
-			__lt22 = "not on"
+			__lt25 = "not on"
 		}
-		gtk4rt.LabelSetLabel(m.__n1, __lt22)
+		gtk4rt.LabelSetLabel(m.__n1, __lt25)
 		m.__renderSlot0(m.__n0)
 	default:
 		m.status__inst0 = "active"
-		var __lt23 string
+		var __lt26 string
 		if m.status__inst0 == "active" {
-			__lt23 = "on"
+			__lt26 = "on"
 		} else {
-			__lt23 = "not on"
+			__lt26 = "not on"
 		}
-		gtk4rt.LabelSetLabel(m.__n1, __lt23)
+		gtk4rt.LabelSetLabel(m.__n1, __lt26)
 		m.__renderSlot0(m.__n0)
 	}
-	var __lt24 string
+	var __lt27 string
 	switch m.roll__inst0() {
 	case "active":
-		__lt24 = m.label(m.status__inst0)
+		__lt27 = m.label(m.status__inst0)
 	default:
-		__lt24 = "rolled"
+		__lt27 = "rolled"
 	}
-	m.last__inst0 = __lt24
+	m.last__inst0 = __lt27
 	gtk4rt.LabelSetLabel(m.__n3, m.last__inst0)
 }
 
@@ -1122,37 +1147,37 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__renderSlot0(m.__n0)
-	var __lt18 string
+	var __lt21 string
 	if m.status__inst0 == "active" {
-		__lt18 = "on"
+		__lt21 = "on"
 	} else {
-		__lt18 = "not on"
+		__lt21 = "not on"
 	}
-	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n1, __lt18)
+	m.__n1 = gtk4rt.New("GtkLabel")
+	gtk4rt.LabelSetLabel(m.__n1, __lt21)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
-	var __lt20 string
+	var __lt23 string
 	if m.rolls__inst0 > 10 {
-		__lt20 = "many"
+		__lt23 = "many"
 	} else {
-		var __lt19 string
+		var __lt22 string
 		if m.rolls__inst0 > 0 {
-			__lt19 = Describe(m.rolls__inst0)
+			__lt22 = Describe(m.rolls__inst0)
 		} else {
-			__lt19 = "none"
+			__lt22 = "none"
 		}
-		__lt20 = __lt19
+		__lt23 = __lt22
 	}
-	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n2, __lt20)
+	m.__n2 = gtk4rt.New("GtkLabel")
+	gtk4rt.LabelSetLabel(m.__n2, __lt23)
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
-	m.__n7 = gtk4rt.ButtonNew()
+	m.__n7 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n7, "Roll")
 	gtk4rt.Connect(m.__n7, "clicked", m.__n7_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n7)
-	m.__n3 = gtk4rt.LabelNew("")
+	m.__n3 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n3, m.last__inst0)
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
@@ -1470,11 +1495,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9ea721136a0548cdda31270a9dda1638
+pass sha256:24823c7174f6de372261abe906b5a2d1
 -- run/go/fyne --
-pass sha256:6ba9f96d62dc48338314f1a2940a03ca
+pass sha256:3b75ed515f047462de3b06ef2c916eea
 -- run/go/gtk4 --
-pass sha256:bfc8b9e447414a92b57e3f360f1be320
+pass sha256:dd7563331fd9560c4fd63bf2cc6afe7e
 -- run/kotlin/android --
 pass sha256:c3653b5a9d3e229d63aff68c3f8dd268
 -- run/none/html --

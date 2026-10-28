@@ -152,7 +152,7 @@ window {
     noRaise()
 }
 -- testrun/bubbletea/go/app.sngl/argument/1 --
-sha256:41e0c0d4949ac5416cb637a2cf560765
+sha256:a23600b75abcac9400da28c22fc8b118
 {
   "results": [
     {
@@ -162,7 +162,7 @@ sha256:41e0c0d4949ac5416cb637a2cf560765
   ]
 }
 -- testrun/bubbletea/go/app.sngl/direct/1 --
-sha256:6f1e55aaa056b3435c8ca999434cbe06
+sha256:ca65be9419f7cc55f277f7de3fd61141
 {
   "results": [
     {
@@ -172,7 +172,7 @@ sha256:6f1e55aaa056b3435c8ca999434cbe06
   ]
 }
 -- testrun/bubbletea/go/app.sngl/noRaise/1 --
-sha256:efb882db1f33770b0a9d6d235897c998
+sha256:e167fc25ca210926afc239710eb08cf7
 {
   "results": [
     {
@@ -182,7 +182,7 @@ sha256:efb882db1f33770b0a9d6d235897c998
   ]
 }
 -- testrun/bubbletea/go/app.sngl/perCall/1 --
-sha256:ab564752f4a841f999d7b2e66cf75107
+sha256:ad77898aa2aaba4b9517a6209c2143b0
 {
   "results": [
     {
@@ -192,7 +192,7 @@ sha256:ab564752f4a841f999d7b2e66cf75107
   ]
 }
 -- testrun/bubbletea/go/app.sngl/throughCalls/1 --
-sha256:521e93a2bffc5dcbc21c9f0223b8023a
+sha256:ef196c488944d3b92711aacdf0e2f26b
 {
   "results": [
     {
@@ -202,7 +202,7 @@ sha256:521e93a2bffc5dcbc21c9f0223b8023a
   ]
 }
 -- testrun/html/none/app.sngl/argument/1 --
-sha256:9855d5f9e9849f0a15b378a95805d7ab
+sha256:76f826615f9a7014b86977ab9ac71ddf
 {
   "results": [
     {
@@ -212,7 +212,7 @@ sha256:9855d5f9e9849f0a15b378a95805d7ab
   ]
 }
 -- testrun/html/none/app.sngl/direct/1 --
-sha256:7a9d4eb929220e2d6f330cfb92f3cc9f
+sha256:9f84e043d3e61cb26d9495eaa4879a63
 {
   "results": [
     {
@@ -222,7 +222,7 @@ sha256:7a9d4eb929220e2d6f330cfb92f3cc9f
   ]
 }
 -- testrun/html/none/app.sngl/noRaise/1 --
-sha256:f386b70a1ac5695a976ebb21a6a7ad50
+sha256:10bcf692e11f611da046e84a8aa5fa89
 {
   "results": [
     {
@@ -232,7 +232,7 @@ sha256:f386b70a1ac5695a976ebb21a6a7ad50
   ]
 }
 -- testrun/html/none/app.sngl/perCall/1 --
-sha256:a1bed34bc698c6419119e7c741496b25
+sha256:7a99c0fcf44d9670d0533d3c497686d7
 {
   "results": [
     {
@@ -242,7 +242,7 @@ sha256:a1bed34bc698c6419119e7c741496b25
   ]
 }
 -- testrun/html/none/app.sngl/throughCalls/1 --
-sha256:2cdfa9a5073bacf9a7f4153d4ea06669
+sha256:8a7ea96fb1920a1f48a0020775c87431
 {
   "results": [
     {

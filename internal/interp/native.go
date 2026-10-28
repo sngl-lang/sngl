@@ -58,7 +58,7 @@ func (env *Env) nativeResult(t *ir.Type) (any, error) {
 	if t.Kind != ir.TypeStruct {
 		return zeroValueFor(t), nil
 	}
-	v, err := env.Eval(ir.DeclaredDefault(t))
+	v, err := env.Eval(ir.ZeroExpr(t))
 	if hd := handleOf(v); hd != nil {
 		hd.At = env.owned().site()
 	}
@@ -73,6 +73,9 @@ func (env *Env) nativeResult(t *ir.Type) (any, error) {
 func (env *Env) Paint(v *View) error {
 	if v == nil || env.owned().simulated == "" {
 		return nil
+	}
+	if err := env.hostProtocols(v); err != nil {
+		return err
 	}
 	var walk func([]*Node) error
 	walk = func(nodes []*Node) error {
@@ -156,7 +159,7 @@ func (env *Env) hostValue(t *ir.Type, src *Node) (any, error) {
 		if ir.ReleaseOf(t) != nil {
 			return nil, nil
 		}
-		return env.Eval(ir.DeclaredDefault(t))
+		return env.Eval(ir.ZeroExpr(t))
 	}
 	s := NewStruct(def, t)
 	for _, f := range def.Fields {

@@ -17,12 +17,10 @@ import (
 // build cache reuses them, instead of recompiling the gtk.h preamble per
 // program.
 //
-// Wrapped mode covers only the bounded stdlib widget surface. The translator
-// and scaffolding emit wrapped calls for the mapped subset and fall through to
-// the legacy cgo emission for anything else; emitIR then scans the output and,
-// if any residual `C.` remains, discards the wrapped attempt and re-emits in
-// cgo mode. So an unmapped widget cleanly degrades a whole program to the
-// legacy path rather than producing half-wrapped (uncompilable) code.
+// The declared protocol calls gtk4rt for every GIR class (declgen), so what
+// leaves a `C.` is the program's own: a canvas, or a #[cnative] it calls.
+// emitIR scans the output and, if any remains, discards the wrapped attempt
+// and re-emits in cgo mode, so a program is never half-wrapped.
 
 // gtk4rtPkg is the import path of the shared GTK4 runtime. Emitting an
 // ir.Func with this Foreign.Path auto-registers the import via the golang IR
@@ -107,36 +105,7 @@ var cgoRefRE = regexp.MustCompile(`(^|[^A-Za-z0-9_])(C\.[A-Za-z_]|gtkPost|snglCa
 // bytesUseCgo reports whether src still depends on the inline-cgo machinery.
 func bytesUseCgo(src []byte) bool { return cgoRefRE.Match(src) }
 
-// rtCtorForCType returns the gtk4rt constructor call for a freshly created
-// widget of the given C type, and ok=false if the widget is outside the
-// wrapped surface. Widgets take typed-zero initial args here; any user-set
-// props are applied afterwards by OnPropAssign, mirroring the cgo path.
-func rtCtorForCType(cType string) (ir.Expr, bool) {
-	switch cType {
-	case "GtkBox":
-		return rtCall("BoxNew", gtk4rtHandleIRType(), rtConst("OrientationHorizontal", rtOrientation()), intLit("0")), true
-	case "GtkLabel":
-		return rtCall("LabelNew", gtk4rtHandleIRType(), &ir.Literal{Type: ir.TypString, Value: ""}), true
-	case "GtkButton":
-		return rtCall("ButtonNew", gtk4rtHandleIRType()), true
-	case "GtkCheckButton":
-		return rtCall("CheckButtonNew", gtk4rtHandleIRType()), true
-	case "GtkEntry":
-		return rtCall("EntryNew", gtk4rtHandleIRType()), true
-	case "GtkImage":
-		return rtCall("ImageNew", gtk4rtHandleIRType()), true
-	case "GtkScrolledWindow":
-		return rtCall("ScrolledWindowNew", gtk4rtHandleIRType()), true
-	case "GtkFrame":
-		return rtCall("FrameNew", gtk4rtHandleIRType()), true
-	case "GtkDropDown":
-		return rtCall("DropDownNew", gtk4rtHandleIRType()), true
-	}
-	return nil, false
-}
-
-// rtSetterKind classifies how a C setter's value argument is adapted for the
-// wrapped API (which takes Go-native types rather than cgo-coerced ones).
+// rtSetterKind is the Go type a gtk4rt setter takes its value as.
 type rtSetterKind int
 
 const (
@@ -147,8 +116,8 @@ const (
 	rtOrient
 )
 
-// rtSetterTable maps a resolved GTK setter name to its gtk4rt wrapper and the
-// value-argument kind. Setters absent here trigger fallback.
+// rtSetterTable maps a GTK setter to the gtk4rt function wrapping it, which
+// the set declgen writes calls in its place (writeSets).
 var rtSetterTable = map[string]struct {
 	fn   string
 	kind rtSetterKind
@@ -164,53 +133,29 @@ var rtSetterTable = map[string]struct {
 	"gtk_orientable_set_orientation": {"OrientableSetOrientation", rtOrient},
 }
 
-// rtSetterValue adapts an OnPropAssign value expression to the wrapped setter's
-// Go-native argument. String/bool/int/float values pass through unchanged (the
-// golang IR context renders them as Go string/bool/int/float64); orientation maps a string
-// literal to the gtk4rt constant. ok=false → not adaptable, fall back.
-func rtSetterValue(kind rtSetterKind, value ir.Expr) (ir.Expr, bool) {
-	switch kind {
-	case rtStr, rtBool, rtInt, rtFloat:
-		return value, true
-	case rtOrient:
-		if lit, ok := value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
-			return rtOrientationConst(lit.Value)
-		}
-	}
-	return nil, false
-}
-
-// rtChildAppendCall returns the gtk4rt container call for adding child to a
-// parent of the given C type, and ok=false if unmapped.
-// rtChildAppendWrappers are the gtk4rt wrappers that add a child, keyed by the
+// rtChildWrappers are the gtk4rt wrappers that add or remove a child, keyed by the
 // GTK function each one calls. The key comes from the introspection data
 // (gir.ChildAdder), so this says only which of those calls this runtime package
 // wraps -- a fact about pkg/go/gtk4rt, not about GTK. A C type switch said both
 // at once, and said the second one wrong: it knew three parents where the cgo
 // path knew seven, so a frame or a popover in wrapped mode fell through to raw
 // cgo in a file that compiles without cgo.
-var rtChildAppendWrappers = map[string]string{
+var rtChildWrappers = map[string]string{
 	"gtk_box_append":                "BoxAppend",
+	"gtk_box_remove":                "BoxRemove",
 	"gtk_window_set_child":          "WindowSetChild",
 	"gtk_scrolled_window_set_child": "ScrolledWindowSetChild",
 	"gtk_frame_set_child":           "FrameSetChild",
 }
 
-func rtChildAppendCall(adder gir.ChildAdder, parent, child ir.Expr) (ir.Stmt, bool) {
-	fn, ok := rtChildAppendWrappers[adder.Func]
-	if !ok {
-		return nil, false
+// rtChildAppendCall is the gtk4rt call that puts child into parent, or takes
+// it out, through the GTK function adder names: gtk4rt's wrapper of it where
+// it has one, ChildCall naming it otherwise.
+func rtChildAppendCall(adder gir.ChildAdder, parent, child ir.Expr) ir.Stmt {
+	if fn, ok := rtChildWrappers[adder.Func]; ok {
+		return &ir.CallStmt{Call: rtCall(fn, ir.TypVoid, parent, child)}
 	}
-	return &ir.CallStmt{Call: rtCall(fn, ir.TypVoid, parent, child)}, true
-}
-
-// rtChildRemoveCall returns the gtk4rt call for removing child from a parent of
-// the given C type, and ok=false if unmapped.
-func rtChildRemoveCall(parentCType string, parent, child ir.Expr) (ir.Stmt, bool) {
-	if parentCType == "GtkBox" {
-		return &ir.CallStmt{Call: rtCall("BoxRemove", ir.TypVoid, parent, child)}, true
-	}
-	return nil, false
+	return &ir.CallStmt{Call: rtCall("ChildCall", ir.TypVoid, &ir.Literal{Type: ir.TypString, Value: adder.Func}, parent, child)}
 }
 
 // rtEventGetterExpr is the wrapped-mode analog of cgoEventGetterExpr: it
@@ -222,34 +167,14 @@ func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 		return rtCall("EditableGetText", ir.TypString, widgetRef)
 	case "GtkCheckButton":
 		return rtCall("CheckButtonGetActive", ir.TypBool, widgetRef)
+	case "GtkSwitch":
+		return rtCall("SwitchGetActive", ir.TypBool, widgetRef)
 	case "GtkCalendar":
 		return rtCall("CalendarGetDate", ir.NativeGoPointerOf("time.Time"), widgetRef)
 	case "GtkDropDown":
 		return rtCall("DropDownLabel", ir.TypString, widgetRef)
 	}
 	return nil
-}
-
-// rtEventSetterExpr is the wrapped write of widgetWrites, the twin of
-// rtEventGetterExpr.
-func rtEventSetterExpr(cType string, widgetRef, value ir.Expr) ir.Expr {
-	switch cType {
-	case "GtkEntry":
-		return rtCall("EditableSetTextQuiet", ir.TypVoid, widgetRef, value)
-	}
-	return nil
-}
-
-// rtOrientationConst maps a SNGL orientation string literal to the gtk4rt
-// constant ident, and ok=false for anything unrecognized.
-func rtOrientationConst(value string) (ir.Expr, bool) {
-	switch value {
-	case "vertical":
-		return rtConst("OrientationVertical", rtOrientation()), true
-	case "horizontal":
-		return rtConst("OrientationHorizontal", rtOrientation()), true
-	}
-	return nil, false
 }
 
 // emitBuildUIWrapped is the wrapped-mode analog of emitBuildUI: it emits the

@@ -43,6 +43,14 @@ func seedWidget(tr *gtk4Translator, tag, cType, constructor string) {
 	tr.registry.ByCType[cType] = cls
 }
 
+// makeWidget is the createNode of a seeded widget as lowering hands it over:
+// with the call its declared create makes spliced in.
+func makeWidget(tr *gtk4Translator, id, tag string) []ir.Stmt {
+	_, info := tr.widgetClass(tag)
+	made := nativeCall(info.Constructors[0].Name, ir.NativePointerOf("GtkWidget"))
+	return tr.OnMakeNode(context.Background(), id, tag, made)
+}
+
 func renderStmts(gc *golang.GoIRContext, stmts []ir.Stmt) string {
 	var lines []string
 	for _, s := range stmts {
@@ -58,7 +66,7 @@ func TestGtk4Translator_OnCreateNode_Text(t *testing.T) {
 		fields = append(fields, name+" "+cType)
 	})
 	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
-	stmts := tr.OnCreateNode(context.Background(), "__n0", "GtkLabel")
+	stmts := makeWidget(tr, "__n0", "GtkLabel")
 	got := renderStmts(gc, stmts)
 	if !strings.Contains(got, "C.gtk_label_new") {
 		t.Errorf("expected C.gtk_label_new; got: %s", got)
@@ -140,8 +148,8 @@ func TestGtk4Translator_OnAppendChild_Box(t *testing.T) {
 	tr := newGtk4Translator(gc, func(_, _ string) {})
 	seedWidget(tr, "GtkBox", "GtkBox", "gtk_box_new")
 	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
-	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkBox")
-	_ = tr.OnCreateNode(context.Background(), "__n1", "GtkLabel")
+	_ = makeWidget(tr, "__n0", "GtkBox")
+	_ = makeWidget(tr, "__n1", "GtkLabel")
 	parent := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	child := &ir.Ident{Name: "__n1", Synthesized: true, IsElementRef: true}
 	got := renderStmts(gc, tr.OnAppendChild(context.Background(), parent, child))
@@ -157,8 +165,8 @@ func TestGtk4Translator_OnRemoveChild_Box(t *testing.T) {
 	tr := newGtk4Translator(gc, func(_, _ string) {})
 	seedWidget(tr, "GtkBox", "GtkBox", "gtk_box_new")
 	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
-	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkBox")
-	_ = tr.OnCreateNode(context.Background(), "__n1", "GtkLabel")
+	_ = makeWidget(tr, "__n0", "GtkBox")
+	_ = makeWidget(tr, "__n1", "GtkLabel")
 	parent := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	child := &ir.Ident{Name: "__n1", Synthesized: true, IsElementRef: true}
 	got := renderStmts(gc, tr.OnRemoveChild(context.Background(), parent, child))
@@ -167,19 +175,22 @@ func TestGtk4Translator_OnRemoveChild_Box(t *testing.T) {
 	}
 }
 
-func TestGtk4Translator_OnPropAssign_LabelText(t *testing.T) {
+// A write of a prop its package declares no set for is refused: the
+// translator builds no setter of its own, since every write the build makes
+// carries the call the declared set makes (testdata/gtk4_declared_set.txtar).
+func TestGtk4Translator_OnPropAssign_RefusesAPropWithNoSet(t *testing.T) {
 	gc := stubGC()
-	tr := newGtk4Translator(gc, func(_, _ string) {})
+	shared := &emitShared{}
+	tr := newGtk4Translator(gc, func(_, _ string) {}).withShared(shared)
 	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
-	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkLabel")
+	_ = makeWidget(tr, "__n0", "GtkLabel")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	val := &ir.Literal{Type: ir.TypString, Value: "hi"}
-	got := renderStmts(gc, tr.OnPropAssign(context.Background(), node, "label", val))
-	if !strings.Contains(got, "C.gtk_label_set_label(") {
-		t.Errorf("expected GIR's gtk_label_set_label; got: %s", got)
+	if got := renderStmts(gc, tr.OnPropAssign(context.Background(), node, "label", val)); got != "" {
+		t.Errorf("emitted a setter the package declares no set for: %s", got)
 	}
-	if !strings.Contains(got, "C.CString") {
-		t.Errorf("expected C.CString conversion; got: %s", got)
+	if len(shared.errs) != 1 || !strings.Contains(shared.errs[0].Error(), "GtkLabel.label is written, and its package declares no #[gen.protocol(set)] for it") {
+		t.Errorf("expected one diagnostic naming GtkLabel.label; got %v", shared.errs)
 	}
 }
 
@@ -191,7 +202,7 @@ func TestGtk4Translator_OnPropAssign_UnknownPropReported(t *testing.T) {
 	shared := &emitShared{}
 	tr := newGtk4Translator(gc, func(_, _ string) {}).withShared(shared)
 	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
-	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkLabel")
+	_ = makeWidget(tr, "__n0", "GtkLabel")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	if got := renderStmts(gc, tr.OnPropAssign(context.Background(), node, "value", &ir.Literal{Type: ir.TypString, Value: "hi"})); got != "" {
 		t.Errorf("expected nothing emitted for GtkLabel.value; got: %s", got)
@@ -201,22 +212,19 @@ func TestGtk4Translator_OnPropAssign_UnknownPropReported(t *testing.T) {
 	}
 }
 
+// A node no declared protocol made is connected through gtk4rt in either mode,
+// as the declared connect connects one: the generated file calls no C to
+// connect a handler.
 func TestGtk4Translator_OnAttachHandler_ButtonClick(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
 	seedWidget(tr, "GtkButton", "GtkButton", "gtk_button_new")
-	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkButton")
+	_ = makeWidget(tr, "__n0", "GtkButton")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	handler := &ir.Ident{Name: "handleClick", Synthesized: true}
 	got := renderStmts(gc, tr.OnAttachHandler(context.Background(), node, "click", handler))
-	if !strings.Contains(got, "C.sngl_connect") {
-		t.Errorf("expected C.sngl_connect; got: %s", got)
-	}
-	if !strings.Contains(got, `"clicked"`) {
-		t.Errorf("expected signal name 'clicked'; got: %s", got)
-	}
-	if !strings.Contains(got, "snglCallbacks") {
-		t.Errorf("expected snglCallbacks registration; got: %s", got)
+	if !strings.Contains(got, `gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n0)), "clicked", handleClick)`) {
+		t.Errorf("expected gtk4rt.Connect of 'clicked'; got: %s", got)
 	}
 }
 
@@ -278,7 +286,7 @@ func TestGtk4Translator_OnAttachHandler_RefusesWrongArity(t *testing.T) {
 		{Name: "changed", Params: 0, ReturnType: "none"},
 	}
 	shared := seedShared(tr)
-	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkEntry")
+	_ = makeWidget(tr, "__n0", "GtkEntry")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	handler := &ir.Ident{Name: "onPress", Synthesized: true}
 
@@ -293,11 +301,10 @@ func TestGtk4Translator_OnAttachHandler_RefusesWrongArity(t *testing.T) {
 			t.Errorf("error %q does not mention %q", shared.errs[0], want)
 		}
 	}
-	// The connectable sibling still connects, its signal name a C string
-	// made once (ownCStrings).
+	// The connectable sibling still connects.
 	got := renderStmts(gc, tr.OnAttachHandler(context.Background(), node, "changed", handler))
-	if !strings.Contains(got, "C.sngl_connect(") || len(shared.cStrings) != 1 || shared.cStrings[0].Text != "changed" {
-		t.Errorf("changed was not connected: %s\n%v", got, shared.cStrings)
+	if !strings.Contains(got, `gtk4rt.Connect(`) || !strings.Contains(got, `"changed"`) {
+		t.Errorf("changed was not connected: %s", got)
 	}
 }
 
@@ -314,7 +321,7 @@ func TestGtk4Translator_OnPropAssign_RefusesConstructOnly(t *testing.T) {
 		{Name: "use-header-bar", ConstructOnly: true, GIRType: "gint", IRType: &ir.Type{Kind: ir.TypeInt}},
 	}
 	shared := seedShared(tr)
-	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkAssistant")
+	_ = makeWidget(tr, "__n0", "GtkAssistant")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	val := &ir.Literal{Type: ir.TypInt, Value: "1"}
 

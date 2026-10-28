@@ -1,15 +1,11 @@
 import ui "sngl:ui"
 import gtk "gir:Gtk-4.0"
 
-const zero ui.measurement = 0px
-
 // What a Style may say that GTK does not answer:
 //
 //   - maxWidth, maxHeight: GTK gives a widget at least its minimum and as much
 //     as its parent allocates, and nothing caps it.
 //   - flexDirection: vbox and hbox are the axis.
-//   - justifyContent: not answered yet; a GtkBox packs its children from the
-//     start, and spreading the free space needs a layout of gtk4rt's own.
 //   - position, top, bottom, left, right, zIndex: a GtkBox lays its children
 //     out itself, with no flow to take one out of and no offsets.
 //   - borderCollapse: table borders.
@@ -18,7 +14,6 @@ const unstyled list[string] = [
     "maxWidth",
     "maxHeight",
     "flexDirection",
-    "justifyContent",
     "position",
     "top",
     "bottom",
@@ -30,46 +25,42 @@ const unstyled list[string] = [
 ]
 
 // A length in pixels, as codegen.MeasurementPx reads one for this target: an
-// em is GTK's default font size, Adwaita's 11.
-const func px(m ui.measurement) => m.px + 11.0 * (m.em + m.rem)
+// em is 16 of them, as html, android and bubbletea read one.
+const func px(m ui.measurement) => m.px + 16.0 * (m.em + m.rem)
 
-const func inset(m ui.measurement) => float.max(px(m), 0.0)
+// GTK takes no negative length, which CSS allows for a margin; an unset one
+// is none.
+const func inset(m option[ui.measurement]) => m == null ? 0.0 : float.max(px(m), 0.0)
 
-const func length(v float) => v == 0.0 ? "" : "{v}px"
+// A length as CSS text, nothing where the Style leaves it unset.
+const func length(m option[ui.measurement]) => m == null ? "" : "{inset(m)}px"
 
-// A font size in points, as Pango reads a span's, so that 1em is the default
-// text and a flow's runs and its widget agree.
-const func points(v float) => v == 0.0 ? "" : "{v}pt"
-
-// One side of a margin or a padding: its own field, else its axis's, else the
-// whole box's, as CSS reads them.
-const func side(all ui.measurement, axis ui.measurement, own ui.measurement) string {
-    return length(inset(own != zero ? own : axis != zero ? axis : all))
+// One side of a margin or a padding: the first of its own field, its axis's
+// and the whole box's that is set, as CSS reads them.
+const func side(all option[ui.measurement], axis option[ui.measurement], own option[ui.measurement]) string {
+    return length(own != null ? own : axis != null ? axis : all)
 }
 
-// A color the Style left out is the color zero, which SNGL holds as opaque
-// black and a Go literal as alpha zero; both are unset, as zero is in every
-// Style.
-const func cssColor(c color) => c.a == 0 || c == #000000 ? "" : c.hex()
+const func cssColor(c option[color]) => c == null ? "" : c.hex()
 
 const func decl(name string, value string) => value == "" ? "" : "{name}: {value}; "
 
-// These name the members that do something rather than compare against the
-// first: an enum field a Go struct literal leaves out is "", not that member.
 const func weightOf(w ui.FontWeight) string {
     return match w {
+        normal => "normal"
         bold => "bold"
         bolder => "bolder"
         lighter => "lighter"
-        normal => ""
+        unset => ""
     }
 }
 
 const func slantOf(s ui.FontStyle) string {
     return match s {
+        normal => "normal"
         italic => "italic"
         oblique => "oblique"
-        normal => ""
+        unset => ""
     }
 }
 
@@ -81,23 +72,24 @@ const func lineOf(s ui.Style) string {
         dashed => "dashed"
         dotted => "dotted"
         double => "double"
-        none => s.borderWidth != zero ? "solid" : ""
+        none => "none"
+        unset => s.borderWidth != null ? "solid" : ""
     }
 }
 
 const func cssOf(s ui.Style) string {
-    var css = decl("margin-top", side(s.margin, s.marginY, s.marginTop)) + decl("margin-right", side(s.margin, s.marginX, s.marginRight)) + decl("margin-bottom", side(s.margin, s.marginY, s.marginBottom)) + decl("margin-left", side(s.margin, s.marginX, s.marginLeft)) + decl("padding-top", side(s.padding, s.paddingY, s.paddingTop)) + decl("padding-right", side(s.padding, s.paddingX, s.paddingRight)) + decl("padding-bottom", side(s.padding, s.paddingY, s.paddingBottom)) + decl("padding-left", side(s.padding, s.paddingX, s.paddingLeft)) + decl("min-width", length(inset(s.minWidth))) + decl("color", cssColor(s.color)) + decl("font-size", points(inset(s.fontSize))) + decl("font-family", s.fontFamily) + decl("font-weight", weightOf(s.fontWeight)) + decl("font-style", slantOf(s.fontStyle)) + decl("background", cssColor(s.background)) + decl("border-radius", length(inset(s.borderRadius))) + decl("border-color", cssColor(s.borderColor)) + decl("border-width", length(inset(s.borderWidth))) + decl("border-style", lineOf(s)) + decl("border", s.border) + decl("border-bottom", s.borderBottom) + decl("border-left", s.borderLeft) + decl("opacity", s.opacity == 0.0 ? "" : "{s.opacity}")
+    var css = decl("margin-top", side(s.margin, s.marginY, s.marginTop)) + decl("margin-right", side(s.margin, s.marginX, s.marginRight)) + decl("margin-bottom", side(s.margin, s.marginY, s.marginBottom)) + decl("margin-left", side(s.margin, s.marginX, s.marginLeft)) + decl("padding-top", side(s.padding, s.paddingY, s.paddingTop)) + decl("padding-right", side(s.padding, s.paddingX, s.paddingRight)) + decl("padding-bottom", side(s.padding, s.paddingY, s.paddingBottom)) + decl("padding-left", side(s.padding, s.paddingX, s.paddingLeft)) + decl("min-width", length(s.minWidth)) + decl("color", cssColor(s.color)) + decl("font-size", length(s.fontSize)) + decl("font-family", s.fontFamily) + decl("font-weight", weightOf(s.fontWeight)) + decl("font-style", slantOf(s.fontStyle)) + decl("background", cssColor(s.background)) + decl("border-radius", length(s.borderRadius)) + decl("border-color", cssColor(s.borderColor)) + decl("border-width", length(s.borderWidth)) + decl("border-style", lineOf(s)) + decl("border", s.border) + decl("border-bottom", s.borderBottom) + decl("border-left", s.borderLeft) + decl("opacity", s.opacity == null ? "" : "{s.opacity}")
     return css
 }
 
-// start is Alignment's first member, so a Go literal cannot tell it from
-// unset: it stretches, as on fyne.
+// An unset alignment is CSS's default, stretch.
 const func crossOf(a ui.Alignment) int {
     return match a {
+        start => 1
         center => 2
         end => 3
         baseline => 4
-        start, stretch => 0
+        unset, stretch => 0
     }
 }
 
@@ -106,7 +98,8 @@ const func textAlignOf(a ui.TextAlign) int {
         center => 1
         right => 2
         justify => 3
-        left => 0
+        left => 4
+        unset => 0
     }
 }
 
@@ -114,14 +107,14 @@ const func wrapOf(w ui.WhiteSpace) int {
     return match w {
         pre, nowrap => 1
         preWrap, preLine => 2
-        normal => 0
+        unset, normal => 0
     }
 }
 
 const func clipOf(o ui.Overflow) bool {
     return match o {
         hidden, scroll, auto => true
-        visible => false
+        unset, visible => false
     }
 }
 
@@ -130,38 +123,79 @@ const func clipOf(o ui.Overflow) bool {
 // expression, so the optimizer calls it instead of splicing a computed Style
 // into each of the fields that read it.
 //
-// `flex` is a share of nothing: a child that has one expands along its box's
-// axis, and GTK splits the free space evenly between the children that do.
+// `flex` is a child's share of its box's spare room, and `justifyContent`
+// where a box puts what its children leave of it: a GtkBox splits the room
+// evenly and packs from the start, so gtk4rt lays out a box that asks for
+// either otherwise.
 const func lookOf(s ui.Style) gtk.Look {
-    var look = lookHidden(s, s.display == ui.Display.none)
+    var look = lookHidden(s, s.display == ui.Display.none, false, 0)
+    return look
+}
+
+// The look of a GtkBox, which holds its spacing: its gap, or what the
+// override spaces its children by. gtk4rt sets it, since a box it lays out
+// is one GtkBox's own setter cannot reach.
+const func boxLookOf(s ui.Style, otherwise int) gtk.Look {
+    var look = lookHidden(s, s.display == ui.Display.none, true, spacingOf(s, otherwise))
     return look
 }
 
 // The look of a widget whose visibility a prop drives, which answers
 // `display` itself through shown.
 const func lookBesideVisible(s ui.Style) gtk.Look {
-    var look = lookHidden(s, false)
+    var look = lookHidden(s, false, false, 0)
+    return look
+}
+
+// lookBesideVisible for a GtkBox.
+const func boxLookBesideVisible(s ui.Style, otherwise int) gtk.Look {
+    var look = lookHidden(s, false, true, spacingOf(s, otherwise))
     return look
 }
 
 const func shown(s ui.Style) => s.display != ui.Display.none
 
-const func lookHidden(s ui.Style, hidden bool) gtk.Look {
+const func justifyOf(j ui.Justification) int {
+    return match j {
+        center => 1
+        end => 2
+        spaceBetween => 3
+        spaceAround => 4
+        spaceEvenly => 5
+        unset, start => 0
+    }
+}
+
+const func lookHidden(s ui.Style, hidden bool, spaced bool, spacing int) gtk.Look {
     var look gtk.Look = {
         css = cssOf(s),
         width = inset(s.width),
         height = inset(s.height),
-        grow = s.flex,
+        grow = s.flex == null ? 0.0 : s.flex,
         cross = crossOf(s.alignItems),
         textAlign = textAlignOf(s.textAlign),
-        lines = s.maxLines,
+        lines = s.maxLines == null ? 0 : s.maxLines,
         wrap = wrapOf(s.whiteSpace),
         clip = clipOf(s.overflow),
         hidden = hidden,
         cursor = s.cursor,
+        justify = justifyOf(s.justifyContent),
+        spaced = spaced,
+        spacing = spacing,
     }
     return look
 }
 
+// Whether a Style says anything of its border, which then is all of it.
+const func bordered(s ui.Style) => s.border != "" || s.borderBottom != "" || s.borderLeft != "" || s.borderWidth != null || s.borderColor != null || s.borderStyle != ui.BorderStyle.unset
+
+// The look of the frame a clickable card's button holds: the button draws the
+// card's border, so the frame draws the theme's only where the Style says
+// nothing of one.
+const func innerFrameLookOf(s ui.Style) gtk.Look {
+    var look gtk.Look = {css=bordered(s) ? "border-style: none; " : ""}
+    return look
+}
+
 // A box's spacing: its gap, or what the override spaces its children by.
-const func spacingOf(s ui.Style, otherwise int) => s.gap == zero ? otherwise : int(inset(s.gap))
+const func spacingOf(s ui.Style, otherwise int) => s.gap == null ? otherwise : int(inset(s.gap))

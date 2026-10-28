@@ -180,10 +180,10 @@ func NullTestedCopy(e Expr) (sel *Select, path []Expr, present, ok bool) {
 		return nil, nil, false, false
 	}
 	ref, other := bin.Left, bin.Right
-	if isNullLiteral(ref) {
+	if IsNullLiteral(ref) {
 		ref, other = other, ref
 	}
-	if !isNullLiteral(other) {
+	if !IsNullLiteral(other) {
 		return nil, nil, false, false
 	}
 	ref = stripConversions(ref)
@@ -218,10 +218,10 @@ func RenderedNullTest(e Expr) (present, ok bool) {
 		return false, false
 	}
 	ref, other := bin.Left, bin.Right
-	if isNullLiteral(ref) {
+	if IsNullLiteral(ref) {
 		ref, other = other, ref
 	}
-	if !isNullLiteral(other) {
+	if !IsNullLiteral(other) {
 		return false, false
 	}
 	sel, isSel := stripConversions(ref).(*Select)
@@ -234,9 +234,9 @@ func RenderedNullTest(e Expr) (present, ok bool) {
 	return bin.Op == ast.BinNeq, true
 }
 
-// isNullLiteral reports a `null`: a literal once folded, and the universe
+// IsNullLiteral reports a `null`: a literal once folded, and the universe
 // identifier in checked IR.
-func isNullLiteral(e Expr) bool {
+func IsNullLiteral(e Expr) bool {
 	switch x := stripConversions(e).(type) {
 	case *Literal:
 		return x.Type != nil && x.Type.Kind == TypeNull

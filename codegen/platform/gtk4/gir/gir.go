@@ -8,6 +8,7 @@ import (
 	"os"
 	"slices"
 	"sort"
+	"strconv"
 
 	"duckfam.us/sngl/ir"
 )
@@ -53,6 +54,9 @@ type Prop struct {
 	// column-spacing property is a gint and its setter takes a guint — and
 	// it is the setter's parameter that a cgo call has to satisfy.
 	SetterCType string
+	// SetterNullable is GIR's nullable="1" on that parameter: the setter
+	// accepts NULL.
+	SetterNullable bool
 	// SetterValParams is how many parameters beyond the instance the setter
 	// GIR named takes. A cgo call site passes exactly one value, so only 1
 	// is callable: gtk_text_buffer_set_text takes (text, len) and
@@ -93,6 +97,9 @@ type Prop struct {
 type EnumInfo struct {
 	CType   string
 	Members map[string]string
+	// Values maps the member name to its value, which is what a declared set
+	// hands the setter through a cast to CType.
+	Values map[string]int
 }
 
 // Signal is a GLib signal on a GIR class.
@@ -141,6 +148,10 @@ type ClassInfo struct {
 	// listed in Go: a hard-coded list of container types silently re-parented
 	// the children of every class outside it.
 	ChildAdd ChildAdder
+	// ChildRemove is how this class gives a child up: its `remove` method
+	// taking one widget, or the zero value. Owner and Func as ChildAdd's;
+	// Single is never set.
+	ChildRemove ChildAdder
 }
 
 // Action is a method a program calls for its effect alone.
@@ -308,12 +319,16 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				currentEnum = &EnumInfo{
 					CType:   attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "type"),
 					Members: map[string]string{},
+					Values:  map[string]int{},
 				}
 				reg.Enums[attrVal(t.Attr, "", "name")] = currentEnum
 
 			case local == "member" && inEnum:
-				currentEnum.Members[attrVal(t.Attr, "", "name")] =
-					attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "identifier")
+				member := attrVal(t.Attr, "", "name")
+				currentEnum.Members[member] = attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "identifier")
+				if v, err := strconv.Atoi(attrVal(t.Attr, "", "value")); err == nil {
+					currentEnum.Values[member] = v
+				}
 
 			case (local == "method" || local == "function") && (inClass || inInterface) && !inCtor && !inMethod:
 				owner := any(currentClass)
@@ -360,6 +375,9 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				currentMethod.valParams++
 				inMethodParam = true
 				dir := attrVal(t.Attr, "", "direction")
+				if currentMethod.valParams == 1 {
+					currentMethod.valNullable = attrVal(t.Attr, "", "nullable") == "1"
+				}
 				currentMethod.params = append(currentMethod.params, methodParam{
 					Name:  attrVal(t.Attr, "", "name"),
 					Moves: attrVal(t.Attr, "", "transfer-ownership") == "full",
@@ -646,18 +664,19 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 	// How each class takes a child, from the methods and properties parsed
 	// above. After the inherit pass, so a subclass reads its parent's answer:
 	// GtkApplicationWindow takes its child through GtkWindow's `child`.
-	for owner, cls := range reg.Classes {
+	for _, cls := range reg.Classes {
 		cls.ChildAdd = childAdder(cls, methods[cls])
-		_ = owner
+		if mi := methods[cls]["remove"]; mi != nil && mi.ident != "" && mi.valParams == 1 && isWidgetCType(mi.valCType) {
+			cls.ChildRemove = ChildAdder{Func: mi.ident, Owner: cls.CType}
+		}
 	}
 	for _, cls := range reg.Classes {
-		if cls.ChildAdd.Func != "" {
-			continue
-		}
-		for p := reg.Classes[cls.Parent]; p != nil; p = reg.Classes[p.Parent] {
-			if p.ChildAdd.Func != "" {
+		for p := reg.Classes[cls.Parent]; p != nil && (cls.ChildAdd.Func == "" || cls.ChildRemove.Func == ""); p = reg.Classes[p.Parent] {
+			if cls.ChildAdd.Func == "" {
 				cls.ChildAdd = p.ChildAdd
-				break
+			}
+			if cls.ChildRemove.Func == "" {
+				cls.ChildRemove = p.ChildRemove
 			}
 		}
 	}
@@ -750,6 +769,7 @@ func resolveSetters(props []Prop, methods map[string]*methodInfo) {
 		}
 		props[i].Setter = m.ident
 		props[i].SetterCType = m.valCType
+		props[i].SetterNullable = m.valNullable
 	}
 }
 
@@ -766,6 +786,7 @@ type methodInfo struct {
 	returns      string // the GIR name of the return type, "none" for void
 	skip         bool
 	valCType     string
+	valNullable  bool
 	// valParams counts the <parameter> elements after the instance — the
 	// values a caller supplies.
 	valParams int

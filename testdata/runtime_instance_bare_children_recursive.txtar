@@ -484,10 +484,10 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	c.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n4, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(c.__n4, 6)
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n4 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(c.__n4, 1)
+	gtk4rt.SetLook(c.__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, ("level " + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.BoxAppend(c.__n4, c.__n0)
@@ -618,10 +618,10 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__inst1_live = []*Frame__slot2Instance{}
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	c.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n6, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(c.__n6, 6)
-	__n7 := gtk4rt.LabelNew("")
+	c.__n6 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(c.__n6, 1)
+	gtk4rt.SetLook(c.__n6, gtk4rt.Look{Spaced: true, Spacing: 6})
+	__n7 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n7, "top")
 	gtk4rt.LabelSetXAlign(__n7, 0.0)
 	gtk4rt.BoxAppend(c.__n6, __n7)
@@ -743,13 +743,13 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
-	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n8, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n8, 6)
+	m.__n8 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n8, 1)
+	gtk4rt.SetLook(m.__n8, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n2 = newFrame__slot0Instance(m, m.depth, 0)
 	m.__n2__el = m.__n2.Root
 	gtk4rt.BoxAppend(m.__n8, m.__n2__el)
-	m.__n9 = gtk4rt.ButtonNew()
+	m.__n9 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n9, "deeper")
 	gtk4rt.Connect(m.__n9, "clicked", m.__n9_clicked_handler)
 	gtk4rt.BoxAppend(m.__n8, m.__n9)
@@ -1033,6 +1033,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:3c48c3a31314bd11a2d9c100524d776a
 -- run/go/gtk4 --
-pass sha256:01f3506553d337d194c5e4978a87c9ca
+pass sha256:2c574125e4d5e8bc13d5eb60f0a02d5b
 -- run/none/html --
 pass sha256:3e9f3b84c058deb7247c7ed31b22f3a8

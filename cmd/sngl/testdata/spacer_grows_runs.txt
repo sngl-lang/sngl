@@ -1,0 +1,59 @@
+# A spacer grows into the room its siblings leave, as `flex: 1` does, and a
+# `flex` of its own is its share.
+#
+# On bubbletea a spacer grew only where its Style named a flex, so a toolbar's
+# bare spacer pushed nothing and the label after it sat beside the one before.
+# The snapshot is the screen as text.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=bubbletea app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+# a bare spacer takes the whole of a 30-column row's free space.
+grep '(?m)^a {28}b$' app.sngl.snapshots/row.ansi
+# beside a spacer of flex 2, one of flex 1 takes a third: 27 free, 9 and 18.
+grep '(?m)^c {9}d {18}e$' app.sngl.snapshots/row.ansi
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+output { go { bubbletea } }
+
+component row ui.node {
+    ui.vbox {
+        ui.hbox(style={width=240px}) {
+            ui.text(value="a")
+            ui.spacer
+            ui.text(value="b")
+        }
+        ui.hbox(style={width=240px}) {
+            ui.text(value="c")
+            ui.spacer
+            ui.text(value="d")
+            ui.spacer(style={flex=2})
+            ui.text(value="e")
+        }
+    }
+}
+
+func testRow(t test.Test, c row) {
+    t.snapshot("row")
+}
+
+ui.window {
+    row
+}
+-- testrun/bubbletea/go/app.sngl/row/1 --
+sha256:58d5689485bab6e09132d6e7f67fb8fe
+{
+  "results": [
+    {
+      "Desc": "Row",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "row.ansi": "YSAgICAgICAgICAgICAgICAgICAgICAgICAgICBiCmMgICAgICAgICBkICAgICAgICAgICAgICAgICAgZQ=="
+  }
+}

@@ -2,6 +2,7 @@ package bubbletea
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -226,16 +227,50 @@ func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string
 	}
 	vc.line("var %s string", childVar)
 	vc.renderStmt(child, childVar)
-	switch child.(type) {
-	case *ir.If, *ir.Match, *ir.For:
-		// A branch not taken or a loop over nothing renders nothing, and
-		// joining its empty string would put a blank line in the box.
-		vc.line("if %s != \"\" {", childVar)
-		vc.line("\t%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+	vc.appendPart(child, childVar, childrenVar)
+}
+
+// appendPart appends part, which child rendered, to list, leaving it out where
+// it is empty and child may draw nothing: joining an empty string puts a blank
+// line in the box.
+func (vc *irViewContext) appendPart(child ir.Stmt, part, list string) {
+	if vc.mayDrawNothing(child) {
+		vc.line("if %s != \"\" {", part)
+		vc.line("\t%s = append(%s, %s)", list, list, part)
 		vc.line("}")
-	default:
-		vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+		return
 	}
+	vc.line("%s = append(%s, %s)", list, list, part)
+}
+
+// mayDrawNothing reports whether child may render an empty string: a branch
+// not taken, a loop over nothing, a node its Style may display none, or a
+// component rendered by a method of its own, whose root may be any of those.
+// A body rendering no part at all, nil here, draws nothing.
+func (vc *irViewContext) mayDrawNothing(child ir.Stmt) bool {
+	switch n := child.(type) {
+	case nil, *ir.If, *ir.Match, *ir.For:
+		return true
+	case *ir.NodeInst:
+		return hides(n) || n.Component != nil && vc.isUserComponent(n.Component)
+	}
+	return false
+}
+
+// hides reports whether n's fit may hide it: a literal setting `hidden`, or
+// one the build cannot read.
+func hides(n *ir.NodeInst) bool {
+	f := codegen.NodeProp(n, "fit")
+	lit, ok := f.(*ir.StructLit)
+	if !ok {
+		return f != nil
+	}
+	for _, fi := range lit.Fields {
+		if zero, known := ir.ZeroKnown(fi.Value); fi.Spread || fi.Name == "hidden" && (!zero || !known) {
+			return true
+		}
+	}
+	return false
 }
 
 // renderBody emits a body as one value in `single`, or as a list of parts
@@ -510,10 +545,14 @@ func countParts(stmts []ir.Stmt) int {
 func (vc *irViewContext) renderSiblings(stmts []ir.Stmt, partVar, list string) {
 	if countParts(stmts) <= 1 {
 		vc.line("var %s string", partVar)
+		var drawn ir.Stmt
 		for _, child := range stmts {
 			vc.renderStmt(child, partVar)
+			if rendersPart(child) {
+				drawn = child
+			}
 		}
-		vc.line("%s = append(%s, %s)", list, list, partVar)
+		vc.appendPart(drawn, partVar, list)
 		return
 	}
 	for i, child := range codegen.WithoutSchedules(stmts) {
@@ -679,9 +718,9 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 			vc.line(`%sFocused := %s`, resultVar, vc.gc.EvalExpr(fp))
 			vc.line(`%sPrefix := " "`, resultVar)
 			vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
-			vc.line(`%s = %s.Render(%sPrefix + " " + fmt.Sprint(%s))`, resultVar, style, resultVar, content)
+			vc.line(`%s = %s`, resultVar, vc.render(n, style, resultVar+`Prefix + " " + fmt.Sprint(`+content+`)`))
 		} else {
-			vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
+			vc.line(`%s = %s`, resultVar, vc.render(n, style, "fmt.Sprint("+content+")"))
 		}
 
 	case bpWidget:
@@ -703,8 +742,8 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		if w.loop != nil {
 			view = copyCall(w, vc.gc) + w.model.View
 		}
-		if style != plainLook {
-			view = style + ".Render(" + view + ")"
+		if style != plainLook || vc.fits(n) {
+			view = vc.render(n, style, view)
 		}
 		vc.line(`%s = %s`, resultVar, view)
 	}
@@ -712,6 +751,36 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 
 // plainLook is the look of a primitive whose override handed it none.
 const plainLook = "lipgloss.NewStyle()"
+
+// fits reports whether n's override handed it a tui.Fit that may say anything:
+// one the build cannot read, or a literal setting a field. tui.Fit is the
+// host's struct, which ir.ZeroKnown does not answer for, but its literal's
+// fields left out are Go's zero.
+func (vc *irViewContext) fits(n *ir.NodeInst) bool {
+	lit, ok := codegen.NodeProp(n, "fit").(*ir.StructLit)
+	if !ok {
+		return codegen.NodeProp(n, "fit") != nil
+	}
+	for _, f := range lit.Fields {
+		if zero, known := ir.ZeroKnown(f.Value); f.Spread || !zero || !known {
+			return true
+		}
+	}
+	return false
+}
+
+// render is the Go rendering text, a Go string, in look as n's fit says:
+// look's own Render where the fit says nothing.
+func (vc *irViewContext) render(n *ir.NodeInst, look, text string) string {
+	if !vc.fits(n) {
+		if f := codegen.NodeProp(n, "fit"); f != nil {
+			vc.discard(f)
+		}
+		return look + ".Render(" + text + ")"
+	}
+	vc.requireImport(tuiImportPath)
+	return fmt.Sprintf("tui.Render(%s, %s, %s)", look, vc.gc.EvalExpr(codegen.NodeProp(n, "fit")), text)
+}
 
 // look is the lipgloss style a primitive renders with: what its override built
 // from the node's Style, sized to the share of its parent it grows into.
@@ -760,46 +829,112 @@ func growsWithin(s ir.Stmt) bool {
 }
 
 // directlyGrows reports whether s is a child its Layout renders once the
-// fixed ones are done. One that counts a loop's focus stops or canvas copies
-// as it renders is joined at its own size, since its count would come after
-// its later siblings'.
+// fixed ones are done.
 func (vc *irViewContext) directlyGrows(s ir.Stmt) bool {
 	n, ok := s.(*ir.NodeInst)
-	if !ok || !grows(n) {
-		return false
-	}
-	ordered := false
+	return ok && grows(n)
+}
+
+// countAhead numbers the loop focus stops and canvas copies n renders where n
+// stands, and returns each counter n's closure starts from, by the local
+// holding its value here: tui.Join runs that closure after n's later siblings
+// have counted theirs, which numbered n's after them.
+func (vc *irViewContext) countAhead(n *ir.NodeInst, childVar string) map[string]string {
 	_ = ir.Walk([]ir.Stmt{n}, func(nd ir.Node) error {
-		m, ok := nd.(*ir.NodeInst)
-		if !ok {
-			return nil
-		}
-		if _, ok := nodeLoopFocus(m); ok {
-			ordered = true
-		} else if c := vc.ctx.Canvases.ForNode(m); c != nil && vc.canvasSeq[c.Name] {
-			ordered = true
-		}
-		if ordered {
-			return ir.SkipAll
+		if f, ok := nd.(*ir.For); ok {
+			vc.declareLoopCounters(f)
 		}
 		return nil
 	})
-	return !ordered
+	counters := func(m *ir.NodeInst) (pos, seq string) {
+		if lf, ok := nodeLoopFocus(m); ok {
+			pos = lf.pos
+		}
+		if c := vc.ctx.Canvases.ForNode(m); c != nil && vc.canvasSeq[c.Name] {
+			seq = canvasSeqVar(c)
+		}
+		return pos, seq
+	}
+	bases := map[string]string{}
+	eachRenderedNode([]ir.Stmt{n}, func(m *ir.NodeInst) {
+		pos, seq := counters(m)
+		for _, c := range []string{pos, seq} {
+			if c != "" && bases[c] == "" {
+				bases[c] = childVar + c + "Base"
+				vc.line("%s := %s", bases[c], c)
+			}
+		}
+	})
+	if len(bases) == 0 {
+		return nil
+	}
+	vc.line("{")
+	w := &viewWalk{b: vc.buf, indent: vc.indent + 1, wants: func(m *ir.NodeInst) bool {
+		pos, seq := counters(m)
+		return pos != "" || seq != ""
+	}}
+	w.visit = func(w *viewWalk, m *ir.NodeInst, gc *golang.GoIRContext) {
+		pos, seq := counters(m)
+		if seq != "" {
+			w.line("%s++", seq)
+		}
+		if pos != "" {
+			w.counted(m, gc, func() { w.line("%s++", pos) })
+		}
+	}
+	w.stmts([]ir.Stmt{n}, vc.gc)
+	vc.line("}")
+	return bases
+}
+
+// growsAsPart reports whether s is, or holds, a child its Layout renders once
+// the fixed ones are done: a node that grows, or an `if` or a `for` rendering
+// one, whose nodes are each a part of the Layout, as CSS has them.
+func (vc *irViewContext) growsAsPart(s ir.Stmt) bool {
+	var blocks [][]ir.Stmt
+	switch x := s.(type) {
+	case *ir.If:
+		if ir.ComputesValue(x) {
+			return false
+		}
+		blocks = [][]ir.Stmt{x.Body, x.Else}
+	case *ir.For:
+		if computesOnly(x) {
+			return false
+		}
+		blocks = [][]ir.Stmt{x.Body, x.Else}
+	default:
+		return vc.directlyGrows(s)
+	}
+	for _, b := range blocks {
+		if slices.ContainsFunc(b, vc.growsAsPart) {
+			return true
+		}
+	}
+	return false
 }
 
 // renderLayout joins a Layout's children along its axis.
 //
 // A child that grows is rendered in a closure once the fixed ones have said
 // how much of the Layout they leave, which needs the Layout's own extent: its
-// look's, or what its parent gave it, the terminal's at the top. A child that
-// grows under an `if` or a `for` is joined at its own size, being one of the
-// parts that statement renders rather than a part of its own.
+// look's, or what its parent gave it, the terminal's at the top. An `if` or a
+// `for` holding one renders each of its nodes as a part of the Layout: joined
+// as one part, the grower took only its own size.
 func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, style string) {
 	horizontal := bp.Join != joinVertical
 	savedW, savedH := vc.availW, vc.availH
 	inner := ""
 	outer := vc.buf
-	if slices.ContainsFunc(n.Children, growsWithin) {
+	justify := "0"
+	if v := codegen.NodeProp(n, "justify"); v != nil {
+		if c, ok := codegen.IRLiteralNumber(v); !ok || c != 0 {
+			justify = vc.gc.EvalExpr(v)
+		}
+	}
+	// A box placing its children along it needs its extent, as one whose
+	// child grows does: what they leave of it is what it places them in.
+	if justify != "0" || slices.ContainsFunc(n.Children, growsWithin) {
 		vc.requireImport(tuiImportPath)
 		look := resultVar + "Look"
 		vc.line("%s := %s", look, style)
@@ -841,7 +976,7 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	}
 	prevGap, prevAt := vc.joinGap, vc.joinAt
 	vc.joinGap, vc.joinAt = spacing, pos
-	parts := slices.ContainsFunc(n.Children, vc.directlyGrows)
+	parts := justify != "0" || slices.ContainsFunc(n.Children, vc.growsAsPart)
 	childrenVar := resultVar + "Children"
 	if parts {
 		vc.line("var %s []tui.Part", childrenVar)
@@ -888,7 +1023,7 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	}
 	switch {
 	case parts:
-		vc.line(`%s = tui.Join(%t, %s, %s, %s, %s)`, resultVar, horizontal, pos, spacing, extent(main), childrenVar)
+		vc.line(`%s = tui.Join(%t, %s, %s, %s, %s, %s)`, resultVar, horizontal, pos, justify, spacing, extent(main), childrenVar)
 	case spacing != "0":
 		vc.requireImport(tuiImportPath)
 		vc.line(`%s = tui.Spaced(%t, %s, %s, %s...)`, resultVar, horizontal, pos, spacing, childrenVar)
@@ -923,8 +1058,8 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 			style += ".AlignHorizontal(" + pos + ")"
 		}
 	}
-	if style != plainLook {
-		vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
+	if style != plainLook || vc.fits(n) {
+		vc.line(`%s = %s`, resultVar, vc.render(n, style, resultVar))
 	}
 }
 
@@ -983,6 +1118,18 @@ func isIdentByte(c byte) bool {
 
 // renderPart is renderChild for a Layout one of whose children grows.
 func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, horizontal bool) {
+	switch x := child.(type) {
+	case *ir.If:
+		if vc.growsAsPart(x) {
+			vc.renderIfParts(x, childVar, partsVar, horizontal)
+			return
+		}
+	case *ir.For:
+		if vc.growsAsPart(x) {
+			vc.renderForParts(x, childVar, partsVar, horizontal)
+			return
+		}
+	}
 	if !vc.directlyGrows(child) {
 		if !rendersPart(child) {
 			vc.renderStmt(child, "")
@@ -1001,9 +1148,14 @@ func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, ho
 		return
 	}
 	n := child.(*ir.NodeInst)
+	bases := vc.countAhead(n, childVar)
 	cells := childVar + "Cells"
 	vc.line("%s = append(%s, tui.Grow(%s, func(%s int) string {", partsVar, partsVar, vc.gc.EvalExpr(codegen.NodeProp(n, "grow")), cells)
 	vc.indent++
+	for _, c := range slices.Sorted(maps.Keys(bases)) {
+		vc.line("%s := %s", c, bases[c])
+		vc.line("_ = %s", c)
+	}
 	savedW, savedH := vc.availW, vc.availH
 	if horizontal {
 		vc.availW = cells
@@ -1018,6 +1170,62 @@ func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, ho
 	vc.line("return %s", childVar)
 	vc.indent--
 	vc.line("}))")
+}
+
+// renderIfParts writes an `if` among a Layout's parts: each node the branch
+// taken renders is a part of its own.
+func (vc *irViewContext) renderIfParts(s *ir.If, childVar, partsVar string, horizontal bool) {
+	vc.line("%s", vc.gc.IfHead(s, vc.gc.EvalExpr(s.Cond)))
+	vc.indent++
+	vc.renderParts(s.Body, childVar+"_t", partsVar, horizontal)
+	vc.indent--
+	if len(s.Else) > 0 {
+		vc.line("%s", vc.gc.ElseHead())
+		vc.indent++
+		vc.renderParts(s.Else, childVar+"_e", partsVar, horizontal)
+		vc.indent--
+	}
+	vc.line("%s", vc.gc.BlockEnd())
+}
+
+// renderForParts writes a `for` among a Layout's parts, as renderFor writes
+// one: each node a copy renders is a part of its own.
+func (vc *irViewContext) renderForParts(s *ir.For, childVar, partsVar string, horizontal bool) {
+	vc.declareLoopCounters(s)
+	iterExpr := vc.gc.EvalExpr(s.Iter)
+	savedGC := vc.gc
+	if s.Key != "" && s.Key != "_" {
+		vc.gc = vc.gc.WithLocal(s.Key)
+	}
+	if s.Value != "" && s.Value != "_" {
+		vc.gc = vc.gc.WithLocal(s.Value)
+	}
+	vc.line("%s", vc.gc.ForHead(s, iterExpr))
+	vc.indent++
+	kept := golang.WithUnreadVarsDropped(s)
+	if kept.Key != "" && kept.Key != "_" {
+		vc.line("_ = %s", kept.Key)
+	}
+	if kept.Value != "" && kept.Value != "_" {
+		vc.line("_ = %s", kept.Value)
+	}
+	vc.renderParts(s.Body, childVar+"_b", partsVar, horizontal)
+	vc.indent--
+	vc.line("}")
+	vc.gc = savedGC
+	if len(s.Else) > 0 {
+		vc.line("if len(%s) == 0 {", iterExpr)
+		vc.indent++
+		vc.renderParts(s.Else, childVar+"_e", partsVar, horizontal)
+		vc.indent--
+		vc.line("}")
+	}
+}
+
+func (vc *irViewContext) renderParts(stmts []ir.Stmt, prefix, partsVar string, horizontal bool) {
+	for i, c := range stmts {
+		vc.renderPart(c, fmt.Sprintf("%s%d", prefix, i), partsVar, horizontal)
+	}
 }
 
 // position is where a Layout's children sit across its axis.

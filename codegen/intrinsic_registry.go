@@ -374,3 +374,19 @@ func VariadicRest(arg ir.Expr) ir.Expr {
 	}
 	return arg
 }
+
+// ColorStringConversion is `string(c)` of a color in lang: the color's hex(),
+// `#rrggbb` or `#rrggbbaa`, which is what a color's string is on every target
+// and in the interpreter (cmd/sngl/testdata/color_string_runs.txt). ok is
+// false for a conversion of anything else, or a lang with no color.hex.
+func ColorStringConversion(lang string, n *ir.Conversion, translate func(ir.Expr) string) (code string, imports []string, ok bool) {
+	if n == nil || n.Type == nil || n.Type.Kind != ir.TypeString || n.Operand == nil || !ir.IsColorStruct(n.Operand.ExprType()) {
+		return "", nil, false
+	}
+	emit := LookupIntrinsic(lang, "color.hex")
+	if emit == nil {
+		return "", nil, false
+	}
+	code, imports = emit([]ir.Expr{n.Operand}, translate)
+	return code, imports, code != ""
+}

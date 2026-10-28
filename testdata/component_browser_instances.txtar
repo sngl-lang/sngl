@@ -640,7 +640,7 @@ window.__sngl_boot();
 -- run/none/html --
 pass sha256:67e2e498f7ebbaf8b7e31fe7104a96f0
 -- testrun/html/none/component_browser_instances.sngl/decorated/1 --
-sha256:d92cb38cae1332ea32f5deddfb8483ce
+sha256:9c3d1a2c304f8ad94e464bd359445336
 {
   "results": [
     {
@@ -650,7 +650,7 @@ sha256:d92cb38cae1332ea32f5deddfb8483ce
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/factory/1 --
-sha256:4509b03a9a421e1479278730c7ae6b10
+sha256:6f305842c87ecc3864d45577e8922f94
 {
   "results": [
     {
@@ -660,7 +660,7 @@ sha256:4509b03a9a421e1479278730c7ae6b10
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/funcProp/1 --
-sha256:f81561ed3442d6b572ea9eb811a203b6
+sha256:643f6a3e8a5c2784ef2a3b6acb710257
 {
   "results": [
     {
@@ -670,7 +670,7 @@ sha256:f81561ed3442d6b572ea9eb811a203b6
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/recursive/1 --
-sha256:a1062b055f42f1f979ffda5257c77a69
+sha256:2d61b0e8cc1a4fda81ae644a720dbebb
 {
   "results": [
     {
@@ -680,7 +680,7 @@ sha256:a1062b055f42f1f979ffda5257c77a69
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/unrolled/1 --
-sha256:78f85b2e9c884bd1bb743cdb6df8c8e4
+sha256:d6a673acef6da76bf4417706da0ff4c1
 {
   "results": [
     {

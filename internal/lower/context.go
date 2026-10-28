@@ -626,12 +626,28 @@ type slotEnvs map[*ir.Component]map[string]map[*ir.Context]ir.Expr
 // closed expression by the time any caller reads it.
 func computeSlotEnvs(pkg *ir.Package) slotEnvs {
 	out := slotEnvs{}
+	known := map[*ir.Component]bool{}
 	for _, comp := range pkg.Components {
+		known[comp] = true
+	}
+	begun := map[*ir.Component]bool{}
+	var envOf func(*ir.Component) map[string]map[*ir.Context]ir.Expr
+	envOf = func(comp *ir.Component) map[string]map[*ir.Context]ir.Expr {
+		// A component nesting its slot in itself reads its own table as it
+		// stands, empty.
+		if !known[comp] || begun[comp] {
+			return out[comp]
+		}
+		begun[comp] = true
 		per := map[string]map[*ir.Context]ir.Expr{}
-		collectSlotEnv(comp.Stmts, map[*ir.Context]ir.Expr{}, per)
+		collectSlotEnv(comp.Stmts, map[*ir.Context]ir.Expr{}, per, envOf)
 		if len(per) > 0 {
 			out[comp] = per
 		}
+		return per
+	}
+	for _, comp := range pkg.Components {
+		envOf(comp)
 	}
 	return out
 }
@@ -639,13 +655,30 @@ func computeSlotEnvs(pkg *ir.Package) slotEnvs {
 // collectSlotEnv walks root recording the active provider values at every
 // SlotInst under it. Like callsIn, it cannot be a plain ir.Walk: what it
 // records is a property of the path taken to a slot, not of the slot.
-func collectSlotEnv(root any, cur map[*ir.Context]ir.Expr, out map[string]map[*ir.Context]ir.Expr) {
+//
+// A slot inserted into another component's slot stands under what that
+// component wraps its own slot in as well: `ui.vbox { content }` puts the
+// content under the vbox's flexShare, and envOf is the vbox's table.
+func collectSlotEnv(root any, cur map[*ir.Context]ir.Expr, out map[string]map[*ir.Context]ir.Expr, envOf func(*ir.Component) map[string]map[*ir.Context]ir.Expr) {
 	_ = ir.Walk(root, func(n ir.Node) error {
 		switch x := n.(type) {
 		case *ir.ContextProvider:
 			inner := copyExprMap(cur)
 			inner[x.Ref] = substituteReads(x.Value, cur)
-			collectSlotEnv(x.Children, inner, out)
+			collectSlotEnv(x.Children, inner, out, envOf)
+			return ir.SkipDir
+		case *ir.NodeInst:
+			if x.Component == nil {
+				return nil
+			}
+			env := envOf(x.Component)
+			if len(env) == 0 {
+				return nil
+			}
+			collectSlotEnv(x.Children, nestedSlotActive(cur, env[""], x), out, envOf)
+			for _, name := range ir.SlotNames(x.Slots) {
+				collectSlotEnv(x.Slots[name].Body, nestedSlotActive(cur, env[name], x), out, envOf)
+			}
 			return ir.SkipDir
 		case *ir.SlotInst:
 			if len(cur) > 0 {
@@ -658,6 +691,48 @@ func collectSlotEnv(root any, cur map[*ir.Context]ir.Expr, out map[string]map[*i
 		}
 		return nil
 	})
+}
+
+// nestedSlotActive is cur overridden by env, what inst's callee wraps one of
+// its slots in, rewritten from the callee's terms into the caller's: a prop
+// the value reads becomes the argument inst passes it, and a context read the
+// value the callee was entered with.
+func nestedSlotActive(cur, env map[*ir.Context]ir.Expr, inst *ir.NodeInst) map[*ir.Context]ir.Expr {
+	if len(env) == 0 {
+		return cur
+	}
+	props := map[ir.Symbol]ir.Expr{}
+	for _, p := range inst.Component.Props {
+		if p.Sym == nil {
+			continue
+		}
+		val := p.Default
+		for _, arg := range inst.Props {
+			if arg.Name == p.Name {
+				val = arg.Value
+				break
+			}
+		}
+		if val == nil {
+			val = ir.ZeroExpr(p.Type)
+		}
+		if val != nil {
+			props[p.Sym] = val
+		}
+	}
+	bind := newExprWalker(func(e ir.Expr) ir.Expr {
+		if id, ok := e.(*ir.Ident); ok && id.Sym != nil {
+			if v, ok := props[id.Sym]; ok {
+				return ir.CloneExprSharingDecls(v)
+			}
+		}
+		return e
+	})
+	inner := copyExprMap(cur)
+	for ctx, v := range env {
+		inner[ctx] = substituteReads(bind.expr(ir.CloneExprSharingDecls(v)), cur)
+	}
+	return inner
 }
 
 // substituteReads returns a copy of e with every ContextRead that vals answers

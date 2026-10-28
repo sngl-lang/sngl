@@ -63,7 +63,7 @@ func bindProps(caller, child *Env, comp *ir.Component, inst *ir.NodeInst, first 
 	for _, p := range ir.UnboundProps(comp, inst.Bindings) {
 		cells[p.Name] = true
 		if first && p.Default == nil && p.Sym != nil {
-			if z := ir.DeclaredDefault(p.Type); z != nil {
+			if z := ir.ZeroExpr(p.Type); z != nil {
 				child.Set(p.Sym, evalInit(child, z))
 			}
 		}

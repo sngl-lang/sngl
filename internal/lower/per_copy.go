@@ -30,7 +30,7 @@ func perCopyCells(at string, body []ir.Stmt, vars []*ir.Var, funcs []*ir.Func, l
 	for _, v := range vars {
 		init := v.Init
 		if init == nil {
-			init = ir.DeclaredDefault(v.Type)
+			init = ir.ZeroExpr(v.Type)
 		}
 		cells[v] = init
 	}

@@ -49,7 +49,7 @@ ui.window {
     page()
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:f8f8d7c10ee89f8763e73779cd15de98
+sha256:9e8b463fc8ddb92b6367dd0dd7109d19
 {
   "results": [
     {

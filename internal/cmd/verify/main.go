@@ -582,7 +582,7 @@ func recordPackages(pkgs []string) []string {
 // each script, one at a time in the shared Gradle daemon, which took
 // cmd/sngl past an hour.
 func rerecord(pkgs []string, verbose bool) bool {
-	args := []string{"test", "-timeout=4h", "-p=" + strconv.Itoa(codegen.BuildTokenSlots())}
+	args := []string{"test", "-timeout=4h"}
 	if verbose {
 		args = append(args, "-v")
 	}

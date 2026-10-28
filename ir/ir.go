@@ -157,6 +157,10 @@ type Package struct {
 	// runtime function, recorded by the flatten_struct_spread lowering pass
 	// when it rewrites an opaque (non-literal) spread. Deduped by *StructDef.
 	MergeStructs []*StructDef
+	// MergeSets lists the fields a generated __set_<Struct>_<field> writes:
+	// a field written after a spread the build cannot read, which the merge
+	// would skip where it holds its zero. Deduped.
+	MergeSets []MergeSet
 
 	// SourcePath is the absolute path of the .sngl fixture this package was
 	// built from. Set by the CLI test driver so the headless (`none`) test
@@ -756,6 +760,74 @@ type Func struct {
 	// Package.ReleaseFor synthesized for a type owned by what it holds; a
 	// declared release is named by its struct instead (StructDef.Release).
 	Releases *Type `json:"-"`
+	// Protocol is the operation a #[gen.protocol] mark names, ProtocolNone
+	// otherwise. The component it serves holds it (Component.Protocol).
+	Protocol ProtocolOp `json:",omitempty"`
+}
+
+// ProtocolOp is one operation of the protocol a platform builds an
+// #[intrinsic] component's widget with (sngl:x/gen's Protocol).
+type ProtocolOp string
+
+const (
+	ProtocolNone    ProtocolOp = ""
+	ProtocolCreate  ProtocolOp = "create"
+	ProtocolAppend  ProtocolOp = "append"
+	ProtocolRemove  ProtocolOp = "remove"
+	ProtocolConnect ProtocolOp = "connect"
+	ProtocolSet     ProtocolOp = "set"
+	ProtocolOn      ProtocolOp = "on"
+)
+
+// NodeProtocol is the functions a platform declares to build an #[intrinsic]
+// component's widget with, which lowering splices into the node operations
+// it makes so that every call to the host is IR a pass can see.
+type NodeProtocol struct {
+	Create *Func
+	Append *Func
+	Remove *Func
+	// Connect is held by a build-target node, not by the component: one
+	// connects a handler to every widget its platform makes.
+	Connect *Func
+	// Set is each prop's set, by the prop's name.
+	Set map[string]*Func
+	// On is each event's own connect, by the event's name, which a node of
+	// the component is connected through in place of the platform's.
+	On map[string]*Func
+}
+
+// Handler is the function declared to connect event, nil where none is.
+func (p *NodeProtocol) Handler(event string) *Func {
+	if p == nil {
+		return nil
+	}
+	return p.On[event]
+}
+
+// Setter is the function declared to set prop, nil where none is.
+func (p *NodeProtocol) Setter(prop string) *Func {
+	if p == nil {
+		return nil
+	}
+	return p.Set[prop]
+}
+
+// Op is the function declared for op, nil where none is.
+func (p *NodeProtocol) Op(op ProtocolOp) *Func {
+	if p == nil {
+		return nil
+	}
+	switch op {
+	case ProtocolCreate:
+		return p.Create
+	case ProtocolAppend:
+		return p.Append
+	case ProtocolRemove:
+		return p.Remove
+	case ProtocolConnect:
+		return p.Connect
+	}
+	return nil
 }
 
 // FuncLowering is what the lowering passes record on a function for codegen
@@ -1103,6 +1175,10 @@ type Component struct {
 	// a component nobody overrides.
 	PlatformOverrides map[string]Override `json:"-"`
 	LanguageOverrides map[string]Override `json:"-"`
+	// Protocol is what the #[gen.protocol] functions declared beside this
+	// #[intrinsic] component build its widget with; nil for one whose
+	// platform's generator answers every operation itself.
+	Protocol *NodeProtocol `json:"-"`
 	// LocalRefs is populated by lower's passNodeEscape (MutationModel
 	// platforms only): the set of synthesized widget ref ids (__nN)
 	// created in this component's Body that do NOT escape to any other
@@ -1184,6 +1260,9 @@ type EventDecl struct {
 	Wildcard string `json:",omitempty"`
 	// Doc is the comment written on the event in its declaration.
 	Doc string `json:",omitempty"`
+	// Connects is the name the host knows the event by, from #[gen.connects];
+	// empty where it is the event's own.
+	Connects string `json:",omitempty"`
 }
 
 // SlotDecl is a resolved slot declaration: a parameter whose type is a
@@ -1459,9 +1538,8 @@ type StructField struct {
 	Default Expr // nil if no default
 	// DefaultWritten records that the declaration gave this field a default.
 	// Normalize otherwise erases the distinction by filling every nil Default
-	// with the type's zero, and DeclaredDefault needs it: a field the
-	// declaration said nothing about has to stay absent, so that "unset" goes
-	// on meaning unset to a backend that reads presence.
+	// with the type's zero, which a dump written back as source would then
+	// spell as a default the declaration never wrote.
 	DefaultWritten bool `json:",omitempty"`
 	Foreign        `json:"Foreign,omitzero"`
 	// JSON and HTTP are the field's name on the wire in each format, as
@@ -1588,3 +1666,15 @@ type StaticTarget struct {
 // WildcardPattern implements ir.WildcardSymbol: a component carrying
 // #[wildcard] answers to every name its pattern matches.
 func (c *Component) WildcardPattern() string { return c.Wildcard }
+
+// MergeSet is one field a generated __set_<Struct>_<field> writes: the
+// struct value it is handed, with that field replaced.
+type MergeSet struct {
+	Struct *StructDef
+	Field  string
+}
+
+// MergeSetName is the helper writing set's field.
+func MergeSetName(set MergeSet) string {
+	return "__set_" + set.Struct.Name + "_" + set.Field
+}

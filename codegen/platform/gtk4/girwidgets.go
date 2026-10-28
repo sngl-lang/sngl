@@ -1,6 +1,8 @@
 package gtk4
 
 import (
+	"strconv"
+
 	"duckfam.us/sngl/internal/buildhost"
 	"duckfam.us/sngl/internal/gencache"
 	"duckfam.us/sngl/ir"
@@ -15,6 +17,9 @@ import (
 // changes and not only when the file it named does.
 const girSetting = "gtk4.gir"
 
+// cgoSetting is the "cgo" option, which decides what the declarations call.
+const cgoSetting = "gtk4.cgo"
+
 // The widget declarations are the gir: scheme's package (lib/x/scheme/gir),
 // which sngl:platform/gtk4 imports. The scheme is SNGL; parsing GIR is not, so
 // its handler calls gir.widgets, which this answers from the gtk4.widgets
@@ -24,10 +29,11 @@ const girSetting = "gtk4.gir"
 func registerGIRScheme(g *Generator) {
 	buildhost.RegisterIntrinsic("gir.widgets", g.girWidgets)
 	gencache.RegisterSetting(girSetting, g.girOption)
+	gencache.RegisterSetting(cgoSetting, func() string { return strconv.FormatBool(g.cgoOption()) })
 }
 
 func (g *Generator) girWidgets(rec *buildhost.Recorder, _ *ir.Call, _ []any) (any, error) {
-	req, err := girRequest(widgetsProducer, g.girOption())
+	req, err := widgetsRequest(g.girOption(), g.cgoOption())
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +45,11 @@ func (g *Generator) girWidgets(rec *buildhost.Recorder, _ *ir.Call, _ []any) (an
 	if err != nil {
 		return nil, err
 	}
-	rec.Add(entry, setting)
+	cgo, err := gencache.Setting(cgoSetting)
+	if err != nil {
+		return nil, err
+	}
+	rec.Add(entry, setting, cgo)
 	return string(data), nil
 }
 
@@ -49,7 +59,7 @@ func (g *Generator) girWidgets(rec *buildhost.Recorder, _ *ir.Call, _ []any) (an
 func (g *Generator) widgets() bool {
 	if !g.fsLoaded {
 		g.fsLoaded = true
-		req, err := girRequest(widgetsProducer, g.girOpt)
+		req, err := widgetsRequest(g.girOpt, g.cgoOpt)
 		if err != nil {
 			g.fsErr = err
 		} else {
@@ -57,6 +67,13 @@ func (g *Generator) widgets() bool {
 		}
 	}
 	return g.fsErr == nil
+}
+
+// cgoOption is what the "cgo" option says now.
+func (g *Generator) cgoOption() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.cgoOpt
 }
 
 // girOption is the GIR the "gir" option selects now.

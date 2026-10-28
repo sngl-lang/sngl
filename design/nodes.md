@@ -20,6 +20,88 @@ component renders nothing, which is the one thing an intrinsic never does. The
 rule is at registration, so gtk4's GIR-synthesized declarations are held to it
 too.
 
+**How a platform builds the widget may be declared beside it.** A
+`#[gen.protocol(op)]` function (`sngl:x/gen`) is one operation of the
+protocol an `#[intrinsic]` component's widget is built with, written in SNGL
+so that every call to the host is one a pass sees. `create` is the first: a
+function of no parameters declaring the component as its return type, in the
+component's own package, at most one per component (`bindProtocols`,
+`testdata/error_gen_protocol_create.sngl`,
+`TestGenProtocolPlacement`). The return type is declared rather than
+inferred because the mark runs before an `=>` body is checked. The checker
+hangs it on the component (`Component.Protocol`), and `passDeclarative`
+splices its one returned expression into the `createNode` op as a second
+operand, marshaling the splice itself (`marshalSpliced`): `CMarshal` ran
+before the op existed. The predeclared `null` in the splice is folded there
+too, since the optimizer never saw a library body nothing calls. A
+translator taking the operand implements `codegen.NodeMaker`; one that does
+not and is handed one panics, rather than dropping the call.
+
+`append` and `remove` are the next two: a function of the parent, typed as
+the component, and the child, under the same placement rules
+(`testdata/error_gen_protocol_append.sngl`). `childOp` makes every
+`AppendChild` and `RemoveChild` -- the flattening, a render slot's teardown,
+a placed slot's close -- and splices the parent's function as a third
+operand, its parameters bound to the two operands; a translator taking it
+implements `codegen.ChildProtocol`. The parent is found by its handle's type,
+which names its component. A component with a create and no append takes no
+child, and putting one in is a lowering error where the op is made
+(`TestClassWithNoAdder_RefusesAChild`); one with no remove keeps a child the
+program stops rendering, as it did when the translator answered. A child of an
+`#[intrinsic]` component whose package declares no protocol for it at all is
+no widget -- gtk4's span, a piece of its flow's markup, read off the tree --
+and takes no splice and no refusal (`isNoWidget`).
+
+`connect` is the platform's rather than a component's: a function of the
+node, the name the host knows the event by and the handler, declared once
+beside the build-target node (`bindConnect`,
+`testdata/error_gen_protocol_connect.sngl`), since a platform connects a
+handler to every widget it makes the same way. `FeaturesFrom` reads it off
+the platform's node, and `passDeclarative` splices it into each
+`attachHandler` op on a node whose component declares a protocol, as a
+fourth operand. The event is handed over as `#[gen.connects]` names it, or by
+its own name: GTK's `notify::active` is no SNGL name, so `@notifyActive`
+carries the mark. The handler parameter is the one left unbound: the op
+already carries the handler, and a copy in the splice would be a second body
+every later pass rewrites, the two sharing whatever the body declares. The
+platform puts the walked handler there, shaped as its trampoline calls it
+(`codegen.HandlerConnector`).
+
+`on` is a component's own connect for one event the host raises through no
+call `connect` makes: a function of the widget, typed as the component, and
+the handler, whose parameter is named as the event -- or as a two-way
+prop, whose report reaches the node as an event of its name (`bindOn`,
+`testdata/error_gen_protocol_on.sngl`, `TestGenProtocolPlacement`), at most
+one per event. `passDeclarative` splices it in place of the platform's
+connect, with the node bound and the handler left for the platform as
+`connect` leaves it. gtk4's scroll is the first: GTK raises no signal for
+the end of the content arriving, so `@reachEnd` is gtk4rt's
+`ScrollOnReachEnd`, not a `g_signal_connect` (`testdata/gtk4_declared_scroll.txtar`).
+
+`set` writes one prop: a function of the widget, typed as the component, and
+the value, whose parameter is named as the prop it sets (`bindSet`,
+`testdata/error_gen_protocol_set.sngl`, `TestGenProtocolPlacement`), at most
+one per prop. It is spliced into every write of the prop, not only the
+view's first: an updater and a handler write a node's prop as well, and
+`passReactivity` made both before `passDeclarative` runs, so `spliceSets`
+walks the whole package once the view is flattened and makes the write's
+value the set's call, with the node and the written value bound. A write that
+two blocks share is spliced once. `ReleaseTemps` visits an assignment's
+value, so a string the call hands C is bound before the write and freed after
+it, or made once for the application where it is a literal. The passes that
+lower a ternary and a match ran before the op existed: a match in a set
+folds where it is spliced, which takes the arm its literal subject names and
+refuses a value no arm names or one that is no literal (`foldSplice`), since
+a set's match maps a word the program writes to the host's own value and its
+`else` is there only because a match over a string must have one; a ternary
+folds on a literal head and is otherwise a call in place on a target without
+ternaries. The platform puts the node where its scope holds it (gtk4's
+`OnPropAssign`), and refuses a write of a prop no set answers. gtk4 declares its whole
+protocol this way, declgen writing a GIR class's and `gtk4.sngl` the tags no
+GIR class is behind, and what its translator still calls GTK for is where a
+node lives -- the application's attach, a render slot's box, the window icon
+-- and the canvas, which #294 takes (`design/architecture.md`).
+
 The mark's other job is to stop the inliner. A platform's extension override
 inlines into its caller (`passInlinePure`), and every platform-package
 component must inline or the build fails — so the primitives those overrides
@@ -367,8 +449,9 @@ not guarded, since pressing Enter commits whatever the value. A host whose
 write fires its signal more than once is written quietly instead: gtk4's entry
 overrides do not bind `text` but push it from
 `effect(on=value, @mount(v) { if entryText(entry) != v { setEntryText(entry, v) } })`,
-`gtk4.setEntryText` (a `widgetWrites` intrinsic beside the `widgetReads`
-getters) blocking "changed", because gtk_editable_set_text deletes and
+`setEntryText` (`gtk4rt.EditableSetTextQuiet` as a `#[go.native]`, which
+`readWidgets` hands the entry as a `Handle` in either mode) blocking
+"changed", because gtk_editable_set_text deletes and
 reinserts and a runtime instance's handler writing the text back re-entered
 itself until the stack overflowed (`codegen/platform/gtk4/entry_echo_test.go`).
 `sngl_calendar_select` blocks "day-selected" the same way; a test's invoker
@@ -435,9 +518,10 @@ holds the bound value even before a choice carries it, since choices may
 be state that arrives later, and neither offering choices nor writing the
 value is reported as a choice:
 
-- **gtk4** offers a GtkStringList through `offerChoices`, a platform
-  intrinsic calling the template's `snglDropDownOffer` (gtk4rt in wrapped
-  mode, cgo otherwise), whose C blocks `notify::selected` meanwhile; the
+- **gtk4** offers a GtkStringList through `offerChoices`,
+  `gtk4rt.DropDownOffer` as a `#[go.native]` in both modes, which copies the
+  labels into C itself and blocks `notify::selected` meanwhile
+  (`testdata/gtk4_declared_dropdown.txtar`); the
   handler reads `dropDownLabel`. The invoker selects the label, which
   notifies, and fires nothing after it. Each splice of the override has its
   own `#drop` (`freshNodeHandles`, as datepicker's `#cal`): the declaration's

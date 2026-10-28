@@ -217,6 +217,16 @@ func ToplevelWindow(app, h Handle) Handle {
 	return Handle(unsafe.Pointer(win))
 }
 
+// ToplevelTitleWindow gives win the title h was given, for the inline-cgo
+// scaffold, which makes the one window itself around a box holding h's.
+func ToplevelTitleWindow(win, h Handle) {
+	if t := topOf(h); t != nil && t.title != "" {
+		cs := C.CString(t.title)
+		C.gtk_window_set_title((*C.GtkWindow)(p(win)), cs)
+		C.free(unsafe.Pointer(cs))
+	}
+}
+
 // RequestClose closes the window the way the window manager's close button
 // does: GTK asks the window, and the toplevel's report answers.
 func ToplevelRequestClose(h Handle) {

@@ -20,7 +20,14 @@ var passReleaseTemps = pass{
 	enabled: func(Features) bool { return true },
 	apply: func(pkg *ir.Package, feats Features, opts Options) error {
 		st := newReleaseTemps(pkg)
-		for _, block := range append(imperativeBlocks(pkg), drawBlocks(pkg)...) {
+		blocks := append(imperativeBlocks(pkg), drawBlocks(pkg)...)
+		// Flattened by passDeclarative into the statements that build the
+		// view, a view body makes temps as any block does: a widget's
+		// constructor hands C a string (#[gen.protocol(create)]).
+		if !feats.Declarative {
+			blocks = append(blocks, viewBlocks(pkg)...)
+		}
+		for _, block := range blocks {
 			st.block(block)
 		}
 		st.packageVars()

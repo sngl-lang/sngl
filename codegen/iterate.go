@@ -360,23 +360,6 @@ func IRIsZeroLiteral(e ir.Expr) bool {
 	return false
 }
 
-// IRWrittenFields is a struct literal with only the fields it sets, which is
-// what it says once the build has filled the rest with their zeros.
-func IRWrittenFields(v ir.Expr) ir.Expr {
-	lit, ok := v.(*ir.StructLit)
-	if !ok {
-		return v
-	}
-	out := *lit
-	out.Fields = nil
-	for _, f := range lit.Fields {
-		if f.Value != nil && !IRIsZeroLiteral(f.Value) {
-			out.Fields = append(out.Fields, f)
-		}
-	}
-	return &out
-}
-
 // IRIsReactive reports whether an expression references runtime state.
 func IRIsReactive(e ir.Expr) bool {
 	return e != nil && !IRIsLiteral(e)

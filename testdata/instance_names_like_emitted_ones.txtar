@@ -706,11 +706,11 @@ func newRowInstance(__model *Model, __a_container string) *RowInstance {
 	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n3, gtk4rt.OrientationHorizontal)
-	gtk4rt.BoxSetSpacing(c.__n3, 6)
+	c.__n3 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(c.__n3, 0)
+	gtk4rt.SetLook(c.__n3, gtk4rt.Look{Spaced: true, Spacing: 6})
 	c.__renderSlot0(c.__n3)
-	__n7 := gtk4rt.ButtonNew()
+	__n7 := gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(__n7, "hit")
 	gtk4rt.Connect(__n7, "clicked", func() {
 		c.parent += 1
@@ -827,7 +827,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, c.__prop___p0)
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.Root = c.__n0
@@ -878,7 +878,7 @@ func new__child1Instance(__model *Model, __a___p0 int) *__child1Instance {
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__n1 = gtk4rt.LabelNew("")
+	c.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n1, ("p " + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
 	c.Root = c.__n1
@@ -928,11 +928,11 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n6, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n6, 6)
+	m.__n6 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n6, 1)
+	gtk4rt.SetLook(m.__n6, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__renderSlot1(m.__n6)
-	m.bump = gtk4rt.ButtonNew()
+	m.bump = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.bump, "bump")
 	gtk4rt.Connect(m.bump, "clicked", m.bump_clicked_handler)
 	gtk4rt.BoxAppend(m.__n6, m.bump)
@@ -956,4 +956,4 @@ func (m *Model) bumpClick() {
 -- run/go/fyne --
 pass sha256:e2a6c6abdbaa3f9772e8d2118e486f00
 -- run/go/gtk4 --
-pass sha256:f5110277777f70951f5edf28fc5e131f
+pass sha256:0e446c45caf12d1a759219edb7d1b46a

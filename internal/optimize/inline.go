@@ -150,11 +150,26 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	// read nowhere drops it. Both are the argument's problem, not the
 	// function's -- `double(x) => x + x` is as pure as they come, and
 	// `double(bump())` counted by two.
+	//
+	// And copying a computed argument into every read is a cost when the
+	// reads are many: a body that reads a parameter a dozen times, spliced
+	// into one that does the same with its own computed argument, grows by
+	// the product. html's css reads a Style's lengths that way, and a held
+	// Style's spliced declarations came to 7KB a line, deep enough that the
+	// browser's stack gave out. So a computed argument read more than once is
+	// copied only where it is a path, a literal or a little arithmetic over
+	// them (cheapToCopy), or a struct literal the body reads a field at a time
+	// (literalField answers each with that field); otherwise the call stays,
+	// and evaluates it once.
 	for p, arg := range subs {
-		if effectFree(arg) {
+		reads := paramReads(ret.Value, p)
+		if !effectFree(arg) {
+			if reads != 1 {
+				return nil
+			}
 			continue
 		}
-		if paramReads(ret.Value, p) != 1 {
+		if reads > 1 && !cheapToCopy(arg) && !(isStructLit(arg) && readsOnlyFields(ret.Value, p)) {
 			return nil
 		}
 	}
@@ -436,12 +451,71 @@ func paramReads(e ir.Expr, p *ir.Param) int {
 	return n
 }
 
+// cheapToCopy reports whether reading e again costs about what reading a
+// name does: a name, a literal, a field, constant index or conversion of one,
+// or a little arithmetic over those -- `float(i) * math.tau / 6.0`, which an
+// unrolled loop then folds to a constant at every copy -- and a struct literal
+// of a few such fields, which a body comparing it with a constant folds:
+// android's `s == blank` of the Style a call site wrote.
+func cheapToCopy(e ir.Expr) bool {
+	if sl, ok := e.(*ir.StructLit); ok {
+		return len(sl.Fields) <= 16 && !slices.ContainsFunc(sl.Fields, func(f ir.FieldInit) bool {
+			return f.Spread || !cheapToCopy(f.Value)
+		})
+	}
+	budget := 8
+	var cheap func(ir.Expr) bool
+	cheap = func(e ir.Expr) bool {
+		if budget--; budget < 0 {
+			return false
+		}
+		switch x := e.(type) {
+		case *ir.Ident, *ir.Literal:
+			return true
+		case *ir.Select:
+			return cheap(x.Operand)
+		case *ir.Index:
+			_, lit := x.Idx.(*ir.Literal)
+			return lit && cheap(x.Operand)
+		case *ir.Conversion:
+			return cheap(x.Operand)
+		case *ir.Unary:
+			return cheap(x.Operand)
+		case *ir.Binary:
+			return cheap(x.Left) && cheap(x.Right)
+		}
+		return false
+	}
+	return cheap(e)
+}
+
+func isStructLit(e ir.Expr) bool {
+	_, ok := e.(*ir.StructLit)
+	return ok
+}
+
+// readsOnlyFields reports whether every read of p in e selects a field of it.
+func readsOnlyFields(e ir.Expr, p *ir.Param) bool {
+	ok := true
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if sel, isSel := x.(*ir.Select); isSel {
+			if id, isID := sel.Operand.(*ir.Ident); isID && id.Sym == ir.Symbol(p) {
+				return ir.SkipDir
+			}
+		}
+		if id, isID := x.(*ir.Ident); isID && id.Sym == ir.Symbol(p) {
+			ok = false
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return ok
+}
+
 // effectFree reports whether e can be copied or dropped without changing what
 // the program does: every call it contains is pure, and nothing in it writes.
 //
-// Cost is not the question -- duplicating an expensive pure call is a slower
-// program, not a different one, and that was already true of every inline this
-// pass has ever done.
+// Cost is not its question; inlineCall asks that separately.
 func effectFree(e ir.Expr) bool {
 	free := true
 	_ = ir.WalkExprs(e, func(x ir.Expr) error {
@@ -511,6 +585,18 @@ func substituteParams(e ir.Expr, subs map[*ir.Param]ir.Expr) ir.Expr {
 	case *ir.Conversion:
 		x.Operand = substituteParams(x.Operand, subs)
 	case *ir.Select:
+		// A field of a struct literal argument is that field's value: copying
+		// the whole literal into every field read, for literalField to cut
+		// back down, was most of what splicing html's css per node cost.
+		if id, ok := x.Operand.(*ir.Ident); ok {
+			if p, ok := id.Sym.(*ir.Param); ok {
+				if sl, ok := subs[p].(*ir.StructLit); ok {
+					if v := literalField(&ir.Select{Operand: sl, Field: x.Field}); v != nil {
+						return cloneExpr(v)
+					}
+				}
+			}
+		}
 		x.Operand = substituteParams(x.Operand, subs)
 	case *ir.Index:
 		x.Operand = substituteParams(x.Operand, subs)
@@ -569,6 +655,9 @@ func cloneExpr(e ir.Expr) ir.Expr {
 	}
 	switch x := e.(type) {
 	case *ir.Literal:
+		if ir.SharedLiteral(x) {
+			return x
+		}
 		cp := *x
 		return &cp
 	case *ir.Ident:

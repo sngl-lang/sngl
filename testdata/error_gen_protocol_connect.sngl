@@ -1,0 +1,39 @@
+// #[gen.protocol(connect)] says how a platform connects a handler to the
+// widget a node stands for: a function of the node, the name the host knows
+// the event by and the handler, declared once beside the platform's
+// build-target node. A program declares no target, so a connect it writes is
+// refused whatever its shape; TestGenProtocolPlacement holds the rest.
+// #[gen.connects] gives an event the name its host knows it by.
+
+import gen "sngl:x/gen"
+import ui "sngl:ui"
+
+#[gen.protocol(connect)] // ERROR(check) "#[gen.protocol(connect)] takes the node, the event's name and the handler"
+func takesTwo(w ui.node, signal string) {}
+
+#[gen.protocol(connect)] // ERROR(check) "#[gen.protocol(connect)] declares the node it connects to as its first parameter"
+func toNumber(w int, signal string, handler func()) {}
+
+#[gen.protocol(connect)] // ERROR(check) "#[gen.protocol(connect)] is handed the event's name, a string, as its second parameter"
+func namedByNumber(w ui.node, signal int, handler func()) {}
+
+#[gen.protocol(connect)] // ERROR(check) "#[gen.protocol(connect)] is handed the handler, a function, as its third parameter"
+func handedNoFunc(w ui.node, signal string, handler int) {}
+
+#[gen.protocol(connect)] // ERROR(check) "#[gen.protocol(connect)] is a platform's, declared beside its build-target node, and this package declares none"
+func connect(w ui.node, signal string, handler func()) {}
+
+#[gen.connects("clicked")] // ERROR(check) "#[gen.connects] cannot mark a function; it marks an event"
+func clicked() {}
+
+component pressable(
+    // ERROR(check:31) "#[gen.connects] names the event as its host knows it, and the name is empty"
+    #[gen.connects("")]
+    @pressed,
+) ui.node {
+    ui.text(value="press")
+}
+
+ui.window {
+    pressable()
+}

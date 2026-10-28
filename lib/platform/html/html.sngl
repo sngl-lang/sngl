@@ -202,7 +202,9 @@ component element(
     // the element rather than describing it, so it is never an attribute.
     #[construct] tag string,
 
-    style       ui.Style,
+    // The element's inline CSS: what `css` answers for a ui.Style, so a page
+    // writing an element itself writes `style=html.css({padding=8px})`.
+    style       list[Declaration],
     class       string,
     id          string,
     textContent string,
@@ -280,25 +282,25 @@ component element(
 // --- Core Layout ---
 
 const component ui.vbox[platform](style, children) {
-    html.div(style={...style, display=flex, flexDirection=column}) {
+    html.div(style=css({...style, display=flex, flexDirection=column})) {
         children
     }
 }
 
 const component ui.hbox[platform](style, children) {
-    html.div(style={...style, display=flex, flexDirection=row}) {
+    html.div(style=css({...style, display=flex, flexDirection=row})) {
         children
     }
 }
 
 const component ui.stack[platform](style, layers) {
-    html.div(style={...style, position=relative}) {
+    html.div(style=css({...style, position=relative})) {
         layers
     }
 }
 
 const component ui.spacer[platform](style) {
-    html.div(style={...style, flex=1}) {}
+    html.div(style=css({flex=1, ...style})) {}
 }
 
 // `@scrollEnd` is the standard library's name for the event the DOM calls
@@ -309,7 +311,7 @@ const component ui.spacer[platform](style) {
 // dispatches `reachEnd` as it comes within half the box's height of showing
 // and as the content resizes while it is there.
 const component ui.scroll[platform](style, @scroll, @scrollEnd, @reachEnd, content) {
-    html.div(style={...style, overflow=auto}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
+    html.div(style=css({...style, overflow=auto}), @scroll { scroll() }, @scrollend { scrollEnd() }) {
         content
         html.element(tag="sngl-reach-end", @reachEnd { reachEnd() }) {}
     }
@@ -318,7 +320,7 @@ const component ui.scroll[platform](style, @scroll, @scrollEnd, @reachEnd, conte
 // --- Core Text & Media ---
 
 const component ui.text[platform](value, style) {
-    html.span(textContent=value, style={...style}) {}
+    html.span(textContent=value, style=css(style)) {}
 }
 
 // `@longPress` maps to `contextmenu`, which is what a sustained touch press
@@ -326,7 +328,7 @@ const component ui.text[platform](value, style) {
 // html synthesizes the real one from pointerdown and a timer; the alternative
 // was a declared event that reached nothing.
 const component ui.button[platform](text, disabled, style, @click, @longPress) {
-    html.button(disabled=disabled, style={...style}, @click { click() }, @contextmenu { longPress() }) {
+    html.button(disabled=disabled, style=css(style), @click { click() }, @contextmenu { longPress() }) {
         html.span(textContent=text) {}
     }
 }
@@ -339,7 +341,7 @@ const component ui.image[platform](alt, fit, style, @click, src) {
     html.span(
         class = "sngl-image sngl-image-" + string(fit),
         attrs = {"role"="img", "aria-label"=alt},
-        style = {display=inlineBlock, overflow=hidden, ...style},
+        style = css({display=inlineBlock, overflow=hidden, ...style}),
         @click { click() },
     ) {
         #[family.crosses]
@@ -378,7 +380,7 @@ const component ui.input[platform](placeholder, readonly, value, disabled, type,
         value = value,
         disabled = disabled,
         readonly = readonly,
-        style = {...style},
+        style = css(style),
         @input(e) {
             value = e.currentTarget.value
             input(value)
@@ -391,7 +393,7 @@ const component ui.input[platform](placeholder, readonly, value, disabled, type,
 }
 
 const component ui.checkbox[platform](label, checked, disabled, style, @change) {
-    html.label(style={display=inlineFlex, alignItems=center, gap=4px, ...style}) {
+    html.label(style=css({display=inlineFlex, alignItems=center, gap=4px, ...style})) {
         html.input(type="checkbox", checked=checked, disabled=disabled, @change(e) {
             checked = e.currentTarget.checked
             change(checked)
@@ -403,9 +405,9 @@ const component ui.checkbox[platform](label, checked, disabled, style, @change) 
 // --- Tier 1: Core Input ---
 
 const component ui.radio[platform](value, disabled, direction, style, @change, options) {
-    html.fieldset(style={display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0, ...style}) {
+    html.fieldset(style=css({display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0px, ...style})) {
         for var opt = options {
-            html.label(style={display=inlineFlex, alignItems=center, gap=4px}) {
+            html.label(style=css({display=inlineFlex, alignItems=center, gap=4px})) {
                 html.input(type="radio", value=opt.label, checked=(opt.label == value), disabled=disabled, @change {
                     value = opt.label
                     change(opt.label)
@@ -417,7 +419,7 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
 }
 
 const component ui.toggle[platform](label, checked, disabled, style, @change) {
-    html.label(style={display=inlineFlex, alignItems=center, gap=8px, ...style}) {
+    html.label(style=css({display=inlineFlex, alignItems=center, gap=8px, ...style})) {
         html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change(e) {
             checked = e.currentTarget.checked
             change(checked)
@@ -427,7 +429,7 @@ const component ui.toggle[platform](label, checked, disabled, style, @change) {
 }
 
 const component ui.select[platform](placeholder, value, disabled, style, @change, options) {
-    html.select(disabled=disabled, style={...style}, @change(e) {
+    html.select(disabled=disabled, style=css(style), @change(e) {
         value = e.currentTarget.value
         change(value)
     }) {
@@ -446,7 +448,7 @@ const component ui.textarea[platform](placeholder, readonly, value, disabled, ro
         disabled = disabled,
         readonly = readonly,
         rows = string(rows),
-        style = {...style},
+        style = css(style),
         @input(e) {
             value = e.currentTarget.value
             input(value)
@@ -466,9 +468,9 @@ const component ui.textarea[platform](placeholder, readonly, value, disabled, ro
 // choosing a number to stand for "unknown".
 const component ui.progress[platform](style, value, max) {
     if value != null {
-        html.progress(value=string(value), max=string(max), style={...style}) {}
+        html.progress(value=string(value), max=string(max), style=css(style)) {}
     } else {
-        html.progress(max=string(max), style={...style}) {}
+        html.progress(max=string(max), style=css(style)) {}
     }
 }
 
@@ -480,20 +482,20 @@ const component ui.badge[platform](value, variant, style) {
     html.span(
         class = variant != "" ? "sngl-badge sngl-badge-" + variant : "sngl-badge",
         textContent = value,
-        style = {
+        style = css({
             display = inlineBlock,
             paddingY = 2px,
             paddingX = 8px,
             borderRadius = 12px,
             ...style,
-        },
+        }),
     ) {}
 }
 
 const component ui.chip[platform](label, variant, removable, selected, disabled, style, @click, @remove) {
     html.span(
         class = "sngl-chip" + (variant != "" ? " sngl-chip-" + variant : "") + (selected ? " sngl-chip-selected" : ""),
-        style = {
+        style = css({
             display = inlineFlex,
             alignItems = center,
             gap = 4px,
@@ -504,7 +506,7 @@ const component ui.chip[platform](label, variant, removable, selected, disabled,
             borderColor = selected ? #0066CC : #CCCCCC,
             opacity = disabled ? 0.5 : 1.0,
             ...style,
-        },
+        }),
     ) {
         html.span(textContent=label, @click { click() }) {}
         if removable {
@@ -514,7 +516,7 @@ const component ui.chip[platform](label, variant, removable, selected, disabled,
 }
 
 const component ui.spinner[platform](label, style) {
-    html.span(style={display=inlineFlex, alignItems=center, gap=8px, ...style}) {
+    html.span(style=css({display=inlineFlex, alignItems=center, gap=8px, ...style})) {
         html.span(class="sngl-spinner") {}
         html.span(textContent=label) {}
     }
@@ -524,14 +526,14 @@ const component ui.spinner[platform](label, style) {
 // content. `underline` marks the selected tab with a rule under it, `pills`
 // with a filled background.
 const component ui.tabs[platform](selected, variant, style, @change, items) {
-    html.div(style={...style, display=flex, flexDirection=column}) {
-        html.div(role="tablist", style={display=flex, gap=4px, borderBottom="1px solid #ccc"}) {
+    html.div(style=css({...style, display=flex, flexDirection=column})) {
+        html.div(role="tablist", style=css({display=flex, gap=4px, borderBottom="1px solid #ccc"})) {
             for var k, t = items {
                 html.button(
                     role = "tab",
                     textContent = t.label,
                     disabled = t.disabled,
-                    style = {
+                    style = css({
                         paddingY = 8px,
                         paddingX = 16px,
                         border = "none",
@@ -540,7 +542,7 @@ const component ui.tabs[platform](selected, variant, style, @change, items) {
                         background = variant == ui.TabsVariant.pills && k == selected ? #00000014 : #00000000,
                         fontWeight = k == selected ? ui.FontWeight.bold : ui.FontWeight.normal,
                         cursor = "pointer",
-                    },
+                    }),
                     @click {
                         selected = k
                         change(k)
@@ -559,13 +561,13 @@ const component ui.tabs[platform](selected, variant, style, @change, items) {
 }
 
 const component ui.link[platform](text, href, style, @click) {
-    html.a(href=href, style={...style}, @click { click() }) {
+    html.a(href=href, style=css(style), @click { click() }) {
         html.span(textContent=text) {}
     }
 }
 
 const component ui.divider[platform](style) {
-    html.hr(style={...style}) {}
+    html.hr(style=css(style)) {}
 }
 
 // --- Tier 3: Overlays & Layout ---
@@ -602,10 +604,10 @@ const component ui.window[platform](title, visible, @error, @closed, content, fa
 }
 
 const component ui.modal[platform](style, open, title, content) {
-    html.div(class="modal-overlay", hidden=(open == false), style={...style, position=fixed, top=0, left=0, right=0, bottom=0, background=#00000080, display=flex, alignItems=center, justifyContent=center, zIndex=1000}) {
-        html.div(class="modal-content", style={background=#fff, borderRadius=8px, padding=24px}) {
+    html.div(class="modal-overlay", hidden=(open == false), style=css({...style, position=fixed, top=0px, left=0px, right=0px, bottom=0px, background=#00000080, display=flex, alignItems=center, justifyContent=center, zIndex=1000})) {
+        html.div(class="modal-content", style=css({background=#fff, borderRadius=8px, padding=24px})) {
             if title != "" {
-                html.h3(textContent=title, style={marginTop=0, marginX=0, marginBottom=16px})
+                html.h3(textContent=title, style=css({marginTop=0, marginX=0, marginBottom=16px}))
             }
             content
         }
@@ -613,25 +615,25 @@ const component ui.modal[platform](style, open, title, content) {
 }
 
 const component ui.drawer[platform](style, content) {
-    html.div(style={...style, position=fixed, top=0, bottom=0, background=#fff, zIndex=1000}) {
+    html.div(style=css({...style, position=fixed, top=0px, bottom=0px, background=#fff, zIndex=1000})) {
         content
     }
 }
 
 const component ui.tooltip[platform](style, text, trigger) {
-    html.div(title=text, style={...style}) {
+    html.div(title=text, style=css(style)) {
         trigger
     }
 }
 
 const component ui.popover[platform](style, content) {
-    html.div(style={...style, position=relative}) {
+    html.div(style=css({...style, position=relative})) {
         content
     }
 }
 
 const component ui.splitview[platform](style, panes) {
-    html.div(style={...style, display=flex}) {
+    html.div(style=css({...style, display=flex})) {
         panes
     }
 }
@@ -639,11 +641,11 @@ const component ui.splitview[platform](style, panes) {
 // --- Tier 4: Data & Desktop ---
 
 const component ui.table[platform](style, columns, rows) {
-    html.table(width="100%", style={borderCollapse="collapse", ...style}) {
+    html.table(width="100%", style=css({borderCollapse="collapse", ...style})) {
         html.thead {
             html.tr {
                 for var col = columns {
-                    html.th(textContent=col, style={textAlign=left, padding=8px, borderBottom="2px solid #ddd"})
+                    html.th(textContent=col, style=css({textAlign=left, padding=8px, borderBottom="2px solid #ddd"}))
                 }
             }
         }
@@ -651,7 +653,7 @@ const component ui.table[platform](style, columns, rows) {
             for var row = rows {
                 html.tr {
                     for var cell = row.cells {
-                        html.td(textContent=cell, style={padding=8px, borderBottom="1px solid #eee"})
+                        html.td(textContent=cell, style=css({padding=8px, borderBottom="1px solid #eee"}))
                     }
                 }
             }
@@ -676,16 +678,16 @@ const func _treeRows(items list[ui.treeItem], indent ui.measurement) list[_TreeR
 }
 
 const component ui.tree[platform](style, items) {
-    html.ul(style={listStyleType=none, paddingLeft=16px, ...style}) {
+    html.ul(style=css({listStyleType=none, paddingLeft=16px, ...style})) {
         for var row = _treeRows(items, 0px) {
-            html.li(textContent=row.label, style={paddingLeft=row.indent})
+            html.li(textContent=row.label, style=css({paddingLeft=row.indent}))
         }
     }
 }
 
 const component ui.menu[platform](style, open, items) {
     if open {
-        html.div(role="menu", style={...style, position=absolute, display=flex, flexDirection=column, background=#fff, border="1px solid #ddd", borderRadius=4px, padding=4px, zIndex=100}) {
+        html.div(role="menu", style=css({...style, position=absolute, display=flex, flexDirection=column, background=#fff, border="1px solid #ddd", borderRadius=4px, padding=4px, zIndex=100})) {
             for var it = items {
                 html.button(role="menuitem", disabled=it.disabled, textContent=it.label, @click {
                     it.select()
@@ -697,7 +699,7 @@ const component ui.menu[platform](style, open, items) {
 
 // The top-level entries; a submenu is not drawn yet.
 const component ui.menubar[platform](style, items) {
-    html.nav(role="menubar", style={...style, display=flex, gap=4px}) {
+    html.nav(role="menubar", style=css({...style, display=flex, gap=4px})) {
         for var it = items {
             html.button(role="menuitem", disabled=it.disabled, textContent=it.label, @click {
                 it.select()
@@ -707,7 +709,7 @@ const component ui.menubar[platform](style, items) {
 }
 
 const component ui.toolbar[platform](style, controls) {
-    html.div(style={...style, display=flex, gap=4px, alignItems=center}) {
+    html.div(style=css({...style, display=flex, gap=4px, alignItems=center})) {
         controls
     }
 }
@@ -726,7 +728,7 @@ const component ui.datepicker[platform](value, disabled, style, @change) {
         type = "date",
         value = (value != null ? string(value) : ""),
         disabled = disabled,
-        style = {...style},
+        style = css(style),
         @change(e) {
             value = e.currentTarget.value == "" ? null : time.date(e.currentTarget.value)
             change(value)
@@ -747,7 +749,7 @@ const component ui.datepicker[platform](value, disabled, style, @change) {
 const component ui.card[platform](style, clickable, @click, content) {
     html.div(
         attrs = clickable ? {"role"="button", "tabindex"="0"} : {},
-        style = {borderRadius=8px, padding=16px, cursor=clickable ? "pointer" : "auto", ...style},
+        style = css({borderRadius=8px, padding=16px, cursor=clickable ? "pointer" : "auto", ...style}),
         @click(e) {
             if clickable && e.target.closest(controls) == e.currentTarget {
                 click()
@@ -794,21 +796,21 @@ const controls = "a, button, input, select, textarea, label, summary, [role=butt
 #[intrinsic("html:flow")]
 component flow(
     tag            string,
-    style          ui.Style,
+    style          list[Declaration],
     // The element's id, for an in-page link. Empty writes none: an id
     // attribute may not be empty.
     id             string,
     class          string,
     // The rule `class` stands for, as on `inline`.
-    classStyle     ui.Style,
-    classStyleDark ui.Style,
+    classStyle     list[Declaration],
+    classStyleDark list[Declaration],
     content        ...component markup.span,
 ) ui.node
 
 #[intrinsic("html:inline")]
 component inline(
     tag            string,
-    style          ui.Style,
+    style          list[Declaration],
     // What a `run` says about its own words. A `SpanStyle` and not a
     // `ui.Style`: its five typography fields lead with a state that means "the
     // span set nothing", and only a value carrying that distinction can be
@@ -857,7 +859,7 @@ const func roleTag(role markup.Role) string {
 // a caller's own style wins, which is also how every other override here
 // orders its defaults.
 const component markup.richText[platform](style, role, anchor, content) {
-    flow(tag=roleTag(role), id=anchor, style={margin=0px, whiteSpace=ui.WhiteSpace.preWrap, ...style}) {
+    flow(tag=roleTag(role), id=anchor, style=css({margin=0px, whiteSpace=ui.WhiteSpace.preWrap, ...style})) {
         content
     }
 }
@@ -868,9 +870,9 @@ const component markup.codeBlock[platform](content) {
     flow(
         tag = "pre",
         class = "sngl-code",
-        classStyle = {padding=12px, background=#F5F5F5, color=#1F2328, borderRadius=4px},
-        classStyleDark = {background=#161B22, color=#E6EDF3},
-        style = {margin=0px, whiteSpace=ui.WhiteSpace.preWrap},
+        classStyle = css({padding=12px, background=#F5F5F5, color=#1F2328, borderRadius=4px}),
+        classStyleDark = css({background=#161B22, color=#E6EDF3}),
+        style = css({margin=0px, whiteSpace=ui.WhiteSpace.preWrap}),
     ) {
         markup.monospace {
             content
@@ -964,7 +966,7 @@ const component markup.run[platform](style, content) {
 // The page's reset takes the indent the markers hang in, so the list gives it
 // back, and the gap between items is the default body's.
 const component markup.list[platform](ordered, start, items) {
-    html.element(tag=ordered ? "ol" : "ul", attrs=ordered ? {"start"=string(start)} : {}, style={display=flex, flexDirection=column, gap=4px, paddingLeft=2em}) {
+    html.element(tag=ordered ? "ol" : "ul", attrs=ordered ? {"start"=string(start)} : {}, style=css({display=flex, flexDirection=column, gap=4px, paddingLeft=2em})) {
         items
     }
 }
@@ -978,9 +980,9 @@ const component markup.listItem[platform](task, content) {
             content
         }
     } else {
-        html.li(style={display=flex, flexDirection=row, alignItems=baseline, gap=8px}) {
+        html.li(style=css({display=flex, flexDirection=row, alignItems=baseline, gap=8px})) {
             html.input(type="checkbox", checked=task == markup.Task.done, disabled=true) {}
-            html.div(style={display=flex, flexDirection=column}) {
+            html.div(style=css({display=flex, flexDirection=column})) {
                 content
             }
         }
@@ -1363,4 +1365,245 @@ const component nav.link[platform](to, params, text, style, @click) {
     ui.link(href=nav.href(to, params), text=text, style=style, @click {
         click()
     })
+}
+
+// --- What a ui.Style is in CSS ---
+//
+// An element's `style` is what `css` answers for a ui.Style, which says what
+// each field writes. The fold after lowering reduces each declaration whose
+// field the build can read to text, which goes in the markup; one reading
+// what only the page knows is written where the page runs, a declaration at a
+// time. An empty value writes nothing, which is what an unset field is.
+
+// What a Style may say that a page does not answer: nothing, since each field
+// is a CSS property or the shorthand of one.
+const unstyled list[string] = []
+
+// One declaration of an element's inline CSS.
+struct Declaration {
+    property string
+    value    string
+}
+
+// The declarations a Style writes, a wider one ahead of a narrower one that
+// overrides it: a border shorthand ahead of its width, style and color, and
+// those ahead of one side's.
+const func css(s ui.Style) => [
+    Declaration{property="border", value=s.border},
+    Declaration{property="margin", value=boxWhole(s.margin, s.marginX, s.marginY, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft)},
+    Declaration{property="margin-top", value=boxSide(s.margin, s.marginY, s.marginTop, s.marginX, s.marginY, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft)},
+    Declaration{property="margin-right", value=boxSide(s.margin, s.marginX, s.marginRight, s.marginX, s.marginY, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft)},
+    Declaration{property="margin-bottom", value=boxSide(s.margin, s.marginY, s.marginBottom, s.marginX, s.marginY, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft)},
+    Declaration{property="margin-left", value=boxSide(s.margin, s.marginX, s.marginLeft, s.marginX, s.marginY, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft)},
+    Declaration{property="padding", value=boxWhole(s.padding, s.paddingX, s.paddingY, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft)},
+    Declaration{property="padding-top", value=boxSide(s.padding, s.paddingY, s.paddingTop, s.paddingX, s.paddingY, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft)},
+    Declaration{property="padding-right", value=boxSide(s.padding, s.paddingX, s.paddingRight, s.paddingX, s.paddingY, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft)},
+    Declaration{property="padding-bottom", value=boxSide(s.padding, s.paddingY, s.paddingBottom, s.paddingX, s.paddingY, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft)},
+    Declaration{property="padding-left", value=boxSide(s.padding, s.paddingX, s.paddingLeft, s.paddingX, s.paddingY, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft)},
+    Declaration{property="gap", value=lengthOf(s.gap)},
+    Declaration{property="display", value=displayOf(s.display)},
+    Declaration{property="flex-direction", value=directionOf(s.flexDirection)},
+    Declaration{property="align-items", value=alignmentOf(s.alignItems)},
+    Declaration{property="justify-content", value=justificationOf(s.justifyContent)},
+    Declaration{property="flex", value=s.flex == null ? "" : "{s.flex}"},
+    Declaration{property="min-width", value=s.flex == null ? "" : "0"},
+    Declaration{property="min-height", value=s.flex == null ? "" : "0"},
+    Declaration{property="width", value=lengthOf(s.width)},
+    Declaration{property="min-width", value=lengthOf(s.minWidth)},
+    Declaration{property="height", value=lengthOf(s.height)},
+    Declaration{property="max-width", value=lengthOf(s.maxWidth)},
+    Declaration{property="max-height", value=lengthOf(s.maxHeight)},
+    Declaration{property="position", value=positionOf(s.position)},
+    Declaration{property="top", value=lengthOf(s.top)},
+    Declaration{property="bottom", value=lengthOf(s.bottom)},
+    Declaration{property="left", value=lengthOf(s.left)},
+    Declaration{property="right", value=lengthOf(s.right)},
+    Declaration{property="z-index", value=s.zIndex == null ? "" : "{s.zIndex}"},
+    Declaration{property="color", value=colorOf(s.color)},
+    Declaration{property="font-size", value=lengthOf(s.fontSize)},
+    Declaration{property="font-family", value=s.fontFamily},
+    Declaration{property="font-weight", value=weightOf(s.fontWeight)},
+    Declaration{property="font-style", value=slantOf(s.fontStyle)},
+    Declaration{property="text-align", value=textAlignOf(s.textAlign)},
+    Declaration{property="white-space", value=whiteSpaceOf(s.whiteSpace)},
+    Declaration{property="background-color", value=colorOf(s.background)},
+    Declaration{property="border-radius", value=lengthOf(s.borderRadius)},
+    Declaration{property="border-width", value=lengthOf(s.borderWidth)},
+    Declaration{property="border-style", value=lineOf(s)},
+    Declaration{property="border-color", value=colorOf(s.borderColor)},
+    Declaration{property="border-collapse", value=s.borderCollapse},
+    Declaration{property="opacity", value=s.opacity == null ? "" : "{s.opacity}"},
+    Declaration{property="cursor", value=s.cursor},
+    Declaration{property="overflow", value=overflowOf(s.overflow)},
+    Declaration{property="list-style-type", value=listStyleOf(s.listStyleType)},
+    Declaration{property="-webkit-line-clamp", value=s.maxLines == null ? "" : "{s.maxLines}"},
+    Declaration{property="overflow", value=s.maxLines == null ? "" : "hidden"},
+    Declaration{property="display", value=s.maxLines == null ? "" : "-webkit-box"},
+    Declaration{property="-webkit-box-orient", value=s.maxLines == null ? "" : "vertical"},
+    Declaration{property="border-bottom", value=s.borderBottom},
+    Declaration{property="border-left", value=s.borderLeft},
+]
+// A flex item's minimum is its content's by default, which a box given a
+// share would grow to; a share is the box's size instead, as fyne and gtk4
+// give it, so a scroll in it scrolls. Ahead of minWidth, which overrides it.
+// A clamp is a box of its own kind, after `display` and `overflow`, which
+// it overrides.
+
+// A margin's or a padding's shorthand, written where the box says only its
+// whole: each call here is one the build makes once, as a statement may
+// not make the same one twice and stay a single expression the fold splices.
+const func boxWhole(all option[ui.measurement], x option[ui.measurement], y option[ui.measurement], top option[ui.measurement], right option[ui.measurement], bottom option[ui.measurement], left option[ui.measurement]) => whole(x, y, top, right, bottom, left) ? lengthOf(all) : ""
+
+// One side of a margin or a padding, written where the box says more than
+// its whole.
+const func boxSide(all option[ui.measurement], axis option[ui.measurement], own option[ui.measurement], x option[ui.measurement], y option[ui.measurement], top option[ui.measurement], right option[ui.measurement], bottom option[ui.measurement], left option[ui.measurement]) => whole(x, y, top, right, bottom, left) ? "" : side(all, axis, own)
+
+// Whether a box's margin or padding is its whole alone, written as the
+// shorthand rather than a side at a time.
+const func whole(x option[ui.measurement], y option[ui.measurement], top option[ui.measurement], right option[ui.measurement], bottom option[ui.measurement], left option[ui.measurement]) => x == null && y == null && top == null && right == null && bottom == null && left == null
+
+// One side of a margin or a padding: the first of its own field, its axis's
+// and the whole box's that is set.
+const func side(all option[ui.measurement], axis option[ui.measurement], own option[ui.measurement]) => lengthOf(own != null ? own : axis != null ? axis : all)
+
+const func lengthOf(m option[ui.measurement]) => m == null ? "" : cssLength(m)
+
+// A length in the one unit it carries, or a calc() summing those it does.
+const func cssLength(m ui.measurement) => m.em == 0.0 && m.rem == 0.0 ? "{m.px}px" : m.px == 0.0 && m.rem == 0.0 ? "{m.em}em" : m.px == 0.0 && m.em == 0.0 ? "{m.rem}rem" : "calc(" + plus(plus(term(m.px, "px"), term(m.em, "em")), term(m.rem, "rem")) + ")"
+
+const func term(v float, suffix string) => v == 0.0 ? "" : "{v}{suffix}"
+
+const func plus(a string, b string) => a == "" ? b : b == "" ? a : a + " + " + b
+
+const func colorOf(c option[color]) => c == null ? "" : c.hex()
+
+// A border its Style gives a width and no line is drawn solid, as every other
+// target draws one, where CSS's default is none.
+const func lineOf(s ui.Style) string {
+    return match s.borderStyle {
+        ui.BorderStyle.none => "none"
+        solid => "solid"
+        dashed => "dashed"
+        dotted => "dotted"
+        double => "double"
+        unset => s.borderWidth != null && s.border == "" ? "solid" : ""
+    }
+}
+
+const func displayOf(d ui.Display) string {
+    return match d {
+        flex => "flex"
+        block => "block"
+        ui.Display.inline => "inline"
+        inlineBlock => "inline-block"
+        inlineFlex => "inline-flex"
+        ui.Display.none => "none"
+        grid => "grid"
+        unset => ""
+    }
+}
+
+const func directionOf(d ui.FlexDirection) string {
+    return match d {
+        row => "row"
+        column => "column"
+        rowReverse => "row-reverse"
+        columnReverse => "column-reverse"
+        unset => ""
+    }
+}
+
+const func alignmentOf(a ui.Alignment) string {
+    return match a {
+        start => "start"
+        center => "center"
+        end => "end"
+        stretch => "stretch"
+        baseline => "baseline"
+        unset => ""
+    }
+}
+
+const func justificationOf(j ui.Justification) string {
+    return match j {
+        start => "start"
+        center => "center"
+        end => "end"
+        spaceBetween => "space-between"
+        spaceAround => "space-around"
+        spaceEvenly => "space-evenly"
+        unset => ""
+    }
+}
+
+const func positionOf(p ui.Position) string {
+    return match p {
+        ui.Position.static => "static"
+        relative => "relative"
+        absolute => "absolute"
+        fixed => "fixed"
+        sticky => "sticky"
+        unset => ""
+    }
+}
+
+const func weightOf(w ui.FontWeight) string {
+    return match w {
+        normal => "normal"
+        bold => "bold"
+        lighter => "lighter"
+        bolder => "bolder"
+        unset => ""
+    }
+}
+
+const func slantOf(st ui.FontStyle) string {
+    return match st {
+        normal => "normal"
+        italic => "italic"
+        oblique => "oblique"
+        unset => ""
+    }
+}
+
+const func textAlignOf(a ui.TextAlign) string {
+    return match a {
+        left => "left"
+        center => "center"
+        right => "right"
+        justify => "justify"
+        unset => ""
+    }
+}
+
+const func whiteSpaceOf(w ui.WhiteSpace) string {
+    return match w {
+        normal => "normal"
+        pre => "pre"
+        preWrap => "pre-wrap"
+        preLine => "pre-line"
+        nowrap => "nowrap"
+        unset => ""
+    }
+}
+
+const func overflowOf(o ui.Overflow) string {
+    return match o {
+        visible => "visible"
+        hidden => "hidden"
+        scroll => "scroll"
+        auto => "auto"
+        unset => ""
+    }
+}
+
+const func listStyleOf(l ui.ListStyle) string {
+    return match l {
+        ui.ListStyle.none => "none"
+        disc => "disc"
+        circle => "circle"
+        square => "square"
+        decimal => "decimal"
+        unset => ""
+    }
 }

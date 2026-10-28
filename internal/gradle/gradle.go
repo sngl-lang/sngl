@@ -16,9 +16,13 @@ import (
 // Gradle's default holds the daemon's heap for three hours.
 const IdleTimeout = 5 * time.Minute
 
-// Command is the wrapper in dir running args, with the flags every build here
-// takes. The caller holds Lock for as long as the build runs.
-func Command(ctx context.Context, dir string, args ...string) *exec.Cmd {
+// Command is the wrapper in dir running args in env, with the flags every
+// build here takes. The caller holds Lock for as long as the build runs.
+//
+// The locale is pinned because the client's user.country is part of the
+// daemon's identity: a caller under en_US and one under C.UTF-8 each started a
+// 3GB daemon of their own, and the two together ran a rerecord out of memory.
+func Command(ctx context.Context, dir string, env []string, args ...string) *exec.Cmd {
 	gradlew := filepath.Join(dir, "gradlew")
 	_ = os.Chmod(gradlew, 0o755)
 	args = append(args,
@@ -27,6 +31,7 @@ func Command(ctx context.Context, dir string, args ...string) *exec.Cmd {
 	)
 	cmd := exec.CommandContext(ctx, gradlew, args...)
 	cmd.Dir = dir
+	cmd.Env = append(env, "LC_ALL=C.UTF-8")
 	return cmd
 }
 

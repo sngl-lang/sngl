@@ -105,14 +105,14 @@ func TestRootSlotsKeepTheirPlace(t *testing.T) {
 `
 
 // A reactive slot at the top of a body renders between the siblings it was
-// written between, rather than above all of them. The toggle has no gtk4rt
-// wrapper, which puts the second variant on the cgo path.
+// written between, rather than above all of them, on either path.
 func TestRootSlotsKeepTheirPlaceRuns(t *testing.T) {
-	for name, src := range map[string]string{
-		"wrapped": rootSlotOrderSrc,
-		"cgo":     strings.Replace(rootSlotOrderSrc, "    ui.text(value=\"footer\")", "    ui.toggle(checked=true)\n    ui.text(value=\"footer\")", 1),
-	} {
+	for _, name := range []string{"wrapped", "cgo"} {
+		src := rootSlotOrderSrc
 		t.Run(name, func(t *testing.T) {
+			if name == "cgo" {
+				withCgo(t)
+			}
 			files := goFiles(generateGTK4FilesBuilt(t, src))
 			if cgo := onCgoPath(files["model.go"]); cgo != (name == "cgo") {
 				t.Fatalf("expected the %s path:\n%s", name, files["model.go"])

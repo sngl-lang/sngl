@@ -254,8 +254,8 @@ func (vc *irViewContext) renderFlow(n *ir.NodeInst, resultVar, look string) {
 	for _, child := range n.Children {
 		vc.renderSpan(child, resultVar, seed)
 	}
-	if look != plainLook {
-		vc.line(`%s = %s.Render(%s)`, resultVar, look, resultVar)
+	if look != plainLook || vc.fits(n) {
+		vc.line(`%s = %s`, resultVar, vc.render(n, look, resultVar))
 	}
 }
 

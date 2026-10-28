@@ -692,7 +692,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n0 = gtk4rt.ButtonNew()
+	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.n)))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.n += 1
@@ -762,20 +762,20 @@ func newCardInstance(__model *Model, __a_xs []string) *CardInstance {
 	c.__renderAgain1 = false
 	c.__slot2 = nil
 	c.__slot3 = nil
-	__n6 := gtk4rt.LabelNew("")
+	__n6 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n6, "[")
 	gtk4rt.LabelSetXAlign(__n6, 0.0)
 	gtk4rt.BoxAppend(c.__root, __n6)
 	c.__renderSlot0(c.__root)
-	__n7 := gtk4rt.LabelNew("")
+	__n7 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n7, "|")
 	gtk4rt.LabelSetXAlign(__n7, 0.0)
 	gtk4rt.BoxAppend(c.__root, __n7)
 	c.__renderSlot1(c.__root)
-	__n8 := gtk4rt.LabelNew("")
+	__n8 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n8, "]")
 	gtk4rt.LabelSetXAlign(__n8, 0.0)
-	__n9 := gtk4rt.ButtonNew()
+	__n9 := gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(__n9, "flip")
 	gtk4rt.Connect(__n9, "clicked", func() {
 		c.open = !c.open
@@ -811,7 +811,7 @@ func (c *CardInstance) __renderSlot0(parent gtk4rt.Handle) {
 				c.__slot0 = nil
 				c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
 				for _, x := range c.__prop_xs {
-					__n2 := gtk4rt.LabelNew("")
+					__n2 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n2, x)
 					gtk4rt.LabelSetXAlign(__n2, 0.0)
 					gtk4rt.InsertBefore(parent, c.__slot0_at, __n2)
@@ -840,7 +840,7 @@ func (c *CardInstance) __renderSlot1(parent gtk4rt.Handle) {
 				c.__slot1 = nil
 				c.__slot1_at = gtk4rt.SlotAnchor(parent, c.__slot1_at)
 				if c.open {
-					__n3 := gtk4rt.LabelNew("")
+					__n3 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n3, "open")
 					gtk4rt.LabelSetXAlign(__n3, 0.0)
 					gtk4rt.InsertBefore(parent, c.__slot1_at, __n3)
@@ -895,21 +895,21 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
-	m.__n10 = gtk4rt.LabelNew("")
+	m.__n10 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n10, "header")
 	gtk4rt.LabelSetXAlign(m.__n10, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.__n10)
 	m.__renderSlot2(m.__n1)
-	m.__n11 = gtk4rt.LabelNew("")
+	m.__n11 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n11, "mid")
 	gtk4rt.LabelSetXAlign(m.__n11, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.__n11)
 	m.__renderSlot3(m.__n1)
-	m.__n12 = gtk4rt.LabelNew("")
+	m.__n12 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n12, "footer")
 	gtk4rt.LabelSetXAlign(m.__n12, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.__n12)
-	m.more = gtk4rt.ButtonNew()
+	m.more = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.more, "more")
 	gtk4rt.Connect(m.more, "clicked", m.more_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.more)
@@ -930,4 +930,4 @@ func (m *Model) moreClick() {
 -- run/go/fyne --
 pass sha256:861426bc4124fb44698446297144567f
 -- run/go/gtk4 --
-pass sha256:3c19051c1e0cc2552b204baf5911d696
+pass sha256:bc4d3e2a14403bab28d67e32eb0558fe

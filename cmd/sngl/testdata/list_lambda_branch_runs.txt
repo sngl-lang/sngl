@@ -51,7 +51,7 @@ func testALiteralInATestLiftsItsBranches(t test.Test, c compass) {
     t.assert(c.headings.map(func(h string) => short(h)).join("") == "NS?")
 }
 -- testrun/android/kotlin/app.sngl/compass/1 --
-sha256:3190198df19500ee98bf913449d63d74
+sha256:f0975189b905d346d6e0b8d97caf3b4c
 {
   "results": [
     {
@@ -65,7 +65,7 @@ sha256:3190198df19500ee98bf913449d63d74
   ]
 }
 -- testrun/bubbletea/go/app.sngl/compass/1 --
-sha256:e0a719fcbd8d66b2e9e4451ab3625aaf
+sha256:ec515d1c4480112b53f519de52096df8
 {
   "results": [
     {
@@ -79,7 +79,7 @@ sha256:e0a719fcbd8d66b2e9e4451ab3625aaf
   ]
 }
 -- testrun/fyne/go/app.sngl/compass/1 --
-sha256:27ebebe043c2e0c563b3ac3c00424eab
+sha256:6455625d6a214b0078b53f2abb8c80c6
 {
   "results": [
     {
@@ -93,7 +93,7 @@ sha256:27ebebe043c2e0c563b3ac3c00424eab
   ]
 }
 -- testrun/gtk4/go/app.sngl/compass/1 --
-sha256:5f56db2b1c557fd66088a146666aef63
+sha256:a1aa61ce59b3fcc83c84684c4e90de51
 {
   "results": [
     {
@@ -107,7 +107,7 @@ sha256:5f56db2b1c557fd66088a146666aef63
   ]
 }
 -- testrun/html/none/app.sngl/compass/1 --
-sha256:d076b065e498a2ae52d6e29f8e45344f
+sha256:bf9248cf3206004d8634d3e091a5ba07
 {
   "results": [
     {

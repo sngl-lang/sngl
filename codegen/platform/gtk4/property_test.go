@@ -19,6 +19,22 @@ import (
 // error is returned, since refusing to emit is behavior under test.
 func generateGtk4(t *testing.T, src string) (map[string][]byte, error) {
 	t.Helper()
+	pkg, err := lowerGtk4(t, src)
+	if err != nil {
+		t.Fatalf("lower: %v", err)
+	}
+	g := codegen.LookupPlatform(platformName)
+	mem := codegen.NewMemSink()
+	if err := g.Generate(genRequest(pkg, codegen.LookupLang("go")), mem); err != nil {
+		return nil, err
+	}
+	return mem.Files(), nil
+}
+
+// lowerGtk4 checks src for gtk4, failing the test on a check error, and
+// lowers a copy of it.
+func lowerGtk4(t *testing.T, src string) (*ir.Package, error) {
+	t.Helper()
 	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -35,14 +51,7 @@ func generateGtk4(t *testing.T, src string) (map[string][]byte, error) {
 		t.Fatal("go lang not registered")
 	}
 	pkg = ir.ClonePackage(pkg)
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
-		t.Fatalf("lower: %v", err)
-	}
-	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
-		return nil, err
-	}
-	return mem.Files(), nil
+	return pkg, lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "gtk4", Language: "go"})
 }
 
 // checkGtk4 runs one SNGL source through the checker against every registered
@@ -95,6 +104,7 @@ window(title="t") {
 // the call needs. Nothing may emit a gtk_*_set_* function that does not exist.
 func TestGObjectPropSet_EmitsGenericPath(t *testing.T) {
 	rulesGIR(t)
+	withCgo(t)
 	files, err := generateGtk4(t, setterlessSource)
 	if err != nil {
 		t.Fatalf("generate: %v", err)
@@ -104,35 +114,32 @@ func TestGObjectPropSet_EmitsGenericPath(t *testing.T) {
 		// The helper definitions, emitted only when something needs them.
 		"static void sngl_set_prop(void *obj, const char *name, GValue *src)",
 		"g_object_set_property(o, name, &dst);",
-		// The property's GObject name is its GIR name, hyphens and all, a C
-		// string made once for the application's lifetime (ownCStrings).
-		`= C.CString("primary-icon-name")`,
-		`= C.CString("edit-find")`,
-		`C.sngl_set_prop_string(unsafe.Pointer(m.__n1), __cstr`,
-		`= C.CString("enable-emoji-completion")`,
-		`C.sngl_set_prop_bool(unsafe.Pointer(m.__n1), __cstr`,
-		`C.int(boolToInt(true)))`,
-		// An enum-typed property with no setter takes its member's C
-		// constant through the int helper.
-		`= C.CString("accessible-role")`,
-		`C.sngl_set_prop_int(unsafe.Pointer(m.__n2), __cstr`,
-		`C.int(C.GTK_ACCESSIBLE_ROLE_BUTTON))`,
+		// The property's GObject name is its GIR name, hyphens and all, and
+		// it and a literal value are C strings made once for the application
+		// and freed at teardown (ReleaseTemps).
+		`m.__rel0 = C.CString("primary-icon-name")`,
+		`m.__rel1 = C.CString("edit-find")`,
+		`C.sngl_set_prop_string(unsafe.Pointer(m.__n1), m.__rel0, m.__rel1)`,
+		`Free(m.__rel1)`,
+		`m.__rel2 = C.CString("enable-emoji-completion")`,
+		`C.sngl_set_prop_bool(unsafe.Pointer(m.__n1), m.__rel2, C.int(1))`,
+		// An enum-typed property with no setter takes its member's value,
+		// which the set's match folds to, through the int helper.
+		`m.__rel4 = C.CString("accessible-role")`,
+		`C.sngl_set_prop_int(unsafe.Pointer(m.__n2), m.__rel4, C.int(3))`,
 		// A property whose GIR setter takes two values takes the generic
 		// path, and its object-pointer constructor parameter is nil rather
-		// than a bare 0 no cgo pointer type accepts.
-		`= C.CString("text")`,
-		`= C.CString("hi")`,
-		`C.sngl_set_prop_string(unsafe.Pointer(m.__n3), __cstr`,
+		// than a bare 0 no cgo pointer type accepts. Its "hi" is the label's.
+		`C.sngl_set_prop_string(unsafe.Pointer(m.__n3), m.__rel5, m.__rel3)`,
 		`C.gtk_text_buffer_new(nil)`,
-		`= C.CString("scale")`,
-		`C.sngl_set_prop_double(unsafe.Pointer(m.__n4), __cstr`,
-		`C.double(0.25))`,
+		`m.__rel7 = C.CString("scale")`,
+		`C.sngl_set_prop_double(unsafe.Pointer(m.__n4), m.__rel7, C.double(0.25))`,
 		// A property that does have a setter still calls it directly.
 		`C.gtk_entry_set_max_length((*C.GtkEntry)(unsafe.Pointer(m.__n1)), C.int(12))`,
 		// The value is cast to what the setter's parameter is declared as,
 		// which GIR does not promise is the property's own type: a gint
 		// property whose setter takes a guint.
-		`C.gtk_grid_set_column_spacing((*C.GtkGrid)(unsafe.Pointer(m.__n5)), C.guint(4))`,
+		`C.gtk_grid_set_column_spacing((*C.GtkGrid)(unsafe.Pointer(m.__n5)), C.guint(C.int(4)))`,
 	} {
 		if !strings.Contains(model, want) {
 			t.Errorf("model.go is missing:\n\t%s", want)
@@ -158,6 +165,7 @@ func TestGObjectPropSet_EmitsGenericPath(t *testing.T) {
 // the helpers to be absent from.
 func TestGObjectPropSet_HelperIsGatedOnUse(t *testing.T) {
 	rulesGIR(t)
+	withCgo(t)
 	files, err := generateGtk4(t, `
 import . "sngl:ui"
 import gtk "gir:Gtk-4.0"
@@ -205,10 +213,11 @@ window(title="t") {
 }
 
 // TestEnumProp_RejectsUnknownMember pins that an enum member is resolved from
-// GIR and not guessed: a string naming no member fails the build.
+// GIR and not guessed: a string naming no member fails the build, where the
+// set's match is folded.
 func TestEnumProp_RejectsUnknownMember(t *testing.T) {
 	rulesGIR(t)
-	_, err := generateGtk4(t, `
+	_, err := lowerGtk4(t, `
 import . "sngl:ui"
 import gtk "gir:Gtk-4.0"
 
@@ -219,8 +228,8 @@ window(title="t") {
 	if err == nil {
 		t.Fatal("generate succeeded; GtkJustification has no member named middle")
 	}
-	if !strings.Contains(err.Error(), "middle") || !strings.Contains(err.Error(), "Justification") {
-		t.Errorf("error %q does not name the value and its enumeration", err)
+	if !strings.Contains(err.Error(), `GtkLabel.justify: "middle" is none of the values`) {
+		t.Errorf("error %q does not name the prop and the value", err)
 	}
 }
 
@@ -246,8 +255,8 @@ func TestSetterlessProps_GeneratedGoCompiles(t *testing.T) {
 // recovered by the caller.
 func TestDispatchIsBoundedBothWays(t *testing.T) {
 	rulesGIR(t)
-	// GtkGrid is outside the wrapped gtk4rt surface, which puts the whole
-	// program on the inline-cgo path where snglGoDispatch exists at all.
+	withCgo(t)
+	// snglGoDispatch exists only on the inline-cgo path.
 	files, err := generateGtk4(t, gtk4Window(`            gtk.GtkGrid(columnSpacing=4) {}
             gtk.GtkButton(label="go", @clicked { }) {}`))
 	if err != nil {
@@ -347,5 +356,20 @@ func TestUnconstructibleClass_FailsTheBuild(t *testing.T) {
 				t.Errorf("error %q does not name the class and the reason %q", err, tc.want)
 			}
 		})
+	}
+}
+
+// A class GIR names no single-widget adder for has a create and no
+// #[gen.protocol(append)], and a child written into it is refused where the
+// op is made rather than dropped.
+func TestClassWithNoAdder_RefusesAChild(t *testing.T) {
+	_, err := lowerGtk4(t, gtk4Window(`            gtk.GtkLabel() {
+                text(value="inside")
+            }`))
+	if err == nil {
+		t.Fatal("a child of a GtkLabel generated; GTK has no way to put one there")
+	}
+	if want := "GtkLabel takes no child"; !strings.Contains(err.Error(), want) {
+		t.Errorf("error %q does not say %q", err, want)
 	}
 }

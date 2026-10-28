@@ -113,32 +113,61 @@ func flattenSpreadExprCtx(e ir.Expr, pkg *ir.Package) ir.Expr {
 	return e
 }
 
-// flattenStructLitCtx collapses a spread-bearing struct literal. When every
-// spread operand is a struct literal it folds to a flat literal. When any
-// operand is opaque it builds a left-folded __merge_<Struct> call chain and
-// records the struct on pkg.MergeStructs. Returns sl unchanged when it has no
-// spreads. Field values are assumed already flattened (caller recurses first).
+// flattenStructLitCtx collapses a spread-bearing struct literal. When the
+// build can say which fields every spread writes (spreadWrites) it folds to a
+// flat literal. Otherwise it builds a left-folded __merge_<Struct> call chain
+// and records the struct on pkg.MergeStructs. Returns sl unchanged when it
+// has no spreads. Field values are assumed already flattened (caller recurses
+// first).
 func flattenStructLitCtx(sl *ir.StructLit, pkg *ir.Package) ir.Expr {
-	hasSpread, allLiteral := false, true
+	hasSpread, known := false, true
 	for _, f := range sl.Fields {
 		if f.Spread {
 			hasSpread = true
-			if _, ok := f.Value.(*ir.StructLit); !ok {
-				allLiteral = false
+			if _, ok := spreadWrites(f.Value); !ok {
+				known = false
 			}
 		}
 	}
 	if !hasSpread {
 		return sl
 	}
-	if allLiteral {
+	if known {
 		return flattenLiteralSpread(sl)
 	}
 	return buildMergeChain(sl, pkg)
 }
 
-// flattenLiteralSpread splices every written field of each literal spread onto
-// the target (last write by name wins; first-seen position preserved).
+// spreadWrites is the fields a spread of e writes, where e is a struct literal
+// the build can read: each field it holds that is not at its type's zero
+// (ir.ZeroKnown), its declared defaults included. A spread writes no field
+// its operand holds at zero, so `{display=flex, ...style}` keeps the display
+// of a style leaving it unset. ok is false for any other operand, which the
+// run-time merge decides field by field by the same rule.
+func spreadWrites(e ir.Expr) (writes []ir.FieldInit, ok bool) {
+	lit, isLit := e.(*ir.StructLit)
+	if !isLit {
+		return nil, false
+	}
+	ok = true
+	lit.EachField(func(f ir.FieldInit) {
+		if f.Spread {
+			ok = false
+			return
+		}
+		zero, known := ir.ZeroKnown(f.Value)
+		switch {
+		case !known:
+			ok = false
+		case !zero:
+			writes = append(writes, f)
+		}
+	})
+	return writes, ok
+}
+
+// flattenLiteralSpread splices what each spread writes onto the target (last
+// write by name wins; first-seen position preserved).
 func flattenLiteralSpread(sl *ir.StructLit) *ir.StructLit {
 	var order []string
 	vals := map[string]ir.FieldInit{}
@@ -150,7 +179,8 @@ func flattenLiteralSpread(sl *ir.StructLit) *ir.StructLit {
 	}
 	for _, f := range sl.Fields {
 		if f.Spread {
-			for _, g := range f.Value.(*ir.StructLit).Fields {
+			writes, _ := spreadWrites(f.Value)
+			for _, g := range writes {
 				set(g)
 			}
 			continue
@@ -166,10 +196,11 @@ func flattenLiteralSpread(sl *ir.StructLit) *ir.StructLit {
 	return &out
 }
 
-// buildMergeChain lowers a literal with >=1 opaque spread into nested
-// __merge_<Struct> calls. Explicit fields and literal spreads accumulate into
-// a struct-literal operand; each opaque spread flushes that operand and merges
-// the runtime value. Left-folded → source order preserved, last wins.
+// buildMergeChain lowers a literal with >=1 spread the build cannot read into
+// nested __merge_<Struct> calls. Explicit fields and the writes of spreads it
+// can read accumulate into a struct-literal operand; each other spread
+// flushes that operand and merges the value. Left-folded → source order
+// preserved, last wins.
 func buildMergeChain(sl *ir.StructLit, pkg *ir.Package) ir.Expr {
 	sd := structDefOf(sl)
 	if sd == nil {
@@ -179,8 +210,7 @@ func buildMergeChain(sl *ir.StructLit, pkg *ir.Package) ir.Expr {
 	fn := &ir.Func{Name: "__merge_" + sd.Name, Synthesized: true, Return: sl.Type,
 		Params: []*ir.Param{{Name: "base", Type: sl.Type}, {Name: "ov", Type: sl.Type}}}
 	mkLit := func(fields []ir.FieldInit) *ir.StructLit {
-		cp := append([]ir.FieldInit(nil), fields...)
-		return &ir.StructLit{AST: sl.AST, Type: sl.Type, Def: sl.Def, Fields: cp}
+		return flattenLiteralSpread(&ir.StructLit{AST: sl.AST, Type: sl.Type, Def: sl.Def, Fields: fields})
 	}
 	merge := func(a, b ir.Expr) ir.Expr {
 		return &ir.Call{Type: sl.Type, Func: fn, Args: []ir.CallArg{{Value: a}, {Value: b}}}
@@ -193,15 +223,32 @@ func buildMergeChain(sl *ir.StructLit, pkg *ir.Package) ir.Expr {
 		}
 		if acc == nil {
 			acc = mkLit(pending)
-		} else {
-			acc = merge(acc, mkLit(pending))
+			pending = nil
+			return
+		}
+		// What the merge writes of a literal is each field not at its zero,
+		// which a field written after the spread is whatever it holds: one
+		// that may be its zero is set on its own.
+		var merged, set []ir.FieldInit
+		for _, f := range mkLit(pending).Fields {
+			if zero, known := ir.ZeroKnown(f.Value); known && !zero {
+				merged = append(merged, f)
+			} else {
+				set = append(set, f)
+			}
+		}
+		if len(merged) > 0 {
+			acc = merge(acc, mkLit(merged))
+		}
+		for _, f := range set {
+			acc = setField(pkg, sd, sl.Type, acc, f)
 		}
 		pending = nil
 	}
 	for _, f := range sl.Fields {
 		if f.Spread {
-			if inner, ok := f.Value.(*ir.StructLit); ok {
-				pending = append(pending, inner.Fields...)
+			if writes, ok := spreadWrites(f.Value); ok {
+				pending = append(pending, writes...)
 				continue
 			}
 			flush()
@@ -238,6 +285,24 @@ func structDefOf(sl *ir.StructLit) *ir.StructDef {
 		}
 	}
 	return nil
+}
+
+// setField is base with f written whatever it holds, through a generated
+// __set_<Struct>_<field>.
+func setField(pkg *ir.Package, sd *ir.StructDef, t *ir.Type, base ir.Expr, f ir.FieldInit) ir.Expr {
+	set := ir.MergeSet{Struct: sd, Field: f.Name}
+	if !slices.Contains(pkg.MergeSets, set) {
+		pkg.MergeSets = append(pkg.MergeSets, set)
+	}
+	ft := f.Value.ExprType()
+	if fields, ok := ir.FieldsOf(t); ok {
+		if d := ir.FieldNamed(fields, f.Name); d != nil {
+			ft = d.Type
+		}
+	}
+	fn := &ir.Func{Name: ir.MergeSetName(set), Synthesized: true, Return: t,
+		Params: []*ir.Param{{Name: "base", Type: t}, {Name: "v", Type: ft}}}
+	return &ir.Call{Type: t, Func: fn, Args: []ir.CallArg{{Value: base}, {Value: f.Value}}}
 }
 
 func recordMergeStruct(pkg *ir.Package, sd *ir.StructDef) {

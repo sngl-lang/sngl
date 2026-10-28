@@ -53,7 +53,7 @@ component main root {
     var n int = 0
 
     window #app(title = "t") {
-        html.div(role = "main", style = { display = Display.inlineBlock, minWidth = 40px }) {
+        html.div(role = "main", style = html.css({ display = Display.inlineBlock, minWidth = 40px })) {
             html.details(open = false) {
                 html.button(textContent = "go", @click { n = api.Bump(n) })
             }
@@ -65,5 +65,5 @@ component main root {
 
 main()
 -- testrun/gobuild/.../1 --
-sha256:e13b7040c4356b29ddd54f641f0a4f71
+sha256:f9967220fea485db5e04b9ca8cf571af
 {}

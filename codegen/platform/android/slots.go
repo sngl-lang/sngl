@@ -19,25 +19,92 @@ func slotParamName(s *ir.SlotDecl) string {
 	return kotlin.SafeIdent(s.Name)
 }
 
-// composable is what the file calls the @Composable annotation.
-func slotParamType(s *ir.SlotDecl, composable string) string {
+// composable is what the file calls the @Composable annotation, and receiver
+// the scope the content is composed in, or "".
+func slotParamType(s *ir.SlotDecl, composable, receiver string) string {
 	params := make([]string, s.Arity())
 	for i := range params {
 		if entry, v := s.EntryAt(i); entry != nil {
-			params[i] = slotParamType(entry, composable)
+			params[i] = slotParamType(entry, composable, "")
 		} else {
 			params[i] = kotlin.IRTypeToKt(s.Params[v].Type)
 		}
 	}
-	return "(@" + composable + " (" + strings.Join(params, ", ") + ") -> Unit)?"
+	if receiver != "" {
+		receiver += "."
+	}
+	return "(@" + composable + " " + receiver + "(" + strings.Join(params, ", ") + ") -> Unit)?"
 }
 
-func slotParams(comp *ir.Component, composable string) []string {
+func slotParams(comp *ir.Component, composable string, receivers map[*ir.SlotDecl]string) []string {
 	var out []string
 	for _, s := range comp.Slots {
-		out = append(out, slotParamName(s)+": "+slotParamType(s, composable)+" = null")
+		out = append(out, slotParamName(s)+": "+slotParamType(s, composable, receivers[s])+" = null")
 	}
 	return out
+}
+
+// layoutScopes is the receiver each Compose layout composes its content with,
+// by the native path or intrinsic id the platform declares it under.
+var layoutScopes = map[string]string{
+	"androidx.compose.foundation.layout.Column": "androidx.compose.foundation.layout.ColumnScope",
+	"androidx.compose.foundation.layout.Row":    "androidx.compose.foundation.layout.RowScope",
+	"androidx.compose.foundation.layout.Box":    "androidx.compose.foundation.layout.BoxScope",
+	intrinsicNS + "SnglScroll":                  "androidx.compose.foundation.layout.ColumnScope",
+}
+
+// slotReceivers is the layout scope each of a composable's slots is inserted
+// in, where every insertion of it stands directly in one layout's content.
+//
+// A slot's content is a lambda its caller writes, and what the context
+// lowering hands it from a layout the slot stands in is written in that
+// layout's content: android's flexShare is `Modifier.weight`, a member of
+// ColumnScope and RowScope. Typed with the scope as its receiver, as
+// Compose's own layouts type their content, the caller's lambda compiles and
+// its weight is a share of the layout it is composed in.
+func slotReceivers(body []ir.Stmt) map[*ir.SlotDecl]string {
+	out := map[*ir.SlotDecl]string{}
+	mixed := map[*ir.SlotDecl]bool{}
+	var walk func(stmts []ir.Stmt, scope string)
+	walk = func(stmts []ir.Stmt, scope string) {
+		for _, s := range stmts {
+			if si, ok := s.(*ir.SlotInst); ok && si.Entry == nil && si.Decl != nil {
+				if was, seen := out[si.Decl]; seen && was != scope {
+					mixed[si.Decl] = true
+				}
+				out[si.Decl] = scope
+			}
+			n, isNode := s.(*ir.NodeInst)
+			for _, b := range ir.ViewBlocks(s) {
+				inner := scope
+				if isNode {
+					inner = ""
+					if b == &n.Children {
+						inner = layoutScope(n)
+					}
+				}
+				walk(*b, inner)
+			}
+		}
+	}
+	walk(body, "")
+	for d := range mixed {
+		delete(out, d)
+	}
+	return out
+}
+
+// layoutScope is the receiver n composes its children with, or "" where it is
+// no layout Compose scopes.
+func layoutScope(n *ir.NodeInst) string {
+	comp, _ := composeIntrinsic(n)
+	if comp == nil {
+		return ""
+	}
+	if comp.IsNative() {
+		return layoutScopes[comp.Foreign.Path]
+	}
+	return layoutScopes[comp.Intrinsic]
 }
 
 // eventParamName must agree with the name KtIRContext.EmitText invokes.
@@ -155,13 +222,22 @@ func (cc *irComposeContext) renderSlotInst(s *ir.SlotInst) {
 		}
 		return strings.Join(out, ", ")
 	}
+	call := args
+	if s.Entry == nil && cc.slotReceivers[decl] != "" {
+		call = func() string {
+			if a := args(); a != "" {
+				return "this, " + a
+			}
+			return "this"
+		}
+	}
 	if len(s.Children) == 0 {
-		cc.line("%s?.invoke(%s)", name, args())
+		cc.line("%s?.invoke(%s)", name, call())
 		return
 	}
 	cc.line("if (%s != null) {", name)
 	cc.indent++
-	cc.line("%s(%s)", name, args())
+	cc.line("%s.invoke(%s)", name, call())
 	cc.indent--
 	cc.line("} else {")
 	cc.indent++

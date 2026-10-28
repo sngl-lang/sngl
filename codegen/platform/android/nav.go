@@ -580,17 +580,12 @@ func (cc *irComposeContext) renderNavStack(n *ir.NodeInst) {
 		}
 		outerRoot := cc.atRoot
 		cc.atRoot = false
-		body := pageContent(pg.node)
-		if len(body) > 1 {
-			cc.line("%s {", cc.kc.Name(ktColumn))
-			cc.indent++
-		}
-		for _, s := range body {
-			cc.renderStmt(s)
-		}
-		if len(body) > 1 {
-			cc.indent--
-			cc.line("}")
+		if body := pageContent(pg.node); len(body) > 1 {
+			cc.writtenColumn("", body)
+		} else {
+			for _, s := range body {
+				cc.renderStmt(s)
+			}
 		}
 		cc.atRoot = outerRoot
 		cc.kc = saved

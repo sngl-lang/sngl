@@ -105,12 +105,14 @@ var passes = []pass{
 	// names a struct by its declaration's name: a copy's structs are no
 	// package's until this points them at one.
 	passAnonStructs,
-	passFlattenStructSpread,
 	passNoImplicitRecv,
 	passShapeDraw,
 	// After passShapeDraw: the call it promotes may be inside a drawing, which
 	// is a shape override's handler body by the time that pass has run.
 	passLibFuncs,
+	// After LibFuncs, so that a library helper's spread is lowered with the
+	// program's.
+	passFlattenStructSpread,
 	passCMarshal,
 	passDirectCalls,
 	passAsyncProps,
@@ -119,11 +121,11 @@ var passes = []pass{
 	passInstanceEvents,
 	passComponentProps,
 	passReactivity,
+	passFocusOrder,
 	passMatchLate,
 	passConditionalTemps,
 	passTernary,
 	passCanvasReactivity,
-	passFocusOrder,
 	passInstanceBodies,
 	passDeclarative,
 	passNodeEscape,

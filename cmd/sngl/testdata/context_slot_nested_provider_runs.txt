@@ -1,0 +1,84 @@
+# A component that inserts its slot into the slot of a component it calls
+# puts the content under what that one wraps its own slot in: `outer`'s
+# content is `wrap`'s, and `wrap` provides tone around it.
+#
+# The context lowering recorded only the providers written in a component's
+# own body around its slot (collectSlotEnv), so `said` read the tone its
+# caller stood under, and every target but the interpreter showed "hi". A
+# test's read of `c.said.value` stands under the same providers, read through
+# `#o` and then `#w`.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+context #tone("plain")
+
+func shout(s string) => tone == "loud" ? "{s}!" : s
+
+component wrap(content ...component ui.node) ui.node {
+    tone("loud") {
+        content
+    }
+}
+
+component outer(content ...component ui.node) ui.node {
+    ui.vbox {
+        wrap #w {
+            content
+        }
+    }
+}
+
+component page ui.node {
+    outer #o {
+        ui.text #said(value=shout("hi"))
+    }
+}
+
+func testTheInnerProviderIsTheTone(t test.Test, c page) {
+    t.assert(c.said.value == "hi!")
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:7c098d3b9641e059f39b0e0ec750c7cc
+{
+  "results": [
+    {
+      "Desc": "TheInnerProviderIsTheTone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:6cf75bb39b6b476c565e28f9138fd7f4
+{
+  "results": [
+    {
+      "Desc": "TheInnerProviderIsTheTone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:27b357ebdcdd8fcf56eda0d491daf9c6
+{
+  "results": [
+    {
+      "Desc": "TheInnerProviderIsTheTone",
+      "Passed": true
+    }
+  ]
+}

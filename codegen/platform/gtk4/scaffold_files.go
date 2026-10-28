@@ -85,13 +85,6 @@ func writeModelHead(w io.Writer, d scaffoldData) {
 	if d.NeedsCalendarDate {
 		io.WriteString(w, calendarDateHelpers)
 	}
-	if d.NeedsDropDown {
-		if d.Wrapped {
-			io.WriteString(w, dropDownOfferWrapped)
-		} else {
-			io.WriteString(w, dropDownOfferCgo)
-		}
-	}
 	if d.NeedsBoolToInt {
 		io.WriteString(w, `
 func boolToInt(b bool) int {
@@ -101,13 +94,6 @@ func boolToInt(b bool) int {
 	return 0
 }
 `)
-	}
-	if len(d.CStrings) > 0 {
-		io.WriteString(w, "\nvar (\n")
-		for _, c := range d.CStrings {
-			fmt.Fprintf(w, "\t%s = C.CString(%q)\n", c.Name, c.Text)
-		}
-		io.WriteString(w, ")\n")
 	}
 	io.WriteString(w, "\n\n")
 	io.WriteString(w, d.UnitDecls)
@@ -307,25 +293,6 @@ static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
     g_signal_handlers_unblock_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     g_date_time_unref(dt);
 }`
-
-const (
-	// dropDownOfferWrapped is gtk4's select offering its choices
-	// (offerChoices) through gtk4rt.
-	dropDownOfferWrapped = `
-// snglDropDownOffer is gtk4's select offering its choices (offerChoices).
-func snglDropDownOffer(d gtk4rt.Handle, labels, chosen string) {
-	gtk4rt.DropDownOffer(d, labels, chosen)
-}
-`
-	// dropDownOfferCgo is dropDownOfferWrapped for a cgo drop-down: the C
-	// that offers is gtk4rt's in either mode.
-	dropDownOfferCgo = `
-// snglDropDownOffer is gtk4's select offering its choices (offerChoices).
-func snglDropDownOffer(d *C.GtkDropDown, labels, chosen string) {
-	gtk4rt.DropDownOffer(gtk4rt.Handle(unsafe.Pointer(d)), labels, chosen)
-}
-`
-)
 
 const cgoSlotAnchor = `
 

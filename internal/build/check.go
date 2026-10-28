@@ -452,8 +452,12 @@ func (r *Resolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs
 }
 
 // literalOption is an option value as the command line would spell it, and
-// false for anything but a literal.
+// false for anything but a literal. `true` and `false` are declared names
+// rather than literals, so `gtk4(cgo=true)` is read by name.
 func literalOption(e ast.Expr) (string, bool) {
+	if id, ok := e.(*ast.IdentExpr); ok && (id.Name == "true" || id.Name == "false") {
+		return id.Name, true
+	}
 	lit, ok := e.(*ast.LiteralExpr)
 	if !ok {
 		return "", false

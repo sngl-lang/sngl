@@ -14,10 +14,13 @@ import (
 // is being attached to the application (ir.AppParent), which gtk4rt answers.
 const toplevelTag = "Toplevel"
 
-// emitToplevelCreate builds a Toplevel's box. In wrapped mode gtk4rt keeps
-// the window's state beside it; the inline-cgo scaffold has no runtime, so
-// the box is all there is and BuildUI puts the first one in a window.
-func (t *gtk4Translator) emitToplevelCreate(id string) []ir.Stmt {
+// emitToplevelCreate builds a Toplevel's box through the create gtk4.sngl
+// declares, gtk4rt's in either mode: the inline-cgo scaffold has no runtime
+// loop, so BuildUI puts the first one in the window it makes.
+func (t *gtk4Translator) emitToplevelCreate(id string, made ir.Expr) []ir.Stmt {
+	if made == nil {
+		panic("gtk4: a Toplevel reached the translator without the create gtk4.sngl declares")
+	}
 	if t.toplevels == nil {
 		t.toplevels = map[string]bool{}
 	}
@@ -25,11 +28,7 @@ func (t *gtk4Translator) emitToplevelCreate(id string) []ir.Stmt {
 	if t.shared != nil {
 		t.shared.toplevels[id] = true
 	}
-	var ctor ir.Expr = rtCall("ToplevelNew", gtk4rtHandleIRType())
-	if !t.wrapped {
-		ctor = nativeCall("gtk_box_new", ir.NativePointerOf("GtkWidget"), cOrientationVertical(), intLit("6"))
-	}
-	return t.emitConstructorAssign(id, "GtkBox", ctor)
+	return t.emitConstructorAssign(id, "GtkBox", made)
 }
 
 // isToplevel reports whether node names a Toplevel this scope or another
@@ -45,29 +44,17 @@ func (t *gtk4Translator) isToplevel(bare string) bool {
 	return false
 }
 
-// toplevelPropAssign sets a Toplevel's title or visibility.
-func (t *gtk4Translator) toplevelPropAssign(node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
-	ref := t.qualifyNodeExpr(node)
-	// The default: a window that names no title is built with none.
-	if lit, ok := value.(*ir.Literal); ok && prop == "title" && lit.Value == "" && t.building {
-		return nil
+// untitled reports whether a Toplevel's write is the empty title it is built
+// with by default, which a window that names none is built without.
+func (t *gtk4Translator) untitled(prop string, value ir.Expr) bool {
+	if prop != "title" || !t.building {
+		return false
 	}
-	if !t.wrapped {
-		switch prop {
-		case "title":
-			if t.shared != nil && t.building {
-				t.shared.toplevelTitles[codeKey(node)] = value
-			}
-		}
-		return nil
+	if c, ok := value.(*ir.Call); ok && len(c.Args) == 2 {
+		value = c.Args[1].Value
 	}
-	switch prop {
-	case "title":
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ToplevelSetTitle", ir.TypVoid, ref, value)}}
-	case "visible":
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ToplevelSetVisible", ir.TypVoid, ref, value)}}
-	}
-	return nil
+	lit, ok := value.(*ir.Literal)
+	return ok && lit.Value == ""
 }
 
 // codeKey is the id a node expression names, for a map keyed by node.
@@ -78,28 +65,14 @@ func codeKey(node ir.Expr) string {
 	return ""
 }
 
-// toplevelAttachHandler connects what the host reports about a Toplevel: a
-// change of `visible` it made itself, and the window manager's close, which
-// arrives as the first and then as `@closed`.
-func (t *gtk4Translator) toplevelAttachHandler(node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
-	if !t.wrapped {
-		// The override subscribes to the host's close whether or not the
-		// program did; only a handler with something in it is a refusal.
-		if event == "closed" && !t.emptyHandler(handler) {
-			t.shared.fail(fmt.Errorf("gtk4: a window's @closed needs the gtk4rt runtime, and this program's generated code calls into cgo directly"))
-		}
-		return nil
+// refuseCgoClosed refuses a window's `@closed` in an inline-cgo build, whose
+// scaffold has no runtime to report the window manager's close. The override
+// subscribes to it whether or not the program did; only a handler with
+// something in it is a refusal.
+func (t *gtk4Translator) refuseCgoClosed(event string, handler ir.Expr) {
+	if !t.wrapped && event == "closed" && !t.emptyHandler(handler) {
+		t.shared.fail(fmt.Errorf("gtk4: a window's @closed needs the gtk4rt runtime, and this program's generated code calls into cgo directly"))
 	}
-	fn := ""
-	switch event {
-	case "closed":
-		fn = "ToplevelOnClosed"
-	case "visible":
-		fn = "ToplevelOnVisible"
-	default:
-		return nil
-	}
-	return []ir.Stmt{&ir.CallStmt{Call: rtCall(fn, ir.TypVoid, t.qualifyNodeExpr(node), handler)}}
 }
 
 // appAttach is a node at the root of the package body joining the

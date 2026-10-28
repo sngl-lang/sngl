@@ -92,10 +92,194 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 		}
 	}
 
-	*funcs = append(*funcs,
-		buildFocusNav("__focusNext", slots, focusIDIdent, true),
-		buildFocusNav("__focusPrev", slots, focusIDIdent, false),
+	shown := focusShownExprs(stmts, slots)
+	if !slices.ContainsFunc(shown, func(e ir.Expr) bool { return e != nil }) {
+		*funcs = append(*funcs,
+			buildFocusNav("__focusNext", slots, focusIDIdent, true),
+			buildFocusNav("__focusPrev", slots, focusIDIdent, false),
+		)
+		return
+	}
+	// Some stop may draw nothing, and Tab passes over one that does: a step
+	// moves to the adjacent stop, and the step is taken again while the stop
+	// reached is not shown -- once per other stop at most, so a screen showing
+	// none of them comes back to where it was. Settle moves focus off a stop
+	// that stopped being shown, and says whether it did; the target calls it
+	// once the program has changed what it shows.
+	shownFn := buildFocusShown(slots, shown, focusIDIdent)
+	stepNext := buildFocusNav("__focusStepNext", slots, focusIDIdent, true)
+	stepPrev := buildFocusNav("__focusStepPrev", slots, focusIDIdent, false)
+	next := buildFocusSkip("__focusNext", stepNext, shownFn, len(slots))
+	*funcs = append(*funcs, shownFn, stepNext, stepPrev, next,
+		buildFocusSkip("__focusPrev", stepPrev, shownFn, len(slots)),
+		&ir.Func{
+			Name:        "__focusSettle",
+			Return:      ir.TypBool,
+			Synthesized: true,
+			Block: []ir.Stmt{
+				&ir.If{
+					Cond: notExpr(callFocusFunc(shownFn, ir.TypBool)),
+					Body: []ir.Stmt{
+						&ir.CallStmt{Call: callFocusFunc(next, ir.TypVoid)},
+						&ir.Return{Value: &ir.Literal{Type: ir.TypBool, Value: "true"}},
+					},
+				},
+				&ir.Return{Value: &ir.Literal{Type: ir.TypBool, Value: "false"}},
+			},
+		},
 	)
+}
+
+// ---- stops that draw nothing ----
+
+// focusShownExprs is, per slot, what says the slot's stop is drawn, or nil
+// where it always is. A static stop is drawn where the branches around it are
+// taken and its `focus` is enabled -- on bubbletea, the target that orders
+// focus, where its Style does not display it none -- and a loop slot where the
+// loop renders a stop. A condition the stop's owner cannot read outside its
+// view -- one naming a loop's variable, a parameter, or a local the view
+// declares -- is left out, so that stop is taken to be drawn.
+func focusShownExprs(stmts []ir.Stmt, slots []focusSlot) []ir.Expr {
+	locals := map[*ir.Var]bool{}
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok && lv.Sym != nil {
+			locals[lv.Sym] = true
+		}
+		return nil
+	})
+	readable := func(e ir.Expr) bool {
+		ok := true
+		_ = ir.WalkExprs(e, func(x ir.Expr) error {
+			id, isID := x.(*ir.Ident)
+			if !isID {
+				return nil
+			}
+			switch sym := id.Sym.(type) {
+			case *ir.LoopVar, *ir.Param:
+				ok = false
+			case *ir.Var:
+				ok = !locals[sym]
+			}
+			if !ok {
+				return ir.SkipAll
+			}
+			return nil
+		})
+		return ok
+	}
+	static := map[*ir.NodeInst]int{}
+	shown := make([]ir.Expr, len(slots))
+	for i, s := range slots {
+		if s.isLoop {
+			shown[i] = &ir.Binary{Type: ir.TypBool, Op: ast.BinGt, Left: callLoopLen(s.loop), Right: intLiteralLit(0)}
+		} else {
+			static[s.node] = i
+		}
+	}
+	var walk func(stmts []ir.Stmt, conds []ir.Expr)
+	walk = func(stmts []ir.Stmt, conds []ir.Expr) {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ir.NodeInst:
+				if i, ok := static[n]; ok {
+					own := conds
+					if e := focusEnabledField(n); e != nil {
+						if _, known := foldedBool(e.Value); !known && readable(e.Value) {
+							own = append(slices.Clip(conds), e.Value)
+						}
+					}
+					if len(own) > 0 {
+						shown[i] = andAll(own)
+					}
+				}
+				inner := conds
+				if h := fitHidden(n); h != nil && readable(h) {
+					inner = append(slices.Clip(conds), notExpr(deepCloneExpr(h)))
+				}
+				for _, b := range suppliedBodies(n) {
+					walk(b, inner)
+				}
+			case *ir.If:
+				if n.FromTernary || !readable(n.Cond) {
+					walk(n.Body, conds)
+					walk(n.Else, conds)
+					continue
+				}
+				walk(n.Body, append(slices.Clip(conds), deepCloneExpr(n.Cond)))
+				walk(n.Else, append(slices.Clip(conds), notExpr(deepCloneExpr(n.Cond))))
+			case *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b, conds)
+				}
+			case *ir.SlotInst:
+				walk(n.Children, conds)
+			case *ir.ErrorBoundary:
+				walk(n.Children, conds)
+			}
+		}
+	}
+	walk(stmts, nil)
+	// The stop is the node's whatever its record says, which the view has no
+	// use for once read: a stop in a loop is counted while it is displayed
+	// none, which is the loop's to answer.
+	_ = ir.Walk(stmts, func(node ir.Node) error {
+		if n, ok := node.(*ir.NodeInst); ok {
+			if e := focusEnabledField(n); e != nil {
+				if _, known := foldedBool(e.Value); !known {
+					e.Value = &ir.Literal{Type: ir.TypBool, Value: "true"}
+				}
+			}
+		}
+		return nil
+	})
+	return shown
+}
+
+func notExpr(e ir.Expr) ir.Expr {
+	return &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: e}
+}
+
+// andAll is a copy of each of conds, joined by `&&`: a stop's conditions are
+// shared with the stops beside it, and a later pass rewrites one in place.
+func andAll(conds []ir.Expr) ir.Expr {
+	e := deepCloneExpr(conds[0])
+	for _, c := range conds[1:] {
+		e = &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd, Left: e, Right: deepCloneExpr(c)}
+	}
+	return e
+}
+
+func callFocusFunc(f *ir.Func, t *ir.Type) *ir.Call {
+	return &ir.Call{Type: t, Func: f}
+}
+
+// buildFocusShown builds __focusShown, whether the stop focus is on is drawn.
+func buildFocusShown(slots []focusSlot, shown []ir.Expr, focusIDIdent func() *ir.Ident) *ir.Func {
+	var block []ir.Stmt
+	for i := range slots {
+		if shown[i] == nil {
+			continue
+		}
+		block = append(block, &ir.If{
+			Cond: focusEqExpr(focusIDIdent(), i),
+			Body: []ir.Stmt{&ir.Return{Value: shown[i]}},
+		})
+	}
+	block = append(block, &ir.Return{Value: &ir.Literal{Type: ir.TypBool, Value: "true"}})
+	return &ir.Func{Name: "__focusShown", Return: ir.TypBool, Synthesized: true, Block: block}
+}
+
+// buildFocusSkip builds a move that takes step, then takes it again while the
+// stop reached is not shown, at most once per other stop.
+func buildFocusSkip(name string, step, shown *ir.Func, stops int) *ir.Func {
+	block := []ir.Stmt{&ir.CallStmt{Call: callFocusFunc(step, ir.TypVoid)}}
+	for range stops - 1 {
+		block = append(block, &ir.If{
+			Cond: notExpr(callFocusFunc(shown, ir.TypBool)),
+			Body: []ir.Stmt{&ir.CallStmt{Call: callFocusFunc(step, ir.TypVoid)}},
+		})
+	}
+	return &ir.Func{Name: name, Return: ir.TypVoid, Synthesized: true, Block: block}
 }
 
 // refuseFocusInRecursion: Tab and Update reach only the stops the window
@@ -337,8 +521,14 @@ func injectFocusedProps(stmts []ir.Stmt, slots []focusSlot, focusIDIdent func() 
 			staticSlots[s.node] = s
 		}
 	}
-	walkInjectFocused(stmts, focusIDIdent, loopSlots, staticSlots, nil)
+	walkInjectFocused(stmts, focusIDIdent, loopSlots, staticSlots, nil, nil)
 }
+
+// focusCountedProp is the condition under which a loop slot's stop is one:
+// its own record enabled and every box between it and the loop drawing what
+// it holds. The loop counts it, and the view and Update number it, only
+// while the condition holds; with none it always is.
+const focusCountedProp = "__focusCounted"
 
 func walkInjectFocused(
 	stmts []ir.Stmt,
@@ -346,10 +536,22 @@ func walkInjectFocused(
 	loopSlots map[*ir.For]*focusSlot,
 	staticSlots map[*ir.NodeInst]*focusSlot,
 	inLoop *focusSlot,
+	shown []ir.Expr,
 ) {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
+			if inLoop != nil && nodeEffectiveFocusable(n) {
+				own := shown
+				if e := focusEnabledField(n); e != nil {
+					if _, known := foldedBool(e.Value); !known {
+						own = append(slices.Clip(shown), e.Value)
+					}
+				}
+				if len(own) > 0 {
+					n.Props = append(n.Props, ir.Arg{Name: focusCountedProp, Value: andAll(own)})
+				}
+			}
 			if slot, ok := staticSlots[n]; ok {
 				n.Props = append(n.Props, ir.Arg{
 					Name:  "__focused",
@@ -372,27 +574,31 @@ func walkInjectFocused(
 					},
 				})
 			}
+			inner := shown
+			if h := fitHidden(n); h != nil && inLoop != nil {
+				inner = append(slices.Clip(shown), notExpr(h))
+			}
 			for _, b := range suppliedBodies(n) {
-				walkInjectFocused(b, focusIDIdent, loopSlots, staticSlots, inLoop)
+				walkInjectFocused(b, focusIDIdent, loopSlots, staticSlots, inLoop, inner)
 			}
 
 		case *ir.For:
-			slot := inLoop
+			slot, within := inLoop, shown
 			if s, ok := loopSlots[n]; ok {
-				slot = s
+				slot, within = s, nil
 			}
-			walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, slot)
-			walkInjectFocused(n.Else, focusIDIdent, loopSlots, staticSlots, slot)
+			walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, slot, within)
+			walkInjectFocused(n.Else, focusIDIdent, loopSlots, staticSlots, slot, within)
 
 		case *ir.If, *ir.Match:
 			for _, b := range ir.TransparentBlocks(n) {
-				walkInjectFocused(*b, focusIDIdent, loopSlots, staticSlots, inLoop)
+				walkInjectFocused(*b, focusIDIdent, loopSlots, staticSlots, inLoop, shown)
 			}
 
 		case *ir.SlotInst:
-			walkInjectFocused(n.Children, focusIDIdent, loopSlots, staticSlots, inLoop)
+			walkInjectFocused(n.Children, focusIDIdent, loopSlots, staticSlots, inLoop, shown)
 		case *ir.ErrorBoundary:
-			walkInjectFocused(n.Children, focusIDIdent, loopSlots, staticSlots, inLoop)
+			walkInjectFocused(n.Children, focusIDIdent, loopSlots, staticSlots, inLoop, shown)
 		}
 	}
 }
@@ -431,11 +637,15 @@ func focusCountStmts(stmts []ir.Stmt, count func() *ir.Ident) []ir.Stmt {
 		switch n := s.(type) {
 		case *ir.NodeInst:
 			if nodeEffectiveFocusable(n) {
-				out = append(out, &ir.Assign{
+				var inc ir.Stmt = &ir.Assign{
 					Target: count(),
 					Op:     ast.AssignSet,
 					Value:  &ir.Binary{Type: ir.TypInt, Op: ast.BinAdd, Left: count(), Right: intLiteralLit(1)},
-				})
+				}
+				if c := n.Prop(focusCountedProp); c != nil {
+					inc = &ir.If{Cond: deepCloneExpr(c), Body: []ir.Stmt{inc}}
+				}
+				out = append(out, inc)
 			}
 			for _, b := range suppliedBodies(n) {
 				out = append(out, focusCountStmts(b, count)...)
@@ -706,20 +916,15 @@ func listElem(e ir.Expr) *ir.Type {
 func nodeEffectiveFocusable(n *ir.NodeInst) bool {
 	// Blueprint primitives (inlined Styled/Widget) declare focusability via a
 	// `focus=Focus{enabled=true}` record rather than a bare `focusable` prop.
-	for _, p := range n.Props {
-		if p.Name == "focus" {
-			if sl, ok := p.Value.(*ir.StructLit); ok {
-				for _, f := range sl.Fields {
-					if f.Name == "enabled" {
-						if lit, ok := f.Value.(*ir.Literal); ok {
-							return lit.Value == "true"
-						}
-						return true
-					}
-				}
-			}
+	// One that may be enabled is a stop, which focusShownExprs passes over
+	// while it is not.
+	if slices.ContainsFunc(n.Props, func(p ir.Arg) bool { return p.Name == "focus" }) {
+		e := focusEnabledField(n)
+		if e == nil {
 			return false
 		}
+		on, known := foldedBool(e.Value)
+		return on || !known
 	}
 	for _, p := range n.Props {
 		if p.Name == "focusable" {
@@ -740,4 +945,113 @@ func nodeEffectiveFocusable(n *ir.NodeInst) bool {
 		}
 	}
 	return false
+}
+
+// fitHidden is whether n hides what it holds, as its `fit` record says on
+// bubbletea -- a box displayed none draws none of its children -- or nil
+// where it has none, or the build can read that it does not.
+func fitHidden(n *ir.NodeInst) ir.Expr {
+	e := recordField(n.Prop("fit"), "hidden")
+	if e == nil {
+		return nil
+	}
+	if on, known := foldedBool(e); known && !on {
+		return nil
+	}
+	return deepCloneExpr(e)
+}
+
+// recordField is what record e holds in field name: a literal's, or the
+// literal a function returning one returns, its parameters bound to the call's
+// arguments -- a call the optimizer left standing, its argument a ternary. Nil
+// where neither says.
+func recordField(e ir.Expr, name string) ir.Expr {
+	switch x := e.(type) {
+	case *ir.StructLit:
+		return x.Field(name)
+	case *ir.Call:
+		f := x.Func
+		if f == nil || len(f.Block) != 1 || len(x.Args) != len(f.Params) {
+			return nil
+		}
+		ret, ok := f.Block[0].(*ir.Return)
+		if !ok {
+			return nil
+		}
+		lit, ok := ret.Value.(*ir.StructLit)
+		if !ok {
+			return nil
+		}
+		v := lit.Field(name)
+		if v == nil {
+			return nil
+		}
+		bindings := map[string]ir.Expr{}
+		for i, a := range x.Args {
+			p := f.Params[i].Name
+			if a.Name != "" {
+				p = a.Name
+			}
+			bindings[p] = a.Value
+		}
+		out := substituteParams([]ir.Stmt{&ir.Return{Value: deepCloneExpr(v)}}, bindings)
+		return out[0].(*ir.Return).Value
+	}
+	return nil
+}
+
+// focusEnabledField is the `enabled` field of n's `focus` record, nil where n
+// carries none or its record is not a literal.
+func focusEnabledField(n *ir.NodeInst) *ir.FieldInit {
+	for _, p := range n.Props {
+		if p.Name != "focus" {
+			continue
+		}
+		if sl, ok := p.Value.(*ir.StructLit); ok {
+			for i := range sl.Fields {
+				if sl.Fields[i].Name == "enabled" {
+					return &sl.Fields[i]
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// foldedBool is what e says where the build can read it here: a literal, the
+// negation of one, or an equality between two members of one enum -- what an
+// override's `style.display != ui.Display.none` is once a Style literal's
+// field is read into it. The optimizer folds the rest, after this pass.
+func foldedBool(e ir.Expr) (value, known bool) {
+	switch x := e.(type) {
+	case *ir.Literal:
+		if x.Type != nil && x.Type.Equal(ir.TypBool) {
+			return x.Value == "true", true
+		}
+	case *ir.Unary:
+		if x.Op == ast.UnaryNot {
+			v, ok := foldedBool(x.Operand)
+			return !v, ok
+		}
+	case *ir.Binary:
+		if x.Op != ast.BinEq && x.Op != ast.BinNeq {
+			return false, false
+		}
+		l, lok := enumMember(x.Left)
+		r, rok := enumMember(x.Right)
+		if !lok || !rok || !x.Left.ExprType().Equal(x.Right.ExprType()) {
+			return false, false
+		}
+		return (l == r) == (x.Op == ast.BinEq), true
+	}
+	return false, false
+}
+
+// enumMember is the member e names, where e names one of a plain enum.
+func enumMember(e ir.Expr) (string, bool) {
+	id, ok := e.(*ir.Ident)
+	if !ok || id.Member == "" || id.Type == nil || id.Type.Kind != ir.TypeEnum || ir.PayloadEnum(id.Type) != nil {
+		return "", false
+	}
+	return id.Member, true
 }

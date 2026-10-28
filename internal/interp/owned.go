@@ -48,6 +48,12 @@ type handles struct {
 	// every component.
 	retained map[*Handle]retention
 	lifetime Key
+	// hosted is each node a simulated host made through its protocol, by
+	// its mounted path, and connect the platform's own connect, looked up
+	// once (hostProtocols).
+	hosted       map[Key]*hosted
+	connect      *ir.Func
+	connectFound bool
 }
 
 type retention struct {

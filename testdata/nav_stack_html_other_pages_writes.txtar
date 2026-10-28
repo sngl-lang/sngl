@@ -187,7 +187,6 @@ body { font-family: system-ui, sans-serif; }
       __inst1_live[__inst1_live_ui].__set___p1(state.picked__inst0);
     }
     ;
-    $1.textContent = state.picked__inst0 === "loud" ? "items!" : "items";
   });
   $2.addEventListener("click", function() {
     location.assign("/item");
@@ -338,7 +337,6 @@ body { font-family: system-ui, sans-serif; }
       __inst1_live[__inst1_live_ui].__set___p1(state.picked__inst0);
     }
     ;
-    $1.textContent = state.picked__inst0 === "loud" ? "first!" : "first";
   });
   function __sngl_init() {
     $1.textContent = state.picked__inst0 === "loud" ? "first!" : "first";
@@ -349,4 +347,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:56ca2926f4e8dbecd322f3eeeb6b5613
+pass sha256:9c062be6d485369ca6e0c916f908aebd

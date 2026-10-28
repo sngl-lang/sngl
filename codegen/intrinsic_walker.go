@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"context"
+	"fmt"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -94,6 +95,35 @@ type ChildInserter interface {
 	OnInsertBefore(ctx context.Context, parent, child, ref ir.Expr) []ir.Stmt
 }
 
+// NodeMaker is implemented by a platform whose widgets a
+// #[gen.protocol(create)] function makes: lowering splices the call into the
+// createNode op as its second operand, so the call is IR the passes saw, and
+// the platform puts what it returns where the node lives. A createNode
+// without one is still OnCreateNode's.
+type NodeMaker interface {
+	OnMakeNode(ctx context.Context, id, tag string, made ir.Expr) []ir.Stmt
+}
+
+// ChildProtocol is implemented by a platform whose containers a
+// #[gen.protocol(append)] and #[gen.protocol(remove)] function fill: lowering
+// splices the call into the AppendChild or RemoveChild op as its third
+// operand, and the platform emits it where the scope holds the two nodes. An
+// op without one is still OnAppendChild's or OnRemoveChild's.
+type ChildProtocol interface {
+	OnAppendThrough(ctx context.Context, parent, child, call ir.Expr) []ir.Stmt
+	OnRemoveThrough(ctx context.Context, parent, child, call ir.Expr) []ir.Stmt
+}
+
+// HandlerConnector is implemented by a platform whose widgets a
+// #[gen.protocol(connect)] function connects handlers to: lowering splices the
+// call into the AttachHandler op as its fourth operand with every parameter
+// bound but the handler, which is left as the parameter it is written as. The
+// platform puts the walked handler there, shaped as its trampoline calls it.
+// An op without one is still OnAttachHandler's.
+type HandlerConnector interface {
+	OnConnectThrough(ctx context.Context, node ir.Expr, event string, handler, call ir.Expr) []ir.Stmt
+}
+
 // WalkLowered iterates the lowered IR statement sequence and dispatches
 // each known shape to t. Returns the concatenated emissions in source
 // order. ctx is passed through to every translator method; if the
@@ -106,6 +136,14 @@ func WalkLowered(ctx context.Context, stmts []ir.Stmt, t IntrinsicTranslator) []
 	return out
 }
 
+func childProtocol(t IntrinsicTranslator) ChildProtocol {
+	cp, ok := t.(ChildProtocol)
+	if !ok {
+		panic(fmt.Sprintf("codegen: a child is placed through a declared protocol, and %T takes none", t))
+	}
+	return cp
+}
+
 func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 	switch n := s.(type) {
 	case *ir.LocalVar:
@@ -115,6 +153,13 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 					ns.NodeSite(n.Name, n.NodeAST)
 				}
 				tag, _ := extractStringLit(call.Args[0].Value)
+				if len(call.Args) == 2 {
+					nm, ok := t.(NodeMaker)
+					if !ok {
+						panic(fmt.Sprintf("codegen: %s is made by a declared create, and %T takes none", tag, t))
+					}
+					return nm.OnMakeNode(ctx, n.Name, tag, call.Args[1].Value)
+				}
 				return t.OnCreateNode(ctx, n.Name, tag)
 			}
 			if isLowerIntrinsic(call, "CreateComponent") {
@@ -137,13 +182,26 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 		if n.Call != nil {
 			switch {
 			case isLowerIntrinsic(n.Call, "AppendChild"):
+				if len(n.Call.Args) == 3 {
+					return childProtocol(t).OnAppendThrough(ctx, n.Call.Args[0].Value, n.Call.Args[1].Value, n.Call.Args[2].Value)
+				}
 				return t.OnAppendChild(ctx, n.Call.Args[0].Value, n.Call.Args[1].Value)
 			case isLowerIntrinsic(n.Call, "RemoveChild"):
+				if len(n.Call.Args) == 3 {
+					return childProtocol(t).OnRemoveThrough(ctx, n.Call.Args[0].Value, n.Call.Args[1].Value, n.Call.Args[2].Value)
+				}
 				return t.OnRemoveChild(ctx, n.Call.Args[0].Value, n.Call.Args[1].Value)
 			case isLowerIntrinsic(n.Call, "AttachHandler"):
 				evt, _ := extractStringLit(n.Call.Args[1].Value)
-				return t.OnAttachHandler(ctx, n.Call.Args[0].Value, evt,
-					walkHandlerBody(ctx, n.Call.Args[2].Value, t))
+				handler := walkHandlerBody(ctx, n.Call.Args[2].Value, t)
+				if len(n.Call.Args) == 4 {
+					hc, ok := t.(HandlerConnector)
+					if !ok {
+						panic(fmt.Sprintf("codegen: a handler is connected through a declared protocol, and %T takes none", t))
+					}
+					return hc.OnConnectThrough(ctx, n.Call.Args[0].Value, evt, handler, n.Call.Args[3].Value)
+				}
+				return t.OnAttachHandler(ctx, n.Call.Args[0].Value, evt, handler)
 			case isLowerIntrinsic(n.Call, ir.NodeOpDetachHandler) && len(n.Call.Args) == 3:
 				evt, _ := extractStringLit(n.Call.Args[1].Value)
 				return t.OnDetachHandler(ctx, n.Call.Args[0].Value, evt, n.Call.Args[2].Value)

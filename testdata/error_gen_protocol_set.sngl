@@ -1,0 +1,29 @@
+// #[gen.protocol(set)] says how a platform writes one prop of the widget an
+// #[intrinsic] component stands for: a function of the widget, typed as that
+// component, and the value, named as the prop it sets. A program declares no
+// intrinsic, so a set it writes is refused whatever its widget is; the rules
+// about the component and the prop are the library's, and
+// TestGenProtocolPlacement holds them.
+
+import gen "sngl:x/gen"
+import ui "sngl:ui"
+
+component box(label string = "") ui.node {
+    ui.text(value=label)
+}
+
+#[gen.protocol(set)] // ERROR(check) "#[gen.protocol(set)] takes the widget and the value, named as the prop it sets"
+func takesOne(w box) {}
+
+#[gen.protocol(set)] // ERROR(check) "#[gen.protocol(set)] takes the widget and the value, named as the prop it sets"
+func takesThree(w box, label string, at int) {}
+
+#[gen.protocol(set)] // ERROR(check) "#[gen.protocol(set)] declares the #[intrinsic] component it sets as its first parameter"
+func ofNumber(w int, label string) {}
+
+#[gen.protocol(set)] // ERROR(check) "#[gen.protocol(set)] declares the #[intrinsic] component it sets, and box is not one"
+func ofBox(w box, label string) {}
+
+ui.window {
+    box()
+}

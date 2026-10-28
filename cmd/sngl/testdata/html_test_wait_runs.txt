@@ -34,7 +34,7 @@ ui.window {
     ticker
 }
 -- testrun/html/none/app.sngl/ticker/1 --
-sha256:ccc7cae9fa36f1f0293209f4b1984c89
+sha256:f6eb7059bf2d486d52b9198a54f59ef9
 {
   "results": [
     {

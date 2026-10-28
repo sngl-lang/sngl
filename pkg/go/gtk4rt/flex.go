@@ -6,6 +6,8 @@ package gtk4rt
 #cgo pkg-config: gtk4
 #include <gtk/gtk.h>
 
+GtkOrientation sngl_box_axis(GtkWidget *box);
+
 // A flexing widget expands along the axis of the box it is in, and only that
 // one: GTK hands a box's spare room to the children that expand along it, and
 // an expand on the other axis would reach the box's own parent instead, which
@@ -13,7 +15,7 @@ package gtk4rt
 static void sngl_flex_apply(GtkWidget *w) {
     GtkWidget *parent = gtk_widget_get_parent(w);
     if (parent == NULL || !GTK_IS_BOX(parent)) return;
-    GtkOrientation o = gtk_orientable_get_orientation(GTK_ORIENTABLE(parent));
+    GtkOrientation o = sngl_box_axis(parent);
     if (o == GTK_ORIENTATION_VERTICAL) {
         gtk_widget_set_vexpand(w, TRUE);
     } else {

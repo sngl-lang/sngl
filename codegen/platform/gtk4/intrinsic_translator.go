@@ -30,14 +30,6 @@ type emitShared struct {
 	errs     []error
 	seen     map[string]bool
 
-	// cStrings are the literals handed to C, each a package-level var holding
-	// its C copy for the application's lifetime; cStringN numbers them and
-	// cTempN the locals a non-constant one is bound to (ownCStrings).
-	cStrings      []cStringDecl
-	cStringByText map[string]string
-	cStringN      int
-	cTempN        int
-
 	// The canvas metadata passDeclarative flattened out of the program, which every
 	// scope in the file reads: a `canvas` tag has no GIR widget behind it, so a
 	// translator without these maps reports it as a component gtk4 does not
@@ -55,11 +47,8 @@ type emitShared struct {
 	markup *markupTrees
 
 	// toplevels are every Toplevel id the file creates, since a handler or an
-	// updater setting one's `visible` is a scope that did not create it; and
-	// toplevelTitles the title each is built with, which the inline-cgo
-	// scaffold writes on the window BuildUI makes.
-	toplevels      map[string]bool
-	toplevelTitles map[string]ir.Expr
+	// updater setting one's `visible` is a scope that did not create it.
+	toplevels map[string]bool
 	// images are every image primitive id the file creates, by tag.
 	images map[string]string
 	// scrolls are every Scroll primitive id the file creates.
@@ -85,85 +74,6 @@ func (s *emitShared) needSlotAnchor() {
 	if s != nil {
 		s.slotAnchor = true
 	}
-}
-
-// cStringDecl is a package-level `*C.char` made once from a literal.
-type cStringDecl struct {
-	Name, Text string
-}
-
-const cTempPrefix = "__ctmp"
-
-func (s *emitShared) cTempName() string {
-	name := fmt.Sprintf("%s%d", cTempPrefix, s.cTempN)
-	s.cTempN++
-	return name
-}
-
-// constCString is the var holding a literal's C copy, one per distinct text.
-func (s *emitShared) constCString(text string) ir.Expr {
-	if s.cStringByText == nil {
-		s.cStringByText = map[string]string{}
-	}
-	name, ok := s.cStringByText[text]
-	if !ok {
-		name = fmt.Sprintf("__cstr%d", s.cStringN)
-		s.cStringN++
-		s.cStringByText[text] = name
-		s.cStrings = append(s.cStrings, cStringDecl{Name: name, Text: text})
-	}
-	return &ir.Ident{Name: name, Type: ir.NativePointerOf("char")}
-}
-
-// ownCStrings gives back each C string the statements make. The translator
-// builds these calls after lowering, so ReleaseTemps never saw the `C.CString`
-// in them, and the release it would have written is written here: a
-// literal's copy is a package-level var kept for the application's lifetime,
-// and any other is bound to a local before the statement that hands it to C
-// and freed after it. Every C function the translator calls copies the string
-// it is handed, so none outlives its statement. A nil shared frees nothing,
-// as it fails nothing.
-func (s *emitShared) ownCStrings(stmts []ir.Stmt) []ir.Stmt {
-	if s == nil {
-		return stmts
-	}
-	return ir.RewriteBlocks(stmts, func(block []ir.Stmt) []ir.Stmt {
-		out := make([]ir.Stmt, 0, len(block))
-		for _, st := range block {
-			if lv, ok := st.(*ir.LocalVar); ok && strings.HasPrefix(lv.Name, cTempPrefix) {
-				out = append(out, st)
-				continue
-			}
-			var frees []ir.Stmt
-			// Only the statement's own expressions: a nested block was
-			// rewritten before it, and binding its temps again would free
-			// each twice.
-			_ = ir.Rewrite(st, func(n ir.Node) (ir.Node, error) {
-				if nested, ok := n.(ir.Stmt); ok && nested != st {
-					return n, ir.SkipDir
-				}
-				c, ok := n.(*ir.Call)
-				if !ok || !isCString(c) {
-					return n, nil
-				}
-				if lit, ok := c.Args[0].Value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
-					return s.constCString(lit.Value), ir.SkipDir
-				}
-				ref := &ir.Ident{Name: s.cTempName(), Type: ir.NativePointerOf("char")}
-				out = append(out, &ir.LocalVar{Name: ref.Name, Type: ref.Type, Init: c})
-				frees = append([]ir.Stmt{&ir.CallStmt{Call: nativeCall("free", ir.TypVoid, cgoCast("", ref))}}, frees...)
-				return ref, ir.SkipDir
-			})
-			out = append(out, st)
-			out = append(out, frees...)
-		}
-		return out
-	})
-}
-
-func isCString(c *ir.Call) bool {
-	recv, ok := c.Receiver.(*ir.Ident)
-	return ok && recv.Name == "C" && c.Func != nil && c.Func.Name == "CString" && len(c.Args) == 1
 }
 
 // fail records that a property cannot be emitted. The same property assigned
@@ -666,6 +576,16 @@ func (t *gtk4Translator) boolToGoInt(expr ir.Expr) ir.Expr {
 }
 
 func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
+	return t.createNode(id, tag, nil)
+}
+
+// OnMakeNode is a GIR class's createNode, carrying the call its declared
+// create makes (declgen), which lowering spliced and marshaled.
+func (t *gtk4Translator) OnMakeNode(ctx context.Context, id, tag string, made ir.Expr) []ir.Stmt {
+	return t.createNode(id, tag, made)
+}
+
+func (t *gtk4Translator) createNode(id, tag string, made ir.Expr) []ir.Stmt {
 	// A `canvas` has no GIR-native widget, so it is intercepted before the
 	// native-tag lookup and built as a GtkDrawingArea with a cairo callback.
 	if tag == "canvas" {
@@ -680,13 +600,13 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// emitFlowMarkup.
 	switch tag {
 	case toplevelTag:
-		return t.emitToplevelCreate(id)
+		return t.emitToplevelCreate(id, made)
 	case imageTag, imageURLTag, imageDrawingTag:
-		return t.emitImageCreate(id, tag)
+		return t.emitImageCreate(id, tag, made)
 	case scrollTag:
-		return t.emitScrollCreate(id)
+		return t.emitScrollCreate(id, made)
 	case flowTag:
-		return t.emitFlowCreate(id)
+		return t.emitFlowCreate(id, made)
 	case spanTag:
 		t.skipped[id] = struct{}{}
 		if t.builtSpans == nil {
@@ -720,86 +640,12 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	if cType == "GtkDropDown" {
 		t.shared.dropDown = true
 	}
-	ctorInfo := pickPrimaryConstructorInfo(info)
-	if t.wrapped {
-		if ctor, ok := rtCtorForCType(cType); ok {
-			return t.emitConstructorAssign(id, cType, ctor)
-		}
-	}
-	// GIR describes no constructor for this class, and the name derived from
-	// the class is not one GTK ships, so emitting the call would leave a link
-	// error in the user's build instead of a diagnostic here.
-	if len(info.Constructors) == 0 {
-		t.shared.fail(fmt.Errorf("gtk4: %s cannot be constructed: GTK declares no constructor for it", cType))
+	if made == nil {
+		t.shared.fail(unconstructible(t.registry, cType, info))
+		t.skipped[id] = struct{}{}
 		return nil
 	}
-	// A typed zero per required parameter, so the cgo call type-checks;
-	// OnPropAssign immediately rewrites any user-supplied value.
-	args := []ir.Expr{}
-	for _, p := range ctorInfo.Params {
-		arg, err := ctorZeroArg(t.registry, p)
-		if err != nil {
-			t.shared.fail(fmt.Errorf("gtk4: %s cannot be constructed: %s takes %s %s, %w", cType, ctorInfo.Name, p.GIRType, p.Name, err))
-			return nil
-		}
-		args = append(args, arg)
-	}
-	ctor := nativeCall(ctorInfo.Name, ir.NativePointerOf("GtkWidget"), args...)
-	return t.shared.ownCStrings(t.emitConstructorAssign(id, cType, ctor))
-}
-
-// ctorZeroArg returns the IR expression for a typed-zero value matching one
-// constructor parameter, suitable as a placeholder a later prop assignment
-// overwrites. Primitives become typed zero casts, a Gtk enumeration a bare 0
-// (cgo coerces an untyped int constant into the named type), and a pointer
-// nil — which the parameter's c:type is the only thing in GIR that identifies,
-// since a GIR name alone does not say whether GApplicationFlags is an integer
-// or GFile is a pointer.
-//
-// It errors for a parameter whose zero cannot be spelled: a varargs or array
-// form with no c:type at all, and a named type from a namespace other than
-// Gtk, which the platform does not parse and so cannot tell a foreign enum
-// (a bare 0) from a foreign callback (nil). Refusing here is a build
-// diagnostic naming the class; guessing emits Go that does not compile.
-func ctorZeroArg(reg *gir.TypeRegistry, p gir.ConstructorParam) (ir.Expr, error) {
-	switch p.GIRType {
-	case "utf8", "filename", "gchararray":
-		// gtk_link_button_new refuses NULL and returns no widget at all.
-		if !p.Nullable {
-			return cString(&ir.Literal{Type: ir.TypString, Value: ""}), nil
-		}
-		return &ir.Literal{Type: ir.TypNull}, nil
-	case "gboolean", "gint", "gint32", "gint64", "guint", "guint32", "guint64", "gsize":
-		return cScalar(ctorScalarCast(p), &ir.Literal{Type: ir.TypInt, Value: "0"}), nil
-	case "gdouble", "gfloat":
-		return cScalar(ctorScalarCast(p), &ir.Literal{Type: ir.TypFloat, Value: "0"}), nil
-	}
-	if reg != nil && reg.Enums[p.GIRType] != nil {
-		return &ir.Literal{Type: ir.TypInt, Value: "0"}, nil
-	}
-	// gpointer is void*, which cgo renders as unsafe.Pointer — nil, not 0,
-	// even though the c:type carries no star.
-	if strings.HasSuffix(p.CType, "*") || p.CType == "gpointer" {
-		return &ir.Literal{Type: ir.TypNull}, nil
-	}
-	if p.CType == "" {
-		return nil, fmt.Errorf("which GIR describes with no C type of its own")
-	}
-	return nil, fmt.Errorf("whose C type %s is from a namespace this platform does not parse, so its zero value cannot be spelled", p.CType)
-}
-
-// ctorScalarCast is the cgo type a numeric zero takes to satisfy one
-// constructor parameter. It is the parameter's own c:type, not the GIR type's
-// canonical cgo spelling — GTK constructors take guint and float parameters of
-// gint- and gdouble-named GIR types, and cgo does not convert between named C
-// numeric types on its own. A c:type that is not a plain cgo identifier
-// ("unsigned int") falls back to the glib typedef, which cgo does accept.
-// Mirrors girScalarCast, which does the same for a property's setter.
-func ctorScalarCast(p gir.ConstructorParam) string {
-	if c := p.CType; c != "" && !strings.ContainsAny(c, "* ") {
-		return c
-	}
-	return p.GIRType
+	return t.emitConstructorAssign(id, cType, made)
 }
 
 // OnCreateComponent binds a name to a live instance of a non-inlinable user
@@ -1031,13 +877,21 @@ func gtk4ChildRemoveFn(parentCType string) string {
 }
 
 func (t *gtk4Translator) parentCType(e ir.Expr) string {
-	if id, ok := e.(*ir.Ident); ok {
-		if id.Name == "container" || id.Name == "parent" {
-			return "GtkBox"
-		}
+	if isSlotParent(e) {
+		return "GtkBox"
+	}
+	if _, ok := e.(*ir.Ident); ok {
 		return t.idCTypes[codegen.IdentBareName(e)]
 	}
 	return ""
+}
+
+// isSlotParent reports whether e is the parent a render slot renders into: a
+// GtkBox whatever its container is declared as, since a single-child
+// container holds the slot's box rather than the slot's nodes.
+func isSlotParent(e ir.Expr) bool {
+	id, ok := e.(*ir.Ident)
+	return ok && (id.Name == "container" || id.Name == "parent")
 }
 
 // isSkipped reports whether the expression refers to a widget id OnCreateNode
@@ -1052,6 +906,18 @@ func (t *gtk4Translator) isSkipped(e ir.Expr) bool {
 }
 
 func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	return t.appendChild(parent, child, nil)
+}
+
+// OnAppendThrough is an AppendChild carrying the call the parent class's
+// declared append makes (declgen), which lowering spliced.
+func (t *gtk4Translator) OnAppendThrough(ctx context.Context, parent, child, call ir.Expr) []ir.Stmt {
+	return t.appendChild(parent, child, call)
+}
+
+// appendChild puts child into parent: through call, or for a tag no GIR class
+// is behind, through the adder its class has.
+func (t *gtk4Translator) appendChild(parent, child, call ir.Expr) []ir.Stmt {
 	if t.isSkipped(parent) || t.isSkipped(child) {
 		return nil
 	}
@@ -1065,13 +931,18 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	if cType == "" {
 		cType = "GtkBox"
 	}
+	if call == nil && declaresProtocol(parent) && !isSlotParent(parent) {
+		panic(fmt.Sprintf("gtk4: a child of %s reached the translator without the append its class declares", cType))
+	}
 	adder := t.childAdder(cType)
+	if call != nil {
+		adder = gir.ChildAdder{Func: nativeName(call)}
+	}
 	if adder.Func == "" {
 		t.shared.fail(fmt.Errorf("gtk4: %s hosts children through no single-widget call this platform can emit; "+
 			"its GTK API needs arguments a child append cannot supply", cType))
 		return nil
 	}
-	fn := adder.Func
 	if id, ok := child.(*ir.Ident); ok && id.Synthesized {
 		for i, name := range t.topLevel {
 			if name == id.Name {
@@ -1089,52 +960,147 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		call := rtCall("InsertBefore", ir.TypVoid, t.rtHandle(parent), t.rtHandle(t.slotAnchor), t.rtHandle(t.qualifyNodeExpr(child)))
 		return []ir.Stmt{&ir.CallStmt{Call: call}}
 	}
-	if t.wrapped {
-		stmt, ok := rtChildAppendCall(adder, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child))
-		if !ok {
-			// A cgo call in a file built without cgo does not compile, so the
-			// gap is reported where it is rather than emitted.
-			t.shared.fail(fmt.Errorf("gtk4: %s adds its child through %s, which pkg/go/gtk4rt does not wrap; "+
-				"a wrapped build cannot emit the cgo call directly", cType, adder.Func))
-			return nil
-		}
-		return []ir.Stmt{stmt}
+	if call != nil {
+		return t.callStmt(call)
 	}
-	if fn == "gtk_box_append" {
+	if t.wrapped {
+		return []ir.Stmt{rtChildAppendCall(adder, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child))}
+	}
+	if adder.Func == "gtk_box_append" {
 		return []ir.Stmt{&ir.CallStmt{Call: rtCall("BoxAppend", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(parent)), t.rtHandle(t.qualifyNodeExpr(child)))}}
 	}
 	parentArg := cgoCast(adderReceiver(adder, cType), t.qualifyNodeExpr(parent))
 	childArg := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, ir.TypVoid, parentArg, childArg)}}
+	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(adder.Func, ir.TypVoid, parentArg, childArg)}}
 }
 
 func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
 	if t.isSkipped(parent) || t.isSkipped(child) {
 		return nil
 	}
-	return append(t.unlistRemoved(child), t.removeChild(parent, child)...)
+	return append(t.unlistRemoved(child), t.removeChild(parent, child, nil)...)
 }
 
-func (t *gtk4Translator) removeChild(parent, child ir.Expr) []ir.Stmt {
+// OnRemoveThrough is a RemoveChild carrying the call the parent class's
+// declared remove makes.
+func (t *gtk4Translator) OnRemoveThrough(ctx context.Context, parent, child, call ir.Expr) []ir.Stmt {
+	if t.isSkipped(parent) || t.isSkipped(child) {
+		return nil
+	}
+	return append(t.unlistRemoved(child), t.removeChild(parent, child, call)...)
+}
+
+func (t *gtk4Translator) removeChild(parent, child, call ir.Expr) []ir.Stmt {
 	if ir.IsAppParent(parent) {
 		return t.appDetach(child)
+	}
+	if call == nil && declaresProtocol(parent) && !isSlotParent(parent) {
+		return nil
 	}
 	cType := t.parentCType(parent)
 	if cType == "" {
 		cType = "GtkBox"
+	}
+	if call != nil {
+		return t.callStmt(call)
 	}
 	fn := gtk4ChildRemoveFn(cType)
 	if fn == "" {
 		return nil
 	}
 	if t.wrapped {
-		if stmt, ok := rtChildRemoveCall(cType, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child)); ok {
-			return []ir.Stmt{stmt}
-		}
+		return []ir.Stmt{rtChildAppendCall(gir.ChildAdder{Func: fn}, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child))}
 	}
 	parentArg := cgoCast(cType, t.qualifyNodeExpr(parent))
 	childArg := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, ir.TypVoid, parentArg, childArg)}}
+}
+
+// callStmt is a call a declared protocol makes, with each node it names put
+// where this scope holds it.
+func (t *gtk4Translator) callStmt(call ir.Expr) []ir.Stmt {
+	c, ok := ir.CloneExprSharingDecls(call).(*ir.Call)
+	if !ok {
+		panic(fmt.Sprintf("gtk4: a declared child op made %T, not a call", call))
+	}
+	t.placeNodes(c)
+	return []ir.Stmt{&ir.CallStmt{Call: c}}
+}
+
+// replaceHandle is n, a node readWidgets already made a Handle of before the
+// scope was known, put where this scope holds it.
+func (t *gtk4Translator) replaceHandle(n ir.Node) (ir.Expr, bool) {
+	if !isHandle(n) {
+		return nil, false
+	}
+	inner := n.(*ir.Conversion).Operand
+	if cast, ok := inner.(*ir.Conversion); ok {
+		inner = cast.Operand
+	}
+	if id, ok := inner.(*ir.Ident); ok && id.IsElementRef {
+		return t.rtHandle(t.qualifyNodeExpr(id)), true
+	}
+	return n.(ir.Expr), true
+}
+
+// placeNodes puts each node c names where this scope holds it: as a Handle
+// where the call is gtk4rt's.
+func (t *gtk4Translator) placeNodes(c *ir.Call) {
+	_ = ir.Rewrite(c, func(n ir.Node) (ir.Node, error) {
+		if h, ok := t.replaceHandle(n); ok {
+			return h, ir.SkipDir
+		}
+		switch x := n.(type) {
+		case *ir.Call:
+			if x.Func != nil && x.Func.Foreign.Path == gtk4rtPkg {
+				for i, a := range x.Args {
+					if i >= len(x.Func.Params) || paramComponent(x.Func.Params[i]) == nil {
+						continue
+					}
+					// The class handed to a gtk4rt native's ui.node arrives
+					// widened to it, which Go would box in an any.
+					v := a.Value
+					if conv, ok := v.(*ir.Conversion); ok && !isHandle(conv) {
+						v = conv.Operand
+					}
+					if h, ok := t.replaceHandle(v); ok {
+						x.Args[i].Value = h
+						continue
+					}
+					if id, ok := v.(*ir.Ident); ok && id.IsElementRef {
+						v = t.qualifyNodeExpr(id)
+					}
+					// A render slot's entry is a widget, held as no node.
+					x.Args[i].Value = t.rtHandle(v)
+				}
+			}
+		case *ir.Ident:
+			if x.IsElementRef {
+				return t.qualifyNodeExpr(x), ir.SkipDir
+			}
+		}
+		return n, nil
+	})
+}
+
+// declaresProtocol reports whether e is a node whose component's package
+// declares how it is built, so that lowering, not this file, says how it takes
+// a child.
+func declaresProtocol(e ir.Expr) bool {
+	if t := e.ExprType(); t != nil {
+		if c, ok := t.Decl.(*ir.Component); ok {
+			return c.Protocol != nil
+		}
+	}
+	return false
+}
+
+// nativeName is the C function a declared protocol's call reaches.
+func nativeName(call ir.Expr) string {
+	if c, ok := call.(*ir.Call); ok && c.Func != nil {
+		return c.Func.Foreign.Name
+	}
+	return ""
 }
 
 // qualifyNodeExpr re-qualifies a synthesized widget ident as a Model field
@@ -1193,11 +1159,14 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if id, ok := codegen.InstanceRootID(prop); ok {
 		return t.listRoot(id, node, value)
 	}
-	if t.isToplevel(bare) {
-		return t.toplevelPropAssign(node, prop, value)
+	if t.isToplevel(bare) && t.untitled(prop, value) {
+		return nil
+	}
+	if setterOf(node, prop) != nil {
+		return t.setThrough(value)
 	}
 	if tag := t.imageTagOf(bare); tag != "" {
-		return t.imagePropAssign(node, tag, prop, value)
+		return t.imagePropAssign(tag, prop)
 	}
 	cType, ok := t.idCTypes[bare]
 	if !ok {
@@ -1205,32 +1174,6 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	}
 	info := t.classFor(cType)
 	p, hasProp := girProp(info, prop)
-
-	// A construct-only property has no reachable write — the widget exists by
-	// the time any prop is assigned, and GObject answers with a g_critical.
-	// declgen withholds these, so reaching here means the prop arrived some
-	// other way; refuse rather than emit a call that silently does nothing.
-	if hasProp && p.ConstructOnly {
-		t.shared.fail(fmt.Errorf("gtk4: %s.%s is construct-only: GTK accepts it only when the widget is created, and nothing can set it afterwards", cType, p.Name))
-		return nil
-	}
-	var entry gtkSetterEntry
-	if hasProp {
-		entry = girSetter(info, p)
-	}
-	// Before anything cgo-shaped is built: a coercion records that its helper
-	// is needed, and here nothing would use it.
-	if t.wrapped && entry.Setter != "" {
-		if rt, ok := rtSetterTable[entry.Setter]; ok {
-			if arg, ok := rtSetterValue(rt.kind, value); ok {
-				return []ir.Stmt{&ir.CallStmt{Call: rtCall(rt.fn, ir.TypVoid, t.qualifyNodeExpr(node), arg)}}
-			}
-		}
-	}
-	recvType := cType
-	if entry.RecvType != "" {
-		recvType = entry.RecvType
-	}
 	if !hasProp {
 		if t.canvasMetaForID(bare) != nil {
 			// A canvas's own width and height, which emitCanvasCreate already
@@ -1244,25 +1187,45 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		t.shared.fail(fmt.Errorf("gtk4: %s has no property named %q: GIR describes none for the class, so the value reaches the widget not at all", cType, prop))
 		return nil
 	}
-	kind := propKind(t.registry, p)
-	if kind == propUnsettable {
+	// A construct-only property has no reachable write — the widget exists by
+	// the time any prop is assigned, and GObject answers with a g_critical.
+	// declgen withholds these, so reaching here means the prop arrived some
+	// other way; refuse rather than emit a call that silently does nothing.
+	if p.ConstructOnly {
+		t.shared.fail(fmt.Errorf("gtk4: %s.%s is construct-only: GTK accepts it only when the widget is created, and nothing can set it afterwards", cType, p.Name))
+		return nil
+	}
+	if propKind(t.registry, p) == propUnsettable {
 		t.shared.fail(fmt.Errorf("gtk4: %s.%s: no SNGL value can produce %s, which is what this GTK property takes", cType, p.Name, girTypeLabel(p)))
 		return nil
 	}
-	if entry.Setter == "" {
-		return t.emitGObjectPropSet(node, p, kind, value)
-	}
-	valArg, err := t.setterValueArg(kind, p, entry.ValType, value)
-	if err != nil {
-		t.shared.fail(fmt.Errorf("gtk4: %s.%s: %w", cType, p.Name, err))
-		return nil
-	}
-	return t.emitSetterCall(node, recvType, entry.Setter, valArg)
+	t.shared.fail(fmt.Errorf("gtk4: %s.%s is written, and its package declares no #[gen.protocol(set)] for it", cType, p.Name))
+	return nil
 }
 
-func (t *gtk4Translator) emitSetterCall(node ir.Expr, recvType, setter string, valArg ir.Expr) []ir.Stmt {
-	cast := cgoCast(recvType, t.qualifyNodeExpr(node))
-	return t.shared.ownCStrings([]ir.Stmt{&ir.CallStmt{Call: nativeCall(setter, ir.TypVoid, cast, valArg)}})
+// setterOf is the #[gen.protocol(set)] node's component declares for prop,
+// whose call lowering made the value of every write of it.
+func setterOf(node ir.Expr, prop string) *ir.Func {
+	if t := node.ExprType(); t != nil {
+		if c, ok := t.Decl.(*ir.Component); ok {
+			return c.Protocol.Setter(prop)
+		}
+	}
+	return nil
+}
+
+// setThrough is a prop write as the call its declared set makes, with the
+// node put where this scope holds it: as a Handle where the call is gtk4rt's.
+func (t *gtk4Translator) setThrough(call ir.Expr) []ir.Stmt {
+	c, ok := ir.CloneExprSharingDecls(call).(*ir.Call)
+	if !ok {
+		panic(fmt.Sprintf("gtk4: a declared set made %T, not a call", call))
+	}
+	if strings.HasPrefix(nativeName(c), "sngl_set_prop_") {
+		t.shared.needGObjectSet()
+	}
+	t.placeNodes(c)
+	return []ir.Stmt{&ir.CallStmt{Call: c}}
 }
 
 // gObjectSetFn is the preamble helper that carries each kind of value through
@@ -1276,88 +1239,6 @@ var gObjectSetFn = map[propValueKind]string{
 	propEnum:   "sngl_set_prop_int",
 }
 
-// emitGObjectPropSet sets a property GTK ships no setter for by name, through
-// g_object_set_property. The property's GIR name is the GObject property name;
-// the helper transforms the primitive value into whatever GType the class's
-// GParamSpec declares, which is how an enum-, float- or unsigned-typed
-// property is reached from one of four helpers.
-func (t *gtk4Translator) emitGObjectPropSet(node ir.Expr, p gir.Prop, kind propValueKind, value ir.Expr) []ir.Stmt {
-	fn, ok := gObjectSetFn[kind]
-	if !ok {
-		return nil
-	}
-	valArg, err := t.gObjectValueArg(kind, p, value)
-	if err != nil {
-		t.shared.fail(fmt.Errorf("gtk4: %s: %w", p.Name, err))
-		return nil
-	}
-	t.shared.needGObjectSet()
-	obj := cgoCast("", t.qualifyNodeExpr(node))
-	name := cString(&ir.Literal{Type: ir.TypString, Value: p.Name})
-	return t.shared.ownCStrings([]ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, ir.TypVoid, obj, name, valArg)}})
-}
-
-func (t *gtk4Translator) setterValueArg(kind propValueKind, p gir.Prop, valType string, value ir.Expr) (ir.Expr, error) {
-	switch kind {
-	case propString:
-		return cString(value), nil
-	case propBool:
-		return cScalar("gboolean", t.boolToGoInt(value)), nil
-	case propInt, propFloat:
-		return cScalar(girScalarCast(p), value), nil
-	case propEnum:
-		member, isMember, err := t.enumValueArg(p, value)
-		if err != nil {
-			return nil, err
-		}
-		if isMember {
-			return member, nil
-		}
-		return cScalar(valType, member), nil
-	}
-	return nil, fmt.Errorf("no value of this type can be set")
-}
-
-func (t *gtk4Translator) gObjectValueArg(kind propValueKind, p gir.Prop, value ir.Expr) (ir.Expr, error) {
-	switch kind {
-	case propString:
-		return cString(value), nil
-	case propBool:
-		return cScalar("int", t.boolToGoInt(value)), nil
-	case propInt:
-		return cScalar("int", value), nil
-	case propFloat:
-		return cScalar("double", value), nil
-	case propEnum:
-		member, _, err := t.enumValueArg(p, value)
-		if err != nil {
-			return nil, err
-		}
-		return cScalar("int", member), nil
-	}
-	return nil, fmt.Errorf("no value of this type can be set")
-}
-
-// enumValueArg resolves the value bound to an enum- or bitfield-typed
-// property: a string literal names one of its members, and an int is the
-// member's own number. isMember reports the former, whose cgo spelling is
-// already typed and needs no cast.
-func (t *gtk4Translator) enumValueArg(p gir.Prop, value ir.Expr) (arg ir.Expr, isMember bool, err error) {
-	if lit, ok := value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
-		cst := girEnumMember(t.registry, p.GIRType, lit.Value)
-		if cst == "" {
-			return nil, false, fmt.Errorf("%q names no member of the %s enumeration", lit.Value, p.GIRType)
-		}
-		// A member of the GIR enumeration, as cgo spells its constant, of
-		// the enumeration's C type.
-		return &ir.Ident{Name: cst, Type: ir.NativeGoNamed("C." + t.registry.Enums[p.GIRType].CType)}, true, nil
-	}
-	if vt := exprIRType(value); vt != nil && vt.Kind == ir.TypeInt {
-		return value, false, nil
-	}
-	return nil, false, fmt.Errorf("a %s value is a string literal naming one of its members, or an int", p.GIRType)
-}
-
 // girTypeLabel names the type a property takes, for an error a reader can act
 // on. An array property carries no GIR type of its own — its inner <type>
 // names the element.
@@ -1366,51 +1247,6 @@ func girTypeLabel(p gir.Prop) string {
 		return "an array"
 	}
 	return "a " + p.GIRType
-}
-
-// coerceSetterValue wraps the SNGL value expression so its Go-side
-// representation matches the cgo type the C setter expects. This is the path
-// for a prop the loaded GIR does not describe, where the SNGL value's own type
-// is all there is to go on:
-//   - Booleans → C.gboolean(v)
-//   - Integers / Floats → C.int(v) / C.double(v)
-//   - anything else → C.CString(v)
-func (t *gtk4Translator) coerceSetterValue(setter string, value ir.Expr) ir.Expr {
-	// A boolean setter whose property the GIR did not carry: the value may be
-	// one exprIRType cannot type (a `!x`), and the fallback below would make a
-	// string of it.
-	if setter == "gtk_check_button_set_active" {
-		return cScalar("gboolean", t.boolToGoInt(value))
-	}
-	if vt := exprIRType(value); vt != nil {
-		switch vt.Kind {
-		case ir.TypeBool:
-			return cScalar("gboolean", t.boolToGoInt(value))
-		case ir.TypeInt:
-			return cScalar("int", value)
-		case ir.TypeFloat:
-			return cScalar("double", value)
-		}
-	}
-	return cString(value)
-}
-
-func exprIRType(e ir.Expr) *ir.Type {
-	switch n := e.(type) {
-	case *ir.Literal:
-		return n.Type
-	case *ir.Ident:
-		return n.Type
-	case *ir.Select:
-		return n.Type
-	case *ir.Call:
-		return n.Type
-	case *ir.Binary:
-		return n.Type
-	case *ir.Conversion:
-		return n.Type
-	}
-	return nil
 }
 
 func gtk4SignalFor(cType, event string) string {
@@ -1508,18 +1344,30 @@ func (t *gtk4Translator) widgetReader() widgetAccess {
 }
 
 func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
+	return t.attachHandler(node, event, handler, nil)
+}
+
+// OnConnectThrough is an AttachHandler carrying the call gtk4.sngl's declared
+// connect makes, which lowering spliced.
+func (t *gtk4Translator) OnConnectThrough(ctx context.Context, node ir.Expr, event string, handler, call ir.Expr) []ir.Stmt {
+	return t.attachHandler(node, event, handler, call)
+}
+
+func (t *gtk4Translator) attachHandler(node ir.Expr, event string, handler, call ir.Expr) []ir.Stmt {
 	if t.isSkipped(node) {
 		return nil
 	}
 	bare := codegen.IdentBareName(node)
 	if t.isToplevel(bare) {
-		return t.toplevelAttachHandler(node, event, handler)
+		t.refuseCgoClosed(event, handler)
+		return t.connectThrough(bare, event, handler, call)
 	}
-	if tag := t.imageTagOf(bare); tag != "" {
-		return t.imageAttachHandler(node, tag, event, handler)
+	if t.imageTagOf(bare) != "" {
+		return t.connectThrough(bare, event, handler, call)
 	}
 	if t.isScroll(bare) {
-		return t.scrollAttachHandler(node, event, handler)
+		t.recordScrollInvoker(node, event, handler)
+		return t.connectThrough(bare, event, handler, call)
 	}
 	cType := t.idCTypes[bare]
 	if event == "click" && t.canvasMetaForID(bare) != nil {
@@ -1545,47 +1393,41 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	if lam, ok := handler.(*ir.Lambda); ok {
 		handler = t.signalLambda(lam, node)
 	}
-
-	// gtk4rt.Connect registers the handler and wires the signal in one call —
-	// no per-program snglCallbacks slice or cgo.
-	if t.wrapped {
+	if call == nil {
+		if declaresProtocol(node) {
+			panic(fmt.Sprintf("gtk4: a handler on %s reached the translator without the connect gtk4.sngl declares", cType))
+		}
 		sigLit := &ir.Literal{Type: ir.TypString, Value: signal}
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("Connect", ir.TypVoid, t.qualifyNodeExpr(node), sigLit, handler)}}
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("Connect", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)), sigLit, handler)}}
 	}
-	// snglCallbacks = append(snglCallbacks, handler)
-	cbList := snglCallbacksRef()
-	appendCall := &ir.Call{
-		Type: cbList.Type,
-		Func: &ir.Func{Name: "append"},
-		Args: []ir.CallArg{
-			{Value: cbList},
-			{Value: handler},
-		},
+	return []ir.Stmt{&ir.CallStmt{Call: t.connectCall(call, handler)}}
+}
+
+// connectCall is the declared connect's call with the node put where this
+// scope holds it, as the Handle gtk4rt takes, and handler in the place of the
+// parameter lowering left unbound for it.
+func (t *gtk4Translator) connectCall(call, handler ir.Expr) *ir.Call {
+	c, ok := ir.CloneExprSharingDecls(call).(*ir.Call)
+	if !ok {
+		panic(fmt.Sprintf("gtk4: a declared connect made %T, not a call", call))
 	}
-	registerStmt := &ir.Assign{
-		Target: cbList,
-		Op:     ast.AssignSet,
-		Value:  appendCall,
-	}
-	// sngl_connect's C signature is `void *widget`, so cgo expects
-	// unsafe.Pointer.
-	widget := cgoCast("", t.qualifyNodeExpr(node))
-	signalCStr := cString(&ir.Literal{Type: ir.TypString, Value: signal})
-	lenCall := &ir.Call{
-		Type: ir.TypInt,
-		Func: &ir.Func{Name: "len"},
-		Args: []ir.CallArg{{Value: cbList}},
-	}
-	idxExpr := &ir.Binary{
-		Op:    ast.BinSub,
-		Left:  lenCall,
-		Right: &ir.Literal{Type: ir.TypInt, Value: "1"},
-	}
-	idxArg := cScalar("int", idxExpr)
-	connectStmt := &ir.CallStmt{
-		Call: nativeCall("sngl_connect", ir.TypVoid, widget, signalCStr, idxArg),
-	}
-	return t.shared.ownCStrings([]ir.Stmt{registerStmt, connectStmt})
+	_ = ir.Rewrite(c, func(n ir.Node) (ir.Node, error) {
+		if h, ok := t.replaceHandle(n); ok {
+			return h, ir.SkipDir
+		}
+		id, ok := n.(*ir.Ident)
+		if !ok {
+			return n, nil
+		}
+		if _, ok := id.Sym.(*ir.Param); ok {
+			return handler, ir.SkipDir
+		}
+		if id.IsElementRef {
+			return t.rtHandle(t.qualifyNodeExpr(id)), ir.SkipDir
+		}
+		return n, nil
+	})
+	return c
 }
 
 func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
@@ -1712,10 +1554,7 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 	var slotBox, parentOf, parentArg ir.Expr
 	var set ir.Stmt
 	if t.wrapped {
-		var ok bool
-		if set, ok = rtChildAppendCall(adder, parent, box); !ok {
-			return nil, false
-		}
+		set = rtChildAppendCall(adder, parent, box)
 		slotBox, parentOf, parentArg = rtCall("SlotBox", gtk4rtHandleIRType(), box), rtCall("ParentOf", gtk4rtHandleIRType(), box), parent
 	} else {
 		t.shared.needSlotAnchor()
@@ -1843,7 +1682,9 @@ func invokerStateSetter(cType string, wrapped bool) string {
 		return "gtk4rt.CheckButtonSetActive"
 	case cType == "GtkCheckButton":
 		return "C.gtk_check_button_set_active"
-	case cType == "GtkSwitch" && !wrapped:
+	case cType == "GtkSwitch" && wrapped:
+		return "gtk4rt.SwitchSetActive"
+	case cType == "GtkSwitch":
 		return "C.gtk_switch_set_active"
 	}
 	return ""
@@ -1870,5 +1711,5 @@ func (t *gtk4Translator) setLook(node, value ir.Expr) []ir.Stmt {
 	if codegen.IRIsZeroLiteral(value) {
 		return nil
 	}
-	return []ir.Stmt{&ir.CallStmt{Call: rtCall("SetLook", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)), codegen.IRWrittenFields(value))}}
+	return []ir.Stmt{&ir.CallStmt{Call: rtCall("SetLook", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)), value)}}
 }

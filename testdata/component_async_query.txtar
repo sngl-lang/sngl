@@ -225,12 +225,12 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { lookup, refresh__inst1, __effect0_mount, __effect0_unmount, __effect2_mount, __effect2_unmount, __snglTeardown });
   }
-  var __effect0_key = {};
+  var __effect0_key = { key: "", n: 0 };
   var __effect0_live = [];
   var __effect0_desired = [];
   var __effect1_live = [];
   var __effect1_desired = [];
-  var __effect2_key = {};
+  var __effect2_key = { key: "", n: 0 };
   var __effect2_live = [];
   var __effect2_desired = [];
   var __effects0_settling = false;
@@ -387,9 +387,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:8de18aa91e11decaef7a0053495eacfe
+pass sha256:7eb1a61dc1dfb98f2104ff6f7d846112
 -- testrun/html/none/component_async_query.sngl/dropped/1 --
-sha256:fa938f07174d80720a8bc493c3e3410d
+sha256:d5ca2199c0086092cb5e453eb0268360
 {
   "results": [
     {
@@ -399,7 +399,7 @@ sha256:fa938f07174d80720a8bc493c3e3410d
   ]
 }
 -- testrun/html/none/component_async_query.sngl/latest/1 --
-sha256:636ebb994bf090b21b337e63b6476c9c
+sha256:105011cb1e26991836543b74bb316755
 {
   "results": [
     {

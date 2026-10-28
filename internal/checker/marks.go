@@ -104,6 +104,7 @@ type pendingMark struct {
 var paramMarks = map[markKey]bool{
 	{"macro", "wildcard"}:  true,
 	{"macro", "construct"}: true,
+	{"x/gen", "connects"}:  true,
 }
 
 // applyParamMarks resolves and runs the marks written on a component prop.

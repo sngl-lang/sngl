@@ -53,13 +53,10 @@ type gtkEventInvoker struct {
 
 // --- Lookup tables (consumed by gtk4Translator) ---
 
-// gtkSetterEntry describes the C setter (and cast types) for one prop
-// on one widget class. RecvType is non-empty when the setter targets
-// an interface (e.g. GtkEditable) rather than the widget's class.
-// ValType names the C type the value argument takes (e.g. GtkOrientation)
-// and is empty when the SNGL value type drives the coercion.
+// gtkSetterEntry describes the C setter for one prop on one widget class.
+// RecvType is non-empty when the setter targets an interface (e.g.
+// GtkEditable) rather than the widget's class.
 type gtkSetterEntry struct {
 	Setter   string
 	RecvType string
-	ValType  string
 }

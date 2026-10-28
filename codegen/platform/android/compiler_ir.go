@@ -701,7 +701,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	body.WriteString("\n")
 
 	// Struct-merge helpers for opaque spreads (flatten_struct_spread lowering).
-	if mf := kotlin.EmitMergeFuncs(ctx.Pkg.MergeStructs); mf != "" {
+	if mf := kotlin.EmitMergeFuncs(ctx.Pkg.MergeStructs, ctx.Pkg.MergeSets); mf != "" {
 		body.WriteString(mf)
 	}
 
@@ -1018,7 +1018,13 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		}
 		params = append(params, p.Name+": "+ktType+def)
 	}
-	params = append(params, slotParams(cc.Component, kc.Name(ktComposable))...)
+	scoped := map[*ir.SlotDecl]string{}
+	for d, r := range slotReceivers(cc.Body) {
+		if r != "" {
+			scoped[d] = kc.Name(r)
+		}
+	}
+	params = append(params, slotParams(cc.Component, kc.Name(ktComposable), scoped)...)
 	params = append(params, eventParams(cc.Component)...)
 	own := readsOf(reads, cc.Component)
 	if len(own) > 0 {
@@ -1098,8 +1104,9 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		combo:   combo,
 		// The window, where it is under a reactive `if` and so in a
 		// composable of its own.
-		screen:     screen,
-		rootTagged: takesTestTag(cc.Component),
+		screen:        screen,
+		rootTagged:    takesTestTag(cc.Component),
+		slotReceivers: scoped,
 	}
 
 	for _, s := range cc.Body {

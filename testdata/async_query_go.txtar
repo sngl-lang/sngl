@@ -211,21 +211,21 @@ func (m *Model) __effect0_mount() {
 			case (r.tag == 0):
 				var got int = r.Ok
 				m.length__inst0 = snglSome(got)
-				var __lt7 string
+				var __lt10 string
 				if m.length__inst0 != nil {
-					__lt7 = fmt.Sprint((*(m.length__inst0)))
+					__lt10 = fmt.Sprint((*(m.length__inst0)))
 				} else {
-					__lt7 = "-"
+					__lt10 = "-"
 				}
-				m.__n2.SetText(__lt7)
+				m.__n2.SetText(__lt10)
 				m.failure__inst0 = nil
-				var __lt8 string
+				var __lt11 string
 				if m.failure__inst0 != nil {
-					__lt8 = (*(m.failure__inst0)).Message
+					__lt11 = (*(m.failure__inst0)).Message
 				} else {
-					__lt8 = ""
+					__lt11 = ""
 				}
-				m.__n4.SetText(__lt8)
+				m.__n4.SetText(__lt11)
 			default:
 				got := r.Failed
 				m.failure__inst0 = func(_p1 *Failure) *Failure {
@@ -235,13 +235,13 @@ func (m *Model) __effect0_mount() {
 					_v2 := *_p1
 					return &_v2
 				}(snglSome(got))
-				var __lt9 string
+				var __lt12 string
 				if m.failure__inst0 != nil {
-					__lt9 = (*(m.failure__inst0)).Message
+					__lt12 = (*(m.failure__inst0)).Message
 				} else {
-					__lt9 = ""
+					__lt12 = ""
 				}
-				m.__n4.SetText(__lt9)
+				m.__n4.SetText(__lt12)
 			}
 		})
 	}()
@@ -468,26 +468,26 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
-	var __lt13 string
+	var __lt16 string
 	if m.length__inst0 != nil {
-		__lt13 = fmt.Sprint((*(m.length__inst0)))
+		__lt16 = fmt.Sprint((*(m.length__inst0)))
 	} else {
-		__lt13 = "-"
+		__lt16 = "-"
 	}
 	m.__n2 = widget.NewLabel("")
-	m.__n2.SetText(__lt13)
+	m.__n2.SetText(__lt16)
 	m.__n1.Add(m.__n2)
 	m.__n3 = widget.NewLabel("")
 	m.__n3.SetText(fmt.Sprint(m.loading__inst0))
 	m.__n1.Add(m.__n3)
-	var __lt14 string
+	var __lt17 string
 	if m.failure__inst0 != nil {
-		__lt14 = (*(m.failure__inst0)).Message
+		__lt17 = (*(m.failure__inst0)).Message
 	} else {
-		__lt14 = ""
+		__lt17 = ""
 	}
 	m.__n4 = widget.NewLabel("")
-	m.__n4.SetText(__lt14)
+	m.__n4.SetText(__lt17)
 	m.__n1.Add(m.__n4)
 	m.__n6 = widget.NewButton("", nil)
 	m.__n6.SetText("fig")
@@ -548,14 +548,14 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c.__effects1_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	var __lt12 string
+	var __lt15 string
 	if c.length != nil {
-		__lt12 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
+		__lt15 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
 	} else {
-		__lt12 = c.__prop_name
+		__lt15 = c.__prop_name
 	}
 	c.__n0 = widget.NewLabel("")
-	c.__n0.SetText(__lt12)
+	c.__n0.SetText(__lt15)
 	c.__effects1_settle()
 	c.Root = c.__n0
 	return c
@@ -583,13 +583,13 @@ func (c *CardInstance) __effect1_mount() {
 			case (r.tag == 0):
 				var got int = r.Ok
 				c.length = snglSome(got)
-				var __lt10 string
+				var __lt13 string
 				if c.length != nil {
-					__lt10 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
+					__lt13 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
 				} else {
-					__lt10 = c.__prop_name
+					__lt13 = c.__prop_name
 				}
-				c.__n0.SetText(__lt10)
+				c.__n0.SetText(__lt13)
 				c.failure__inst1 = nil
 			default:
 				got := r.Failed
@@ -678,13 +678,13 @@ func (c *CardInstance) Destroy() {
 
 func (c *CardInstance) SetName(__v string) {
 	c.__prop_name = __v
-	var __lt11 string
+	var __lt14 string
 	if c.length != nil {
-		__lt11 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
+		__lt14 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
 	} else {
-		__lt11 = c.__prop_name
+		__lt14 = c.__prop_name
 	}
-	c.__n0.SetText(__lt11)
+	c.__n0.SetText(__lt14)
 	c.__effects1_settle()
 }
 
@@ -839,21 +839,21 @@ func (m *Model) __effect0_mount() {
 			case (r.tag == 0):
 				var got int = r.Ok
 				m.length__inst0 = snglSome(got)
-				var __lt15 string
+				var __lt18 string
 				if m.length__inst0 != nil {
-					__lt15 = fmt.Sprint((*(m.length__inst0)))
+					__lt18 = fmt.Sprint((*(m.length__inst0)))
 				} else {
-					__lt15 = "-"
+					__lt18 = "-"
 				}
-				gtk4rt.LabelSetLabel(m.__n2, __lt15)
+				gtk4rt.LabelSetLabel(m.__n2, __lt18)
 				m.failure__inst0 = nil
-				var __lt16 string
+				var __lt19 string
 				if m.failure__inst0 != nil {
-					__lt16 = (*(m.failure__inst0)).Message
+					__lt19 = (*(m.failure__inst0)).Message
 				} else {
-					__lt16 = ""
+					__lt19 = ""
 				}
-				gtk4rt.LabelSetLabel(m.__n4, __lt16)
+				gtk4rt.LabelSetLabel(m.__n4, __lt19)
 			default:
 				got := r.Failed
 				m.failure__inst0 = func(_p1 *Failure) *Failure {
@@ -863,13 +863,13 @@ func (m *Model) __effect0_mount() {
 					_v2 := *_p1
 					return &_v2
 				}(snglSome(got))
-				var __lt17 string
+				var __lt20 string
 				if m.failure__inst0 != nil {
-					__lt17 = (*(m.failure__inst0)).Message
+					__lt20 = (*(m.failure__inst0)).Message
 				} else {
-					__lt17 = ""
+					__lt20 = ""
 				}
-				gtk4rt.LabelSetLabel(m.__n4, __lt17)
+				gtk4rt.LabelSetLabel(m.__n4, __lt20)
 			}
 		})
 	}()
@@ -1062,14 +1062,14 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
 	c.__slot0 = nil
-	var __lt20 string
+	var __lt23 string
 	if c.length != nil {
-		__lt20 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
+		__lt23 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
 	} else {
-		__lt20 = c.__prop_name
+		__lt23 = c.__prop_name
 	}
-	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(c.__n0, __lt20)
+	c.__n0 = gtk4rt.New("GtkLabel")
+	gtk4rt.LabelSetLabel(c.__n0, __lt23)
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.__effects1_settle()
 	c.Root = c.__n0
@@ -1099,13 +1099,13 @@ func (c *CardInstance) __effect1_mount() {
 			case (r.tag == 0):
 				var got int = r.Ok
 				c.length = snglSome(got)
-				var __lt18 string
+				var __lt21 string
 				if c.length != nil {
-					__lt18 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
+					__lt21 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
 				} else {
-					__lt18 = c.__prop_name
+					__lt21 = c.__prop_name
 				}
-				gtk4rt.LabelSetLabel(c.__n0, __lt18)
+				gtk4rt.LabelSetLabel(c.__n0, __lt21)
 				c.failure__inst1 = nil
 			default:
 				got := r.Failed
@@ -1194,13 +1194,13 @@ func (c *CardInstance) teardown() {
 
 func (c *CardInstance) SetName(__v string) {
 	c.__prop_name = __v
-	var __lt19 string
+	var __lt22 string
 	if c.length != nil {
-		__lt19 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
+		__lt22 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
 	} else {
-		__lt19 = c.__prop_name
+		__lt22 = c.__prop_name
 	}
-	gtk4rt.LabelSetLabel(c.__n0, __lt19)
+	gtk4rt.LabelSetLabel(c.__n0, __lt22)
 	c.__effects1_settle()
 }
 
@@ -1288,40 +1288,40 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
-	var __lt21 string
+	var __lt24 string
 	if m.length__inst0 != nil {
-		__lt21 = fmt.Sprint((*(m.length__inst0)))
+		__lt24 = fmt.Sprint((*(m.length__inst0)))
 	} else {
-		__lt21 = "-"
+		__lt24 = "-"
 	}
-	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n2, __lt21)
+	m.__n2 = gtk4rt.New("GtkLabel")
+	gtk4rt.LabelSetLabel(m.__n2, __lt24)
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
-	m.__n3 = gtk4rt.LabelNew("")
+	m.__n3 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n3, fmt.Sprint(m.loading__inst0))
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.__n3)
-	var __lt22 string
+	var __lt25 string
 	if m.failure__inst0 != nil {
-		__lt22 = (*(m.failure__inst0)).Message
+		__lt25 = (*(m.failure__inst0)).Message
 	} else {
-		__lt22 = ""
+		__lt25 = ""
 	}
-	m.__n4 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n4, __lt22)
+	m.__n4 = gtk4rt.New("GtkLabel")
+	gtk4rt.LabelSetLabel(m.__n4, __lt25)
 	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.__n4)
-	m.__n6 = gtk4rt.ButtonNew()
+	m.__n6 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n6, "fig")
 	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n6)
-	m.__n7 = gtk4rt.ButtonNew()
+	m.__n7 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n7, "again")
 	gtk4rt.Connect(m.__n7, "clicked", m.__n7_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n7)
 	m.__renderSlot0(m.__n1)
-	m.__n8 = gtk4rt.ButtonNew()
+	m.__n8 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n8, "add")
 	gtk4rt.Connect(m.__n8, "clicked", m.__n8_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n8)
@@ -1336,6 +1336,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/fyne --
-pass sha256:3787c32f4fcda2cc0fda5fb8c134755f
+pass sha256:c9d9ad150a2cd0aeb7c7e431841247a5
 -- run/go/gtk4 --
-pass sha256:4ef231c8b9c843d21e2522643bedf82a
+pass sha256:0c1ce79bf5b04eef3f556ab2d61cf6a6
