@@ -188,7 +188,9 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 		copiedArgs[i] = interp.CloneValue(a)
 	}
 
-	result, err := env.CallUserFuncValues(fn, copiedArgs)
+	// A pure body writes none of the package's bindings, so it may read them
+	// through a frame rather than a copy.
+	result, err := env.Frame().CallUserFuncValues(fn, copiedArgs)
 	if err != nil {
 		return nil, false
 	}
@@ -464,7 +466,7 @@ func structFieldType(sd *ir.StructDef, name string) *ir.Type {
 // evaluated. Built once per package per run and shared, because building it
 // evaluates every const's initializer and a highlighted code block interprets
 // a token's color once per token -- 160000 builds of a site's search index.
-// A call runs in a snapshot of it (CallUserFuncValues), so none writes it.
+// A call runs in a Frame over it (interpretFunc), and a pure body writes none of it.
 func (ctx *evalCtx) interpEnv() (*interp.Env, error) {
 	if ctx.interpEnvs == nil {
 		return interp.BuildEnv(ctx.pkg, "", nil)

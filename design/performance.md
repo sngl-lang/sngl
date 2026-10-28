@@ -60,6 +60,14 @@ targets in parallel) is not a saving.
   what it records reading, plus each input a literal `cache.inputs` in what it
   *wrote* names -- what a process it ran read, which no recorder sees -- with
   any digest or value left out filled in by `Store.Complete` as it is stored.
+- **A folded call reads the package env through a frame.** The optimizer
+  interprets a const func against one env holding every const of the package
+  (`interpEnv`), and runs each call in an `interp.Env.Frame` over it rather
+  than a `Snapshot`, which copied all of them per call and again per lambda
+  call inside it -- a `.filter(func…)` in a function folded per node. Safe
+  because a pure body writes none of the package's bindings. `RebindFrom`
+  walks what its source wrote, not what the destination binds.
+  `BenchmarkFoldStyledPage` (`internal/optimize`) is the shape.
 - **Cloning is the largest remaining cost.** `build.Emit` clones the checked
   package for every target, and `ir.ClonePackage` copies by reflection
   everything reachable, library IR included.
