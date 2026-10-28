@@ -7,8 +7,8 @@
 sngl test --platform=none app.sngl
 stdout '2 tests, 0 failures'
 
-sngl generate --lang=none --platform=html -o out app.sngl
-grep 'p_where\(\)|where\(' out/index.html
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
 
 -- app.sngl --
 import p "./p"
@@ -42,4 +42,24 @@ context #server("default")
 
 func where() string {
     return server
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:764b58e2651f8356be962f5328af964d
+{
+  "results": [
+    {
+      "Desc": "Set",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:3c0afdd55a5938622725359dd6ab37f6
+{
+  "results": [
+    {
+      "Desc": "Provided",
+      "Passed": true
+    }
+  ]
 }
