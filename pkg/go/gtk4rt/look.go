@@ -435,29 +435,45 @@ static void sngl_look_set_cross(GtkWidget *w, SnglLook *l, int cross) {
 }
 
 // One rule naming the widget's own node, so a node it draws inside itself (a
-// check button's check) is not restyled with it; a popover draws its body on
-// its contents node. gtk_style_context_add_provider is deprecated since 4.10
-// in favor of style classes, which would put every distinct look in one
-// display-wide sheet and restyle every widget whenever a look changed; this
-// restyles one.
+// check button's check) is not restyled with it. gtk_style_context_add_provider
+// is deprecated since 4.10 in favor of style classes, which would put every
+// distinct look in one display-wide sheet and restyle every widget whenever a
+// look changed; this restyles one.
+//
+// A provider reaches the nodes of its own widget and not another's. A popover
+// draws its body on its contents, a widget of its own, and its arrow on a node
+// of the popover's, so its rule is on both and names both, as the theme's does.
+static GtkWidget *sngl_popover_contents(GtkWidget *w) {
+    if (!GTK_IS_POPOVER(w)) return NULL;
+    for (GtkWidget *c = gtk_widget_get_first_child(w); c; c = gtk_widget_get_next_sibling(c))
+        if (!strcmp(gtk_widget_get_css_name(c), "contents")) return c;
+    return NULL;
+}
+
 static void sngl_look_set_css(GtkWidget *w, SnglLook *l, const char *decls) {
+    GtkWidget *contents = sngl_popover_contents(w);
     G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     GtkStyleContext *ctx = gtk_widget_get_style_context(w);
     if (!*decls) {
         if (l->css) {
             gtk_style_context_remove_provider(ctx, GTK_STYLE_PROVIDER(l->css));
+            if (contents)
+                gtk_style_context_remove_provider(gtk_widget_get_style_context(contents), GTK_STYLE_PROVIDER(l->css));
             g_object_unref(l->css);
             l->css = NULL;
         }
     } else if (!l->css) {
         l->css = gtk_css_provider_new();
         gtk_style_context_add_provider(ctx, GTK_STYLE_PROVIDER(l->css), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+        if (contents)
+            gtk_style_context_add_provider(gtk_widget_get_style_context(contents), GTK_STYLE_PROVIDER(l->css),
+                                           GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
     }
     G_GNUC_END_IGNORE_DEPRECATIONS
     if (!*decls) return;
     const char *name = gtk_widget_get_css_name(w);
     GString *rule = g_string_new(NULL);
-    if (GTK_IS_POPOVER(w)) g_string_printf(rule, "popover > contents { %s }", decls);
+    if (GTK_IS_POPOVER(w)) g_string_printf(rule, "popover > contents, popover > arrow { %s }", decls);
     else g_string_printf(rule, "%s { %s }", name, decls);
     // The rule outranks the theme's in every state, so a button given a
     // background shades it itself when hovered and pressed, as the theme
