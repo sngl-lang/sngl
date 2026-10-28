@@ -1774,7 +1774,12 @@ func IRTypeToKt(t *ir.Type) string {
 		return "Map<Any, Any>"
 	case ir.TypeOption:
 		if len(t.Elems) > 0 {
-			return IRTypeToKt(t.Elems[0]) + "?"
+			inner := IRTypeToKt(t.Elems[0])
+			// `(T) -> R?` is a function returning a nullable R.
+			if t.Elems[0].Kind == ir.TypeFunc && t.Elems[0].Sig != nil {
+				inner = "(" + inner + ")"
+			}
+			return inner + "?"
 		}
 		return "Any?"
 	case ir.TypeStruct:

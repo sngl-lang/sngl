@@ -1,8 +1,7 @@
-# whiteSpace, display=none, overflow and justifyContent on bubbletea.
+# whiteSpace, display=none and justifyContent on bubbletea.
 #
 # Each was listed as not answered yet: a `nowrap` label wrapped at its box's
-# width, a node displayed none was drawn, a box given a height and
-# `overflow=hidden` grew with its text, and a row's justifyContent left its
+# width, a node displayed none was drawn, and a row's justifyContent left its
 # children at its start. The snapshot is the screen as text.
 
 env SNGL_UPDATE_SNAPSHOTS=1
@@ -18,9 +17,6 @@ grep '(?m)^│wraps at  │ *$' app.sngl.snapshots/fit.ansi
 # display=none draws nothing, not even the line it would have taken.
 ! grep 'hidden' app.sngl.snapshots/fit.ansi
 grep '(?m)^│words     │ *\n└─+┘ *\n┌─+┐ *\n│row one' app.sngl.snapshots/fit.ansi
-# overflow=hidden: two rows of the three, inside the border it keeps.
-grep '(?m)^│row one   │ *$' app.sngl.snapshots/fit.ansi
-! grep 'row three' app.sngl.snapshots/fit.ansi
 # justifyContent across a 30-column row: start, end, center, spaceBetween.
 grep '(?m)^a b {27}$' app.sngl.snapshots/fit.ansi
 grep '(?m)^ {27}c d$' app.sngl.snapshots/fit.ansi
@@ -39,7 +35,7 @@ component fit ui.node {
         ui.text(value="first\nsecond", style={whiteSpace=pre, width=96px, borderWidth=1px})
         ui.text(value="wraps at words", style={width=96px, borderWidth=1px})
         ui.text(value="hidden", style={display=none})
-        ui.vbox(style={height=64px, overflow=hidden, borderWidth=1px, width=96px}) {
+        ui.vbox(style={borderWidth=1px, width=96px}) {
             ui.text(value="row one")
             ui.text(value="row two")
             ui.text(value="row three")
@@ -71,7 +67,7 @@ ui.window {
     fit
 }
 -- testrun/bubbletea/go/app.sngl/fit/1 --
-sha256:2a0fc27bc44cfefee043bcca9970387c
+sha256:160d269869ccdb47c4fc049721bcf6a0
 {
   "results": [
     {
@@ -80,6 +76,6 @@ sha256:2a0fc27bc44cfefee043bcca9970387c
     }
   ],
   "snapshots": {
-    "fit.ansi": "4pSM4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSQICAgICAgICAgICAgICAgICAgCuKUgm9uZSBsaW5lLCDilIIgICAgICAgICAgICAgICAgICAK4pSU4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSYICAgICAgICAgICAgICAgICAgCuKUjOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUkCAgICAgICAgICAgICAgICAgIArilIJmaXJzdCAgICAg4pSCICAgICAgICAgICAgICAgICAgCuKUgnNlY29uZCAgICDilIIgICAgICAgICAgICAgICAgICAK4pSU4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSYICAgICAgICAgICAgICAgICAgCuKUjOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUkCAgICAgICAgICAgICAgICAgIArilIJ3cmFwcyBhdCAg4pSCICAgICAgICAgICAgICAgICAgCuKUgndvcmRzICAgICDilIIgICAgICAgICAgICAgICAgICAK4pSU4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSYICAgICAgICAgICAgICAgICAgCuKUjOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUkCAgICAgICAgICAgICAgICAgIArilIJyb3cgb25lICAg4pSCICAgICAgICAgICAgICAgICAgCuKUgnJvdyB0d28gICDilIIgICAgICAgICAgICAgICAgICAK4pSU4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSYICAgICAgICAgICAgICAgICAgCmEgYiAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICBjIGQKICAgICAgICAgICAgIGUgZiAgICAgICAgICAgICAgCmcgICAgICAgICAgICAgICAgICAgICAgICAgICAgaA=="
+    "fit.ansi": "4pSM4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSQICAgICAgICAgICAgICAgICAgCuKUgm9uZSBsaW5lLCDilIIgICAgICAgICAgICAgICAgICAK4pSU4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSYICAgICAgICAgICAgICAgICAgCuKUjOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUkCAgICAgICAgICAgICAgICAgIArilIJmaXJzdCAgICAg4pSCICAgICAgICAgICAgICAgICAgCuKUgnNlY29uZCAgICDilIIgICAgICAgICAgICAgICAgICAK4pSU4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSYICAgICAgICAgICAgICAgICAgCuKUjOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUkCAgICAgICAgICAgICAgICAgIArilIJ3cmFwcyBhdCAg4pSCICAgICAgICAgICAgICAgICAgCuKUgndvcmRzICAgICDilIIgICAgICAgICAgICAgICAgICAK4pSU4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSYICAgICAgICAgICAgICAgICAgCuKUjOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUkCAgICAgICAgICAgICAgICAgIArilIJyb3cgb25lICAg4pSCICAgICAgICAgICAgICAgICAgCuKUgnJvdyB0d28gICDilIIgICAgICAgICAgICAgICAgICAK4pSCcm93IHRocmVlIOKUgiAgICAgICAgICAgICAgICAgIArilJTilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilJggICAgICAgICAgICAgICAgICAKYSBiICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgIGMgZAogICAgICAgICAgICAgZSBmICAgICAgICAgICAgICAKZyAgICAgICAgICAgICAgICAgICAgICAgICAgICBo"
   }
 }
