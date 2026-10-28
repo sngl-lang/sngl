@@ -660,7 +660,7 @@ static guint32 *sngl_probe_paint(GtkWidget *w, GtkStateFlags state, int *width_o
     gdk_paintable_snapshot(paintable, GDK_SNAPSHOT(snap), width, height);
     GskRenderNode *node = gtk_snapshot_free_to_node(snap);
     g_object_unref(paintable);
-    if (!node) return NULL;
+    if (!node) return g_new0(guint32, width * height);
     GskRenderer *r = gsk_cairo_renderer_new();
     gsk_renderer_realize(r, NULL, NULL);
     graphene_rect_t bounds = GRAPHENE_RECT_INIT(0, 0, width, height);

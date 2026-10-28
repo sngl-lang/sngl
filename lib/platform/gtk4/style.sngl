@@ -190,5 +190,16 @@ const func lookHidden(s ui.Style, hidden bool, spaced bool, spacing int) gtk.Loo
     return look
 }
 
+// Whether a Style says anything of its border, which then is all of it.
+const func bordered(s ui.Style) => s.border != "" || s.borderBottom != "" || s.borderLeft != "" || s.borderWidth != null || s.borderColor != null || s.borderStyle != ui.BorderStyle.unset
+
+// The look of the frame a clickable card's button holds: the button draws the
+// card's border, so the frame draws the theme's only where the Style says
+// nothing of one.
+const func innerFrameLookOf(s ui.Style) gtk.Look {
+    var look gtk.Look = {css=bordered(s) ? "border-style: none; " : ""}
+    return look
+}
+
 // A box's spacing: its gap, or what the override spaces its children by.
 const func spacingOf(s ui.Style, otherwise int) => s.gap == null ? otherwise : int(inset(s.gap))

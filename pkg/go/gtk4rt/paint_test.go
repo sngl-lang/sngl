@@ -62,3 +62,32 @@ func TestLookPaintsAPopoversBodyAndArrow(t *testing.T) {
 		t.Errorf("body %08x, arrow %08x: want both ff3366cc", body, arrow)
 	}
 }
+
+// A frame draws the theme's border on its own node, so a look's border
+// replaces it rather than drawing beside it, and `border-style: none`, what a
+// clickable card's inner frame is given under a border of the button's,
+// leaves none.
+func TestLookReplacesAFramesBorder(t *testing.T) {
+	paintable(t)
+	edge := func(css string) [3]uint32 {
+		f := New("GtkFrame")
+		Retain(f)
+		SetLook(f, Look{Css: "min-height: 20px; " + css})
+		rows := painted(f, 0)
+		if len(rows) == 0 {
+			t.Fatalf("%q: the frame painted nothing", css)
+		}
+		mid := rows[len(rows)/2]
+		return [3]uint32{mid[0], mid[1], mid[2]}
+	}
+	if got := edge(""); got[0]>>24 != 0xff {
+		t.Fatalf("a frame given no border: left edge %08x, want the theme's opaque border", got)
+	}
+	red := func(px uint32) bool { return px>>24 > 0xf0 && px&0xffff == 0 }
+	if got := edge("border: 2px solid #ff0000; "); !red(got[0]) || !red(got[1]) || got[2] != 0 {
+		t.Errorf("a 2px red border: left edge %08x, want two red pixels and nothing beside them", got)
+	}
+	if got := edge("border-style: none; "); got != [3]uint32{} {
+		t.Errorf("border-style none: left edge %08x, want nothing drawn", got)
+	}
+}
