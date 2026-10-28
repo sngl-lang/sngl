@@ -773,6 +773,21 @@ body only, so `tone(picked) { content }` left the content reading a `picked`
 the caller never declared, and the Go targets did not build
 (`cmd/sngl/testdata/context_slot_provider_reads_callee_state_runs.txt`).
 
+**A provider wraps the slot through every component it is handed on to.** A
+component that inserts its slot into the slot of one it calls -- `ui.vbox { content }`, `wrap { content }` -- puts the content under what that one wraps
+its own slot in, so `collectSlotEnv` crosses a call to read its callee's table
+(`computeSlotEnvs` builds each once, a component nesting its own slot in itself
+read as providing nothing), each value rewritten into the outer component's
+terms: a prop it reads becomes the argument the call passes. It had looked only
+at the providers written in the component's own body, so `outer { said }` with
+`outer` putting its slot in `wrap` read the tone its caller stood under on every
+target but the interpreter
+(`cmd/sngl/testdata/context_slot_nested_provider_runs.txt`), and android's
+content of a vbox in a component read its caller's flexShare
+(`cmd/sngl/testdata/android_flex_slot_in_instance_runs.txt`). A test's read
+of a node there stands under the same providers (`slotProviders`, read through
+each call's `#id` in turn).
+
 **A provided value goes into a spliced body after its props are bound.** A
 call site passing a rereadable value has it read in place of the hidden var
 (`providedContextVars`), and the value is the provider's expression. Put in
