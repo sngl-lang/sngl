@@ -4,10 +4,9 @@
 # The Go lowering answered only t.assert and wrote a comment for t.must, so a
 # local read only by a must was declared and not used and the test program
 # failed to build, and a must that held nothing passed. Kotlin's wrote the
-# same comment, so android ran on past a failed must. html stopped there only
-# because its agent's assertTrue, which a must was routed through, is fatal;
-# a must is its fatal now. Each runs verbose, which writes every failure the
-# test logged.
+# same comment, so android ran on past a failed must. html's agent assertTrue
+# was fatal, so html stopped at a failed assert as at a must. Each runs
+# verbose, which writes every failure the test logged.
 
 ! sngl test --platform=none app.sngl
 stdout 'not ok +3 tests, 2 failures'
@@ -30,6 +29,7 @@ stdout 'assert failed: \(s.N == 5\)'
 ! stdout 'assert failed: \(s.N == 3\)'
 ! sngl test -v --platform=html app.sngl
 stdout 'not ok +3 tests, 2 failures'
+stdout '\(s.n === 5\)'
 ! stdout '\(s.n === 3\)'
 ! sngl test -v --platform=android --language=kotlin app.sngl
 stdout 'not ok +3 tests, 2 failures'

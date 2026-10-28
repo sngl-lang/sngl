@@ -195,9 +195,8 @@ These rules keep them agreeing:
 - **A failed `t.must` stops the test; a failed `t.assert` goes on.** Each
   emitter lowers the must itself, to its harness's fatal (Go's `Fatalf`, the
   agent T's `fatal` on Kotlin and JavaScript): Go and Kotlin wrote a comment
-  in its place, so android ran on past it, and html stopped only because the
-  agent's `assertTrue` it was routed through is itself fatal -- which still
-  stops html's asserts (`cmd/sngl/testdata/test_must_runs.txt`).
+  in its place, so android ran on past it, and html's agent `assertTrue` was
+  fatal, so html stopped at an assert too (`cmd/sngl/testdata/test_must_runs.txt`).
 - **Test bodies are checked last**, after every component and window body:
   an unannotated component var has no type until its body is read.
 - **A call of an instance's method carries the instance in front of its
