@@ -280,17 +280,19 @@ platform's `unstyled` list in the same commit.
 - On fyne a widget added to a container already under a Box's theme keeps
   the theme it had until that Box refreshes, Fyne's ThemeOverride rule; a
   render slot appending into a styled vbox meets it.
-- On gtk4 a box gtk4rt lays out measures height for width only, and
-  `orientation` set on one after gtk4rt has taken it over reaches the layout
-  GtkBox no longer has. A box with no weighted child is GTK's, so a child that
-  grows only for what it holds -- a box holding a widget given `hexpand` --
-  still takes room CSS gives it none of. A `fontSize` is written in
-  points, as Pango reads a span's, so 1em is GTK's default text, while every
-  other length is pixels. A Look's CSS is at application priority on the
-  widget's own node, so a button given a `background` loses the theme's hover
-  and press feedback, and a card's border is drawn beside the one Adwaita draws
-  on the frame's border node; a popover's `background` paints its body and
-  not its arrow.
+- Done on gtk4 (branch `fix/gtk4-look`): a box gtk4rt lays out asks its
+  children as GtkBox does and keeps an `orientation` written after it took
+  the box over (`pkg/go/gtk4rt/flex_test.go`); a widget `gtk4rt.New` makes
+  grows by its own expand and never by what it holds; a `fontSize` is pixels
+  and an em 16 of them (`testdata/gtk4_font_size.txtar`); a styled button
+  keeps its hover and press feedback; a popover's `background` paints its
+  body and its arrow, where it painted neither, its body being a widget of
+  its own; and a clickable card's border replaces the theme's frame border
+  (`testdata/gtk4_card_border.txtar`). A plain card's border already did:
+  GTK 4 draws a frame's border on the frame's own node, and has no `border`
+  node (`pkg/go/gtk4rt/paint_test.go`). Still so under the `cgo` option,
+  which sets `orientation` and makes widgets through GIR's own calls: the
+  turn is lost and expands carry up as GTK carries them.
 - The shake keeps a library body reachable through a node handle's component
   type, so a program holding `#d` on a datepicker keeps `LookOf` and its
   helpers on gtk4 though nothing calls them.
