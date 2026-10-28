@@ -2,6 +2,7 @@ package bubbletea
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -228,7 +229,7 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, temps []ir.Stmt, info *
 			})
 		}
 		w.line("%s := 0", lf.pos)
-		w.stmts(append(temps, f), gc)
+		w.stmts(append(slices.Clip(temps), f), gc)
 		b.WriteString("\t\t\t}()\n")
 	}
 }
@@ -259,7 +260,7 @@ func loopCopies(f *ir.For, temps []ir.Stmt, lf loopFocus, n, named *ir.NodeInst,
 	}
 	w.line("var __at []%s", copyOrdinal)
 	w.line("%s := 0", lf.pos)
-	w.stmts(append(temps, f), gc)
+	w.stmts(append(slices.Clip(temps), f), gc)
 	w.line("return __at")
 	b.WriteString("\t}()")
 	return b.String()

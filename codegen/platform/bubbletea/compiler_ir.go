@@ -345,7 +345,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// An empty __focused prop (passFocusOrder did not run) means focus
 	// tracking is not active.
 	view := viewStmts(ctx)
-	loopsOf := widgetLoops(view)
+	loopsOf, tempsOf := widgetLoops(view), loopTemps(view)
 	codegen.WalkVisualTree(view, func(n *ir.NodeInst, _ int) bool {
 		if btIntrinsic(n) != "Widget" {
 			return false
@@ -404,6 +404,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 		if loops := loopsOf[n]; len(loops) > 0 && len(bp.Binds) > 0 {
 			if lw := newLoopWidget(n, loops, bp.Binds[0].Prop); lw != nil {
+				lw.temps = tempsOf[loops[0]]
 				wi.loop, wi.focusExpr = lw, ""
 				for i := range wi.binds {
 					wi.binds[i].target = ""
@@ -1174,7 +1175,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 // is open. Handlers inside an Overlay primitive get NO guard — overlay-content
 // buttons (e.g. a modal's Close) stay live while the overlay captures input.
 func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string, invokerSink btInvokerSink) {
-	emitIRButtonHandlersWalk(b, stmts, nil, info, gc, bgGuard, false, invokerSink)
+	emitIRButtonHandlersWalk(b, stmts, loopTemps(stmts), info, gc, bgGuard, false, invokerSink)
 }
 
 // btInvokerSink records one (node, event) pair a test can drive. nil where
@@ -1183,11 +1184,11 @@ type btInvokerSink func(inv btEventInvoker)
 
 // emitIRButtonHandlersWalk traverses visual IR emitting KeyEnter cases for
 // button/checkbox handlers. A for-loop is a loop slot as a whole, answered by
-// emitLoopSlotHandlers, which is handed the view's temps written before it.
+// emitLoopSlotHandlers, which is handed the view's temps it reads (loopTemps).
 // bgGuard is appended to each case unless inOverlay is
 // set (overlay-content handlers stay unguarded so they keep working while the
 // overlay is open).
-func emitIRButtonHandlersWalk(b *strings.Builder, stmts, temps []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string, inOverlay bool, invokerSink btInvokerSink) {
+func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, temps map[*ir.For][]ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string, inOverlay bool, invokerSink btInvokerSink) {
 	overlayGuard := bgGuard
 	if inOverlay {
 		overlayGuard = ""
@@ -1206,14 +1207,10 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts, temps []ir.Stmt, info *
 		syncMutatedInputs(b, block, info.widgets, info.binds, gc)
 	}
 
-	temps = slices.Clip(temps)
 	for _, s := range stmts {
-		if keepsTemps(s) {
-			temps = append(temps, s)
-		}
 		switch n := s.(type) {
 		case *ir.For:
-			emitLoopSlotHandlers(b, n, tempsFor(n, temps), info, gc, overlayGuard, invokerSink)
+			emitLoopSlotHandlers(b, n, temps[n], info, gc, overlayGuard, invokerSink)
 		case *ir.If, *ir.Match:
 			for _, blk := range ir.TransparentBlocks(n) {
 				emitIRButtonHandlersWalk(b, *blk, temps, info, gc, bgGuard, inOverlay, invokerSink)

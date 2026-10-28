@@ -10,14 +10,16 @@
 # destroyed by the render that builds its replacement.
 #
 # A switch of tabs drops no panel since every one stays mounted, so the test
-# drops the About tab itself, which is under an `if`. bubbletea is left out:
-# a tab under an `if` beside a panel with a focus stop does not build there,
-# its focus functions reading the list of tabs the view hoists into a local
-# of its own (`undefined: __lt11`), switching tabs or not.
+# drops the About tab itself, which is under an `if`. On bubbletea a tab under
+# an `if` beside a panel with a focus stop did not build: its focus functions
+# read the list of tabs the view hoists into a local of its own
+# (`undefined: __lt11`), and now declare it as View does (tempsFor).
 
 sngl test --platform=none app.sngl
 stdout 'ok +1 tests, 0 failures'
 sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
 stdout 'ok +1 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
 stdout 'ok +1 tests, 0 failures'
@@ -64,6 +66,16 @@ func testDroppingATabDropsItsPanel(t test.Test, c main) {
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
 sha256:c46e01737b0d227f92f24f4e4c6b92db
+{
+  "results": [
+    {
+      "Desc": "DroppingATabDropsItsPanel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:bd131e83d5e37ded1ed6aa28828829e1
 {
   "results": [
     {

@@ -2,6 +2,7 @@ package bubbletea
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -230,9 +231,40 @@ func keepsTemps(s ir.Stmt) bool {
 	return ir.ComputesValue(s)
 }
 
-// tempsFor is what of temps, the view's locals and writes before f in the
-// order View makes them, f reads, and what those read in turn: a walk that
-// starts at f makes them as View does, or reads a name it never declared.
+// loopTemps is, for each loop of a view, the view's locals and writes before
+// it that it reads, and what those read in turn, in the order View makes
+// them: a walk that starts at a loop makes them as View does, or reads a name
+// it never declared -- a list an `if` extends is one, hoisted.
+func loopTemps(stmts []ir.Stmt) map[*ir.For][]ir.Stmt {
+	out := map[*ir.For][]ir.Stmt{}
+	var walk func(stmts, temps []ir.Stmt)
+	walk = func(stmts, temps []ir.Stmt) {
+		temps = slices.Clip(temps)
+		for _, s := range stmts {
+			if keepsTemps(s) {
+				temps = append(temps, s)
+				continue
+			}
+			switch n := s.(type) {
+			case *ir.NodeInst:
+				for _, sc := range ir.SuppliedContent(n) {
+					walk(sc.Body, temps)
+				}
+			case *ir.For:
+				out[n] = tempsFor(n, temps)
+				walk(n.Body, temps)
+				walk(n.Else, temps)
+			case *ir.If, *ir.Match, *ir.ErrorBoundary:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b, temps)
+				}
+			}
+		}
+	}
+	walk(stmts, nil)
+	return out
+}
+
 func tempsFor(f *ir.For, temps []ir.Stmt) []ir.Stmt {
 	reads := map[string]bool{}
 	read := func(root any) {
