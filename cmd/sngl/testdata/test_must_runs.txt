@@ -1,0 +1,109 @@
+# t.must is an assert that stops the test where it fails.
+#
+# The Go lowering answered only t.assert and wrote a comment for t.must, so a
+# local read only by a must was declared and not used and the test program
+# failed to build, and a must that held nothing passed.
+
+! sngl test --platform=none app.sngl
+stdout 'not ok +2 tests, 1 failures'
+! sngl test --platform=bubbletea --language=go app.sngl
+stdout 'not ok +2 tests, 1 failures'
+stdout 'must failed: \(s.N == 2\)'
+! stdout 'assert failed'
+! sngl test --platform=fyne --language=go app.sngl
+stdout 'not ok +2 tests, 1 failures'
+stdout 'must failed: \(s.N == 2\)'
+! stdout 'assert failed'
+! sngl test --platform=gtk4 --language=go app.sngl
+stdout 'not ok +2 tests, 1 failures'
+stdout 'must failed: \(s.N == 2\)'
+! stdout 'assert failed'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct S {
+    n int
+}
+
+func testMustHolds(t test.Test) {
+    var s = S{n=1}
+    t.must(s.n == 1)
+}
+
+func testMustStops(t test.Test) {
+    var s = S{n=1}
+    t.must(s.n == 2)
+    t.assert(s.n == 3)
+}
+
+ui.window {
+    ui.text(value="x")
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:864e97325371decfd92de9f65d285a82
+{
+  "results": [
+    {
+      "Desc": "MustHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "MustStops",
+      "Error": "must failed: (s.N == 2)",
+      "Failures": [
+        {
+          "Message": "must failed: (s.N == 2)"
+        }
+      ],
+      "Log": [
+        "must failed: (s.N == 2)"
+      ]
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:a2a640b54000f1065ae0687b18b561bd
+{
+  "results": [
+    {
+      "Desc": "MustHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "MustStops",
+      "Error": "must failed: (s.N == 2)",
+      "Failures": [
+        {
+          "Message": "must failed: (s.N == 2)"
+        }
+      ],
+      "Log": [
+        "must failed: (s.N == 2)"
+      ]
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:57fb77b08c3969a581bf26f00740bfd1
+{
+  "results": [
+    {
+      "Desc": "MustHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "MustStops",
+      "Error": "must failed: (s.N == 2)",
+      "Failures": [
+        {
+          "Message": "must failed: (s.N == 2)"
+        }
+      ],
+      "Log": [
+        "must failed: (s.N == 2)"
+      ]
+    }
+  ]
+}

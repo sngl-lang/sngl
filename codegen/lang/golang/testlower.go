@@ -310,7 +310,13 @@ func lowerTestAssert(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	if c == nil || c.Func == nil {
 		return "", false
 	}
-	if !ir.IsTestCall(c, ir.TestAssertID) {
+	var method, name string
+	switch {
+	case ir.IsTestCall(c, ir.TestAssertID):
+		method, name = "Errorf", "assert"
+	case ir.IsTestCall(c, ir.TestMustID):
+		method, name = "Fatalf", "must"
+	default:
 		return "", false
 	}
 	// Args[0] is the t receiver; assert expression is Args[1].
@@ -318,7 +324,7 @@ func lowerTestAssert(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 		return "", false
 	}
 	exprGo := gc.EvalExpr(c.Args[1].Value)
-	return fmt.Sprintf("if !(%s) { t.Errorf(\"assert failed: %%s\", %q) }", exprGo, exprGo), true
+	return fmt.Sprintf("if !(%s) { t.%s(\"%s failed: %%s\", %q) }", exprGo, method, name, exprGo), true
 }
 
 // testInstanceVar names the component a test drives. Deliberately not a name
@@ -432,5 +438,5 @@ func wrapperHeader(suffix string, mode TestEmitMode) (funcName, paramType string
 // A test body's sngl:test calls are answered here, where the body is lowered,
 // rather than by an emitter.
 func init() {
-	codegen.DeclareLangImplements(langGo, ir.TestAssertID, ir.TestSnapshotID, ir.TestSetContextID)
+	codegen.DeclareLangImplements(langGo, ir.TestAssertID, ir.TestMustID, ir.TestSnapshotID, ir.TestSetContextID)
 }
