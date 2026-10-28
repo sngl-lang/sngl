@@ -1,6 +1,8 @@
 package checker
 
 import (
+	"fmt"
+
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
@@ -41,7 +43,54 @@ func (c *checker) checkExprAs(e ast.Expr, want *ir.Type, s slot) ir.Expr {
 	if e == nil {
 		return nil
 	}
+	if lit, ok := e.(*ast.StructExpr); ok && s.mismatch != nil && c.bareLiteralMisses(lit, want) {
+		c.error(*e.ExprPos(), "%s%s", s.mismatch(want.String(), "a struct literal"), structConversionHint(want))
+		return &ir.Literal{Type: TypInvalid}
+	}
 	return c.coerce(e, c.checkExprExpecting(e, want), want, s)
+}
+
+// bareLiteralMisses reports whether lit names no type and want is a list,
+// which no `{…}` is. Checked on, its fields would take no type from want, and
+// the first unit among them was the error, naming neither the slot nor what
+// it takes.
+func (c *checker) bareLiteralMisses(lit *ast.StructExpr, want *ir.Type) bool {
+	return want != nil && want.Kind == ir.TypeList && !c.nativeValues &&
+		lit.Name == "" && lit.Package == "" && lit.Anon == nil && lit.Native == nil
+}
+
+// structConversionHint names the function of want's package that makes a
+// want from a struct -- `html.css` for an element's declarations -- or is
+// empty where it declares none.
+func structConversionHint(want *ir.Type) string {
+	elem := want
+	if want.Kind == ir.TypeList && len(want.Elems) == 1 {
+		elem = want.Elems[0]
+	}
+	sd, ok := elem.Decl.(*ir.StructDef)
+	if !ok || sd.Pkg == nil {
+		return ""
+	}
+	for _, fn := range sd.Pkg.Funcs {
+		if len(fn.Params) != 1 || !exported(fn) || fn.Return == nil || !fn.Return.Equal(want) {
+			continue
+		}
+		from, ok := fn.Params[0].Type.Decl.(*ir.StructDef)
+		if !ok || fn.Params[0].Type.Kind != ir.TypeStruct {
+			continue
+		}
+		return fmt.Sprintf("; write %s.%s({…}), which makes one from a %s", NamespaceFromPath(sd.PkgPath()), fn.Name, qualifiedName(from))
+	}
+	return ""
+}
+
+// qualifiedName is a library declaration as a program importing its package
+// under the default alias spells it.
+func qualifiedName(sd *ir.StructDef) string {
+	if p := sd.PkgPath(); p != "" {
+		return NamespaceFromPath(p) + "." + sd.Name
+	}
+	return sd.Name
 }
 
 // coerce holds val, checked from written, to want. written may be nil for a
@@ -73,6 +122,13 @@ func (c *checker) coerce(written ast.Expr, val ir.Expr, want *ir.Type, s slot) i
 	if !got.IsAssignableTo(want) {
 		if adapted, ok := adaptLiteralZero(val, want); ok {
 			return adapted
+		}
+		// `padding=0` to an option[measurement] is the unit's 0, wrapped as
+		// any value of the element type is.
+		if want.Kind == ir.TypeOption && len(want.Elems) == 1 {
+			if adapted, ok := adaptLiteralZero(val, want.Elems[0]); ok {
+				return c.shape(adapted, want, s)
+			}
 		}
 		if written != nil {
 			if call, _ := c.implicitCall(written, got, want); call != nil {

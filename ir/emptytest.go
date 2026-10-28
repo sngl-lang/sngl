@@ -34,6 +34,21 @@ func EmptyTest(n *For, clone func(Expr) Expr) Expr {
 		}
 		return &Binary{Type: TypBool, Op: op, Left: clone(c.Start), Right: clone(c.End)}
 	}
+	length := iterLength(n, clone)
+	if length == nil {
+		return nil
+	}
+	return &Binary{
+		Type:  TypBool,
+		Op:    ast.BinEq,
+		Left:  length,
+		Right: &Literal{Type: TypInt, Value: "0"},
+	}
+}
+
+// iterLength is the length of the list or map n walks, or nil for any other
+// iterable.
+func iterLength(n *For, clone func(Expr) Expr) *Call {
 	t := n.Iter.ExprType()
 	if t == nil {
 		return nil
@@ -52,7 +67,7 @@ func EmptyTest(n *For, clone func(Expr) Expr) Expr {
 	if def := LookupIntrinsic(intrinsic); def != nil {
 		params, _ = def.Instantiate(t.Elems...)
 	}
-	length := &Call{
+	return &Call{
 		Type: TypInt,
 		Func: &Func{
 			Name:      "length",
@@ -64,11 +79,41 @@ func EmptyTest(n *For, clone func(Expr) Expr) Expr {
 		},
 		Args: []CallArg{{Value: clone(n.Iter)}},
 	}
-	return &Binary{
-		Type:  TypBool,
-		Op:    ast.BinEq,
-		Left:  length,
-		Right: &Literal{Type: TypInt, Value: "0"},
+}
+
+// CopyCount is how many copies the loop n renders: the length of the list or
+// map it walks, or how many numbers the counted sequence counts. Nil for any
+// other iterable.
+func CopyCount(n *For, clone func(Expr) Expr) Expr {
+	if n == nil || n.Iter == nil {
+		return nil
+	}
+	if clone == nil {
+		clone = func(e Expr) Expr { return e }
+	}
+	c := CountedSeq(n)
+	if c == nil {
+		if length := iterLength(n, clone); length != nil {
+			return length
+		}
+		return nil
+	}
+	// (end - start + step - 1) / step numbers short of the end, none where the
+	// start is already past it; the far side for a step down.
+	from, to, step, past := clone(c.Start), clone(c.End), c.Step, ast.BinGte
+	if step < 0 {
+		from, to, step, past = to, from, -step, ast.BinLte
+	}
+	lit := func(n int) Expr { return &Literal{Type: TypInt, Value: strconv.Itoa(n)} }
+	span := &Binary{Type: TypInt, Op: ast.BinSub, Left: to, Right: from}
+	if step > 1 {
+		span = &Binary{Type: TypInt, Op: ast.BinDiv, Left: &Binary{Type: TypInt, Op: ast.BinAdd, Left: span, Right: lit(step - 1)}, Right: lit(step)}
+	}
+	return &Ternary{
+		Type: TypInt,
+		Cond: &Binary{Type: TypBool, Op: past, Left: clone(c.Start), Right: clone(c.End)},
+		Then: lit(0),
+		Else: span,
 	}
 }
 

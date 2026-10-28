@@ -421,7 +421,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_set_line_width(ctx, C.double(1.0))
 	C.cairo_set_line_cap(ctx, LineCapFunc("butt"))
 	C.cairo_set_line_join(ctx, LineJoinFunc("miter"))
-	Source(ctx, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+	Source(ctx, snglcolor.Color{})
 	C.cairo_stroke(ctx)
 	C.cairo_restore(ctx)
 }
@@ -502,4 +502,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:9ebcda3333e3d7c552427228ff168d5e
+pass sha256:2a7ed7c178797032cc970ca7a7bfa82f

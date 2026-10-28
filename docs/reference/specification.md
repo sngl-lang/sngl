@@ -294,6 +294,10 @@ short forms expand CSS-style by doubling each digit — `#fff` is `#ffffff` and
 `#f00a` is `#ff0000aa`. Alpha defaults to fully opaque when omitted (the three-
 and six-digit forms).
 
+A color's string -- `string(c)`, and `c` interpolated -- is its `hex()`: the
+long form of the literal that writes it, `#rrggbb`, or `#rrggbbaa` where it is
+not opaque. `"{#fff}"` is `"#ffffff"`.
+
 The lexer does **not** distinguish a color from an
 [element reference](#element-references); both are the single `#`-token (the
 text after `#`, which may begin with a digit). Position alone decides: a
@@ -563,7 +567,9 @@ expects (see [Unit literals](#unit-literals)).
   value printed in the first declared base (`0px`).
 
 The integer literal `0` is assignable to any unit type; other bare numbers must
-be scaled by a unit literal (`5 * 1s`).
+be scaled by a unit literal (`5 * 1s`). Where an `option` of a unit is
+expected, a unit literal and `0` are the unit's value, wrapped as any value
+of the option's element type is.
 
 ### References
 
@@ -1300,7 +1306,9 @@ single-base unit, or two strings, which compare character by character by
 their codes: `"apple" < "fig"`, and `"pear" < "pears"`.
 
 The ternary operator `c ? a : b` evaluates `a` when `c` is true and `b`
-otherwise; `c` must be `bool`. The unary operators are `!` (logical negation,
+otherwise; `c` must be `bool`. Where one arm is an `option[T]` and the other a
+`T`, the ternary is the `option[T]`: `o == null ? 1.0 : o` handed to an
+`option[float]` parameter is that option. The unary operators are `!` (logical negation,
 on `bool`), `-` (numeric or unit negation), `&` (reference), `*`
 (dereference), and `const` (constant assertion).
 
@@ -1343,6 +1351,33 @@ literal whose head is a bare identifier is recognized only outside condition
 position, where a following `{` would otherwise begin a statement block (see
 [Condition expressions](#condition-expressions)).
 
+A struct literal of a named type holds every field of its type. A field the
+literal neither writes nor takes from a spread holds its declared default, or
+its type's zero value where the declaration gives none: an `option` is
+`null`, a number `0`, a string empty, an enum its first member and a struct
+its own fields' defaults. A literal leaving a field out and one writing that
+value are the same value, and nothing can tell them apart. A value whose
+absence means something is an `option`, or an enum leading with a member that
+says so (`ui.Style`'s `unset`). Fields are written in order, and a spread
+writes each field of its operand that does not hold its type's zero value over
+what came before it, a declared default other than the zero included. A field
+written after a spread is the literal's own whatever it holds. So
+`{display=flex, ...style}` lays a caller's Style over a component's look: what
+the caller left unset leaves the look's.
+
+```sngl
+struct Box {
+    w int = 4
+    h int
+}
+
+var a = Box{h=1}            // {w = 4, h = 1}
+var b = Box{w=2, ...a}      // {w = 4, h = 1}: a's w is 4, not int's zero
+var z = Box{w=0}            // {w = 0, h = 0}
+var c = Box{w=2, h=3, ...z} // {w = 2, h = 3}: z holds both at their zero
+var d = Box{...a, w=0}      // {w = 0, h = 1}
+```
+
 ### Selectors, indexing, and calls
 
 A primary expression may be followed by postfix operators:
@@ -1350,7 +1385,7 @@ A primary expression may be followed by postfix operators:
 - `.field` or `.method` — member selection (a named node is addressed the same
   way, `c.id.value`, and an event invoked through a reference, `c.inc.click()`,
   is an ordinary call — neither carries a sigil);
-- `[index]` — indexing into a list or map;
+- `[index]` — indexing into a list, by an `int`, or a map, by its key type;
 - `(args)` — a call.
 
 The exact set of admissible postfix operators depends on context: in expression
@@ -1450,12 +1485,17 @@ I18nPlaceholder = Expr [ "," IDENT [ "," I18nThirdArg ] ]
 
 ### Condition expressions
 
-In the condition of an `if` and the iterator of a `for`, a `{` begins the
-statement block that follows, so the expression grammar in these positions
-(`CondExpr`) excludes the bare-identifier struct literal, a leading
-anonymous-struct or map literal, and the trailing statement block. A head
-expression therefore never begins with `{`. Parenthesize a struct or map
-literal if one is genuinely needed in a condition.
+In the condition of an `if`, the iterator of a `for` and the subject of a
+`match`, a `{` begins the statement block that follows, so the expression
+grammar in these positions (`CondExpr`) excludes the bare-identifier struct
+literal, a leading anonymous-struct or map literal, and the trailing statement
+block. A head expression therefore never begins with `{`. Parenthesize a
+struct or map literal if one is genuinely needed in a condition.
+
+A conditional expression in a head keeps the rule for the operand after its
+`:`, which is a `CondExpr` too, so `if ready ? count > 0 : done {` reads `done`
+as the operand and `{` as the block. The operand between `?` and `:` is any
+expression, since the `:` ends it.
 
 ## Statements
 

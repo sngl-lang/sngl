@@ -209,7 +209,9 @@ func init() {
 	})
 
 	// --- color ---
-	regImp("color.hex", []string{colorImportPath}, func(a []string) string { return a[0] + ".Hex()" })
+	// A method of the value, so nothing to import: a test file naming no
+	// other color imported snglcolor and did not build.
+	reg("color.hex", func(a []string) string { return a[0] + ".Hex()" })
 
 	// --- File ---
 	// Alert.* is deliberately absent: GoIRContext.evalAlertCall owns it, so a

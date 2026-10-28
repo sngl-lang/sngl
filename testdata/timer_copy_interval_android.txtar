@@ -285,7 +285,7 @@ fun MainScreen() {
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
             TabRow(selectedTabIndex = idx__inst0) {
-                for ((k, t) in listOf(Tab__record(label = "One", disabled = false, __id = 0)).withIndex()) {
+                for ((k, t) in listOf(Tab__record(label = "One")).withIndex()) {
                     Tab(modifier = Modifier, selected = (k == idx__inst0), enabled = !t.disabled, onClick = {
                         idx__inst0 = k
                     }, text = {

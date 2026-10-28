@@ -236,7 +236,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n0 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n0, 1)
-	gtk4rt.BoxSetSpacing(m.__n0, 6)
+	gtk4rt.SetLook(m.__n0, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.cal__own0 = gtk4rt.New("GtkCalendar")
 	gtk4rt.SetBool(m.cal__own0, "sensitive", true)
 	gtk4rt.Connect(m.cal__own0, "day-selected", m.cal__own0_daySelected_handler)
@@ -275,4 +275,4 @@ func (m *Model) calPresent() bool {
 	return m.cal != nil
 }
 -- run/go/gtk4 --
-pass sha256:5ebef11a31c8f44069007899109bc13c
+pass sha256:392bded94d30954d5e4b450531c8e410

@@ -234,6 +234,7 @@ struct Look {
     monospace     bool
     textAlign     int
     wrap          int
+    cursor        int
     hidden        bool
 }
 
@@ -579,7 +580,7 @@ const component ui.scroll[platform](style, direction, @reachEnd, content) {
 }
 
 const component ui.spacer[platform](style) {
-    Spacer(style=style) {}
+    Spacer(style={flex=1, ...style}) {}
 }
 
 // A clickable card is its box shown in a fynelayout.Tap, the widget Fyne hands

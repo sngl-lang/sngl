@@ -8,11 +8,22 @@ import (
 )
 
 // EmitMergeFuncs returns Kotlin source for one __merge_<Struct> helper per
-// struct, using data-class .copy(). For option (T?) fields the elvis operator
+// struct, using data-class .copy(): a spread writes each field of its operand
+// not at its type's zero. For option (T?) fields the elvis operator
 // `ov.f ?: base.f` is exactly null-skip. Plain fields fall back to an
-// if-expression against the field type's zero (KtFieldZero).
-func EmitMergeFuncs(structs []*ir.StructDef) string {
+// if-expression against the field type's zero (KtFieldZero), which Kotlin's
+// == compares structurally.
+func EmitMergeFuncs(structs []*ir.StructDef, sets []ir.MergeSet) string {
 	var b strings.Builder
+	// A field written after a spread is written whatever it holds.
+	for _, set := range sets {
+		name := exportName(set.Struct.Name)
+		ft := "Any?"
+		if d := ir.FieldNamed(set.Struct.Fields, set.Field); d != nil {
+			ft = IRTypeToKt(d.Type)
+		}
+		fmt.Fprintf(&b, "fun %s(base: %s, v: %s): %s = base.copy(%s = v)\n\n", ir.MergeSetName(set), name, ft, name, set.Field)
+	}
 	for _, sd := range structs {
 		name := exportName(sd.Name)
 		fmt.Fprintf(&b, "fun __merge_%s(base: %s, ov: %s): %s =\n", name, name, name, name)

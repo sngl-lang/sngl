@@ -10,8 +10,8 @@ import (
 )
 
 // dateFieldKt is SnglDateField's source, scrollKt SnglScroll's, pagerKt
-// SnglPager's, choosesKt snglChooses's and appbarKt SnglAppBar's with the
-// menu's composables.
+// SnglPager's, choosesKt snglChooses's, flexShareKt snglFlexShare's and
+// appbarKt SnglAppBar's with the menu's composables.
 //
 //go:embed datefield.kt
 var dateFieldKt string
@@ -28,6 +28,9 @@ var choosesKt string
 //go:embed appbar.kt
 var appbarKt string
 
+//go:embed flexshare.kt
+var flexShareKt string
+
 // shippedComposables are the Kotlin the platform writes beside MainScreen.kt
 // for a program that uses it: a composable by the intrinsic id
 // lib/platform/android declares it under, or a function by the native name a
@@ -42,13 +45,37 @@ var shippedComposables = []struct {
 	{intrinsic: intrinsicNS + "SnglPager", name: "SnglPager", src: pagerKt},
 	{call: "snglChooses", name: "SnglChooses", src: choosesKt},
 	{intrinsic: intrinsicNS + "Screen", name: "SnglAppBar", src: appbarKt},
+	{call: flexShareName, name: "SnglFlexShare", src: flexShareKt},
 }
+
+// flexShareName is the shipped default of sngl:ui's flexShare, and
+// localFlexShare what a Column the generated code writes provides it through.
+const (
+	flexShareName  = "snglFlexShare"
+	localFlexShare = "LocalFlexShare"
+)
 
 // emitShippedComposables writes each shipped composable the program renders
 // into the package MainScreen.kt is in, beside it.
 func emitShippedComposables(req *codegen.Request, sink codegen.Sink, mainScreen, pkg string) error {
-	rendered, called := map[string]bool{}, map[string]bool{}
-	_ = ir.Walk(req.Pkg, func(n ir.Node) error {
+	rendered, called := shippedUses(req.Pkg)
+	for _, c := range shippedComposables {
+		if !rendered[c.intrinsic] && !called[c.call] {
+			continue
+		}
+		src := strings.Replace(c.src, "package PACKAGE", "package "+pkg, 1)
+		if err := writeAndroidFile(sink, path.Join(path.Dir(mainScreen), c.name+".kt"), []byte(src)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// shippedUses is the intrinsics pkg renders and the Kotlin natives it calls or
+// reads, by which the shipped composables it needs are known.
+func shippedUses(pkg *ir.Package) (rendered, called map[string]bool) {
+	rendered, called = map[string]bool{}, map[string]bool{}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
 		switch n := n.(type) {
 		case *ir.NodeInst:
 			// A Screen is every program's window; only one drawing its app
@@ -60,17 +87,12 @@ func emitShippedComposables(req *codegen.Request, sink codegen.Sink, mainScreen,
 			if n.Func != nil && n.Func.Foreign.Scheme == "kotlin" && n.Func.Foreign.Name != "" {
 				called[n.Func.Foreign.Name] = true
 			}
+		case *ir.Ident:
+			if v, ok := n.Sym.(*ir.Var); ok && v.Foreign.Scheme == "kotlin" && v.Foreign.Name != "" {
+				called[v.Foreign.Name] = true
+			}
 		}
 		return nil
 	})
-	for _, c := range shippedComposables {
-		if !rendered[c.intrinsic] && !called[c.call] {
-			continue
-		}
-		src := strings.Replace(c.src, "package PACKAGE", "package "+pkg, 1)
-		if err := writeAndroidFile(sink, path.Join(path.Dir(mainScreen), c.name+".kt"), []byte(src)); err != nil {
-			return err
-		}
-	}
-	return nil
+	return rendered, called
 }

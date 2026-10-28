@@ -48,7 +48,7 @@ func testRanks(t test.Test, c main) {
     t.assert(rank("kiwi") == 3)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:2c8e077dafc1a31e9c8f2d8bff57c164
+sha256:f4763765b99c082422f98562695847e2
 {
   "results": [
     {
@@ -88,7 +88,7 @@ sha256:e93df1dc7d7cdb7725eb223da5ea0fab
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:7b5121d0b9f0e8171addc71c1b0b9517
+sha256:2f68313eff0162a4a8d43103c98f6ea9
 {
   "results": [
     {

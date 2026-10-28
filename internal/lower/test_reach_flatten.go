@@ -327,6 +327,10 @@ func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool) error {
 	for {
 		changed := false
 		if err := ir.Rewrite(fn.Block, func(n ir.Node) (ir.Node, error) {
+			if e := answerTestCopyCount(n, params); e != nil {
+				changed = true
+				return e, ir.SkipDir
+			}
 			sel, ok := n.(*ir.Select)
 			if !ok {
 				return n, nil
@@ -344,9 +348,24 @@ func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool) error {
 		}
 	}
 	var bad error
+	indexed := map[ir.Expr]bool{}
 	_ = ir.Walk(fn.Block, func(n ir.Node) error {
-		if sel, ok := n.(*ir.Select); ok && bad == nil && unnamedTestPropRead(sel, params) {
+		if ix, ok := n.(*ir.Index); ok {
+			indexed[unnarrowed(ix.Operand)] = true
+		}
+		return nil
+	})
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		if bad != nil {
+			return nil
+		}
+		if sel, ok := n.(*ir.Select); ok && unnamedTestPropRead(sel, params) {
 			bad = fmt.Errorf("%s: `%s` is what its call site wrote, which reads something a test cannot name -- a slot's parameter, a local -- so a test cannot read it through the instance; assert on the state it is written from", exprPos(sel), sel.Field)
+		}
+		if e, ok := n.(ir.Expr); ok && !indexed[e] {
+			if sel := wholeLoopedRef(e, params); sel != nil {
+				bad = fmt.Errorf("%s: `%s` names a copy per iteration, which a test reads one at a time, `%s[i]`, or counts with `.length()` where the loop renders its copies wherever the component renders it", exprPos(sel), sel.Field, sel.Field)
+			}
 		}
 		return nil
 	})
@@ -382,6 +401,36 @@ func noteRecordPicks(pkg *ir.Package, fn *ir.Func) {
 		pkg.RecordPicks[c] = pick
 		return nil
 	})
+}
+
+// wholeLoopedRef is the select of e, a test's ref to a looped `#id`
+// indexed by fewer loops than render it, or nil for anything else.
+func wholeLoopedRef(e ir.Expr, params map[*ir.Param]bool) *ir.Select {
+	switch e.(type) {
+	case *ir.Select, *ir.Index:
+	default:
+		return nil
+	}
+	_, _, idxs, ok := testNodeRef(e, params)
+	if !ok {
+		return nil
+	}
+	sel, _ := unnarrowedRef(e).(*ir.Select)
+	if sel == nil {
+		return nil
+	}
+	// Each index spends a list; an option is narrowed, not indexed.
+	left := len(idxs)
+	for i := 0; i < len(sel.Ref)-1; i++ {
+		if sel.Ref[i] != ir.RefList {
+			continue
+		}
+		if left == 0 {
+			return sel
+		}
+		left--
+	}
+	return nil
 }
 
 // inlineRecursiveFires writes each event a test fires on a program
@@ -458,7 +507,7 @@ func (f *reachFlattener) inlineFire(at *ir.Call, inst ir.Expr, site *ir.NodeInst
 	for i, p := range handler.Params {
 		tmp := &ir.Var{Name: f.names.next(p.Name, "fire"), Type: p.Type}
 		names[p] = tmp.Name
-		var val ir.Expr = ir.DeclaredDefault(p.Type)
+		var val ir.Expr = ir.ZeroExpr(p.Type)
 		if i < len(args) {
 			val = args[i]
 		}
@@ -797,7 +846,7 @@ func (f *reachFlattener) fireTriggers(fn *ir.Func) error {
 			if i < len(c.Args) {
 				args = append(args, ir.CallArg{Value: c.Args[i].Value})
 			} else {
-				args = append(args, ir.CallArg{Value: ir.DeclaredDefault(p.Type)})
+				args = append(args, ir.CallArg{Value: ir.ZeroExpr(p.Type)})
 			}
 		}
 		for _, idx := range idxs {
@@ -972,7 +1021,7 @@ func handleNode(stmts []ir.Stmt, id string) (*ir.NodeInst, bool) {
 func (f *reachFlattener) foldedNullTest(b *ir.Binary) *ir.Literal {
 	if _, _, present, isNull := ir.NullTestedCopy(b); isNull {
 		operand := b.Left
-		if isNullLiteral(operand) {
+		if ir.IsNullLiteral(operand) {
 			operand = b.Right
 		}
 		if r, ok, _ := f.ref(operand); ok && r.folded {

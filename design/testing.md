@@ -192,6 +192,11 @@ is the reference every target is held to — `cmd/sngl/testdata/test_component_s
 runs one program through every form of access a test body has on all six.
 These rules keep them agreeing:
 
+- **A failed `t.must` stops the test; a failed `t.assert` goes on.** Each
+  emitter lowers the must itself, to its harness's fatal (Go's `Fatalf`, the
+  agent T's `fatal` on Kotlin and JavaScript): Go and Kotlin wrote a comment
+  in its place, so android ran on past it, and html's agent `assertTrue` was
+  fatal, so html stopped at an assert too (`cmd/sngl/testdata/test_must_runs.txt`).
 - **Test bodies are checked last**, after every component and window body:
   an unannotated component var has no type until its body is read.
 - **A call of an instance's method carries the instance in front of its
@@ -225,6 +230,18 @@ These rules keep them agreeing:
   statement as well as on each read through the instance, since a read of
   package state goes through none -- a click that unmounted and remounted a
   branch left `asked.length()` unsettled (`testdata/async_query_loop.sngl`).
+- **A test's write redraws what reads it**, as a handler's does: a write of
+  the page's state or its instance's -- `page = "q"`, `c.label = "b"`,
+  `c.items.push(x)` -- is followed by a call of `__wrote_<v>`, a function
+  of the page (the root component in a build rooted at one) whose body is
+  the updates a handler's write of v runs there, and which the test calls
+  through its instance as it calls a method (`testWriteUpdates` in
+  passReactivity). The write alone landed on the Model's field or html's
+  `state`, and nothing drew it on fyne, gtk4 or html; and the updates spliced
+  into the test named nodes the test file has none of, so a test writing a
+  page var a node reads did not build on fyne or gtk4
+  (`cmd/sngl/testdata/test_write_redraws_runs.txt`). bubbletea and android
+  draw from state and need no call.
 - **A test waiting lets time pass as the program's loop would**: `t.wait`
   asks its predicate between turns of whatever runs the target's schedules.
   bubbletea's test build runs no program, so each turn settles the Model the
@@ -254,7 +271,10 @@ members by name, so the lowering says the rest in those terms, first in
 `passTestReach` (`internal/lower/test_reach_flatten.go`), before anything
 moves a node out of the body that wrote it:
 
-- **A one-way prop is the expression its call site gave**, read through the
+- **A one-way prop is the expression its call site gave**, and a two-way prop
+  the call site bound what it bound (`c.p.a` is `c.x` after `pair #p(:a=x)`;
+  one left unbound is the instance's cell, answered by passImplicitState;
+  `cmd/sngl/testdata/two_way_one_bound_runs.txt`), read through the
   instance (`rewriteTestPropRead`), under the providers around the node on the
   way from the test's instance, each value read through the instance it is
   written in (`underProviders`): a test is a root, so it read a page's words in
@@ -372,6 +392,21 @@ moves a node out of the body that wrote it:
   condition asked again, and a function literal that moves anything has moved
   it from where it is written, since it may be called anywhere after. One
   read before anything moves is allowed.
+- **A looped `#id` read whole is counted, not held**: no target keeps the
+  copies as a list, so `c.title.length()`, and an inner loop's
+  `c.cells[1].length()`, is the loop's own count -- its list's length or what
+  a sngl:seq sequence counts -- read through the instance with the outer
+  loops' bindings in (`answerTestCopyCount`, `ir.CopyCount`;
+  `cmd/sngl/testdata/test_reach_looped_id_whole_runs.txt`). Only where
+  nothing but loops, a node's always-rendered children, a provider or a
+  fallback-less boundary stands between them (`countedLoops`): an `if`
+  around the loop would want its condition in the count. Any other whole
+  read, a guarded count or a `for` over the copies, is refused at the read
+  (`wholeLoopedRef`, `test_reach_looped_id_whole_refused.txt`), where it
+  stopped in the target's compiler before. A test's write re-rendering a
+  page slot calls it with the slot's anchor, which html publishes beside the
+  slot's function for a test that calls it (`exportTestCalled`); the
+  function alone was `__slotAnchor_2 is not defined`.
 - **A trigger is an event of the receiver's type**, so the checker tags one
   through a nested instance (`nestedElementEvent`), and `c.row[1]` types as
   the node's component. html's `At` invoker indexes a constant loop's unrolled

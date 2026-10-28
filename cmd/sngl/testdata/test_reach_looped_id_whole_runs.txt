@@ -1,0 +1,144 @@
+# A test counts a looped `#id` read whole, as the interpreter counts the copies
+# the loop rendered: `c.title.length()`, again after a write changes the list,
+# one inner loop's `c.g.cell[1].length()`, and a sngl:seq sequence's. Every
+# compiled target answers it with the loop's own count, read through the
+# instance (answerTestCopyCount); before, it was `c.title undefined` on Go and
+# `undefined.length` on html, where `c.title[1]` built.
+
+sngl test --platform=none app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- app.sngl --
+import seq "sngl:seq"
+import test "sngl:test"
+import ui "sngl:ui"
+
+component grid ui.node {
+    var rows = [["a", "b"], ["c"]]
+    var n = 4
+    ui.vbox {
+        for var row = rows {
+            for var cell = row {
+                ui.text #cell(value=cell)
+            }
+        }
+        for var i = seq.step(n, 0, -2) {
+            ui.text #down(value="{i}")
+        }
+    }
+}
+
+component card ui.node {
+    var names = ["a", "b", "c"]
+    ui.vbox {
+        for var n = names {
+            ui.text #title(value=n)
+        }
+        grid #g
+    }
+}
+
+func testLoopedIDWhole(t test.Test, c card) {
+    t.assert(c.title.length() == 3)
+    t.assert(c.title[1].value == "b")
+    c.names = ["x"]
+    t.assert(c.title.length() == 1)
+}
+
+func testNestedAndCountedLoops(t test.Test, c card) {
+    t.assert(c.g.cell.length() == 2)
+    t.assert(c.g.cell[0].length() == 2)
+    t.assert(c.g.cell[1].length() == 1)
+    t.assert(c.g.down.length() == 2)
+    c.g.n = 5
+    t.assert(c.g.down.length() == 3)
+}
+
+ui.window {
+    card
+}
+-- testrun/android/kotlin/app.sngl/card/1 --
+sha256:700bf19ed026c27230d8c00bedd383a5
+{
+  "results": [
+    {
+      "Desc": "LoopedIDWhole",
+      "Passed": true
+    },
+    {
+      "Desc": "NestedAndCountedLoops",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/card/1 --
+sha256:3c4251e99ae652a7550131f81eb1a90c
+{
+  "results": [
+    {
+      "Desc": "LoopedIDWhole",
+      "Passed": true
+    },
+    {
+      "Desc": "NestedAndCountedLoops",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/card/1 --
+sha256:eef9b5d68b7e60d770af670da75d0cb1
+{
+  "results": [
+    {
+      "Desc": "LoopedIDWhole",
+      "Passed": true
+    },
+    {
+      "Desc": "NestedAndCountedLoops",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/card/1 --
+sha256:26f24d11e62bb3765f67354e81279688
+{
+  "results": [
+    {
+      "Desc": "LoopedIDWhole",
+      "Passed": true
+    },
+    {
+      "Desc": "NestedAndCountedLoops",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/card/1 --
+sha256:2868c2f187aa6b1fd60ff31254d6f734
+{
+  "results": [
+    {
+      "Desc": "LoopedIDWhole",
+      "Passed": true
+    },
+    {
+      "Desc": "NestedAndCountedLoops",
+      "Passed": true
+    }
+  ]
+}

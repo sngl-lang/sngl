@@ -1,0 +1,112 @@
+# A call site binds one two-way prop and leaves another unbound: `:a` writes
+# the caller's `x`, and `b` is a cell of the instance that starts at 5
+# (design/instances.md, *A two-way prop the caller leaves unbound*). A test
+# reads each through the instance: the unbound one is the cell, and the bound
+# one what its call site bound, `c.x` -- which every compiled target refused
+# to name (`c.pA undefined` on Go, `undefined` on html), the read being left
+# for a node's own prop.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component pair(:a int, :b int) ui.node {
+    ui.vbox {
+        ui.button #incA(text="a {a}", @click {
+            a = a + 1
+        })
+        ui.button #incB(text="b {b}", @click {
+            b = b + 10
+        })
+    }
+}
+
+component main ui.node {
+    var x = 1
+    ui.vbox {
+        pair #p(:a=x, b=5)
+        ui.text #shown(value="x {x}")
+    }
+}
+
+func testOneBoundOneNot(t test.Test, c main) {
+    c.p.incA.click()
+    c.p.incB.click()
+    t.assert(c.x == 2)
+    t.assert(c.p.a == 2)
+    t.assert(c.p.b == 15)
+    c.x = 7
+    t.assert(c.p.a == 7)
+}
+
+ui.window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:85e5880cf340240fc43ebcbb520ddc3f
+{
+  "results": [
+    {
+      "Desc": "OneBoundOneNot",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:71bd401b920ae80eac1bcb305f73d35d
+{
+  "results": [
+    {
+      "Desc": "OneBoundOneNot",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:ca62523730ae0fdf1257a1e345605be3
+{
+  "results": [
+    {
+      "Desc": "OneBoundOneNot",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:a9f2fa6cba75d089d2f1091ce86d2f42
+{
+  "results": [
+    {
+      "Desc": "OneBoundOneNot",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:9297046221101737fb2e63107fa70183
+{
+  "results": [
+    {
+      "Desc": "OneBoundOneNot",
+      "Passed": true
+    }
+  ]
+}

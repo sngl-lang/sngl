@@ -23,7 +23,7 @@ window {
     main
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:693742bf41c2be86a96cea62ff7ee3aa
+sha256:d4561f6f5e97f99b8fd552b41b3d9c31
 {
   "results": [
     {

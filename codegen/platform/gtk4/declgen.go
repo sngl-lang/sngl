@@ -38,6 +38,9 @@ struct Look {
     wrap      int
     hidden    bool
     cursor    string
+    justify   int
+    spaced    bool
+    spacing   int
 }
 `
 

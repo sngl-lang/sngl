@@ -124,7 +124,7 @@ ui.window {
     site()
 }
 -- testrun/html/none/app.sngl/site/1 --
-sha256:11aa1dc4b2bb21d7db5aaa6d6f17d0d5
+sha256:9b90ef8160ce80de2a1669d06c119e5e
 {
   "results": [
     {
@@ -134,7 +134,7 @@ sha256:11aa1dc4b2bb21d7db5aaa6d6f17d0d5
   ]
 }
 -- testrun/html/none/last.sngl/site/1 --
-sha256:594b3d0706e6bb7bbe982140ea6e4f7f
+sha256:67054008e6b7ee613d252d364fb4880e
 {
   "results": [
     {

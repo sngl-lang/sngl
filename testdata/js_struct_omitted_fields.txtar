@@ -69,7 +69,7 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { p: null, tint: null, visible__inst0: true };
-  state.p = { x: 1, w: 1.5 };
+  state.p = { x: 1, y: 0, w: 1.5, c: { r: 0, g: 0, b: 0, a: 255 } };
   state.tint = { r: 51, g: 102, b: 153, a: 255 };
   function String(v) {
     return "" + v;
@@ -79,7 +79,7 @@ body { font-family: system-ui, sans-serif; }
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   $0.addEventListener("click", function() {
-    state.p = { x: 2, w: 1.5 };
+    state.p = { x: 2, y: 0, w: 1.5, c: { r: 0, g: 0, b: 0, a: 255 } };
     __n1.textContent = String(state.p.y + 1) + " " + String(state.p.w) + " " + String(state.p.c.r);
     __n3.textContent = !((a, b) => a.r === b.r && a.g === b.g && a.b === b.b && a.a === b.a)(state.tint, state.p.c) ? "apart" : "same";
     state.tint = { r: 0, g: 0, b: 0, a: 255 };
@@ -96,4 +96,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d706a2cc30dbefe31757e2d487d48e09
+pass sha256:6adc7d5babc3535f1f97fc8c610c143e

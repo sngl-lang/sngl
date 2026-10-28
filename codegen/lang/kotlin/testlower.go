@@ -273,20 +273,22 @@ func lowerTestSetContext(c *ir.Call, ctxCounts map[string]int) ([]string, bool) 
 
 func lowerTestAssert(call *ir.CallStmt, surf TestSurface, compRecvs map[string]bool, mode TestEmitMode) (string, bool) {
 	c := call.Call
-	if !ir.IsTestCall(c, ir.TestAssertID) {
-		return "", false
-	}
-	if len(c.Args) != 2 {
+	must := ir.IsTestCall(c, ir.TestMustID)
+	if !must && !ir.IsTestCall(c, ir.TestAssertID) || len(c.Args) != 2 {
 		return "", false
 	}
 	expr := lowerTestExpr(c.Args[1].Value, surf, compRecvs)
 	// Agent mode routes assertions through the testagent T receiver so
-	// failures land in the JSON-RPC test report; native (Robolectric
-	// @Test) mode falls back to junit's bundled assertTrue.
-	if mode == TestEmitAgent {
-		return fmt.Sprintf("t.assertTrue(%s, %s)", expr, Quote(expr)), true
+	// failures land in the JSON-RPC test report, a must through fatal, which
+	// stops the test; native (Robolectric @Test) mode falls back to junit's
+	// bundled assertTrue, which stops it at either.
+	switch {
+	case mode != TestEmitAgent:
+		return fmt.Sprintf("org.junit.Assert.assertTrue(%s, %s)", Quote(expr), expr), true
+	case must:
+		return fmt.Sprintf("if (!(%s)) t.fatal(%s)", expr, Quote(expr)), true
 	}
-	return fmt.Sprintf("org.junit.Assert.assertTrue(%s, %s)", Quote(expr), expr), true
+	return fmt.Sprintf("t.assertTrue(%s, %s)", expr, Quote(expr)), true
 }
 
 func lowerEventTrigger(call *ir.CallStmt, surf TestSurface, compRecvs map[string]bool) (string, bool) {
@@ -901,7 +903,7 @@ func (surf TestSurface) translator() *KtIRContext {
 // A test body's sngl:test calls are answered here, where the body is lowered,
 // rather than by an emitter.
 func init() {
-	codegen.DeclareLangImplements("kotlin", ir.TestAssertID, ir.TestSnapshotID, ir.TestSetContextID)
+	codegen.DeclareLangImplements("kotlin", ir.TestAssertID, ir.TestMustID, ir.TestSnapshotID, ir.TestSetContextID)
 }
 
 // CopySemanticsKey is the semantics property the screen declares and sets on

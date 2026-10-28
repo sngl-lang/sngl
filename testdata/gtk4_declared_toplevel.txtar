@@ -377,7 +377,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_set_line_width(ctx, C.double(1.0))
 	C.cairo_set_line_cap(ctx, LineCapFunc("butt"))
 	C.cairo_set_line_join(ctx, LineJoinFunc("miter"))
-	Source(ctx, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+	Source(ctx, snglcolor.Color{})
 	C.cairo_stroke(ctx)
 	C.cairo_restore(ctx)
 }
@@ -386,7 +386,7 @@ func (m *Model) _canvasDraw1(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
 	C.cairo_new_sub_path(ctx)
 	C.cairo_arc(ctx, C.double(8.0), C.double(8.0), C.double(6.0), C.double(0.0), C.double(6.283185307179586))
-	Paint(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -448,4 +448,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:3d3f53ef488898d609b807232bfc4d2b
+pass sha256:4c7fdf3d9e9c269bea16bf5b45d7f330

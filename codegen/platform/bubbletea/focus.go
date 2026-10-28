@@ -127,9 +127,39 @@ func (vc *irViewContext) declareLoopCounters(f *ir.For) {
 }
 
 func (vc *irViewContext) countFocusPos(n *ir.NodeInst) {
-	if lf, ok := nodeLoopFocus(n); ok {
-		vc.line("%s++", lf.pos)
+	lf, ok := nodeLoopFocus(n)
+	if !ok {
+		return
 	}
+	if c := focusCounted(n); c != nil {
+		vc.line("if %s {", vc.gc.EvalExpr(c))
+		vc.line("\t%s++", lf.pos)
+		vc.line("}")
+		return
+	}
+	vc.line("%s++", lf.pos)
+}
+
+// focusCounted is the condition passFocusOrder put on a stop a loop renders
+// under which it is one, or nil where it always is: the view numbers it, and
+// Update and a test reach it, only while it holds.
+func focusCounted(n *ir.NodeInst) ir.Expr {
+	return codegen.NodeProp(n, "__focusCounted")
+}
+
+// counted writes body where n is a stop of its loop: under its condition, if
+// it has one.
+func (w *viewWalk) counted(n *ir.NodeInst, gc *golang.GoIRContext, body func()) {
+	c := focusCounted(n)
+	if c == nil {
+		body()
+		return
+	}
+	w.line("if %s {", gc.EvalExpr(c))
+	w.indent++
+	body()
+	w.indent--
+	w.line("}")
 }
 
 // emitLoopSlotHandlers' cases are closures so that finding the node the cursor
@@ -180,20 +210,22 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 		b.WriteString("\t\t\tfunc() {\n")
 		w := &viewWalk{b: b, indent: 4, wants: isLoopFocus}
 		w.visit = func(w *viewWalk, n *ir.NodeInst, gc *golang.GoIRContext) {
-			if block, ok := nodeKeyHandler(n, key); ok {
-				w.line("if m.%s == %s {", lf.cursor, lf.pos)
-				var body strings.Builder
-				for _, stmt := range block {
-					for _, l := range gc.EvalStmt(stmt) {
-						fmt.Fprintf(&body, "%s%s\n", strings.Repeat("\t", w.indent+1), l)
+			w.counted(n, gc, func() {
+				if block, ok := nodeKeyHandler(n, key); ok {
+					w.line("if m.%s == %s {", lf.cursor, lf.pos)
+					var body strings.Builder
+					for _, stmt := range block {
+						for _, l := range gc.EvalStmt(stmt) {
+							fmt.Fprintf(&body, "%s%s\n", strings.Repeat("\t", w.indent+1), l)
+						}
 					}
+					syncMutatedInputs(&body, block, info.widgets, info.binds, gc)
+					w.b.WriteString(body.String())
+					w.line("\treturn")
+					w.line("}")
 				}
-				syncMutatedInputs(&body, block, info.widgets, info.binds, gc)
-				w.b.WriteString(body.String())
-				w.line("\treturn")
-				w.line("}")
-			}
-			w.line("%s++", lf.pos)
+				w.line("%s++", lf.pos)
+			})
 		}
 		w.line("%s := 0", lf.pos)
 		w.stmts([]ir.Stmt{f}, gc)
@@ -214,14 +246,16 @@ func loopCopies(f *ir.For, lf loopFocus, n, named *ir.NodeInst, isLoopFocus func
 	b.WriteString("func() []" + copyOrdinal + " {\n")
 	w := &viewWalk{b: &b, indent: 2, wants: isLoopFocus}
 	w.visit = func(w *viewWalk, c *ir.NodeInst, gc *golang.GoIRContext) {
-		if c == n || (programID(n) && c.ID == n.ID) {
-			key := `""`
-			if k := named.Prop(ir.CopyProp); k != nil {
-				key = gc.EvalExpr(k)
+		w.counted(c, gc, func() {
+			if c == n || (programID(n) && c.ID == n.ID) {
+				key := `""`
+				if k := named.Prop(ir.CopyProp); k != nil {
+					key = gc.EvalExpr(k)
+				}
+				w.line("__at = append(__at, %s{%s, %s})", copyOrdinal, key, lf.pos)
 			}
-			w.line("__at = append(__at, %s{%s, %s})", copyOrdinal, key, lf.pos)
-		}
-		w.line("%s++", lf.pos)
+			w.line("%s++", lf.pos)
+		})
 	}
 	w.line("var __at []%s", copyOrdinal)
 	w.line("%s := 0", lf.pos)

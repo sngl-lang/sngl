@@ -1886,7 +1886,7 @@ sha256:7e2d04bca42f393ee1ea9313f26ac97e
   ]
 }
 -- testrun/html/none/app.sngl/Calculator/1 --
-sha256:adcf3840e6d0647f4657ea922bf62d54
+sha256:c40839863c89f431e1a089a618ecd138
 {
   "results": [
     {
@@ -1910,7 +1910,7 @@ sha256:2ec4b59a044a3a95e1da65f1185e1580
   ]
 }
 -- testrun/html/none/app.sngl/_/1 --
-sha256:88acb0ba770c3d5a951b4ed716f20bd0
+sha256:1a008b79955e6cd3e64134601beaf056
 {
   "results": [
     {

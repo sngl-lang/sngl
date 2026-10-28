@@ -50,7 +50,7 @@ func testDoubles(t test.Test, c main) {
     t.assert(c.c != null && c.c.doubled().length() == 2)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:57df91d59c7b27694532e45c8d14a405
+sha256:febd87f64a519aee90f504444c770218
 {
   "results": [
     {
@@ -90,7 +90,7 @@ sha256:fb3da1e1e751aff23ff11efb6e7111a4
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:9cad31f58c592dec7be0da6f2c069794
+sha256:ff497bc071a1b98ce1c1c89d3f70e681
 {
   "results": [
     {

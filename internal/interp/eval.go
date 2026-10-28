@@ -561,16 +561,17 @@ func (env *Env) RebindFrom(src *Env) {
 	if src == nil {
 		return
 	}
-	// A symbol is rebound in the nearest scope binding it only: a recursive
-	// instance's scope encloses its parent's, which binds the same vars.
-	seen := map[ir.Symbol]bool{}
-	for e := env; e != nil; e = e.parent {
-		for sym := range e.vals {
-			if seen[sym] {
+	// Walked from what src wrote rather than from what env binds, which is
+	// every const of the package and was most of a lambda call's cost.
+	for s := src; s != nil; s = s.parent {
+		for sym, wrote := range s.assigned {
+			if !wrote {
 				continue
 			}
-			seen[sym] = true
-			if !src.wasAssigned(sym) {
+			// The nearest scope binding it only: a recursive instance's scope
+			// encloses its parent's, which binds the same vars.
+			e := env.findVarOwner(sym)
+			if e == nil {
 				continue
 			}
 			if v, ok := src.Value(sym); ok {
@@ -587,18 +588,6 @@ func (env *Env) RebindFrom(src *Env) {
 			}
 		}
 	}
-}
-
-// wasAssigned reports whether src or an enclosing scope wrote sym. A write that
-// landed in a shared parent is already visible and is reported here anyway,
-// because copying a value onto itself needs no second rule.
-func (env *Env) wasAssigned(sym ir.Symbol) bool {
-	for e := env; e != nil; e = e.parent {
-		if e.assigned[sym] {
-			return true
-		}
-	}
-	return false
 }
 
 // refreshFrom brings every binding this scope and its parents hold up to the
@@ -657,12 +646,29 @@ func (env *Env) Isolate() *Env {
 
 // Snapshot returns a shallow copy of the env.
 func (env *Env) Snapshot() *Env {
+	cp := env.scopeCopy(len(env.vals))
+	maps.Copy(cp.vals, env.vals)
+	return cp
+}
+
+// Frame is a scope of its own in which env's bindings are read through rather
+// than copied, for a caller running many calls against one large env that
+// none of them writes: the optimizer's package env, where a Snapshot per call
+// copied every const of the package (BenchmarkFoldStyledPage). An assignment
+// to a binding env holds lands in env.
+func (env *Env) Frame() *Env {
+	cp := env.scopeCopy(0)
+	cp.parent, cp.origin = env, nil
+	return cp
+}
+
+func (env *Env) scopeCopy(size int) *Env {
 	childEnvs := env.childEnvs
 	if childEnvs == nil {
 		childEnvs = map[childKey]*Env{}
 	}
-	cp := &Env{
-		vals: make(map[ir.Symbol]any, len(env.vals)),
+	return &Env{
+		vals: make(map[ir.Symbol]any, size),
 		// Its own set, not the original's: what this scope wrote is what
 		// RebindFrom carries back, and two snapshots of one scope must not be
 		// credited with each other's writes.
@@ -702,8 +708,6 @@ func (env *Env) Snapshot() *Env {
 		handles:    env.owned(),
 		build:      env.build,
 	}
-	maps.Copy(cp.vals, env.vals)
-	return cp
 }
 
 // writeBack carries what ran in a snapshot back to every scope it was taken
@@ -1667,13 +1671,41 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 		v = copyOf(v, f.Value.ExprType())
 		if f.Spread {
 			if src, ok := v.(*Struct); ok {
-				s.Merge(src)
+				if err := env.mergeSpread(s, src); err != nil {
+					return nil, err
+				}
 			}
 			continue
 		}
 		s.Set(f.Name, v)
 	}
 	return s, env.fillOmittedFields(s, e.Def)
+}
+
+// mergeSpread writes onto s each field of src that does not hold its type's
+// zero, which is what a spread writes: `{display=flex, ...style}` keeps the
+// display of a style that leaves it unset. A field whose type nothing here
+// says is written whatever it holds.
+func (env *Env) mergeSpread(s, src *Struct) error {
+	fields, _ := ir.FieldsOf(src.Type)
+	if fields == nil && src.Def != nil {
+		fields = src.Def.Fields
+	}
+	for _, f := range src.Fields {
+		if d := ir.FieldNamed(fields, f.Name); d != nil {
+			if z := ir.ZeroExpr(d.Type); z != nil {
+				zv, err := env.Eval(z)
+				if err != nil {
+					return err
+				}
+				if eq, ok := Equal(f.Value, zv); ok && eq {
+					continue
+				}
+			}
+		}
+		s.Set(f.Name, f.Value)
+	}
+	return nil
 }
 
 // fillOmittedFields gives every field of def a literal left out the value the
@@ -1706,7 +1738,7 @@ func (env *Env) fillOmittedFields(s *Struct, def *ir.StructDef) error {
 		if err != nil {
 			return err
 		}
-		fields = append(fields, Field{Name: f.Name, Value: copyOf(v, f.Type), Omitted: true, Filled: DeepCopy(v)})
+		fields = append(fields, Field{Name: f.Name, Value: copyOf(v, f.Type)})
 	}
 	// A spread may have supplied a field def does not name; keep it after.
 	for _, f := range s.Fields {

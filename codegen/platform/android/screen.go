@@ -44,29 +44,50 @@ func (cc *irComposeContext) renderContent(stmts []ir.Stmt) {
 		return
 	}
 	if slices.ContainsFunc(stmts, func(s ir.Stmt) bool { _, ok := s.(*ir.SlotInst); return ok }) {
-		cc.line("%s(modifier = %s.%s()) {", cc.kc.Name(ktColumn), cc.kc.Name(ktModifier), cc.kc.Name(ktSafeDrawingPadding))
-		cc.indent++
 		outerRoot := cc.atRoot
 		cc.atRoot = false
-		for _, s := range stmts {
-			cc.renderStmt(s)
-		}
+		cc.writtenColumn(fmt.Sprintf("modifier = %s.%s()", cc.kc.Name(ktModifier), cc.kc.Name(ktSafeDrawingPadding)), stmts)
 		cc.atRoot = outerRoot
-		cc.indent--
-		cc.line("}")
 		return
 	}
 	if len(stmts) == 1 {
 		cc.renderStmt(stmts[0])
 		return
 	}
-	cc.line("%s {", cc.kc.Name(ktColumn))
+	cc.writtenColumn("", stmts)
+}
+
+// writtenColumn lays stmts out in a Column no vbox wrote, with its arguments.
+// It provides the share a child's flex takes there, as a vbox's content
+// provides flexShare: through Compose (LocalFlexShare, flexshare.kt), since
+// a slot's content is composed where the slot is invoked. Without it a
+// flexing child read the screen's share and filled it.
+func (cc *irComposeContext) writtenColumn(args string, stmts []ir.Stmt) {
+	cc.line("%s%s {", cc.kc.Name(ktColumn), parenthesized(args))
 	cc.indent++
+	_, called := shippedUses(cc.ctx.Pkg)
+	shared := called[flexShareName]
+	if shared {
+		cc.line("%s(%s provides { w: Float -> %s.weight(w).%s() }) {", cc.kc.Name("androidx.compose.runtime.CompositionLocalProvider"), localFlexShare, cc.kc.Name(ktModifier), cc.kc.Name("androidx.compose.foundation.layout.fillMaxWidth"))
+		cc.indent++
+	}
 	for _, s := range stmts {
 		cc.renderStmt(s)
 	}
+	if shared {
+		cc.indent--
+		cc.line("}")
+	}
 	cc.indent--
 	cc.line("}")
+}
+
+// parenthesized is a call's argument list, or nothing where it has none.
+func parenthesized(args string) string {
+	if args == "" {
+		return ""
+	}
+	return "(" + args + ")"
 }
 
 // renderScreen draws the window's content while it is visible, and answers

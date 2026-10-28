@@ -49,7 +49,7 @@ export class T {
     }
 
     assertTrue(b, msg) {
-        if (!b) this.fatal(msg);
+        if (!b) this.error(msg);
     }
 
     async wait(ms) {

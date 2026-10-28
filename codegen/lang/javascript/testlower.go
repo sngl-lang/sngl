@@ -198,23 +198,25 @@ func testSetContext(s ir.Stmt) (string, bool) {
 	return name, ok
 }
 
-// lowerTestAssert intercepts `t.assert(expr)` call statements and routes
-// them through the agent T's assertTrue(b, msg) so failures land in the
-// JSON-RPC test report. Mirrors lowerTestAssert in the Go/Kotlin
+// lowerTestAssert intercepts `t.assert(expr)` and `t.must(expr)` call
+// statements and routes them through the agent T so failures land in the
+// JSON-RPC test report: an assert through assertTrue(b, msg), a must through
+// fatal, which stops the test. Mirrors lowerTestAssert in the Go/Kotlin
 // testlowers.
 func lowerTestAssert(s ir.Stmt, jc *JsIRContext) (string, bool) {
 	cs, ok := s.(*ir.CallStmt)
-	if !ok || cs.Call == nil || cs.Call.Func == nil {
+	if !ok || cs.Call == nil || cs.Call.Func == nil || len(cs.Call.Args) != 2 {
 		return "", false
 	}
-	if !ir.IsTestCall(cs.Call, ir.TestAssertID) {
-		return "", false
+	switch {
+	case ir.IsTestCall(cs.Call, ir.TestAssertID):
+		expr := jc.EvalExpr(cs.Call.Args[1].Value)
+		return fmt.Sprintf("t.assertTrue(%s, %q)", expr, expr), true
+	case ir.IsTestCall(cs.Call, ir.TestMustID):
+		expr := jc.EvalExpr(cs.Call.Args[1].Value)
+		return fmt.Sprintf("if (!(%s)) t.fatal(%q)", expr, expr), true
 	}
-	if len(cs.Call.Args) != 2 {
-		return "", false
-	}
-	expr := jc.EvalExpr(cs.Call.Args[1].Value)
-	return fmt.Sprintf("t.assertTrue(%s, %q)", expr, expr), true
+	return "", false
 }
 
 // lowerTestSnapshot intercepts `t.snapshot(name)` call statements and

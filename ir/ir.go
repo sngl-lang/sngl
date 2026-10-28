@@ -157,6 +157,10 @@ type Package struct {
 	// runtime function, recorded by the flatten_struct_spread lowering pass
 	// when it rewrites an opaque (non-literal) spread. Deduped by *StructDef.
 	MergeStructs []*StructDef
+	// MergeSets lists the fields a generated __set_<Struct>_<field> writes:
+	// a field written after a spread the build cannot read, which the merge
+	// would skip where it holds its zero. Deduped.
+	MergeSets []MergeSet
 
 	// SourcePath is the absolute path of the .sngl fixture this package was
 	// built from. Set by the CLI test driver so the headless (`none`) test
@@ -1551,9 +1555,8 @@ type StructField struct {
 	Default Expr // nil if no default
 	// DefaultWritten records that the declaration gave this field a default.
 	// Normalize otherwise erases the distinction by filling every nil Default
-	// with the type's zero, and DeclaredDefault needs it: a field the
-	// declaration said nothing about has to stay absent, so that "unset" goes
-	// on meaning unset to a backend that reads presence.
+	// with the type's zero, which a dump written back as source would then
+	// spell as a default the declaration never wrote.
 	DefaultWritten bool `json:",omitempty"`
 	Foreign        `json:"Foreign,omitzero"`
 	// JSON and HTTP are the field's name on the wire in each format, as
@@ -1680,3 +1683,15 @@ type StaticTarget struct {
 // WildcardPattern implements ir.WildcardSymbol: a component carrying
 // #[wildcard] answers to every name its pattern matches.
 func (c *Component) WildcardPattern() string { return c.Wildcard }
+
+// MergeSet is one field a generated __set_<Struct>_<field> writes: the
+// struct value it is handed, with that field replaced.
+type MergeSet struct {
+	Struct *StructDef
+	Field  string
+}
+
+// MergeSetName is the helper writing set's field.
+func MergeSetName(set MergeSet) string {
+	return "__set_" + set.Struct.Name + "_" + set.Field
+}

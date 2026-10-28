@@ -109,12 +109,12 @@ var _canvasSurface0 snglcanvas.Surface
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, Style{Stroke: snglcolor.Color{R: 51, G: 102, B: 153, A: 255}, StrokeWidth: 4.0, LineCap: "round", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{R: 51, G: 102, B: 153, A: 255}, StrokeWidth: 4.0, LineCap: "round", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Line(4.0, 4.0, 56.0, 4.0)
 	ctx.Restore()
 	ctx.Save()
-	ApplyStyle(ctx, Style{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, FontSize: 16.0, FontFamily: "sans-serif"})
-	for _, c := range []_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}, _step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", FontSize: 16.0, FontFamily: "sans-serif"})
+	for _, c := range []_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0}, _step__record{Op: "lineTo", X: 30.0, Y: 36.0}, _step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, R: 4.0}, _step__record{Op: "close"}} {
 		if c.Op == "moveTo" {
 			ctx.MoveTo(c.X, c.Y)
 		}
@@ -300,12 +300,12 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, Style{Stroke: snglcolor.Color{R: 51, G: 102, B: 153, A: 255}, StrokeWidth: 4.0, LineCap: "round", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{R: 51, G: 102, B: 153, A: 255}, StrokeWidth: 4.0, LineCap: "round", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Line(4.0, 4.0, 56.0, 4.0)
 	ctx.Restore()
 	ctx.Save()
-	ApplyStyle(ctx, Style{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, FontSize: 16.0, FontFamily: "sans-serif"})
-	for _, c__r0 := range []_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}, _step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", FontSize: 16.0, FontFamily: "sans-serif"})
+	for _, c__r0 := range []_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0}, _step__record{Op: "lineTo", X: 30.0, Y: 36.0}, _step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, R: 4.0}, _step__record{Op: "close"}} {
 		if c__r0.Op == "moveTo" {
 			ctx.MoveTo(c__r0.X, c__r0.Y)
 		}
@@ -729,18 +729,21 @@ func TangentArc(from Point, corner Point, to Point, r float64) Arc {
 	}
 	var half float64 = (math.Abs(turn) / 2.0)
 	if ((r <= 0.0) || (half < 0.0001)) || (half > 1.5706) {
-		return Arc{Degenerate: true, Tangent1: corner, Tangent2: corner, Center: corner, Start: 0.0, Sweep: 0.0}
+		return Arc{Degenerate: true, Tangent1: corner, Tangent2: corner, Center: corner}
 	}
 	var reach float64 = (r / math.Tan(half))
 	t1 := Point{X: (corner.X + (reach * math.Cos(a1))), Y: (corner.Y + (reach * math.Sin(a1)))}
 	t2 := Point{X: (corner.X + (reach * math.Cos(a2))), Y: (corner.Y + (reach * math.Sin(a2)))}
-	var __cse0 float64 = math.Sin(half)
-	c__r1 := Point{X: (corner.X + ((r / __cse0) * math.Cos((a1 + (turn / 2.0))))), Y: (corner.Y + ((r / __cse0) * math.Sin((a1 + (turn / 2.0)))))}
+	c__r1 := PointPolar(corner, (r / math.Sin(half)), (a1 + (turn / 2.0)))
 	var sweep float64 = (3.141592653589793 - math.Abs(turn))
 	if turn > 0.0 {
 		sweep = -sweep
 	}
-	return Arc{Tangent1: t1, Tangent2: t2, Center: c__r1, Start: math.Atan2((t1.Y - c__r1.Y), (t1.X - c__r1.X)), Sweep: sweep, Degenerate: false}
+	return Arc{Tangent1: t1, Tangent2: t2, Center: c__r1, Start: math.Atan2((t1.Y - c__r1.Y), (t1.X - c__r1.X)), Sweep: sweep}
+}
+
+func PointPolar(center Point, radius float64, angle float64) Point {
+	return Point{X: (center.X + (radius * math.Cos(angle))), Y: (center.Y + (radius * math.Sin(angle)))}
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -761,9 +764,9 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	Source(ctx, snglcolor.Color{R: 51, G: 102, B: 153, A: 255})
 	C.cairo_stroke(ctx)
 	C.cairo_restore(ctx)
-	at := Point{X: 0.0, Y: 0.0}
+	at := Point{}
 	C.cairo_save(ctx)
-	for _, c__r2 := range []_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}, _step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
+	for _, c__r2 := range []_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0}, _step__record{Op: "lineTo", X: 30.0, Y: 36.0}, _step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, R: 4.0}, _step__record{Op: "close"}} {
 		if c__r2.Op == "moveTo" {
 			C.cairo_move_to(ctx, C.double(c__r2.X), C.double(c__r2.Y))
 			at = Point{X: c__r2.X, Y: c__r2.Y}
@@ -783,7 +786,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 			C.cairo_close_path(ctx)
 		}
 	}
-	Paint(ctx, Style{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -878,9 +881,9 @@ data class Point(
 
 data class Arc(
     var degenerate: Boolean = false,
-    var tangent1: Point = Point(x = 0.0, y = 0.0),
-    var tangent2: Point = Point(x = 0.0, y = 0.0),
-    var center: Point = Point(x = 0.0, y = 0.0),
+    var tangent1: Point = Point(),
+    var tangent2: Point = Point(),
+    var center: Point = Point(),
     var start: Double = 0.0,
     var sweep: Double = 0.0
 )
@@ -989,8 +992,8 @@ fun MainScreen() {
         Canvas(modifier = Modifier.size(60.dp, 40.dp)) {
             drawLine(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 153, alpha = 255), start = Offset(4.0.toFloat(), 4.0.toFloat()), end = Offset(56.0.toFloat(), 4.0.toFloat()), strokeWidth = 4.0.toFloat())
             var p: androidx.compose.ui.graphics.Path = Path()
-            var at = Point(x = 0.0, y = 0.0)
-            for (c in listOf(_step__record(op = SnglPathOp.MOVETO, x = 4.0, y = 12.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), _step__record(op = SnglPathOp.LINETO, x = 30.0, y = 36.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), _step__record(op = SnglPathOp.BEZIERTO, x = 56.0, y = 36.0, cx1 = 34.0, cy1 = 12.0, cx2 = 44.0, cy2 = 12.0, r = 0.0), _step__record(op = SnglPathOp.ARCTO, x = 40.0, y = 12.0, cx1 = 56.0, cy1 = 12.0, cx2 = 0.0, cy2 = 0.0, r = 4.0), _step__record(op = SnglPathOp.CLOSE, x = 0.0, y = 0.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0))) {
+            var at = Point()
+            for (c in listOf(_step__record(x = 4.0, y = 12.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), _step__record(op = SnglPathOp.LINETO, x = 30.0, y = 36.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), _step__record(op = SnglPathOp.BEZIERTO, x = 56.0, y = 36.0, cx1 = 34.0, cy1 = 12.0, cx2 = 44.0, cy2 = 12.0, r = 0.0), _step__record(op = SnglPathOp.ARCTO, x = 40.0, y = 12.0, cx1 = 56.0, cy1 = 12.0, cx2 = 0.0, cy2 = 0.0, r = 4.0), _step__record(op = SnglPathOp.CLOSE, x = 0.0, y = 0.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0))) {
                 if ((c.op == SnglPathOp.MOVETO)) {
                     p.moveTo(c.x.toFloat(), c.y.toFloat())
                 }
@@ -1030,19 +1033,20 @@ fun tangentArc(from: Point, corner: Point, to: Point, r: Double): Arc {
     }
     var half = (kotlin.math.abs(turn) / 2.0)
     if ((((r <= 0.0) || (half < 0.0001)) || (half > 1.5706))) {
-    	return Arc(degenerate = true, tangent1 = corner, tangent2 = corner, center = corner, start = 0.0, sweep = 0.0)
+    	return Arc(degenerate = true, tangent1 = corner, tangent2 = corner, center = corner)
     }
     var reach = (r / Math.tan(half))
     var t1 = Point(x = (corner.x + (reach * Math.cos(a1))), y = (corner.y + (reach * Math.sin(a1))))
     var t2 = Point(x = (corner.x + (reach * Math.cos(a2))), y = (corner.y + (reach * Math.sin(a2))))
-    var __cse0 = Math.sin(half)
-    var c = Point(x = (corner.x + ((r / __cse0) * Math.cos((a1 + (turn / 2.0))))), y = (corner.y + ((r / __cse0) * Math.sin((a1 + (turn / 2.0))))))
+    var c = corner.polar((r / Math.sin(half)), (a1 + (turn / 2.0)))
     var sweep = (3.141592653589793 - kotlin.math.abs(turn))
     if ((turn > 0.0)) {
     	sweep = -sweep
     }
-    return Arc(tangent1 = t1, tangent2 = t2, center = c, start = Math.atan2((t1.y - c.y), (t1.x - c.x)), sweep = sweep, degenerate = false)
+    return Arc(tangent1 = t1, tangent2 = t2, center = c, start = Math.atan2((t1.y - c.y), (t1.x - c.x)), sweep = sweep)
 }
+
+fun Point.polar(radius: Double, angle: Double): Point = Point(x = (this.x + (radius * Math.cos(angle))), y = (this.y + (radius * Math.sin(angle))))
 
 fun strokeCap(cap: SnglLineCap): androidx.compose.ui.graphics.StrokeCap {
     if ((cap == SnglLineCap.ROUND)) {
@@ -1225,7 +1229,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<canvas id="$0" style="height:40px;width:60px" height="40" width="60">
+<canvas id="$0" height="40" width="60">
 </canvas>
 
 <script>
@@ -1249,7 +1253,7 @@ body { font-family: system-ui, sans-serif; }
     ctx.stroke();
     ctx.restore();
     ctx.save();
-    paintStyle(ctx, { stroke: { r: 153, g: 51, b: 102, a: 255 }, strokeWidth: 2, lineCap: "square", lineJoin: "bevel", fill: { a: 0, r: 0, g: 0, b: 0 }, fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 0, g: 0, b: 0, a: 0 }, stroke: { r: 153, g: 51, b: 102, a: 255 }, strokeWidth: 2, lineCap: "square", lineJoin: "bevel", fontSize: 16, fontFamily: "sans-serif" });
     ctx.lineCap = "square";
     ctx.lineJoin = "bevel";
     ctx.beginPath();
@@ -1308,12 +1312,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:bef5265104d4e60d2f9d9ceb2d57b856
+pass sha256:b0d4105cb0fd961cfb7d8918d6f09f33
 -- run/go/fyne --
-pass sha256:9ed6653bc2c74513345c5f750d86a689
+pass sha256:b68b6114bf84643957dbfc33b02c6f19
 -- run/go/gtk4 --
-pass sha256:8cfe5dc6f13af91d0f3fbdbe441bbf03
+pass sha256:6dd10bfec7a610a798126c0ec683c947
 -- run/kotlin/android --
-pass sha256:9ae5c07d72ddd908cc6a3bb89b7c536b
+pass sha256:2bc425f84d4b959ead74d3ba5cc5b899
 -- run/none/html --
-pass sha256:db768984fd227ac56783d7a933a47519
+pass sha256:068c95dd5ffaa1069ec004df0dfb27a5

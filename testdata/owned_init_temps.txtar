@@ -91,9 +91,7 @@ type File struct {
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	seed                int
-	__init1             File
 	total               int
-	__init0__inst0      File
 	n__inst0            int
 	f__inst0            File
 	visible__inst0      bool
@@ -114,10 +112,8 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.seed = 4
-	m.__init1 = File{Fd: m.seed}
-	m.total = (m.__init1.Fd * 10)
-	m.__init0__inst0 = File{Fd: 1}
-	m.n__inst0 = (m.__init0__inst0.Fd * 10)
+	m.total = (m.seed * 10)
+	m.n__inst0 = 10
 	m.f__inst0 = File{Fd: 2}
 	m.visible__inst0 = true
 	m.__effect0_live = []bool{}
@@ -134,7 +130,6 @@ func Close__r0(f File) {
 
 func (m *Model) __effect0_unmount() {
 	Close__r0(m.f__inst0)
-	Close__r0(m.__init0__inst0)
 }
 
 func (m *Model) __effect0_down() {
@@ -188,7 +183,6 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __snglTeardown() {
 	m.__effects0_torn = true
 	m.__effect0_teardown()
-	Close__r0(m.__init1)
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -278,11 +272,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
@@ -303,23 +297,10 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var seed by remember { mutableStateOf(4) }
-    var __init1 by remember { mutableStateOf(File(fd = seed)) }
-    var total by remember { mutableStateOf((__init1.fd * 10)) }
-    var __init0__inst0 by remember { mutableStateOf(File(fd = 1)) }
-    var n__inst0 by remember { mutableStateOf((__init0__inst0.fd * 10)) }
+    var total by remember { mutableStateOf((seed * 10)) }
+    var n__inst0 by remember { mutableStateOf(10) }
     var f__inst0 by remember { mutableStateOf(File(fd = 2)) }
     var visible__inst0 by remember { mutableStateOf(true) }
-
-
-    fun __snglTeardown() {
-        close(__init1)
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            __snglTeardown()
-        }
-    }
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -333,7 +314,6 @@ fun MainScreen() {
             DisposableEffect(Unit) {
                 onDispose {
                     close(f__inst0)
-                    close(__init0__inst0)
                 }
             }
             Text(text = ((n__inst0.toString() + " ") + f__inst0.fd.toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
@@ -366,22 +346,17 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seed: 4, __init1: null, total: null, __init0__inst0: null, n__inst0: null, f__inst0: null, visible__inst0: true };
-  state.__init1 = { fd: state.seed };
-  state.total = state.__init1.fd * 10;
-  state.__init0__inst0 = { fd: 1 };
-  state.n__inst0 = state.__init0__inst0.fd * 10;
+  var state = { seed: 4, total: null, n__inst0: 10, f__inst0: null, visible__inst0: true };
+  state.total = state.seed * 10;
   state.f__inst0 = { fd: 2 };
   function close(f) {
   }
   function __effect0_unmount() {
     close(state.f__inst0);
-    close(state.__init0__inst0);
   }
   function __snglTeardown() {
     __effects0_torn = true;
     __effect0_teardown();
-    close(state.__init1);
   }
   var __effect0_live = [];
   var __effect0_desired = [];
@@ -449,8 +424,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/gtk4 --
-pass sha256:fb04d50fae6f3e2e248eb974013caa85
+pass sha256:fa7aa387ddae061c68517c284b72c74e
 -- run/kotlin/android --
-pass sha256:70fd58b10283e31efda33f3f2391695b
+pass sha256:1b7faed3a6802c7f04e8504fab714ab1
 -- run/none/html --
-pass sha256:66ddb5431298d5565a675dd3391fe388
+pass sha256:d14fd19dd1fc68a2f578f703fee9e175

@@ -34,6 +34,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -89,7 +90,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 					__n2 := widget.NewLabel("")
 					__n2__box := fynelayout.NewBox(__n2)
 					__n2.SetText(col)
-					__n2__box.SetLook(fynelayout.Look{Bold: true})
+					__n2__box.SetLook(fynelayout.Look{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}, Bold: true})
 					fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__box)
 					m.__slot0 = append(m.__slot0, __n2__box)
 				}

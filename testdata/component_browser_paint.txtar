@@ -95,7 +95,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="padding:7px;display:flex;flex-direction:column;gap:calc(2em + 1rem);width:2rem" data-sngl-id="box">
+<div style="padding:7px;gap:calc(2em + 1rem);display:flex;flex-direction:column;width:2rem" data-sngl-id="box">
   <span>x</span>
 </div>
 <div style="display:flex;flex-direction:column">
@@ -146,32 +146,8 @@ window.__sngl_boot = () => {
   function red(p) {
     return p.a > 200 && p.r > 200 && p.g < 50;
   }
-  function cssColor(c) {
-    return "rgba(" + String(c.r) + "," + String(c.g) + "," + String(c.b) + "," + String(parseFloat(c.a) / 255) + ")";
-  }
-  function _avatarSide(size) {
-    if (size === "small") {
-      ;
-      return { px: 24, em: 0, rem: 0 };
-    }
-    ;
-    if (size === "large") {
-      ;
-      return { px: 64, em: 0, rem: 0 };
-    }
-    ;
-    return { px: 40, em: 0, rem: 0 };
-  }
-  function _avatarRadius(size, variant) {
-    if (variant === "square") {
-      ;
-      return { px: 4, em: 0, rem: 0 };
-    }
-    ;
-    return { px: _avatarSide(size).px * 0.5, em: _avatarSide(size).em * 0.5, rem: _avatarSide(size).rem * 0.5 };
-  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { red, cssColor, _avatarSide, _avatarRadius });
+    Object.assign(window, { red });
   }
   var __slot0 = [];
   var __rendering0 = false;
@@ -196,7 +172,7 @@ window.__sngl_boot = () => {
           __slot0 = [];
           let __n2 = document.createElement("span");
           __n2.textContent = "JD";
-          __n2.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+          __n2.setAttribute("style", "display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;text-align:center;background-color:#cccccc;border-radius:20px");
           __n2.addEventListener("click", () => {
           });
           let __place0_i_ref0 = null;
@@ -264,9 +240,6 @@ window.__sngl_boot = () => {
       redraw();
     }).observe(el);
   }
-  function String(v) {
-    return "" + v;
-  }
   var $4 = document.getElementById("$4");
   var $7 = document.getElementById("$7");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
@@ -291,7 +264,7 @@ window.__sngl_boot();
 -- run/none/html --
 pass sha256:ecb85054fef527f031511365d5809072
 -- testrun/html/none/component_browser_paint.sngl/lengths/1 --
-sha256:790725e86d9b28e93718d4fa4771a68e
+sha256:7e2f2d4aab9363ee0e1219dcfd927d93
 {
   "results": [
     {

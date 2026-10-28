@@ -60,8 +60,6 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
-	"duckfam.us/sngl/pkg/go/snglcolor"
-	"fmt"
 	"strconv"
 	"time"
 )
@@ -589,7 +587,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	__n0 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n0, 1)
-	gtk4rt.BoxSetSpacing(__n0, 6)
+	gtk4rt.SetLook(__n0, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.first = gtk4rt.New("GtkEntry")
 	gtk4rt.Connect(m.first, "changed", m.first_changed_handler)
 	gtk4rt.Connect(m.first, "activate", m.first_activate_handler)

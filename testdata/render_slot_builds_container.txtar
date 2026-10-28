@@ -55,6 +55,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -153,7 +154,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				for _, it := range m.items {
 					__n3 := fynelayout.NewHBox()
 					__n3__box := fynelayout.NewBox(__n3)
-					__n3__box.SetLook(fynelayout.Look{Gap: 8.0})
+					__n3__box.SetLook(fynelayout.Look{Gap: 8.0, Cross: 1, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 					var __n4 *__checkbox_state0Instance
 					if len(m.__inst0_live) > __inst0_i {
 						__n4 = m.__inst0_live[__inst0_i]
@@ -225,7 +226,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__renderSlot0(m.__n7)
 	m.__n8 = fynelayout.NewVBox()
 	m.__n8__box = fynelayout.NewBox(m.__n8)
-	m.__n8__box.SetLook(fynelayout.Look{PaddingLeft: 20.0, Gap: 4.0})
+	m.__n8__box.SetLook(fynelayout.Look{PaddingLeft: 20.0, Gap: 4.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 	m.__renderSlot1(m.__n8)
 	m.__n7.Add(m.__n8__box)
 	m.more = widget.NewButton("", nil)
@@ -398,7 +399,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				for _, it := range m.items {
 					__n1 := gtk4rt.New("GtkBox")
 					gtk4rt.OrientableSetOrientation(__n1, 0)
-					gtk4rt.BoxSetSpacing(__n1, 6)
+					gtk4rt.SetLook(__n1, gtk4rt.Look{Spaced: true, Spacing: 6})
 					__n2 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n2, it)
 					gtk4rt.LabelSetXAlign(__n2, 0.0)
@@ -433,7 +434,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				for _, it := range m.items {
 					__n3 := gtk4rt.New("GtkBox")
 					gtk4rt.OrientableSetOrientation(__n3, 0)
-					gtk4rt.BoxSetSpacing(__n3, 8)
+					gtk4rt.SetLook(__n3, gtk4rt.Look{Cross: 1, Spaced: true, Spacing: 8})
 					var __n4 *__checkbox_state0Instance
 					if len(m.__inst0_live) > __inst0_i {
 						__n4 = m.__inst0_live[__inst0_i]
@@ -452,7 +453,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					gtk4rt.BoxAppend(__n3, __n4__el)
 					__n5 := gtk4rt.New("GtkBox")
 					gtk4rt.OrientableSetOrientation(__n5, 1)
-					gtk4rt.BoxSetSpacing(__n5, 6)
+					gtk4rt.SetLook(__n5, gtk4rt.Look{Spaced: true, Spacing: 6})
 					__n6 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n6, it)
 					gtk4rt.LabelSetXAlign(__n6, 0.0)
@@ -560,12 +561,11 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n7 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n7, 1)
-	gtk4rt.BoxSetSpacing(m.__n7, 6)
+	gtk4rt.SetLook(m.__n7, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__renderSlot0(m.__n7)
 	m.__n8 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n8, 1)
-	gtk4rt.BoxSetSpacing(m.__n8, 4)
-	gtk4rt.SetLook(m.__n8, gtk4rt.Look{Css: "padding-left: 20px; "})
+	gtk4rt.SetLook(m.__n8, gtk4rt.Look{Css: "padding-left: 20px; ", Spaced: true, Spacing: 4})
 	m.__renderSlot1(m.__n8)
 	gtk4rt.BoxAppend(m.__n7, m.__n8)
 	m.more = gtk4rt.New("GtkButton")
@@ -589,6 +589,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:c8f38d6347cb9a4c626c170e9533b330
+pass sha256:21a1e8496ee4a75dc25f8826efb41ce3
 -- run/go/gtk4 --
-pass sha256:fb04b47809d3290c78b19c6b11308b29
+pass sha256:394e4f78f49c2411f983d193f7c20c6a

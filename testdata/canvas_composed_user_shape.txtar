@@ -112,15 +112,15 @@ var _canvasSurface0 snglcanvas.Surface
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 255, A: 255, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 255, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Rect(0.0, 0.0, 4.0, 4.0)
 	ctx.Restore()
 	ctx.Save()
-	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 255, A: 255, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 255, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Rect(8.0, 0.0, 4.0, 4.0)
 	ctx.Restore()
 	ctx.Save()
-	ApplyStyle(ctx, Style{Fill: snglcolor.Color{B: 255, A: 255, R: 0, G: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{B: 255, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Rect(0.0, 10.0, 4.0, 4.0)
 	ctx.Restore()
 }
@@ -226,7 +226,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<canvas id="$0" style="height:20px;width:40px" height="20" width="40">
+<canvas id="$0" height="20" width="40">
 </canvas>
 
 <script>
@@ -291,6 +291,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d2ea8722a2c2ca64226d9ab035460ee8
+pass sha256:9a30f92ed03fb74a21db2d7f06a82df9
 -- run/none/html --
-pass sha256:c21aa94d300d397f6313a95a3037a99d
+pass sha256:841f921e270c5088708ee0c0f8c0e115

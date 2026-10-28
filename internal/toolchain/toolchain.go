@@ -408,8 +408,7 @@ func gradleTest(ctx context.Context, dir string) (string, error) {
 	}
 	unlock := gradle.Lock()
 	defer unlock()
-	cmd := gradle.Command(ctx, dir, ":app:testDebugUnitTest")
-	cmd.Env = jdk.Env(home)
+	cmd := gradle.Command(ctx, dir, jdk.Env(home), ":app:testDebugUnitTest")
 	b, err := cmd.CombinedOutput()
 	if err != nil {
 		if r, ok := SkipReason(string(b)); ok {

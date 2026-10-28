@@ -1635,7 +1635,7 @@ func (f *formatter) writeInterpolation(x *ast.InterpolationExpr) {
 		f.write(`"`)
 	}
 	for _, part := range x.Parts {
-		if lit, ok := part.(*ast.LiteralExpr); ok {
+		if lit, ok := x.Text(part); ok {
 			f.write(lit.Raw)
 		} else {
 			f.write("{")

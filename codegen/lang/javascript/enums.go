@@ -45,7 +45,7 @@ func enumSelectJS(member, operand string) string {
 	return "((e) => e.tag === " + strconv.Quote(member) + " ? e.value : null)(" + operand + ")"
 }
 
-// enumEqualJS is == or != between two values of a payload enum or a struct,
+// enumEqualJS is == or != between two values of a payload enum, a struct or a list,
 // or options of one: the same member and equal payloads, or equal fields,
 // each compared as its type compares, since JavaScript's === is an object's
 // identity -- two colors written alike were unequal.
@@ -69,9 +69,12 @@ func enumEqualJS(n *ir.Binary, left, right string) (string, bool) {
 }
 
 // comparedFieldwiseJS reports whether t's == is more than JavaScript's ===:
-// a payload enum's, or a struct's.
+// a payload enum's, a struct's, a list's, or an option's of one of those.
 func comparedFieldwiseJS(t *ir.Type) bool {
-	return ir.PayloadEnum(t) != nil || structDefJS(t) != nil
+	if t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 {
+		return comparedFieldwiseJS(t.Elems[0])
+	}
+	return ir.PayloadEnum(t) != nil || structDefJS(t) != nil || (t != nil && t.Kind == ir.TypeList && len(t.Elems) == 1)
 }
 
 // structDefJS is the struct whose fields a value of t is compared by: a
@@ -98,17 +101,39 @@ func optionElemJS(t *ir.Type) *ir.Type {
 }
 
 // jsEqualExpr is SNGL's == between a and b, two values of t, written out from
-// t: a struct field by field, a payload enum member and payload, and
-// anything else the host's ===. Only the types ir.RebuildIncomparable admits
-// reach it.
+// t: a struct field by field, a payload enum member and payload, a list
+// element by element, an option by what it holds, and anything else the
+// host's ===. a and b are read more than once, so each is a name or a read of
+// one.
 func jsEqualExpr(t *ir.Type, a, b string) string {
+	n := 0
+	return jsEqual(&n, t, a, b)
+}
+
+// jsEqual is jsEqualExpr, numbering the parameters of the arrows it writes
+// in n so that one nested in another reads the outer's.
+func jsEqual(n *int, t *ir.Type, a, b string) string {
+	fresh := func(prefix string) string {
+		*n++
+		return prefix + strconv.Itoa(*n)
+	}
+	if t != nil && t.Kind == ir.TypeList && len(t.Elems) == 1 {
+		x, i := fresh("_x"), fresh("_i")
+		return "(" + a + ".length === " + b + ".length && " + a + ".every((" + x + ", " + i + ") => " +
+			jsEqual(n, t.Elems[0], x, b+"["+i+"]") + "))"
+	}
+	if t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 && comparedFieldwiseJS(t.Elems[0]) {
+		p, q := fresh("_p"), fresh("_q")
+		return "((" + p + ", " + q + ") => " + p + " == null || " + q + " == null ? " + p + " == " + q + " : " +
+			jsEqual(n, t.Elems[0], p, q) + ")(" + a + ", " + b + ")"
+	}
 	if ed := ir.PayloadEnum(t); ed != nil {
 		var arms []string
 		for _, m := range ed.Members {
 			if m.Payload == nil {
 				continue
 			}
-			arms = append(arms, a+".tag === "+strconv.Quote(m.Name)+" ? "+jsEqualExpr(ir.MemberPayload(t, m.Name), a+".value", b+".value"))
+			arms = append(arms, a+".tag === "+strconv.Quote(m.Name)+" ? "+jsEqual(n, ir.MemberPayload(t, m.Name), a+".value", b+".value"))
 		}
 		payloads := "true"
 		if len(arms) > 0 {
@@ -136,7 +161,7 @@ func jsEqualExpr(t *ir.Type, a, b string) string {
 				ft = ft.Substitute(bind)
 			}
 			key := jsFieldKey(def, f.Name)
-			parts = append(parts, jsEqualExpr(ft, a+"."+key, b+"."+key))
+			parts = append(parts, jsEqual(n, ft, a+"."+key, b+"."+key))
 		}
 		return "(" + strings.Join(parts, " && ") + ")"
 	}

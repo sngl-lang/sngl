@@ -45,7 +45,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <table style="border-collapse:collapse;width:100%" width="100%">
+  <table style="border-collapse:collapse" width="100%">
     <thead>
       <tr>
         <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">name</th>
@@ -58,7 +58,7 @@ body { font-family: system-ui, sans-serif; }
       </tr>
     </tbody>
   </table>
-  <table style="border-collapse:collapse;width:100%" width="100%">
+  <table style="border-collapse:collapse" width="100%">
     <thead>
       <tr>
         <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">name</th>
@@ -80,4 +80,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9f96cc9ecf2e0e55f7d95df3901ab758
+pass sha256:791914e8e876608705506cd6e4dfbdf8

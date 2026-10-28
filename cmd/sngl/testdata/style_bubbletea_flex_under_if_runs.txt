@@ -1,0 +1,90 @@
+# On bubbletea a `flex` child under an `if` or a `for` takes its share of the
+# Layout, as one written directly does: the statement's nodes are parts of the
+# Layout, as CSS has them, rather than one part joined at its own size.
+# Before, `grows` and `b` took only their own width and `end` sat beside them
+# at the left.
+#
+# `app.sngl` writes the two under an `if` and a `for`; `shown.sngl` writes
+# them directly, and the two snapshots must be one screen.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=bubbletea app.sngl
+stdout 'ok   1 tests, 0 failures'
+sngl test --platform=bubbletea shown.sngl
+stdout 'ok   1 tests, 0 failures'
+cmp app.sngl.snapshots/shown.ansi shown.sngl.snapshots/shown.ansi
+grep '(?m)^a grows {33}b {36}end' app.sngl.snapshots/shown.ansi
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+var shown = true
+var names = ["b"]
+
+component row ui.node {
+    ui.hbox(style={gap=8px}) {
+        ui.text(value="a")
+        if shown {
+            ui.text(value="grows", style={flex=1})
+        }
+        for var n = names {
+            ui.text(value=n, style={flex=1})
+        }
+        ui.text(value="end")
+    }
+}
+
+func testShown(t test.Test, c row) {
+    t.snapshot("shown")
+}
+
+ui.window {
+    row
+}
+-- shown.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component row ui.node {
+    ui.hbox(style={gap=8px}) {
+        ui.text(value="a")
+        ui.text(value="grows", style={flex=1})
+        ui.text(value="b", style={flex=1})
+        ui.text(value="end")
+    }
+}
+
+func testShown(t test.Test, c row) {
+    t.snapshot("shown")
+}
+
+ui.window {
+    row
+}
+-- testrun/bubbletea/go/app.sngl/row/1 --
+sha256:97e8ef2db665e33de3382c9a02a01506
+{
+  "results": [
+    {
+      "Desc": "Shown",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "shown.ansi": "YSBncm93cyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBlbmQ="
+  }
+}
+-- testrun/bubbletea/go/shown.sngl/row/1 --
+sha256:1d0f091c5db49cd7222e8fcb041babe3
+{
+  "results": [
+    {
+      "Desc": "Shown",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "shown.ansi": "YSBncm93cyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBlbmQ="
+  }
+}

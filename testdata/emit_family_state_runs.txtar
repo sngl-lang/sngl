@@ -265,7 +265,7 @@ func (m *Model) __bar_members() []Entry {
 		}})
 	}
 	if m.n > 0 {
-		__members = append(__members, Entry{Full: ("n=" + fmt.Sprint(m.n)), Color: "", Click: func(__e0 int) {
+		__members = append(__members, Entry{Full: ("n=" + fmt.Sprint(m.n)), Click: func(__e0 int) {
 		}})
 	}
 	return __members
@@ -527,7 +527,7 @@ func (m *Model) __bar_members() []Entry {
 		}})
 	}
 	if m.n > 0 {
-		__members = append(__members, Entry{Full: ("n=" + fmt.Sprint(m.n)), Color: "", Click: func(__e0 int) {
+		__members = append(__members, Entry{Full: ("n=" + fmt.Sprint(m.n)), Click: func(__e0 int) {
 		}})
 	}
 	return __members

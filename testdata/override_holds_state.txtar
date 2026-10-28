@@ -88,6 +88,13 @@ import (
 	"os"
 )
 
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -95,54 +102,54 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	ListStyleType  string
@@ -203,6 +210,7 @@ func New() Model {
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop1_cursor = 0
+	m.__focusSettle()
 	m.__effects0_settle()
 	return m
 }
@@ -213,228 +221,246 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 Measurement) int {
-	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt1 int
-	if px <= 0.0 {
-		__lt1 = 0
+func RowsOf(m__r0 *Measurement) int {
+	var __lt4 float64
+	if m__r0 == nil {
+		__lt4 = 0.0
 	} else {
-		__lt1 = max(1, (int(px) / 16))
+		__lt4 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
 	}
-	return __lt1
+	var px float64 = __lt4
+	var __lt5 int
+	if px <= 0.0 {
+		__lt5 = 0
+	} else {
+		__lt5 = max(1, (int(px) / 16))
+	}
+	return __lt5
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
-	if (s == Style{}) {
+	if func(_a1, _b2 Style) bool {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
-	if words && (s.Color != snglcolor.Color{}) {
-		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	if words && (s.Color != nil) {
+		l = l.Foreground(lipgloss.Color((*(s.Color)).Hex()))
 	}
-	if (s.Background != snglcolor.Color{}) {
-		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	if s.Background != nil {
+		l = l.Background(lipgloss.Color((*(s.Background)).Hex()))
 	}
 	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
 		l = l.Bold(true)
 	}
-	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != nil) && ((*(s.Opacity)) < 1.0)) {
 		l = l.Faint(true)
 	}
 	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
 		l = l.Italic(true)
 	}
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
-		var __lt2 lipgloss.Position
+		var __lt6 lipgloss.Position
 		switch s.TextAlign {
 		case "center":
-			__lt2 = lipgloss.Center
+			__lt6 = lipgloss.Center
 		case "right":
-			__lt2 = lipgloss.Right
+			__lt6 = lipgloss.Right
 		default:
-			__lt2 = lipgloss.Left
+			__lt6 = lipgloss.Left
 		}
-		l = l.AlignHorizontal(__lt2)
+		l = l.AlignHorizontal(__lt6)
 	}
-	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
-		var __lt3 lipgloss.Border
+	var __lt8 bool
+	if s.BorderWidth != nil {
+		var __lt7 float64
+		if s.BorderWidth == nil {
+			__lt7 = 0.0
+		} else {
+			__lt7 = ((*(s.BorderWidth)).Px + (16.0 * ((*(s.BorderWidth)).Em + (*(s.BorderWidth)).Rem)))
+		}
+		__lt8 = (__lt7 > 0.0)
+	} else {
+		__lt8 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt8 {
+		var __lt9 lipgloss.Border
 		switch s.BorderStyle {
 		case "double":
-			__lt3 = lipgloss.DoubleBorder()
+			__lt9 = lipgloss.DoubleBorder()
 		case "dashed", "dotted":
-			__lt3 = tui.DashedBorder()
+			__lt9 = tui.DashedBorder()
 		default:
-			var __lt4 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt4 = lipgloss.RoundedBorder()
+			var __lt10 lipgloss.Border
+			if s.BorderRadius != nil {
+				__lt10 = lipgloss.RoundedBorder()
 			} else {
-				__lt4 = lipgloss.NormalBorder()
+				__lt10 = lipgloss.NormalBorder()
 			}
-			__lt3 = __lt4
+			__lt9 = __lt10
 		}
-		l = l.Border(__lt3)
-		if (s.BorderColor != snglcolor.Color{}) {
-			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		l = l.Border(__lt9)
+		if s.BorderColor != nil {
+			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	var __lt6 Measurement
-	if (s.MarginTop != Measurement{Px: 0}) {
-		__lt6 = s.MarginTop
+	var __lt12 *Measurement
+	if s.MarginTop != nil {
+		__lt12 = s.MarginTop
 	} else {
-		var __lt5 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt5 = s.MarginY
-		} else {
-			__lt5 = s.Margin
-		}
-		__lt6 = __lt5
-	}
-	l = l.MarginTop(CellsOf(__lt6))
-	var __lt8 Measurement
-	if (s.MarginRight != Measurement{Px: 0}) {
-		__lt8 = s.MarginRight
-	} else {
-		var __lt7 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt7 = s.MarginX
-		} else {
-			__lt7 = s.Margin
-		}
-		__lt8 = __lt7
-	}
-	l = l.MarginRight(CellsOf(__lt8))
-	var __lt10 Measurement
-	if (s.MarginBottom != Measurement{Px: 0}) {
-		__lt10 = s.MarginBottom
-	} else {
-		var __lt9 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt9 = s.MarginY
-		} else {
-			__lt9 = s.Margin
-		}
-		__lt10 = __lt9
-	}
-	l = l.MarginBottom(CellsOf(__lt10))
-	var __lt12 Measurement
-	if (s.MarginLeft != Measurement{Px: 0}) {
-		__lt12 = s.MarginLeft
-	} else {
-		var __lt11 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt11 = s.MarginX
+		var __lt11 *Measurement
+		if s.MarginY != nil {
+			__lt11 = s.MarginY
 		} else {
 			__lt11 = s.Margin
 		}
 		__lt12 = __lt11
 	}
-	l = l.MarginLeft(CellsOf(__lt12))
-	var __lt14 Measurement
-	if (s.PaddingTop != Measurement{Px: 0}) {
-		__lt14 = s.PaddingTop
+	l = l.MarginTop(CellsOf(__lt12))
+	var __lt14 *Measurement
+	if s.MarginRight != nil {
+		__lt14 = s.MarginRight
 	} else {
-		var __lt13 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt13 = s.PaddingY
+		var __lt13 *Measurement
+		if s.MarginX != nil {
+			__lt13 = s.MarginX
 		} else {
-			__lt13 = s.Padding
+			__lt13 = s.Margin
 		}
 		__lt14 = __lt13
 	}
-	l = l.PaddingTop(CellsOf(__lt14))
-	var __lt16 Measurement
-	if (s.PaddingRight != Measurement{Px: 0}) {
-		__lt16 = s.PaddingRight
+	l = l.MarginRight(CellsOf(__lt14))
+	var __lt16 *Measurement
+	if s.MarginBottom != nil {
+		__lt16 = s.MarginBottom
 	} else {
-		var __lt15 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt15 = s.PaddingX
+		var __lt15 *Measurement
+		if s.MarginY != nil {
+			__lt15 = s.MarginY
 		} else {
-			__lt15 = s.Padding
+			__lt15 = s.Margin
 		}
 		__lt16 = __lt15
 	}
-	l = l.PaddingRight(CellsOf(__lt16))
-	var __lt18 Measurement
-	if (s.PaddingBottom != Measurement{Px: 0}) {
-		__lt18 = s.PaddingBottom
+	l = l.MarginBottom(CellsOf(__lt16))
+	var __lt18 *Measurement
+	if s.MarginLeft != nil {
+		__lt18 = s.MarginLeft
 	} else {
-		var __lt17 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt17 = s.PaddingY
+		var __lt17 *Measurement
+		if s.MarginX != nil {
+			__lt17 = s.MarginX
 		} else {
-			__lt17 = s.Padding
+			__lt17 = s.Margin
 		}
 		__lt18 = __lt17
 	}
-	l = l.PaddingBottom(CellsOf(__lt18))
-	var __lt20 Measurement
-	if (s.PaddingLeft != Measurement{Px: 0}) {
-		__lt20 = s.PaddingLeft
+	l = l.MarginLeft(CellsOf(__lt18))
+	var __lt20 *Measurement
+	if s.PaddingTop != nil {
+		__lt20 = s.PaddingTop
 	} else {
-		var __lt19 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt19 = s.PaddingX
+		var __lt19 *Measurement
+		if s.PaddingY != nil {
+			__lt19 = s.PaddingY
 		} else {
 			__lt19 = s.Padding
 		}
 		__lt20 = __lt19
 	}
-	l = l.PaddingLeft(CellsOf(__lt20))
-	if (s.Width != Measurement{Px: 0}) {
+	l = l.PaddingTop(CellsOf(__lt20))
+	var __lt22 *Measurement
+	if s.PaddingRight != nil {
+		__lt22 = s.PaddingRight
+	} else {
+		var __lt21 *Measurement
+		if s.PaddingX != nil {
+			__lt21 = s.PaddingX
+		} else {
+			__lt21 = s.Padding
+		}
+		__lt22 = __lt21
+	}
+	l = l.PaddingRight(CellsOf(__lt22))
+	var __lt24 *Measurement
+	if s.PaddingBottom != nil {
+		__lt24 = s.PaddingBottom
+	} else {
+		var __lt23 *Measurement
+		if s.PaddingY != nil {
+			__lt23 = s.PaddingY
+		} else {
+			__lt23 = s.Padding
+		}
+		__lt24 = __lt23
+	}
+	l = l.PaddingBottom(CellsOf(__lt24))
+	var __lt26 *Measurement
+	if s.PaddingLeft != nil {
+		__lt26 = s.PaddingLeft
+	} else {
+		var __lt25 *Measurement
+		if s.PaddingX != nil {
+			__lt25 = s.PaddingX
+		} else {
+			__lt25 = s.Padding
+		}
+		__lt26 = __lt25
+	}
+	l = l.PaddingLeft(CellsOf(__lt26))
+	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
-	if (s.Height != Measurement{Px: 0}) {
+	if s.Height != nil {
 		l = l.Height(RowsOf(s.Height))
 	}
-	if (s.MaxWidth != Measurement{Px: 0}) {
+	if s.MaxWidth != nil {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
-	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt25 int
-		if RowsOf(s.MaxHeight) == 0 {
-			var __lt21 int
-			if s.MaxLines == 0 {
-				__lt21 = 0
-			} else {
-				__lt21 = (s.MaxLines + l.GetVerticalFrameSize())
-			}
-			__lt25 = __lt21
+	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
+		var __lt27 int
+		if s.MaxLines == nil {
+			__lt27 = 0
 		} else {
-			var __lt22 int
-			if s.MaxLines == 0 {
-				__lt22 = 0
-			} else {
-				__lt22 = (s.MaxLines + l.GetVerticalFrameSize())
-			}
-			var __lt24 int
-			if __lt22 == 0 {
-				__lt24 = RowsOf(s.MaxHeight)
-			} else {
-				var __lt23 int
-				if s.MaxLines == 0 {
-					__lt23 = 0
-				} else {
-					__lt23 = (s.MaxLines + l.GetVerticalFrameSize())
-				}
-				__lt24 = min(RowsOf(s.MaxHeight), __lt23)
-			}
-			__lt25 = __lt24
+			__lt27 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(__lt25)
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt27))
 	}
 	return l
 }
 
-func CellsOf(m__r1 Measurement) int {
-	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
-	var __lt26 int
-	if px <= 0.0 {
-		__lt26 = 0
+func CellsOf(m__r1 *Measurement) int {
+	var __lt28 float64
+	if m__r1 == nil {
+		__lt28 = 0.0
 	} else {
-		__lt26 = max(1, (int(px) / 8))
+		__lt28 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
-	return __lt26
+	var px float64 = __lt28
+	var __lt29 int
+	if px <= 0.0 {
+		__lt29 = 0
+	} else {
+		__lt29 = max(1, (int(px) / 8))
+	}
+	return __lt29
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt31 int
+	if height__r0 == 0 {
+		__lt31 = lines
+	} else {
+		var __lt30 int
+		if lines == 0 {
+			__lt30 = height__r0
+		} else {
+			__lt30 = min(height__r0, lines)
+		}
+		__lt31 = __lt30
+	}
+	return __lt31
 }
 
 func (m *Model) __effect0_enter() {
@@ -513,7 +539,23 @@ func (m *Model) __focusLoop1_len() int {
 	return __focusCount
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 0 {
+		return true
+	}
+	if m.__focusID == 1 {
+		return (m.__focusLoop1_len() > 0)
+	}
+	if m.__focusID == 2 {
+		return m.shown
+	}
+	if m.__focusID == 3 {
+		return m.shown
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
 		m.__focusLoop1_cursor = 0
@@ -537,7 +579,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		m.__focusID = 3
 	} else {
@@ -559,6 +601,40 @@ func (m *Model) __focusPrev() {
 			}
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Rows() []string {
@@ -731,23 +807,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				for __copy0, r := range m.rows {
 					_ = __copy0
 					_ = r
-					if m.__focusLoop1_cursor == __focusPos1 {
-						var __cell3_hits__inst1 int = func() int {
-							if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
-								return __v
-							}
-							return 0
-						}()
-						__cell3_hits__inst1 = (func() int {
-							if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
-								return __v
-							}
-							return 0
-						}() + 1)
-						m.hits__inst1[fmt.Sprint(__copy0)] = __cell3_hits__inst1
-						return
+					if true {
+						if m.__focusLoop1_cursor == __focusPos1 {
+							var __cell3_hits__inst1 int = func() int {
+								if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+									return __v
+								}
+								return 0
+							}()
+							__cell3_hits__inst1 = (func() int {
+								if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+									return __v
+								}
+								return 0
+							}() + 1)
+							m.hits__inst1[fmt.Sprint(__copy0)] = __cell3_hits__inst1
+							return
+						}
+						__focusPos1++
 					}
-					__focusPos1++
 				}
 			}()
 		case msg.Code == tea.KeyEnter && m.__focusID == 2:
@@ -757,6 +835,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__effects0_settle()
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -771,7 +850,7 @@ func (m Model) View() tea.View {
 		if part0_0Focused {
 			part0_0Prefix = ">"
 		}
-		part0_0 = BoxLook(Style{}, true).Render(part0_0Prefix + " " + fmt.Sprint(("top " + fmt.Sprint(m.hits__inst0))))
+		part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint(("top " + fmt.Sprint(m.hits__inst0))))
 		part0Children = append(part0Children, part0_0)
 		var part0_1 string
 		__focusPos1 := 0
@@ -786,13 +865,15 @@ func (m Model) View() tea.View {
 			if part0_1ItemFocused {
 				part0_1ItemPrefix = ">"
 			}
-			part0_1Item = BoxLook(Style{}, true).Render(part0_1ItemPrefix + " " + fmt.Sprint(((r + " ") + fmt.Sprint(func() int {
+			part0_1Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_1ItemPrefix + " " + fmt.Sprint(((r + " ") + fmt.Sprint(func() int {
 				if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
 					return __v
 				}
 				return 0
 			}()))))
-			__focusPos1++
+			if true {
+				__focusPos1++
+			}
 			part0_1Items = append(part0_1Items, part0_1Item)
 		}
 		part0_1 = tui.Spaced(false, lipgloss.Left, 0, part0_1Items...)
@@ -808,7 +889,7 @@ func (m Model) View() tea.View {
 			if part0_2Part_0Focused {
 				part0_2Part_0Prefix = ">"
 			}
-			part0_2Part_0 = BoxLook(Style{}, true).Render(part0_2Part_0Prefix + " " + fmt.Sprint(("if " + fmt.Sprint(m.hits__inst2))))
+			part0_2Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_2Part_0Prefix + " " + fmt.Sprint(("if " + fmt.Sprint(m.hits__inst2))))
 			part0_2Parts = append(part0_2Parts, part0_2Part_0)
 			var part0_2Part_1 string
 			part0_2Part_1Focused := (m.__focusID == 3)
@@ -816,7 +897,7 @@ func (m Model) View() tea.View {
 			if part0_2Part_1Focused {
 				part0_2Part_1Prefix = ">"
 			}
-			part0_2Part_1 = BoxLook(Style{}, true).Render(part0_2Part_1Prefix + " " + fmt.Sprint("hide"))
+			part0_2Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_2Part_1Prefix + " " + fmt.Sprint("hide"))
 			part0_2Parts = append(part0_2Parts, part0_2Part_1)
 			part0_2 = tui.Spaced(false, lipgloss.Left, 0, part0_2Parts...)
 		}
@@ -824,7 +905,7 @@ func (m Model) View() tea.View {
 			part0Children = append(part0Children, part0_2)
 		}
 		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
-		part0 = BoxLook(Style{}, true).Render(part0)
+		part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0)
 	}
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
@@ -857,131 +938,138 @@ import (
 	"os"
 )
 
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
 func __merge_Style(base, ov Style) Style {
-	if ov.Padding != (Measurement{}) {
+	if ov.Padding != nil {
 		base.Padding = ov.Padding
 	}
-	if ov.PaddingTop != (Measurement{}) {
+	if ov.PaddingTop != nil {
 		base.PaddingTop = ov.PaddingTop
 	}
-	if ov.PaddingRight != (Measurement{}) {
+	if ov.PaddingRight != nil {
 		base.PaddingRight = ov.PaddingRight
 	}
-	if ov.PaddingBottom != (Measurement{}) {
+	if ov.PaddingBottom != nil {
 		base.PaddingBottom = ov.PaddingBottom
 	}
-	if ov.PaddingLeft != (Measurement{}) {
+	if ov.PaddingLeft != nil {
 		base.PaddingLeft = ov.PaddingLeft
 	}
-	if ov.PaddingX != (Measurement{}) {
+	if ov.PaddingX != nil {
 		base.PaddingX = ov.PaddingX
 	}
-	if ov.PaddingY != (Measurement{}) {
+	if ov.PaddingY != nil {
 		base.PaddingY = ov.PaddingY
 	}
-	if ov.Margin != (Measurement{}) {
+	if ov.Margin != nil {
 		base.Margin = ov.Margin
 	}
-	if ov.MarginTop != (Measurement{}) {
+	if ov.MarginTop != nil {
 		base.MarginTop = ov.MarginTop
 	}
-	if ov.MarginRight != (Measurement{}) {
+	if ov.MarginRight != nil {
 		base.MarginRight = ov.MarginRight
 	}
-	if ov.MarginBottom != (Measurement{}) {
+	if ov.MarginBottom != nil {
 		base.MarginBottom = ov.MarginBottom
 	}
-	if ov.MarginLeft != (Measurement{}) {
+	if ov.MarginLeft != nil {
 		base.MarginLeft = ov.MarginLeft
 	}
-	if ov.MarginX != (Measurement{}) {
+	if ov.MarginX != nil {
 		base.MarginX = ov.MarginX
 	}
-	if ov.MarginY != (Measurement{}) {
+	if ov.MarginY != nil {
 		base.MarginY = ov.MarginY
 	}
-	if ov.Gap != (Measurement{}) {
+	if ov.Gap != nil {
 		base.Gap = ov.Gap
 	}
-	if ov.Width != (Measurement{}) {
+	if ov.Width != nil {
 		base.Width = ov.Width
 	}
-	if ov.MinWidth != (Measurement{}) {
+	if ov.MinWidth != nil {
 		base.MinWidth = ov.MinWidth
 	}
-	if ov.Height != (Measurement{}) {
+	if ov.Height != nil {
 		base.Height = ov.Height
 	}
-	if ov.MaxWidth != (Measurement{}) {
+	if ov.MaxWidth != nil {
 		base.MaxWidth = ov.MaxWidth
 	}
-	if ov.MaxHeight != (Measurement{}) {
+	if ov.MaxHeight != nil {
 		base.MaxHeight = ov.MaxHeight
 	}
-	if ov.Flex != 0 {
+	if ov.Flex != nil {
 		base.Flex = ov.Flex
 	}
-	if ov.FlexDirection != "" {
+	if ov.FlexDirection != "unset" {
 		base.FlexDirection = ov.FlexDirection
 	}
-	if ov.AlignItems != "" {
+	if ov.AlignItems != "unset" {
 		base.AlignItems = ov.AlignItems
 	}
-	if ov.JustifyContent != "" {
+	if ov.JustifyContent != "unset" {
 		base.JustifyContent = ov.JustifyContent
 	}
-	if ov.Position != "" {
+	if ov.Position != "unset" {
 		base.Position = ov.Position
 	}
-	if ov.Top != (Measurement{}) {
+	if ov.Top != nil {
 		base.Top = ov.Top
 	}
-	if ov.Bottom != (Measurement{}) {
+	if ov.Bottom != nil {
 		base.Bottom = ov.Bottom
 	}
-	if ov.Left != (Measurement{}) {
+	if ov.Left != nil {
 		base.Left = ov.Left
 	}
-	if ov.Right != (Measurement{}) {
+	if ov.Right != nil {
 		base.Right = ov.Right
 	}
-	if ov.ZIndex != 0 {
+	if ov.ZIndex != nil {
 		base.ZIndex = ov.ZIndex
 	}
-	if ov.Color != (snglcolor.Color{}) {
+	if ov.Color != nil {
 		base.Color = ov.Color
 	}
-	if ov.FontSize != (Measurement{}) {
+	if ov.FontSize != nil {
 		base.FontSize = ov.FontSize
 	}
 	if ov.FontFamily != "" {
 		base.FontFamily = ov.FontFamily
 	}
-	if ov.FontWeight != "" {
+	if ov.FontWeight != "unset" {
 		base.FontWeight = ov.FontWeight
 	}
-	if ov.FontStyle != "" {
+	if ov.FontStyle != "unset" {
 		base.FontStyle = ov.FontStyle
 	}
-	if ov.TextAlign != "" {
+	if ov.TextAlign != "unset" {
 		base.TextAlign = ov.TextAlign
 	}
-	if ov.MaxLines != 0 {
+	if ov.MaxLines != nil {
 		base.MaxLines = ov.MaxLines
 	}
-	if ov.WhiteSpace != "" {
+	if ov.WhiteSpace != "unset" {
 		base.WhiteSpace = ov.WhiteSpace
 	}
-	if ov.Background != (snglcolor.Color{}) {
+	if ov.Background != nil {
 		base.Background = ov.Background
 	}
-	if ov.BorderRadius != (Measurement{}) {
+	if ov.BorderRadius != nil {
 		base.BorderRadius = ov.BorderRadius
 	}
-	if ov.BorderColor != (snglcolor.Color{}) {
+	if ov.BorderColor != nil {
 		base.BorderColor = ov.BorderColor
 	}
-	if ov.BorderWidth != (Measurement{}) {
+	if ov.BorderWidth != nil {
 		base.BorderWidth = ov.BorderWidth
 	}
 	if ov.Border != "" {
@@ -996,16 +1084,16 @@ func __merge_Style(base, ov Style) Style {
 	if ov.BorderCollapse != "" {
 		base.BorderCollapse = ov.BorderCollapse
 	}
-	if ov.BorderStyle != "" {
+	if ov.BorderStyle != "unset" {
 		base.BorderStyle = ov.BorderStyle
 	}
-	if ov.Opacity != 0 {
+	if ov.Opacity != nil {
 		base.Opacity = ov.Opacity
 	}
 	if ov.Cursor != "" {
 		base.Cursor = ov.Cursor
 	}
-	if ov.Display != "" {
+	if ov.Display != "unset" {
 		base.Display = ov.Display
 	}
 	if ov.ListStyleType != "" {
@@ -1021,54 +1109,54 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	ListStyleType  string
@@ -1118,358 +1206,257 @@ func New() *Model {
 }
 
 func LookOf(s Style) fynelayout.Look {
-	var __lt1 Measurement
-	if (s.MarginTop != Measurement{Px: 0}) {
+	var __lt1 *Measurement
+	if s.MarginTop != nil {
 		__lt1 = s.MarginTop
 	} else {
-		var __lt0 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
+		var __lt0 *Measurement
+		if s.MarginY != nil {
 			__lt0 = s.MarginY
 		} else {
 			__lt0 = s.Margin
 		}
 		__lt1 = __lt0
 	}
-	var __lt3 Measurement
-	if (s.MarginTop != Measurement{Px: 0}) {
-		__lt3 = s.MarginTop
+	var __lt3 *Measurement
+	if s.MarginRight != nil {
+		__lt3 = s.MarginRight
 	} else {
-		var __lt2 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt2 = s.MarginY
+		var __lt2 *Measurement
+		if s.MarginX != nil {
+			__lt2 = s.MarginX
 		} else {
 			__lt2 = s.Margin
 		}
 		__lt3 = __lt2
 	}
-	var __lt5 Measurement
-	if (s.MarginTop != Measurement{Px: 0}) {
-		__lt5 = s.MarginTop
+	var __lt5 *Measurement
+	if s.MarginBottom != nil {
+		__lt5 = s.MarginBottom
 	} else {
-		var __lt4 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
+		var __lt4 *Measurement
+		if s.MarginY != nil {
 			__lt4 = s.MarginY
 		} else {
 			__lt4 = s.Margin
 		}
 		__lt5 = __lt4
 	}
-	var __lt7 Measurement
-	if (s.MarginRight != Measurement{Px: 0}) {
-		__lt7 = s.MarginRight
+	var __lt7 *Measurement
+	if s.MarginLeft != nil {
+		__lt7 = s.MarginLeft
 	} else {
-		var __lt6 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
+		var __lt6 *Measurement
+		if s.MarginX != nil {
 			__lt6 = s.MarginX
 		} else {
 			__lt6 = s.Margin
 		}
 		__lt7 = __lt6
 	}
-	var __lt9 Measurement
-	if (s.MarginRight != Measurement{Px: 0}) {
-		__lt9 = s.MarginRight
+	var __lt9 *Measurement
+	if s.PaddingTop != nil {
+		__lt9 = s.PaddingTop
 	} else {
-		var __lt8 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt8 = s.MarginX
+		var __lt8 *Measurement
+		if s.PaddingY != nil {
+			__lt8 = s.PaddingY
 		} else {
-			__lt8 = s.Margin
+			__lt8 = s.Padding
 		}
 		__lt9 = __lt8
 	}
-	var __lt11 Measurement
-	if (s.MarginRight != Measurement{Px: 0}) {
-		__lt11 = s.MarginRight
+	var __lt11 *Measurement
+	if s.PaddingRight != nil {
+		__lt11 = s.PaddingRight
 	} else {
-		var __lt10 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt10 = s.MarginX
+		var __lt10 *Measurement
+		if s.PaddingX != nil {
+			__lt10 = s.PaddingX
 		} else {
-			__lt10 = s.Margin
+			__lt10 = s.Padding
 		}
 		__lt11 = __lt10
 	}
-	var __lt13 Measurement
-	if (s.MarginBottom != Measurement{Px: 0}) {
-		__lt13 = s.MarginBottom
+	var __lt13 *Measurement
+	if s.PaddingBottom != nil {
+		__lt13 = s.PaddingBottom
 	} else {
-		var __lt12 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt12 = s.MarginY
+		var __lt12 *Measurement
+		if s.PaddingY != nil {
+			__lt12 = s.PaddingY
 		} else {
-			__lt12 = s.Margin
+			__lt12 = s.Padding
 		}
 		__lt13 = __lt12
 	}
-	var __lt15 Measurement
-	if (s.MarginBottom != Measurement{Px: 0}) {
-		__lt15 = s.MarginBottom
+	var __lt15 *Measurement
+	if s.PaddingLeft != nil {
+		__lt15 = s.PaddingLeft
 	} else {
-		var __lt14 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt14 = s.MarginY
+		var __lt14 *Measurement
+		if s.PaddingX != nil {
+			__lt14 = s.PaddingX
 		} else {
-			__lt14 = s.Margin
+			__lt14 = s.Padding
 		}
 		__lt15 = __lt14
 	}
-	var __lt17 Measurement
-	if (s.MarginBottom != Measurement{Px: 0}) {
-		__lt17 = s.MarginBottom
+	var __lt16 float32
+	if s.Width == nil {
+		__lt16 = 0.0
 	} else {
-		var __lt16 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt16 = s.MarginY
-		} else {
-			__lt16 = s.Margin
-		}
-		__lt17 = __lt16
+		__lt16 = float32(max(((*(s.Width)).Px + (14.0 * ((*(s.Width)).Em + (*(s.Width)).Rem))), 0.0))
 	}
-	var __lt19 Measurement
-	if (s.MarginLeft != Measurement{Px: 0}) {
-		__lt19 = s.MarginLeft
+	var __lt17 float32
+	if s.Height == nil {
+		__lt17 = 0.0
 	} else {
-		var __lt18 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt18 = s.MarginX
-		} else {
-			__lt18 = s.Margin
-		}
-		__lt19 = __lt18
+		__lt17 = float32(max(((*(s.Height)).Px + (14.0 * ((*(s.Height)).Em + (*(s.Height)).Rem))), 0.0))
 	}
-	var __lt21 Measurement
-	if (s.MarginLeft != Measurement{Px: 0}) {
-		__lt21 = s.MarginLeft
+	var __lt18 float32
+	if s.MinWidth == nil {
+		__lt18 = 0.0
 	} else {
-		var __lt20 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt20 = s.MarginX
-		} else {
-			__lt20 = s.Margin
-		}
-		__lt21 = __lt20
+		__lt18 = float32(max(((*(s.MinWidth)).Px + (14.0 * ((*(s.MinWidth)).Em + (*(s.MinWidth)).Rem))), 0.0))
 	}
-	var __lt23 Measurement
-	if (s.MarginLeft != Measurement{Px: 0}) {
-		__lt23 = s.MarginLeft
+	var __lt19 float32
+	if s.MaxWidth == nil {
+		__lt19 = 0.0
 	} else {
-		var __lt22 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt22 = s.MarginX
-		} else {
-			__lt22 = s.Margin
-		}
-		__lt23 = __lt22
+		__lt19 = float32(max(((*(s.MaxWidth)).Px + (14.0 * ((*(s.MaxWidth)).Em + (*(s.MaxWidth)).Rem))), 0.0))
 	}
-	var __lt25 Measurement
-	if (s.PaddingTop != Measurement{Px: 0}) {
-		__lt25 = s.PaddingTop
+	var __lt20 float32
+	if s.MaxHeight == nil {
+		__lt20 = 0.0
 	} else {
-		var __lt24 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt24 = s.PaddingY
-		} else {
-			__lt24 = s.Padding
-		}
-		__lt25 = __lt24
+		__lt20 = float32(max(((*(s.MaxHeight)).Px + (14.0 * ((*(s.MaxHeight)).Em + (*(s.MaxHeight)).Rem))), 0.0))
 	}
-	var __lt27 Measurement
-	if (s.PaddingTop != Measurement{Px: 0}) {
-		__lt27 = s.PaddingTop
+	var __lt21 float32
+	if s.Flex == nil {
+		__lt21 = 0.0
 	} else {
-		var __lt26 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt26 = s.PaddingY
-		} else {
-			__lt26 = s.Padding
-		}
-		__lt27 = __lt26
+		__lt21 = float32((*(s.Flex)))
 	}
-	var __lt29 Measurement
-	if (s.PaddingTop != Measurement{Px: 0}) {
-		__lt29 = s.PaddingTop
+	var __lt22 float32
+	if s.Gap == nil {
+		__lt22 = 0.0
 	} else {
-		var __lt28 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt28 = s.PaddingY
-		} else {
-			__lt28 = s.Padding
-		}
-		__lt29 = __lt28
+		__lt22 = float32(max(((*(s.Gap)).Px + (14.0 * ((*(s.Gap)).Em + (*(s.Gap)).Rem))), 0.0))
 	}
-	var __lt31 Measurement
-	if (s.PaddingRight != Measurement{Px: 0}) {
-		__lt31 = s.PaddingRight
-	} else {
-		var __lt30 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt30 = s.PaddingX
-		} else {
-			__lt30 = s.Padding
-		}
-		__lt31 = __lt30
-	}
-	var __lt33 Measurement
-	if (s.PaddingRight != Measurement{Px: 0}) {
-		__lt33 = s.PaddingRight
-	} else {
-		var __lt32 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt32 = s.PaddingX
-		} else {
-			__lt32 = s.Padding
-		}
-		__lt33 = __lt32
-	}
-	var __lt35 Measurement
-	if (s.PaddingRight != Measurement{Px: 0}) {
-		__lt35 = s.PaddingRight
-	} else {
-		var __lt34 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt34 = s.PaddingX
-		} else {
-			__lt34 = s.Padding
-		}
-		__lt35 = __lt34
-	}
-	var __lt37 Measurement
-	if (s.PaddingBottom != Measurement{Px: 0}) {
-		__lt37 = s.PaddingBottom
-	} else {
-		var __lt36 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt36 = s.PaddingY
-		} else {
-			__lt36 = s.Padding
-		}
-		__lt37 = __lt36
-	}
-	var __lt39 Measurement
-	if (s.PaddingBottom != Measurement{Px: 0}) {
-		__lt39 = s.PaddingBottom
-	} else {
-		var __lt38 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt38 = s.PaddingY
-		} else {
-			__lt38 = s.Padding
-		}
-		__lt39 = __lt38
-	}
-	var __lt41 Measurement
-	if (s.PaddingBottom != Measurement{Px: 0}) {
-		__lt41 = s.PaddingBottom
-	} else {
-		var __lt40 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt40 = s.PaddingY
-		} else {
-			__lt40 = s.Padding
-		}
-		__lt41 = __lt40
-	}
-	var __lt43 Measurement
-	if (s.PaddingLeft != Measurement{Px: 0}) {
-		__lt43 = s.PaddingLeft
-	} else {
-		var __lt42 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt42 = s.PaddingX
-		} else {
-			__lt42 = s.Padding
-		}
-		__lt43 = __lt42
-	}
-	var __lt45 Measurement
-	if (s.PaddingLeft != Measurement{Px: 0}) {
-		__lt45 = s.PaddingLeft
-	} else {
-		var __lt44 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt44 = s.PaddingX
-		} else {
-			__lt44 = s.Padding
-		}
-		__lt45 = __lt44
-	}
-	var __lt47 Measurement
-	if (s.PaddingLeft != Measurement{Px: 0}) {
-		__lt47 = s.PaddingLeft
-	} else {
-		var __lt46 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt46 = s.PaddingX
-		} else {
-			__lt46 = s.Padding
-		}
-		__lt47 = __lt46
-	}
-	var __lt48 int
+	var __lt23 int
 	switch s.AlignItems {
+	case "start":
+		__lt23 = 1
 	case "center":
-		__lt48 = 2
+		__lt23 = 2
 	case "end":
-		__lt48 = 3
+		__lt23 = 3
 	default:
-		__lt48 = 0
+		__lt23 = 0
 	}
-	var __lt49 int
+	var __lt24 int
 	switch s.JustifyContent {
 	case "center":
-		__lt49 = 1
+		__lt24 = 1
 	case "end":
-		__lt49 = 2
+		__lt24 = 2
 	case "spaceBetween":
-		__lt49 = 3
+		__lt24 = 3
 	case "spaceAround":
-		__lt49 = 4
+		__lt24 = 4
 	case "spaceEvenly":
-		__lt49 = 5
+		__lt24 = 5
 	default:
-		__lt49 = 0
+		__lt24 = 0
 	}
-	var __lt50 snglcolor.Color
-	if (s.Background.A == 0) || (s.Background == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt50 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+	var __lt25 snglcolor.Color
+	if s.Background == nil {
+		__lt25 = snglcolor.Color{}
 	} else {
-		__lt50 = s.Background
+		__lt25 = (*(s.Background))
 	}
-	var __lt51 snglcolor.Color
-	if (s.BorderColor.A == 0) || (s.BorderColor == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt51 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+	var __lt26 snglcolor.Color
+	if s.BorderColor == nil {
+		__lt26 = snglcolor.Color{}
 	} else {
-		__lt51 = s.BorderColor
+		__lt26 = (*(s.BorderColor))
 	}
-	var __lt52 snglcolor.Color
-	if (s.Color.A == 0) || (s.Color == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt52 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+	var __lt27 float32
+	if s.BorderWidth == nil {
+		__lt27 = 0.0
 	} else {
-		__lt52 = s.Color
+		__lt27 = float32(max(((*(s.BorderWidth)).Px + (14.0 * ((*(s.BorderWidth)).Em + (*(s.BorderWidth)).Rem))), 0.0))
 	}
-	var __lt53 int
+	var __lt28 float32
+	if s.BorderRadius == nil {
+		__lt28 = 0.0
+	} else {
+		__lt28 = float32(max(((*(s.BorderRadius)).Px + (14.0 * ((*(s.BorderRadius)).Em + (*(s.BorderRadius)).Rem))), 0.0))
+	}
+	var __lt29 snglcolor.Color
+	if s.Color == nil {
+		__lt29 = snglcolor.Color{}
+	} else {
+		__lt29 = (*(s.Color))
+	}
+	var __lt30 float32
+	if s.FontSize == nil {
+		__lt30 = 0.0
+	} else {
+		__lt30 = float32(max(((*(s.FontSize)).Px + (14.0 * ((*(s.FontSize)).Em + (*(s.FontSize)).Rem))), 0.0))
+	}
+	var __lt31 int
 	switch s.TextAlign {
+	case "left", "justify":
+		__lt31 = 1
 	case "center":
-		__lt53 = 2
+		__lt31 = 2
 	case "right":
-		__lt53 = 3
-	case "justify":
-		__lt53 = 1
+		__lt31 = 3
 	default:
-		__lt53 = 0
+		__lt31 = 0
 	}
-	var __lt54 int
+	var __lt32 int
 	switch s.WhiteSpace {
 	case "pre", "nowrap":
-		__lt54 = 1
+		__lt32 = 1
 	case "preWrap", "preLine":
-		__lt54 = 2
+		__lt32 = 2
 	default:
-		__lt54 = 0
+		__lt32 = 0
 	}
-	look := fynelayout.Look{MarginTop: float32(max((__lt1.Px + (14.0 * (__lt3.Em + __lt5.Rem))), 0.0)), MarginRight: float32(max((__lt7.Px + (14.0 * (__lt9.Em + __lt11.Rem))), 0.0)), MarginBottom: float32(max((__lt13.Px + (14.0 * (__lt15.Em + __lt17.Rem))), 0.0)), MarginLeft: float32(max((__lt19.Px + (14.0 * (__lt21.Em + __lt23.Rem))), 0.0)), PaddingTop: float32(max((__lt25.Px + (14.0 * (__lt27.Em + __lt29.Rem))), 0.0)), PaddingRight: float32(max((__lt31.Px + (14.0 * (__lt33.Em + __lt35.Rem))), 0.0)), PaddingBottom: float32(max((__lt37.Px + (14.0 * (__lt39.Em + __lt41.Rem))), 0.0)), PaddingLeft: float32(max((__lt43.Px + (14.0 * (__lt45.Em + __lt47.Rem))), 0.0)), Width: float32(max((s.Width.Px + (14.0 * (s.Width.Em + s.Width.Rem))), 0.0)), Height: float32(max((s.Height.Px + (14.0 * (s.Height.Em + s.Height.Rem))), 0.0)), MinWidth: float32(max((s.MinWidth.Px + (14.0 * (s.MinWidth.Em + s.MinWidth.Rem))), 0.0)), MaxWidth: float32(max((s.MaxWidth.Px + (14.0 * (s.MaxWidth.Em + s.MaxWidth.Rem))), 0.0)), MaxHeight: float32(max((s.MaxHeight.Px + (14.0 * (s.MaxHeight.Em + s.MaxHeight.Rem))), 0.0)), Grow: float32(s.Flex), Gap: float32(max((s.Gap.Px + (14.0 * (s.Gap.Em + s.Gap.Rem))), 0.0)), Cross: __lt48, Justify: __lt49, Fill: __lt50, Stroke: __lt51, StrokeWidth: float32(max((s.BorderWidth.Px + (14.0 * (s.BorderWidth.Em + s.BorderWidth.Rem))), 0.0)), Radius: float32(max((s.BorderRadius.Px + (14.0 * (s.BorderRadius.Em + s.BorderRadius.Rem))), 0.0)), TextColor: __lt52, TextSize: float32(max((s.FontSize.Px + (14.0 * (s.FontSize.Em + s.FontSize.Rem))), 0.0)), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: __lt53, Wrap: __lt54, Hidden: (s.Display == "none")}
+	var __lt33 int
+	switch s.Cursor {
+	case "", "auto":
+		__lt33 = 0
+	case "text", "vertical-text":
+		__lt33 = 2
+	case "crosshair", "cell":
+		__lt33 = 3
+	case "pointer":
+		__lt33 = 4
+	case "ew-resize", "col-resize", "e-resize", "w-resize":
+		__lt33 = 5
+	case "ns-resize", "row-resize", "n-resize", "s-resize":
+		__lt33 = 6
+	case "none":
+		__lt33 = 7
+	default:
+		__lt33 = 1
+	}
+	look := fynelayout.Look{MarginTop: Inset(__lt1), MarginRight: Inset(__lt3), MarginBottom: Inset(__lt5), MarginLeft: Inset(__lt7), PaddingTop: Inset(__lt9), PaddingRight: Inset(__lt11), PaddingBottom: Inset(__lt13), PaddingLeft: Inset(__lt15), Width: __lt16, Height: __lt17, MinWidth: __lt18, MaxWidth: __lt19, MaxHeight: __lt20, Grow: __lt21, Gap: __lt22, Cross: __lt23, Justify: __lt24, Fill: __lt25, Stroke: __lt26, StrokeWidth: __lt27, Radius: __lt28, TextColor: __lt29, TextSize: __lt30, Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: __lt31, Wrap: __lt32, Cursor: __lt33, Hidden: (s.Display == "none")}
 	return look
+}
+
+func Inset(m__r0 *Measurement) float32 {
+	var __lt34 float32
+	if m__r0 == nil {
+		__lt34 = 0.0
+	} else {
+		__lt34 = float32(max(((*(m__r0)).Px + (14.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0))
+	}
+	return __lt34
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -1499,12 +1486,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						__n3.SetSize("medium")
 						__n3.SetVariant("circle")
 						__n3.SetAlt("")
-						__n3.SetStyle(Style{})
+						__n3.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
 					} else {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n3__new := newAvatarInstance(m, r, "medium", "circle", "", Style{}, func() {
+						__n3__new := newAvatarInstance(m, r, "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, func() {
 						})
 						__n3 = __n3__new
 					}
@@ -1553,12 +1540,12 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 						__n4.SetSize("medium")
 						__n4.SetVariant("circle")
 						__n4.SetAlt("")
-						__n4.SetStyle(Style{})
+						__n4.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
 					} else {
 						if len(m.__inst1_live) > __inst1_i {
 							m.__inst1_live[__inst1_i].Destroy()
 						}
-						__n4__new := newAvatarInstance(m, "if", "medium", "circle", "", Style{}, func() {
+						__n4__new := newAvatarInstance(m, "if", "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, func() {
 						})
 						__n4 = __n4__new
 					}
@@ -1707,7 +1694,7 @@ func newAvatarInstance(__model *Model, __a_initials string, __a_size string, __a
 	c.__n0 = widget.NewButton("", nil)
 	c.__n0__box = fynelayout.NewBox(c.__n0)
 	c.__n0.SetText(((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
-	c.__n0__box.SetLook(LookOf(__merge_Style(Style{}, c.__prop_style)))
+	c.__n0__box.SetLook(LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, c.__prop_style)))
 	c.__n0.OnTapped = func() {
 		c.hits = (c.hits + 1)
 		c.__n0.SetText(((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
@@ -1735,7 +1722,7 @@ func (c *AvatarInstance) SetAlt(__v string) {
 
 func (c *AvatarInstance) SetStyle(__v Style) {
 	c.__prop_style = __v
-	c.__n0__box.SetLook(LookOf(__merge_Style(Style{}, c.__prop_style)))
+	c.__n0__box.SetLook(LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, c.__prop_style)))
 }
 
 func (c *AvatarInstance) SetClick(__v func()) {
@@ -1777,131 +1764,138 @@ import (
 	"fmt"
 )
 
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
 func __merge_Style(base, ov Style) Style {
-	if ov.Padding != (Measurement{}) {
+	if ov.Padding != nil {
 		base.Padding = ov.Padding
 	}
-	if ov.PaddingTop != (Measurement{}) {
+	if ov.PaddingTop != nil {
 		base.PaddingTop = ov.PaddingTop
 	}
-	if ov.PaddingRight != (Measurement{}) {
+	if ov.PaddingRight != nil {
 		base.PaddingRight = ov.PaddingRight
 	}
-	if ov.PaddingBottom != (Measurement{}) {
+	if ov.PaddingBottom != nil {
 		base.PaddingBottom = ov.PaddingBottom
 	}
-	if ov.PaddingLeft != (Measurement{}) {
+	if ov.PaddingLeft != nil {
 		base.PaddingLeft = ov.PaddingLeft
 	}
-	if ov.PaddingX != (Measurement{}) {
+	if ov.PaddingX != nil {
 		base.PaddingX = ov.PaddingX
 	}
-	if ov.PaddingY != (Measurement{}) {
+	if ov.PaddingY != nil {
 		base.PaddingY = ov.PaddingY
 	}
-	if ov.Margin != (Measurement{}) {
+	if ov.Margin != nil {
 		base.Margin = ov.Margin
 	}
-	if ov.MarginTop != (Measurement{}) {
+	if ov.MarginTop != nil {
 		base.MarginTop = ov.MarginTop
 	}
-	if ov.MarginRight != (Measurement{}) {
+	if ov.MarginRight != nil {
 		base.MarginRight = ov.MarginRight
 	}
-	if ov.MarginBottom != (Measurement{}) {
+	if ov.MarginBottom != nil {
 		base.MarginBottom = ov.MarginBottom
 	}
-	if ov.MarginLeft != (Measurement{}) {
+	if ov.MarginLeft != nil {
 		base.MarginLeft = ov.MarginLeft
 	}
-	if ov.MarginX != (Measurement{}) {
+	if ov.MarginX != nil {
 		base.MarginX = ov.MarginX
 	}
-	if ov.MarginY != (Measurement{}) {
+	if ov.MarginY != nil {
 		base.MarginY = ov.MarginY
 	}
-	if ov.Gap != (Measurement{}) {
+	if ov.Gap != nil {
 		base.Gap = ov.Gap
 	}
-	if ov.Width != (Measurement{}) {
+	if ov.Width != nil {
 		base.Width = ov.Width
 	}
-	if ov.MinWidth != (Measurement{}) {
+	if ov.MinWidth != nil {
 		base.MinWidth = ov.MinWidth
 	}
-	if ov.Height != (Measurement{}) {
+	if ov.Height != nil {
 		base.Height = ov.Height
 	}
-	if ov.MaxWidth != (Measurement{}) {
+	if ov.MaxWidth != nil {
 		base.MaxWidth = ov.MaxWidth
 	}
-	if ov.MaxHeight != (Measurement{}) {
+	if ov.MaxHeight != nil {
 		base.MaxHeight = ov.MaxHeight
 	}
-	if ov.Flex != 0 {
+	if ov.Flex != nil {
 		base.Flex = ov.Flex
 	}
-	if ov.FlexDirection != "" {
+	if ov.FlexDirection != "unset" {
 		base.FlexDirection = ov.FlexDirection
 	}
-	if ov.AlignItems != "" {
+	if ov.AlignItems != "unset" {
 		base.AlignItems = ov.AlignItems
 	}
-	if ov.JustifyContent != "" {
+	if ov.JustifyContent != "unset" {
 		base.JustifyContent = ov.JustifyContent
 	}
-	if ov.Position != "" {
+	if ov.Position != "unset" {
 		base.Position = ov.Position
 	}
-	if ov.Top != (Measurement{}) {
+	if ov.Top != nil {
 		base.Top = ov.Top
 	}
-	if ov.Bottom != (Measurement{}) {
+	if ov.Bottom != nil {
 		base.Bottom = ov.Bottom
 	}
-	if ov.Left != (Measurement{}) {
+	if ov.Left != nil {
 		base.Left = ov.Left
 	}
-	if ov.Right != (Measurement{}) {
+	if ov.Right != nil {
 		base.Right = ov.Right
 	}
-	if ov.ZIndex != 0 {
+	if ov.ZIndex != nil {
 		base.ZIndex = ov.ZIndex
 	}
-	if ov.Color != (snglcolor.Color{}) {
+	if ov.Color != nil {
 		base.Color = ov.Color
 	}
-	if ov.FontSize != (Measurement{}) {
+	if ov.FontSize != nil {
 		base.FontSize = ov.FontSize
 	}
 	if ov.FontFamily != "" {
 		base.FontFamily = ov.FontFamily
 	}
-	if ov.FontWeight != "" {
+	if ov.FontWeight != "unset" {
 		base.FontWeight = ov.FontWeight
 	}
-	if ov.FontStyle != "" {
+	if ov.FontStyle != "unset" {
 		base.FontStyle = ov.FontStyle
 	}
-	if ov.TextAlign != "" {
+	if ov.TextAlign != "unset" {
 		base.TextAlign = ov.TextAlign
 	}
-	if ov.MaxLines != 0 {
+	if ov.MaxLines != nil {
 		base.MaxLines = ov.MaxLines
 	}
-	if ov.WhiteSpace != "" {
+	if ov.WhiteSpace != "unset" {
 		base.WhiteSpace = ov.WhiteSpace
 	}
-	if ov.Background != (snglcolor.Color{}) {
+	if ov.Background != nil {
 		base.Background = ov.Background
 	}
-	if ov.BorderRadius != (Measurement{}) {
+	if ov.BorderRadius != nil {
 		base.BorderRadius = ov.BorderRadius
 	}
-	if ov.BorderColor != (snglcolor.Color{}) {
+	if ov.BorderColor != nil {
 		base.BorderColor = ov.BorderColor
 	}
-	if ov.BorderWidth != (Measurement{}) {
+	if ov.BorderWidth != nil {
 		base.BorderWidth = ov.BorderWidth
 	}
 	if ov.Border != "" {
@@ -1916,16 +1910,16 @@ func __merge_Style(base, ov Style) Style {
 	if ov.BorderCollapse != "" {
 		base.BorderCollapse = ov.BorderCollapse
 	}
-	if ov.BorderStyle != "" {
+	if ov.BorderStyle != "unset" {
 		base.BorderStyle = ov.BorderStyle
 	}
-	if ov.Opacity != 0 {
+	if ov.Opacity != nil {
 		base.Opacity = ov.Opacity
 	}
 	if ov.Cursor != "" {
 		base.Cursor = ov.Cursor
 	}
-	if ov.Display != "" {
+	if ov.Display != "unset" {
 		base.Display = ov.Display
 	}
 	if ov.ListStyleType != "" {
@@ -1941,54 +1935,54 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	ListStyleType  string
@@ -2038,41 +2032,69 @@ func New() *Model {
 }
 
 func LookOf(s Style) gtk4rt.Look {
-	look := LookHidden(s, (s.Display == "none"))
+	look := LookHidden(s, (s.Display == "none"), false, 0)
 	return look
 }
 
-func LookHidden(s Style, hidden bool) gtk4rt.Look {
-	var __lt1 int
-	switch s.AlignItems {
-	case "center":
-		__lt1 = 2
-	case "end":
-		__lt1 = 3
-	case "baseline":
-		__lt1 = 4
-	default:
-		__lt1 = 0
+func LookHidden(s Style, hidden bool, spaced bool, spacing int) gtk4rt.Look {
+	var __lt2 float64
+	if s.Width == nil {
+		__lt2 = 0.0
+	} else {
+		__lt2 = max(((*(s.Width)).Px + (16.0 * ((*(s.Width)).Em + (*(s.Width)).Rem))), 0.0)
 	}
-	var __lt2 int
+	var __lt3 float64
+	if s.Height == nil {
+		__lt3 = 0.0
+	} else {
+		__lt3 = max(((*(s.Height)).Px + (16.0 * ((*(s.Height)).Em + (*(s.Height)).Rem))), 0.0)
+	}
+	var __lt4 float64
+	if s.Flex == nil {
+		__lt4 = 0.0
+	} else {
+		__lt4 = (*(s.Flex))
+	}
+	var __lt5 int
+	switch s.AlignItems {
+	case "start":
+		__lt5 = 1
+	case "center":
+		__lt5 = 2
+	case "end":
+		__lt5 = 3
+	case "baseline":
+		__lt5 = 4
+	default:
+		__lt5 = 0
+	}
+	var __lt6 int
 	switch s.TextAlign {
 	case "center":
-		__lt2 = 1
+		__lt6 = 1
 	case "right":
-		__lt2 = 2
+		__lt6 = 2
 	case "justify":
-		__lt2 = 3
+		__lt6 = 3
+	case "left":
+		__lt6 = 4
 	default:
-		__lt2 = 0
+		__lt6 = 0
 	}
-	var __lt3 int
+	var __lt7 int
+	if s.MaxLines == nil {
+		__lt7 = 0
+	} else {
+		__lt7 = (*(s.MaxLines))
+	}
+	var __lt8 int
 	switch s.WhiteSpace {
 	case "pre", "nowrap":
-		__lt3 = 1
+		__lt8 = 1
 	case "preWrap", "preLine":
-		__lt3 = 2
+		__lt8 = 2
 	default:
-		__lt3 = 0
+		__lt8 = 0
 	}
 	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: __lt1, TextAlign: __lt2, Lines: s.MaxLines, Wrap: __lt3, Hidden: hidden, Cursor: s.Cursor}
 	return look
@@ -3437,6 +3459,8 @@ func CssOf(s Style) string {
 	}
 	var __lt230 string
 	switch s.FontWeight {
+	case "normal":
+		__lt33 = "normal"
 	case "bold":
 		__lt230 = "bold"
 	case "bolder":
@@ -3465,6 +3489,8 @@ func CssOf(s Style) string {
 	}
 	var __lt233 string
 	switch s.FontStyle {
+	case "normal":
+		__lt34 = "normal"
 	case "italic":
 		__lt233 = "italic"
 	case "oblique":
@@ -3643,6 +3669,32 @@ func CssOf(s Style) string {
 	return css
 }
 
+func Decl(name string, value string) string {
+	var __lt47 string
+	if value == "" {
+		__lt47 = ""
+	} else {
+		__lt47 = (((name + ": ") + value) + "; ")
+	}
+	return __lt47
+}
+
+func Length(m__r0 *Measurement) string {
+	var __lt49 string
+	if m__r0 == nil {
+		__lt49 = ""
+	} else {
+		var __lt48 float64
+		if m__r0 == nil {
+			__lt48 = 0.0
+		} else {
+			__lt48 = max(((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
+		}
+		__lt49 = (fmt.Sprint(__lt48) + "px")
+	}
+	return __lt49
+}
+
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -3670,12 +3722,12 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						__n3.SetSize("medium")
 						__n3.SetVariant("circle")
 						__n3.SetAlt("")
-						__n3.SetStyle(Style{})
+						__n3.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
 					} else {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n3__new := newAvatarInstance(m, r, "medium", "circle", "", Style{}, func() {
+						__n3__new := newAvatarInstance(m, r, "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, func() {
 						})
 						__n3 = __n3__new
 					}
@@ -3724,12 +3776,12 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 						__n4.SetSize("medium")
 						__n4.SetVariant("circle")
 						__n4.SetAlt("")
-						__n4.SetStyle(Style{})
+						__n4.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
 					} else {
 						if len(m.__inst1_live) > __inst1_i {
 							m.__inst1_live[__inst1_i].Destroy()
 						}
-						__n4__new := newAvatarInstance(m, "if", "medium", "circle", "", Style{}, func() {
+						__n4__new := newAvatarInstance(m, "if", "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, func() {
 						})
 						__n4 = __n4__new
 					}
@@ -3820,7 +3872,7 @@ func newAvatarInstance(__model *Model, __a_initials string, __a_size string, __a
 	c.__slot1 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
-	gtk4rt.SetLook(c.__n0, LookOf(__merge_Style(Style{}, c.__prop_style)))
+	gtk4rt.SetLook(c.__n0, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, c.__prop_style)))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.hits = (c.hits + 1)
 		gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
@@ -3849,7 +3901,7 @@ func (c *AvatarInstance) SetAlt(__v string) {
 
 func (c *AvatarInstance) SetStyle(__v Style) {
 	c.__prop_style = __v
-	gtk4rt.SetLook(c.__n0, LookOf(__merge_Style(Style{}, c.__prop_style)))
+	gtk4rt.SetLook(c.__n0, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, c.__prop_style)))
 }
 
 func (c *AvatarInstance) SetClick(__v func()) {
@@ -3913,7 +3965,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__n6 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n6, 1)
-	gtk4rt.BoxSetSpacing(m.__n6, 6)
+	gtk4rt.SetLook(m.__n6, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n2 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n2, ("top " + fmt.Sprint(m.hits__inst0)))
 	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
@@ -3975,54 +4027,54 @@ data class Measurement(
 )
 
 data class Style(
-    var padding: Measurement = Measurement(),
-    var paddingTop: Measurement = Measurement(),
-    var paddingRight: Measurement = Measurement(),
-    var paddingBottom: Measurement = Measurement(),
-    var paddingLeft: Measurement = Measurement(),
-    var paddingX: Measurement = Measurement(),
-    var paddingY: Measurement = Measurement(),
-    var margin: Measurement = Measurement(),
-    var marginTop: Measurement = Measurement(),
-    var marginRight: Measurement = Measurement(),
-    var marginBottom: Measurement = Measurement(),
-    var marginLeft: Measurement = Measurement(),
-    var marginX: Measurement = Measurement(),
-    var marginY: Measurement = Measurement(),
-    var gap: Measurement = Measurement(),
-    var width: Measurement = Measurement(),
-    var minWidth: Measurement = Measurement(),
-    var height: Measurement = Measurement(),
-    var maxWidth: Measurement = Measurement(),
-    var maxHeight: Measurement = Measurement(),
-    var flex: Double = 0.0,
-    var flexDirection: SnglFlexDirection = SnglFlexDirection.ROW,
-    var alignItems: SnglAlignment = SnglAlignment.START,
-    var justifyContent: SnglJustification = SnglJustification.START,
-    var position: SnglPosition = SnglPosition.STATIC,
-    var top: Measurement = Measurement(),
-    var bottom: Measurement = Measurement(),
-    var left: Measurement = Measurement(),
-    var right: Measurement = Measurement(),
-    var zIndex: Int = 0,
-    var color: Color = Color(),
-    var fontSize: Measurement = Measurement(),
+    var padding: Measurement? = null,
+    var paddingTop: Measurement? = null,
+    var paddingRight: Measurement? = null,
+    var paddingBottom: Measurement? = null,
+    var paddingLeft: Measurement? = null,
+    var paddingX: Measurement? = null,
+    var paddingY: Measurement? = null,
+    var margin: Measurement? = null,
+    var marginTop: Measurement? = null,
+    var marginRight: Measurement? = null,
+    var marginBottom: Measurement? = null,
+    var marginLeft: Measurement? = null,
+    var marginX: Measurement? = null,
+    var marginY: Measurement? = null,
+    var gap: Measurement? = null,
+    var width: Measurement? = null,
+    var minWidth: Measurement? = null,
+    var height: Measurement? = null,
+    var maxWidth: Measurement? = null,
+    var maxHeight: Measurement? = null,
+    var flex: Double? = null,
+    var flexDirection: SnglFlexDirection = SnglFlexDirection.UNSET,
+    var alignItems: SnglAlignment = SnglAlignment.UNSET,
+    var justifyContent: SnglJustification = SnglJustification.UNSET,
+    var position: SnglPosition = SnglPosition.UNSET,
+    var top: Measurement? = null,
+    var bottom: Measurement? = null,
+    var left: Measurement? = null,
+    var right: Measurement? = null,
+    var zIndex: Int? = null,
+    var color: Color? = null,
+    var fontSize: Measurement? = null,
     var fontFamily: String = "",
-    var fontWeight: SnglFontWeight = SnglFontWeight.NORMAL,
-    var fontStyle: SnglFontStyle = SnglFontStyle.NORMAL,
-    var textAlign: SnglTextAlign = SnglTextAlign.LEFT,
-    var maxLines: Int = 0,
-    var whiteSpace: SnglWhiteSpace = SnglWhiteSpace.NORMAL,
-    var background: Color = Color(),
-    var borderRadius: Measurement = Measurement(),
-    var borderColor: Color = Color(),
-    var borderWidth: Measurement = Measurement(),
+    var fontWeight: SnglFontWeight = SnglFontWeight.UNSET,
+    var fontStyle: SnglFontStyle = SnglFontStyle.UNSET,
+    var textAlign: SnglTextAlign = SnglTextAlign.UNSET,
+    var maxLines: Int? = null,
+    var whiteSpace: SnglWhiteSpace = SnglWhiteSpace.UNSET,
+    var background: Color? = null,
+    var borderRadius: Measurement? = null,
+    var borderColor: Color? = null,
+    var borderWidth: Measurement? = null,
     var border: String = "",
     var borderBottom: String = "",
     var borderLeft: String = "",
     var borderCollapse: String = "",
-    var borderStyle: SnglBorderStyle = SnglBorderStyle.NONE,
-    var opacity: Double = 0.0,
+    var borderStyle: SnglBorderStyle = SnglBorderStyle.UNSET,
+    var opacity: Double? = null,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.FLEX,
     var listStyleType: SnglListStyle = SnglListStyle.NONE
@@ -4046,54 +4098,54 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 fun __merge_Style(base: Style, ov: Style): Style =
     base.copy(
-        padding = if (ov.padding != Measurement()) ov.padding else base.padding,
-        paddingTop = if (ov.paddingTop != Measurement()) ov.paddingTop else base.paddingTop,
-        paddingRight = if (ov.paddingRight != Measurement()) ov.paddingRight else base.paddingRight,
-        paddingBottom = if (ov.paddingBottom != Measurement()) ov.paddingBottom else base.paddingBottom,
-        paddingLeft = if (ov.paddingLeft != Measurement()) ov.paddingLeft else base.paddingLeft,
-        paddingX = if (ov.paddingX != Measurement()) ov.paddingX else base.paddingX,
-        paddingY = if (ov.paddingY != Measurement()) ov.paddingY else base.paddingY,
-        margin = if (ov.margin != Measurement()) ov.margin else base.margin,
-        marginTop = if (ov.marginTop != Measurement()) ov.marginTop else base.marginTop,
-        marginRight = if (ov.marginRight != Measurement()) ov.marginRight else base.marginRight,
-        marginBottom = if (ov.marginBottom != Measurement()) ov.marginBottom else base.marginBottom,
-        marginLeft = if (ov.marginLeft != Measurement()) ov.marginLeft else base.marginLeft,
-        marginX = if (ov.marginX != Measurement()) ov.marginX else base.marginX,
-        marginY = if (ov.marginY != Measurement()) ov.marginY else base.marginY,
-        gap = if (ov.gap != Measurement()) ov.gap else base.gap,
-        width = if (ov.width != Measurement()) ov.width else base.width,
-        minWidth = if (ov.minWidth != Measurement()) ov.minWidth else base.minWidth,
-        height = if (ov.height != Measurement()) ov.height else base.height,
-        maxWidth = if (ov.maxWidth != Measurement()) ov.maxWidth else base.maxWidth,
-        maxHeight = if (ov.maxHeight != Measurement()) ov.maxHeight else base.maxHeight,
-        flex = if (ov.flex != 0.0) ov.flex else base.flex,
-        flexDirection = if (ov.flexDirection != SnglFlexDirection.ROW) ov.flexDirection else base.flexDirection,
-        alignItems = if (ov.alignItems != SnglAlignment.START) ov.alignItems else base.alignItems,
-        justifyContent = if (ov.justifyContent != SnglJustification.START) ov.justifyContent else base.justifyContent,
-        position = if (ov.position != SnglPosition.STATIC) ov.position else base.position,
-        top = if (ov.top != Measurement()) ov.top else base.top,
-        bottom = if (ov.bottom != Measurement()) ov.bottom else base.bottom,
-        left = if (ov.left != Measurement()) ov.left else base.left,
-        right = if (ov.right != Measurement()) ov.right else base.right,
-        zIndex = if (ov.zIndex != 0) ov.zIndex else base.zIndex,
-        color = if (ov.color != Color()) ov.color else base.color,
-        fontSize = if (ov.fontSize != Measurement()) ov.fontSize else base.fontSize,
+        padding = ov.padding ?: base.padding,
+        paddingTop = ov.paddingTop ?: base.paddingTop,
+        paddingRight = ov.paddingRight ?: base.paddingRight,
+        paddingBottom = ov.paddingBottom ?: base.paddingBottom,
+        paddingLeft = ov.paddingLeft ?: base.paddingLeft,
+        paddingX = ov.paddingX ?: base.paddingX,
+        paddingY = ov.paddingY ?: base.paddingY,
+        margin = ov.margin ?: base.margin,
+        marginTop = ov.marginTop ?: base.marginTop,
+        marginRight = ov.marginRight ?: base.marginRight,
+        marginBottom = ov.marginBottom ?: base.marginBottom,
+        marginLeft = ov.marginLeft ?: base.marginLeft,
+        marginX = ov.marginX ?: base.marginX,
+        marginY = ov.marginY ?: base.marginY,
+        gap = ov.gap ?: base.gap,
+        width = ov.width ?: base.width,
+        minWidth = ov.minWidth ?: base.minWidth,
+        height = ov.height ?: base.height,
+        maxWidth = ov.maxWidth ?: base.maxWidth,
+        maxHeight = ov.maxHeight ?: base.maxHeight,
+        flex = ov.flex ?: base.flex,
+        flexDirection = if (ov.flexDirection != SnglFlexDirection.UNSET) ov.flexDirection else base.flexDirection,
+        alignItems = if (ov.alignItems != SnglAlignment.UNSET) ov.alignItems else base.alignItems,
+        justifyContent = if (ov.justifyContent != SnglJustification.UNSET) ov.justifyContent else base.justifyContent,
+        position = if (ov.position != SnglPosition.UNSET) ov.position else base.position,
+        top = ov.top ?: base.top,
+        bottom = ov.bottom ?: base.bottom,
+        left = ov.left ?: base.left,
+        right = ov.right ?: base.right,
+        zIndex = ov.zIndex ?: base.zIndex,
+        color = ov.color ?: base.color,
+        fontSize = ov.fontSize ?: base.fontSize,
         fontFamily = if (ov.fontFamily != "") ov.fontFamily else base.fontFamily,
-        fontWeight = if (ov.fontWeight != SnglFontWeight.NORMAL) ov.fontWeight else base.fontWeight,
-        fontStyle = if (ov.fontStyle != SnglFontStyle.NORMAL) ov.fontStyle else base.fontStyle,
-        textAlign = if (ov.textAlign != SnglTextAlign.LEFT) ov.textAlign else base.textAlign,
-        maxLines = if (ov.maxLines != 0) ov.maxLines else base.maxLines,
-        whiteSpace = if (ov.whiteSpace != SnglWhiteSpace.NORMAL) ov.whiteSpace else base.whiteSpace,
-        background = if (ov.background != Color()) ov.background else base.background,
-        borderRadius = if (ov.borderRadius != Measurement()) ov.borderRadius else base.borderRadius,
-        borderColor = if (ov.borderColor != Color()) ov.borderColor else base.borderColor,
-        borderWidth = if (ov.borderWidth != Measurement()) ov.borderWidth else base.borderWidth,
+        fontWeight = if (ov.fontWeight != SnglFontWeight.UNSET) ov.fontWeight else base.fontWeight,
+        fontStyle = if (ov.fontStyle != SnglFontStyle.UNSET) ov.fontStyle else base.fontStyle,
+        textAlign = if (ov.textAlign != SnglTextAlign.UNSET) ov.textAlign else base.textAlign,
+        maxLines = ov.maxLines ?: base.maxLines,
+        whiteSpace = if (ov.whiteSpace != SnglWhiteSpace.UNSET) ov.whiteSpace else base.whiteSpace,
+        background = ov.background ?: base.background,
+        borderRadius = ov.borderRadius ?: base.borderRadius,
+        borderColor = ov.borderColor ?: base.borderColor,
+        borderWidth = ov.borderWidth ?: base.borderWidth,
         border = if (ov.border != "") ov.border else base.border,
         borderBottom = if (ov.borderBottom != "") ov.borderBottom else base.borderBottom,
         borderLeft = if (ov.borderLeft != "") ov.borderLeft else base.borderLeft,
         borderCollapse = if (ov.borderCollapse != "") ov.borderCollapse else base.borderCollapse,
-        borderStyle = if (ov.borderStyle != SnglBorderStyle.NONE) ov.borderStyle else base.borderStyle,
-        opacity = if (ov.opacity != 0.0) ov.opacity else base.opacity,
+        borderStyle = if (ov.borderStyle != SnglBorderStyle.UNSET) ov.borderStyle else base.borderStyle,
+        opacity = ov.opacity ?: base.opacity,
         cursor = if (ov.cursor != "") ov.cursor else base.cursor,
         display = if (ov.display != SnglDisplay.FLEX) ov.display else base.display,
         listStyleType = if (ov.listStyleType != SnglListStyle.NONE) ov.listStyleType else base.listStyleType,
@@ -4115,6 +4167,7 @@ enum class SnglAvatarVariant(private val sngl: String) {
 }
 
 enum class SnglFlexDirection(private val sngl: String) {
+    UNSET("unset"),
     ROW("row"),
     COLUMN("column"),
     ROWREVERSE("rowReverse"),
@@ -4124,6 +4177,7 @@ enum class SnglFlexDirection(private val sngl: String) {
 }
 
 enum class SnglAlignment(private val sngl: String) {
+    UNSET("unset"),
     START("start"),
     CENTER("center"),
     END("end"),
@@ -4134,6 +4188,7 @@ enum class SnglAlignment(private val sngl: String) {
 }
 
 enum class SnglJustification(private val sngl: String) {
+    UNSET("unset"),
     START("start"),
     CENTER("center"),
     END("end"),
@@ -4145,6 +4200,7 @@ enum class SnglJustification(private val sngl: String) {
 }
 
 enum class SnglPosition(private val sngl: String) {
+    UNSET("unset"),
     STATIC("static"),
     RELATIVE("relative"),
     ABSOLUTE("absolute"),
@@ -4155,6 +4211,7 @@ enum class SnglPosition(private val sngl: String) {
 }
 
 enum class SnglFontWeight(private val sngl: String) {
+    UNSET("unset"),
     NORMAL("normal"),
     BOLD("bold"),
     LIGHTER("lighter"),
@@ -4164,6 +4221,7 @@ enum class SnglFontWeight(private val sngl: String) {
 }
 
 enum class SnglFontStyle(private val sngl: String) {
+    UNSET("unset"),
     NORMAL("normal"),
     ITALIC("italic"),
     OBLIQUE("oblique");
@@ -4172,6 +4230,7 @@ enum class SnglFontStyle(private val sngl: String) {
 }
 
 enum class SnglTextAlign(private val sngl: String) {
+    UNSET("unset"),
     LEFT("left"),
     CENTER("center"),
     RIGHT("right"),
@@ -4181,6 +4240,7 @@ enum class SnglTextAlign(private val sngl: String) {
 }
 
 enum class SnglWhiteSpace(private val sngl: String) {
+    UNSET("unset"),
     NORMAL("normal"),
     PRE("pre"),
     PREWRAP("preWrap"),
@@ -4191,6 +4251,7 @@ enum class SnglWhiteSpace(private val sngl: String) {
 }
 
 enum class SnglBorderStyle(private val sngl: String) {
+    UNSET("unset"),
     NONE("none"),
     SOLID("solid"),
     DASHED("dashed"),
@@ -4201,6 +4262,7 @@ enum class SnglBorderStyle(private val sngl: String) {
 }
 
 enum class SnglDisplay(private val sngl: String) {
+    UNSET("unset"),
     FLEX("flex"),
     BLOCK("block"),
     INLINE("inline"),
@@ -4213,6 +4275,7 @@ enum class SnglDisplay(private val sngl: String) {
 }
 
 enum class SnglListStyle(private val sngl: String) {
+    UNSET("unset"),
     NONE("none"),
     DISC("disc"),
     CIRCLE("circle"),
@@ -4260,7 +4323,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun Avatar(initials: String = "", size: SnglSizePreset = SnglSizePreset.MEDIUM, variant: SnglAvatarVariant = SnglAvatarVariant.CIRCLE, alt: String = "", style: Style = Style(), __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, src: (@Composable () -> Unit)? = null, fallback: (@Composable () -> Unit)? = null, onClick: (() -> Unit)? = null, __testTag: String = "") {
+fun Avatar(initials: String = "", size: SnglSizePreset = SnglSizePreset.MEDIUM, variant: SnglAvatarVariant = SnglAvatarVariant.CIRCLE, alt: String = "", style: Style = Style(), __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShare, src: (@Composable () -> Unit)? = null, fallback: (@Composable () -> Unit)? = null, onClick: (() -> Unit)? = null, __testTag: String = "") {
     var failed by remember { mutableStateOf(false) }
     var hits by remember { mutableStateOf(0) }
 
@@ -4271,59 +4334,89 @@ fun Avatar(initials: String = "", size: SnglSizePreset = SnglSizePreset.MEDIUM, 
     }
 }
 
-fun surfaceModifierOf(s: Style, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if ((s.flex == 0.0)) (if ((s == Style())) Modifier else styleModifier(s, false)) else (if ((s == Style())) Modifier else styleModifier(s, false)).then(share(s.flex.toFloat())))
+fun surfaceModifierOf(s: Style, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, false)), s.flex, share)
 
-fun colorOf(c: Color): androidx.compose.ui.graphics.Color = (if ((c == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt()))
+fun colorOf(c: Color?): androidx.compose.ui.graphics.Color = (if ((c == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = c!!.r.toInt(), green = c!!.g.toInt(), blue = c!!.b.toInt(), alpha = c!!.a.toInt()))
 
-fun buttonShapeOf(s: Style): androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == Measurement(px = 0.0))) CircleShape else RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat())))
+fun buttonShapeOf(s: Style): androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == null)) CircleShape else RoundedCornerShape(Dp((s.borderRadius!!.px + (16.0 * (s.borderRadius!!.em + s.borderRadius!!.rem))).toFloat())))
+
+fun flexed(m: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if (((flex == null) || (flex!! <= 0.0))) m else m.then(share(flex!!.toFloat())))
 
 fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var m: androidx.compose.ui.Modifier = Modifier
-    var top = (if ((s.marginTop != Measurement(px = 0.0))) s.marginTop else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
-    var right = (if ((s.marginRight != Measurement(px = 0.0))) s.marginRight else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
-    var bottom = (if ((s.marginBottom != Measurement(px = 0.0))) s.marginBottom else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
-    var left = (if ((s.marginLeft != Measurement(px = 0.0))) s.marginLeft else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
-    if (((((top != Measurement(px = 0.0)) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
-    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + 0.0).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + 0.0).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + 0.0).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + 0.0).toFloat()))
+    var top = (if ((s.marginTop != null)) s.marginTop else (if ((s.marginY != null)) s.marginY else s.margin))
+    var right = (if ((s.marginRight != null)) s.marginRight else (if ((s.marginX != null)) s.marginX else s.margin))
+    var bottom = (if ((s.marginBottom != null)) s.marginBottom else (if ((s.marginY != null)) s.marginY else s.margin))
+    var left = (if ((s.marginLeft != null)) s.marginLeft else (if ((s.marginX != null)) s.marginX else s.margin))
+    if (((((top != null) || (right != null)) || (bottom != null)) || (left != null))) {
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
     }
-    if ((s.zIndex != 0)) {
-    	m = m.zIndex(s.zIndex.toFloat())
+    if ((s.zIndex != null)) {
+    	m = m.zIndex(s.zIndex!!.toFloat())
     }
-    if (((s.minWidth != Measurement(px = 0.0)) || (s.maxWidth != Measurement(px = 0.0)))) {
-    	m = m.widthIn((if ((s.minWidth != Measurement(px = 0.0))) Dp((s.minWidth.px + (16.0 * (s.minWidth.em + s.minWidth.rem))).toFloat()) else Dp.Unspecified), (if ((s.maxWidth != Measurement(px = 0.0))) Dp((s.maxWidth.px + (16.0 * (s.maxWidth.em + s.maxWidth.rem))).toFloat()) else Dp.Unspecified))
+    if (((s.minWidth != null) || (s.maxWidth != null))) {
+    	m = m.widthIn((if ((s.minWidth != null)) Dp((s.minWidth!!.px + (16.0 * (s.minWidth!!.em + s.minWidth!!.rem))).toFloat()) else Dp.Unspecified), (if ((s.maxWidth != null)) Dp((s.maxWidth!!.px + (16.0 * (s.maxWidth!!.em + s.maxWidth!!.rem))).toFloat()) else Dp.Unspecified))
     }
-    if ((s.maxHeight != Measurement(px = 0.0))) {
-    	m = m.heightIn(Dp.Unspecified, Dp((s.maxHeight.px + (16.0 * (s.maxHeight.em + s.maxHeight.rem))).toFloat()))
+    if ((s.maxHeight != null)) {
+    	m = m.heightIn(Dp.Unspecified, Dp((s.maxHeight!!.px + (16.0 * (s.maxHeight!!.em + s.maxHeight!!.rem))).toFloat()))
     }
-    if ((s.width != Measurement(px = 0.0))) {
-    	m = m.width(Dp((s.width.px + (16.0 * (s.width.em + s.width.rem))).toFloat()))
+    if ((s.width != null)) {
+    	m = m.width(Dp((s.width!!.px + (16.0 * (s.width!!.em + s.width!!.rem))).toFloat()))
     }
-    if ((s.height != Measurement(px = 0.0))) {
-    	m = m.height(Dp((s.height.px + (16.0 * (s.height.em + s.height.rem))).toFloat()))
+    if ((s.height != null)) {
+    	m = m.height(Dp((s.height!!.px + (16.0 * (s.height!!.em + s.height!!.rem))).toFloat()))
     }
-    if ((s.opacity != 0.0)) {
-    	m = m.alpha(s.opacity.toFloat())
+    if ((s.opacity != null)) {
+    	m = m.alpha(s.opacity!!.toFloat())
     }
-    var shape: androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == Measurement(px = 0.0))) RectangleShape else RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat())))
-    if ((s.borderRadius != Measurement(px = 0.0))) {
+    var shape: androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == null)) RectangleShape else RoundedCornerShape(Dp((s.borderRadius!!.px + (16.0 * (s.borderRadius!!.em + s.borderRadius!!.rem))).toFloat())))
+    if ((s.borderRadius != null)) {
     	m = m.clip(shape)
     }
     var edge = 0.0
-    if ((s.borderWidth != Measurement(px = 0.0))) {
-    	edge = (s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem)))
-    	m = m.border(Dp((s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != Color())) s.borderColor else s.color).r.toInt(), green = (if ((s.borderColor != Color())) s.borderColor else s.color).g.toInt(), blue = (if ((s.borderColor != Color())) s.borderColor else s.color).b.toInt(), alpha = (if ((s.borderColor != Color())) s.borderColor else s.color).a.toInt()), shape)
+    if ((s.borderWidth != null)) {
+    	edge = (s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem)))
+    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), composeOf((if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color()))), shape)
     }
-    if ((paints && (s.background != Color()))) {
-    	m = m.background(androidx.compose.ui.graphics.Color(red = s.background.r.toInt(), green = s.background.g.toInt(), blue = s.background.b.toInt(), alpha = s.background.a.toInt()), shape)
+    if ((paints && (s.background != null))) {
+    	m = m.background(androidx.compose.ui.graphics.Color(red = s.background!!.r.toInt(), green = s.background!!.g.toInt(), blue = s.background!!.b.toInt(), alpha = s.background!!.a.toInt()), shape)
     }
-    top = (if ((s.paddingTop != Measurement(px = 0.0))) s.paddingTop else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
-    right = (if ((s.paddingRight != Measurement(px = 0.0))) s.paddingRight else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
-    bottom = (if ((s.paddingBottom != Measurement(px = 0.0))) s.paddingBottom else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
-    left = (if ((s.paddingLeft != Measurement(px = 0.0))) s.paddingLeft else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
-    if ((((((edge != 0.0) || (top != Measurement(px = 0.0))) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
-    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + edge).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + edge).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + edge).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + edge).toFloat()))
+    top = (if ((s.paddingTop != null)) s.paddingTop else (if ((s.paddingY != null)) s.paddingY else s.padding))
+    right = (if ((s.paddingRight != null)) s.paddingRight else (if ((s.paddingX != null)) s.paddingX else s.padding))
+    bottom = (if ((s.paddingBottom != null)) s.paddingBottom else (if ((s.paddingY != null)) s.paddingY else s.padding))
+    left = (if ((s.paddingLeft != null)) s.paddingLeft else (if ((s.paddingX != null)) s.paddingX else s.padding))
+    if ((((((edge != 0.0) || (top != null)) || (right != null)) || (bottom != null)) || (left != null))) {
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
     }
     return m
+}
+
+fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
+
+fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
+package test.sngl.app
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+
+// LocalFlexShare is what a child's flex is a share of in a Column the
+// generated code writes rather than a vbox -- a window's nodes, a page's, a
+// window's content arriving through a slot -- provided in that Column's
+// content, where weight is in scope. A slot's content is composed where the
+// slot is invoked, so it reads the Column it lands in, which no closure its
+// caller wrote could name.
+val LocalFlexShare = compositionLocalOf<((Float) -> Modifier)?> { null }
+
+// snglFlexShare is sngl:ui's flexShare where no vbox or hbox provides one:
+// the written Column's share, else the screen. A value rather than a
+// composable read, since a test build holds the context in a state class
+// built outside composition; the modifier reads LocalFlexShare where the node
+// it is on is composed.
+val snglFlexShare: (Float) -> Modifier = { w ->
+    Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -4375,10 +4468,10 @@ body { font-family: system-ui, sans-serif; }
     if (ov.maxWidth != null) r.maxWidth = ov.maxWidth;
     if (ov.maxHeight != null) r.maxHeight = ov.maxHeight;
     if (ov.flex != null) r.flex = ov.flex;
-    if (ov.flexDirection != null) r.flexDirection = ov.flexDirection;
-    if (ov.alignItems != null) r.alignItems = ov.alignItems;
-    if (ov.justifyContent != null) r.justifyContent = ov.justifyContent;
-    if (ov.position != null) r.position = ov.position;
+    if (ov.flexDirection != null && !(ov.flexDirection === "unset")) r.flexDirection = ov.flexDirection;
+    if (ov.alignItems != null && !(ov.alignItems === "unset")) r.alignItems = ov.alignItems;
+    if (ov.justifyContent != null && !(ov.justifyContent === "unset")) r.justifyContent = ov.justifyContent;
+    if (ov.position != null && !(ov.position === "unset")) r.position = ov.position;
     if (ov.top != null) r.top = ov.top;
     if (ov.bottom != null) r.bottom = ov.bottom;
     if (ov.left != null) r.left = ov.left;
@@ -4386,26 +4479,35 @@ body { font-family: system-ui, sans-serif; }
     if (ov.zIndex != null) r.zIndex = ov.zIndex;
     if (ov.color != null) r.color = ov.color;
     if (ov.fontSize != null) r.fontSize = ov.fontSize;
-    if (ov.fontFamily != null) r.fontFamily = ov.fontFamily;
-    if (ov.fontWeight != null) r.fontWeight = ov.fontWeight;
-    if (ov.fontStyle != null) r.fontStyle = ov.fontStyle;
-    if (ov.textAlign != null) r.textAlign = ov.textAlign;
+    if (ov.fontFamily != null && !(ov.fontFamily === "")) r.fontFamily = ov.fontFamily;
+    if (ov.fontWeight != null && !(ov.fontWeight === "unset")) r.fontWeight = ov.fontWeight;
+    if (ov.fontStyle != null && !(ov.fontStyle === "unset")) r.fontStyle = ov.fontStyle;
+    if (ov.textAlign != null && !(ov.textAlign === "unset")) r.textAlign = ov.textAlign;
     if (ov.maxLines != null) r.maxLines = ov.maxLines;
-    if (ov.whiteSpace != null) r.whiteSpace = ov.whiteSpace;
+    if (ov.whiteSpace != null && !(ov.whiteSpace === "unset")) r.whiteSpace = ov.whiteSpace;
     if (ov.background != null) r.background = ov.background;
     if (ov.borderRadius != null) r.borderRadius = ov.borderRadius;
     if (ov.borderColor != null) r.borderColor = ov.borderColor;
     if (ov.borderWidth != null) r.borderWidth = ov.borderWidth;
-    if (ov.border != null) r.border = ov.border;
-    if (ov.borderBottom != null) r.borderBottom = ov.borderBottom;
-    if (ov.borderLeft != null) r.borderLeft = ov.borderLeft;
-    if (ov.borderCollapse != null) r.borderCollapse = ov.borderCollapse;
-    if (ov.borderStyle != null) r.borderStyle = ov.borderStyle;
+    if (ov.border != null && !(ov.border === "")) r.border = ov.border;
+    if (ov.borderBottom != null && !(ov.borderBottom === "")) r.borderBottom = ov.borderBottom;
+    if (ov.borderLeft != null && !(ov.borderLeft === "")) r.borderLeft = ov.borderLeft;
+    if (ov.borderCollapse != null && !(ov.borderCollapse === "")) r.borderCollapse = ov.borderCollapse;
+    if (ov.borderStyle != null && !(ov.borderStyle === "unset")) r.borderStyle = ov.borderStyle;
     if (ov.opacity != null) r.opacity = ov.opacity;
     if (ov.cursor != null) r.cursor = ov.cursor;
     if (ov.display != null) r.display = ov.display;
     if (ov.listStyleType != null) r.listStyleType = ov.listStyleType;
     return r;
+  }
+  function css(s) {
+    return [{ property: "border", value: s.border }, { property: "margin", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? s.margin === null ? "" : s.margin.em === 0 && s.margin.rem === 0 ? String(s.margin.px) + "px" : s.margin.px === 0 && s.margin.rem === 0 ? String(s.margin.em) + "em" : s.margin.px === 0 && s.margin.em === 0 ? String(s.margin.rem) + "rem" : "calc(" + plus(plus(s.margin.px === 0 ? "" : String(s.margin.px) + "px", s.margin.em === 0 ? "" : String(s.margin.em) + "em"), s.margin.rem === 0 ? "" : String(s.margin.rem) + "rem") + ")" : "" }, { property: "margin-top", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginTop !== null ? s.marginTop : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-right", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginRight !== null ? s.marginRight : s.marginX !== null ? s.marginX : s.margin) }, { property: "margin-bottom", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginBottom !== null ? s.marginBottom : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-left", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginLeft !== null ? s.marginLeft : s.marginX !== null ? s.marginX : s.margin) }, { property: "padding", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? s.padding === null ? "" : s.padding.em === 0 && s.padding.rem === 0 ? String(s.padding.px) + "px" : s.padding.px === 0 && s.padding.rem === 0 ? String(s.padding.em) + "em" : s.padding.px === 0 && s.padding.em === 0 ? String(s.padding.rem) + "rem" : "calc(" + plus(plus(s.padding.px === 0 ? "" : String(s.padding.px) + "px", s.padding.em === 0 ? "" : String(s.padding.em) + "em"), s.padding.rem === 0 ? "" : String(s.padding.rem) + "rem") + ")" : "" }, { property: "padding-top", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingTop !== null ? s.paddingTop : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-right", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingRight !== null ? s.paddingRight : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "padding-bottom", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingBottom !== null ? s.paddingBottom : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-left", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingLeft !== null ? s.paddingLeft : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "gap", value: s.gap === null ? "" : s.gap.em === 0 && s.gap.rem === 0 ? String(s.gap.px) + "px" : s.gap.px === 0 && s.gap.rem === 0 ? String(s.gap.em) + "em" : s.gap.px === 0 && s.gap.em === 0 ? String(s.gap.rem) + "rem" : "calc(" + plus(plus(s.gap.px === 0 ? "" : String(s.gap.px) + "px", s.gap.em === 0 ? "" : String(s.gap.em) + "em"), s.gap.rem === 0 ? "" : String(s.gap.rem) + "rem") + ")" }, { property: "display", value: s.display === "flex" ? "flex" : s.display === "block" ? "block" : s.display === "inline" ? "inline" : s.display === "inlineBlock" ? "inline-block" : s.display === "inlineFlex" ? "inline-flex" : s.display === "none" ? "none" : s.display === "grid" ? "grid" : "" }, { property: "flex-direction", value: s.flexDirection === "row" ? "row" : s.flexDirection === "column" ? "column" : s.flexDirection === "rowReverse" ? "row-reverse" : s.flexDirection === "columnReverse" ? "column-reverse" : "" }, { property: "align-items", value: s.alignItems === "start" ? "start" : s.alignItems === "center" ? "center" : s.alignItems === "end" ? "end" : s.alignItems === "stretch" ? "stretch" : s.alignItems === "baseline" ? "baseline" : "" }, { property: "justify-content", value: s.justifyContent === "start" ? "start" : s.justifyContent === "center" ? "center" : s.justifyContent === "end" ? "end" : s.justifyContent === "spaceBetween" ? "space-between" : s.justifyContent === "spaceAround" ? "space-around" : s.justifyContent === "spaceEvenly" ? "space-evenly" : "" }, { property: "flex", value: s.flex === null ? "" : String(s.flex) }, { property: "min-width", value: s.flex === null ? "" : "0" }, { property: "min-height", value: s.flex === null ? "" : "0" }, { property: "width", value: s.width === null ? "" : s.width.em === 0 && s.width.rem === 0 ? String(s.width.px) + "px" : s.width.px === 0 && s.width.rem === 0 ? String(s.width.em) + "em" : s.width.px === 0 && s.width.em === 0 ? String(s.width.rem) + "rem" : "calc(" + plus(plus(s.width.px === 0 ? "" : String(s.width.px) + "px", s.width.em === 0 ? "" : String(s.width.em) + "em"), s.width.rem === 0 ? "" : String(s.width.rem) + "rem") + ")" }, { property: "min-width", value: s.minWidth === null ? "" : s.minWidth.em === 0 && s.minWidth.rem === 0 ? String(s.minWidth.px) + "px" : s.minWidth.px === 0 && s.minWidth.rem === 0 ? String(s.minWidth.em) + "em" : s.minWidth.px === 0 && s.minWidth.em === 0 ? String(s.minWidth.rem) + "rem" : "calc(" + plus(plus(s.minWidth.px === 0 ? "" : String(s.minWidth.px) + "px", s.minWidth.em === 0 ? "" : String(s.minWidth.em) + "em"), s.minWidth.rem === 0 ? "" : String(s.minWidth.rem) + "rem") + ")" }, { property: "height", value: s.height === null ? "" : s.height.em === 0 && s.height.rem === 0 ? String(s.height.px) + "px" : s.height.px === 0 && s.height.rem === 0 ? String(s.height.em) + "em" : s.height.px === 0 && s.height.em === 0 ? String(s.height.rem) + "rem" : "calc(" + plus(plus(s.height.px === 0 ? "" : String(s.height.px) + "px", s.height.em === 0 ? "" : String(s.height.em) + "em"), s.height.rem === 0 ? "" : String(s.height.rem) + "rem") + ")" }, { property: "max-width", value: s.maxWidth === null ? "" : s.maxWidth.em === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.px) + "px" : s.maxWidth.px === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.em) + "em" : s.maxWidth.px === 0 && s.maxWidth.em === 0 ? String(s.maxWidth.rem) + "rem" : "calc(" + plus(plus(s.maxWidth.px === 0 ? "" : String(s.maxWidth.px) + "px", s.maxWidth.em === 0 ? "" : String(s.maxWidth.em) + "em"), s.maxWidth.rem === 0 ? "" : String(s.maxWidth.rem) + "rem") + ")" }, { property: "max-height", value: s.maxHeight === null ? "" : s.maxHeight.em === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.px) + "px" : s.maxHeight.px === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.em) + "em" : s.maxHeight.px === 0 && s.maxHeight.em === 0 ? String(s.maxHeight.rem) + "rem" : "calc(" + plus(plus(s.maxHeight.px === 0 ? "" : String(s.maxHeight.px) + "px", s.maxHeight.em === 0 ? "" : String(s.maxHeight.em) + "em"), s.maxHeight.rem === 0 ? "" : String(s.maxHeight.rem) + "rem") + ")" }, { property: "position", value: s.position === "static" ? "static" : s.position === "relative" ? "relative" : s.position === "absolute" ? "absolute" : s.position === "fixed" ? "fixed" : s.position === "sticky" ? "sticky" : "" }, { property: "top", value: s.top === null ? "" : s.top.em === 0 && s.top.rem === 0 ? String(s.top.px) + "px" : s.top.px === 0 && s.top.rem === 0 ? String(s.top.em) + "em" : s.top.px === 0 && s.top.em === 0 ? String(s.top.rem) + "rem" : "calc(" + plus(plus(s.top.px === 0 ? "" : String(s.top.px) + "px", s.top.em === 0 ? "" : String(s.top.em) + "em"), s.top.rem === 0 ? "" : String(s.top.rem) + "rem") + ")" }, { property: "bottom", value: s.bottom === null ? "" : s.bottom.em === 0 && s.bottom.rem === 0 ? String(s.bottom.px) + "px" : s.bottom.px === 0 && s.bottom.rem === 0 ? String(s.bottom.em) + "em" : s.bottom.px === 0 && s.bottom.em === 0 ? String(s.bottom.rem) + "rem" : "calc(" + plus(plus(s.bottom.px === 0 ? "" : String(s.bottom.px) + "px", s.bottom.em === 0 ? "" : String(s.bottom.em) + "em"), s.bottom.rem === 0 ? "" : String(s.bottom.rem) + "rem") + ")" }, { property: "left", value: s.left === null ? "" : s.left.em === 0 && s.left.rem === 0 ? String(s.left.px) + "px" : s.left.px === 0 && s.left.rem === 0 ? String(s.left.em) + "em" : s.left.px === 0 && s.left.em === 0 ? String(s.left.rem) + "rem" : "calc(" + plus(plus(s.left.px === 0 ? "" : String(s.left.px) + "px", s.left.em === 0 ? "" : String(s.left.em) + "em"), s.left.rem === 0 ? "" : String(s.left.rem) + "rem") + ")" }, { property: "right", value: s.right === null ? "" : s.right.em === 0 && s.right.rem === 0 ? String(s.right.px) + "px" : s.right.px === 0 && s.right.rem === 0 ? String(s.right.em) + "em" : s.right.px === 0 && s.right.em === 0 ? String(s.right.rem) + "rem" : "calc(" + plus(plus(s.right.px === 0 ? "" : String(s.right.px) + "px", s.right.em === 0 ? "" : String(s.right.em) + "em"), s.right.rem === 0 ? "" : String(s.right.rem) + "rem") + ")" }, { property: "z-index", value: s.zIndex === null ? "" : String(s.zIndex) }, { property: "color", value: s.color === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.color) }, { property: "font-size", value: s.fontSize === null ? "" : s.fontSize.em === 0 && s.fontSize.rem === 0 ? String(s.fontSize.px) + "px" : s.fontSize.px === 0 && s.fontSize.rem === 0 ? String(s.fontSize.em) + "em" : s.fontSize.px === 0 && s.fontSize.em === 0 ? String(s.fontSize.rem) + "rem" : "calc(" + plus(plus(s.fontSize.px === 0 ? "" : String(s.fontSize.px) + "px", s.fontSize.em === 0 ? "" : String(s.fontSize.em) + "em"), s.fontSize.rem === 0 ? "" : String(s.fontSize.rem) + "rem") + ")" }, { property: "font-family", value: s.fontFamily }, { property: "font-weight", value: s.fontWeight === "normal" ? "normal" : s.fontWeight === "bold" ? "bold" : s.fontWeight === "lighter" ? "lighter" : s.fontWeight === "bolder" ? "bolder" : "" }, { property: "font-style", value: s.fontStyle === "normal" ? "normal" : s.fontStyle === "italic" ? "italic" : s.fontStyle === "oblique" ? "oblique" : "" }, { property: "text-align", value: s.textAlign === "left" ? "left" : s.textAlign === "center" ? "center" : s.textAlign === "right" ? "right" : s.textAlign === "justify" ? "justify" : "" }, { property: "white-space", value: s.whiteSpace === "normal" ? "normal" : s.whiteSpace === "pre" ? "pre" : s.whiteSpace === "preWrap" ? "pre-wrap" : s.whiteSpace === "preLine" ? "pre-line" : s.whiteSpace === "nowrap" ? "nowrap" : "" }, { property: "background-color", value: s.background === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.background) }, { property: "border-radius", value: s.borderRadius === null ? "" : s.borderRadius.em === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.px) + "px" : s.borderRadius.px === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.em) + "em" : s.borderRadius.px === 0 && s.borderRadius.em === 0 ? String(s.borderRadius.rem) + "rem" : "calc(" + plus(plus(s.borderRadius.px === 0 ? "" : String(s.borderRadius.px) + "px", s.borderRadius.em === 0 ? "" : String(s.borderRadius.em) + "em"), s.borderRadius.rem === 0 ? "" : String(s.borderRadius.rem) + "rem") + ")" }, { property: "border-width", value: s.borderWidth === null ? "" : s.borderWidth.em === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.px) + "px" : s.borderWidth.px === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.em) + "em" : s.borderWidth.px === 0 && s.borderWidth.em === 0 ? String(s.borderWidth.rem) + "rem" : "calc(" + plus(plus(s.borderWidth.px === 0 ? "" : String(s.borderWidth.px) + "px", s.borderWidth.em === 0 ? "" : String(s.borderWidth.em) + "em"), s.borderWidth.rem === 0 ? "" : String(s.borderWidth.rem) + "rem") + ")" }, { property: "border-style", value: s.borderStyle === "none" ? "none" : s.borderStyle === "solid" ? "solid" : s.borderStyle === "dashed" ? "dashed" : s.borderStyle === "dotted" ? "dotted" : s.borderStyle === "double" ? "double" : s.borderWidth !== null && s.border === "" ? "solid" : "" }, { property: "border-color", value: s.borderColor === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.borderColor) }, { property: "border-collapse", value: s.borderCollapse }, { property: "opacity", value: s.opacity === null ? "" : String(s.opacity) }, { property: "cursor", value: s.cursor }, { property: "overflow", value: s.overflow === "visible" ? "visible" : s.overflow === "hidden" ? "hidden" : s.overflow === "scroll" ? "scroll" : s.overflow === "auto" ? "auto" : "" }, { property: "list-style-type", value: s.listStyleType === "none" ? "none" : s.listStyleType === "disc" ? "disc" : s.listStyleType === "circle" ? "circle" : s.listStyleType === "square" ? "square" : s.listStyleType === "decimal" ? "decimal" : "" }, { property: "-webkit-line-clamp", value: s.maxLines === null ? "" : String(s.maxLines) }, { property: "overflow", value: s.maxLines === null ? "" : "hidden" }, { property: "display", value: s.maxLines === null ? "" : "-webkit-box" }, { property: "-webkit-box-orient", value: s.maxLines === null ? "" : "vertical" }, { property: "border-bottom", value: s.borderBottom }, { property: "border-left", value: s.borderLeft }];
+  }
+  function plus(a, b) {
+    return a === "" ? b : b === "" ? a : a + " + " + b;
+  }
+  function lengthOf(m) {
+    return m === null ? "" : m.em === 0 && m.rem === 0 ? String(m.px) + "px" : m.px === 0 && m.rem === 0 ? String(m.em) + "em" : m.px === 0 && m.em === 0 ? String(m.rem) + "rem" : "calc(" + plus(plus(m.px === 0 ? "" : String(m.px) + "px", m.em === 0 ? "" : String(m.em) + "em"), m.rem === 0 ? "" : String(m.rem) + "rem") + ")";
   }
   function __snglTeardown() {
     for (const [__inst3_live_di, _] of __inst3_live.entries()) {
@@ -4430,7 +4532,7 @@ body { font-family: system-ui, sans-serif; }
     let size = props.size ?? "medium";
     let variant = props.variant ?? "circle";
     let alt = props.alt ?? "";
-    let style = props.style ?? {};
+    let style = props.style ?? { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" };
     let click = props.click ?? (() => {
     });
     let __prop_initials = initials;
@@ -4458,14 +4560,14 @@ body { font-family: system-ui, sans-serif; }
     }
     function __set_style(__v) {
       __prop_style = __v;
-      __n0.style.cssText = _snglStyleCSS(__merge_Style({}, __merge_Style({}, __prop_style)));
+      __n0.style.cssText = _snglCSSText(css(__merge_Style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" }, __prop_style)));
     }
     function __set_click(__v) {
       __prop_click = __v;
     }
     let __n0 = document.createElement("button");
     __n0.disabled = false;
-    __n0.style.cssText = _snglStyleCSS(__merge_Style({}, __merge_Style({}, __prop_style)));
+    __n0.style.cssText = _snglCSSText(css(__merge_Style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" }, __prop_style)));
     __n0.addEventListener("click", () => {
       hits = hits + 1;
       __n1.textContent = __prop_initials + " " + String(hits);
@@ -4518,12 +4620,12 @@ body { font-family: system-ui, sans-serif; }
               __n4.__set_size("medium");
               __n4.__set_variant("circle");
               __n4.__set_alt("");
-              __n4.__set_style({});
+              __n4.__set_style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" });
             } else {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n4__new = __cf_avatar({ initials: r, size: "medium", variant: "circle", alt: "", style: {} });
+              let __n4__new = __cf_avatar({ initials: r, size: "medium", variant: "circle", alt: "", style: { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" } });
               __n4 = __n4__new;
             }
             __inst1_next.push(__n4);
@@ -4580,12 +4682,12 @@ body { font-family: system-ui, sans-serif; }
               __n5.__set_size("medium");
               __n5.__set_variant("circle");
               __n5.__set_alt("");
-              __n5.__set_style({});
+              __n5.__set_style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" });
             } else {
               if (__inst3_live.length > __inst3_i) {
                 __inst3_live[__inst3_i].__destroy();
               }
-              let __n5__new = __cf_avatar({ initials: "if", size: "medium", variant: "circle", alt: "", style: {} });
+              let __n5__new = __cf_avatar({ initials: "if", size: "medium", variant: "circle", alt: "", style: { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" } });
               __n5 = __n5__new;
             }
             __inst3_next.push(__n5);

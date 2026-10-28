@@ -96,7 +96,7 @@ func testAWordOfAnInstanceInFrench(t test.Test, c plain) {
   "{count, plural, one{# book} other{# books}}": {"translations": {"fr": "{count, plural, one{# livre} other{# livres}}"}}
 }
 -- testrun/android/kotlin/app.sngl/greeting/1 --
-sha256:b8625c197c182386ed564efd8361a15d
+sha256:f424038967fc885726c954f1b9f84466
 {
   "results": [
     {
@@ -106,7 +106,7 @@ sha256:b8625c197c182386ed564efd8361a15d
   ]
 }
 -- testrun/android/kotlin/app.sngl/outer/1 --
-sha256:afdb58309a381742022e9712c4b26ee7
+sha256:49f1c3d4d95b2350efd686d530a6eeb6
 {
   "results": [
     {
@@ -116,7 +116,7 @@ sha256:afdb58309a381742022e9712c4b26ee7
   ]
 }
 -- testrun/android/kotlin/app.sngl/plain/1 --
-sha256:3191facb0d8ebb6fa5c1e73875e2b841
+sha256:bf2db2e2cbdb6ad8947e0c7bef9948b4
 {
   "results": [
     {
@@ -186,7 +186,7 @@ sha256:6fc64d687649c9629a76b4106fb9746d
   ]
 }
 -- testrun/gtk4/go/app.sngl/greeting/1 --
-sha256:e43ae5b29cf0d9610d241756c1660a7f
+sha256:da89d016cb61526de3d697f2b845a2db
 {
   "results": [
     {
@@ -196,7 +196,7 @@ sha256:e43ae5b29cf0d9610d241756c1660a7f
   ]
 }
 -- testrun/gtk4/go/app.sngl/outer/1 --
-sha256:84f2073335ba5e26b6aedc3ea4596f8a
+sha256:b5857b32c1b7e9ceebfc4432bfabf287
 {
   "results": [
     {
@@ -206,7 +206,7 @@ sha256:84f2073335ba5e26b6aedc3ea4596f8a
   ]
 }
 -- testrun/gtk4/go/app.sngl/plain/1 --
-sha256:2f1828bda1f8aad4db08841ae9cfd2fb
+sha256:890978d460febc3c2571e53f76c50f00
 {
   "results": [
     {
@@ -216,7 +216,7 @@ sha256:2f1828bda1f8aad4db08841ae9cfd2fb
   ]
 }
 -- testrun/html/none/app.sngl/greeting/1 --
-sha256:fe2460ba0ba447929ee2c563caafe2d1
+sha256:4b3ad26a2631f3b3418373ad5ff38d78
 {
   "results": [
     {
@@ -226,7 +226,7 @@ sha256:fe2460ba0ba447929ee2c563caafe2d1
   ]
 }
 -- testrun/html/none/app.sngl/outer/1 --
-sha256:54370dd72bacb4c9a6725e5abc49996b
+sha256:c4a9b5379353b94e18882dfd6294cc8d
 {
   "results": [
     {
@@ -236,7 +236,7 @@ sha256:54370dd72bacb4c9a6725e5abc49996b
   ]
 }
 -- testrun/html/none/app.sngl/plain/1 --
-sha256:9d054cf6cfba5ae13ad0467a13c72a96
+sha256:405b26923cfc59bde556c1ba5d424df1
 {
   "results": [
     {

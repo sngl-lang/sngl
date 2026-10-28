@@ -5,51 +5,54 @@
 // and two terminal cells on bubbletea.
 unit measurement { px, em, rem }
 
+// Each enum below leads with `unset`, what a Style that does not write the
+// field holds: the platform's default, which no other member names.
+
 // Main-axis direction for flex containers such as `vbox` and `hbox`.
 // `row` and `column` are the common cases; the `Reverse` variants
 // lay children out in the opposite order (useful for right-to-left
 // layouts or stacks that grow from the bottom).
-enum FlexDirection { row, column, rowReverse, columnReverse }
+enum FlexDirection { unset, row, column, rowReverse, columnReverse }
 
 // Cross-axis alignment of children inside a flex container.
 // `start`/`center`/`end` anchor children to the corresponding edge;
 // `stretch` expands children to fill the cross axis; `baseline`
 // aligns text children along their typographic baseline.
-enum Alignment { start, center, end, stretch, baseline }
+enum Alignment { unset, start, center, end, stretch, baseline }
 
 // Main-axis distribution of children inside a flex container.
 // `spaceBetween` puts all free space between children; `spaceAround`
 // adds half-sized margins on the ends; `spaceEvenly` makes the
 // margins and inter-child gaps equal.
-enum Justification { start, center, end, spaceBetween, spaceAround, spaceEvenly }
+enum Justification { unset, start, center, end, spaceBetween, spaceAround, spaceEvenly }
 
 // Horizontal alignment of inline text content. `justify` distributes
 // whitespace so each line (except the last) fills the available
 // width.
-enum TextAlign { left, center, right, justify }
+enum TextAlign { unset, left, center, right, justify }
 
 // Numeric weight for fonts. `lighter`/`bolder` are relative — each
 // steps one weight from the inherited value. `normal` and `bold`
 // are absolute.
-enum FontWeight { normal, bold, lighter, bolder }
+enum FontWeight { unset, normal, bold, lighter, bolder }
 
 // Slant applied to fonts. `italic` uses the italic face when one
 // is available in the font family; `oblique` synthesizes a slant
 // from the upright face.
-enum FontStyle { normal, italic, oblique }
+enum FontStyle { unset, normal, italic, oblique }
 
 // Positioning scheme for a component within its parent's layout flow.
 // `static` is the default (flow layout). `relative` lays out in flow
 // but offsets the element from that position via `top`/`left`/etc.
 // `absolute` and `fixed` remove the element from flow; `sticky`
 // toggles between relative and fixed based on scroll position.
-enum Position { static, relative, absolute, fixed, sticky }
+enum Position { unset, static, relative, absolute, fixed, sticky }
 
 // Intrinsic layout mode. Overrides a component's default display
 // behavior. `none` hides the component without reserving space.
 // `inlineBlock` / `inlineFlex` behave as inline content whose
 // inside is block or flex.
-enum Display { flex, block, inline, inlineBlock, inlineFlex, none, grid }
+enum Display { unset, flex, block, inline, inlineBlock, inlineFlex, none, grid }
 
 // How an `image`'s contents are sized to fit its frame. `contain`
 // letterboxes, `cover` fills and crops, `fill` stretches,
@@ -59,7 +62,7 @@ enum ObjectFit { contain, cover, fill, none, scaleDown }
 // Line style drawn along a component's border. `double` draws two
 // parallel lines separated by a gap — the total visual thickness
 // is the declared border width.
-enum BorderStyle { none, solid, dashed, dotted, double }
+enum BorderStyle { unset, none, solid, dashed, dotted, double }
 
 // Whether a host collapses runs of whitespace in a component's text, and
 // where it may break a line.
@@ -69,78 +72,91 @@ enum BorderStyle { none, solid, dashed, dotted, double }
 // are two spaces and a newline ends the line -- and the text still wraps to
 // the width it is given. A host with no such notion honors the text as
 // written already and has nothing to do here.
-enum WhiteSpace { normal, pre, preWrap, preLine, nowrap }
+enum WhiteSpace { unset, normal, pre, preWrap, preLine, nowrap }
 
 // Marker style for list-rendered containers. Applied via
 // `style.listStyleType` on list-flavored components.
-enum ListStyle { none, disc, circle, square, decimal }
+enum ListStyle { unset, none, disc, circle, square, decimal }
 
 // Declarative style properties applied via the `style` prop on any
-// visual component. Fields are grouped below by category; platform
-// codegen maps each property to the closest native equivalent.
-// Unset fields inherit the platform default. Length-typed fields
-// accept any `measurement` literal (`px`, `em`, `rem`, `vw`, `vh`,
-// `pct`); color-typed fields accept any `color` value.
+// visual component. Fields are grouped below by category; each platform
+// maps a property to the closest native equivalent.
+//
+// A field the program does not write is unset, and an unset field leaves the
+// platform's default alone: a length, a color or a number is null, an enum
+// field `unset`, and a string empty. So a written zero is a value --
+// `padding=0px` takes a card's padding away, `paddingTop=0px` beside
+// `padding=16px` is 0 on top, `color=#000000` is black and
+// `alignItems=start` starts. Length-typed fields accept any `measurement`
+// literal (`px`, `em`, `rem`).
+//
+// A component with a look of its own takes its caller's Style on top of it
+// with a spread, which writes each field not at its zero: the caller's unset
+// fields leave the look's.
+//
+// ```sngl
+// text(value=value, style={display=inlineBlock, paddingX=8px, ...style})
+// ```
 struct Style {
     // Spacing
-    padding       measurement
-    paddingTop    measurement
-    paddingRight  measurement
-    paddingBottom measurement
-    paddingLeft   measurement
-    paddingX      measurement
-    paddingY      measurement
-    margin        measurement
-    marginTop     measurement
-    marginRight   measurement
-    marginBottom  measurement
-    marginLeft    measurement
-    marginX       measurement
-    marginY       measurement
-    gap           measurement
+    padding       option[measurement]
+    paddingTop    option[measurement]
+    paddingRight  option[measurement]
+    paddingBottom option[measurement]
+    paddingLeft   option[measurement]
+    paddingX      option[measurement]
+    paddingY      option[measurement]
+    margin        option[measurement]
+    marginTop     option[measurement]
+    marginRight   option[measurement]
+    marginBottom  option[measurement]
+    marginLeft    option[measurement]
+    marginX       option[measurement]
+    marginY       option[measurement]
+    gap           option[measurement]
 
     // Size
-    width     measurement
-    minWidth  measurement
-    height    measurement
-    maxWidth  measurement
-    maxHeight measurement
+    width     option[measurement]
+    minWidth  option[measurement]
+    height    option[measurement]
+    maxWidth  option[measurement]
+    maxHeight option[measurement]
 
     // Flex
-    flex           float
+    flex           option[float]
     flexDirection  FlexDirection
     alignItems     Alignment
     justifyContent Justification
 
     // Position
     position Position
-    top      measurement
-    bottom   measurement
-    left     measurement
-    right    measurement
-    zIndex   int
+    top      option[measurement]
+    bottom   option[measurement]
+    left     option[measurement]
+    right    option[measurement]
+    zIndex   option[int]
 
     // Typography
-    color      color
-    fontSize   measurement
+    color      option[color]
+    fontSize   option[measurement]
     fontFamily string
     fontWeight FontWeight
     fontStyle  FontStyle
     textAlign  TextAlign
-    maxLines   int
+    maxLines   option[int]
     whiteSpace WhiteSpace
 
     // Decoration
-    background     color
-    borderRadius   measurement
-    borderColor    color
-    borderWidth    measurement
+    background     option[color]
+    borderRadius   option[measurement]
+    borderColor    option[color]
+    borderWidth    option[measurement]
     border         string
     borderBottom   string
     borderLeft     string
     borderCollapse string
     borderStyle    BorderStyle
-    opacity        float
+    opacity        option[float]
     cursor         string
 
     // Display

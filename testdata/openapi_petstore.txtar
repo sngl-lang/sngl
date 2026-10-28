@@ -321,6 +321,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/snglhttp"
 	"duckfam.us/sngl/pkg/go/sngljson"
 	"fmt"
@@ -518,7 +519,7 @@ func New() *Model {
 	m.refreshes__inst0 = 0
 	m.attempt__inst1 = 0
 	m.refreshes__inst1 = 0
-	m.__effect0_key = __anon_key_n_92242e{}
+	m.__effect0_key = __anon_key_n_92242e{Key: __anon_limit_offset_7e7555{}}
 	m.__effect0_live = []__anon_key_n_92242e{}
 	m.__effect0_desired = []__anon_key_n_92242e{}
 	m.__effect1_key = __anon_key_n_a1dba7{}
@@ -566,9 +567,9 @@ func PetBreedRetrieveCall(id string, __ctx_server string) Result__PetBreedDetail
 		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pet-breeds/") + sngljson.Escape(id)) + "/"), nil, nil)
 		if __snglF != nil {
 			if __snglF.Timeout {
-				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
+				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 			}
-			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message, Code: ""}}
+			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message}}
 		}
 		return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
 	}())
@@ -587,7 +588,7 @@ func PetBreedRetrieveCall(id string, __ctx_server string) Result__PetBreedDetail
 				return c0
 			}())
 			if __snglMsg != "" {
-				return Result__PetBreedDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+				return Result__PetBreedDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg}}
 			}
 			return Result__PetBreedDetail{tag: 0, Ok: __snglV}
 		}()
@@ -604,7 +605,7 @@ func _answered(r Result__Response) Result__Response {
 		got := r.Ok
 		return ResponseChecked(got)
 	}
-	return Result__Response{tag: 0, Ok: Response{}}
+	return Result__Response{tag: 0, Ok: Response{Headers: map[string]string{}}}
 }
 
 func PetListCall(limit *int, offset *int, __ctx_server string) Result__PaginatedPetSummaryList {
@@ -616,9 +617,9 @@ func PetListCall(limit *int, offset *int, __ctx_server string) Result__Paginated
 		}())), nil, nil)
 		if __snglF != nil {
 			if __snglF.Timeout {
-				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
+				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 			}
-			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message, Code: ""}}
+			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message}}
 		}
 		return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
 	}())
@@ -637,12 +638,12 @@ func PetListCall(limit *int, offset *int, __ctx_server string) Result__Paginated
 				return c0
 			}())
 			if __snglMsg != "" {
-				return Result__PaginatedPetSummaryList{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+				return Result__PaginatedPetSummaryList{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg}}
 			}
 			return Result__PaginatedPetSummaryList{tag: 0, Ok: __snglV}
 		}()
 	}
-	return Result__PaginatedPetSummaryList{tag: 0, Ok: PaginatedPetSummaryList{}}
+	return Result__PaginatedPetSummaryList{tag: 0, Ok: PaginatedPetSummaryList{Results: []PetSummary{}}}
 }
 
 func PetRetrieveCall(id string, __ctx_server string) Result__PetDetail {
@@ -650,9 +651,9 @@ func PetRetrieveCall(id string, __ctx_server string) Result__PetDetail {
 		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pets/") + sngljson.Escape(id)) + "/"), nil, nil)
 		if __snglF != nil {
 			if __snglF.Timeout {
-				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
+				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 			}
-			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message, Code: ""}}
+			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message}}
 		}
 		return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
 	}())
@@ -681,12 +682,12 @@ func PetRetrieveCall(id string, __ctx_server string) Result__PetDetail {
 				return c0
 			}())
 			if __snglMsg != "" {
-				return Result__PetDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+				return Result__PetDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg}}
 			}
 			return Result__PetDetail{tag: 0, Ok: __snglV}
 		}()
 	}
-	return Result__PetDetail{tag: 0, Ok: PetDetail{}}
+	return Result__PetDetail{tag: 0, Ok: PetDetail{Breed: PetBreedSummary{}, Photos: PetPhotos{}, Measurements: []PetMeasurement{}, Tags: []PetTag{}}}
 }
 
 func ResponseChecked(r Response) Result__Response {
@@ -1053,7 +1054,7 @@ func (m *Model) __renderSlot3(__parent *fyne.Container) {
 						__n8 := widget.NewLabel("")
 						__n8__box := fynelayout.NewBox(__n8)
 						__n8.SetText(t.Type.Name)
-						__n8__box.SetLook(fynelayout.Look{PaddingTop: 2.0, PaddingRight: 8.0, PaddingBottom: 2.0, PaddingLeft: 8.0, Radius: 12.0})
+						__n8__box.SetLook(fynelayout.Look{PaddingTop: 2.0, PaddingRight: 8.0, PaddingBottom: 2.0, PaddingLeft: 8.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, Radius: 12.0, TextColor: snglcolor.Color{}})
 						fynelayout.InsertBefore(__parent, m.__slot3_at, __n8__box)
 						m.__slot3 = append(m.__slot3, __n8__box)
 					}
@@ -1090,13 +1091,13 @@ func (m *Model) __n10_click_handler() {
 			switch {
 			case (__match0.tag == 0):
 				r := __match0.Ok
-				var __lt7 string
+				var __lt10 string
 				if r.ParentBreed != nil {
-					__lt7 = (*(r.ParentBreed)).Name
+					__lt10 = (*(r.ParentBreed)).Name
 				} else {
-					__lt7 = "nothing"
+					__lt10 = "nothing"
 				}
-				m.from__inst0 = __lt7
+				m.from__inst0 = __lt10
 				m.__n3.SetText(m.from__inst0)
 			default:
 				r := __match0.Failed
@@ -1541,7 +1542,7 @@ func New() *Model {
 	m.refreshes__inst0 = 0
 	m.attempt__inst1 = 0
 	m.refreshes__inst1 = 0
-	m.__effect0_key = __anon_key_n_92242e{}
+	m.__effect0_key = __anon_key_n_92242e{Key: __anon_limit_offset_7e7555{}}
 	m.__effect0_live = []__anon_key_n_92242e{}
 	m.__effect0_desired = []__anon_key_n_92242e{}
 	m.__effect1_key = __anon_key_n_a1dba7{}
@@ -1577,9 +1578,9 @@ func PetBreedRetrieveCall(id string, __ctx_server string) Result__PetBreedDetail
 		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pet-breeds/") + sngljson.Escape(id)) + "/"), nil, nil)
 		if __snglF != nil {
 			if __snglF.Timeout {
-				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
+				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 			}
-			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message, Code: ""}}
+			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message}}
 		}
 		return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
 	}())
@@ -1598,7 +1599,7 @@ func PetBreedRetrieveCall(id string, __ctx_server string) Result__PetBreedDetail
 				return c0
 			}())
 			if __snglMsg != "" {
-				return Result__PetBreedDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+				return Result__PetBreedDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg}}
 			}
 			return Result__PetBreedDetail{tag: 0, Ok: __snglV}
 		}()
@@ -1615,7 +1616,7 @@ func _answered(r Result__Response) Result__Response {
 		got := r.Ok
 		return ResponseChecked(got)
 	}
-	return Result__Response{tag: 0, Ok: Response{}}
+	return Result__Response{tag: 0, Ok: Response{Headers: map[string]string{}}}
 }
 
 func PetListCall(limit *int, offset *int, __ctx_server string) Result__PaginatedPetSummaryList {
@@ -1627,9 +1628,9 @@ func PetListCall(limit *int, offset *int, __ctx_server string) Result__Paginated
 		}())), nil, nil)
 		if __snglF != nil {
 			if __snglF.Timeout {
-				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
+				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 			}
-			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message, Code: ""}}
+			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message}}
 		}
 		return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
 	}())
@@ -1648,12 +1649,12 @@ func PetListCall(limit *int, offset *int, __ctx_server string) Result__Paginated
 				return c0
 			}())
 			if __snglMsg != "" {
-				return Result__PaginatedPetSummaryList{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+				return Result__PaginatedPetSummaryList{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg}}
 			}
 			return Result__PaginatedPetSummaryList{tag: 0, Ok: __snglV}
 		}()
 	}
-	return Result__PaginatedPetSummaryList{tag: 0, Ok: PaginatedPetSummaryList{}}
+	return Result__PaginatedPetSummaryList{tag: 0, Ok: PaginatedPetSummaryList{Results: []PetSummary{}}}
 }
 
 func PetRetrieveCall(id string, __ctx_server string) Result__PetDetail {
@@ -1661,9 +1662,9 @@ func PetRetrieveCall(id string, __ctx_server string) Result__PetDetail {
 		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pets/") + sngljson.Escape(id)) + "/"), nil, nil)
 		if __snglF != nil {
 			if __snglF.Timeout {
-				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
+				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 			}
-			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message, Code: ""}}
+			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message}}
 		}
 		return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
 	}())
@@ -1692,12 +1693,12 @@ func PetRetrieveCall(id string, __ctx_server string) Result__PetDetail {
 				return c0
 			}())
 			if __snglMsg != "" {
-				return Result__PetDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+				return Result__PetDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg}}
 			}
 			return Result__PetDetail{tag: 0, Ok: __snglV}
 		}()
 	}
-	return Result__PetDetail{tag: 0, Ok: PetDetail{}}
+	return Result__PetDetail{tag: 0, Ok: PetDetail{Breed: PetBreedSummary{}, Photos: PetPhotos{}, Measurements: []PetMeasurement{}, Tags: []PetTag{}}}
 }
 
 func ResponseChecked(r Response) Result__Response {
@@ -2660,7 +2661,7 @@ fun MainScreen() {
 }
 
 suspend fun petBreedRetrieveCall(id: String, __ctx_server: String): SnglResult__PetBreedDetail {
-    var __match2: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", (((__ctx_server + "/api/v1/pet-breeds/") + SnglCodec.escape(id)) + "/"), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
+    var __match2: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", (((__ctx_server + "/api/v1/pet-breeds/") + SnglCodec.escape(id)) + "/"), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
     when {
     	(__match2 is SnglResult__Response.Failed) -> {
     		var r = (__match2 as SnglResult__Response.Failed).value
@@ -2668,7 +2669,7 @@ suspend fun petBreedRetrieveCall(id: String, __ctx_server: String): SnglResult__
     	}
     	else -> {
     		var r = (__match2 as SnglResult__Response.Ok).value
-    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.of(SnglCodec.INT)), SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("parent_breed", SnglCodec.of(SnglCodec.OPTION, c1))); c0.make = { a -> PetBreedDetail(id = a[0] as Int, name = a[1] as String, parentBreed = a[2] as PetBreedSummary?) }; c0.read = { v -> (v as PetBreedDetail).let { listOf<Any?>(it.id, it.name, it.parentBreed) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetBreedSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetBreedSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PetBreedDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__PetBreedDetail.Ok((__r.value as PetBreedDetail)) }
+    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.of(SnglCodec.INT)), SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("parent_breed", SnglCodec.of(SnglCodec.OPTION, c1))); c0.make = { a -> PetBreedDetail(id = a[0] as Int, name = a[1] as String, parentBreed = a[2] as PetBreedSummary?) }; c0.read = { v -> (v as PetBreedDetail).let { listOf<Any?>(it.id, it.name, it.parentBreed) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetBreedSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetBreedSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PetBreedDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!)) else SnglResult__PetBreedDetail.Ok((__r.value as PetBreedDetail)) }
     	}
     }
     return SnglResult__PetBreedDetail.Ok(PetBreedDetail())
@@ -2685,11 +2686,11 @@ fun _answered(r: SnglResult__Response): SnglResult__Response {
     		return got.checked()
     	}
     }
-    return SnglResult__Response.Ok(Response())
+    return SnglResult__Response.Ok(Response(headers = mapOf<String, String>()))
 }
 
 suspend fun petListCall(limit: Int?, offset: Int?, __ctx_server: String): SnglResult__PaginatedPetSummaryList {
-    var __match0: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", SnglCodec.withQuery((__ctx_server + "/api/v1/pets/"), __anon_limit_offset_7e7555(limit = limit, offset = offset), run { val c0 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("limit", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("offset", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT)))); c0.make = { a -> __anon_limit_offset_7e7555(limit = a[0] as Int?, offset = a[1] as Int?) }; c0.read = { v -> (v as __anon_limit_offset_7e7555).let { listOf<Any?>(it.limit, it.offset) } }; c0 }), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
+    var __match0: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", SnglCodec.withQuery((__ctx_server + "/api/v1/pets/"), __anon_limit_offset_7e7555(limit = limit, offset = offset), run { val c0 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("limit", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("offset", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT)))); c0.make = { a -> __anon_limit_offset_7e7555(limit = a[0] as Int?, offset = a[1] as Int?) }; c0.read = { v -> (v as __anon_limit_offset_7e7555).let { listOf<Any?>(it.limit, it.offset) } }; c0 }), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
     when {
     	(__match0 is SnglResult__Response.Failed) -> {
     		var r = (__match0 as SnglResult__Response.Failed).value
@@ -2697,14 +2698,14 @@ suspend fun petListCall(limit: Int?, offset: Int?, __ctx_server: String): SnglRe
     	}
     	else -> {
     		var r = (__match0 as SnglResult__Response.Ok).value
-    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("count", SnglCodec.of(SnglCodec.INT)), SnglCodecField("next", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("previous", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("results", SnglCodec.of(SnglCodec.LIST, c1))); c0.make = { a -> PaginatedPetSummaryList(count = a[0] as Int, next = a[1] as String?, previous = a[2] as String?, results = a[3] as List<PetSummary>) }; c0.read = { v -> (v as PaginatedPetSummaryList).let { listOf<Any?>(it.count, it.next, it.previous, it.results) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PaginatedPetSummaryList.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__PaginatedPetSummaryList.Ok((__r.value as PaginatedPetSummaryList)) }
+    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("count", SnglCodec.of(SnglCodec.INT)), SnglCodecField("next", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("previous", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("results", SnglCodec.of(SnglCodec.LIST, c1))); c0.make = { a -> PaginatedPetSummaryList(count = a[0] as Int, next = a[1] as String?, previous = a[2] as String?, results = a[3] as List<PetSummary>) }; c0.read = { v -> (v as PaginatedPetSummaryList).let { listOf<Any?>(it.count, it.next, it.previous, it.results) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PaginatedPetSummaryList.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!)) else SnglResult__PaginatedPetSummaryList.Ok((__r.value as PaginatedPetSummaryList)) }
     	}
     }
-    return SnglResult__PaginatedPetSummaryList.Ok(PaginatedPetSummaryList())
+    return SnglResult__PaginatedPetSummaryList.Ok(PaginatedPetSummaryList(results = listOf<PetSummary>()))
 }
 
 suspend fun petRetrieveCall(id: String, __ctx_server: String): SnglResult__PetDetail {
-    var __match1: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", (((__ctx_server + "/api/v1/pets/") + SnglCodec.escape(id)) + "/"), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
+    var __match1: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", (((__ctx_server + "/api/v1/pets/") + SnglCodec.escape(id)) + "/"), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
     when {
     	(__match1 is SnglResult__Response.Failed) -> {
     		var r = (__match1 as SnglResult__Response.Failed).value
@@ -2712,10 +2713,10 @@ suspend fun petRetrieveCall(id: String, __ctx_server: String): SnglResult__PetDe
     	}
     	else -> {
     		var r = (__match1 as SnglResult__Response.Ok).value
-    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); val c2 = SnglCodec(SnglCodec.STRUCT); val c3 = SnglCodec(SnglCodec.STRUCT); val c4 = SnglCodec(SnglCodec.STRUCT); val c5 = SnglCodec(SnglCodec.STRUCT); val c6 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.of(SnglCodec.INT)), SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("adoption_fee", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("age", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("is_available", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.BOOL))), SnglCodecField("breed", c1), SnglCodecField("photos", c2), SnglCodecField("measurements", SnglCodec.of(SnglCodec.LIST, c3)), SnglCodecField("tags", SnglCodec.of(SnglCodec.LIST, c5))); c0.make = { a -> PetDetail(id = a[0] as Int, name = a[1] as String, adoptionFee = a[2] as Int?, age = a[3] as Int?, isAvailable = a[4] as Boolean?, breed = a[5] as PetBreedSummary, photos = a[6] as PetPhotos, measurements = a[7] as List<PetMeasurement>, tags = a[8] as List<PetTag>) }; c0.read = { v -> (v as PetDetail).let { listOf<Any?>(it.id, it.name, it.adoptionFee, it.age, it.isAvailable, it.breed, it.photos, it.measurements, it.tags) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetBreedSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetBreedSummary).let { listOf<Any?>(it.name, it.url) } }; c2.fields = listOf(SnglCodecField("thumbnail_url", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING)))); c2.make = { a -> PetPhotos(thumbnailUrl = a[0] as String?) }; c2.read = { v -> (v as PetPhotos).let { listOf<Any?>(it.thumbnailUrl) } }; c3.fields = listOf(SnglCodecField("base_value", SnglCodec.of(SnglCodec.INT)), SnglCodecField("margin", SnglCodec.of(SnglCodec.INT)), SnglCodecField("measure", c4)); c3.make = { a -> PetMeasurement(baseValue = a[0] as Int, margin = a[1] as Int, measure = a[2] as MeasureSummary) }; c3.read = { v -> (v as PetMeasurement).let { listOf<Any?>(it.baseValue, it.margin, it.measure) } }; c4.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c4.make = { a -> MeasureSummary(name = a[0] as String, url = a[1] as String) }; c4.read = { v -> (v as MeasureSummary).let { listOf<Any?>(it.name, it.url) } }; c5.fields = listOf(SnglCodecField("slot", SnglCodec.of(SnglCodec.INT)), SnglCodecField("type", c6)); c5.make = { a -> PetTag(slot = a[0] as Int, type = a[1] as TagSummary) }; c5.read = { v -> (v as PetTag).let { listOf<Any?>(it.slot, it.type) } }; c6.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c6.make = { a -> TagSummary(name = a[0] as String, url = a[1] as String) }; c6.read = { v -> (v as TagSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PetDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__PetDetail.Ok((__r.value as PetDetail)) }
+    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); val c2 = SnglCodec(SnglCodec.STRUCT); val c3 = SnglCodec(SnglCodec.STRUCT); val c4 = SnglCodec(SnglCodec.STRUCT); val c5 = SnglCodec(SnglCodec.STRUCT); val c6 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.of(SnglCodec.INT)), SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("adoption_fee", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("age", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("is_available", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.BOOL))), SnglCodecField("breed", c1), SnglCodecField("photos", c2), SnglCodecField("measurements", SnglCodec.of(SnglCodec.LIST, c3)), SnglCodecField("tags", SnglCodec.of(SnglCodec.LIST, c5))); c0.make = { a -> PetDetail(id = a[0] as Int, name = a[1] as String, adoptionFee = a[2] as Int?, age = a[3] as Int?, isAvailable = a[4] as Boolean?, breed = a[5] as PetBreedSummary, photos = a[6] as PetPhotos, measurements = a[7] as List<PetMeasurement>, tags = a[8] as List<PetTag>) }; c0.read = { v -> (v as PetDetail).let { listOf<Any?>(it.id, it.name, it.adoptionFee, it.age, it.isAvailable, it.breed, it.photos, it.measurements, it.tags) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetBreedSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetBreedSummary).let { listOf<Any?>(it.name, it.url) } }; c2.fields = listOf(SnglCodecField("thumbnail_url", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING)))); c2.make = { a -> PetPhotos(thumbnailUrl = a[0] as String?) }; c2.read = { v -> (v as PetPhotos).let { listOf<Any?>(it.thumbnailUrl) } }; c3.fields = listOf(SnglCodecField("base_value", SnglCodec.of(SnglCodec.INT)), SnglCodecField("margin", SnglCodec.of(SnglCodec.INT)), SnglCodecField("measure", c4)); c3.make = { a -> PetMeasurement(baseValue = a[0] as Int, margin = a[1] as Int, measure = a[2] as MeasureSummary) }; c3.read = { v -> (v as PetMeasurement).let { listOf<Any?>(it.baseValue, it.margin, it.measure) } }; c4.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c4.make = { a -> MeasureSummary(name = a[0] as String, url = a[1] as String) }; c4.read = { v -> (v as MeasureSummary).let { listOf<Any?>(it.name, it.url) } }; c5.fields = listOf(SnglCodecField("slot", SnglCodec.of(SnglCodec.INT)), SnglCodecField("type", c6)); c5.make = { a -> PetTag(slot = a[0] as Int, type = a[1] as TagSummary) }; c5.read = { v -> (v as PetTag).let { listOf<Any?>(it.slot, it.type) } }; c6.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c6.make = { a -> TagSummary(name = a[0] as String, url = a[1] as String) }; c6.read = { v -> (v as TagSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PetDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!)) else SnglResult__PetDetail.Ok((__r.value as PetDetail)) }
     	}
     }
-    return SnglResult__PetDetail.Ok(PetDetail())
+    return SnglResult__PetDetail.Ok(PetDetail(measurements = listOf<PetMeasurement>(), tags = listOf<PetTag>()))
 }
 
 fun Response.checked(): SnglResult__Response {
@@ -3113,7 +3114,7 @@ body { font-family: system-ui, sans-serif; }
       })()));
     }
     ;
-    return { tag: "ok", value: {} };
+    return { tag: "ok", value: { id: 0, name: "", parentBreed: null } };
   }
   function _answered(r) {
     if (r.tag === "failed") {
@@ -3126,7 +3127,7 @@ body { font-family: system-ui, sans-serif; }
       return Response_checked(got);
     }
     ;
-    return { tag: "ok", value: {} };
+    return { tag: "ok", value: { status: 0, headers: /* @__PURE__ */ new Map([]), body: "" } };
   }
   async function petListCall(limit, offset, __ctx_server) {
     let __match0 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", _snglWithQuery(__ctx_server + "/api/v1/pets/", { limit, offset }, (() => {
@@ -3150,7 +3151,7 @@ body { font-family: system-ui, sans-serif; }
       })()));
     }
     ;
-    return { tag: "ok", value: {} };
+    return { tag: "ok", value: { count: 0, next: null, previous: null, results: [] } };
   }
   async function petRetrieveCall(id, __ctx_server) {
     let __match1 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", __ctx_server + "/api/v1/pets/" + encodeURIComponent(id).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()) + "/", null, null)));
@@ -3180,7 +3181,7 @@ body { font-family: system-ui, sans-serif; }
       })()));
     }
     ;
-    return { tag: "ok", value: {} };
+    return { tag: "ok", value: { id: 0, name: "", adoptionFee: null, age: null, isAvailable: null, breed: { name: "", url: "" }, photos: { thumbnailUrl: null }, measurements: [], tags: [] } };
   }
   function Response_checked(r) {
     if (r.status >= 200 && r.status < 300) {
@@ -3386,7 +3387,7 @@ body { font-family: system-ui, sans-serif; }
     let __n3 = document.createElement("span");
     __n3.setAttribute("class", "sngl-badge");
     __n3.textContent = __prop___p0.type.name;
-    __n3.setAttribute("style", "padding-left:8px;padding-right:8px;padding-top:2px;padding-bottom:2px;border-radius:12px;display:inline-block");
+    __n3.setAttribute("style", "padding-top:2px;padding-right:8px;padding-bottom:2px;padding-left:8px;display:inline-block;border-radius:12px");
     __root.appendChild(__n3);
     return {
       __root,
@@ -3395,10 +3396,10 @@ body { font-family: system-ui, sans-serif; }
       __set___p0
     };
   }
-  var __effect0_key = {};
+  var __effect0_key = { key: { limit: null, offset: null }, n: 0 };
   var __effect0_live = [];
   var __effect0_desired = [];
-  var __effect1_key = {};
+  var __effect1_key = { key: "", n: 0 };
   var __effect1_live = [];
   var __effect1_desired = [];
   var __effects0_settling = false;
@@ -3592,7 +3593,7 @@ body { font-family: system-ui, sans-serif; }
           __slot1 = [];
           if (state.loading__inst0) {
             let __n7 = document.createElement("span");
-            __n7.setAttribute("style", "align-items:center;display:inline-flex;gap:8px");
+            __n7.setAttribute("style", "gap:8px;display:inline-flex;align-items:center");
             let __n8 = document.createElement("span");
             __n8.setAttribute("class", "sngl-spinner");
             __n7.appendChild(__n8);
@@ -4186,10 +4187,10 @@ component petBreedRetrieve[F any](
     )
 }
 -- run/go/fyne --
-pass sha256:9747906784536788b35974d936a442a6
+pass sha256:15cf70c176a165fa6b55545893595cdc
 -- run/go/gtk4 --
 pass sha256:edb4438b18a66983f64f8e4022bfe697
 -- run/kotlin/android --
-pass sha256:a3d9ca76ff015475f5ce1ea3fef7c8e0
+pass sha256:5aa1ebd543d593a12e908a74cd0eab85
 -- run/none/html --
-pass sha256:3498f3e778e79955b401567dc812f059
+pass sha256:c6da311f018f1d8306dc1ca7f526b4aa

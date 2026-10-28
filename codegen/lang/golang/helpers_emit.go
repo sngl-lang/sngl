@@ -49,6 +49,12 @@ type HelperSet struct {
 	NeedSome bool
 	// NeedOptEq: an option compared with a value of its element (OptionCompare).
 	NeedOptEq bool
+	// The helpers == between values Go's own == would get wrong calls
+	// (equal.go): two lists, two options, and an option against a value,
+	// each by its elements' == or by a func comparing them.
+	NeedListEqual, NeedListEqualBy bool
+	NeedOptEqual, NeedOptEqualBy   bool
+	NeedOptHasBy                   bool
 	// UnitStrings are the unit decls some string conversion renders, in the
 	// order first seen. One helper each rather than one shared: a unit's bases
 	// are per declaration, so the terms have to be written out.
@@ -149,9 +155,18 @@ func HelpersNeeded(pkg *ir.Package) HelperSet {
 			if _, _, ok := OptionCompare(n); ok {
 				h.NeedOptEq = true
 			}
+			(&goEqualer{h: &h}).binary(n, "a", "b")
 		}
 		return nil
 	})
+	// A spread's merge compares each field with its zero (mergeWrites).
+	for _, sd := range pkg.MergeStructs {
+		for _, f := range sd.Fields {
+			if !goComparesNatively(f.Type) {
+				(&goEqualer{h: &h}).equal(f.Type, "a", "b")
+			}
+		}
+	}
 	h.NeedSeq = packageBuildsASequence(pkg)
 	return h
 }
@@ -283,6 +298,65 @@ func (h HelperSet) Emit() string {
 		// An option equals a value when it holds one and that one is equal.
 		b.WriteString(`func snglOptEq[T comparable](p *T, v T) bool {
 	return p != nil && *p == v
+}
+
+`)
+	}
+	if h.NeedListEqual {
+		b.WriteString(`func snglListEqual[T comparable](a, b []T) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+`)
+	}
+	if h.NeedListEqualBy {
+		b.WriteString(`func snglListEqualBy[T any](a, b []T, eq func(T, T) bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !eq(a[i], b[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+`)
+	}
+	if h.NeedOptEqual {
+		// Two options are equal when neither holds a value or both hold
+		// equal ones; their pointers are two reads of one value.
+		b.WriteString(`func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
+`)
+	}
+	if h.NeedOptEqualBy {
+		b.WriteString(`func snglOptEqualBy[T any](p, q *T, eq func(T, T) bool) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return eq(*p, *q)
+}
+
+`)
+	}
+	if h.NeedOptHasBy {
+		b.WriteString(`func snglOptHasBy[T any](p *T, v T, eq func(T, T) bool) bool {
+	return p != nil && eq(*p, v)
 }
 
 `)

@@ -15,6 +15,7 @@ import (
 
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"duckfam.us/sngl/pkg/go/fynetheme"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 )
 
 // A canvas object refreshes itself when its minimum changes, and that reaches
@@ -269,6 +270,78 @@ func TestInsertingRefreshesNoOtherChild(t *testing.T) {
 	}
 	if got, want := added.Position().Y, old.MinSize().Height+theme.Padding(); got != want {
 		t.Errorf("the inserted row is at %v, want laid out after the first, at %v", got, want)
+	}
+}
+
+// A row a render slot inserts under a Box's theme takes that theme by the
+// next draw, with no refresh of the Box or of the rows already there. Before,
+// it kept the one it had until the Box refreshed, as Fyne's ThemeOverride does
+// for what is added beneath it.
+func TestAnInsertedRowTakesItsBoxsTheme(t *testing.T) {
+	old := newCounted()
+	c := fynelayout.NewVBox(old)
+	anchor := fynelayout.SlotAnchor(c, nil)
+	b := fynelayout.NewBox(c)
+	red := color.NRGBA{R: 255, A: 255}
+	b.SetLook(fynelayout.Look{TextColor: snglcolor.Color{R: 255, A: 255}})
+	w := fynetest.NewWindow(b)
+	defer w.Close()
+	before := old.refreshes
+
+	added := widget.NewLabel("added")
+	fynelayout.InsertBefore(c, anchor, added)
+	w.Canvas().Capture()
+	if got := theme.CurrentForWidget(added).Color(theme.ColorNameForeground, theme.VariantLight); got != red {
+		t.Errorf("the inserted label's foreground is %v, want its box's %v", got, red)
+	}
+	boxed := fynelayout.NewBox(widget.NewLabel("boxed"))
+	boxed.SetLook(fynelayout.Look{PaddingTop: 2, Bold: true})
+	fynelayout.InsertBefore(c, anchor, boxed)
+	w.Canvas().Capture()
+	if got := theme.CurrentForWidget(boxed.Content).Color(theme.ColorNameForeground, theme.VariantLight); got != red {
+		t.Errorf("an inserted box's label's foreground is %v, want the enclosing %v", got, red)
+	}
+	if old.refreshes != before {
+		t.Errorf("inserting refreshed the row already there %d times", old.refreshes-before)
+	}
+}
+
+// A build gives a box its Look before it adds the box's rows, and fills a
+// render slot before the window shows: every row takes the theme, and so does
+// one the slot inserts after.
+func TestRowsAddedBeforeTheBoxShowsTakeItsTheme(t *testing.T) {
+	c := fynelayout.NewVBox()
+	b := fynelayout.NewBox(c)
+	b.SetLook(fynelayout.Look{TextColor: snglcolor.Color{R: 255, A: 255}})
+	static := widget.NewLabel("static")
+	c.Add(static)
+	anchor := fynelayout.SlotAnchor(c, nil)
+	first := widget.NewLabel("first")
+	fynelayout.InsertBefore(c, anchor, first)
+	w := fynetest.NewWindow(b)
+	defer w.Close()
+	later := widget.NewLabel("later")
+	fynelayout.InsertBefore(c, anchor, later)
+	w.Canvas().Capture()
+	red := color.NRGBA{R: 255, A: 255}
+	for _, l := range []*widget.Label{static, first, later} {
+		if got := theme.CurrentForWidget(l).Color(theme.ColorNameForeground, theme.VariantLight); got != red {
+			t.Errorf("%s's foreground is %v, want its box's %v", l.Text, got, red)
+		}
+	}
+}
+
+// A row inserted where no Box themes it is under no override.
+func TestARowInsertedUnthemedTakesNoOverride(t *testing.T) {
+	c := fynelayout.NewVBox(widget.NewLabel("old"))
+	anchor := fynelayout.SlotAnchor(c, nil)
+	w := fynetest.NewWindow(c)
+	defer w.Close()
+	added := widget.NewLabel("added")
+	fynelayout.InsertBefore(c, anchor, added)
+	w.Canvas().Capture()
+	if got := theme.CurrentForWidget(added); got != theme.Current() {
+		t.Errorf("the inserted label is under %T, want the app's theme", got)
 	}
 }
 

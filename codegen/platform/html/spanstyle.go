@@ -24,7 +24,7 @@ const spanStyleProp = "spanStyle"
 // winning over the words. It is also what keeps the client render and the
 // server render from drifting: both ask this.
 func nodeInlineCSS(n *ir.NodeInst) string {
-	css := htmlutil.BuildCSSStyleIR(n.Props)
+	css := staticCSS(codegen.NodeProp(n, "style"))
 	if span := spanStyleCSS(n); span != "" {
 		if css != "" {
 			css += ";"
@@ -55,6 +55,16 @@ func spanStyleCSS(n *ir.NodeInst) string {
 	return spanStyleLitCSS(sl)
 }
 
+// spanDecl is one declaration of a run's style, nothing for a value the build
+// cannot read or one that says nothing.
+func spanDecl(property string, value ir.Expr) string {
+	v := htmlutil.ExprToStaticValueIR(value)
+	if v == "" {
+		return ""
+	}
+	return property + ":" + v
+}
+
 func spanStyleLitCSS(sl *ir.StructLit) string {
 	var parts []string
 	var decor []string
@@ -74,19 +84,19 @@ func spanStyleLitCSS(sl *ir.StructLit) string {
 					continue
 				}
 			}
-			parts = append(parts, htmlutil.StylePropToCSSIR(f.Name, f.Value))
+			parts = append(parts, spanDecl("font-size", f.Value))
 		case "color":
 			if codegen.SpanStyleUnsetColor(f.Value) {
 				continue
 			}
-			parts = append(parts, htmlutil.StylePropToCSSIR(f.Name, f.Value))
+			parts = append(parts, spanDecl("color", f.Value))
 		case "fontWeight", "fontStyle":
 			if codegen.SpanStyleInherit(f.Value) {
 				continue
 			}
-			parts = append(parts, htmlutil.StylePropToCSSIR(f.Name, f.Value))
-		default:
-			parts = append(parts, htmlutil.StylePropToCSSIR(f.Name, f.Value))
+			parts = append(parts, spanDecl(map[string]string{"fontWeight": "font-weight", "fontStyle": "font-style"}[f.Name], f.Value))
+		case "fontFamily":
+			parts = append(parts, spanDecl("font-family", f.Value))
 		}
 	}
 	if len(decor) > 0 {
@@ -103,10 +113,9 @@ func spanStyleLitCSS(sl *ir.StructLit) string {
 	return strings.Join(out, ";")
 }
 
-// The rule a literal class stands for, in the light scheme and the dark one.
-// A `SpanStyle` on a span and a `ui.Style` on a flow, both read by
-// `spanStyleLitCSS`, which is exact for the fields a flow's rule writes but
-// drops a zero color or font size. Written once per page to the stylesheet
+// The rule a literal class stands for, in the light scheme and the dark one:
+// a `SpanStyle` on a span, read by `spanStyleLitCSS`, and a `ui.Style` on a
+// flow, which arrives as its declarations (`classCSS`). Written once per page to the stylesheet
 // rather than onto the element, which is what lets the dark half answer to
 // `prefers-color-scheme`; under `:where`, so a page's own CSS wins over both.
 const (
@@ -122,17 +131,22 @@ func classRules(n *ir.NodeInst) []string {
 		return nil
 	}
 	var rules []string
-	if sl, ok := codegen.NodeProp(n, classStyleProp).(*ir.StructLit); ok {
-		if css := spanStyleLitCSS(sl); css != "" {
-			rules = append(rules, ":where(."+class+") { "+css+" }")
-		}
+	if css := classCSS(codegen.NodeProp(n, classStyleProp)); css != "" {
+		rules = append(rules, ":where(."+class+") { "+css+" }")
 	}
-	if sl, ok := codegen.NodeProp(n, classStyleDarkProp).(*ir.StructLit); ok {
-		if css := spanStyleLitCSS(sl); css != "" {
-			rules = append(rules, "@media (prefers-color-scheme: dark) { :where(."+class+") { "+css+" } }")
-		}
+	if css := classCSS(codegen.NodeProp(n, classStyleDarkProp)); css != "" {
+		rules = append(rules, "@media (prefers-color-scheme: dark) { :where(."+class+") { "+css+" } }")
 	}
 	return rules
+}
+
+// classCSS is the text of a class's rule: a flow's is a ui.Style's
+// declarations, and a run's a SpanStyle.
+func classCSS(style ir.Expr) string {
+	if sl, ok := style.(*ir.StructLit); ok {
+		return spanStyleLitCSS(sl)
+	}
+	return staticCSS(style)
 }
 
 // spanColorHelper names the page's function from a SNGL color to a CSS one,

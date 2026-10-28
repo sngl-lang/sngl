@@ -71,7 +71,7 @@ func testBranchesRunWhereTaken(t test.Test, c main) {
     t.assert(row(c.at).length() == 2)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:13d26f2d000918b4cae20f53fafa5bd2
+sha256:3814354d690329bfb9f09106c1597dd8
 {
   "results": [
     {
@@ -91,7 +91,7 @@ sha256:04f1a61a6d0fa01ff07baea05fd1b538
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:06226ffc95e7b0b9802e337b319e8a81
+sha256:2b33e9df6e3d3bf23ab7dea87477f4b2
 {
   "results": [
     {
@@ -111,7 +111,7 @@ sha256:fddfff492c128c56b58610c2443891fb
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:8d8e9c9d7916a5f93305212145b17001
+sha256:c2f51b9d1d3f8dac56002ffe0feac0c6
 {
   "results": [
     {

@@ -387,11 +387,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-	"duckfam.us/sngl/pkg/go/snglcolor"
-	"fmt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 type ErrorEvent struct {
 	Message string
@@ -846,7 +842,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__slot0 = nil
 	__n6 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n6, 0)
-	gtk4rt.BoxSetSpacing(__n6, 6)
+	gtk4rt.SetLook(__n6, gtk4rt.Look{Spaced: true, Spacing: 6})
 	c.entry = gtk4rt.New("GtkEntry")
 	gtk4rt.Connect(c.entry, "changed", func() {
 		if gtk4rt.EditableGetText(c.entry) != c.value__inst1 {
@@ -991,7 +987,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	__n5 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n5, 1)
-	gtk4rt.BoxSetSpacing(__n5, 6)
+	gtk4rt.SetLook(__n5, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.box = gtk4rt.New("GtkEntry")
 	gtk4rt.Connect(m.box, "changed", m.box_changed_handler)
 	gtk4rt.Connect(m.box, "activate", m.box_activate_handler)

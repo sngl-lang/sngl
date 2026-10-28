@@ -493,7 +493,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 					})
 					gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(__n3)), func() {
 					})
-					gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(__n3)), func(m__r2 string) {
+					gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(__n3)), func(m__r3 string) {
 					})
 					var __n4 *__remote_state1Instance
 					if len(m.__inst0_live) > __inst0_i {
@@ -539,7 +539,7 @@ func (m *Model) __n6_click_handler() {
 func (m *Model) __n6_load_handler() {
 }
 
-func (m *Model) __n6_failed_handler(m__r2 string) {
+func (m *Model) __n6_failed_handler(m__r3 string) {
 }
 
 func (m *Model) __n8_clicked_handler() {
@@ -754,7 +754,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.__n1_visible_handler)
 	m.__n5 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
 	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n5)), 1)
-	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n5)), 6)
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n5)), gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n6 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
 	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(m.__n6)), "contain")
 	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(m.__n6)), m.__n6_click_handler)
@@ -793,4 +793,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:ec7706e30a0c20c8d80cb2e151349c3c
+pass sha256:1da891227cf1f951cf85682cc38e42ba

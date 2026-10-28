@@ -4,6 +4,7 @@ import (
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/interp"
 	"duckfam.us/sngl/ir"
+	"slices"
 )
 
 // maxInterpDepth bounds recursion in the interpreter adapter. Excess
@@ -73,10 +74,6 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 		declared, _ := ir.FieldsOf(t)
 		fields := make([]ir.FieldInit, 0, len(v.Fields))
 		for _, f := range v.Fields {
-			if f.Unwritten() {
-				// The literal left it out, and so does this one.
-				continue
-			}
 			ft := structFieldType(sd, f.Name)
 			for _, d := range declared {
 				if d.Name == f.Name {
@@ -88,7 +85,11 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 				Value: irFromValue(f.Value, ft),
 			})
 		}
-		return &ir.StructLit{Type: t, Def: sd, Fields: fields}
+		// The literal holds what the value sets: a field at what it would
+		// hold left out is left out, as a program writes it.
+		lit := &ir.StructLit{Type: t, Def: sd, Fields: fields}
+		lit.Fields = slices.DeleteFunc(lit.Fields, lit.HoldsOmitted)
+		return lit
 	case map[string]any:
 		var entries []ir.MapEntry
 		for _, k := range sortedMapKeys(v) {
@@ -187,7 +188,9 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 		copiedArgs[i] = interp.CloneValue(a)
 	}
 
-	result, err := env.CallUserFuncValues(fn, copiedArgs)
+	// A pure body writes none of the package's bindings, so it may read them
+	// through a frame rather than a copy.
+	result, err := env.Frame().CallUserFuncValues(fn, copiedArgs)
 	if err != nil {
 		return nil, false
 	}
@@ -463,7 +466,7 @@ func structFieldType(sd *ir.StructDef, name string) *ir.Type {
 // evaluated. Built once per package per run and shared, because building it
 // evaluates every const's initializer and a highlighted code block interprets
 // a token's color once per token -- 160000 builds of a site's search index.
-// A call runs in a snapshot of it (CallUserFuncValues), so none writes it.
+// A call runs in a Frame over it (interpretFunc), and a pure body writes none of it.
 func (ctx *evalCtx) interpEnv() (*interp.Env, error) {
 	if ctx.interpEnvs == nil {
 		return interp.BuildEnv(ctx.pkg, "", nil)

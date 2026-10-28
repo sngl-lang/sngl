@@ -58,7 +58,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+<ul style="padding-left:2em;gap:4px;display:flex;flex-direction:column">
   <li>
     <span>one</span>
   </li>
@@ -72,4 +72,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:f70242702638e07585deb1dee4c93998
+pass sha256:b15a49291ef92821354ad6519a4bcd9d

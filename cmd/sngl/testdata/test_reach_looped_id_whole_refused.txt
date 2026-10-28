@@ -1,0 +1,67 @@
+# A looped `#id` read whole is answered on a compiled target only as a count of
+# a loop that renders its copies wherever its component renders it
+# (test_reach_looped_id_whole_runs.txt). One a condition decides, and a whole
+# read that is no count, are refused where the test reads them, rather than
+# left for the target's compiler to stop on. The interpreter answers both,
+# being the reference.
+
+! sngl test --platform=html guarded.sngl
+stderr 'guarded.sngl:18:15: `title` names a copy per iteration, which a test reads one at a time, `title\[i\]`, or counts with `.length\(\)` where the loop renders its copies wherever the component renders it'
+
+! sngl test --platform=fyne --language=go walked.sngl
+stderr 'walked.sngl:15:18: `title` names a copy per iteration'
+
+sngl test --platform=none guarded.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none walked.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- guarded.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component card ui.node {
+    var names = ["a", "b"]
+    var shown = true
+    ui.vbox {
+        if shown {
+            for var n = names {
+                ui.text #title(value=n)
+            }
+        }
+    }
+}
+
+func testGuarded(t test.Test, c card) {
+    c.shown = false
+    t.assert(c.title.length() == 0)
+}
+
+ui.window {
+    card
+}
+-- walked.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component card ui.node {
+    var names = ["a", "b"]
+    ui.vbox {
+        for var n = names {
+            ui.text #title(value=n)
+        }
+    }
+}
+
+func testWalked(t test.Test, c card) {
+    var seen = 0
+    for var x = c.title {
+        seen = seen + 1
+    }
+    t.assert(seen == 2)
+}
+
+ui.window {
+    card
+}

@@ -36,6 +36,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
@@ -145,7 +146,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n2 = fynelayout.NewVBox()
 	m.__n2__box = fynelayout.NewBox(m.__n2)
-	m.__n2__box.SetLook(fynelayout.Look{Grow: 1.0})
+	m.__n2__box.SetLook(fynelayout.Look{Grow: 1.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 	m.__n3 = widget.NewButton("", nil)
 	m.__n3.SetText("toggle")
 	m.__n3.OnTapped = m.__n3_click_handler
@@ -293,8 +294,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n2 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n2, 1)
-	gtk4rt.BoxSetSpacing(m.__n2, 6)
-	gtk4rt.SetLook(m.__n2, gtk4rt.Look{Grow: 1.0})
+	gtk4rt.SetLook(m.__n2, gtk4rt.Look{Grow: 1.0, Spaced: true, Spacing: 6})
 	m.__n3 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n3, "toggle")
 	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)

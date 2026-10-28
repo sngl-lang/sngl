@@ -276,7 +276,6 @@ import "C"
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
-	"fmt"
 	"unsafe"
 )
 
@@ -407,12 +406,7 @@ func New() *Model {
 	return m
 }
 
-func LookOf(s Style) gtk4rt.Look {
-	look := LookHidden(s, (s.Display == "none"))
-	return look
-}
-
-func Paint(ctx *C.cairo_t, style Style__draw) {
+func Paint(ctx *C.cairo_t, style Style) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
 		if style.Stroke.A > 0 {
@@ -688,7 +682,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
 	C.cairo_new_sub_path(ctx)
 	C.cairo_arc(ctx, C.double(5.0), C.double(5.0), C.double(2.0), C.double(0.0), C.double(6.283185307179586))
-	Paint(ctx, Style__draw{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -725,7 +719,7 @@ func newSearchInstance(__model *Model) *SearchInstance {
 	c.__slot0 = nil
 	__n4 := (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
 	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(__n4)), 1)
-	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(__n4)), 6)
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n4)), gtk4rt.Look{Spaced: true, Spacing: 6})
 	c.box = (*C.GtkEntry)(unsafe.Pointer(gtk4rt.New("GtkEntry")))
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(c.box)), "changed", func() {
 		if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box)))) != c.search {
@@ -828,7 +822,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.__n1_visible_handler)
 	m.__n3 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
 	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n3)), 1)
-	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n3)), 6)
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n3)), gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n5 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n5, C.int(10))
 	C.gtk_drawing_area_set_content_height(m.__n5, C.int(10))

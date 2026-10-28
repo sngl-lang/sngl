@@ -129,7 +129,7 @@ sha256:c81d9b67dd16ad806bb9ff42c11d57f5
   ]
 }
 -- testrun/gtk4/go/click.sngl/counter/1 --
-sha256:6cc6833a961410b985ecc8c05a92104a
+sha256:4c184561e159fb57670d3e12f227aee6
 {
   "results": [
     {
@@ -139,7 +139,7 @@ sha256:6cc6833a961410b985ecc8c05a92104a
   ]
 }
 -- testrun/html/none/click.sngl/counter/1 --
-sha256:e025039e6f8621a80dba5a2290556eb9
+sha256:f9029259ddbe4ae9a058a19499ffa90c
 {
   "results": [
     {

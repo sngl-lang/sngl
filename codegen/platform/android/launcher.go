@@ -80,12 +80,11 @@ func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen
 	// back — we surface the build log to the driver caller on accept
 	// timeout to make diagnosis tractable.
 	var buildLog bytes.Buffer
-	cmd := gradle.Command(ctx, dir,
+	cmd := gradle.Command(ctx, dir, jdk.Env(jdkHome),
 		":app:testDebugUnitTest",
 		"-Dsngl.agent.port="+strconv.Itoa(port),
 		"--tests", "*.MainScreenAgentTest",
 	)
-	cmd.Env = jdk.Env(jdkHome)
 	cmd.Stdout = &buildLog
 	cmd.Stderr = &buildLog
 	unlock := gradle.Lock()
@@ -184,16 +183,16 @@ func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.L
 	// gradle distribution, so the host doesn't need system gradle.
 	var bld *exec.Cmd
 	if _, statErr := os.Stat(filepath.Join(dir, "gradlew")); statErr == nil {
-		bld = gradle.Command(ctx, dir, ":app:assembleDebug")
+		bld = gradle.Command(ctx, dir, jdk.Env(jdkHome), ":app:assembleDebug")
 	} else if sys, lookErr := exec.LookPath("gradle"); lookErr == nil {
 		bld = exec.CommandContext(ctx, sys, ":app:assembleDebug", "--no-daemon", "--console=plain")
 		bld.Dir = dir
+		bld.Env = jdk.Env(jdkHome)
 	} else {
 		return nil, nil, &codegen.SkipError{Reason: "gradle not on PATH and no gradlew in scaffold"}
 	}
 
 	var buildOut bytes.Buffer
-	bld.Env = jdk.Env(jdkHome)
 	bld.Stdout = &buildOut
 	bld.Stderr = &buildOut
 	unlock := gradle.Lock()

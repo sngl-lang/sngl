@@ -98,6 +98,10 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		}
 		x.Then = foldExpr(x.Then, ctx)
 		x.Else = foldExpr(x.Else, ctx)
+		// A choice between one constant written twice is that constant.
+		if ir.SameConstant(x.Then, x.Else) && effectFree(x.Cond) {
+			return x.Then
+		}
 	case *ir.MatchExpr:
 		if i := foldMatchArms(&x.MatchArms, ctx); i >= 0 {
 			return foldExpr(x.Arms[i].Value, ctx)
@@ -123,6 +127,16 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		if x.ErrorHandler != nil && x.ErrorHandler.Func != nil {
 			x.ErrorHandler.Func.Block = foldStmts(x.ErrorHandler.Func.Block, ctx)
 		}
+		// An argument the inliner would not copy into a body reading it
+		// twice may have folded to one it will: `s == blank ? modifier : …`
+		// is `modifier` once s is the blank Style.
+		if inlined := inlineCall(x, ctx); inlined != nil {
+			if x.Func != nil {
+				ctx.inliningFuncs[x.Func] = true
+				defer delete(ctx.inliningFuncs, x.Func)
+			}
+			return foldExpr(inlined, ctx)
+		}
 	case *ir.Conversion:
 		x.Operand = foldExpr(x.Operand, ctx)
 		// An unwrap of a value put into an option is that value. The pair
@@ -136,6 +150,16 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		}
 	case *ir.Select:
 		x.Operand = foldExpr(x.Operand, ctx)
+		if v := literalField(x); v != nil {
+			return v
+		}
+		// A field of a choice is the choice of the field: `(on ? 8px : 2px).px`
+		// is `on ? 8.0 : 2.0`, each branch then folding on its own.
+		if t, ok := x.Operand.(*ir.Ternary); ok && t.Type != nil && (t.Type.Kind == ir.TypeStruct || t.Type.Kind == ir.TypeUnit) {
+			then := &ir.Select{Type: x.Type, Operand: t.Then, Field: x.Field}
+			els := &ir.Select{Type: x.Type, Operand: t.Else, Field: x.Field}
+			return foldExpr(&ir.Ternary{Type: x.Type, Cond: t.Cond, Then: then, Else: els}, ctx)
+		}
 		if id, ok := x.Operand.(*ir.Ident); ok {
 			// A one-way prop read off a window's `#id` -- an instance of a
 			// `root` member -- is the expression its call site gave it: that is
@@ -784,4 +808,36 @@ func isRef(e ir.Expr) bool {
 	}
 	t := e.ExprType()
 	return t == nil || t.Kind == ir.TypeRef
+}
+
+// literalField is a field read off a struct literal the build cannot
+// evaluate: the value the literal writes for it. A Style handed to a function
+// that reads it a field at a time -- html's css, spliced where the node is --
+// is read field by field off one literal, and left standing, each read
+// spelled the whole literal again. Only where nothing the read drops has an
+// effect, and never through a spread, which writes fields of its own. A field
+// the literal leaves out is what it holds left out (ir.StructLit.Field), a
+// copy of the declaration's default.
+func literalField(x *ir.Select) ir.Expr {
+	sl, ok := x.Operand.(*ir.StructLit)
+	if !ok || sl.Def == nil {
+		return nil
+	}
+	var found ir.Expr
+	for _, f := range sl.Fields {
+		if f.Spread {
+			return nil
+		}
+		if f.Name == x.Field {
+			found = f.Value
+			continue
+		}
+		if !effectFree(f.Value) {
+			return nil
+		}
+	}
+	if found == nil {
+		found = cloneExpr(sl.Field(x.Field))
+	}
+	return found
 }

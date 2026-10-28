@@ -63,7 +63,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<canvas id="$0" style="height:100px;width:100px" height="100" width="100">
+<canvas id="$0" height="100" width="100">
 </canvas>
 
 <script>
@@ -88,37 +88,37 @@ body { font-family: system-ui, sans-serif; }
     ctx.stroke();
     ctx.restore();
     ctx.save();
-    paintStyle(ctx, { fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 0, g: 0, b: 255, a: 255 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(state.c__inst0.x + 45, state.c__inst0.y + 0, 2, 0, 6.283185307179586);
     ctx.fill();
     ctx.restore();
     ctx.save();
-    paintStyle(ctx, { fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 0, g: 0, b: 255, a: 255 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(state.c__inst0.x + 22.500000000000004, state.c__inst0.y + 38.97114317029974, 2, 0, 6.283185307179586);
     ctx.fill();
     ctx.restore();
     ctx.save();
-    paintStyle(ctx, { fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 0, g: 0, b: 255, a: 255 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(state.c__inst0.x + -22.49999999999999, state.c__inst0.y + 38.97114317029975, 2, 0, 6.283185307179586);
     ctx.fill();
     ctx.restore();
     ctx.save();
-    paintStyle(ctx, { fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 0, g: 0, b: 255, a: 255 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(state.c__inst0.x + -45, state.c__inst0.y + 5510910596163082e-30, 2, 0, 6.283185307179586);
     ctx.fill();
     ctx.restore();
     ctx.save();
-    paintStyle(ctx, { fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 0, g: 0, b: 255, a: 255 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(state.c__inst0.x + -22.50000000000002, state.c__inst0.y + -38.971143170299726, 2, 0, 6.283185307179586);
     ctx.fill();
     ctx.restore();
     ctx.save();
-    paintStyle(ctx, { fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 0, g: 0, b: 255, a: 255 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(state.c__inst0.x + 22.5, state.c__inst0.y + -38.97114317029974, 2, 0, 6.283185307179586);
     ctx.fill();
@@ -171,4 +171,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:789b0ef9250ff8c231a1ec1eb0e3c28b
+pass sha256:48450fb698eb654e52d2b5ef30683ffc

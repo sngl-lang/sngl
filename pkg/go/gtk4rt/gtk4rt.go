@@ -265,6 +265,8 @@ static void sngl_pump_until_mapped(GtkWidget *widget, int timeoutMs) {
         if (!g_main_context_iteration(NULL, FALSE)) break;
     }
 }
+
+void sngl_set_orientation(GtkWidget *w, GtkOrientation o);
 */
 import "C"
 
@@ -633,7 +635,7 @@ func FrameSetChild(f, child Handle) {
 // ---- Orientable ----
 
 func OrientableSetOrientation(o Handle, orientation Orientation) {
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(p(o)), C.GtkOrientation(orientation))
+	C.sngl_set_orientation(widget(o), C.GtkOrientation(orientation))
 }
 
 // ---- Signals / callbacks ----

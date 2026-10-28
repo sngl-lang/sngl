@@ -46,6 +46,9 @@ type irComposeContext struct {
 	// a call site renders is handed the entry it registers under
 	// (emitInstanceRegistration).
 	reads []codegen.InstanceRead
+	// slotReceivers is the layout scope the composable being written types
+	// each of its slots with, handed at each insertion.
+	slotReceivers map[*ir.SlotDecl]string
 	// tickSeq names each timer's handler uniquely within a composable, so
 	// two timers' don't collide.
 	tickSeq int

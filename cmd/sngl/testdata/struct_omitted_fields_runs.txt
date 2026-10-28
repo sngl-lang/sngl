@@ -1,0 +1,158 @@
+# A struct literal's omitted field reads its declared default, or its type's
+# zero, on every language alike.
+#
+# The checker writes every field a literal leaves out, so nothing after it
+# can tell an omitted field from a written one. Before, JavaScript wrote only
+# the fields named, so an omitted one read undefined: `p.y + 1` was NaN and
+# `p.c.r` threw. Go left an omitted enum field "", which no member is, so
+# `p.tone == Tone.calm` was false on every Go target.
+
+mkdir none html bubbletea android
+
+cp app.sngl none/app.sngl
+sngl test --platform=none none/app.sngl
+stdout 'ok +4 tests, 0 failures'
+
+cp app.sngl html/app.sngl
+sngl test --platform=html html/app.sngl
+stdout 'ok +4 tests, 0 failures'
+
+cp app.sngl bubbletea/app.sngl
+sngl test --platform=bubbletea bubbletea/app.sngl
+stdout 'ok +4 tests, 0 failures'
+
+cp app.sngl android/app.sngl
+sngl test --platform=android android/app.sngl
+stdout 'ok +4 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+enum Tone { calm, loud }
+
+struct Inner {
+    n    int
+    tone Tone
+}
+
+struct P {
+    x     int
+    y     int
+    w     float = 1.5
+    c     color
+    tone  Tone
+    inner Inner
+    tags  list[string]
+    maybe option[int]
+}
+
+var held P = {x=1}
+
+func made() P {
+    return {x=2}
+}
+
+func testHeld(t test.Test) {
+    t.assert(held.y + 1 == 1)
+    t.assert(held.w == 1.5)
+    t.assert(held.c.r == 0)
+    t.assert(held.tone == Tone.calm)
+    t.assert(held.inner.n == 0)
+    t.assert(held.inner.tone == Tone.calm)
+    t.assert(held.tags.length() == 0)
+    t.assert(held.maybe == null)
+}
+
+func testMade(t test.Test) {
+    var p = made()
+    t.assert(p.y == 0)
+    t.assert(p.tone == Tone.calm)
+    t.assert(p.inner.tone == Tone.calm)
+    t.assert(p.inner == Inner{n=0, tone=Tone.calm})
+}
+
+func testSpread(t test.Test) {
+    var p = P{...made(), y=3}
+    t.assert(p.x == 2)
+    t.assert(p.y == 3)
+    t.assert(p.w == 1.5)
+    t.assert(p.tone == Tone.calm)
+}
+
+func testZeroVar(t test.Test) {
+    var p P
+    t.assert(p.w == 1.5)
+    t.assert(p.tone == Tone.calm)
+    t.assert(p.inner.tone == Tone.calm)
+}
+
+ui.window {
+    ui.text(value="{held.x}")
+}
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:54038e0259e40d48e3ba027d9eb9e904
+{
+  "results": [
+    {
+      "Desc": "Held",
+      "Passed": true
+    },
+    {
+      "Desc": "Made",
+      "Passed": true
+    },
+    {
+      "Desc": "Spread",
+      "Passed": true
+    },
+    {
+      "Desc": "ZeroVar",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:a47cae06aad65303535bf804013ce46c
+{
+  "results": [
+    {
+      "Desc": "Held",
+      "Passed": true
+    },
+    {
+      "Desc": "Made",
+      "Passed": true
+    },
+    {
+      "Desc": "Spread",
+      "Passed": true
+    },
+    {
+      "Desc": "ZeroVar",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:63441c030911cd935cc3b67bdc7b00c8
+{
+  "results": [
+    {
+      "Desc": "Held",
+      "Passed": true
+    },
+    {
+      "Desc": "Made",
+      "Passed": true
+    },
+    {
+      "Desc": "Spread",
+      "Passed": true
+    },
+    {
+      "Desc": "ZeroVar",
+      "Passed": true
+    }
+  ]
+}

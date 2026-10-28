@@ -96,6 +96,16 @@ type reactivityState struct {
 	// walks opened them: the package body's and those of a component the
 	// build spliced into it, whose vars are the page's.
 	pageHeld []pageRegistry
+	// refresh is how a write to page state reaches the instances reading it
+	// (page_refresh.go).
+	refresh *pageRefresh
+	// root is the component a build is rooted at, whose state and registries
+	// are the page's, or nil. inTest says the walk is in a test's body, and
+	// wrote is the function a test calls after writing each var
+	// (testWriteUpdates).
+	root   *ir.Component
+	inTest bool
+	wrote  map[*ir.Var]*ir.Func
 	// err holds the first fatal lowering diagnostic (e.g. an unsupported
 	// nested reactive structure). Recorded rather than panicked so the
 	// build fails with a positioned compile error; the partially-built IR
@@ -216,6 +226,8 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		undriven:     map[string]bool{},
 		intrinsics:   make(map[string]*ir.Func),
 		held:         make(map[*ir.Component][]*slotInstance),
+		root:         rootComponent(pkg, opts),
+		wrote:        map[*ir.Var]*ir.Func{},
 	}
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
@@ -237,6 +249,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	st.owner = pkgOwner{pkg: pkg, root: ir.AppParent}
 	st.collectFromStmts(pkg.Body)
 	st.typeSlots()
+	st.planPageRefresh(st.root)
 	// Pass 2: rewrite + inject. Delegates to existing injectIntoStmts;
 	// future tasks add slot synthesis here.
 
@@ -289,10 +302,13 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 			continue
 		}
 		injected[f] = true
+		st.inTest = f.IsTest
 		f.Block = st.rewriteAndInject(f.Block)
+		st.inTest = false
 	}
 	// After the walks, because a registry only exists once the slot render
 	// that opened it has been built.
+	st.fillPageRefresh()
 	st.destroyHeld()
 	if st.err == nil && st.slotDeclSt != nil {
 		st.err = st.slotDeclSt.err
@@ -1315,11 +1331,28 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 	default:
 		return nil
 	}
+	if st.inTest {
+		return st.testWriteUpdates(target)
+	}
 	v, fieldRewrite := st.assignTargetVar(target)
 	if v == nil {
 		return nil
 	}
+	return st.updatesOf(v, fieldRewrite)
+}
+
+// updatesOf is what a write of v runs after it, from the body being walked.
+//
+// A writer built at run time that reads v itself is reached by the page's
+// refresh as every other reader is, so its own readers are left to that: run
+// here as well, each was updated twice.
+func (st *reactivityState) updatesOf(v *ir.Var, fieldRewrite map[ir.Symbol]ir.Expr) []ir.Stmt {
 	props, slots, live := st.reachable(v)
+	if o, ok := st.owner.(compOwner); ok && st.refresh.reaches(o.c, v) {
+		props = slices.DeleteFunc(props, func(p reactiveProp) bool { return p.owner == o })
+		slots = slices.DeleteFunc(slots, func(s reactiveSlot) bool { return st.slotOwners[s.SlotID] == o })
+		live = slices.DeleteFunc(live, func(p liveProp) bool { return p.owner == o })
+	}
 	out := st.updaterStmts(props, slots, fieldRewrite)
 	if live := st.liveUpdaters(live, slots, fieldRewrite); len(live) > 0 {
 		// Ahead of the slot re-fires, which a render reading a sibling
@@ -1331,20 +1364,74 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 		}
 		out = append(out[:n:n], append(live, out[n:]...)...)
 	}
+	// Last, so every instance reading v is handed it after the writer's own
+	// view has settled.
+	if call := st.refreshCall(v); call != nil {
+		out = append(out, call)
+	}
 	return out
 }
 
+// testWriteUpdates is what a test's write of the page's state or its
+// instance's -- `page = "q"`, `c.label = "b"`, `c.items.push(x)` -- runs
+// after it: a call of `__wrote_<v>`, a function of the page whose body is the
+// updates a handler's write of v runs there. A test is no body of the page's,
+// and its emitter spells only the instance's own members through the
+// instance, so the updates are written where a handler's are and called
+// through the instance, as a test calls a method. Spliced into the test, they
+// named nodes the test file has none of.
+func (st *reactivityState) testWriteUpdates(target ir.Expr) []ir.Stmt {
+	v, _ := st.assignTargetVar(target)
+	if v == nil {
+		if v = testMemberVar(target); v == nil || !st.reactiveVars[v] {
+			return nil
+		}
+	}
+	f, done := st.wrote[v]
+	if !done {
+		var owner reactivityOwner = pkgOwner{pkg: st.pkg, root: ir.AppParent}
+		if st.root != nil {
+			owner = compOwner{st.root}
+		}
+		saved := st.owner
+		st.owner = owner
+		if body := st.updatesOf(v, nil); len(body) > 0 {
+			f = &ir.Func{
+				Name:        "__wrote_" + v.Name,
+				Return:      ir.TypVoid,
+				Purity:      ir.PurityMutates,
+				Synthesized: true,
+				Block:       body,
+			}
+			owner.addFunc(f)
+		}
+		st.owner = saved
+		st.wrote[v] = f
+	}
+	if f == nil {
+		return nil
+	}
+	return []ir.Stmt{callOf(f)}
+}
+
 // reachable is what a write to v updates from the body being walked: every
-// node, slot and instance reading v but, from a component's body, those
-// another component's body writes. A component the build keeps -- one built at run time, a recursion
-// -- holds its nodes itself, so a write elsewhere has no way to them: one
-// instance writing page state another reads named the other's nodes and
-// panel instances from its own record, which has none. Such a reader shows
-// what it read when it was built (design/instances.md).
+// node, slot and instance reading v but, from a component's body or the
+// package's, those a component's body writes. A component the build keeps --
+// one built at run time, a recursion -- holds its nodes itself, so a write
+// elsewhere has no way to them: one instance writing page state another reads
+// named the other's nodes and panel instances from its own record, which has
+// none, and a window's handler named them from the Model
+// (`testdata/page_write_kept_instance.txtar`). Such a reader is reached
+// through what holds it instead, by the refresh updatersFor ends with
+// (page_refresh.go).
 func (st *reactivityState) reachable(v *ir.Var) ([]reactiveProp, []reactiveSlot, []liveProp) {
 	// A package func may be any body's code -- a lambda lifted out of one --
-	// so only a component's own body is held to its own.
+	// so only a component's own body, and the package body, which is walked
+	// with the application as its root, are held to their own.
 	_, inComp := st.owner.(compOwner)
+	if o, ok := st.owner.(pkgOwner); ok && o.root == ir.AppParent {
+		inComp = true
+	}
 	foreign := func(o reactivityOwner) bool {
 		_, other := o.(compOwner)
 		return inComp && other && st.owner != o

@@ -1,5 +1,7 @@
 package ir
 
+import "strconv"
+
 // ZeroExpr returns a zero-value IR expression for t. Returns nil when t has no
 // well-defined zero (invalid, unresolved type parameters, component types).
 func ZeroExpr(t *Type) Expr {
@@ -36,7 +38,7 @@ func ZeroExpr(t *Type) Expr {
 			return &Literal{Type: t, Value: "0001-01-01 00:00:00"}
 		}
 		sd, _ := t.Decl.(*StructDef)
-		return &StructLit{Type: t, Def: sd, Fields: nil}
+		return &StructLit{Type: t, Def: sd}
 	case TypeEnum:
 		ed, _ := t.Decl.(*EnumDef)
 		if ed == nil || len(ed.Members) == 0 {
@@ -69,44 +71,37 @@ func ZeroExpr(t *Type) Expr {
 	return nil
 }
 
-// DeclaredDefault is the value a declaration means by omitting one.
-//
-// The same as ZeroExpr except for a struct, where it carries the fields' own
-// declared defaults. An empty struct literal reads as every field's zero, and
-// a declaration that says `strokeWidth float = 1.0` and `fontSize float = 16.0`
-// means those -- so a platform override reading a prop the call site left out
-// gets what the stdlib documents rather than a transparent hairline in a
-// zero-point font.
-//
-// Only the fields the declaration actually gave a default, which is what
-// DefaultWritten is for: Normalize fills every nil Default with the type's
-// zero, so reading Default alone names every field of every struct. That
-// difference is not academic -- a backend reads a field's *presence* as
-// having been set, and `ui.Style` declares no defaults at all while
-// documenting that an unset field inherits the platform's. Naming them all
-// put `flex:0` and a zero-line `-webkit-line-clamp` on every element of every
-// generated page.
-func DeclaredDefault(t *Type) Expr {
-	if t == nil || t.Kind != TypeStruct {
-		return ZeroExpr(t)
+// FieldZero is what a literal of t holds in a field f it leaves out: the
+// field's declared default, or its type's zero at t's type arguments. nil
+// where neither is known: a field typed by a type parameter nothing binds.
+func FieldZero(t *Type, f *StructField) Expr {
+	if f.Default != nil && (f.DefaultWritten || f.Type == nil || !f.Type.HasTypeParam()) {
+		return f.Default
 	}
-	// A string-representable stdlib struct has a canonical zero of its own.
-	if IsDateStruct(t) || IsTimeStruct(t) || IsDateTimeStruct(t) {
-		return ZeroExpr(t)
-	}
-	sd, _ := t.Decl.(*StructDef)
-	if sd == nil || len(sd.Fields) == 0 {
-		return ZeroExpr(t)
-	}
-	lit := &StructLit{Type: t, Def: sd}
-	for _, f := range sd.Fields {
-		if !f.DefaultWritten || f.Default == nil {
-			continue
+	ft := f.Type
+	if bound, ok := FieldsOf(t); ok {
+		if b := FieldNamed(bound, f.Name); b != nil {
+			ft = b.Type
 		}
-		lit.Fields = append(lit.Fields, FieldInit{Name: f.Name, Value: f.Default})
 	}
-	return lit
+	// One null for every option a literal leaves out, and one empty string:
+	// a library struct is not normalized, so its fields carry no zero of
+	// their own, and a fresh one per read of a Style's fields was a tenth of
+	// what the docs site allocated. A literal is a leaf nothing writes
+	// (SharedLiteral).
+	switch {
+	case ft != nil && ft.Kind == TypeOption:
+		return sharedNull
+	case ft == TypString:
+		return sharedEmpty
+	}
+	return ZeroExpr(ft)
 }
+
+var (
+	sharedNull  = &Literal{Type: TypNull, Value: "null"}
+	sharedEmpty = &Literal{Type: TypString, Value: ""}
+)
 
 // zeroFuncExpr synthesizes a dummy lambda matching t's function signature: it
 // ignores every parameter and returns the zero of the declared return type.
@@ -359,4 +354,139 @@ func normalizeExpr(e Expr) {
 			normalizeFunc(n.Func)
 		}
 	}
+}
+
+// SameConstant reports whether a and b are one constant written alike: the
+// same literal, both null, the same enum member, or struct literals of one
+// declaration holding such constants field for field. Anything else is not
+// known to be the same, and answers false.
+func SameConstant(a, b Expr) bool {
+	if a == b {
+		return a != nil
+	}
+	if IsNullLiteral(a) || IsNullLiteral(b) {
+		return IsNullLiteral(a) && IsNullLiteral(b)
+	}
+	switch x := a.(type) {
+	case *Literal:
+		y, ok := b.(*Literal)
+		return ok && x.Value == y.Value && x.Suffix == y.Suffix && x.Type != nil && x.Type.Equal(y.Type)
+	case *Ident:
+		y, ok := b.(*Ident)
+		return ok && x.Member != "" && x.Member == y.Member && x.Type != nil && x.Type.Equal(y.Type)
+	case *Conversion:
+		y, ok := b.(*Conversion)
+		return ok && x.Type != nil && x.Type.Equal(y.Type) && SameConstant(x.Operand, y.Operand)
+	case *StructLit:
+		y, ok := b.(*StructLit)
+		if !ok || x.Def == nil || x.Def != y.Def || !x.declared() {
+			return false
+		}
+		for _, d := range x.Def.Fields {
+			if !SameConstant(x.Field(d.Name), y.Field(d.Name)) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+// IsZeroValue reports whether e is written as its type's zero (ZeroKnown),
+// false where that is not known.
+func IsZeroValue(e Expr) bool {
+	zero, known := ZeroKnown(e)
+	return zero && known
+}
+
+// ZeroKnown reports whether e holds its type's zero -- null, an empty string,
+// list or map, false, a zero number or unit, an enum's first member, or a
+// struct literal each of whose fields holds what it would left out
+// (FieldZero) -- and whether e is a constant written plainly enough to say:
+// what a spread decides by, since it writes a field only where the field is
+// not at its zero. Asked without building the zero to compare against.
+func ZeroKnown(e Expr) (zero, known bool) {
+	if IsNullLiteral(e) {
+		return true, true
+	}
+	switch x := e.(type) {
+	case *Literal:
+		if x.Type == nil {
+			return false, false
+		}
+		switch x.Type.Kind {
+		case TypeString:
+			return x.Value == "", true
+		case TypeBool:
+			return x.Value == "false", true
+		case TypeInt, TypeFloat, TypeUnit:
+			n, err := strconv.ParseFloat(x.Value, 64)
+			return err == nil && n == 0, err == nil
+		}
+	case *Ident:
+		if x.Member == "" || x.Type == nil || x.Type.Kind != TypeEnum {
+			return false, false
+		}
+		ed, _ := x.Type.Decl.(*EnumDef)
+		if ed == nil || len(ed.Members) == 0 {
+			return false, false
+		}
+		return ed.Members[0].Payload == nil && ed.Members[0].Name == x.Member, true
+	case *Conversion:
+		// A value put into an option is a present option, whatever it holds.
+		if IsOptionWrap(x) {
+			return false, true
+		}
+	case *ListLit:
+		if len(x.Elems) == 0 {
+			return true, true
+		}
+		return false, true
+	case *MapLitIR:
+		if len(x.Entries) == 0 {
+			return true, true
+		}
+		return false, true
+	case *StructLit:
+		if !x.declared() || IsDateStruct(x.Type) || IsTimeStruct(x.Type) || IsDateTimeStruct(x.Type) {
+			return false, false
+		}
+		zero := true
+		for _, f := range x.Fields {
+			if f.Spread {
+				return false, false
+			}
+			d := FieldNamed(x.Def.Fields, f.Name)
+			if d == nil {
+				return false, false
+			}
+			if SameConstant(f.Value, FieldZero(x.Type, d)) {
+				continue
+			}
+			if d.DefaultWritten {
+				// Not the default, and whether it differs is not known.
+				if _, k := ZeroKnown(f.Value); !k {
+					return false, false
+				}
+				zero = false
+				continue
+			}
+			z, k := ZeroKnown(f.Value)
+			if !k {
+				return false, false
+			}
+			zero = zero && z
+		}
+		return zero, true
+	}
+	return false, false
+}
+
+// SharedLiteral reports whether a copy of lit may be lit itself: a literal is
+// a leaf nothing writes in place, so an expression cloned for another place
+// can hold the one it was cloned from. Not one typed by a type parameter,
+// which an instantiation substitutes into its own copy. Copying each literal
+// per clone was most of what a spliced or unrolled body cost.
+func SharedLiteral(lit *Literal) bool {
+	return lit.Type == nil || !lit.Type.HasTypeParam()
 }

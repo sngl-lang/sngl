@@ -290,7 +290,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	__n2 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n2, 1)
-	gtk4rt.BoxSetSpacing(__n2, 6)
+	gtk4rt.SetLook(__n2, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n1 = gtk4rt.ScrollNew()
 	gtk4rt.ScrollSetDirection(m.__n1, "vertical")
 	gtk4rt.ScrollOnReachEnd(m.__n1, m.__n1_reachEnd_handler)

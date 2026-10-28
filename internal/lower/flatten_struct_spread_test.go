@@ -18,11 +18,11 @@ func fieldNames(sl *ir.StructLit) []string {
 }
 
 func TestFlattenStructLitLiteralSpread(t *testing.T) {
-	// {a=1, ...{a=0, b=2}}  →  {a=0, b=2}  (literal spread splices written fields; last wins)
+	// {a=1, ...{a=3, b=2}}  →  {a=3, b=2}  (a literal spread splices its fields; last wins)
 	in := &ir.StructLit{Fields: []ir.FieldInit{
 		{Name: "a", Value: intLit("1")},
 		{Spread: true, Value: &ir.StructLit{Fields: []ir.FieldInit{
-			{Name: "a", Value: intLit("0")},
+			{Name: "a", Value: intLit("3")},
 			{Name: "b", Value: intLit("2")},
 		}}},
 	}}
@@ -31,8 +31,23 @@ func TestFlattenStructLitLiteralSpread(t *testing.T) {
 	if len(got) != 2 || got[0] != "a" || got[1] != "b" {
 		t.Fatalf("field names: got %v want [a b]", got)
 	}
-	if a := out.Fields[0]; a.Spread || a.Value.(*ir.Literal).Value != "0" {
-		t.Fatalf("a should be 0 (last write wins), got %+v", a)
+	if a := out.Fields[0]; a.Spread || a.Value.(*ir.Literal).Value != "3" {
+		t.Fatalf("a should be 3 (last write wins), got %+v", a)
+	}
+}
+
+func TestFlattenStructLitSpreadSkipsZero(t *testing.T) {
+	// {a=1, ...{a=0, b=2}}  →  {a=1, b=2}  (a spread writes no field at its zero)
+	in := &ir.StructLit{Fields: []ir.FieldInit{
+		{Name: "a", Value: intLit("1")},
+		{Spread: true, Value: &ir.StructLit{Fields: []ir.FieldInit{
+			{Name: "a", Value: intLit("0")},
+			{Name: "b", Value: intLit("2")},
+		}}},
+	}}
+	out := flattenSpreadExprCtx(in, &ir.Package{}).(*ir.StructLit)
+	if a := out.Fields[0]; a.Name != "a" || a.Value.(*ir.Literal).Value != "1" {
+		t.Fatalf("a should stay 1, got %+v", out.Fields)
 	}
 }
 

@@ -121,11 +121,17 @@ func EvalExpr(r Renderer, e ir.Expr) string {
 		}
 		return r.MapLit(n, keys, vals)
 	case *ir.StructLit:
-		fieldStrs := make([]string, len(n.Fields))
-		for i, f := range n.Fields {
+		// Every field the literal holds, as ir.StructLit.EachField answers
+		// it: the language decides which of them its host gives a field left
+		// out, and spells the rest.
+		full := *n
+		full.Fields = make([]ir.FieldInit, 0, len(n.Fields))
+		n.EachField(func(f ir.FieldInit) { full.Fields = append(full.Fields, f) })
+		fieldStrs := make([]string, len(full.Fields))
+		for i, f := range full.Fields {
 			fieldStrs[i] = EvalExpr(r, f.Value)
 		}
-		return r.StructLit(n, fieldStrs)
+		return r.StructLit(&full, fieldStrs)
 	case *ir.Spread:
 		return r.Spread(n, EvalExpr(r, n.Operand))
 	case *ir.Call:

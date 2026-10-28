@@ -678,7 +678,7 @@ import ui "sngl:ui"
 ui.window {
     ui.vbox(style={gap=6px, padding=16px}) {
         ui.text(value="Hand-rolled link:")
-        html.a(href="https://example.com", innerText="example.com", style={color=#2196f3})
+        html.a(href="https://example.com", innerText="example.com", style=html.css({color=#2196f3}))
     }
 }
 ```
@@ -696,7 +696,7 @@ import ui "sngl:ui"
 ui.window {
     ui.vbox(style={gap=8px, padding=16px}) {
         ui.text(value="Aliased raw HTML access:")
-        h.details(style={padding=6px, background=#f5f5f5}) {
+        h.details(style=h.css({padding=6px, background=#f5f5f5})) {
             h.summary(innerText="Click to expand")
             h.p(innerText="This paragraph was hidden until you clicked.")
         }
@@ -725,9 +725,9 @@ import ui "sngl:ui"
 
 component Collapsible(title = "", body = "") ui.node {
     if PLATFORM == html.platform {
-        html.details(style={padding=8px, background=#e0f7fa, borderRadius=6px}) {
-            html.summary(innerText=title, style={fontWeight=bold})
-            html.p(innerText=body, style={marginTop=6px, color=#555555})
+        html.details(style=html.css({padding=8px, background=#e0f7fa, borderRadius=6px})) {
+            html.summary(innerText=title, style=html.css({fontWeight=bold}))
+            html.p(innerText=body, style=html.css({marginTop=6px, color=#555555}))
         }
     } else if PLATFORM == bubbletea.platform {
         ui.text(value="[" + title + "] " + body)
@@ -763,14 +763,14 @@ ui.window {
     var volume = 60
     ui.vbox(style={gap=10px, padding=16px}) {
         ui.text(value="Native browser widgets:", style={fontWeight=bold})
-        html.progress(value=string(volume), max="100", attrs={"aria-label"="Volume"}, style={width=240px})
+        html.progress(value=string(volume), max="100", attrs={"aria-label"="Volume"}, style=html.css({width=240px}))
         ui.hbox(style={gap=8px}) {
             ui.button(text="-10", @click { volume = volume - 10 })
             ui.button(text="+10", @click { volume = volume + 10 })
             ui.text(value="{volume}%", style={fontFamily="monospace"})
         }
         html.hr
-        html.blockquote(style={paddingX=12px, paddingY=4px, color=#555555}) {
+        html.blockquote(style=html.css({paddingX=12px, paddingY=4px, color=#555555})) {
             html.span(innerText="“Everything in the browser is one html.tagname away.”")
         }
     }

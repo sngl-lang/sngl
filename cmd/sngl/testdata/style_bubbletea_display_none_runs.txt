@@ -1,0 +1,73 @@
+# display=none on bubbletea takes no line and no focus stop.
+#
+# A component of its own at run time -- a recursion -- whose root is displayed
+# none drew nothing and still took a line in its parent, which joined the
+# empty string it rendered. A button displayed none was still a stop: focus
+# started on it, so the screen showed none focused, and Tab stopped on it.
+# The snapshot is the screen as text.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=bubbletea app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+# the hidden component's line is gone: below follows above.
+grep '(?m)^above *\nbelow *$' app.sngl.snapshots/page.ansi
+# focus starts on the first button shown, not the hidden one before it.
+! grep 'hidden' app.sngl.snapshots/page.ansi
+! grep 'level' app.sngl.snapshots/page.ansi
+grep '(?m)^> first *$' app.sngl.snapshots/page.ansi
+grep '(?m)^  second *$' app.sngl.snapshots/page.ansi
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+output { go { bubbletea } }
+
+var hide = true
+var levels = 0
+
+// Recursive, so a component of its own at run time, whose root is displayed
+// none at depth 0.
+component nest(depth int) ui.node {
+    ui.vbox(style={display=depth == 0 ? ui.Display.none : ui.Display.unset}) {
+        ui.text(value="level {depth}")
+        if depth > 0 {
+            nest(depth=depth - 1)
+        }
+    }
+}
+
+component page ui.node {
+    ui.vbox {
+        ui.vbox {
+            ui.text(value="above")
+            nest(depth=levels)
+            ui.text(value="below")
+        }
+        ui.button(text="hidden", style={display=hide ? ui.Display.none : ui.Display.unset})
+        ui.button(text="first")
+        ui.button(text="second")
+    }
+}
+
+func testPage(t test.Test, c page) {
+    t.snapshot("page")
+}
+
+ui.window {
+    page
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:c2890ea219deb0c1dc2921baff414106
+{
+  "results": [
+    {
+      "Desc": "Page",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "page.ansi": "YWJvdmUgICAKYmVsb3cgICAKPiBmaXJzdCAKICBzZWNvbmQ="
+  }
+}
