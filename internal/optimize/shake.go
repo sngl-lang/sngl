@@ -555,6 +555,10 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 			// shaken and every Go target and android naming it undeclared.
 			walkType(s.Typ, used, walk)
 			walkExpr(s.Default, used, walk)
+		case componentType:
+			for _, p := range s.Props {
+				walkType(p.Type, used, walk)
+			}
 		case *ir.Component:
 			for _, p := range s.Props {
 				walkType(p.Type, used, walk)
@@ -695,12 +699,21 @@ func walkNames(root any, walk func(ir.Symbol)) {
 	})
 }
 
+// componentType is a component named as a type -- a node handle's, a
+// parameter's -- which uses its props and not its body: what instantiates the
+// component walks that.
+type componentType struct{ *ir.Component }
+
 func walkType(t *ir.Type, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 	if t == nil {
 		return
 	}
-	if t.Decl != nil {
-		walk(t.Decl)
+	switch d := t.Decl.(type) {
+	case nil:
+	case *ir.Component:
+		walk(componentType{d})
+	default:
+		walk(d)
 	}
 	for _, elem := range t.Elems {
 		walkType(elem, used, walk)

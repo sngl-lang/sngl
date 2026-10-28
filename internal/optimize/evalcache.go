@@ -35,6 +35,9 @@ type constResult struct {
 type EvalCache struct {
 	m     sync.Map // string → constResult
 	files sync.Map // string → fileResult
+	// interpreted is what a pure function's body answered, by function and
+	// arguments (interpretCached).
+	interpreted sync.Map // interpretKey → interpretedResult
 	// gen is the store a go: value is kept in between compilations, keyed on
 	// what the value was built from rather than on the call alone. Nil means
 	// the process's default store.
