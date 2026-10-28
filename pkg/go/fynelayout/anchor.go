@@ -6,6 +6,8 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 )
 
 // SlotAnchor returns the anchor a render slot inserts its entries before: a,
@@ -55,6 +57,7 @@ func InsertBefore(c *fyne.Container, anchor, o fyne.CanvasObject) {
 		return
 	}
 	Adopt(c, o)
+	takeTheme(c, o)
 	i := slices.Index(c.Objects, anchor)
 	if i < 0 {
 		c.Add(o)
@@ -62,6 +65,42 @@ func InsertBefore(c *fyne.Container, anchor, o fyne.CanvasObject) {
 	}
 	c.Objects = slices.Insert(c.Objects, i, o)
 	relayout(c)
+}
+
+// takeTheme puts o under the theme override c's other objects are under.
+// Fyne's ThemeOverride reaches what is added beneath it only when refreshed,
+// and that would refresh all of c.
+func takeTheme(c *fyne.Container, o fyne.CanvasObject) {
+	app := theme.Current()
+	for _, s := range c.Objects {
+		if s == o || !takesScope(s) {
+			continue
+		}
+		if th := theme.CurrentForWidget(s); !sameAny(th, app) {
+			container.NewThemeOverride(o, th)
+			return
+		}
+	}
+}
+
+// takesScope reports whether Fyne records the override s is under on s
+// itself: it records none on a container, and a nested override is a scope
+// of its own.
+func takesScope(s fyne.CanvasObject) bool {
+	switch s.(type) {
+	case *fyne.Container, *container.ThemeOverride:
+		return false
+	}
+	return true
+}
+
+func sameAny(a, b any) (same bool) {
+	defer func() {
+		if recover() != nil {
+			same = false
+		}
+	}()
+	return a == b
 }
 
 // relayout lays c out again and asks for it to be drawn, as Container.Add

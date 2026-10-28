@@ -146,13 +146,10 @@ than the interpreter, or does more work than it needs:
    whether the vbox should provide LocalFlexShare as the written Columns do,
    or collectSlotEnv should hand the content the callee's value, and ask
    before building it.
-2. On fyne a widget added to a container already under a Box's theme keeps
-   the theme it had until that Box refreshes; a render slot appending into a
-   styled vbox meets it.
-3. The shake keeps a library body reachable through a node handle's
+2. The shake keeps a library body reachable through a node handle's
    component type, so `#d` on a datepicker keeps gtk4's `LookOf` and its
    helpers though nothing calls them.
-4. The optimizer interprets a const function per call, and a lambda call
+3. The optimizer interprets a const function per call, and a lambda call
    snapshots the environment: a `.filter(func…)` in a function folded per
    node was most of a 7 GB increase on the docs site. Measure it first
    (design/performance.md).
@@ -274,9 +271,14 @@ platform's `unstyled` list in the same commit.
   target, the interpreter included. The rest is no gap of android's and is
   filed as #295: `multiple` is honored by no target, and a select's `@focus`
   and `@blur` reach a handler only on html.
-- On fyne a widget added to a container already under a Box's theme keeps
-  the theme it had until that Box refreshes, Fyne's ThemeOverride rule; a
-  render slot appending into a styled vbox meets it.
+- On fyne a widget added to a container already under a Box's theme kept
+  the theme it had until that Box refreshed, Fyne's ThemeOverride rule; a
+  render slot appending into a styled vbox met it, and so did a styled
+  vbox's own children, added after its Look. Fixed
+  (`TestARenderSlotRowTakesItsBoxsThemeRuns`), at a cost: each row inserted
+  under a theme measures the rows beside it again, Fyne clearing its
+  text-metrics cache for every override applied. Applying it once per slot
+  render would need a hook at the render's end.
 - On gtk4 a box gtk4rt lays out measures height for width only, and
   `orientation` set on one after gtk4rt has taken it over reaches the layout
   GtkBox no longer has. A box with no weighted child is GTK's, so a child that

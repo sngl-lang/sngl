@@ -109,6 +109,10 @@ type Box struct {
 	// re-measures its whole subtree on every refresh.
 	themed *container.ThemeOverride
 	theme  fynetheme.Theme
+	// laidOut: the theme is applied again when the box is first laid out. A
+	// build gives a box its Look before adding what it holds, and Fyne's
+	// override reaches only what was beneath it when applied.
+	laidOut bool
 	// in is the Weighted layout holding the box, told when its share changes.
 	in *Weighted
 	// own is what the widget was built with, which a Look asking for nothing
@@ -351,6 +355,13 @@ func (r *boxRenderer) MinSize() fyne.Size {
 }
 
 func (r *boxRenderer) Layout(size fyne.Size) {
+	if !r.b.laidOut {
+		r.b.laidOut = true
+		if r.b.themed != nil {
+			r.b.retheme()
+			r.b.themed.Refresh()
+		}
+	}
 	l := r.b.look
 	w := size.Width - l.MarginLeft - l.MarginRight
 	h := size.Height - l.MarginTop - l.MarginBottom
