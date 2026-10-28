@@ -193,3 +193,30 @@ func TestLookTurnsABoxItLaysOut(t *testing.T) {
 		t.Errorf("turned back to a row: widths %d and %d, want 100 and 300", wa, wb)
 	}
 }
+
+// In a box GTK lays out, a widget a program made grows by its own expand and
+// never by what it holds, as a CSS flex item grows by its own flex: a box
+// holding a widget given `hexpand` is its content's size, as it is on html,
+// and the widget given it takes the room. GTK carries an expand up to every
+// ancestor that sets none of its own, so the holder took the row's spare room.
+func TestABoxGrowsNotForWhatItHolds(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("gtk4 needs an X11/Wayland display")
+	}
+	Init()
+	row, holder, inner := New("GtkBox"), New("GtkBox"), New("GtkBox")
+	Retain(row)
+	expander := New("GtkBox")
+	SetBool(inner, "hexpand", true)
+	SetBool(expander, "hexpand", true)
+	BoxAppend(holder, inner)
+	BoxAppend(row, holder)
+	BoxAppend(row, expander)
+	allocate(row, 300, 10)
+	if wh, we := allocatedWidth(holder), allocatedWidth(expander); wh != 0 || we != 300 {
+		t.Errorf("a box holding a widget given hexpand, beside one given it: widths %d and %d, want 0 and 300", wh, we)
+	}
+	if computesHExpand(holder) {
+		t.Error("the holder computes an expand from the widget it holds")
+	}
+}

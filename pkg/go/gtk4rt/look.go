@@ -800,6 +800,10 @@ func computesVExpand(w Handle) bool {
 	return C.gtk_widget_compute_expand(widget(w), C.GTK_ORIENTATION_VERTICAL) != 0
 }
 
+func computesHExpand(w Handle) bool {
+	return C.gtk_widget_compute_expand(widget(w), C.GTK_ORIENTATION_HORIZONTAL) != 0
+}
+
 func firstChild(w Handle) Handle {
 	return Handle(unsafe.Pointer(C.gtk_widget_get_first_child(widget(w))))
 }
