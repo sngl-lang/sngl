@@ -417,4 +417,4 @@ func (m *Model) flipClick() {
 -- run/go/fyne --
 pass sha256:f65812f5003493ffadaca7411f0315d5
 -- run/go/gtk4 --
-pass sha256:c19030af2a14014226c8d8a88b52339e
+pass sha256:a1803a4eb4199e09235013fcfa5e38ee

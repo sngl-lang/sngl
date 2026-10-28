@@ -143,7 +143,7 @@ window {
     }
 }
 -- testrun/bubbletea/go/alone.sngl/counter/1 --
-sha256:e9c9788b83659f84a3c3e953b35b5775
+sha256:9cf08402c4811b5b67e22b321b2b847f
 {
   "results": [
     {
@@ -153,7 +153,7 @@ sha256:e9c9788b83659f84a3c3e953b35b5775
   ]
 }
 -- testrun/bubbletea/go/composed.sngl/counter/1 --
-sha256:e9c9788b83659f84a3c3e953b35b5775
+sha256:9cf08402c4811b5b67e22b321b2b847f
 {
   "results": [
     {
@@ -163,7 +163,7 @@ sha256:e9c9788b83659f84a3c3e953b35b5775
   ]
 }
 -- testrun/bubbletea/go/rooted.sngl/counter/1 --
-sha256:e9c9788b83659f84a3c3e953b35b5775
+sha256:9cf08402c4811b5b67e22b321b2b847f
 {
   "results": [
     {
@@ -173,7 +173,7 @@ sha256:e9c9788b83659f84a3c3e953b35b5775
   ]
 }
 -- testrun/bubbletea/go/two.sngl/counter/1 --
-sha256:58cc30023feb2d36c2d833d1c3e765ee
+sha256:86bd52291a406c21377b28abfa7716a6
 {
   "results": [
     {
@@ -183,7 +183,7 @@ sha256:58cc30023feb2d36c2d833d1c3e765ee
   ]
 }
 -- testrun/bubbletea/go/two.sngl/greeter/1 --
-sha256:fcd02c51e934c8d3369985472ec5c0ff
+sha256:2ca8d51099278fdfb44d8992e9cff84f
 {
   "results": [
     {

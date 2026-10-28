@@ -80,6 +80,13 @@ import (
 	"os"
 )
 
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -95,54 +102,54 @@ type MenuItem__record struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	ListStyleType  string
@@ -182,20 +189,22 @@ func (m *Model) SetTerminalSize(w, h int) {
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
-	if (s == Style{}) {
+	if func(_a1, _b2 Style) bool {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
-	if words && (s.Color != snglcolor.Color{}) {
-		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	if words && (s.Color != nil) {
+		l = l.Foreground(lipgloss.Color((*(s.Color)).Hex()))
 	}
-	if (s.Background != snglcolor.Color{}) {
-		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	if s.Background != nil {
+		l = l.Background(lipgloss.Color((*(s.Background)).Hex()))
 	}
 	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
 		l = l.Bold(true)
 	}
-	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != nil) && ((*(s.Opacity)) < 1.0)) {
 		l = l.Faint(true)
 	}
 	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
@@ -204,10 +213,16 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt1 bool
+	if s.BorderWidth != nil {
+		__lt1 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt1 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt1 {
 		l = l.Border(BorderOf(s))
-		if (s.BorderColor != snglcolor.Color{}) {
-			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		if s.BorderColor != nil {
+			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
 	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
@@ -218,111 +233,121 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
 	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
 	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
-	if (s.Width != Measurement{Px: 0}) {
+	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
-	if (s.Height != Measurement{Px: 0}) {
+	if s.Height != nil {
 		l = l.Height(RowsOf(s.Height))
 	}
-	if (s.MaxWidth != Measurement{Px: 0}) {
+	if s.MaxWidth != nil {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
-	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt0 int
-		if s.MaxLines == 0 {
-			__lt0 = 0
+	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
+		var __lt2 int
+		if s.MaxLines == nil {
+			__lt2 = 0
 		} else {
-			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt2 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt0))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt1 lipgloss.Position
+	var __lt4 lipgloss.Position
 	switch a {
 	case "center":
-		__lt1 = lipgloss.Center
+		__lt4 = lipgloss.Center
 	case "right":
-		__lt1 = lipgloss.Right
+		__lt4 = lipgloss.Right
 	default:
-		__lt1 = lipgloss.Left
+		__lt4 = lipgloss.Left
 	}
-	return __lt1
+	return __lt4
+}
+
+func PxOf(m__r0 *Measurement) float64 {
+	var __lt5 float64
+	if m__r0 == nil {
+		__lt5 = 0.0
+	} else {
+		__lt5 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
+	}
+	return __lt5
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt2 lipgloss.Border
+	var __lt6 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt2 = lipgloss.DoubleBorder()
+		__lt6 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt2 = tui.DashedBorder()
+		__lt6 = tui.DashedBorder()
 	default:
-		var __lt3 lipgloss.Border
-		if (s.BorderRadius != Measurement{Px: 0}) {
-			__lt3 = lipgloss.RoundedBorder()
+		var __lt7 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt7 = lipgloss.RoundedBorder()
 		} else {
-			__lt3 = lipgloss.NormalBorder()
+			__lt7 = lipgloss.NormalBorder()
 		}
-		__lt2 = __lt3
-	}
-	return __lt2
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt5 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt5 = own
-	} else {
-		var __lt4 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt4 = axis
-		} else {
-			__lt4 = all
-		}
-		__lt5 = __lt4
-	}
-	return CellsOf(__lt5)
-}
-
-func CellsOf(m__r0 Measurement) int {
-	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt6 int
-	if px <= 0.0 {
-		__lt6 = 0
-	} else {
-		__lt6 = max(1, (int(px) / 8))
+		__lt6 = __lt7
 	}
 	return __lt6
 }
 
-func RowsOf(m__r1 Measurement) int {
-	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
-	var __lt7 int
-	if px <= 0.0 {
-		__lt7 = 0
+func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+	var __lt9 *Measurement
+	if own != nil {
+		__lt9 = own
 	} else {
-		__lt7 = max(1, (int(px) / 16))
-	}
-	return __lt7
-}
-
-func LineCap(height__r0 int, lines int) int {
-	var __lt9 int
-	if height__r0 == 0 {
-		__lt9 = lines
-	} else {
-		var __lt8 int
-		if lines == 0 {
-			__lt8 = height__r0
+		var __lt8 *Measurement
+		if axis != nil {
+			__lt8 = axis
 		} else {
-			__lt8 = min(height__r0, lines)
+			__lt8 = all
 		}
 		__lt9 = __lt8
 	}
-	return __lt9
+	return CellsOf(__lt9)
+}
+
+func CellsOf(m__r1 *Measurement) int {
+	var px float64 = PxOf(m__r1)
+	var __lt10 int
+	if px <= 0.0 {
+		__lt10 = 0
+	} else {
+		__lt10 = max(1, (int(px) / 8))
+	}
+	return __lt10
+}
+
+func RowsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt11 int
+	if px <= 0.0 {
+		__lt11 = 0
+	} else {
+		__lt11 = max(1, (int(px) / 16))
+	}
+	return __lt11
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt13 int
+	if height__r0 == 0 {
+		__lt13 = lines
+	} else {
+		var __lt12 int
+		if lines == 0 {
+			__lt12 = height__r0
+		} else {
+			__lt12 = min(height__r0, lines)
+		}
+		__lt13 = __lt12
+	}
+	return __lt13
 }
 
 func (m Model) Size() string {
@@ -406,7 +431,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
-		content = BoxLook(Style{}, true).Render(fmt.Sprint(m.size))
+		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.size))
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -434,57 +459,57 @@ func TestPickingAnEntryChecksIt(t *testing.T) {
 	_ = c
 	__list0 := []MenuItem__record{}
 	for _, __item0 := range c.sizes {
-		__list0 = append(__list0, MenuItem__record{Label: __item0, Disabled: false, Checked: (__item0 == c.size), Children: []MenuItem__record{}, Select: func() {
+		__list0 = append(__list0, MenuItem__record{Label: __item0, Checked: (__item0 == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = __item0
 	}})
 	}
-	if !([]MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	if !([]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list0)), Select: func() {
-	}}}[1].Children[1].Checked) { t.Errorf("assert failed: %s", "[]MenuItem__record{MenuItem__record{Label: \"File\", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: \"Save\", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {\n\t\tc.saved += 1\n\t}}, MenuItem__record{Label: \"Close\", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {\n\t}}}, Select: func() {\n\t}}, MenuItem__record{Label: \"Size\", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list0)), Select: func() {\n\t}}}[1].Children[1].Checked") }
-	[]MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list0)), Select: func() {
+	}}}[1].Children[1].Checked) { t.Errorf("assert failed: %s", "[]MenuItem__record{MenuItem__record{Label: \"File\", Children: []MenuItem__record{MenuItem__record{Label: \"Save\", Children: []MenuItem__record{}, Select: func() {\n\t\tc.saved += 1\n\t}}, MenuItem__record{Label: \"Close\", Disabled: true, Children: []MenuItem__record{}, Select: func() {\n\t}}}, Select: func() {\n\t}}, MenuItem__record{Label: \"Size\", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list0)), Select: func() {\n\t}}}[1].Children[1].Checked") }
+	[]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(func() []MenuItem__record { __out := make([]MenuItem__record, len(c.sizes)); for __i, __item := range c.sizes { __out[__i] = func(s string) MenuItem__record { return MenuItem__record{Label: s, Disabled: false, Checked: (s == c.size), Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(func() []MenuItem__record { __out := make([]MenuItem__record, len(c.sizes)); for __i, __item := range c.sizes { __out[__i] = func(s string) MenuItem__record { return MenuItem__record{Label: s, Checked: (s == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = s
 	}} }(__item) }; return __out }())), Select: func() {
 	}}}[1].Select()
-	[]MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	[]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(func() []MenuItem__record { __out := make([]MenuItem__record, len(c.sizes)); for __i, __item := range c.sizes { __out[__i] = func(s string) MenuItem__record { return MenuItem__record{Label: s, Disabled: false, Checked: (s == c.size), Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(func() []MenuItem__record { __out := make([]MenuItem__record, len(c.sizes)); for __i, __item := range c.sizes { __out[__i] = func(s string) MenuItem__record { return MenuItem__record{Label: s, Checked: (s == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = s
 	}} }(__item) }; return __out }())), Select: func() {
 	}}}[1].Children[2].Select()
 	if !((c.size == "Large")) { t.Errorf("assert failed: %s", "(c.size == \"Large\")") }
 	__list1 := []MenuItem__record{}
 	for _, __item1 := range c.sizes {
-		__list1 = append(__list1, MenuItem__record{Label: __item1, Disabled: false, Checked: (__item1 == c.size), Children: []MenuItem__record{}, Select: func() {
+		__list1 = append(__list1, MenuItem__record{Label: __item1, Checked: (__item1 == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = __item1
 	}})
 	}
-	__when0 := []MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	__when0 := []MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list1)), Select: func() {
+	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list1)), Select: func() {
 	}}}[1].Children[2].Checked
 	if __when0 {
 		__list2 := []MenuItem__record{}
 		for _, __item2 := range c.sizes {
-			__list2 = append(__list2, MenuItem__record{Label: __item2, Disabled: false, Checked: (__item2 == c.size), Children: []MenuItem__record{}, Select: func() {
+			__list2 = append(__list2, MenuItem__record{Label: __item2, Checked: (__item2 == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = __item2
 	}})
 		}
-		__when0 = ![]MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+		__when0 = ![]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list2)), Select: func() {
+	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list2)), Select: func() {
 	}}}[1].Children[1].Checked
 	}
 	if !(__when0) { t.Errorf("assert failed: %s", "__when0") }
@@ -493,19 +518,19 @@ func TestPickingAnEntryChecksIt(t *testing.T) {
 func TestAnEntryRunsItsHandler(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	[]MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	[]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(func() []MenuItem__record { __out := make([]MenuItem__record, len(c.sizes)); for __i, __item := range c.sizes { __out[__i] = func(s string) MenuItem__record { return MenuItem__record{Label: s, Disabled: false, Checked: (s == c.size), Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(func() []MenuItem__record { __out := make([]MenuItem__record, len(c.sizes)); for __i, __item := range c.sizes { __out[__i] = func(s string) MenuItem__record { return MenuItem__record{Label: s, Checked: (s == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = s
 	}} }(__item) }; return __out }())), Select: func() {
 	}}}[0].Select()
-	[]MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	[]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(func() []MenuItem__record { __out := make([]MenuItem__record, len(c.sizes)); for __i, __item := range c.sizes { __out[__i] = func(s string) MenuItem__record { return MenuItem__record{Label: s, Disabled: false, Checked: (s == c.size), Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(func() []MenuItem__record { __out := make([]MenuItem__record, len(c.sizes)); for __i, __item := range c.sizes { __out[__i] = func(s string) MenuItem__record { return MenuItem__record{Label: s, Checked: (s == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = s
 	}} }(__item) }; return __out }())), Select: func() {
 	}}}[0].Children[0].Select()
@@ -517,28 +542,28 @@ func TestADisabledEntryIsShownAndNotPicked(t *testing.T) {
 	_ = c
 	__list3 := []MenuItem__record{}
 	for _, __item3 := range c.sizes {
-		__list3 = append(__list3, MenuItem__record{Label: __item3, Disabled: false, Checked: (__item3 == c.size), Children: []MenuItem__record{}, Select: func() {
+		__list3 = append(__list3, MenuItem__record{Label: __item3, Checked: (__item3 == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = __item3
 	}})
 	}
-	__when1 := ([]MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	__when1 := ([]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list3)), Select: func() {
+	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list3)), Select: func() {
 	}}}[0].Children[1].Label == "Close")
 	if __when1 {
 		__list4 := []MenuItem__record{}
 		for _, __item4 := range c.sizes {
-			__list4 = append(__list4, MenuItem__record{Label: __item4, Disabled: false, Checked: (__item4 == c.size), Children: []MenuItem__record{}, Select: func() {
+			__list4 = append(__list4, MenuItem__record{Label: __item4, Checked: (__item4 == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = __item4
 	}})
 		}
-		__when1 = []MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+		__when1 = []MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list4)), Select: func() {
+	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list4)), Select: func() {
 	}}}[0].Children[1].Disabled
 	}
 	if !(__when1) { t.Errorf("assert failed: %s", "__when1") }
@@ -626,15 +651,15 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 				m.__copies_main__menu = nil
 				m.__copies_main__menu__children = nil
-				for i, it := range []MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+				for i, it := range []MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 					m.saved += 1
-				}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+				}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 				}}}, Select: func() {
-				}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func() []MenuItem__record {
+				}}, MenuItem__record{Label: "Size", Children: slices.Concat(func() []MenuItem__record {
 					__out := make([]MenuItem__record, len(m.sizes))
 					for __i, __item := range m.sizes {
 						__out[__i] = func(s string) MenuItem__record {
-							return MenuItem__record{Label: s, Disabled: false, Checked: (s == m.size), Children: []MenuItem__record{}, Select: func() {
+							return MenuItem__record{Label: s, Checked: (s == m.size), Children: []MenuItem__record{}, Select: func() {
 								m.size = s
 								m.shown.SetText(m.size)
 								m.__renderSlot0(m.main.Container)
@@ -669,6 +694,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			}
 		}()
 	}
+}
+
+func (m *Model) __wrote_size() {
+	m.shown.SetText(m.size)
+	m.__renderSlot0(m.main.Container)
 }
 
 func (m *Model) main_closed_handler() {
@@ -814,43 +844,46 @@ func TestPickingAnEntryChecksIt(t *testing.T) {
 	_ = c
 	__list0 := []MenuItem__record{}
 	for _, __item0 := range c.sizes {
-		__list0 = append(__list0, MenuItem__record{Label: __item0, Disabled: false, Checked: (__item0 == c.size), Children: []MenuItem__record{}, Select: func() {
+		__list0 = append(__list0, MenuItem__record{Label: __item0, Checked: (__item0 == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = __item0
+		c.__wrote_size()
 	}})
 	}
-	if !([]MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	if !([]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list0)), Select: func() {
-	}}}[1].Children[1].Checked) { t.Errorf("assert failed: %s", "[]MenuItem__record{MenuItem__record{Label: \"File\", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: \"Save\", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {\n\t\tc.saved += 1\n\t}}, MenuItem__record{Label: \"Close\", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {\n\t}}}, Select: func() {\n\t}}, MenuItem__record{Label: \"Size\", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list0)), Select: func() {\n\t}}}[1].Children[1].Checked") }
+	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list0)), Select: func() {
+	}}}[1].Children[1].Checked) { t.Errorf("assert failed: %s", "[]MenuItem__record{MenuItem__record{Label: \"File\", Children: []MenuItem__record{MenuItem__record{Label: \"Save\", Children: []MenuItem__record{}, Select: func() {\n\t\tc.saved += 1\n\t}}, MenuItem__record{Label: \"Close\", Disabled: true, Children: []MenuItem__record{}, Select: func() {\n\t}}}, Select: func() {\n\t}}, MenuItem__record{Label: \"Size\", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list0)), Select: func() {\n\t}}}[1].Children[1].Checked") }
 	c.main__menuSelectAt("1")
 	c.main__menu__childrenSelectAt("1/2")
 	if !((c.size == "Large")) { t.Errorf("assert failed: %s", "(c.size == \"Large\")") }
 	__list1 := []MenuItem__record{}
 	for _, __item1 := range c.sizes {
-		__list1 = append(__list1, MenuItem__record{Label: __item1, Disabled: false, Checked: (__item1 == c.size), Children: []MenuItem__record{}, Select: func() {
+		__list1 = append(__list1, MenuItem__record{Label: __item1, Checked: (__item1 == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = __item1
+		c.__wrote_size()
 	}})
 	}
-	__when0 := []MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	__when0 := []MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list1)), Select: func() {
+	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list1)), Select: func() {
 	}}}[1].Children[2].Checked
 	if __when0 {
 		__list2 := []MenuItem__record{}
 		for _, __item2 := range c.sizes {
-			__list2 = append(__list2, MenuItem__record{Label: __item2, Disabled: false, Checked: (__item2 == c.size), Children: []MenuItem__record{}, Select: func() {
+			__list2 = append(__list2, MenuItem__record{Label: __item2, Checked: (__item2 == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = __item2
+		c.__wrote_size()
 	}})
 		}
-		__when0 = ![]MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+		__when0 = ![]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list2)), Select: func() {
+	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list2)), Select: func() {
 	}}}[1].Children[1].Checked
 	}
 	if !(__when0) { t.Errorf("assert failed: %s", "__when0") }
@@ -869,28 +902,30 @@ func TestADisabledEntryIsShownAndNotPicked(t *testing.T) {
 	_ = c
 	__list3 := []MenuItem__record{}
 	for _, __item3 := range c.sizes {
-		__list3 = append(__list3, MenuItem__record{Label: __item3, Disabled: false, Checked: (__item3 == c.size), Children: []MenuItem__record{}, Select: func() {
+		__list3 = append(__list3, MenuItem__record{Label: __item3, Checked: (__item3 == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = __item3
+		c.__wrote_size()
 	}})
 	}
-	__when1 := ([]MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	__when1 := ([]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list3)), Select: func() {
+	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list3)), Select: func() {
 	}}}[0].Children[1].Label == "Close")
 	if __when1 {
 		__list4 := []MenuItem__record{}
 		for _, __item4 := range c.sizes {
-			__list4 = append(__list4, MenuItem__record{Label: __item4, Disabled: false, Checked: (__item4 == c.size), Children: []MenuItem__record{}, Select: func() {
+			__list4 = append(__list4, MenuItem__record{Label: __item4, Checked: (__item4 == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = __item4
+		c.__wrote_size()
 	}})
 		}
-		__when1 = []MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+		__when1 = []MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list4)), Select: func() {
+	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list4)), Select: func() {
 	}}}[0].Children[1].Disabled
 	}
 	if !(__when1) { t.Errorf("assert failed: %s", "__when1") }
@@ -994,15 +1029,15 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 				m.__copies_main__menu = nil
 				m.__copies_main__menu__children = nil
-				for i, it := range []MenuItem__record{MenuItem__record{Label: "File", Disabled: false, Checked: false, Children: []MenuItem__record{MenuItem__record{Label: "Save", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
+				for i, it := range []MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 					m.saved += 1
-				}}, MenuItem__record{Label: "Close", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
+				}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 				}}}, Select: func() {
-				}}, MenuItem__record{Label: "Size", Disabled: false, Checked: false, Children: slices.Concat(func() []MenuItem__record {
+				}}, MenuItem__record{Label: "Size", Children: slices.Concat(func() []MenuItem__record {
 					__out := make([]MenuItem__record, len(m.sizes))
 					for __i, __item := range m.sizes {
 						__out[__i] = func(s string) MenuItem__record {
-							return MenuItem__record{Label: s, Disabled: false, Checked: (s == m.size), Children: []MenuItem__record{}, Select: func() {
+							return MenuItem__record{Label: s, Checked: (s == m.size), Children: []MenuItem__record{}, Select: func() {
 								m.size = s
 								gtk4rt.LabelSetLabel(m.shown, m.size)
 								m.__renderSlot0(m.main)
@@ -1037,6 +1072,11 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			}
 		}()
 	}
+}
+
+func (m *Model) __wrote_size() {
+	gtk4rt.LabelSetLabel(m.shown, m.size)
+	m.__renderSlot0(m.main)
 }
 
 func (m *Model) main_closed_handler() {
@@ -1153,8 +1193,6 @@ func (m *Model) __list_main__menu__children(key string, w gtk4rt.Handle) {
 package test.sngl.app
 
 import androidx.compose.ui.semantics.SemanticsPropertyKey
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -1164,6 +1202,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.Text
@@ -1190,7 +1229,6 @@ val sizes: List<String> = listOf("Small", "Medium", "Large")
 val SnglCopy = SemanticsPropertyKey<String>("SnglCopy")
 
 class MainScreenState {
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     var size by mutableStateOf("Medium")
     var saved by mutableStateOf(0)
     var visible__inst0 by mutableStateOf(true)
@@ -1210,11 +1248,11 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
         }
         SnglAppBar(title = "Sizes", canGoBack = false, upTag = "main__back", onUp = {
         }, icon = null, actions = {
-            for ((i, it) in listOf(MenuItem__record(label = "File", disabled = false, checked = false, children = listOf(MenuItem__record(label = "Save", disabled = false, checked = false, children = listOf<MenuItem__record>(), select = {  ->
+            for ((i, it) in listOf(MenuItem__record(label = "File", children = listOf(MenuItem__record(label = "Save", children = listOf<MenuItem__record>(), select = {  ->
     state.saved += 1
-}), MenuItem__record(label = "Close", disabled = true, checked = false, children = listOf<MenuItem__record>(), select = {  ->
+}), MenuItem__record(label = "Close", disabled = true, children = listOf<MenuItem__record>(), select = {  ->
 })), select = {  ->
-}), MenuItem__record(label = "Size", disabled = false, checked = false, children = listOf(*sizes.map({ s: String -> MenuItem__record(label = s, disabled = false, checked = (s == state.size), children = listOf<MenuItem__record>(), select = {  ->
+}), MenuItem__record(label = "Size", children = listOf(*sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == state.size), children = listOf<MenuItem__record>(), select = {  ->
     state.size = s
 }) }).toTypedArray()), select = {  ->
 })).withIndex()) {
@@ -1379,29 +1417,29 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        org.junit.Assert.assertTrue("listOf(MenuItem__record(label = \"File\", disabled = false, checked = false, children = listOf(MenuItem__record(label = \"Save\", disabled = false, checked = false, children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, checked = false, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", disabled = false, checked = false, children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, disabled = false, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[1].children[1].checked", listOf(MenuItem__record(label = "File", disabled = false, checked = false, children = listOf(MenuItem__record(label = "Save", disabled = false, checked = false, children = listOf<MenuItem__record>(), select = {  ->
+        org.junit.Assert.assertTrue("listOf(MenuItem__record(label = \"File\", children = listOf(MenuItem__record(label = \"Save\", children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[1].children[1].checked", listOf(MenuItem__record(label = "File", children = listOf(MenuItem__record(label = "Save", children = listOf<MenuItem__record>(), select = {  ->
     c.saved += 1
-}), MenuItem__record(label = "Close", disabled = true, checked = false, children = listOf<MenuItem__record>(), select = {  ->
+}), MenuItem__record(label = "Close", disabled = true, children = listOf<MenuItem__record>(), select = {  ->
 })), select = {  ->
-}), MenuItem__record(label = "Size", disabled = false, checked = false, children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, disabled = false, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
+}), MenuItem__record(label = "Size", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
     c.size = s
 }) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->
 }))[1].children[1].checked)
         composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("main__menu") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("main__menu__children") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/2"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.size == \"Large\")", (c.size == "Large"))
-        org.junit.Assert.assertTrue("(listOf(MenuItem__record(label = \"File\", disabled = false, checked = false, children = listOf(MenuItem__record(label = \"Save\", disabled = false, checked = false, children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, checked = false, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", disabled = false, checked = false, children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, disabled = false, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[1].children[2].checked && !listOf(MenuItem__record(label = \"File\", disabled = false, checked = false, children = listOf(MenuItem__record(label = \"Save\", disabled = false, checked = false, children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, checked = false, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", disabled = false, checked = false, children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, disabled = false, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[1].children[1].checked)", (listOf(MenuItem__record(label = "File", disabled = false, checked = false, children = listOf(MenuItem__record(label = "Save", disabled = false, checked = false, children = listOf<MenuItem__record>(), select = {  ->
+        org.junit.Assert.assertTrue("(listOf(MenuItem__record(label = \"File\", children = listOf(MenuItem__record(label = \"Save\", children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[1].children[2].checked && !listOf(MenuItem__record(label = \"File\", children = listOf(MenuItem__record(label = \"Save\", children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[1].children[1].checked)", (listOf(MenuItem__record(label = "File", children = listOf(MenuItem__record(label = "Save", children = listOf<MenuItem__record>(), select = {  ->
     c.saved += 1
-}), MenuItem__record(label = "Close", disabled = true, checked = false, children = listOf<MenuItem__record>(), select = {  ->
+}), MenuItem__record(label = "Close", disabled = true, children = listOf<MenuItem__record>(), select = {  ->
 })), select = {  ->
-}), MenuItem__record(label = "Size", disabled = false, checked = false, children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, disabled = false, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
+}), MenuItem__record(label = "Size", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
     c.size = s
 }) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->
-}))[1].children[2].checked && !listOf(MenuItem__record(label = "File", disabled = false, checked = false, children = listOf(MenuItem__record(label = "Save", disabled = false, checked = false, children = listOf<MenuItem__record>(), select = {  ->
+}))[1].children[2].checked && !listOf(MenuItem__record(label = "File", children = listOf(MenuItem__record(label = "Save", children = listOf<MenuItem__record>(), select = {  ->
     c.saved += 1
-}), MenuItem__record(label = "Close", disabled = true, checked = false, children = listOf<MenuItem__record>(), select = {  ->
+}), MenuItem__record(label = "Close", disabled = true, children = listOf<MenuItem__record>(), select = {  ->
 })), select = {  ->
-}), MenuItem__record(label = "Size", disabled = false, checked = false, children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, disabled = false, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
+}), MenuItem__record(label = "Size", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
     c.size = s
 }) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->
 }))[1].children[1].checked))
@@ -1420,18 +1458,18 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        org.junit.Assert.assertTrue("((listOf(MenuItem__record(label = \"File\", disabled = false, checked = false, children = listOf(MenuItem__record(label = \"Save\", disabled = false, checked = false, children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, checked = false, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", disabled = false, checked = false, children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, disabled = false, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[0].children[1].label == \"Close\") && listOf(MenuItem__record(label = \"File\", disabled = false, checked = false, children = listOf(MenuItem__record(label = \"Save\", disabled = false, checked = false, children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, checked = false, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", disabled = false, checked = false, children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, disabled = false, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[0].children[1].disabled)", ((listOf(MenuItem__record(label = "File", disabled = false, checked = false, children = listOf(MenuItem__record(label = "Save", disabled = false, checked = false, children = listOf<MenuItem__record>(), select = {  ->
+        org.junit.Assert.assertTrue("((listOf(MenuItem__record(label = \"File\", children = listOf(MenuItem__record(label = \"Save\", children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[0].children[1].label == \"Close\") && listOf(MenuItem__record(label = \"File\", children = listOf(MenuItem__record(label = \"Save\", children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[0].children[1].disabled)", ((listOf(MenuItem__record(label = "File", children = listOf(MenuItem__record(label = "Save", children = listOf<MenuItem__record>(), select = {  ->
     c.saved += 1
-}), MenuItem__record(label = "Close", disabled = true, checked = false, children = listOf<MenuItem__record>(), select = {  ->
+}), MenuItem__record(label = "Close", disabled = true, children = listOf<MenuItem__record>(), select = {  ->
 })), select = {  ->
-}), MenuItem__record(label = "Size", disabled = false, checked = false, children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, disabled = false, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
+}), MenuItem__record(label = "Size", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
     c.size = s
 }) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->
-}))[0].children[1].label == "Close") && listOf(MenuItem__record(label = "File", disabled = false, checked = false, children = listOf(MenuItem__record(label = "Save", disabled = false, checked = false, children = listOf<MenuItem__record>(), select = {  ->
+}))[0].children[1].label == "Close") && listOf(MenuItem__record(label = "File", children = listOf(MenuItem__record(label = "Save", children = listOf<MenuItem__record>(), select = {  ->
     c.saved += 1
-}), MenuItem__record(label = "Close", disabled = true, checked = false, children = listOf<MenuItem__record>(), select = {  ->
+}), MenuItem__record(label = "Close", disabled = true, children = listOf<MenuItem__record>(), select = {  ->
 })), select = {  ->
-}), MenuItem__record(label = "Size", disabled = false, checked = false, children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, disabled = false, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
+}), MenuItem__record(label = "Size", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
     c.size = s
 }) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->
 }))[0].children[1].disabled))
@@ -1452,9 +1490,9 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<header class="sngl-bar" style="padding-left:12px;padding-right:12px;padding-top:8px;padding-bottom:8px;align-items:center;display:flex;gap:8px;border-bottom:1px solid #ddd" class="sngl-bar">
+<header class="sngl-bar" style="padding-top:8px;padding-right:12px;padding-bottom:8px;padding-left:12px;gap:8px;display:flex;align-items:center;border-bottom:1px solid #ddd" class="sngl-bar">
   <span style="flex:1;min-width:0;min-height:0;font-weight:bold">Sizes</span>
-  <nav style="display:flex;gap:4px" role="menubar" data-sngl-id="main__menu">
+  <nav style="gap:4px;display:flex" role="menubar" data-sngl-id="main__menu">
     <span data-sngl-slot="0" style="display:contents"></span>
   </nav>
 </header>
@@ -1520,7 +1558,7 @@ window.__sngl_boot = () => {
             let main__menu__items = document.createElement("summary");
             main__menu__items.setAttribute("data-sngl-id", "main__menu__items");
             main__menu__items.textContent = it.label;
-            main__menu__items.setAttribute("style", "padding-left:8px;padding-right:8px;padding-top:4px;padding-bottom:4px;cursor:pointer;list-style-type:none");
+            main__menu__items.setAttribute("style", "padding-top:4px;padding-right:8px;padding-bottom:4px;padding-left:8px;cursor:pointer;list-style-type:none");
             main__menu__items.setAttribute("role", "menuitem");
             main__menu__items.setAttribute("data-sngl-copy", String(i));
             main__menu__items.addEventListener("click", () => {
@@ -1529,7 +1567,7 @@ window.__sngl_boot = () => {
             __n0.appendChild(main__menu__items);
             if (it.children.length > 0) {
               let __n1 = document.createElement("div");
-              __n1.setAttribute("style", "border:1px solid #ddd;padding:4px;background-color:#ffffff;border-radius:4px;display:flex;flex-direction:column;position:absolute;right:0px;z-index:100");
+              __n1.setAttribute("style", "border:1px solid #ddd;padding:4px;display:flex;flex-direction:column;position:absolute;right:0px;z-index:100;background-color:#ffffff;border-radius:4px");
               __n1.setAttribute("role", "menu");
               for (const [j, sub] of it.children.entries()) {
                 let main__menu__items__children = document.createElement("button");
@@ -1538,7 +1576,7 @@ window.__sngl_boot = () => {
                 main__menu__items__children.setAttribute("aria-checked", sub.checked ? "true" : "false");
                 main__menu__items__children.disabled = sub.disabled;
                 main__menu__items__children.textContent = sub.checked ? "\u2713 " + sub.label : sub.label;
-                main__menu__items__children.setAttribute("style", "border:none;padding-left:8px;padding-right:8px;padding-top:4px;padding-bottom:4px;background-color:rgba(0,0,0,0);cursor:pointer;text-align:left;white-space:nowrap");
+                main__menu__items__children.setAttribute("style", "border:none;padding-top:4px;padding-right:8px;padding-bottom:4px;padding-left:8px;text-align:left;white-space:nowrap;background-color:#00000000;cursor:pointer");
                 main__menu__items__children.setAttribute("data-sngl-copy", String(i) + "/" + String(j));
                 main__menu__items__children.addEventListener("click", () => {
                   sub.select();
@@ -1569,6 +1607,13 @@ window.__sngl_boot = () => {
       }
     }
   }
+  function __wrote_size() {
+    $2.textContent = state.size;
+    __renderSlot0(__slotAnchor_0);
+  }
+  if (typeof window !== "undefined") {
+    Object.assign(window, { __wrote_size });
+  }
   function String(v) {
     return "" + v;
   }
@@ -1585,12 +1630,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7b797ea5a9ec4145c674088095abfc1e
+pass sha256:ad7869a997af7774da97dd0d0cf657cb
 -- run/go/fyne --
-pass sha256:27ae1acf6c47af93909d06d65d671008
+pass sha256:303245a5fdb8a10208ba59f917502369
 -- run/go/gtk4 --
-pass sha256:99de1c5900c7d0fdc81e6d421a6e8ca3
+pass sha256:286c5a34a6244735046ff957ee14b8c3
 -- run/kotlin/android --
-pass sha256:a906e4d0e692da2bc459ad1a5c7c065d
+pass sha256:eaac7dda610cee40b6f83c28a62217bb
 -- run/none/html --
-pass sha256:e7e3674e36580e42a975be7056fbd95f
+pass sha256:0a55eeb23b82dcba829f5b5819b82c31

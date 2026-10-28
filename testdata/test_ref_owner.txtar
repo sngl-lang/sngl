@@ -231,8 +231,8 @@ func RowsOf(m__r0 *Measurement) int {
 
 func BoxLook(s Style, words bool) lipgloss.Style {
 	if func(_a1, _b2 Style) bool {
-		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
-	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
@@ -808,7 +808,7 @@ func (m Model) View() tea.View {
 	if part0_0Focused {
 		part0_0Prefix = ">"
 	}
-	part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint("s"))
+	part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint("s"))
 	part0Children = append(part0Children, part0_0)
 	var part0_1 string
 	part0_1Focused := (m.__focusID == 1)
@@ -816,7 +816,7 @@ func (m Model) View() tea.View {
 	if part0_1Focused {
 		part0_1Prefix = ">"
 	}
-	part0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_1Prefix + " " + fmt.Sprint("o"))
+	part0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1Prefix + " " + fmt.Sprint("o"))
 	part0Children = append(part0Children, part0_1)
 	var part0_2 string
 	if m.other {
@@ -830,7 +830,7 @@ func (m Model) View() tea.View {
 			if part0_2_0Part_0Focused {
 				part0_2_0Part_0Prefix = ">"
 			}
-			part0_2_0Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_2_0Part_0Prefix + " " + fmt.Sprint(("p" + fmt.Sprint(m.hits__inst1))))
+			part0_2_0Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2_0Part_0Prefix + " " + fmt.Sprint(("p" + fmt.Sprint(m.hits__inst1))))
 			part0_2_0Parts = append(part0_2_0Parts, part0_2_0Part_0)
 			var part0_2_0Part_1 string
 			part0_2_0Part_1Focused := (m.__focusID == 3)
@@ -838,7 +838,7 @@ func (m Model) View() tea.View {
 			if part0_2_0Part_1Focused {
 				part0_2_0Part_1Prefix = ">"
 			}
-			part0_2_0Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_2_0Part_1Prefix + " " + fmt.Sprint(("pk" + fmt.Sprint(m.ph__inst0))))
+			part0_2_0Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2_0Part_1Prefix + " " + fmt.Sprint(("pk" + fmt.Sprint(m.ph__inst0))))
 			part0_2_0Parts = append(part0_2_0Parts, part0_2_0Part_1)
 			part0_2_0 = tui.Spaced(false, lipgloss.Left, 0, part0_2_0Parts...)
 		}
@@ -846,7 +846,7 @@ func (m Model) View() tea.View {
 			part0_2Children = append(part0_2Children, part0_2_0)
 		}
 		part0_2 = lipgloss.JoinVertical(lipgloss.Left, part0_2Children...)
-		part0_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_2)
+		part0_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2)
 	}
 	if part0_2 != "" {
 		part0Children = append(part0Children, part0_2)
@@ -860,7 +860,7 @@ func (m Model) View() tea.View {
 		if part0_3Part_0Focused {
 			part0_3Part_0Prefix = ">"
 		}
-		part0_3Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_3Part_0Prefix + " " + fmt.Sprint(("m" + fmt.Sprint(m.hits__inst0))))
+		part0_3Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_3Part_0Prefix + " " + fmt.Sprint(("m" + fmt.Sprint(m.hits__inst0))))
 		part0_3Parts = append(part0_3Parts, part0_3Part_0)
 		var part0_3Part_1 string
 		part0_3Part_1Focused := (m.__focusID == 5)
@@ -868,7 +868,7 @@ func (m Model) View() tea.View {
 		if part0_3Part_1Focused {
 			part0_3Part_1Prefix = ">"
 		}
-		part0_3Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_3Part_1Prefix + " " + fmt.Sprint(("mk" + fmt.Sprint(m.mh))))
+		part0_3Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_3Part_1Prefix + " " + fmt.Sprint(("mk" + fmt.Sprint(m.mh))))
 		part0_3Parts = append(part0_3Parts, part0_3Part_1)
 		part0_3 = tui.Spaced(false, lipgloss.Left, 0, part0_3Parts...)
 	}
@@ -876,7 +876,7 @@ func (m Model) View() tea.View {
 		part0Children = append(part0Children, part0_3)
 	}
 	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
-	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0)
+	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0)
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -2912,7 +2912,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:18d9d1c8053c6ed6025fcaf8bf5666a2
+pass sha256:d2b9df030cd5fcf5d1be0ae774f5f466
 -- run/go/fyne --
 pass sha256:e1b9b462b0e4813636a7f30f6017f65e
 -- run/go/gtk4 --

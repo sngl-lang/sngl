@@ -493,4 +493,4 @@ func (m *Model) listReachEnd() {
 	gtk4rt.ScrollReachEnd(gtk4rt.Handle(unsafe.Pointer(m.list)))
 }
 -- run/go/gtk4 --
-pass sha256:979e5235fcd416025b8d257927d65fb3
+pass sha256:6b92e1f8103d3b1210875777a158edfc

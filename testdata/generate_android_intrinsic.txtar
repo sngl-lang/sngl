@@ -150,8 +150,8 @@ data class Style(
     var borderStyle: SnglBorderStyle = SnglBorderStyle.UNSET,
     var opacity: Double? = null,
     var cursor: String = "",
-    var display: SnglDisplay = SnglDisplay.FLEX,
-    var listStyleType: SnglListStyle = SnglListStyle.NONE
+    var display: SnglDisplay = SnglDisplay.UNSET,
+    var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
 data class Color(
@@ -450,4 +450,4 @@ fun SnglScroll(
     Column(scrolled.onSizeChanged { extent = if (sideways) it.width else it.height }, content = content)
 }
 -- run/kotlin/android --
-pass sha256:25cf25a3935331b8537adf0626ed2dd0
+pass sha256:5bfdcc4513748c5534fd488a93503d42

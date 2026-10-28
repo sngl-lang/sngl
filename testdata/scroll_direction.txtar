@@ -71,6 +71,17 @@ import (
 	"slices"
 )
 
+func snglSome[T any](v T) *T {
+	return &v
+}
+
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -78,54 +89,54 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	ListStyleType  string
@@ -156,43 +167,45 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 Measurement) int {
-	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt1 int
+func RowsOf(m__r0 *Measurement) int {
+	var px float64 = PxOf(m__r0)
+	var __lt3 int
 	if px <= 0.0 {
-		__lt1 = 0
+		__lt3 = 0
 	} else {
-		__lt1 = max(1, (int(px) / 16))
+		__lt3 = max(1, (int(px) / 16))
 	}
-	return __lt1
+	return __lt3
 }
 
-func CellsOf(m__r1 Measurement) int {
-	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
-	var __lt2 int
+func CellsOf(m__r1 *Measurement) int {
+	var px float64 = PxOf(m__r1)
+	var __lt4 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt4 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 8))
+		__lt4 = max(1, (int(px) / 8))
 	}
-	return __lt2
+	return __lt4
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
-	if (s == Style{}) {
+	if func(_a1, _b2 Style) bool {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
-	if words && (s.Color != snglcolor.Color{}) {
-		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	if words && (s.Color != nil) {
+		l = l.Foreground(lipgloss.Color((*(s.Color)).Hex()))
 	}
-	if (s.Background != snglcolor.Color{}) {
-		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	if s.Background != nil {
+		l = l.Background(lipgloss.Color((*(s.Background)).Hex()))
 	}
 	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
 		l = l.Bold(true)
 	}
-	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != nil) && ((*(s.Opacity)) < 1.0)) {
 		l = l.Faint(true)
 	}
 	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
@@ -201,10 +214,16 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt5 bool
+	if s.BorderWidth != nil {
+		__lt5 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt5 {
 		l = l.Border(BorderOf(s))
-		if (s.BorderColor != snglcolor.Color{}) {
-			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		if s.BorderColor != nil {
+			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
 	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
@@ -215,89 +234,99 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
 	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
 	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
-	if (s.Width != Measurement{Px: 0}) {
+	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
-	if (s.Height != Measurement{Px: 0}) {
+	if s.Height != nil {
 		l = l.Height(RowsOf(s.Height))
 	}
-	if (s.MaxWidth != Measurement{Px: 0}) {
+	if s.MaxWidth != nil {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
-	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt3 int
-		if s.MaxLines == 0 {
-			__lt3 = 0
+	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
+		var __lt6 int
+		if s.MaxLines == nil {
+			__lt6 = 0
 		} else {
-			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
 	}
 	return l
 }
 
+func PxOf(m__r2 *Measurement) float64 {
+	var __lt8 float64
+	if m__r2 == nil {
+		__lt8 = 0.0
+	} else {
+		__lt8 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+	}
+	return __lt8
+}
+
 func AlignOf(a string) lipgloss.Position {
-	var __lt4 lipgloss.Position
+	var __lt9 lipgloss.Position
 	switch a {
 	case "center":
-		__lt4 = lipgloss.Center
+		__lt9 = lipgloss.Center
 	case "right":
-		__lt4 = lipgloss.Right
+		__lt9 = lipgloss.Right
 	default:
-		__lt4 = lipgloss.Left
+		__lt9 = lipgloss.Left
 	}
-	return __lt4
+	return __lt9
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt5 lipgloss.Border
+	var __lt10 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt5 = lipgloss.DoubleBorder()
+		__lt10 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt5 = tui.DashedBorder()
+		__lt10 = tui.DashedBorder()
 	default:
-		var __lt6 lipgloss.Border
-		if (s.BorderRadius != Measurement{Px: 0}) {
-			__lt6 = lipgloss.RoundedBorder()
+		var __lt11 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt11 = lipgloss.RoundedBorder()
 		} else {
-			__lt6 = lipgloss.NormalBorder()
+			__lt11 = lipgloss.NormalBorder()
 		}
-		__lt5 = __lt6
+		__lt10 = __lt11
 	}
-	return __lt5
+	return __lt10
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt8 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt8 = own
+func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+	var __lt13 *Measurement
+	if own != nil {
+		__lt13 = own
 	} else {
-		var __lt7 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt7 = axis
+		var __lt12 *Measurement
+		if axis != nil {
+			__lt12 = axis
 		} else {
-			__lt7 = all
+			__lt12 = all
 		}
-		__lt8 = __lt7
+		__lt13 = __lt12
 	}
-	return CellsOf(__lt8)
+	return CellsOf(__lt13)
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt10 int
+	var __lt15 int
 	if height__r0 == 0 {
-		__lt10 = lines
+		__lt15 = lines
 	} else {
-		var __lt9 int
+		var __lt14 int
 		if lines == 0 {
-			__lt9 = height__r0
+			__lt14 = height__r0
 		} else {
-			__lt9 = min(height__r0, lines)
+			__lt14 = min(height__r0, lines)
 		}
-		__lt10 = __lt9
+		__lt15 = __lt14
 	}
-	return __lt10
+	return __lt15
 }
 
 func (m Model) Visible__inst0() bool {
@@ -357,7 +386,7 @@ func (m Model) View() tea.View {
 		for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
 			_ = i
 			var content_0_0_0Item string
-			content_0_0_0Item = BoxLook(Style{}, true).Render(fmt.Sprint(("row " + fmt.Sprint(i))))
+			content_0_0_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("row " + fmt.Sprint(i))))
 			content_0_0_0Items = append(content_0_0_0Items, content_0_0_0Item)
 		}
 		content_0_0_0 = tui.Spaced(false, lipgloss.Left, 0, content_0_0_0Items...)
@@ -365,10 +394,10 @@ func (m Model) View() tea.View {
 			content_0_0Children = append(content_0_0Children, content_0_0_0)
 		}
 		content_0_0 = lipgloss.JoinVertical(lipgloss.Left, content_0_0Children...)
-		content_0_0 = BoxLook(Style{}, true).Render(content_0_0)
+		content_0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0_0)
 		content_0Children = append(content_0Children, content_0_0)
 		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
-		content_0 = BoxLook(Style{Height: Measurement{Px: 120}}, true).Render(content_0)
+		content_0 = BoxLook(Style{Height: snglSome(Measurement{Px: 120}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		var content_1Children []string
@@ -379,7 +408,7 @@ func (m Model) View() tea.View {
 		for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
 			_ = i
 			var content_1_0_0Item string
-			content_1_0_0Item = BoxLook(Style{Width: Measurement{Px: 120}}, true).Render(fmt.Sprint(("column " + fmt.Sprint(i))))
+			content_1_0_0Item = BoxLook(Style{Width: snglSome(Measurement{Px: 120}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("column " + fmt.Sprint(i))))
 			content_1_0_0Items = append(content_1_0_0Items, content_1_0_0Item)
 		}
 		content_1_0_0 = tui.Spaced(true, lipgloss.Top, 1, content_1_0_0Items...)
@@ -387,10 +416,10 @@ func (m Model) View() tea.View {
 			content_1_0Children = append(content_1_0Children, content_1_0_0)
 		}
 		content_1_0 = tui.Spaced(true, lipgloss.Top, 1, content_1_0Children...)
-		content_1_0 = BoxLook(Style{Gap: Measurement{Px: 8}}, true).Render(content_1_0)
+		content_1_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_1_0)
 		content_1Children = append(content_1Children, content_1_0)
 		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
-		content_1 = BoxLook(Style{}, true).Render(content_1)
+		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_1)
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
 		var content_2Children []string
@@ -401,7 +430,7 @@ func (m Model) View() tea.View {
 		for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
 			_ = i
 			var content_2_0_0Item string
-			content_2_0_0Item = BoxLook(Style{}, true).Render(fmt.Sprint((("a long line " + fmt.Sprint(i)) + " that runs on past the right edge of a phone's screen")))
+			content_2_0_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint((("a long line " + fmt.Sprint(i)) + " that runs on past the right edge of a phone's screen")))
 			content_2_0_0Items = append(content_2_0_0Items, content_2_0_0Item)
 		}
 		content_2_0_0 = tui.Spaced(false, lipgloss.Left, 0, content_2_0_0Items...)
@@ -409,13 +438,13 @@ func (m Model) View() tea.View {
 			content_2_0Children = append(content_2_0Children, content_2_0_0)
 		}
 		content_2_0 = lipgloss.JoinVertical(lipgloss.Left, content_2_0Children...)
-		content_2_0 = BoxLook(Style{}, true).Render(content_2_0)
+		content_2_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_2_0)
 		content_2Children = append(content_2Children, content_2_0)
 		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
-		content_2 = BoxLook(Style{Height: Measurement{Px: 120}}, true).Render(content_2)
+		content_2 = BoxLook(Style{Height: snglSome(Measurement{Px: 120}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_2)
 		contentChildren = append(contentChildren, content_2)
 		content = tui.Spaced(false, lipgloss.Left, 1, contentChildren...)
-		content = BoxLook(Style{Gap: Measurement{Px: 8}}, true).Render(content)
+		content = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -437,6 +466,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -533,11 +563,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = fynelayout.NewVBox()
 	m.__n1__box = fynelayout.NewBox(m.__n1)
-	m.__n1__box.SetLook(fynelayout.Look{Gap: 8.0})
+	m.__n1__box.SetLook(fynelayout.Look{Gap: 8.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 	m.down = fynelayout.NewReachScroll()
 	m.down__box = fynelayout.NewBox(m.down)
 	m.down.SetDirection("vertical")
-	m.down__box.SetLook(fynelayout.Look{Height: 120.0})
+	m.down__box.SetLook(fynelayout.Look{Height: 120.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 	m.down.OnReachEnd = m.down_reachEnd_handler
 	m.__n2 = fynelayout.NewVBox()
 	for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
@@ -552,12 +582,12 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.across.OnReachEnd = m.across_reachEnd_handler
 	m.__n4 = fynelayout.NewHBox()
 	m.__n4__box = fynelayout.NewBox(m.__n4)
-	m.__n4__box.SetLook(fynelayout.Look{Gap: 8.0})
+	m.__n4__box.SetLook(fynelayout.Look{Gap: 8.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 	for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
 		m.__n5 = widget.NewLabel("")
 		m.__n5__box = fynelayout.NewBox(m.__n5)
 		m.__n5.SetText(("column " + fmt.Sprint(i)))
-		m.__n5__box.SetLook(fynelayout.Look{Width: 120.0})
+		m.__n5__box.SetLook(fynelayout.Look{Width: 120.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 		m.__n4.Add(m.__n5__box)
 	}
 	m.across.Content = m.__n4__box
@@ -565,7 +595,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.either = fynelayout.NewReachScroll()
 	m.either__box = fynelayout.NewBox(m.either)
 	m.either.SetDirection("both")
-	m.either__box.SetLook(fynelayout.Look{Height: 120.0})
+	m.either__box.SetLook(fynelayout.Look{Height: 120.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 	m.either.OnReachEnd = m.either_reachEnd_handler
 	m.__n6 = fynelayout.NewVBox()
 	for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
@@ -672,14 +702,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n1, 1)
-	gtk4rt.BoxSetSpacing(m.__n1, 8)
+	gtk4rt.SetLook(m.__n1, gtk4rt.Look{Spaced: true, Spacing: 8})
 	m.down = gtk4rt.ScrollNew()
 	gtk4rt.ScrollSetDirection(m.down, "vertical")
 	gtk4rt.SetLook(m.down, gtk4rt.Look{Height: 120.0})
 	gtk4rt.ScrollOnReachEnd(m.down, m.down_reachEnd_handler)
 	m.__n2 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n2, 1)
-	gtk4rt.BoxSetSpacing(m.__n2, 6)
+	gtk4rt.SetLook(m.__n2, gtk4rt.Look{Spaced: true, Spacing: 6})
 	for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
 		m.__n3 = gtk4rt.New("GtkLabel")
 		gtk4rt.LabelSetLabel(m.__n3, ("row " + fmt.Sprint(i)))
@@ -693,7 +723,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ScrollOnReachEnd(m.across, m.across_reachEnd_handler)
 	m.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n4, 0)
-	gtk4rt.BoxSetSpacing(m.__n4, 8)
+	gtk4rt.SetLook(m.__n4, gtk4rt.Look{Spaced: true, Spacing: 8})
 	for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
 		m.__n5 = gtk4rt.New("GtkLabel")
 		gtk4rt.LabelSetLabel(m.__n5, ("column " + fmt.Sprint(i)))
@@ -709,7 +739,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ScrollOnReachEnd(m.either, m.either_reachEnd_handler)
 	m.__n6 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n6, 1)
-	gtk4rt.BoxSetSpacing(m.__n6, 6)
+	gtk4rt.SetLook(m.__n6, gtk4rt.Look{Spaced: true, Spacing: 6})
 	for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
 		m.__n7 = gtk4rt.New("GtkLabel")
 		gtk4rt.LabelSetLabel(m.__n7, (("a long line " + fmt.Sprint(i)) + " that runs on past the right edge of a phone's screen"))
@@ -760,13 +790,14 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.zIndex
 import androidx.compose.foundation.layout.widthIn
@@ -779,6 +810,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Alignment
 
 data class Measurement(
     val px: Double = 0.0,
@@ -787,57 +820,57 @@ data class Measurement(
 )
 
 data class Style(
-    var padding: Measurement = Measurement(),
-    var paddingTop: Measurement = Measurement(),
-    var paddingRight: Measurement = Measurement(),
-    var paddingBottom: Measurement = Measurement(),
-    var paddingLeft: Measurement = Measurement(),
-    var paddingX: Measurement = Measurement(),
-    var paddingY: Measurement = Measurement(),
-    var margin: Measurement = Measurement(),
-    var marginTop: Measurement = Measurement(),
-    var marginRight: Measurement = Measurement(),
-    var marginBottom: Measurement = Measurement(),
-    var marginLeft: Measurement = Measurement(),
-    var marginX: Measurement = Measurement(),
-    var marginY: Measurement = Measurement(),
-    var gap: Measurement = Measurement(),
-    var width: Measurement = Measurement(),
-    var minWidth: Measurement = Measurement(),
-    var height: Measurement = Measurement(),
-    var maxWidth: Measurement = Measurement(),
-    var maxHeight: Measurement = Measurement(),
-    var flex: Double = 0.0,
-    var flexDirection: SnglFlexDirection = SnglFlexDirection.ROW,
-    var alignItems: SnglAlignment = SnglAlignment.START,
-    var justifyContent: SnglJustification = SnglJustification.START,
-    var position: SnglPosition = SnglPosition.STATIC,
-    var top: Measurement = Measurement(),
-    var bottom: Measurement = Measurement(),
-    var left: Measurement = Measurement(),
-    var right: Measurement = Measurement(),
-    var zIndex: Int = 0,
-    var color: Color = Color(),
-    var fontSize: Measurement = Measurement(),
+    var padding: Measurement? = null,
+    var paddingTop: Measurement? = null,
+    var paddingRight: Measurement? = null,
+    var paddingBottom: Measurement? = null,
+    var paddingLeft: Measurement? = null,
+    var paddingX: Measurement? = null,
+    var paddingY: Measurement? = null,
+    var margin: Measurement? = null,
+    var marginTop: Measurement? = null,
+    var marginRight: Measurement? = null,
+    var marginBottom: Measurement? = null,
+    var marginLeft: Measurement? = null,
+    var marginX: Measurement? = null,
+    var marginY: Measurement? = null,
+    var gap: Measurement? = null,
+    var width: Measurement? = null,
+    var minWidth: Measurement? = null,
+    var height: Measurement? = null,
+    var maxWidth: Measurement? = null,
+    var maxHeight: Measurement? = null,
+    var flex: Double? = null,
+    var flexDirection: SnglFlexDirection = SnglFlexDirection.UNSET,
+    var alignItems: SnglAlignment = SnglAlignment.UNSET,
+    var justifyContent: SnglJustification = SnglJustification.UNSET,
+    var position: SnglPosition = SnglPosition.UNSET,
+    var top: Measurement? = null,
+    var bottom: Measurement? = null,
+    var left: Measurement? = null,
+    var right: Measurement? = null,
+    var zIndex: Int? = null,
+    var color: Color? = null,
+    var fontSize: Measurement? = null,
     var fontFamily: String = "",
-    var fontWeight: SnglFontWeight = SnglFontWeight.NORMAL,
-    var fontStyle: SnglFontStyle = SnglFontStyle.NORMAL,
-    var textAlign: SnglTextAlign = SnglTextAlign.LEFT,
-    var maxLines: Int = 0,
-    var whiteSpace: SnglWhiteSpace = SnglWhiteSpace.NORMAL,
-    var background: Color = Color(),
-    var borderRadius: Measurement = Measurement(),
-    var borderColor: Color = Color(),
-    var borderWidth: Measurement = Measurement(),
+    var fontWeight: SnglFontWeight = SnglFontWeight.UNSET,
+    var fontStyle: SnglFontStyle = SnglFontStyle.UNSET,
+    var textAlign: SnglTextAlign = SnglTextAlign.UNSET,
+    var maxLines: Int? = null,
+    var whiteSpace: SnglWhiteSpace = SnglWhiteSpace.UNSET,
+    var background: Color? = null,
+    var borderRadius: Measurement? = null,
+    var borderColor: Color? = null,
+    var borderWidth: Measurement? = null,
     var border: String = "",
     var borderBottom: String = "",
     var borderLeft: String = "",
     var borderCollapse: String = "",
-    var borderStyle: SnglBorderStyle = SnglBorderStyle.NONE,
-    var opacity: Double = 0.0,
+    var borderStyle: SnglBorderStyle = SnglBorderStyle.UNSET,
+    var opacity: Double? = null,
     var cursor: String = "",
-    var display: SnglDisplay = SnglDisplay.FLEX,
-    var listStyleType: SnglListStyle = SnglListStyle.NONE
+    var display: SnglDisplay = SnglDisplay.UNSET,
+    var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
 data class Color(
@@ -857,6 +890,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
 enum class SnglFlexDirection(private val sngl: String) {
+    UNSET("unset"),
     ROW("row"),
     COLUMN("column"),
     ROWREVERSE("rowReverse"),
@@ -866,6 +900,7 @@ enum class SnglFlexDirection(private val sngl: String) {
 }
 
 enum class SnglAlignment(private val sngl: String) {
+    UNSET("unset"),
     START("start"),
     CENTER("center"),
     END("end"),
@@ -876,6 +911,7 @@ enum class SnglAlignment(private val sngl: String) {
 }
 
 enum class SnglJustification(private val sngl: String) {
+    UNSET("unset"),
     START("start"),
     CENTER("center"),
     END("end"),
@@ -887,6 +923,7 @@ enum class SnglJustification(private val sngl: String) {
 }
 
 enum class SnglPosition(private val sngl: String) {
+    UNSET("unset"),
     STATIC("static"),
     RELATIVE("relative"),
     ABSOLUTE("absolute"),
@@ -897,6 +934,7 @@ enum class SnglPosition(private val sngl: String) {
 }
 
 enum class SnglFontWeight(private val sngl: String) {
+    UNSET("unset"),
     NORMAL("normal"),
     BOLD("bold"),
     LIGHTER("lighter"),
@@ -906,6 +944,7 @@ enum class SnglFontWeight(private val sngl: String) {
 }
 
 enum class SnglFontStyle(private val sngl: String) {
+    UNSET("unset"),
     NORMAL("normal"),
     ITALIC("italic"),
     OBLIQUE("oblique");
@@ -914,6 +953,7 @@ enum class SnglFontStyle(private val sngl: String) {
 }
 
 enum class SnglTextAlign(private val sngl: String) {
+    UNSET("unset"),
     LEFT("left"),
     CENTER("center"),
     RIGHT("right"),
@@ -923,6 +963,7 @@ enum class SnglTextAlign(private val sngl: String) {
 }
 
 enum class SnglWhiteSpace(private val sngl: String) {
+    UNSET("unset"),
     NORMAL("normal"),
     PRE("pre"),
     PREWRAP("preWrap"),
@@ -933,6 +974,7 @@ enum class SnglWhiteSpace(private val sngl: String) {
 }
 
 enum class SnglBorderStyle(private val sngl: String) {
+    UNSET("unset"),
     NONE("none"),
     SOLID("solid"),
     DASHED("dashed"),
@@ -943,6 +985,7 @@ enum class SnglBorderStyle(private val sngl: String) {
 }
 
 enum class SnglDisplay(private val sngl: String) {
+    UNSET("unset"),
     FLEX("flex"),
     BLOCK("block"),
     INLINE("inline"),
@@ -955,6 +998,7 @@ enum class SnglDisplay(private val sngl: String) {
 }
 
 enum class SnglListStyle(private val sngl: String) {
+    UNSET("unset"),
     NONE("none"),
     DISC("disc"),
     CIRCLE("circle"),
@@ -977,8 +1021,8 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Column(modifier = styleModifier(Style(gap = Measurement(px = 8.0)), true).safeDrawingPadding(), verticalArrangement = Arrangement.spacedBy(Dp(8.0f))) {
-            SnglScroll(modifier = Modifier.testTag("down").then(styleModifier(Style(height = Measurement(px = 120.0)), true)), direction = "vertical", onReachEnd = {}) {
+        Column(modifier = flexed(styleModifier(Style(gap = Measurement(px = 8.0)), true), null, snglFlexShare).safeDrawingPadding(), verticalArrangement = columnSpacing(SnglJustification.UNSET, Dp(8.0f))) {
+            SnglScroll(modifier = Modifier.testTag("down").then(flexed(styleModifier(Style(height = Measurement(px = 120.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() })), direction = "vertical", onReachEnd = {}) {
                 Column(modifier = Modifier) {
                     for (i in listOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)) {
                         Text(text = ("row " + i.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
@@ -986,13 +1030,13 @@ fun MainScreen() {
                 }
             }
             SnglScroll(modifier = Modifier.testTag("across"), direction = "horizontal", onReachEnd = {}) {
-                Row(modifier = styleModifier(Style(gap = Measurement(px = 8.0)), true), horizontalArrangement = Arrangement.spacedBy(Dp(8.0f))) {
+                Row(modifier = flexed(styleModifier(Style(gap = Measurement(px = 8.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(8.0f))) {
                     for (i in listOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)) {
-                        Text(text = ("column " + i.toString()), modifier = styleModifier(Style(width = Measurement(px = 120.0)), true), style = LocalTextStyle.current.merge(TextStyle.Default))
+                        Text(text = ("column " + i.toString()), modifier = flexed(styleModifier(Style(width = Measurement(px = 120.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxHeight() }), style = LocalTextStyle.current.merge(TextStyle.Default))
                     }
                 }
             }
-            SnglScroll(modifier = Modifier.testTag("either").then(styleModifier(Style(height = Measurement(px = 120.0)), true)), direction = "both", onReachEnd = {}) {
+            SnglScroll(modifier = Modifier.testTag("either").then(flexed(styleModifier(Style(height = Measurement(px = 120.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() })), direction = "both", onReachEnd = {}) {
                 Column(modifier = Modifier) {
                     for (i in listOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)) {
                         Text(text = (("a long line " + i.toString()) + " that runs on past the right edge of a phone's screen"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
@@ -1003,53 +1047,87 @@ fun MainScreen() {
     }
 }
 
+fun flexed(m: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if (((flex == null) || (flex!! <= 0.0))) m else m.then(share(flex!!.toFloat())))
+
 fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var m: androidx.compose.ui.Modifier = Modifier
-    var top = (if ((s.marginTop != Measurement(px = 0.0))) s.marginTop else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
-    var right = (if ((s.marginRight != Measurement(px = 0.0))) s.marginRight else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
-    var bottom = (if ((s.marginBottom != Measurement(px = 0.0))) s.marginBottom else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
-    var left = (if ((s.marginLeft != Measurement(px = 0.0))) s.marginLeft else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
-    if (((((top != Measurement(px = 0.0)) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
-    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + 0.0).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + 0.0).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + 0.0).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + 0.0).toFloat()))
+    var top = (if ((s.marginTop != null)) s.marginTop else (if ((s.marginY != null)) s.marginY else s.margin))
+    var right = (if ((s.marginRight != null)) s.marginRight else (if ((s.marginX != null)) s.marginX else s.margin))
+    var bottom = (if ((s.marginBottom != null)) s.marginBottom else (if ((s.marginY != null)) s.marginY else s.margin))
+    var left = (if ((s.marginLeft != null)) s.marginLeft else (if ((s.marginX != null)) s.marginX else s.margin))
+    if (((((top != null) || (right != null)) || (bottom != null)) || (left != null))) {
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
     }
-    if ((s.zIndex != 0)) {
-    	m = m.zIndex(s.zIndex.toFloat())
+    if ((s.zIndex != null)) {
+    	m = m.zIndex(s.zIndex!!.toFloat())
     }
-    if (((s.minWidth != Measurement(px = 0.0)) || (s.maxWidth != Measurement(px = 0.0)))) {
-    	m = m.widthIn((if ((s.minWidth != Measurement(px = 0.0))) Dp((s.minWidth.px + (16.0 * (s.minWidth.em + s.minWidth.rem))).toFloat()) else Dp.Unspecified), (if ((s.maxWidth != Measurement(px = 0.0))) Dp((s.maxWidth.px + (16.0 * (s.maxWidth.em + s.maxWidth.rem))).toFloat()) else Dp.Unspecified))
+    if (((s.minWidth != null) || (s.maxWidth != null))) {
+    	m = m.widthIn((if ((s.minWidth != null)) Dp((s.minWidth!!.px + (16.0 * (s.minWidth!!.em + s.minWidth!!.rem))).toFloat()) else Dp.Unspecified), (if ((s.maxWidth != null)) Dp((s.maxWidth!!.px + (16.0 * (s.maxWidth!!.em + s.maxWidth!!.rem))).toFloat()) else Dp.Unspecified))
     }
-    if ((s.maxHeight != Measurement(px = 0.0))) {
-    	m = m.heightIn(Dp.Unspecified, Dp((s.maxHeight.px + (16.0 * (s.maxHeight.em + s.maxHeight.rem))).toFloat()))
+    if ((s.maxHeight != null)) {
+    	m = m.heightIn(Dp.Unspecified, Dp((s.maxHeight!!.px + (16.0 * (s.maxHeight!!.em + s.maxHeight!!.rem))).toFloat()))
     }
-    if ((s.width != Measurement(px = 0.0))) {
-    	m = m.width(Dp((s.width.px + (16.0 * (s.width.em + s.width.rem))).toFloat()))
+    if ((s.width != null)) {
+    	m = m.width(Dp((s.width!!.px + (16.0 * (s.width!!.em + s.width!!.rem))).toFloat()))
     }
-    if ((s.height != Measurement(px = 0.0))) {
-    	m = m.height(Dp((s.height.px + (16.0 * (s.height.em + s.height.rem))).toFloat()))
+    if ((s.height != null)) {
+    	m = m.height(Dp((s.height!!.px + (16.0 * (s.height!!.em + s.height!!.rem))).toFloat()))
     }
-    if ((s.opacity != 0.0)) {
-    	m = m.alpha(s.opacity.toFloat())
+    if ((s.opacity != null)) {
+    	m = m.alpha(s.opacity!!.toFloat())
     }
-    var shape: androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == Measurement(px = 0.0))) RectangleShape else RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat())))
-    if ((s.borderRadius != Measurement(px = 0.0))) {
+    var shape: androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == null)) RectangleShape else RoundedCornerShape(Dp((s.borderRadius!!.px + (16.0 * (s.borderRadius!!.em + s.borderRadius!!.rem))).toFloat())))
+    if ((s.borderRadius != null)) {
     	m = m.clip(shape)
     }
     var edge = 0.0
-    if ((s.borderWidth != Measurement(px = 0.0))) {
-    	edge = (s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem)))
-    	m = m.border(Dp((s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != Color())) s.borderColor else s.color).r.toInt(), green = (if ((s.borderColor != Color())) s.borderColor else s.color).g.toInt(), blue = (if ((s.borderColor != Color())) s.borderColor else s.color).b.toInt(), alpha = (if ((s.borderColor != Color())) s.borderColor else s.color).a.toInt()), shape)
+    if ((s.borderWidth != null)) {
+    	edge = (s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem)))
+    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), composeOf((if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color()))), shape)
     }
-    if ((paints && (s.background != Color()))) {
-    	m = m.background(androidx.compose.ui.graphics.Color(red = s.background.r.toInt(), green = s.background.g.toInt(), blue = s.background.b.toInt(), alpha = s.background.a.toInt()), shape)
+    if ((paints && (s.background != null))) {
+    	m = m.background(androidx.compose.ui.graphics.Color(red = s.background!!.r.toInt(), green = s.background!!.g.toInt(), blue = s.background!!.b.toInt(), alpha = s.background!!.a.toInt()), shape)
     }
-    top = (if ((s.paddingTop != Measurement(px = 0.0))) s.paddingTop else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
-    right = (if ((s.paddingRight != Measurement(px = 0.0))) s.paddingRight else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
-    bottom = (if ((s.paddingBottom != Measurement(px = 0.0))) s.paddingBottom else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
-    left = (if ((s.paddingLeft != Measurement(px = 0.0))) s.paddingLeft else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
-    if ((((((edge != 0.0) || (top != Measurement(px = 0.0))) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
-    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + edge).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + edge).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + edge).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + edge).toFloat()))
+    top = (if ((s.paddingTop != null)) s.paddingTop else (if ((s.paddingY != null)) s.paddingY else s.padding))
+    right = (if ((s.paddingRight != null)) s.paddingRight else (if ((s.paddingX != null)) s.paddingX else s.padding))
+    bottom = (if ((s.paddingBottom != null)) s.paddingBottom else (if ((s.paddingY != null)) s.paddingY else s.padding))
+    left = (if ((s.paddingLeft != null)) s.paddingLeft else (if ((s.paddingX != null)) s.paddingX else s.padding))
+    if ((((((edge != 0.0) || (top != null)) || (right != null)) || (bottom != null)) || (left != null))) {
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
     }
     return m
+}
+
+fun columnSpacing(j: SnglJustification, gap: androidx.compose.ui.unit.Dp): androidx.compose.foundation.layout.Arrangement.Vertical = (when (j) { SnglJustification.SPACEBETWEEN -> Arrangement.SpaceBetween; SnglJustification.SPACEAROUND -> Arrangement.SpaceAround; SnglJustification.SPACEEVENLY -> Arrangement.SpaceEvenly; SnglJustification.CENTER -> Arrangement.spacedBy(gap, Alignment.CenterVertically); SnglJustification.END -> Arrangement.spacedBy(gap, Alignment.Bottom); SnglJustification.UNSET, SnglJustification.START -> Arrangement.spacedBy(gap) })
+
+fun rowSpacing(j: SnglJustification, gap: androidx.compose.ui.unit.Dp): androidx.compose.foundation.layout.Arrangement.Horizontal = (when (j) { SnglJustification.SPACEBETWEEN -> Arrangement.SpaceBetween; SnglJustification.SPACEAROUND -> Arrangement.SpaceAround; SnglJustification.SPACEEVENLY -> Arrangement.SpaceEvenly; SnglJustification.CENTER -> Arrangement.spacedBy(gap, Alignment.CenterHorizontally); SnglJustification.END -> Arrangement.spacedBy(gap, Alignment.End); SnglJustification.UNSET, SnglJustification.START -> Arrangement.spacedBy(gap) })
+
+fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
+
+fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
+package test.sngl.app
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+
+// LocalFlexShare is what a child's flex is a share of in a Column the
+// generated code writes rather than a vbox -- a window's nodes, a page's, a
+// window's content arriving through a slot -- provided in that Column's
+// content, where weight is in scope. A slot's content is composed where the
+// slot is invoked, so it reads the Column it lands in, which no closure its
+// caller wrote could name.
+val LocalFlexShare = compositionLocalOf<((Float) -> Modifier)?> { null }
+
+// snglFlexShare is sngl:ui's flexShare where no vbox or hbox provides one:
+// the written Column's share, else the screen. A value rather than a
+// composable read, since a test build holds the context in a state class
+// built outside composition; the modifier reads LocalFlexShare where the node
+// it is on is composed.
+val snglFlexShare: (Float) -> Modifier = { w ->
+    Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglScroll.kt --
 package test.sngl.app
@@ -1115,7 +1193,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="display:flex;flex-direction:column;gap:8px">
+<div style="gap:8px;display:flex;flex-direction:column">
   <div class="sngl-scroll sngl-scroll-vertical" style="height:120px">
     <div style="display:flex;flex-direction:column">
       <span>row 0</span>
@@ -1143,7 +1221,7 @@ body { font-family: system-ui, sans-serif; }
     </sngl-reach-end>
   </div>
   <div class="sngl-scroll sngl-scroll-horizontal">
-    <div style="display:flex;flex-direction:row;gap:8px">
+    <div style="gap:8px;display:flex;flex-direction:row">
       <span style="width:120px">column 0</span>
       <span style="width:120px">column 1</span>
       <span style="width:120px">column 2</span>
@@ -1255,12 +1333,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:fcc8efa318f3671edc9ee28dd5987587
+pass sha256:347ddf692ed7031c1168c3fba0ddae5e
 -- run/go/fyne --
-pass sha256:4a0135a9ea6ac9a3d39799659c2a37fb
+pass sha256:ed3ec962c6d353842ac95da6cf4f617e
 -- run/go/gtk4 --
-pass sha256:9ec4b001478125ce0dd3c9feac2125fa
+pass sha256:50c35c65d49891718de119420e535a2d
 -- run/kotlin/android --
-pass sha256:482218b1a9c6aa3900ccd4bd9da54620
+pass sha256:8b7e4f48dd2582b028b01a92ca7f7795
 -- run/none/html --
-pass sha256:af623fdffe25b06c737e58660fcdfc60
+pass sha256:e71b4f322e027e92f12b43db08828de7

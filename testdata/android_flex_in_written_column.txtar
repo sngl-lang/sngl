@@ -149,7 +149,6 @@ data class Style(
     var opacity: Double? = null,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.UNSET,
-    var overflow: SnglOverflow = SnglOverflow.UNSET,
     var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
@@ -277,16 +276,6 @@ enum class SnglDisplay(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
-enum class SnglOverflow(private val sngl: String) {
-    UNSET("unset"),
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
-
-    override fun toString(): String = sngl
-}
-
 enum class SnglListStyle(private val sngl: String) {
     UNSET("unset"),
     NONE("none"),
@@ -326,14 +315,14 @@ fun MainScreen() {
                     Column {
                         CompositionLocalProvider(LocalFlexShare provides { w: Float -> Modifier.weight(w).fillMaxWidth() }) {
                             Text(text = "head", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
-                            SnglScroll(modifier = flexed(styleModifier(Style(flex = 1.0), true), 1.0, snglFlexShare), onReachEnd = {}) {
+                            SnglScroll(modifier = flexed(styleModifier(Style(flex = 1.0), true), 1.0, snglFlexShare), direction = "vertical", onReachEnd = {}) {
                                 Text(text = "page grows", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                             }
                         }
                     }
                 }
             }
-            SnglScroll(modifier = flexed(styleModifier(Style(flex = 1.0), true), 1.0, snglFlexShare), onReachEnd = {}) {
+            SnglScroll(modifier = flexed(styleModifier(Style(flex = 1.0), true), 1.0, snglFlexShare), direction = "vertical", onReachEnd = {}) {
                 Text(text = "window grows", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
             Text(text = "bottom", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
@@ -346,7 +335,7 @@ fun Stack__struct(slotContent: (@Composable () -> Unit)? = null) {
 }
 
 @Composable
-fun Page__struct_struct(href: String, title: String, meta: __anon_e3b0c4 = __anon_e3b0c4(), params: __anon_e3b0c4 = __anon_e3b0c4(), slotContent: (@Composable (__anon_e3b0c4) -> Unit)? = null) {
+fun Page__struct_struct(href: String, title: String, meta: __anon_e3b0c4 = __anon_e3b0c4(), params: __anon_e3b0c4 = __anon_e3b0c4(), titleOf: ((__anon_e3b0c4) -> String)? = null, slotContent: (@Composable (__anon_e3b0c4) -> Unit)? = null) {
 }
 
 @Composable
@@ -450,6 +439,7 @@ val snglFlexShare: (Float) -> Modifier = { w ->
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglScroll.kt --
 package test.sngl.app
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.rememberScrollState
@@ -465,26 +455,37 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 
-// SnglScroll is sngl:ui's scroll: a column scrolled vertically, which calls
+// SnglScroll is sngl:ui's scroll: a column scrolled along `direction` --
+// "horizontal", "both", or vertically for anything else -- which calls
 // onReachEnd when the end of its content comes within half a viewport of
 // being shown -- once as it arrives, and again whenever the content changes
 // size while it is there, so a handler that adds a page is asked for another
-// while the end still shows. The content's height is measured past the
-// scroll, where it is the whole of it rather than the viewport.
+// while the end still shows. The end is the right edge of a horizontal
+// scroll and the bottom of any other. The content's extent is measured past
+// the scroll, where it is the whole of it rather than the viewport.
 @Composable
 fun SnglScroll(
     modifier: Modifier,
+    direction: String = "vertical",
     onReachEnd: () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val state = rememberScrollState()
-    var height by remember { mutableIntStateOf(0) }
+    val across = rememberScrollState()
+    val down = rememberScrollState()
+    val sideways = direction == "horizontal"
+    val state = if (sideways) across else down
+    var extent by remember { mutableIntStateOf(0) }
     val reach by rememberUpdatedState(onReachEnd)
     LaunchedEffect(state) {
-        snapshotFlow { (state.maxValue - state.value <= state.viewportSize / 2) to height }
+        snapshotFlow { (state.maxValue - state.value <= state.viewportSize / 2) to extent }
             .collect { (atEnd, _) -> if (atEnd) reach() }
     }
-    Column(modifier.verticalScroll(state).onSizeChanged { height = it.height }, content = content)
+    // The outer scroll's ScrollBy is the node's, which a test's trigger runs:
+    // scrolling either way, that is the vertical one, whose end is reported.
+    var scrolled = modifier
+    if (!sideways) scrolled = scrolled.verticalScroll(down)
+    if (sideways || direction == "both") scrolled = scrolled.horizontalScroll(across)
+    Column(scrolled.onSizeChanged { extent = if (sideways) it.width else it.height }, content = content)
 }
 -- run/kotlin/android --
-pass sha256:6420c77ee349def7c7fd2a7d1828ff3f
+pass sha256:71627a0124bcc1bfbb519865e17f56be

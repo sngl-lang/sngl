@@ -195,8 +195,8 @@ func LookOf(s Style) lipgloss.Style {
 	return BoxLook(s, true)
 }
 
-func FitOf(whiteSpace string, overflow string, display string) tui.Fit {
-	return tui.Fit{Wrap: WrapOf(whiteSpace), Clip: (((overflow == "hidden") || (overflow == "scroll")) || (overflow == "auto")), Hidden: (display == "none")}
+func FitOf(whiteSpace string, display string) tui.Fit {
+	return tui.Fit{Wrap: WrapOf(whiteSpace), Hidden: (display == "none")}
 }
 
 func GrowOf(flex *float64, display string) float64 {
@@ -222,8 +222,8 @@ func RowsOf(m__r0 *Measurement) int {
 
 func BoxLook(s Style, words bool) lipgloss.Style {
 	if func(_a1, _b2 Style) bool {
-		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
-	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
@@ -489,17 +489,17 @@ func (m Model) View() tea.View {
 	if content_0Focused {
 		content_0Prefix = ">"
 	}
-	content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("h"))
+	content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("h"))
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	var content_1Items []string
 	for _, x := range []string{"p", "q"} {
 		_ = x
 		var content_1Item_0 string
-		content_1Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.shout__inst0(x)))
+		content_1Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.shout__inst0(x)))
 		content_1Items = append(content_1Items, content_1Item_0)
 		var content_1Item_1 string
-		content_1Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(func() []string {
+		content_1Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(func() []string {
 			__out := make([]string, len([]string{"q"}))
 			for __i, __item := range []string{"q"} {
 				__out[__i] = func(s string) string { return (s + x) }(__item)
@@ -514,13 +514,13 @@ func (m Model) View() tea.View {
 	}
 	var content_2 string
 	if m.shown {
-		content_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.shout__inst1()))
+		content_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.shout__inst1()))
 	}
 	if content_2 != "" {
 		contentChildren = append(contentChildren, content_2)
 	}
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
+	content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -563,66 +563,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
-
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
-type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
-	FlexDirection  string
-	AlignItems     string
-	JustifyContent string
-	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
-	FontFamily     string
-	FontWeight     string
-	FontStyle      string
-	TextAlign      string
-	MaxLines       int
-	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
-	Border         string
-	BorderBottom   string
-	BorderLeft     string
-	BorderCollapse string
-	BorderStyle    string
-	Opacity        float64
-	Cursor         string
-	Display        string
-	ListStyleType  string
-}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -875,66 +815,6 @@ import (
 	"fmt"
 )
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
-type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
-	FlexDirection  string
-	AlignItems     string
-	JustifyContent string
-	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
-	FontFamily     string
-	FontWeight     string
-	FontStyle      string
-	TextAlign      string
-	MaxLines       int
-	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
-	Border         string
-	BorderBottom   string
-	BorderLeft     string
-	BorderCollapse string
-	BorderStyle    string
-	Opacity        float64
-	Cursor         string
-	Display        string
-	ListStyleType  string
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	shown          bool
@@ -962,177 +842,6 @@ func New() *Model {
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
-}
-
-func LookOf(s Style) gtk4rt.Look {
-	look := LookHidden(s, (s.Display == "none"))
-	return look
-}
-
-func LookHidden(s Style, hidden bool) gtk4rt.Look {
-	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor}
-	return look
-}
-
-func CssOf(s Style) string {
-	var __lt1 string
-	if s.Opacity == 0.0 {
-		__lt1 = ""
-	} else {
-		__lt1 = fmt.Sprint(s.Opacity)
-	}
-	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt1))
-	return css
-}
-
-func CrossOf(a string) int {
-	var __lt2 int
-	switch a {
-	case "center":
-		__lt2 = 2
-	case "end":
-		__lt2 = 3
-	case "baseline":
-		__lt2 = 4
-	default:
-		__lt2 = 0
-	}
-	return __lt2
-}
-
-func TextAlignOf(a string) int {
-	var __lt3 int
-	switch a {
-	case "center":
-		__lt3 = 1
-	case "right":
-		__lt3 = 2
-	case "justify":
-		__lt3 = 3
-	default:
-		__lt3 = 0
-	}
-	return __lt3
-}
-
-func WrapOf(w string) int {
-	var __lt4 int
-	switch w {
-	case "pre", "nowrap":
-		__lt4 = 1
-	case "preWrap", "preLine":
-		__lt4 = 2
-	default:
-		__lt4 = 0
-	}
-	return __lt4
-}
-
-func Decl(name string, value string) string {
-	var __lt5 string
-	if value == "" {
-		__lt5 = ""
-	} else {
-		__lt5 = (((name + ": ") + value) + "; ")
-	}
-	return __lt5
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
-		} else {
-			__lt6 = all
-		}
-		__lt7 = __lt6
-	}
-	return Length(max((__lt7.Px + (11.0 * (__lt7.Em + __lt7.Rem))), 0.0))
-}
-
-func Length(v float64) string {
-	var __lt8 string
-	if v == 0.0 {
-		__lt8 = ""
-	} else {
-		__lt8 = (fmt.Sprint(v) + "px")
-	}
-	return __lt8
-}
-
-func CssColor(c__r0 snglcolor.Color) string {
-	var __lt9 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt9 = ""
-	} else {
-		__lt9 = c__r0.Hex()
-	}
-	return __lt9
-}
-
-func Points(v float64) string {
-	var __lt10 string
-	if v == 0.0 {
-		__lt10 = ""
-	} else {
-		__lt10 = (fmt.Sprint(v) + "pt")
-	}
-	return __lt10
-}
-
-func WeightOf(w string) string {
-	var __lt11 string
-	switch w {
-	case "bold":
-		__lt11 = "bold"
-	case "bolder":
-		__lt11 = "bolder"
-	case "lighter":
-		__lt11 = "lighter"
-	default:
-		__lt11 = ""
-	}
-	return __lt11
-}
-
-func SlantOf(s string) string {
-	var __lt12 string
-	switch s {
-	case "italic":
-		__lt12 = "italic"
-	case "oblique":
-		__lt12 = "oblique"
-	default:
-		__lt12 = ""
-	}
-	return __lt12
-}
-
-func LineOf(s Style) string {
-	var __lt13 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt13 = "solid"
-	case "dashed":
-		__lt13 = "dashed"
-	case "dotted":
-		__lt13 = "dotted"
-	case "double":
-		__lt13 = "double"
-	default:
-		var __lt14 string
-		if (s.BorderWidth != Measurement{Px: 0}) {
-			__lt14 = "solid"
-		} else {
-			__lt14 = ""
-		}
-		__lt13 = __lt14
-	}
-	return __lt13
 }
 
 func (m *Model) shout__inst0(x string) string {
@@ -1338,209 +1047,12 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.TextUnitType
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.zIndex
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.border
-import androidx.compose.foundation.background
-
-data class Measurement(
-    val px: Double = 0.0,
-    val em: Double = 0.0,
-    val rem: Double = 0.0
-)
-
-data class Style(
-    var padding: Measurement = Measurement(),
-    var paddingTop: Measurement = Measurement(),
-    var paddingRight: Measurement = Measurement(),
-    var paddingBottom: Measurement = Measurement(),
-    var paddingLeft: Measurement = Measurement(),
-    var paddingX: Measurement = Measurement(),
-    var paddingY: Measurement = Measurement(),
-    var margin: Measurement = Measurement(),
-    var marginTop: Measurement = Measurement(),
-    var marginRight: Measurement = Measurement(),
-    var marginBottom: Measurement = Measurement(),
-    var marginLeft: Measurement = Measurement(),
-    var marginX: Measurement = Measurement(),
-    var marginY: Measurement = Measurement(),
-    var gap: Measurement = Measurement(),
-    var width: Measurement = Measurement(),
-    var minWidth: Measurement = Measurement(),
-    var height: Measurement = Measurement(),
-    var maxWidth: Measurement = Measurement(),
-    var maxHeight: Measurement = Measurement(),
-    var flex: Double = 0.0,
-    var flexDirection: SnglFlexDirection = SnglFlexDirection.ROW,
-    var alignItems: SnglAlignment = SnglAlignment.START,
-    var justifyContent: SnglJustification = SnglJustification.START,
-    var position: SnglPosition = SnglPosition.STATIC,
-    var top: Measurement = Measurement(),
-    var bottom: Measurement = Measurement(),
-    var left: Measurement = Measurement(),
-    var right: Measurement = Measurement(),
-    var zIndex: Int = 0,
-    var color: Color = Color(),
-    var fontSize: Measurement = Measurement(),
-    var fontFamily: String = "",
-    var fontWeight: SnglFontWeight = SnglFontWeight.NORMAL,
-    var fontStyle: SnglFontStyle = SnglFontStyle.NORMAL,
-    var textAlign: SnglTextAlign = SnglTextAlign.LEFT,
-    var maxLines: Int = 0,
-    var whiteSpace: SnglWhiteSpace = SnglWhiteSpace.NORMAL,
-    var background: Color = Color(),
-    var borderRadius: Measurement = Measurement(),
-    var borderColor: Color = Color(),
-    var borderWidth: Measurement = Measurement(),
-    var border: String = "",
-    var borderBottom: String = "",
-    var borderLeft: String = "",
-    var borderCollapse: String = "",
-    var borderStyle: SnglBorderStyle = SnglBorderStyle.NONE,
-    var opacity: Double = 0.0,
-    var cursor: String = "",
-    var display: SnglDisplay = SnglDisplay.FLEX,
-    var listStyleType: SnglListStyle = SnglListStyle.NONE
-)
-
-data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
-) {
-    override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
-}
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
-
-enum class SnglFlexDirection(private val sngl: String) {
-    ROW("row"),
-    COLUMN("column"),
-    ROWREVERSE("rowReverse"),
-    COLUMNREVERSE("columnReverse");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglAlignment(private val sngl: String) {
-    START("start"),
-    CENTER("center"),
-    END("end"),
-    STRETCH("stretch"),
-    BASELINE("baseline");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglJustification(private val sngl: String) {
-    START("start"),
-    CENTER("center"),
-    END("end"),
-    SPACEBETWEEN("spaceBetween"),
-    SPACEAROUND("spaceAround"),
-    SPACEEVENLY("spaceEvenly");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglPosition(private val sngl: String) {
-    STATIC("static"),
-    RELATIVE("relative"),
-    ABSOLUTE("absolute"),
-    FIXED("fixed"),
-    STICKY("sticky");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglFontWeight(private val sngl: String) {
-    NORMAL("normal"),
-    BOLD("bold"),
-    LIGHTER("lighter"),
-    BOLDER("bolder");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglFontStyle(private val sngl: String) {
-    NORMAL("normal"),
-    ITALIC("italic"),
-    OBLIQUE("oblique");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglTextAlign(private val sngl: String) {
-    LEFT("left"),
-    CENTER("center"),
-    RIGHT("right"),
-    JUSTIFY("justify");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglWhiteSpace(private val sngl: String) {
-    NORMAL("normal"),
-    PRE("pre"),
-    PREWRAP("preWrap"),
-    PRELINE("preLine"),
-    NOWRAP("nowrap");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglBorderStyle(private val sngl: String) {
-    NONE("none"),
-    SOLID("solid"),
-    DASHED("dashed"),
-    DOTTED("dotted"),
-    DOUBLE("double");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglDisplay(private val sngl: String) {
-    FLEX("flex"),
-    BLOCK("block"),
-    INLINE("inline"),
-    INLINEBLOCK("inlineBlock"),
-    INLINEFLEX("inlineFlex"),
-    NONE("none"),
-    GRID("grid");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglListStyle(private val sngl: String) {
-    NONE("none"),
-    DISC("disc"),
-    CIRCLE("circle"),
-    SQUARE("square"),
-    DECIMAL("decimal");
-
-    override fun toString(): String = sngl
-}
 
 class MainScreenState {
     var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
@@ -1823,13 +1335,13 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0e2752c3b3fdf140a1d19c2b6d751456
+pass sha256:19ea98807a49c13f07d1fef804829e61
 -- run/go/fyne --
-pass sha256:c689231902bcde0fa1a0a17233f4c8dd
+pass sha256:a52d3236a9c89a6be540f1840771b3b4
 -- run/go/gtk4 --
-pass sha256:956a9af9261b4ac2b355aa28ac75ff6a
+pass sha256:326f85ddc56d83d699414230d2a89b8c
 -- run/kotlin/android --
-pass sha256:39e7f7e32762eaaa50a52ec398785a00
+pass sha256:a7fbb9cc347e5dc7db589cbc1fe6bfaa
 -- run/none/html --
 pass sha256:3487b1740527f02e4e5b18fbac449d49
 -- testrun/html/none/component_func_reads_loop_prop.sngl/main/1 --

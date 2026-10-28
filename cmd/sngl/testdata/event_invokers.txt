@@ -109,7 +109,7 @@ window {
     counter()
 }
 -- testrun/bubbletea/go/click.sngl/counter/1 --
-sha256:a3d0ebf9f26010626bcad65b77b0bc33
+sha256:8e1e6d6fe61f25b324bcc3078c4757ba
 {
   "results": [
     {

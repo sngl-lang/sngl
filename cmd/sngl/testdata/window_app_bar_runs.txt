@@ -100,7 +100,7 @@ func testTheSystemBackPopsThePage(t test.Test, c app) {
     t.assert(!c.pages.canGoBack())
 }
 -- testrun/android/kotlin/back.sngl/app/1 --
-sha256:2b931a6ec49abd2b82b497ba51a2adc5
+sha256:445c12a7a3303bc21249639defbc5eab
 {
   "results": [
     {
@@ -118,7 +118,7 @@ sha256:2b931a6ec49abd2b82b497ba51a2adc5
   ]
 }
 -- testrun/android/kotlin/navback.sngl/app/1 --
-sha256:b16ad49caf37a8c71397e1a650c8c487
+sha256:136718efe6be30f0ceafdb3b52d75c1a
 {
   "results": [
     {
@@ -128,7 +128,7 @@ sha256:b16ad49caf37a8c71397e1a650c8c487
   ]
 }
 -- testrun/html/none/back.sngl/app/1 --
-sha256:41921221e8658bbdf433a00e4bf554bb
+sha256:76fb09464a6a5abde99082252b407050
 {
   "results": [
     {

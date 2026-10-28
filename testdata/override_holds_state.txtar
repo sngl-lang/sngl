@@ -240,8 +240,8 @@ func RowsOf(m__r0 *Measurement) int {
 
 func BoxLook(s Style, words bool) lipgloss.Style {
 	if func(_a1, _b2 Style) bool {
-		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
-	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
@@ -850,7 +850,7 @@ func (m Model) View() tea.View {
 		if part0_0Focused {
 			part0_0Prefix = ">"
 		}
-		part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint(("top " + fmt.Sprint(m.hits__inst0))))
+		part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint(("top " + fmt.Sprint(m.hits__inst0))))
 		part0Children = append(part0Children, part0_0)
 		var part0_1 string
 		__focusPos1 := 0
@@ -865,7 +865,7 @@ func (m Model) View() tea.View {
 			if part0_1ItemFocused {
 				part0_1ItemPrefix = ">"
 			}
-			part0_1Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_1ItemPrefix + " " + fmt.Sprint(((r + " ") + fmt.Sprint(func() int {
+			part0_1Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1ItemPrefix + " " + fmt.Sprint(((r + " ") + fmt.Sprint(func() int {
 				if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
 					return __v
 				}
@@ -889,7 +889,7 @@ func (m Model) View() tea.View {
 			if part0_2Part_0Focused {
 				part0_2Part_0Prefix = ">"
 			}
-			part0_2Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_2Part_0Prefix + " " + fmt.Sprint(("if " + fmt.Sprint(m.hits__inst2))))
+			part0_2Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2Part_0Prefix + " " + fmt.Sprint(("if " + fmt.Sprint(m.hits__inst2))))
 			part0_2Parts = append(part0_2Parts, part0_2Part_0)
 			var part0_2Part_1 string
 			part0_2Part_1Focused := (m.__focusID == 3)
@@ -897,7 +897,7 @@ func (m Model) View() tea.View {
 			if part0_2Part_1Focused {
 				part0_2Part_1Prefix = ">"
 			}
-			part0_2Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_2Part_1Prefix + " " + fmt.Sprint("hide"))
+			part0_2Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2Part_1Prefix + " " + fmt.Sprint("hide"))
 			part0_2Parts = append(part0_2Parts, part0_2Part_1)
 			part0_2 = tui.Spaced(false, lipgloss.Left, 0, part0_2Parts...)
 		}
@@ -905,7 +905,7 @@ func (m Model) View() tea.View {
 			part0Children = append(part0Children, part0_2)
 		}
 		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
-		part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0)
+		part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0)
 	}
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
@@ -1096,7 +1096,7 @@ func __merge_Style(base, ov Style) Style {
 	if ov.Display != "unset" {
 		base.Display = ov.Display
 	}
-	if ov.ListStyleType != "" {
+	if ov.ListStyleType != "unset" {
 		base.ListStyleType = ov.ListStyleType
 	}
 	return base
@@ -1486,12 +1486,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						__n3.SetSize("medium")
 						__n3.SetVariant("circle")
 						__n3.SetAlt("")
-						__n3.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
+						__n3.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"})
 					} else {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n3__new := newAvatarInstance(m, r, "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, func() {
+						__n3__new := newAvatarInstance(m, r, "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, func() {
 						})
 						__n3 = __n3__new
 					}
@@ -1540,12 +1540,12 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 						__n4.SetSize("medium")
 						__n4.SetVariant("circle")
 						__n4.SetAlt("")
-						__n4.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
+						__n4.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"})
 					} else {
 						if len(m.__inst1_live) > __inst1_i {
 							m.__inst1_live[__inst1_i].Destroy()
 						}
-						__n4__new := newAvatarInstance(m, "if", "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, func() {
+						__n4__new := newAvatarInstance(m, "if", "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, func() {
 						})
 						__n4 = __n4__new
 					}
@@ -1694,7 +1694,7 @@ func newAvatarInstance(__model *Model, __a_initials string, __a_size string, __a
 	c.__n0 = widget.NewButton("", nil)
 	c.__n0__box = fynelayout.NewBox(c.__n0)
 	c.__n0.SetText(((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
-	c.__n0__box.SetLook(LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, c.__prop_style)))
+	c.__n0__box.SetLook(LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, c.__prop_style)))
 	c.__n0.OnTapped = func() {
 		c.hits = (c.hits + 1)
 		c.__n0.SetText(((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
@@ -1722,7 +1722,7 @@ func (c *AvatarInstance) SetAlt(__v string) {
 
 func (c *AvatarInstance) SetStyle(__v Style) {
 	c.__prop_style = __v
-	c.__n0__box.SetLook(LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, c.__prop_style)))
+	c.__n0__box.SetLook(LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, c.__prop_style)))
 }
 
 func (c *AvatarInstance) SetClick(__v func()) {
@@ -1922,7 +1922,7 @@ func __merge_Style(base, ov Style) Style {
 	if ov.Display != "unset" {
 		base.Display = ov.Display
 	}
-	if ov.ListStyleType != "" {
+	if ov.ListStyleType != "unset" {
 		base.ListStyleType = ov.ListStyleType
 	}
 	return base
@@ -2096,1603 +2096,291 @@ func LookHidden(s Style, hidden bool, spaced bool, spacing int) gtk4rt.Look {
 	default:
 		__lt8 = 0
 	}
-	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: __lt1, TextAlign: __lt2, Lines: s.MaxLines, Wrap: __lt3, Hidden: hidden, Cursor: s.Cursor}
+	var __lt9 int
+	switch s.JustifyContent {
+	case "center":
+		__lt9 = 1
+	case "end":
+		__lt9 = 2
+	case "spaceBetween":
+		__lt9 = 3
+	case "spaceAround":
+		__lt9 = 4
+	case "spaceEvenly":
+		__lt9 = 5
+	default:
+		__lt9 = 0
+	}
+	look := gtk4rt.Look{Css: CssOf(s), Width: __lt2, Height: __lt3, Grow: __lt4, Cross: __lt5, TextAlign: __lt6, Lines: __lt7, Wrap: __lt8, Hidden: hidden, Cursor: s.Cursor, Justify: __lt9, Spaced: spaced, Spacing: spacing}
 	return look
 }
 
 func CssOf(s Style) string {
-	var __lt5 Measurement
-	if (s.MarginTop != Measurement{Px: 0}) {
-		__lt5 = s.MarginTop
+	var __lt11 *Measurement
+	if s.MarginTop != nil {
+		__lt11 = s.MarginTop
 	} else {
-		var __lt4 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt4 = s.MarginY
+		var __lt10 *Measurement
+		if s.MarginY != nil {
+			__lt10 = s.MarginY
 		} else {
-			__lt4 = s.Margin
+			__lt10 = s.Margin
 		}
-		__lt5 = __lt4
+		__lt11 = __lt10
 	}
-	var __lt7 Measurement
-	if (s.MarginTop != Measurement{Px: 0}) {
-		__lt7 = s.MarginTop
+	var __lt13 *Measurement
+	if s.MarginRight != nil {
+		__lt13 = s.MarginRight
 	} else {
-		var __lt6 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt6 = s.MarginY
+		var __lt12 *Measurement
+		if s.MarginX != nil {
+			__lt12 = s.MarginX
 		} else {
-			__lt6 = s.Margin
+			__lt12 = s.Margin
 		}
-		__lt7 = __lt6
+		__lt13 = __lt12
 	}
-	var __lt9 Measurement
-	if (s.MarginTop != Measurement{Px: 0}) {
-		__lt9 = s.MarginTop
+	var __lt15 *Measurement
+	if s.MarginBottom != nil {
+		__lt15 = s.MarginBottom
 	} else {
-		var __lt8 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt8 = s.MarginY
+		var __lt14 *Measurement
+		if s.MarginY != nil {
+			__lt14 = s.MarginY
 		} else {
-			__lt8 = s.Margin
+			__lt14 = s.Margin
 		}
-		__lt9 = __lt8
+		__lt15 = __lt14
 	}
-	var __lt16 string
-	if max((__lt5.Px+(11.0*(__lt7.Em+__lt9.Rem))), 0.0) == 0.0 {
-		__lt16 = ""
+	var __lt17 *Measurement
+	if s.MarginLeft != nil {
+		__lt17 = s.MarginLeft
 	} else {
-		var __lt11 Measurement
-		if (s.MarginTop != Measurement{Px: 0}) {
-			__lt11 = s.MarginTop
+		var __lt16 *Measurement
+		if s.MarginX != nil {
+			__lt16 = s.MarginX
 		} else {
-			var __lt10 Measurement
-			if (s.MarginY != Measurement{Px: 0}) {
-				__lt10 = s.MarginY
-			} else {
-				__lt10 = s.Margin
-			}
-			__lt11 = __lt10
+			__lt16 = s.Margin
 		}
-		var __lt13 Measurement
-		if (s.MarginTop != Measurement{Px: 0}) {
-			__lt13 = s.MarginTop
+		__lt17 = __lt16
+	}
+	var __lt19 *Measurement
+	if s.PaddingTop != nil {
+		__lt19 = s.PaddingTop
+	} else {
+		var __lt18 *Measurement
+		if s.PaddingY != nil {
+			__lt18 = s.PaddingY
 		} else {
-			var __lt12 Measurement
-			if (s.MarginY != Measurement{Px: 0}) {
-				__lt12 = s.MarginY
-			} else {
-				__lt12 = s.Margin
-			}
-			__lt13 = __lt12
+			__lt18 = s.Padding
 		}
-		var __lt15 Measurement
-		if (s.MarginTop != Measurement{Px: 0}) {
-			__lt15 = s.MarginTop
+		__lt19 = __lt18
+	}
+	var __lt21 *Measurement
+	if s.PaddingRight != nil {
+		__lt21 = s.PaddingRight
+	} else {
+		var __lt20 *Measurement
+		if s.PaddingX != nil {
+			__lt20 = s.PaddingX
 		} else {
-			var __lt14 Measurement
-			if (s.MarginY != Measurement{Px: 0}) {
-				__lt14 = s.MarginY
-			} else {
-				__lt14 = s.Margin
-			}
-			__lt15 = __lt14
+			__lt20 = s.Padding
 		}
-		__lt16 = (fmt.Sprint(max((__lt11.Px+(11.0*(__lt13.Em+__lt15.Rem))), 0.0)) + "px")
+		__lt21 = __lt20
+	}
+	var __lt23 *Measurement
+	if s.PaddingBottom != nil {
+		__lt23 = s.PaddingBottom
+	} else {
+		var __lt22 *Measurement
+		if s.PaddingY != nil {
+			__lt22 = s.PaddingY
+		} else {
+			__lt22 = s.Padding
+		}
+		__lt23 = __lt22
+	}
+	var __lt25 *Measurement
+	if s.PaddingLeft != nil {
+		__lt25 = s.PaddingLeft
+	} else {
+		var __lt24 *Measurement
+		if s.PaddingX != nil {
+			__lt24 = s.PaddingX
+		} else {
+			__lt24 = s.Padding
+		}
+		__lt25 = __lt24
+	}
+	var __lt27 string
+	if s.MinWidth == nil {
+		__lt27 = ""
+	} else {
+		var __lt26 float64
+		if s.MinWidth == nil {
+			__lt26 = 0.0
+		} else {
+			__lt26 = max(((*(s.MinWidth)).Px + (16.0 * ((*(s.MinWidth)).Em + (*(s.MinWidth)).Rem))), 0.0)
+		}
+		__lt27 = (fmt.Sprint(__lt26) + "px")
+	}
+	var __lt28 string
+	if s.Color == nil {
+		__lt28 = ""
+	} else {
+		__lt28 = (*(s.Color)).Hex()
 	}
 	var __lt30 string
-	if __lt16 == "" {
+	if s.FontSize == nil {
 		__lt30 = ""
 	} else {
-		var __lt18 Measurement
-		if (s.MarginTop != Measurement{Px: 0}) {
-			__lt18 = s.MarginTop
+		var __lt29 float64
+		if s.FontSize == nil {
+			__lt29 = 0.0
 		} else {
-			var __lt17 Measurement
-			if (s.MarginY != Measurement{Px: 0}) {
-				__lt17 = s.MarginY
-			} else {
-				__lt17 = s.Margin
-			}
-			__lt18 = __lt17
+			__lt29 = max(((*(s.FontSize)).Px + (16.0 * ((*(s.FontSize)).Em + (*(s.FontSize)).Rem))), 0.0)
 		}
-		var __lt20 Measurement
-		if (s.MarginTop != Measurement{Px: 0}) {
-			__lt20 = s.MarginTop
-		} else {
-			var __lt19 Measurement
-			if (s.MarginY != Measurement{Px: 0}) {
-				__lt19 = s.MarginY
-			} else {
-				__lt19 = s.Margin
-			}
-			__lt20 = __lt19
-		}
-		var __lt22 Measurement
-		if (s.MarginTop != Measurement{Px: 0}) {
-			__lt22 = s.MarginTop
-		} else {
-			var __lt21 Measurement
-			if (s.MarginY != Measurement{Px: 0}) {
-				__lt21 = s.MarginY
-			} else {
-				__lt21 = s.Margin
-			}
-			__lt22 = __lt21
-		}
-		var __lt29 string
-		if max((__lt18.Px+(11.0*(__lt20.Em+__lt22.Rem))), 0.0) == 0.0 {
-			__lt29 = ""
-		} else {
-			var __lt24 Measurement
-			if (s.MarginTop != Measurement{Px: 0}) {
-				__lt24 = s.MarginTop
-			} else {
-				var __lt23 Measurement
-				if (s.MarginY != Measurement{Px: 0}) {
-					__lt23 = s.MarginY
-				} else {
-					__lt23 = s.Margin
-				}
-				__lt24 = __lt23
-			}
-			var __lt26 Measurement
-			if (s.MarginTop != Measurement{Px: 0}) {
-				__lt26 = s.MarginTop
-			} else {
-				var __lt25 Measurement
-				if (s.MarginY != Measurement{Px: 0}) {
-					__lt25 = s.MarginY
-				} else {
-					__lt25 = s.Margin
-				}
-				__lt26 = __lt25
-			}
-			var __lt28 Measurement
-			if (s.MarginTop != Measurement{Px: 0}) {
-				__lt28 = s.MarginTop
-			} else {
-				var __lt27 Measurement
-				if (s.MarginY != Measurement{Px: 0}) {
-					__lt27 = s.MarginY
-				} else {
-					__lt27 = s.Margin
-				}
-				__lt28 = __lt27
-			}
-			__lt29 = (fmt.Sprint(max((__lt24.Px+(11.0*(__lt26.Em+__lt28.Rem))), 0.0)) + "px")
-		}
-		__lt30 = (("margin-top: " + __lt29) + "; ")
+		__lt30 = (fmt.Sprint(__lt29) + "px")
 	}
-	var __lt32 Measurement
-	if (s.MarginRight != Measurement{Px: 0}) {
-		__lt32 = s.MarginRight
-	} else {
-		var __lt31 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt31 = s.MarginX
-		} else {
-			__lt31 = s.Margin
-		}
-		__lt32 = __lt31
-	}
-	var __lt34 Measurement
-	if (s.MarginRight != Measurement{Px: 0}) {
-		__lt34 = s.MarginRight
-	} else {
-		var __lt33 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt33 = s.MarginX
-		} else {
-			__lt33 = s.Margin
-		}
-		__lt34 = __lt33
-	}
-	var __lt36 Measurement
-	if (s.MarginRight != Measurement{Px: 0}) {
-		__lt36 = s.MarginRight
-	} else {
-		var __lt35 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt35 = s.MarginX
-		} else {
-			__lt35 = s.Margin
-		}
-		__lt36 = __lt35
-	}
-	var __lt43 string
-	if max((__lt32.Px+(11.0*(__lt34.Em+__lt36.Rem))), 0.0) == 0.0 {
-		__lt43 = ""
-	} else {
-		var __lt38 Measurement
-		if (s.MarginRight != Measurement{Px: 0}) {
-			__lt38 = s.MarginRight
-		} else {
-			var __lt37 Measurement
-			if (s.MarginX != Measurement{Px: 0}) {
-				__lt37 = s.MarginX
-			} else {
-				__lt37 = s.Margin
-			}
-			__lt38 = __lt37
-		}
-		var __lt40 Measurement
-		if (s.MarginRight != Measurement{Px: 0}) {
-			__lt40 = s.MarginRight
-		} else {
-			var __lt39 Measurement
-			if (s.MarginX != Measurement{Px: 0}) {
-				__lt39 = s.MarginX
-			} else {
-				__lt39 = s.Margin
-			}
-			__lt40 = __lt39
-		}
-		var __lt42 Measurement
-		if (s.MarginRight != Measurement{Px: 0}) {
-			__lt42 = s.MarginRight
-		} else {
-			var __lt41 Measurement
-			if (s.MarginX != Measurement{Px: 0}) {
-				__lt41 = s.MarginX
-			} else {
-				__lt41 = s.Margin
-			}
-			__lt42 = __lt41
-		}
-		__lt43 = (fmt.Sprint(max((__lt38.Px+(11.0*(__lt40.Em+__lt42.Rem))), 0.0)) + "px")
-	}
-	var __lt57 string
-	if __lt43 == "" {
-		__lt57 = ""
-	} else {
-		var __lt45 Measurement
-		if (s.MarginRight != Measurement{Px: 0}) {
-			__lt45 = s.MarginRight
-		} else {
-			var __lt44 Measurement
-			if (s.MarginX != Measurement{Px: 0}) {
-				__lt44 = s.MarginX
-			} else {
-				__lt44 = s.Margin
-			}
-			__lt45 = __lt44
-		}
-		var __lt47 Measurement
-		if (s.MarginRight != Measurement{Px: 0}) {
-			__lt47 = s.MarginRight
-		} else {
-			var __lt46 Measurement
-			if (s.MarginX != Measurement{Px: 0}) {
-				__lt46 = s.MarginX
-			} else {
-				__lt46 = s.Margin
-			}
-			__lt47 = __lt46
-		}
-		var __lt49 Measurement
-		if (s.MarginRight != Measurement{Px: 0}) {
-			__lt49 = s.MarginRight
-		} else {
-			var __lt48 Measurement
-			if (s.MarginX != Measurement{Px: 0}) {
-				__lt48 = s.MarginX
-			} else {
-				__lt48 = s.Margin
-			}
-			__lt49 = __lt48
-		}
-		var __lt56 string
-		if max((__lt45.Px+(11.0*(__lt47.Em+__lt49.Rem))), 0.0) == 0.0 {
-			__lt56 = ""
-		} else {
-			var __lt51 Measurement
-			if (s.MarginRight != Measurement{Px: 0}) {
-				__lt51 = s.MarginRight
-			} else {
-				var __lt50 Measurement
-				if (s.MarginX != Measurement{Px: 0}) {
-					__lt50 = s.MarginX
-				} else {
-					__lt50 = s.Margin
-				}
-				__lt51 = __lt50
-			}
-			var __lt53 Measurement
-			if (s.MarginRight != Measurement{Px: 0}) {
-				__lt53 = s.MarginRight
-			} else {
-				var __lt52 Measurement
-				if (s.MarginX != Measurement{Px: 0}) {
-					__lt52 = s.MarginX
-				} else {
-					__lt52 = s.Margin
-				}
-				__lt53 = __lt52
-			}
-			var __lt55 Measurement
-			if (s.MarginRight != Measurement{Px: 0}) {
-				__lt55 = s.MarginRight
-			} else {
-				var __lt54 Measurement
-				if (s.MarginX != Measurement{Px: 0}) {
-					__lt54 = s.MarginX
-				} else {
-					__lt54 = s.Margin
-				}
-				__lt55 = __lt54
-			}
-			__lt56 = (fmt.Sprint(max((__lt51.Px+(11.0*(__lt53.Em+__lt55.Rem))), 0.0)) + "px")
-		}
-		__lt57 = (("margin-right: " + __lt56) + "; ")
-	}
-	var __lt59 Measurement
-	if (s.MarginBottom != Measurement{Px: 0}) {
-		__lt59 = s.MarginBottom
-	} else {
-		var __lt58 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt58 = s.MarginY
-		} else {
-			__lt58 = s.Margin
-		}
-		__lt59 = __lt58
-	}
-	var __lt61 Measurement
-	if (s.MarginBottom != Measurement{Px: 0}) {
-		__lt61 = s.MarginBottom
-	} else {
-		var __lt60 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt60 = s.MarginY
-		} else {
-			__lt60 = s.Margin
-		}
-		__lt61 = __lt60
-	}
-	var __lt63 Measurement
-	if (s.MarginBottom != Measurement{Px: 0}) {
-		__lt63 = s.MarginBottom
-	} else {
-		var __lt62 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt62 = s.MarginY
-		} else {
-			__lt62 = s.Margin
-		}
-		__lt63 = __lt62
-	}
-	var __lt70 string
-	if max((__lt59.Px+(11.0*(__lt61.Em+__lt63.Rem))), 0.0) == 0.0 {
-		__lt70 = ""
-	} else {
-		var __lt65 Measurement
-		if (s.MarginBottom != Measurement{Px: 0}) {
-			__lt65 = s.MarginBottom
-		} else {
-			var __lt64 Measurement
-			if (s.MarginY != Measurement{Px: 0}) {
-				__lt64 = s.MarginY
-			} else {
-				__lt64 = s.Margin
-			}
-			__lt65 = __lt64
-		}
-		var __lt67 Measurement
-		if (s.MarginBottom != Measurement{Px: 0}) {
-			__lt67 = s.MarginBottom
-		} else {
-			var __lt66 Measurement
-			if (s.MarginY != Measurement{Px: 0}) {
-				__lt66 = s.MarginY
-			} else {
-				__lt66 = s.Margin
-			}
-			__lt67 = __lt66
-		}
-		var __lt69 Measurement
-		if (s.MarginBottom != Measurement{Px: 0}) {
-			__lt69 = s.MarginBottom
-		} else {
-			var __lt68 Measurement
-			if (s.MarginY != Measurement{Px: 0}) {
-				__lt68 = s.MarginY
-			} else {
-				__lt68 = s.Margin
-			}
-			__lt69 = __lt68
-		}
-		__lt70 = (fmt.Sprint(max((__lt65.Px+(11.0*(__lt67.Em+__lt69.Rem))), 0.0)) + "px")
-	}
-	var __lt84 string
-	if __lt70 == "" {
-		__lt84 = ""
-	} else {
-		var __lt72 Measurement
-		if (s.MarginBottom != Measurement{Px: 0}) {
-			__lt72 = s.MarginBottom
-		} else {
-			var __lt71 Measurement
-			if (s.MarginY != Measurement{Px: 0}) {
-				__lt71 = s.MarginY
-			} else {
-				__lt71 = s.Margin
-			}
-			__lt72 = __lt71
-		}
-		var __lt74 Measurement
-		if (s.MarginBottom != Measurement{Px: 0}) {
-			__lt74 = s.MarginBottom
-		} else {
-			var __lt73 Measurement
-			if (s.MarginY != Measurement{Px: 0}) {
-				__lt73 = s.MarginY
-			} else {
-				__lt73 = s.Margin
-			}
-			__lt74 = __lt73
-		}
-		var __lt76 Measurement
-		if (s.MarginBottom != Measurement{Px: 0}) {
-			__lt76 = s.MarginBottom
-		} else {
-			var __lt75 Measurement
-			if (s.MarginY != Measurement{Px: 0}) {
-				__lt75 = s.MarginY
-			} else {
-				__lt75 = s.Margin
-			}
-			__lt76 = __lt75
-		}
-		var __lt83 string
-		if max((__lt72.Px+(11.0*(__lt74.Em+__lt76.Rem))), 0.0) == 0.0 {
-			__lt83 = ""
-		} else {
-			var __lt78 Measurement
-			if (s.MarginBottom != Measurement{Px: 0}) {
-				__lt78 = s.MarginBottom
-			} else {
-				var __lt77 Measurement
-				if (s.MarginY != Measurement{Px: 0}) {
-					__lt77 = s.MarginY
-				} else {
-					__lt77 = s.Margin
-				}
-				__lt78 = __lt77
-			}
-			var __lt80 Measurement
-			if (s.MarginBottom != Measurement{Px: 0}) {
-				__lt80 = s.MarginBottom
-			} else {
-				var __lt79 Measurement
-				if (s.MarginY != Measurement{Px: 0}) {
-					__lt79 = s.MarginY
-				} else {
-					__lt79 = s.Margin
-				}
-				__lt80 = __lt79
-			}
-			var __lt82 Measurement
-			if (s.MarginBottom != Measurement{Px: 0}) {
-				__lt82 = s.MarginBottom
-			} else {
-				var __lt81 Measurement
-				if (s.MarginY != Measurement{Px: 0}) {
-					__lt81 = s.MarginY
-				} else {
-					__lt81 = s.Margin
-				}
-				__lt82 = __lt81
-			}
-			__lt83 = (fmt.Sprint(max((__lt78.Px+(11.0*(__lt80.Em+__lt82.Rem))), 0.0)) + "px")
-		}
-		__lt84 = (("margin-bottom: " + __lt83) + "; ")
-	}
-	var __lt86 Measurement
-	if (s.MarginLeft != Measurement{Px: 0}) {
-		__lt86 = s.MarginLeft
-	} else {
-		var __lt85 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt85 = s.MarginX
-		} else {
-			__lt85 = s.Margin
-		}
-		__lt86 = __lt85
-	}
-	var __lt88 Measurement
-	if (s.MarginLeft != Measurement{Px: 0}) {
-		__lt88 = s.MarginLeft
-	} else {
-		var __lt87 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt87 = s.MarginX
-		} else {
-			__lt87 = s.Margin
-		}
-		__lt88 = __lt87
-	}
-	var __lt90 Measurement
-	if (s.MarginLeft != Measurement{Px: 0}) {
-		__lt90 = s.MarginLeft
-	} else {
-		var __lt89 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt89 = s.MarginX
-		} else {
-			__lt89 = s.Margin
-		}
-		__lt90 = __lt89
-	}
-	var __lt97 string
-	if max((__lt86.Px+(11.0*(__lt88.Em+__lt90.Rem))), 0.0) == 0.0 {
-		__lt97 = ""
-	} else {
-		var __lt92 Measurement
-		if (s.MarginLeft != Measurement{Px: 0}) {
-			__lt92 = s.MarginLeft
-		} else {
-			var __lt91 Measurement
-			if (s.MarginX != Measurement{Px: 0}) {
-				__lt91 = s.MarginX
-			} else {
-				__lt91 = s.Margin
-			}
-			__lt92 = __lt91
-		}
-		var __lt94 Measurement
-		if (s.MarginLeft != Measurement{Px: 0}) {
-			__lt94 = s.MarginLeft
-		} else {
-			var __lt93 Measurement
-			if (s.MarginX != Measurement{Px: 0}) {
-				__lt93 = s.MarginX
-			} else {
-				__lt93 = s.Margin
-			}
-			__lt94 = __lt93
-		}
-		var __lt96 Measurement
-		if (s.MarginLeft != Measurement{Px: 0}) {
-			__lt96 = s.MarginLeft
-		} else {
-			var __lt95 Measurement
-			if (s.MarginX != Measurement{Px: 0}) {
-				__lt95 = s.MarginX
-			} else {
-				__lt95 = s.Margin
-			}
-			__lt96 = __lt95
-		}
-		__lt97 = (fmt.Sprint(max((__lt92.Px+(11.0*(__lt94.Em+__lt96.Rem))), 0.0)) + "px")
-	}
-	var __lt111 string
-	if __lt97 == "" {
-		__lt111 = ""
-	} else {
-		var __lt99 Measurement
-		if (s.MarginLeft != Measurement{Px: 0}) {
-			__lt99 = s.MarginLeft
-		} else {
-			var __lt98 Measurement
-			if (s.MarginX != Measurement{Px: 0}) {
-				__lt98 = s.MarginX
-			} else {
-				__lt98 = s.Margin
-			}
-			__lt99 = __lt98
-		}
-		var __lt101 Measurement
-		if (s.MarginLeft != Measurement{Px: 0}) {
-			__lt101 = s.MarginLeft
-		} else {
-			var __lt100 Measurement
-			if (s.MarginX != Measurement{Px: 0}) {
-				__lt100 = s.MarginX
-			} else {
-				__lt100 = s.Margin
-			}
-			__lt101 = __lt100
-		}
-		var __lt103 Measurement
-		if (s.MarginLeft != Measurement{Px: 0}) {
-			__lt103 = s.MarginLeft
-		} else {
-			var __lt102 Measurement
-			if (s.MarginX != Measurement{Px: 0}) {
-				__lt102 = s.MarginX
-			} else {
-				__lt102 = s.Margin
-			}
-			__lt103 = __lt102
-		}
-		var __lt110 string
-		if max((__lt99.Px+(11.0*(__lt101.Em+__lt103.Rem))), 0.0) == 0.0 {
-			__lt110 = ""
-		} else {
-			var __lt105 Measurement
-			if (s.MarginLeft != Measurement{Px: 0}) {
-				__lt105 = s.MarginLeft
-			} else {
-				var __lt104 Measurement
-				if (s.MarginX != Measurement{Px: 0}) {
-					__lt104 = s.MarginX
-				} else {
-					__lt104 = s.Margin
-				}
-				__lt105 = __lt104
-			}
-			var __lt107 Measurement
-			if (s.MarginLeft != Measurement{Px: 0}) {
-				__lt107 = s.MarginLeft
-			} else {
-				var __lt106 Measurement
-				if (s.MarginX != Measurement{Px: 0}) {
-					__lt106 = s.MarginX
-				} else {
-					__lt106 = s.Margin
-				}
-				__lt107 = __lt106
-			}
-			var __lt109 Measurement
-			if (s.MarginLeft != Measurement{Px: 0}) {
-				__lt109 = s.MarginLeft
-			} else {
-				var __lt108 Measurement
-				if (s.MarginX != Measurement{Px: 0}) {
-					__lt108 = s.MarginX
-				} else {
-					__lt108 = s.Margin
-				}
-				__lt109 = __lt108
-			}
-			__lt110 = (fmt.Sprint(max((__lt105.Px+(11.0*(__lt107.Em+__lt109.Rem))), 0.0)) + "px")
-		}
-		__lt111 = (("margin-left: " + __lt110) + "; ")
-	}
-	var __lt113 Measurement
-	if (s.PaddingTop != Measurement{Px: 0}) {
-		__lt113 = s.PaddingTop
-	} else {
-		var __lt112 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt112 = s.PaddingY
-		} else {
-			__lt112 = s.Padding
-		}
-		__lt113 = __lt112
-	}
-	var __lt115 Measurement
-	if (s.PaddingTop != Measurement{Px: 0}) {
-		__lt115 = s.PaddingTop
-	} else {
-		var __lt114 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt114 = s.PaddingY
-		} else {
-			__lt114 = s.Padding
-		}
-		__lt115 = __lt114
-	}
-	var __lt117 Measurement
-	if (s.PaddingTop != Measurement{Px: 0}) {
-		__lt117 = s.PaddingTop
-	} else {
-		var __lt116 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt116 = s.PaddingY
-		} else {
-			__lt116 = s.Padding
-		}
-		__lt117 = __lt116
-	}
-	var __lt124 string
-	if max((__lt113.Px+(11.0*(__lt115.Em+__lt117.Rem))), 0.0) == 0.0 {
-		__lt124 = ""
-	} else {
-		var __lt119 Measurement
-		if (s.PaddingTop != Measurement{Px: 0}) {
-			__lt119 = s.PaddingTop
-		} else {
-			var __lt118 Measurement
-			if (s.PaddingY != Measurement{Px: 0}) {
-				__lt118 = s.PaddingY
-			} else {
-				__lt118 = s.Padding
-			}
-			__lt119 = __lt118
-		}
-		var __lt121 Measurement
-		if (s.PaddingTop != Measurement{Px: 0}) {
-			__lt121 = s.PaddingTop
-		} else {
-			var __lt120 Measurement
-			if (s.PaddingY != Measurement{Px: 0}) {
-				__lt120 = s.PaddingY
-			} else {
-				__lt120 = s.Padding
-			}
-			__lt121 = __lt120
-		}
-		var __lt123 Measurement
-		if (s.PaddingTop != Measurement{Px: 0}) {
-			__lt123 = s.PaddingTop
-		} else {
-			var __lt122 Measurement
-			if (s.PaddingY != Measurement{Px: 0}) {
-				__lt122 = s.PaddingY
-			} else {
-				__lt122 = s.Padding
-			}
-			__lt123 = __lt122
-		}
-		__lt124 = (fmt.Sprint(max((__lt119.Px+(11.0*(__lt121.Em+__lt123.Rem))), 0.0)) + "px")
-	}
-	var __lt138 string
-	if __lt124 == "" {
-		__lt138 = ""
-	} else {
-		var __lt126 Measurement
-		if (s.PaddingTop != Measurement{Px: 0}) {
-			__lt126 = s.PaddingTop
-		} else {
-			var __lt125 Measurement
-			if (s.PaddingY != Measurement{Px: 0}) {
-				__lt125 = s.PaddingY
-			} else {
-				__lt125 = s.Padding
-			}
-			__lt126 = __lt125
-		}
-		var __lt128 Measurement
-		if (s.PaddingTop != Measurement{Px: 0}) {
-			__lt128 = s.PaddingTop
-		} else {
-			var __lt127 Measurement
-			if (s.PaddingY != Measurement{Px: 0}) {
-				__lt127 = s.PaddingY
-			} else {
-				__lt127 = s.Padding
-			}
-			__lt128 = __lt127
-		}
-		var __lt130 Measurement
-		if (s.PaddingTop != Measurement{Px: 0}) {
-			__lt130 = s.PaddingTop
-		} else {
-			var __lt129 Measurement
-			if (s.PaddingY != Measurement{Px: 0}) {
-				__lt129 = s.PaddingY
-			} else {
-				__lt129 = s.Padding
-			}
-			__lt130 = __lt129
-		}
-		var __lt137 string
-		if max((__lt126.Px+(11.0*(__lt128.Em+__lt130.Rem))), 0.0) == 0.0 {
-			__lt137 = ""
-		} else {
-			var __lt132 Measurement
-			if (s.PaddingTop != Measurement{Px: 0}) {
-				__lt132 = s.PaddingTop
-			} else {
-				var __lt131 Measurement
-				if (s.PaddingY != Measurement{Px: 0}) {
-					__lt131 = s.PaddingY
-				} else {
-					__lt131 = s.Padding
-				}
-				__lt132 = __lt131
-			}
-			var __lt134 Measurement
-			if (s.PaddingTop != Measurement{Px: 0}) {
-				__lt134 = s.PaddingTop
-			} else {
-				var __lt133 Measurement
-				if (s.PaddingY != Measurement{Px: 0}) {
-					__lt133 = s.PaddingY
-				} else {
-					__lt133 = s.Padding
-				}
-				__lt134 = __lt133
-			}
-			var __lt136 Measurement
-			if (s.PaddingTop != Measurement{Px: 0}) {
-				__lt136 = s.PaddingTop
-			} else {
-				var __lt135 Measurement
-				if (s.PaddingY != Measurement{Px: 0}) {
-					__lt135 = s.PaddingY
-				} else {
-					__lt135 = s.Padding
-				}
-				__lt136 = __lt135
-			}
-			__lt137 = (fmt.Sprint(max((__lt132.Px+(11.0*(__lt134.Em+__lt136.Rem))), 0.0)) + "px")
-		}
-		__lt138 = (("padding-top: " + __lt137) + "; ")
-	}
-	var __lt140 Measurement
-	if (s.PaddingRight != Measurement{Px: 0}) {
-		__lt140 = s.PaddingRight
-	} else {
-		var __lt139 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt139 = s.PaddingX
-		} else {
-			__lt139 = s.Padding
-		}
-		__lt140 = __lt139
-	}
-	var __lt142 Measurement
-	if (s.PaddingRight != Measurement{Px: 0}) {
-		__lt142 = s.PaddingRight
-	} else {
-		var __lt141 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt141 = s.PaddingX
-		} else {
-			__lt141 = s.Padding
-		}
-		__lt142 = __lt141
-	}
-	var __lt144 Measurement
-	if (s.PaddingRight != Measurement{Px: 0}) {
-		__lt144 = s.PaddingRight
-	} else {
-		var __lt143 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt143 = s.PaddingX
-		} else {
-			__lt143 = s.Padding
-		}
-		__lt144 = __lt143
-	}
-	var __lt151 string
-	if max((__lt140.Px+(11.0*(__lt142.Em+__lt144.Rem))), 0.0) == 0.0 {
-		__lt151 = ""
-	} else {
-		var __lt146 Measurement
-		if (s.PaddingRight != Measurement{Px: 0}) {
-			__lt146 = s.PaddingRight
-		} else {
-			var __lt145 Measurement
-			if (s.PaddingX != Measurement{Px: 0}) {
-				__lt145 = s.PaddingX
-			} else {
-				__lt145 = s.Padding
-			}
-			__lt146 = __lt145
-		}
-		var __lt148 Measurement
-		if (s.PaddingRight != Measurement{Px: 0}) {
-			__lt148 = s.PaddingRight
-		} else {
-			var __lt147 Measurement
-			if (s.PaddingX != Measurement{Px: 0}) {
-				__lt147 = s.PaddingX
-			} else {
-				__lt147 = s.Padding
-			}
-			__lt148 = __lt147
-		}
-		var __lt150 Measurement
-		if (s.PaddingRight != Measurement{Px: 0}) {
-			__lt150 = s.PaddingRight
-		} else {
-			var __lt149 Measurement
-			if (s.PaddingX != Measurement{Px: 0}) {
-				__lt149 = s.PaddingX
-			} else {
-				__lt149 = s.Padding
-			}
-			__lt150 = __lt149
-		}
-		__lt151 = (fmt.Sprint(max((__lt146.Px+(11.0*(__lt148.Em+__lt150.Rem))), 0.0)) + "px")
-	}
-	var __lt165 string
-	if __lt151 == "" {
-		__lt165 = ""
-	} else {
-		var __lt153 Measurement
-		if (s.PaddingRight != Measurement{Px: 0}) {
-			__lt153 = s.PaddingRight
-		} else {
-			var __lt152 Measurement
-			if (s.PaddingX != Measurement{Px: 0}) {
-				__lt152 = s.PaddingX
-			} else {
-				__lt152 = s.Padding
-			}
-			__lt153 = __lt152
-		}
-		var __lt155 Measurement
-		if (s.PaddingRight != Measurement{Px: 0}) {
-			__lt155 = s.PaddingRight
-		} else {
-			var __lt154 Measurement
-			if (s.PaddingX != Measurement{Px: 0}) {
-				__lt154 = s.PaddingX
-			} else {
-				__lt154 = s.Padding
-			}
-			__lt155 = __lt154
-		}
-		var __lt157 Measurement
-		if (s.PaddingRight != Measurement{Px: 0}) {
-			__lt157 = s.PaddingRight
-		} else {
-			var __lt156 Measurement
-			if (s.PaddingX != Measurement{Px: 0}) {
-				__lt156 = s.PaddingX
-			} else {
-				__lt156 = s.Padding
-			}
-			__lt157 = __lt156
-		}
-		var __lt164 string
-		if max((__lt153.Px+(11.0*(__lt155.Em+__lt157.Rem))), 0.0) == 0.0 {
-			__lt164 = ""
-		} else {
-			var __lt159 Measurement
-			if (s.PaddingRight != Measurement{Px: 0}) {
-				__lt159 = s.PaddingRight
-			} else {
-				var __lt158 Measurement
-				if (s.PaddingX != Measurement{Px: 0}) {
-					__lt158 = s.PaddingX
-				} else {
-					__lt158 = s.Padding
-				}
-				__lt159 = __lt158
-			}
-			var __lt161 Measurement
-			if (s.PaddingRight != Measurement{Px: 0}) {
-				__lt161 = s.PaddingRight
-			} else {
-				var __lt160 Measurement
-				if (s.PaddingX != Measurement{Px: 0}) {
-					__lt160 = s.PaddingX
-				} else {
-					__lt160 = s.Padding
-				}
-				__lt161 = __lt160
-			}
-			var __lt163 Measurement
-			if (s.PaddingRight != Measurement{Px: 0}) {
-				__lt163 = s.PaddingRight
-			} else {
-				var __lt162 Measurement
-				if (s.PaddingX != Measurement{Px: 0}) {
-					__lt162 = s.PaddingX
-				} else {
-					__lt162 = s.Padding
-				}
-				__lt163 = __lt162
-			}
-			__lt164 = (fmt.Sprint(max((__lt159.Px+(11.0*(__lt161.Em+__lt163.Rem))), 0.0)) + "px")
-		}
-		__lt165 = (("padding-right: " + __lt164) + "; ")
-	}
-	var __lt167 Measurement
-	if (s.PaddingBottom != Measurement{Px: 0}) {
-		__lt167 = s.PaddingBottom
-	} else {
-		var __lt166 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt166 = s.PaddingY
-		} else {
-			__lt166 = s.Padding
-		}
-		__lt167 = __lt166
-	}
-	var __lt169 Measurement
-	if (s.PaddingBottom != Measurement{Px: 0}) {
-		__lt169 = s.PaddingBottom
-	} else {
-		var __lt168 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt168 = s.PaddingY
-		} else {
-			__lt168 = s.Padding
-		}
-		__lt169 = __lt168
-	}
-	var __lt171 Measurement
-	if (s.PaddingBottom != Measurement{Px: 0}) {
-		__lt171 = s.PaddingBottom
-	} else {
-		var __lt170 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt170 = s.PaddingY
-		} else {
-			__lt170 = s.Padding
-		}
-		__lt171 = __lt170
-	}
-	var __lt178 string
-	if max((__lt167.Px+(11.0*(__lt169.Em+__lt171.Rem))), 0.0) == 0.0 {
-		__lt178 = ""
-	} else {
-		var __lt173 Measurement
-		if (s.PaddingBottom != Measurement{Px: 0}) {
-			__lt173 = s.PaddingBottom
-		} else {
-			var __lt172 Measurement
-			if (s.PaddingY != Measurement{Px: 0}) {
-				__lt172 = s.PaddingY
-			} else {
-				__lt172 = s.Padding
-			}
-			__lt173 = __lt172
-		}
-		var __lt175 Measurement
-		if (s.PaddingBottom != Measurement{Px: 0}) {
-			__lt175 = s.PaddingBottom
-		} else {
-			var __lt174 Measurement
-			if (s.PaddingY != Measurement{Px: 0}) {
-				__lt174 = s.PaddingY
-			} else {
-				__lt174 = s.Padding
-			}
-			__lt175 = __lt174
-		}
-		var __lt177 Measurement
-		if (s.PaddingBottom != Measurement{Px: 0}) {
-			__lt177 = s.PaddingBottom
-		} else {
-			var __lt176 Measurement
-			if (s.PaddingY != Measurement{Px: 0}) {
-				__lt176 = s.PaddingY
-			} else {
-				__lt176 = s.Padding
-			}
-			__lt177 = __lt176
-		}
-		__lt178 = (fmt.Sprint(max((__lt173.Px+(11.0*(__lt175.Em+__lt177.Rem))), 0.0)) + "px")
-	}
-	var __lt192 string
-	if __lt178 == "" {
-		__lt192 = ""
-	} else {
-		var __lt180 Measurement
-		if (s.PaddingBottom != Measurement{Px: 0}) {
-			__lt180 = s.PaddingBottom
-		} else {
-			var __lt179 Measurement
-			if (s.PaddingY != Measurement{Px: 0}) {
-				__lt179 = s.PaddingY
-			} else {
-				__lt179 = s.Padding
-			}
-			__lt180 = __lt179
-		}
-		var __lt182 Measurement
-		if (s.PaddingBottom != Measurement{Px: 0}) {
-			__lt182 = s.PaddingBottom
-		} else {
-			var __lt181 Measurement
-			if (s.PaddingY != Measurement{Px: 0}) {
-				__lt181 = s.PaddingY
-			} else {
-				__lt181 = s.Padding
-			}
-			__lt182 = __lt181
-		}
-		var __lt184 Measurement
-		if (s.PaddingBottom != Measurement{Px: 0}) {
-			__lt184 = s.PaddingBottom
-		} else {
-			var __lt183 Measurement
-			if (s.PaddingY != Measurement{Px: 0}) {
-				__lt183 = s.PaddingY
-			} else {
-				__lt183 = s.Padding
-			}
-			__lt184 = __lt183
-		}
-		var __lt191 string
-		if max((__lt180.Px+(11.0*(__lt182.Em+__lt184.Rem))), 0.0) == 0.0 {
-			__lt191 = ""
-		} else {
-			var __lt186 Measurement
-			if (s.PaddingBottom != Measurement{Px: 0}) {
-				__lt186 = s.PaddingBottom
-			} else {
-				var __lt185 Measurement
-				if (s.PaddingY != Measurement{Px: 0}) {
-					__lt185 = s.PaddingY
-				} else {
-					__lt185 = s.Padding
-				}
-				__lt186 = __lt185
-			}
-			var __lt188 Measurement
-			if (s.PaddingBottom != Measurement{Px: 0}) {
-				__lt188 = s.PaddingBottom
-			} else {
-				var __lt187 Measurement
-				if (s.PaddingY != Measurement{Px: 0}) {
-					__lt187 = s.PaddingY
-				} else {
-					__lt187 = s.Padding
-				}
-				__lt188 = __lt187
-			}
-			var __lt190 Measurement
-			if (s.PaddingBottom != Measurement{Px: 0}) {
-				__lt190 = s.PaddingBottom
-			} else {
-				var __lt189 Measurement
-				if (s.PaddingY != Measurement{Px: 0}) {
-					__lt189 = s.PaddingY
-				} else {
-					__lt189 = s.Padding
-				}
-				__lt190 = __lt189
-			}
-			__lt191 = (fmt.Sprint(max((__lt186.Px+(11.0*(__lt188.Em+__lt190.Rem))), 0.0)) + "px")
-		}
-		__lt192 = (("padding-bottom: " + __lt191) + "; ")
-	}
-	var __lt194 Measurement
-	if (s.PaddingLeft != Measurement{Px: 0}) {
-		__lt194 = s.PaddingLeft
-	} else {
-		var __lt193 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt193 = s.PaddingX
-		} else {
-			__lt193 = s.Padding
-		}
-		__lt194 = __lt193
-	}
-	var __lt196 Measurement
-	if (s.PaddingLeft != Measurement{Px: 0}) {
-		__lt196 = s.PaddingLeft
-	} else {
-		var __lt195 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt195 = s.PaddingX
-		} else {
-			__lt195 = s.Padding
-		}
-		__lt196 = __lt195
-	}
-	var __lt198 Measurement
-	if (s.PaddingLeft != Measurement{Px: 0}) {
-		__lt198 = s.PaddingLeft
-	} else {
-		var __lt197 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt197 = s.PaddingX
-		} else {
-			__lt197 = s.Padding
-		}
-		__lt198 = __lt197
-	}
-	var __lt205 string
-	if max((__lt194.Px+(11.0*(__lt196.Em+__lt198.Rem))), 0.0) == 0.0 {
-		__lt205 = ""
-	} else {
-		var __lt200 Measurement
-		if (s.PaddingLeft != Measurement{Px: 0}) {
-			__lt200 = s.PaddingLeft
-		} else {
-			var __lt199 Measurement
-			if (s.PaddingX != Measurement{Px: 0}) {
-				__lt199 = s.PaddingX
-			} else {
-				__lt199 = s.Padding
-			}
-			__lt200 = __lt199
-		}
-		var __lt202 Measurement
-		if (s.PaddingLeft != Measurement{Px: 0}) {
-			__lt202 = s.PaddingLeft
-		} else {
-			var __lt201 Measurement
-			if (s.PaddingX != Measurement{Px: 0}) {
-				__lt201 = s.PaddingX
-			} else {
-				__lt201 = s.Padding
-			}
-			__lt202 = __lt201
-		}
-		var __lt204 Measurement
-		if (s.PaddingLeft != Measurement{Px: 0}) {
-			__lt204 = s.PaddingLeft
-		} else {
-			var __lt203 Measurement
-			if (s.PaddingX != Measurement{Px: 0}) {
-				__lt203 = s.PaddingX
-			} else {
-				__lt203 = s.Padding
-			}
-			__lt204 = __lt203
-		}
-		__lt205 = (fmt.Sprint(max((__lt200.Px+(11.0*(__lt202.Em+__lt204.Rem))), 0.0)) + "px")
-	}
-	var __lt219 string
-	if __lt205 == "" {
-		__lt219 = ""
-	} else {
-		var __lt207 Measurement
-		if (s.PaddingLeft != Measurement{Px: 0}) {
-			__lt207 = s.PaddingLeft
-		} else {
-			var __lt206 Measurement
-			if (s.PaddingX != Measurement{Px: 0}) {
-				__lt206 = s.PaddingX
-			} else {
-				__lt206 = s.Padding
-			}
-			__lt207 = __lt206
-		}
-		var __lt209 Measurement
-		if (s.PaddingLeft != Measurement{Px: 0}) {
-			__lt209 = s.PaddingLeft
-		} else {
-			var __lt208 Measurement
-			if (s.PaddingX != Measurement{Px: 0}) {
-				__lt208 = s.PaddingX
-			} else {
-				__lt208 = s.Padding
-			}
-			__lt209 = __lt208
-		}
-		var __lt211 Measurement
-		if (s.PaddingLeft != Measurement{Px: 0}) {
-			__lt211 = s.PaddingLeft
-		} else {
-			var __lt210 Measurement
-			if (s.PaddingX != Measurement{Px: 0}) {
-				__lt210 = s.PaddingX
-			} else {
-				__lt210 = s.Padding
-			}
-			__lt211 = __lt210
-		}
-		var __lt218 string
-		if max((__lt207.Px+(11.0*(__lt209.Em+__lt211.Rem))), 0.0) == 0.0 {
-			__lt218 = ""
-		} else {
-			var __lt213 Measurement
-			if (s.PaddingLeft != Measurement{Px: 0}) {
-				__lt213 = s.PaddingLeft
-			} else {
-				var __lt212 Measurement
-				if (s.PaddingX != Measurement{Px: 0}) {
-					__lt212 = s.PaddingX
-				} else {
-					__lt212 = s.Padding
-				}
-				__lt213 = __lt212
-			}
-			var __lt215 Measurement
-			if (s.PaddingLeft != Measurement{Px: 0}) {
-				__lt215 = s.PaddingLeft
-			} else {
-				var __lt214 Measurement
-				if (s.PaddingX != Measurement{Px: 0}) {
-					__lt214 = s.PaddingX
-				} else {
-					__lt214 = s.Padding
-				}
-				__lt215 = __lt214
-			}
-			var __lt217 Measurement
-			if (s.PaddingLeft != Measurement{Px: 0}) {
-				__lt217 = s.PaddingLeft
-			} else {
-				var __lt216 Measurement
-				if (s.PaddingX != Measurement{Px: 0}) {
-					__lt216 = s.PaddingX
-				} else {
-					__lt216 = s.Padding
-				}
-				__lt217 = __lt216
-			}
-			__lt218 = (fmt.Sprint(max((__lt213.Px+(11.0*(__lt215.Em+__lt217.Rem))), 0.0)) + "px")
-		}
-		__lt219 = (("padding-left: " + __lt218) + "; ")
-	}
-	var __lt220 string
-	if max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0) == 0.0 {
-		__lt220 = ""
-	} else {
-		__lt220 = (fmt.Sprint(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)) + "px")
-	}
-	var __lt222 string
-	if __lt220 == "" {
-		__lt222 = ""
-	} else {
-		var __lt221 string
-		if max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0) == 0.0 {
-			__lt221 = ""
-		} else {
-			__lt221 = (fmt.Sprint(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)) + "px")
-		}
-		__lt222 = (("min-width: " + __lt221) + "; ")
-	}
-	var __lt223 string
-	if (s.Color.A == 0) || (s.Color == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt223 = ""
-	} else {
-		__lt223 = s.Color.Hex()
-	}
-	var __lt225 string
-	if __lt223 == "" {
-		__lt225 = ""
-	} else {
-		var __lt224 string
-		if (s.Color.A == 0) || (s.Color == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-			__lt224 = ""
-		} else {
-			__lt224 = s.Color.Hex()
-		}
-		__lt225 = (("color: " + __lt224) + "; ")
-	}
-	var __lt226 string
-	if max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0) == 0.0 {
-		__lt226 = ""
-	} else {
-		__lt226 = (fmt.Sprint(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)) + "pt")
-	}
-	var __lt228 string
-	if __lt226 == "" {
-		__lt228 = ""
-	} else {
-		var __lt227 string
-		if max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0) == 0.0 {
-			__lt227 = ""
-		} else {
-			__lt227 = (fmt.Sprint(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)) + "pt")
-		}
-		__lt228 = (("font-size: " + __lt227) + "; ")
-	}
-	var __lt229 string
+	var __lt31 string
 	if s.FontFamily == "" {
-		__lt229 = ""
+		__lt31 = ""
 	} else {
-		__lt229 = (("font-family: " + s.FontFamily) + "; ")
+		__lt31 = (("font-family: " + s.FontFamily) + "; ")
 	}
-	var __lt230 string
+	var __lt32 string
 	switch s.FontWeight {
 	case "normal":
-		__lt33 = "normal"
+		__lt32 = "normal"
 	case "bold":
-		__lt230 = "bold"
+		__lt32 = "bold"
 	case "bolder":
-		__lt230 = "bolder"
+		__lt32 = "bolder"
 	case "lighter":
-		__lt230 = "lighter"
+		__lt32 = "lighter"
 	default:
-		__lt230 = ""
+		__lt32 = ""
 	}
-	var __lt232 string
-	if __lt230 == "" {
-		__lt232 = ""
-	} else {
-		var __lt231 string
-		switch s.FontWeight {
-		case "bold":
-			__lt231 = "bold"
-		case "bolder":
-			__lt231 = "bolder"
-		case "lighter":
-			__lt231 = "lighter"
-		default:
-			__lt231 = ""
-		}
-		__lt232 = (("font-weight: " + __lt231) + "; ")
-	}
-	var __lt233 string
+	var __lt33 string
 	switch s.FontStyle {
 	case "normal":
-		__lt34 = "normal"
+		__lt33 = "normal"
 	case "italic":
-		__lt233 = "italic"
+		__lt33 = "italic"
 	case "oblique":
-		__lt233 = "oblique"
+		__lt33 = "oblique"
 	default:
-		__lt233 = ""
+		__lt33 = ""
 	}
-	var __lt235 string
-	if __lt233 == "" {
-		__lt235 = ""
+	var __lt34 string
+	if s.Background == nil {
+		__lt34 = ""
 	} else {
-		var __lt234 string
-		switch s.FontStyle {
-		case "italic":
-			__lt234 = "italic"
-		case "oblique":
-			__lt234 = "oblique"
-		default:
-			__lt234 = ""
-		}
-		__lt235 = (("font-style: " + __lt234) + "; ")
+		__lt34 = (*(s.Background)).Hex()
 	}
-	var __lt236 string
-	if (s.Background.A == 0) || (s.Background == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt236 = ""
+	var __lt36 string
+	if s.BorderRadius == nil {
+		__lt36 = ""
 	} else {
-		__lt236 = s.Background.Hex()
-	}
-	var __lt238 string
-	if __lt236 == "" {
-		__lt238 = ""
-	} else {
-		var __lt237 string
-		if (s.Background.A == 0) || (s.Background == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-			__lt237 = ""
+		var __lt35 float64
+		if s.BorderRadius == nil {
+			__lt35 = 0.0
 		} else {
-			__lt237 = s.Background.Hex()
+			__lt35 = max(((*(s.BorderRadius)).Px + (16.0 * ((*(s.BorderRadius)).Em + (*(s.BorderRadius)).Rem))), 0.0)
 		}
-		__lt238 = (("background: " + __lt237) + "; ")
+		__lt36 = (fmt.Sprint(__lt35) + "px")
 	}
-	var __lt239 string
-	if max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0) == 0.0 {
-		__lt239 = ""
+	var __lt37 string
+	if s.BorderColor == nil {
+		__lt37 = ""
 	} else {
-		__lt239 = (fmt.Sprint(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)) + "px")
+		__lt37 = (*(s.BorderColor)).Hex()
 	}
-	var __lt241 string
-	if __lt239 == "" {
-		__lt241 = ""
+	var __lt39 string
+	if s.BorderWidth == nil {
+		__lt39 = ""
 	} else {
-		var __lt240 string
-		if max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0) == 0.0 {
-			__lt240 = ""
+		var __lt38 float64
+		if s.BorderWidth == nil {
+			__lt38 = 0.0
 		} else {
-			__lt240 = (fmt.Sprint(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)) + "px")
+			__lt38 = max(((*(s.BorderWidth)).Px + (16.0 * ((*(s.BorderWidth)).Em + (*(s.BorderWidth)).Rem))), 0.0)
 		}
-		__lt241 = (("border-radius: " + __lt240) + "; ")
+		__lt39 = (fmt.Sprint(__lt38) + "px")
 	}
-	var __lt242 string
-	if (s.BorderColor.A == 0) || (s.BorderColor == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt242 = ""
-	} else {
-		__lt242 = s.BorderColor.Hex()
-	}
-	var __lt244 string
-	if __lt242 == "" {
-		__lt244 = ""
-	} else {
-		var __lt243 string
-		if (s.BorderColor.A == 0) || (s.BorderColor == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-			__lt243 = ""
-		} else {
-			__lt243 = s.BorderColor.Hex()
-		}
-		__lt244 = (("border-color: " + __lt243) + "; ")
-	}
-	var __lt245 string
-	if max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0) == 0.0 {
-		__lt245 = ""
-	} else {
-		__lt245 = (fmt.Sprint(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)) + "px")
-	}
-	var __lt247 string
-	if __lt245 == "" {
-		__lt247 = ""
-	} else {
-		var __lt246 string
-		if max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0) == 0.0 {
-			__lt246 = ""
-		} else {
-			__lt246 = (fmt.Sprint(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)) + "px")
-		}
-		__lt247 = (("border-width: " + __lt246) + "; ")
-	}
-	var __lt248 string
+	var __lt40 string
 	switch s.BorderStyle {
 	case "solid":
-		__lt248 = "solid"
+		__lt40 = "solid"
 	case "dashed":
-		__lt248 = "dashed"
+		__lt40 = "dashed"
 	case "dotted":
-		__lt248 = "dotted"
+		__lt40 = "dotted"
 	case "double":
-		__lt248 = "double"
+		__lt40 = "double"
+	case "none":
+		__lt40 = "none"
 	default:
-		var __lt249 string
-		if (s.BorderWidth != Measurement{Px: 0}) {
-			__lt249 = "solid"
+		var __lt41 string
+		if s.BorderWidth != nil {
+			__lt41 = "solid"
 		} else {
-			__lt249 = ""
+			__lt41 = ""
 		}
-		__lt248 = __lt249
+		__lt40 = __lt41
 	}
-	var __lt252 string
-	if __lt248 == "" {
-		__lt252 = ""
-	} else {
-		var __lt250 string
-		switch s.BorderStyle {
-		case "solid":
-			__lt250 = "solid"
-		case "dashed":
-			__lt250 = "dashed"
-		case "dotted":
-			__lt250 = "dotted"
-		case "double":
-			__lt250 = "double"
-		default:
-			var __lt251 string
-			if (s.BorderWidth != Measurement{Px: 0}) {
-				__lt251 = "solid"
-			} else {
-				__lt251 = ""
-			}
-			__lt250 = __lt251
-		}
-		__lt252 = (("border-style: " + __lt250) + "; ")
-	}
-	var __lt253 string
+	var __lt42 string
 	if s.Border == "" {
-		__lt253 = ""
+		__lt42 = ""
 	} else {
-		__lt253 = (("border: " + s.Border) + "; ")
+		__lt42 = (("border: " + s.Border) + "; ")
 	}
-	var __lt254 string
+	var __lt43 string
 	if s.BorderBottom == "" {
-		__lt254 = ""
+		__lt43 = ""
 	} else {
-		__lt254 = (("border-bottom: " + s.BorderBottom) + "; ")
+		__lt43 = (("border-bottom: " + s.BorderBottom) + "; ")
 	}
-	var __lt255 string
+	var __lt44 string
 	if s.BorderLeft == "" {
-		__lt255 = ""
+		__lt44 = ""
 	} else {
-		__lt255 = (("border-left: " + s.BorderLeft) + "; ")
+		__lt44 = (("border-left: " + s.BorderLeft) + "; ")
 	}
-	var __lt256 string
-	if s.Opacity == 0.0 {
-		__lt256 = ""
+	var __lt45 string
+	if s.Opacity == nil {
+		__lt45 = ""
 	} else {
-		__lt256 = fmt.Sprint(s.Opacity)
+		__lt45 = fmt.Sprint((*(s.Opacity)))
 	}
-	var __lt258 string
-	if __lt256 == "" {
-		__lt258 = ""
-	} else {
-		var __lt257 string
-		if s.Opacity == 0.0 {
-			__lt257 = ""
-		} else {
-			__lt257 = fmt.Sprint(s.Opacity)
-		}
-		__lt258 = (("opacity: " + __lt257) + "; ")
-	}
-	css := ((((((((((((((((((((((__lt30 + __lt57) + __lt84) + __lt111) + __lt138) + __lt165) + __lt192) + __lt219) + __lt222) + __lt225) + __lt228) + __lt229) + __lt232) + __lt235) + __lt238) + __lt241) + __lt244) + __lt247) + __lt252) + __lt253) + __lt254) + __lt255) + __lt258)
+	css := ((((((((((((((((((((((Decl("margin-top", Length(__lt11)) + Decl("margin-right", Length(__lt13))) + Decl("margin-bottom", Length(__lt15))) + Decl("margin-left", Length(__lt17))) + Decl("padding-top", Length(__lt19))) + Decl("padding-right", Length(__lt21))) + Decl("padding-bottom", Length(__lt23))) + Decl("padding-left", Length(__lt25))) + Decl("min-width", __lt27)) + Decl("color", __lt28)) + Decl("font-size", __lt30)) + __lt31) + Decl("font-weight", __lt32)) + Decl("font-style", __lt33)) + Decl("background", __lt34)) + Decl("border-radius", __lt36)) + Decl("border-color", __lt37)) + Decl("border-width", __lt39)) + Decl("border-style", __lt40)) + __lt42) + __lt43) + __lt44) + Decl("opacity", __lt45))
 	return css
 }
 
 func Decl(name string, value string) string {
-	var __lt47 string
+	var __lt46 string
 	if value == "" {
-		__lt47 = ""
+		__lt46 = ""
 	} else {
-		__lt47 = (((name + ": ") + value) + "; ")
+		__lt46 = (((name + ": ") + value) + "; ")
 	}
-	return __lt47
+	return __lt46
 }
 
 func Length(m__r0 *Measurement) string {
-	var __lt49 string
+	var __lt48 string
 	if m__r0 == nil {
-		__lt49 = ""
+		__lt48 = ""
 	} else {
-		var __lt48 float64
+		var __lt47 float64
 		if m__r0 == nil {
-			__lt48 = 0.0
+			__lt47 = 0.0
 		} else {
-			__lt48 = max(((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
+			__lt47 = max(((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
 		}
-		__lt49 = (fmt.Sprint(__lt48) + "px")
+		__lt48 = (fmt.Sprint(__lt47) + "px")
 	}
-	return __lt49
+	return __lt48
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -3722,12 +2410,12 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						__n3.SetSize("medium")
 						__n3.SetVariant("circle")
 						__n3.SetAlt("")
-						__n3.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
+						__n3.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"})
 					} else {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n3__new := newAvatarInstance(m, r, "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, func() {
+						__n3__new := newAvatarInstance(m, r, "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, func() {
 						})
 						__n3 = __n3__new
 					}
@@ -3776,12 +2464,12 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 						__n4.SetSize("medium")
 						__n4.SetVariant("circle")
 						__n4.SetAlt("")
-						__n4.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
+						__n4.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"})
 					} else {
 						if len(m.__inst1_live) > __inst1_i {
 							m.__inst1_live[__inst1_i].Destroy()
 						}
-						__n4__new := newAvatarInstance(m, "if", "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, func() {
+						__n4__new := newAvatarInstance(m, "if", "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, func() {
 						})
 						__n4 = __n4__new
 					}
@@ -3872,7 +2560,7 @@ func newAvatarInstance(__model *Model, __a_initials string, __a_size string, __a
 	c.__slot1 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
-	gtk4rt.SetLook(c.__n0, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, c.__prop_style)))
+	gtk4rt.SetLook(c.__n0, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, c.__prop_style)))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.hits = (c.hits + 1)
 		gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
@@ -3901,7 +2589,7 @@ func (c *AvatarInstance) SetAlt(__v string) {
 
 func (c *AvatarInstance) SetStyle(__v Style) {
 	c.__prop_style = __v
-	gtk4rt.SetLook(c.__n0, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, c.__prop_style)))
+	gtk4rt.SetLook(c.__n0, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, c.__prop_style)))
 }
 
 func (c *AvatarInstance) SetClick(__v func()) {
@@ -4076,8 +2764,8 @@ data class Style(
     var borderStyle: SnglBorderStyle = SnglBorderStyle.UNSET,
     var opacity: Double? = null,
     var cursor: String = "",
-    var display: SnglDisplay = SnglDisplay.FLEX,
-    var listStyleType: SnglListStyle = SnglListStyle.NONE
+    var display: SnglDisplay = SnglDisplay.UNSET,
+    var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
 data class Color(
@@ -4147,8 +2835,8 @@ fun __merge_Style(base: Style, ov: Style): Style =
         borderStyle = if (ov.borderStyle != SnglBorderStyle.UNSET) ov.borderStyle else base.borderStyle,
         opacity = ov.opacity ?: base.opacity,
         cursor = if (ov.cursor != "") ov.cursor else base.cursor,
-        display = if (ov.display != SnglDisplay.FLEX) ov.display else base.display,
-        listStyleType = if (ov.listStyleType != SnglListStyle.NONE) ov.listStyleType else base.listStyleType,
+        display = if (ov.display != SnglDisplay.UNSET) ov.display else base.display,
+        listStyleType = if (ov.listStyleType != SnglListStyle.UNSET) ov.listStyleType else base.listStyleType,
     )
 
 enum class SnglSizePreset(private val sngl: String) {
@@ -4495,13 +3183,13 @@ body { font-family: system-ui, sans-serif; }
     if (ov.borderCollapse != null && !(ov.borderCollapse === "")) r.borderCollapse = ov.borderCollapse;
     if (ov.borderStyle != null && !(ov.borderStyle === "unset")) r.borderStyle = ov.borderStyle;
     if (ov.opacity != null) r.opacity = ov.opacity;
-    if (ov.cursor != null) r.cursor = ov.cursor;
-    if (ov.display != null) r.display = ov.display;
-    if (ov.listStyleType != null) r.listStyleType = ov.listStyleType;
+    if (ov.cursor != null && !(ov.cursor === "")) r.cursor = ov.cursor;
+    if (ov.display != null && !(ov.display === "unset")) r.display = ov.display;
+    if (ov.listStyleType != null && !(ov.listStyleType === "unset")) r.listStyleType = ov.listStyleType;
     return r;
   }
   function css(s) {
-    return [{ property: "border", value: s.border }, { property: "margin", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? s.margin === null ? "" : s.margin.em === 0 && s.margin.rem === 0 ? String(s.margin.px) + "px" : s.margin.px === 0 && s.margin.rem === 0 ? String(s.margin.em) + "em" : s.margin.px === 0 && s.margin.em === 0 ? String(s.margin.rem) + "rem" : "calc(" + plus(plus(s.margin.px === 0 ? "" : String(s.margin.px) + "px", s.margin.em === 0 ? "" : String(s.margin.em) + "em"), s.margin.rem === 0 ? "" : String(s.margin.rem) + "rem") + ")" : "" }, { property: "margin-top", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginTop !== null ? s.marginTop : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-right", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginRight !== null ? s.marginRight : s.marginX !== null ? s.marginX : s.margin) }, { property: "margin-bottom", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginBottom !== null ? s.marginBottom : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-left", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginLeft !== null ? s.marginLeft : s.marginX !== null ? s.marginX : s.margin) }, { property: "padding", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? s.padding === null ? "" : s.padding.em === 0 && s.padding.rem === 0 ? String(s.padding.px) + "px" : s.padding.px === 0 && s.padding.rem === 0 ? String(s.padding.em) + "em" : s.padding.px === 0 && s.padding.em === 0 ? String(s.padding.rem) + "rem" : "calc(" + plus(plus(s.padding.px === 0 ? "" : String(s.padding.px) + "px", s.padding.em === 0 ? "" : String(s.padding.em) + "em"), s.padding.rem === 0 ? "" : String(s.padding.rem) + "rem") + ")" : "" }, { property: "padding-top", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingTop !== null ? s.paddingTop : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-right", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingRight !== null ? s.paddingRight : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "padding-bottom", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingBottom !== null ? s.paddingBottom : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-left", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingLeft !== null ? s.paddingLeft : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "gap", value: s.gap === null ? "" : s.gap.em === 0 && s.gap.rem === 0 ? String(s.gap.px) + "px" : s.gap.px === 0 && s.gap.rem === 0 ? String(s.gap.em) + "em" : s.gap.px === 0 && s.gap.em === 0 ? String(s.gap.rem) + "rem" : "calc(" + plus(plus(s.gap.px === 0 ? "" : String(s.gap.px) + "px", s.gap.em === 0 ? "" : String(s.gap.em) + "em"), s.gap.rem === 0 ? "" : String(s.gap.rem) + "rem") + ")" }, { property: "display", value: s.display === "flex" ? "flex" : s.display === "block" ? "block" : s.display === "inline" ? "inline" : s.display === "inlineBlock" ? "inline-block" : s.display === "inlineFlex" ? "inline-flex" : s.display === "none" ? "none" : s.display === "grid" ? "grid" : "" }, { property: "flex-direction", value: s.flexDirection === "row" ? "row" : s.flexDirection === "column" ? "column" : s.flexDirection === "rowReverse" ? "row-reverse" : s.flexDirection === "columnReverse" ? "column-reverse" : "" }, { property: "align-items", value: s.alignItems === "start" ? "start" : s.alignItems === "center" ? "center" : s.alignItems === "end" ? "end" : s.alignItems === "stretch" ? "stretch" : s.alignItems === "baseline" ? "baseline" : "" }, { property: "justify-content", value: s.justifyContent === "start" ? "start" : s.justifyContent === "center" ? "center" : s.justifyContent === "end" ? "end" : s.justifyContent === "spaceBetween" ? "space-between" : s.justifyContent === "spaceAround" ? "space-around" : s.justifyContent === "spaceEvenly" ? "space-evenly" : "" }, { property: "flex", value: s.flex === null ? "" : String(s.flex) }, { property: "min-width", value: s.flex === null ? "" : "0" }, { property: "min-height", value: s.flex === null ? "" : "0" }, { property: "width", value: s.width === null ? "" : s.width.em === 0 && s.width.rem === 0 ? String(s.width.px) + "px" : s.width.px === 0 && s.width.rem === 0 ? String(s.width.em) + "em" : s.width.px === 0 && s.width.em === 0 ? String(s.width.rem) + "rem" : "calc(" + plus(plus(s.width.px === 0 ? "" : String(s.width.px) + "px", s.width.em === 0 ? "" : String(s.width.em) + "em"), s.width.rem === 0 ? "" : String(s.width.rem) + "rem") + ")" }, { property: "min-width", value: s.minWidth === null ? "" : s.minWidth.em === 0 && s.minWidth.rem === 0 ? String(s.minWidth.px) + "px" : s.minWidth.px === 0 && s.minWidth.rem === 0 ? String(s.minWidth.em) + "em" : s.minWidth.px === 0 && s.minWidth.em === 0 ? String(s.minWidth.rem) + "rem" : "calc(" + plus(plus(s.minWidth.px === 0 ? "" : String(s.minWidth.px) + "px", s.minWidth.em === 0 ? "" : String(s.minWidth.em) + "em"), s.minWidth.rem === 0 ? "" : String(s.minWidth.rem) + "rem") + ")" }, { property: "height", value: s.height === null ? "" : s.height.em === 0 && s.height.rem === 0 ? String(s.height.px) + "px" : s.height.px === 0 && s.height.rem === 0 ? String(s.height.em) + "em" : s.height.px === 0 && s.height.em === 0 ? String(s.height.rem) + "rem" : "calc(" + plus(plus(s.height.px === 0 ? "" : String(s.height.px) + "px", s.height.em === 0 ? "" : String(s.height.em) + "em"), s.height.rem === 0 ? "" : String(s.height.rem) + "rem") + ")" }, { property: "max-width", value: s.maxWidth === null ? "" : s.maxWidth.em === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.px) + "px" : s.maxWidth.px === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.em) + "em" : s.maxWidth.px === 0 && s.maxWidth.em === 0 ? String(s.maxWidth.rem) + "rem" : "calc(" + plus(plus(s.maxWidth.px === 0 ? "" : String(s.maxWidth.px) + "px", s.maxWidth.em === 0 ? "" : String(s.maxWidth.em) + "em"), s.maxWidth.rem === 0 ? "" : String(s.maxWidth.rem) + "rem") + ")" }, { property: "max-height", value: s.maxHeight === null ? "" : s.maxHeight.em === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.px) + "px" : s.maxHeight.px === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.em) + "em" : s.maxHeight.px === 0 && s.maxHeight.em === 0 ? String(s.maxHeight.rem) + "rem" : "calc(" + plus(plus(s.maxHeight.px === 0 ? "" : String(s.maxHeight.px) + "px", s.maxHeight.em === 0 ? "" : String(s.maxHeight.em) + "em"), s.maxHeight.rem === 0 ? "" : String(s.maxHeight.rem) + "rem") + ")" }, { property: "position", value: s.position === "static" ? "static" : s.position === "relative" ? "relative" : s.position === "absolute" ? "absolute" : s.position === "fixed" ? "fixed" : s.position === "sticky" ? "sticky" : "" }, { property: "top", value: s.top === null ? "" : s.top.em === 0 && s.top.rem === 0 ? String(s.top.px) + "px" : s.top.px === 0 && s.top.rem === 0 ? String(s.top.em) + "em" : s.top.px === 0 && s.top.em === 0 ? String(s.top.rem) + "rem" : "calc(" + plus(plus(s.top.px === 0 ? "" : String(s.top.px) + "px", s.top.em === 0 ? "" : String(s.top.em) + "em"), s.top.rem === 0 ? "" : String(s.top.rem) + "rem") + ")" }, { property: "bottom", value: s.bottom === null ? "" : s.bottom.em === 0 && s.bottom.rem === 0 ? String(s.bottom.px) + "px" : s.bottom.px === 0 && s.bottom.rem === 0 ? String(s.bottom.em) + "em" : s.bottom.px === 0 && s.bottom.em === 0 ? String(s.bottom.rem) + "rem" : "calc(" + plus(plus(s.bottom.px === 0 ? "" : String(s.bottom.px) + "px", s.bottom.em === 0 ? "" : String(s.bottom.em) + "em"), s.bottom.rem === 0 ? "" : String(s.bottom.rem) + "rem") + ")" }, { property: "left", value: s.left === null ? "" : s.left.em === 0 && s.left.rem === 0 ? String(s.left.px) + "px" : s.left.px === 0 && s.left.rem === 0 ? String(s.left.em) + "em" : s.left.px === 0 && s.left.em === 0 ? String(s.left.rem) + "rem" : "calc(" + plus(plus(s.left.px === 0 ? "" : String(s.left.px) + "px", s.left.em === 0 ? "" : String(s.left.em) + "em"), s.left.rem === 0 ? "" : String(s.left.rem) + "rem") + ")" }, { property: "right", value: s.right === null ? "" : s.right.em === 0 && s.right.rem === 0 ? String(s.right.px) + "px" : s.right.px === 0 && s.right.rem === 0 ? String(s.right.em) + "em" : s.right.px === 0 && s.right.em === 0 ? String(s.right.rem) + "rem" : "calc(" + plus(plus(s.right.px === 0 ? "" : String(s.right.px) + "px", s.right.em === 0 ? "" : String(s.right.em) + "em"), s.right.rem === 0 ? "" : String(s.right.rem) + "rem") + ")" }, { property: "z-index", value: s.zIndex === null ? "" : String(s.zIndex) }, { property: "color", value: s.color === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.color) }, { property: "font-size", value: s.fontSize === null ? "" : s.fontSize.em === 0 && s.fontSize.rem === 0 ? String(s.fontSize.px) + "px" : s.fontSize.px === 0 && s.fontSize.rem === 0 ? String(s.fontSize.em) + "em" : s.fontSize.px === 0 && s.fontSize.em === 0 ? String(s.fontSize.rem) + "rem" : "calc(" + plus(plus(s.fontSize.px === 0 ? "" : String(s.fontSize.px) + "px", s.fontSize.em === 0 ? "" : String(s.fontSize.em) + "em"), s.fontSize.rem === 0 ? "" : String(s.fontSize.rem) + "rem") + ")" }, { property: "font-family", value: s.fontFamily }, { property: "font-weight", value: s.fontWeight === "normal" ? "normal" : s.fontWeight === "bold" ? "bold" : s.fontWeight === "lighter" ? "lighter" : s.fontWeight === "bolder" ? "bolder" : "" }, { property: "font-style", value: s.fontStyle === "normal" ? "normal" : s.fontStyle === "italic" ? "italic" : s.fontStyle === "oblique" ? "oblique" : "" }, { property: "text-align", value: s.textAlign === "left" ? "left" : s.textAlign === "center" ? "center" : s.textAlign === "right" ? "right" : s.textAlign === "justify" ? "justify" : "" }, { property: "white-space", value: s.whiteSpace === "normal" ? "normal" : s.whiteSpace === "pre" ? "pre" : s.whiteSpace === "preWrap" ? "pre-wrap" : s.whiteSpace === "preLine" ? "pre-line" : s.whiteSpace === "nowrap" ? "nowrap" : "" }, { property: "background-color", value: s.background === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.background) }, { property: "border-radius", value: s.borderRadius === null ? "" : s.borderRadius.em === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.px) + "px" : s.borderRadius.px === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.em) + "em" : s.borderRadius.px === 0 && s.borderRadius.em === 0 ? String(s.borderRadius.rem) + "rem" : "calc(" + plus(plus(s.borderRadius.px === 0 ? "" : String(s.borderRadius.px) + "px", s.borderRadius.em === 0 ? "" : String(s.borderRadius.em) + "em"), s.borderRadius.rem === 0 ? "" : String(s.borderRadius.rem) + "rem") + ")" }, { property: "border-width", value: s.borderWidth === null ? "" : s.borderWidth.em === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.px) + "px" : s.borderWidth.px === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.em) + "em" : s.borderWidth.px === 0 && s.borderWidth.em === 0 ? String(s.borderWidth.rem) + "rem" : "calc(" + plus(plus(s.borderWidth.px === 0 ? "" : String(s.borderWidth.px) + "px", s.borderWidth.em === 0 ? "" : String(s.borderWidth.em) + "em"), s.borderWidth.rem === 0 ? "" : String(s.borderWidth.rem) + "rem") + ")" }, { property: "border-style", value: s.borderStyle === "none" ? "none" : s.borderStyle === "solid" ? "solid" : s.borderStyle === "dashed" ? "dashed" : s.borderStyle === "dotted" ? "dotted" : s.borderStyle === "double" ? "double" : s.borderWidth !== null && s.border === "" ? "solid" : "" }, { property: "border-color", value: s.borderColor === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.borderColor) }, { property: "border-collapse", value: s.borderCollapse }, { property: "opacity", value: s.opacity === null ? "" : String(s.opacity) }, { property: "cursor", value: s.cursor }, { property: "overflow", value: s.overflow === "visible" ? "visible" : s.overflow === "hidden" ? "hidden" : s.overflow === "scroll" ? "scroll" : s.overflow === "auto" ? "auto" : "" }, { property: "list-style-type", value: s.listStyleType === "none" ? "none" : s.listStyleType === "disc" ? "disc" : s.listStyleType === "circle" ? "circle" : s.listStyleType === "square" ? "square" : s.listStyleType === "decimal" ? "decimal" : "" }, { property: "-webkit-line-clamp", value: s.maxLines === null ? "" : String(s.maxLines) }, { property: "overflow", value: s.maxLines === null ? "" : "hidden" }, { property: "display", value: s.maxLines === null ? "" : "-webkit-box" }, { property: "-webkit-box-orient", value: s.maxLines === null ? "" : "vertical" }, { property: "border-bottom", value: s.borderBottom }, { property: "border-left", value: s.borderLeft }];
+    return [{ property: "border", value: s.border }, { property: "margin", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? s.margin === null ? "" : s.margin.em === 0 && s.margin.rem === 0 ? String(s.margin.px) + "px" : s.margin.px === 0 && s.margin.rem === 0 ? String(s.margin.em) + "em" : s.margin.px === 0 && s.margin.em === 0 ? String(s.margin.rem) + "rem" : "calc(" + plus(plus(s.margin.px === 0 ? "" : String(s.margin.px) + "px", s.margin.em === 0 ? "" : String(s.margin.em) + "em"), s.margin.rem === 0 ? "" : String(s.margin.rem) + "rem") + ")" : "" }, { property: "margin-top", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginTop !== null ? s.marginTop : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-right", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginRight !== null ? s.marginRight : s.marginX !== null ? s.marginX : s.margin) }, { property: "margin-bottom", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginBottom !== null ? s.marginBottom : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-left", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginLeft !== null ? s.marginLeft : s.marginX !== null ? s.marginX : s.margin) }, { property: "padding", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? s.padding === null ? "" : s.padding.em === 0 && s.padding.rem === 0 ? String(s.padding.px) + "px" : s.padding.px === 0 && s.padding.rem === 0 ? String(s.padding.em) + "em" : s.padding.px === 0 && s.padding.em === 0 ? String(s.padding.rem) + "rem" : "calc(" + plus(plus(s.padding.px === 0 ? "" : String(s.padding.px) + "px", s.padding.em === 0 ? "" : String(s.padding.em) + "em"), s.padding.rem === 0 ? "" : String(s.padding.rem) + "rem") + ")" : "" }, { property: "padding-top", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingTop !== null ? s.paddingTop : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-right", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingRight !== null ? s.paddingRight : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "padding-bottom", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingBottom !== null ? s.paddingBottom : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-left", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingLeft !== null ? s.paddingLeft : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "gap", value: s.gap === null ? "" : s.gap.em === 0 && s.gap.rem === 0 ? String(s.gap.px) + "px" : s.gap.px === 0 && s.gap.rem === 0 ? String(s.gap.em) + "em" : s.gap.px === 0 && s.gap.em === 0 ? String(s.gap.rem) + "rem" : "calc(" + plus(plus(s.gap.px === 0 ? "" : String(s.gap.px) + "px", s.gap.em === 0 ? "" : String(s.gap.em) + "em"), s.gap.rem === 0 ? "" : String(s.gap.rem) + "rem") + ")" }, { property: "display", value: s.display === "flex" ? "flex" : s.display === "block" ? "block" : s.display === "inline" ? "inline" : s.display === "inlineBlock" ? "inline-block" : s.display === "inlineFlex" ? "inline-flex" : s.display === "none" ? "none" : s.display === "grid" ? "grid" : "" }, { property: "flex-direction", value: s.flexDirection === "row" ? "row" : s.flexDirection === "column" ? "column" : s.flexDirection === "rowReverse" ? "row-reverse" : s.flexDirection === "columnReverse" ? "column-reverse" : "" }, { property: "align-items", value: s.alignItems === "start" ? "start" : s.alignItems === "center" ? "center" : s.alignItems === "end" ? "end" : s.alignItems === "stretch" ? "stretch" : s.alignItems === "baseline" ? "baseline" : "" }, { property: "justify-content", value: s.justifyContent === "start" ? "start" : s.justifyContent === "center" ? "center" : s.justifyContent === "end" ? "end" : s.justifyContent === "spaceBetween" ? "space-between" : s.justifyContent === "spaceAround" ? "space-around" : s.justifyContent === "spaceEvenly" ? "space-evenly" : "" }, { property: "flex", value: s.flex === null ? "" : String(s.flex) }, { property: "min-width", value: s.flex === null ? "" : "0" }, { property: "min-height", value: s.flex === null ? "" : "0" }, { property: "width", value: s.width === null ? "" : s.width.em === 0 && s.width.rem === 0 ? String(s.width.px) + "px" : s.width.px === 0 && s.width.rem === 0 ? String(s.width.em) + "em" : s.width.px === 0 && s.width.em === 0 ? String(s.width.rem) + "rem" : "calc(" + plus(plus(s.width.px === 0 ? "" : String(s.width.px) + "px", s.width.em === 0 ? "" : String(s.width.em) + "em"), s.width.rem === 0 ? "" : String(s.width.rem) + "rem") + ")" }, { property: "min-width", value: s.minWidth === null ? "" : s.minWidth.em === 0 && s.minWidth.rem === 0 ? String(s.minWidth.px) + "px" : s.minWidth.px === 0 && s.minWidth.rem === 0 ? String(s.minWidth.em) + "em" : s.minWidth.px === 0 && s.minWidth.em === 0 ? String(s.minWidth.rem) + "rem" : "calc(" + plus(plus(s.minWidth.px === 0 ? "" : String(s.minWidth.px) + "px", s.minWidth.em === 0 ? "" : String(s.minWidth.em) + "em"), s.minWidth.rem === 0 ? "" : String(s.minWidth.rem) + "rem") + ")" }, { property: "height", value: s.height === null ? "" : s.height.em === 0 && s.height.rem === 0 ? String(s.height.px) + "px" : s.height.px === 0 && s.height.rem === 0 ? String(s.height.em) + "em" : s.height.px === 0 && s.height.em === 0 ? String(s.height.rem) + "rem" : "calc(" + plus(plus(s.height.px === 0 ? "" : String(s.height.px) + "px", s.height.em === 0 ? "" : String(s.height.em) + "em"), s.height.rem === 0 ? "" : String(s.height.rem) + "rem") + ")" }, { property: "max-width", value: s.maxWidth === null ? "" : s.maxWidth.em === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.px) + "px" : s.maxWidth.px === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.em) + "em" : s.maxWidth.px === 0 && s.maxWidth.em === 0 ? String(s.maxWidth.rem) + "rem" : "calc(" + plus(plus(s.maxWidth.px === 0 ? "" : String(s.maxWidth.px) + "px", s.maxWidth.em === 0 ? "" : String(s.maxWidth.em) + "em"), s.maxWidth.rem === 0 ? "" : String(s.maxWidth.rem) + "rem") + ")" }, { property: "max-height", value: s.maxHeight === null ? "" : s.maxHeight.em === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.px) + "px" : s.maxHeight.px === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.em) + "em" : s.maxHeight.px === 0 && s.maxHeight.em === 0 ? String(s.maxHeight.rem) + "rem" : "calc(" + plus(plus(s.maxHeight.px === 0 ? "" : String(s.maxHeight.px) + "px", s.maxHeight.em === 0 ? "" : String(s.maxHeight.em) + "em"), s.maxHeight.rem === 0 ? "" : String(s.maxHeight.rem) + "rem") + ")" }, { property: "position", value: s.position === "static" ? "static" : s.position === "relative" ? "relative" : s.position === "absolute" ? "absolute" : s.position === "fixed" ? "fixed" : s.position === "sticky" ? "sticky" : "" }, { property: "top", value: s.top === null ? "" : s.top.em === 0 && s.top.rem === 0 ? String(s.top.px) + "px" : s.top.px === 0 && s.top.rem === 0 ? String(s.top.em) + "em" : s.top.px === 0 && s.top.em === 0 ? String(s.top.rem) + "rem" : "calc(" + plus(plus(s.top.px === 0 ? "" : String(s.top.px) + "px", s.top.em === 0 ? "" : String(s.top.em) + "em"), s.top.rem === 0 ? "" : String(s.top.rem) + "rem") + ")" }, { property: "bottom", value: s.bottom === null ? "" : s.bottom.em === 0 && s.bottom.rem === 0 ? String(s.bottom.px) + "px" : s.bottom.px === 0 && s.bottom.rem === 0 ? String(s.bottom.em) + "em" : s.bottom.px === 0 && s.bottom.em === 0 ? String(s.bottom.rem) + "rem" : "calc(" + plus(plus(s.bottom.px === 0 ? "" : String(s.bottom.px) + "px", s.bottom.em === 0 ? "" : String(s.bottom.em) + "em"), s.bottom.rem === 0 ? "" : String(s.bottom.rem) + "rem") + ")" }, { property: "left", value: s.left === null ? "" : s.left.em === 0 && s.left.rem === 0 ? String(s.left.px) + "px" : s.left.px === 0 && s.left.rem === 0 ? String(s.left.em) + "em" : s.left.px === 0 && s.left.em === 0 ? String(s.left.rem) + "rem" : "calc(" + plus(plus(s.left.px === 0 ? "" : String(s.left.px) + "px", s.left.em === 0 ? "" : String(s.left.em) + "em"), s.left.rem === 0 ? "" : String(s.left.rem) + "rem") + ")" }, { property: "right", value: s.right === null ? "" : s.right.em === 0 && s.right.rem === 0 ? String(s.right.px) + "px" : s.right.px === 0 && s.right.rem === 0 ? String(s.right.em) + "em" : s.right.px === 0 && s.right.em === 0 ? String(s.right.rem) + "rem" : "calc(" + plus(plus(s.right.px === 0 ? "" : String(s.right.px) + "px", s.right.em === 0 ? "" : String(s.right.em) + "em"), s.right.rem === 0 ? "" : String(s.right.rem) + "rem") + ")" }, { property: "z-index", value: s.zIndex === null ? "" : String(s.zIndex) }, { property: "color", value: s.color === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.color) }, { property: "font-size", value: s.fontSize === null ? "" : s.fontSize.em === 0 && s.fontSize.rem === 0 ? String(s.fontSize.px) + "px" : s.fontSize.px === 0 && s.fontSize.rem === 0 ? String(s.fontSize.em) + "em" : s.fontSize.px === 0 && s.fontSize.em === 0 ? String(s.fontSize.rem) + "rem" : "calc(" + plus(plus(s.fontSize.px === 0 ? "" : String(s.fontSize.px) + "px", s.fontSize.em === 0 ? "" : String(s.fontSize.em) + "em"), s.fontSize.rem === 0 ? "" : String(s.fontSize.rem) + "rem") + ")" }, { property: "font-family", value: s.fontFamily }, { property: "font-weight", value: s.fontWeight === "normal" ? "normal" : s.fontWeight === "bold" ? "bold" : s.fontWeight === "lighter" ? "lighter" : s.fontWeight === "bolder" ? "bolder" : "" }, { property: "font-style", value: s.fontStyle === "normal" ? "normal" : s.fontStyle === "italic" ? "italic" : s.fontStyle === "oblique" ? "oblique" : "" }, { property: "text-align", value: s.textAlign === "left" ? "left" : s.textAlign === "center" ? "center" : s.textAlign === "right" ? "right" : s.textAlign === "justify" ? "justify" : "" }, { property: "white-space", value: s.whiteSpace === "normal" ? "normal" : s.whiteSpace === "pre" ? "pre" : s.whiteSpace === "preWrap" ? "pre-wrap" : s.whiteSpace === "preLine" ? "pre-line" : s.whiteSpace === "nowrap" ? "nowrap" : "" }, { property: "background-color", value: s.background === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.background) }, { property: "border-radius", value: s.borderRadius === null ? "" : s.borderRadius.em === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.px) + "px" : s.borderRadius.px === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.em) + "em" : s.borderRadius.px === 0 && s.borderRadius.em === 0 ? String(s.borderRadius.rem) + "rem" : "calc(" + plus(plus(s.borderRadius.px === 0 ? "" : String(s.borderRadius.px) + "px", s.borderRadius.em === 0 ? "" : String(s.borderRadius.em) + "em"), s.borderRadius.rem === 0 ? "" : String(s.borderRadius.rem) + "rem") + ")" }, { property: "border-width", value: s.borderWidth === null ? "" : s.borderWidth.em === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.px) + "px" : s.borderWidth.px === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.em) + "em" : s.borderWidth.px === 0 && s.borderWidth.em === 0 ? String(s.borderWidth.rem) + "rem" : "calc(" + plus(plus(s.borderWidth.px === 0 ? "" : String(s.borderWidth.px) + "px", s.borderWidth.em === 0 ? "" : String(s.borderWidth.em) + "em"), s.borderWidth.rem === 0 ? "" : String(s.borderWidth.rem) + "rem") + ")" }, { property: "border-style", value: s.borderStyle === "none" ? "none" : s.borderStyle === "solid" ? "solid" : s.borderStyle === "dashed" ? "dashed" : s.borderStyle === "dotted" ? "dotted" : s.borderStyle === "double" ? "double" : s.borderWidth !== null && s.border === "" ? "solid" : "" }, { property: "border-color", value: s.borderColor === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.borderColor) }, { property: "border-collapse", value: s.borderCollapse }, { property: "opacity", value: s.opacity === null ? "" : String(s.opacity) }, { property: "cursor", value: s.cursor }, { property: "list-style-type", value: s.listStyleType === "none" ? "none" : s.listStyleType === "disc" ? "disc" : s.listStyleType === "circle" ? "circle" : s.listStyleType === "square" ? "square" : s.listStyleType === "decimal" ? "decimal" : "" }, { property: "-webkit-line-clamp", value: s.maxLines === null ? "" : String(s.maxLines) }, { property: "overflow", value: s.maxLines === null ? "" : "hidden" }, { property: "display", value: s.maxLines === null ? "" : "-webkit-box" }, { property: "-webkit-box-orient", value: s.maxLines === null ? "" : "vertical" }, { property: "border-bottom", value: s.borderBottom }, { property: "border-left", value: s.borderLeft }];
   }
   function plus(a, b) {
     return a === "" ? b : b === "" ? a : a + " + " + b;
@@ -4532,7 +3220,7 @@ body { font-family: system-ui, sans-serif; }
     let size = props.size ?? "medium";
     let variant = props.variant ?? "circle";
     let alt = props.alt ?? "";
-    let style = props.style ?? { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" };
+    let style = props.style ?? { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", listStyleType: "unset" };
     let click = props.click ?? (() => {
     });
     let __prop_initials = initials;
@@ -4560,14 +3248,14 @@ body { font-family: system-ui, sans-serif; }
     }
     function __set_style(__v) {
       __prop_style = __v;
-      __n0.style.cssText = _snglCSSText(css(__merge_Style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" }, __prop_style)));
+      __n0.style.cssText = _snglCSSText(css(__merge_Style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", listStyleType: "unset" }, __prop_style)));
     }
     function __set_click(__v) {
       __prop_click = __v;
     }
     let __n0 = document.createElement("button");
     __n0.disabled = false;
-    __n0.style.cssText = _snglCSSText(css(__merge_Style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" }, __prop_style)));
+    __n0.style.cssText = _snglCSSText(css(__merge_Style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", listStyleType: "unset" }, __prop_style)));
     __n0.addEventListener("click", () => {
       hits = hits + 1;
       __n1.textContent = __prop_initials + " " + String(hits);
@@ -4620,12 +3308,12 @@ body { font-family: system-ui, sans-serif; }
               __n4.__set_size("medium");
               __n4.__set_variant("circle");
               __n4.__set_alt("");
-              __n4.__set_style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" });
+              __n4.__set_style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", listStyleType: "unset" });
             } else {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n4__new = __cf_avatar({ initials: r, size: "medium", variant: "circle", alt: "", style: { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" } });
+              let __n4__new = __cf_avatar({ initials: r, size: "medium", variant: "circle", alt: "", style: { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", listStyleType: "unset" } });
               __n4 = __n4__new;
             }
             __inst1_next.push(__n4);
@@ -4682,12 +3370,12 @@ body { font-family: system-ui, sans-serif; }
               __n5.__set_size("medium");
               __n5.__set_variant("circle");
               __n5.__set_alt("");
-              __n5.__set_style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" });
+              __n5.__set_style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", listStyleType: "unset" });
             } else {
               if (__inst3_live.length > __inst3_i) {
                 __inst3_live[__inst3_i].__destroy();
               }
-              let __n5__new = __cf_avatar({ initials: "if", size: "medium", variant: "circle", alt: "", style: { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" } });
+              let __n5__new = __cf_avatar({ initials: "if", size: "medium", variant: "circle", alt: "", style: { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", listStyleType: "unset" } });
               __n5 = __n5__new;
             }
             __inst3_next.push(__n5);
@@ -4746,84 +3434,8 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  function _snglStyleCSS(s) {
-    const d = [];
-    if (s.padding != null) d.push("padding:" + _snglStyleLength(s.padding));
-    if (s.margin != null) d.push("margin:" + _snglStyleLength(s.margin));
-    if (s.border != null) d.push("border:" + s.border);
-    if (s.paddingX != null) d.push("padding-left:" + _snglStyleLength(s.paddingX));
-    if (s.paddingX != null) d.push("padding-right:" + _snglStyleLength(s.paddingX));
-    if (s.paddingY != null) d.push("padding-top:" + _snglStyleLength(s.paddingY));
-    if (s.paddingY != null) d.push("padding-bottom:" + _snglStyleLength(s.paddingY));
-    if (s.marginX != null) d.push("margin-left:" + _snglStyleLength(s.marginX));
-    if (s.marginX != null) d.push("margin-right:" + _snglStyleLength(s.marginX));
-    if (s.marginY != null) d.push("margin-top:" + _snglStyleLength(s.marginY));
-    if (s.marginY != null) d.push("margin-bottom:" + _snglStyleLength(s.marginY));
-    if (s.paddingTop != null) d.push("padding-top:" + _snglStyleLength(s.paddingTop));
-    if (s.paddingRight != null) d.push("padding-right:" + _snglStyleLength(s.paddingRight));
-    if (s.paddingBottom != null) d.push("padding-bottom:" + _snglStyleLength(s.paddingBottom));
-    if (s.paddingLeft != null) d.push("padding-left:" + _snglStyleLength(s.paddingLeft));
-    if (s.marginTop != null) d.push("margin-top:" + _snglStyleLength(s.marginTop));
-    if (s.marginRight != null) d.push("margin-right:" + _snglStyleLength(s.marginRight));
-    if (s.marginBottom != null) d.push("margin-bottom:" + _snglStyleLength(s.marginBottom));
-    if (s.marginLeft != null) d.push("margin-left:" + _snglStyleLength(s.marginLeft));
-    if (s.gap != null) d.push("gap:" + _snglStyleLength(s.gap));
-    if (s.width != null) d.push("width:" + _snglStyleLength(s.width));
-    if (s.minWidth != null) d.push("min-width:" + _snglStyleLength(s.minWidth));
-    if (s.height != null) d.push("height:" + _snglStyleLength(s.height));
-    if (s.maxWidth != null) d.push("max-width:" + _snglStyleLength(s.maxWidth));
-    if (s.maxHeight != null) d.push("max-height:" + _snglStyleLength(s.maxHeight));
-    if (s.flex != null) d.push("flex:" + s.flex);
-    if (s.flex != null && s.minWidth == null) d.push("min-width:0");
-    if (s.flex != null) d.push("min-height:0");
-    if (s.flexDirection != null) d.push("flex-direction:" + _snglStyleKeyword(s.flexDirection));
-    if (s.alignItems != null) d.push("align-items:" + _snglStyleKeyword(s.alignItems));
-    if (s.justifyContent != null) d.push("justify-content:" + _snglStyleKeyword(s.justifyContent));
-    if (s.position != null) d.push("position:" + _snglStyleKeyword(s.position));
-    if (s.top != null) d.push("top:" + _snglStyleLength(s.top));
-    if (s.bottom != null) d.push("bottom:" + _snglStyleLength(s.bottom));
-    if (s.left != null) d.push("left:" + _snglStyleLength(s.left));
-    if (s.right != null) d.push("right:" + _snglStyleLength(s.right));
-    if (s.zIndex != null) d.push("z-index:" + s.zIndex);
-    if (s.color != null) d.push("color:" + _snglStyleColor(s.color));
-    if (s.fontSize != null) d.push("font-size:" + _snglStyleLength(s.fontSize));
-    if (s.fontFamily != null) d.push("font-family:" + s.fontFamily);
-    if (s.fontWeight != null) d.push("font-weight:" + _snglStyleKeyword(s.fontWeight));
-    if (s.fontStyle != null) d.push("font-style:" + _snglStyleKeyword(s.fontStyle));
-    if (s.textAlign != null) d.push("text-align:" + _snglStyleKeyword(s.textAlign));
-    if (s.maxLines != null) d.push("-webkit-line-clamp:" + s.maxLines);
-    if (s.maxLines != null) d.push("overflow:hidden");
-    if (s.maxLines != null && s.display == null) d.push("display:-webkit-box");
-    if (s.maxLines != null) d.push("-webkit-box-orient:vertical");
-    if (s.whiteSpace != null) d.push("white-space:" + _snglStyleKeyword(s.whiteSpace));
-    if (s.background != null) d.push("background-color:" + _snglStyleColor(s.background));
-    if (s.borderRadius != null) d.push("border-radius:" + _snglStyleLength(s.borderRadius));
-    if (s.borderColor != null) d.push("border-color:" + _snglStyleColor(s.borderColor));
-    if (s.borderWidth != null) d.push("border-width:" + _snglStyleLength(s.borderWidth));
-    if (s.borderWidth != null && s.borderStyle == null && s.border == null) d.push("border-style:solid");
-    if (s.borderCollapse != null) d.push("border-collapse:" + s.borderCollapse);
-    if (s.borderStyle != null) d.push("border-style:" + _snglStyleKeyword(s.borderStyle));
-    if (s.opacity != null) d.push("opacity:" + s.opacity);
-    if (s.cursor != null) d.push("cursor:" + s.cursor);
-    if (s.display != null) d.push("display:" + _snglStyleKeyword(s.display));
-    if (s.listStyleType != null) d.push("list-style-type:" + _snglStyleKeyword(s.listStyleType));
-    if (s.borderBottom != null) d.push("border-bottom:" + s.borderBottom);
-    if (s.borderLeft != null) d.push("border-left:" + s.borderLeft);
-    return d.join(";");
-  }
-  function _snglStyleColor(c) {
-    if (typeof c === "string") return c;
-    if (c.a < 255) return "rgba(" + c.r + "," + c.g + "," + c.b + "," + c.a / 255 + ")";
-    return "#" + [c.r, c.g, c.b].map((v) => v.toString(16).padStart(2, "0")).join("");
-  }
-  function _snglStyleLength(v) {
-    if (typeof v === "number") return v + "px";
-    const t = Object.keys(v).filter((k) => v[k] !== 0).map((k) => v[k] + k);
-    if (t.length === 0) return "0px";
-    return t.length === 1 ? t[0] : "calc(" + t.join(" + ") + ")";
-  }
-  function _snglStyleKeyword(m) {
-    return m.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
+  function _snglCSSText(ds) {
+    return ds.filter((d) => d.value !== "").map((d) => d.property + ":" + d.value).join(";");
   }
   var $0 = document.getElementById("$0");
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
@@ -4844,12 +3456,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1b90ea7c111c98818c4cfd348a6b826e
+pass sha256:b70e9a5d8565e370b8bc18097c3224fe
 -- run/go/fyne --
-pass sha256:47450d2054f30b9b5ccff0d92bca13e6
+pass sha256:ac5eef243acdc1b45c009dfb67cff092
 -- run/go/gtk4 --
-pass sha256:4159a76d4cbd108ce3f1194648785988
+pass sha256:c786bcfd028af0b5788facaa74b9d9da
 -- run/kotlin/android --
-pass sha256:db55c05a8feb6bc018206a0f6a344745
+pass sha256:02953b3e07c09d23e9d8c2cdcd7efb53
 -- run/none/html --
-pass sha256:61d5f53aec1872debc3f39ebf10d95f6
+pass sha256:756177390ef016edfb69070db9a99881

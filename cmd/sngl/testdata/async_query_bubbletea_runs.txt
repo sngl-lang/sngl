@@ -133,7 +133,7 @@ window {
     quickRows
 }
 -- testrun/bubbletea/go/app.sngl/detail/1 --
-sha256:fa502c0e68b2bc4eac9cc4ac1b34f61a
+sha256:dfe4f0334622285ae8ffad736fbeb28f
 {
   "results": [
     {
@@ -147,7 +147,7 @@ sha256:fa502c0e68b2bc4eac9cc4ac1b34f61a
   ]
 }
 -- testrun/bubbletea/go/app.sngl/dropped/1 --
-sha256:9b6c5886ec463cd065e031a43547c0dc
+sha256:26e02e1e8e066df493a54bbdc25ef79e
 {
   "results": [
     {
@@ -157,7 +157,7 @@ sha256:9b6c5886ec463cd065e031a43547c0dc
   ]
 }
 -- testrun/bubbletea/go/app.sngl/quickRows/1 --
-sha256:53bd02435b326e52ed28097fe1eb8a4b
+sha256:91f609fca335e40f080ad1de54e18d49
 {
   "results": [
     {
@@ -167,7 +167,7 @@ sha256:53bd02435b326e52ed28097fe1eb8a4b
   ]
 }
 -- testrun/bubbletea/go/app.sngl/rows/1 --
-sha256:463494ec59dc7bf2feff67d9c8aa0655
+sha256:bc824c4444273bafcb1a5ba389980260
 {
   "results": [
     {

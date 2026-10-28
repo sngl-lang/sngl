@@ -278,6 +278,9 @@ window.__sngl_boot = () => {
     ;
     return k >= 0 && k < disabled.length ? k : from;
   }
+  function plus(a, b) {
+    return a === "" ? b : b === "" ? a : a + " + " + b;
+  }
   function __snglTeardown() {
     for (const [__inst7_live_di, _] of __inst7_live.entries()) {
       ;
@@ -309,7 +312,7 @@ window.__sngl_boot = () => {
     __inst1_live = [];
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { has, swipedTo, __snglTeardown });
+    Object.assign(window, { has, swipedTo, plus, __snglTeardown });
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
@@ -375,7 +378,7 @@ window.__sngl_boot = () => {
       __prop___on0 = __v;
     }
     let __n14 = document.createElement("label");
-    __n14.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
+    __n14.setAttribute("style", "gap:4px;display:inline-flex;align-items:center");
     let __n2 = document.createElement("input");
     __n2.value = __prop___p0.label;
     __n2.checked = __prop___p0.label === __prop___p1;
@@ -884,8 +887,9 @@ window.__sngl_boot = () => {
       this.removeEventListener("pointercancel", this._cancel);
     }
   });
-  function _snglStyleKeyword(m) {
-    return m.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
+  function _snglSetStyles(st, ds) {
+    for (const d of ds) st.removeProperty(d.property);
+    for (const d of ds) if (d.value !== "") st.setProperty(d.property, d.value);
   }
   var $10 = document.getElementById("$10");
   var $12 = document.getElementById("$12");
@@ -966,9 +970,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d6c8e4293f595e5c19aa5ee0ca0c7194
+pass sha256:f0293917b1a45646fd2da0ea2c3a9a27
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:9f3c4c3f7446dea9ff1f5caf6f8ed311
+sha256:a3e0eea5e7ef0ecdd57fad774304ca18
 {
   "results": [
     {

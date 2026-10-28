@@ -85,7 +85,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div class="sngl-scroll sngl-scroll-vertical">
-  <div style="display:flex;flex-direction:column;gap:12px">
+  <div style="gap:12px;display:flex;flex-direction:column">
     <h1 style="margin:0px;font-size:32px;font-weight:bold;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
     <p style="margin:0px;white-space:pre-wrap"><span>A paragraph with </span><strong><span>bold</span></strong><span>, </span><em><span>italic</span></em><span> and </span><s><span>struck</span></s><span> words, a soft break, </span><code><span>code</span></code><span>, and a </span><a href="https://example.com"><span>link</span></a><span>.</span></p>
     <blockquote style="margin:0px;padding-left:12px;font-style:italic;white-space:pre-wrap;border-left:3px solid #CCCCCC"><span>Quoted.</span></blockquote>
@@ -202,4 +202,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4f392a776e55dfeb4805327ea25f372a
+pass sha256:1adf009fb03b5ba451c6460a9a6492ad

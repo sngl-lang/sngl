@@ -161,8 +161,8 @@ data class Style(
     var borderStyle: SnglBorderStyle = SnglBorderStyle.UNSET,
     var opacity: Double? = null,
     var cursor: String = "",
-    var display: SnglDisplay = SnglDisplay.FLEX,
-    var listStyleType: SnglListStyle = SnglListStyle.NONE
+    var display: SnglDisplay = SnglDisplay.UNSET,
+    var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
 data class Color(
@@ -552,4 +552,4 @@ fun SnglRemoteImage(url: String) {
     Image(bitmap = shown, contentDescription = null, modifier = Modifier)
 }
 -- run/kotlin/android --
-pass sha256:074db74c5ef49d8de94beecb1bef3fc6
+pass sha256:241d190dcc3dc9632eb9571fcc6bfda6

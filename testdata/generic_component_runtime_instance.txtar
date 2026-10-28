@@ -100,60 +100,6 @@ type __anon_v_ba918a struct {
 	V string
 }
 
-type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
-	FlexDirection  string
-	AlignItems     string
-	JustifyContent string
-	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
-	FontFamily     string
-	FontWeight     string
-	FontStyle      string
-	TextAlign      string
-	MaxLines       int
-	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
-	Border         string
-	BorderBottom   string
-	BorderLeft     string
-	BorderCollapse string
-	BorderStyle    string
-	Opacity        float64
-	Cursor         string
-	Display        string
-	ListStyleType  string
-}
-
 // Model holds the state for this SNGL UI.
 type Model struct {
 	items          []int
@@ -700,60 +646,6 @@ type __anon_v_ba918a struct {
 	V string
 }
 
-type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
-	FlexDirection  string
-	AlignItems     string
-	JustifyContent string
-	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
-	FontFamily     string
-	FontWeight     string
-	FontStyle      string
-	TextAlign      string
-	MaxLines       int
-	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
-	Border         string
-	BorderBottom   string
-	BorderLeft     string
-	BorderCollapse string
-	BorderStyle    string
-	Opacity        float64
-	Cursor         string
-	Display        string
-	ListStyleType  string
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	items          []int
@@ -809,177 +701,6 @@ func New() *Model {
 	m.__rendering2 = false
 	m.__renderAgain2 = false
 	return m
-}
-
-func LookOf(s Style) gtk4rt.Look {
-	look := LookHidden(s, (s.Display == "none"))
-	return look
-}
-
-func LookHidden(s Style, hidden bool) gtk4rt.Look {
-	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor}
-	return look
-}
-
-func CssOf(s Style) string {
-	var __lt0 string
-	if s.Opacity == 0.0 {
-		__lt0 = ""
-	} else {
-		__lt0 = fmt.Sprint(s.Opacity)
-	}
-	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt0))
-	return css
-}
-
-func CrossOf(a string) int {
-	var __lt1 int
-	switch a {
-	case "center":
-		__lt1 = 2
-	case "end":
-		__lt1 = 3
-	case "baseline":
-		__lt1 = 4
-	default:
-		__lt1 = 0
-	}
-	return __lt1
-}
-
-func TextAlignOf(a string) int {
-	var __lt2 int
-	switch a {
-	case "center":
-		__lt2 = 1
-	case "right":
-		__lt2 = 2
-	case "justify":
-		__lt2 = 3
-	default:
-		__lt2 = 0
-	}
-	return __lt2
-}
-
-func WrapOf(w string) int {
-	var __lt3 int
-	switch w {
-	case "pre", "nowrap":
-		__lt3 = 1
-	case "preWrap", "preLine":
-		__lt3 = 2
-	default:
-		__lt3 = 0
-	}
-	return __lt3
-}
-
-func Decl(name string, value string) string {
-	var __lt4 string
-	if value == "" {
-		__lt4 = ""
-	} else {
-		__lt4 = (((name + ": ") + value) + "; ")
-	}
-	return __lt4
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt6 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt6 = own
-	} else {
-		var __lt5 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt5 = axis
-		} else {
-			__lt5 = all
-		}
-		__lt6 = __lt5
-	}
-	return Length(max((__lt6.Px + (11.0 * (__lt6.Em + __lt6.Rem))), 0.0))
-}
-
-func Length(v float64) string {
-	var __lt7 string
-	if v == 0.0 {
-		__lt7 = ""
-	} else {
-		__lt7 = (fmt.Sprint(v) + "px")
-	}
-	return __lt7
-}
-
-func CssColor(c__r0 snglcolor.Color) string {
-	var __lt8 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt8 = ""
-	} else {
-		__lt8 = c__r0.Hex()
-	}
-	return __lt8
-}
-
-func Points(v float64) string {
-	var __lt9 string
-	if v == 0.0 {
-		__lt9 = ""
-	} else {
-		__lt9 = (fmt.Sprint(v) + "pt")
-	}
-	return __lt9
-}
-
-func WeightOf(w string) string {
-	var __lt10 string
-	switch w {
-	case "bold":
-		__lt10 = "bold"
-	case "bolder":
-		__lt10 = "bolder"
-	case "lighter":
-		__lt10 = "lighter"
-	default:
-		__lt10 = ""
-	}
-	return __lt10
-}
-
-func SlantOf(s string) string {
-	var __lt11 string
-	switch s {
-	case "italic":
-		__lt11 = "italic"
-	case "oblique":
-		__lt11 = "oblique"
-	default:
-		__lt11 = ""
-	}
-	return __lt11
-}
-
-func LineOf(s Style) string {
-	var __lt12 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt12 = "solid"
-	case "dashed":
-		__lt12 = "dashed"
-	case "dotted":
-		__lt12 = "dotted"
-	case "double":
-		__lt12 = "double"
-	default:
-		var __lt13 string
-		if (s.BorderWidth != Measurement{Px: 0}) {
-			__lt13 = "solid"
-		} else {
-			__lt13 = ""
-		}
-		__lt12 = __lt13
-	}
-	return __lt12
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1508,183 +1229,11 @@ data class __anon_v_ba918a(
     var v: String = ""
 )
 
-data class Style(
-    var padding: Measurement = Measurement(),
-    var paddingTop: Measurement = Measurement(),
-    var paddingRight: Measurement = Measurement(),
-    var paddingBottom: Measurement = Measurement(),
-    var paddingLeft: Measurement = Measurement(),
-    var paddingX: Measurement = Measurement(),
-    var paddingY: Measurement = Measurement(),
-    var margin: Measurement = Measurement(),
-    var marginTop: Measurement = Measurement(),
-    var marginRight: Measurement = Measurement(),
-    var marginBottom: Measurement = Measurement(),
-    var marginLeft: Measurement = Measurement(),
-    var marginX: Measurement = Measurement(),
-    var marginY: Measurement = Measurement(),
-    var gap: Measurement = Measurement(),
-    var width: Measurement = Measurement(),
-    var minWidth: Measurement = Measurement(),
-    var height: Measurement = Measurement(),
-    var maxWidth: Measurement = Measurement(),
-    var maxHeight: Measurement = Measurement(),
-    var flex: Double = 0.0,
-    var flexDirection: SnglFlexDirection = SnglFlexDirection.ROW,
-    var alignItems: SnglAlignment = SnglAlignment.START,
-    var justifyContent: SnglJustification = SnglJustification.START,
-    var position: SnglPosition = SnglPosition.STATIC,
-    var top: Measurement = Measurement(),
-    var bottom: Measurement = Measurement(),
-    var left: Measurement = Measurement(),
-    var right: Measurement = Measurement(),
-    var zIndex: Int = 0,
-    var color: Color = Color(),
-    var fontSize: Measurement = Measurement(),
-    var fontFamily: String = "",
-    var fontWeight: SnglFontWeight = SnglFontWeight.NORMAL,
-    var fontStyle: SnglFontStyle = SnglFontStyle.NORMAL,
-    var textAlign: SnglTextAlign = SnglTextAlign.LEFT,
-    var maxLines: Int = 0,
-    var whiteSpace: SnglWhiteSpace = SnglWhiteSpace.NORMAL,
-    var background: Color = Color(),
-    var borderRadius: Measurement = Measurement(),
-    var borderColor: Color = Color(),
-    var borderWidth: Measurement = Measurement(),
-    var border: String = "",
-    var borderBottom: String = "",
-    var borderLeft: String = "",
-    var borderCollapse: String = "",
-    var borderStyle: SnglBorderStyle = SnglBorderStyle.NONE,
-    var opacity: Double = 0.0,
-    var cursor: String = "",
-    var display: SnglDisplay = SnglDisplay.FLEX,
-    var listStyleType: SnglListStyle = SnglListStyle.NONE
-)
-
-data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
-) {
-    override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
-}
-
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
-
-enum class SnglFlexDirection(private val sngl: String) {
-    ROW("row"),
-    COLUMN("column"),
-    ROWREVERSE("rowReverse"),
-    COLUMNREVERSE("columnReverse");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglAlignment(private val sngl: String) {
-    START("start"),
-    CENTER("center"),
-    END("end"),
-    STRETCH("stretch"),
-    BASELINE("baseline");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglJustification(private val sngl: String) {
-    START("start"),
-    CENTER("center"),
-    END("end"),
-    SPACEBETWEEN("spaceBetween"),
-    SPACEAROUND("spaceAround"),
-    SPACEEVENLY("spaceEvenly");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglPosition(private val sngl: String) {
-    STATIC("static"),
-    RELATIVE("relative"),
-    ABSOLUTE("absolute"),
-    FIXED("fixed"),
-    STICKY("sticky");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglFontWeight(private val sngl: String) {
-    NORMAL("normal"),
-    BOLD("bold"),
-    LIGHTER("lighter"),
-    BOLDER("bolder");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglFontStyle(private val sngl: String) {
-    NORMAL("normal"),
-    ITALIC("italic"),
-    OBLIQUE("oblique");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglTextAlign(private val sngl: String) {
-    LEFT("left"),
-    CENTER("center"),
-    RIGHT("right"),
-    JUSTIFY("justify");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglWhiteSpace(private val sngl: String) {
-    NORMAL("normal"),
-    PRE("pre"),
-    PREWRAP("preWrap"),
-    PRELINE("preLine"),
-    NOWRAP("nowrap");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglBorderStyle(private val sngl: String) {
-    NONE("none"),
-    SOLID("solid"),
-    DASHED("dashed"),
-    DOTTED("dotted"),
-    DOUBLE("double");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglDisplay(private val sngl: String) {
-    FLEX("flex"),
-    BLOCK("block"),
-    INLINE("inline"),
-    INLINEBLOCK("inlineBlock"),
-    INLINEFLEX("inlineFlex"),
-    NONE("none"),
-    GRID("grid");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglListStyle(private val sngl: String) {
-    NONE("none"),
-    DISC("disc"),
-    CIRCLE("circle"),
-    SQUARE("square"),
-    DECIMAL("decimal");
-
-    override fun toString(): String = sngl
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1717,7 +1266,7 @@ fun MainScreen() {
                 })
             }
             if (shown) {
-                Held__int(value = n, next = 4, __ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, onValue = { __value ->
+                Held__int(value = n, next = 4, onValue = { __value ->
                     n = __value
                 })
             }
@@ -1756,7 +1305,7 @@ fun Show__string(xs: List<String> = listOf<String>(), w: __anon_v_ba918a = __ano
 }
 
 @Composable
-fun Held__int(value: Int, next: Int, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, onValue: ((Int) -> Unit)? = null) {
+fun Held__int(value: Int, next: Int, onValue: ((Int) -> Unit)? = null) {
     var hits by remember { mutableStateOf(0) }
 
     Button(onClick = {
@@ -1765,61 +1314,6 @@ fun Held__int(value: Int, next: Int, __ctx_flexShare: (Float) -> androidx.compos
     }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = hits.toString(), modifier = Modifier)
     }
-}
-
-fun surfaceModifierOf(s: Style, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if ((s.flex == 0.0)) (if ((s == Style())) Modifier else styleModifier(s, false)) else (if ((s == Style())) Modifier else styleModifier(s, false)).then(share(s.flex.toFloat())))
-
-fun colorOf(c: Color): androidx.compose.ui.graphics.Color = (if ((c == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt()))
-
-fun buttonShapeOf(s: Style): androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == Measurement(px = 0.0))) CircleShape else RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat())))
-
-fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
-    var m: androidx.compose.ui.Modifier = Modifier
-    var top = (if ((s.marginTop != Measurement(px = 0.0))) s.marginTop else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
-    var right = (if ((s.marginRight != Measurement(px = 0.0))) s.marginRight else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
-    var bottom = (if ((s.marginBottom != Measurement(px = 0.0))) s.marginBottom else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
-    var left = (if ((s.marginLeft != Measurement(px = 0.0))) s.marginLeft else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
-    if (((((top != Measurement(px = 0.0)) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
-    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + 0.0).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + 0.0).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + 0.0).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + 0.0).toFloat()))
-    }
-    if ((s.zIndex != 0)) {
-    	m = m.zIndex(s.zIndex.toFloat())
-    }
-    if (((s.minWidth != Measurement(px = 0.0)) || (s.maxWidth != Measurement(px = 0.0)))) {
-    	m = m.widthIn((if ((s.minWidth != Measurement(px = 0.0))) Dp((s.minWidth.px + (16.0 * (s.minWidth.em + s.minWidth.rem))).toFloat()) else Dp.Unspecified), (if ((s.maxWidth != Measurement(px = 0.0))) Dp((s.maxWidth.px + (16.0 * (s.maxWidth.em + s.maxWidth.rem))).toFloat()) else Dp.Unspecified))
-    }
-    if ((s.maxHeight != Measurement(px = 0.0))) {
-    	m = m.heightIn(Dp.Unspecified, Dp((s.maxHeight.px + (16.0 * (s.maxHeight.em + s.maxHeight.rem))).toFloat()))
-    }
-    if ((s.width != Measurement(px = 0.0))) {
-    	m = m.width(Dp((s.width.px + (16.0 * (s.width.em + s.width.rem))).toFloat()))
-    }
-    if ((s.height != Measurement(px = 0.0))) {
-    	m = m.height(Dp((s.height.px + (16.0 * (s.height.em + s.height.rem))).toFloat()))
-    }
-    if ((s.opacity != 0.0)) {
-    	m = m.alpha(s.opacity.toFloat())
-    }
-    var shape: androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == Measurement(px = 0.0))) RectangleShape else RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat())))
-    if ((s.borderRadius != Measurement(px = 0.0))) {
-    	m = m.clip(shape)
-    }
-    var edge = 0.0
-    if ((s.borderWidth != Measurement(px = 0.0))) {
-    	edge = (s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem)))
-    	m = m.border(Dp((s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != Color())) s.borderColor else s.color).r.toInt(), green = (if ((s.borderColor != Color())) s.borderColor else s.color).g.toInt(), blue = (if ((s.borderColor != Color())) s.borderColor else s.color).b.toInt(), alpha = (if ((s.borderColor != Color())) s.borderColor else s.color).a.toInt()), shape)
-    }
-    if ((paints && (s.background != Color()))) {
-    	m = m.background(androidx.compose.ui.graphics.Color(red = s.background.r.toInt(), green = s.background.g.toInt(), blue = s.background.b.toInt(), alpha = s.background.a.toInt()), shape)
-    }
-    top = (if ((s.paddingTop != Measurement(px = 0.0))) s.paddingTop else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
-    right = (if ((s.paddingRight != Measurement(px = 0.0))) s.paddingRight else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
-    bottom = (if ((s.paddingBottom != Measurement(px = 0.0))) s.paddingBottom else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
-    left = (if ((s.paddingLeft != Measurement(px = 0.0))) s.paddingLeft else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
-    if ((((((edge != 0.0) || (top != Measurement(px = 0.0))) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
-    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + edge).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + edge).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + edge).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + edge).toFloat()))
-    }
-    return m
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -2190,10 +1684,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:53296e4726e10803016f6cae1fcb1d01
+pass sha256:0819a711d5828ce3145e3aadaeb3538d
 -- run/go/gtk4 --
-pass sha256:506bac0b48e2f188c4c9bbc49f9846e5
+pass sha256:1344a406c293db690b9e7495db3867a0
 -- run/kotlin/android --
-pass sha256:ec0c938f78bf8d8ce37cb80a3f8d196b
+pass sha256:9ac581bee4fc2c9d1e99a43fab46fe95
 -- run/none/html --
 pass sha256:5a0ce9686d5b02378edfbd2aa0aeb709

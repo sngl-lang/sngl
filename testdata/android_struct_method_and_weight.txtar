@@ -149,8 +149,8 @@ data class Style(
     var borderStyle: SnglBorderStyle = SnglBorderStyle.UNSET,
     var opacity: Double? = null,
     var cursor: String = "",
-    var display: SnglDisplay = SnglDisplay.FLEX,
-    var listStyleType: SnglListStyle = SnglListStyle.NONE
+    var display: SnglDisplay = SnglDisplay.UNSET,
+    var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
 data class Color(
@@ -377,4 +377,4 @@ fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.u
 
 fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
 -- run/kotlin/android --
-pass sha256:35a6ab9280419d00ec8e0eceeb358f40
+pass sha256:15f5e9c8fc432c79011d4ce35a8b4c49

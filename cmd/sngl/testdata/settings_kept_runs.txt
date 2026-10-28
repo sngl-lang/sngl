@@ -60,22 +60,22 @@ ui.window {
     ui.text(value="{count}")
 }
 -- testrun/run/fyne/go/app.sngl/1 --
-sha256:c2721744b6dd19f27fd8630b0fbfc396
+sha256:047128495389aecda773edc4d0c79045
 {
   "stdout": "count 0\n"
 }
 -- testrun/run/fyne/go/app.sngl/2 --
-sha256:c2721744b6dd19f27fd8630b0fbfc396
+sha256:047128495389aecda773edc4d0c79045
 {
   "stdout": "count 1\n"
 }
 -- testrun/run/gtk4/go/app.sngl/1 --
-sha256:79616c6573fd5900fdfa167460bbb0ae
+sha256:b182096d9d41f6e968a19673616377d7
 {
   "stdout": "count 0\n"
 }
 -- testrun/run/gtk4/go/app.sngl/2 --
-sha256:79616c6573fd5900fdfa167460bbb0ae
+sha256:b182096d9d41f6e968a19673616377d7
 {
   "stdout": "count 1\n"
 }

@@ -121,7 +121,7 @@ ui.window {
     main
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:657f358720312724aa6c7e405fb3b893
+sha256:a951798c5946153fe27ca2c01dd7dff6
 {
   "results": [
     {

@@ -144,7 +144,7 @@ ui.window {
     flush
 }
 -- testrun/android/kotlin/app.sngl/fixed/1 --
-sha256:134f34187479c76f760233f8782c2414
+sha256:dd9ff1d81d24e1b736647c39f400d5a0
 {
   "results": [
     {
@@ -157,7 +157,7 @@ sha256:134f34187479c76f760233f8782c2414
   }
 }
 -- testrun/android/kotlin/app.sngl/flush/1 --
-sha256:098edff0bd1914a6fa4c39e32582418f
+sha256:3d525aaf79efdbd7f537b167536d0294
 {
   "results": [
     {
@@ -170,7 +170,7 @@ sha256:098edff0bd1914a6fa4c39e32582418f
   }
 }
 -- testrun/android/kotlin/app.sngl/kept/1 --
-sha256:e2da74d103179d71be27e569736fb9d7
+sha256:de003f8973ec74d360c15a6e583ef3f9
 {
   "results": [
     {
@@ -183,7 +183,7 @@ sha256:e2da74d103179d71be27e569736fb9d7
   }
 }
 -- testrun/android/kotlin/app.sngl/sides/1 --
-sha256:d0fdf1984b259930086c6bb490f8c785
+sha256:be6d4c8c102e02ee40d3c26cedfd3f40
 {
   "results": [
     {
@@ -196,7 +196,7 @@ sha256:d0fdf1984b259930086c6bb490f8c785
   }
 }
 -- testrun/bubbletea/go/app.sngl/fixed/1 --
-sha256:99597c200253b59f580808c869b2e2f4
+sha256:f49fee66b565fa7babfc9230ecc0096c
 {
   "results": [
     {
@@ -209,7 +209,7 @@ sha256:99597c200253b59f580808c869b2e2f4
   }
 }
 -- testrun/bubbletea/go/app.sngl/flush/1 --
-sha256:1df402526d5abfd78d363239cfce8c6c
+sha256:622afa482c07fc6a8e09ff00e3632c5a
 {
   "results": [
     {
@@ -222,7 +222,7 @@ sha256:1df402526d5abfd78d363239cfce8c6c
   }
 }
 -- testrun/bubbletea/go/app.sngl/kept/1 --
-sha256:9549296d0a7ec8c359aba8b57bdd49d8
+sha256:8b817afa1018acf776a4a9f82d34b859
 {
   "results": [
     {
@@ -235,7 +235,7 @@ sha256:9549296d0a7ec8c359aba8b57bdd49d8
   }
 }
 -- testrun/bubbletea/go/app.sngl/sides/1 --
-sha256:b6ace79227ecdaf097e00da42fbf2cf0
+sha256:c176e9c76846cba30d2222f94786a961
 {
   "results": [
     {
@@ -274,7 +274,7 @@ sha256:35dbc454e41fae81bfe1f4e8f473054f
   }
 }
 -- testrun/fyne/go/app.sngl/kept/1 --
-sha256:47aa2ba58f53bf33f111edeb7f719edf
+sha256:3154936f5378551417ec8b0a49234080
 {
   "results": [
     {
@@ -326,7 +326,7 @@ sha256:82650db9a6dac25a36ee2b24a26e37eb
   }
 }
 -- testrun/gtk4/go/app.sngl/kept/1 --
-sha256:401ba803d11c9172fa35ce18ee808e69
+sha256:854439c185b3563718abed2892fcd594
 {
   "results": [
     {

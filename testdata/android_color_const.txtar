@@ -127,8 +127,8 @@ data class Style(
     var borderStyle: SnglBorderStyle = SnglBorderStyle.UNSET,
     var opacity: Double? = null,
     var cursor: String = "",
-    var display: SnglDisplay = SnglDisplay.FLEX,
-    var listStyleType: SnglListStyle = SnglListStyle.NONE
+    var display: SnglDisplay = SnglDisplay.UNSET,
+    var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
 data class Color(
@@ -383,4 +383,4 @@ val snglFlexShare: (Float) -> Modifier = { w ->
     Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
 }
 -- run/kotlin/android --
-pass sha256:82d6f514e08cc4855c0d4b34bc75d7f2
+pass sha256:2ef14e0aa260ba517d63d18891d49e46

@@ -292,13 +292,13 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 					gtk4rt.Connect(m.off, "clicked", func() {
 						m.on = false
 						gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.on))
-						var __lt14 string
+						var __lt17 string
 						if m.on {
-							__lt14 = "yes"
+							__lt17 = "yes"
 						} else {
-							__lt14 = "no"
+							__lt17 = "no"
 						}
-						gtk4rt.LabelSetLabel(m.__n1, __lt14)
+						gtk4rt.LabelSetLabel(m.__n1, __lt17)
 					})
 					gtk4rt.InsertBefore(parent, m.__slot0_at, m.off)
 					m.__slot0 = append(m.__slot0, m.off)
@@ -333,14 +333,14 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.on))
 	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
-	var __lt15 string
+	var __lt18 string
 	if m.on {
-		__lt15 = "yes"
+		__lt18 = "yes"
 	} else {
-		__lt15 = "no"
+		__lt18 = "no"
 	}
 	m.__n1 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.__n1, __lt15)
+	gtk4rt.LabelSetLabel(m.__n1, __lt18)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__root, m.__n0)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
@@ -382,4 +382,4 @@ func (m *Model) __list_off(key string, w gtk4rt.Handle) {
 -- run/go/fyne --
 pass sha256:7b07a161161b319b7c4c25b451d9c119
 -- run/go/gtk4 --
-pass sha256:bd0b37adff46192a6a7c57f8688d102b
+pass sha256:d35badc0b8555089507b64d5c731b7de

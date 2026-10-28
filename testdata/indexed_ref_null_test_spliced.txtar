@@ -296,8 +296,8 @@ func LookOf(s Style) lipgloss.Style {
 	return BoxLook(s, true)
 }
 
-func FitOf(whiteSpace string, overflow string, display string) tui.Fit {
-	return tui.Fit{Wrap: WrapOf(whiteSpace), Clip: (((overflow == "hidden") || (overflow == "scroll")) || (overflow == "auto")), Hidden: (display == "none")}
+func FitOf(whiteSpace string, display string) tui.Fit {
+	return tui.Fit{Wrap: WrapOf(whiteSpace), Hidden: (display == "none")}
 }
 
 func GrowOf(flex *float64, display string) float64 {
@@ -323,8 +323,8 @@ func RowsOf(m__r0 *Measurement) int {
 
 func BoxLook(s Style, words bool) lipgloss.Style {
 	if func(_a1, _b2 Style) bool {
-		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
-	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
@@ -827,7 +827,7 @@ func (m Model) View() tea.View {
 	if part0_0Focused {
 		part0_0Prefix = ">"
 	}
-	part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint("m"))
+	part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint("m"))
 	part0Children = append(part0Children, part0_0)
 	var part0_1 string
 	part0_1Focused := (m.__focusID == 1)
@@ -835,21 +835,21 @@ func (m Model) View() tea.View {
 	if part0_1Focused {
 		part0_1Prefix = ">"
 	}
-	part0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_1Prefix + " " + fmt.Sprint("h"))
+	part0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1Prefix + " " + fmt.Sprint("h"))
 	part0Children = append(part0Children, part0_1)
 	var part0_2 string
 	if m.shown {
 		if m.skip == "a" {
-			part0_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.skip))
+			part0_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.skip))
 		} else {
-			part0_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("z"))
+			part0_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("z"))
 		}
 	}
 	if part0_2 != "" {
 		part0Children = append(part0Children, part0_2)
 	}
 	var part0_3 string
-	part0_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("x!"))
+	part0_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("x!"))
 	part0Children = append(part0Children, part0_3)
 	var part0_4 string
 	part0_4 = m.renderStep(m.depth, 0)
@@ -869,7 +869,7 @@ func (m Model) View() tea.View {
 			if part0_5ItemFocused {
 				part0_5ItemPrefix = ">"
 			}
-			part0_5Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_5ItemPrefix + " " + fmt.Sprint(n))
+			part0_5Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_5ItemPrefix + " " + fmt.Sprint(n))
 			__focusPos2++
 		}
 		if part0_5Item != "" {
@@ -886,9 +886,9 @@ func (m Model) View() tea.View {
 		_ = n
 		var part0_6Item string
 		if n == "a" {
-			part0_6Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(n))
+			part0_6Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(n))
 		} else {
-			part0_6Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("z"))
+			part0_6Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("z"))
 		}
 		if part0_6Item != "" {
 			part0_6Items = append(part0_6Items, part0_6Item)
@@ -904,12 +904,12 @@ func (m Model) View() tea.View {
 		_ = __copy0
 		_ = n
 		var part0_7Item_0 string
-		part0_7Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(n))
+		part0_7Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(n))
 		part0_7Items = append(part0_7Items, part0_7Item_0)
 		var part0_7Item_1 string
 		var part0_7Item_1Children []string
 		var part0_7Item_1_0 string
-		part0_7Item_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(func() int {
+		part0_7Item_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(func() int {
 			if __v, __ok := m.local__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
@@ -920,13 +920,13 @@ func (m Model) View() tea.View {
 		if n != m.skip {
 			var part0_7Item_1_1Parts []string
 			var part0_7Item_1_1Part_0 string
-			part0_7Item_1_1Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint((n + "!")))
+			part0_7Item_1_1Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint((n + "!")))
 			part0_7Item_1_1Parts = append(part0_7Item_1_1Parts, part0_7Item_1_1Part_0)
 			var part0_7Item_1_1Part_1 string
 			if n == "a" {
-				part0_7Item_1_1Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(n))
+				part0_7Item_1_1Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(n))
 			} else {
-				part0_7Item_1_1Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("z"))
+				part0_7Item_1_1Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("z"))
 			}
 			if part0_7Item_1_1Part_1 != "" {
 				part0_7Item_1_1Parts = append(part0_7Item_1_1Parts, part0_7Item_1_1Part_1)
@@ -936,7 +936,7 @@ func (m Model) View() tea.View {
 			for _, i := range []int{1, 2} {
 				_ = i
 				var part0_7Item_1_1Part_2Item string
-				part0_7Item_1_1Part_2Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint((n + fmt.Sprint(i))))
+				part0_7Item_1_1Part_2Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint((n + fmt.Sprint(i))))
 				part0_7Item_1_1Part_2Items = append(part0_7Item_1_1Part_2Items, part0_7Item_1_1Part_2Item)
 			}
 			part0_7Item_1_1Part_2 = tui.Spaced(false, lipgloss.Left, 0, part0_7Item_1_1Part_2Items...)
@@ -949,7 +949,7 @@ func (m Model) View() tea.View {
 			part0_7Item_1Children = append(part0_7Item_1Children, part0_7Item_1_1)
 		}
 		part0_7Item_1 = lipgloss.JoinVertical(lipgloss.Left, part0_7Item_1Children...)
-		part0_7Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_7Item_1)
+		part0_7Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_7Item_1)
 		part0_7Items = append(part0_7Items, part0_7Item_1)
 	}
 	part0_7 = tui.Spaced(false, lipgloss.Left, 0, part0_7Items...)
@@ -957,7 +957,7 @@ func (m Model) View() tea.View {
 		part0Children = append(part0Children, part0_7)
 	}
 	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
-	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0)
+	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0)
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -969,7 +969,7 @@ func (m Model) renderStep(n int, __depth int) string {
 	var result string
 	var resultChildren []string
 	var result_0 string
-	result_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("s" + fmt.Sprint(n))))
+	result_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("s" + fmt.Sprint(n))))
 	resultChildren = append(resultChildren, result_0)
 	var result_1 string
 	if n > 0 {
@@ -982,7 +982,7 @@ func (m Model) renderStep(n int, __depth int) string {
 		resultChildren = append(resultChildren, result_1)
 	}
 	result = lipgloss.JoinVertical(lipgloss.Left, resultChildren...)
-	result = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(result)
+	result = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(result)
 	return result
 }
 
@@ -1048,66 +1048,6 @@ import (
 type ErrorEvent struct {
 	Message string
 	Kind    string
-}
-
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
-type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
-	FlexDirection  string
-	AlignItems     string
-	JustifyContent string
-	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
-	FontFamily     string
-	FontWeight     string
-	FontStyle      string
-	TextAlign      string
-	MaxLines       int
-	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
-	Border         string
-	BorderBottom   string
-	BorderLeft     string
-	BorderCollapse string
-	BorderStyle    string
-	Opacity        float64
-	Cursor         string
-	Display        string
-	ListStyleType  string
 }
 
 // Model holds the state for this SNGL UI.
@@ -2169,66 +2109,6 @@ type ErrorEvent struct {
 	Kind    string
 }
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
-type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
-	FlexDirection  string
-	AlignItems     string
-	JustifyContent string
-	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
-	FontFamily     string
-	FontWeight     string
-	FontStyle      string
-	TextAlign      string
-	MaxLines       int
-	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
-	Border         string
-	BorderBottom   string
-	BorderLeft     string
-	BorderCollapse string
-	BorderStyle    string
-	Opacity        float64
-	Cursor         string
-	Display        string
-	ListStyleType  string
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	depth          int
@@ -2296,177 +2176,6 @@ func New() *Model {
 
 func (m *Model) shout__inst0() string {
 	return "x!"
-}
-
-func LookOf(s Style) gtk4rt.Look {
-	look := LookHidden(s, (s.Display == "none"))
-	return look
-}
-
-func LookHidden(s Style, hidden bool) gtk4rt.Look {
-	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor}
-	return look
-}
-
-func CssOf(s Style) string {
-	var __lt1 string
-	if s.Opacity == 0.0 {
-		__lt1 = ""
-	} else {
-		__lt1 = fmt.Sprint(s.Opacity)
-	}
-	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt1))
-	return css
-}
-
-func CrossOf(a string) int {
-	var __lt2 int
-	switch a {
-	case "center":
-		__lt2 = 2
-	case "end":
-		__lt2 = 3
-	case "baseline":
-		__lt2 = 4
-	default:
-		__lt2 = 0
-	}
-	return __lt2
-}
-
-func TextAlignOf(a string) int {
-	var __lt3 int
-	switch a {
-	case "center":
-		__lt3 = 1
-	case "right":
-		__lt3 = 2
-	case "justify":
-		__lt3 = 3
-	default:
-		__lt3 = 0
-	}
-	return __lt3
-}
-
-func WrapOf(w string) int {
-	var __lt4 int
-	switch w {
-	case "pre", "nowrap":
-		__lt4 = 1
-	case "preWrap", "preLine":
-		__lt4 = 2
-	default:
-		__lt4 = 0
-	}
-	return __lt4
-}
-
-func Decl(name string, value string) string {
-	var __lt5 string
-	if value == "" {
-		__lt5 = ""
-	} else {
-		__lt5 = (((name + ": ") + value) + "; ")
-	}
-	return __lt5
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
-		} else {
-			__lt6 = all
-		}
-		__lt7 = __lt6
-	}
-	return Length(max((__lt7.Px + (11.0 * (__lt7.Em + __lt7.Rem))), 0.0))
-}
-
-func Length(v float64) string {
-	var __lt8 string
-	if v == 0.0 {
-		__lt8 = ""
-	} else {
-		__lt8 = (fmt.Sprint(v) + "px")
-	}
-	return __lt8
-}
-
-func CssColor(c__r0 snglcolor.Color) string {
-	var __lt9 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt9 = ""
-	} else {
-		__lt9 = c__r0.Hex()
-	}
-	return __lt9
-}
-
-func Points(v float64) string {
-	var __lt10 string
-	if v == 0.0 {
-		__lt10 = ""
-	} else {
-		__lt10 = (fmt.Sprint(v) + "pt")
-	}
-	return __lt10
-}
-
-func WeightOf(w string) string {
-	var __lt11 string
-	switch w {
-	case "bold":
-		__lt11 = "bold"
-	case "bolder":
-		__lt11 = "bolder"
-	case "lighter":
-		__lt11 = "lighter"
-	default:
-		__lt11 = ""
-	}
-	return __lt11
-}
-
-func SlantOf(s string) string {
-	var __lt12 string
-	switch s {
-	case "italic":
-		__lt12 = "italic"
-	case "oblique":
-		__lt12 = "oblique"
-	default:
-		__lt12 = ""
-	}
-	return __lt12
-}
-
-func LineOf(s Style) string {
-	var __lt13 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt13 = "solid"
-	case "dashed":
-		__lt13 = "dashed"
-	case "dotted":
-		__lt13 = "dotted"
-	case "double":
-		__lt13 = "double"
-	default:
-		var __lt14 string
-		if (s.BorderWidth != Measurement{Px: 0}) {
-			__lt14 = "solid"
-		} else {
-			__lt14 = ""
-		}
-		__lt13 = __lt14
-	}
-	return __lt13
 }
 
 func (m *Model) check__inst0(n string) {
@@ -3570,95 +3279,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.composed
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.TextUnitType
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.unit.Dp
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.zIndex
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.border
-import androidx.compose.foundation.background
-
-data class Measurement(
-    val px: Double = 0.0,
-    val em: Double = 0.0,
-    val rem: Double = 0.0
-)
-
-data class Style(
-    var padding: Measurement = Measurement(),
-    var paddingTop: Measurement = Measurement(),
-    var paddingRight: Measurement = Measurement(),
-    var paddingBottom: Measurement = Measurement(),
-    var paddingLeft: Measurement = Measurement(),
-    var paddingX: Measurement = Measurement(),
-    var paddingY: Measurement = Measurement(),
-    var margin: Measurement = Measurement(),
-    var marginTop: Measurement = Measurement(),
-    var marginRight: Measurement = Measurement(),
-    var marginBottom: Measurement = Measurement(),
-    var marginLeft: Measurement = Measurement(),
-    var marginX: Measurement = Measurement(),
-    var marginY: Measurement = Measurement(),
-    var gap: Measurement = Measurement(),
-    var width: Measurement = Measurement(),
-    var minWidth: Measurement = Measurement(),
-    var height: Measurement = Measurement(),
-    var maxWidth: Measurement = Measurement(),
-    var maxHeight: Measurement = Measurement(),
-    var flex: Double = 0.0,
-    var flexDirection: SnglFlexDirection = SnglFlexDirection.ROW,
-    var alignItems: SnglAlignment = SnglAlignment.START,
-    var justifyContent: SnglJustification = SnglJustification.START,
-    var position: SnglPosition = SnglPosition.STATIC,
-    var top: Measurement = Measurement(),
-    var bottom: Measurement = Measurement(),
-    var left: Measurement = Measurement(),
-    var right: Measurement = Measurement(),
-    var zIndex: Int = 0,
-    var color: Color = Color(),
-    var fontSize: Measurement = Measurement(),
-    var fontFamily: String = "",
-    var fontWeight: SnglFontWeight = SnglFontWeight.NORMAL,
-    var fontStyle: SnglFontStyle = SnglFontStyle.NORMAL,
-    var textAlign: SnglTextAlign = SnglTextAlign.LEFT,
-    var maxLines: Int = 0,
-    var whiteSpace: SnglWhiteSpace = SnglWhiteSpace.NORMAL,
-    var background: Color = Color(),
-    var borderRadius: Measurement = Measurement(),
-    var borderColor: Color = Color(),
-    var borderWidth: Measurement = Measurement(),
-    var border: String = "",
-    var borderBottom: String = "",
-    var borderLeft: String = "",
-    var borderCollapse: String = "",
-    var borderStyle: SnglBorderStyle = SnglBorderStyle.NONE,
-    var opacity: Double = 0.0,
-    var cursor: String = "",
-    var display: SnglDisplay = SnglDisplay.FLEX,
-    var listStyleType: SnglListStyle = SnglListStyle.NONE
-)
-
-data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
-) {
-    override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
-}
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -3669,114 +3289,6 @@ fun _snglFloatStr(v: Double): String =
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
-
-enum class SnglFlexDirection(private val sngl: String) {
-    ROW("row"),
-    COLUMN("column"),
-    ROWREVERSE("rowReverse"),
-    COLUMNREVERSE("columnReverse");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglAlignment(private val sngl: String) {
-    START("start"),
-    CENTER("center"),
-    END("end"),
-    STRETCH("stretch"),
-    BASELINE("baseline");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglJustification(private val sngl: String) {
-    START("start"),
-    CENTER("center"),
-    END("end"),
-    SPACEBETWEEN("spaceBetween"),
-    SPACEAROUND("spaceAround"),
-    SPACEEVENLY("spaceEvenly");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglPosition(private val sngl: String) {
-    STATIC("static"),
-    RELATIVE("relative"),
-    ABSOLUTE("absolute"),
-    FIXED("fixed"),
-    STICKY("sticky");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglFontWeight(private val sngl: String) {
-    NORMAL("normal"),
-    BOLD("bold"),
-    LIGHTER("lighter"),
-    BOLDER("bolder");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglFontStyle(private val sngl: String) {
-    NORMAL("normal"),
-    ITALIC("italic"),
-    OBLIQUE("oblique");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglTextAlign(private val sngl: String) {
-    LEFT("left"),
-    CENTER("center"),
-    RIGHT("right"),
-    JUSTIFY("justify");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglWhiteSpace(private val sngl: String) {
-    NORMAL("normal"),
-    PRE("pre"),
-    PREWRAP("preWrap"),
-    PRELINE("preLine"),
-    NOWRAP("nowrap");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglBorderStyle(private val sngl: String) {
-    NONE("none"),
-    SOLID("solid"),
-    DASHED("dashed"),
-    DOTTED("dotted"),
-    DOUBLE("double");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglDisplay(private val sngl: String) {
-    FLEX("flex"),
-    BLOCK("block"),
-    INLINE("inline"),
-    INLINEBLOCK("inlineBlock"),
-    INLINEFLEX("inlineFlex"),
-    NONE("none"),
-    GRID("grid");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglListStyle(private val sngl: String) {
-    NONE("none"),
-    DISC("disc"),
-    CIRCLE("circle"),
-    SQUARE("square"),
-    DECIMAL("decimal");
-
-    override fun toString(): String = sngl
-}
 
 val SnglCopy = SemanticsPropertyKey<String>("SnglCopy")
 
@@ -4028,7 +3540,7 @@ window.__sngl_boot = () => {
     return "x!";
   }
   function css(s) {
-    return [{ property: "border", value: s.border }, { property: "margin", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? s.margin === null ? "" : s.margin.em === 0 && s.margin.rem === 0 ? String(s.margin.px) + "px" : s.margin.px === 0 && s.margin.rem === 0 ? String(s.margin.em) + "em" : s.margin.px === 0 && s.margin.em === 0 ? String(s.margin.rem) + "rem" : "calc(" + plus(plus(s.margin.px === 0 ? "" : String(s.margin.px) + "px", s.margin.em === 0 ? "" : String(s.margin.em) + "em"), s.margin.rem === 0 ? "" : String(s.margin.rem) + "rem") + ")" : "" }, { property: "margin-top", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginTop !== null ? s.marginTop : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-right", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginRight !== null ? s.marginRight : s.marginX !== null ? s.marginX : s.margin) }, { property: "margin-bottom", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginBottom !== null ? s.marginBottom : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-left", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginLeft !== null ? s.marginLeft : s.marginX !== null ? s.marginX : s.margin) }, { property: "padding", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? s.padding === null ? "" : s.padding.em === 0 && s.padding.rem === 0 ? String(s.padding.px) + "px" : s.padding.px === 0 && s.padding.rem === 0 ? String(s.padding.em) + "em" : s.padding.px === 0 && s.padding.em === 0 ? String(s.padding.rem) + "rem" : "calc(" + plus(plus(s.padding.px === 0 ? "" : String(s.padding.px) + "px", s.padding.em === 0 ? "" : String(s.padding.em) + "em"), s.padding.rem === 0 ? "" : String(s.padding.rem) + "rem") + ")" : "" }, { property: "padding-top", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingTop !== null ? s.paddingTop : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-right", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingRight !== null ? s.paddingRight : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "padding-bottom", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingBottom !== null ? s.paddingBottom : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-left", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingLeft !== null ? s.paddingLeft : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "gap", value: s.gap === null ? "" : s.gap.em === 0 && s.gap.rem === 0 ? String(s.gap.px) + "px" : s.gap.px === 0 && s.gap.rem === 0 ? String(s.gap.em) + "em" : s.gap.px === 0 && s.gap.em === 0 ? String(s.gap.rem) + "rem" : "calc(" + plus(plus(s.gap.px === 0 ? "" : String(s.gap.px) + "px", s.gap.em === 0 ? "" : String(s.gap.em) + "em"), s.gap.rem === 0 ? "" : String(s.gap.rem) + "rem") + ")" }, { property: "display", value: s.display === "flex" ? "flex" : s.display === "block" ? "block" : s.display === "inline" ? "inline" : s.display === "inlineBlock" ? "inline-block" : s.display === "inlineFlex" ? "inline-flex" : s.display === "none" ? "none" : s.display === "grid" ? "grid" : "" }, { property: "flex-direction", value: s.flexDirection === "row" ? "row" : s.flexDirection === "column" ? "column" : s.flexDirection === "rowReverse" ? "row-reverse" : s.flexDirection === "columnReverse" ? "column-reverse" : "" }, { property: "align-items", value: s.alignItems === "start" ? "start" : s.alignItems === "center" ? "center" : s.alignItems === "end" ? "end" : s.alignItems === "stretch" ? "stretch" : s.alignItems === "baseline" ? "baseline" : "" }, { property: "justify-content", value: s.justifyContent === "start" ? "start" : s.justifyContent === "center" ? "center" : s.justifyContent === "end" ? "end" : s.justifyContent === "spaceBetween" ? "space-between" : s.justifyContent === "spaceAround" ? "space-around" : s.justifyContent === "spaceEvenly" ? "space-evenly" : "" }, { property: "flex", value: s.flex === null ? "" : String(s.flex) }, { property: "min-width", value: s.flex === null ? "" : "0" }, { property: "min-height", value: s.flex === null ? "" : "0" }, { property: "width", value: s.width === null ? "" : s.width.em === 0 && s.width.rem === 0 ? String(s.width.px) + "px" : s.width.px === 0 && s.width.rem === 0 ? String(s.width.em) + "em" : s.width.px === 0 && s.width.em === 0 ? String(s.width.rem) + "rem" : "calc(" + plus(plus(s.width.px === 0 ? "" : String(s.width.px) + "px", s.width.em === 0 ? "" : String(s.width.em) + "em"), s.width.rem === 0 ? "" : String(s.width.rem) + "rem") + ")" }, { property: "min-width", value: s.minWidth === null ? "" : s.minWidth.em === 0 && s.minWidth.rem === 0 ? String(s.minWidth.px) + "px" : s.minWidth.px === 0 && s.minWidth.rem === 0 ? String(s.minWidth.em) + "em" : s.minWidth.px === 0 && s.minWidth.em === 0 ? String(s.minWidth.rem) + "rem" : "calc(" + plus(plus(s.minWidth.px === 0 ? "" : String(s.minWidth.px) + "px", s.minWidth.em === 0 ? "" : String(s.minWidth.em) + "em"), s.minWidth.rem === 0 ? "" : String(s.minWidth.rem) + "rem") + ")" }, { property: "height", value: s.height === null ? "" : s.height.em === 0 && s.height.rem === 0 ? String(s.height.px) + "px" : s.height.px === 0 && s.height.rem === 0 ? String(s.height.em) + "em" : s.height.px === 0 && s.height.em === 0 ? String(s.height.rem) + "rem" : "calc(" + plus(plus(s.height.px === 0 ? "" : String(s.height.px) + "px", s.height.em === 0 ? "" : String(s.height.em) + "em"), s.height.rem === 0 ? "" : String(s.height.rem) + "rem") + ")" }, { property: "max-width", value: s.maxWidth === null ? "" : s.maxWidth.em === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.px) + "px" : s.maxWidth.px === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.em) + "em" : s.maxWidth.px === 0 && s.maxWidth.em === 0 ? String(s.maxWidth.rem) + "rem" : "calc(" + plus(plus(s.maxWidth.px === 0 ? "" : String(s.maxWidth.px) + "px", s.maxWidth.em === 0 ? "" : String(s.maxWidth.em) + "em"), s.maxWidth.rem === 0 ? "" : String(s.maxWidth.rem) + "rem") + ")" }, { property: "max-height", value: s.maxHeight === null ? "" : s.maxHeight.em === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.px) + "px" : s.maxHeight.px === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.em) + "em" : s.maxHeight.px === 0 && s.maxHeight.em === 0 ? String(s.maxHeight.rem) + "rem" : "calc(" + plus(plus(s.maxHeight.px === 0 ? "" : String(s.maxHeight.px) + "px", s.maxHeight.em === 0 ? "" : String(s.maxHeight.em) + "em"), s.maxHeight.rem === 0 ? "" : String(s.maxHeight.rem) + "rem") + ")" }, { property: "position", value: s.position === "static" ? "static" : s.position === "relative" ? "relative" : s.position === "absolute" ? "absolute" : s.position === "fixed" ? "fixed" : s.position === "sticky" ? "sticky" : "" }, { property: "top", value: s.top === null ? "" : s.top.em === 0 && s.top.rem === 0 ? String(s.top.px) + "px" : s.top.px === 0 && s.top.rem === 0 ? String(s.top.em) + "em" : s.top.px === 0 && s.top.em === 0 ? String(s.top.rem) + "rem" : "calc(" + plus(plus(s.top.px === 0 ? "" : String(s.top.px) + "px", s.top.em === 0 ? "" : String(s.top.em) + "em"), s.top.rem === 0 ? "" : String(s.top.rem) + "rem") + ")" }, { property: "bottom", value: s.bottom === null ? "" : s.bottom.em === 0 && s.bottom.rem === 0 ? String(s.bottom.px) + "px" : s.bottom.px === 0 && s.bottom.rem === 0 ? String(s.bottom.em) + "em" : s.bottom.px === 0 && s.bottom.em === 0 ? String(s.bottom.rem) + "rem" : "calc(" + plus(plus(s.bottom.px === 0 ? "" : String(s.bottom.px) + "px", s.bottom.em === 0 ? "" : String(s.bottom.em) + "em"), s.bottom.rem === 0 ? "" : String(s.bottom.rem) + "rem") + ")" }, { property: "left", value: s.left === null ? "" : s.left.em === 0 && s.left.rem === 0 ? String(s.left.px) + "px" : s.left.px === 0 && s.left.rem === 0 ? String(s.left.em) + "em" : s.left.px === 0 && s.left.em === 0 ? String(s.left.rem) + "rem" : "calc(" + plus(plus(s.left.px === 0 ? "" : String(s.left.px) + "px", s.left.em === 0 ? "" : String(s.left.em) + "em"), s.left.rem === 0 ? "" : String(s.left.rem) + "rem") + ")" }, { property: "right", value: s.right === null ? "" : s.right.em === 0 && s.right.rem === 0 ? String(s.right.px) + "px" : s.right.px === 0 && s.right.rem === 0 ? String(s.right.em) + "em" : s.right.px === 0 && s.right.em === 0 ? String(s.right.rem) + "rem" : "calc(" + plus(plus(s.right.px === 0 ? "" : String(s.right.px) + "px", s.right.em === 0 ? "" : String(s.right.em) + "em"), s.right.rem === 0 ? "" : String(s.right.rem) + "rem") + ")" }, { property: "z-index", value: s.zIndex === null ? "" : String(s.zIndex) }, { property: "color", value: s.color === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.color) }, { property: "font-size", value: s.fontSize === null ? "" : s.fontSize.em === 0 && s.fontSize.rem === 0 ? String(s.fontSize.px) + "px" : s.fontSize.px === 0 && s.fontSize.rem === 0 ? String(s.fontSize.em) + "em" : s.fontSize.px === 0 && s.fontSize.em === 0 ? String(s.fontSize.rem) + "rem" : "calc(" + plus(plus(s.fontSize.px === 0 ? "" : String(s.fontSize.px) + "px", s.fontSize.em === 0 ? "" : String(s.fontSize.em) + "em"), s.fontSize.rem === 0 ? "" : String(s.fontSize.rem) + "rem") + ")" }, { property: "font-family", value: s.fontFamily }, { property: "font-weight", value: s.fontWeight === "normal" ? "normal" : s.fontWeight === "bold" ? "bold" : s.fontWeight === "lighter" ? "lighter" : s.fontWeight === "bolder" ? "bolder" : "" }, { property: "font-style", value: s.fontStyle === "normal" ? "normal" : s.fontStyle === "italic" ? "italic" : s.fontStyle === "oblique" ? "oblique" : "" }, { property: "text-align", value: s.textAlign === "left" ? "left" : s.textAlign === "center" ? "center" : s.textAlign === "right" ? "right" : s.textAlign === "justify" ? "justify" : "" }, { property: "white-space", value: s.whiteSpace === "normal" ? "normal" : s.whiteSpace === "pre" ? "pre" : s.whiteSpace === "preWrap" ? "pre-wrap" : s.whiteSpace === "preLine" ? "pre-line" : s.whiteSpace === "nowrap" ? "nowrap" : "" }, { property: "background-color", value: s.background === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.background) }, { property: "border-radius", value: s.borderRadius === null ? "" : s.borderRadius.em === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.px) + "px" : s.borderRadius.px === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.em) + "em" : s.borderRadius.px === 0 && s.borderRadius.em === 0 ? String(s.borderRadius.rem) + "rem" : "calc(" + plus(plus(s.borderRadius.px === 0 ? "" : String(s.borderRadius.px) + "px", s.borderRadius.em === 0 ? "" : String(s.borderRadius.em) + "em"), s.borderRadius.rem === 0 ? "" : String(s.borderRadius.rem) + "rem") + ")" }, { property: "border-width", value: s.borderWidth === null ? "" : s.borderWidth.em === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.px) + "px" : s.borderWidth.px === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.em) + "em" : s.borderWidth.px === 0 && s.borderWidth.em === 0 ? String(s.borderWidth.rem) + "rem" : "calc(" + plus(plus(s.borderWidth.px === 0 ? "" : String(s.borderWidth.px) + "px", s.borderWidth.em === 0 ? "" : String(s.borderWidth.em) + "em"), s.borderWidth.rem === 0 ? "" : String(s.borderWidth.rem) + "rem") + ")" }, { property: "border-style", value: s.borderStyle === "none" ? "none" : s.borderStyle === "solid" ? "solid" : s.borderStyle === "dashed" ? "dashed" : s.borderStyle === "dotted" ? "dotted" : s.borderStyle === "double" ? "double" : s.borderWidth !== null && s.border === "" ? "solid" : "" }, { property: "border-color", value: s.borderColor === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.borderColor) }, { property: "border-collapse", value: s.borderCollapse }, { property: "opacity", value: s.opacity === null ? "" : String(s.opacity) }, { property: "cursor", value: s.cursor }, { property: "overflow", value: s.overflow === "visible" ? "visible" : s.overflow === "hidden" ? "hidden" : s.overflow === "scroll" ? "scroll" : s.overflow === "auto" ? "auto" : "" }, { property: "list-style-type", value: s.listStyleType === "none" ? "none" : s.listStyleType === "disc" ? "disc" : s.listStyleType === "circle" ? "circle" : s.listStyleType === "square" ? "square" : s.listStyleType === "decimal" ? "decimal" : "" }, { property: "-webkit-line-clamp", value: s.maxLines === null ? "" : String(s.maxLines) }, { property: "overflow", value: s.maxLines === null ? "" : "hidden" }, { property: "display", value: s.maxLines === null ? "" : "-webkit-box" }, { property: "-webkit-box-orient", value: s.maxLines === null ? "" : "vertical" }, { property: "border-bottom", value: s.borderBottom }, { property: "border-left", value: s.borderLeft }];
+    return [{ property: "border", value: s.border }, { property: "margin", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? s.margin === null ? "" : s.margin.em === 0 && s.margin.rem === 0 ? String(s.margin.px) + "px" : s.margin.px === 0 && s.margin.rem === 0 ? String(s.margin.em) + "em" : s.margin.px === 0 && s.margin.em === 0 ? String(s.margin.rem) + "rem" : "calc(" + plus(plus(s.margin.px === 0 ? "" : String(s.margin.px) + "px", s.margin.em === 0 ? "" : String(s.margin.em) + "em"), s.margin.rem === 0 ? "" : String(s.margin.rem) + "rem") + ")" : "" }, { property: "margin-top", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginTop !== null ? s.marginTop : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-right", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginRight !== null ? s.marginRight : s.marginX !== null ? s.marginX : s.margin) }, { property: "margin-bottom", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginBottom !== null ? s.marginBottom : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-left", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginLeft !== null ? s.marginLeft : s.marginX !== null ? s.marginX : s.margin) }, { property: "padding", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? s.padding === null ? "" : s.padding.em === 0 && s.padding.rem === 0 ? String(s.padding.px) + "px" : s.padding.px === 0 && s.padding.rem === 0 ? String(s.padding.em) + "em" : s.padding.px === 0 && s.padding.em === 0 ? String(s.padding.rem) + "rem" : "calc(" + plus(plus(s.padding.px === 0 ? "" : String(s.padding.px) + "px", s.padding.em === 0 ? "" : String(s.padding.em) + "em"), s.padding.rem === 0 ? "" : String(s.padding.rem) + "rem") + ")" : "" }, { property: "padding-top", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingTop !== null ? s.paddingTop : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-right", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingRight !== null ? s.paddingRight : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "padding-bottom", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingBottom !== null ? s.paddingBottom : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-left", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingLeft !== null ? s.paddingLeft : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "gap", value: s.gap === null ? "" : s.gap.em === 0 && s.gap.rem === 0 ? String(s.gap.px) + "px" : s.gap.px === 0 && s.gap.rem === 0 ? String(s.gap.em) + "em" : s.gap.px === 0 && s.gap.em === 0 ? String(s.gap.rem) + "rem" : "calc(" + plus(plus(s.gap.px === 0 ? "" : String(s.gap.px) + "px", s.gap.em === 0 ? "" : String(s.gap.em) + "em"), s.gap.rem === 0 ? "" : String(s.gap.rem) + "rem") + ")" }, { property: "display", value: s.display === "flex" ? "flex" : s.display === "block" ? "block" : s.display === "inline" ? "inline" : s.display === "inlineBlock" ? "inline-block" : s.display === "inlineFlex" ? "inline-flex" : s.display === "none" ? "none" : s.display === "grid" ? "grid" : "" }, { property: "flex-direction", value: s.flexDirection === "row" ? "row" : s.flexDirection === "column" ? "column" : s.flexDirection === "rowReverse" ? "row-reverse" : s.flexDirection === "columnReverse" ? "column-reverse" : "" }, { property: "align-items", value: s.alignItems === "start" ? "start" : s.alignItems === "center" ? "center" : s.alignItems === "end" ? "end" : s.alignItems === "stretch" ? "stretch" : s.alignItems === "baseline" ? "baseline" : "" }, { property: "justify-content", value: s.justifyContent === "start" ? "start" : s.justifyContent === "center" ? "center" : s.justifyContent === "end" ? "end" : s.justifyContent === "spaceBetween" ? "space-between" : s.justifyContent === "spaceAround" ? "space-around" : s.justifyContent === "spaceEvenly" ? "space-evenly" : "" }, { property: "flex", value: s.flex === null ? "" : String(s.flex) }, { property: "min-width", value: s.flex === null ? "" : "0" }, { property: "min-height", value: s.flex === null ? "" : "0" }, { property: "width", value: s.width === null ? "" : s.width.em === 0 && s.width.rem === 0 ? String(s.width.px) + "px" : s.width.px === 0 && s.width.rem === 0 ? String(s.width.em) + "em" : s.width.px === 0 && s.width.em === 0 ? String(s.width.rem) + "rem" : "calc(" + plus(plus(s.width.px === 0 ? "" : String(s.width.px) + "px", s.width.em === 0 ? "" : String(s.width.em) + "em"), s.width.rem === 0 ? "" : String(s.width.rem) + "rem") + ")" }, { property: "min-width", value: s.minWidth === null ? "" : s.minWidth.em === 0 && s.minWidth.rem === 0 ? String(s.minWidth.px) + "px" : s.minWidth.px === 0 && s.minWidth.rem === 0 ? String(s.minWidth.em) + "em" : s.minWidth.px === 0 && s.minWidth.em === 0 ? String(s.minWidth.rem) + "rem" : "calc(" + plus(plus(s.minWidth.px === 0 ? "" : String(s.minWidth.px) + "px", s.minWidth.em === 0 ? "" : String(s.minWidth.em) + "em"), s.minWidth.rem === 0 ? "" : String(s.minWidth.rem) + "rem") + ")" }, { property: "height", value: s.height === null ? "" : s.height.em === 0 && s.height.rem === 0 ? String(s.height.px) + "px" : s.height.px === 0 && s.height.rem === 0 ? String(s.height.em) + "em" : s.height.px === 0 && s.height.em === 0 ? String(s.height.rem) + "rem" : "calc(" + plus(plus(s.height.px === 0 ? "" : String(s.height.px) + "px", s.height.em === 0 ? "" : String(s.height.em) + "em"), s.height.rem === 0 ? "" : String(s.height.rem) + "rem") + ")" }, { property: "max-width", value: s.maxWidth === null ? "" : s.maxWidth.em === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.px) + "px" : s.maxWidth.px === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.em) + "em" : s.maxWidth.px === 0 && s.maxWidth.em === 0 ? String(s.maxWidth.rem) + "rem" : "calc(" + plus(plus(s.maxWidth.px === 0 ? "" : String(s.maxWidth.px) + "px", s.maxWidth.em === 0 ? "" : String(s.maxWidth.em) + "em"), s.maxWidth.rem === 0 ? "" : String(s.maxWidth.rem) + "rem") + ")" }, { property: "max-height", value: s.maxHeight === null ? "" : s.maxHeight.em === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.px) + "px" : s.maxHeight.px === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.em) + "em" : s.maxHeight.px === 0 && s.maxHeight.em === 0 ? String(s.maxHeight.rem) + "rem" : "calc(" + plus(plus(s.maxHeight.px === 0 ? "" : String(s.maxHeight.px) + "px", s.maxHeight.em === 0 ? "" : String(s.maxHeight.em) + "em"), s.maxHeight.rem === 0 ? "" : String(s.maxHeight.rem) + "rem") + ")" }, { property: "position", value: s.position === "static" ? "static" : s.position === "relative" ? "relative" : s.position === "absolute" ? "absolute" : s.position === "fixed" ? "fixed" : s.position === "sticky" ? "sticky" : "" }, { property: "top", value: s.top === null ? "" : s.top.em === 0 && s.top.rem === 0 ? String(s.top.px) + "px" : s.top.px === 0 && s.top.rem === 0 ? String(s.top.em) + "em" : s.top.px === 0 && s.top.em === 0 ? String(s.top.rem) + "rem" : "calc(" + plus(plus(s.top.px === 0 ? "" : String(s.top.px) + "px", s.top.em === 0 ? "" : String(s.top.em) + "em"), s.top.rem === 0 ? "" : String(s.top.rem) + "rem") + ")" }, { property: "bottom", value: s.bottom === null ? "" : s.bottom.em === 0 && s.bottom.rem === 0 ? String(s.bottom.px) + "px" : s.bottom.px === 0 && s.bottom.rem === 0 ? String(s.bottom.em) + "em" : s.bottom.px === 0 && s.bottom.em === 0 ? String(s.bottom.rem) + "rem" : "calc(" + plus(plus(s.bottom.px === 0 ? "" : String(s.bottom.px) + "px", s.bottom.em === 0 ? "" : String(s.bottom.em) + "em"), s.bottom.rem === 0 ? "" : String(s.bottom.rem) + "rem") + ")" }, { property: "left", value: s.left === null ? "" : s.left.em === 0 && s.left.rem === 0 ? String(s.left.px) + "px" : s.left.px === 0 && s.left.rem === 0 ? String(s.left.em) + "em" : s.left.px === 0 && s.left.em === 0 ? String(s.left.rem) + "rem" : "calc(" + plus(plus(s.left.px === 0 ? "" : String(s.left.px) + "px", s.left.em === 0 ? "" : String(s.left.em) + "em"), s.left.rem === 0 ? "" : String(s.left.rem) + "rem") + ")" }, { property: "right", value: s.right === null ? "" : s.right.em === 0 && s.right.rem === 0 ? String(s.right.px) + "px" : s.right.px === 0 && s.right.rem === 0 ? String(s.right.em) + "em" : s.right.px === 0 && s.right.em === 0 ? String(s.right.rem) + "rem" : "calc(" + plus(plus(s.right.px === 0 ? "" : String(s.right.px) + "px", s.right.em === 0 ? "" : String(s.right.em) + "em"), s.right.rem === 0 ? "" : String(s.right.rem) + "rem") + ")" }, { property: "z-index", value: s.zIndex === null ? "" : String(s.zIndex) }, { property: "color", value: s.color === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.color) }, { property: "font-size", value: s.fontSize === null ? "" : s.fontSize.em === 0 && s.fontSize.rem === 0 ? String(s.fontSize.px) + "px" : s.fontSize.px === 0 && s.fontSize.rem === 0 ? String(s.fontSize.em) + "em" : s.fontSize.px === 0 && s.fontSize.em === 0 ? String(s.fontSize.rem) + "rem" : "calc(" + plus(plus(s.fontSize.px === 0 ? "" : String(s.fontSize.px) + "px", s.fontSize.em === 0 ? "" : String(s.fontSize.em) + "em"), s.fontSize.rem === 0 ? "" : String(s.fontSize.rem) + "rem") + ")" }, { property: "font-family", value: s.fontFamily }, { property: "font-weight", value: s.fontWeight === "normal" ? "normal" : s.fontWeight === "bold" ? "bold" : s.fontWeight === "lighter" ? "lighter" : s.fontWeight === "bolder" ? "bolder" : "" }, { property: "font-style", value: s.fontStyle === "normal" ? "normal" : s.fontStyle === "italic" ? "italic" : s.fontStyle === "oblique" ? "oblique" : "" }, { property: "text-align", value: s.textAlign === "left" ? "left" : s.textAlign === "center" ? "center" : s.textAlign === "right" ? "right" : s.textAlign === "justify" ? "justify" : "" }, { property: "white-space", value: s.whiteSpace === "normal" ? "normal" : s.whiteSpace === "pre" ? "pre" : s.whiteSpace === "preWrap" ? "pre-wrap" : s.whiteSpace === "preLine" ? "pre-line" : s.whiteSpace === "nowrap" ? "nowrap" : "" }, { property: "background-color", value: s.background === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.background) }, { property: "border-radius", value: s.borderRadius === null ? "" : s.borderRadius.em === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.px) + "px" : s.borderRadius.px === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.em) + "em" : s.borderRadius.px === 0 && s.borderRadius.em === 0 ? String(s.borderRadius.rem) + "rem" : "calc(" + plus(plus(s.borderRadius.px === 0 ? "" : String(s.borderRadius.px) + "px", s.borderRadius.em === 0 ? "" : String(s.borderRadius.em) + "em"), s.borderRadius.rem === 0 ? "" : String(s.borderRadius.rem) + "rem") + ")" }, { property: "border-width", value: s.borderWidth === null ? "" : s.borderWidth.em === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.px) + "px" : s.borderWidth.px === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.em) + "em" : s.borderWidth.px === 0 && s.borderWidth.em === 0 ? String(s.borderWidth.rem) + "rem" : "calc(" + plus(plus(s.borderWidth.px === 0 ? "" : String(s.borderWidth.px) + "px", s.borderWidth.em === 0 ? "" : String(s.borderWidth.em) + "em"), s.borderWidth.rem === 0 ? "" : String(s.borderWidth.rem) + "rem") + ")" }, { property: "border-style", value: s.borderStyle === "none" ? "none" : s.borderStyle === "solid" ? "solid" : s.borderStyle === "dashed" ? "dashed" : s.borderStyle === "dotted" ? "dotted" : s.borderStyle === "double" ? "double" : s.borderWidth !== null && s.border === "" ? "solid" : "" }, { property: "border-color", value: s.borderColor === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.borderColor) }, { property: "border-collapse", value: s.borderCollapse }, { property: "opacity", value: s.opacity === null ? "" : String(s.opacity) }, { property: "cursor", value: s.cursor }, { property: "list-style-type", value: s.listStyleType === "none" ? "none" : s.listStyleType === "disc" ? "disc" : s.listStyleType === "circle" ? "circle" : s.listStyleType === "square" ? "square" : s.listStyleType === "decimal" ? "decimal" : "" }, { property: "-webkit-line-clamp", value: s.maxLines === null ? "" : String(s.maxLines) }, { property: "overflow", value: s.maxLines === null ? "" : "hidden" }, { property: "display", value: s.maxLines === null ? "" : "-webkit-box" }, { property: "-webkit-box-orient", value: s.maxLines === null ? "" : "vertical" }, { property: "border-bottom", value: s.borderBottom }, { property: "border-left", value: s.borderLeft }];
   }
   function lengthOf(m) {
     return m === null ? "" : m.em === 0 && m.rem === 0 ? String(m.px) + "px" : m.px === 0 && m.rem === 0 ? String(m.em) + "em" : m.px === 0 && m.em === 0 ? String(m.rem) + "rem" : "calc(" + plus(plus(m.px === 0 ? "" : String(m.px) + "px", m.em === 0 ? "" : String(m.em) + "em"), m.rem === 0 ? "" : String(m.rem) + "rem") + ")";
@@ -4866,12 +4378,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:22ea3d1a33dd54089ed1ae295e25bf44
+pass sha256:164c3d7982b51fde4193cb60504e633b
 -- run/go/fyne --
-pass sha256:9e7cc5462e89a31c30e06c945304a8e2
+pass sha256:2382136363f52d3c7b062282a3031bdb
 -- run/go/gtk4 --
-pass sha256:47d5645f6e97008467fd51e2cbb18f4c
+pass sha256:97d39a1b6fefb6c4e448ab501252d81b
 -- run/kotlin/android --
-pass sha256:543bb52982c6ab01fe1b4fd772436fec
+pass sha256:1bccecec514ab9d5cc15c5b75ccaee1f
 -- run/none/html --
-pass sha256:4c4754ef4b624b490c95c65d0cedf324
+pass sha256:4f449a0ce05a56e7c92742fb2fc0fe77

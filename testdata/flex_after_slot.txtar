@@ -155,7 +155,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n4 = fynelayout.NewReachScroll()
 	m.__n4__box = fynelayout.NewBox(m.__n4)
 	m.__n4.SetDirection("vertical")
-	m.__n4__box.SetLook(fynelayout.Look{Grow: 1.0})
+	m.__n4__box.SetLook(fynelayout.Look{Grow: 1.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 	m.__n4.OnReachEnd = m.__n4_reachEnd_handler
 	m.__n5 = widget.NewLabel("")
 	m.__n5.SetText("rows")
@@ -320,6 +320,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:737fd835778a18467e6fab5b3d86050f
+pass sha256:666170efd7c1c8d3c9f9ea5841db406c
 -- run/go/gtk4 --
-pass sha256:4ad76824457e927ba9a1f5ff44346990
+pass sha256:a3e9ef4a6e1ad1faf53e913dab3f24ff

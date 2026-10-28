@@ -175,22 +175,19 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func CrossOf(a string) float64 {
+func GrowOf(flex *float64, display string) float64 {
 	var __lt0 float64
-	switch a {
-	case "center":
-		__lt0 = 0.5
-	case "end":
-		__lt0 = 1.0
-	default:
+	if (flex == nil) || (display == "none") {
 		__lt0 = 0.0
+	} else {
+		__lt0 = (*(flex))
 	}
 	return __lt0
 }
 
-func RowsOf(m__r0 Measurement) int {
-	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt1 int
+func RowsOf(m__r0 *Measurement) int {
+	var px float64 = PxOf(m__r0)
+	var __lt3 int
 	if px <= 0.0 {
 		__lt3 = 0
 	} else {
@@ -212,8 +209,8 @@ func CellsOf(m__r1 *Measurement) int {
 
 func BoxLook(s Style, words bool) lipgloss.Style {
 	if func(_a1, _b2 Style) bool {
-		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
-	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
@@ -488,7 +485,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
+	contentLook := BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
+	_, contentH := tui.Inner(contentLook, tui.Avail(m.width), m.height)
+	var contentChildren []tui.Part
 	var content_0 string
 	var content_0Children []string
 	var content_0_0 string
@@ -510,7 +509,7 @@ func (m Model) View() tea.View {
 		if content_0_0ItemFocused {
 			content_0_0ItemPrefix = ">"
 		}
-		content_0_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt16, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0_0ItemPrefix + " " + fmt.Sprint(t__r0.Label))
+		content_0_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt16, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0_0ItemPrefix + " " + fmt.Sprint(t__r0.Label))
 		__focusPos0++
 		content_0_0Items = append(content_0_0Items, content_0_0Item)
 	}
@@ -519,74 +518,54 @@ func (m Model) View() tea.View {
 		content_0Children = append(content_0Children, content_0_0)
 	}
 	content_0 = tui.Spaced(true, lipgloss.Top, 1, content_0Children...)
-	content_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0)
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	var content_1Items []string
+	content_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0)
+	contentChildren = append(contentChildren, tui.Fixed(content_0))
 	for k, t__r1 := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
 		_ = k
 		_ = t__r1
-		var content_1Item string
-		var __lt13 string
-		if k == m.idx {
-			__lt13 = "flex"
-		} else {
-			__lt13 = "none"
-		}
-		var __lt14 string
-		if k == m.idx {
-			__lt14 = "flex"
-		} else {
-			__lt14 = "none"
-		}
-		var __lt15 string
-		if k == m.idx {
-			__lt15 = "flex"
-		} else {
-			__lt15 = "none"
-		}
-		var __lt16 string
-		if k == m.idx {
-			__lt16 = "flex"
-		} else {
-			__lt16 = "none"
-		}
 		var __lt17 string
 		if k == m.idx {
 			__lt17 = "flex"
 		} else {
 			__lt17 = "none"
 		}
-		_ = __lt14
-		var content_1ItemChildren []string
-		var content_1Item_0 string
-		if t__r1.__id == 0 {
-			content_1Item_0 = BoxLook(Style{}, true).Render(fmt.Sprint("Overview content"))
+		var __lt18 string
+		if k == m.idx {
+			__lt18 = "flex"
 		} else {
-			if t__r1.__id == 1 {
-				content_1Item_0 = BoxLook(Style{}, true).Render(fmt.Sprint("Detail content"))
+			__lt18 = "none"
+		}
+		var __lt19 string
+		if k == m.idx {
+			__lt19 = "flex"
+		} else {
+			__lt19 = "none"
+		}
+		contentChildren = append(contentChildren, tui.Grow(GrowOf(nil, __lt19), func(content_1_b6Cells int) string {
+			var content_1_b6 string
+			var content_1_b6Children []string
+			var content_1_b6_0 string
+			if t__r1.__id == 0 {
+				content_1_b6_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Overview content"))
 			} else {
-				if t__r1.__id == 2 {
-					content_1Item_0 = BoxLook(Style{}, true).Render(fmt.Sprint("Settings content"))
+				if t__r1.__id == 1 {
+					content_1_b6_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Detail content"))
+				} else {
+					if t__r1.__id == 2 {
+						content_1_b6_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Settings content"))
+					}
 				}
 			}
-		}
-		if content_1Item_0 != "" {
-			content_1ItemChildren = append(content_1ItemChildren, content_1Item_0)
-		}
-		content_1Item = tui.Spaced(false, lipgloss.Position(CrossOf(Style{Display: __lt15}.AlignItems)), RowsOf(Style{Display: __lt16}.Gap), content_1ItemChildren...)
-		content_1Item = BoxLook(Style{Display: __lt13}, true).AlignHorizontal(lipgloss.Position(CrossOf(Style{Display: __lt15}.AlignItems))).Render(content_1Item)
-		if (Style{Display: __lt17}.Display == "none") {
-			content_1Item = ""
-		}
-		content_1Items = append(content_1Items, content_1Item)
+			if content_1_b6_0 != "" {
+				content_1_b6Children = append(content_1_b6Children, content_1_b6_0)
+			}
+			content_1_b6 = lipgloss.JoinVertical(lipgloss.Left, content_1_b6Children...)
+			content_1_b6 = tui.Render(tui.Sized(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt17, ListStyleType: "unset"}, true), false, content_1_b6Cells), tui.Fit{Hidden: (__lt18 == "none")}, content_1_b6)
+			return content_1_b6
+		}))
 	}
-	content_1 = tui.Spaced(false, lipgloss.Left, 0, content_1Items...)
-	if content_1 != "" {
-		contentChildren = append(contentChildren, content_1)
-	}
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
+	content = tui.Join(false, lipgloss.Left, 0, 0, contentH, contentChildren)
+	content = contentLook.Render(content)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -893,7 +872,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 				__inst0_next := []*__child0Instance{}
 				var __inst0_i int = 0
-				for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+				for k, t := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
 					var __n2 *__child0Instance
 					if len(m.__inst0_live) > __inst0_i {
 						__n2 = m.__inst0_live[__inst0_i]
@@ -963,7 +942,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
 				__inst1_next := []*__child1Instance{}
 				var __inst1_i int = 0
-				for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+				for k, t := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
 					var __n3 *__child1Instance
 					if len(m.__inst1_live) > __inst1_i {
 						__n3 = m.__inst1_live[__inst1_i]
@@ -999,7 +978,9 @@ func (m *Model) __wrote_idx() {
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
 	}
-	m.__renderSlot1(m.__n5)
+	for __inst1_live_ui, _ := range m.__inst1_live {
+		m.__inst1_live[__inst1_live_ui].Set__p1(m.idx)
+	}
 }
 
 func (m *Model) __snglTeardown() {
@@ -1036,7 +1017,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n4 = fynelayout.NewVBox()
 	m.__n5 = fynelayout.NewHBox()
 	m.__n5__box = fynelayout.NewBox(m.__n5)
-	m.__n5__box.SetLook(fynelayout.Look{Gap: 4.0})
+	m.__n5__box.SetLook(fynelayout.Look{Gap: 4.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 	m.__renderSlot0(m.__n5)
 	m.__n4.Add(m.__n5__box)
 	m.__renderSlot1(m.__n4)
@@ -1074,7 +1055,7 @@ func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	var __lt9 string
+	var __lt12 string
 	if c.__prop___p1 == c.__prop___p2 {
 		__lt12 = "bold"
 	} else {
@@ -1083,7 +1064,7 @@ func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a
 	c.__n0 = widget.NewButton("", nil)
 	c.__n0__box = fynelayout.NewBox(c.__n0)
 	c.__n0.SetText(c.__prop___p0.Label)
-	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt12, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt12, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	c.__n0.OnTapped = func() {
 		c.__prop___on0()
 	}
@@ -1104,7 +1085,7 @@ func (c *__child0Instance) Set__p1(__v int) {
 	} else {
 		__lt10 = "normal"
 	}
-	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt10, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt10, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 }
 
 func (c *__child0Instance) Set__p2(__v int) {
@@ -1115,7 +1096,7 @@ func (c *__child0Instance) Set__p2(__v int) {
 	} else {
 		__lt11 = "normal"
 	}
-	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt11, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt11, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -1156,15 +1137,15 @@ func new__child1Instance(__model *Model, __a___p0 int, __a___p1 int, __a___p2 Ta
 	c.__slot2 = nil
 	c.__rendering2 = false
 	c.__renderAgain2 = false
-	var __lt12 string
+	var __lt15 string
 	if c.__prop___p0 == c.__prop___p1 {
-		__lt12 = "flex"
+		__lt15 = "flex"
 	} else {
-		__lt12 = "none"
+		__lt15 = "none"
 	}
 	c.__n1 = fynelayout.NewVBox()
 	c.__n1__box = fynelayout.NewBox(c.__n1)
-	c.__n1__box.SetLook(LookOf(Style{Display: __lt12}))
+	c.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt15, ListStyleType: "unset"}))
 	c.__renderSlot2(c.__n1)
 	c.Root = c.__n1__box
 	return c
@@ -1172,24 +1153,24 @@ func new__child1Instance(__model *Model, __a___p0 int, __a___p1 int, __a___p2 Ta
 
 func (c *__child1Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	var __lt10 string
+	var __lt13 string
 	if c.__prop___p0 == c.__prop___p1 {
-		__lt10 = "flex"
+		__lt13 = "flex"
 	} else {
-		__lt10 = "none"
+		__lt13 = "none"
 	}
-	c.__n1__box.SetLook(LookOf(Style{Display: __lt10}))
+	c.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt13, ListStyleType: "unset"}))
 }
 
 func (c *__child1Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	var __lt11 string
+	var __lt14 string
 	if c.__prop___p0 == c.__prop___p1 {
-		__lt11 = "flex"
+		__lt14 = "flex"
 	} else {
-		__lt11 = "none"
+		__lt14 = "none"
 	}
-	c.__n1__box.SetLook(LookOf(Style{Display: __lt11}))
+	c.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt14, ListStyleType: "unset"}))
 }
 
 func (c *__child1Instance) Set__p2(__v Tab__record) {
@@ -1414,14 +1395,9 @@ func New() *Model {
 	return m
 }
 
-func SpacingOf(s Style, otherwise int) int {
-	var __lt0 int
-	if (s.Gap == Measurement{Px: 0}) {
-		__lt0 = otherwise
-	} else {
-		__lt0 = int(max((s.Gap.Px + (11.0 * (s.Gap.Em + s.Gap.Rem))), 0.0))
-	}
-	return __lt0
+func BoxLookOf(s Style, otherwise int) gtk4rt.Look {
+	look := LookHidden(s, (s.Display == "none"), true, SpacingOf(s, otherwise))
+	return look
 }
 
 func LookOf(s Style) gtk4rt.Look {
@@ -1429,9 +1405,31 @@ func LookOf(s Style) gtk4rt.Look {
 	return look
 }
 
-func LookHidden(s Style, hidden bool) gtk4rt.Look {
-	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor}
+func LookHidden(s Style, hidden bool, spaced bool, spacing int) gtk4rt.Look {
+	var __lt0 float64
+	if s.Flex == nil {
+		__lt0 = 0.0
+	} else {
+		__lt0 = (*(s.Flex))
+	}
+	var __lt1 int
+	if s.MaxLines == nil {
+		__lt1 = 0
+	} else {
+		__lt1 = (*(s.MaxLines))
+	}
+	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor, Justify: JustifyOf(s.JustifyContent), Spaced: spaced, Spacing: spacing}
 	return look
+}
+
+func SpacingOf(s Style, otherwise int) int {
+	var __lt2 int
+	if s.Gap == nil {
+		__lt2 = otherwise
+	} else {
+		__lt2 = int(Inset(s.Gap))
+	}
+	return __lt2
 }
 
 func CssOf(s Style) string {
@@ -1455,168 +1453,173 @@ func Inset(m__r0 *Measurement) float64 {
 	return __lt4
 }
 
-func Decl(name string, value string) string {
-	var __lt5 string
-	if value == "" {
-		__lt5 = ""
-	} else {
-		__lt5 = (((name + ": ") + value) + "; ")
+func CrossOf(a string) int {
+	var __lt5 int
+	switch a {
+	case "start":
+		__lt5 = 1
+	case "center":
+		__lt5 = 2
+	case "end":
+		__lt5 = 3
+	case "baseline":
+		__lt5 = 4
+	default:
+		__lt5 = 0
 	}
 	return __lt5
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
-		} else {
-			__lt6 = all
-		}
-		__lt7 = __lt6
+func TextAlignOf(a string) int {
+	var __lt6 int
+	switch a {
+	case "center":
+		__lt6 = 1
+	case "right":
+		__lt6 = 2
+	case "justify":
+		__lt6 = 3
+	case "left":
+		__lt6 = 4
+	default:
+		__lt6 = 0
 	}
-	return Length(max((__lt7.Px + (11.0 * (__lt7.Em + __lt7.Rem))), 0.0))
+	return __lt6
 }
 
-func Length(v float64) string {
-	var __lt8 string
-	if v == 0.0 {
-		__lt8 = ""
-	} else {
-		__lt8 = (fmt.Sprint(v) + "px")
+func WrapOf(w string) int {
+	var __lt7 int
+	switch w {
+	case "pre", "nowrap":
+		__lt7 = 1
+	case "preWrap", "preLine":
+		__lt7 = 2
+	default:
+		__lt7 = 0
+	}
+	return __lt7
+}
+
+func JustifyOf(j string) int {
+	var __lt8 int
+	switch j {
+	case "center":
+		__lt8 = 1
+	case "end":
+		__lt8 = 2
+	case "spaceBetween":
+		__lt8 = 3
+	case "spaceAround":
+		__lt8 = 4
+	case "spaceEvenly":
+		__lt8 = 5
+	default:
+		__lt8 = 0
 	}
 	return __lt8
 }
 
-func CssColor(c__r0 snglcolor.Color) string {
+func Decl(name string, value string) string {
 	var __lt9 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+	if value == "" {
 		__lt9 = ""
 	} else {
-		__lt9 = c__r0.Hex()
+		__lt9 = (((name + ": ") + value) + "; ")
 	}
 	return __lt9
 }
 
-func Points(v float64) string {
-	var __lt10 string
-	if v == 0.0 {
-		__lt10 = ""
+func Side(all *Measurement, axis *Measurement, own *Measurement) string {
+	var __lt11 *Measurement
+	if own != nil {
+		__lt11 = own
 	} else {
-		__lt10 = (fmt.Sprint(v) + "pt")
+		var __lt10 *Measurement
+		if axis != nil {
+			__lt10 = axis
+		} else {
+			__lt10 = all
+		}
+		__lt11 = __lt10
 	}
-	return __lt10
+	return Length(__lt11)
 }
 
-func WeightOf(w string) string {
-	var __lt11 string
-	switch w {
-	case "bold":
-		__lt11 = "bold"
-	case "bolder":
-		__lt11 = "bolder"
-	case "lighter":
-		__lt11 = "lighter"
-	default:
-		__lt11 = ""
-	}
-	return Length(__lt12)
-}
-
-func SlantOf(s string) string {
+func Length(m__r1 *Measurement) string {
 	var __lt12 string
-	switch s {
-	case "italic":
-		__lt12 = "italic"
-	case "oblique":
-		__lt12 = "oblique"
-	default:
+	if m__r1 == nil {
 		__lt12 = ""
+	} else {
+		__lt12 = (fmt.Sprint(Inset(m__r1)) + "px")
 	}
 	return __lt12
 }
 
-func LineOf(s Style) string {
+func CssColor(c__r0 *snglcolor.Color) string {
 	var __lt13 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt13 = "solid"
-	case "dashed":
-		__lt13 = "dashed"
-	case "dotted":
-		__lt13 = "dotted"
-	case "double":
-		__lt13 = "double"
-	default:
-		var __lt14 string
-		if (s.BorderWidth != Measurement{Px: 0}) {
-			__lt14 = "solid"
-		} else {
-			__lt14 = ""
-		}
-		__lt13 = __lt14
+	if c__r0 == nil {
+		__lt13 = ""
+	} else {
+		__lt13 = (*(c__r0)).Hex()
 	}
 	return __lt13
 }
 
 func WeightOf(w string) string {
-	var __lt15 string
+	var __lt14 string
 	switch w {
 	case "normal":
-		__lt15 = "normal"
+		__lt14 = "normal"
 	case "bold":
-		__lt15 = "bold"
+		__lt14 = "bold"
 	case "bolder":
-		__lt15 = "bolder"
+		__lt14 = "bolder"
 	case "lighter":
-		__lt15 = "lighter"
+		__lt14 = "lighter"
+	default:
+		__lt14 = ""
+	}
+	return __lt14
+}
+
+func SlantOf(s string) string {
+	var __lt15 string
+	switch s {
+	case "normal":
+		__lt15 = "normal"
+	case "italic":
+		__lt15 = "italic"
+	case "oblique":
+		__lt15 = "oblique"
 	default:
 		__lt15 = ""
 	}
 	return __lt15
 }
 
-func SlantOf(s string) string {
-	var __lt16 string
-	switch s {
-	case "normal":
-		__lt16 = "normal"
-	case "italic":
-		__lt16 = "italic"
-	case "oblique":
-		__lt16 = "oblique"
-	default:
-		__lt16 = ""
-	}
-	return __lt16
-}
-
 func LineOf(s Style) string {
-	var __lt17 string
+	var __lt16 string
 	switch s.BorderStyle {
 	case "solid":
-		__lt17 = "solid"
+		__lt16 = "solid"
 	case "dashed":
-		__lt17 = "dashed"
+		__lt16 = "dashed"
 	case "dotted":
-		__lt17 = "dotted"
+		__lt16 = "dotted"
 	case "double":
-		__lt17 = "double"
+		__lt16 = "double"
 	case "none":
-		__lt17 = "none"
+		__lt16 = "none"
 	default:
-		var __lt18 string
+		var __lt17 string
 		if s.BorderWidth != nil {
-			__lt18 = "solid"
+			__lt17 = "solid"
 		} else {
-			__lt18 = ""
+			__lt17 = ""
 		}
-		__lt17 = __lt18
+		__lt16 = __lt17
 	}
-	return __lt17
+	return __lt16
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1638,7 +1641,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 				__inst0_next := []*__child0Instance{}
 				var __inst0_i int = 0
-				for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+				for k, t := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
 					var __n2 *__child0Instance
 					if len(m.__inst0_live) > __inst0_i {
 						__n2 = m.__inst0_live[__inst0_i]
@@ -1708,7 +1711,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 				__inst1_next := []*__child1Instance{}
 				var __inst1_i int = 0
-				for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+				for k, t := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
 					var __n3 *__child1Instance
 					if len(m.__inst1_live) > __inst1_i {
 						__n3 = m.__inst1_live[__inst1_i]
@@ -1744,7 +1747,9 @@ func (m *Model) __wrote_idx() {
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
 	}
-	m.__renderSlot1(m.__n5)
+	for __inst1_live_ui, _ := range m.__inst1_live {
+		m.__inst1_live[__inst1_live_ui].Set__p1(m.idx)
+	}
 }
 
 func (m *Model) __snglTeardown() {
@@ -1788,15 +1793,15 @@ func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	var __lt17 string
+	var __lt20 string
 	if c.__prop___p1 == c.__prop___p2 {
-		__lt17 = "bold"
+		__lt20 = "bold"
 	} else {
-		__lt17 = "normal"
+		__lt20 = "normal"
 	}
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, c.__prop___p0.Label)
-	gtk4rt.SetLook(c.__n0, LookOf(Style{FontWeight: __lt17}))
+	gtk4rt.SetLook(c.__n0, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt20, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.__prop___on0()
 	})
@@ -1812,24 +1817,24 @@ func (c *__child0Instance) Set__p0(__v Tab__record) {
 
 func (c *__child0Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	var __lt15 string
+	var __lt18 string
 	if c.__prop___p1 == c.__prop___p2 {
-		__lt15 = "bold"
+		__lt18 = "bold"
 	} else {
-		__lt15 = "normal"
+		__lt18 = "normal"
 	}
-	gtk4rt.SetLook(c.__n0, LookOf(Style{FontWeight: __lt15}))
+	gtk4rt.SetLook(c.__n0, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt18, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 }
 
 func (c *__child0Instance) Set__p2(__v int) {
 	c.__prop___p2 = __v
-	var __lt16 string
+	var __lt19 string
 	if c.__prop___p1 == c.__prop___p2 {
 		__lt19 = "bold"
 	} else {
 		__lt19 = "normal"
 	}
-	gtk4rt.SetLook(c.__n0, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt19, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	gtk4rt.SetLook(c.__n0, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt19, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -1882,12 +1887,6 @@ func new__child1Instance(__model *Model, __a___p0 int, __a___p1 int, __a___p2 Ta
 	c.__slot2 = nil
 	c.__rendering2 = false
 	c.__renderAgain2 = false
-	var __lt22 string
-	if c.__prop___p0 == c.__prop___p1 {
-		__lt22 = "flex"
-	} else {
-		__lt22 = "none"
-	}
 	var __lt23 string
 	if c.__prop___p0 == c.__prop___p1 {
 		__lt23 = "flex"
@@ -1896,8 +1895,7 @@ func new__child1Instance(__model *Model, __a___p0 int, __a___p1 int, __a___p2 Ta
 	}
 	c.__n1 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n1, 1)
-	gtk4rt.BoxSetSpacing(c.__n1, SpacingOf(Style{Display: __lt22}, 6))
-	gtk4rt.SetLook(c.__n1, LookOf(Style{Display: __lt23}))
+	gtk4rt.SetLook(c.__n1, BoxLookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt23, ListStyleType: "unset"}, 6))
 	c.__renderSlot2(c.__n1)
 	c.Root = c.__n1
 	gtk4rt.Retain(c.Root)
@@ -1906,38 +1904,24 @@ func new__child1Instance(__model *Model, __a___p0 int, __a___p1 int, __a___p2 Ta
 
 func (c *__child1Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	var __lt18 string
-	if c.__prop___p0 == c.__prop___p1 {
-		__lt18 = "flex"
-	} else {
-		__lt18 = "none"
-	}
-	gtk4rt.BoxSetSpacing(c.__n1, SpacingOf(Style{Display: __lt18}, 6))
-	var __lt19 string
-	if c.__prop___p0 == c.__prop___p1 {
-		__lt19 = "flex"
-	} else {
-		__lt19 = "none"
-	}
-	gtk4rt.SetLook(c.__n1, LookOf(Style{Display: __lt19}))
-}
-
-func (c *__child1Instance) Set__p1(__v int) {
-	c.__prop___p1 = __v
-	var __lt20 string
-	if c.__prop___p0 == c.__prop___p1 {
-		__lt20 = "flex"
-	} else {
-		__lt20 = "none"
-	}
-	gtk4rt.BoxSetSpacing(c.__n1, SpacingOf(Style{Display: __lt20}, 6))
 	var __lt21 string
 	if c.__prop___p0 == c.__prop___p1 {
 		__lt21 = "flex"
 	} else {
 		__lt21 = "none"
 	}
-	gtk4rt.SetLook(c.__n1, LookOf(Style{Display: __lt21}))
+	gtk4rt.SetLook(c.__n1, BoxLookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt21, ListStyleType: "unset"}, 6))
+}
+
+func (c *__child1Instance) Set__p1(__v int) {
+	c.__prop___p1 = __v
+	var __lt22 string
+	if c.__prop___p0 == c.__prop___p1 {
+		__lt22 = "flex"
+	} else {
+		__lt22 = "none"
+	}
+	gtk4rt.SetLook(c.__n1, BoxLookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt22, ListStyleType: "unset"}, 6))
 }
 
 func (c *__child1Instance) Set__p2(__v Tab__record) {
@@ -2029,10 +2013,10 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	__n4 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n4, 1)
-	gtk4rt.BoxSetSpacing(__n4, 6)
+	gtk4rt.SetLook(__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
 	__n5 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n5, 0)
-	gtk4rt.BoxSetSpacing(__n5, 4)
+	gtk4rt.SetLook(__n5, gtk4rt.Look{Spaced: true, Spacing: 4})
 	m.__renderSlot0(__n5)
 	gtk4rt.BoxAppend(__n4, __n5)
 	m.__renderSlot1(__n4)
@@ -2094,57 +2078,57 @@ data class Tab__record(
 )
 
 data class Style(
-    var padding: Measurement = Measurement(),
-    var paddingTop: Measurement = Measurement(),
-    var paddingRight: Measurement = Measurement(),
-    var paddingBottom: Measurement = Measurement(),
-    var paddingLeft: Measurement = Measurement(),
-    var paddingX: Measurement = Measurement(),
-    var paddingY: Measurement = Measurement(),
-    var margin: Measurement = Measurement(),
-    var marginTop: Measurement = Measurement(),
-    var marginRight: Measurement = Measurement(),
-    var marginBottom: Measurement = Measurement(),
-    var marginLeft: Measurement = Measurement(),
-    var marginX: Measurement = Measurement(),
-    var marginY: Measurement = Measurement(),
-    var gap: Measurement = Measurement(),
-    var width: Measurement = Measurement(),
-    var minWidth: Measurement = Measurement(),
-    var height: Measurement = Measurement(),
-    var maxWidth: Measurement = Measurement(),
-    var maxHeight: Measurement = Measurement(),
-    var flex: Double = 0.0,
-    var flexDirection: SnglFlexDirection = SnglFlexDirection.ROW,
-    var alignItems: SnglAlignment = SnglAlignment.START,
-    var justifyContent: SnglJustification = SnglJustification.START,
-    var position: SnglPosition = SnglPosition.STATIC,
-    var top: Measurement = Measurement(),
-    var bottom: Measurement = Measurement(),
-    var left: Measurement = Measurement(),
-    var right: Measurement = Measurement(),
-    var zIndex: Int = 0,
-    var color: Color = Color(),
-    var fontSize: Measurement = Measurement(),
+    var padding: Measurement? = null,
+    var paddingTop: Measurement? = null,
+    var paddingRight: Measurement? = null,
+    var paddingBottom: Measurement? = null,
+    var paddingLeft: Measurement? = null,
+    var paddingX: Measurement? = null,
+    var paddingY: Measurement? = null,
+    var margin: Measurement? = null,
+    var marginTop: Measurement? = null,
+    var marginRight: Measurement? = null,
+    var marginBottom: Measurement? = null,
+    var marginLeft: Measurement? = null,
+    var marginX: Measurement? = null,
+    var marginY: Measurement? = null,
+    var gap: Measurement? = null,
+    var width: Measurement? = null,
+    var minWidth: Measurement? = null,
+    var height: Measurement? = null,
+    var maxWidth: Measurement? = null,
+    var maxHeight: Measurement? = null,
+    var flex: Double? = null,
+    var flexDirection: SnglFlexDirection = SnglFlexDirection.UNSET,
+    var alignItems: SnglAlignment = SnglAlignment.UNSET,
+    var justifyContent: SnglJustification = SnglJustification.UNSET,
+    var position: SnglPosition = SnglPosition.UNSET,
+    var top: Measurement? = null,
+    var bottom: Measurement? = null,
+    var left: Measurement? = null,
+    var right: Measurement? = null,
+    var zIndex: Int? = null,
+    var color: Color? = null,
+    var fontSize: Measurement? = null,
     var fontFamily: String = "",
-    var fontWeight: SnglFontWeight = SnglFontWeight.NORMAL,
-    var fontStyle: SnglFontStyle = SnglFontStyle.NORMAL,
-    var textAlign: SnglTextAlign = SnglTextAlign.LEFT,
-    var maxLines: Int = 0,
-    var whiteSpace: SnglWhiteSpace = SnglWhiteSpace.NORMAL,
-    var background: Color = Color(),
-    var borderRadius: Measurement = Measurement(),
-    var borderColor: Color = Color(),
-    var borderWidth: Measurement = Measurement(),
+    var fontWeight: SnglFontWeight = SnglFontWeight.UNSET,
+    var fontStyle: SnglFontStyle = SnglFontStyle.UNSET,
+    var textAlign: SnglTextAlign = SnglTextAlign.UNSET,
+    var maxLines: Int? = null,
+    var whiteSpace: SnglWhiteSpace = SnglWhiteSpace.UNSET,
+    var background: Color? = null,
+    var borderRadius: Measurement? = null,
+    var borderColor: Color? = null,
+    var borderWidth: Measurement? = null,
     var border: String = "",
     var borderBottom: String = "",
     var borderLeft: String = "",
     var borderCollapse: String = "",
-    var borderStyle: SnglBorderStyle = SnglBorderStyle.NONE,
-    var opacity: Double = 0.0,
+    var borderStyle: SnglBorderStyle = SnglBorderStyle.UNSET,
+    var opacity: Double? = null,
     var cursor: String = "",
-    var display: SnglDisplay = SnglDisplay.FLEX,
-    var listStyleType: SnglListStyle = SnglListStyle.NONE
+    var display: SnglDisplay = SnglDisplay.UNSET,
+    var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
 data class Color(
@@ -2164,6 +2148,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
 enum class SnglFlexDirection(private val sngl: String) {
+    UNSET("unset"),
     ROW("row"),
     COLUMN("column"),
     ROWREVERSE("rowReverse"),
@@ -2173,6 +2158,7 @@ enum class SnglFlexDirection(private val sngl: String) {
 }
 
 enum class SnglAlignment(private val sngl: String) {
+    UNSET("unset"),
     START("start"),
     CENTER("center"),
     END("end"),
@@ -2183,6 +2169,7 @@ enum class SnglAlignment(private val sngl: String) {
 }
 
 enum class SnglJustification(private val sngl: String) {
+    UNSET("unset"),
     START("start"),
     CENTER("center"),
     END("end"),
@@ -2194,6 +2181,7 @@ enum class SnglJustification(private val sngl: String) {
 }
 
 enum class SnglPosition(private val sngl: String) {
+    UNSET("unset"),
     STATIC("static"),
     RELATIVE("relative"),
     ABSOLUTE("absolute"),
@@ -2204,6 +2192,7 @@ enum class SnglPosition(private val sngl: String) {
 }
 
 enum class SnglFontWeight(private val sngl: String) {
+    UNSET("unset"),
     NORMAL("normal"),
     BOLD("bold"),
     LIGHTER("lighter"),
@@ -2213,6 +2202,7 @@ enum class SnglFontWeight(private val sngl: String) {
 }
 
 enum class SnglFontStyle(private val sngl: String) {
+    UNSET("unset"),
     NORMAL("normal"),
     ITALIC("italic"),
     OBLIQUE("oblique");
@@ -2221,6 +2211,7 @@ enum class SnglFontStyle(private val sngl: String) {
 }
 
 enum class SnglTextAlign(private val sngl: String) {
+    UNSET("unset"),
     LEFT("left"),
     CENTER("center"),
     RIGHT("right"),
@@ -2230,6 +2221,7 @@ enum class SnglTextAlign(private val sngl: String) {
 }
 
 enum class SnglWhiteSpace(private val sngl: String) {
+    UNSET("unset"),
     NORMAL("normal"),
     PRE("pre"),
     PREWRAP("preWrap"),
@@ -2240,6 +2232,7 @@ enum class SnglWhiteSpace(private val sngl: String) {
 }
 
 enum class SnglBorderStyle(private val sngl: String) {
+    UNSET("unset"),
     NONE("none"),
     SOLID("solid"),
     DASHED("dashed"),
@@ -2250,6 +2243,7 @@ enum class SnglBorderStyle(private val sngl: String) {
 }
 
 enum class SnglDisplay(private val sngl: String) {
+    UNSET("unset"),
     FLEX("flex"),
     BLOCK("block"),
     INLINE("inline"),
@@ -2262,6 +2256,7 @@ enum class SnglDisplay(private val sngl: String) {
 }
 
 enum class SnglListStyle(private val sngl: String) {
+    UNSET("unset"),
     NONE("none"),
     DISC("disc"),
     CIRCLE("circle"),
@@ -2291,12 +2286,12 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
                 })
             }
         }
-        SnglPager(modifier = styleModifier(Style(flex = 1.0), true).then(Modifier.weight(1.0f).fillMaxWidth()), selected = state.idx, disabled = listOf(Tab__record(label = "Overview", disabled = false, __id = 0), Tab__record(label = "Details", disabled = false, __id = 1), Tab__record(label = "Settings", disabled = true, __id = 2)).map({ t: Tab__record -> t.disabled }), onSelect = { chosen ->
+        SnglPager(modifier = flexed(styleModifier(Style(flex = 1.0), true), 1.0, { w: Float -> Modifier.weight(w).fillMaxWidth() }), selected = state.idx, disabled = listOf(Tab__record(label = "Overview"), Tab__record(label = "Details", __id = 1), Tab__record(label = "Settings", disabled = true, __id = 2)).map({ t: Tab__record -> t.disabled }), onSelect = { chosen ->
             state.idx = chosen
             state.changed = chosen
         }, page = { p ->
             Column(modifier = Modifier.fillMaxWidth()) {
-                for ((k, t) in listOf(Tab__record(label = "Overview", disabled = false, __id = 0), Tab__record(label = "Details", disabled = false, __id = 1), Tab__record(label = "Settings", disabled = true, __id = 2)).withIndex()) {
+                for ((k, t) in listOf(Tab__record(label = "Overview"), Tab__record(label = "Details", __id = 1), Tab__record(label = "Settings", disabled = true, __id = 2)).withIndex()) {
                     if ((k == p)) {
                         if ((t.__id == 0)) {
                             Text(text = "Overview content", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
@@ -2316,54 +2311,60 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     }
 }
 
+fun flexed(m: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if (((flex == null) || (flex!! <= 0.0))) m else m.then(share(flex!!.toFloat())))
+
 fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var m: androidx.compose.ui.Modifier = Modifier
-    var top = (if ((s.marginTop != Measurement(px = 0.0))) s.marginTop else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
-    var right = (if ((s.marginRight != Measurement(px = 0.0))) s.marginRight else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
-    var bottom = (if ((s.marginBottom != Measurement(px = 0.0))) s.marginBottom else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
-    var left = (if ((s.marginLeft != Measurement(px = 0.0))) s.marginLeft else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
-    if (((((top != Measurement(px = 0.0)) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
-    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + 0.0).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + 0.0).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + 0.0).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + 0.0).toFloat()))
+    var top = (if ((s.marginTop != null)) s.marginTop else (if ((s.marginY != null)) s.marginY else s.margin))
+    var right = (if ((s.marginRight != null)) s.marginRight else (if ((s.marginX != null)) s.marginX else s.margin))
+    var bottom = (if ((s.marginBottom != null)) s.marginBottom else (if ((s.marginY != null)) s.marginY else s.margin))
+    var left = (if ((s.marginLeft != null)) s.marginLeft else (if ((s.marginX != null)) s.marginX else s.margin))
+    if (((((top != null) || (right != null)) || (bottom != null)) || (left != null))) {
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
     }
-    if ((s.zIndex != 0)) {
-    	m = m.zIndex(s.zIndex.toFloat())
+    if ((s.zIndex != null)) {
+    	m = m.zIndex(s.zIndex!!.toFloat())
     }
-    if (((s.minWidth != Measurement(px = 0.0)) || (s.maxWidth != Measurement(px = 0.0)))) {
-    	m = m.widthIn((if ((s.minWidth != Measurement(px = 0.0))) Dp((s.minWidth.px + (16.0 * (s.minWidth.em + s.minWidth.rem))).toFloat()) else Dp.Unspecified), (if ((s.maxWidth != Measurement(px = 0.0))) Dp((s.maxWidth.px + (16.0 * (s.maxWidth.em + s.maxWidth.rem))).toFloat()) else Dp.Unspecified))
+    if (((s.minWidth != null) || (s.maxWidth != null))) {
+    	m = m.widthIn((if ((s.minWidth != null)) Dp((s.minWidth!!.px + (16.0 * (s.minWidth!!.em + s.minWidth!!.rem))).toFloat()) else Dp.Unspecified), (if ((s.maxWidth != null)) Dp((s.maxWidth!!.px + (16.0 * (s.maxWidth!!.em + s.maxWidth!!.rem))).toFloat()) else Dp.Unspecified))
     }
-    if ((s.maxHeight != Measurement(px = 0.0))) {
-    	m = m.heightIn(Dp.Unspecified, Dp((s.maxHeight.px + (16.0 * (s.maxHeight.em + s.maxHeight.rem))).toFloat()))
+    if ((s.maxHeight != null)) {
+    	m = m.heightIn(Dp.Unspecified, Dp((s.maxHeight!!.px + (16.0 * (s.maxHeight!!.em + s.maxHeight!!.rem))).toFloat()))
     }
-    if ((s.width != Measurement(px = 0.0))) {
-    	m = m.width(Dp((s.width.px + (16.0 * (s.width.em + s.width.rem))).toFloat()))
+    if ((s.width != null)) {
+    	m = m.width(Dp((s.width!!.px + (16.0 * (s.width!!.em + s.width!!.rem))).toFloat()))
     }
-    if ((s.height != Measurement(px = 0.0))) {
-    	m = m.height(Dp((s.height.px + (16.0 * (s.height.em + s.height.rem))).toFloat()))
+    if ((s.height != null)) {
+    	m = m.height(Dp((s.height!!.px + (16.0 * (s.height!!.em + s.height!!.rem))).toFloat()))
     }
-    if ((s.opacity != 0.0)) {
-    	m = m.alpha(s.opacity.toFloat())
+    if ((s.opacity != null)) {
+    	m = m.alpha(s.opacity!!.toFloat())
     }
-    var shape: androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == Measurement(px = 0.0))) RectangleShape else RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat())))
-    if ((s.borderRadius != Measurement(px = 0.0))) {
+    var shape: androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == null)) RectangleShape else RoundedCornerShape(Dp((s.borderRadius!!.px + (16.0 * (s.borderRadius!!.em + s.borderRadius!!.rem))).toFloat())))
+    if ((s.borderRadius != null)) {
     	m = m.clip(shape)
     }
     var edge = 0.0
-    if ((s.borderWidth != Measurement(px = 0.0))) {
-    	edge = (s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem)))
-    	m = m.border(Dp((s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != Color())) s.borderColor else s.color).r.toInt(), green = (if ((s.borderColor != Color())) s.borderColor else s.color).g.toInt(), blue = (if ((s.borderColor != Color())) s.borderColor else s.color).b.toInt(), alpha = (if ((s.borderColor != Color())) s.borderColor else s.color).a.toInt()), shape)
+    if ((s.borderWidth != null)) {
+    	edge = (s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem)))
+    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), composeOf((if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color()))), shape)
     }
-    if ((paints && (s.background != Color()))) {
-    	m = m.background(androidx.compose.ui.graphics.Color(red = s.background.r.toInt(), green = s.background.g.toInt(), blue = s.background.b.toInt(), alpha = s.background.a.toInt()), shape)
+    if ((paints && (s.background != null))) {
+    	m = m.background(androidx.compose.ui.graphics.Color(red = s.background!!.r.toInt(), green = s.background!!.g.toInt(), blue = s.background!!.b.toInt(), alpha = s.background!!.a.toInt()), shape)
     }
-    top = (if ((s.paddingTop != Measurement(px = 0.0))) s.paddingTop else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
-    right = (if ((s.paddingRight != Measurement(px = 0.0))) s.paddingRight else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
-    bottom = (if ((s.paddingBottom != Measurement(px = 0.0))) s.paddingBottom else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
-    left = (if ((s.paddingLeft != Measurement(px = 0.0))) s.paddingLeft else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
-    if ((((((edge != 0.0) || (top != Measurement(px = 0.0))) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
-    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + edge).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + edge).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + edge).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + edge).toFloat()))
+    top = (if ((s.paddingTop != null)) s.paddingTop else (if ((s.paddingY != null)) s.paddingY else s.padding))
+    right = (if ((s.paddingRight != null)) s.paddingRight else (if ((s.paddingX != null)) s.paddingX else s.padding))
+    bottom = (if ((s.paddingBottom != null)) s.paddingBottom else (if ((s.paddingY != null)) s.paddingY else s.padding))
+    left = (if ((s.paddingLeft != null)) s.paddingLeft else (if ((s.paddingX != null)) s.paddingX else s.padding))
+    if ((((((edge != 0.0) || (top != null)) || (right != null)) || (bottom != null)) || (left != null))) {
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
     }
     return m
 }
+
+fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
+
+fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglPager.kt --
 package test.sngl.app
 
@@ -2473,7 +2474,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <div id="__n4" data-sngl-id="__n4" style="display:flex;gap:4px;border-bottom:1px solid #ccc" role="tablist">
+  <div id="__n4" data-sngl-id="__n4" style="gap:4px;display:flex;border-bottom:1px solid #ccc" role="tablist">
     <span data-sngl-slot="0" style="display:contents"></span>
   </div>
   <sngl-swipe id="__n5" data-sngl-id="__n5">
@@ -2852,6 +2853,17 @@ window.__sngl_boot = () => {
       }
     }
   }
+  function __wrote_idx() {
+    for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+      __inst1_live[__inst1_live_ui].__set___p2(state.idx);
+    }
+    for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
+      __inst3_live[__inst3_live_ui].__set___p1(state.idx);
+    }
+  }
+  if (typeof window !== "undefined") {
+    Object.assign(window, { __wrote_idx });
+  }
   if (!customElements.get("sngl-swipe")) customElements.define("sngl-swipe", class extends HTMLElement {
     connectedCallback() {
       this.style.display = "block";
@@ -2888,8 +2900,9 @@ window.__sngl_boot = () => {
       this.removeEventListener("pointercancel", this._cancel);
     }
   });
-  function _snglStyleKeyword(m) {
-    return m.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
+  function _snglSetStyles(st, ds) {
+    for (const d of ds) st.removeProperty(d.property);
+    for (const d of ds) if (d.value !== "") st.setProperty(d.property, d.value);
   }
   var __n5 = document.getElementById("__n5");
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
@@ -2922,17 +2935,17 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8bbca6779ef9caaec59bc3262a670c7f
+pass sha256:ab3695d57ea93f56c027778a02eabb96
 -- run/go/fyne --
-pass sha256:0e95cac3ca975021b2b73a714ab1bc67
+pass sha256:ab7e6e6f250d658a9209afe93f322dbd
 -- run/go/gtk4 --
-pass sha256:715050a02e53f96f2bdb0662a1f5b8d8
+pass sha256:b3e654534a9a41fd833db0d9030e10b4
 -- run/kotlin/android --
-pass sha256:5a261fd060e6f9e34f784da3417bec04
+pass sha256:7a1aa3caac605826be29aa74f3cba75c
 -- run/none/html --
-pass sha256:15a976abd9af87f69e48ee6e9fd2e478
+pass sha256:25ace70e1bbcbe94d7edd19d51d57182
 -- testrun/html/none/component_tabs.sngl/main/1 --
-sha256:db07800e5a8bd57fdaacfc139d66664e
+sha256:3ce6da628c09708b9e4b3d2c189abe1b
 {
   "results": [
     {

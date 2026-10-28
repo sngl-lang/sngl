@@ -382,8 +382,20 @@ func Paint(ctx *C.cairo_t, style Style__draw) {
 	}
 }
 
-func LookHidden(s Style, hidden bool) gtk4rt.Look {
-	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor}
+func LookHidden(s Style, hidden bool, spaced bool, spacing int) gtk4rt.Look {
+	var __lt0 float64
+	if s.Flex == nil {
+		__lt0 = 0.0
+	} else {
+		__lt0 = (*(s.Flex))
+	}
+	var __lt1 int
+	if s.MaxLines == nil {
+		__lt1 = 0
+	} else {
+		__lt1 = (*(s.MaxLines))
+	}
+	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor, Justify: JustifyOf(s.JustifyContent), Spaced: spaced, Spacing: spacing}
 	return look
 }
 
@@ -432,168 +444,173 @@ func Inset(m__r0 *Measurement) float64 {
 	return __lt4
 }
 
-func Decl(name string, value string) string {
-	var __lt5 string
-	if value == "" {
-		__lt5 = ""
-	} else {
-		__lt5 = (((name + ": ") + value) + "; ")
+func CrossOf(a string) int {
+	var __lt5 int
+	switch a {
+	case "start":
+		__lt5 = 1
+	case "center":
+		__lt5 = 2
+	case "end":
+		__lt5 = 3
+	case "baseline":
+		__lt5 = 4
+	default:
+		__lt5 = 0
 	}
 	return __lt5
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
-		} else {
-			__lt6 = all
-		}
-		__lt7 = __lt6
+func TextAlignOf(a string) int {
+	var __lt6 int
+	switch a {
+	case "center":
+		__lt6 = 1
+	case "right":
+		__lt6 = 2
+	case "justify":
+		__lt6 = 3
+	case "left":
+		__lt6 = 4
+	default:
+		__lt6 = 0
 	}
-	return Length(max((__lt7.Px + (11.0 * (__lt7.Em + __lt7.Rem))), 0.0))
+	return __lt6
 }
 
-func Length(v float64) string {
-	var __lt8 string
-	if v == 0.0 {
-		__lt8 = ""
-	} else {
-		__lt8 = (fmt.Sprint(v) + "px")
+func WrapOf(w string) int {
+	var __lt7 int
+	switch w {
+	case "pre", "nowrap":
+		__lt7 = 1
+	case "preWrap", "preLine":
+		__lt7 = 2
+	default:
+		__lt7 = 0
+	}
+	return __lt7
+}
+
+func JustifyOf(j string) int {
+	var __lt8 int
+	switch j {
+	case "center":
+		__lt8 = 1
+	case "end":
+		__lt8 = 2
+	case "spaceBetween":
+		__lt8 = 3
+	case "spaceAround":
+		__lt8 = 4
+	case "spaceEvenly":
+		__lt8 = 5
+	default:
+		__lt8 = 0
 	}
 	return __lt8
 }
 
-func CssColor(c__r1 snglcolor.Color) string {
+func Decl(name string, value string) string {
 	var __lt9 string
-	if (c__r1.A == 0) || (c__r1 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+	if value == "" {
 		__lt9 = ""
 	} else {
-		__lt9 = c__r1.Hex()
+		__lt9 = (((name + ": ") + value) + "; ")
 	}
 	return __lt9
 }
 
-func Points(v float64) string {
-	var __lt10 string
-	if v == 0.0 {
-		__lt10 = ""
+func Side(all *Measurement, axis *Measurement, own *Measurement) string {
+	var __lt11 *Measurement
+	if own != nil {
+		__lt11 = own
 	} else {
-		__lt10 = (fmt.Sprint(v) + "pt")
+		var __lt10 *Measurement
+		if axis != nil {
+			__lt10 = axis
+		} else {
+			__lt10 = all
+		}
+		__lt11 = __lt10
 	}
-	return __lt10
+	return Length(__lt11)
 }
 
-func WeightOf(w string) string {
-	var __lt11 string
-	switch w {
-	case "bold":
-		__lt11 = "bold"
-	case "bolder":
-		__lt11 = "bolder"
-	case "lighter":
-		__lt11 = "lighter"
-	default:
-		__lt11 = ""
-	}
-	return Length(__lt12)
-}
-
-func SlantOf(s string) string {
+func Length(m__r1 *Measurement) string {
 	var __lt12 string
-	switch s {
-	case "italic":
-		__lt12 = "italic"
-	case "oblique":
-		__lt12 = "oblique"
-	default:
+	if m__r1 == nil {
 		__lt12 = ""
+	} else {
+		__lt12 = (fmt.Sprint(Inset(m__r1)) + "px")
 	}
 	return __lt12
 }
 
-func LineOf(s Style) string {
+func CssColor(c__r1 *snglcolor.Color) string {
 	var __lt13 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt13 = "solid"
-	case "dashed":
-		__lt13 = "dashed"
-	case "dotted":
-		__lt13 = "dotted"
-	case "double":
-		__lt13 = "double"
-	default:
-		var __lt14 string
-		if (s.BorderWidth != Measurement{Px: 0}) {
-			__lt14 = "solid"
-		} else {
-			__lt14 = ""
-		}
-		__lt13 = __lt14
+	if c__r1 == nil {
+		__lt13 = ""
+	} else {
+		__lt13 = (*(c__r1)).Hex()
 	}
 	return __lt13
 }
 
 func WeightOf(w string) string {
-	var __lt15 string
+	var __lt14 string
 	switch w {
 	case "normal":
-		__lt15 = "normal"
+		__lt14 = "normal"
 	case "bold":
-		__lt15 = "bold"
+		__lt14 = "bold"
 	case "bolder":
-		__lt15 = "bolder"
+		__lt14 = "bolder"
 	case "lighter":
-		__lt15 = "lighter"
+		__lt14 = "lighter"
+	default:
+		__lt14 = ""
+	}
+	return __lt14
+}
+
+func SlantOf(s string) string {
+	var __lt15 string
+	switch s {
+	case "normal":
+		__lt15 = "normal"
+	case "italic":
+		__lt15 = "italic"
+	case "oblique":
+		__lt15 = "oblique"
 	default:
 		__lt15 = ""
 	}
 	return __lt15
 }
 
-func SlantOf(s string) string {
-	var __lt16 string
-	switch s {
-	case "normal":
-		__lt16 = "normal"
-	case "italic":
-		__lt16 = "italic"
-	case "oblique":
-		__lt16 = "oblique"
-	default:
-		__lt16 = ""
-	}
-	return __lt16
-}
-
 func LineOf(s Style) string {
-	var __lt17 string
+	var __lt16 string
 	switch s.BorderStyle {
 	case "solid":
-		__lt17 = "solid"
+		__lt16 = "solid"
 	case "dashed":
-		__lt17 = "dashed"
+		__lt16 = "dashed"
 	case "dotted":
-		__lt17 = "dotted"
+		__lt16 = "dotted"
 	case "double":
-		__lt17 = "double"
+		__lt16 = "double"
 	case "none":
-		__lt17 = "none"
+		__lt16 = "none"
 	default:
-		var __lt18 string
+		var __lt17 string
 		if s.BorderWidth != nil {
-			__lt18 = "solid"
+			__lt17 = "solid"
 		} else {
-			__lt18 = ""
+			__lt17 = ""
 		}
-		__lt17 = __lt18
+		__lt16 = __lt17
 	}
-	return __lt17
+	return __lt16
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -606,7 +623,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n1_clicked_handler() {
 	m.tone = snglcolor.Color{R: 153, G: 51, B: 102, A: 255}
-	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n1)), LookOf(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(m.tone), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n1)), LookOf(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(m.tone), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 }
 
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
@@ -653,7 +670,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
 	m.__n1 = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
 	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n1)), "recolor")
-	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n1)), LookOf(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(m.tone), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n1)), LookOf(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(m.tone), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n1)), "clicked", m.__n1_clicked_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
 	m.__n4 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
@@ -679,4 +696,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:c60b269950be72801f437eac5317f58e
+pass sha256:0cb45a5a3cd9a376eca68daafd030f2a

@@ -263,7 +263,7 @@ func (m *Model) __n1_click_handler() {
 	} else {
 		__lt11 = "normal"
 	}
-	m.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt11, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	m.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt11, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 }
 
 func (m *Model) On() bool {
@@ -301,7 +301,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = widget.NewButton("", nil)
 	m.__n1__box = fynelayout.NewBox(m.__n1)
 	m.__n1.SetText("x")
-	m.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt10, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	m.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt10, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	m.__n1.OnTapped = m.__n1_click_handler
 	m.__n0.Add(m.__n1__box)
 	fynelayout.AppAttach(m.__n0)
@@ -422,8 +422,20 @@ func LookOf(s Style) gtk4rt.Look {
 	return look
 }
 
-func LookHidden(s Style, hidden bool) gtk4rt.Look {
-	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor}
+func LookHidden(s Style, hidden bool, spaced bool, spacing int) gtk4rt.Look {
+	var __lt0 float64
+	if s.Flex == nil {
+		__lt0 = 0.0
+	} else {
+		__lt0 = (*(s.Flex))
+	}
+	var __lt1 int
+	if s.MaxLines == nil {
+		__lt1 = 0
+	} else {
+		__lt1 = (*(s.MaxLines))
+	}
+	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor, Justify: JustifyOf(s.JustifyContent), Spaced: spaced, Spacing: spacing}
 	return look
 }
 
@@ -448,168 +460,173 @@ func Inset(m__r0 *Measurement) float64 {
 	return __lt3
 }
 
-func Decl(name string, value string) string {
-	var __lt4 string
-	if value == "" {
-		__lt4 = ""
-	} else {
-		__lt4 = (((name + ": ") + value) + "; ")
+func CrossOf(a string) int {
+	var __lt4 int
+	switch a {
+	case "start":
+		__lt4 = 1
+	case "center":
+		__lt4 = 2
+	case "end":
+		__lt4 = 3
+	case "baseline":
+		__lt4 = 4
+	default:
+		__lt4 = 0
 	}
 	return __lt4
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt6 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt6 = own
-	} else {
-		var __lt5 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt5 = axis
-		} else {
-			__lt5 = all
-		}
-		__lt6 = __lt5
+func TextAlignOf(a string) int {
+	var __lt5 int
+	switch a {
+	case "center":
+		__lt5 = 1
+	case "right":
+		__lt5 = 2
+	case "justify":
+		__lt5 = 3
+	case "left":
+		__lt5 = 4
+	default:
+		__lt5 = 0
 	}
-	return Length(max((__lt6.Px + (11.0 * (__lt6.Em + __lt6.Rem))), 0.0))
+	return __lt5
 }
 
-func Length(v float64) string {
-	var __lt7 string
-	if v == 0.0 {
-		__lt7 = ""
-	} else {
-		__lt7 = (fmt.Sprint(v) + "px")
+func WrapOf(w string) int {
+	var __lt6 int
+	switch w {
+	case "pre", "nowrap":
+		__lt6 = 1
+	case "preWrap", "preLine":
+		__lt6 = 2
+	default:
+		__lt6 = 0
+	}
+	return __lt6
+}
+
+func JustifyOf(j string) int {
+	var __lt7 int
+	switch j {
+	case "center":
+		__lt7 = 1
+	case "end":
+		__lt7 = 2
+	case "spaceBetween":
+		__lt7 = 3
+	case "spaceAround":
+		__lt7 = 4
+	case "spaceEvenly":
+		__lt7 = 5
+	default:
+		__lt7 = 0
 	}
 	return __lt7
 }
 
-func CssColor(c__r0 snglcolor.Color) string {
+func Decl(name string, value string) string {
 	var __lt8 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+	if value == "" {
 		__lt8 = ""
 	} else {
-		__lt8 = c__r0.Hex()
+		__lt8 = (((name + ": ") + value) + "; ")
 	}
 	return __lt8
 }
 
-func Points(v float64) string {
-	var __lt9 string
-	if v == 0.0 {
-		__lt9 = ""
+func Side(all *Measurement, axis *Measurement, own *Measurement) string {
+	var __lt10 *Measurement
+	if own != nil {
+		__lt10 = own
 	} else {
-		__lt9 = (fmt.Sprint(v) + "pt")
+		var __lt9 *Measurement
+		if axis != nil {
+			__lt9 = axis
+		} else {
+			__lt9 = all
+		}
+		__lt10 = __lt9
 	}
-	return __lt9
+	return Length(__lt10)
 }
 
-func WeightOf(w string) string {
-	var __lt10 string
-	switch w {
-	case "bold":
-		__lt10 = "bold"
-	case "bolder":
-		__lt10 = "bolder"
-	case "lighter":
-		__lt10 = "lighter"
-	default:
-		__lt10 = ""
-	}
-	return Length(__lt11)
-}
-
-func SlantOf(s string) string {
+func Length(m__r1 *Measurement) string {
 	var __lt11 string
-	switch s {
-	case "italic":
-		__lt11 = "italic"
-	case "oblique":
-		__lt11 = "oblique"
-	default:
+	if m__r1 == nil {
 		__lt11 = ""
+	} else {
+		__lt11 = (fmt.Sprint(Inset(m__r1)) + "px")
 	}
 	return __lt11
 }
 
-func LineOf(s Style) string {
+func CssColor(c__r0 *snglcolor.Color) string {
 	var __lt12 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt12 = "solid"
-	case "dashed":
-		__lt12 = "dashed"
-	case "dotted":
-		__lt12 = "dotted"
-	case "double":
-		__lt12 = "double"
-	default:
-		var __lt13 string
-		if (s.BorderWidth != Measurement{Px: 0}) {
-			__lt13 = "solid"
-		} else {
-			__lt13 = ""
-		}
-		__lt12 = __lt13
+	if c__r0 == nil {
+		__lt12 = ""
+	} else {
+		__lt12 = (*(c__r0)).Hex()
 	}
 	return __lt12
 }
 
 func WeightOf(w string) string {
-	var __lt14 string
+	var __lt13 string
 	switch w {
 	case "normal":
-		__lt14 = "normal"
+		__lt13 = "normal"
 	case "bold":
-		__lt14 = "bold"
+		__lt13 = "bold"
 	case "bolder":
-		__lt14 = "bolder"
+		__lt13 = "bolder"
 	case "lighter":
-		__lt14 = "lighter"
+		__lt13 = "lighter"
+	default:
+		__lt13 = ""
+	}
+	return __lt13
+}
+
+func SlantOf(s string) string {
+	var __lt14 string
+	switch s {
+	case "normal":
+		__lt14 = "normal"
+	case "italic":
+		__lt14 = "italic"
+	case "oblique":
+		__lt14 = "oblique"
 	default:
 		__lt14 = ""
 	}
 	return __lt14
 }
 
-func SlantOf(s string) string {
-	var __lt15 string
-	switch s {
-	case "normal":
-		__lt15 = "normal"
-	case "italic":
-		__lt15 = "italic"
-	case "oblique":
-		__lt15 = "oblique"
-	default:
-		__lt15 = ""
-	}
-	return __lt15
-}
-
 func LineOf(s Style) string {
-	var __lt16 string
+	var __lt15 string
 	switch s.BorderStyle {
 	case "solid":
-		__lt16 = "solid"
+		__lt15 = "solid"
 	case "dashed":
-		__lt16 = "dashed"
+		__lt15 = "dashed"
 	case "dotted":
-		__lt16 = "dotted"
+		__lt15 = "dotted"
 	case "double":
-		__lt16 = "double"
+		__lt15 = "double"
 	case "none":
-		__lt16 = "none"
+		__lt15 = "none"
 	default:
-		var __lt17 string
+		var __lt16 string
 		if s.BorderWidth != nil {
-			__lt17 = "solid"
+			__lt16 = "solid"
 		} else {
-			__lt17 = ""
+			__lt16 = ""
 		}
-		__lt16 = __lt17
+		__lt15 = __lt16
 	}
-	return __lt16
+	return __lt15
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -622,13 +639,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n1_clicked_handler() {
 	m.on = !m.on
-	var __lt15 string
+	var __lt18 string
 	if m.on {
-		__lt15 = "bold"
+		__lt18 = "bold"
 	} else {
-		__lt15 = "normal"
+		__lt18 = "normal"
 	}
-	gtk4rt.SetLook(m.__n1, LookOf(Style{FontWeight: __lt15}))
+	gtk4rt.SetLook(m.__n1, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt18, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 }
 
 func (m *Model) On() bool {
@@ -656,15 +673,15 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	var __lt14 string
+	var __lt17 string
 	if m.on {
-		__lt14 = "bold"
+		__lt17 = "bold"
 	} else {
-		__lt14 = "normal"
+		__lt17 = "normal"
 	}
 	m.__n1 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n1, "x")
-	gtk4rt.SetLook(m.__n1, LookOf(Style{FontWeight: __lt14}))
+	gtk4rt.SetLook(m.__n1, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt17, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	gtk4rt.Connect(m.__n1, "clicked", m.__n1_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
@@ -677,6 +694,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:af64aafe59cd7aa3e1a985729fb958c1
+pass sha256:cd35c4aabe6502311fd78d3c8688ffd1
 -- run/go/gtk4 --
-pass sha256:b94f334f6ea8175fe4703fa3f3571949
+pass sha256:d03bf7aceff44b8d65c5c8088cbde3ec

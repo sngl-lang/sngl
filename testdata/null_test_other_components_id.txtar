@@ -77,66 +77,6 @@ type ErrorEvent struct {
 	Kind    string
 }
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
-type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
-	FlexDirection  string
-	AlignItems     string
-	JustifyContent string
-	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
-	FontFamily     string
-	FontWeight     string
-	FontStyle      string
-	TextAlign      string
-	MaxLines       int
-	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
-	Border         string
-	BorderBottom   string
-	BorderLeft     string
-	BorderCollapse string
-	BorderStyle    string
-	Opacity        float64
-	Cursor         string
-	Display        string
-	ListStyleType  string
-}
-
 // Model holds the state for this SNGL UI.
 type Model struct {
 	problem__inst0 string
@@ -451,6 +391,6 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:9893a42ef3c794ace44804719df3f7e3
+pass sha256:8b99a9a1aa31df5919616e4be3d87e66
 -- run/none/html --
 pass sha256:57b1c970e464c821a49947d5b313a1f3
