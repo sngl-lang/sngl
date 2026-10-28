@@ -1,0 +1,23 @@
+// A list is indexed by an int. The check used to take any index, so a loop
+// over strings indexing another list by its element passed `sngl check` and
+// the generated Go failed to build.
+
+import ui "sngl:ui"
+
+component panel ui.node {
+    var picks = ["x", "y"]
+    var rows = ["a"]
+    var on = true
+    for var r = rows {
+        ui.text(value=picks[r]) // ERROR(check) "a list is indexed by an int, not string"
+    }
+    ui.text(value=picks[on]) // ERROR(check) "a list is indexed by an int, not bool"
+    for var i, _ = rows {
+        ui.text(value=picks[i])
+    }
+    ui.text(value=picks[0])
+}
+
+ui.window {
+    panel
+}

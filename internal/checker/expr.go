@@ -2229,6 +2229,9 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 		return &ir.Index{AST: x, Type: valT, Operand: operandExpr, Idx: indexExpr}
 	}
 	if operand.Kind == ir.TypeList && len(operand.Elems) > 0 {
+		if it := exprType(indexExpr); it != nil && it.Kind != ir.TypeInt && it.Kind != ir.TypeInvalid {
+			c.error(x.Pos, "a list is indexed by an int, not %s", it)
+		}
 		t := operand.Elems[0]
 		return &ir.Index{AST: x, Type: t, Operand: operandExpr, Idx: indexExpr}
 	}

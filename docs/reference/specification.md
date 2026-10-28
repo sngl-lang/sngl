@@ -1349,7 +1349,7 @@ A primary expression may be followed by postfix operators:
 - `.field` or `.method` — member selection (a named node is addressed the same
   way, `c.id.value`, and an event invoked through a reference, `c.inc.click()`,
   is an ordinary call — neither carries a sigil);
-- `[index]` — indexing into a list or map;
+- `[index]` — indexing into a list, by an `int`, or a map, by its key type;
 - `(args)` — a call.
 
 The exact set of admissible postfix operators depends on context: in expression
