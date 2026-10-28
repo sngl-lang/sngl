@@ -232,3 +232,48 @@ func TestStyleValueRuns(t *testing.T) {
 	model := generateFyneModelBuilt(t, styleValueSrc)
 	runEmitted(t, "fyne-style-value-", []byte(model), styleValueDriver)
 }
+
+// slotThemeSrc's loop renders into a vbox its style colors red, a row more
+// once the window is up.
+const slotThemeSrc = `
+import ui "sngl:ui"
+
+ui.window {
+    var items = ["x"]
+
+    ui.vbox(style={color=#ff0000}) {
+        ui.text(value="static")
+        for var it = items {
+            ui.text(value=it)
+        }
+    }
+    ui.button(text="more", @click { items.push("y") })
+}
+`
+
+const slotThemeDriver = styleDriverHelpers + `
+func TestARowARenderSlotAddsTakesTheBoxsColor(t *testing.T) {
+	test.NewApp()
+	m := New()
+	w := test.NewWindow(m.BuildUI())
+	defer w.Close()
+	root := w.Content()
+	red := color.NRGBA{255, 0, 0, 255}
+	if got := rgba(drawn(t, root, "static").Color); got != red {
+		t.Errorf("the static row is drawn %v, want %v", got, red)
+	}
+	if got := rgba(drawn(t, root, "x").Color); got != red {
+		t.Fatalf("the first row is drawn %v, want %v", got, red)
+	}
+	tap(t, root, "more")
+	if got := rgba(drawn(t, root, "y").Color); got != red {
+		t.Errorf("the row the click added is drawn %v, want its box's %v", got, red)
+	}
+}
+`
+
+// A row a render slot adds under a styled box is drawn in the box's theme,
+// where it kept the one it had until the box refreshed.
+func TestARenderSlotRowTakesItsBoxsThemeRuns(t *testing.T) {
+	runEmitted(t, "fyne-slot-theme-", []byte(generateFyneModelBuilt(t, slotThemeSrc)), slotThemeDriver)
+}

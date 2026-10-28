@@ -1,0 +1,87 @@
+# On bubbletea a `flex` child a loop renders takes its share of the Layout
+# where it is a focus stop too, and is still the stop its place in the
+# document makes it. Before, it was joined at its own size: the closure that
+# sizes it runs after its later siblings render, and would have counted its
+# copies after theirs, drawing the focus on `a!` where Tab says `a`.
+#
+# `app.sngl` writes the stops under a `for`; `shown.sngl` writes them out,
+# and the two snapshots must be one screen, the focus on `a` in both.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=bubbletea app.sngl
+stdout 'ok   1 tests, 0 failures'
+sngl test --platform=bubbletea shown.sngl
+stdout 'ok   1 tests, 0 failures'
+cmp app.sngl.snapshots/shown.ansi shown.sngl.snapshots/shown.ansi
+grep '^> a {32}a! {3}b {31}b! {3}end' app.sngl.snapshots/shown.ansi
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+var names = ["a", "b"]
+
+component row ui.node {
+    ui.hbox(style={gap=8px}) {
+        for var n = names {
+            ui.button(text=n, style={flex=1})
+            ui.button(text=n + "!")
+        }
+        ui.button(text="end")
+    }
+}
+
+func testShown(t test.Test, c row) {
+    t.snapshot("shown")
+}
+
+ui.window {
+    row
+}
+-- shown.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component row ui.node {
+    ui.hbox(style={gap=8px}) {
+        ui.button(text="a", style={flex=1})
+        ui.button(text="a!")
+        ui.button(text="b", style={flex=1})
+        ui.button(text="b!")
+        ui.button(text="end")
+    }
+}
+
+func testShown(t test.Test, c row) {
+    t.snapshot("shown")
+}
+
+ui.window {
+    row
+}
+-- testrun/bubbletea/go/app.sngl/row/1 --
+sha256:2d243fff430c23e388c81a0f0c96d5ab
+{
+  "results": [
+    {
+      "Desc": "Shown",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "shown.ansi": "PiBhICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBhISAgIGIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgYiEgICBlbmQ="
+  }
+}
+-- testrun/bubbletea/go/shown.sngl/row/1 --
+sha256:c09b5c3f51c5b44da4c6adf5d2027411
+{
+  "results": [
+    {
+      "Desc": "Shown",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "shown.ansi": "PiBhICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBhISAgIGIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgYiEgICBlbmQ="
+  }
+}

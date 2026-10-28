@@ -2,6 +2,7 @@ package bubbletea
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -828,31 +829,62 @@ func growsWithin(s ir.Stmt) bool {
 }
 
 // directlyGrows reports whether s is a child its Layout renders once the
-// fixed ones are done. One that counts a loop's focus stops or canvas copies
-// as it renders is joined at its own size, since its count would come after
-// its later siblings'.
+// fixed ones are done.
 func (vc *irViewContext) directlyGrows(s ir.Stmt) bool {
 	n, ok := s.(*ir.NodeInst)
-	if !ok || !grows(n) {
-		return false
-	}
-	ordered := false
+	return ok && grows(n)
+}
+
+// countAhead numbers the loop focus stops and canvas copies n renders where n
+// stands, and returns each counter n's closure starts from, by the local
+// holding its value here: tui.Join runs that closure after n's later siblings
+// have counted theirs, which numbered n's after them.
+func (vc *irViewContext) countAhead(n *ir.NodeInst, childVar string) map[string]string {
 	_ = ir.Walk([]ir.Stmt{n}, func(nd ir.Node) error {
-		m, ok := nd.(*ir.NodeInst)
-		if !ok {
-			return nil
-		}
-		if _, ok := nodeLoopFocus(m); ok {
-			ordered = true
-		} else if c := vc.ctx.Canvases.ForNode(m); c != nil && vc.canvasSeq[c.Name] {
-			ordered = true
-		}
-		if ordered {
-			return ir.SkipAll
+		if f, ok := nd.(*ir.For); ok {
+			vc.declareLoopCounters(f)
 		}
 		return nil
 	})
-	return !ordered
+	counters := func(m *ir.NodeInst) (pos, seq string) {
+		if lf, ok := nodeLoopFocus(m); ok {
+			pos = lf.pos
+		}
+		if c := vc.ctx.Canvases.ForNode(m); c != nil && vc.canvasSeq[c.Name] {
+			seq = canvasSeqVar(c)
+		}
+		return pos, seq
+	}
+	bases := map[string]string{}
+	eachRenderedNode([]ir.Stmt{n}, func(m *ir.NodeInst) {
+		pos, seq := counters(m)
+		for _, c := range []string{pos, seq} {
+			if c != "" && bases[c] == "" {
+				bases[c] = childVar + c + "Base"
+				vc.line("%s := %s", bases[c], c)
+			}
+		}
+	})
+	if len(bases) == 0 {
+		return nil
+	}
+	vc.line("{")
+	w := &viewWalk{b: vc.buf, indent: vc.indent + 1, wants: func(m *ir.NodeInst) bool {
+		pos, seq := counters(m)
+		return pos != "" || seq != ""
+	}}
+	w.visit = func(w *viewWalk, m *ir.NodeInst, gc *golang.GoIRContext) {
+		pos, seq := counters(m)
+		if seq != "" {
+			w.line("%s++", seq)
+		}
+		if pos != "" {
+			w.counted(m, gc, func() { w.line("%s++", pos) })
+		}
+	}
+	w.stmts([]ir.Stmt{n}, vc.gc)
+	vc.line("}")
+	return bases
 }
 
 // growsAsPart reports whether s is, or holds, a child its Layout renders once
@@ -1116,9 +1148,14 @@ func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, ho
 		return
 	}
 	n := child.(*ir.NodeInst)
+	bases := vc.countAhead(n, childVar)
 	cells := childVar + "Cells"
 	vc.line("%s = append(%s, tui.Grow(%s, func(%s int) string {", partsVar, partsVar, vc.gc.EvalExpr(codegen.NodeProp(n, "grow")), cells)
 	vc.indent++
+	for _, c := range slices.Sorted(maps.Keys(bases)) {
+		vc.line("%s := %s", c, bases[c])
+		vc.line("_ = %s", c)
+	}
 	savedW, savedH := vc.availW, vc.availH
 	if horizontal {
 		vc.availW = cells
