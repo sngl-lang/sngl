@@ -275,10 +275,9 @@ platform's `unstyled` list in the same commit.
   the theme it had until that Box refreshed, Fyne's ThemeOverride rule; a
   render slot appending into a styled vbox met it, and so did a styled
   vbox's own children, added after its Look. Fixed
-  (`TestARenderSlotRowTakesItsBoxsThemeRuns`), at a cost: each row inserted
-  under a theme measures the rows beside it again, Fyne clearing its
-  text-metrics cache for every override applied. Applying it once per slot
-  render would need a hook at the render's end.
+  (`TestARenderSlotRowTakesItsBoxsThemeRuns`). A render's inserts take the
+  theme together at the next draw, since each override Fyne applies clears
+  its text-metrics cache (`BenchmarkSlotRenderUnderABox`).
 - On gtk4 a box gtk4rt lays out measures height for width only, and
   `orientation` set on one after gtk4rt has taken it over reaches the layout
   GtkBox no longer has. A box with no weighted child is GTK's, so a child that

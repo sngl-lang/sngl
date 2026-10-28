@@ -273,10 +273,10 @@ func TestInsertingRefreshesNoOtherChild(t *testing.T) {
 	}
 }
 
-// A row a render slot inserts under a Box's theme takes that theme, with no
-// refresh of the Box or of the rows already there. Before, it kept the one it
-// had until the Box refreshed, as Fyne's ThemeOverride does for what is added
-// beneath it.
+// A row a render slot inserts under a Box's theme takes that theme by the
+// next draw, with no refresh of the Box or of the rows already there. Before,
+// it kept the one it had until the Box refreshed, as Fyne's ThemeOverride does
+// for what is added beneath it.
 func TestAnInsertedRowTakesItsBoxsTheme(t *testing.T) {
 	old := newCounted()
 	c := fynelayout.NewVBox(old)
@@ -290,12 +290,14 @@ func TestAnInsertedRowTakesItsBoxsTheme(t *testing.T) {
 
 	added := widget.NewLabel("added")
 	fynelayout.InsertBefore(c, anchor, added)
+	w.Canvas().Capture()
 	if got := theme.CurrentForWidget(added).Color(theme.ColorNameForeground, theme.VariantLight); got != red {
 		t.Errorf("the inserted label's foreground is %v, want its box's %v", got, red)
 	}
 	boxed := fynelayout.NewBox(widget.NewLabel("boxed"))
 	boxed.SetLook(fynelayout.Look{PaddingTop: 2, Bold: true})
 	fynelayout.InsertBefore(c, anchor, boxed)
+	w.Canvas().Capture()
 	if got := theme.CurrentForWidget(boxed.Content).Color(theme.ColorNameForeground, theme.VariantLight); got != red {
 		t.Errorf("an inserted box's label's foreground is %v, want the enclosing %v", got, red)
 	}
@@ -320,6 +322,7 @@ func TestRowsAddedBeforeTheBoxShowsTakeItsTheme(t *testing.T) {
 	defer w.Close()
 	later := widget.NewLabel("later")
 	fynelayout.InsertBefore(c, anchor, later)
+	w.Canvas().Capture()
 	red := color.NRGBA{R: 255, A: 255}
 	for _, l := range []*widget.Label{static, first, later} {
 		if got := theme.CurrentForWidget(l).Color(theme.ColorNameForeground, theme.VariantLight); got != red {
@@ -336,6 +339,7 @@ func TestARowInsertedUnthemedTakesNoOverride(t *testing.T) {
 	defer w.Close()
 	added := widget.NewLabel("added")
 	fynelayout.InsertBefore(c, anchor, added)
+	w.Canvas().Capture()
 	if got := theme.CurrentForWidget(added); got != theme.Current() {
 		t.Errorf("the inserted label is under %T, want the app's theme", got)
 	}

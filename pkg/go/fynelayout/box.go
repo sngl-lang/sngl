@@ -297,6 +297,7 @@ type boxRenderer struct{ b *Box }
 // children, so one of them asking for its own cursor says over this one. A
 // widget a container holds keeps its own cursor over the container's.
 func (r *boxRenderer) Objects() []fyne.CanvasObject {
+	applyThemes()
 	if holds(r.b.Content) {
 		return []fyne.CanvasObject{r.b.fill, r.b.pointer, r.b.inner()}
 	}
