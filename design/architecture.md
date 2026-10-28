@@ -118,10 +118,14 @@ target with no way to say a field is meant for one.
   is: the statement is written around the parts, each node it renders one of
   its own (`renderIfParts`, `renderForParts`), where joined as one part the
   grower took only its own size
-  (`cmd/sngl/testdata/style_bubbletea_flex_under_if_runs.txt`). One holding a
-  loop's focus stop or canvas is still joined at its own size, since the
-  closure it is rendered in would count its copies after its later
-  siblings'.
+  (`cmd/sngl/testdata/style_bubbletea_flex_under_if_runs.txt`). The closure
+  a grower renders in runs once its later siblings have rendered, so where
+  it holds a loop's focus stops or canvas copies they are counted where it
+  stands, and the closure starts from the counts it had there
+  (`countAhead`): counted in the closure, they came after its later
+  siblings', and the copy drawn focused was not the one Tab had reached
+  (`cmd/sngl/testdata/style_bubbletea_flex_focus_in_loop_runs.txt`,
+  `TestAGrowingStopInALoopKeepsItsPlace`).
 
   What a lipgloss style cannot say is a `tui.Fit` beside the look, which
   `fitOf` builds from a Style's `whiteSpace`, `overflow` and `display` and

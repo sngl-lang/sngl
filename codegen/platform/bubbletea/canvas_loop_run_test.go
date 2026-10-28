@@ -77,3 +77,51 @@ func TestACopysStateReachesItsDrawing(t *testing.T) {
 func TestALoopCanvasDrawsEachCopy(t *testing.T) {
 	runEmittedProgram(t, canvasLoopRunSrc, canvasLoopRunDriver)
 }
+
+// canvasGrowRunSrc's copies each draw inside a box growing into the row,
+// whose closure tui.Join runs once the fixed buttons are drawn.
+const canvasGrowRunSrc = `
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+ui.window {
+    var sizes list[float] = [1.0, 6.0]
+
+    ui.hbox {
+        for var s = sizes {
+            ui.vbox(style={flex=1}) {
+                draw.canvas(width=16px, height=16px) {
+                    draw.circle(cx=8, cy=8, r=s, style={fill=#FF0000})
+                }
+            }
+            ui.button(text="b")
+        }
+    }
+}
+`
+
+const canvasGrowRunDriver = `package ui
+
+import (
+	"fmt"
+	"testing"
+)
+
+func view(m Model) string { return fmt.Sprint(m.View().Content) }
+
+func TestEachGrowingCopyDrawsItsOwnElement(t *testing.T) {
+	m := New()
+	mixed := view(m)
+	if n := len(_canvasSurface0); n != 2 {
+		t.Fatalf("want a surface per copy, have %d", n)
+	}
+	m.sizes = []float64{6.0, 6.0}
+	if view(m) == mixed {
+		t.Fatal("the first copy drew the second copy's radius")
+	}
+}
+`
+
+func TestAGrowingLoopCanvasDrawsEachCopy(t *testing.T) {
+	runEmittedProgram(t, canvasGrowRunSrc, canvasGrowRunDriver)
+}

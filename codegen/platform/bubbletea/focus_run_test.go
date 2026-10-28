@@ -277,3 +277,62 @@ func TestShownAgainIsAStopAgain(t *testing.T) {
 func TestFocusPassesOverHiddenStopsInLoopsAndBoxes(t *testing.T) {
 	runEmittedProgram(t, focusHiddenInBoxRunSrc, focusHiddenInBoxRunDriver)
 }
+
+// focusGrowRunSrc's loop renders a growing stop and a fixed one per copy,
+// before a stop of its own Layout.
+const focusGrowRunSrc = `
+import ui "sngl:ui"
+
+ui.window {
+    var names = ["a", "b"]
+    var picked = ""
+
+    ui.hbox(style={gap=8px}) {
+        for var n = names {
+            ui.button(text=n, style={flex=1}, @click { picked = n })
+            ui.button(text=n + "!", @click { picked = n + "!" })
+        }
+        ui.button(text="end", @click { picked = "end" })
+    }
+}
+`
+
+const focusGrowRunDriver = `package ui
+
+import (
+	"regexp"
+	"testing"
+
+	"charm.land/bubbletea/v2"
+)
+
+func key(m Model, k tea.Msg) Model {
+	next, _ := m.Update(k)
+	return next.(Model)
+}
+
+// The growing copies take the free space, and the stop drawn focused is the
+// one Enter runs, in document order.
+func TestAGrowingStopKeepsItsPlace(t *testing.T) {
+	m := key(New(), tea.WindowSizeMsg{Width: 80, Height: 24})
+	for i, w := range []string{"a", "a!", "b", "b!", "end", "a"} {
+		view := m.View().Content
+		if !regexp.MustCompile("a [ >]+a! [ >]+b [ >]+b! [ >]+end").MatchString(view) || len(regexp.MustCompile("a [ >]{20,}a!").FindString(view)) == 0 {
+			t.Fatalf("stop %d: the growers took no free space:\n%s", i, view)
+		}
+		if !regexp.MustCompile("> " + regexp.QuoteMeta(w) + "( |$)").MatchString(view) {
+			t.Fatalf("stop %d: %q is not drawn focused:\n%s", i, w, view)
+		}
+		m.picked = ""
+		m = key(m, tea.KeyPressMsg{Code: tea.KeyEnter})
+		if m.picked != w {
+			t.Fatalf("stop %d ran %q, want %q", i, m.picked, w)
+		}
+		m = key(m, tea.KeyPressMsg{Code: tea.KeyTab})
+	}
+}
+`
+
+func TestAGrowingStopInALoopKeepsItsPlace(t *testing.T) {
+	runEmittedProgram(t, focusGrowRunSrc, focusGrowRunDriver)
+}

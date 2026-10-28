@@ -626,16 +626,25 @@ func (m Model) View() tea.View {
 			_ = i
 			var content_6Item string
 			content_6ItemLook := BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true)
-			var content_6ItemChildren []string
-			var content_6Item_0 string
-			content_6Item_0Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
-			content_6Item_0Prefix := " "
-			if content_6Item_0Focused {
-				content_6Item_0Prefix = ">"
+			content_6ItemW, _ := tui.Inner(content_6ItemLook, contentW, 0)
+			var content_6ItemChildren []tui.Part
+			content_6Item_0__focusPos1Base := __focusPos1
+			{
+				__focusPos1++
 			}
-			content_6Item_0 = BoxLook(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_6Item_0Prefix + " " + fmt.Sprint(("wide " + fmt.Sprint(i))))
-			__focusPos1++
-			content_6ItemChildren = append(content_6ItemChildren, content_6Item_0)
+			content_6ItemChildren = append(content_6ItemChildren, tui.Grow(1.0, func(content_6Item_0Cells int) string {
+				__focusPos1 := content_6Item_0__focusPos1Base
+				_ = __focusPos1
+				var content_6Item_0 string
+				content_6Item_0Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
+				content_6Item_0Prefix := " "
+				if content_6Item_0Focused {
+					content_6Item_0Prefix = ">"
+				}
+				content_6Item_0 = tui.Sized(BoxLook(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true), true, content_6Item_0Cells).Render(content_6Item_0Prefix + " " + fmt.Sprint(("wide " + fmt.Sprint(i))))
+				__focusPos1++
+				return content_6Item_0
+			}))
 			var content_6Item_1 string
 			content_6Item_1Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
 			content_6Item_1Prefix := " "
@@ -644,8 +653,8 @@ func (m Model) View() tea.View {
 			}
 			content_6Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_6Item_1Prefix + " " + fmt.Sprint("narrow"))
 			__focusPos1++
-			content_6ItemChildren = append(content_6ItemChildren, content_6Item_1)
-			content_6Item = lipgloss.JoinHorizontal(lipgloss.Top, content_6ItemChildren...)
+			content_6ItemChildren = append(content_6ItemChildren, tui.Fixed(content_6Item_1))
+			content_6Item = tui.Join(true, lipgloss.Top, 0, 0, content_6ItemW, content_6ItemChildren)
 			content_6Item = content_6ItemLook.Render(content_6Item)
 			content_6Items = append(content_6Items, content_6Item)
 		}
@@ -673,4 +682,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:6db663c4c6dfca73d00f9993da854efb
+pass sha256:091fc18e3d86a389e6b349632998c997

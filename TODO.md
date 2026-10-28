@@ -146,16 +146,13 @@ than the interpreter, or does more work than it needs:
    whether the vbox should provide LocalFlexShare as the written Columns do,
    or collectSlotEnv should hand the content the callee's value, and ask
    before building it.
-2. On bubbletea a growing child holding a loop's focus stop or canvas is
-   still joined at its own size, since the closure it renders in would count
-   its copies after its later siblings'.
-3. On fyne a widget added to a container already under a Box's theme keeps
+2. On fyne a widget added to a container already under a Box's theme keeps
    the theme it had until that Box refreshes; a render slot appending into a
    styled vbox meets it.
-4. The shake keeps a library body reachable through a node handle's
+3. The shake keeps a library body reachable through a node handle's
    component type, so `#d` on a datepicker keeps gtk4's `LookOf` and its
    helpers though nothing calls them.
-5. The optimizer interprets a const function per call, and a lambda call
+4. The optimizer interprets a const function per call, and a lambda call
    snapshots the environment: a `.filter(func…)` in a function folded per
    node was most of a 7 GB increase on the docs site. Measure it first
    (design/performance.md).
@@ -235,8 +232,8 @@ platform's `unstyled` list in the same commit.
 - On bubbletea a `flex` child was joined at its own size under an `if` or a
   `for`, being part of what that statement renders; each node the statement
   renders is a part of the Layout now (`style_bubbletea_flex_under_if_runs.txt`).
-  Still so where it holds a loop's focus stop or canvas, whose count would
-  come after its later siblings'. A focusable node displayed none in a loop
+  One holding a loop's focus stop or canvas grows too, numbered where it
+  stands (`TestAGrowingStopInALoopKeepsItsPlace`). A focusable node displayed none in a loop
   slot, and one inside a container displayed none, was still counted as a
   stop; neither is now (`TestFocusPassesOverHiddenStopsInLoopsAndBoxes`).
 - A zero `borderWidth` drew a border on bubbletea, and
