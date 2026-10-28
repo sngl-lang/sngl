@@ -68,6 +68,13 @@ targets in parallel) is not a saving.
   because a pure body writes none of the package's bindings. `RebindFrom`
   walks what its source wrote, not what the destination binds.
   `BenchmarkFoldStyledPage` (`internal/optimize`) is the shape.
+- **A pure function's folded answer is kept** in the compilation's
+  `EvalCache` (`interpretCached`), by function, package and arguments --
+  html folds one Style through `css` node after node. The arguments are keyed
+  by `interp.AppendValueKey`, which spells each value with its type and
+  refuses one that is no constant (a function, an owned handle); a key made
+  with `%v` printed a struct's strings unquoted, so two different arguments
+  shared one answer. A hit hands back a copy.
 - **Cloning is the largest remaining cost.** `build.Emit` clones the checked
   package for every target, and `ir.ClonePackage` copies by reflection
   everything reachable, library IR included.

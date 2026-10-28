@@ -460,19 +460,7 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	// folder has its own implementation of the id, and most of those bodies
 	// are placeholders a backend is expected to replace.
 	if canFoldBody(call.Func) && call.Func.Intrinsic == "" {
-		key := interpretKey(call.Func, args, ctx)
-		if key != "" {
-			if res, ok := ctx.evalCache().load(key); ok {
-				return interp.CloneValue(res.value), true
-			}
-		}
-		ctx.interpDepth++
-		v, ok := interpretFunc(call.Func, args, ctx, ctx.interpDepth)
-		ctx.interpDepth--
-		if ok {
-			if key != "" {
-				ctx.evalCache().store(key, constResult{value: interp.CloneValue(v)})
-			}
+		if v, ok := interpretCached(call.Func, args, ctx); ok {
 			return v, true
 		}
 	}
@@ -508,10 +496,7 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	// the declaration said computes the right answer; the placeholders were
 	// dropped after type checking.
 	if canFoldBody(call.Func) && call.Func.Intrinsic != "" {
-		ctx.interpDepth++
-		v, ok := interpretFunc(call.Func, args, ctx, ctx.interpDepth)
-		ctx.interpDepth--
-		if ok {
+		if v, ok := interpretCached(call.Func, args, ctx); ok {
 			return v, true
 		}
 	}
@@ -522,15 +507,59 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 
 // interpretKey is what a pure function's interpreted answer is kept under: the
 // function and the arguments it was handed, which are the whole of what a
-// pure body answers from. html folds the same Style through css on node after
-// node, and interpreted each time that was the cost that sank translating it
-// in SNGL. Empty, and nothing kept, where the fold answers an intrinsic of its
-// own -- a document's page -- which the arguments do not say.
-func interpretKey(fn *ir.Func, args []any, ctx *evalCtx) string {
-	if fn.Purity != ir.PurityPure || len(ctx.answers) > 0 {
-		return ""
+// pure body answers from, and the package whose consts it ran against. html
+// folds the same Style through css on node after node, and interpreted each
+// time that was the cost that sank translating it in SNGL.
+type interpretKey struct {
+	fn   *ir.Func
+	pkg  *ir.Package
+	args string
+}
+
+type interpretedResult struct {
+	value any
+	// pins holds every declaration args names by address (AppendValueKey).
+	pins []any
+}
+
+// interpretCached is interpretFunc, answered from the compilation's cache
+// where the arguments are constants it can key on. Nothing is kept where the
+// fold answers an intrinsic of its own -- a document's page -- which the
+// arguments do not say. What it hands back is a copy, so a caller editing the
+// value edits nothing a later call is answered with.
+func interpretCached(fn *ir.Func, args []any, ctx *evalCtx) (any, bool) {
+	key, pins, keyed := interpretKeyOf(fn, args, ctx)
+	cache := ctx.evalCache()
+	if keyed {
+		if res, ok := cache.interpreted.Load(key); ok {
+			return interp.CloneValue(res.(interpretedResult).value), true
+		}
 	}
-	return fmt.Sprintf("interpret\x00%p\x00%v", fn, args)
+	ctx.interpDepth++
+	v, ok := interpretFunc(fn, args, ctx, ctx.interpDepth)
+	ctx.interpDepth--
+	if ok && keyed {
+		cache.interpreted.Store(key, interpretedResult{value: interp.CloneValue(v), pins: pins})
+	}
+	return v, ok
+}
+
+func interpretKeyOf(fn *ir.Func, args []any, ctx *evalCtx) (interpretKey, []any, bool) {
+	if fn.Purity != ir.PurityPure || len(ctx.answers) > 0 {
+		return interpretKey{}, nil, false
+	}
+	var (
+		b    []byte
+		pins []any
+		ok   bool
+	)
+	pin := func(p any) { pins = append(pins, p) }
+	for _, a := range args {
+		if b, ok = interp.AppendValueKey(append(b, ';'), a, pin); !ok {
+			return interpretKey{}, nil, false
+		}
+	}
+	return interpretKey{fn: fn, pkg: ctx.pkg, args: string(b)}, pins, true
 }
 
 // maxFoldedSequence bounds what a sequence folds to on a target that does not
