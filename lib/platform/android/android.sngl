@@ -140,6 +140,15 @@ struct Modifier {}
 #[kt.native("Modifier", "androidx.compose.ui.Modifier")]
 const modifier Modifier
 
+// What a child's `flex` is a share of where no vbox or hbox provides one: the
+// share a Column the generated code writes provides through Compose -- a
+// window's nodes, a page's, a window's content arriving through a slot --
+// else the screen (codegen/platform/android/flexshare.kt, which the platform
+// ships). Compose's, because a slot's content is composed where the slot is
+// invoked, which no closure its caller wrote could name.
+#[kt.native("snglFlexShare", "")]
+const screenShare func(float32) Modifier
+
 #[kt.native("fillMaxSize", "androidx.compose.foundation.layout.fillMaxSize", method)]
 const func Modifier.fillMaxSize() Modifier
 
@@ -388,6 +397,9 @@ const plainTextStyle TextStyle
 #[kt.native("merge", "", method)]
 const func mergeTextStyle(base TextStyle, over TextStyle) TextStyle
 
+#[kt.native("FontWeight.Normal", "androidx.compose.ui.text.font.FontWeight")]
+const weightNormal FontWeight
+
 #[kt.native("FontWeight.Bold", "androidx.compose.ui.text.font.FontWeight")]
 const weightBold FontWeight
 
@@ -396,6 +408,9 @@ const weightLight FontWeight
 
 #[kt.native("FontWeight.ExtraBold", "androidx.compose.ui.text.font.FontWeight")]
 const weightExtraBold FontWeight
+
+#[kt.native("FontStyle.Normal", "androidx.compose.ui.text.font.FontStyle")]
+const slantNormal FontStyle
 
 #[kt.native("FontStyle.Italic", "androidx.compose.ui.text.font.FontStyle")]
 const slantItalic FontStyle
@@ -417,6 +432,28 @@ const familyCursive FontFamily
 
 #[kt.native("TextAlign.Unspecified", "androidx.compose.ui.text.style.TextAlign")]
 const alignUnspecified TextAlign
+
+#[kt.native("androidx.compose.ui.text.style.TextOverflow")]
+struct TextOverflow {}
+
+#[kt.native("TextOverflow.Clip", "androidx.compose.ui.text.style.TextOverflow")]
+const overflowClip TextOverflow
+
+#[kt.native("TextOverflow.Ellipsis", "androidx.compose.ui.text.style.TextOverflow")]
+const overflowEllipsis TextOverflow
+
+// Text's `softWrap` where nothing keeps a paragraph on its lines. A host
+// value rather than `true`: an argument is left to Compose where it names the
+// host value the prop's default names.
+#[kt.native("true", "")]
+const wrapsLines bool
+
+// Text's `maxLines` where nothing clamps it.
+#[kt.native("Int.MAX_VALUE", "")]
+const unboundedLines int
+
+#[kt.native("TextAlign.Start", "androidx.compose.ui.text.style.TextAlign")]
+const alignStartText TextAlign
 
 #[kt.native("TextAlign.Center", "androidx.compose.ui.text.style.TextAlign")]
 const alignCenter TextAlign
@@ -484,6 +521,9 @@ component Text(
     modifier Modifier,
     style    TextStyle,
     color    ComposeColor,
+    overflow TextOverflow = overflowClip,
+    softWrap bool = wrapsLines,
+    maxLines int = unboundedLines,
 ) ui.node
 
 #[gen.renders(identity)]

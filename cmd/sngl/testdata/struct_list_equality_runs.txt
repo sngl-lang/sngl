@@ -1,0 +1,198 @@
+# `==` between structs holding a list, an option or another struct compares
+# them field by field on every target, as the interpreter does, and so does
+# `==` between two lists and between two options.
+#
+# Go wrote each as its own ==: a struct holding a slice, and a slice, did not
+# compile (`struct containing []string cannot be compared`), and an option is
+# a pointer, so two options holding 1 were unequal, and so were two structs
+# holding them. JavaScript's === is an array's identity, so two lists written
+# alike were unequal there. Both now write the comparison out from the type,
+# as html already did for a struct (Go's goEqualer, JavaScript's jsEqual).
+
+sngl test --platform=none app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +4 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct Pair {
+    left  int
+    right int
+}
+
+struct Tagged {
+    name string
+    tags list[string]
+}
+
+struct Box {
+    inner Tagged
+    maybe option[int]
+    pairs list[Pair]
+}
+
+component page ui.node {
+    var name = "a"
+    var tag = "x"
+    var n = 1
+
+    ui.text(value=name)
+}
+
+func tagged(name string, tag string) Tagged {
+    return {name=name, tags=[tag]}
+}
+
+func box(name string, tag string, n int) Box {
+    return {inner=tagged(name, tag), maybe=n, pairs=[{left=n, right=n}]}
+}
+
+func testAStructHoldingAListComparesItsElements(t test.Test, c page) {
+    t.assert(tagged(c.name, c.tag) == tagged(c.name, c.tag))
+    t.assert(tagged(c.name, c.tag) != tagged(c.name, "y"))
+    t.assert(tagged(c.name, c.tag) != Tagged{name=c.name, tags=[]})
+}
+
+func testListsCompareElementByElement(t test.Test, c page) {
+    t.assert([c.name, c.tag] == [c.name, c.tag])
+    t.assert([c.name] != [c.name, c.tag])
+    t.assert([tagged(c.name, c.tag)] == [tagged(c.name, c.tag)])
+}
+
+func testAStructHoldingAnOptionComparesWhatItHolds(t test.Test, c page) {
+    t.assert(box(c.name, c.tag, c.n) == box(c.name, c.tag, c.n))
+    t.assert(box(c.name, c.tag, c.n) != box(c.name, c.tag, c.n + 1))
+    t.assert(box(c.name, c.tag, c.n) != Box{inner=tagged(c.name, c.tag), pairs=[{left=c.n, right=c.n}]})
+}
+
+func testAnOptionOfAStructComparesWhatItHolds(t test.Test, c page) {
+    var some option[Tagged] = tagged(c.name, c.tag)
+    var none option[Tagged] = null
+    t.assert(some == tagged(c.name, c.tag))
+    t.assert(some != none)
+    t.assert(none == null)
+    var x option[int] = c.n
+    var y option[int] = c.n
+    t.assert(x == y)
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:b1c8b28169fb1a99cfd37f6e7a27d031
+{
+  "results": [
+    {
+      "Desc": "AStructHoldingAListComparesItsElements",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructHoldingAnOptionComparesWhatItHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "AnOptionOfAStructComparesWhatItHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "ListsCompareElementByElement",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:f61caff19e2b0a5020272211b23ae8e6
+{
+  "results": [
+    {
+      "Desc": "AStructHoldingAListComparesItsElements",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructHoldingAnOptionComparesWhatItHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "AnOptionOfAStructComparesWhatItHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "ListsCompareElementByElement",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:158694f83ee52f175aa396890d6f8e03
+{
+  "results": [
+    {
+      "Desc": "AStructHoldingAListComparesItsElements",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructHoldingAnOptionComparesWhatItHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "AnOptionOfAStructComparesWhatItHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "ListsCompareElementByElement",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:d755ebecb85033d9aa2b29491162e1bd
+{
+  "results": [
+    {
+      "Desc": "AStructHoldingAListComparesItsElements",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructHoldingAnOptionComparesWhatItHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "AnOptionOfAStructComparesWhatItHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "ListsCompareElementByElement",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:f96f7b1f9f5fb7ac399b2f94191a9ab8
+{
+  "results": [
+    {
+      "Desc": "AStructHoldingAListComparesItsElements",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructHoldingAnOptionComparesWhatItHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "AnOptionOfAStructComparesWhatItHolds",
+      "Passed": true
+    },
+    {
+      "Desc": "ListsCompareElementByElement",
+      "Passed": true
+    }
+  ]
+}

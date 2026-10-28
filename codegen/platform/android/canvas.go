@@ -352,6 +352,16 @@ func programNamesColor(pkg *ir.Package) bool {
 			return true
 		}
 	}
+	// A component's state too: a test build's MainScreenState declared
+	// `var opaque by mutableStateOf(Color(…))` with no Color
+	// (cmd/sngl/testdata/color_string_runs.txt).
+	for _, o := range ir.Owners(pkg) {
+		for _, v := range slices.Concat(o.Vars, o.Consts) {
+			if typeNamesColor(v.Type) {
+				return true
+			}
+		}
+	}
 	funcs := slices.Clone(pkg.Funcs)
 	for _, c := range pkg.Components {
 		funcs = append(funcs, c.Funcs...)

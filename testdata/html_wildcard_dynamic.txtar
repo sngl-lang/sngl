@@ -91,7 +91,7 @@ body { font-family: system-ui, sans-serif; }
       __n1.textContent = __prop_label;
     }
     let __n5 = document.createElement("label");
-    __n5.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
+    __n5.setAttribute("style", "gap:4px;display:inline-flex;align-items:center");
     let __n0 = document.createElement("input");
     __n0.checked = checked;
     __n0.disabled = false;
@@ -183,4 +183,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4667fdb9108d8cfa71dd3b10a97ee99d
+pass sha256:3eddea735e1f7405766a02cf4980c315

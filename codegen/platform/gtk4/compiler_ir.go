@@ -561,7 +561,7 @@ func (c *compilation) newScaffoldData(widgetFields []widgetField, functionCode s
 	// Lang-tracked helpers + their imports.
 	helpers := golang.HelpersNeeded(c.ctx.Pkg)
 	td.Imports = append(td.Imports, helpers.Imports()...)
-	td.LangHelpers = helpers.Emit() + golang.EmitMergeFuncs(c.ctx.Pkg.MergeStructs)
+	td.LangHelpers = helpers.Emit() + golang.EmitMergeFuncs(c.ctx.Pkg.MergeStructs, c.ctx.Pkg.MergeSets)
 
 	// Units (excluding the special-cased `duration`).
 	td.UnitDecls = golang.EmitUnitTypeDecls(c.info.Units) + golang.EmitEnumTypeDecls(c.info.Enums)

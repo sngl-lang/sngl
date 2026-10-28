@@ -49,7 +49,7 @@ func BuildSimulatedEnv(pkg *ir.Package, compName string, clock Clock, platform s
 	for _, p := range comp.Props {
 		init := p.Default
 		if init == nil {
-			init = ir.DeclaredDefault(p.Type)
+			init = ir.ZeroExpr(p.Type)
 		}
 		env.Set(p.Sym, evalInit(env, init))
 	}

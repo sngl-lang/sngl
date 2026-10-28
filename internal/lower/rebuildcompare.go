@@ -17,10 +17,10 @@ import (
 // of the JS one. Comparing the fields makes the emitted comparison structural
 // on all three languages without any of them being told about structs.
 //
-// Deliberately not a language-level change to `==`: a user-written `a == b` on
-// two structs is still whatever the target says, which is a separate hole. This
-// is the comparison the compiler writes for itself, and it is written where
-// every backend already agrees.
+// Not how a user-written `a == b` is answered: each target writes that one out
+// from the operands' type where its own == is not SNGL's (Go's goEqualer,
+// JavaScript's jsEqualExpr). This is the comparison the compiler writes for
+// itself, over types every backend already agrees on.
 //
 // The walk terminates because the checker gates both call sites -- an effect's
 // `on` at checkEffectKey, a #[construct] prop at markConstruct -- and a

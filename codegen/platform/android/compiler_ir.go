@@ -701,7 +701,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	body.WriteString("\n")
 
 	// Struct-merge helpers for opaque spreads (flatten_struct_spread lowering).
-	if mf := kotlin.EmitMergeFuncs(ctx.Pkg.MergeStructs); mf != "" {
+	if mf := kotlin.EmitMergeFuncs(ctx.Pkg.MergeStructs, ctx.Pkg.MergeSets); mf != "" {
 		body.WriteString(mf)
 	}
 

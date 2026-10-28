@@ -25,6 +25,50 @@ with a `v` and a `T` constrained to one bind alike), and `HasTypeParam` reads
 its fields; `Type.Equal` needed nothing, comparing anonymous structs by
 fields already.
 
+**A struct literal holds the fields the program wrote, and every reader asks
+`ir.StructLit.Field`** (the written value, else the declared default, else
+the type's zero at the literal's type arguments: `ir.FieldZero`) or walks
+`EachField`, which hands over every field in declaration order as `Field`
+answers it. Nothing reads a field's presence, so an omitted field and one
+written at that value are one value everywhere. Before, JavaScript wrote only
+the fields named, so an omitted one read undefined, and Go left an omitted
+enum field `""`, which no member is
+(`cmd/sngl/testdata/struct_omitted_fields_runs.txt`); and `ui.Style` read a
+field at its type's zero as unset everywhere but html, which read presence
+instead, so `{padding=16px, paddingTop=0px}` was 16 on top on four targets and
+0 on the fifth (`style_side_zero_runs.txt`). A field whose absence means
+something is an option, or an enum leading with a member saying so:
+`ui.Style`'s lengths, colors and numbers are options and each of its enums
+leads with `unset`. A host's own struct holds what its host gives a field
+left out, so `Field` does not answer for one.
+
+The fields left out are not written into the IR. The checker did that for a
+while, and it was what the docs site's build cost: every Style literal became
+52 fields, copied by every splice and unroll. Each backend fills where it
+spells a literal instead (`irwalk`, the literal spellers): JavaScript writes
+every field, Go leaves out a field holding Go's own zero for it (`atGoZero`,
+nil for an option) and Kotlin one holding the default its data class declares
+(`atDeclaredDefault`). A literal the fold spells from a value leaves out each
+field at what it would hold left out (`StructLit.HoldsOmitted`), so a folded
+Style is the fields it sets.
+
+**A spread writes each field of its operand that is not at its type's
+zero**, a declared default other than the zero included, and a field written
+after the spread is the literal's own. With Style's unset fields at their
+zero, `{display=flex, ...style}` lays a caller's Style over a component's
+look. Only the running value knows which fields those are, so the
+interpreter (`Env.mergeSpread`), the merge helpers `NoStructSpread` writes
+(`__merge_<Struct>`, each field compared with its zero as `==` compares it)
+and the folding of a literal operand (`spreadWrites`, by `ir.ZeroKnown`) all
+ask the value. A field written after a spread the build cannot read goes
+through a `__set_<Struct>_<field>` rather than the merge, which would skip
+it at zero (`cmd/sngl/testdata/struct_spread_zero_runs.txt`). html withholds
+`structSpread` under any language, since JavaScript's own `{...s}` writes a
+null over what came before it. NoStructSpread runs after `LibFuncs`, so a
+library helper's spread is lowered with the program's: before, the helper
+joined the package after the spreads were lowered and kept its `{...c, a=1}`
+(`internal/lower/lib_funcs_test.go`).
+
 **A type is walked by `ir.Type.Any` and rebuilt by `ir.Type.MapChildren`**
 (`ir/typewalk.go`), and nothing else restates which types are inside one:
 the elements, the signature's parameters and result, and an un-interned
@@ -92,7 +136,25 @@ struct field by field by name, a list element by element, a number by value.
 It says where it cannot answer (a map, two scalars of different kinds), which
 the fold leaves to run and the interpreter compares by rendered form as it
 always did. Two copies had drifted: the fold compared a struct's pointer and
-panicked on a list.
+panicked on a list. A compiled target writes the same comparison out from the
+operands' type wherever its own `==` would not be it
+(`cmd/sngl/testdata/struct_list_equality_runs.txt`): Go's goEqualer
+(`codegen/lang/golang/equal.go`) for a list, an option and a struct holding
+either -- a slice does not compile under `==`, and an option is a pointer, so
+two options holding 1 were unequal -- through `snglListEqual`,
+`snglOptEqual` and their `By` forms; JavaScript's `jsEqual` for a struct, a
+payload enum and a list, since `===` is an object's identity. Kotlin's `==`
+is a data class's and a list's `equals`, which already is. A map compares as
+the host's.
+
+**A color's string is its `hex()`** (Jonathan's call): the interpreter's
+`Struct.String` answers it for a color, so the fold does too, and each
+language's `string(c)` calls its own `color.hex` emitter
+(`codegen.ColorStringConversion`). It was the struct's own form in the
+interpreter, `String` of the record on html (`[object Object]`), and
+snglcolor's CSS `String` on Go, `rgba(…)` where translucent; that `String`
+stays what a platform writes into CSS
+(`cmd/sngl/testdata/color_string_runs.txt`).
 
 **A unit's members are its bases, and they are registered like any other
 declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit measurement { px, em, rem }` declares three bases, so a
@@ -176,12 +238,11 @@ magnitude with whatever that target already spells a bare float with —
 `fmt.Sprint`, `String`, `_snglFloatStr` — so unit display inherits the float
 agreement instead of restating it and drifting from it.
 
-**The CSS path is not this path**, which is what made unifying it cheap rather
-than a trade against html. A style prop is spelled by `internal/htmlutil`:
-`UnitLiteralToCSS` off an `ir.Literal`, the base name being the CSS unit. It
-shares `ir.UnitMagnitude` with the above and nothing else, reaches
-`interpolateStringify` nowhere, and `7px` in a stylesheet is unchanged by any
-of this.
+**html spells a length for CSS in SNGL**, with the display above:
+`lib/platform/html/html.sngl`'s `cssLength` writes a measurement in the one
+unit it carries, `"{m.px}px"`, or a `calc()` summing the bases it does, so
+`7px` in a stylesheet and `7px` interpolated are one spelling, and a length
+the build folds is that text in the markup.
 
 **A measurement means one length on every target.** `px` is a
 device-independent pixel and `em` and `rem` are font sizes: html hands all

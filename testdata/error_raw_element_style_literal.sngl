@@ -1,0 +1,15 @@
+// A raw html element's `style` is the list of declarations html.css answers
+// for a ui.Style, not a Style: a `{…}` written there is reported as the prop
+// it was handed to, with the function that makes one, rather than as the
+// first unit its fields wrote, which no position there could type.
+
+import ui "sngl:ui"
+import html "sngl:platform/html"
+
+component card() ui.node {
+    html.div(style={padding=6px, color=#336699}) {} // ERROR(check) "cannot use a struct literal as list[Declaration] for prop \"style\" on component element; write html.css({…}), which makes one from a ui.Style"
+}
+
+ui.window {
+    card
+}

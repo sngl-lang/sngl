@@ -103,10 +103,19 @@ func loopCopyMethod(w widgetInfo) string  { return w.fieldName + "Copy" }
 func loopCountMethod(w widgetInfo) string { return w.fieldName + "Count" }
 func loopFocusMethod(w widgetInfo) string { return w.fieldName + "FocusSync" }
 
+// copyTakesValue reports whether w's copy accessor is handed the copy's cell
+// to set the copy from: a widget a cell binds whose value the accessor knows
+// how to set. A table's `selected` cell is no value a tui.Table is set from,
+// and the call handing it anyway did not compile.
+func copyTakesValue(w widgetInfo) bool {
+	val, _, _ := widgetPayloadEvents(w)
+	return w.loop.cell != nil && val.goType != ""
+}
+
 // copyCall is the copy of w the loop variables in gc name.
 func copyCall(w widgetInfo, gc *golang.GoIRContext) string {
 	key := gc.EvalExpr(lower.CopyKey(w.loop.loops))
-	if w.loop.cell == nil {
+	if !copyTakesValue(w) {
 		return fmt.Sprintf("m.%s(%s)", loopCopyMethod(w), key)
 	}
 	return fmt.Sprintf("m.%s(%s, %s)", loopCopyMethod(w), key, gc.EvalExpr(w.loop.cell))
@@ -117,7 +126,7 @@ func copyCall(w widgetInfo, gc *golang.GoIRContext) string {
 func emitLoopWidgetMethods(b *strings.Builder, w widgetInfo, gc *golang.GoIRContext) {
 	val, _, _ := widgetPayloadEvents(w)
 	params := "key string"
-	if w.loop.cell != nil && val.goType != "" {
+	if copyTakesValue(w) {
 		params += ", value " + val.goType
 	}
 	fmt.Fprintf(b, "// %s is the copy of %s the key names, built the first time it renders\n// and set from its cell whenever the two differ.\n", loopCopyMethod(w), w.fieldName)
@@ -132,7 +141,7 @@ func emitLoopWidgetMethods(b *strings.Builder, w widgetInfo, gc *golang.GoIRCont
 		fmt.Fprintf(b, "\t\tw%s\n", w.model.Resize)
 	}
 	b.WriteString("\t}\n")
-	if w.loop.cell != nil && val.goType != "" {
+	if copyTakesValue(w) {
 		fmt.Fprintf(b, "\tif %s != value {\n\t\tw%s(value)\n\t}\n", readOf("w", val.get), val.set)
 	}
 	fmt.Fprintf(b, "\tm.%s[key] = w\n\treturn w\n}\n\n", w.fieldName)

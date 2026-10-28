@@ -99,13 +99,12 @@ component _example_scroll node {
     }
 }
 
-// Flexible empty space. With `style.flex=1` it expands to absorb
-// available room between siblings, which is the common way to
-// right-align content in an `hbox`. `size` gives a fixed length
-// when flex expansion is not wanted.
+// Flexible empty space: it grows into the room its siblings leave along its
+// parent's axis, as `flex: 1` does in CSS, which is the common way to
+// right-align content in an `hbox`. A `style.flex` of its own is its share
+// instead.
 component spacer(
     style Style = Style{},
-    size  string = "",
 ) node
 
 component _example_spacer node {

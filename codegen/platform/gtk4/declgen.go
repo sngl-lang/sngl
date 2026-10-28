@@ -39,6 +39,9 @@ struct Look {
     clip      bool
     hidden    bool
     cursor    string
+    justify   int
+    spaced    bool
+    spacing   int
 }
 `
 

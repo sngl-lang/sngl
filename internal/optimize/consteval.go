@@ -33,6 +33,9 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 		if x.Member != "" {
 			return true // an enum member is written, not computed
 		}
+		if x.Type != nil && x.Type.Kind == ir.TypeNull {
+			return true // `null`, the universe's
+		}
 		// A const the compiler supplies no value for -- i18n's plural keys,
 		// whose value is the runtime's -- does not fold.
 		if v, ok := x.Sym.(*ir.Var); ok && v.IsConst && (v.Init != nil || v.Builtin.IsConst()) {
@@ -257,16 +260,29 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		}
 		return result, true
 	case *ir.StructLit:
+		// Every field the literal holds, those it leaves out as their
+		// defaults, as the interpreter fills them: the optimizer drops a
+		// field written as its default, so `#336699` reached a partly
+		// constant Style without its `a`, and its hex read 0 there.
 		result := interp.NewStruct(x.Def, x.Type)
-		for _, f := range x.Fields {
-			if f.Spread || f.Name == "" || f.Value == nil {
-				return nil, false
-			}
-			v, ok := evalExpr(f.Value, ctx)
+		ok := true
+		x.EachField(func(f ir.FieldInit) {
 			if !ok {
-				return nil, false
+				return
+			}
+			if f.Spread || f.Name == "" || f.Value == nil {
+				ok = false
+				return
+			}
+			v, evaluated := evalExpr(f.Value, ctx)
+			if !evaluated {
+				ok = false
+				return
 			}
 			result.Set(f.Name, v)
+		})
+		if !ok {
+			return nil, false
 		}
 		return result, true
 	case *ir.MapLitIR:
@@ -339,6 +355,9 @@ func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
 	// irFromValue reads the member back off it.
 	if x.Member != "" {
 		return x.Member, true
+	}
+	if x.Type != nil && x.Type.Kind == ir.TypeNull {
+		return nil, true
 	}
 	// Const variable — evaluate its initializer, except where the compiler
 	// supplies the value. The build target is keyed off the #[builtin] mark
@@ -441,10 +460,19 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	// folder has its own implementation of the id, and most of those bodies
 	// are placeholders a backend is expected to replace.
 	if canFoldBody(call.Func) && call.Func.Intrinsic == "" {
+		key := interpretKey(call.Func, args, ctx)
+		if key != "" {
+			if res, ok := ctx.evalCache().load(key); ok {
+				return interp.CloneValue(res.value), true
+			}
+		}
 		ctx.interpDepth++
 		v, ok := interpretFunc(call.Func, args, ctx, ctx.interpDepth)
 		ctx.interpDepth--
 		if ok {
+			if key != "" {
+				ctx.evalCache().store(key, constResult{value: interp.CloneValue(v)})
+			}
 			return v, true
 		}
 	}
@@ -466,6 +494,16 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 		}
 	}
 
+	// One the folder has no answer of its own for, the interpreter's, where
+	// the declaration says the answer is the arguments' alone: `color.hex` of
+	// a constant color, reached once a function reading a Style is spliced
+	// where its node is.
+	if call.Func != nil && call.Func.Intrinsic != "" && call.Func.Purity == ir.PurityPure {
+		if v, ok, err := interp.RunIntrinsic(call.Func.Intrinsic, args); ok && err == nil {
+			return v, true
+		}
+	}
+
 	// An intrinsic the folder does not implement. A body it still has is one
 	// the declaration said computes the right answer; the placeholders were
 	// dropped after type checking.
@@ -480,6 +518,19 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 
 	// Native import pure function.
 	return evalNativeCall(call, args, ctx)
+}
+
+// interpretKey is what a pure function's interpreted answer is kept under: the
+// function and the arguments it was handed, which are the whole of what a
+// pure body answers from. html folds the same Style through css on node after
+// node, and interpreted each time that was the cost that sank translating it
+// in SNGL. Empty, and nothing kept, where the fold answers an intrinsic of its
+// own -- a document's page -- which the arguments do not say.
+func interpretKey(fn *ir.Func, args []any, ctx *evalCtx) string {
+	if fn.Purity != ir.PurityPure || len(ctx.answers) > 0 {
+		return ""
+	}
+	return fmt.Sprintf("interpret\x00%p\x00%v", fn, args)
 }
 
 // maxFoldedSequence bounds what a sequence folds to on a target that does not
@@ -646,12 +697,12 @@ func evalPureGoCall(call *ir.Call, name string, ns *ir.NativeImport, args []any,
 }
 
 func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
-	// A T promoted to option[T] is not a value change, so folding it produces
-	// the operand's value and the rebuilt expression is typed T again -- the
-	// wrap vanishes, and Go's *T field is assigned a T. There is nothing to
-	// gain by folding it either: the operand folds on its own.
+	// A T promoted to option[T] is not a value change: the option holds the
+	// operand's value, and irFromValue writes the wrap back wherever an
+	// option is what the position holds. Refused, no struct with a set option
+	// field folded, nor anything reading one -- every ui.Style.
 	if ir.IsOptionWrap(conv) {
-		return nil, false
+		return evalExpr(conv.Operand, ctx)
 	}
 	if conv.Type.Kind == ir.TypeString {
 		if s, ok := multiBaseUnitString(conv.Operand); ok {
@@ -1521,9 +1572,8 @@ func evalListLambda(id string, args []any, ctx *evalCtx) (any, bool) {
 }
 
 // fillOmittedFields gives each field a literal left out what the declaration
-// means by omitting it, so a read of one folds and two literals compare; marked
-// omitted, irFromValue writes the literal back as it was written. It reports
-// whether every field now has a value.
+// means by omitting it (ir.StructLit.Field), so a read of one folds and two
+// literals compare. It reports whether every field now has a value.
 func fillOmittedFields(s *interp.Struct, def *ir.StructDef, ctx *evalCtx) bool {
 	if def == nil {
 		def = expectedStructDef(s.Type)
@@ -1549,7 +1599,7 @@ func fillOmittedFields(s *interp.Struct, def *ir.StructDef, ctx *evalCtx) bool {
 			complete = false
 			continue
 		}
-		s.Fields = append(s.Fields, interp.Field{Name: f.Name, Value: v, Omitted: true, Filled: interp.DeepCopy(v)})
+		s.Fields = append(s.Fields, interp.Field{Name: f.Name, Value: v})
 	}
 	return complete
 }

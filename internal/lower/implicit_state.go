@@ -241,7 +241,7 @@ func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component, inLoop, inBr
 		typ := p.Type.Substitute(bound)
 		start := ir.InstantiateExpr(p.Default, bound)
 		if start == nil {
-			start = ir.DeclaredDefault(typ)
+			start = ir.ZeroExpr(typ)
 		}
 		init := &ir.Prop{Name: cellStartProp(p.Name), Type: typ, Default: start}
 		init.Sym = &ir.Param{Name: init.Name, Type: typ}

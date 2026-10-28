@@ -338,7 +338,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Circle(20.0, 20.0, float64(m.frame))
 	ctx.Restore()
 }
@@ -435,7 +435,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<canvas id="$0" style="height:40px;width:40px" height="40" width="40">
+<canvas id="$0" height="40" width="40">
 </canvas>
 
 <script>
@@ -473,7 +473,7 @@ body { font-family: system-ui, sans-serif; }
   var __effects0_steps = 0;
   function _canvasDraw0(ctx) {
     ctx.save();
-    paintStyle(ctx, { fill: { r: 51, g: 102, b: 255, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 51, g: 102, b: 255, a: 255 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(20, 20, parseFloat(state.frame), 0, 6.283185307179586);
     ctx.fill();
@@ -604,6 +604,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:ef14fc3ab17083f64136b3f1d0e6d174
+pass sha256:719a4f42ea1e9313902a5bfd4cf17e72
 -- run/none/html --
-pass sha256:92e53af97a7246e0fa0d8ce4443aacdb
+pass sha256:e7adf0ea6452b395784dbaed407169d8

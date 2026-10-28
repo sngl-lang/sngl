@@ -52,9 +52,9 @@ var held = S{w=a, n=1, l=x} // ERROR(check) "cannot use int as len for field \"l
 
 window {
     text(value="x", style={fontWeight=42}) // ERROR(check) "cannot use int as FontWeight for field \"fontWeight\" of Style"
-    text(value="y", style={gap=true})      // ERROR(check) "cannot use bool as measurement for field \"gap\" of Style"
-    text(value="z", style={color="teal"})  // ERROR(check) "cannot use string as color for field \"color\" of Style"
-    text(value="w", style={padding=16})    // ERROR(check) "cannot use int as measurement for field \"padding\" of Style"
+    text(value="y", style={gap=true})      // ERROR(check) "cannot use bool as option[measurement] for field \"gap\" of Style"
+    text(value="z", style={color="teal"})  // ERROR(check) "cannot use string as option[color] for field \"color\" of Style"
+    text(value="w", style={padding=16})    // ERROR(check) "cannot use int as option[measurement] for field \"padding\" of Style"
     text(value=string(ok.n), style={padding=16px, fontWeight=bold})
     text(value=string(box.v))
 }

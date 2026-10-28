@@ -1014,6 +1014,9 @@ func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
 			if s, ok := UnitToString(n, operand); ok {
 				return s
 			}
+			if s, _, ok := codegen.ColorStringConversion(langJS, n, jc.EvalExpr); ok {
+				return s
+			}
 			if jc.Ctx != nil && jc.Ctx.Helpers != nil {
 				jc.Ctx.Helpers["String"] = true
 			}

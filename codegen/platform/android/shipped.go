@@ -9,8 +9,8 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// dateFieldKt is SnglDateField's source, scrollKt SnglScroll's and choosesKt
-// snglChooses's.
+// dateFieldKt is SnglDateField's source, scrollKt SnglScroll's, choosesKt
+// snglChooses's and flexShareKt snglFlexShare's.
 //
 //go:embed datefield.kt
 var dateFieldKt string
@@ -20,6 +20,9 @@ var scrollKt string
 
 //go:embed chooses.kt
 var choosesKt string
+
+//go:embed flexshare.kt
+var flexShareKt string
 
 // shippedComposables are the Kotlin the platform writes beside MainScreen.kt
 // for a program that uses it: a composable by the intrinsic id
@@ -33,25 +36,20 @@ var shippedComposables = []struct {
 	{intrinsic: intrinsicNS + "SnglDateField", name: "SnglDateField", src: dateFieldKt},
 	{intrinsic: intrinsicNS + "SnglScroll", name: "SnglScroll", src: scrollKt},
 	{call: "snglChooses", name: "SnglChooses", src: choosesKt},
+	{call: flexShareName, name: "SnglFlexShare", src: flexShareKt},
 }
+
+// flexShareName is the shipped default of sngl:ui's flexShare, and
+// localFlexShare what a Column the generated code writes provides it through.
+const (
+	flexShareName  = "snglFlexShare"
+	localFlexShare = "LocalFlexShare"
+)
 
 // emitShippedComposables writes each shipped composable the program renders
 // into the package MainScreen.kt is in, beside it.
 func emitShippedComposables(req *codegen.Request, sink codegen.Sink, mainScreen, pkg string) error {
-	rendered, called := map[string]bool{}, map[string]bool{}
-	_ = ir.Walk(req.Pkg, func(n ir.Node) error {
-		switch n := n.(type) {
-		case *ir.NodeInst:
-			if n.Component != nil && n.Component.Intrinsic != "" {
-				rendered[n.Component.Intrinsic] = true
-			}
-		case *ir.Call:
-			if n.Func != nil && n.Func.Foreign.Scheme == "kotlin" && n.Func.Foreign.Name != "" {
-				called[n.Func.Foreign.Name] = true
-			}
-		}
-		return nil
-	})
+	rendered, called := shippedUses(req.Pkg)
 	for _, c := range shippedComposables {
 		if !rendered[c.intrinsic] && !called[c.call] {
 			continue
@@ -62,4 +60,28 @@ func emitShippedComposables(req *codegen.Request, sink codegen.Sink, mainScreen,
 		}
 	}
 	return nil
+}
+
+// shippedUses is the intrinsics pkg renders and the Kotlin natives it calls or
+// reads, by which the shipped composables it needs are known.
+func shippedUses(pkg *ir.Package) (rendered, called map[string]bool) {
+	rendered, called = map[string]bool{}, map[string]bool{}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		switch n := n.(type) {
+		case *ir.NodeInst:
+			if n.Component != nil && n.Component.Intrinsic != "" {
+				rendered[n.Component.Intrinsic] = true
+			}
+		case *ir.Call:
+			if n.Func != nil && n.Func.Foreign.Scheme == "kotlin" && n.Func.Foreign.Name != "" {
+				called[n.Func.Foreign.Name] = true
+			}
+		case *ir.Ident:
+			if v, ok := n.Sym.(*ir.Var); ok && v.Foreign.Scheme == "kotlin" && v.Foreign.Name != "" {
+				called[v.Foreign.Name] = true
+			}
+		}
+		return nil
+	})
+	return rendered, called
 }

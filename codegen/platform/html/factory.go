@@ -369,6 +369,15 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 		}
 		fmt.Fprintf(b, "\t\t%s: %s,\n", instanceUpdateMethod(p.Name), setter)
 	}
+	// A setter no prop declares: a refresh for a page var the instance reads,
+	// which a write of it hands on (lower's page_refresh.go).
+	for _, f := range comp.Funcs {
+		prop, ok := strings.CutPrefix(f.Name, ir.ComponentSetter(""))
+		if !ok || slices.ContainsFunc(comp.Props, func(p *ir.Prop) bool { return p.Name == prop }) {
+			continue
+		}
+		fmt.Fprintf(b, "\t\t%s: %s,\n", instanceUpdateMethod(prop), f.Name)
+	}
 	// What a test reads of the instance, which it finds by its root
 	// (emitInstanceReads).
 	for _, r := range reads {

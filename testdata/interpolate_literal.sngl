@@ -1,0 +1,17 @@
+// A literal interpolated into a string is an expression like any other.
+//
+// A string's text parts are literals too, and the checker read every literal
+// part as text: `"{1}"` and `"{#fff}"` checked to "", neither being a string.
+// The formatter likewise wrote each back as text, so `sngl fmt` turned
+// `"{#fff}"` into `"#fff"`. A part is text only in the string's own quoting
+// (ast.InterpolationExpr.Text).
+
+import test "sngl:test"
+
+func testALiteralIsInterpolated(t test.Test) {
+    t.assert("{1}" == "1")
+    t.assert("n{2.5}" == "n2.5")
+    t.assert("{true}" == "true")
+    t.assert("c{#fff}" == "c#ffffff")
+    t.assert("""{#33669980}""" == "#33669980")
+}

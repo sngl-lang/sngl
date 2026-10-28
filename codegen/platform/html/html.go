@@ -20,7 +20,6 @@ import (
 	snglI18n "duckfam.us/sngl/codegen/i18n"
 	"duckfam.us/sngl/codegen/lang/javascript"
 	"duckfam.us/sngl/internal/asset"
-	"duckfam.us/sngl/internal/htmlutil"
 	"duckfam.us/sngl/internal/optimize"
 	"duckfam.us/sngl/ir"
 )
@@ -717,8 +716,6 @@ type htmlGen struct {
 
 	initWrites []updateFunc
 
-	styleValueDef *ir.StructDef
-
 	handlers []eventHandler
 	// quiet are the events a test fires that an element handles with an
 	// empty handler: no listener, but an invoker.
@@ -781,6 +778,9 @@ type htmlGen struct {
 	// templateSlots are the page's slots whose anchor is a template, written
 	// where the parser would move a span (tableParts).
 	templateSlots map[string]bool
+	// testCalledSlots are the page's slots a test re-renders, whose anchor is
+	// published with the slot's function (exportTestCalled).
+	testCalledSlots map[string]bool
 	// parentTag is the element whose children are being written.
 	parentTag string
 
@@ -824,6 +824,9 @@ type htmlGen struct {
 	// one top-level `const __nN = document.querySelector(...)` in emitScript,
 	// so handlers emit a bare identifier rather than a querySelector per write.
 	loweredRefs map[string]bool
+	// writtenNodes are the elements a lowered write names anywhere in the
+	// package, by id (inlineUpdated).
+	writtenNodes map[string]bool
 	// loweredLocals are the names a lowered statement *declares* on its way
 	// past -- a `let __n1__re0__el = __n1__re0.__root` a rebuild binds, say.
 	// They look exactly like a page ref where they are used, so without this
@@ -1721,20 +1724,14 @@ func (g *htmlGen) rootFlexes() bool {
 		if !ok {
 			continue
 		}
-		for _, sf := range codegen.NodeStyleFields(n) {
-			if sf.Name != "flex" {
-				continue
+		// A share is the static text the build read, or a declaration the
+		// page writes, which may ask for one at runtime: handing over the
+		// viewport costs a page that does not.
+		decls, _ := declarationsOf(codegen.NodeProp(n, "style"))
+		for _, d := range decls {
+			if d.property == "flex" && (!d.static || d.text != "" && d.text != "0") {
+				return true
 			}
-			if sf.Value == nil {
-				continue
-			}
-			// `flex` is a float, so the question is numeric. An expression
-			// nobody can read at build time may ask for a share at runtime,
-			// and handing over the viewport costs a page that does not.
-			if v, ok := codegen.IRLiteralNumber(sf.Value); ok && v == 0 {
-				continue
-			}
-			return true
 		}
 	}
 	return false
@@ -2120,10 +2117,10 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		return
 	}
 
-	// For a NoReactivity-assigned __nN id, lowering already injected the
-	// per-mutation Assign into the handler bodies, so the updater is initOnly
-	// and findAffectedUpdaters skips it rather than double-firing.
-	lowered := loweredID(id)
+	// Where lowering already injected the per-mutation Assign into the
+	// handler bodies, the updater is initOnly and findAffectedUpdaters skips
+	// it rather than double-firing.
+	lowered := g.inlineUpdated(id)
 	for _, name := range slices.Sorted(maps.Keys(props)) {
 		expr := props[name]
 		if name == classStyleProp || name == classStyleDarkProp {
@@ -2338,8 +2335,20 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	if mf := javascript.EmitMergeFuncs(g.pkg.MergeStructs); mf != "" {
+	if mf := javascript.EmitMergeFuncs(g.pkg.MergeStructs, g.pkg.MergeSets); mf != "" {
 		b.WriteString(mf)
+		// A test body spreading a struct calls these too, from the module
+		// bundled beside the page.
+		if g.testMode {
+			var names []string
+			for _, sd := range g.pkg.MergeStructs {
+				names = append(names, "__merge_"+sd.Name)
+			}
+			for _, set := range g.pkg.MergeSets {
+				names = append(names, ir.MergeSetName(set))
+			}
+			fmt.Fprintf(b, "if (typeof window !== 'undefined') { Object.assign(window, { %s }); }\n\n", strings.Join(names, ", "))
+		}
 	}
 
 	emittedFuncs := false
@@ -2427,8 +2436,12 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 
 	// g.ctx.Helpers is the unified map, so it also carries flags written by
 	// the JsIRContext path during emitScript.
+	// Flagged by any translated string conversion, a library function's
+	// included, and that function may be one no document calls in the end.
 	if g.ctx.Helpers["String"] {
+		openDecl(b, "String")
 		b.WriteString("function String(v) { return \"\" + v; }\n\n")
+		closeDecl(b)
 	}
 	if g.ctx.Helpers[spanColorHelper] {
 		b.WriteString(spanColorHelperJS + "\n")
@@ -2436,13 +2449,11 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	if g.pkg != nil && rendersReachEnd(g.pkg) {
 		b.WriteString(reachEndHelper + "\n")
 	}
-	if g.ctx.Helpers[styleValueHelper] && g.styleValueDef != nil {
-		b.WriteString(styleValueJS(g.styleValueDef, g.ctx.Helpers) + "\n")
+	if g.ctx.Helpers[cssTextHelper] {
+		b.WriteString(cssTextHelperJS + "\n")
 	}
-	for _, h := range []string{styleColorHelper, styleLengthHelper, styleKeywordHelper} {
-		if g.ctx.Helpers[h] {
-			b.WriteString(styleHelperJS[h] + "\n")
-		}
+	if g.ctx.Helpers[setStylesHelper] {
+		b.WriteString(setStylesHelperJS + "\n")
 	}
 	if g.ctx.Helpers[dialogHelper] {
 		b.WriteString(dialogHelperJS + "\n")
@@ -2672,9 +2683,13 @@ func (g *htmlGen) exportTestCalled(b *strings.Builder, synth []*ir.Func) {
 		})
 	}
 	var names []string
+	g.testCalledSlots = map[string]bool{}
 	for _, fn := range synth {
 		if called[fn] && !fn.IsMethod() {
 			names = append(names, jsFuncName(fn))
+			if idx := slotIndexFromRenderFunc(fn.Name); idx != "" {
+				g.testCalledSlots[idx] = true
+			}
 		}
 	}
 	if len(names) > 0 {
@@ -2705,6 +2720,11 @@ func (g *htmlGen) emitSlotBoots(b *strings.Builder) {
 			fmt.Fprintf(b, "document.querySelector('template[data-sngl-slot=\"%s\"]').replaceWith(%s);\n", idx, anchor)
 		} else {
 			fmt.Fprintf(b, "var %s = document.querySelector('[data-sngl-slot=\"%s\"]');\n", anchor, idx)
+		}
+		if g.testCalledSlots[idx] {
+			// A test re-renders the slot after its write, as the program's
+			// own writes do, into the anchor rewriteSlotCallsToAnchors names.
+			fmt.Fprintf(b, "if (typeof window !== 'undefined') { Object.assign(window, { %s }); }\n", anchor)
 		}
 		fmt.Fprintf(b, "%s(%s);\n", fn.Name, anchor)
 	}
@@ -2982,6 +3002,38 @@ func (g *htmlGen) optimizeIR() {
 // loweredID reports whether id was assigned by NoReactivity lowering, which
 // already injected the inline mutation updates, so its updaters are init-only.
 func loweredID(id string) bool { return strings.HasPrefix(id, "__n") }
+
+// inlineUpdated reports whether lowering writes the element id names where
+// what it reads changes: one NoReactivity named, or one carrying the
+// program's own `#id` that a lowered write names. Asked by the `__n` prefix
+// alone, such a node's updaters ran again after every handler's inline
+// writes.
+func (g *htmlGen) inlineUpdated(id string) bool {
+	if loweredID(id) {
+		return true
+	}
+	if g.writtenNodes == nil {
+		g.writtenNodes = map[string]bool{}
+		visit := func(n ir.Node) error {
+			if a, ok := n.(*ir.Assign); ok {
+				if sel, ok := a.Target.(*ir.Select); ok {
+					if x, ok := sel.Operand.(*ir.Ident); ok && x.IsElementRef {
+						g.writtenNodes[x.Name] = true
+					}
+				}
+			}
+			return nil
+		}
+		// The page's document too, which is cloned from its Window.
+		_ = walkThroughCatch(g.pkg, visit)
+		_ = walkThroughCatch(g.irBodyStmts, visit)
+	}
+	// By the program's id, which the writes name, on the element that id
+	// resolves to: a copy of an unrolled loop's node under the same id is
+	// another element, which no inline write reaches.
+	n := g.idToNode[id]
+	return n != nil && g.writtenNodes[n.ID] && g.refToVar[n.ID] == id
+}
 
 // exprUsesI18n keeps an init-time text updater that has no state-var deps but
 // still depends on the active locale.
@@ -3441,7 +3493,7 @@ func (g *htmlGen) buildCSSStyle(n *ir.NodeInst) string {
 	if n == nil {
 		return ""
 	}
-	return htmlutil.BuildCSSStyleIR(n.Props)
+	return staticCSS(codegen.NodeProp(n, "style"))
 }
 
 // receiverParamName is what a component method's receiver is called in its

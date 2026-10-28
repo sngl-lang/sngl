@@ -9,9 +9,10 @@
 ! sngl check badname.sngl
 stderr 'unknown prop "innerTxt" on component element'
 
-# A declared attribute's type is checked. `style` is a struct, not a string.
+# A declared attribute's type is checked. `style` is the declarations
+# `html.css` answers for a Style, not a string.
 ! sngl check badtype.sngl
-stderr 'cannot use string as Style for prop "style" on component element'
+stderr 'cannot use string as list\[Declaration\] for prop "style" on component element'
 
 # `tag` names the element to emit — the escape hatch for a tag no identifier
 # can spell — and is not itself an attribute.

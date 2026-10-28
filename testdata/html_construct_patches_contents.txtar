@@ -216,7 +216,7 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __n4.removeAttribute("start");
     }
-    __n4.setAttribute("style", "display:flex;flex-direction:column;gap:4px;padding-left:2em");
+    __n4.setAttribute("style", "padding-left:2em;gap:4px;display:flex;flex-direction:column");
     let __n12 = document.createElement("li");
     let __n13 = document.createElement("p");
     __n13.setAttribute("style", "margin:0px;white-space:pre-wrap");
@@ -638,4 +638,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b0df340e279760216a2f8453b66a20b7
+pass sha256:b56ce188cfd29d8f9c9df7a1ed45edf2

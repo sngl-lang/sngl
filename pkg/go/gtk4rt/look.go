@@ -36,14 +36,21 @@ typedef struct {
     GtkOverflow overflow0;
     gboolean hidden, visible0;
     gboolean cursor;
+    int justify;
+    gboolean spaced;
+    int spacing;
+    // GTK's own layout of a box, kept while gtk4rt's lays the box out.
+    GtkLayoutManager *box_layout;
 } SnglLook;
 
 static void sngl_unpin(SnglLook *l, int axis);
+static void sngl_box_update(GtkWidget *box);
 
 static void sngl_look_free(gpointer data) {
     SnglLook *l = data;
     sngl_unpin(l, l->grow_axis);
     if (l->css) g_object_unref(l->css);
+    if (l->box_layout) g_object_unref(l->box_layout);
     if (l->kids) {
         g_signal_handler_disconnect(l->kids, l->kids_id);
         g_object_unref(l->kids);
@@ -53,6 +60,16 @@ static void sngl_look_free(gpointer data) {
 
 static SnglLook *sngl_look_of(GtkWidget *w) {
     return g_object_get_data(G_OBJECT(w), "sngl-look");
+}
+
+// The axis of a box. GtkBox keeps its orientation in its layout manager, so
+// once gtk4rt has given a box a layout of its own, the box answers through
+// one that is not a GtkBoxLayout -- horizontal, with a critical on stderr --
+// and its own, kept aside, is what knows. flex.go asks too.
+GtkOrientation sngl_box_axis(GtkWidget *box) {
+    SnglLook *l = sngl_look_of(box);
+    if (l && l->box_layout) return gtk_orientable_get_orientation(GTK_ORIENTABLE(l->box_layout));
+    return gtk_orientable_get_orientation(GTK_ORIENTABLE(box));
 }
 
 static SnglLook *sngl_look_ensure(GtkWidget *w) {
@@ -85,6 +102,7 @@ static void sngl_pin(GtkWidget *box, SnglLook *l, int axis) {
     }
     l->grow_box = box;
     g_object_add_weak_pointer(G_OBJECT(box), (gpointer *)&l->grow_box);
+    sngl_box_update(box);
 }
 
 static void sngl_unpin(SnglLook *l, int axis) {
@@ -93,7 +111,9 @@ static void sngl_unpin(SnglLook *l, int axis) {
     g_object_remove_weak_pointer(G_OBJECT(box), (gpointer *)&l->grow_box);
     l->grow_box = NULL;
     SnglLook *bl = sngl_look_of(box);
-    if (!bl || --bl->growers > 0) return;
+    if (!bl) return;
+    sngl_box_update(box);
+    if (--bl->growers > 0) return;
     sngl_set_expand(box, axis, bl->box_expand0);
     if (axis == 0) gtk_widget_set_hexpand_set(box, bl->box_expand_set0);
     else gtk_widget_set_vexpand_set(box, bl->box_expand_set0);
@@ -108,8 +128,204 @@ static void sngl_restore_expand(GtkWidget *w, SnglLook *l) {
     l->grow_axis = -1;
 }
 
+// --- A box laid out by gtk4rt ---
+//
+// A GtkBox packs its children from the start and splits its spare room evenly
+// between the ones that expand. CSS places them as justify-content says and
+// shares the room by each one's flex, so a box whose look justifies, or whose
+// growing children ask for unequal shares, is laid out here instead, and
+// given GTK's own layout back when it asks for neither. Its spacing is then
+// its look's, which is why the overrides hand a box's spacing to the look:
+// GtkBox's own setter would reach a layout that is not GTK's.
+
+static int sngl_box_spacing(GtkWidget *box) {
+    SnglLook *l = sngl_look_of(box);
+    if (l && l->spaced) return l->spacing;
+    if (l && l->box_layout) return gtk_box_layout_get_spacing(GTK_BOX_LAYOUT(l->box_layout));
+    return gtk_box_get_spacing(GTK_BOX(box));
+}
+
+// The share of the spare room a child takes: its look's flex, or one share
+// where it expands itself, as a GIR widget given `hexpand` does. An expand
+// GTK carries up from something the child holds is no share: a CSS flex item
+// grows by its own flex, never by what is inside it, so a box holding such a
+// widget is its content's size.
+static double sngl_weight(GtkWidget *c, GtkOrientation o) {
+    SnglLook *cl = sngl_look_of(c);
+    if (cl && cl->grow > 0) return cl->grow;
+    gboolean own = o == GTK_ORIENTATION_HORIZONTAL ? gtk_widget_get_hexpand(c) : gtk_widget_get_vexpand(c);
+    return own ? 1 : 0;
+}
+
+static GPtrArray *sngl_flex_kids(GtkWidget *box) {
+    GPtrArray *kids = g_ptr_array_new();
+    for (GtkWidget *c = gtk_widget_get_first_child(box); c; c = gtk_widget_get_next_sibling(c))
+        if (gtk_widget_should_layout(c)) g_ptr_array_add(kids, c);
+    return kids;
+}
+
+// Whether the children's shares are not what GTK's box would give them: two
+// weights that differ, or a weight beside a child GTK would grow for what it
+// holds. A box with no weight at all is left to GTK's, carried expands and
+// all.
+static gboolean sngl_weights_uneven(GtkWidget *box) {
+    GtkOrientation o = sngl_box_axis(box);
+    double first = 0;
+    gboolean carried = FALSE;
+    for (GtkWidget *c = gtk_widget_get_first_child(box); c; c = gtk_widget_get_next_sibling(c)) {
+        if (!gtk_widget_should_layout(c)) continue;
+        double w = sngl_weight(c, o);
+        if (w <= 0) {
+            carried = carried || gtk_widget_compute_expand(c, o);
+            continue;
+        }
+        if (first == 0) first = w;
+        else if (w != first) return TRUE;
+    }
+    return carried && first > 0;
+}
+
+// Each child's extent along the box, of along in all, at across: its
+// minimum, then up to its natural size, then the spare room's share its
+// weight asks for. What no child takes is handed back for justifying.
+static int sngl_flex_sizes(GtkWidget *box, GtkOrientation o, int along, int across, GPtrArray *kids, int *sizes) {
+    int n = kids->len;
+    GtkRequestedSize *req = g_new(GtkRequestedSize, n);
+    int spare = along - sngl_box_spacing(box) * (n - 1);
+    double weights = 0;
+    for (int i = 0; i < n; i++) {
+        GtkWidget *c = g_ptr_array_index(kids, i);
+        req[i].data = c;
+        gtk_widget_measure(c, o, across, &req[i].minimum_size, &req[i].natural_size, NULL, NULL);
+        spare -= req[i].minimum_size;
+        weights += sngl_weight(c, o);
+    }
+    spare = gtk_distribute_natural_allocation(MAX(spare, 0), n, req);
+    for (int i = 0; i < n; i++) {
+        sizes[i] = req[i].minimum_size;
+        if (weights <= 0) continue;
+        double w = sngl_weight(g_ptr_array_index(kids, i), o);
+        if (w <= 0) continue;
+        // The last grower takes what rounding left.
+        int share = w == weights ? spare : (int)(spare * w / weights + 0.5);
+        sizes[i] += share;
+        spare -= share;
+        weights -= w;
+    }
+    g_free(req);
+    return weights > 0 ? 0 : spare;
+}
+
+static GtkSizeRequestMode sngl_flex_mode(GtkWidget *box) {
+    (void)box;
+    return GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH;
+}
+
+static void sngl_flex_measure(GtkWidget *box, GtkOrientation o, int for_size,
+        int *min, int *nat, int *min_base, int *nat_base) {
+    GtkOrientation axis = sngl_box_axis(box);
+    GPtrArray *kids = sngl_flex_kids(box);
+    int n = kids->len;
+    *min = *nat = 0;
+    *min_base = *nat_base = -1;
+    if (o == axis) {
+        for (int i = 0; i < n; i++) {
+            int cmin, cnat;
+            gtk_widget_measure(g_ptr_array_index(kids, i), o, for_size, &cmin, &cnat, NULL, NULL);
+            *min += cmin;
+            *nat += cnat;
+        }
+        if (n > 1) {
+            *min += sngl_box_spacing(box) * (n - 1);
+            *nat += sngl_box_spacing(box) * (n - 1);
+        }
+    } else {
+        int *sizes = NULL;
+        if (for_size >= 0 && n > 0) {
+            sizes = g_new(int, n);
+            sngl_flex_sizes(box, axis, for_size, -1, kids, sizes);
+        }
+        for (int i = 0; i < n; i++) {
+            int cmin, cnat;
+            gtk_widget_measure(g_ptr_array_index(kids, i), o, sizes ? sizes[i] : -1, &cmin, &cnat, NULL, NULL);
+            *min = MAX(*min, cmin);
+            *nat = MAX(*nat, cnat);
+        }
+        g_free(sizes);
+    }
+    g_ptr_array_unref(kids);
+}
+
+// Each child along the box, across all of it: GTK aligns a child within
+// what it is allocated, as its halign and valign say.
+static void sngl_flex_allocate(GtkWidget *box, int width, int height, int baseline) {
+    (void)baseline;
+    GtkOrientation axis = sngl_box_axis(box);
+    gboolean row = axis == GTK_ORIENTATION_HORIZONTAL;
+    int along = row ? width : height;
+    GPtrArray *kids = sngl_flex_kids(box);
+    int n = kids->len;
+    if (n == 0) {
+        g_ptr_array_unref(kids);
+        return;
+    }
+    int *sizes = g_new(int, n);
+    int spare = sngl_flex_sizes(box, axis, along, row ? height : width, kids, sizes);
+    SnglLook *l = sngl_look_of(box);
+    int lead = 0, between = 0, rest = 0;
+    switch (l ? l->justify : 0) {
+    case 1: lead = spare / 2; break;
+    case 2: lead = spare; break;
+    case 3: if (n > 1) { between = spare / (n - 1); rest = spare % (n - 1); } break;
+    case 4: lead = spare / (2 * n); between = spare / n; break;
+    case 5: lead = between = spare / (n + 1); break;
+    }
+    gboolean rtl = row && gtk_widget_get_direction(box) == GTK_TEXT_DIR_RTL;
+    int spacing = sngl_box_spacing(box), pos = lead;
+    for (int i = 0; i < n; i++) {
+        if (i > 0) pos += spacing + between + (i <= rest ? 1 : 0);
+        int at = rtl ? along - pos - sizes[i] : pos;
+        GtkAllocation a = row ? (GtkAllocation){at, 0, sizes[i], height} : (GtkAllocation){0, at, width, sizes[i]};
+        gtk_widget_size_allocate(g_ptr_array_index(kids, i), &a, -1);
+        pos += sizes[i];
+    }
+    g_free(sizes);
+    g_ptr_array_unref(kids);
+}
+
+static void sngl_box_update(GtkWidget *box) {
+    if (!box || !GTK_IS_BOX(box)) return;
+    SnglLook *l = sngl_look_of(box);
+    gboolean ours = l && l->box_layout;
+    gboolean need = (l && l->justify != 0) || sngl_weights_uneven(box);
+    if (need && !ours) {
+        GtkLayoutManager *own = gtk_widget_get_layout_manager(box);
+        if (!GTK_IS_BOX_LAYOUT(own)) return;
+        l = sngl_look_ensure(box);
+        l->box_layout = g_object_ref(own);
+        gtk_widget_set_layout_manager(box, gtk_custom_layout_new(sngl_flex_mode, sngl_flex_measure, sngl_flex_allocate));
+    } else if (!need && ours) {
+        GtkLayoutManager *own = l->box_layout;
+        l->box_layout = NULL;
+        if (l->spaced) gtk_box_layout_set_spacing(GTK_BOX_LAYOUT(own), l->spacing);
+        gtk_widget_set_layout_manager(box, own);
+    } else if (ours) {
+        gtk_widget_queue_resize(box);
+    }
+}
+
+// A box's spacing, which its look holds while gtk4rt lays the box out.
+static void sngl_look_set_spacing(GtkWidget *w, SnglLook *l, int spaced, int spacing) {
+    if (!spaced || !GTK_IS_BOX(w)) return;
+    l->spaced = TRUE;
+    l->spacing = spacing;
+    if (l->box_layout) gtk_widget_queue_resize(w);
+    else gtk_box_set_spacing(GTK_BOX(w), spacing);
+}
+
 static GtkAlign sngl_cross_align(int cross) {
     switch (cross) {
+    case 1: return GTK_ALIGN_START;
     case 2: return GTK_ALIGN_CENTER;
     case 3: return GTK_ALIGN_END;
 #if GTK_CHECK_VERSION(4, 12, 0)
@@ -145,7 +361,7 @@ static void sngl_look_place(GtkWidget *w) {
     GtkWidget *parent = gtk_widget_get_parent(w);
     int main_axis = -1;
     if (parent && GTK_IS_ORIENTABLE(parent))
-        main_axis = gtk_orientable_get_orientation(GTK_ORIENTABLE(parent)) == GTK_ORIENTATION_HORIZONTAL ? 0 : 1;
+        main_axis = sngl_box_axis(parent) == GTK_ORIENTATION_HORIZONTAL ? 0 : 1;
     if (l) {
         if (l->grow_axis >= 0 && (l->grow <= 0 || l->grow_axis != main_axis))
             sngl_restore_expand(w, l);
@@ -276,14 +492,14 @@ static void sngl_look_set_text(GtkWidget *w, SnglLook *l, int align, int lines, 
             l->xalign0 = gtk_editable_get_alignment(GTK_EDITABLE(t));
         }
     }
-    float x = align == 1 ? 0.5f : align == 2 ? 1.0f : align == 3 ? 0.0f : l->xalign0;
+    float x = align == 1 ? 0.5f : align == 2 ? 1.0f : align == 3 || align == 4 ? 0.0f : l->xalign0;
     if (!GTK_IS_LABEL(t)) {
         gtk_editable_set_alignment(GTK_EDITABLE(t), x);
         return;
     }
     GtkLabel *lb = GTK_LABEL(t);
     gtk_label_set_xalign(lb, x);
-    gtk_label_set_justify(lb, align == 1 ? GTK_JUSTIFY_CENTER : align == 2 ? GTK_JUSTIFY_RIGHT : align == 3 ? GTK_JUSTIFY_FILL : l->justify0);
+    gtk_label_set_justify(lb, align == 1 ? GTK_JUSTIFY_CENTER : align == 2 ? GTK_JUSTIFY_RIGHT : align == 3 ? GTK_JUSTIFY_FILL : align == 4 ? GTK_JUSTIFY_LEFT : l->justify0);
     gtk_label_set_lines(lb, lines > 0 ? lines : l->lines0);
     gtk_label_set_ellipsize(lb, lines > 0 ? PANGO_ELLIPSIZE_END : l->ellipsize0);
     gtk_label_set_wrap(lb, lines > 0 || wrap == 2 ? TRUE : wrap == 1 ? FALSE : l->wrap0);
@@ -323,10 +539,13 @@ static void sngl_look_size_label(GtkWidget *w, SnglLook *l, int wrap) {
 }
 
 static void sngl_set_look(GtkWidget *w, const char *css, int width, int height, double grow,
-                          int cross, int align, int lines, int wrap, int clip, int hidden, const char *cursor) {
+                          int cross, int align, int lines, int wrap, int clip, int hidden, const char *cursor,
+                          int justify, int spaced, int spacing) {
     SnglLook *l = sngl_look_of(w);
-    if (!l && !*css && !width && !height && grow <= 0 && !cross && !align && !lines && !wrap && !clip && !hidden && !*cursor)
+    if (!l && !*css && !width && !height && grow <= 0 && !cross && !align && !lines && !wrap && !clip && !hidden && !*cursor && !justify) {
+        if (spaced && GTK_IS_BOX(w)) gtk_box_set_spacing(GTK_BOX(w), spacing);
         return;
+    }
     l = sngl_look_ensure(w);
     sngl_look_set_css(w, l, css);
     if ((width || height) && !l->sized) {
@@ -340,6 +559,10 @@ static void sngl_set_look(GtkWidget *w, const char *css, int width, int height, 
     l->grow = grow;
     if (grow > 0 || width || height) sngl_look_watch_parent(w, l);
     sngl_look_place(w);
+    if (l->grow_box) sngl_box_update(l->grow_box);
+    sngl_look_set_spacing(w, l, spaced, spacing);
+    l->justify = justify;
+    sngl_box_update(w);
     sngl_look_set_cross(w, l, cross);
     sngl_look_set_text(w, l, align, lines, wrap);
     sngl_look_size_label(w, l, wrap);
@@ -357,6 +580,17 @@ static void sngl_set_look(GtkWidget *w, const char *css, int width, int height, 
     l->hidden = hidden;
     if (*cursor || l->cursor) gtk_widget_set_cursor_from_name(w, *cursor ? cursor : NULL);
     l->cursor = *cursor != 0;
+}
+// Probes for look_test.go and flex_test.go.
+static GtkAllocation sngl_allocation(GtkWidget *w) {
+    GtkAllocation a;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_widget_get_allocation(w, &a);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    return a;
+}
+static int sngl_is_box_layout(GtkWidget *w) {
+    return GTK_IS_BOX_LAYOUT(gtk_widget_get_layout_manager(w));
 }
 */
 import "C"
@@ -378,11 +612,11 @@ type Look struct {
 	// Grow is the widget's flex: above zero it expands along the axis of the
 	// box it sits in.
 	Grow float64
-	// Cross is a box's alignItems, which it puts on each child: 2 center,
-	// 3 end, 4 baseline; zero stretches.
+	// Cross is a box's alignItems, which it puts on each child: 1 start,
+	// 2 center, 3 end, 4 baseline; zero stretches.
 	Cross int
 	// TextAlign is a label's, an entry's or a button's: 1 center, 2 right,
-	// 3 justify.
+	// 3 justify, 4 left; zero leaves the widget's own.
 	TextAlign int
 	// Lines ellipsizes a label at that many lines.
 	Lines int
@@ -391,6 +625,12 @@ type Look struct {
 	Clip   bool
 	Hidden bool
 	Cursor string
+	// Justify is a box's justifyContent: 1 center, 2 end, 3 space between,
+	// 4 around, 5 evenly; zero packs its children from the start.
+	Justify int
+	// Spacing is a box's, where Spaced says the look holds one.
+	Spaced  bool
+	Spacing int
 }
 
 // SetLook gives w what l asks for, and back what an earlier Look took that l
@@ -401,7 +641,8 @@ func SetLook(w Handle, l Look) {
 	cursor, freeCursor := cstr(l.Cursor)
 	defer freeCursor()
 	C.sngl_set_look(widget(w), css, C.int(math.Round(l.Width)), C.int(math.Round(l.Height)), C.double(l.Grow),
-		C.int(l.Cross), C.int(l.TextAlign), C.int(l.Lines), C.int(l.Wrap), C.int(bool01(l.Clip)), C.int(bool01(l.Hidden)), cursor)
+		C.int(l.Cross), C.int(l.TextAlign), C.int(l.Lines), C.int(l.Wrap), C.int(bool01(l.Clip)), C.int(bool01(l.Hidden)), cursor,
+		C.int(l.Justify), C.int(bool01(l.Spaced)), C.int(l.Spacing))
 }
 
 func bool01(b bool) int {
@@ -440,3 +681,27 @@ func firstChild(w Handle) Handle {
 }
 
 func setVExpand(w Handle, v bool) { C.gtk_widget_set_vexpand(widget(w), gbool(v)) }
+
+func setHExpand(w Handle, v bool) { C.gtk_widget_set_hexpand(widget(w), gbool(v)) }
+
+func allocate(w Handle, width, height int) {
+	var min, nat C.int
+	C.gtk_widget_measure(widget(w), C.GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, nil, nil)
+	C.gtk_widget_measure(widget(w), C.GTK_ORIENTATION_VERTICAL, C.int(width), &min, &nat, nil, nil)
+	a := C.GtkAllocation{width: C.int(width), height: C.int(height)}
+	C.gtk_widget_size_allocate(widget(w), &a, -1)
+}
+
+func allocation(w Handle) C.GtkAllocation {
+	return C.sngl_allocation(widget(w))
+}
+
+func allocatedX(w Handle) int { return int(allocation(w).x) }
+
+func allocatedWidth(w Handle) int { return int(allocation(w).width) }
+
+func allocatedHeight(w Handle) int { return int(allocation(w).height) }
+
+func boxLaidOutByGTK(w Handle) bool {
+	return C.sngl_is_box_layout(widget(w)) != 0
+}

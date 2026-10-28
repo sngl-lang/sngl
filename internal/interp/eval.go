@@ -1656,13 +1656,41 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 		v = copyOf(v, f.Value.ExprType())
 		if f.Spread {
 			if src, ok := v.(*Struct); ok {
-				s.Merge(src)
+				if err := env.mergeSpread(s, src); err != nil {
+					return nil, err
+				}
 			}
 			continue
 		}
 		s.Set(f.Name, v)
 	}
 	return s, env.fillOmittedFields(s, e.Def)
+}
+
+// mergeSpread writes onto s each field of src that does not hold its type's
+// zero, which is what a spread writes: `{display=flex, ...style}` keeps the
+// display of a style that leaves it unset. A field whose type nothing here
+// says is written whatever it holds.
+func (env *Env) mergeSpread(s, src *Struct) error {
+	fields, _ := ir.FieldsOf(src.Type)
+	if fields == nil && src.Def != nil {
+		fields = src.Def.Fields
+	}
+	for _, f := range src.Fields {
+		if d := ir.FieldNamed(fields, f.Name); d != nil {
+			if z := ir.ZeroExpr(d.Type); z != nil {
+				zv, err := env.Eval(z)
+				if err != nil {
+					return err
+				}
+				if eq, ok := Equal(f.Value, zv); ok && eq {
+					continue
+				}
+			}
+		}
+		s.Set(f.Name, f.Value)
+	}
+	return nil
 }
 
 // fillOmittedFields gives every field of def a literal left out the value the
@@ -1695,7 +1723,7 @@ func (env *Env) fillOmittedFields(s *Struct, def *ir.StructDef) error {
 		if err != nil {
 			return err
 		}
-		fields = append(fields, Field{Name: f.Name, Value: copyOf(v, f.Type), Omitted: true, Filled: DeepCopy(v)})
+		fields = append(fields, Field{Name: f.Name, Value: copyOf(v, f.Type)})
 	}
 	// A spread may have supplied a field def does not name; keep it after.
 	for _, f := range s.Fields {

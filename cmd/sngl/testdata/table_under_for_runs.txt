@@ -1,0 +1,90 @@
+# A table under a `for`, on every target.
+#
+# bubbletea keeps a bubbles model per copy of a widget a loop renders, and
+# passImplicitState gives a table nobody binds a `selected` cell per copy. The
+# copy accessor took the cell's value only for a widget whose value it syncs,
+# which a table is not, while every call handed it the cell: `too many
+# arguments in call to m.widget0Copy`. The call and the accessor now ask one
+# question (copyTakesValue).
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component groups ui.node {
+    var names = ["a", "b"]
+
+    for var g = names {
+        ui.text #title(value=g)
+        ui.table(columns=["name"]) {
+            ui.tableRow(cells=[g])
+        }
+    }
+}
+
+func testEachGroupHasItsTable(t test.Test, c groups) {
+    t.assert(c.title[1] != null && c.title[1].value == "b")
+}
+-- testrun/android/kotlin/app.sngl/groups/1 --
+sha256:c9e486b106a322e5860116b6532800ce
+{
+  "results": [
+    {
+      "Desc": "EachGroupHasItsTable",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/groups/1 --
+sha256:886550bac9c94a1cd260cfc517d61c57
+{
+  "results": [
+    {
+      "Desc": "EachGroupHasItsTable",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/groups/1 --
+sha256:cc7eaf48a9d06a0ab143fdaf2216923e
+{
+  "results": [
+    {
+      "Desc": "EachGroupHasItsTable",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/groups/1 --
+sha256:46680c614f51485c15c0c5179638afde
+{
+  "results": [
+    {
+      "Desc": "EachGroupHasItsTable",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/groups/1 --
+sha256:15b8d5f118849de10d399cdcd4007d55
+{
+  "results": [
+    {
+      "Desc": "EachGroupHasItsTable",
+      "Passed": true
+    }
+  ]
+}

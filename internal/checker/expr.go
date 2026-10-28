@@ -321,7 +321,14 @@ func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
 		c.error(x.Pos, format, args...)
 		return &ir.Literal{AST: &x.LiteralExpr, Type: TypInvalid, Value: num, Suffix: x.Suffix}
 	}
-	ud := ir.UnitDeclOf(c.expected)
+	// An option of a unit takes the unit's own value, which the option then
+	// wraps as it wraps any value of its element type: `padding=16px` is
+	// written to an option[measurement].
+	expected := c.expected
+	if expected != nil && expected.Kind == ir.TypeOption && len(expected.Elems) == 1 {
+		expected = expected.Elems[0]
+	}
+	ud := ir.UnitDeclOf(expected)
 	if ud == nil {
 		return bad("%s needs a unit type here: a suffix belongs to the unit that declares it, and nothing in this position says which", x.Raw)
 	}
@@ -330,12 +337,12 @@ func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
 		// library unit legible: two declarations called `duration` are two
 		// types, and the suffix is the thing that says which one was meant.
 		if other := c.unitDeclaring(ud, x.Suffix); other != nil {
-			want, got := ir.Contrast(c.expected, other.SymType())
+			want, got := ir.Contrast(expected, other.SymType())
 			return bad("cannot initialize %s with %s: %q is a suffix of the second", want, got, x.Suffix)
 		}
 		return bad("unit %s has no suffix %q", ud.Name, x.Suffix)
 	}
-	return &ir.Literal{AST: &x.LiteralExpr, Type: c.expected, Value: num, Suffix: x.Suffix}
+	return &ir.Literal{AST: &x.LiteralExpr, Type: expected, Value: num, Suffix: x.Suffix}
 }
 
 // unitDeclaring finds a unit other than want that declares suffix, for a
@@ -1034,6 +1041,13 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 	elseExpr := c.checkExprExpecting(x.Else, c.expected)
 	elseRegion = elseExpr
 	restoreElse()
+	// Checked expecting an option, an arm reading a narrowed option is that
+	// option, while a bare arm beside it is its element: `f(o == null ? 1.0
+	// : o)` for an option[float] parameter. The ternary is the option, the
+	// bare arm promoted into it; typed as the bare arm, it held an option a
+	// target spelled where a float was declared (`var __lt float64 =
+	// snglSome(2.0)`).
+	thenExpr, elseExpr = c.optionArms(thenExpr, elseExpr, x.Pos)
 	typ := exprType(thenExpr)
 	// Both ternary arms must share a numeric type. An untyped literal arm
 	// adapts to the other arm's concrete type; two concrete-but-different
@@ -1047,6 +1061,40 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 		}
 	}
 	return &ir.Ternary{AST: x, Type: typ, Cond: condExpr, Then: thenExpr, Else: elseExpr}
+}
+
+// optionArms promotes the bare arm of a ternary whose other arm is an option
+// of its type into that option, an untyped number adapting to the option's
+// number first, and leaves any other pair as it is.
+func (c *checker) optionArms(then, els ir.Expr, pos ast.Pos) (ir.Expr, ir.Expr) {
+	if opt := c.optionFor(then, els, pos); opt != nil {
+		return opt, els
+	}
+	if opt := c.optionFor(els, then, pos); opt != nil {
+		return then, opt
+	}
+	return then, els
+}
+
+// optionFor is bare promoted into the option other is, or nil where bare is
+// no value of its element.
+func (c *checker) optionFor(bare, other ir.Expr, pos ast.Pos) ir.Expr {
+	bt, ot := exprType(bare), exprType(other)
+	if bt == nil || ot == nil || ot.Kind != ir.TypeOption || len(ot.Elems) != 1 || ot.Elems[0] == nil {
+		return nil
+	}
+	switch bt.Kind {
+	case ir.TypeOption, ir.TypeNull, ir.TypeInvalid:
+		return nil
+	}
+	el := ot.Elems[0]
+	if !el.Equal(bt) {
+		if !el.IsNumeric() || !bt.IsNumeric() || !isUntypedNumericConst(bare) {
+			return nil
+		}
+		bare = c.adaptNumericOperand(bare, el, pos)
+	}
+	return wrapOptionIfNeeded(bare, ot)
 }
 
 func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
@@ -2423,9 +2471,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		if c.expected != nil && c.expected.Kind == ir.TypeStruct && c.expected.Decl == sd {
 			typ = c.expected
 		}
-		lit := &ir.StructLit{AST: x, Type: typ, Def: sd, Fields: fields}
-		c.fillOmittedFields(lit)
-		return lit
+		return &ir.StructLit{AST: x, Type: typ, Def: sd, Fields: fields}
 	}
 	// Nothing named a type, so the literal's own values do.
 	anonFields, ok := c.anonFieldsFromInits(fields)
@@ -2762,7 +2808,7 @@ func (c *checker) inferInterpolation(x *ast.InterpolationExpr) ir.Expr {
 	var chain ir.Expr
 	for _, part := range x.Parts {
 		var partExpr ir.Expr
-		if lit, ok := part.(*ast.LiteralExpr); ok {
+		if lit, ok := x.Text(part); ok {
 			v, _ := lit.StringValue()
 			partExpr = &ir.Literal{AST: lit, Type: TypString, Value: v}
 		} else {
@@ -3196,7 +3242,7 @@ func typeParamZeroFor(def ir.Expr, typ *ir.Type) ir.Expr {
 			return e, nil
 		}
 		if t := exprType(e).Substitute(b); !t.HasTypeParam() {
-			if zero := ir.DeclaredDefault(t); zero != nil {
+			if zero := ir.ZeroExpr(t); zero != nil {
 				return zero, ir.SkipDir
 			}
 		}
@@ -4726,64 +4772,6 @@ func structDeclOf(t *ir.Type) (*ir.StructDef, bool) {
 		return nil, false
 	}
 	return sd, true
-}
-
-// fillOmittedFields appends the declared default of every field lit omits, so
-// the value is complete before anything reads it. Doing it here rather than in
-// each evaluator is what makes `color{r=255}` carry its alpha in the
-// interpreter, the const folder and all four backends alike — they had
-// disagreed, and the two that agreed were both wrong.
-func (c *checker) fillOmittedFields(lit *ir.StructLit) {
-	if lit.Def == nil {
-		return
-	}
-	written := make(map[string]bool, len(lit.Fields))
-	for _, f := range lit.Fields {
-		if f.Spread {
-			// A spread supplies whatever the runtime value holds, so which
-			// fields it covers is not known here.
-			return
-		}
-		written[f.Name] = true
-	}
-	pending := false
-	for _, f := range lit.Def.Fields {
-		if f.Default == nil || written[f.Name] {
-			continue
-		}
-		lit.Fields = append(lit.Fields, ir.FieldInit{Name: f.Name, Value: f.Default})
-		if _, ok := c.defaultPlaceholders[f.Default]; ok {
-			pending = true
-		}
-	}
-	if pending {
-		c.placeholderLits = append(c.placeholderLits, lit)
-	}
-}
-
-// resolvePlaceholderLits gives every literal that copied a default before it
-// was checked the default that replaced it, keeping the ones whose struct is
-// still unfilled for a later call.
-func (c *checker) resolvePlaceholderLits() {
-	kept := c.placeholderLits[:0]
-	for _, lit := range c.placeholderLits {
-		pending := false
-		for i, fi := range lit.Fields {
-			field, ok := c.defaultPlaceholders[fi.Value]
-			if !ok {
-				continue
-			}
-			if field.Default == fi.Value {
-				pending = true
-				continue
-			}
-			lit.Fields[i].Value = field.Default
-		}
-		if pending {
-			kept = append(kept, lit)
-		}
-	}
-	c.placeholderLits = kept
 }
 
 func componentPropType(comp *ir.Component, name string) *ir.Type {

@@ -247,6 +247,8 @@ var orderConstraints = []orderConstraint{
 	{"ComponentProps", "NoReactivity",
 		"a prop promoted to a var is a reactive cell, and the updater injection has to see it as one -- that is how a setter comes to re-fire the slots reading the prop"},
 
+	{"LibFuncs", "NoStructSpread",
+		"a library helper is in the package's func list only once promoted, and one promoted after the spreads were lowered kept its `{...c, a=1}` for a backend with no spread to write"},
 	{"LibFuncs", "CMarshal",
 		"a library helper calling a C function is in the package's func list only once promoted, and one left out keeps a `string` argument cgo will not take"},
 	{"CMarshal", "ReleaseTemps",

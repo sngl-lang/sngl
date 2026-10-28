@@ -54,7 +54,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="display:flex;flex-direction:column;gap:12px">
+<div style="gap:12px;display:flex;flex-direction:column">
   <h1 style="margin:0px;font-size:32px;font-weight:bold;white-space:pre-wrap" id="a"><span>A</span></h1>
   <p style="margin:0px;white-space:pre-wrap"><span>First </span><em><span>page</span></em><span>.</span></p>
 </div>
@@ -80,9 +80,9 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="display:flex;flex-direction:column;gap:12px">
+<div style="gap:12px;display:flex;flex-direction:column">
   <h1 style="margin:0px;font-size:32px;font-weight:bold;white-space:pre-wrap" id="b"><span>B</span></h1>
-  <ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+  <ul style="padding-left:2em;gap:4px;display:flex;flex-direction:column">
     <li>
       <p style="margin:0px;white-space:pre-wrap"><span>second</span></p>
     </li>
@@ -100,4 +100,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:fcfb4cde62d4a1f3251a5c0d5c5ea76f
+pass sha256:f5f7727e1ab9cb96703361540af093c7

@@ -557,7 +557,7 @@ PostfixExpr = PrimaryExpr { ExprPostfixOp } .
 # lits, no leading brace literal) and CondPostfixOp (no StructLitBody, no
 # StmtBlock) to avoid lbrace ambiguity with the following StmtBlock.
 
-CondExpr        = CondOrExpr [ question Expr colon Expr ] .
+CondExpr        = CondOrExpr [ question Expr colon CondExpr ] .
 CondOrExpr      = CondAndExpr  { lor  CondAndExpr  } .
 CondAndExpr     = CondEqExpr   { land CondEqExpr   } .
 CondEqExpr      = CondCmpExpr  { EqOp  CondCmpExpr  } .

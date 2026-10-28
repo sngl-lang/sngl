@@ -176,12 +176,7 @@ func reconcileLocal(lv *ir.LocalVar) bool {
 	if lv.Sym == nil || !lv.Sym.Synthesized || lv.Type == nil || lv.Type.Kind != ir.TypeInstance {
 		return false
 	}
-	return lv.Init == nil || isNullLiteral(lv.Init)
-}
-
-func isNullLiteral(e ir.Expr) bool {
-	lit, ok := e.(*ir.Literal)
-	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
+	return lv.Init == nil || ir.IsNullLiteral(lv.Init)
 }
 
 // scopeFromFuncBody builds a scope for a nested inline closure/lambda's Func

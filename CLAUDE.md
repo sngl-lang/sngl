@@ -30,7 +30,7 @@ explains it. A note there that only says what a construct means belongs in the
 spec instead.
 
 - `design/language.md` — `const`; bodyless components and overrides; events; loops and for-else; view walks (`ir.ViewBlocks`, `blocks.go`); lambda bodies; `match`; payload enums; `async.query`; contexts
-- `design/architecture.md` — codegen registry and models, per-platform details, `ir`/`checker`/`optimize`/`lower` packages and the always-on passes, runtime `pkg/` packages, AST
+- `design/architecture.md` — codegen registry and models, how each platform translates a `ui.Style`, per-platform details, `ir`/`checker`/`optimize`/`lower` packages and the always-on passes, runtime `pkg/` packages, AST
 - `design/stdlib.md` — `lib/` tiers and what each package holds, package docs, library loading/caching/freezing, clones, target nodes and reserved names, `#[builtin]`, marks, scalars, macros, i18n; `sngl:http` and `sngl:json`
 - `design/families.md` — families, data components and records, generated families (`gen.emit`), family inference and membership, `#[family.crosses]`, boundaries and raises
 - `design/windows.md` — `root`, windows, prop reads through an `#id`, self-reference and declarative cycles, view-block state, root components, `output` and `@run`, how each platform shows windows, unavailable targets
@@ -71,6 +71,9 @@ paragraph here per change: this file is loaded into every session.
 - **Write the qualified form of an import** (`ui.text`, `#[marks.builtin]`);
   dot imports are legal but the repository does not use them.
 - **A nil `*trust.Policy` refuses everything.**
+- **A platform translates a `ui.Style` in SNGL**, in its own package, and
+  lists each field it cannot express, with a reason, in its `unstyled` const;
+  no generator reads a Style field in Go.
 
 ## Build & Test Commands
 

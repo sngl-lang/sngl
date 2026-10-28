@@ -59,7 +59,7 @@ const component ui.stack[platform](style, layers) {
 }
 
 const component ui.spacer[platform](style) {
-    Spacer(modifier=modifierOf(style, flexShare)) {}
+    Spacer(modifier=modifierOf({flex=1, ...style}, flexShare)) {}
 }
 
 const component ui.scroll[platform](style, @reachEnd, content) {
@@ -73,7 +73,14 @@ const component ui.scroll[platform](style, @reachEnd, content) {
 // --- Core Text & Media ---
 
 const component ui.text[platform](value, style) {
-    Text(text=value, modifier=modifierOf(style, flexShare), style=mergeTextStyle(localTextStyle, textStyle(style))) {}
+    Text(
+        text = value,
+        modifier = modifierOf(style, flexShare),
+        style = mergeTextStyle(localTextStyle, textStyle(style)),
+        overflow = clampOverflow(style.maxLines),
+        softWrap = softWrapOf(style.whiteSpace),
+        maxLines = linesOf(style.maxLines),
+    ) {}
 }
 
 const component ui.button[platform](text, style, @click) {
@@ -338,9 +345,9 @@ const component ui.spinner[platform](style) {
 const component ui.badge[platform](value, style) {
     Badge(
         modifier = surfaceModifierOf(style, flexShare),
-        containerColor = style.background != unset.background ? composeOf(style.background) : badgeContainerColor,
-        contentColor = style.color != unset.color ? composeOf(style.color) : contentColorFor(
-            style.background != unset.background ? composeOf(style.background) : badgeContainerColor,
+        containerColor = style.background != null ? composeOf(style.background) : badgeContainerColor,
+        contentColor = style.color != null ? composeOf(style.color) : contentColorFor(
+            style.background != null ? composeOf(style.background) : badgeContainerColor,
         ),
     ) {
         Text(text=value) {}

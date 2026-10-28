@@ -357,7 +357,7 @@ func shapeBody(ni *ir.NodeInst) []ir.Stmt {
 			// so an override reading a prop the call site omitted -- `style`
 			// on a `rect(x, y, w, h)` -- emitted an identifier nothing
 			// declares and the generated code did not compile.
-			if z := ir.DeclaredDefault(p.Type); z != nil {
+			if z := ir.ZeroExpr(p.Type); z != nil {
 				bindings[p.Name] = z
 			}
 		}
@@ -403,7 +403,7 @@ func drawPayloadWith(t *ir.Type, env drawEnv, src *ir.NodeInst) ir.Expr {
 				if f.Name == ir.ImageSourceURL {
 					v = &ir.Literal{Type: ir.TypString, Value: ""}
 				} else if ir.ReleaseOf(f.Type) != nil {
-					v = ir.DeclaredDefault(f.Type)
+					v = ir.ZeroExpr(f.Type)
 				} else {
 					v = ctxExprAs(env.ctx, f.Type)
 				}

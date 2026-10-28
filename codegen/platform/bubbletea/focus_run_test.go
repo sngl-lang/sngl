@@ -125,3 +125,155 @@ func TestAClosedBranchTakesNoStop(t *testing.T) {
 func TestFocusReachesEveryNodeALoopRenders(t *testing.T) {
 	runEmittedProgram(t, focusLoopRunSrc, focusLoopRunDriver)
 }
+
+// focusHiddenRunSrc holds stops that draw nothing: a button its Style
+// displays none while `hide` holds, one displayed none always, and one under
+// a branch not taken.
+const focusHiddenRunSrc = `
+import ui "sngl:ui"
+
+ui.window {
+    var hide = true
+    var open = false
+    var picked = ""
+
+    ui.vbox {
+        ui.button(text="a", style={display=hide ? ui.Display.none : ui.Display.unset}, @click { picked = "a" })
+        ui.button(text="b", @click { picked = "b" })
+        ui.button(text="never", style={display=ui.Display.none}, @click { picked = "never" })
+        if open {
+            ui.button(text="c", @click { picked = "c" })
+        }
+        ui.button(text="d", @click { picked = "d" })
+    }
+}
+`
+
+const focusHiddenRunDriver = `package ui
+
+import (
+	"testing"
+
+	"charm.land/bubbletea/v2"
+)
+
+func key(m Model, k tea.Msg) Model {
+	next, _ := m.Update(k)
+	return next.(Model)
+}
+
+func picks(t *testing.T, m Model, move tea.KeyPressMsg, want []string) Model {
+	t.Helper()
+	for i, w := range want {
+		m.picked = ""
+		m = key(m, tea.KeyPressMsg{Code: tea.KeyEnter})
+		if m.picked != w {
+			t.Fatalf("stop %d ran %q, want %q", i, m.picked, w)
+		}
+		m = key(m, move)
+	}
+	return m
+}
+
+// Focus starts on the first stop drawn, and Tab and shift+Tab pass over the
+// ones that draw nothing.
+func TestTabPassesOverStopsNotDrawn(t *testing.T) {
+	m := New()
+	m = picks(t, m, tea.KeyPressMsg{Code: tea.KeyTab}, []string{"b", "d", "b"})
+	picks(t, m, tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}, []string{"d", "b", "d"})
+}
+
+// A stop shown again is a stop again, and one hidden while focused gives the
+// focus to the next stop drawn.
+func TestAStopFollowsWhatIsDrawn(t *testing.T) {
+	m := New()
+	m.hide, m.open = false, true
+	m = key(m, tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
+	m = picks(t, m, tea.KeyPressMsg{Code: tea.KeyTab}, []string{"a", "b", "c", "d", "a"})
+	m.hide = true
+	m = key(m, tea.WindowSizeMsg{Width: 80, Height: 24})
+	m.picked = ""
+	m = key(m, tea.KeyPressMsg{Code: tea.KeyEnter})
+	if m.picked != "b" {
+		t.Fatalf("enter ran %q once a's stop was hidden, want b", m.picked)
+	}
+}
+`
+
+func TestFocusPassesOverStopsNotDrawn(t *testing.T) {
+	runEmittedProgram(t, focusHiddenRunSrc, focusHiddenRunDriver)
+}
+
+// A stop a loop renders displayed none, and one a box displayed none holds --
+// in a loop or not -- is no stop either: the loop counts only the stops it
+// draws, and a box's `display` is a branch around what it holds. Before,
+// each was a stop with nothing drawn, and Enter there ran a hidden button's
+// handler.
+const focusHiddenInBoxRunSrc = `
+import ui "sngl:ui"
+
+ui.window {
+    var hiding = "b"
+    var boxed = false
+    var picked = ""
+
+    ui.vbox {
+        for var n = ["a", "b", "c"] {
+            ui.button(text=n, style={display=n == hiding ? ui.Display.none : ui.Display.unset}, @click { picked = n })
+        }
+        ui.vbox(style={display=boxed ? ui.Display.unset : ui.Display.none}) {
+            ui.button(text="inner", @click { picked = "inner" })
+        }
+        for var n = ["x"] {
+            ui.vbox(style={display=boxed ? ui.Display.unset : ui.Display.none}) {
+                ui.button(text=n, @click { picked = n })
+            }
+        }
+        ui.button(text="d", @click { picked = "d" })
+    }
+}
+`
+
+const focusHiddenInBoxRunDriver = `package ui
+
+import (
+	"testing"
+
+	"charm.land/bubbletea/v2"
+)
+
+func key(m Model, k tea.Msg) Model {
+	next, _ := m.Update(k)
+	return next.(Model)
+}
+
+func picks(t *testing.T, m Model, move tea.KeyPressMsg, want []string) Model {
+	t.Helper()
+	for i, w := range want {
+		m.picked = ""
+		m = key(m, tea.KeyPressMsg{Code: tea.KeyEnter})
+		if m.picked != w {
+			t.Fatalf("stop %d ran %q, want %q", i, m.picked, w)
+		}
+		m = key(m, move)
+	}
+	return m
+}
+
+func TestTabPassesOverHiddenStopsInLoopsAndBoxes(t *testing.T) {
+	m := New()
+	m = picks(t, m, tea.KeyPressMsg{Code: tea.KeyTab}, []string{"a", "c", "d", "a"})
+	picks(t, m, tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}, []string{"c", "a", "d", "c"})
+}
+
+func TestShownAgainIsAStopAgain(t *testing.T) {
+	m := New()
+	m.hiding, m.boxed = "", true
+	m = key(m, tea.WindowSizeMsg{Width: 80, Height: 24})
+	picks(t, m, tea.KeyPressMsg{Code: tea.KeyTab}, []string{"a", "b", "c", "inner", "x", "d", "a"})
+}
+`
+
+func TestFocusPassesOverHiddenStopsInLoopsAndBoxes(t *testing.T) {
+	runEmittedProgram(t, focusHiddenInBoxRunSrc, focusHiddenInBoxRunDriver)
+}

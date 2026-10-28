@@ -106,7 +106,7 @@ sha256:5e1a6937ca751f8c43979b469df3f57d
   ]
 }
 -- testrun/android/kotlin/focus.sngl/panel/1 --
-sha256:e1d28d25fd98311a88208cca5643de68
+sha256:3a98889f895f62dac405f168aba8a886
 {
   "results": [
     {
@@ -136,7 +136,7 @@ sha256:4145ecd38539c30259fc0d819c66524a
   ]
 }
 -- testrun/bubbletea/go/focus.sngl/panel/1 --
-sha256:359c3ba39b0b99df1bae01e62d6f5bd3
+sha256:c589d63619d73e6e47622de6b78d4ac8
 {
   "results": [
     {

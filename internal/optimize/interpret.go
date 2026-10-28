@@ -4,6 +4,7 @@ import (
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/interp"
 	"duckfam.us/sngl/ir"
+	"slices"
 )
 
 // maxInterpDepth bounds recursion in the interpreter adapter. Excess
@@ -73,10 +74,6 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 		declared, _ := ir.FieldsOf(t)
 		fields := make([]ir.FieldInit, 0, len(v.Fields))
 		for _, f := range v.Fields {
-			if f.Unwritten() {
-				// The literal left it out, and so does this one.
-				continue
-			}
 			ft := structFieldType(sd, f.Name)
 			for _, d := range declared {
 				if d.Name == f.Name {
@@ -88,7 +85,11 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 				Value: irFromValue(f.Value, ft),
 			})
 		}
-		return &ir.StructLit{Type: t, Def: sd, Fields: fields}
+		// The literal holds what the value sets: a field at what it would
+		// hold left out is left out, as a program writes it.
+		lit := &ir.StructLit{Type: t, Def: sd, Fields: fields}
+		lit.Fields = slices.DeleteFunc(lit.Fields, lit.HoldsOmitted)
+		return lit
 	case map[string]any:
 		var entries []ir.MapEntry
 		for _, k := range sortedMapKeys(v) {

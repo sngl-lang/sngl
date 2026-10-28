@@ -346,11 +346,28 @@ type SpreadExpr struct {
 }
 
 // InterpolationExpr is a string with interpolated expressions.
-// Parts alternate between *LiteralExpr (string) and expression nodes.
+// Parts alternate between *LiteralExpr (string) and expression nodes; Text
+// tells the two apart.
 type InterpolationExpr struct {
 	Pos   Pos
 	Parts []Expr
 	Style StringStyle
+}
+
+// Text is part as text the string holds, or false for an expression it
+// interpolates. Text is a literal in the string's own quoting; an
+// interpolated `{1}` or `{#336699}` is a literal too, and was read as text --
+// the empty text, since neither is a string.
+func (x *InterpolationExpr) Text(part Expr) (*LiteralExpr, bool) {
+	lit, ok := part.(*LiteralExpr)
+	if !ok {
+		return nil, false
+	}
+	want := LiteralStringQuoted
+	if x.Style == StyleTriple {
+		want = LiteralStringTrippleQuoted
+	}
+	return lit, lit.Kind == want
 }
 
 // LambdaExpr is a function literal: func(params) => expr or func(params) [Type] { }.

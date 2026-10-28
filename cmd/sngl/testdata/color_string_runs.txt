@@ -1,0 +1,92 @@
+# A color's string is its hex(): `#rrggbb`, or `#rrggbbaa` when it is not
+# opaque, on every target (Jonathan's call). It reads back as the literal, and
+# two different colors print differently.
+#
+# The interpreter and the fold printed it as the struct it is held as,
+# `{r = 51, g = 102, b = 153, a = 255}`; html as JavaScript's String of the
+# record, `[object Object]`; and Go as snglcolor's CSS form, `rgba(…)` when
+# translucent.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+const folded = "{#336699}"
+
+component page ui.node {
+    var opaque = #336699
+    var clear = #33669980
+
+    ui.text #shown(value="{opaque} {clear}")
+    ui.text #cast(value=string(clear))
+    ui.text #lit(value=folded)
+}
+
+func testAColorPrintsAsItsHex(t test.Test, c page) {
+    t.assert(c.shown.value == "#336699 #33669980")
+    t.assert(c.cast.value == "#33669980")
+    t.assert(c.lit.value == "#336699")
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:4924eff1089a46bc92813c5fa66a9052
+{
+  "results": [
+    {
+      "Desc": "AColorPrintsAsItsHex",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:bdf91aceb056c5c1ec5f7ded74e29729
+{
+  "results": [
+    {
+      "Desc": "AColorPrintsAsItsHex",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:31489bd9303a58667a4812a276462795
+{
+  "results": [
+    {
+      "Desc": "AColorPrintsAsItsHex",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:cab4c068ab0ebe2b4d263965539d5346
+{
+  "results": [
+    {
+      "Desc": "AColorPrintsAsItsHex",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:ebcae1fae3551785e5e967e4b0d9329d
+{
+  "results": [
+    {
+      "Desc": "AColorPrintsAsItsHex",
+      "Passed": true
+    }
+  ]
+}
