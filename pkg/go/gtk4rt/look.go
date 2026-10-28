@@ -455,14 +455,24 @@ static void sngl_look_set_css(GtkWidget *w, SnglLook *l, const char *decls) {
     }
     G_GNUC_END_IGNORE_DEPRECATIONS
     if (!*decls) return;
-    char *rule = GTK_IS_POPOVER(w) ? g_strdup_printf("popover > contents { %s }", decls)
-                                   : g_strdup_printf("%s { %s }", gtk_widget_get_css_name(w), decls);
+    const char *name = gtk_widget_get_css_name(w);
+    GString *rule = g_string_new(NULL);
+    if (GTK_IS_POPOVER(w)) g_string_printf(rule, "popover > contents { %s }", decls);
+    else g_string_printf(rule, "%s { %s }", name, decls);
+    // The rule outranks the theme's in every state, so a button given a
+    // background shades it itself when hovered and pressed, as the theme
+    // would. style.sngl writes `background` only for a Style's.
+    if (GTK_IS_BUTTON(w) && strstr(decls, "background"))
+        g_string_append_printf(rule,
+            " %s:hover { background-image: image(alpha(currentColor, 0.1)); }"
+            " %s:active, %s:checked { background-image: image(alpha(currentColor, 0.2)); }",
+            name, name, name);
 #if GTK_CHECK_VERSION(4, 12, 0)
-    gtk_css_provider_load_from_string(l->css, rule);
+    gtk_css_provider_load_from_string(l->css, rule->str);
 #else
-    gtk_css_provider_load_from_data(l->css, rule, -1);
+    gtk_css_provider_load_from_data(l->css, rule->str, -1);
 #endif
-    g_free(rule);
+    g_string_free(rule, TRUE);
 }
 
 // The widget a widget's text is in: its own, or a button's label, which every
@@ -592,6 +602,61 @@ static GtkAllocation sngl_allocation(GtkWidget *w) {
 static int sngl_is_box_layout(GtkWidget *w) {
     return GTK_IS_BOX_LAYOUT(gtk_widget_get_layout_manager(w));
 }
+static gboolean sngl_probe_tick(gpointer data) { (void)data; return G_SOURCE_CONTINUE; }
+static void sngl_probe_pump(int ms) {
+    gint64 deadline = g_get_monotonic_time() + (gint64)ms * 1000;
+    guint tick = g_timeout_add(5, sngl_probe_tick, NULL);
+    while (g_get_monotonic_time() < deadline) g_main_context_iteration(NULL, TRUE);
+    g_source_remove(tick);
+}
+// What GTK paints for w, shown in a window of its own and in state, as
+// premultiplied ARGB; a popover is popped up from a button the window holds.
+static guint32 *sngl_probe_paint(GtkWidget *w, GtkStateFlags state, int *width_out, int *height_out) {
+    g_object_set(gtk_settings_get_default(), "gtk-enable-animations", FALSE, NULL);
+    if (!gtk_widget_get_root(w)) {
+        GtkWidget *win = gtk_window_new();
+        gtk_window_set_default_size(GTK_WINDOW(win), 200, 200);
+        if (GTK_IS_POPOVER(w)) {
+            GtkWidget *anchor = gtk_button_new();
+            gtk_widget_set_valign(anchor, GTK_ALIGN_START);
+            gtk_window_set_child(GTK_WINDOW(win), anchor);
+            gtk_widget_set_parent(w, anchor);
+            gtk_popover_set_position(GTK_POPOVER(w), GTK_POS_BOTTOM);
+        } else {
+            gtk_window_set_child(GTK_WINDOW(win), w);
+        }
+        gtk_window_present(GTK_WINDOW(win));
+        sngl_probe_pump(150);
+        if (GTK_IS_POPOVER(w)) {
+            gtk_popover_popup(GTK_POPOVER(w));
+            sngl_probe_pump(150);
+        }
+    }
+    gtk_widget_set_state_flags(w, state, TRUE);
+    gtk_widget_queue_draw(w);
+    sngl_probe_pump(50);
+    int width = gtk_widget_get_width(w), height = gtk_widget_get_height(w);
+    *width_out = width;
+    *height_out = height;
+    if (width <= 0 || height <= 0) return NULL;
+    GdkPaintable *paintable = gtk_widget_paintable_new(w);
+    GtkSnapshot *snap = gtk_snapshot_new();
+    gdk_paintable_snapshot(paintable, GDK_SNAPSHOT(snap), width, height);
+    GskRenderNode *node = gtk_snapshot_free_to_node(snap);
+    g_object_unref(paintable);
+    if (!node) return NULL;
+    GskRenderer *r = gsk_cairo_renderer_new();
+    gsk_renderer_realize(r, NULL, NULL);
+    graphene_rect_t bounds = GRAPHENE_RECT_INIT(0, 0, width, height);
+    GdkTexture *tex = gsk_renderer_render_texture(r, node, &bounds);
+    guint32 *px = g_new(guint32, width * height);
+    gdk_texture_download(tex, (guchar *)px, width * 4);
+    g_object_unref(tex);
+    gsk_renderer_unrealize(r);
+    g_object_unref(r);
+    gsk_render_node_unref(node);
+    return px;
+}
 */
 import "C"
 
@@ -704,4 +769,28 @@ func allocatedHeight(w Handle) int { return int(allocation(w).height) }
 
 func boxLaidOutByGTK(w Handle) bool {
 	return C.sngl_is_box_layout(widget(w)) != 0
+}
+
+// State flags painted takes, as GtkStateFlags has them.
+const (
+	stateActive  = 1 << 0
+	stateHover   = 1 << 1
+	stateChecked = 1 << 11
+)
+
+// painted is what GTK paints for w in state, a row at a time, each pixel
+// 0xAARRGGBB.
+func painted(w Handle, state uint32) [][]uint32 {
+	var width, height C.int
+	px := C.sngl_probe_paint(widget(w), C.GtkStateFlags(state), &width, &height)
+	if px == nil {
+		return nil
+	}
+	defer C.g_free(C.gpointer(px))
+	flat := unsafe.Slice((*uint32)(unsafe.Pointer(px)), int(width)*int(height))
+	rows := make([][]uint32, height)
+	for y := range rows {
+		rows[y] = append([]uint32(nil), flat[y*int(width):(y+1)*int(width)]...)
+	}
+	return rows
 }
