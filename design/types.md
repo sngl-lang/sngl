@@ -247,8 +247,8 @@ the build folds is that text in the markup.
 **A measurement means one length on every target.** `px` is a
 device-independent pixel and `em` and `rem` are font sizes: html hands all
 three to CSS, and every other target, having no cascade, reads both as its
-base text size -- 16 on android, 14 on fyne (the default theme's), 11 on
-gtk4 (Adwaita's point size) and 16px, two cells, on bubbletea -- as one
+base text size -- 16 on android and gtk4, 14 on fyne (the default theme's),
+and 16px, two cells, on bubbletea -- as one
 number, px + base*(em + rem) (`codegen.MeasurementPx` for a constant,
 `MeasurementSum` and `MeasurementPxExpr` for a value read at run time). A
 canvas's surface is pixels everywhere, so an em there is 16
@@ -257,7 +257,13 @@ whatever its base -- `12em` was 12dp on android, `fontSize=17em` 17 on fyne --
 and a run-time value's px alone. `pct`, `vw` and `vh` went for the reason a
 base has to be every target's: a percentage padding exists on no host but
 html, and a viewport unit would have to follow a resize on hosts that apply a
-style once. `rem` was `16em`, which made `13rem` 208em on html.
+style once. `rem` was `16em`, which made `13rem` 208em on html. gtk4's em
+was Adwaita's 11 and its `fontSize` points, as Pango reads a span's `size`,
+while every other length there was pixels: `fontSize=16px` drew a third
+larger than html's, and `padding=1em` was 11px beside text 1em tall drawn at
+14.7. A font size is pixels there now, a label's CSS `font-size` and a run's
+`font_desc` (`testdata/gtk4_font_size.txtar`,
+`pkg/go/gtk4rt/paint_test.go`).
 
 The interpreter is a fourth implementation of all of this and has to be checked
 with the three backends: `interp.ToInt` needs its `unitValue` case (without it

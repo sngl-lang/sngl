@@ -382,7 +382,7 @@ const component ui.tooltip[platform](style, text, trigger) {
 const component ui.card[platform](style, clickable, @click, content) {
     if clickable {
         gtk.GtkButton(hasFrame=false, look=lookOf(style), @clicked { click() }) {
-            gtk.GtkFrame {
+            gtk.GtkFrame(look=innerFrameLookOf(style)) {
                 content
             }
         }

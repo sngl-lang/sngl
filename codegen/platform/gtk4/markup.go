@@ -440,16 +440,15 @@ func spanTags(props map[string]ir.Expr) (open ir.Expr, close string) {
 	return concat(parts), "</span>" + strings.Join(closes, "")
 }
 
-// pangoSize is a text size as Pango takes one: thousandths of a point, near
-// enough, the unit being 1024ths. A SNGL measurement is in device-independent
-// pixels, which this platform reads as points the way every other measurement
-// here is read as one number.
+// pangoSize is a text size as Pango takes one in pixels, the unit of every
+// other length here and of a label's CSS font-size: a span's `size` is in
+// points, which GTK's display resolution scales.
 func pangoSize(px float64) string {
-	return fmt.Sprintf(`size="%d"`, int(px*1024))
+	return fmt.Sprintf(`font_desc="%spx"`, strconv.FormatFloat(px, 'f', -1, 64))
 }
 
-// emPx is an em on this platform: GTK's default font, Adwaita's 11pt.
-const emPx = 11
+// emPx is an em on this platform, as on html, android and bubbletea.
+const emPx = 16
 
 // markupColor is an RGBA read off a SNGL color literal. Its own reader rather
 // than the layout one's, because a color that is not a literal is no color

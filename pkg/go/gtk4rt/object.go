@@ -19,7 +19,19 @@ static GType sngl_rt_type(const char *name) {
     }
     return t;
 }
-static void *sngl_rt_new(GType t) { return g_object_new(t, NULL); }
+// A widget grows by its own expand and never by what it holds, as a CSS flex
+// item grows by its own flex: GTK carries a child's expand up to every
+// ancestor that sets none of its own, so a box holding a widget given
+// `hexpand` took its row's spare room. A window allocates its child all of
+// itself, so a native is left as GTK makes it.
+static void *sngl_rt_new(GType t) {
+    GObject *o = g_object_new(t, NULL);
+    if (GTK_IS_WIDGET(o) && !GTK_IS_NATIVE(o)) {
+        gtk_widget_set_hexpand_set(GTK_WIDGET(o), TRUE);
+        gtk_widget_set_vexpand_set(GTK_WIDGET(o), TRUE);
+    }
+    return o;
+}
 
 static void sngl_rt_set(void *obj, const char *name, GValue *src) {
     GObject *o = G_OBJECT(obj);
