@@ -175,6 +175,22 @@ reports.
   `t.kids[0].label = "z"`, is written in place on a read-only `List` element
   and does not compile ("actual type is 'kotlin.Unit'").
 
+## Left over from the Style series
+
+- Every lowering pass before LibFuncs never sees a library helper's body:
+  NoStructSpread was moved after it, and nothing in `lib/` needs another yet.
+- A map's `==` is the host's on every target, and the interpreter does not
+  answer it either.
+- Under gtk4's `cgo` option, which sets `orientation` and makes widgets
+  through GIR's own calls, an `orientation` written on a box gtk4rt lays out
+  is lost, and a widget's expand carries up to its ancestors as GTK carries
+  it.
+- A zero `borderWidth` drew a border on bubbletea while
+  `TestReactiveStyleRunsInTheEmittedProgram` said so; it is fixed, but how
+  `verify` passed over that test is not known.
+- `match` has no guard pattern (`var n if n > 10`), and no option-unwrapping
+  syntax of its own beyond `match var v = o`.
+
 ## Docs gaps still open
 
 - **Platform options offline.** getting-started now points `--opt` at

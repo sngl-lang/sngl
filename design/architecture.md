@@ -48,6 +48,16 @@ translation folds to what it sets. `flex` is read by the parent: a context
 on android, the Layout on bubbletea, the Box on fyne, the box the widget lands
 in on gtk4, CSS on html.
 
+**A literal Style is translated at run time on bubbletea and android**
+(`BoxLook(Style{…}, true)`, `styleModifier(Style(…), true)`), and stays so.
+fyne's and gtk4's `lookOf` build a host record or CSS text in plain SNGL,
+which the optimizer interprets and spells back as a literal; bubbletea's and
+android's builders call `#[go.native]` and `#[kt.native]` const funcs, which
+`interpretFunc` refuses, and the inliner splices a single `return` only and
+never copies a native call read twice (`cheapToCopy`). Folding them would take
+a value standing for a host call in the const interpreter, or an inliner that
+folds a block body to one expression.
+
 **`ui.spacer` is `flex: 1` on every platform**, its own `flex` a share in
 its place: each override writes `{flex=1, ...style}` (bubbletea, reading
 the one field, `style.flex == null ? 1.0 : style.flex`). It grew unasked on
