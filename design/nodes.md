@@ -255,6 +255,11 @@ declaration itself. Two things about the name that are easy to get wrong:
   writes in a tick reached the emitter untranslated: a bare `__n0.Text =`, which
   is neither a field any Fyne widget has nor a name in scope. The same blind
   spot design/language.md records for the lowering passes, one layer out.
+  An `if`'s condition is a fifth: `menu.length() > 0` over a data slot counts
+  records holding the call site's handlers, and walked only through `OnCond`
+  their `UpdateComponent` reached JavaScript raw. `walkExprLambdas` also
+  enters an operator's operands, a member read and an index
+  (`cmd/sngl/testdata/window_menu_under_if_runs.txt`).
 
   **The hand-over it also held is `async.do`**, which a platform package may
   name: `#[intrinsic("async.do")] func do(f func())` dispatches through

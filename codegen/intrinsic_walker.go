@@ -305,7 +305,13 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 		return WalkLowered(ctx, n.Children, t)
 	case *ir.If:
 		cp := *n
-		cp.Cond = t.OnCond(ctx, n.Cond)
+		cond := n.Cond
+		// `menu.length() > 0` over a data slot counts records the call site
+		// built, each holding its handlers.
+		if v, changed := walkExprLambdas(ctx, cond, t); changed {
+			cond = v
+		}
+		cp.Cond = t.OnCond(ctx, cond)
 		cp.Body = WalkLowered(ctx, n.Body, t)
 		if len(n.Else) > 0 {
 			cp.Else = WalkLowered(ctx, n.Else, t)
@@ -474,6 +480,32 @@ func walkExprLambdas(ctx context.Context, e ir.Expr, t IntrinsicTranslator) (ir.
 			return &cp, true
 		}
 	case *ir.Conversion:
+		if v, moved := walkExprLambdas(ctx, x.Operand, t); moved {
+			cp := *x
+			cp.Operand = v
+			return &cp, true
+		}
+	case *ir.Binary:
+		left, movedLeft := walkExprLambdas(ctx, x.Left, t)
+		right, movedRight := walkExprLambdas(ctx, x.Right, t)
+		if movedLeft || movedRight {
+			cp := *x
+			cp.Left, cp.Right = left, right
+			return &cp, true
+		}
+	case *ir.Unary:
+		if v, moved := walkExprLambdas(ctx, x.Operand, t); moved {
+			cp := *x
+			cp.Operand = v
+			return &cp, true
+		}
+	case *ir.Select:
+		if v, moved := walkExprLambdas(ctx, x.Operand, t); moved {
+			cp := *x
+			cp.Operand = v
+			return &cp, true
+		}
+	case *ir.Index:
 		if v, moved := walkExprLambdas(ctx, x.Operand, t); moved {
 			cp := *x
 			cp.Operand = v

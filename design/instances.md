@@ -346,7 +346,12 @@ prop (`handlerParams`): `options.map(func(o) => o.label)` in a looped component
 and `rows.map(func(r) => …)` in a tab's panel each made the parameter one,
 handed a name the site never declared
 (`testdata/slot_child_lambda_param.txtar`,
-`cmd/sngl/testdata/slot_child_literal_runs.txt`). A node is not lifted when its subtree holds
+`cmd/sngl/testdata/slot_child_literal_runs.txt`). A function literal that
+writes what the site binds travels whole, as a call reading state does:
+lifted read by read, a menu record's `@select { saved += 1 }` wrote the
+instance's copy of `saved`, and html's pick ran nothing anyone saw
+(`writesFree`, `cmd/sngl/testdata/window_menu_under_if_runs.txt`). A node is
+not lifted when its subtree holds
 a slot insertion, a boundary, a canvas or a window, or declares a handle
 something reads. bubbletea and android re-render the view anyway and are
 untouched (`testdata/slot_body_updates_in_place.txtar`,

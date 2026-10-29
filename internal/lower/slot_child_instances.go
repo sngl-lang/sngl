@@ -407,6 +407,16 @@ func paramsRead(stmts []ir.Stmt, params []*ir.Param) []*ir.Param {
 func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 	_ = ir.Rewrite(n, func(node ir.Node) (ir.Node, error) {
 		switch x := node.(type) {
+		case *ir.Lambda:
+			// A callback writing the owner's state -- a record's handler a
+			// data slot's list carries -- travels whole too: lifted read by
+			// read, its write landed on the instance's copy of the var.
+			if !writesFree(x, local) || readsAny(x, local) {
+				return node, nil
+			}
+			p := l.prop("lambda#"+strconv.Itoa(l.uniq), x.ExprType(), x)
+			l.uniq++
+			return &ir.Ident{Name: p.Name, Type: x.ExprType(), Sym: p}, ir.SkipDir
 		case *ir.Call:
 			typ := x.ExprType()
 			// A render's raise travels whole too: the boundary that hears it
@@ -470,6 +480,39 @@ func (l *lift) prop(key string, typ *ir.Type, value ir.Expr) *ir.Param {
 	l.comp.Props = append(l.comp.Props, &ir.Prop{Name: p.Name, Type: p.Type, Sym: p})
 	l.inst.Props = append(l.inst.Props, ir.Arg{Name: p.Name, Value: value})
 	return p
+}
+
+// writesFree reports whether lam's body writes a binding declared outside
+// local and lam itself.
+func writesFree(lam *ir.Lambda, local map[ir.Symbol]bool) bool {
+	if lam.Func == nil {
+		return false
+	}
+	own := map[ir.Symbol]bool{}
+	for _, p := range lam.Func.Params {
+		own[p] = true
+	}
+	found := false
+	_ = ir.Walk(lam.Func.Block, func(n ir.Node) error {
+		var target ir.Expr
+		switch x := n.(type) {
+		case *ir.LocalVar:
+			own[x.Sym] = true
+			return nil
+		case *ir.Assign:
+			target = x.Target
+		case *ir.Toggle:
+			target = x.Target
+		default:
+			return nil
+		}
+		if sym := exprRoot(target); sym != nil && liftableSym(sym) && !local[sym] && !own[sym] {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 func readsAny(e ir.Expr, syms map[ir.Symbol]bool) bool {

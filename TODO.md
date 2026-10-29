@@ -365,8 +365,16 @@ session.
      is never at the start of its history, can go back: the Pokédex's tests
      assert the window's title, not its `canGoBack`.
    - A press of a copy drawn under a reactive `if` on html (the header,
-     before its condition was settled) ran nothing, with no error. Not
-     traced.
+     before its condition was settled) ran nothing, with no error. Fixed: a
+     menu whose entries an `if` adds still leaves the bar's condition open,
+     and lifting the bar into an instance made each value its records read a
+     prop, so Save's handler wrote the instance's copy of the var; a literal
+     writing what the site binds now travels whole (`writesFree`). Under it,
+     the walk translating html's intrinsics never entered a condition, where
+     the same records' `UpdateComponent` reached JavaScript raw, and
+     NoTernary hoisted nothing out of a callee, which bubbletea's pick reads
+     the handler off. Pinned by
+     `cmd/sngl/testdata/window_menu_under_if_runs.txt` (all six).
    - The interpreter mounted a window's props before its body, so one
      reading a handle the body declares (`title=pages.current.title`) was
      missing from the mounted node; it is evaluated again after the body.
