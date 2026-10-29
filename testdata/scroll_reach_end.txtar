@@ -1125,7 +1125,7 @@ body { display: flex; flex-direction: column; }
   </style>
 </head><body>
 
-<div class="sngl-scroll sngl-scroll-vertical" style="flex:1;min-width:0;min-height:0" class="sngl-scroll sngl-scroll-vertical" data-sngl-id="list">
+<div class="sngl-scroll sngl-scroll-vertical" style="flex:1;min-width:0;min-height:0" data-sngl-id="list">
   <div id="__n2" data-sngl-id="__n2" style="display:flex;flex-direction:column">
     <span data-sngl-slot="0" style="display:contents"></span>
   </div>
@@ -1333,4 +1333,4 @@ pass sha256:8067cabf330f25a768af03d00c8c3f0e
 -- run/kotlin/android --
 pass sha256:9c401a7029d85f0e402d16dacc56a98b
 -- run/none/html --
-pass sha256:b7849c66f84ca6774a7deb8dd17478dc
+pass sha256:82c5750c83fa9dea36ef9d0b440c277d

@@ -23,7 +23,11 @@ does with it is each target's:
 
 - html: an image is a `<span class="sngl-image">` frame carrying the style,
   the click and the description (`role="img"`, `aria-label`), around the
-  `<img>` its source renders (`codegen/platform/html/image.go`). A drawing
+  `<img>` its source renders (`codegen/platform/html/image.go`). The rules
+  clipping the frame and fitting the picture are the page's wherever a frame
+  is (`namesImageFrame`); written only beside a source, a frame showing its
+  placeholder alone was not clipped (`TestAFrameWithNoSourceIsClipped`). A
+  drawing
   paints into a canvas of its own and writes a data URL into `src`
   (`_snglImageDraw`) on every repaint. The document's favicon is the source
   its Window override put beside the content (`splitFavicon`): a literal URL

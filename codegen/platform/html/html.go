@@ -3773,16 +3773,11 @@ func splitJSConcat(s string) []string {
 	return parts
 }
 
-// writeUserAttrs emits user-specified id and class attributes in test mode.
+// writeUserAttrs emits a node's user-specified id in test mode. Its class is
+// every build's.
 func (g *htmlGen) writeUserAttrs(b *strings.Builder, internalID string, n *ir.NodeInst) {
 	if !g.testMode {
 		return
-	}
-	classExpr := codegen.NodeProp(n, "class")
-	if codegen.IRIsLiteral(classExpr) {
-		if s, ok := codegen.IRLiteralString(classExpr); ok {
-			fmt.Fprintf(b, " class=%q", s)
-		}
 	}
 	if n.ID != "" && !strings.HasPrefix(n.ID, "__n") {
 		fmt.Fprintf(b, " data-sngl-id=%q", n.ID)

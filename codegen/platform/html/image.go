@@ -1,7 +1,10 @@
 package html
 
 import (
+	"strings"
+
 	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
 )
 
@@ -27,6 +30,21 @@ var imageRules = []string{
 	".sngl-image-fill img { object-fit: fill; }",
 	".sngl-image-none img { object-fit: none; }",
 	".sngl-image-scaleDown img { object-fit: scale-down; }",
+}
+
+// namesImageFrame reports whether a class names an image's frame, whose
+// rules the page needs whether or not a source is drawn in it: a frame
+// showing only its placeholder was not clipped.
+func namesImageFrame(class ir.Expr) bool {
+	found := false
+	_ = ir.WalkExprs(class, func(e ir.Expr) error {
+		if s, ok := codegen.IRLiteralString(e); ok && strings.HasPrefix(s, "sngl-image") {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 func isImageSource(n *ir.NodeInst) bool {

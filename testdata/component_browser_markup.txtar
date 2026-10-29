@@ -140,7 +140,7 @@ body { font-family: system-ui, sans-serif; }
   <input id="__n0" data-sngl-id="__n0" type="checkbox"/>
   <span>ok</span>
 </label>
-<span class="sngl-image sngl-image-contain" style="display:inline-block" aria-label="pic" role="img" class="sngl-image sngl-image-contain" data-sngl-id="image">
+<span class="sngl-image sngl-image-contain" style="display:inline-block" aria-label="pic" role="img" data-sngl-id="image">
   <img alt="" src="/x.png"/>
 </span>
 <a href="/" data-sngl-id="link">
@@ -184,14 +184,14 @@ body { font-family: system-ui, sans-serif; }
   <li style="padding-left:0px">root</li>
   <li style="padding-left:16px">child</li>
 </ul>
-<div id="$16" class="modal-overlay" style="display:flex;align-items:center;justify-content:center;position:fixed;top:0px;bottom:0px;left:0px;right:0px;z-index:1000;background-color:#00000080" class="modal-overlay" data-sngl-id="modal">
-  <div class="modal-content" style="padding:24px;background-color:#ffffff;border-radius:8px" class="modal-content">
+<div id="$16" class="modal-overlay" style="display:flex;align-items:center;justify-content:center;position:fixed;top:0px;bottom:0px;left:0px;right:0px;z-index:1000;background-color:#00000080" data-sngl-id="modal">
+  <div class="modal-content" style="padding:24px;background-color:#ffffff;border-radius:8px">
     <h3 style="margin-top:0px;margin-right:0px;margin-bottom:16px;margin-left:0px">Dialog</h3>
     <span>body</span>
   </div>
 </div>
 <hr data-sngl-id="divider"/>
-<span class="sngl-badge" style="padding-top:2px;padding-right:8px;padding-bottom:2px;padding-left:8px;display:inline-block;border-radius:12px" class="sngl-badge" data-sngl-id="badge">3</span>
+<span class="sngl-badge" style="padding-top:2px;padding-right:8px;padding-bottom:2px;padding-left:8px;display:inline-block;border-radius:12px" data-sngl-id="badge">3</span>
 <style>
 .sngl-image { overflow: hidden; }
 .sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
@@ -970,9 +970,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:f0293917b1a45646fd2da0ea2c3a9a27
+pass sha256:3f259fdad85b28c873b4b320e59603ee
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:a3e0eea5e7ef0ecdd57fad774304ca18
+sha256:9b16d32f087b021247e78437d3c523eb
 {
   "results": [
     {

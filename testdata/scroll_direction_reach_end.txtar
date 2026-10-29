@@ -1473,14 +1473,14 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div class="sngl-scroll sngl-scroll-horizontal" style="height:120px" class="sngl-scroll sngl-scroll-horizontal" data-sngl-id="list">
+<div class="sngl-scroll sngl-scroll-horizontal" style="height:120px" data-sngl-id="list">
   <div id="__n5" data-sngl-id="__n5" style="gap:8px;display:flex;flex-direction:row">
     <span data-sngl-slot="0" style="display:contents"></span>
   </div>
   <sngl-reach-end id="$2">
   </sngl-reach-end>
 </div>
-<div class="sngl-scroll sngl-scroll-both" style="height:240px" class="sngl-scroll sngl-scroll-both" data-sngl-id="cells">
+<div class="sngl-scroll sngl-scroll-both" style="height:240px" data-sngl-id="cells">
   <div id="__n6" data-sngl-id="__n6" style="display:flex;flex-direction:column">
     <span data-sngl-slot="1" style="display:contents"></span>
   </div>
@@ -1795,4 +1795,4 @@ pass sha256:92c2acde730c28c3d44dd02352dcc2e5
 -- run/kotlin/android --
 pass sha256:e9da8a2a31f3bff6f312f489419914c1
 -- run/none/html --
-pass sha256:a9332011b997d188e814059a21f1dd6c
+pass sha256:8f951a87fdbbf30b754a6e48b8f1228c

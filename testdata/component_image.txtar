@@ -897,7 +897,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span class="sngl-image sngl-image-contain" style="display:inline-block" aria-label="test" role="img" class="sngl-image sngl-image-contain">
+<span class="sngl-image sngl-image-contain" style="display:inline-block" aria-label="test" role="img">
   <img id="__n0" data-sngl-id="__n0" alt=""/>
 </span>
 <style>
@@ -955,9 +955,9 @@ pass sha256:69f5c338e22e06417af1c34fdc0bbbb7
 -- run/kotlin/android --
 pass sha256:6966f170fd915e7cf44c446f8954ca86
 -- run/none/html --
-pass sha256:583dc07e1b573eff8fa327106f3afdf8
+pass sha256:651ea154363533c620daafa793b46ece
 -- testrun/html/none/component_image.sngl/main/1 --
-sha256:55e01fb0bd1601b8b69919dbd0dc5fe8
+sha256:7204f2a735b4dcf8b9e72fbd82c9b3bf
 {
   "results": [
     {

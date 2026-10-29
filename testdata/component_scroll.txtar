@@ -745,7 +745,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div class="sngl-scroll sngl-scroll-both" class="sngl-scroll sngl-scroll-both">
+<div class="sngl-scroll sngl-scroll-both">
   <span>content</span>
   <sngl-reach-end>
   </sngl-reach-end>
@@ -837,9 +837,9 @@ pass sha256:56b7c27db5ba1dc2c97c0e5b92740ae8
 -- run/kotlin/android --
 pass sha256:b9211b04af9d605434bf922e7cf80cd3
 -- run/none/html --
-pass sha256:47c546fc59a1d11904e2e56949ad5dfd
+pass sha256:2590138d4c823da733661ab23c9e911f
 -- testrun/html/none/component_scroll.sngl/main/1 --
-sha256:b2d5942716589d5c7665be8218e9f453
+sha256:42dfbfb11230391e50d34e646b254648
 {
   "results": [
     {

@@ -140,7 +140,11 @@ session.
      where html and android cut the content off at the scroll's edge.
    - html writes `class=` twice on some image frames, and `.sngl-image`'s
      clip is a rule the page writes only beside a source, so a frame
-     showing only its placeholder is not clipped.
+     showing only its placeholder is not clipped. Fixed: a test build wrote
+     every literal class again with the test's own attributes, and the rules
+     are the page's wherever a frame's class names one (`namesImageFrame`).
+     Pinned by `TestATestBuildWritesAFramesClassOnce` and
+     `TestAFrameWithNoSourceIsClipped`.
    - `iter[int]` has no `map`.
 2. **Settings.** Done. `sngl:settings` has `kept(name=, :value=)`, `load`,
    `save` and a `store` context (`scope`, and a `Place`: `platform` or

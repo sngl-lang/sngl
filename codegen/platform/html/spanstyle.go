@@ -126,11 +126,14 @@ const (
 // classRules is the stylesheet a node's class asks for: nothing unless the
 // class is a literal and one of the two styles sets something.
 func classRules(n *ir.NodeInst) []string {
+	var rules []string
+	if namesImageFrame(codegen.NodeProp(n, "class")) {
+		rules = append(rules, imageRules...)
+	}
 	class, ok := codegen.IRLiteralString(codegen.NodeProp(n, "class"))
 	if !ok || class == "" || strings.ContainsAny(class, " \t\n") {
-		return nil
+		return rules
 	}
-	var rules []string
 	if css := classCSS(codegen.NodeProp(n, classStyleProp)); css != "" {
 		rules = append(rules, ":where(."+class+") { "+css+" }")
 	}
