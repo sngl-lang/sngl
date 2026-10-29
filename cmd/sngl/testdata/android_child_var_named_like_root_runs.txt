@@ -1,0 +1,56 @@
+# A composable other than the root's writing a var of its own named like one
+# the root declares. In a test build android hoists the root's vars into a
+# state class and renders each by name as `state.<name>`; the check that the
+# var was the root's asked only that some component declared it, so the
+# child's `count += 1` became `state.count += 1` in a composable with no
+# `state`, and the build failed. An implicit-state wrapper's cells met the
+# same when the page bound a var named `pending`
+# (bubbletea_stateless_wrapper_built_instance_runs.txt).
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component counter ui.node {
+    var count = 0
+    ui.button #inc(text="{count}", @click { count += 1 })
+}
+
+component page ui.node {
+    var count = 10
+    var shown = true
+    if shown {
+        counter #child
+    }
+    ui.button #bump(text="{count}", @click { count += 1 })
+}
+
+func testEachCountIsItsOwn(t test.Test, c page) {
+    t.assert(c.child != null)
+    if c.child != null {
+        c.child.inc.click()
+        t.assert(c.child.count == 1)
+        t.assert(c.count == 10)
+        c.bump.click()
+        t.assert(c.count == 11)
+        t.assert(c.child.count == 1)
+    }
+}

@@ -116,6 +116,10 @@ type KtIRContext struct {
 	// Used by the Android test-mode emit to route every component-level
 	// var through a hoisted state object (`count` → `state.count`).
 	IdentRewrites map[string]string
+	// StateVars are the vars the hoisted state holds, when IdentRewrites
+	// routes vars there; a var another composable declares under the same
+	// name is its own.
+	StateVars map[ir.Symbol]bool
 	// receiver is the parameter an extension function's body names its
 	// receiver by, which Kotlin spells `this` whatever the declaration
 	// called it. Matched by symbol: IdentRewrites skips parameters.
@@ -806,6 +810,9 @@ func (kc *KtIRContext) stateRewrite(n *ir.Ident) (string, bool) {
 		return "", false
 	}
 	rewritten, ok := kc.IdentRewrites[n.Name]
+	if ok && kc.StateVars != nil && !kc.StateVars[v] {
+		return n.Name, true
+	}
 	return rewritten, ok
 }
 
@@ -1694,6 +1701,7 @@ func (kc *KtIRContext) WithLocal(name string) *KtIRContext {
 		Ctx:           kc.Ctx.WithLocal(name),
 		EventVar:      kc.EventVar,
 		IdentRewrites: kc.IdentRewrites,
+		StateVars:     kc.StateVars,
 		receiver:      kc.receiver,
 		imports:       kc.imports,
 		returnTo:      kc.returnTo,
@@ -1714,6 +1722,7 @@ func (kc *KtIRContext) ForComponent(comp *ir.Component) *KtIRContext {
 		Ctx:           kc.Ctx.ForComponent(comp),
 		EventVar:      kc.EventVar,
 		IdentRewrites: kc.IdentRewrites,
+		StateVars:     kc.StateVars,
 		receiver:      kc.receiver,
 		imports:       kc.imports,
 	}

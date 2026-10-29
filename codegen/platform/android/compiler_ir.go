@@ -568,6 +568,10 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			rewrites[fn.Name] = "state." + fn.Name
 		}
 		kc.IdentRewrites = rewrites
+		kc.StateVars = map[ir.Symbol]bool{}
+		for _, ov := range ctx.ModelState() {
+			kc.StateVars[ov.Sym] = true
+		}
 		testRewrites = maps.Clone(rewrites)
 	}
 
