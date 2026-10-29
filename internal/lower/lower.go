@@ -219,6 +219,11 @@ type Options struct {
 	// splices is what passInlinePure spliced of a program component carrying
 	// an id. Set by Lower.
 	splices *[]splice
+
+	// blockReads is each read of a view block's var passTestReach answered a
+	// test's prop read with, for passHoistState to say where the var lives.
+	// Set by Lower.
+	blockReads blockReads
 }
 
 // renamer numbers renamed declarations per name: `hits__inst0` and
@@ -259,6 +264,7 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 	}
 	opts.names = renamer{}
 	opts.splices = &[]splice{}
+	opts.blockReads = blockReads{}
 	if opts.StopAfter != "" {
 		known := false
 		for _, p := range passes {

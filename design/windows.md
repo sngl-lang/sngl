@@ -142,7 +142,8 @@ declaring a `var` in a scope of its own (`blockEnv`), cached by the list's path
 as a component instance's is and evicted with it, and a handler's write in it
 is carried back through every loop snapshot above (`Env.writeBack`).
 `testdata/view_block_state.sngl` runs it on the interpreter and
-`view_block_state.txtar` is the code on all six targets.
+`view_block_state.txtar` is the code on all six targets. A test reading a prop
+over such a var reads it off that instance (`design/testing.md`).
 
 That made a two-way prop written inside a component built at run time reach
 codegen, which it never had: passPropBindings names the write-back event for

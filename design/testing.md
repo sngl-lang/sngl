@@ -289,7 +289,16 @@ moves a node out of the body that wrote it:
   targets did not build (`cmd/sngl/testdata/test_reach_nested_loop_fire_runs.txt`).
   A method of the component its own body calls with the instance left
   implicit, `for var row = rows()`, is called through the instance, as a
-  test calls one (`test_reach_prop_through_method_runs.txt`). A
+  test calls one (`test_reach_prop_through_method_runs.txt`). A `var` a block
+  of the view declares is state of whatever instance passHoistState puts it
+  in, which it decides after this, so the read is recorded
+  (`blockReads.answer`) and placed there: off the instance it was read
+  through where the block joined that component, renamed with it, or through
+  the instance of the block's `__block_state<N>`, whose call site is given an
+  id (`tap__state0`) and read with the node's indices into the loops around
+  it. The Go targets had emitted the var bare and html threw on it; one
+  inside another instance or another such block is refused
+  (`cmd/sngl/testdata/test_reach_block_state_runs.txt`). A
   prop reading what a test cannot name -- a slot's parameter, a local, a pull
   sequence's element -- is left as written for a node of the test's own
   instance and refused with a position for one reached through another

@@ -48,7 +48,7 @@ var passTestReach = pass{
 			}
 			answerInstancePresence(fn, params)
 			noteRecordPicks(pkg, fn)
-			if err := answerTestPropReads(fn, params); err != nil {
+			if err := answerTestPropReads(fn, params, opts.blockReads); err != nil {
 				return err
 			}
 			if err := f.fireTriggers(fn); err != nil {
@@ -323,7 +323,7 @@ func (f *reachFlattener) uid(node *ir.NodeInst) string {
 // answerTestPropReads answers each one-way prop fn reads through its instance
 // (rewriteTestPropRead), to a fixed point: an answer may read another prop.
 // Before the flattening, which leaves a node no path to its call site.
-func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool) error {
+func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool, reads blockReads) error {
 	for {
 		changed := false
 		if err := ir.Rewrite(fn.Block, func(n ir.Node) (ir.Node, error) {
@@ -337,7 +337,7 @@ func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool) error {
 			}
 			e := answerTestRecordRead(sel, params)
 			if e == nil {
-				e = rewriteTestPropRead(sel, params)
+				e = rewriteTestPropRead(sel, params, reads)
 			}
 			if e != nil {
 				changed = true

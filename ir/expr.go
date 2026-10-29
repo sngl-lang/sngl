@@ -328,6 +328,73 @@ func (k RefCount) Wrap(t *Type, listOf func(*Type) *Type) *Type {
 	return t
 }
 
+// InsideSlot is k for what fills slot of host, which renders as often as host
+// inserts it.
+func (k RefCount) InsideSlot(host *Component, slot *SlotDecl) RefCount {
+	switch host.InsertsOf(slot) {
+	case InsertOptional:
+		return k.Inside(RefOption)
+	case InsertMany:
+		return k.Inside(RefList)
+	}
+	return k
+}
+
+// RefIn is the first node in a checked body that match picks, and the count a
+// read of it off an instance of the body's component names; RefNone where
+// match picks none. A slot population's nodes are its own, and not searched.
+func RefIn(stmts []Stmt, match func(*NodeInst) bool) (*NodeInst, RefCount) {
+	var walk func(stmts []Stmt, k RefCount) (*NodeInst, RefCount)
+	walk = func(stmts []Stmt, k RefCount) (*NodeInst, RefCount) {
+		for _, st := range stmts {
+			var n *NodeInst
+			var at RefCount
+			switch x := st.(type) {
+			case *NodeInst:
+				if match(x) {
+					return x, k
+				}
+				inner := k
+				if x.Component != nil {
+					if rest := x.Component.RestSlot(); rest != nil {
+						inner = k.InsideSlot(x.Component, rest)
+					}
+				}
+				n, at = walk(x.Children, inner)
+			case *SlotInst:
+				n, at = walk(x.Children, k.Inside(RefOption))
+			case *If:
+				if n, at = walk(x.Body, k.Inside(RefOption)); n == nil {
+					n, at = walk(x.Else, k.Inside(RefOption))
+				}
+			case *Match:
+				for _, arm := range x.Arms {
+					if n, at = walk(arm.Body, k.Inside(RefOption)); n != nil {
+						break
+					}
+				}
+			case *For:
+				if n, at = walk(x.Body, k.Inside(RefList)); n == nil {
+					n, at = walk(x.Else, k.Inside(RefOption))
+				}
+			case *ErrorBoundary:
+				inner := k
+				if len(x.Failed) > 0 {
+					inner = k.Inside(RefOption)
+				}
+				n, at = walk(x.Children, inner)
+			case *ContextProvider:
+				n, at = walk(x.Children, k)
+			}
+			if n != nil {
+				return n, at
+			}
+		}
+		return nil, RefNone
+	}
+	return walk(stmts, RefOne)
+}
+
 // Index is a resolved index operation: operand[index].
 type Index struct {
 	AST     *ast.IndexExpr

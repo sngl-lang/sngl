@@ -25,7 +25,7 @@ func answerTestRecordRead(sel *ir.Select, tests map[*ir.Param]bool) ir.Expr {
 	if first == nil {
 		return nil
 	}
-	list := rewriteTestPropRead(first, tests)
+	list := rewriteTestPropRead(first, tests, nil)
 	if list == nil {
 		return nil
 	}

@@ -1,9 +1,12 @@
 package lower
 
 import (
+	"cmp"
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
+	"strings"
 
 	"duckfam.us/sngl/ir"
 )
@@ -43,11 +46,11 @@ var passHoistState = pass{
 	apply:   applyHoistState,
 }
 
-func applyHoistState(pkg *ir.Package, _ Features, _ Options) error {
+func applyHoistState(pkg *ir.Package, _ Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
-	st := &blockState{pkg: pkg, renamed: map[*ir.Var]string{}}
+	st := &blockState{pkg: pkg, renamed: map[*ir.Var]string{}, home: map[*ir.Var]*ir.Component{}, sites: map[*ir.Component]*ir.NodeInst{}, parent: map[*ir.Component]*ir.Component{}}
 	// The package's own top level is its state, as a component's is.
 	pkg.Body, pkg.Vars = promoteLocalVarsToVars(pkg.Body, pkg.Vars)
 	po := st.packageOwner()
@@ -60,6 +63,9 @@ func applyHoistState(pkg *ir.Package, _ Features, _ Options) error {
 	pkg.Components = append(pkg.Components, st.made...)
 	if st.err != nil {
 		return st.err
+	}
+	if err := st.placeTestReads(opts.blockReads, namesOrOwn(opts.names)); err != nil {
+		return err
 	}
 	if len(st.renamed) == 0 {
 		return nil
@@ -81,6 +87,12 @@ type blockState struct {
 	made    []*ir.Component
 	renamed map[*ir.Var]string
 	err     error
+	// home is the component each block var joined, nil for the package; sites
+	// each synthesized component's one instantiation, and parent the
+	// component that instantiation stands in.
+	home   map[*ir.Var]*ir.Component
+	sites  map[*ir.Component]*ir.NodeInst
+	parent map[*ir.Component]*ir.Component
 }
 
 // stateOwner is what a block's vars join when the block is rendered once.
@@ -211,6 +223,7 @@ func (st *blockState) promote(o *stateOwner, stmts []ir.Stmt) []ir.Stmt {
 		}
 		o.names[v.Name] = true
 		*o.vars = append(*o.vars, v)
+		st.home[v] = o.comp
 	}
 	return stmts
 }
@@ -229,9 +242,14 @@ func (st *blockState) wrap(o *stateOwner, stmts []ir.Stmt, host *ir.Component) i
 	w := &ir.Component{Name: "__block_state" + strconv.Itoa(len(st.made)), Family: family}
 	st.made = append(st.made, w)
 	w.Stmts, w.Vars = promoteLocalVarsToVars(stmts, nil)
+	for _, v := range w.Vars {
+		st.home[v] = w
+	}
 	w.Stmts = st.walk(st.componentOwner(w), w.Stmts, false, true, family)
 
 	site := &ir.NodeInst{Name: w.Name, Component: w}
+	st.sites[w] = site
+	st.parent[w] = o.comp
 	inside := declaredWithin(w.Stmts)
 	for _, v := range w.Vars {
 		inside[v] = true
@@ -294,6 +312,100 @@ func (st *blockState) wrap(o *stateOwner, stmts []ir.Stmt, host *ir.Component) i
 		return &ir.Ident{AST: id.AST, Name: p.Name, Type: id.Type, Sym: p}, ir.SkipDir
 	})
 	return site
+}
+
+// blockRead is a test's read of a view block's var, which passTestReach
+// answers as a member of the instance whose node's prop the test read
+// (blockReads.answer) before this pass says which instance holds it.
+type blockRead struct {
+	v    *ir.Var
+	node *ir.Select // the ref the test read the prop off
+	idxs []ir.Expr
+	at   *ir.Select // the prop read
+}
+
+type blockReads map[*ir.Select]blockRead
+
+// answer is out with each var a block of comp's view declares read off inst.
+func (r blockReads) answer(out ir.Expr, at *ir.Select, comp *ir.Component, inst ir.Expr, idxs []ir.Expr) ir.Expr {
+	vars := map[ir.Symbol]bool{}
+	ir.WalkView(comp.Stmts, func(s ir.Stmt) bool {
+		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil {
+			vars[lv.Sym] = true
+		}
+		return true
+	})
+	if len(vars) == 0 {
+		return out
+	}
+	node, _ := unnarrowedRef(at.Operand).(*ir.Select)
+	return newExprWalker(func(x ir.Expr) ir.Expr {
+		id, ok := x.(*ir.Ident)
+		if !ok || !vars[id.Sym] {
+			return x
+		}
+		sel := &ir.Select{Type: id.Type, Operand: ir.CloneExprSharingDecls(inst), Field: id.Name}
+		r[sel] = blockRead{v: id.Sym.(*ir.Var), node: node, idxs: idxs, at: at}
+		return sel
+	}).expr(out)
+}
+
+// placeTestReads points each read a test makes of a block's var at the
+// instance holding it: the one it is read off, where the block joined that
+// instance's component, or else the instance of the component synthesized for
+// the block, whose call site is given an id for the read to reach it by, named
+// for the node the test read since a target spells no `__` name. That
+// instance is one per copy of the node the test read, so the read takes the
+// node's indices into the loops around the call site.
+func (st *blockState) placeTestReads(reads blockReads, names renamer) error {
+	sels := slices.Collect(maps.Keys(reads))
+	slices.SortFunc(sels, func(a, b *ir.Select) int {
+		return cmp.Compare(exprPos(reads[a].at), exprPos(reads[b].at))
+	})
+	for _, sel := range sels {
+		r := reads[sel]
+		home, ok := st.home[r.v]
+		if !ok {
+			continue
+		}
+		sel.Field = r.v.Name
+		site := st.sites[home]
+		if site == nil {
+			continue
+		}
+		param, isParam := unnarrowed(sel.Operand).(*ir.Ident)
+		refuse := fmt.Errorf("%s: `%s` reads `%s`, state of a block rendered once per copy or branch, which a test reaches only where the block is written in the body of the component the test takes, outside any other such block; assert on what the state is written from", exprPos(r.at), r.at.Field, r.v.Name)
+		if !isParam || r.node == nil || st.parent[home] != componentOf(param) {
+			return refuse
+		}
+		_, inner := ir.RefIn(home.Stmts, func(n *ir.NodeInst) bool { return n.ID == r.node.Field })
+		k := r.node.Ref
+		if inner == ir.RefNone || !strings.HasSuffix(string(k), string(inner)) {
+			return refuse
+		}
+		k = k[:len(k)-len(inner)] + ir.RefOne
+		n := len(r.idxs) - strings.Count(string(inner), string(ir.RefList))
+		if n < 0 {
+			return refuse
+		}
+		if site.ID == "" {
+			site.ID = names.next(r.node.Field, "state")
+			site.Handle = &ir.Var{Name: site.ID, Type: home.SymType(), IsConst: true, NodeHandle: true}
+		}
+		var ref ir.Expr = &ir.Select{Type: k.Wrap(home.SymType(), ir.ListOf), Operand: ir.CloneExprSharingDecls(param), Field: site.ID, Ref: k}
+		for _, idx := range r.idxs[:n] {
+			elem := ref.ExprType()
+			if elem != nil && elem.Kind == ir.TypeList && len(elem.Elems) == 1 {
+				elem = elem.Elems[0]
+			}
+			ref = &ir.Index{Type: elem, Operand: ref, Idx: ir.CloneExprSharingDecls(idx)}
+		}
+		if t := ref.ExprType(); t != nil && !t.Equal(home.SymType()) {
+			ref = &ir.Conversion{Type: home.SymType(), Operand: ref}
+		}
+		sel.Operand = ref
+	}
+	return nil
 }
 
 // slotHost is the family a population of comp's slot name accepts: the one

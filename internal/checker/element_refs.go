@@ -30,9 +30,11 @@ func (c *checker) elementRef(comp *ir.Component, id string) (*ir.Component, ir.R
 	// this checker does not hold; an imported package is checked before its
 	// importer, so its IR is complete.
 	if !slices.Contains(c.pkg.Components, comp) {
-		s := &refSearch{id: id}
-		s.walkIR(comp.Stmts, ir.RefOne)
-		return s.host, s.count
+		n, k := ir.RefIn(comp.Stmts, func(n *ir.NodeInst) bool { return n.ID == id && n.Component != nil })
+		if n == nil {
+			return nil, ir.RefNone
+		}
+		return n.Component, k
 	}
 	s := &refSearch{c: c, comp: comp, id: id}
 	restore := c.fileOf(compDeclPos(comp))
@@ -92,22 +94,10 @@ func (s *refSearch) node(id, target string, block *ast.StmtBlock, k ir.RefCount)
 	}
 	if comp != nil {
 		if rest := comp.RestSlot(); rest != nil {
-			k = insideSlot(k, comp, rest)
+			k = k.InsideSlot(comp, rest)
 		}
 	}
 	s.walk(content, k)
-}
-
-// insideSlot is k for what fills slot of host, which renders as often as host
-// inserts it.
-func insideSlot(k ir.RefCount, host *ir.Component, slot *ir.SlotDecl) ir.RefCount {
-	switch host.InsertsOf(slot) {
-	case ir.InsertOptional:
-		return k.Inside(ir.RefOption)
-	case ir.InsertMany:
-		return k.Inside(ir.RefList)
-	}
-	return k
 }
 
 // populatesFallback reports whether a boundary's populations include its
@@ -144,46 +134,6 @@ func splitPopulations(block *ast.StmtBlock) ([]ast.Stmt, []*ast.ComponentDecl) {
 // the read itself, an element of it, or a narrowed option of one.
 func isElementRefRead(e ir.Expr) bool { return refSelect(e) != nil }
 
-// walkIR is walk over a checked body, which is what another package's
-// component offers.
-func (s *refSearch) walkIR(stmts []ir.Stmt, k ir.RefCount) {
-	for _, st := range stmts {
-		switch n := st.(type) {
-		case *ir.NodeInst:
-			if n.ID == s.id && n.Component != nil && s.host == nil {
-				s.host, s.count = n.Component, k
-			}
-			inner := k
-			if n.Component != nil {
-				if rest := n.Component.RestSlot(); rest != nil {
-					inner = insideSlot(k, n.Component, rest)
-				}
-			}
-			s.walkIR(n.Children, inner)
-		case *ir.SlotInst:
-			s.walkIR(n.Children, k.Inside(ir.RefOption))
-		case *ir.If:
-			s.walkIR(n.Body, k.Inside(ir.RefOption))
-			s.walkIR(n.Else, k.Inside(ir.RefOption))
-		case *ir.Match:
-			for _, arm := range n.Arms {
-				s.walkIR(arm.Body, k.Inside(ir.RefOption))
-			}
-		case *ir.For:
-			s.walkIR(n.Body, k.Inside(ir.RefList))
-			s.walkIR(n.Else, k.Inside(ir.RefOption))
-		case *ir.ErrorBoundary:
-			inner := k
-			if len(n.Failed) > 0 {
-				inner = k.Inside(ir.RefOption)
-			}
-			s.walkIR(n.Children, inner)
-		case *ir.ContextProvider:
-			s.walkIR(n.Children, k)
-		}
-	}
-}
-
 // populationRef resolves `<node>.<id>` where id is written in a population of
 // node's slots, which owner's body wrote: the component that node instantiates
 // and how many of it one instance of node renders. That is how often node
@@ -202,7 +152,7 @@ func (c *checker) populationRef(owner *ir.Component, node *ast.VisualNode, id st
 		if host != nil {
 			for _, slot := range host.Slots {
 				if slot.Name == cd.Name {
-					k = insideSlot(k, host, slot)
+					k = k.InsideSlot(host, slot)
 				}
 			}
 		}

@@ -1,0 +1,406 @@
+# A test reads a node's prop whose value reads a `var` written in a block of
+# the view, which is state of that block wherever the block is rendered:
+# joined to the instance rendering it where the block renders once (once,
+# where the instance is reached through another and shadows a var of its
+# own), and an instance of a component synthesized for the block where it
+# renders other than once -- under an `if` over state (branch), per copy
+# under a `for` (rows), or as a tab's panel (panel). The Go targets emitted
+# the var bare and html threw on it. A block like that inside another
+# instance is refused (nested); the interpreter answers it, being the
+# reference.
+
+sngl test --platform=none once.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html once.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go once.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go once.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go once.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin once.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none branch.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html branch.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go branch.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go branch.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go branch.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin branch.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none rows.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html rows.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go rows.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go rows.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go rows.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin rows.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none panel.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html panel.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go panel.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go panel.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go panel.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin panel.sngl
+stdout 'ok   1 tests, 0 failures'
+
+! sngl test --platform=html nested.sngl
+stderr 'nested.sngl:22:40: `text` reads `taps`, state of a block rendered once per copy or branch, which a test reaches only where the block is written in the body of the component the test takes, outside any other such block'
+
+sngl test --platform=none nested.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- once.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component inner ui.node {
+    ui.vbox {
+        var taps = 0
+        ui.button #tap(text="{taps}", @click { taps += 1 })
+    }
+}
+
+component outer ui.node {
+    var taps = 5
+    ui.vbox {
+        var taps = 0
+        ui.button #own(text="{taps}", @click { taps += 1 })
+    }
+    inner #b
+}
+
+func testOnce(t Test, c outer) {
+    c.b.tap.click()
+    t.assert(c.b.tap.text == "1")
+    c.own.click()
+    c.own.click()
+    t.assert(c.own.text == "2")
+    t.assert(c.taps == 5)
+}
+-- branch.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component branch ui.node {
+    var on = true
+    ui.button #flip(text="flip", @click { on = !on })
+    if on {
+        ui.vbox {
+            var taps = 0
+            ui.button #tap(text="{taps}", @click { taps += 1 })
+        }
+    }
+}
+
+func testBranch(t Test, c branch) {
+    if c.tap != null {
+        c.tap.click()
+    }
+    t.assert(c.tap != null && c.tap.text == "1")
+    c.flip.click()
+    c.flip.click()
+    t.assert(c.tap != null && c.tap.text == "0")
+}
+-- rows.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+const items list[string] = ["a", "b"]
+
+component rows ui.node {
+    for var it = items {
+        ui.hbox {
+            var taps = 0
+            ui.button #tap(text="{it}{taps}", @click { taps += 1 })
+        }
+    }
+}
+
+func testRows(t Test, c rows) {
+    c.tap[1].click()
+    c.tap[1].click()
+    t.assert(c.tap[0].text == "a0")
+    t.assert(c.tap[1].text == "b2")
+}
+-- panel.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component panel ui.node {
+    var selected = 0
+    ui.tabs(:selected=selected) {
+        ui.tab(label="One") {
+            var taps = 0
+            ui.button #tap(text="{taps}", @click { taps += 1 })
+        }
+    }
+}
+
+func testPanel(t Test, c panel) {
+    if c.tap != null {
+        c.tap.click()
+    }
+    t.assert(c.tap != null && c.tap.text == "1")
+}
+-- nested.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component inner ui.node {
+    var on = true
+    if on {
+        ui.vbox {
+            var taps = 0
+            ui.button #tap(text="{taps}", @click { taps += 1 })
+        }
+    }
+}
+
+component outer ui.node {
+    inner #b
+}
+
+func testNested(t Test, c outer) {
+    if c.b.tap != null {
+        c.b.tap.click()
+    }
+    t.assert(c.b.tap != null && c.b.tap.text == "1")
+}
+-- testrun/android/kotlin/branch.sngl/branch/1 --
+sha256:029a4503319bc79b4d7961385cfc7cc5
+{
+  "results": [
+    {
+      "Desc": "Branch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/once.sngl/outer/1 --
+sha256:8814dfe706d62fbe7501add249d75876
+{
+  "results": [
+    {
+      "Desc": "Once",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/panel.sngl/panel/1 --
+sha256:fa843e6ff0ba29aea10a716f7eb13919
+{
+  "results": [
+    {
+      "Desc": "Panel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/rows.sngl/rows/1 --
+sha256:4bc465657292f152e339ad584c95ed42
+{
+  "results": [
+    {
+      "Desc": "Rows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/branch.sngl/branch/1 --
+sha256:4c35035661fac0df496e748e3e95a886
+{
+  "results": [
+    {
+      "Desc": "Branch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/once.sngl/outer/1 --
+sha256:c56d069852695e01e73451d2a2c87254
+{
+  "results": [
+    {
+      "Desc": "Once",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/panel.sngl/panel/1 --
+sha256:f3e9537e80314ccfaf10a535214ed70a
+{
+  "results": [
+    {
+      "Desc": "Panel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/rows.sngl/rows/1 --
+sha256:9d502fa2fe2d4ae984eb7325f0d33571
+{
+  "results": [
+    {
+      "Desc": "Rows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/branch.sngl/branch/1 --
+sha256:3159073a8c337f8471cfab9f0748472d
+{
+  "results": [
+    {
+      "Desc": "Branch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/once.sngl/outer/1 --
+sha256:4579878cb432d4ce0f6c4c5bd4ffa4c6
+{
+  "results": [
+    {
+      "Desc": "Once",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/panel.sngl/panel/1 --
+sha256:b8abb95e1c35b945c139ba2d01867ce7
+{
+  "results": [
+    {
+      "Desc": "Panel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/rows.sngl/rows/1 --
+sha256:2f1198e950d11ea5492c96804778b37b
+{
+  "results": [
+    {
+      "Desc": "Rows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/branch.sngl/branch/1 --
+sha256:fe5d866923c28747f2e67b5e806e0018
+{
+  "results": [
+    {
+      "Desc": "Branch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/once.sngl/outer/1 --
+sha256:b15200e35fb8cdac0350b55f2d48c4bc
+{
+  "results": [
+    {
+      "Desc": "Once",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/panel.sngl/panel/1 --
+sha256:a1446d9497ef68d9317ceb78129a148e
+{
+  "results": [
+    {
+      "Desc": "Panel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/rows.sngl/rows/1 --
+sha256:4f6164d5c4f785cda3130e6395e58687
+{
+  "results": [
+    {
+      "Desc": "Rows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/branch.sngl/branch/1 --
+sha256:f155b19c109242f5ff82fc99c19e2f31
+{
+  "results": [
+    {
+      "Desc": "Branch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/once.sngl/outer/1 --
+sha256:ec9de2b034728f9563f0453c8eaa9661
+{
+  "results": [
+    {
+      "Desc": "Once",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/panel.sngl/panel/1 --
+sha256:a4724b94354ef35c08b0bc61e9574686
+{
+  "results": [
+    {
+      "Desc": "Panel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/rows.sngl/rows/1 --
+sha256:39f09a01f409cb03bcf91aab142d03c4
+{
+  "results": [
+    {
+      "Desc": "Rows",
+      "Passed": true
+    }
+  ]
+}

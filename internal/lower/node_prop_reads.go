@@ -83,7 +83,7 @@ func lowerNodePropReads(pkg *ir.Package, _ Features, opts Options) error {
 			}
 			e := rewriteNodePropRead(sel, handles)
 			if e == nil {
-				e = rewriteTestPropRead(sel, tests)
+				e = rewriteTestPropRead(sel, tests, nil)
 			}
 			if e == nil {
 				return n, nil
@@ -314,20 +314,21 @@ func testInstances(pkg *ir.Package, opts Options) map[*ir.Param]bool {
 // passNoInlineComponents then repoints at the spliced copy as it repoints any
 // other member a test reads. A loop's variable is what the copy the test
 // indexed was handed: the loop's list at that index, the number a sngl:seq
-// sequence counts there, or the index itself. What it reads of something else
-// a test cannot name -- a slot's parameter, a local -- has no value at the
-// test: such a read is left as it was, where the node is the test's
-// instance's own, and refused (unnamedTestPropRead) where it is reached
-// through another instance.
-func rewriteTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) ir.Expr {
-	e, _ := answerTestPropRead(sel, tests)
+// sequence counts there, or the index itself. A var a block of the view
+// declares is read off the instance too, and passHoistState says which one
+// (blockReads). What it reads of something else a test cannot name -- a
+// slot's parameter, a local -- has no value at the test: such a read is left
+// as it was, where the node is the test's instance's own, and refused
+// (unnamedTestPropRead) where it is reached through another instance.
+func rewriteTestPropRead(sel *ir.Select, tests map[*ir.Param]bool, reads blockReads) ir.Expr {
+	e, _ := answerTestPropRead(sel, tests, reads)
 	return e
 }
 
 // unnamedTestPropRead reports a read rewriteTestPropRead leaves standing that
 // it is reached through an instance, which no target answers.
 func unnamedTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) bool {
-	e, unnamed := answerTestPropRead(sel, tests)
+	e, unnamed := answerTestPropRead(sel, tests, nil)
 	if e != nil || !unnamed {
 		return false
 	}
@@ -346,8 +347,10 @@ func unnarrowedRef(e ir.Expr) ir.Expr {
 }
 
 // answerTestPropRead is rewriteTestPropRead's answer, and whether there is a
-// prop to answer that reads what the test cannot name.
-func answerTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) (ir.Expr, bool) {
+// prop to answer that reads what the test cannot name. A view block's var it
+// reads is a member of inst, recorded in reads for passHoistState, which
+// alone knows which instance holds it; nil reads leaves it as written.
+func answerTestPropRead(sel *ir.Select, tests map[*ir.Param]bool, reads blockReads) (ir.Expr, bool) {
 	inst, id, idxs, ok := testNodeRef(sel.Operand, tests)
 	if !ok {
 		return nil, false
@@ -386,6 +389,9 @@ func answerTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) (ir.Expr, bool
 	out := rebaseOnInstanceUnder(ir.CloneExprSharingDecls(v), comp, inst, env)
 	if out == nil {
 		return nil, true
+	}
+	if reads != nil {
+		out = reads.answer(out, sel, comp, inst, idxs)
 	}
 	out = answerTestEmpty(out, inst, tests)
 	if out == nil {

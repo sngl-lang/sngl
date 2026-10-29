@@ -229,8 +229,10 @@ session.
      too. `slot_nested_instance_runs.txt` leaves bubbletea out for it. Not
      fixed.
    - A test reading a prop whose value reads a `var` a panel's block declares
-     (`c.tap.text` over `"{taps}"`) emits the var bare on the Go targets,
-     `undefined: taps`, with the old body too. Not fixed.
+     (`c.tap.text` over `"{taps}"`) emitted the var bare on the Go targets,
+     `undefined: taps`, and html threw on it. Fixed: passHoistState places
+     the read on the instance holding the var
+     (`test_reach_block_state_runs.txt`).
    - A swipe on android turns one page, so one settling on a disabled tab
      goes on to the next that is not, which is what html's chooses.
    - Opening Bulbasaur's page against the recorded answers asked 11 requests
