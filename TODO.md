@@ -225,8 +225,11 @@ session.
    - android's intrinsics took no slot with parameters; `SnglPager`'s
      `page component(index int)` is the first.
    - bubbletea answered no `display`; a Layout's `hidden` is `none` now. Its
-     Tab still stops on a hidden panel's controls, as on a branch not taken:
-     static focus stops are gathered ungated (`walkForSlots`).
+     Tab still stopped on a hidden panel's controls, drawing nothing. Fixed
+     by main's 44f04701e, which passes over a stop a box displayed none
+     holds (`__focusCounted`, `__focusShown`), merged here in 2e2797843;
+     `TestTabPassesOverAHiddenTabPanel` pins it for the tabs, and fails on
+     the branch before that merge.
    - On bubbletea, a `ui.tab` under an `if` beside a panel with a focus stop
      does not build: the focus functions read the list of tabs the view
      hoisted into a local of its own (`undefined: __lt11`), with the old body

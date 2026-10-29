@@ -655,8 +655,9 @@ way. gtk4's `Tabs` is gtk4rt's GtkStackSwitcher over a GtkStack, each panel a
 `TabPage` whose box is an item's content; html keeps a `role=tabpanel` per tab
 with all but one `hidden`; bubbletea puts each panel in a Layout whose
 `fit.hidden` draws nothing while its children still render, under a bar of
-tui.TabLook boxes. bubbletea's Tab still stops on a hidden panel's controls, as
-it does on a branch not taken: `walkForSlots` gathers static stops ungated.
+tui.TabLook boxes. Tab passes over a hidden panel's controls, as over any box
+displayed none (design/instances.md's *A stop that draws nothing is passed
+over*; `TestTabPassesOverAHiddenTabPanel`).
 
 A page reaches the stack, or the AppTabs, however the render slot of the
 strip's loop hands it to the tabs: gtk4rt's `BoxAppend`, `InsertBefore` and
