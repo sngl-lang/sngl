@@ -81,6 +81,13 @@ stdout -count=3 '"Anon": \(bool\) true'
 sngl dump --stage checked --format json ternary.sngl
 sngl dump --stage checked --format spew ternary.sngl
 
+# A function in a generic component's body carries the component's type
+# params as its receiver's, but prints by its bare name.
+sngl dump --stage checked --format sngl genericbody.sngl
+stdout 'func bump\('
+sngl dump --stage lowered --platform bubbletea --lang go --format sngl genericbody.sngl
+stdout 'func bump'
+
 -- main.sngl --
 import . "sngl:ui"
 
@@ -182,6 +189,22 @@ context[int] #depth(3)
 
 component badge ui.node {
     ui.text(value="{depth}")
+}
+-- genericbody.sngl --
+import . "sngl:ui"
+
+component counter[T any](value T) node {
+    var n = 0
+
+    func bump() {
+        n += 1
+    }
+
+    text(value="{n}")
+}
+
+window {
+    counter(value=1)
 }
 -- generic.sngl --
 import . "sngl:ui"
