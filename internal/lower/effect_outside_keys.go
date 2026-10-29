@@ -21,8 +21,9 @@ import (
 // through its setter, and the setter marks and settles what is keyed on it
 // (settleOnSet, android's emitPropReports).
 //
-// Only what the key reads by name moves; a key reading the var through a call
-// still reads it there.
+// A key reading the var through a call, `on=current()`, calls a copy of each
+// func on the way that takes the var as a parameter, and hands it the prop
+// (outsideCalls.copyOf).
 var passEffectOutsideKeys = pass{
 	name:    "EffectOutsideKeys",
 	enabled: func(Features) bool { return true },
@@ -40,6 +41,7 @@ func lowerEffectOutsideKeys(pkg *ir.Package, _ Features, opts Options) error {
 			global[v] = true
 		}
 	}
+	calls := &outsideCalls{pkg: pkg, global: global, copies: map[*ir.Func]*ir.Func{}}
 	bound := map[*ir.Component][]outsideKey{}
 	for _, c := range pkg.Components {
 		// A test's root is built by the harness, with no site to bind it.
@@ -56,16 +58,7 @@ func lowerEffectOutsideKeys(pkg *ir.Package, _ Features, opts Options) error {
 				if arg.Name != "on" {
 					continue
 				}
-				holder := &ir.Return{Value: arg.Value}
-				_ = ir.RewriteExprs(holder, func(x ir.Expr) (ir.Expr, error) {
-					id, ok := x.(*ir.Ident)
-					if !ok {
-						return x, nil
-					}
-					v, ok := id.Sym.(*ir.Var)
-					if !ok || !global[v] {
-						return x, nil
-					}
+				propOf := func(v *ir.Var) *ir.Ident {
 					var p *ir.Param
 					for _, k := range keys {
 						if k.v == v {
@@ -77,7 +70,19 @@ func lowerEffectOutsideKeys(pkg *ir.Package, _ Features, opts Options) error {
 						c.Props = append(c.Props, &ir.Prop{Name: p.Name, Type: p.Type, Sym: p})
 						keys = append(keys, outsideKey{v: v, p: p})
 					}
-					return &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}, nil
+					return &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}
+				}
+				holder := &ir.Return{Value: arg.Value}
+				_ = ir.RewriteExprs(holder, func(x ir.Expr) (ir.Expr, error) {
+					switch x := x.(type) {
+					case *ir.Ident:
+						if v, ok := x.Sym.(*ir.Var); ok && global[v] {
+							return propOf(v), nil
+						}
+					case *ir.Call:
+						calls.redirect(x, propOf)
+					}
+					return x, nil
 				})
 				fx.Props[i].Value = holder.Value
 			}
@@ -117,6 +122,117 @@ func outsideKeyName(c *ir.Component, v *ir.Var) string {
 	base := "__on_" + v.Name
 	name := base
 	for i := 1; slices.ContainsFunc(c.Props, func(p *ir.Prop) bool { return p.Name == name }); i++ {
+		name = base + strconv.Itoa(i)
+	}
+	return name
+}
+
+// outsideCalls is the copies of the funcs a key calls that take each package
+// var they read, directly or through what they call, as a parameter.
+type outsideCalls struct {
+	pkg    *ir.Package
+	global map[*ir.Var]bool
+	// copies holds nil for a func with no copy: one reading no such var, or
+	// one that cannot be copied, which keeps reading the var by name.
+	copies map[*ir.Func]*ir.Func
+}
+
+// reads is the package vars fn reads, through what it calls too, in the order
+// the package declares them.
+func (oc *outsideCalls) reads(fn *ir.Func) []*ir.Var {
+	got := map[*ir.Var]bool{}
+	gatherFuncReads(fn, oc.global, got, nil)
+	var out []*ir.Var
+	for _, v := range oc.pkg.Vars {
+		if got[v] {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// redirect points call at fn's copy, handing it arg(v) for each var it takes.
+func (oc *outsideCalls) redirect(call *ir.Call, arg func(*ir.Var) *ir.Ident) bool {
+	cp := oc.copyOf(call.Func)
+	if cp == nil {
+		return false
+	}
+	for _, v := range oc.reads(call.Func) {
+		call.Args = append(call.Args, ir.CallArg{Value: arg(v)})
+	}
+	call.Func = cp
+	return true
+}
+
+// copyOf is fn with a parameter for each package var it reads, which its body
+// and the copies of what it calls read instead, or nil.
+func (oc *outsideCalls) copyOf(fn *ir.Func) *ir.Func {
+	if fn == nil {
+		return nil
+	}
+	if cp, done := oc.copies[fn]; done {
+		return cp
+	}
+	oc.copies[fn] = nil
+	vars := oc.reads(fn)
+	switch {
+	case len(vars) == 0, fn.IsMethod(), !slices.Contains(oc.pkg.Funcs, fn):
+		return nil
+	case slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.Variadic }):
+		return nil
+	case slices.ContainsFunc(fn.Writes, func(v *ir.Var) bool { return slices.Contains(vars, v) }):
+		return nil
+	}
+	cp := *fn
+	cp.Name = oc.copyName(fn.Name)
+	cp.Params = slices.Clone(fn.Params)
+	cp.Reads = slices.DeleteFunc(slices.Clone(fn.Reads), func(v *ir.Var) bool { return slices.Contains(vars, v) })
+	params := map[*ir.Var]*ir.Param{}
+	for _, v := range vars {
+		p := &ir.Param{Name: copyParamName(&cp, v), Type: v.Type}
+		cp.Params = append(cp.Params, p)
+		params[v] = p
+	}
+	paramOf := func(v *ir.Var) *ir.Ident {
+		return &ir.Ident{Name: params[v].Name, Type: v.Type, Sym: params[v]}
+	}
+	oc.copies[fn] = &cp
+	cp.Block = ir.CloneStmtsSharingDecls(fn.Block)
+	whole := true
+	_ = ir.RewriteExprs(cp.Block, func(x ir.Expr) (ir.Expr, error) {
+		switch x := x.(type) {
+		case *ir.Ident:
+			if v, ok := x.Sym.(*ir.Var); ok && params[v] != nil {
+				return paramOf(v), nil
+			}
+		case *ir.Call:
+			if len(oc.reads(x.Func)) > 0 && !oc.redirect(x, paramOf) {
+				whole = false
+			}
+		}
+		return x, nil
+	})
+	if !whole {
+		oc.copies[fn] = nil
+		return nil
+	}
+	oc.pkg.Funcs = append(oc.pkg.Funcs, &cp)
+	return &cp
+}
+
+func (oc *outsideCalls) copyName(name string) string {
+	base := name + "__outside"
+	out := base
+	for i := 1; slices.ContainsFunc(oc.pkg.Funcs, func(f *ir.Func) bool { return f.Name == out }); i++ {
+		out = base + strconv.Itoa(i)
+	}
+	return out
+}
+
+func copyParamName(fn *ir.Func, v *ir.Var) string {
+	base := "__on_" + v.Name
+	name := base
+	for i := 1; slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.Name == name }); i++ {
 		name = base + strconv.Itoa(i)
 	}
 	return name

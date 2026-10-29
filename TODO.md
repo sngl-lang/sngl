@@ -255,9 +255,13 @@ session.
    `cmd/sngl/testdata/effect_keyed_on_package_var_runs.txt` (all six, a query
    included) and `settings_kept.txtar`, which has its left-out test back. It
    was wider than step 2 saw: html built and silently ran no `@update`,
-   remount or query, and android did not build either. Not fixed: a key that
-   reads the var through a call (`effect(on=current())`) is still marked by
-   bare name. The golden harness's fyne test file has no `t.wait` (it lacks
+   remount or query, and android did not build either. A key that reads the
+   var through a call (`effect(on=current())`, or through a func calling it)
+   is fixed too: it calls a copy of each func that takes the var as a
+   parameter, handed the prop, and the interpreter, which ran no such
+   `@update` even outside an instance, follows the calls. Pinned by
+   `cmd/sngl/testdata/effect_keyed_through_call_runs.txt` (all six) and
+   `testdata/effect_update_through_call.sngl`. The golden harness's fyne test file has no `t.wait` (it lacks
    the post queue `sngl test` declares, `undefined: __snglRunPosts`), so the
    query case is a script.
 

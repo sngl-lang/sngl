@@ -382,10 +382,19 @@ build, and html built and ran none of it: no `@update`, no remount, no query
 asking again. So each package var a key reads by name becomes a prop,
 `__on_<var>`, bound to the var at every site, and the key reads the prop; the
 site's `liveUpdaters` and the setter above reach every live copy, and
-android's `emitPropReports`. A key reading the var through a call still reads
-it there. A test's root is left alone, having no site
+android's `emitPropReports`. A test's root is left alone, having no site
 (`testdata/effect_keyed_on_package_var_runtime_instance.txtar`,
 `cmd/sngl/testdata/effect_keyed_on_package_var_runs.txt`, which adds a query).
+A key reading the var through a call, `on=current()`, was still marked by bare
+name, with the same failures. It now calls a copy of each func on the way,
+`<func>__outside`, which takes each package var it reads, through what it
+calls too, as a trailing parameter, and is handed the prop; a func calling
+another calls that one's copy. A func that is a method, is variadic, writes
+the var, or calls one that cannot be copied keeps its call and the old
+failure. The interpreter read only the names `on` spelled and ran no
+`@update` for such a key anywhere; it follows the calls now
+(`cmd/sngl/testdata/effect_keyed_through_call_runs.txt`,
+`testdata/effect_update_through_call.sngl`).
 The other direction, a write *inside* an instance marking an effect of the
 Model, was spelled bare too in a test build rooted at a component, whose vars
 and funcs are the Model's: an instance resolves a name against that component
