@@ -410,8 +410,10 @@ session.
      page is clipped to a strip about 40px high, and fyne's PNGs are the
      theme's background alone.
    - On bubbletea, a test root whose body is `Pokedex #app` alone declares
-     `Model.__snglTeardown` once per copy and does not build (#298). Under a
-     provider, as `shell` has it, it builds. Not minimized.
+     `Model.__snglTeardown` once per copy and does not build (#298), and so
+     did the app without its tests. Fixed: a component that renders one with
+     state is spliced as a stateful one is (`keepsState`), pinned by
+     `cmd/sngl/testdata/bubbletea_stateless_wrapper_built_instance_runs.txt`.
    - Step 5 never regenerated `pkg/go/fynehost/registry_gen.go`, so the fyne
      host had no constructor for `Tabs` or `TabPage`. The clean verify's
      `go generate` wrote them, and they are committed.
