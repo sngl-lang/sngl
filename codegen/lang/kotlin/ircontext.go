@@ -253,8 +253,29 @@ func (kc *KtIRContext) Binary(n *ir.Binary, left, right string) string {
 	if ir.IsUnitRatio(n) {
 		return "(" + left + ".toDouble() / " + right + ".toDouble())"
 	}
+	if n.Op == ast.BinEq || n.Op == ast.BinNeq {
+		left, right = comparableList(n.Left, left), comparableList(n.Right, right)
+	}
 	return "(" + left + " " + n.Op.String() + " " + right + ")"
 }
+
+// comparableList reads a list operand of == as a plain List: a list var is a
+// SnapshotStateList, whose equals is its identity, so `xs == listOf(1)` was
+// false wherever the var stood on the left.
+func comparableList(e ir.Expr, s string) string {
+	t := e.ExprType()
+	if _, lit := e.(*ir.ListLit); lit || t == nil {
+		return s
+	}
+	switch {
+	case t.Kind == ir.TypeList:
+		return s + ".toList()"
+	case t.Kind == ir.TypeOption && len(t.Elems) == 1 && t.Elems[0] != nil && t.Elems[0].Kind == ir.TypeList:
+		return s + "?.toList()"
+	}
+	return s
+}
+
 func (kc *KtIRContext) Unary(n *ir.Unary, operand string) string {
 	if n.Op == ast.UnaryNot {
 		return "!" + operand

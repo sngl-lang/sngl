@@ -461,6 +461,9 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 	case *ir.Binary:
 		left := lowerTestExpr(n.Left, surf, compRecvs)
 		right := lowerTestExpr(n.Right, surf, compRecvs)
+		if n.Op == ast.BinEq || n.Op == ast.BinNeq {
+			left, right = comparableList(n.Left, left), comparableList(n.Right, right)
+		}
 		return "(" + left + " " + n.Op.String() + " " + right + ")"
 	case *ir.Unary:
 		if n.Op == ast.UnaryNot {

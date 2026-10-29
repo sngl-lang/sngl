@@ -174,7 +174,11 @@ session.
      every access, so a library's state never changed under `sngl test`.
      Fixed here (`importedVarOwner`).
    - A Go test cannot compare two lists with `==`: `[]int` is not
-     comparable.
+     comparable. Fixed on Go and html by goEqualer and `jsEqual`
+     (`struct_list_equality_runs.txt`). Kotlin was wrong too: a list var is
+     a `SnapshotStateList`, whose `equals` is its identity, so `xs == [1]`
+     was false; a list operand is read through `.toList()` now, pinned by
+     the same script's `AListVarComparesItsElements`.
    - On bubbletea, `languagePick.change(…)` in a test moved `language` but
      never ran the `@update` keyed on it, while a handler's write (`dexPick`)
      and a test's direct write did. Not traced: the test invoker is written by
@@ -226,8 +230,8 @@ session.
    - On bubbletea, a `ui.tab` under an `if` beside a panel with a focus stop
      does not build: the focus functions read the list of tabs the view
      hoisted into a local of its own (`undefined: __lt11`), with the old body
-     too. `slot_nested_instance_runs.txt` leaves bubbletea out for it. Not
-     fixed.
+     too. Fixed in step 5 (`loopTemps`); `slot_nested_instance_runs.txt` runs
+     bubbletea again.
    - A test reading a prop whose value reads a `var` a panel's block declares
      (`c.tap.text` over `"{taps}"`) emitted the var bare on the Go targets,
      `undefined: taps`, and html threw on it. Fixed: passHoistState places

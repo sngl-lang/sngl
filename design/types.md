@@ -144,8 +144,10 @@ either -- a slice does not compile under `==`, and an option is a pointer, so
 two options holding 1 were unequal -- through `snglListEqual`,
 `snglOptEqual` and their `By` forms; JavaScript's `jsEqual` for a struct, a
 payload enum and a list, since `===` is an object's identity. Kotlin's `==`
-is a data class's and a list's `equals`, which already is. A map compares as
-the host's.
+is a data class's and a list's `equals`, which already is, but a list var is
+a `SnapshotStateList`, whose `equals` is its identity, so a list operand
+other than a literal is read through `.toList()` (`comparableList`). A map
+compares as the host's.
 
 **A color's string is its `hex()`** (Jonathan's call): the interpreter's
 `Struct.String` answers it for a color, so the fold does too, and each
