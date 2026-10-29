@@ -356,7 +356,11 @@ session.
      reading state does not follow the state.
    - On html a test page for a component that is not a window cannot read
      `pages.current` (`current` is undefined), with or without `titleOf`; a
-     window's documents answer it.
+     window's documents answer it. Fixed: a document published the page's
+     record only where its own script read `current`, and a test's script is
+     its own, so where the fold had settled every read the document makes --
+     no `nav.link` -- the test read `undefined`. A test build's documents
+     always publish it (`cmd/sngl/testdata/nav_current_test_page_runs.txt`).
    - `navigation.canGoBack` on html is the browser's, so a test page, which
      is never at the start of its history, can go back: the Pokédex's tests
      assert the window's title, not its `canGoBack`.

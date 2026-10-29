@@ -144,8 +144,10 @@ A static document is written at the page's href (`/about` is
 about/index.html), and route mode serves a route per page named for it, with
 `routesConflict` asking the pages. What no document's fold reaches -- a
 function, a test body, the step an effect in a page settles by -- reads
-`globalThis.__sngl_page`, which a document publishes only when its script
-names it. A `go` is `location.assign` and `back` is `history.back()`: the
+`globalThis.__sngl_page`, which a document publishes when its script names
+it, and always in a test build: a test's script is its own, so a document
+whose reads the fold had all settled published nothing and the test read
+`undefined` (`cmd/sngl/testdata/nav_current_test_page_runs.txt`). A `go` is `location.assign` and `back` is `history.back()`: the
 browser's history, so at its bottom it leaves the site. A window holds one
 stack. Refused with a position:
 `cmd/sngl/testdata/nav_html_refused.txt`. `testdata/nav_stack_html.txtar` and

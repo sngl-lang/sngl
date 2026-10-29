@@ -1317,7 +1317,7 @@ func (g *htmlGen) generate() (string, error) {
 	}
 	if script := scriptBuf.String(); strings.Contains(script, navPageMarker) {
 		decl := ""
-		if strings.Contains(script, "globalThis."+navPageGlobal) {
+		if g.testMode || strings.Contains(script, "globalThis."+navPageGlobal) {
 			decl = fmt.Sprintf("globalThis.%s = %s;\n", navPageGlobal, g.literalToJS(g.page.Record))
 		}
 		scriptBuf.Reset()
@@ -2214,7 +2214,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// here: `pages.current` read where no document's fold reaches -- a
 	// function's body, a test's -- is this (emitNavCurrent).
 	// Written in place once the rest of the script is, and only if the rest
-	// reads it.
+	// reads it or a test, whose script is its own, may.
 	if g.page != nil && g.page.Record != nil {
 		b.WriteString(navPageMarker)
 	}
