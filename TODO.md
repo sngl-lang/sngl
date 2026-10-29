@@ -20,10 +20,8 @@ the first user.
 - ~~**No target scrolls sideways.**~~ Done in step 1: every target scrolls
   along `ui.scroll`'s `direction`, and the Sprites, Evolution and Moves
   panels scroll sideways.
-- **Tabs look like buttons on three targets.** gtk4, fyne and bubbletea draw
-  sngl:ui's own `ui.tabs` body: a row of `ui.button`s, the selected one's
-  label bold. On fyne the selected one cannot be told apart in a snapshot.
-  android's TabRow and html's tablist look like tabs.
+- ~~**Tabs look like buttons on three targets.**~~ Done in step 5: gtk4
+  draws a stack switcher, fyne an AppTabs and bubbletea a boxed tab bar.
 
 ### The design
 
@@ -340,10 +338,59 @@ session.
      (`display(p.name)`), in every language: what the page fetches comes
      after the title is asked for.
 
-5. **Tabs that look like tabs.** gtk4, fyne and bubbletea override
-   `ui.tabs` with their own widgets, a fixture holding each one's look --
-   gtk4's and fyne's from a snapshot -- and `tabs_runs.txt` and
-   `tabs_panels_stay_loaded_runs.txt` passing unchanged.
+5. **Tabs that look like tabs.** Done. gtk4 draws a `Tabs`, gtk4rt's
+   GtkStackSwitcher over a GtkStack, with a `TabPage` per tab the stack
+   holds; fyne fynelayout's `Tabs`, a widget drawing an AppTabs with a
+   `TabPage` per item; bubbletea a bar of `tui.TabLook` boxes, the selected
+   one open onto the panels' box (`pills` reverses the selected label
+   instead). Every panel still mounts with the tabs, a disabled tab cannot be
+   chosen, and a test presses a tab as before. `variant` is GTK's and Fyne's
+   own look, as it is Material's on android. design/nodes.md's *Every tab's
+   panel is mounted* says how. Pinned by `testdata/tabs_look.txtar`,
+   `tabs_look_cgo.txtar`, `cmd/sngl/testdata/tabs_look_runs.txt` (gtk4's and
+   fyne's snapshots, bubbletea's bar as text) and gtk4rt's, fynelayout's and
+   tui's tests; `tabs_runs.txt` and `tabs_panels_stay_loaded_runs.txt` pass
+   unchanged. Found:
+   - The pages reach the tabs through the render slot of the strip's loop
+     even when every tab is written out, so neither widget can take them
+     through its own add: gtk4rt's `BoxAppend`, `InsertBefore` and
+     `BoxRemove` route a child of a `Tabs` to its stack, and fynelayout's
+     `Tabs` keeps the pages in a box drawn nowhere and makes the AppTabs'
+     items theirs as the box is laid out.
+   - A fynelayout `Tabs` that embedded `*fyne.Container` drew nothing: Fyne
+     walks into a container and a widget and nothing else. And a Spec cannot
+     name the box a render slot renders into, so fyne's `Tabs` and `TabPage`
+     are spec'd in codegen as `MenuEntry` is, not through the Spec
+     vocabulary the plan named.
+   - GTK and Fyne report the program's own change of the page shown as the
+     user's, so each runtime fires a page's `@change` only for a page the
+     program did not select.
+   - The page's event has to be `change`, the tabs' event it raises: gtk4
+     and fyne name an invoker by the event the handler raises
+     (`TriggerEventName`), NamePresses by the node's own, and a button agreed
+     only because its override raises `click` from `@click`. A page with
+     `@shown` was pressed as `shown` and invoked as `change`.
+   - bubbletea's Layout has no cross-axis stretch, so the bar and the
+     panels' box each grow across a row of their own to share a width. A
+     focused tab carries `> `, as a focused button does.
+   - Step 3's bubbletea finding is fixed: a focusable loop over tabs an `if`
+     extends read the list View hoists into a local (`undefined: __lt11`).
+     Every walk that starts at a loop now makes the temps the loop reads
+     (`loopTemps`), and `slot_nested_instance_runs.txt` runs bubbletea again.
+   - A bubbletea presence walk declared a loop key it never read once a
+     widget's walks had marked the loop `KeyRead`; `tabs_runs.txt` stopped
+     building. Its copy of a loop now drops the mark.
+   - GtkStackSwitcher's buttons fill the bar's width, and the panels sit at
+     their natural height: nothing expands the stack.
+   - Merging main brought two fixtures this branch broke:
+     `style_bubbletea_fit_runs.txt` set `overflow`, which step 1 removed,
+     and `android_flex_in_written_column` exposed Kotlin writing an optional
+     function type as `(T) -> R? = null`, now `((T) -> R)?`.
+   - The merge's first rerecord was stopped for low memory;
+     `SNGL_BUILD_SLOTS=2` ran it. Under that load, niced, the clean verify's
+     `TestUnchangedCallIsNotEvaluatedAgain` failed once: the const
+     evaluator's build was killed at `evalTimeout`'s 120s. The package passes
+     alone in 32s.
 6. Re-record the Pokédex's android, html, gtk4 and fyne runs and its
    screenshots, and update `examples/pokedex/README.md`.
 
