@@ -180,10 +180,20 @@ func related(a, b cell) bool {
 	return ok
 }
 
-// readCells is every var e reads, by the scope that owns it, and whether it
-// reads any other binding, which no write is logged against.
+// readCells is every var e reads, by the scope that owns it, through what it
+// calls too, and whether it reads any other binding, which no write is logged
+// against.
 func (env *Env) readCells(e ir.Expr) (out []cell, untracked bool) {
+	seen := map[*ir.Func]bool{}
 	_ = ir.Walk(e, func(n ir.Node) error {
+		if call, isCall := n.(*ir.Call); isCall {
+			for _, v := range funcReads(call.Func, seen, nil) {
+				if owner := env.findVarOwner(v); owner != nil {
+					out = append(out, cell{owner: owner.canonical(), sym: v})
+				}
+			}
+			return nil
+		}
 		id, isIdent := n.(*ir.Ident)
 		if !isIdent || id.Sym == nil {
 			return nil
@@ -207,4 +217,21 @@ func (env *Env) readCells(e ir.Expr) (out []cell, untracked bool) {
 		return nil
 	})
 	return out, untracked
+}
+
+// funcReads is the state fn reads, directly and through what it calls: Reads is
+// only what its own body names.
+func funcReads(fn *ir.Func, seen map[*ir.Func]bool, out []*ir.Var) []*ir.Var {
+	if fn == nil || seen[fn] {
+		return out
+	}
+	seen[fn] = true
+	out = append(out, fn.Reads...)
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		if call, isCall := n.(*ir.Call); isCall {
+			out = funcReads(call.Func, seen, out)
+		}
+		return nil
+	})
+	return out
 }

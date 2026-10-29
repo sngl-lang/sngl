@@ -736,8 +736,8 @@ type Func struct {
 	Purity         Purity
 	Const          bool `json:",omitempty"`
 	IsTest         bool
-	Reads          []*Var // vars read (directly or via called functions)
-	Writes         []*Var // vars mutated (directly or via called functions)
+	Reads          []*Var // vars the body reads itself; what it calls reads is the callee's
+	Writes         []*Var // vars the body mutates itself, likewise
 	HasContextArg  bool
 	HasErrorReturn bool
 	CanError       bool // set by effect analysis; true if body raises or calls a CanError func

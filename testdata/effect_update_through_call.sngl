@@ -1,0 +1,38 @@
+// An effect reports a write to what `on` reads through a call as it does one to
+// what it names: `current()` reads `level`, and `scaled(2)` reads it through
+// `current()`. The interpreter read only the names `on` spelled, so neither
+// `@update` ran there; the targets, which follow the call, ran both.
+
+import ui "sngl:ui"
+import "sngl:test"
+
+var level = 0
+
+func current() => level
+
+func scaled(k int) => current() * k
+
+component gauge ui.node {
+    var seen = 0
+    var twice = 0
+
+    effect(on=current(), @update(n) {
+        seen = n
+    })
+    effect(on=scaled(2), @update(n) {
+        twice = n
+    })
+    ui.button #raise(text="raise", @click {
+        level += 1
+    })
+}
+
+func testAWriteReadThroughACallIsReported(t test.Test, c gauge) {
+    c.raise.click()
+    t.assert(c.seen == 1)
+}
+
+func testAWriteReadThroughTwoCallsIsReported(t test.Test, c gauge) {
+    c.raise.click()
+    t.assert(c.twice == 2)
+}

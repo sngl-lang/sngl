@@ -2129,10 +2129,10 @@ ui.window {
 }
 ```
 
-An effect also **reports writes** to what `on` reads. `@update(v)` runs after
-each settle in which something wrote it -- an assignment, a list mutation, a
-write to a field or an element below it -- and is handed the value `on` then
-has; it does not run on mount. When `on` reads a list held in a cell (a var, a
+An effect also **reports writes** to what `on` reads, through the functions it
+calls too. `@update(v)` runs after each settle in which something wrote it --
+an assignment, a list mutation, a write to a field or an element below it --
+and is handed the value `on` then has; it does not run on mount. When `on` reads a list held in a cell (a var, a
 field of one, an element bound with `&`), `@insert(at, item)`,
 `@set(at, item)`, `@remove(at, item)` and `@clear` report that list's changes
 one by one, in the order made and before `@update`. A write none of them
