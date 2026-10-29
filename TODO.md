@@ -428,9 +428,6 @@ session.
    page's "‹ Back" and the titles left in English are gone from it. Found:
    - The README had no screenshots, and nothing made any. Jonathan takes and
      adds them later.
-   - `sngl snapshot examples/pokedex` captures home before PokéAPI answers:
-     gtk4's cards have no artwork, and fyne and bubbletea show only
-     "Loading" and the search box. #297 asks for `t.settle` and `snapshot --settle`, which wait for every async call in flight.
    - A test cannot capture what the app draws (#299): with the app's window
      as a test's root, gtk4's header bar has no title, menu or back and the
      page is clipped to a strip about 40px high, and fyne's PNGs are the
