@@ -289,8 +289,13 @@ session.
      the lowering: passReactivity puts the prop's updater inside the
      handler, and the updater holds the expression the handler is in
      (`MatchLate` overflowed the stack). So the menu is drawn as nodes, never
-     handed to a primitive as a list. Not fixed: it wants such a handler
-     hoisted to a function the updater can name.
+     handed to a primitive as a list. Fixed: the update of a prop whose
+     expression holds a handler writing state is a function of the prop's
+     owner (`propSetter`), which the handler calls, so the update no longer
+     holds the handler holding it. Pinned by
+     `testdata/record_handler_prop.txtar` and
+     `cmd/sngl/testdata/record_handler_prop_runs.txt`; the window's menu is
+     still drawn as nodes.
    - An `if` whose condition reads a data slot's records, `menu.length() > 0`,
      inlines the records, handlers and all, into the condition, which fyne
      then translated outside the slot's scope (`shown.Text`, `m.main`).
