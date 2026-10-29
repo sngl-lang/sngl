@@ -156,10 +156,19 @@ for a page at a pattern, which no test reaches, rather than refusing it as
 `generate` does (`nav_stack_html_pattern_page_test_runs.txt`).
 
 A document holds no other page's node, so it leaves out a handler's writes to
-one (`dropOtherPagesWrites`): a select beside the stack writes every node that
-shows what it changed, on whichever page, and the home document's write to the
-item page's label threw before the handler reached the heading it does hold
-(`testdata/nav_stack_html_other_pages_writes.txtar`).
+one (`dropWritesTo`): a select beside the stack writes every node that shows
+what it changed, on whichever page, and the home document's write to the item
+page's label threw before the handler reached the heading it does hold
+(`testdata/nav_stack_html_other_pages_writes.txtar`). The package's funcs are
+every document's, so the document names those nodes
+(`codegen.Document.Absent`) and its emitter leaves the writes out of its own
+copy of each (`heldWrites`): a window menu's render func and a func an entry
+calls wrote the about page's text on the home page
+(`testdata/nav_stack_html_menu_const.txtar`,
+`cmd/sngl/testdata/nav_stack_html_menu_runs.txt`). The same menu looping over
+a list const raised as the home page loaded: a site of more than one page
+loads such a const from an asset where its script names it (`scriptIdents`),
+and the `.` ending the spread in `[...sizes.map(…)]` read as a member access.
 
 **A stack's pages are fixed when it is built, and need not be written one by
 one.** A `for` over a constant writes a page per element, an `if` over

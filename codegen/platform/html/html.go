@@ -594,6 +594,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.canvasByID, gen.canvasByNode = canvasutil.Collect(gen.canvasDraws)
 		gen.irWindow = win.Surface
 		gen.page = doc.Page
+		gen.absent = doc.Absent
 		if !staticMode && href != nil {
 			gen.routePath, _ = codegen.IRLiteralString(href)
 		}
@@ -791,6 +792,8 @@ type htmlGen struct {
 	// page is the page of a nav.stack this document is written for, nil for a
 	// window that holds none.
 	page *ir.NodeInst
+	// absent is the nodes of the stack's other pages (codegen.Document.Absent).
+	absent map[string]bool
 	// routePath is the pattern route mode serves this document at, which the
 	// window's params cell is read from on the client; empty on a static site.
 	routePath string
@@ -2637,7 +2640,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 
 	for _, fn := range synthFuncs {
 		tr := g.newHTMLTranslator(jc)
-		body := codegen.WalkLowered(context.Background(), fn.Block, tr)
+		body := codegen.WalkLowered(context.Background(), g.heldWrites(fn.Block), tr)
 		synthesized := &ir.Func{
 			Name:   fn.Name,
 			Params: fn.Params,
@@ -3596,7 +3599,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 		jc = jc.WithLocal(name)
 	}
 	tr := g.newHTMLTranslator(jc)
-	lowered := codegen.WalkLowered(context.Background(), fn.Block, tr)
+	lowered := codegen.WalkLowered(context.Background(), g.heldWrites(fn.Block), tr)
 	for _, s := range lowered {
 		g.collectLoweredRefs(s)
 		for _, line := range jc.EvalStmt(s) {

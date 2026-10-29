@@ -1,0 +1,64 @@
+# A window's menu looping over a list const, beside a stack, picked in a test
+# on html, whose test page is the stack's home document. The const is a shared
+# asset there, and a spread of it went unlinked, so the page raised as it
+# loaded; with it linked, a pick wrote the about page's text, which the home
+# document holds no element for. testdata/nav_stack_html_menu_const.txtar
+# pins both in the generated pages.
+
+sngl test --platform=none app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import nav "sngl:ui/nav"
+import "sngl:test"
+
+const sizes = ["Small", "Medium", "Large"]
+
+component app root {
+    var size = "Medium"
+    var picks = 0
+
+    func choose(s string) {
+        size = s
+        picks += 1
+    }
+
+    ui.window #main(title="Sizes") {
+        component menu {
+            ui.menuItem(label="Size") {
+                ui.menuItem(label="Default", checked=size == "Medium", @select { size = "Medium" })
+                for var s = sizes {
+                    ui.menuItem(label=s, checked=s == size, @select { choose(s) })
+                }
+            }
+        }
+        nav.stack #pages {
+            nav.page #home(href="/", title="Home") {
+                ui.text(value="home")
+            }
+            nav.page #about(href="/about", title="About") {
+                ui.text(value="about {size}")
+            }
+        }
+    }
+}
+
+app()
+
+func testALoopedEntryIsPicked(t test.Test, c app) {
+    c.main.menu[0].select()
+    c.main.menu[0].children[3].select()
+    t.assert(c.size == "Large" && c.picks == 1)
+    t.assert(c.main.menu[0].children[3].checked)
+}
+
+func testTheEntryBeforeTheLoopIsPicked(t test.Test, c app) {
+    c.main.menu[0].select()
+    c.main.menu[0].children[1].select()
+    c.main.menu[0].children[0].select()
+    t.assert(c.size == "Medium" && c.main.menu[0].children[0].checked)
+}

@@ -322,9 +322,14 @@ session.
      `testdata/window_menu.txtar` and
      `cmd/sngl/testdata/window_menu_checked_runs.txt` (all six). Found:
      - On html, a window whose menu loops over a package const beside a
-       `nav.stack` raises `sizes is not defined` as the page loads, with or
-       without a test reading the menu; the same window without the stack
-       runs. Not fixed.
+       `nav.stack` raised `sizes is not defined` as the page loaded. Fixed:
+       the const is an asset a page loads where its script names it, and the
+       spread `[...sizes.map(…)]` read as a member access. Under it, a pick
+       on the home page wrote the about page's text from the menu's render
+       func, which every document shares; each document's copy leaves those
+       writes out now (design/navigation.md). Pinned by
+       `testdata/nav_stack_html_menu_const.txtar` and
+       `cmd/sngl/testdata/nav_stack_html_menu_runs.txt`.
    - A data slot handed on in a platform override's body,
      `ui.menubar { menu }`, reached nothing: DataFamilies reads the program's
      populations, not a library body's, so the menubar iterated `[]`. The
