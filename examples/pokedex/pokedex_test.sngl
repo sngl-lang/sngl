@@ -853,6 +853,16 @@ func testTheLanguageChoiceTranslatesThePages(t test.Test, c shell) {
     t.assert(c.app.homeList != null && c.app.homeList.searchBox.placeholder == "Buscar en esta Pokédex")
 }
 
+// A test writing the language through the window's instance translates the
+// pages as the menu's pick does.
+func testWritingTheLanguageTranslatesThePages(t test.Test, c shell) {
+    t.wait(func() => c.app.homeList != null && c.app.homeList.about != null, 5000)
+    c.app.language = "Español"
+    t.assert(c.app.language == "Español")
+    t.wait(func() => c.app.homeList != null && c.app.homeList.searchBox.placeholder == "Buscar en esta Pokédex", 5000)
+    t.assert(c.app.homeList != null && c.app.homeList.searchBox.placeholder == "Buscar en esta Pokédex")
+}
+
 // The window's Pokédex menu lists every dex, and picking one is the dex home
 // shows and the one kept.
 func testTheMenuChoosesTheDex(t test.Test, c shell) {

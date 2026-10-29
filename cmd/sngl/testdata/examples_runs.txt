@@ -6,7 +6,7 @@
 # html runs each component a test takes as a page of its own, so an example
 # whose window is served in route mode is tested as a static page there too.
 #
-# 80 is every example's tests together, so one dropping out of the walk fails.
+# 82 is every example's tests together, so one dropping out of the walk fails.
 #
 # A test that sets no locale reads the process's, and the examples' tests that
 # set none read English.
@@ -15,27 +15,27 @@ env LC_ALL=en_US.UTF-8
 exec cp -r $SNGL_ROOT/examples .
 
 sngl test --platform=none ./examples/...
-stdout '^ok +81 tests, 0 failures$'
+stdout '^ok +82 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=html ./examples/...
-stdout '^ok +81 tests, 0 failures$'
+stdout '^ok +82 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=fyne --language=go ./examples/...
-stdout '^ok +81 tests, 0 failures$'
+stdout '^ok +82 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=gtk4 --language=go ./examples/...
-stdout '^ok +81 tests, 0 failures$'
+stdout '^ok +82 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=bubbletea --language=go ./examples/...
-stdout '^ok +81 tests, 0 failures$'
+stdout '^ok +82 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=android --language=kotlin ./examples/...
-stdout '^ok +81 tests, 0 failures$'
+stdout '^ok +82 tests, 0 failures$'
 ! stdout SKIP
 -- testrun/android/kotlin/app.sngl/Calculator/1 --
 sha256:4db196305c3b4b526ee6f3b6e0b776a9
@@ -442,7 +442,7 @@ sha256:85888034903b43cc9a99e18eaa0f477b
   ]
 }
 -- testrun/android/kotlin/app.sngl/shell/1 --
-sha256:ac8bd1c51d35185b90d948a7eaac95cf
+sha256:5190be3b784e722f9cdc449290907459
 {
   "results": [
     {
@@ -455,6 +455,10 @@ sha256:ac8bd1c51d35185b90d948a7eaac95cf
     },
     {
       "Desc": "TheWindowIsTheHomePage",
+      "Passed": true
+    },
+    {
+      "Desc": "WritingTheLanguageTranslatesThePages",
       "Passed": true
     }
   ]
@@ -904,7 +908,7 @@ sha256:ddb52eb11b737ecf667c6849f563b725
   ]
 }
 -- testrun/bubbletea/go/app.sngl/shell/1 --
-sha256:9be0bf5982a5961d24c9f1787bbc6e52
+sha256:1dd02878af11ddfa0b61ff64c4f90042
 {
   "results": [
     {
@@ -917,6 +921,10 @@ sha256:9be0bf5982a5961d24c9f1787bbc6e52
     },
     {
       "Desc": "TheWindowIsTheHomePage",
+      "Passed": true
+    },
+    {
+      "Desc": "WritingTheLanguageTranslatesThePages",
       "Passed": true
     }
   ]
@@ -1366,7 +1374,7 @@ sha256:2efd24a0ae410ee28a71605b1a091388
   ]
 }
 -- testrun/fyne/go/app.sngl/shell/1 --
-sha256:8afcd2e788eecadde501ca138f5a6f6d
+sha256:4b03fc46f104a4794eea12e959418cea
 {
   "results": [
     {
@@ -1379,6 +1387,10 @@ sha256:8afcd2e788eecadde501ca138f5a6f6d
     },
     {
       "Desc": "TheWindowIsTheHomePage",
+      "Passed": true
+    },
+    {
+      "Desc": "WritingTheLanguageTranslatesThePages",
       "Passed": true
     }
   ]
@@ -1828,7 +1840,7 @@ sha256:241d4e17317118ccec5ab0ba7e7fa8cd
   ]
 }
 -- testrun/gtk4/go/app.sngl/shell/1 --
-sha256:ea2aea2e7cf6dc967d9da813941782f5
+sha256:1b2f90d55420ad2af428104d5c41cfd8
 {
   "results": [
     {
@@ -1841,6 +1853,10 @@ sha256:ea2aea2e7cf6dc967d9da813941782f5
     },
     {
       "Desc": "TheWindowIsTheHomePage",
+      "Passed": true
+    },
+    {
+      "Desc": "WritingTheLanguageTranslatesThePages",
       "Passed": true
     }
   ]
@@ -1896,7 +1912,7 @@ sha256:c40839863c89f431e1a089a618ecd138
   ]
 }
 -- testrun/html/none/app.sngl/Tour/1 --
-sha256:37ed0aaa8548c0f3ace4d719c8aa45c2
+sha256:0ba7383ef5b5036d561fe33e9fc98735
 {
   "results": [
     {
@@ -2000,7 +2016,7 @@ sha256:1a008b79955e6cd3e64134601beaf056
   ]
 }
 -- testrun/html/none/app.sngl/alolan/1 --
-sha256:e78e8a1715590a82a8a32cda18db28af
+sha256:2a06a61a33cd5cac36b372a1db58ceed
 {
   "results": [
     {
@@ -2024,7 +2040,7 @@ sha256:3f98332dfe28de1e030d89ba6733f477
   ]
 }
 -- testrun/html/none/app.sngl/bud/1 --
-sha256:a21f9426589deb1ba00bf24c5983bdb2
+sha256:d638c1d04066f7a6c6da2eee31c276c3
 {
   "results": [
     {
@@ -2054,7 +2070,7 @@ sha256:7cfc043d3c0e899ce8c5fb3d467321d8
   ]
 }
 -- testrun/html/none/app.sngl/flame/1 --
-sha256:f8dc08557ee024e3ca9e524d2555781c
+sha256:2535d4f92289d7f64511ea3fb4f2bceb
 {
   "results": [
     {
@@ -2064,7 +2080,7 @@ sha256:f8dc08557ee024e3ca9e524d2555781c
   ]
 }
 -- testrun/html/none/app.sngl/fluff/1 --
-sha256:63390b14e986755b02e5671b21b4f8d6
+sha256:9339fd0a05e9da8b66e286bf2c5de0e8
 {
   "results": [
     {
@@ -2074,7 +2090,7 @@ sha256:63390b14e986755b02e5671b21b4f8d6
   ]
 }
 -- testrun/html/none/app.sngl/fox/1 --
-sha256:6e18f48e74e82d086aa5ad77a4313853
+sha256:332f25988fdecc72729cd71801cee212
 {
   "results": [
     {
@@ -2088,7 +2104,7 @@ sha256:6e18f48e74e82d086aa5ad77a4313853
   ]
 }
 -- testrun/html/none/app.sngl/home/1 --
-sha256:4755981d2f51495476a8d93b9aaf0b46
+sha256:3a0c642350192d392eba56dc53ddd6e3
 {
   "results": [
     {
@@ -2128,7 +2144,7 @@ sha256:4d8dbe983135ba11b0d510a8e1d2bbae
   ]
 }
 -- testrun/html/none/app.sngl/mouse/1 --
-sha256:6645026ee2820de438ee69e315990662
+sha256:ba4b0f5e8afd8efa0276e53a4250ede4
 {
   "results": [
     {
@@ -2164,7 +2180,7 @@ sha256:530b59dc205be1beddaf87905008ae5c
   ]
 }
 -- testrun/html/none/app.sngl/roam/1 --
-sha256:549214980568531b49deb23b4d08efec
+sha256:3939fd859dfd4f151144f82e534fb9a5
 {
   "results": [
     {
@@ -2174,7 +2190,7 @@ sha256:549214980568531b49deb23b4d08efec
   ]
 }
 -- testrun/html/none/app.sngl/seed/1 --
-sha256:792b31907e449244a898fd2117a66fb5
+sha256:936f11e25adaeef0acd7a6d86da88423
 {
   "results": [
     {
@@ -2290,7 +2306,7 @@ sha256:a578ece2182085a63474d1ec460ca908
   ]
 }
 -- testrun/html/none/app.sngl/shell/1 --
-sha256:569e38f3092a3cb5c44fd5833173ba1b
+sha256:8809134ec433e8ce2238addd24c10a2f
 {
   "results": [
     {
@@ -2304,11 +2320,15 @@ sha256:569e38f3092a3cb5c44fd5833173ba1b
     {
       "Desc": "TheWindowIsTheHomePage",
       "Passed": true
+    },
+    {
+      "Desc": "WritingTheLanguageTranslatesThePages",
+      "Passed": true
     }
   ]
 }
 -- testrun/html/none/app.sngl/spark/1 --
-sha256:bce78741524f14c8607b7943feef88ee
+sha256:f5a75ac38163dc14e9d008b9a7d44cd5
 {
   "results": [
     {
@@ -2328,7 +2348,7 @@ sha256:37e3170bea7a6b4e6b76db93f5d2aa23
   ]
 }
 -- testrun/html/none/app.sngl/trip/1 --
-sha256:9e9d8259d48baefc7925074693406124
+sha256:4d212eca1ebb7b0b2d72790a79b1e356
 {
   "results": [
     {
@@ -2338,7 +2358,7 @@ sha256:9e9d8259d48baefc7925074693406124
   ]
 }
 -- testrun/html/none/app.sngl/walk/1 --
-sha256:91c237de7fb7582c7c86a9c4e4f26d42
+sha256:a88eb7031a3c43f36ef7c0ce498a4e99
 {
   "results": [
     {

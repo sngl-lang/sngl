@@ -192,7 +192,11 @@ session.
      (`cmd/sngl/testdata/bound_widget_effect_runs.txt`,
      `TestTypingIntoABoundInputRunsItsEffects`). On html, a test writing `c.app.language` through a
      nested instance needs an `UpdateComponent` intrinsic JavaScript lacks.
-     So the Pokédex's tests check the kept dex, not the kept language.
+     So the Pokédex's tests check the kept dex, not the kept language. Fixed
+     by main's writer for a var (`__wrote_<v>`), merged in 2e2797843, which a
+     bisect over the Pokédex finds; the Pokédex's
+     `testWritingTheLanguageTranslatesThePages` pins it
+     (`cmd/sngl/testdata/examples_runs.txt`).
    - The per-platform fixture harnesses compile every component as an entry
      with nothing instantiating it, so a fixture whose components bind a
      two-way prop needs `SKIP(codegen)`.
