@@ -507,15 +507,15 @@ making it its wrapper's prop. Each target:
 - bubbletea draws a bold title line, `‹` before it while it can go back, and
   esc runs `@back`; a terminal has no place for a menu, so it draws none.
 
-The menu is drawn as nodes and never handed a primitive as a list of
-records. That was forced once: a prop holding a record whose handler writes
-what the prop reads put the updater inside the handler it updated, and the
-lowering looped (`MatchLate` overflowed). It no longer is -- passReactivity
-writes such a prop's update once, as a function of its owner the handler
-calls (`propSetter`; testdata/record_handler_prop.txtar,
-cmd/sngl/testdata/record_handler_prop_runs.txt) -- but the menu has not been
-moved back. testdata/window_menu.txtar, testdata/nav_can_go_back.txtar,
-cmd/sngl/testdata/window_app_bar_runs.txt.
+The menu is a population of the window's slot, drawn as nodes, and never
+handed a primitive as a list of records. testdata/window_menu.txtar,
+testdata/nav_can_go_back.txtar, cmd/sngl/testdata/window_app_bar_runs.txt.
+A prop holding a record whose handler writes what the prop reads once put
+the updater inside the handler it updated, and the lowering looped
+(`MatchLate` overflowed); passReactivity now writes such a prop's update
+once, as a function of its owner the handler calls (`propSetter`;
+testdata/record_handler_prop.txtar,
+cmd/sngl/testdata/record_handler_prop_runs.txt).
 
 **A selected platform that cannot be used here is refused before the check**
 (`internal/build.Check`), by the platform's own `Unavailable()` -- gtk4 with
