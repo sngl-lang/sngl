@@ -799,7 +799,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.toAbout.OnTapped = m.toAbout_click_handler
 	m.main.Add(m.toAbout)
 	m.__renderSlot1(m.main.Container)
-	content := fyne.CanvasObject(m.main)
+	content := fyne.CanvasObject(m.main.Container)
 	return content
 }
 
@@ -1066,16 +1066,12 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.toAbout, "clicked", m.toAbout_clicked_handler)
 	gtk4rt.BoxAppend(m.main, m.toAbout)
 	m.__renderSlot1(m.main)
-	gtk4rt.BoxAppend(m.__root, m.main)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.main)
 }
 
 // toAboutClick fires the "clicked" signal on the #toAbout widget; for tests.
@@ -1379,8 +1375,8 @@ class MainScreenTest {
 -- run/go/bubbletea --
 pass sha256:1a3cde093a42b1e45de702e5b9d3ea40
 -- run/go/fyne --
-pass sha256:77607afe72848296a6f6339138b1ecf1
+pass sha256:e0a53dbfdfd756cf332b10bb0620f777
 -- run/go/gtk4 --
-pass sha256:0717810d0d0573005e4379cef00bc34e
+pass sha256:89a22edceec2baa377d0843b4ffe56d9
 -- run/kotlin/android --
 pass sha256:ede955f8bd7c0157ed84fea34a79fc5e

@@ -818,7 +818,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.shown.SetText(m.size)
 	m.main.Add(m.shown)
 	m.__renderSlot0(m.main.Container)
-	content := fyne.CanvasObject(m.main)
+	content := fyne.CanvasObject(m.main.Container)
 	return content
 }
 
@@ -1126,16 +1126,12 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetXAlign(m.shown, 0.0)
 	gtk4rt.BoxAppend(m.main, m.shown)
 	m.__renderSlot0(m.main)
-	gtk4rt.BoxAppend(m.__root, m.main)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.main)
 }
 
 // main__menuSelect fires "select" on the #main__menu widget; for tests.
@@ -1632,9 +1628,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:ad7869a997af7774da97dd0d0cf657cb
 -- run/go/fyne --
-pass sha256:303245a5fdb8a10208ba59f917502369
+pass sha256:ebb2b82ba2d6186b73319fb688d9fde3
 -- run/go/gtk4 --
-pass sha256:286c5a34a6244735046ff957ee14b8c3
+pass sha256:ee3e2f365b9fbfd6c3bbb0be7848ee36
 -- run/kotlin/android --
 pass sha256:eaac7dda610cee40b6f83c28a62217bb
 -- run/none/html --

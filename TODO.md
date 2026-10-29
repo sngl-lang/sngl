@@ -408,7 +408,12 @@ session.
    - A test cannot capture what the app draws (#299): with the app's window
      as a test's root, gtk4's header bar has no title, menu or back and the
      page is clipped to a strip about 40px high, and fyne's PNGs are the
-     theme's background alone.
+     theme's background alone. Fixed: a test build's BuildUI shows its
+     root's window as the application's root does -- gtk4rt's
+     `ToplevelWindow`, which now forgets each harness window's bar when the
+     window goes, and fyne's content box -- pinned by
+     `cmd/sngl/testdata/test_root_window_snapshot_runs.txt` on all four
+     targets.
    - On bubbletea, a test root whose body is `Pokedex #app` alone declares
      `Model.__snglTeardown` once per copy and does not build (#298), and so
      did the app without its tests. Fixed: a component that renders one with

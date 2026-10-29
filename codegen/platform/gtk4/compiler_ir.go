@@ -439,6 +439,15 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 			cgoIcon = c.shared.toplevelIcons[appChildren[0]]
 		}
 	}
+	// A harness's root component holding a window shows that window, as the
+	// application's root does, rather than its box inside one of its own.
+	window := cgoWindow
+	if !appRoot {
+		if i := slices.IndexFunc(topLevelRefs, func(ref string) bool { return c.shared.toplevels[ref] }); i >= 0 {
+			window = topLevelRefs[i]
+			cgoIcon = c.shared.toplevelIcons[window]
+		}
+	}
 	// The Model struct needs the __root field whenever emitBuildUI will emit
 	// the synthetic wrapper; needsRootWrapper mirrors its conditions.
 	if appRoot && c.wrapped {
@@ -470,7 +479,7 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 		}
 		emitBuildUIApp(&buildUIBuf, &buildBuf, first, widgetFieldNames(widgetFields))
 	} else {
-		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, cgoWindow, cgoIcon, widgetFieldNames(widgetFields))
+		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, window, cgoIcon, c.shared.toplevels, widgetFieldNames(widgetFields))
 	}
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
@@ -1300,9 +1309,9 @@ func isWindowClass(cType string) bool {
 // widget refs not consumed by an AppendChild are parented into m.__root,
 // except when the sole top-level ref is itself a window-class widget, which
 // BuildUI returns directly.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, window, icon string, fields map[string]bool) {
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, window, icon string, toplevels, fields map[string]bool) {
 	if wrapped {
-		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, "", fields)
+		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, window, toplevels, fields)
 		return
 	}
 	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {

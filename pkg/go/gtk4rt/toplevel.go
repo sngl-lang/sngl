@@ -28,6 +28,13 @@ static void sngl_top_connect_activate(GtkApplication *app) {
 static void sngl_top_watch(GObject *box, int idx) {
     g_object_weak_ref(box, snglToplevelGone, GINT_TO_POINTER(idx));
 }
+static void sngl_top_window_destroyed(GtkWidget *win, gpointer data) {
+    (void)win;
+    snglToplevelGone(data, NULL);
+}
+static void sngl_top_watch_window(GtkWidget *win, int idx) {
+    g_signal_connect(win, "destroy", G_CALLBACK(sngl_top_window_destroyed), GINT_TO_POINTER(idx));
+}
 */
 import "C"
 
@@ -218,6 +225,19 @@ func ToplevelWindow(app, h Handle) Handle {
 	}
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), widget(t.box))
 	t.win = (*C.GtkWindow)(unsafe.Pointer(win))
+	// A harness makes a window per snapshot and destroys it after, taking
+	// the bar with it: the next window decides its own.
+	gone := cbind.Register(func() {
+		if t.win != (*C.GtkWindow)(unsafe.Pointer(win)) {
+			return
+		}
+		t.win = nil
+		if t.bar != nil {
+			t.backButton = nil
+		}
+		t.bar, t.menuButton, t.barDecided = nil, nil, false
+	})
+	C.sngl_top_watch_window(win, C.int(gone))
 	t.applyMenu()
 	return Handle(unsafe.Pointer(win))
 }

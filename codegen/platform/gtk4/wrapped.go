@@ -181,7 +181,7 @@ func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 // buildWidgetTree + BuildUI scaffolding using gtk4rt over gtk4rt.Handle. The
 // widget-tree body (buildBuf) was already emitted in wrapped mode by the
 // translator, so only the surrounding scaffolding is produced here.
-func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, title string, fields map[string]bool) {
+func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, window string, toplevels, fields map[string]bool) {
 	// A ref the translator did not put in the Model is a local in
 	// buildWidgetTree; see buildRef, which answers the same question for the
 	// inline-cgo path.
@@ -220,17 +220,21 @@ func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelR
 	b.WriteString("\tm.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)\n")
 	b.WriteString(buildBuf.String())
 	for _, ref := range topLevelRefs {
-		fmt.Fprintf(b, "\tgtk4rt.BoxAppend(m.__root, %s)\n", mref(ref))
+		if !toplevels[ref] {
+			fmt.Fprintf(b, "\tgtk4rt.BoxAppend(m.__root, %s)\n", mref(ref))
+		}
 	}
 	b.WriteString("}\n\n")
 	b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 	b.WriteString("func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {\n")
 	b.WriteString("\tm.buildWidgetTree()\n")
+	if window != "" {
+		fmt.Fprintf(b, "\treturn gtk4rt.ToplevelWindow(app, %s)\n", mref(window))
+		b.WriteString("}\n\n")
+		return
+	}
 	b.WriteString("\twin := gtk4rt.ApplicationWindowNew(app)\n")
 	b.WriteString("\tgtk4rt.WindowSetDefaultSize(win, 480, 640)\n")
-	if title != "" {
-		fmt.Fprintf(b, "\tgtk4rt.WindowSetTitle(win, %s)\n", title)
-	}
 	b.WriteString("\tgtk4rt.WindowSetChild(win, m.__root)\n")
 	b.WriteString("\treturn win\n")
 	b.WriteString("}\n\n")

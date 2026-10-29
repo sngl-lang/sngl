@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -247,7 +248,14 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		// topLevel holds the widget ids no AppendChild consumed: a harness
 		// root's content. At the application root every node was attached.
 		tops := tr.topLevel
-		if !appRoot {
+		window := slices.IndexFunc(tops, func(ref string) bool { return tr.specs[ref] != nil && tr.specs[ref].toplevel })
+		switch {
+		case appRoot:
+		case window >= 0:
+			// A harness's root holding a window shows its content, as the
+			// application's root does; a Toplevel is no container fyne draws.
+			fmt.Fprintf(&buildBuf, "\tcontent := fyne.CanvasObject(%s.Container)\n", gc.EvalExpr(topRef(tr, tops[window])))
+		default:
 			switch len(tops) {
 			case 0:
 				// A purely reactive body has no top-level widgets; a

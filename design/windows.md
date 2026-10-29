@@ -315,6 +315,18 @@ window are ordinary box operations. BuildUI -- what a test and a snapshot take
 -- shows the first Toplevel's content (`gtk4rt.ToplevelWindow`); `main` builds
 the tree, its first settle included, and runs `RunWindows(show)`.
 
+**A test whose root component holds a window shows that window too.** A test
+build roots at a component, not the package body, so the window is a node of
+it rather than an application child; BuildUI used to append its box to a box
+of the harness's own, in a window of its own -- on gtk4 a bare title bar over
+content given no height, and on fyne nothing, a Toplevel being no container
+fyne draws (#299). Now BuildUI hands the first Toplevel among the root's nodes
+to `gtk4rt.ToplevelWindow`, and fyne's returns its `Container`, as an
+application root does. A snapshot makes a window per call and destroys it
+after, so `ToplevelWindow` forgets that window and its bar on `destroy`: the
+next one builds its own, where the toplevel used to keep writing titles and
+menus to the destroyed one. `cmd/sngl/testdata/test_root_window_snapshot_runs.txt`.
+
 What makes that reach the two platforms is generic: `ui.window` is an ordinary
 component, composed through its override like any other, and a builtin node
 whose declaration the target overrides is composed the same way
