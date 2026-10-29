@@ -54,3 +54,53 @@ func testEachCountIsItsOwn(t test.Test, c page) {
         t.assert(c.child.count == 1)
     }
 }
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:d872180a9975c801092bd2eb4648de2e
+{
+  "results": [
+    {
+      "Desc": "EachCountIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:63b53179ddfb6aac41f8e4972816a1ed
+{
+  "results": [
+    {
+      "Desc": "EachCountIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:089e0f20fd0d596c952cdf985dec72e4
+{
+  "results": [
+    {
+      "Desc": "EachCountIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:9ecb1665fe9407aa552cb4992651cde1
+{
+  "results": [
+    {
+      "Desc": "EachCountIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:ff14819b3b2af43ccf8b2eb5cbcd0532
+{
+  "results": [
+    {
+      "Desc": "EachCountIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
