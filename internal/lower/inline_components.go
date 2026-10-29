@@ -1046,7 +1046,10 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// functions too: built at run time, a component is a render function
 		// of the Model there, and its functions the Model's, which cannot read
 		// the props the render function is handed.
-		if !st.instanceState && st.captureOnly == nil && n.Component != nil && (len(n.Component.Vars) > 0 || len(n.Component.Funcs) > 0 || holdsLifetime(n.Component.Stmts)) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+		//
+		// What it renders counts as its own: the splice of a stateful callee
+		// into a declaration built at run time gives it the callee's state.
+		if !st.instanceState && st.captureOnly == nil && n.Component != nil && !st.cycles[n.Component] && st.inlinable(n.Component) && st.keepsState(n.Component, map[*ir.Component]bool{}) {
 			return st.expandPerCopy(n, rc)
 		}
 		// Nor does its focus order reach a render function of the Model, so a
@@ -1685,6 +1688,21 @@ func (st *inlineCompState) restartOnEntry(vars []*ir.Var, loops []*ir.For) *ir.N
 		n.Props = []ir.Arg{{Name: ir.EffectOn, Value: CopyKey(loops)}}
 	}
 	return n
+}
+
+// keepsState reports whether c, or a component it renders that would be
+// spliced into it, declares a var or a function or holds a lifetime.
+func (st *inlineCompState) keepsState(c *ir.Component, seen map[*ir.Component]bool) bool {
+	if seen[c] {
+		return false
+	}
+	seen[c] = true
+	if len(c.Vars) > 0 || len(c.Funcs) > 0 || holdsLifetime(c.Stmts) {
+		return true
+	}
+	return places(c.Stmts, func(n *ir.NodeInst) bool {
+		return n.Component != nil && !st.cycles[n.Component] && st.inlinable(n.Component) && st.keepsState(n.Component, seen)
+	})
 }
 
 // rendersFocusStop reports whether c's body, or a component it renders, holds

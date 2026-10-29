@@ -1,0 +1,143 @@
+# A component with no state of its own that renders one with state, under a
+# reactive `if`: an adapter over async.query, as `openapi:` writes one per
+# operation, its call sites leaving two of its two-way props unbound as the
+# Pokédex's do (#298). bubbletea keeps no state of an instance's own, so the
+# adapter has to be spliced where it is written, as the query in it is. It was
+# built at run time instead, because the inliner asked only the adapter's own
+# vars, funcs and lifetimes; the query was then spliced into the declaration,
+# every function of which became a Model method -- a second
+# `Model.__snglTeardown` beside the root's, and an effect settle reading cells
+# no Model declared -- and the build failed. The Pokédex built only where a
+# provider of `server` gave the adapter a var of its own.
+#
+# The other targets keep an instance's state and build the adapter at run
+# time, which is what they are held to here.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func lookup(name string) async.Result[int] {
+    return {ok=name.length()}
+}
+
+component lengthOf(name string, :value option[int] = null, :pending bool = false, :failure option[async.Failure] = null) ui.node {
+    async.query(on=name, fetch=lookup, :value=value, :pending=pending, :failure=failure)
+}
+
+component lengths ui.node {
+    var shown = true
+    var name = "fig"
+    var a option[int] = null
+    var b option[int] = null
+    if shown {
+        lengthOf(name=name, :value=a)
+        lengthOf(name="apricot", :value=b)
+    }
+    ui.button #grape(text="grape", @click { name = "grape" })
+    ui.button #toggle(text="toggle", @click { shown = !shown })
+}
+
+func testEachAsksForItsOwn(t test.Test, c lengths) {
+    t.assert(c.a == 3)
+    t.assert(c.b == 7)
+    c.grape.click()
+    t.assert(c.a == 5)
+}
+
+func testAskedAgainWhenShownAgain(t test.Test, c lengths) {
+    c.toggle.click()
+    c.grape.click()
+    t.assert(c.a == 3)
+    c.toggle.click()
+    t.assert(c.a == 5)
+}
+-- testrun/android/kotlin/app.sngl/lengths/1 --
+sha256:6eeaf06efe3b2211977a668d6216d2d5
+{
+  "results": [
+    {
+      "Desc": "AskedAgainWhenShownAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "EachAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/lengths/1 --
+sha256:0ca20c39eef07f01a21716ce56ef3216
+{
+  "results": [
+    {
+      "Desc": "AskedAgainWhenShownAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "EachAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/lengths/1 --
+sha256:760f583bf796124a71539597f8c08aa3
+{
+  "results": [
+    {
+      "Desc": "AskedAgainWhenShownAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "EachAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/lengths/1 --
+sha256:49485d5789cc5e7d98932d93c50a8a4c
+{
+  "results": [
+    {
+      "Desc": "AskedAgainWhenShownAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "EachAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/lengths/1 --
+sha256:700b6d060b0aa0595f89a68ef581804c
+{
+  "results": [
+    {
+      "Desc": "AskedAgainWhenShownAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "EachAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}

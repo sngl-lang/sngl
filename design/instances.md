@@ -504,7 +504,15 @@ run time there is a render function with nowhere to put one. So
 `passNoInlineComponents` splices a component that has state, holds a lifetime
 or declares a function where it is written (`expandPerCopy`) -- a render
 function's methods would be the Model's, which cannot read the props it is
-handed -- and under a `for` gives each of its vars one cell per copy
+handed. A component that only renders one of those is one too
+(`keepsState`), since splicing the callee into it gives it the callee's state:
+an adapter `openapi:` writes over `async.query` was built at run time, the
+query was spliced into its declaration, and every function the declaration
+then held was emitted on the Model, a second `__snglTeardown` among them. The
+Pokédex did not build on bubbletea wherever no provider handed the adapter a
+var of its own (#298,
+`cmd/sngl/testdata/bubbletea_stateless_wrapper_built_instance_runs.txt`).
+Under a `for` it gives each of the spliced vars one cell per copy
 (`perCopyCells`): a map keyed by the loops' indices (`lower.CopyKey`), read as
 `cell.get(key, init)` and written through a temporary stored back. On every
 target a function a splice hoists out of loops takes the loop variables it
