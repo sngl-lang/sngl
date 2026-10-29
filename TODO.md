@@ -309,11 +309,22 @@ session.
      target, the record's handler off the call site's list re-evaluated in
      the test: its write landed and none of the window's updates ran, and
      Go spelled the write exported (`c.Size`, fixed in `MutTargetField`).
-     It now presses what the window drew (`lower.NameRecordPresses`); a test
-     reading a record's `checked` still re-evaluates the list, and where the
-     handlers write state an instance built at run time reads, that drags
-     `UpdateComponent` into the test, which no test emitter has. The
-     Pokédex's tests check the state an entry writes.
+     It now presses what the window drew (`lower.NameRecordPresses`). A test
+     reading a record's `checked` re-evaluated the whole list, every handler
+     with it, and a handler writing state an instance built at run time reads
+     dragged `UpdateComponent` into the test, which no test emitter had: html
+     and fyne did not build at the step's commit. Merging main stopped that
+     failing (the handler's write calls the var's writer, `__wrote_size`, now),
+     but the test still built the menu to read one field. Fixed: the read is the one entry
+     as its call site wrote it, its loop's variable bound to the list at the
+     index (`lower.answerTestRecordRead`), so no handler reaches the test, and
+     the Pokédex's menu tests read `checked` again. Pinned by `deny` lines in
+     `testdata/window_menu.txtar` and
+     `cmd/sngl/testdata/window_menu_checked_runs.txt` (all six). Found:
+     - On html, a window whose menu loops over a package const beside a
+       `nav.stack` raises `sizes is not defined` as the page loads, with or
+       without a test reading the menu; the same window without the stack
+       runs. Not fixed.
    - A data slot handed on in a platform override's body,
      `ui.menubar { menu }`, reached nothing: DataFamilies reads the program's
      populations, not a library body's, so the menubar iterated `[]`. The

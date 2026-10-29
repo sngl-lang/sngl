@@ -619,13 +619,28 @@ node (`forwardPick`). A target that draws nothing for the records, bubbletea's
 window, leaves the noted list standing, and the record's handler runs. A test
 opens a submenu before picking from it, `c.main.menu[1].select()` first, as a
 person does: android draws an entry only while its DropdownMenu is open. A
-test reading `checked` reads the call site's list as well, which on a program
-whose handlers write what an instance built at run time reads drags those
-instances' updates into the test (`UpdateComponent`, which no test emitter
-has); the Pokédex checks the state an entry writes instead. A window's own
-event that takes nothing, `c.main.back()`, is a press of the node its body
-draws that emits it (`windowPresses`): fyne's and gtk4's `Back`, which is
-there only while the window can go back. testdata/window_menu.txtar.
+window's own event that takes nothing, `c.main.back()`, is a press of the node
+its body draws that emits it (`windowPresses`): fyne's and gtk4's `Back`,
+which is there only while the window can go back. testdata/window_menu.txtar.
+
+A test's read of a record's field, `c.main.menu[1].children[2].checked`, is
+that one entry as its call site wrote it (`lower.answerTestRecordRead`, ahead
+of the slot's own answer in passTestReach). The records DataFamilies wrote are
+walked by the test's indexes: a `for` among them is its map's function applied
+to the list at the index, an entry after the loop is counted past a const's
+length, and the field is the answering record's -- `sizes[2] == c.size`. That
+is what the window drew the entry from, as a looped node's prop is read off
+its loop's list at the index. It used to read the slot whole and index it, so
+the test built every entry and each handler with it, and a handler writing
+what an instance built at run time reads brought that instance's updates
+(`UpdateComponent`, which no test emitter had) into a test that only read.
+Where the list does not say which record an index names -- an `if` or a
+forwarded slot before it, a non-literal index past an entry -- the slot is
+still answered whole. An event is a pick and goes as above, so bubbletea's
+pick still runs the rebuilt record's handler. testdata/window_menu.txtar
+denies the rebuilt menu in the tests, and
+cmd/sngl/testdata/window_menu_checked_runs.txt reads entries before, in and
+after a loop on all six.
 
 **Every tab's panel is mounted with the tabs, and selecting one shows it.**
 `ui.tabs`' body puts each panel, in its record's iteration, in a `vbox`

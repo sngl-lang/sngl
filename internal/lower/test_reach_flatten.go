@@ -335,7 +335,11 @@ func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool) error {
 			if !ok {
 				return n, nil
 			}
-			if e := rewriteTestPropRead(sel, params); e != nil {
+			e := answerTestRecordRead(sel, params)
+			if e == nil {
+				e = rewriteTestPropRead(sel, params)
+			}
+			if e != nil {
 				changed = true
 				return e, ir.SkipDir
 			}

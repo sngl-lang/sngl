@@ -4,8 +4,14 @@ button; fyne's main menu; html's bar of `<details>` in a `<header>`; and no
 menu on bubbletea, a terminal having no place for one. The entries are drawn
 from the records the call site wrote, and a test's pick of one is a press of
 what the window drew for it (lower.NameRecordPresses), where the target drew
-something; bubbletea runs the record's own handler. testdata/window_menu.sngl
-is the same program on the interpreter.
+something; bubbletea runs the record's own handler. A test's read of an
+entry's `checked` is that entry as its call site wrote it
+(lower.answerTestRecordRead), not the menu rebuilt in the test.
+testdata/window_menu.sngl is the same program on the interpreter.
+
+deny out/go/fyne/model_test.go `MenuItem__record` -- a read is the entry's own field and a pick a press, so the test rebuilds no entry
+deny out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt `MenuItem__record` -- a read is the entry's own field and a pick a press, so the test rebuilds no entry
+deny out/go/bubbletea/model_test.go `\]\.Checked` -- a pick runs the rebuilt record's handler, but a read of `checked` is the entry's own
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -457,18 +463,7 @@ import (
 func TestPickingAnEntryChecksIt(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	__list0 := []MenuItem__record{}
-	for _, __item0 := range c.sizes {
-		__list0 = append(__list0, MenuItem__record{Label: __item0, Checked: (__item0 == c.size), Children: []MenuItem__record{}, Select: func() {
-		c.size = __item0
-	}})
-	}
-	if !([]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
-		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
-	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list0)), Select: func() {
-	}}}[1].Children[1].Checked) { t.Errorf("assert failed: %s", "[]MenuItem__record{MenuItem__record{Label: \"File\", Children: []MenuItem__record{MenuItem__record{Label: \"Save\", Children: []MenuItem__record{}, Select: func() {\n\t\tc.saved += 1\n\t}}, MenuItem__record{Label: \"Close\", Disabled: true, Children: []MenuItem__record{}, Select: func() {\n\t}}}, Select: func() {\n\t}}, MenuItem__record{Label: \"Size\", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list0)), Select: func() {\n\t}}}[1].Children[1].Checked") }
+	if !(("Medium" == c.size)) { t.Errorf("assert failed: %s", "(\"Medium\" == c.size)") }
 	[]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
 	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
@@ -477,42 +472,11 @@ func TestPickingAnEntryChecksIt(t *testing.T) {
 		c.size = s
 	}} }(__item) }; return __out }())), Select: func() {
 	}}}[1].Select()
-	[]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
-		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
-	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(func() []MenuItem__record { __out := make([]MenuItem__record, len(c.sizes)); for __i, __item := range c.sizes { __out[__i] = func(s string) MenuItem__record { return MenuItem__record{Label: s, Checked: (s == c.size), Children: []MenuItem__record{}, Select: func() {
+	slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(func() []MenuItem__record { __out := make([]MenuItem__record, len(c.sizes)); for __i, __item := range c.sizes { __out[__i] = func(s string) MenuItem__record { return MenuItem__record{Label: s, Checked: (s == c.size), Children: []MenuItem__record{}, Select: func() {
 		c.size = s
-	}} }(__item) }; return __out }())), Select: func() {
-	}}}[1].Children[2].Select()
+	}} }(__item) }; return __out }()))[2].Select()
 	if !((c.size == "Large")) { t.Errorf("assert failed: %s", "(c.size == \"Large\")") }
-	__list1 := []MenuItem__record{}
-	for _, __item1 := range c.sizes {
-		__list1 = append(__list1, MenuItem__record{Label: __item1, Checked: (__item1 == c.size), Children: []MenuItem__record{}, Select: func() {
-		c.size = __item1
-	}})
-	}
-	__when0 := []MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
-		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
-	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list1)), Select: func() {
-	}}}[1].Children[2].Checked
-	if __when0 {
-		__list2 := []MenuItem__record{}
-		for _, __item2 := range c.sizes {
-			__list2 = append(__list2, MenuItem__record{Label: __item2, Checked: (__item2 == c.size), Children: []MenuItem__record{}, Select: func() {
-		c.size = __item2
-	}})
-		}
-		__when0 = ![]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
-		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
-	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list2)), Select: func() {
-	}}}[1].Children[1].Checked
-	}
-	if !(__when0) { t.Errorf("assert failed: %s", "__when0") }
+	if !((("Large" == c.size) && !("Medium" == c.size))) { t.Errorf("assert failed: %s", "((\"Large\" == c.size) && !(\"Medium\" == c.size))") }
 }
 
 func TestAnEntryRunsItsHandler(t *testing.T) {
@@ -526,47 +490,17 @@ func TestAnEntryRunsItsHandler(t *testing.T) {
 		c.size = s
 	}} }(__item) }; return __out }())), Select: func() {
 	}}}[0].Select()
-	[]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
+	[]MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
 	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
-	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(func() []MenuItem__record { __out := make([]MenuItem__record, len(c.sizes)); for __i, __item := range c.sizes { __out[__i] = func(s string) MenuItem__record { return MenuItem__record{Label: s, Checked: (s == c.size), Children: []MenuItem__record{}, Select: func() {
-		c.size = s
-	}} }(__item) }; return __out }())), Select: func() {
-	}}}[0].Children[0].Select()
+	}}}[0].Select()
 	if !((c.saved == 1)) { t.Errorf("assert failed: %s", "(c.saved == 1)") }
 }
 
 func TestADisabledEntryIsShownAndNotPicked(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	__list3 := []MenuItem__record{}
-	for _, __item3 := range c.sizes {
-		__list3 = append(__list3, MenuItem__record{Label: __item3, Checked: (__item3 == c.size), Children: []MenuItem__record{}, Select: func() {
-		c.size = __item3
-	}})
-	}
-	__when1 := ([]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
-		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
-	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list3)), Select: func() {
-	}}}[0].Children[1].Label == "Close")
-	if __when1 {
-		__list4 := []MenuItem__record{}
-		for _, __item4 := range c.sizes {
-			__list4 = append(__list4, MenuItem__record{Label: __item4, Checked: (__item4 == c.size), Children: []MenuItem__record{}, Select: func() {
-		c.size = __item4
-	}})
-		}
-		__when1 = []MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
-		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
-	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list4)), Select: func() {
-	}}}[0].Children[1].Disabled
-	}
-	if !(__when1) { t.Errorf("assert failed: %s", "__when1") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
 }
 
 
@@ -694,11 +628,6 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			}
 		}()
 	}
-}
-
-func (m *Model) __wrote_size() {
-	m.shown.SetText(m.size)
-	m.__renderSlot0(m.main.Container)
 }
 
 func (m *Model) main_closed_handler() {
@@ -834,59 +763,16 @@ func main() {
 -- out/go/fyne/model_test.go --
 package main
 
-import (
-	"slices"
-	"testing"
-)
+import "testing"
 
 func TestPickingAnEntryChecksIt(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	__list0 := []MenuItem__record{}
-	for _, __item0 := range c.sizes {
-		__list0 = append(__list0, MenuItem__record{Label: __item0, Checked: (__item0 == c.size), Children: []MenuItem__record{}, Select: func() {
-		c.size = __item0
-		c.__wrote_size()
-	}})
-	}
-	if !([]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
-		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
-	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list0)), Select: func() {
-	}}}[1].Children[1].Checked) { t.Errorf("assert failed: %s", "[]MenuItem__record{MenuItem__record{Label: \"File\", Children: []MenuItem__record{MenuItem__record{Label: \"Save\", Children: []MenuItem__record{}, Select: func() {\n\t\tc.saved += 1\n\t}}, MenuItem__record{Label: \"Close\", Disabled: true, Children: []MenuItem__record{}, Select: func() {\n\t}}}, Select: func() {\n\t}}, MenuItem__record{Label: \"Size\", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list0)), Select: func() {\n\t}}}[1].Children[1].Checked") }
+	if !(("Medium" == c.size)) { t.Errorf("assert failed: %s", "(\"Medium\" == c.size)") }
 	c.main__menuSelectAt("1")
 	c.main__menu__childrenSelectAt("1/2")
 	if !((c.size == "Large")) { t.Errorf("assert failed: %s", "(c.size == \"Large\")") }
-	__list1 := []MenuItem__record{}
-	for _, __item1 := range c.sizes {
-		__list1 = append(__list1, MenuItem__record{Label: __item1, Checked: (__item1 == c.size), Children: []MenuItem__record{}, Select: func() {
-		c.size = __item1
-		c.__wrote_size()
-	}})
-	}
-	__when0 := []MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
-		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
-	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list1)), Select: func() {
-	}}}[1].Children[2].Checked
-	if __when0 {
-		__list2 := []MenuItem__record{}
-		for _, __item2 := range c.sizes {
-			__list2 = append(__list2, MenuItem__record{Label: __item2, Checked: (__item2 == c.size), Children: []MenuItem__record{}, Select: func() {
-		c.size = __item2
-		c.__wrote_size()
-	}})
-		}
-		__when0 = ![]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
-		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
-	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list2)), Select: func() {
-	}}}[1].Children[1].Checked
-	}
-	if !(__when0) { t.Errorf("assert failed: %s", "__when0") }
+	if !((("Large" == c.size) && !("Medium" == c.size))) { t.Errorf("assert failed: %s", "((\"Large\" == c.size) && !(\"Medium\" == c.size))") }
 }
 
 func TestAnEntryRunsItsHandler(t *testing.T) {
@@ -900,35 +786,7 @@ func TestAnEntryRunsItsHandler(t *testing.T) {
 func TestADisabledEntryIsShownAndNotPicked(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	__list3 := []MenuItem__record{}
-	for _, __item3 := range c.sizes {
-		__list3 = append(__list3, MenuItem__record{Label: __item3, Checked: (__item3 == c.size), Children: []MenuItem__record{}, Select: func() {
-		c.size = __item3
-		c.__wrote_size()
-	}})
-	}
-	__when1 := ([]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
-		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
-	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list3)), Select: func() {
-	}}}[0].Children[1].Label == "Close")
-	if __when1 {
-		__list4 := []MenuItem__record{}
-		for _, __item4 := range c.sizes {
-			__list4 = append(__list4, MenuItem__record{Label: __item4, Checked: (__item4 == c.size), Children: []MenuItem__record{}, Select: func() {
-		c.size = __item4
-		c.__wrote_size()
-	}})
-		}
-		__when1 = []MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
-		c.saved += 1
-	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
-	}}}, Select: func() {
-	}}, MenuItem__record{Label: "Size", Children: slices.Concat(func(_s1 []MenuItem__record) []MenuItem__record { if _s1 == nil { return nil }; _out2 := make([]MenuItem__record, len(_s1)); for _i3, _e4 := range _s1 { _out2[_i3] = func() MenuItem__record { var _copy5 func(MenuItem__record) MenuItem__record; _copy5 = func(_s6 MenuItem__record) MenuItem__record { _s6.Children = func(_s7 []MenuItem__record) []MenuItem__record { if _s7 == nil { return nil }; _out8 := make([]MenuItem__record, len(_s7)); for _i9, _e10 := range _s7 { _out8[_i9] = _copy5(_e10) }; return _out8 }(_s6.Children); return _s6 }; return _copy5(_e4) }() }; return _out2 }(__list4)), Select: func() {
-	}}}[0].Children[1].Disabled
-	}
-	if !(__when1) { t.Errorf("assert failed: %s", "__when1") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
 }
 
 -- out/go/fyne/testcomponent_test.go --
@@ -1072,11 +930,6 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			}
 		}()
 	}
-}
-
-func (m *Model) __wrote_size() {
-	gtk4rt.LabelSetLabel(m.shown, m.size)
-	m.__renderSlot0(m.main)
 }
 
 func (m *Model) main_closed_handler() {
@@ -1413,32 +1266,11 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        org.junit.Assert.assertTrue("listOf(MenuItem__record(label = \"File\", children = listOf(MenuItem__record(label = \"Save\", children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[1].children[1].checked", listOf(MenuItem__record(label = "File", children = listOf(MenuItem__record(label = "Save", children = listOf<MenuItem__record>(), select = {  ->
-    c.saved += 1
-}), MenuItem__record(label = "Close", disabled = true, children = listOf<MenuItem__record>(), select = {  ->
-})), select = {  ->
-}), MenuItem__record(label = "Size", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
-    c.size = s
-}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->
-}))[1].children[1].checked)
+        org.junit.Assert.assertTrue("(\"Medium\" == c.size)", ("Medium" == c.size))
         composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("main__menu") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("main__menu__children") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/2"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.size == \"Large\")", (c.size == "Large"))
-        org.junit.Assert.assertTrue("(listOf(MenuItem__record(label = \"File\", children = listOf(MenuItem__record(label = \"Save\", children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[1].children[2].checked && !listOf(MenuItem__record(label = \"File\", children = listOf(MenuItem__record(label = \"Save\", children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[1].children[1].checked)", (listOf(MenuItem__record(label = "File", children = listOf(MenuItem__record(label = "Save", children = listOf<MenuItem__record>(), select = {  ->
-    c.saved += 1
-}), MenuItem__record(label = "Close", disabled = true, children = listOf<MenuItem__record>(), select = {  ->
-})), select = {  ->
-}), MenuItem__record(label = "Size", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
-    c.size = s
-}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->
-}))[1].children[2].checked && !listOf(MenuItem__record(label = "File", children = listOf(MenuItem__record(label = "Save", children = listOf<MenuItem__record>(), select = {  ->
-    c.saved += 1
-}), MenuItem__record(label = "Close", disabled = true, children = listOf<MenuItem__record>(), select = {  ->
-})), select = {  ->
-}), MenuItem__record(label = "Size", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
-    c.size = s
-}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->
-}))[1].children[1].checked))
+        org.junit.Assert.assertTrue("((\"Large\" == c.size) && !(\"Medium\" == c.size))", (("Large" == c.size) && !("Medium" == c.size)))
     }
 
     @Test fun testAnEntryRunsItsHandler() {
@@ -1454,21 +1286,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        org.junit.Assert.assertTrue("((listOf(MenuItem__record(label = \"File\", children = listOf(MenuItem__record(label = \"Save\", children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[0].children[1].label == \"Close\") && listOf(MenuItem__record(label = \"File\", children = listOf(MenuItem__record(label = \"Save\", children = listOf<MenuItem__record>(), select = {  ->\n    c.saved += 1\n}), MenuItem__record(label = \"Close\", disabled = true, children = listOf<MenuItem__record>(), select = {  ->\n})), select = {  ->\n}), MenuItem__record(label = \"Size\", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->\n    c.size = s\n}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->\n}))[0].children[1].disabled)", ((listOf(MenuItem__record(label = "File", children = listOf(MenuItem__record(label = "Save", children = listOf<MenuItem__record>(), select = {  ->
-    c.saved += 1
-}), MenuItem__record(label = "Close", disabled = true, children = listOf<MenuItem__record>(), select = {  ->
-})), select = {  ->
-}), MenuItem__record(label = "Size", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
-    c.size = s
-}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->
-}))[0].children[1].label == "Close") && listOf(MenuItem__record(label = "File", children = listOf(MenuItem__record(label = "Save", children = listOf<MenuItem__record>(), select = {  ->
-    c.saved += 1
-}), MenuItem__record(label = "Close", disabled = true, children = listOf<MenuItem__record>(), select = {  ->
-})), select = {  ->
-}), MenuItem__record(label = "Size", children = listOf(*(sizes.map({ s: String -> MenuItem__record(label = s, checked = (s == c.size), children = listOf<MenuItem__record>(), select = {  ->
-    c.size = s
-}) })).map { _e1 -> run { fun _copy2(_s3: MenuItem__record): MenuItem__record { return _s3.copy(children = _s3.children.map { _e4 -> _copy2(_e4) }.toMutableList()) }; _copy2(_e1) } }.toMutableList().toTypedArray()), select = {  ->
-}))[0].children[1].disabled))
+        org.junit.Assert.assertTrue("true", true)
     }
 
 }
@@ -1603,13 +1421,6 @@ window.__sngl_boot = () => {
       }
     }
   }
-  function __wrote_size() {
-    $2.textContent = state.size;
-    __renderSlot0(__slotAnchor_0);
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { __wrote_size });
-  }
   function String(v) {
     return "" + v;
   }
@@ -1626,12 +1437,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ad7869a997af7774da97dd0d0cf657cb
+pass sha256:793c2795aa7d53dd0e3f308584940625
 -- run/go/fyne --
-pass sha256:ebb2b82ba2d6186b73319fb688d9fde3
+pass sha256:cabb0fc57da3748dc1e7f97566e2abd1
 -- run/go/gtk4 --
-pass sha256:ee3e2f365b9fbfd6c3bbb0be7848ee36
+pass sha256:9f05c6328dcc3190229f542456847cd2
 -- run/kotlin/android --
-pass sha256:eaac7dda610cee40b6f83c28a62217bb
+pass sha256:e1120f56371c4dba9720ce09aff632bc
 -- run/none/html --
-pass sha256:0a55eeb23b82dcba829f5b5819b82c31
+pass sha256:9eef7962b90010838c1254f8bbb262b9

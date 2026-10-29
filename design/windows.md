@@ -510,6 +510,9 @@ making it its wrapper's prop. Each target:
 The menu is a population of the window's slot, drawn as nodes, and never
 handed a primitive as a list of records. testdata/window_menu.txtar,
 testdata/nav_can_go_back.txtar, cmd/sngl/testdata/window_app_bar_runs.txt.
+A test picks an entry by pressing what the window drew for it, and reads one
+as the entry its call site wrote rather than the menu rebuilt in the test:
+nodes.md's *A menu entry is picked*.
 A prop holding a record whose handler writes what the prop reads once put
 the updater inside the handler it updated, and the lowering looped
 (`MatchLate` overflowed); passReactivity now writes such a prop's update

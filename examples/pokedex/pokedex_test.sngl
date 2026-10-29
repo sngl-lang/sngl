@@ -847,6 +847,7 @@ func testTheLanguageChoiceTranslatesThePages(t test.Test, c shell) {
     c.app.pokedex.menu[0].select()
     c.app.pokedex.menu[0].children[3].select()
     t.assert(c.app.language == "Español")
+    t.assert(c.app.pokedex.menu[0].children[3].checked && !c.app.pokedex.menu[0].children[0].checked)
     t.wait(func() => c.app.homeList != null && c.app.homeList.about != null && c.app.homeList.about.value == "Nacional · todas las regiones · 40 Pokémon", 5000)
     t.assert(c.app.homeList != null && c.app.homeList.about != null && c.app.homeList.about.value == "Nacional · todas las regiones · 40 Pokémon")
     t.assert(c.app.homeList != null && c.app.homeList.searchBox.placeholder == "Buscar en esta Pokédex")
@@ -859,6 +860,7 @@ func testTheMenuChoosesTheDex(t test.Test, c shell) {
     c.app.pokedex.menu[1].select()
     c.app.pokedex.menu[1].children[1].select()
     t.assert(dexName == "kanto")
+    t.assert(c.app.pokedex.menu[1].children[1].checked && !c.app.pokedex.menu[1].children[0].checked)
     t.assert(settings.load[string]("dexName") == "kanto")
     t.wait(func() => c.app.homeList != null && c.app.homeList.about != null && c.app.homeList.about.value == "Kanto · Kanto · 40 Pokémon", 5000)
 }
