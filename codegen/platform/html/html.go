@@ -4133,10 +4133,10 @@ func (g *htmlGen) renderDialog(b *strings.Builder, n *ir.NodeInst, depth int) {
 	g.addEventHandler(close, "click", &ir.Func{Block: block})
 }
 
-// respellWindowWrites drops what the lowering wrote to the document's props
-// through its handle: the document cannot leave the screen, and its title is
-// the page's, written once. A dialog's are written as its element's, a
-// `visible` as its `open` (domPropForProp).
+// respellWindowWrites respells what the lowering wrote to the document's
+// props through its handle: its title is `document.title`, and the rest are
+// dropped, since the document cannot leave the screen. A dialog's are written
+// as its element's, a `visible` as its `open` (domPropForProp).
 //
 // The package's funcs are filtered once per document id, since every document
 // shares them; the body is this document's own clone.
@@ -4210,6 +4210,13 @@ func dropDocWrites(id string, funcs []*ir.Func) {
 			switch x := s.(type) {
 			case *ir.Assign:
 				if writesDoc(x) {
+					if x.Target.(*ir.Select).Field == windowTitle {
+						out = append(out, &ir.Assign{
+							Target: &ir.Select{Operand: &ir.Ident{Name: "document", Synthesized: true}, Field: windowTitle, Type: ir.TypString},
+							Op:     ast.AssignSet,
+							Value:  x.Value,
+						})
+					}
 					continue
 				}
 			case *ir.If:

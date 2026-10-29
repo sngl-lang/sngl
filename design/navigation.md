@@ -239,7 +239,12 @@ targets' `go` and start write the record that way (`titledRecord`), android's
 `<Record>Of` reads the route's params, and html answers each read by
 `current.id` with the page's params cell, which a static document folds and
 route mode binds from the request; a title that does not fold is set as the
-document's script starts. The page itself, `item.title`, is its record as
+document's script starts, and a write the title reads sets it again: the
+updater the lowering writes to the window's `title` is `document.title`
+(`respellWindowWrites`), where it was dropped with the document's other props
+(`TestWindow_ATitleReadingStateFollowsIt`). A route-mode server writes each
+page as fixed bytes, so a title from route params is the script's, not the
+server's `<title>`. The page itself, `item.title`, is its record as
 declared. testdata/nav_can_go_back.txtar,
 nav_page_title_from_params{,_html}.txtar.
 
