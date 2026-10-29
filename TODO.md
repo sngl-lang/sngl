@@ -412,6 +412,9 @@ session.
    - On bubbletea, a test root whose body is `Pokedex #app` alone declares
      `Model.__snglTeardown` once per copy and does not build (#298). Under a
      provider, as `shell` has it, it builds. Not minimized.
+   - Step 5 never regenerated `pkg/go/fynehost/registry_gen.go`, so the fyne
+     host had no constructor for `Tabs` or `TabPage`. The clean verify's
+     `go generate` wrote them, and they are committed.
 
 ## Window and nav, later
 
