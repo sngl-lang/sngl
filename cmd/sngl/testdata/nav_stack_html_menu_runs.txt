@@ -62,3 +62,17 @@ func testTheEntryBeforeTheLoopIsPicked(t test.Test, c app) {
     c.main.menu[0].children[0].select()
     t.assert(c.size == "Medium" && c.main.menu[0].children[0].checked)
 }
+-- testrun/html/none/app.sngl/app/1 --
+sha256:c5733bdecc9f7c066b213a0a13d31081
+{
+  "results": [
+    {
+      "Desc": "ALoopedEntryIsPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "TheEntryBeforeTheLoopIsPicked",
+      "Passed": true
+    }
+  ]
+}
