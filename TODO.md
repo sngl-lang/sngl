@@ -391,8 +391,27 @@ session.
      `TestUnchangedCallIsNotEvaluatedAgain` failed once: the const
      evaluator's build was killed at `evalTimeout`'s 120s. The package passes
      alone in 32s.
-6. Re-record the Pokédex's android, html, gtk4 and fyne runs and its
-   screenshots, and update `examples/pokedex/README.md`.
+6. **Re-record and the README.** Done. `go tool verify -update`, niced with
+   `SNGL_BUILD_SLOTS=2`, changed nothing: step 5's rerecord already held
+   every run of the Pokédex. `examples/pokedex/README.md` says what the app
+   does now: the window's bar per target, its menu choosing the language and
+   the dex, both kept, the page's title from its params, tabs drawn as each
+   target draws them and swiping on android and html, every panel kept
+   loaded with Moves asking the first time it is shown, and the sideways
+   Evolution, Sprites and Moves. The language select, home's dex select, the
+   page's "‹ Back" and the titles left in English are gone from it. Found:
+   - The README had no screenshots, and nothing made any. Jonathan takes and
+     adds them later.
+   - `sngl snapshot examples/pokedex` captures home before PokéAPI answers:
+     gtk4's cards have no artwork, and fyne and bubbletea show only
+     "Loading" and the search box. #297 asks for `t.settle` and `snapshot --settle`, which wait for every async call in flight.
+   - A test cannot capture what the app draws (#299): with the app's window
+     as a test's root, gtk4's header bar has no title, menu or back and the
+     page is clipped to a strip about 40px high, and fyne's PNGs are the
+     theme's background alone.
+   - On bubbletea, a test root whose body is `Pokedex #app` alone declares
+     `Model.__snglTeardown` once per copy and does not build (#298). Under a
+     provider, as `shell` has it, it builds. Not minimized.
 
 ## Window and nav, later
 
