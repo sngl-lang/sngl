@@ -1,0 +1,132 @@
+# A test's change or input on a widget bound two-way to a var runs the
+# effects keyed on that var, as a handler's write does: the component's own
+# `@update`, and one a child bound to the same var holds.
+#
+# bubbletea wrote the widget's value back with a bare assignment taken from
+# the bind's handler, dropping the marks and the settle the effect lowering
+# had put after it, so the var moved and no `@update` ran -- for a key in
+# Update as for a test.
+
+sngl test --platform=none app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +2 tests, 0 failures'
+
+-- app.sngl --
+import "sngl:test"
+import ui "sngl:ui"
+
+var saves = 0
+
+component keep(:value string) ui.node {
+    effect(on=value, @update(v) { saves += 1 })
+}
+
+component app ui.node {
+    var language = "English"
+    var name = ""
+    var updates = 0
+    var renames = 0
+
+    effect(on=language, @update { updates += 1 })
+    effect(on=name, @update { renames += 1 })
+    ui.vbox {
+        keep(:value=language)
+        ui.select #pick(:value=language) {
+            ui.choice(label="English")
+            ui.choice(label="Deutsch")
+        }
+        ui.input #field(:value=name)
+    }
+}
+
+func testAPickRunsTheUpdates(t test.Test, c app) {
+    c.pick.change("Deutsch")
+    t.assert(c.language == "Deutsch")
+    t.assert(c.updates == 1)
+    t.assert(saves == 1)
+}
+
+func testTypingRunsTheUpdate(t test.Test, c app) {
+    c.field.input("Ada")
+    t.assert(c.name == "Ada")
+    t.assert(c.renames == 1)
+}
+-- testrun/android/kotlin/app.sngl/app/1 --
+sha256:c2d71a08f25bf008fe5abbaca0bec212
+{
+  "results": [
+    {
+      "Desc": "APickRunsTheUpdates",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingRunsTheUpdate",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/app/1 --
+sha256:6578dd579d2b89fc5b093a15fc461c81
+{
+  "results": [
+    {
+      "Desc": "APickRunsTheUpdates",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingRunsTheUpdate",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/app/1 --
+sha256:aab233eff487f75fdc59bebe66152252
+{
+  "results": [
+    {
+      "Desc": "APickRunsTheUpdates",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingRunsTheUpdate",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/app/1 --
+sha256:b8d176f3bb8024d38c33aa519abc6b10
+{
+  "results": [
+    {
+      "Desc": "APickRunsTheUpdates",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingRunsTheUpdate",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/app/1 --
+sha256:4779cf47d52b103ec3fd0c21e5ae279a
+{
+  "results": [
+    {
+      "Desc": "APickRunsTheUpdates",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingRunsTheUpdate",
+      "Passed": true
+    }
+  ]
+}

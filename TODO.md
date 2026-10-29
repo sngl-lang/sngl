@@ -181,8 +181,12 @@ session.
      the same script's `AListVarComparesItsElements`.
    - On bubbletea, `languagePick.change(…)` in a test moved `language` but
      never ran the `@update` keyed on it, while a handler's write (`dexPick`)
-     and a test's direct write did. Not traced: the test invoker is written by
-     the harness at launch. On html, a test writing `c.app.language` through a
+     and a test's direct write did. Fixed: bubbletea wrote a bound widget's
+     value back with the assignment alone, dropping the marks and settle the
+     effect lowering put in the bind's handler, so a key in Update ran no
+     `@update` either; the write-back is that handler now
+     (`cmd/sngl/testdata/bound_widget_effect_runs.txt`,
+     `TestTypingIntoABoundInputRunsItsEffects`). On html, a test writing `c.app.language` through a
      nested instance needs an `UpdateComponent` intrinsic JavaScript lacks.
      So the Pokédex's tests check the kept dex, not the kept language.
    - The per-platform fixture harnesses compile every component as an entry

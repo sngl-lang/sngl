@@ -63,6 +63,30 @@ type widgetBind struct {
 	target string
 	get    string
 	set    string
+	prop   string
+	// handler is the bind's own handler where it does more than write the
+	// target -- the effect lowering's marks and settle for an effect keyed
+	// on it -- so a write-back runs it rather than assigning alone.
+	handler *ir.Func
+}
+
+func bindMethod(w widgetInfo, bd widgetBind) string { return "__" + w.fieldName + "_" + bd.prop }
+
+// writeBack writes a widget's value back into the var bd binds, at indent:
+// through the bind's handler where it has one, run only when the value
+// moved, since an assignment of the same value is a no-op.
+func writeBack(w widgetInfo, bd widgetBind, binds []irBind, indent string) string {
+	read := bindReadBack(w.fieldName, bd.get)
+	if bd.handler == nil {
+		return indent + "m." + bd.target + " = " + read + "\n"
+	}
+	moved := "__v != m." + bd.target
+	for _, b := range binds {
+		if b.name == bd.target && b.goType == "*time.Time" {
+			moved = "!(__v == m." + bd.target + " || __v != nil && m." + bd.target + " != nil && __v.Equal(*m." + bd.target + "))"
+		}
+	}
+	return indent + "if __v := " + read + "; " + moved + " {\n" + indent + "\tm." + bindMethod(w, bd) + "(__v)\n" + indent + "}\n"
 }
 
 // bindReadBack builds the Go expression reading a widget's value out of model
@@ -90,6 +114,15 @@ var widgetSyncGoTypes = map[string]struct{}{
 	"int":    {},
 	// An option[date], which tui.DateInput reads and writes.
 	"*time.Time": {},
+}
+
+func bindGoType(binds []irBind, target string) string {
+	for _, b := range binds {
+		if b.name == target {
+			return b.goType
+		}
+	}
+	return ""
 }
 
 // bindTargetSyncs keeps the constructor seed, the Set* setter and the Update
@@ -364,16 +397,19 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		// first whose body assigns to a var, prop-named handler first.
 		var binds []widgetBind
 		for _, bm := range bp.Binds {
-			target := ""
+			bd := widgetBind{get: bm.Get, set: bm.Set, prop: bm.Prop}
 			for _, hname := range []string{bm.Prop, "input", "change", "select"} {
 				if h := codegen.NodeHandler(n, hname); h != nil && h.Func != nil {
 					if t := extractIRAssignTarget(h.Func.Block); t != "" {
-						target = t
+						bd.target = t
+						if h.WriteBack && len(h.Func.Block) > 1 {
+							bd.handler = h.Func
+						}
 						break
 					}
 				}
 			}
-			binds = append(binds, widgetBind{target: target, get: bm.Get, set: bm.Set})
+			binds = append(binds, bd)
 		}
 		if bp.Model.Pkg != "" {
 			gc.RequireImport(bp.Model.Pkg)
@@ -1118,7 +1154,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		fmt.Fprintf(b, "%s\tcmds = append(cmds, cmd)\n", fwdIndent)
 		for _, bd := range w.binds {
 			if bindTargetSyncs(info.binds, bd.target) {
-				fmt.Fprintf(b, "%s\tm.%s = %s\n", fwdIndent, bd.target, bindReadBack(w.fieldName, bd.get))
+				b.WriteString(writeBack(w, bd, info.binds, fwdIndent+"\t"))
 			}
 		}
 		if hasInput {
@@ -1557,6 +1593,24 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 		if w.loop != nil {
 			continue
 		}
+		for _, bd := range w.binds {
+			if bd.handler == nil || !bindTargetSyncs(info.binds, bd.target) {
+				continue
+			}
+			hgc := gc
+			fmt.Fprintf(b, "func (m *Model) %s(__v %s) {\n", bindMethod(w, bd), bindGoType(info.binds, bd.target))
+			if len(bd.handler.Params) > 0 {
+				name := bd.handler.Params[0].Name
+				hgc = gc.WithLocal(name)
+				fmt.Fprintf(b, "\t%s := __v\n\t_ = %s\n", name, name)
+			}
+			for _, stmt := range bd.handler.Block {
+				for _, line := range hgc.EvalStmt(stmt) {
+					fmt.Fprintf(b, "\t%s\n", line)
+				}
+			}
+			b.WriteString("}\n\n")
+		}
 		// A widget whose only subscriber is its binding -- a cell the call
 		// site left unbound, or a `:value` with no handler -- still takes a
 		// test's value: into the widget, and back into the var the way
@@ -1577,7 +1631,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			fmt.Fprintf(b, "\tm.%s%s(v)\n", w.fieldName, val.set)
 			for _, bd := range w.binds {
 				if bindTargetSyncs(info.binds, bd.target) {
-					fmt.Fprintf(b, "\tm.%s = %s\n", bd.target, bindReadBack(w.fieldName, bd.get))
+					b.WriteString(writeBack(w, bd, info.binds, "\t"))
 				}
 			}
 			b.WriteString("}\n\n")
@@ -1615,7 +1669,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			// handler, so a handler reading the bound var reads the text.
 			for _, bd := range w.binds {
 				if bindTargetSyncs(info.binds, bd.target) {
-					fmt.Fprintf(b, "\tm.%s = %s\n", bd.target, bindReadBack(w.fieldName, bd.get))
+					b.WriteString(writeBack(w, bd, info.binds, "\t"))
 				}
 			}
 			fmt.Fprintf(b, "\tm.%s(v)\n}\n\n", widgetEventMethod(w, ev.name))
