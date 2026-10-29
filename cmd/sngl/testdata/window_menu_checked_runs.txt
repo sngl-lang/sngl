@@ -93,3 +93,93 @@ func testAToggleEntryFollowsItsState(t test.Test, c app) {
     c.main.menu[0].children[1].select()
     t.assert(c.autosave && c.main.menu[0].children[1].checked)
 }
+-- testrun/android/kotlin/app.sngl/app/1 --
+sha256:5560dbdc6fcf44d666cebc89a91aca58
+{
+  "results": [
+    {
+      "Desc": "APickedEntryIsChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "AToggleEntryFollowsItsState",
+      "Passed": true
+    },
+    {
+      "Desc": "AnEntryAfterTheLoopIsChecked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/app/1 --
+sha256:8a16a6bfa0bba97bc61214b09fc9c44d
+{
+  "results": [
+    {
+      "Desc": "APickedEntryIsChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "AToggleEntryFollowsItsState",
+      "Passed": true
+    },
+    {
+      "Desc": "AnEntryAfterTheLoopIsChecked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/app/1 --
+sha256:3801cf6cd6cdcfe2c6fd41d57d74e921
+{
+  "results": [
+    {
+      "Desc": "APickedEntryIsChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "AToggleEntryFollowsItsState",
+      "Passed": true
+    },
+    {
+      "Desc": "AnEntryAfterTheLoopIsChecked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/app/1 --
+sha256:667928cd52d30b71f7d0cb60aea9b061
+{
+  "results": [
+    {
+      "Desc": "APickedEntryIsChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "AToggleEntryFollowsItsState",
+      "Passed": true
+    },
+    {
+      "Desc": "AnEntryAfterTheLoopIsChecked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/app/1 --
+sha256:4e3df0497ef99d65d19e0d085244dd84
+{
+  "results": [
+    {
+      "Desc": "APickedEntryIsChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "AToggleEntryFollowsItsState",
+      "Passed": true
+    },
+    {
+      "Desc": "AnEntryAfterTheLoopIsChecked",
+      "Passed": true
+    }
+  ]
+}
