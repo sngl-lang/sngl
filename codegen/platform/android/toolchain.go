@@ -28,7 +28,6 @@ type toolchain struct {
 	AndroidJar          string   // android.jar
 	Aapt2               string   // aapt2 binary
 	D8                  string   // d8.jar or d8 binary wrapper script
-	Zipalign            string   // zipalign binary
 	ComposeJars         []string // compose runtime + dependency JARs
 	KotlinLibs          []string // kotlin-stdlib etc.
 	CacheDir            string   // ~/.cache/sngl/android-toolchain
@@ -182,7 +181,6 @@ func (tc *toolchain) findBuildTools() error {
 
 func (tc *toolchain) setBuildTools(dir string) error {
 	tc.Aapt2 = filepath.Join(dir, "aapt2")
-	tc.Zipalign = filepath.Join(dir, "zipalign")
 
 	// Prefer the d8 wrapper script over the jar (the jar may lack a main manifest)
 	d8Script := filepath.Join(dir, "d8")

@@ -52,7 +52,7 @@ func (g *Generator) Snapshot(irPkg *ir.Package, lang codegen.LangTranslator, wid
 		return nil, fmt.Errorf("building APK: %w", err)
 	}
 
-	if err := adbInstall(apk); err != nil {
+	if err := adbInstall(apk, appPkg); err != nil {
 		return nil, err
 	}
 	defer func() {

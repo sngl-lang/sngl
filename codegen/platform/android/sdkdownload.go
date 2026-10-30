@@ -186,7 +186,7 @@ func (tc *toolchain) downloadAndroidPlatform() error {
 	)
 }
 
-// downloadBuildTools fetches aapt2, d8, zipalign and the signers.
+// downloadBuildTools fetches aapt2 and d8.
 func (tc *toolchain) downloadBuildTools() error {
 	dest := filepath.Join(tc.CacheDir, "build-tools", tc.cBuildTools)
 	if err := fetchSDKPackage(
@@ -198,7 +198,7 @@ func (tc *toolchain) downloadBuildTools() error {
 	}
 	// A zip carries a mode, but not every producer sets the execute bit --
 	// and aapt2 and d8 are run as programs.
-	for _, name := range []string{"aapt2", "d8", "zipalign", "apksigner", "aidl"} {
+	for _, name := range []string{"aapt2", "d8"} {
 		p := filepath.Join(dest, name)
 		if fileExists(p) {
 			os.Chmod(p, 0o755)

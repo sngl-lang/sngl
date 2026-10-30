@@ -10,14 +10,23 @@ import (
 	"path/filepath"
 	"strings"
 
+	"duckfam.us/sngl/internal/apksign"
 	"duckfam.us/sngl/internal/jdk"
 )
 
 // directBuild compiles Kotlin sources to a signed debug APK without Gradle.
-// Pipeline: aapt2 (resources) → kotlinc (with R.java) → d8 → APK assembly → sign
-func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
-	// Point JAVA_HOME + PATH at a version-compatible JDK so kotlinc, d8, and
-	// the signers all run on it — never the ambient (possibly too-new) JDK.
+// Pipeline: aapt2 (resources) → kotlinc (with R.java) → d8 → APK assembly →
+// align and sign (internal/apksign)
+func directBuild(dir string, tc *toolchain, pkg string, minSdk int) (string, error) {
+	// apksign writes a v2 signature only, which a device older than API 24
+	// does not read; Gradle's build signs v1 too.
+	if minSdk < apksign.MinSdk {
+		return "", fmt.Errorf("android build: minSdk %d is below %d, the lowest the gradle-free build signs for; set gradle=true", minSdk, apksign.MinSdk)
+	}
+
+	// Point JAVA_HOME + PATH at a version-compatible JDK so kotlinc and d8
+	// run on it — never the ambient (possibly too-new) JDK. Signing needs
+	// none.
 	home, reason := jdk.CompatibleHome(tc.jdkMin, tc.jdkMax)
 	if reason != "" {
 		return "", fmt.Errorf("android build: %s", reason)
@@ -216,81 +225,15 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 		return "", fmt.Errorf("adding dex files to APK: %w", err)
 	}
 
-	// Step 4: Zipalign
-	alignedApk := filepath.Join(outDir, "aligned.apk")
-	if fileExists(tc.Zipalign) {
-		slog.Info("exec", "cmd", "zipalign")
-		zipalign := exec.Command(tc.Zipalign, "-f", "4", baseApk, alignedApk)
-		zipalign.Stdout = os.Stderr
-		zipalign.Stderr = os.Stderr
-		if err := zipalign.Run(); err != nil {
-			// Non-fatal: skip alignment
-			fmt.Fprintf(os.Stderr, "sngl: warning: zipalign failed: %v\n", err)
-			alignedApk = baseApk
-		}
-	} else {
-		alignedApk = baseApk
-	}
-
-	// Step 5: Sign with debug keystore
+	// Step 4: Align and sign with the debug key.
 	fmt.Fprintln(os.Stderr, "sngl: signing APK...")
-	signedApk := filepath.Join(outDir, "app.apk")
-
-	debugKeystore := filepath.Join(tc.CacheDir, "debug.keystore")
-	if !fileExists(debugKeystore) {
-		// Generate a debug keystore
-		os.MkdirAll(filepath.Dir(debugKeystore), 0o755)
-		keytool := exec.Command("keytool",
-			"-genkey", "-v",
-			"-keystore", debugKeystore,
-			"-alias", "androiddebugkey",
-			"-keyalg", "RSA",
-			"-keysize", "2048",
-			"-validity", "10000",
-			"-storepass", "android",
-			"-keypass", "android",
-			"-dname", "CN=Debug",
-		)
-		keytool.Stdout = os.Stderr
-		keytool.Stderr = os.Stderr
-		if err := keytool.Run(); err != nil {
-			return "", fmt.Errorf("generating debug keystore: %w", err)
-		}
+	key, err := apksign.DebugKey(filepath.Join(tc.CacheDir, "debug-key.pem"))
+	if err != nil {
+		return "", fmt.Errorf("debug signing key: %w", err)
 	}
-
-	// Try apksigner first (from build-tools), then jarsigner
-	apksigner := filepath.Join(filepath.Dir(tc.Aapt2), "apksigner")
-	if fileExists(apksigner) {
-		// Copy aligned to signed first (apksigner signs in-place)
-		slog.Info("exec", "cmd", "apksigner sign")
-		copyFile(alignedApk, signedApk)
-		sign := exec.Command(apksigner, "sign",
-			"--ks", debugKeystore,
-			"--ks-pass", "pass:android",
-			signedApk,
-		)
-		sign.Stdout = os.Stderr
-		sign.Stderr = os.Stderr
-		if err := sign.Run(); err != nil {
-			return "", fmt.Errorf("apksigner failed: %w", err)
-		}
-	} else {
-		// Fall back to jarsigner
-		slog.Info("exec", "cmd", "jarsigner")
-		copyFile(alignedApk, signedApk)
-		sign := exec.Command("jarsigner",
-			"-keystore", debugKeystore,
-			"-storepass", "android",
-			"-keypass", "android",
-			"-signedjar", signedApk,
-			alignedApk,
-			"androiddebugkey",
-		)
-		sign.Stdout = os.Stderr
-		sign.Stderr = os.Stderr
-		if err := sign.Run(); err != nil {
-			return "", fmt.Errorf("jarsigner failed: %w", err)
-		}
+	signedApk := filepath.Join(outDir, "app.apk")
+	if err := apksign.SignFile(baseApk, signedApk, key); err != nil {
+		return "", err
 	}
 
 	return signedApk, nil

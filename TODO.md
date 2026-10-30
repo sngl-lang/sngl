@@ -177,9 +177,13 @@ optional.
    35.0.0 d8 is older than Kotlin 2.1's metadata and prints a warning for
    every class; the r8 pinned in `android-tools` should be new enough to
    read it.
-2. **Do the Go signer, aligner and keystore** (sngl steps 3 and 4). This does
-   not depend on the spike, and it already removes `keytool` and
-   `jarsigner`.
+2. **Done: the Go signer, aligner and debug key** (sngl step 4).
+   `internal/apksign` writes a v2 signature, which `apksigner verify` and
+   `zipalign -c` both accept on a real hello build. The debug key is a PEM
+   file instead of a keystore. A `minSdk` below 24 needs v1 too, so it is
+   refused and the user is pointed at `gradle=true`. `adbInstall` uninstalls
+   and retries an app installed with another key. kotlinc and d8 are now the
+   only JVM tools left in `directBuild` (sngl step 3).
 3. **Set up the `sngl-lang/android-tools` repo** with d8 first, the easy
    image, to prove the release pipeline, checksums and the sngl download
    path (sngl steps 1 and 2).

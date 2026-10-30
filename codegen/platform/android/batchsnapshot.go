@@ -110,7 +110,7 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 		return nil, fmt.Errorf("building APK: %w", err)
 	}
 
-	if err := adbInstall(apk); err != nil {
+	if err := adbInstall(apk, batchSnapshotPackage); err != nil {
 		return nil, err
 	}
 	defer func() {

@@ -48,5 +48,5 @@ func (g *Generator) Build(dir string, opts *ir.StructLit) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolving toolchain: %w", err)
 	}
-	return directBuild(dir, tc, pkg)
+	return directBuild(dir, tc, pkg, cfg.minSdk())
 }

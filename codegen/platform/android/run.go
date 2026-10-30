@@ -2,8 +2,10 @@ package android
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -149,7 +151,7 @@ func (g *Generator) Run(dir string, opts *ir.StructLit) error {
 		}
 	}
 
-	if err := adbInstall(apk); err != nil {
+	if err := adbInstall(apk, pkg); err != nil {
 		return err
 	}
 
@@ -267,13 +269,33 @@ func gradleBuild(dir string, combo androidtc.Combo) error {
 	return nil
 }
 
-func adbInstall(apk string) error {
+// adbInstall installs apk over pkg. A device keeps an installed app only
+// for an update signed with the same key, so an app last installed from
+// another build -- Gradle's debug keystore, or a debug key since replaced --
+// is refused with INSTALL_FAILED_UPDATE_INCOMPATIBLE; that one is
+// uninstalled, losing its data, and the install retried.
+func adbInstall(apk, pkg string) error {
 	adb, _ := androidTool("adb")
 	slog.Info("exec", "cmd", "adb install", "apk", apk)
+	var out bytes.Buffer
 	install := exec.Command(adb, "install", "-r", "-d", apk)
-	install.Stdout = os.Stdout
-	install.Stderr = os.Stderr
-	if err := install.Run(); err != nil {
+	install.Stdout = io.MultiWriter(os.Stdout, &out)
+	install.Stderr = io.MultiWriter(os.Stderr, &out)
+	err := install.Run()
+	if err == nil {
+		return nil
+	}
+	if pkg == "" || !strings.Contains(out.String(), "INSTALL_FAILED_UPDATE_INCOMPATIBLE") {
+		return fmt.Errorf("adb install failed: %w", err)
+	}
+	fmt.Fprintf(os.Stderr, "sngl: %s is installed with a different signing key; uninstalling it (its data is lost) and installing again\n", pkg)
+	if err := exec.Command(adb, "uninstall", pkg).Run(); err != nil {
+		return fmt.Errorf("adb uninstall %s: %w", pkg, err)
+	}
+	retry := exec.Command(adb, "install", "-d", apk)
+	retry.Stdout = os.Stdout
+	retry.Stderr = os.Stderr
+	if err := retry.Run(); err != nil {
 		return fmt.Errorf("adb install failed: %w", err)
 	}
 	return nil
