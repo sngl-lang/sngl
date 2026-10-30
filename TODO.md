@@ -135,7 +135,10 @@ session.
      override, as the boxes' `scroll` was.
    - Compose gives a node carrying two scroll modifiers the outer one's
      `ScrollBy`, so `SnglScroll` puts the vertical one outside: scrolling
-     either way, the end it reports is the bottom.
+     either way, the end it reports is the bottom. That end is the spec's
+     (`ui.scroll`'s doc: the bottom, or the right edge of a horizontal
+     scroll) and html's; what Compose limits is a test's scroll, which moves
+     only the vertical one.
    - A vertical scroll is as wide as its content's minimum on fyne and gtk4,
      where html and android cut the content off at the scroll's edge.
    - html writes `class=` twice on some image frames, and `.sngl-image`'s
