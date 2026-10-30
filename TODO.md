@@ -132,7 +132,9 @@ session.
      in its own arguments: `ui.scroll #both(direction=both)` is "cannot use
      scroll as ScrollDirection", which names neither.
    - `ui.scroll`'s `scrollX`, `scrollY` and `showScrollbar` are read by no
-     override, as the boxes' `scroll` was.
+     override, as the boxes' `scroll` was. Deleted (Jonathan's call);
+     `component_scroll.txtar`, which only wrote the vars it bound them to,
+     presses a button inside a both-way scroll instead.
    - Compose gives a node carrying two scroll modifiers the outer one's
      `ScrollBy`, so `SnglScroll` puts the vertical one outside: scrolling
      either way, the end it reports is the bottom. That end is the spec's

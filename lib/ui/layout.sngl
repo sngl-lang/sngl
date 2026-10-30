@@ -59,11 +59,8 @@ enum ScrollDirection { vertical, horizontal, both }
 // Scrollable viewport that wraps a single child. `direction` is the axis
 // it scrolls along; a scroll given none scrolls vertically, as a page
 // does. Content wider than a vertical scroll, or taller than a
-// horizontal one, does not scroll. `scrollX`/`scrollY` are
-// two-way bound scroll offsets, useful for programmatic scrolling or
-// scroll-linked effects. `showScrollbar` is "auto", "always", or
-// "never". `@scroll` fires continuously while scrolling; `@scrollEnd`
-// fires once motion settles.
+// horizontal one, does not scroll. `@scroll` fires continuously while
+// scrolling; `@scrollEnd` fires once motion settles.
 //
 // `@reachEnd` fires when the end of the content comes within half a
 // viewport of being shown -- the bottom, or the right edge of a
@@ -78,15 +75,12 @@ enum ScrollDirection { vertical, horizontal, both }
 // terminal, and the interpreter lays nothing out: both fire it only when
 // a test does.
 component scroll(
-    style         Style = Style{},
-    direction     ScrollDirection = ScrollDirection.vertical,
-    scrollX       float = 0.0,
-    scrollY       float = 0.0,
-    showScrollbar string = "",
+    style     Style = Style{},
+    direction ScrollDirection = ScrollDirection.vertical,
     @scroll(),
     @scrollEnd(),
     @reachEnd(),
-    content       ...component option[node],
+    content   ...component option[node],
 ) node
 
 component _example_scroll node {
