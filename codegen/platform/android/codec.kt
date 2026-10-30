@@ -8,6 +8,12 @@ package PACKAGE
 // fails unless its field is an option, a value of the wrong kind fails naming
 // where it was, writing leaves an absent option's key out, and a map's keys are
 // visited in order so a failure names the same one everywhere.
+//
+// A codec is typed by the value it reads and writes, SnglCodec<T>, and built
+// from the factories below, so the code the compiler writes holds no cast: a
+// struct is built from SnglCodecArgs.at, whose type each constructor
+// parameter gives. The JSON in between is untyped, and the one cast back to T
+// is here, in at and Decoded.value, where the codec is what makes it sound.
 
 import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
@@ -19,15 +25,26 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
 
-class SnglCodec(val kind: Int) {
-    var elem: SnglCodec? = null
+class SnglCodec<T>(val kind: Int) {
+    var elem: SnglCodec<*>? = null
     var fields: List<SnglCodecField> = emptyList()
-    var make: ((List<Any?>) -> Any)? = null
-    var read: ((Any) -> List<Any?>)? = null
+    var make: ((SnglCodecArgs) -> T)? = null
+    var read: ((T) -> List<Any?>)? = null
     var wires: List<String> = emptyList()
     var values: List<Any> = emptyList()
 
-    class Decoded(val value: Any?, val error: String?)
+    // An integer's range, and how it is made from and read as a Long: every
+    // width and sign of SNGL integer is one kind.
+    var lo: Long = Long.MIN_VALUE
+    var hi: Long = Long.MAX_VALUE
+    var fromLong: (Long) -> Any = { it }
+    var toLong: (Any) -> Long = { (it as Number).toLong() }
+    var fromDouble: (Double) -> Any = { it }
+
+    class Decoded<T>(private val v: Any?, val error: String?) {
+        @Suppress("UNCHECKED_CAST")
+        val value: T get() = v as T
+    }
 
     class Response(
         val status: Int,
@@ -43,7 +60,6 @@ class SnglCodec(val kind: Int) {
     companion object {
         const val BOOL = 0
         const val INT = 1
-        const val LONG = 2
         const val FLOAT = 3
         const val STRING = 4
         const val DATE = 5
@@ -57,7 +73,35 @@ class SnglCodec(val kind: Int) {
         private val dateRE = Regex("""^\d{4}-\d{2}-\d{2}$""")
         private val datetimeRE = Regex("""^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$""")
 
-        fun of(kind: Int, elem: SnglCodec? = null): SnglCodec = SnglCodec(kind).also { it.elem = elem }
+        fun bool(): SnglCodec<Boolean> = SnglCodec(BOOL)
+        fun string(): SnglCodec<String> = SnglCodec(STRING)
+        fun date(): SnglCodec<String> = SnglCodec(DATE)
+        fun datetime(): SnglCodec<String> = SnglCodec(DATETIME)
+        fun float(): SnglCodec<Double> = SnglCodec(FLOAT)
+        fun float32(): SnglCodec<Float> = SnglCodec<Float>(FLOAT).also { it.fromDouble = { d -> d.toFloat() } }
+
+        private fun <T : Any> integer(lo: Long, hi: Long, from: (Long) -> T, to: (T) -> Long): SnglCodec<T> =
+            SnglCodec<T>(INT).also {
+                it.lo = lo
+                it.hi = hi
+                it.fromLong = from
+                @Suppress("UNCHECKED_CAST")
+                it.toLong = { v -> to(v as T) }
+            }
+
+        fun int(): SnglCodec<Int> = integer(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong(), { it.toInt() }, { it.toLong() })
+        fun long(): SnglCodec<Long> = integer(Long.MIN_VALUE, Long.MAX_VALUE, { it }, { it })
+        fun short(): SnglCodec<Short> = integer(Short.MIN_VALUE.toLong(), Short.MAX_VALUE.toLong(), { it.toShort() }, { it.toLong() })
+        fun byte(): SnglCodec<Byte> = integer(Byte.MIN_VALUE.toLong(), Byte.MAX_VALUE.toLong(), { it.toByte() }, { it.toLong() })
+        fun ubyte(): SnglCodec<UByte> = integer(0, 0xff, { it.toUByte() }, { it.toLong() })
+        fun ushort(): SnglCodec<UShort> = integer(0, 0xffff, { it.toUShort() }, { it.toLong() })
+        fun uint(): SnglCodec<UInt> = integer(0, 0xffffffffL, { it.toUInt() }, { it.toLong() })
+        // A ULong past Long.MAX_VALUE has no exact JSON number here.
+        fun ulong(): SnglCodec<ULong> = integer(0, Long.MAX_VALUE, { it.toULong() }, { it.toLong() })
+
+        fun <E> option(e: SnglCodec<E>): SnglCodec<E?> = SnglCodec<E?>(OPTION).also { it.elem = e }
+        fun <E> list(e: SnglCodec<E>): SnglCodec<List<E>> = SnglCodec<List<E>>(LIST).also { it.elem = e }
+        fun <E> map(e: SnglCodec<E>): SnglCodec<Map<String, E>> = SnglCodec<Map<String, E>>(MAP).also { it.elem = e }
 
         private val scope = kotlinx.coroutines.MainScope()
 
@@ -78,7 +122,7 @@ class SnglCodec(val kind: Int) {
             }
         }
 
-        fun decode(text: String, c: SnglCodec): Decoded {
+        fun <T> decode(text: String, c: SnglCodec<T>): Decoded<T> {
             val v: Any? = try {
                 val t = JSONTokener(text)
                 val parsed = t.nextValue()
@@ -94,9 +138,9 @@ class SnglCodec(val kind: Int) {
             }
         }
 
-        private fun describe(c: SnglCodec): String = when (c.kind) {
+        private fun describe(c: SnglCodec<*>): String = when (c.kind) {
             BOOL -> "a boolean"
-            INT, LONG -> "an integer"
+            INT -> "an integer"
             FLOAT -> "a number"
             STRING -> "a string"
             DATE -> "a date"
@@ -117,18 +161,17 @@ class SnglCodec(val kind: Int) {
             return v.toLong()
         }
 
-        private fun dec(v: Any?, c: SnglCodec, path: String): Any? {
+        private fun dec(v: Any?, c: SnglCodec<*>, path: String): Any? {
             fun want(): Fail = Fail(path + ": want " + describe(c))
             when (c.kind) {
                 OPTION -> return if (v == null) null else dec(v, c.elem!!, path)
                 BOOL -> return v as? Boolean ?: throw want()
                 INT -> {
                     val n = integral(v) ?: throw want()
-                    if (n < Int.MIN_VALUE || n > Int.MAX_VALUE) throw want()
-                    return n.toInt()
+                    if (n < c.lo || n > c.hi) throw want()
+                    return c.fromLong(n)
                 }
-                LONG -> return integral(v) ?: throw want()
-                FLOAT -> return (v as? Number)?.toDouble() ?: throw want()
+                FLOAT -> return c.fromDouble((v as? Number)?.toDouble() ?: throw want())
                 STRING -> return v as? String ?: throw want()
                 DATE -> {
                     val s = v as? String ?: throw want()
@@ -167,7 +210,7 @@ class SnglCodec(val kind: Int) {
                         if (!present && f.codec.kind != OPTION) throw Fail("$path.${f.wire}: missing")
                         args.add(dec(if (present) unwrap(o.get(f.wire)) else null, f.codec, "$path.${f.wire}"))
                     }
-                    return c.make!!(args)
+                    return c.make!!(SnglCodecArgs(args))
                 }
             }
             throw want()
@@ -175,13 +218,17 @@ class SnglCodec(val kind: Int) {
 
         private fun unwrap(v: Any?): Any? = if (v == JSONObject.NULL) null else v
 
-        fun encode(v: Any?, c: SnglCodec): String = StringBuilder().also { enc(it, v, c) }.toString()
+        fun <T> encode(v: T, c: SnglCodec<T>): String = StringBuilder().also { enc(it, v, c) }.toString()
 
-        private fun enc(b: StringBuilder, v: Any?, c: SnglCodec) {
+        // The fields of v, a value c reads.
+        @Suppress("UNCHECKED_CAST")
+        private fun readFields(c: SnglCodec<*>, v: Any?): List<Any?> = (c as SnglCodec<Any?>).read!!(v)
+
+        private fun enc(b: StringBuilder, v: Any?, c: SnglCodec<*>) {
             when (c.kind) {
                 OPTION -> if (v == null) b.append("null") else enc(b, v, c.elem!!)
                 BOOL -> b.append(if (v == true) "true" else "false")
-                INT, LONG -> b.append((v as Number).toLong().toString())
+                INT -> b.append(c.toLong(v!!).toString())
                 FLOAT -> b.append(number((v as Number).toDouble()))
                 STRING, DATE, DATETIME -> quote(b, v as String)
                 ENUM -> quote(b, enumWire(c, v))
@@ -205,7 +252,7 @@ class SnglCodec(val kind: Int) {
                     b.append('}')
                 }
                 STRUCT -> {
-                    val vals = c.read!!(v!!)
+                    val vals = readFields(c, v)
                     b.append('{')
                     var first = true
                     c.fields.forEachIndexed { i, f ->
@@ -222,7 +269,7 @@ class SnglCodec(val kind: Int) {
             }
         }
 
-        private fun enumWire(c: SnglCodec, v: Any?): String {
+        private fun enumWire(c: SnglCodec<*>, v: Any?): String {
             val i = c.values.indexOf(v)
             return if (i < 0) v.toString() else c.wires[i]
         }
@@ -274,18 +321,18 @@ class SnglCodec(val kind: Int) {
             return b.toString()
         }
 
-        private fun queryValues(v: Any?, c: SnglCodec): List<String> = when (c.kind) {
+        private fun queryValues(v: Any?, c: SnglCodec<*>): List<String> = when (c.kind) {
             OPTION -> if (v == null) emptyList() else queryValues(v, c.elem!!)
             LIST -> (v as List<*>).flatMap { queryValues(it, c.elem!!) }
             BOOL -> listOf(if (v == true) "true" else "false")
-            INT, LONG -> listOf((v as Number).toLong().toString())
+            INT -> listOf(c.toLong(v!!).toString())
             FLOAT -> listOf(number((v as Number).toDouble()))
             ENUM -> listOf(enumWire(c, v))
             else -> listOf(v.toString())
         }
 
-        fun withQuery(url: String, q: Any, c: SnglCodec): String {
-            val vals = c.read!!(q)
+        fun <T> withQuery(url: String, q: T, c: SnglCodec<T>): String {
+            val vals = readFields(c, q)
             val parts = ArrayList<String>()
             c.fields.forEachIndexed { i, f ->
                 for (s in queryValues(vals[i], f.codec)) parts.add(escape(f.wire) + "=" + escape(s))
@@ -324,4 +371,11 @@ class SnglCodec(val kind: Int) {
     }
 }
 
-class SnglCodecField(val wire: String, val codec: SnglCodec)
+class SnglCodecField(val wire: String, val codec: SnglCodec<*>)
+
+// The fields of a struct being decoded, in its codec's order. at gives each
+// the type of the constructor parameter it is passed to.
+class SnglCodecArgs(private val values: List<Any?>) {
+    @Suppress("UNCHECKED_CAST")
+    fun <F> at(i: Int): F = values[i] as F
+}

@@ -97,3 +97,38 @@ func TestExtractTarGzStaysInside(t *testing.T) {
 		t.Error("../escaped was written")
 	}
 }
+
+// TestAPKDigestFollowsTheProgram reuses an APK only for the same program:
+// a changed source moves the digest, and what the build itself writes into
+// the directory (out/, _rkt/) does not.
+func TestAPKDigestFollowsTheProgram(t *testing.T) {
+	dir := t.TempDir()
+	key := filepath.Join(t.TempDir(), "key.pem")
+	os.WriteFile(key, []byte("key"), 0o644)
+	os.WriteFile(filepath.Join(dir, "MainScreen.kt"), []byte("fun a() {}"), 0o644)
+	tc := &toolchain{Kotlinc: "kotlinc", D8: "d8"}
+	digest := func() string {
+		t.Helper()
+		d, err := apkDigest(dir, tc, 26, key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return d
+	}
+	first := digest()
+	os.MkdirAll(filepath.Join(dir, "out"), 0o755)
+	os.WriteFile(filepath.Join(dir, "out", "app.apk"), []byte("built"), 0o644)
+	os.MkdirAll(filepath.Join(dir, "_rkt"), 0o755)
+	os.WriteFile(filepath.Join(dir, "_rkt", "R.kt"), []byte("object R"), 0o644)
+	if digest() != first {
+		t.Error("the build's own output moved the digest")
+	}
+	os.WriteFile(filepath.Join(dir, "MainScreen.kt"), []byte("fun b() {}"), 0o644)
+	if digest() == first {
+		t.Error("a changed source kept the digest")
+	}
+	changed := digest()
+	if d, _ := apkDigest(dir, tc, 21, key); d == changed {
+		t.Error("another minSdk kept the digest")
+	}
+}

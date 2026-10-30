@@ -2669,7 +2669,7 @@ suspend fun petBreedRetrieveCall(id: String, __ctx_server: String): SnglResult__
     	}
     	else -> {
     		var r = (__match2 as SnglResult__Response.Ok).value
-    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.of(SnglCodec.INT)), SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("parent_breed", SnglCodec.of(SnglCodec.OPTION, c1))); c0.make = { a -> PetBreedDetail(id = a[0] as Int, name = a[1] as String, parentBreed = a[2] as PetBreedSummary?) }; c0.read = { v -> (v as PetBreedDetail).let { listOf<Any?>(it.id, it.name, it.parentBreed) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetBreedSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetBreedSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PetBreedDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!)) else SnglResult__PetBreedDetail.Ok((__r.value as PetBreedDetail)) }
+    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec<PetBreedDetail>(SnglCodec.STRUCT); val c1 = SnglCodec<PetBreedSummary>(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.int()), SnglCodecField("name", SnglCodec.string()), SnglCodecField("parent_breed", SnglCodec.option(c1))); c0.make = { a -> PetBreedDetail(id = a.at(0), name = a.at(1), parentBreed = a.at(2)) }; c0.read = { v -> listOf<Any?>(v.id, v.name, v.parentBreed) }; c1.fields = listOf(SnglCodecField("name", SnglCodec.string()), SnglCodecField("url", SnglCodec.string())); c1.make = { a -> PetBreedSummary(name = a.at(0), url = a.at(1)) }; c1.read = { v -> listOf<Any?>(v.name, v.url) }; c0 }); if (__r.error != null) SnglResult__PetBreedDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!)) else SnglResult__PetBreedDetail.Ok(__r.value) }
     	}
     }
     return SnglResult__PetBreedDetail.Ok(PetBreedDetail())
@@ -2690,7 +2690,7 @@ fun _answered(r: SnglResult__Response): SnglResult__Response {
 }
 
 suspend fun petListCall(limit: Int?, offset: Int?, __ctx_server: String): SnglResult__PaginatedPetSummaryList {
-    var __match0: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", SnglCodec.withQuery((__ctx_server + "/api/v1/pets/"), __anon_limit_offset_7e7555(limit = limit, offset = offset), run { val c0 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("limit", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("offset", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT)))); c0.make = { a -> __anon_limit_offset_7e7555(limit = a[0] as Int?, offset = a[1] as Int?) }; c0.read = { v -> (v as __anon_limit_offset_7e7555).let { listOf<Any?>(it.limit, it.offset) } }; c0 }), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
+    var __match0: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", SnglCodec.withQuery((__ctx_server + "/api/v1/pets/"), __anon_limit_offset_7e7555(limit = limit, offset = offset), run { val c0 = SnglCodec<__anon_limit_offset_7e7555>(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("limit", SnglCodec.option(SnglCodec.int())), SnglCodecField("offset", SnglCodec.option(SnglCodec.int()))); c0.make = { a -> __anon_limit_offset_7e7555(limit = a.at(0), offset = a.at(1)) }; c0.read = { v -> listOf<Any?>(v.limit, v.offset) }; c0 }), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
     when {
     	(__match0 is SnglResult__Response.Failed) -> {
     		var r = (__match0 as SnglResult__Response.Failed).value
@@ -2698,7 +2698,7 @@ suspend fun petListCall(limit: Int?, offset: Int?, __ctx_server: String): SnglRe
     	}
     	else -> {
     		var r = (__match0 as SnglResult__Response.Ok).value
-    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("count", SnglCodec.of(SnglCodec.INT)), SnglCodecField("next", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("previous", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("results", SnglCodec.of(SnglCodec.LIST, c1))); c0.make = { a -> PaginatedPetSummaryList(count = a[0] as Int, next = a[1] as String?, previous = a[2] as String?, results = a[3] as List<PetSummary>) }; c0.read = { v -> (v as PaginatedPetSummaryList).let { listOf<Any?>(it.count, it.next, it.previous, it.results) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PaginatedPetSummaryList.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!)) else SnglResult__PaginatedPetSummaryList.Ok((__r.value as PaginatedPetSummaryList)) }
+    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec<PaginatedPetSummaryList>(SnglCodec.STRUCT); val c1 = SnglCodec<PetSummary>(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("count", SnglCodec.int()), SnglCodecField("next", SnglCodec.option(SnglCodec.string())), SnglCodecField("previous", SnglCodec.option(SnglCodec.string())), SnglCodecField("results", SnglCodec.list(c1))); c0.make = { a -> PaginatedPetSummaryList(count = a.at(0), next = a.at(1), previous = a.at(2), results = a.at(3)) }; c0.read = { v -> listOf<Any?>(v.count, v.next, v.previous, v.results) }; c1.fields = listOf(SnglCodecField("name", SnglCodec.string()), SnglCodecField("url", SnglCodec.string())); c1.make = { a -> PetSummary(name = a.at(0), url = a.at(1)) }; c1.read = { v -> listOf<Any?>(v.name, v.url) }; c0 }); if (__r.error != null) SnglResult__PaginatedPetSummaryList.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!)) else SnglResult__PaginatedPetSummaryList.Ok(__r.value) }
     	}
     }
     return SnglResult__PaginatedPetSummaryList.Ok(PaginatedPetSummaryList(results = listOf<PetSummary>()))
@@ -2713,7 +2713,7 @@ suspend fun petRetrieveCall(id: String, __ctx_server: String): SnglResult__PetDe
     	}
     	else -> {
     		var r = (__match1 as SnglResult__Response.Ok).value
-    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); val c2 = SnglCodec(SnglCodec.STRUCT); val c3 = SnglCodec(SnglCodec.STRUCT); val c4 = SnglCodec(SnglCodec.STRUCT); val c5 = SnglCodec(SnglCodec.STRUCT); val c6 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.of(SnglCodec.INT)), SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("adoption_fee", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("age", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("is_available", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.BOOL))), SnglCodecField("breed", c1), SnglCodecField("photos", c2), SnglCodecField("measurements", SnglCodec.of(SnglCodec.LIST, c3)), SnglCodecField("tags", SnglCodec.of(SnglCodec.LIST, c5))); c0.make = { a -> PetDetail(id = a[0] as Int, name = a[1] as String, adoptionFee = a[2] as Int?, age = a[3] as Int?, isAvailable = a[4] as Boolean?, breed = a[5] as PetBreedSummary, photos = a[6] as PetPhotos, measurements = a[7] as List<PetMeasurement>, tags = a[8] as List<PetTag>) }; c0.read = { v -> (v as PetDetail).let { listOf<Any?>(it.id, it.name, it.adoptionFee, it.age, it.isAvailable, it.breed, it.photos, it.measurements, it.tags) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetBreedSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetBreedSummary).let { listOf<Any?>(it.name, it.url) } }; c2.fields = listOf(SnglCodecField("thumbnail_url", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING)))); c2.make = { a -> PetPhotos(thumbnailUrl = a[0] as String?) }; c2.read = { v -> (v as PetPhotos).let { listOf<Any?>(it.thumbnailUrl) } }; c3.fields = listOf(SnglCodecField("base_value", SnglCodec.of(SnglCodec.INT)), SnglCodecField("margin", SnglCodec.of(SnglCodec.INT)), SnglCodecField("measure", c4)); c3.make = { a -> PetMeasurement(baseValue = a[0] as Int, margin = a[1] as Int, measure = a[2] as MeasureSummary) }; c3.read = { v -> (v as PetMeasurement).let { listOf<Any?>(it.baseValue, it.margin, it.measure) } }; c4.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c4.make = { a -> MeasureSummary(name = a[0] as String, url = a[1] as String) }; c4.read = { v -> (v as MeasureSummary).let { listOf<Any?>(it.name, it.url) } }; c5.fields = listOf(SnglCodecField("slot", SnglCodec.of(SnglCodec.INT)), SnglCodecField("type", c6)); c5.make = { a -> PetTag(slot = a[0] as Int, type = a[1] as TagSummary) }; c5.read = { v -> (v as PetTag).let { listOf<Any?>(it.slot, it.type) } }; c6.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c6.make = { a -> TagSummary(name = a[0] as String, url = a[1] as String) }; c6.read = { v -> (v as TagSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PetDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!)) else SnglResult__PetDetail.Ok((__r.value as PetDetail)) }
+    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec<PetDetail>(SnglCodec.STRUCT); val c1 = SnglCodec<PetBreedSummary>(SnglCodec.STRUCT); val c2 = SnglCodec<PetPhotos>(SnglCodec.STRUCT); val c3 = SnglCodec<PetMeasurement>(SnglCodec.STRUCT); val c4 = SnglCodec<MeasureSummary>(SnglCodec.STRUCT); val c5 = SnglCodec<PetTag>(SnglCodec.STRUCT); val c6 = SnglCodec<TagSummary>(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.int()), SnglCodecField("name", SnglCodec.string()), SnglCodecField("adoption_fee", SnglCodec.option(SnglCodec.int())), SnglCodecField("age", SnglCodec.option(SnglCodec.int())), SnglCodecField("is_available", SnglCodec.option(SnglCodec.bool())), SnglCodecField("breed", c1), SnglCodecField("photos", c2), SnglCodecField("measurements", SnglCodec.list(c3)), SnglCodecField("tags", SnglCodec.list(c5))); c0.make = { a -> PetDetail(id = a.at(0), name = a.at(1), adoptionFee = a.at(2), age = a.at(3), isAvailable = a.at(4), breed = a.at(5), photos = a.at(6), measurements = a.at(7), tags = a.at(8)) }; c0.read = { v -> listOf<Any?>(v.id, v.name, v.adoptionFee, v.age, v.isAvailable, v.breed, v.photos, v.measurements, v.tags) }; c1.fields = listOf(SnglCodecField("name", SnglCodec.string()), SnglCodecField("url", SnglCodec.string())); c1.make = { a -> PetBreedSummary(name = a.at(0), url = a.at(1)) }; c1.read = { v -> listOf<Any?>(v.name, v.url) }; c2.fields = listOf(SnglCodecField("thumbnail_url", SnglCodec.option(SnglCodec.string()))); c2.make = { a -> PetPhotos(thumbnailUrl = a.at(0)) }; c2.read = { v -> listOf<Any?>(v.thumbnailUrl) }; c3.fields = listOf(SnglCodecField("base_value", SnglCodec.int()), SnglCodecField("margin", SnglCodec.int()), SnglCodecField("measure", c4)); c3.make = { a -> PetMeasurement(baseValue = a.at(0), margin = a.at(1), measure = a.at(2)) }; c3.read = { v -> listOf<Any?>(v.baseValue, v.margin, v.measure) }; c4.fields = listOf(SnglCodecField("name", SnglCodec.string()), SnglCodecField("url", SnglCodec.string())); c4.make = { a -> MeasureSummary(name = a.at(0), url = a.at(1)) }; c4.read = { v -> listOf<Any?>(v.name, v.url) }; c5.fields = listOf(SnglCodecField("slot", SnglCodec.int()), SnglCodecField("type", c6)); c5.make = { a -> PetTag(slot = a.at(0), type = a.at(1)) }; c5.read = { v -> listOf<Any?>(v.slot, v.type) }; c6.fields = listOf(SnglCodecField("name", SnglCodec.string()), SnglCodecField("url", SnglCodec.string())); c6.make = { a -> TagSummary(name = a.at(0), url = a.at(1)) }; c6.read = { v -> listOf<Any?>(v.name, v.url) }; c0 }); if (__r.error != null) SnglResult__PetDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!)) else SnglResult__PetDetail.Ok(__r.value) }
     	}
     }
     return SnglResult__PetDetail.Ok(PetDetail(measurements = listOf<PetMeasurement>(), tags = listOf<PetTag>()))
@@ -2748,6 +2748,12 @@ package test.sngl.app
 // fails unless its field is an option, a value of the wrong kind fails naming
 // where it was, writing leaves an absent option's key out, and a map's keys are
 // visited in order so a failure names the same one everywhere.
+//
+// A codec is typed by the value it reads and writes, SnglCodec<T>, and built
+// from the factories below, so the code the compiler writes holds no cast: a
+// struct is built from SnglCodecArgs.at, whose type each constructor
+// parameter gives. The JSON in between is untyped, and the one cast back to T
+// is here, in at and Decoded.value, where the codec is what makes it sound.
 
 import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
@@ -2759,15 +2765,26 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
 
-class SnglCodec(val kind: Int) {
-    var elem: SnglCodec? = null
+class SnglCodec<T>(val kind: Int) {
+    var elem: SnglCodec<*>? = null
     var fields: List<SnglCodecField> = emptyList()
-    var make: ((List<Any?>) -> Any)? = null
-    var read: ((Any) -> List<Any?>)? = null
+    var make: ((SnglCodecArgs) -> T)? = null
+    var read: ((T) -> List<Any?>)? = null
     var wires: List<String> = emptyList()
     var values: List<Any> = emptyList()
 
-    class Decoded(val value: Any?, val error: String?)
+    // An integer's range, and how it is made from and read as a Long: every
+    // width and sign of SNGL integer is one kind.
+    var lo: Long = Long.MIN_VALUE
+    var hi: Long = Long.MAX_VALUE
+    var fromLong: (Long) -> Any = { it }
+    var toLong: (Any) -> Long = { (it as Number).toLong() }
+    var fromDouble: (Double) -> Any = { it }
+
+    class Decoded<T>(private val v: Any?, val error: String?) {
+        @Suppress("UNCHECKED_CAST")
+        val value: T get() = v as T
+    }
 
     class Response(
         val status: Int,
@@ -2783,7 +2800,6 @@ class SnglCodec(val kind: Int) {
     companion object {
         const val BOOL = 0
         const val INT = 1
-        const val LONG = 2
         const val FLOAT = 3
         const val STRING = 4
         const val DATE = 5
@@ -2797,7 +2813,35 @@ class SnglCodec(val kind: Int) {
         private val dateRE = Regex("""^\d{4}-\d{2}-\d{2}$""")
         private val datetimeRE = Regex("""^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$""")
 
-        fun of(kind: Int, elem: SnglCodec? = null): SnglCodec = SnglCodec(kind).also { it.elem = elem }
+        fun bool(): SnglCodec<Boolean> = SnglCodec(BOOL)
+        fun string(): SnglCodec<String> = SnglCodec(STRING)
+        fun date(): SnglCodec<String> = SnglCodec(DATE)
+        fun datetime(): SnglCodec<String> = SnglCodec(DATETIME)
+        fun float(): SnglCodec<Double> = SnglCodec(FLOAT)
+        fun float32(): SnglCodec<Float> = SnglCodec<Float>(FLOAT).also { it.fromDouble = { d -> d.toFloat() } }
+
+        private fun <T : Any> integer(lo: Long, hi: Long, from: (Long) -> T, to: (T) -> Long): SnglCodec<T> =
+            SnglCodec<T>(INT).also {
+                it.lo = lo
+                it.hi = hi
+                it.fromLong = from
+                @Suppress("UNCHECKED_CAST")
+                it.toLong = { v -> to(v as T) }
+            }
+
+        fun int(): SnglCodec<Int> = integer(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong(), { it.toInt() }, { it.toLong() })
+        fun long(): SnglCodec<Long> = integer(Long.MIN_VALUE, Long.MAX_VALUE, { it }, { it })
+        fun short(): SnglCodec<Short> = integer(Short.MIN_VALUE.toLong(), Short.MAX_VALUE.toLong(), { it.toShort() }, { it.toLong() })
+        fun byte(): SnglCodec<Byte> = integer(Byte.MIN_VALUE.toLong(), Byte.MAX_VALUE.toLong(), { it.toByte() }, { it.toLong() })
+        fun ubyte(): SnglCodec<UByte> = integer(0, 0xff, { it.toUByte() }, { it.toLong() })
+        fun ushort(): SnglCodec<UShort> = integer(0, 0xffff, { it.toUShort() }, { it.toLong() })
+        fun uint(): SnglCodec<UInt> = integer(0, 0xffffffffL, { it.toUInt() }, { it.toLong() })
+        // A ULong past Long.MAX_VALUE has no exact JSON number here.
+        fun ulong(): SnglCodec<ULong> = integer(0, Long.MAX_VALUE, { it.toULong() }, { it.toLong() })
+
+        fun <E> option(e: SnglCodec<E>): SnglCodec<E?> = SnglCodec<E?>(OPTION).also { it.elem = e }
+        fun <E> list(e: SnglCodec<E>): SnglCodec<List<E>> = SnglCodec<List<E>>(LIST).also { it.elem = e }
+        fun <E> map(e: SnglCodec<E>): SnglCodec<Map<String, E>> = SnglCodec<Map<String, E>>(MAP).also { it.elem = e }
 
         private val scope = kotlinx.coroutines.MainScope()
 
@@ -2818,7 +2862,7 @@ class SnglCodec(val kind: Int) {
             }
         }
 
-        fun decode(text: String, c: SnglCodec): Decoded {
+        fun <T> decode(text: String, c: SnglCodec<T>): Decoded<T> {
             val v: Any? = try {
                 val t = JSONTokener(text)
                 val parsed = t.nextValue()
@@ -2834,9 +2878,9 @@ class SnglCodec(val kind: Int) {
             }
         }
 
-        private fun describe(c: SnglCodec): String = when (c.kind) {
+        private fun describe(c: SnglCodec<*>): String = when (c.kind) {
             BOOL -> "a boolean"
-            INT, LONG -> "an integer"
+            INT -> "an integer"
             FLOAT -> "a number"
             STRING -> "a string"
             DATE -> "a date"
@@ -2857,18 +2901,17 @@ class SnglCodec(val kind: Int) {
             return v.toLong()
         }
 
-        private fun dec(v: Any?, c: SnglCodec, path: String): Any? {
+        private fun dec(v: Any?, c: SnglCodec<*>, path: String): Any? {
             fun want(): Fail = Fail(path + ": want " + describe(c))
             when (c.kind) {
                 OPTION -> return if (v == null) null else dec(v, c.elem!!, path)
                 BOOL -> return v as? Boolean ?: throw want()
                 INT -> {
                     val n = integral(v) ?: throw want()
-                    if (n < Int.MIN_VALUE || n > Int.MAX_VALUE) throw want()
-                    return n.toInt()
+                    if (n < c.lo || n > c.hi) throw want()
+                    return c.fromLong(n)
                 }
-                LONG -> return integral(v) ?: throw want()
-                FLOAT -> return (v as? Number)?.toDouble() ?: throw want()
+                FLOAT -> return c.fromDouble((v as? Number)?.toDouble() ?: throw want())
                 STRING -> return v as? String ?: throw want()
                 DATE -> {
                     val s = v as? String ?: throw want()
@@ -2907,7 +2950,7 @@ class SnglCodec(val kind: Int) {
                         if (!present && f.codec.kind != OPTION) throw Fail("$path.${f.wire}: missing")
                         args.add(dec(if (present) unwrap(o.get(f.wire)) else null, f.codec, "$path.${f.wire}"))
                     }
-                    return c.make!!(args)
+                    return c.make!!(SnglCodecArgs(args))
                 }
             }
             throw want()
@@ -2915,13 +2958,17 @@ class SnglCodec(val kind: Int) {
 
         private fun unwrap(v: Any?): Any? = if (v == JSONObject.NULL) null else v
 
-        fun encode(v: Any?, c: SnglCodec): String = StringBuilder().also { enc(it, v, c) }.toString()
+        fun <T> encode(v: T, c: SnglCodec<T>): String = StringBuilder().also { enc(it, v, c) }.toString()
 
-        private fun enc(b: StringBuilder, v: Any?, c: SnglCodec) {
+        // The fields of v, a value c reads.
+        @Suppress("UNCHECKED_CAST")
+        private fun readFields(c: SnglCodec<*>, v: Any?): List<Any?> = (c as SnglCodec<Any?>).read!!(v)
+
+        private fun enc(b: StringBuilder, v: Any?, c: SnglCodec<*>) {
             when (c.kind) {
                 OPTION -> if (v == null) b.append("null") else enc(b, v, c.elem!!)
                 BOOL -> b.append(if (v == true) "true" else "false")
-                INT, LONG -> b.append((v as Number).toLong().toString())
+                INT -> b.append(c.toLong(v!!).toString())
                 FLOAT -> b.append(number((v as Number).toDouble()))
                 STRING, DATE, DATETIME -> quote(b, v as String)
                 ENUM -> quote(b, enumWire(c, v))
@@ -2945,7 +2992,7 @@ class SnglCodec(val kind: Int) {
                     b.append('}')
                 }
                 STRUCT -> {
-                    val vals = c.read!!(v!!)
+                    val vals = readFields(c, v)
                     b.append('{')
                     var first = true
                     c.fields.forEachIndexed { i, f ->
@@ -2962,7 +3009,7 @@ class SnglCodec(val kind: Int) {
             }
         }
 
-        private fun enumWire(c: SnglCodec, v: Any?): String {
+        private fun enumWire(c: SnglCodec<*>, v: Any?): String {
             val i = c.values.indexOf(v)
             return if (i < 0) v.toString() else c.wires[i]
         }
@@ -3014,18 +3061,18 @@ class SnglCodec(val kind: Int) {
             return b.toString()
         }
 
-        private fun queryValues(v: Any?, c: SnglCodec): List<String> = when (c.kind) {
+        private fun queryValues(v: Any?, c: SnglCodec<*>): List<String> = when (c.kind) {
             OPTION -> if (v == null) emptyList() else queryValues(v, c.elem!!)
             LIST -> (v as List<*>).flatMap { queryValues(it, c.elem!!) }
             BOOL -> listOf(if (v == true) "true" else "false")
-            INT, LONG -> listOf((v as Number).toLong().toString())
+            INT -> listOf(c.toLong(v!!).toString())
             FLOAT -> listOf(number((v as Number).toDouble()))
             ENUM -> listOf(enumWire(c, v))
             else -> listOf(v.toString())
         }
 
-        fun withQuery(url: String, q: Any, c: SnglCodec): String {
-            val vals = c.read!!(q)
+        fun <T> withQuery(url: String, q: T, c: SnglCodec<T>): String {
+            val vals = readFields(c, q)
             val parts = ArrayList<String>()
             c.fields.forEachIndexed { i, f ->
                 for (s in queryValues(vals[i], f.codec)) parts.add(escape(f.wire) + "=" + escape(s))
@@ -3064,7 +3111,14 @@ class SnglCodec(val kind: Int) {
     }
 }
 
-class SnglCodecField(val wire: String, val codec: SnglCodec)
+class SnglCodecField(val wire: String, val codec: SnglCodec<*>)
+
+// The fields of a struct being decoded, in its codec's order. at gives each
+// the type of the constructor parameter it is passed to.
+class SnglCodecArgs(private val values: List<Any?>) {
+    @Suppress("UNCHECKED_CAST")
+    fun <F> at(i: Int): F = values[i] as F
+}
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
 
@@ -4191,6 +4245,6 @@ pass sha256:15cf70c176a165fa6b55545893595cdc
 -- run/go/gtk4 --
 pass sha256:097aa2b75ff7514893ebb82f24868383
 -- run/kotlin/android --
-pass sha256:897cdef6339fcb04c95f3255e82d98dc
+pass sha256:df721ac9db949de3ea6da9e621f0c73f
 -- run/none/html --
 pass sha256:c6da311f018f1d8306dc1ca7f526b4aa

@@ -53,7 +53,7 @@ func (kc *KtIRContext) codecCall(n *ir.Call) (string, bool) {
 		return fmt.Sprintf("SnglCodec.encode(%s, %s)", arg("value"), ktCodec(ir.PlanCodec(t, format))), true
 	case ir.JSONDecodeIntrinsic:
 		failed := kc.EvalExpr(codegen.ResultFailed(n.Type, "decode", codegen.HostValue("__r.error!!", str)))
-		ok := kc.EvalExpr(codegen.ResultOK(n.Type, codegen.HostValue("(__r.value as "+IRTypeToKt(t)+")", t)))
+		ok := kc.EvalExpr(codegen.ResultOK(n.Type, codegen.HostValue("__r.value", t)))
 		return fmt.Sprintf("run { val __r = SnglCodec.decode(%s, %s); if (__r.error != null) %s else %s }", arg("text"), ktCodec(ir.PlanCodec(t, format)), failed, ok), true
 	}
 	method := `"get"`
@@ -81,7 +81,11 @@ func (kc *KtIRContext) codecCall(n *ir.Call) (string, bool) {
 // declaring each struct and enum first where the plan names any, so a type
 // that holds itself points back at its own. A struct carries how to build
 // one from its fields' values and how to read them back, which is what
-// Kotlin, having no reflection here, cannot find out for itself.
+// Kotlin, having no reflection here, cannot find out for itself. Every codec
+// is typed by its value (SnglCodec<T>), so neither holds a cast: a field is
+// `a.at(i)`, typed by the constructor parameter it is passed to. Each was
+// `a[i] as T`, which Kotlin cannot check for a List<T> or a Map, and warned
+// about at every such field.
 func ktCodec(p *ir.CodecPlan) string {
 	if len(p.Named) == 0 {
 		return ktCodecNode(p.Root)
@@ -93,7 +97,7 @@ func ktCodec(p *ir.CodecPlan) string {
 		if n.Kind == ir.CodecEnum {
 			kind = "ENUM"
 		}
-		fmt.Fprintf(&b, "val c%d = SnglCodec(SnglCodec.%s); ", n.ID, kind)
+		fmt.Fprintf(&b, "val c%d = SnglCodec<%s>(SnglCodec.%s); ", n.ID, IRTypeToKt(n.Type), kind)
 	}
 	for _, n := range p.Named {
 		if n.Kind == ir.CodecEnum {
@@ -112,12 +116,12 @@ func ktCodec(p *ir.CodecPlan) string {
 		reads := make([]string, len(n.Fields))
 		for i, f := range n.Fields {
 			fields[i] = fmt.Sprintf("SnglCodecField(%s, %s)", Quote(f.Wire), ktCodecNode(f.Codec))
-			args[i] = fmt.Sprintf("%s = a[%d] as %s", SafeIdent(f.Name), i, IRTypeToKt(f.Codec.Type))
-			reads[i] = "it." + SafeIdent(f.Name)
+			args[i] = fmt.Sprintf("%s = a.at(%d)", SafeIdent(f.Name), i)
+			reads[i] = "v." + SafeIdent(f.Name)
 		}
 		fmt.Fprintf(&b, "c%d.fields = listOf(%s); ", n.ID, strings.Join(fields, ", "))
 		fmt.Fprintf(&b, "c%d.make = { a -> %s(%s) }; ", n.ID, cls, strings.Join(args, ", "))
-		fmt.Fprintf(&b, "c%d.read = { v -> (v as %s).let { listOf<Any?>(%s) } }; ", n.ID, cls, strings.Join(reads, ", "))
+		fmt.Fprintf(&b, "c%d.read = { v -> listOf<Any?>(%s) }; ", n.ID, strings.Join(reads, ", "))
 	}
 	fmt.Fprintf(&b, "%s }", ktCodecNode(p.Root))
 	return b.String()
@@ -127,35 +131,33 @@ func ktCodecNode(c *ir.Codec) string {
 	switch c.Kind {
 	case ir.CodecStruct, ir.CodecEnum:
 		return "c" + strconv.Itoa(c.ID)
-	case ir.CodecOption, ir.CodecList, ir.CodecMap:
-		return fmt.Sprintf("SnglCodec.of(SnglCodec.%s, %s)", ktCodecKind(c), ktCodecNode(c.Elem))
+	case ir.CodecOption:
+		return "SnglCodec.option(" + ktCodecNode(c.Elem) + ")"
+	case ir.CodecList:
+		return "SnglCodec.list(" + ktCodecNode(c.Elem) + ")"
+	case ir.CodecMap:
+		return "SnglCodec.map(" + ktCodecNode(c.Elem) + ")"
 	}
-	return fmt.Sprintf("SnglCodec.of(SnglCodec.%s)", ktCodecKind(c))
+	return "SnglCodec." + ktCodecScalar(c) + "()"
 }
 
-func ktCodecKind(c *ir.Codec) string {
+// ktCodecScalar names the factory of a scalar's codec: one per Kotlin type,
+// since each integer width reads and writes its own type.
+func ktCodecScalar(c *ir.Codec) string {
 	switch c.Kind {
 	case ir.CodecBool:
-		return "BOOL"
+		return "bool"
 	case ir.CodecInt:
-		if ktIntType(c.Type) == "Long" {
-			return "LONG"
-		}
-		return "INT"
+		return strings.ToLower(ktIntType(c.Type))
 	case ir.CodecFloat:
-		return "FLOAT"
-	case ir.CodecString:
-		return "STRING"
+		if IRTypeToKt(c.Type) == "Float" {
+			return "float32"
+		}
+		return "float"
 	case ir.CodecDate:
-		return "DATE"
+		return "date"
 	case ir.CodecDatetime:
-		return "DATETIME"
-	case ir.CodecOption:
-		return "OPTION"
-	case ir.CodecList:
-		return "LIST"
-	case ir.CodecMap:
-		return "MAP"
+		return "datetime"
 	}
-	return "STRUCT"
+	return "string"
 }

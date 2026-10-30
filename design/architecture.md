@@ -199,7 +199,13 @@ target with no way to say a field is meant for one.
   dependencies, which `go run ./internal/androidtc/resolvelibs` writes into
   `libs_gen.go` with each file's SHA-256, and nothing else -- a hand-kept
   list missed `lifecycle-livedata-core`, and a set seeded from `~/.gradle`
-  varied by machine; both built and then failed at launch. Gradle cannot use them: AGP runs D8 inside
+  varied by machine; both built and then failed at launch. A build whose
+  inputs are unchanged -- the generated tree, the tools and flags, each
+  library's SHA-256, minSdk, the debug key (`apkDigest`) -- reuses the APK it
+  made, from `android-toolchain/apk/`, which keeps the 16 most recent. The
+  tools' own output is shown with `-v` or in the error when one fails
+  (`runTool`); a library d8 cannot dex stops the build, where it used to be
+  left out of the APK. Gradle cannot use them: AGP runs D8 inside
   its daemon and every Kotlin Gradle plugin strategy compiles on a JVM.
 
   **An android app asks for what it reaches.** `#[android.permission("…")]`
