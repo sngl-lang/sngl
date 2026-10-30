@@ -29,6 +29,7 @@ type toolchain struct {
 	Aapt2               string   // aapt2 binary
 	D8                  string   // d8.jar or d8 binary wrapper script
 	ComposeJars         []string // compose runtime + dependency JARs
+	libAARs             []string // the AARs among them, for resources and R classes
 	KotlinLibs          []string // kotlin-stdlib etc.
 	CacheDir            string   // ~/.cache/sngl/android-toolchain
 
@@ -39,14 +40,13 @@ type toolchain struct {
 	nativeD8     bool
 
 	// Versions from the selected combo.
-	cKotlin      string // e.g. "2.1.0"
-	cCompose     string // androidx.compose runtime/ui version
-	cNavigation  string // androidx.navigation version
-	cSerial      string // kotlinx.serialization version
-	cBuildTools  string // e.g. "35.0.0"
-	cR8          string // the native d8's R8 version, "" where none is published
-	cPlatformAPI string // e.g. "35"
-	jdkMin       int    // JDK window this combo's build can use
+	cKotlin      string          // e.g. "2.1.0"
+	cName        string          // combo name
+	cLibs        []androidtc.Lib // the libraries the app is built against
+	cBuildTools  string          // e.g. "35.0.0"
+	cR8          string          // the native d8's R8 version, "" where none is published
+	cPlatformAPI string          // e.g. "35"
+	jdkMin       int             // JDK window this combo's build can use
 	jdkMax       int
 }
 
@@ -63,9 +63,8 @@ func resolveToolchain(c androidtc.Combo) (*toolchain, error) {
 	tc := &toolchain{
 		CacheDir:     toolchainCacheDir(),
 		cKotlin:      c.Kotlin,
-		cCompose:     c.ComposeRuntime,
-		cNavigation:  c.Navigation,
-		cSerial:      c.Serialization,
+		cName:        c.Name,
+		cLibs:        c.Libs(),
 		cBuildTools:  c.BuildTools,
 		cR8:          c.R8,
 		cPlatformAPI: strconv.Itoa(c.CompileSdk),
@@ -300,183 +299,71 @@ func (tc *toolchain) findComposePlugin() error {
 	return nil
 }
 
-// libsDir holds the libraries a gradle-free build compiles and dexes against:
-// exactly the pinned set downloadComposeArtifacts names, and nothing from
-// ~/.gradle. Seeded from Gradle's cache, the set differed by machine -- other
-// versions beside the pinned ones, test libraries in the APK, and a jar
-// without the AAR whose R.txt makes its R class, which crashed at launch.
+// libsDir holds the libraries a gradle-free build compiles and dexes against.
 func (tc *toolchain) libsDir() string { return filepath.Join(tc.CacheDir, "maven-libs") }
 
+// findComposeJars downloads the combo's libraries (androidtc.Combo.Libs) and
+// sets the jars the build compiles and dexes against and the AARs whose
+// resources and R classes it adds. It is exactly that list: the closure Gradle
+// resolves for the scaffold, each file checked against its SHA-256, and
+// nothing from ~/.gradle or from what an earlier list left in the directory.
+// A hand-kept list missed lifecycle-livedata-core, and a set seeded from
+// Gradle's cache varied by machine; either way the app built and then failed
+// at launch on a class or an R class it did not carry.
 func (tc *toolchain) findComposeJars() error {
-	cacheDir := tc.libsDir()
-	os.MkdirAll(cacheDir, 0o755)
-	tc.ensureAARs(cacheDir)
-
-	// Always run the explicit artifact download list to fill gaps. Each
-	// download is a no-op if the JAR/AAR is already cached.
-	if err := tc.downloadComposeArtifacts(cacheDir); err != nil {
+	if len(tc.cLibs) == 0 {
+		return fmt.Errorf("combo %q has no resolved libraries; run go run ./internal/androidtc/resolvelibs", tc.cName)
+	}
+	dir := tc.libsDir()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-
-	tc.ComposeJars = findJars(cacheDir, "")
-	if len(tc.ComposeJars) == 0 {
-		return fmt.Errorf("no Compose libraries found after download")
-	}
-	return nil
-}
-
-func (tc *toolchain) downloadComposeArtifacts(cacheDir string) error {
-
-	// Compose KMP artifacts use "-android" suffix for the Android variant.
-	// The base artifact (e.g. "runtime") is a near-empty stub; the real
-	// classes live in "runtime-android".
-	type artifact struct {
-		group, name, version string
-		android              bool // true = append "-android" to artifact name for AAR
-		jar                  bool // true = download as .jar directly (no AAR extraction)
-	}
-
-	arts := []artifact{
-		// Compose runtime & UI (KMP — need -android suffix)
-		{"androidx.compose.runtime", "runtime", tc.cCompose, true, false},
-		{"androidx.compose.runtime", "runtime-saveable", tc.cCompose, true, false},
-		{"androidx.compose.ui", "ui", tc.cCompose, true, false},
-		{"androidx.compose.ui", "ui-geometry", tc.cCompose, true, false},
-		{"androidx.compose.ui", "ui-graphics", tc.cCompose, true, false},
-		{"androidx.compose.ui", "ui-text", tc.cCompose, true, false},
-		{"androidx.compose.ui", "ui-unit", tc.cCompose, true, false},
-		{"androidx.compose.ui", "ui-util", tc.cCompose, true, false},
-		{"androidx.compose.foundation", "foundation", tc.cCompose, true, false},
-		{"androidx.compose.foundation", "foundation-layout", tc.cCompose, true, false},
-		{"androidx.compose.animation", "animation", tc.cCompose, true, false},
-		{"androidx.compose.animation", "animation-core", tc.cCompose, true, false},
-		{"androidx.compose.material", "material-ripple", tc.cCompose, true, false},
-		{"androidx.compose.material3", "material3", "1.3.1", true, false},
-		// AndroidX (not KMP — no -android suffix, but still AAR)
-		{"androidx.activity", "activity-compose", "1.9.3", false, false},
-		{"androidx.activity", "activity-ktx", "1.9.3", false, false},
-		{"androidx.activity", "activity", "1.9.3", false, false},
-		{"androidx.core", "core", "1.15.0", false, false},
-		{"androidx.core", "core-ktx", "1.15.0", false, false},
-		{"androidx.lifecycle", "lifecycle-common-jvm", "2.8.7", false, true},
-		{"androidx.lifecycle", "lifecycle-runtime", "2.8.7", true, false},
-		{"androidx.lifecycle", "lifecycle-runtime-ktx", "2.8.7", true, false},
-		{"androidx.lifecycle", "lifecycle-runtime-compose", "2.8.7", true, false},
-		{"androidx.lifecycle", "lifecycle-viewmodel", "2.8.7", true, false},
-		{"androidx.lifecycle", "lifecycle-viewmodel-compose", "2.8.7", true, false},
-		{"androidx.lifecycle", "lifecycle-viewmodel-savedstate", "2.8.7", false, false},
-		{"androidx.savedstate", "savedstate", "1.2.1", false, false},
-		{"androidx.savedstate", "savedstate-ktx", "1.2.1", false, false},
-		{"androidx.startup", "startup-runtime", "1.2.0", false, false},
-		{"androidx.emoji2", "emoji2", "1.4.0", false, false},
-		{"androidx.emoji2", "emoji2-views-helper", "1.4.0", false, false},
-		{"androidx.tracing", "tracing", "1.2.0", false, false},
-		{"androidx.tracing", "tracing-ktx", "1.2.0", false, false},
-		{"androidx.versionedparcelable", "versionedparcelable", "1.2.0", false, false},
-		{"androidx.profileinstaller", "profileinstaller", "1.4.1", false, false},
-		{"androidx.customview", "customview-poolingcontainer", "1.0.0", false, false},
-		{"androidx.annotation", "annotation", "1.9.1", false, true},
-		{"androidx.annotation", "annotation-jvm", "1.9.1", false, true},
-		{"androidx.collection", "collection-jvm", "1.4.5", false, true},
-		{"androidx.arch.core", "core-common", "2.2.0", false, true},
-		{"androidx.arch.core", "core-runtime", "2.2.0", false, false},
-		// Navigation, which a sngl:ui/nav stack is a NavHost of, and the
-		// serialization its typed routes are written with.
-		{"androidx.navigation", "navigation-compose", tc.cNavigation, false, false},
-		{"androidx.navigation", "navigation-runtime", tc.cNavigation, false, false},
-		{"androidx.navigation", "navigation-runtime-ktx", tc.cNavigation, false, false},
-		{"androidx.navigation", "navigation-common", tc.cNavigation, false, false},
-		{"androidx.navigation", "navigation-common-ktx", tc.cNavigation, false, false},
-		{"org.jetbrains.kotlinx", "kotlinx-serialization-core-jvm", tc.cSerial, false, true},
-		{"org.jetbrains.kotlinx", "kotlinx-serialization-json-jvm", tc.cSerial, false, true},
-		// Kotlinx
-		{"org.jetbrains.kotlinx", "kotlinx-coroutines-core-jvm", "1.9.0", false, true},
-		{"org.jetbrains.kotlinx", "kotlinx-coroutines-android", "1.9.0", false, true},
-	}
-
-	for _, a := range arts {
-		groupPath := strings.ReplaceAll(a.group, ".", "/")
-
-		// Determine actual artifact name (with -android suffix for KMP)
-		dlName := a.name
-		if a.android {
-			dlName = a.name + "-android"
-		}
-
-		var jarDest string
-		if a.jar {
-			// Download JAR directly
-			url := fmt.Sprintf("https://dl.google.com/dl/android/maven2/%s/%s/%s/%s-%s.jar",
-				groupPath, dlName, a.version, dlName, a.version)
-			jarDest = filepath.Join(cacheDir, fmt.Sprintf("%s-%s.jar", dlName, a.version))
-			if fileExists(jarDest) {
-				continue
+	tc.ComposeJars, tc.libAARs = nil, nil
+	announced := false
+	for _, lib := range tc.cLibs {
+		// Named by module and version: several artifacts publish their file
+		// under the same name (ui-release.aar).
+		ext := filepath.Ext(lib.File)
+		base := filepath.Join(dir, lib.Group+"."+lib.Module+"-"+lib.Version)
+		dest := base + ext
+		if !fileExists(dest) {
+			if !announced {
+				fmt.Fprintln(os.Stderr, "sngl: downloading Android libraries...")
+				announced = true
 			}
-			if err := downloadFile(url, jarDest); err != nil {
-				// Try Maven Central
-				centralURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s/%s-%s.jar",
-					groupPath, dlName, a.version, dlName, a.version)
-				if err2 := downloadFile(centralURL, jarDest); err2 != nil {
-					fmt.Fprintf(os.Stderr, "sngl: warning: failed to download %s: %v\n", dlName, err)
-				}
-			}
-		} else {
-			// Download AAR, extract classes.jar
-			aarDest := filepath.Join(cacheDir, fmt.Sprintf("%s-%s.aar", dlName, a.version))
-			jarDest = filepath.Join(cacheDir, fmt.Sprintf("%s-%s.jar", dlName, a.version))
-			// The AAR is kept beside its classes: its R.txt is where the
-			// library's R class comes from, and without it the app built
-			// and then failed at launch on that class.
-			if fileExists(aarDest) {
-				if !fileExists(jarDest) {
-					if err := extractClassesJar(aarDest, jarDest); err != nil {
-						fmt.Fprintf(os.Stderr, "sngl: warning: failed to extract classes.jar from %s: %v\n", dlName, err)
-					}
-				}
-				continue
-			}
-			url := fmt.Sprintf("https://dl.google.com/dl/android/maven2/%s/%s/%s/%s-%s.aar",
-				groupPath, dlName, a.version, dlName, a.version)
-			if err := downloadFile(url, aarDest); err != nil {
-				centralURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s/%s-%s.aar",
-					groupPath, dlName, a.version, dlName, a.version)
-				if err2 := downloadFile(centralURL, aarDest); err2 != nil {
-					fmt.Fprintf(os.Stderr, "sngl: warning: failed to download %s: %v\n", dlName, err)
-					continue
-				}
-			}
-			if err := extractClassesJar(aarDest, jarDest); err != nil {
-				fmt.Fprintf(os.Stderr, "sngl: warning: failed to extract classes.jar from %s: %v\n", dlName, err)
+			if err := fetchLib(lib, dest); err != nil {
+				return fmt.Errorf("%s:%s:%s: %w", lib.Group, lib.Module, lib.Version, err)
 			}
 		}
-	}
-
-	return nil
-}
-
-// ensureAARs downloads AARs for libraries that need resource extraction.
-// Only downloads AARs that contain string/id resources needed at runtime.
-func (tc *toolchain) ensureAARs(cacheDir string) {
-	// Key libraries that have runtime resources (strings, ids)
-	resourceAARs := []struct{ group, name, version string }{
-		{"androidx.compose.material3", "material3-android", "1.3.1"},
-		{"androidx.compose.material", "material-android", tc.cCompose},
-		{"androidx.compose.ui", "ui-android", tc.cCompose},
-		{"androidx.compose.foundation", "foundation-android", tc.cCompose},
-		{"androidx.customview", "customview-poolingcontainer", "1.0.0"},
-		{"androidx.core", "core", "1.15.0"},
-	}
-
-	for _, a := range resourceAARs {
-		aarDest := filepath.Join(cacheDir, a.name+"-"+a.version+".aar")
-		if fileExists(aarDest) {
+		if ext != ".aar" {
+			tc.ComposeJars = append(tc.ComposeJars, dest)
 			continue
 		}
-		groupPath := strings.ReplaceAll(a.group, ".", "/")
-		url := fmt.Sprintf("https://dl.google.com/dl/android/maven2/%s/%s/%s/%s-%s.aar",
-			groupPath, a.name, a.version, a.name, a.version)
-		downloadFile(url, aarDest)
+		tc.libAARs = append(tc.libAARs, dest)
+		jar := base + ".jar"
+		if !fileExists(jar) {
+			if err := extractClassesJar(dest, jar); err != nil {
+				// An AAR of resources alone has no classes.
+				continue
+			}
+		}
+		tc.ComposeJars = append(tc.ComposeJars, jar)
 	}
+	return nil
+}
+
+// fetchLib downloads lib to dest, checked against its SHA-256 before it is
+// put in place.
+func fetchLib(lib androidtc.Lib, dest string) error {
+	tmp := dest + ".download"
+	defer os.Remove(tmp)
+	if err := downloadFile(lib.URL, tmp); err != nil {
+		return err
+	}
+	if err := checkSum(tmp, lib.SHA256); err != nil {
+		return err
+	}
+	return os.Rename(tmp, dest)
 }
 
 // needsJDK reports whether a tool the build runs is still a JVM one.

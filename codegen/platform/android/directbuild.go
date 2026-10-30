@@ -253,7 +253,7 @@ func directBuild(dir string, tc *toolchain, pkg string, minSdk int) (string, err
 // to get its package name. These are passed to aapt2 --extra-packages so
 // R.java is generated for each library, not just the app.
 func collectLibraryPackages(tc *toolchain) []string {
-	aars, _ := filepath.Glob(filepath.Join(tc.libsDir(), "*.aar"))
+	aars := tc.libAARs
 
 	seen := map[string]bool{}
 	var packages []string
@@ -297,7 +297,7 @@ func readAARPackage(aarPath string) string {
 // values/lib_ids.xml declaring all id resources. This ensures aapt2 assigns
 // real resource IDs for library id resources (like poolingcontainer tags).
 func generateLibraryIds(tc *toolchain, dir string) {
-	aars, _ := filepath.Glob(filepath.Join(tc.libsDir(), "*.aar"))
+	aars := tc.libAARs
 
 	ids := map[string]bool{}
 	for _, aarPath := range aars {
@@ -360,7 +360,7 @@ func generateLibraryRKotlinWithIDs(tc *toolchain, rKtDir string, resourceIDs map
 	}
 
 	// Collect library packages that need R classes
-	aars, _ := filepath.Glob(filepath.Join(tc.libsDir(), "*.aar"))
+	aars := tc.libAARs
 
 	seen := map[string]bool{}
 	for _, aarPath := range aars {
@@ -430,7 +430,7 @@ func readResourceIDs(path string) map[string]int {
 func extractLibraryResources(tc *toolchain, dir string) {
 	resDir := filepath.Join(dir, "res")
 
-	aars, _ := filepath.Glob(filepath.Join(tc.libsDir(), "*.aar"))
+	aars := tc.libAARs
 
 	for _, aarPath := range aars {
 		aarBase := filepath.Base(aarPath)

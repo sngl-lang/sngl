@@ -239,12 +239,16 @@ optional.
    With an empty `HOME`, no `java`, no `ANDROID_HOME` and no `~/.gradle`,
    a gradle-free hello build took 45s. It downloaded the platform,
    build-tools, both native tools and the Compose libraries from Maven.
-   On a phone, pokedex then crashed at launch on `androidx.savedstate.R$id`.
-   The libraries had been seeded from `~/.gradle`, which mixes versions,
-   puts test libraries in the APK, and can leave a jar without the AAR whose
-   `R.txt` makes its R class. The seed is gone: the build uses only the
-   pinned Maven set, in `android-toolchain/maven-libs/`, and always keeps
-   each AAR. Whether that APK launches is still to be checked on a device.
+   On a phone, pokedex then crashed at launch on `androidx.savedstate.R$id`
+   and then on `androidx.lifecycle.MutableLiveData`. The libraries had been a
+   hand-kept list (which missed `lifecycle-livedata-core`) seeded from
+   `~/.gradle`, which mixes versions, puts test libraries in the APK, and can
+   leave a jar without the AAR whose `R.txt` makes its R class. Now
+   `go run ./internal/androidtc/resolvelibs` resolves the scaffold's
+   dependencies the way Gradle does (module metadata, the compose BOM,
+   constraints, highest version wins) into `libs_gen.go` with a SHA-256 each,
+   and the build downloads exactly that list into
+   `android-toolchain/maven-libs/`.
 6. **Done, except on a device: `gradle` is `option[bool]` and null
    chooses** (sngl step 8). `Config.UseGradle` uses Gradle for a generated
    project (no `executable` option), a test (`test`) and a Go program

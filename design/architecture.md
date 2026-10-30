@@ -194,7 +194,12 @@ target with no way to say a field is meant for one.
   runs with the flags `nativeKotlincFlags` names; the d8 is the r8 the
   combo's AGP ships (`Combo.R8`), so its dex matches Gradle's. A combo or
   host with no build, or `SNGL_ANDROID_TOOLS=jvm`, uses the JVM tools, and
-  only then is a JDK looked for. Gradle cannot use them: AGP runs D8 inside
+  only then is a JDK looked for. The libraries it builds against are
+  `androidtc.Combo.Libs`: the closure Gradle resolves for the scaffold's
+  dependencies, which `go run ./internal/androidtc/resolvelibs` writes into
+  `libs_gen.go` with each file's SHA-256, and nothing else -- a hand-kept
+  list missed `lifecycle-livedata-core`, and a set seeded from `~/.gradle`
+  varied by machine; both built and then failed at launch. Gradle cannot use them: AGP runs D8 inside
   its daemon and every Kotlin Gradle plugin strategy compiles on a JVM.
 
   **An android app asks for what it reaches.** `#[android.permission("…")]`
