@@ -49,42 +49,60 @@ func lowerEffectOutsideKeys(pkg *ir.Package, _ Features, opts Options) error {
 			continue
 		}
 		var keys []outsideKey
-		_ = ir.Walk(c.Body.Stmts, func(n ir.Node) error {
-			fx, ok := n.(*ir.NodeInst)
-			if !ok || !isEffectNode(fx) {
-				return nil
+		propOf := func(v *ir.Var) *ir.Ident {
+			var p *ir.Param
+			for _, k := range keys {
+				if k.v == v {
+					p = k.p
+				}
 			}
-			for i, arg := range fx.Props {
-				if arg.Name != "on" {
-					continue
+			if p == nil {
+				p = &ir.Param{Name: outsideKeyName(c, v), Type: v.Type}
+				c.Props = append(c.Props, &ir.Prop{Name: p.Name, Type: p.Type, Sym: p})
+				keys = append(keys, outsideKey{v: v, p: p})
+			}
+			return &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}
+		}
+		outside := func(e ir.Expr) ir.Expr {
+			holder := &ir.Return{Value: e}
+			_ = ir.RewriteExprs(holder, func(x ir.Expr) (ir.Expr, error) {
+				switch x := x.(type) {
+				case *ir.Ident:
+					if v, ok := x.Sym.(*ir.Var); ok && global[v] {
+						return propOf(v), nil
+					}
+				case *ir.Call:
+					calls.redirect(x, propOf)
 				}
-				propOf := func(v *ir.Var) *ir.Ident {
-					var p *ir.Param
-					for _, k := range keys {
-						if k.v == v {
-							p = k.p
+				return x, nil
+			})
+			return holder.Value
+		}
+		// What decides whether an effect is mounted keys it as much as its
+		// `on` does: the condition of an `if` around it, a `for`'s iterable,
+		// a `match`'s subject.
+		_ = ir.Walk(c.Body.Stmts, func(n ir.Node) error {
+			switch x := n.(type) {
+			case *ir.If:
+				if holdsEffect(x.Body) || holdsEffect(x.Else) {
+					x.Cond = outside(x.Cond)
+				}
+			case *ir.For:
+				if holdsEffect(x.Body) || holdsEffect(x.Else) {
+					x.Iter = outside(x.Iter)
+				}
+			case *ir.Match:
+				if x.Subject != nil && slices.ContainsFunc(x.Arms, func(a *ir.MatchArm) bool { return holdsEffect(a.Body) }) {
+					x.Subject = outside(x.Subject)
+				}
+			case *ir.NodeInst:
+				if isEffectNode(x) {
+					for i, arg := range x.Props {
+						if arg.Name == "on" {
+							x.Props[i].Value = outside(arg.Value)
 						}
 					}
-					if p == nil {
-						p = &ir.Param{Name: outsideKeyName(c, v), Type: v.Type}
-						c.Props = append(c.Props, &ir.Prop{Name: p.Name, Type: p.Type, Sym: p})
-						keys = append(keys, outsideKey{v: v, p: p})
-					}
-					return &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}
 				}
-				holder := &ir.Return{Value: arg.Value}
-				_ = ir.RewriteExprs(holder, func(x ir.Expr) (ir.Expr, error) {
-					switch x := x.(type) {
-					case *ir.Ident:
-						if v, ok := x.Sym.(*ir.Var); ok && global[v] {
-							return propOf(v), nil
-						}
-					case *ir.Call:
-						calls.redirect(x, propOf)
-					}
-					return x, nil
-				})
-				fx.Props[i].Value = holder.Value
 			}
 			return nil
 		})
@@ -108,6 +126,19 @@ func lowerEffectOutsideKeys(pkg *ir.Package, _ Features, opts Options) error {
 		})
 	}
 	return nil
+}
+
+// holdsEffect reports whether stmts render an effect, at any depth.
+func holdsEffect(stmts []ir.Stmt) bool {
+	found := false
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if fx, ok := n.(*ir.NodeInst); ok && isEffectNode(fx) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // outsideKey is a package var an effect key read and the prop now standing

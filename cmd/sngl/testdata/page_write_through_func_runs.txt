@@ -8,20 +8,23 @@
 # the instance has: "__renderSlot0 is not defined" on html, "undefined:
 # __renderSlot0" on fyne. And android ran the call straight from the test,
 # not on the UI thread with a wait after it, so the effect keyed on what it
-# wrote had not run when the next assertion read it.
+# wrote had not run when the next assertion read it. And an effect under the
+# instance's own `if dex != null` is keyed on that condition as well as on its
+# `on`: the condition read the var itself, so the func settled the instance's
+# effects by name too, "__effects0_settle is not defined".
 
 sngl test --platform=none app.sngl
-stdout 'ok +3 tests, 0 failures'
+stdout 'ok +4 tests, 0 failures'
 sngl test --platform=html app.sngl
-stdout 'ok +3 tests, 0 failures'
+stdout 'ok +4 tests, 0 failures'
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok +3 tests, 0 failures'
+stdout 'ok +4 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
-stdout 'ok +3 tests, 0 failures'
+stdout 'ok +4 tests, 0 failures'
 sngl test --platform=gtk4 --language=go app.sngl
-stdout 'ok +3 tests, 0 failures'
+stdout 'ok +4 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
-stdout 'ok +3 tests, 0 failures'
+stdout 'ok +4 tests, 0 failures'
 
 -- app.sngl --
 import "sngl:test"
@@ -29,8 +32,9 @@ import ui "sngl:ui"
 
 var dex option[string] = "national"
 var resets = 0
+var mounts = 0
 
-func choose(name string) {
+func choose(name option[string]) {
     dex = name
 }
 
@@ -42,6 +46,7 @@ component page ui.node {
     })
     ui.text(value="{seen}")
     if dex != null {
+        effect(on=dex, @mount(d) { mounts += 1 })
         ui.text(value=dex)
     }
 }
@@ -62,6 +67,15 @@ func testAWriteThroughAFuncReachesThePage(t test.Test, c back) {
     t.assert(resets == before + 1)
 }
 
+func testAWriteThroughAFuncRemountsTheBranchsEffect(t test.Test, c back) {
+    var before = mounts
+    choose("hoenn")
+    t.assert(mounts == before + 1)
+    choose(null)
+    choose("sinnoh")
+    t.assert(mounts == before + 2)
+}
+
 func testAHandlersWriteReachesThePage(t test.Test, c back) {
     var before = resets
     c.pick.click()
@@ -74,7 +88,7 @@ func testATestsWriteReachesThePage(t test.Test, c back) {
     t.assert(resets == before + 1)
 }
 -- testrun/android/kotlin/app.sngl/back/1 --
-sha256:df88b91acc3c479eb132e6d9f08ae9cb
+sha256:0bcc3eaad6df7992c725846b3bbd757c
 {
   "results": [
     {
@@ -87,12 +101,16 @@ sha256:df88b91acc3c479eb132e6d9f08ae9cb
     },
     {
       "Desc": "AWriteThroughAFuncReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncRemountsTheBranchsEffect",
       "Passed": true
     }
   ]
 }
 -- testrun/bubbletea/go/app.sngl/back/1 --
-sha256:7bbf826f5c4697ce7d061701e21a0d5b
+sha256:92a3653d31625546591f1ba88ec26f1a
 {
   "results": [
     {
@@ -105,12 +123,16 @@ sha256:7bbf826f5c4697ce7d061701e21a0d5b
     },
     {
       "Desc": "AWriteThroughAFuncReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncRemountsTheBranchsEffect",
       "Passed": true
     }
   ]
 }
 -- testrun/fyne/go/app.sngl/back/1 --
-sha256:0c004f2b270b1cedc0719107a829c8ab
+sha256:c14bb32a43001c71630a435b2b65b4b8
 {
   "results": [
     {
@@ -123,12 +145,16 @@ sha256:0c004f2b270b1cedc0719107a829c8ab
     },
     {
       "Desc": "AWriteThroughAFuncReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncRemountsTheBranchsEffect",
       "Passed": true
     }
   ]
 }
 -- testrun/gtk4/go/app.sngl/back/1 --
-sha256:3b232d78633dd10244d005b2d3770439
+sha256:9f2141a6d37e7ee5f006e0667ff50242
 {
   "results": [
     {
@@ -141,12 +167,16 @@ sha256:3b232d78633dd10244d005b2d3770439
     },
     {
       "Desc": "AWriteThroughAFuncReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncRemountsTheBranchsEffect",
       "Passed": true
     }
   ]
 }
 -- testrun/html/none/app.sngl/back/1 --
-sha256:d85b9e489b29116b2b664ca7407d6b8b
+sha256:a8bbd01ec605012b7489db9b077be9ce
 {
   "results": [
     {
@@ -159,6 +189,10 @@ sha256:d85b9e489b29116b2b664ca7407d6b8b
     },
     {
       "Desc": "AWriteThroughAFuncReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncRemountsTheBranchsEffect",
       "Passed": true
     }
   ]

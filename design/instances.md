@@ -399,7 +399,13 @@ the var, or calls one that cannot be copied keeps its call and the old
 failure. The interpreter read only the names `on` spelled and ran no
 `@update` for such a key anywhere; it follows the calls now
 (`cmd/sngl/testdata/effect_keyed_through_call_runs.txt`,
-`testdata/effect_update_through_call.sngl`).
+`testdata/effect_update_through_call.sngl`). What decides whether a bracket
+is mounted keys it as much as its `on` does -- the condition of an `if`
+around it, a `for`'s iterable, a `match`'s subject -- so a package var read
+there is handed over as a prop too: `if dex != null { effect(…) }` left the
+condition reading `dex`, and a package func's write settled the instance's
+group by name, "__effects0_settle is not defined"
+(`cmd/sngl/testdata/page_write_through_func_runs.txt`).
 The other direction, a write *inside* an instance marking an effect of the
 Model, was spelled bare too in a test build rooted at a component, whose vars
 and funcs are the Model's: an instance resolves a name against that component
