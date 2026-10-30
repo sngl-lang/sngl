@@ -174,6 +174,19 @@ optional.
    `-no-jdk` against `android.jar`, and compile pokedex's generated sources.
    Compare the time against the JVM kotlinc, cold and warm. Record the result
    here.
+
+   Results so far, from the JVM kotlinc 2.1.0 on JDK 21, 8 cores:
+
+   - `-no-jdk` against `android.jar` works. hello compiles to the same 21
+     classes as it does with the JDK. Pokedex compiles to 350 classes, with
+     `pkg/kotlin/i18n/I18n.kt` added to the sources. So the image does not
+     need `jrt:/`.
+   - JVM baseline: hello takes 5.1s of kotlinc time, and 22s for the whole
+     gradle-free build. Pokedex takes 25s of kotlinc time (1m44s user).
+   - The SDK's build-tools 35.0.0 d8 is older than Kotlin 2.1's metadata, and
+     prints a warning for every class ("highest known version is 2.0.0"). The
+     r8 pinned in `android-tools` should be new enough to read it.
+   - Still to do: the native-image build itself.
 2. **Do the Go signer, aligner and keystore** (sngl steps 3 and 4). This does
    not depend on the spike, and it already removes `keytool` and
    `jarsigner`.
