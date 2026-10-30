@@ -128,9 +128,9 @@ android-tools/
    without a native build on this host falls back to the JVM tools.
 2. **`resolveToolchain` prefers native.** Use the cached download under
    `~/.cache/sngl/android-toolchain/native/<tool>-<ver>/`, verified against
-   its pin. `PATH`/`ANDROID_HOME` still win only when a flag or env says so
-   (`SNGL_ANDROID_TOOLS=system`). The download reuses `fetchSDKPackage`'s
-   stage-then-rename, so an interrupted download is never read as complete.
+   its pin. The JVM tools win only when `SNGL_ANDROID_TOOLS=jvm` says so.
+   The download unpacks beside its directory and renames into place, so an
+   interrupted download is never read as complete.
 3. **`directBuild` asks for a JDK only when a JVM tool remains.** Today it
    calls `jdk.CompatibleHome` unconditionally.
 4. **Sign, align and generate the keystore in Go.** Add a new
@@ -221,8 +221,15 @@ optional.
    AGP 8.7.3 ships, and its output is byte-identical to the JVM's. On
    pokedex's classes it takes 3.8s vs 6.2s on the JVM. A cold pre-dex of the
    98 library jars takes 37.6s vs 3m45s.
-4. **Teach sngl to download them** (sngl steps 1 and 2), and add
-   `kotlin-stdlib.jar`, which the kotlinc asset carries under `lib/`.
+4. **Done: sngl downloads them** (sngl steps 1 and 2).
+   `androidtc.NativeRelease` names the release, `nativeSums` holds its
+   `SHA256SUMS`, and a combo's `R8` field gives the d8 version. The tools
+   unpack into `android-toolchain/native/v1/<tool>-<version>/`. The
+   kotlin-stdlib comes from the kotlinc asset's `lib/`. `SNGL_ANDROID_TOOLS=jvm`
+   keeps the JVM tools. `directBuild` asks for a JDK only when one of them is
+   still a JVM tool. A gradle-free hello build ran with no `java` on `PATH`
+   and no `JAVA_HOME`. The libraries still came from `~/.gradle` there, so
+   the Maven fallback is only confirmed by step 6's clean container.
 5. **Fetch `adb` from Google's platform-tools** when there is no
    `ANDROID_HOME` (sngl step 5).
 6. **`gradle` as `option[bool]` with auto-detection** (sngl step 8), with

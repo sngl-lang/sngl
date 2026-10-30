@@ -174,7 +174,20 @@ target with no way to say a field is meant for one.
   SHA-256 digests and a PKCS#7 block apksigner's shape, as apksigner does.
   The floor is Compose's API 21, and d8's `--min-api` and the pre-dex cache
   (`lib-dex/api<N>`) follow `minSdk`. `internal/apksign`'s tests hold the
-  output to `apksigner verify` at API 21 and 24 where an SDK is installed.
+  output to `apksigner verify` at API 21 and 24, a recorded run that
+  reruns apksigner only when the signed bytes move.
+
+  **The gradle-free build runs no JVM.** Its kotlinc and d8 are GraalVM
+  native images from `github.com/sngl-lang/android-tools`, one release
+  (`androidtc.NativeRelease`) carrying both for each host, downloaded on
+  first use into `android-toolchain/native/` and checked against the
+  release's `SHA256SUMS`, which `androidtc.nativeSums` holds. The kotlinc
+  asset carries the compose and serialization plugins and the stdlib, and
+  runs with the flags `nativeKotlincFlags` names; the d8 is the r8 the
+  combo's AGP ships (`Combo.R8`), so its dex matches Gradle's. A combo or
+  host with no build, or `SNGL_ANDROID_TOOLS=jvm`, uses the JVM tools, and
+  only then is a JDK looked for. Gradle cannot use them: AGP runs D8 inside
+  its daemon and every Kotlin Gradle plugin strategy compiles on a JVM.
 
   **An android app asks for what it reaches.** `#[android.permission("…")]`
   (`lib/platform/android/http.sngl`) is written on the native an override

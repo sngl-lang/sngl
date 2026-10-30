@@ -25,17 +25,20 @@ func directBuild(dir string, tc *toolchain, pkg string, minSdk int) (string, err
 		return "", fmt.Errorf("android build: minSdk %d is below %d, the lowest Compose runs on", minSdk, composeMinSdk)
 	}
 
-	// Point JAVA_HOME + PATH at a version-compatible JDK so kotlinc and d8
-	// run on it — never the ambient (possibly too-new) JDK. Signing needs
-	// none.
-	home, reason := jdk.CompatibleHome(tc.jdkMin, tc.jdkMax)
-	if reason != "" {
-		return "", fmt.Errorf("android build: %s", reason)
-	}
-	os.Setenv("JAVA_HOME", home)
-	jdkBin := filepath.Join(home, "bin")
-	if !strings.Contains(os.Getenv("PATH"), jdkBin) {
-		os.Setenv("PATH", jdkBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	// Where kotlinc or d8 is still a JVM tool, point JAVA_HOME + PATH at a
+	// version-compatible JDK so it runs on that -- never the ambient
+	// (possibly too-new) JDK. With both native, and signing in Go, the build
+	// runs no JVM.
+	if tc.needsJDK() {
+		home, reason := jdk.CompatibleHome(tc.jdkMin, tc.jdkMax)
+		if reason != "" {
+			return "", fmt.Errorf("android build: %s", reason)
+		}
+		os.Setenv("JAVA_HOME", home)
+		jdkBin := filepath.Join(home, "bin")
+		if !strings.Contains(os.Getenv("PATH"), jdkBin) {
+			os.Setenv("PATH", jdkBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+		}
 	}
 
 	outDir := filepath.Join(dir, "out")
@@ -150,6 +153,7 @@ func directBuild(dir string, tc *toolchain, pkg string, minSdk int) (string, err
 		"-no-reflect",
 		"-no-stdlib",
 	}
+	kotlincArgs = append(kotlincArgs, tc.kotlincFlags...)
 	kotlincArgs = append(kotlincArgs, ktFiles...)
 
 	slog.Info("exec", "cmd", "kotlinc", "dir", dir)
@@ -715,7 +719,13 @@ func addFilesToZip(zipPath string, files []string) error {
 }
 
 func runD8(tc *toolchain, args []string) error {
-	slog.Info("exec", "cmd", "d8")
+	slog.Info("exec", "cmd", "d8", "native", tc.nativeD8)
+	if tc.nativeD8 {
+		cmd := exec.Command(tc.D8, args...)
+		cmd.Stdout = os.Stderr
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	}
 	javaBin := javaPath(tc.jdkMin, tc.jdkMax)
 	// d8 can be a jar or a wrapper script
 	if strings.HasSuffix(tc.D8, ".jar") {

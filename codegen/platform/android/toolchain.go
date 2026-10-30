@@ -32,12 +32,19 @@ type toolchain struct {
 	KotlinLibs          []string // kotlin-stdlib etc.
 	CacheDir            string   // ~/.cache/sngl/android-toolchain
 
+	// kotlincFlags are what the native kotlinc is run with besides the
+	// plugins (nativeKotlincFlags); the JVM one takes none. nativeD8 is set
+	// when D8 is the native d8.
+	kotlincFlags []string
+	nativeD8     bool
+
 	// Versions from the selected combo.
 	cKotlin      string // e.g. "2.1.0"
 	cCompose     string // androidx.compose runtime/ui version
 	cNavigation  string // androidx.navigation version
 	cSerial      string // kotlinx.serialization version
 	cBuildTools  string // e.g. "35.0.0"
+	cR8          string // the native d8's R8 version, "" where none is published
 	cPlatformAPI string // e.g. "35"
 	jdkMin       int    // JDK window this combo's build can use
 	jdkMax       int
@@ -56,6 +63,7 @@ func resolveToolchain(c androidtc.Combo) (*toolchain, error) {
 		cNavigation:  c.Navigation,
 		cSerial:      c.Serialization,
 		cBuildTools:  c.BuildTools,
+		cR8:          c.R8,
 		cPlatformAPI: strconv.Itoa(c.CompileSdk),
 		jdkMin:       c.JDKMin,
 		jdkMax:       c.JDKMax,
@@ -67,14 +75,23 @@ func resolveToolchain(c androidtc.Combo) (*toolchain, error) {
 	if err := tc.findBuildTools(); err != nil {
 		return nil, err
 	}
-	if err := tc.findKotlinc(); err != nil {
+	if _, err := tc.findNativeD8(); err != nil {
 		return nil, err
 	}
-	if err := tc.findComposePlugin(); err != nil {
+	native, err := tc.findNativeKotlinc()
+	if err != nil {
 		return nil, err
 	}
-	if err := tc.findSerializationPlugin(); err != nil {
-		return nil, err
+	if !native {
+		if err := tc.findKotlinc(); err != nil {
+			return nil, err
+		}
+		if err := tc.findComposePlugin(); err != nil {
+			return nil, err
+		}
+		if err := tc.findSerializationPlugin(); err != nil {
+			return nil, err
+		}
 	}
 	if err := tc.findComposeJars(); err != nil {
 		return nil, err
@@ -521,6 +538,9 @@ func (tc *toolchain) ensureAARs(cacheDir string) {
 		downloadFile(url, aarDest)
 	}
 }
+
+// needsJDK reports whether a tool the build runs is still a JVM one.
+func (tc *toolchain) needsJDK() bool { return tc.kotlincFlags == nil || !tc.nativeD8 }
 
 // classpath returns the full classpath string for kotlinc compilation.
 func (tc *toolchain) classpath() string {
