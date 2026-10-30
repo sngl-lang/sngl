@@ -193,6 +193,11 @@ session.
      the copy now, its handlers reading the loop variables at the copy's
      index and an `@unmount` reading what a recorder kept for a copy the list
      no longer holds (`cmd/sngl/testdata/component_effect_reads_loop_prop_runs.txt`).
+     `kept` itself then failed everywhere else, built at run time with its T
+     unbound ("PlanCodec reached T"): no copy per instantiation was made while
+     its family parameter F was unbound, which a call site with no children
+     always leaves it. Fixed, so `kept` goes under a `for` on all six
+     (`cmd/sngl/testdata/settings_kept_per_row_runs.txt`).
      Found while pinning it:
      - On android a test's `@unmount` wrote into the next test's state. Fixed
        (`cmd/sngl/testdata/test_unmount_stays_in_its_test_runs.txt`).

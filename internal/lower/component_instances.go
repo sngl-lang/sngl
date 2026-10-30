@@ -58,14 +58,24 @@ func (st *inlineCompState) instantiateRuntime(n *ir.NodeInst) error {
 func (st *inlineCompState) componentInstance(n *ir.NodeInst) (*ir.Component, error) {
 	c := n.Component
 	b := ir.ComponentBindings(n)
-	if len(b) != len(c.TypeParams) {
-		return nil, nil
+	var args []*ir.Type
+	var key []string
+	for _, tp := range c.TypeParams {
+		t := b[tp.Name]
+		if t == nil {
+			// Nothing binds a family parameter at a call site with no
+			// children (`kept[T, F]`), and nothing in the body reads it. A
+			// built-in's body is the host's, and is not copied.
+			if c.FamilyParam != nil && c.FamilyParam.ParamName == tp.Name && c.Builtin == ir.BuiltinNone {
+				continue
+			}
+			return nil, nil
+		}
+		args = append(args, t)
+		key = append(key, typeKey(t))
 	}
-	args := make([]*ir.Type, len(c.TypeParams))
-	key := make([]string, len(c.TypeParams))
-	for i, tp := range c.TypeParams {
-		args[i] = b[tp.Name]
-		key[i] = typeKey(args[i])
+	if len(args) == 0 {
+		return nil, nil
 	}
 	for _, in := range st.compInsts[c] {
 		if slices.EqualFunc(in.args, args, (*ir.Type).Equal) {

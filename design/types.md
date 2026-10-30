@@ -129,7 +129,14 @@ joins the cycle and points its own renders of the cycle at their copies; one
 that renders itself at a deeper type at every level would need a copy per
 level, and is refused at that render past `maxInstances` copies
 (`testdata/generic_component_runtime_instance.txtar`,
-`cmd/sngl/testdata/generic_component_runtime_instance_runs.txt`).
+`cmd/sngl/testdata/generic_component_runtime_instance_runs.txt`). A family
+parameter is the one a call site may leave unbound -- nothing binds `F` in
+`kept[T, F]` where the node has no children -- and the copy is made at the
+types it did bind; one copy was made only once every parameter was bound, so
+`kept` under a `for` was emitted with T in it and its `load[T]` asked for a
+codec of T, which no target has. html, which keeps the generic factory, copies
+it too, since its body encodes T (`GenericCodecs`). A built-in's body is the
+host's, and is not copied (`cmd/sngl/testdata/settings_kept_per_row_runs.txt`).
 
 **`==` is `interp.Equal`, in the interpreter and in the optimizer's fold**: a
 struct field by field by name, a list element by element, a number by value.
