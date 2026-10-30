@@ -39,7 +39,7 @@ func testEachGroupHasItsTable(t test.Test, c groups) {
     t.assert(c.title[1] != null && c.title[1].value == "b")
 }
 -- testrun/android/kotlin/app.sngl/groups/1 --
-sha256:c9e486b106a322e5860116b6532800ce
+sha256:bf3a686c3e3191213566dfac5703b5c0
 {
   "results": [
     {

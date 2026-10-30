@@ -96,7 +96,7 @@ func testAWordOfAnInstanceInFrench(t test.Test, c plain) {
   "{count, plural, one{# book} other{# books}}": {"translations": {"fr": "{count, plural, one{# livre} other{# livres}}"}}
 }
 -- testrun/android/kotlin/app.sngl/greeting/1 --
-sha256:f424038967fc885726c954f1b9f84466
+sha256:edd80312eda102c1de3ff8bae877531e
 {
   "results": [
     {
@@ -106,7 +106,7 @@ sha256:f424038967fc885726c954f1b9f84466
   ]
 }
 -- testrun/android/kotlin/app.sngl/outer/1 --
-sha256:49f1c3d4d95b2350efd686d530a6eeb6
+sha256:bc70ce603f3d3f02423d78d34b5eb666
 {
   "results": [
     {
@@ -116,7 +116,7 @@ sha256:49f1c3d4d95b2350efd686d530a6eeb6
   ]
 }
 -- testrun/android/kotlin/app.sngl/plain/1 --
-sha256:bf2db2e2cbdb6ad8947e0c7bef9948b4
+sha256:34c07c7449be0a8de9d5e584a478803f
 {
   "results": [
     {

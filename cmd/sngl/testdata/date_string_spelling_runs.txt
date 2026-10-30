@@ -43,7 +43,7 @@ func testSpelling(t Test, c main) {
     t.assert(string(c.dt) == "2024-03-05T09:30:00Z")
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:5c5e1acfdf75ca22ecffe854d3957d1b
+sha256:91b7d70db757e40762ba3fa772eb508c
 {
   "results": [
     {

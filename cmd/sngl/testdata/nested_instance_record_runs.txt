@@ -74,7 +74,7 @@ func testAChipOfARow(t test.Test, c shelf) {
     t.assert(c.item[0][1] == null)
 }
 -- testrun/android/kotlin/app.sngl/shelf/1 --
-sha256:9f7f577f9894f98b8144fd54d490fd1b
+sha256:fb53e9c13c55b8f0d3dbf65fba9df24e
 {
   "results": [
     {

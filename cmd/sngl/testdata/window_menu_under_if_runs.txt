@@ -55,7 +55,7 @@ func testAPickInAMenuShownLaterRuns(t test.Test, c app) {
 
 app()
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:b917a5f567e2ec880ce44e1c55ef6778
+sha256:de2438fb44a02b9881d63b9a42f41b71
 {
   "results": [
     {

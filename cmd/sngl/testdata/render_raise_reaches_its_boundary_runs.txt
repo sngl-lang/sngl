@@ -125,7 +125,7 @@ ui.window {
     split
 }
 -- testrun/android/kotlin/app.sngl/fallback/1 --
-sha256:481ee58f6f0fb722d124d39167228380
+sha256:e41ac384faf5d160e407dc3b088da28a
 {
   "results": [
     {
@@ -135,7 +135,7 @@ sha256:481ee58f6f0fb722d124d39167228380
   ]
 }
 -- testrun/android/kotlin/app.sngl/first/1 --
-sha256:d0943f0eee291b7b0c09f19ba9349a16
+sha256:a111ba0d2b489d6afb27ff6c6aa5f948
 {
   "results": [
     {
@@ -145,7 +145,7 @@ sha256:d0943f0eee291b7b0c09f19ba9349a16
   ]
 }
 -- testrun/android/kotlin/app.sngl/split/1 --
-sha256:87107f44edbebc88d0f284a096f68e45
+sha256:ed8fd4533bd5463f46e82a86094d573c
 {
   "results": [
     {

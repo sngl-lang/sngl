@@ -91,7 +91,7 @@ ui.window {
     ui.text(value="{held.x}")
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:54038e0259e40d48e3ba027d9eb9e904
+sha256:776d9fc3e0d0de838afc6a2005b448ed
 {
   "results": [
     {
