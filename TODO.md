@@ -22,18 +22,18 @@ Go. Two things stand in the way today:
   fetches build-tools now. That works, but it is several hundred MB and needs
   KVM/HVF, so it comes last.
 
-| Tool          | Today                                                   | Plan                                                                  | Confidence                             |
-|---------------|---------------------------------------------------------|-----------------------------------------------------------------------|----------------------------------------|
-| `kotlinc`     | JetBrains zip, runs on a JDK                            | native-image, with the compose and serialization plugins built in     | **Risky**, so the first spike tests it |
-| `d8`          | build-tools wrapper, runs on a JDK                      | native-image of `com.android.tools:r8`                                | High: pure Java, little reflection     |
-| `apksigner`   | build-tools jar, runs on a JDK; `jarsigner` as fallback | Go, inside sngl (`apksig` v2/v3 scheme)                               | High                                   |
-| `keytool`     | system JDK                                              | Go, inside sngl (PKCS#12 debug keystore)                              | High                                   |
-| `zipalign`    | build-tools, native                                     | Go, inside sngl                                                       | High                                   |
-| `aapt2`       | build-tools, native                                     | unchanged, or from our release (see licensing)                        | already native                         |
-| `adb`         | `ANDROID_HOME` platform-tools                           | build from AOSP source and publish in our release                     | High, but licensing applies            |
-| `android.jar` | Google SDK repo                                         | unchanged: data, no JVM                                               | n/a                                    |
-| Robolectric   | Gradle `:app:testDebugUnitTest`                         | still needs a JVM; drop Gradle and run it with `java` directly        | n/a                                    |
-| Gradle path   | Gradle + AGP + daemon                                   | `android.aapt2FromMavenOverride` at most; the rest runs in the daemon | low value                              |
+| Tool          | Today                                                   | Plan                                                                  | Confidence                         |
+|---------------|---------------------------------------------------------|-----------------------------------------------------------------------|------------------------------------|
+| `kotlinc`     | JetBrains zip, runs on a JDK                            | native-image, with the compose and serialization plugins built in     | Works: spike done, 3–6x faster     |
+| `d8`          | build-tools wrapper, runs on a JDK                      | native-image of `com.android.tools:r8`                                | High: pure Java, little reflection |
+| `apksigner`   | build-tools jar, runs on a JDK; `jarsigner` as fallback | Go, inside sngl (`apksig` v2/v3 scheme)                               | High                               |
+| `keytool`     | system JDK                                              | Go, inside sngl (PKCS#12 debug keystore)                              | High                               |
+| `zipalign`    | build-tools, native                                     | Go, inside sngl                                                       | High                               |
+| `aapt2`       | build-tools, native                                     | unchanged, or from our release (see licensing)                        | already native                     |
+| `adb`         | `ANDROID_HOME` platform-tools                           | build from AOSP source and publish in our release                     | High, but licensing applies        |
+| `android.jar` | Google SDK repo                                         | unchanged: data, no JVM                                               | n/a                                |
+| Robolectric   | Gradle `:app:testDebugUnitTest`                         | still needs a JVM; drop Gradle and run it with `java` directly        | n/a                                |
+| Gradle path   | Gradle + AGP + daemon                                   | `android.aapt2FromMavenOverride` at most; the rest runs in the daemon | low value                          |
 
 Notes on the table:
 
@@ -41,29 +41,26 @@ Notes on the table:
   keystore generation and alignment are a few hundred lines of Go each.
   Written in Go they need no download and have no version matrix, and that
   removes `keytool` and `jarsigner`, which only a full JDK ships.
-- **kotlinc is the risk.** Three problems:
-  1. Native image cannot load classes at run time, but `-Xplugin=<jar>`
-     loads them through a `URLClassLoader`. So the compose and
-     serialization plugins have to be on the image's build classpath. A
-     small launcher then registers their `CompilerPluginRegistrar`s with
-     `K2JVMCompiler`, or we confirm that `ServiceLoader` resolves them at
-     build time. That makes one image per Kotlin version, and the plugin
-     versions are pinned to it already.
-  2. An image has no `jrt:/` filesystem. kotlinc must run with `-no-jdk`
-     and take `java.*` from `android.jar`, which is the right classpath for
-     Android anyway, but it has to be shown to work.
-  3. The intellij-core reflection and resources need a `native-image-agent`
-     trace taken over a real compile of the fixtures, and that trace has to
-     be checked in.
-
-  If kotlinc fails, the rest is still worth doing. kotlinc can then fall back
-  to a downloaded JRE (a jlink'd runtime we publish), so the user does not
-  need a system JVM.
-- **A native image is quicker to start and slower once it is running.**
-  sngl's apps are small, so startup dominates and the image wins. Measure it
-  on the largest fixture apps (pokedex). If the image's throughput loses
-  there, consider PGO (Oracle GraalVM, which the GFTC license lets us
-  publish).
+- **kotlinc works as a native image** (the spike, step 1 below). It is
+  GraalVM CE 21 with the plugins compiled in. Every risk resolved with a
+  flag rather than a launcher; see `kotlinc/build.sh` in `android-tools`:
+  - `-Xplugin`: kotlinc reads each jar's `META-INF/services` itself and calls
+    `Class.forName`, which resolves classes inside the image. The shipped
+    plugin "jars" are those service files only, 1.5 KB each.
+  - `-no-jdk` against `android.jar` works, so `jrt:/` is not needed.
+  - `-kotlin-home` and `-Xintellij-plugin-root` (8 KB of
+    `META-INF/extensions`) replace kotlinc finding its own jar.
+    `-Xdisable-default-scripting-plugin` skips the scripting plugin, which
+    is not in the image.
+  - The image needs `-H:+AddAllCharsets` and an agent trace (69 KB of
+    reflection config, checked in per Kotlin version).
+  - Results: on 8 cores, hello takes **0.84s vs 5.1s** on the JVM, and
+    pokedex takes **9.7s vs 25s** (9.3s vs 1m44s of CPU). The class files
+    are byte-identical. The binary is 154 MB (53 MB gzipped), and building it
+    takes about 4 minutes with a 6.3 GB peak.
+  - The app still needs `kotlin-stdlib.jar` on its classpath. sngl takes
+    that from the kotlinc distribution today; the native path has to fetch
+    it from Maven Central (or the release has to carry it).
 - **Gradle gains little.** Kotlin and d8 run inside the Gradle daemon, so a
   native binary does not replace them. `aapt2` is already native. The win
   for fixtures comes from moving them off Gradle, not from feeding Gradle
@@ -175,18 +172,11 @@ optional.
    Compare the time against the JVM kotlinc, cold and warm. Record the result
    here.
 
-   Results so far, from the JVM kotlinc 2.1.0 on JDK 21, 8 cores:
-
-   - `-no-jdk` against `android.jar` works. hello compiles to the same 21
-     classes as it does with the JDK. Pokedex compiles to 350 classes, with
-     `pkg/kotlin/i18n/I18n.kt` added to the sources. So the image does not
-     need `jrt:/`.
-   - JVM baseline: hello takes 5.1s of kotlinc time, and 22s for the whole
-     gradle-free build. Pokedex takes 25s of kotlinc time (1m44s user).
-   - The SDK's build-tools 35.0.0 d8 is older than Kotlin 2.1's metadata, and
-     prints a warning for every class ("highest known version is 2.0.0"). The
-     r8 pinned in `android-tools` should be new enough to read it.
-   - Still to do: the native-image build itself.
+   Done: see *kotlinc works as a native image* above. The JVM baseline
+   for the whole gradle-free hello build is 22s. The SDK's build-tools
+   35.0.0 d8 is older than Kotlin 2.1's metadata and prints a warning for
+   every class; the r8 pinned in `android-tools` should be new enough to
+   read it.
 2. **Do the Go signer, aligner and keystore** (sngl steps 3 and 4). This does
    not depend on the spike, and it already removes `keytool` and
    `jarsigner`.
