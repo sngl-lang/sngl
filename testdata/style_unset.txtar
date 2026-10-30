@@ -3,7 +3,7 @@ at an enum's first member, which every style function reads as unset: a
 vbox's `alignItems=start` stretches its children, a button's `textAlign=left`
 stays centered, an explicit `#000000` is no color, and a side written `0px`
 beside a non-zero whole takes the whole. A Style that can say "unset" is what
-tells these from a field left out (TODO.md, step 7).
+tells these from a field left out.
 -- app.sngl --
 import ui "sngl:ui"
 
