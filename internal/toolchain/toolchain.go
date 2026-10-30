@@ -34,6 +34,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"duckfam.us/sngl/codegen"
@@ -170,9 +171,38 @@ func Build(ctx context.Context, files map[string][]byte, lang, platform string) 
 		}
 		return nodeCheck(ctx, dir, files)
 	case "android":
+		if _, err := os.Stat(filepath.Join(dir, "gradlew")); err != nil {
+			return directApk(dir)
+		}
 		return gradleTest(ctx, dir)
 	}
 	return "", fmt.Errorf("no host toolchain wired for platform %s", platform)
+}
+
+// directMu serializes gradle-free builds: they share the toolchain cache's
+// libraries and pre-dexed jars, which a build fills as it goes.
+var directMu sync.Mutex
+
+// directApk builds an android target generated without Gradle, as `sngl
+// build` does, through the platform's own build command. Such a target
+// carries no tests -- a test still builds through Gradle -- so compiling it
+// into an APK is the whole verification.
+func directApk(dir string) (string, error) {
+	build := codegen.LookupCommand("android.buildApk")
+	if build == nil {
+		return "", fmt.Errorf("android.buildApk is not registered: the android platform is not linked in")
+	}
+	directMu.Lock()
+	defer directMu.Unlock()
+	// The options the program was generated with are not here, only what
+	// they generated: the manifest carries the API level to build for.
+	fields := map[string]any{"gradle": false}
+	if n, err := androidtc.ManifestMinSdk(filepath.Join(dir, "AndroidManifest.xml")); err == nil && n != 0 {
+		fields["minSdk"] = n
+	}
+	opts := codegen.OptionsFromMap(fields)
+	_, err := build(opts, []any{dir, filepath.Join(dir, "app.apk")})
+	return "", err
 }
 
 // goTest builds and runs a generated Go module. `go test ./...` rather than

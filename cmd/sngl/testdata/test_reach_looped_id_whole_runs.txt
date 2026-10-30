@@ -73,7 +73,7 @@ ui.window {
     card
 }
 -- testrun/android/kotlin/app.sngl/card/1 --
-sha256:700bf19ed026c27230d8c00bedd383a5
+sha256:f01c1ec8b3a57a4f602e8b67264968ab
 {
   "results": [
     {

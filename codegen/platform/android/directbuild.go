@@ -2,34 +2,86 @@ package android
 
 import (
 	"archive/zip"
+	"bytes"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
+	"time"
 
+	"duckfam.us/sngl/internal/androidtc"
+	"duckfam.us/sngl/internal/apksign"
 	"duckfam.us/sngl/internal/jdk"
 )
 
 // directBuild compiles Kotlin sources to a signed debug APK without Gradle.
-// Pipeline: aapt2 (resources) → kotlinc (with R.java) → d8 → APK assembly → sign
-func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
-	// Point JAVA_HOME + PATH at a version-compatible JDK so kotlinc, d8, and
-	// the signers all run on it — never the ambient (possibly too-new) JDK.
-	home, reason := jdk.CompatibleHome(tc.jdkMin, tc.jdkMax)
-	if reason != "" {
-		return "", fmt.Errorf("android build: %s", reason)
+// Pipeline: aapt2 (resources) → kotlinc (with R.java) → d8 → APK assembly →
+// align and sign (internal/apksign)
+func directBuild(dir string, tc *toolchain, minSdk int) (string, error) {
+	// Compose runs from API 21; apksign adds a v1 signature below 24, which
+	// is what a device before Nougat reads.
+	if minSdk < composeMinSdk {
+		return "", fmt.Errorf("android build: minSdk %d is below %d, the lowest Compose runs on", minSdk, composeMinSdk)
 	}
-	os.Setenv("JAVA_HOME", home)
-	jdkBin := filepath.Join(home, "bin")
-	if !strings.Contains(os.Getenv("PATH"), jdkBin) {
-		os.Setenv("PATH", jdkBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	// The manifest says which devices install the app, and minSdk which
+	// ones the dex and the signature work on; a build given a different
+	// level from the one it generated made an APK a device it admits could
+	// not run.
+	if declared, err := androidtc.ManifestMinSdk(filepath.Join(dir, "AndroidManifest.xml")); err == nil && declared != 0 && declared != minSdk {
+		return "", fmt.Errorf("android build: the manifest declares minSdk %d, but the build is for %d", declared, minSdk)
 	}
 
+	// The debug key is part of what the APK is, so it exists before the
+	// digest is taken.
+	keyPath := filepath.Join(tc.CacheDir, "debug-key.pem")
+	key, err := apksign.DebugKey(keyPath)
+	if err != nil {
+		return "", fmt.Errorf("debug signing key: %w", err)
+	}
 	outDir := filepath.Join(dir, "out")
 	os.MkdirAll(outDir, 0o755)
+	signedApk := filepath.Join(outDir, "app.apk")
+
+	// Taken before the build writes into dir.
+	digest, err := apkDigest(dir, tc, minSdk, keyPath)
+	if err != nil {
+		return "", err
+	}
+	cached := filepath.Join(tc.CacheDir, "apk", digest+".apk")
+	if fileExists(cached) {
+		fmt.Fprintln(os.Stderr, "sngl: unchanged since the last build, reusing its APK")
+		now := time.Now()
+		os.Chtimes(cached, now, now)
+		if err := copyFile(cached, signedApk); err != nil {
+			return "", err
+		}
+		return signedApk, nil
+	}
+
+	// Where kotlinc or d8 is still a JVM tool, point JAVA_HOME + PATH at a
+	// version-compatible JDK so it runs on that -- never the ambient
+	// (possibly too-new) JDK. With both native, and signing in Go, the build
+	// runs no JVM.
+	if tc.needsJDK() {
+		home, reason := jdk.CompatibleHome(tc.jdkMin, tc.jdkMax)
+		if reason != "" {
+			return "", fmt.Errorf("android build: %s", reason)
+		}
+		os.Setenv("JAVA_HOME", home)
+		jdkBin := filepath.Join(home, "bin")
+		if !strings.Contains(os.Getenv("PATH"), jdkBin) {
+			os.Setenv("PATH", jdkBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+		}
+	}
 
 	// Step 1: Extract library resources from AARs and compile with aapt2.
 	// This generates real R.java with correct resource IDs.
@@ -59,22 +111,20 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 	if len(libPackages) > 0 {
 		linkArgs = append(linkArgs, "--extra-packages", strings.Join(libPackages, ":"))
 	}
+	// The program's pictures and the i18n manifest, at the paths it reads.
+	if assets := filepath.Join(dir, assetsDirFor(false)); dirExists(assets) {
+		linkArgs = append(linkArgs, "-A", assets)
+	}
 	if dirExists(resDir) {
 		compiledRes := filepath.Join(outDir, "compiled_res.zip")
 		slog.Info("exec", "cmd", "aapt2 compile", "dir", resDir)
-		aapt2Compile := exec.Command(tc.Aapt2, "compile", "--dir", resDir, "-o", compiledRes)
-		aapt2Compile.Stdout = os.Stderr
-		aapt2Compile.Stderr = os.Stderr
-		if err := aapt2Compile.Run(); err != nil {
-			return "", fmt.Errorf("aapt2 compile resources failed: %w", err)
+		if err := runTool("aapt2 compile", exec.Command(tc.Aapt2, "compile", "--dir", resDir, "-o", compiledRes)); err != nil {
+			return "", err
 		}
 		linkArgs = append(linkArgs, compiledRes)
 	}
 	slog.Info("exec", "cmd", "aapt2 link")
-	aapt2Link := exec.Command(tc.Aapt2, linkArgs...)
-	aapt2Link.Stdout = os.Stderr
-	aapt2Link.Stderr = os.Stderr
-	if err := aapt2Link.Run(); err != nil {
+	if err := runTool("aapt2 link", exec.Command(tc.Aapt2, linkArgs...)); err != nil {
 		// If linking fails (broken cross-references from library styles),
 		// remove versioned values dirs and retry with base values only.
 		if dirExists(resDir) {
@@ -88,18 +138,14 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 			compiledRes := filepath.Join(outDir, "compiled_res.zip")
 			os.Remove(compiledRes)
 			os.Remove(baseApk)
-			recompile := exec.Command(tc.Aapt2, "compile", "--dir", resDir, "-o", compiledRes)
-			recompile.Stdout = os.Stderr
-			recompile.Stderr = os.Stderr
-			recompile.Run()
-			aapt2Retry := exec.Command(tc.Aapt2, linkArgs...)
-			aapt2Retry.Stdout = os.Stderr
-			aapt2Retry.Stderr = os.Stderr
-			if err := aapt2Retry.Run(); err != nil {
-				return "", fmt.Errorf("aapt2 link failed: %w", err)
+			if err := runTool("aapt2 compile", exec.Command(tc.Aapt2, "compile", "--dir", resDir, "-o", compiledRes)); err != nil {
+				return "", err
+			}
+			if err := runTool("aapt2 link", exec.Command(tc.Aapt2, linkArgs...)); err != nil {
+				return "", err
 			}
 		} else {
-			return "", fmt.Errorf("aapt2 link failed: %w", err)
+			return "", err
 		}
 	}
 
@@ -140,15 +186,14 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 		"-no-reflect",
 		"-no-stdlib",
 	}
+	kotlincArgs = append(kotlincArgs, tc.kotlincFlags...)
 	kotlincArgs = append(kotlincArgs, ktFiles...)
 
 	slog.Info("exec", "cmd", "kotlinc", "dir", dir)
 	kotlinc := exec.Command(tc.Kotlinc, kotlincArgs...)
 	kotlinc.Dir = dir
-	kotlinc.Stdout = os.Stderr
-	kotlinc.Stderr = os.Stderr
-	if err := kotlinc.Run(); err != nil {
-		return "", fmt.Errorf("kotlinc failed: %w", err)
+	if err := runTool("kotlinc", kotlinc); err != nil {
+		return "", err
 	}
 
 	// Step 3: Convert to DEX with d8.
@@ -167,8 +212,12 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 	})
 
 	// Pre-dex library JARs (cached)
-	libDexDir := filepath.Join(tc.CacheDir, "lib-dex")
-	libDexes := preDexLibraries(tc, libDexDir)
+	// A dex is written for an API level, so the cache keeps one per minSdk.
+	libDexDir := filepath.Join(tc.CacheDir, "lib-dex", tc.d8Key(), "api"+strconv.Itoa(minSdk))
+	libDexes, err := preDexLibraries(tc, libDexDir, minSdk)
+	if err != nil {
+		return "", err
+	}
 
 	// Dex app classes only
 	appDexDir := filepath.Join(outDir, "app-dex")
@@ -177,16 +226,16 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 	appD8Args := []string{
 		"--lib", tc.AndroidJar,
 		"--output", appDexDir,
-		"--min-api", "26",
+		"--min-api", strconv.Itoa(minSdk),
 	}
-	// Add library dex files as classpath (not re-dexed)
-	for _, ld := range libDexes {
-		appD8Args = append(appD8Args, "--classpath", ld)
-	}
+	// The libraries' classes, not their dex: below API 24 d8 desugars a
+	// default interface method into each class implementing it, and reads
+	// the interface from the classpath to do so.
+	appD8Args = append(appD8Args, libClasspath(tc, "")...)
 	appD8Args = append(appD8Args, classFiles...)
 
 	if err := runD8(tc, appD8Args); err != nil {
-		return "", fmt.Errorf("d8 (app classes) failed: %w", err)
+		return "", err
 	}
 
 	// Merge all dex files into the output directory
@@ -216,107 +265,114 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 		return "", fmt.Errorf("adding dex files to APK: %w", err)
 	}
 
-	// Step 4: Zipalign
-	alignedApk := filepath.Join(outDir, "aligned.apk")
-	if fileExists(tc.Zipalign) {
-		slog.Info("exec", "cmd", "zipalign")
-		zipalign := exec.Command(tc.Zipalign, "-f", "4", baseApk, alignedApk)
-		zipalign.Stdout = os.Stderr
-		zipalign.Stderr = os.Stderr
-		if err := zipalign.Run(); err != nil {
-			// Non-fatal: skip alignment
-			fmt.Fprintf(os.Stderr, "sngl: warning: zipalign failed: %v\n", err)
-			alignedApk = baseApk
-		}
-	} else {
-		alignedApk = baseApk
-	}
-
-	// Step 5: Sign with debug keystore
+	// Step 4: Align and sign with the debug key.
 	fmt.Fprintln(os.Stderr, "sngl: signing APK...")
-	signedApk := filepath.Join(outDir, "app.apk")
-
-	debugKeystore := filepath.Join(tc.CacheDir, "debug.keystore")
-	if !fileExists(debugKeystore) {
-		// Generate a debug keystore
-		os.MkdirAll(filepath.Dir(debugKeystore), 0o755)
-		keytool := exec.Command("keytool",
-			"-genkey", "-v",
-			"-keystore", debugKeystore,
-			"-alias", "androiddebugkey",
-			"-keyalg", "RSA",
-			"-keysize", "2048",
-			"-validity", "10000",
-			"-storepass", "android",
-			"-keypass", "android",
-			"-dname", "CN=Debug",
-		)
-		keytool.Stdout = os.Stderr
-		keytool.Stderr = os.Stderr
-		if err := keytool.Run(); err != nil {
-			return "", fmt.Errorf("generating debug keystore: %w", err)
-		}
+	if err := apksign.SignFile(baseApk, signedApk, key, minSdk); err != nil {
+		return "", err
 	}
-
-	// Try apksigner first (from build-tools), then jarsigner
-	apksigner := filepath.Join(filepath.Dir(tc.Aapt2), "apksigner")
-	if fileExists(apksigner) {
-		// Copy aligned to signed first (apksigner signs in-place)
-		slog.Info("exec", "cmd", "apksigner sign")
-		copyFile(alignedApk, signedApk)
-		sign := exec.Command(apksigner, "sign",
-			"--ks", debugKeystore,
-			"--ks-pass", "pass:android",
-			signedApk,
-		)
-		sign.Stdout = os.Stderr
-		sign.Stderr = os.Stderr
-		if err := sign.Run(); err != nil {
-			return "", fmt.Errorf("apksigner failed: %w", err)
-		}
-	} else {
-		// Fall back to jarsigner
-		slog.Info("exec", "cmd", "jarsigner")
-		copyFile(alignedApk, signedApk)
-		sign := exec.Command("jarsigner",
-			"-keystore", debugKeystore,
-			"-storepass", "android",
-			"-keypass", "android",
-			"-signedjar", signedApk,
-			alignedApk,
-			"androiddebugkey",
-		)
-		sign.Stdout = os.Stderr
-		sign.Stderr = os.Stderr
-		if err := sign.Run(); err != nil {
-			return "", fmt.Errorf("jarsigner failed: %w", err)
-		}
-	}
-
+	storeAPK(cached, signedApk)
 	return signedApk, nil
 }
 
-// generateLibraryRClasses scans AARs in the compose-libs cache for R.txt files
-// and generates stub R.java/R.class files so the runtime can find them.
+// apkCacheVersion changes when the build itself changes what an APK of the
+// same inputs is.
+const apkCacheVersion = "1"
+
+// apkKeep is how many built APKs the cache keeps, the most recently used.
+const apkKeep = 16
+
+// apkDigest names what a gradle-free build of dir makes: every file the
+// program generated, and everything the toolchain adds -- the tools, their
+// flags, each library by its SHA-256, the API level and the signing key. An
+// unchanged program rebuilt took 15s for pokedex, nearly all of it kotlinc
+// and d8 redoing what they had done.
+func apkDigest(dir string, tc *toolchain, minSdk int, keyPath string) (string, error) {
+	h := sha256.New()
+	field := func(s string) { fmt.Fprintf(h, "%d:%s\n", len(s), s) }
+	field(apkCacheVersion)
+	field(strconv.Itoa(minSdk))
+	for _, p := range []string{tc.AndroidJar, tc.Aapt2, tc.Kotlinc, tc.D8, tc.ComposePlugin, tc.SerializationPlugin} {
+		field(p)
+		field(toolStamp(p))
+	}
+	for _, f := range tc.kotlincFlags {
+		field(f)
+	}
+	for _, lib := range tc.cLibs {
+		field(lib.SHA256)
+	}
+	for _, j := range tc.KotlinLibs {
+		field(j)
+		field(toolStamp(j))
+	}
+	keyPEM, err := os.ReadFile(keyPath)
+	if err != nil {
+		return "", err
+	}
+	field(string(keyPEM))
+	err = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(dir, path)
+		if d.IsDir() {
+			if rel == "out" || rel == "_rkt" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		field(filepath.ToSlash(rel))
+		field(string(data))
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// storeAPK keeps a copy of apk at cached, and drops the least recently used
+// beyond apkKeep. A failure only costs the next build its shortcut.
+func storeAPK(cached, apk string) {
+	dir := filepath.Dir(cached)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return
+	}
+	err := writeFileAtomic(cached, func(f *os.File) error {
+		src, err := os.Open(apk)
+		if err != nil {
+			return err
+		}
+		defer src.Close()
+		_, err = io.Copy(f, src)
+		return err
+	})
+	if err != nil {
+		return
+	}
+	entries, _ := filepath.Glob(filepath.Join(dir, "*.apk"))
+	if len(entries) <= apkKeep {
+		return
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		a, _ := os.Stat(entries[i])
+		b, _ := os.Stat(entries[j])
+		return a != nil && b != nil && a.ModTime().After(b.ModTime())
+	})
+	for _, old := range entries[apkKeep:] {
+		os.Remove(old)
+	}
+}
+
 // collectLibraryPackages reads AndroidManifest.xml from each library AAR
 // to get its package name. These are passed to aapt2 --extra-packages so
 // R.java is generated for each library, not just the app.
 func collectLibraryPackages(tc *toolchain) []string {
-	var aars []string
-	cacheDir := filepath.Join(tc.CacheDir, "compose-libs")
-	cached, _ := filepath.Glob(filepath.Join(cacheDir, "*.aar"))
-	aars = append(aars, cached...)
-
-	home, _ := os.UserHomeDir()
-	gradleCache := filepath.Join(home, ".gradle", "caches", "modules-2", "files-2.1")
-	if dirExists(gradleCache) {
-		filepath.Walk(gradleCache, func(path string, info os.FileInfo, err error) error {
-			if err == nil && strings.HasSuffix(path, ".aar") && strings.Contains(path, "androidx") {
-				aars = append(aars, path)
-			}
-			return nil
-		})
-	}
+	aars := tc.libAARs
 
 	seen := map[string]bool{}
 	var packages []string
@@ -360,21 +416,7 @@ func readAARPackage(aarPath string) string {
 // values/lib_ids.xml declaring all id resources. This ensures aapt2 assigns
 // real resource IDs for library id resources (like poolingcontainer tags).
 func generateLibraryIds(tc *toolchain, dir string) {
-	var aars []string
-	cacheDir := filepath.Join(tc.CacheDir, "compose-libs")
-	cached, _ := filepath.Glob(filepath.Join(cacheDir, "*.aar"))
-	aars = append(aars, cached...)
-
-	home, _ := os.UserHomeDir()
-	gradleCache := filepath.Join(home, ".gradle", "caches", "modules-2", "files-2.1")
-	if dirExists(gradleCache) {
-		filepath.Walk(gradleCache, func(path string, info os.FileInfo, err error) error {
-			if err == nil && strings.HasSuffix(path, ".aar") && strings.Contains(path, "androidx") {
-				aars = append(aars, path)
-			}
-			return nil
-		})
-	}
+	aars := tc.libAARs
 
 	ids := map[string]bool{}
 	for _, aarPath := range aars {
@@ -437,21 +479,7 @@ func generateLibraryRKotlinWithIDs(tc *toolchain, rKtDir string, resourceIDs map
 	}
 
 	// Collect library packages that need R classes
-	var aars []string
-	cacheDir := filepath.Join(tc.CacheDir, "compose-libs")
-	cached, _ := filepath.Glob(filepath.Join(cacheDir, "*.aar"))
-	aars = append(aars, cached...)
-
-	home, _ := os.UserHomeDir()
-	gradleCache := filepath.Join(home, ".gradle", "caches", "modules-2", "files-2.1")
-	if dirExists(gradleCache) {
-		filepath.Walk(gradleCache, func(path string, info os.FileInfo, err error) error {
-			if err == nil && strings.HasSuffix(path, ".aar") && strings.Contains(path, "androidx") {
-				aars = append(aars, path)
-			}
-			return nil
-		})
-	}
+	aars := tc.libAARs
 
 	seen := map[string]bool{}
 	for _, aarPath := range aars {
@@ -521,10 +549,7 @@ func readResourceIDs(path string) map[string]int {
 func extractLibraryResources(tc *toolchain, dir string) {
 	resDir := filepath.Join(dir, "res")
 
-	// Only extract from our explicitly downloaded AARs to avoid version
-	// conflicts from the Gradle cache which may have multiple versions.
-	cacheDir := filepath.Join(tc.CacheDir, "compose-libs")
-	aars, _ := filepath.Glob(filepath.Join(cacheDir, "*.aar"))
+	aars := tc.libAARs
 
 	for _, aarPath := range aars {
 		aarBase := filepath.Base(aarPath)
@@ -639,60 +664,97 @@ func dexSuffix(i int) string {
 // Returns a list of directories containing dex files.
 // preDexLibraries dexes each library JAR individually and caches the result.
 // On subsequent builds, only JARs that changed are re-dexed.
-func preDexLibraries(tc *toolchain, cacheDir string) []string {
-	os.MkdirAll(cacheDir, 0o755)
-	allJars := append(append([]string{}, tc.ComposeJars...), tc.KotlinLibs...)
-
+func preDexLibraries(tc *toolchain, cacheDir string, minSdk int) ([]string, error) {
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return nil, err
+	}
+	type job struct{ jar, dir string }
 	var dexDirs []string
-	var toDex []string
-
-	for _, jar := range allJars {
-		base := filepath.Base(jar)
-		dexDir := filepath.Join(cacheDir, base+".dex")
-		dexFile := filepath.Join(dexDir, "classes.dex")
-		failMarker := filepath.Join(dexDir, ".failed")
-
-		// Skip previously failed JARs
-		if fileExists(failMarker) {
-			continue
+	var toDex []job
+	for _, jar := range append(append([]string{}, tc.ComposeJars...), tc.KotlinLibs...) {
+		// Keyed by the jar's content: two combos' kotlin-stdlib.jar share a
+		// name, and an mtime says nothing about which one was dexed.
+		sum, err := fileSHA256(jar)
+		if err != nil {
+			return nil, err
 		}
-
-		if fileExists(dexFile) {
-			jarInfo, _ := os.Stat(jar)
-			dexInfo, _ := os.Stat(dexFile)
-			if jarInfo != nil && dexInfo != nil && !jarInfo.ModTime().After(dexInfo.ModTime()) {
-				dexDirs = append(dexDirs, dexDir)
-				continue
-			}
-		}
-		toDex = append(toDex, jar)
-	}
-
-	if len(toDex) > 0 {
-		fmt.Fprintf(os.Stderr, "sngl: pre-dexing %d libraries (cached for future builds)...\n", len(toDex))
-		for _, jar := range toDex {
-			base := filepath.Base(jar)
-			dexDir := filepath.Join(cacheDir, base+".dex")
-			os.MkdirAll(dexDir, 0o755)
-			args := []string{
-				"--lib", tc.AndroidJar,
-				"--output", dexDir,
-				"--min-api", "26",
-				jar,
-			}
-			if err := runD8(tc, args); err != nil {
-				os.WriteFile(filepath.Join(dexDir, ".failed"), nil, 0o644)
-				continue
-			}
-			// d8 may succeed but produce no dex (empty/metadata-only JARs)
-			if !fileExists(filepath.Join(dexDir, "classes.dex")) {
-				os.WriteFile(filepath.Join(dexDir, ".failed"), nil, 0o644)
-				continue
-			}
-			dexDirs = append(dexDirs, dexDir)
+		dir := filepath.Join(cacheDir, filepath.Base(jar)+"-"+sum[:16]+".dex")
+		switch {
+		case fileExists(filepath.Join(dir, ".empty")):
+			// A jar with no classes (metadata alone) dexes to nothing.
+		case fileExists(filepath.Join(dir, "classes.dex")):
+			dexDirs = append(dexDirs, dir)
+		default:
+			toDex = append(toDex, job{jar, dir})
 		}
 	}
-	return dexDirs
+	if len(toDex) == 0 {
+		return dexDirs, nil
+	}
+	fmt.Fprintf(os.Stderr, "sngl: pre-dexing %d libraries (cached for future builds)...\n", len(toDex))
+	for _, j := range toDex {
+		// d8 writes into a directory of this build's own, renamed into place
+		// once it has finished, so a killed or failed d8 leaves nothing a
+		// later build would take for the library's dex.
+		staging, err := os.MkdirTemp(cacheDir, ".dexing-*")
+		if err != nil {
+			return nil, err
+		}
+		args := []string{
+			"--lib", tc.AndroidJar,
+			"--output", staging,
+			"--min-api", strconv.Itoa(minSdk),
+		}
+		args = append(args, libClasspath(tc, j.jar)...)
+		args = append(args, j.jar)
+		// A library left out of the APK fails only at launch, on the first
+		// class the app reaches in it, so a failure stops the build.
+		if err := runD8(tc, args); err != nil {
+			os.RemoveAll(staging)
+			return nil, fmt.Errorf("pre-dexing %s: %w", filepath.Base(j.jar), err)
+		}
+		empty := !fileExists(filepath.Join(staging, "classes.dex"))
+		if empty {
+			os.WriteFile(filepath.Join(staging, ".empty"), nil, 0o644)
+		}
+		if err := os.Rename(staging, j.dir); err != nil {
+			os.RemoveAll(staging)
+			if !dirExists(j.dir) {
+				return nil, err
+			}
+			// Another build dexed it first.
+		}
+		if !empty {
+			dexDirs = append(dexDirs, j.dir)
+		}
+	}
+	return dexDirs, nil
+}
+
+// fileSHA256 is the hex SHA-256 of a file's content.
+func fileSHA256(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// libClasspath is d8's --classpath for every library jar but skip, which d8
+// is dexing.
+func libClasspath(tc *toolchain, skip string) []string {
+	var args []string
+	for _, jar := range append(append([]string{}, tc.ComposeJars...), tc.KotlinLibs...) {
+		if jar != skip {
+			args = append(args, "--classpath", jar)
+		}
+	}
+	return args
 }
 
 // addFilesToZip appends the given files (flattened, no path) to an existing zip archive.
@@ -757,21 +819,35 @@ func addFilesToZip(zipPath string, files []string) error {
 }
 
 func runD8(tc *toolchain, args []string) error {
-	slog.Info("exec", "cmd", "d8")
+	slog.Info("exec", "cmd", "d8", "native", tc.nativeD8)
+	if tc.nativeD8 {
+		return runTool("d8", exec.Command(tc.D8, args...))
+	}
 	javaBin := javaPath(tc.jdkMin, tc.jdkMax)
 	// d8 can be a jar or a wrapper script
 	if strings.HasSuffix(tc.D8, ".jar") {
-		javaArgs := append([]string{"-jar", tc.D8}, args...)
-		cmd := exec.Command(javaBin, javaArgs...)
-		cmd.Stdout = os.Stderr
-		cmd.Stderr = os.Stderr
-		return cmd.Run()
+		return runTool("d8", exec.Command(javaBin, append([]string{"-jar", tc.D8}, args...)...))
 	}
 	cmd := exec.Command(tc.D8, args...)
-	cmd.Stdout = os.Stderr
-	cmd.Stderr = os.Stderr
 	cmd.Env = append(os.Environ(), "PATH="+filepath.Dir(javaBin)+string(os.PathListSeparator)+os.Getenv("PATH"))
-	return cmd.Run()
+	return runTool("d8", cmd)
+}
+
+// runTool runs one step of the build. What the tool printed is shown only
+// with -v, or in the error when it fails: d8 reports on the libraries' debug
+// info and aapt2 on theirs, neither of which a program's author can act on.
+func runTool(name string, cmd *exec.Cmd) error {
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("%s failed: %w\n%s", name, err, bytes.TrimRight(out.Bytes(), "\n"))
+	}
+	if out.Len() > 0 && slog.Default().Enabled(context.Background(), slog.LevelInfo) {
+		os.Stderr.Write(out.Bytes())
+	}
+	return nil
 }
 
 // javaPath returns the `java` binary of a JDK compatible with the [min, max]

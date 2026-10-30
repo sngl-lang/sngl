@@ -141,7 +141,7 @@ ui.window {
     box
 }
 -- testrun/android/kotlin/app.sngl/box/1 --
-sha256:816ed0c12000a40986ddb5d3aea5cbe7
+sha256:c5f82f2a326d1cd66619084397adc2e3
 {
   "results": [
     {

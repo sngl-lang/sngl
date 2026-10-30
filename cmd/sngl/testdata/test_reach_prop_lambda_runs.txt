@@ -38,7 +38,7 @@ func testALambdaInAPropIsRead(t test.Test, c wrapped) {
     t.assert(c.inner.joined.value == "ASH, ELM")
 }
 -- testrun/android/kotlin/app.sngl/wrapped/1 --
-sha256:940f0932d27c75ac1c52f3ba00fb6b1c
+sha256:8d45a2a0eff9bfc080fb0ffa36815790
 {
   "results": [
     {

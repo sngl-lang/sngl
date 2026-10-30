@@ -156,7 +156,7 @@ reports.
   app state defined" for a window with a `var`, and lists a `fyne (none)`
   target.
 - android `--opt main=true` writes `gradlew` mode 0644, as a curl-download
-  script with no wrapper jar, and adds `coil-compose` the app doesn't use.
+  script with no wrapper jar.
 - `cannot initialize list[Todo] with list[Todo]` when a SNGL `Todo` meets
   `store.Todo`: the two names should be qualified.
 - A missing closing brace reports `unexpected "EOF"` at the wrong line with

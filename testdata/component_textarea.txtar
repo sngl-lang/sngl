@@ -805,7 +805,7 @@ pass sha256:953d245c65e4cc7301f66bfe1ee64589
 -- run/go/gtk4 --
 pass sha256:9c73ec919b725a1e442503c08f4bab86
 -- run/kotlin/android --
-pass sha256:b9ac920069d63cc3cd95e0be038bee7a
+pass sha256:4fc59473cd8e4ffafbbc01656bf49036
 -- run/none/html --
 pass sha256:9b69b71c0efd09f934030dfb060ecba7
 -- testrun/html/none/component_textarea.sngl/main/1 --

@@ -163,6 +163,59 @@ target with no way to say a field is meant for one.
   **A child's `flex` is the child's own**, read off its Box, not a position in its box: a render slot's anchor and content land among the children the box was built with, and a weight read by position went to a hidden anchor while the scroll that asked for it packed at its minimum (`testdata/flex_after_slot.txtar`). A box built as Fyne's `VBox`/`HBox` -- a window's, a page a navigation stack shows -- is made a `Weighted` one by `fynelayout.Adopt` when a growing child is inserted (`InsertBefore`, `Toplevel.Add`). A render slot's `InsertBefore` lays its box out again and refreshes nothing it already held: a refresh reaches every child, and a theme override refreshed is a new theme scope, which Fyne's text-metrics cache is keyed by, so each row a slot inserted measured every themed label in the box again -- a table of fifteen moves, drawn again for each of its fifteen answers, took seconds (`TestInsertingRefreshesNoOtherChild`). What it inserts takes the theme override the box's other objects are under, since Fyne's `ThemeOverride` reaches what is added beneath it only when refreshed: a row a slot added under a styled vbox kept the app's theme until the Box's look next changed. The inserts wait in `themeLater` and a Box's draw walk (`boxRenderer.Objects`) applies them together, one override over each container's new objects and one layout of it (`applyThemes`): applying an override clears Fyne's text-metrics cache, so applied on each insert, every row measured its siblings again -- a fifteen-row table drawn again took 27 ms against 2.5 ms unthemed, and takes 6 ms applied together (`BenchmarkSlotRenderUnderABox`). Not as a Box is measured or laid out: a boxed cell of a row the render builds is measured before the row is inserted, and applied the rows before it one by one. A Box applies its theme again the first time it is laid out, since a build gives it its Look before adding what it holds and a render slot fills before the window shows: a styled vbox's own children were drawn in the app's theme (`TestRowsAddedBeforeTheBoxShowsTakeItsTheme`, `TestARenderSlotRowTakesItsBoxsThemeRuns`).
 - **android** — generates Android app code; supports `kotlin` and `golang`. Declares `navigation`: `sngl:ui/nav` is a Compose `NavHost` with typed routes (see *Navigation*), Kotlin only. A window's content that reaches its Screen through a slot -- a window under a reactive `if`, an instance of its own -- is wrapped in a `Column` carrying `safeDrawingPadding`, the inset the direct route puts on each root node (`testdata/android_window_slot_inset.txtar`). Each Column the generated code writes rather than a vbox -- that one, a window's several nodes, a nav page's -- provides the share a flexing child takes there through Compose (`LocalFlexShare`, in the `flexshare.kt` the platform ships), and flexShare's default, `snglFlexShare`, reads it, else the screen: a slot's content is composed where the slot is invoked, which no closure its caller wrote could name, and a child there read the screen's share and filled it (`testdata/android_flex_in_written_column.txtar`, `cmd/sngl/testdata/android_flex_written_column_runs.txt`). A component built at run time types a slot it inserts directly in a Column, a Row, a Box or a scroll with that layout's scope as the lambda's receiver, and hands its own at the insertion, as Compose's layouts type their content (`slotReceivers`): the flexShare the context lowering hands the content is the layout's `Modifier.weight`, a member of ColumnScope and RowScope, and without the receiver the caller's lambda did not compile (`cmd/sngl/testdata/android_flex_slot_in_instance_runs.txt`). A method on a type that reads the page's state is a function of the page taking its receiver first (`pageTypeMethods`, `Pt_sum(p)`), since that state is MainScreen's locals or its test state class's members; one that reads none is an extension (`testdata/type_method_receiver.txtar`). A table is a Column of Rows whose cells each take an equal `weight` of their row, declared as a `Modifier` native in `android.sngl`; a Style's `flex` in a Row is `weight` with `fillMaxHeight`, which stretched each row down the whole column (`cmd/sngl/testdata/table_rows_runs.txt`). A Row or Column's `gap`, `justifyContent` and `alignItems` are its Arrangement and Alignment arguments (`columnArrangement` and the rest in `lib/platform/android/style.sngl`), and a flex child fills the cross axis only where `alignItems` leaves it stretched: `fillMaxHeight` fills the most a row may be, which made a stats bar the whole screen (`testdata/android_box_layout.txtar`, `testdata/android_flex_aligned.txtar`). An `option` argument a call hands null is left out, so Compose's default stands. A Style's `maxLines` and `whiteSpace` are Text's `maxLines`, `overflow` (an ellipsis) and `softWrap`: each answers the prop's declared default where the field is unset -- a host const, `wrapsLines` rather than `true`, since an argument is left to Compose only where it names the host value the default names -- so a text that sets neither passes neither (`testdata/android_text_lines.txtar`). The select is an override holding whether its menu is open; the semantics a test chooses through is `snglChooses`, a Kotlin modifier the platform ships (`chooses.kt`), since Compose spells it as a lambda with a receiver. A `color` the program sets is the theme's primary, and with none the device's dynamic colors stand; the theme is always light, so the system bars' icons are always dark (`testdata/android_theme_accent.txtar`).
 
+  **The gradle-free build signs in Go.** `internal/apksign` re-lays the APK
+  with each stored entry aligned and writes an APK Signature Scheme v2
+  block, so signing needs no JDK (`keytool`, `apksigner`, `jarsigner`) and
+  no `zipalign`. The debug key is a PEM file, `debug-key.pem` in the
+  toolchain cache, made once and kept: a device replaces an app only with
+  one signed by the same key. `adbInstall` uninstalls and retries an app a
+  different key installed only when that key is a debug one (`CN=Android Debug`, Gradle's keystore or an earlier sngl key, read from the installed
+  APK by `apksign.SignerCerts`): uninstalling loses the app's data, and an
+  app signed otherwise may be the user's own release. v2 alone
+  installs from API 24; below that it adds a v1 (JAR) signature first, with
+  SHA-256 digests and a PKCS#7 block apksigner's shape, as apksigner does.
+  The floor is Compose's API 21, and d8's `--min-api` and the pre-dex cache
+  (`lib-dex/<d8>/api<N>/<jar>-<sha256>.dex`, keyed by the jar's content and
+  the d8 that dexed it) follow `minSdk`. Every file the toolchain cache
+  holds is written under a name of its own and renamed into place, so a
+  killed build, or two building at once, never leaves a partial download,
+  jar, dex or APK a later build takes for whole; Google's SDK archives are
+  checked against the SHA-1 its manifest gives, and a linux host other than
+  x86-64, which Google publishes no tools for, is refused with that reason. `internal/apksign`'s tests hold the
+  output to `apksigner verify` at API 21 and 24, a recorded run that
+  reruns apksigner only when the signed bytes move.
+
+  **`gradle` unset chooses** (`Config.UseGradle`). A generated project is
+  a Gradle one, to open in Android Studio. `sngl build` and `sngl run` (the
+  `executable` option) build gradle-free. A test, which runs on Robolectric,
+  and a Go program, whose `golib.aar` the gradle-free build does not bind,
+  still use Gradle. The gradle-free layout keeps everything at its root: the
+  `.kt` files it compiles, `res/`, and `assets/` (pictures and the i18n
+  manifest), which it hands to `aapt2 link -A`.
+
+  **The gradle-free build runs no JVM.** Its kotlinc and d8 are GraalVM
+  native images from `github.com/sngl-lang/android-tools`, one release
+  (`androidtc.NativeRelease`) carrying both for each host, downloaded on
+  first use into `android-toolchain/native/` and checked against the
+  release's `SHA256SUMS`, which `androidtc.nativeSums` holds. The kotlinc
+  asset carries the compose and serialization plugins and the stdlib, and
+  runs with the flags `nativeKotlincFlags` names; the d8 is the r8 the
+  combo's AGP ships (`Combo.R8`), so its dex matches Gradle's. A combo or
+  host with no build, or `SNGL_ANDROID_TOOLS=jvm`, uses the JVM tools, and
+  only then is a JDK looked for. The libraries it builds against are
+  `androidtc.Combo.Libs`: the closure Gradle resolves for the scaffold's
+  dependencies, which `go run ./internal/androidtc/resolvelibs` writes into
+  `libs_gen.go` with each file's SHA-256, and nothing else -- a hand-kept
+  list missed `lifecycle-livedata-core`, and a set seeded from `~/.gradle`
+  varied by machine; both built and then failed at launch. A build whose
+  inputs are unchanged -- the generated tree, the tools and flags, each
+  library's SHA-256, minSdk, the debug key (`apkDigest`) -- reuses the APK it
+  made, from `android-toolchain/apk/`, which keeps the 16 most recent. The
+  tools' own output is shown with `-v` or in the error when one fails
+  (`runTool`); a library d8 cannot dex stops the build, where it used to be
+  left out of the APK. Gradle cannot use them: AGP runs D8 inside
+  its daemon and every Kotlin Gradle plugin strategy compiles on a JVM.
+
   **An android app asks for what it reaches.** `#[android.permission("…")]`
   (`lib/platform/android/http.sngl`) is written on the native an override
   calls -- `SnglRemoteImage` for `ui.remote` -- and lands on

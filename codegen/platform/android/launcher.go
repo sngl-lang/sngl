@@ -213,8 +213,16 @@ func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.L
 		return nil, nil, &codegen.SkipError{Reason: fmt.Sprintf("no android device: %v", err)}
 	}
 
+	// Derive package name from the emitted app's gradle config or fall
+	// back to the convention used elsewhere. android codegen defaults
+	// to "test.sngl.app" (per Config.withDefaults).
+	pkg := codegen.OptionString(opts, "package")
+	if pkg == "" {
+		pkg = "test.sngl.app"
+	}
+
 	// Install.
-	if err := adbInstall(apk); err != nil {
+	if err := adbInstall(apk, pkg); err != nil {
 		return nil, nil, fmt.Errorf("adb install: %w", err)
 	}
 
@@ -235,14 +243,6 @@ func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.L
 	fwd.Stderr = os.Stderr
 	if err := fwd.Run(); err != nil {
 		return nil, nil, fmt.Errorf("adb forward: %w", err)
-	}
-
-	// Derive package name from the emitted app's gradle config or fall
-	// back to the convention used elsewhere. android codegen defaults
-	// to "test.sngl.app" (per Config.withDefaults).
-	pkg := codegen.OptionString(opts, "package")
-	if pkg == "" {
-		pkg = "test.sngl.app"
 	}
 
 	start := exec.CommandContext(ctx, adb, "shell", "am", "start",

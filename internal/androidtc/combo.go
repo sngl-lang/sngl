@@ -22,13 +22,15 @@ type Combo struct {
 	ComposeBOM    string // androidx.compose:compose-bom platform version
 
 	// Direct-build path (kotlinc + aapt2 + d8, no Gradle).
-	ComposeRuntime string // androidx.compose runtime/ui artifact version
-	BuildTools     string // Android build-tools version
+	BuildTools string // Android build-tools version
+	// R8 is the d8 the native build runs: the R8 this combo's AGP ships,
+	// built by sngl-lang/android-tools (see NativeAsset). Empty where no
+	// native build is published, and the build-tools' JVM d8 runs instead.
+	R8 string
 
 	// Shared SDK + AndroidX.
 	CompileSdk      int    // compileSdk / default targetSdk (Android API level)
 	ActivityCompose string // androidx.activity:activity-compose version
-	Coil            string // io.coil-kt:coil-compose version
 	Navigation      string // androidx.navigation:navigation-compose version
 	Serialization   string // org.jetbrains.kotlinx:kotlinx-serialization-json version
 
@@ -52,11 +54,10 @@ var combos = []Combo{
 		Kotlin:          "2.1.0",
 		ComposePlugin:   "2.1.0",
 		ComposeBOM:      "2025.03.00",
-		ComposeRuntime:  "1.7.6",
 		BuildTools:      "35.0.0",
+		R8:              "8.7.18",
 		CompileSdk:      35,
 		ActivityCompose: "1.9.3",
-		Coil:            "2.7.0",
 		Navigation:      "2.8.9",
 		Serialization:   "1.7.3",
 		JDKMin:          17,
@@ -77,11 +78,9 @@ var combos = []Combo{
 		Kotlin:          "2.1.20",
 		ComposePlugin:   "2.1.20",
 		ComposeBOM:      "2025.06.01",
-		ComposeRuntime:  "1.8.2",
 		BuildTools:      "36.0.0",
 		CompileSdk:      36,
 		ActivityCompose: "1.10.1",
-		Coil:            "2.7.0",
 		Navigation:      "2.8.9",
 		Serialization:   "1.7.3",
 		JDKMin:          17,

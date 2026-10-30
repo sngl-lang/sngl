@@ -15,9 +15,9 @@ import (
 // Snapshot implements codegen.Snapshotter. It uses the same flow as sngl run
 // (generate → build → install → launch) then captures a screenshot via ADB.
 func (g *Generator) Snapshot(irPkg *ir.Package, lang codegen.LangTranslator, width, height int) ([]byte, error) {
-	adb, err := androidTool("adb")
+	adb, err := fetchAdb()
 	if err != nil {
-		return nil, fmt.Errorf("adb not found — Android SDK required for screenshots")
+		return nil, err
 	}
 
 	if err := ensureDevice(); err != nil {
@@ -52,7 +52,7 @@ func (g *Generator) Snapshot(irPkg *ir.Package, lang codegen.LangTranslator, wid
 		return nil, fmt.Errorf("building APK: %w", err)
 	}
 
-	if err := adbInstall(apk); err != nil {
+	if err := adbInstall(apk, appPkg); err != nil {
 		return nil, err
 	}
 	defer func() {
