@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"duckfam.us/sngl/internal/androidtc"
 	"duckfam.us/sngl/internal/apksign"
 	"duckfam.us/sngl/internal/jdk"
 )
@@ -30,6 +31,13 @@ func directBuild(dir string, tc *toolchain, minSdk int) (string, error) {
 	// is what a device before Nougat reads.
 	if minSdk < composeMinSdk {
 		return "", fmt.Errorf("android build: minSdk %d is below %d, the lowest Compose runs on", minSdk, composeMinSdk)
+	}
+	// The manifest says which devices install the app, and minSdk which
+	// ones the dex and the signature work on; a build given a different
+	// level from the one it generated made an APK a device it admits could
+	// not run.
+	if declared, err := androidtc.ManifestMinSdk(filepath.Join(dir, "AndroidManifest.xml")); err == nil && declared != 0 && declared != minSdk {
+		return "", fmt.Errorf("android build: the manifest declares minSdk %d, but the build is for %d", declared, minSdk)
 	}
 
 	// The debug key is part of what the APK is, so it exists before the

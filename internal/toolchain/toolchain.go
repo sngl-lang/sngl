@@ -194,7 +194,13 @@ func directApk(dir string) (string, error) {
 	}
 	directMu.Lock()
 	defer directMu.Unlock()
-	opts := codegen.OptionsFromMap(map[string]any{"gradle": false})
+	// The options the program was generated with are not here, only what
+	// they generated: the manifest carries the API level to build for.
+	fields := map[string]any{"gradle": false}
+	if n, err := androidtc.ManifestMinSdk(filepath.Join(dir, "AndroidManifest.xml")); err == nil && n != 0 {
+		fields["minSdk"] = n
+	}
+	opts := codegen.OptionsFromMap(fields)
 	_, err := build(opts, []any{dir, filepath.Join(dir, "app.apk")})
 	return "", err
 }
