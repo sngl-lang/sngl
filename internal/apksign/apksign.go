@@ -4,8 +4,8 @@
 // jarsigner) nor build-tools' zipalign.
 //
 // v2 alone is a valid signature from API 24 on; an app with a lower minSdk
-// needs a v1 (JAR) signature too, which this package does not write. The
-// scheme is specified at https://source.android.com/docs/security/features/apksigning/v2.
+// gets a v1 (JAR) signature too (v1.go), as apksigner does. The scheme is
+// specified at https://source.android.com/docs/security/features/apksigning/v2.
 package apksign
 
 import (
@@ -24,8 +24,9 @@ import (
 	"path"
 )
 
-// MinSdk is the lowest API level a v2-only signature installs on.
-const MinSdk = 24
+// V2MinSdk is the lowest API level a v2-only signature installs on; below
+// it Sign adds v1.
+const V2MinSdk = 24
 
 const (
 	blockMagic = "APK Sig Block 42"
@@ -45,13 +46,13 @@ const (
 )
 
 // SignFile reads the unsigned APK at src and writes it aligned and signed to
-// dst.
-func SignFile(src, dst string, k *Key) error {
+// dst, for an app installed on minSdk and later.
+func SignFile(src, dst string, k *Key, minSdk int) error {
 	in, err := os.ReadFile(src)
 	if err != nil {
 		return err
 	}
-	out, err := Sign(in, k)
+	out, err := Sign(in, k, minSdk)
 	if err != nil {
 		return fmt.Errorf("signing %s: %w", src, err)
 	}
@@ -61,8 +62,18 @@ func SignFile(src, dst string, k *Key) error {
 // Sign returns apk aligned and signed. Its entries are rewritten in order,
 // each stored one with its data aligned (4 bytes; a page for a native
 // library, which the platform maps in place), and any signature the input
-// carried is dropped.
-func Sign(apk []byte, k *Key) ([]byte, error) {
+// carried is dropped. Below V2MinSdk it is signed with v1 as well, which
+// cannot go below V1MinSdk.
+func Sign(apk []byte, k *Key, minSdk int) ([]byte, error) {
+	if minSdk < V1MinSdk {
+		return nil, fmt.Errorf("minSdk %d is below %d, the lowest a SHA-256 v1 signature installs on", minSdk, V1MinSdk)
+	}
+	if minSdk < V2MinSdk {
+		var err error
+		if apk, err = addV1(apk, k); err != nil {
+			return nil, err
+		}
+	}
 	zipped, cdOffset, err := align(apk)
 	if err != nil {
 		return nil, err

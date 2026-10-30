@@ -7,11 +7,15 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
+	"flag"
+	"fmt"
 	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -59,7 +63,7 @@ func testKey(t *testing.T) *Key {
 
 func TestSignKeepsEntriesAndAlignsStoredOnes(t *testing.T) {
 	apk, files := testAPK(t)
-	signed, err := Sign(apk, testKey(t))
+	signed, err := Sign(apk, testKey(t), 24)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +110,7 @@ func TestSignKeepsEntriesAndAlignsStoredOnes(t *testing.T) {
 func TestSignatureVerifies(t *testing.T) {
 	apk, _ := testAPK(t)
 	k := testKey(t)
-	signed, err := Sign(apk, k)
+	signed, err := Sign(apk, k, 24)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,31 +197,102 @@ func TestDebugKeyIsKept(t *testing.T) {
 	}
 }
 
-// TestApksignerVerifies holds the output to the SDK's own verifier, where one
-// is installed.
+var (
+	update = flag.Bool("update", false, "run apksigner where a signed APK moved, and rewrite its testdata/apksigner_runs record")
+	verify = flag.Bool("verify", false, "run apksigner on every signed APK, whatever its testdata/apksigner_runs record says")
+)
+
+// TestApksignerVerifies holds the output to the SDK's own verifier: v2 alone
+// from API 24, and v1 beside it below. apksigner runs only where the APK
+// moved -- it is a JVM tool, from an SDK CI does not have -- and each run that
+// passed is recorded in testdata/apksigner_runs/<test> as a digest of the APK
+// and apksigner's arguments. Signing is deterministic for a fixed key, so
+// the digest moves only when this package's output does.
 func TestApksignerVerifies(t *testing.T) {
-	if _, err := exec.LookPath("java"); err != nil {
-		t.Skip("no java to run apksigner on")
+	key, err := DebugKey(filepath.Join("testdata", "test-key.pem"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	apksigner := findApksigner()
-	if apksigner == "" {
-		t.Skip("no apksigner in ANDROID_HOME or ~/Android/Sdk build-tools")
+	for _, tc := range []struct {
+		minSdk int
+		v1     bool
+	}{{24, false}, {21, true}} {
+		t.Run(strconv.Itoa(tc.minSdk), func(t *testing.T) {
+			apk, _ := testAPK(t)
+			signed, err := Sign(apk, key, tc.minSdk)
+			if err != nil {
+				t.Fatal(err)
+			}
+			args := []string{"verify", "--verbose", "--min-sdk-version", strconv.Itoa(tc.minSdk)}
+			h := sha256.New()
+			for _, a := range args {
+				fmt.Fprintf(h, "%d\x00%s", len(a), a)
+			}
+			h.Write(signed)
+			want := "sha256:" + hex.EncodeToString(h.Sum(nil)) + "\n"
+
+			record := filepath.Join("testdata", "apksigner_runs", strings.ReplaceAll(t.Name(), "/", "_"))
+			have, _ := os.ReadFile(record)
+			switch {
+			case string(have) == want && !*verify:
+				return
+			case !*update && !*verify && have == nil:
+				t.Fatalf("%s: no record of apksigner verifying this APK; rerun with -update where an Android SDK is installed", record)
+			case !*update && !*verify:
+				t.Fatalf("%s: the signed APK changed since apksigner verified it; rerun with -update -- `go tool verify -update` rerecords every package's", record)
+			}
+
+			apksigner := findApksigner()
+			if _, err := exec.LookPath("java"); err != nil || apksigner == "" {
+				t.Fatalf("%s: cannot record: apksigner needs java and an Android SDK's build-tools", record)
+			}
+			path := filepath.Join(t.TempDir(), "app.apk")
+			if err := os.WriteFile(path, signed, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			out, err := exec.Command(apksigner, append(args, path)...).CombinedOutput()
+			if err != nil {
+				t.Fatalf("apksigner verify: %v\n%s", err, out)
+			}
+			for scheme, want := range map[string]bool{
+				"Verified using v1 scheme (JAR signing): ":             tc.v1,
+				"Verified using v2 scheme (APK Signature Scheme v2): ": true,
+			} {
+				if !strings.Contains(string(out), scheme+strconv.FormatBool(want)) {
+					t.Fatalf("apksigner did not report %s%t:\n%s", scheme, want, out)
+				}
+			}
+			if *update {
+				if err := os.MkdirAll(filepath.Dir(record), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(record, []byte(want), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
 	}
+}
+
+// TestV1BelowItsFloor refuses a minSdk no SHA-256 JAR signature installs on.
+func TestV1BelowItsFloor(t *testing.T) {
 	apk, _ := testAPK(t)
-	signed, err := Sign(apk, testKey(t))
-	if err != nil {
-		t.Fatal(err)
+	if _, err := Sign(apk, testKey(t), V1MinSdk-1); err == nil {
+		t.Errorf("Sign accepted minSdk %d", V1MinSdk-1)
 	}
-	path := filepath.Join(t.TempDir(), "app.apk")
-	if err := os.WriteFile(path, signed, 0o644); err != nil {
-		t.Fatal(err)
+}
+
+// TestManifestLineWraps holds a long entry name to the 72-byte line limit.
+func TestManifestLineWraps(t *testing.T) {
+	got := manifestLine("Name", strings.Repeat("x", 150))
+	for line := range strings.SplitSeq(strings.TrimSuffix(got, "\r\n"), "\r\n") {
+		if len(line) > 72 {
+			t.Errorf("line of %d bytes: %q", len(line), line)
+		}
 	}
-	out, err := exec.Command(apksigner, "verify", "--verbose", "--min-sdk-version", "24", path).CombinedOutput()
-	if err != nil {
-		t.Fatalf("apksigner verify: %v\n%s", err, out)
-	}
-	if !strings.Contains(string(out), "Verified using v2 scheme (APK Signature Scheme v2): true") {
-		t.Errorf("apksigner did not verify v2:\n%s", out)
+	unwrapped := strings.ReplaceAll(got, "\r\n ", "")
+	if unwrapped != "Name: "+strings.Repeat("x", 150)+"\r\n" {
+		t.Errorf("wrapping lost bytes: %q", got)
 	}
 }
 

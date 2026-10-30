@@ -92,6 +92,10 @@ func (c Config) UseGradle() bool {
 // combo matrix.
 const defaultMinSdk = 26
 
+// composeMinSdk is the lowest API level Compose runs on, and so the lowest
+// minSdk the gradle-free build accepts.
+const composeMinSdk = 21
+
 // combo resolves the toolchain combo for this config: the named combo (or the
 // default), with per-field overrides applied. An unknown Toolchain name falls
 // back to the default.

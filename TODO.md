@@ -163,7 +163,6 @@ android-tools/
      in Android Studio. Nothing is built.
    - `build`, `run` and both test runners build gradle-free. Until the
      gaps in step 9 are closed, anything that hits one of them uses Gradle.
-   - A `minSdk` below 24 uses Gradle, because the Go signer writes only v2.
 9. **Close the gradle-free gaps:**
    - **`--lang go`:** `directBuild` never reads `golib.aar`. It has to put
      the AAR's `classes.jar` on the kotlinc classpath and into the dex, and
@@ -210,8 +209,8 @@ optional.
 2. **Done: the Go signer, aligner and debug key** (sngl step 4).
    `internal/apksign` writes a v2 signature, which `apksigner verify` and
    `zipalign -c` both accept on a real hello build. The debug key is a PEM
-   file instead of a keystore. A `minSdk` below 24 needs v1 too, so it is
-   refused and the user is pointed at `gradle=true`. `adbInstall` uninstalls
+   file instead of a keystore. Below API 24 it adds a v1 signature too,
+   down to Compose's floor of 21, so no `minSdk` needs Gradle. `adbInstall` uninstalls
    and retries an app installed with another key. kotlinc and d8 are now the
    only JVM tools left in `directBuild` (sngl step 3).
 3. **Done: d8 and kotlinc are in `sngl-lang/android-tools`,** with a

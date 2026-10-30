@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"duckfam.us/sngl/internal/apksign"
@@ -18,10 +19,10 @@ import (
 // Pipeline: aapt2 (resources) → kotlinc (with R.java) → d8 → APK assembly →
 // align and sign (internal/apksign)
 func directBuild(dir string, tc *toolchain, pkg string, minSdk int) (string, error) {
-	// apksign writes a v2 signature only, which a device older than API 24
-	// does not read; Gradle's build signs v1 too.
-	if minSdk < apksign.MinSdk {
-		return "", fmt.Errorf("android build: minSdk %d is below %d, the lowest the gradle-free build signs for; set gradle=true", minSdk, apksign.MinSdk)
+	// Compose runs from API 21; apksign adds a v1 signature below 24, which
+	// is what a device before Nougat reads.
+	if minSdk < composeMinSdk {
+		return "", fmt.Errorf("android build: minSdk %d is below %d, the lowest Compose runs on", minSdk, composeMinSdk)
 	}
 
 	// Point JAVA_HOME + PATH at a version-compatible JDK so kotlinc and d8
@@ -176,8 +177,9 @@ func directBuild(dir string, tc *toolchain, pkg string, minSdk int) (string, err
 	})
 
 	// Pre-dex library JARs (cached)
-	libDexDir := filepath.Join(tc.CacheDir, "lib-dex")
-	libDexes := preDexLibraries(tc, libDexDir)
+	// A dex is written for an API level, so the cache keeps one per minSdk.
+	libDexDir := filepath.Join(tc.CacheDir, "lib-dex", "api"+strconv.Itoa(minSdk))
+	libDexes := preDexLibraries(tc, libDexDir, minSdk)
 
 	// Dex app classes only
 	appDexDir := filepath.Join(outDir, "app-dex")
@@ -186,12 +188,12 @@ func directBuild(dir string, tc *toolchain, pkg string, minSdk int) (string, err
 	appD8Args := []string{
 		"--lib", tc.AndroidJar,
 		"--output", appDexDir,
-		"--min-api", "26",
+		"--min-api", strconv.Itoa(minSdk),
 	}
-	// Add library dex files as classpath (not re-dexed)
-	for _, ld := range libDexes {
-		appD8Args = append(appD8Args, "--classpath", ld)
-	}
+	// The libraries' classes, not their dex: below API 24 d8 desugars a
+	// default interface method into each class implementing it, and reads
+	// the interface from the classpath to do so.
+	appD8Args = append(appD8Args, libClasspath(tc, "")...)
 	appD8Args = append(appD8Args, classFiles...)
 
 	if err := runD8(tc, appD8Args); err != nil {
@@ -232,7 +234,7 @@ func directBuild(dir string, tc *toolchain, pkg string, minSdk int) (string, err
 		return "", fmt.Errorf("debug signing key: %w", err)
 	}
 	signedApk := filepath.Join(outDir, "app.apk")
-	if err := apksign.SignFile(baseApk, signedApk, key); err != nil {
+	if err := apksign.SignFile(baseApk, signedApk, key, minSdk); err != nil {
 		return "", err
 	}
 
@@ -582,7 +584,7 @@ func dexSuffix(i int) string {
 // Returns a list of directories containing dex files.
 // preDexLibraries dexes each library JAR individually and caches the result.
 // On subsequent builds, only JARs that changed are re-dexed.
-func preDexLibraries(tc *toolchain, cacheDir string) []string {
+func preDexLibraries(tc *toolchain, cacheDir string, minSdk int) []string {
 	os.MkdirAll(cacheDir, 0o755)
 	allJars := append(append([]string{}, tc.ComposeJars...), tc.KotlinLibs...)
 
@@ -620,9 +622,10 @@ func preDexLibraries(tc *toolchain, cacheDir string) []string {
 			args := []string{
 				"--lib", tc.AndroidJar,
 				"--output", dexDir,
-				"--min-api", "26",
-				jar,
+				"--min-api", strconv.Itoa(minSdk),
 			}
+			args = append(args, libClasspath(tc, jar)...)
+			args = append(args, jar)
 			if err := runD8(tc, args); err != nil {
 				os.WriteFile(filepath.Join(dexDir, ".failed"), nil, 0o644)
 				continue
@@ -636,6 +639,18 @@ func preDexLibraries(tc *toolchain, cacheDir string) []string {
 		}
 	}
 	return dexDirs
+}
+
+// libClasspath is d8's --classpath for every library jar but skip, which d8
+// is dexing.
+func libClasspath(tc *toolchain, skip string) []string {
+	var args []string
+	for _, jar := range append(append([]string{}, tc.ComposeJars...), tc.KotlinLibs...) {
+		if jar != skip {
+			args = append(args, "--classpath", jar)
+		}
+	}
+	return args
 }
 
 // addFilesToZip appends the given files (flattened, no path) to an existing zip archive.

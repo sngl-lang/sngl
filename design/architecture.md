@@ -170,9 +170,11 @@ target with no way to say a field is meant for one.
   toolchain cache, made once and kept: a device replaces an app only with
   one signed by the same key. `adbInstall` uninstalls and retries an app a
   different key installed (Gradle's keystore, or an earlier one). v2 alone
-  installs from API 24, so a `minSdk` below that is refused with a pointer
-  to `gradle=true`. `internal/apksign`'s tests hold the output to
-  `apksigner verify` where an SDK is installed.
+  installs from API 24; below that it adds a v1 (JAR) signature first, with
+  SHA-256 digests and a PKCS#7 block apksigner's shape, as apksigner does.
+  The floor is Compose's API 21, and d8's `--min-api` and the pre-dex cache
+  (`lib-dex/api<N>`) follow `minSdk`. `internal/apksign`'s tests hold the
+  output to `apksigner verify` at API 21 and 24 where an SDK is installed.
 
   **An android app asks for what it reaches.** `#[android.permission("…")]`
   (`lib/platform/android/http.sngl`) is written on the native an override
