@@ -212,7 +212,12 @@ These rules keep them agreeing:
   funcs reading it are spelled through the instance (`ExprCtx.StateReceiver`
   on Go and JS; on android the state members MainScreen spells as `state.<x>`,
   rebound to the instance). Each test starts from a fresh one — a new Model on
-  the Go targets, a remounted page on html.
+  the Go targets, a remounted page on html. android disposes the last test's
+  composition before it makes the next one's state (`clearCurrentTestModel`):
+  a new `MainScreenState` is the file's `state`, which a component other than
+  MainScreen reads, so the last test's `@unmount`, run as the next model
+  replaced it, wrote into the next test's log
+  (`cmd/sngl/testdata/test_unmount_stays_in_its_test_runs.txt`).
 - **The component a test takes is rendered with no call site**, so each of its
   props holds its default, or its type's zero where it has none: a var of the
   component on a compiled target (`bindRootProps`), bound ahead of its own vars

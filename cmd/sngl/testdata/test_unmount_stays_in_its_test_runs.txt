@@ -1,0 +1,119 @@
+# Each test starts from state of its own, and what the last test's tree does
+# as it is taken down lands in the last test's state, not the next one's.
+#
+# android shows each test's model in one composition and made the next
+# model before the last one's was disposed: a new MainScreenState is the
+# file's `state`, which greeter reads, so the `@unmount` greeter ran as the
+# composition moved on pushed "-a" onto the second test's log.
+
+sngl test --platform=none app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +2 tests, 0 failures'
+
+-- app.sngl --
+import "sngl:test"
+import ui "sngl:ui"
+
+var log list[string] = []
+
+component greeter(name string) ui.node {
+    effect(@mount { log.push("+" + name) }, @unmount { log.push("-" + name) })
+    ui.text(value=name)
+}
+
+component app ui.node {
+    var shown = true
+
+    ui.vbox {
+        if shown {
+            greeter(name="a")
+        }
+    }
+}
+
+func testTheFirstSeesItsOwnMounts(t test.Test, c app) {
+    t.assert(log.join(",") == "+a")
+}
+
+func testTheSecondSeesNoUnmountOfTheFirst(t test.Test, c app) {
+    t.assert(log.join(",") == "+a")
+}
+-- testrun/android/kotlin/app.sngl/app/1 --
+sha256:6e7a8da14b749f3a406fe3efc68ea84d
+{
+  "results": [
+    {
+      "Desc": "TheFirstSeesItsOwnMounts",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSecondSeesNoUnmountOfTheFirst",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/app/1 --
+sha256:4784b3662f6827bdf06c9b18a80d2d2f
+{
+  "results": [
+    {
+      "Desc": "TheFirstSeesItsOwnMounts",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSecondSeesNoUnmountOfTheFirst",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/app/1 --
+sha256:16e2f91c8f1e25f16e5284b4176492e0
+{
+  "results": [
+    {
+      "Desc": "TheFirstSeesItsOwnMounts",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSecondSeesNoUnmountOfTheFirst",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/app/1 --
+sha256:d4ea07195884d7f2c83db58c4377a356
+{
+  "results": [
+    {
+      "Desc": "TheFirstSeesItsOwnMounts",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSecondSeesNoUnmountOfTheFirst",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/app/1 --
+sha256:c342cdc882ae2fcd0ad7548508b8946c
+{
+  "results": [
+    {
+      "Desc": "TheFirstSeesItsOwnMounts",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSecondSeesNoUnmountOfTheFirst",
+      "Passed": true
+    }
+  ]
+}

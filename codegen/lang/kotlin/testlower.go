@@ -689,6 +689,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 			fmt.Fprintf(&b, "fun test%s(t: T) {\n", suffix)
 			// See the Go and JS lowerers: the instance is always built, the
 			// declared name bound only when the test declared one.
+			b.WriteString("    clearCurrentTestModel()\n")
 			b.WriteString("    val " + testInstanceVar + " = newTestComponent()\n")
 			b.WriteString("    setCurrentTestModel(" + testInstanceVar + ")\n")
 			if recv := codegen.TestComponentParam(fn); recv != "" {

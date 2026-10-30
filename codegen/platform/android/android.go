@@ -409,6 +409,15 @@ fun setCurrentTestModel(m: MainScreenState) {
     __snglCurrentModel.value = m
     onTestModelSet()
 }
+
+// Disposes the last test's composition before the next test builds its state:
+// a new MainScreenState is the file's ` + "`state`" + `, so an @unmount running in
+// the old composition's teardown wrote into the next test's model.
+fun clearCurrentTestModel() {
+    if (__snglCurrentModel.value == null) return
+    __snglCurrentModel.value = null
+    onTestModelSet()
+}
 fun currentTestModel(): MainScreenState =
     __snglCurrentModel.value ?: error("currentTestModel: no model set yet")
 
