@@ -1,16 +1,19 @@
 // Values an app keeps from one run to the next: the language a reader chose,
 // the list they were looking at.
 //
-//	var language = "English"
-//	settings.kept(name="language", :value=language)
+//	var language option[string] = null
+//	settings.kept(name="language", default="English", :value=language)
 //
-// **A setting is a var**, so it starts at its initializer like any other, and
-// `kept` binds it: when it mounts it loads the stored value into the var,
-// where one is stored, and it writes the var back on every change after. Only
-// a change is written, so a var nobody changed keeps following its initializer
-// -- a default the program moves reaches every reader who never chose. A value
-// is anything `sngl:json` writes; one stored by an older build that no longer
-// reads as the var's type is passed over, and the initializer stands.
+// **A setting is an option var**, null until its store answers: `kept` binds
+// it, and when it mounts it loads the stored value into the var, or its
+// `default` where none is stored, and it writes the var back on every change
+// the program makes after. A platform whose store answers late leaves it null
+// for as long as that takes, so a program shows what it chooses meanwhile
+// rather than the default dressed as the setting. Only a change is written,
+// so a reader who never chose keeps following `default` -- a default the
+// program moves reaches them. A value is anything `sngl:json` writes; one
+// stored by an older build that no longer reads as the var's type is passed
+// over, and the default stands.
 //
 // `load` and `save` reach the same values from a function or a handler.
 //

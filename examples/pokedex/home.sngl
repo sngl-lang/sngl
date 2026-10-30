@@ -10,9 +10,10 @@ const dexLimit = 50
 const columns = 3
 
 // The Pokédex chosen, by name and as PokéAPI answers it. The window's menu
-// chooses it and keeps the name from one run to the next; home shows it, and a
-// Pokémon's page lists the moves of the latest game the dex covers.
-var dexName = "national"
+// chooses it and keeps the name from one run to the next, so the name is null
+// until the kept one has loaded; home shows it, and a Pokémon's page lists
+// the moves of the latest game the dex covers.
+var dexName option[string] = null
 
 var chosenDex option[poke.PokedexDetail] = null
 
@@ -59,7 +60,9 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
     }
 
     effect(on=dexName, @update { shown = pageSize })
-    poke.pokedexRetrieve(id=dexName, :value=chosenDex, :pending=loading, :failure=failure)
+    if dexName != null {
+        poke.pokedexRetrieve(id=dexName, :value=chosenDex, :pending=loading, :failure=failure)
+    }
 
     ui.vbox(style={gap=8px, padding=8px, flex=1}) {
         if chosenDex != null {

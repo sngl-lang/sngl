@@ -305,16 +305,16 @@ The language and the dex outlive the process. `sngl:settings` binds each to
 a name, loads what was kept when the window mounts, and keeps every change:
 
 ```sngl
-settings.kept(name="language", :value=language)
-settings.kept(name="dexName", :value=dexName)
+settings.kept(name="language", default=languageLabel(i18n.defaultLocale()), :value=language)
+settings.kept(name="dexName", default="national", :value=dexName)
 ```
 
 Each target keeps them where it keeps an app's settings: SharedPreferences on
 android, `localStorage` on html, fyne's preferences, and on gtk4 and
 bubbletea a JSON file per setting under the user's config directory, in
-`Pokédex/`. A var keeps its own initializer until the kept value loads, so
-the first frame shows it. A test keeps values in memory and starts with
-none.
+`Pokédex/`. Each is null until the kept value loads: the window speaks the
+process's language meanwhile, and home asks for no dex until it knows which.
+A test keeps values in memory and starts with none.
 
 ## Languages
 

@@ -40,7 +40,7 @@ output(name="Kept") {
     }
 }
 
-var count = 0
+var count option[int] = null
 var ticks = 0
 
 // The first tick reports the count the window mounted with and keeps one
@@ -48,34 +48,37 @@ var ticks = 0
 time.timer(interval=200ms, @tick {
     ticks += 1
     if ticks == 1 {
-        print("count {count}\n")
-        count += 1
+        var n = count
+        if n != null {
+            print("count {n}\n")
+            count = n + 1
+        }
     } else {
         exit(0)
     }
 })
 
 ui.window {
-    settings.kept(name="count", :value=count)
-    ui.text(value="{count}")
+    settings.kept(name="count", default=0, :value=count)
+    ui.text(value=count != null ? "{count}" : "")
 }
 -- testrun/run/fyne/go/app.sngl/1 --
-sha256:047128495389aecda773edc4d0c79045
+sha256:dd29f23c0671ecbe29a0065121ee827e
 {
   "stdout": "count 0\n"
 }
 -- testrun/run/fyne/go/app.sngl/2 --
-sha256:047128495389aecda773edc4d0c79045
+sha256:dd29f23c0671ecbe29a0065121ee827e
 {
   "stdout": "count 1\n"
 }
 -- testrun/run/gtk4/go/app.sngl/1 --
-sha256:b182096d9d41f6e968a19673616377d7
+sha256:5d0bd5036856b2916496c3d8abc9152b
 {
   "stdout": "count 0\n"
 }
 -- testrun/run/gtk4/go/app.sngl/2 --
-sha256:b182096d9d41f6e968a19673616377d7
+sha256:5d0bd5036856b2916496c3d8abc9152b
 {
   "stdout": "count 1\n"
 }

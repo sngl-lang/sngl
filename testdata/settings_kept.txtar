@@ -21,12 +21,12 @@ output {
     }
 }
 
-var language = "English"
-var count = 1
+var language option[string] = null
+var count option[int] = null
 
 component prefs ui.node {
-    settings.kept(name="language", :value=language)
-    settings.kept(name="count", :value=count)
+    settings.kept(name="language", default="English", :value=language)
+    settings.kept(name="count", default=1, :value=count)
 }
 
 component app ui.node {
@@ -36,7 +36,7 @@ component app ui.node {
     }
 }
 
-func testStartsAtTheInitializer(t test.Test, c app) {
+func testStartsAtTheDefaultAndWritesNothing(t test.Test, c app) {
     t.assert(language == "English")
     t.assert(settings.load[string]("language") == null)
 }
@@ -65,9 +65,8 @@ func testASeededValueIsLoaded(t test.Test, c app) {
 func testAValueThatNoLongerReadsIsPassedOver(t test.Test, c app) {
     c.shown = false
     settings.save("count", "seven")
-    count = 2
     c.shown = true
-    t.assert(count == 2)
+    t.assert(count == 1)
 }
 
 ui.window {
@@ -136,21 +135,27 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
-	language            string
-	count               int
+	language            *string
+	count               *int
 	memory              map[string]string
 	__ctx_store         Store
 	shown               bool
+	held__inst0         *string
+	held__inst1         *int
 	__effect0_live      []bool
 	__effect0_desired   []bool
-	__effect1_key       string
-	__effect1_dirty     bool
-	__effect1_absent    bool
-	__effect2_live      []bool
-	__effect2_desired   []bool
-	__effect3_key       int
-	__effect3_dirty     bool
-	__effect3_absent    bool
+	__effect1_live      []bool
+	__effect1_desired   []bool
+	__effect2_key       *string
+	__effect2_dirty     bool
+	__effect2_absent    bool
+	__effect3_live      []bool
+	__effect3_desired   []bool
+	__effect4_live      []bool
+	__effect4_desired   []bool
+	__effect5_key       *int
+	__effect5_dirty     bool
+	__effect5_absent    bool
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -162,21 +167,27 @@ type modelState struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{&modelState{}}
-	m.language = "English"
-	m.count = 1
+	m.language = nil
+	m.count = nil
 	m.memory = map[string]string{}
 	m.__ctx_store = Store{Place: "platform"}
 	m.shown = true
+	m.held__inst0 = nil
+	m.held__inst1 = nil
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
-	m.__effect1_key = ""
-	m.__effect1_dirty = false
-	m.__effect1_absent = false
-	m.__effect2_live = []bool{}
-	m.__effect2_desired = []bool{}
-	m.__effect3_key = 0
-	m.__effect3_dirty = false
-	m.__effect3_absent = false
+	m.__effect1_live = []bool{}
+	m.__effect1_desired = []bool{}
+	m.__effect2_key = nil
+	m.__effect2_dirty = false
+	m.__effect2_absent = false
+	m.__effect3_live = []bool{}
+	m.__effect3_desired = []bool{}
+	m.__effect4_live = []bool{}
+	m.__effect4_desired = []bool{}
+	m.__effect5_key = nil
+	m.__effect5_dirty = false
+	m.__effect5_absent = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_torn = false
@@ -293,70 +304,116 @@ func _slot(s Store, name string) string {
 	return ((__lt3 + "/") + name)
 }
 
-func (m *Model) __effect0_mount() {
-	got := m.load__string("language", m.__ctx_store)
-	if got != nil {
-		m.language = (*(got))
-		m.__effect1_dirty = true
-	}
-	m.__effects0_settle()
-}
-
-func (m *Model) __effect0_down() {
+func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []bool{}
 	if m.shown {
-		m.__effect0_desired = append(m.__effect0_desired, true)
-	}
-}
-
-func (m *Model) __effect0_up() {
-	for __effect0_i, __effect0_k := range m.__effect0_desired {
-		if __effect0_i >= len(m.__effect0_live) {
-			m.__effect0_mount()
-		} else {
-			if m.__effect0_live[__effect0_i] != __effect0_k {
-				m.__effect0_mount()
-			}
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != true)
 		}
+		if __effect0_fresh {
+			m.held__inst0 = nil
+		}
+		m.__effect0_desired = append(m.__effect0_desired, true)
 	}
 	m.__effect0_live = m.__effect0_desired
 }
 
-func (m *Model) __effect1_update() {
-	m.save__string("language", m.__effect1_key, m.__ctx_store)
-}
-
-func (m *Model) __effect2_mount() {
-	got := m.load__int("count", m.__ctx_store)
+func (m *Model) __effect1_mount() {
+	got := m.load__string("language", m.__ctx_store)
+	var __lt4 *string
 	if got != nil {
-		m.count = (*(got))
-		m.__effect3_dirty = true
+		__lt4 = got
+	} else {
+		__lt4 = snglSome("English")
 	}
+	m.held__inst0 = __lt4
+	m.language = m.held__inst0
+	m.__effect2_dirty = true
 	m.__effects0_settle()
 }
 
-func (m *Model) __effect2_down() {
-	m.__effect2_desired = []bool{}
+func (m *Model) __effect1_down() {
+	m.__effect1_desired = []bool{}
 	if m.shown {
-		m.__effect2_desired = append(m.__effect2_desired, true)
+		m.__effect1_desired = append(m.__effect1_desired, true)
 	}
 }
 
-func (m *Model) __effect2_up() {
-	for __effect2_i, __effect2_k := range m.__effect2_desired {
-		if __effect2_i >= len(m.__effect2_live) {
-			m.__effect2_mount()
+func (m *Model) __effect1_up() {
+	for __effect1_i, __effect1_k := range m.__effect1_desired {
+		if __effect1_i >= len(m.__effect1_live) {
+			m.__effect1_mount()
 		} else {
-			if m.__effect2_live[__effect2_i] != __effect2_k {
-				m.__effect2_mount()
+			if m.__effect1_live[__effect1_i] != __effect1_k {
+				m.__effect1_mount()
 			}
 		}
 	}
-	m.__effect2_live = m.__effect2_desired
+	m.__effect1_live = m.__effect1_desired
 }
 
-func (m *Model) __effect3_update() {
-	m.save__int("count", m.__effect3_key, m.__ctx_store)
+func (m *Model) __effect2_update() {
+	if (m.__effect2_key != nil) && !snglOptEq(m.held__inst0, (*(m.__effect2_key))) {
+		m.save__string("language", (*(m.__effect2_key)), m.__ctx_store)
+		m.held__inst0 = m.__effect2_key
+	}
+}
+
+func (m *Model) __effect3_enter() {
+	m.__effect3_desired = []bool{}
+	if m.shown {
+		__effect3_fresh := true
+		if len(m.__effect3_desired) < len(m.__effect3_live) {
+			__effect3_fresh = (m.__effect3_live[len(m.__effect3_desired)] != true)
+		}
+		if __effect3_fresh {
+			m.held__inst1 = nil
+		}
+		m.__effect3_desired = append(m.__effect3_desired, true)
+	}
+	m.__effect3_live = m.__effect3_desired
+}
+
+func (m *Model) __effect4_mount() {
+	got := m.load__int("count", m.__ctx_store)
+	var __lt5 *int
+	if got != nil {
+		__lt5 = got
+	} else {
+		__lt5 = snglSome(1)
+	}
+	m.held__inst1 = __lt5
+	m.count = m.held__inst1
+	m.__effect5_dirty = true
+	m.__effects0_settle()
+}
+
+func (m *Model) __effect4_down() {
+	m.__effect4_desired = []bool{}
+	if m.shown {
+		m.__effect4_desired = append(m.__effect4_desired, true)
+	}
+}
+
+func (m *Model) __effect4_up() {
+	for __effect4_i, __effect4_k := range m.__effect4_desired {
+		if __effect4_i >= len(m.__effect4_live) {
+			m.__effect4_mount()
+		} else {
+			if m.__effect4_live[__effect4_i] != __effect4_k {
+				m.__effect4_mount()
+			}
+		}
+	}
+	m.__effect4_live = m.__effect4_desired
+}
+
+func (m *Model) __effect5_update() {
+	if (m.__effect5_key != nil) && !snglOptEq(m.held__inst1, (*(m.__effect5_key))) {
+		m.save__int("count", (*(m.__effect5_key)), m.__ctx_store)
+		m.held__inst1 = m.__effect5_key
+	}
 }
 
 func (m *Model) __effects0_settle() {
@@ -370,40 +427,42 @@ func (m *Model) __effects0_settle() {
 			for m.__effects0_pending && (m.__effects0_steps < 512) {
 				m.__effects0_pending = false
 				m.__effects0_steps = (m.__effects0_steps + 1)
-				__effect1_seen := false
+				m.__effect0_enter()
+				m.__effect3_enter()
+				__effect2_seen := false
 				if m.shown {
-					if m.__effect1_dirty {
-						m.__effect1_dirty = false
-						if !m.__effect1_absent {
-							m.__effect1_key = m.language
-							m.__effect1_update()
+					if m.__effect2_dirty {
+						m.__effect2_dirty = false
+						if !m.__effect2_absent {
+							m.__effect2_key = m.language
+							m.__effect2_update()
 						}
 					}
-					__effect1_seen = true
+					__effect2_seen = true
 				}
-				m.__effect1_absent = !__effect1_seen
-				if m.__effect1_absent {
-					m.__effect1_dirty = false
+				m.__effect2_absent = !__effect2_seen
+				if m.__effect2_absent {
+					m.__effect2_dirty = false
 				}
-				__effect3_seen := false
+				__effect5_seen := false
 				if m.shown {
-					if m.__effect3_dirty {
-						m.__effect3_dirty = false
-						if !m.__effect3_absent {
-							m.__effect3_key = m.count
-							m.__effect3_update()
+					if m.__effect5_dirty {
+						m.__effect5_dirty = false
+						if !m.__effect5_absent {
+							m.__effect5_key = m.count
+							m.__effect5_update()
 						}
 					}
-					__effect3_seen = true
+					__effect5_seen = true
 				}
-				m.__effect3_absent = !__effect3_seen
-				if m.__effect3_absent {
-					m.__effect3_dirty = false
+				m.__effect5_absent = !__effect5_seen
+				if m.__effect5_absent {
+					m.__effect5_dirty = false
 				}
-				m.__effect2_down()
-				m.__effect0_down()
-				m.__effect0_up()
-				m.__effect2_up()
+				m.__effect4_down()
+				m.__effect1_down()
+				m.__effect1_up()
+				m.__effect4_up()
 			}
 			m.__effects0_settling = false
 			if m.__effects0_pending {
@@ -413,41 +472,37 @@ func (m *Model) __effects0_settle() {
 	}
 }
 
-func (m *Model) __effect1_mark() {
-	m.__effect1_dirty = true
+func (m *Model) __effect2_mark() {
+	m.__effect2_dirty = true
 }
 
-func (m *Model) __effect3_mark() {
-	m.__effect3_dirty = true
-}
-
-func (m Model) Language() string {
+func (m Model) Language() *string {
 	return m.language
 }
 
-func (m Model) SetLanguage(v string) Model {
+func (m Model) SetLanguage(v *string) Model {
 	m.language = v
 	return m
 }
 
-type setLanguageMsg struct{ value string }
+type setLanguageMsg struct{ value *string }
 
-func SetLanguageCmd(v string) tea.Cmd {
+func SetLanguageCmd(v *string) tea.Cmd {
 	return func() tea.Msg { return setLanguageMsg{value: v} }
 }
 
-func (m Model) Count() int {
+func (m Model) Count() *int {
 	return m.count
 }
 
-func (m Model) SetCount(v int) Model {
+func (m Model) SetCount(v *int) Model {
 	m.count = v
 	return m
 }
 
-type setCountMsg struct{ value int }
+type setCountMsg struct{ value *int }
 
-func SetCountCmd(v int) tea.Cmd {
+func SetCountCmd(v *int) tea.Cmd {
 	return func() tea.Msg { return setCountMsg{value: v} }
 }
 
@@ -481,6 +536,36 @@ func SetShownCmd(v bool) tea.Cmd {
 	return func() tea.Msg { return setShownMsg{value: v} }
 }
 
+func (m Model) Held__inst0() *string {
+	return m.held__inst0
+}
+
+func (m Model) SetHeld__inst0(v *string) Model {
+	m.held__inst0 = v
+	return m
+}
+
+type setHeld__inst0Msg struct{ value *string }
+
+func SetHeld__inst0Cmd(v *string) tea.Cmd {
+	return func() tea.Msg { return setHeld__inst0Msg{value: v} }
+}
+
+func (m Model) Held__inst1() *int {
+	return m.held__inst1
+}
+
+func (m Model) SetHeld__inst1(v *int) Model {
+	m.held__inst1 = v
+	return m
+}
+
+type setHeld__inst1Msg struct{ value *int }
+
+func SetHeld__inst1Cmd(v *int) tea.Cmd {
+	return func() tea.Msg { return setHeld__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -498,6 +583,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetMemory(msg.value)
 	case setShownMsg:
 		m = m.SetShown(msg.value)
+	case setHeld__inst0Msg:
+		m = m.SetHeld__inst0(msg.value)
+	case setHeld__inst1Msg:
+		m = m.SetHeld__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -531,35 +620,35 @@ package main
 
 import "testing"
 
-func TestStartsAtTheInitializer(t *testing.T) {
+func TestStartsAtTheDefaultAndWritesNothing(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if !((c.language == "English")) { t.Errorf("assert failed: %s", "(c.language == \"English\")") }
+	if !(snglOptEq(c.language, "English")) { t.Errorf("assert failed: %s", "snglOptEq(c.language, \"English\")") }
 	if !((c.load__string("language", Store{Place: "platform"}) == nil)) { t.Errorf("assert failed: %s", "(c.load__string(\"language\", Store{Place: \"platform\"}) == nil)") }
 }
 
 func TestAChangeOutlivesARemount(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	c.language = "Deutsch"
-	c.__effect1_mark()
+	c.language = snglSome("Deutsch")
+	c.__effect2_mark()
 	c.__effects0_settle()
 	if !(snglOptEq(c.load__string("language", Store{Place: "platform"}), "Deutsch")) { t.Errorf("assert failed: %s", "snglOptEq(c.load__string(\"language\", Store{Place: \"platform\"}), \"Deutsch\")") }
 	c.shown = false
 	c.__effects0_settle()
-	c.language = "English"
-	c.__effect1_mark()
+	c.language = snglSome("English")
+	c.__effect2_mark()
 	c.__effects0_settle()
 	c.shown = true
 	c.__effects0_settle()
-	if !((c.language == "Deutsch")) { t.Errorf("assert failed: %s", "(c.language == \"Deutsch\")") }
+	if !(snglOptEq(c.language, "Deutsch")) { t.Errorf("assert failed: %s", "snglOptEq(c.language, \"Deutsch\")") }
 }
 
 func TestEachTestStartsWithNone(t *testing.T) {
 	c := newTestComponent()
 	_ = c
 	if !((c.load__string("language", Store{Place: "platform"}) == nil)) { t.Errorf("assert failed: %s", "(c.load__string(\"language\", Store{Place: \"platform\"}) == nil)") }
-	if !((c.language == "English")) { t.Errorf("assert failed: %s", "(c.language == \"English\")") }
+	if !(snglOptEq(c.language, "English")) { t.Errorf("assert failed: %s", "snglOptEq(c.language, \"English\")") }
 }
 
 func TestASeededValueIsLoaded(t *testing.T) {
@@ -570,7 +659,7 @@ func TestASeededValueIsLoaded(t *testing.T) {
 	c.save__int("count", 7, Store{Place: "platform"})
 	c.shown = true
 	c.__effects0_settle()
-	if !((c.count == 7)) { t.Errorf("assert failed: %s", "(c.count == 7)") }
+	if !(snglOptEq(c.count, 7)) { t.Errorf("assert failed: %s", "snglOptEq(c.count, 7)") }
 }
 
 func TestAValueThatNoLongerReadsIsPassedOver(t *testing.T) {
@@ -579,12 +668,9 @@ func TestAValueThatNoLongerReadsIsPassedOver(t *testing.T) {
 	c.shown = false
 	c.__effects0_settle()
 	c.save__string("count", "seven", Store{Place: "platform"})
-	c.count = 2
-	c.__effect3_mark()
-	c.__effects0_settle()
 	c.shown = true
 	c.__effects0_settle()
-	if !((c.count == 2)) { t.Errorf("assert failed: %s", "(c.count == 2)") }
+	if !(snglOptEq(c.count, 1)) { t.Errorf("assert failed: %s", "snglOptEq(c.count, 1)") }
 }
 
 func TestAScopeKeepsItsOwn(t *testing.T) {
@@ -623,6 +709,13 @@ func snglOptEq[T comparable](p *T, v T) bool {
 	return p != nil && *p == v
 }
 
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -653,21 +746,25 @@ type Failure struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	language            string
-	count               int
+	language            *string
+	count               *int
 	memory              map[string]string
 	__ctx_store         Store
 	shown               bool
+	held__inst0__inst0  *string
+	held__inst1__inst0  *int
 	__effect4_live      []bool
 	__effect4_desired   []bool
-	__effect5_key       string
-	__effect5_dirty     bool
-	__effect5_absent    bool
-	__effect6_live      []bool
-	__effect6_desired   []bool
-	__effect7_key       int
-	__effect7_dirty     bool
-	__effect7_absent    bool
+	__effect5_live      []bool
+	__effect5_desired   []bool
+	__effect6_key       *string
+	__effect6_dirty     bool
+	__effect6_absent    bool
+	__effect7_live      []bool
+	__effect7_desired   []bool
+	__effect8_key       *int
+	__effect8_dirty     bool
+	__effect8_absent    bool
 	__effects1_settling bool
 	__effects1_pending  bool
 	__effects1_torn     bool
@@ -677,21 +774,25 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.language = "English"
-	m.count = 1
+	m.language = nil
+	m.count = nil
 	m.memory = map[string]string{}
 	m.__ctx_store = Store{Place: "platform"}
 	m.shown = true
+	m.held__inst0__inst0 = nil
+	m.held__inst1__inst0 = nil
 	m.__effect4_live = []bool{}
 	m.__effect4_desired = []bool{}
-	m.__effect5_key = ""
-	m.__effect5_dirty = false
-	m.__effect5_absent = false
-	m.__effect6_live = []bool{}
-	m.__effect6_desired = []bool{}
-	m.__effect7_key = 0
-	m.__effect7_dirty = false
-	m.__effect7_absent = false
+	m.__effect5_live = []bool{}
+	m.__effect5_desired = []bool{}
+	m.__effect6_key = nil
+	m.__effect6_dirty = false
+	m.__effect6_absent = false
+	m.__effect7_live = []bool{}
+	m.__effect7_desired = []bool{}
+	m.__effect8_key = nil
+	m.__effect8_dirty = false
+	m.__effect8_absent = false
 	m.__effects1_settling = false
 	m.__effects1_pending = false
 	m.__effects1_torn = false
@@ -801,70 +902,102 @@ func _slot(s Store, name string) string {
 	return ((__lt3 + "/") + name)
 }
 
-func (m *Model) __effect4_mount() {
-	got := m.load__string("language", m.__ctx_store)
-	if got != nil {
-		m.language = (*(got))
-		m.__effect5_dirty = true
-	}
-	m.__effects1_settle()
-}
-
-func (m *Model) __effect4_down() {
+func (m *Model) __effect4_enter() {
 	m.__effect4_desired = []bool{}
 	if m.shown {
-		m.__effect4_desired = append(m.__effect4_desired, true)
-	}
-}
-
-func (m *Model) __effect4_up() {
-	for __effect4_i, __effect4_k := range m.__effect4_desired {
-		if __effect4_i >= len(m.__effect4_live) {
-			m.__effect4_mount()
-		} else {
-			if m.__effect4_live[__effect4_i] != __effect4_k {
-				m.__effect4_mount()
-			}
+		__effect4_fresh := true
+		if len(m.__effect4_desired) < len(m.__effect4_live) {
+			__effect4_fresh = (m.__effect4_live[len(m.__effect4_desired)] != true)
 		}
+		if __effect4_fresh {
+			m.held__inst0__inst0 = nil
+			m.held__inst1__inst0 = nil
+		}
+		m.__effect4_desired = append(m.__effect4_desired, true)
 	}
 	m.__effect4_live = m.__effect4_desired
 }
 
-func (m *Model) __effect5_update() {
-	m.save__string("language", m.__effect5_key, m.__ctx_store)
-}
-
-func (m *Model) __effect6_mount() {
-	got := m.load__int("count", m.__ctx_store)
+func (m *Model) __effect5_mount() {
+	got := m.load__string("language", m.__ctx_store)
+	var __lt6 *string
 	if got != nil {
-		m.count = (*(got))
-		m.__effect7_dirty = true
+		__lt6 = got
+	} else {
+		__lt6 = snglSome("English")
 	}
+	m.held__inst0__inst0 = __lt6
+	m.language = m.held__inst0__inst0
+	m.__effect6_dirty = true
 	m.__effects1_settle()
 }
 
-func (m *Model) __effect6_down() {
-	m.__effect6_desired = []bool{}
+func (m *Model) __effect5_down() {
+	m.__effect5_desired = []bool{}
 	if m.shown {
-		m.__effect6_desired = append(m.__effect6_desired, true)
+		m.__effect5_desired = append(m.__effect5_desired, true)
 	}
 }
 
-func (m *Model) __effect6_up() {
-	for __effect6_i, __effect6_k := range m.__effect6_desired {
-		if __effect6_i >= len(m.__effect6_live) {
-			m.__effect6_mount()
+func (m *Model) __effect5_up() {
+	for __effect5_i, __effect5_k := range m.__effect5_desired {
+		if __effect5_i >= len(m.__effect5_live) {
+			m.__effect5_mount()
 		} else {
-			if m.__effect6_live[__effect6_i] != __effect6_k {
-				m.__effect6_mount()
+			if m.__effect5_live[__effect5_i] != __effect5_k {
+				m.__effect5_mount()
 			}
 		}
 	}
-	m.__effect6_live = m.__effect6_desired
+	m.__effect5_live = m.__effect5_desired
 }
 
-func (m *Model) __effect7_update() {
-	m.save__int("count", m.__effect7_key, m.__ctx_store)
+func (m *Model) __effect6_update() {
+	if (m.__effect6_key != nil) && !snglOptEq(m.held__inst0__inst0, (*(m.__effect6_key))) {
+		m.save__string("language", (*(m.__effect6_key)), m.__ctx_store)
+		m.held__inst0__inst0 = m.__effect6_key
+	}
+}
+
+func (m *Model) __effect7_mount() {
+	got := m.load__int("count", m.__ctx_store)
+	var __lt7 *int
+	if got != nil {
+		__lt7 = got
+	} else {
+		__lt7 = snglSome(1)
+	}
+	m.held__inst1__inst0 = __lt7
+	m.count = m.held__inst1__inst0
+	m.__effect8_dirty = true
+	m.__effects1_settle()
+}
+
+func (m *Model) __effect7_down() {
+	m.__effect7_desired = []bool{}
+	if m.shown {
+		m.__effect7_desired = append(m.__effect7_desired, true)
+	}
+}
+
+func (m *Model) __effect7_up() {
+	for __effect7_i, __effect7_k := range m.__effect7_desired {
+		if __effect7_i >= len(m.__effect7_live) {
+			m.__effect7_mount()
+		} else {
+			if m.__effect7_live[__effect7_i] != __effect7_k {
+				m.__effect7_mount()
+			}
+		}
+	}
+	m.__effect7_live = m.__effect7_desired
+}
+
+func (m *Model) __effect8_update() {
+	if (m.__effect8_key != nil) && !snglOptEq(m.held__inst1__inst0, (*(m.__effect8_key))) {
+		m.save__int("count", (*(m.__effect8_key)), m.__ctx_store)
+		m.held__inst1__inst0 = m.__effect8_key
+	}
 }
 
 func (m *Model) __effects1_settle() {
@@ -878,40 +1011,41 @@ func (m *Model) __effects1_settle() {
 			for m.__effects1_pending && (m.__effects1_steps < 512) {
 				m.__effects1_pending = false
 				m.__effects1_steps = (m.__effects1_steps + 1)
-				__effect5_seen := false
+				m.__effect4_enter()
+				__effect6_seen := false
 				if m.shown {
-					if m.__effect5_dirty {
-						m.__effect5_dirty = false
-						if !m.__effect5_absent {
-							m.__effect5_key = m.language
-							m.__effect5_update()
+					if m.__effect6_dirty {
+						m.__effect6_dirty = false
+						if !m.__effect6_absent {
+							m.__effect6_key = m.language
+							m.__effect6_update()
 						}
 					}
-					__effect5_seen = true
+					__effect6_seen = true
 				}
-				m.__effect5_absent = !__effect5_seen
-				if m.__effect5_absent {
-					m.__effect5_dirty = false
+				m.__effect6_absent = !__effect6_seen
+				if m.__effect6_absent {
+					m.__effect6_dirty = false
 				}
-				__effect7_seen := false
+				__effect8_seen := false
 				if m.shown {
-					if m.__effect7_dirty {
-						m.__effect7_dirty = false
-						if !m.__effect7_absent {
-							m.__effect7_key = m.count
-							m.__effect7_update()
+					if m.__effect8_dirty {
+						m.__effect8_dirty = false
+						if !m.__effect8_absent {
+							m.__effect8_key = m.count
+							m.__effect8_update()
 						}
 					}
-					__effect7_seen = true
+					__effect8_seen = true
 				}
-				m.__effect7_absent = !__effect7_seen
-				if m.__effect7_absent {
-					m.__effect7_dirty = false
+				m.__effect8_absent = !__effect8_seen
+				if m.__effect8_absent {
+					m.__effect8_dirty = false
 				}
-				m.__effect6_down()
-				m.__effect4_down()
-				m.__effect4_up()
-				m.__effect6_up()
+				m.__effect7_down()
+				m.__effect5_down()
+				m.__effect5_up()
+				m.__effect7_up()
 			}
 			m.__effects1_settling = false
 			if m.__effects1_pending {
@@ -921,27 +1055,23 @@ func (m *Model) __effects1_settle() {
 	}
 }
 
-func (m *Model) __effect5_mark() {
-	m.__effect5_dirty = true
+func (m *Model) __effect6_mark() {
+	m.__effect6_dirty = true
 }
 
-func (m *Model) __effect7_mark() {
-	m.__effect7_dirty = true
-}
-
-func (m *Model) Language() string {
+func (m *Model) Language() *string {
 	return m.language
 }
 
-func (m *Model) SetLanguage(v string) {
+func (m *Model) SetLanguage(v *string) {
 	m.language = v
 }
 
-func (m *Model) Count() int {
+func (m *Model) Count() *int {
 	return m.count
 }
 
-func (m *Model) SetCount(v int) {
+func (m *Model) SetCount(v *int) {
 	m.count = v
 }
 
@@ -961,6 +1091,22 @@ func (m *Model) SetShown(v bool) {
 	m.shown = v
 }
 
+func (m *Model) Held__inst0__inst0() *string {
+	return m.held__inst0__inst0
+}
+
+func (m *Model) SetHeld__inst0__inst0(v *string) {
+	m.held__inst0__inst0 = v
+}
+
+func (m *Model) Held__inst1__inst0() *int {
+	return m.held__inst1__inst0
+}
+
+func (m *Model) SetHeld__inst1__inst0(v *int) {
+	m.held__inst1__inst0 = v
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__effects1_settle()
@@ -973,15 +1119,17 @@ type PrefsInstance struct {
 	Root                 fyne.CanvasObject
 	__model              *Model
 	__prop___ctx_store   Store
-	__prop___on_language string
-	__prop___on_count    int
+	__prop___on_language *string
+	__prop___on_count    *int
+	held__inst0          *string
+	held__inst1          *int
 	__effect0_live       []bool
 	__effect0_desired    []bool
-	__effect1_key        string
+	__effect1_key        *string
 	__effect1_dirty      bool
 	__effect2_live       []bool
 	__effect2_desired    []bool
-	__effect3_key        int
+	__effect3_key        *int
 	__effect3_dirty      bool
 	__effects0_settling  bool
 	__effects0_pending   bool
@@ -989,19 +1137,21 @@ type PrefsInstance struct {
 	__effects0_steps     int
 }
 
-func newPrefsInstance(__model *Model, __a___ctx_store Store, __a___on_language string, __a___on_count int) *PrefsInstance {
+func newPrefsInstance(__model *Model, __a___ctx_store Store, __a___on_language *string, __a___on_count *int) *PrefsInstance {
 	c := &PrefsInstance{}
 	c.__model = __model
 	c.__prop___ctx_store = __a___ctx_store
 	c.__prop___on_language = __a___on_language
 	c.__prop___on_count = __a___on_count
+	c.held__inst0 = nil
+	c.held__inst1 = nil
 	c.__effect0_live = []bool{}
 	c.__effect0_desired = []bool{}
-	c.__effect1_key = ""
+	c.__effect1_key = nil
 	c.__effect1_dirty = false
 	c.__effect2_live = []bool{}
 	c.__effect2_desired = []bool{}
-	c.__effect3_key = 0
+	c.__effect3_key = nil
 	c.__effect3_dirty = false
 	c.__effects0_settling = false
 	c.__effects0_pending = false
@@ -1014,10 +1164,15 @@ func newPrefsInstance(__model *Model, __a___ctx_store Store, __a___on_language s
 
 func (c *PrefsInstance) __effect0_mount() {
 	got := c.__model.load__string("language", c.__prop___ctx_store)
+	var __lt4 *string
 	if got != nil {
-		c.__model.language = (*(got))
-		c.__model.__effect5_dirty = true
+		__lt4 = got
+	} else {
+		__lt4 = snglSome("English")
 	}
+	c.held__inst0 = __lt4
+	c.__model.language = c.held__inst0
+	c.__model.__effect6_dirty = true
 	c.__model.__effects1_settle()
 }
 
@@ -1040,15 +1195,23 @@ func (c *PrefsInstance) __effect0_up() {
 }
 
 func (c *PrefsInstance) __effect1_update() {
-	c.__model.save__string("language", c.__effect1_key, c.__prop___ctx_store)
+	if (c.__effect1_key != nil) && !snglOptEq(c.held__inst0, (*(c.__effect1_key))) {
+		c.__model.save__string("language", (*(c.__effect1_key)), c.__prop___ctx_store)
+		c.held__inst0 = c.__effect1_key
+	}
 }
 
 func (c *PrefsInstance) __effect2_mount() {
 	got := c.__model.load__int("count", c.__prop___ctx_store)
+	var __lt5 *int
 	if got != nil {
-		c.__model.count = (*(got))
-		c.__model.__effect7_dirty = true
+		__lt5 = got
+	} else {
+		__lt5 = snglSome(1)
 	}
+	c.held__inst1 = __lt5
+	c.__model.count = c.held__inst1
+	c.__model.__effect8_dirty = true
 	c.__model.__effects1_settle()
 }
 
@@ -1071,7 +1234,10 @@ func (c *PrefsInstance) __effect2_up() {
 }
 
 func (c *PrefsInstance) __effect3_update() {
-	c.__model.save__int("count", c.__effect3_key, c.__prop___ctx_store)
+	if (c.__effect3_key != nil) && !snglOptEq(c.held__inst1, (*(c.__effect3_key))) {
+		c.__model.save__int("count", (*(c.__effect3_key)), c.__prop___ctx_store)
+		c.held__inst1 = c.__effect3_key
+	}
 }
 
 func (c *PrefsInstance) __effects0_settle() {
@@ -1113,16 +1279,16 @@ func (c *PrefsInstance) Set__ctx_store(__v Store) {
 	c.__effects0_settle()
 }
 
-func (c *PrefsInstance) Set__on_language(__v string) {
-	if c.__prop___on_language != __v {
+func (c *PrefsInstance) Set__on_language(__v *string) {
+	if !snglOptEqual(c.__prop___on_language, __v) {
 		c.__effect1_dirty = true
 	}
 	c.__prop___on_language = __v
 	c.__effects0_settle()
 }
 
-func (c *PrefsInstance) Set__on_count(__v int) {
-	if c.__prop___on_count != __v {
+func (c *PrefsInstance) Set__on_count(__v *int) {
+	if !snglOptEqual(c.__prop___on_count, __v) {
 		c.__effect3_dirty = true
 	}
 	c.__prop___on_count = __v
@@ -1146,35 +1312,35 @@ package main
 
 import "testing"
 
-func TestStartsAtTheInitializer(t *testing.T) {
+func TestStartsAtTheDefaultAndWritesNothing(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if !((c.language == "English")) { t.Errorf("assert failed: %s", "(c.language == \"English\")") }
+	if !(snglOptEq(c.language, "English")) { t.Errorf("assert failed: %s", "snglOptEq(c.language, \"English\")") }
 	if !((c.load__string("language", Store{Place: "platform"}) == nil)) { t.Errorf("assert failed: %s", "(c.load__string(\"language\", Store{Place: \"platform\"}) == nil)") }
 }
 
 func TestAChangeOutlivesARemount(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	c.language = "Deutsch"
-	c.__effect5_mark()
+	c.language = snglSome("Deutsch")
+	c.__effect6_mark()
 	c.__effects1_settle()
 	if !(snglOptEq(c.load__string("language", Store{Place: "platform"}), "Deutsch")) { t.Errorf("assert failed: %s", "snglOptEq(c.load__string(\"language\", Store{Place: \"platform\"}), \"Deutsch\")") }
 	c.shown = false
 	c.__effects1_settle()
-	c.language = "English"
-	c.__effect5_mark()
+	c.language = snglSome("English")
+	c.__effect6_mark()
 	c.__effects1_settle()
 	c.shown = true
 	c.__effects1_settle()
-	if !((c.language == "Deutsch")) { t.Errorf("assert failed: %s", "(c.language == \"Deutsch\")") }
+	if !(snglOptEq(c.language, "Deutsch")) { t.Errorf("assert failed: %s", "snglOptEq(c.language, \"Deutsch\")") }
 }
 
 func TestEachTestStartsWithNone(t *testing.T) {
 	c := newTestComponent()
 	_ = c
 	if !((c.load__string("language", Store{Place: "platform"}) == nil)) { t.Errorf("assert failed: %s", "(c.load__string(\"language\", Store{Place: \"platform\"}) == nil)") }
-	if !((c.language == "English")) { t.Errorf("assert failed: %s", "(c.language == \"English\")") }
+	if !(snglOptEq(c.language, "English")) { t.Errorf("assert failed: %s", "snglOptEq(c.language, \"English\")") }
 }
 
 func TestASeededValueIsLoaded(t *testing.T) {
@@ -1185,7 +1351,7 @@ func TestASeededValueIsLoaded(t *testing.T) {
 	c.save__int("count", 7, Store{Place: "platform"})
 	c.shown = true
 	c.__effects1_settle()
-	if !((c.count == 7)) { t.Errorf("assert failed: %s", "(c.count == 7)") }
+	if !(snglOptEq(c.count, 7)) { t.Errorf("assert failed: %s", "snglOptEq(c.count, 7)") }
 }
 
 func TestAValueThatNoLongerReadsIsPassedOver(t *testing.T) {
@@ -1194,12 +1360,9 @@ func TestAValueThatNoLongerReadsIsPassedOver(t *testing.T) {
 	c.shown = false
 	c.__effects1_settle()
 	c.save__string("count", "seven", Store{Place: "platform"})
-	c.count = 2
-	c.__effect7_mark()
-	c.__effects1_settle()
 	c.shown = true
 	c.__effects1_settle()
-	if !((c.count == 2)) { t.Errorf("assert failed: %s", "(c.count == 2)") }
+	if !(snglOptEq(c.count, 1)) { t.Errorf("assert failed: %s", "snglOptEq(c.count, 1)") }
 }
 
 func TestAScopeKeepsItsOwn(t *testing.T) {
@@ -1258,6 +1421,13 @@ func snglOptEq[T comparable](p *T, v T) bool {
 	return p != nil && *p == v
 }
 
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -1288,21 +1458,25 @@ type Failure struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	language            string
-	count               int
+	language            *string
+	count               *int
 	memory              map[string]string
 	__ctx_store         Store
 	shown               bool
+	held__inst0__inst0  *string
+	held__inst1__inst0  *int
 	__effect4_live      []bool
 	__effect4_desired   []bool
-	__effect5_key       string
-	__effect5_dirty     bool
-	__effect5_absent    bool
-	__effect6_live      []bool
-	__effect6_desired   []bool
-	__effect7_key       int
-	__effect7_dirty     bool
-	__effect7_absent    bool
+	__effect5_live      []bool
+	__effect5_desired   []bool
+	__effect6_key       *string
+	__effect6_dirty     bool
+	__effect6_absent    bool
+	__effect7_live      []bool
+	__effect7_desired   []bool
+	__effect8_key       *int
+	__effect8_dirty     bool
+	__effect8_absent    bool
 	__effects1_settling bool
 	__effects1_pending  bool
 	__effects1_torn     bool
@@ -1314,21 +1488,25 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.language = "English"
-	m.count = 1
+	m.language = nil
+	m.count = nil
 	m.memory = map[string]string{}
 	m.__ctx_store = Store{Place: "platform"}
 	m.shown = true
+	m.held__inst0__inst0 = nil
+	m.held__inst1__inst0 = nil
 	m.__effect4_live = []bool{}
 	m.__effect4_desired = []bool{}
-	m.__effect5_key = ""
-	m.__effect5_dirty = false
-	m.__effect5_absent = false
-	m.__effect6_live = []bool{}
-	m.__effect6_desired = []bool{}
-	m.__effect7_key = 0
-	m.__effect7_dirty = false
-	m.__effect7_absent = false
+	m.__effect5_live = []bool{}
+	m.__effect5_desired = []bool{}
+	m.__effect6_key = nil
+	m.__effect6_dirty = false
+	m.__effect6_absent = false
+	m.__effect7_live = []bool{}
+	m.__effect7_desired = []bool{}
+	m.__effect8_key = nil
+	m.__effect8_dirty = false
+	m.__effect8_absent = false
 	m.__effects1_settling = false
 	m.__effects1_pending = false
 	m.__effects1_torn = false
@@ -1438,70 +1616,102 @@ func _slot(s Store, name string) string {
 	return ((__lt3 + "/") + name)
 }
 
-func (m *Model) __effect4_mount() {
-	got := m.load__string("language", m.__ctx_store)
-	if got != nil {
-		m.language = (*(got))
-		m.__effect5_dirty = true
-	}
-	m.__effects1_settle()
-}
-
-func (m *Model) __effect4_down() {
+func (m *Model) __effect4_enter() {
 	m.__effect4_desired = []bool{}
 	if m.shown {
-		m.__effect4_desired = append(m.__effect4_desired, true)
-	}
-}
-
-func (m *Model) __effect4_up() {
-	for __effect4_i, __effect4_k := range m.__effect4_desired {
-		if __effect4_i >= len(m.__effect4_live) {
-			m.__effect4_mount()
-		} else {
-			if m.__effect4_live[__effect4_i] != __effect4_k {
-				m.__effect4_mount()
-			}
+		__effect4_fresh := true
+		if len(m.__effect4_desired) < len(m.__effect4_live) {
+			__effect4_fresh = (m.__effect4_live[len(m.__effect4_desired)] != true)
 		}
+		if __effect4_fresh {
+			m.held__inst0__inst0 = nil
+			m.held__inst1__inst0 = nil
+		}
+		m.__effect4_desired = append(m.__effect4_desired, true)
 	}
 	m.__effect4_live = m.__effect4_desired
 }
 
-func (m *Model) __effect5_update() {
-	m.save__string("language", m.__effect5_key, m.__ctx_store)
-}
-
-func (m *Model) __effect6_mount() {
-	got := m.load__int("count", m.__ctx_store)
+func (m *Model) __effect5_mount() {
+	got := m.load__string("language", m.__ctx_store)
+	var __lt6 *string
 	if got != nil {
-		m.count = (*(got))
-		m.__effect7_dirty = true
+		__lt6 = got
+	} else {
+		__lt6 = snglSome("English")
 	}
+	m.held__inst0__inst0 = __lt6
+	m.language = m.held__inst0__inst0
+	m.__effect6_dirty = true
 	m.__effects1_settle()
 }
 
-func (m *Model) __effect6_down() {
-	m.__effect6_desired = []bool{}
+func (m *Model) __effect5_down() {
+	m.__effect5_desired = []bool{}
 	if m.shown {
-		m.__effect6_desired = append(m.__effect6_desired, true)
+		m.__effect5_desired = append(m.__effect5_desired, true)
 	}
 }
 
-func (m *Model) __effect6_up() {
-	for __effect6_i, __effect6_k := range m.__effect6_desired {
-		if __effect6_i >= len(m.__effect6_live) {
-			m.__effect6_mount()
+func (m *Model) __effect5_up() {
+	for __effect5_i, __effect5_k := range m.__effect5_desired {
+		if __effect5_i >= len(m.__effect5_live) {
+			m.__effect5_mount()
 		} else {
-			if m.__effect6_live[__effect6_i] != __effect6_k {
-				m.__effect6_mount()
+			if m.__effect5_live[__effect5_i] != __effect5_k {
+				m.__effect5_mount()
 			}
 		}
 	}
-	m.__effect6_live = m.__effect6_desired
+	m.__effect5_live = m.__effect5_desired
 }
 
-func (m *Model) __effect7_update() {
-	m.save__int("count", m.__effect7_key, m.__ctx_store)
+func (m *Model) __effect6_update() {
+	if (m.__effect6_key != nil) && !snglOptEq(m.held__inst0__inst0, (*(m.__effect6_key))) {
+		m.save__string("language", (*(m.__effect6_key)), m.__ctx_store)
+		m.held__inst0__inst0 = m.__effect6_key
+	}
+}
+
+func (m *Model) __effect7_mount() {
+	got := m.load__int("count", m.__ctx_store)
+	var __lt7 *int
+	if got != nil {
+		__lt7 = got
+	} else {
+		__lt7 = snglSome(1)
+	}
+	m.held__inst1__inst0 = __lt7
+	m.count = m.held__inst1__inst0
+	m.__effect8_dirty = true
+	m.__effects1_settle()
+}
+
+func (m *Model) __effect7_down() {
+	m.__effect7_desired = []bool{}
+	if m.shown {
+		m.__effect7_desired = append(m.__effect7_desired, true)
+	}
+}
+
+func (m *Model) __effect7_up() {
+	for __effect7_i, __effect7_k := range m.__effect7_desired {
+		if __effect7_i >= len(m.__effect7_live) {
+			m.__effect7_mount()
+		} else {
+			if m.__effect7_live[__effect7_i] != __effect7_k {
+				m.__effect7_mount()
+			}
+		}
+	}
+	m.__effect7_live = m.__effect7_desired
+}
+
+func (m *Model) __effect8_update() {
+	if (m.__effect8_key != nil) && !snglOptEq(m.held__inst1__inst0, (*(m.__effect8_key))) {
+		m.save__int("count", (*(m.__effect8_key)), m.__ctx_store)
+		m.held__inst1__inst0 = m.__effect8_key
+	}
 }
 
 func (m *Model) __effects1_settle() {
@@ -1515,40 +1725,41 @@ func (m *Model) __effects1_settle() {
 			for m.__effects1_pending && (m.__effects1_steps < 512) {
 				m.__effects1_pending = false
 				m.__effects1_steps = (m.__effects1_steps + 1)
-				__effect5_seen := false
+				m.__effect4_enter()
+				__effect6_seen := false
 				if m.shown {
-					if m.__effect5_dirty {
-						m.__effect5_dirty = false
-						if !m.__effect5_absent {
-							m.__effect5_key = m.language
-							m.__effect5_update()
+					if m.__effect6_dirty {
+						m.__effect6_dirty = false
+						if !m.__effect6_absent {
+							m.__effect6_key = m.language
+							m.__effect6_update()
 						}
 					}
-					__effect5_seen = true
+					__effect6_seen = true
 				}
-				m.__effect5_absent = !__effect5_seen
-				if m.__effect5_absent {
-					m.__effect5_dirty = false
+				m.__effect6_absent = !__effect6_seen
+				if m.__effect6_absent {
+					m.__effect6_dirty = false
 				}
-				__effect7_seen := false
+				__effect8_seen := false
 				if m.shown {
-					if m.__effect7_dirty {
-						m.__effect7_dirty = false
-						if !m.__effect7_absent {
-							m.__effect7_key = m.count
-							m.__effect7_update()
+					if m.__effect8_dirty {
+						m.__effect8_dirty = false
+						if !m.__effect8_absent {
+							m.__effect8_key = m.count
+							m.__effect8_update()
 						}
 					}
-					__effect7_seen = true
+					__effect8_seen = true
 				}
-				m.__effect7_absent = !__effect7_seen
-				if m.__effect7_absent {
-					m.__effect7_dirty = false
+				m.__effect8_absent = !__effect8_seen
+				if m.__effect8_absent {
+					m.__effect8_dirty = false
 				}
-				m.__effect6_down()
-				m.__effect4_down()
-				m.__effect4_up()
-				m.__effect6_up()
+				m.__effect7_down()
+				m.__effect5_down()
+				m.__effect5_up()
+				m.__effect7_up()
 			}
 			m.__effects1_settling = false
 			if m.__effects1_pending {
@@ -1558,12 +1769,8 @@ func (m *Model) __effects1_settle() {
 	}
 }
 
-func (m *Model) __effect5_mark() {
-	m.__effect5_dirty = true
-}
-
-func (m *Model) __effect7_mark() {
-	m.__effect7_dirty = true
+func (m *Model) __effect6_mark() {
+	m.__effect6_dirty = true
 }
 
 // PrefsInstance is one live instance of the prefs component.
@@ -1571,15 +1778,17 @@ type PrefsInstance struct {
 	Root                 gtk4rt.Handle
 	__model              *Model
 	__prop___ctx_store   Store
-	__prop___on_language string
-	__prop___on_count    int
+	__prop___on_language *string
+	__prop___on_count    *int
+	held__inst0          *string
+	held__inst1          *int
 	__effect0_live       []bool
 	__effect0_desired    []bool
-	__effect1_key        string
+	__effect1_key        *string
 	__effect1_dirty      bool
 	__effect2_live       []bool
 	__effect2_desired    []bool
-	__effect3_key        int
+	__effect3_key        *int
 	__effect3_dirty      bool
 	__effects0_settling  bool
 	__effects0_pending   bool
@@ -1587,19 +1796,21 @@ type PrefsInstance struct {
 	__effects0_steps     int
 }
 
-func newPrefsInstance(__model *Model, __a___ctx_store Store, __a___on_language string, __a___on_count int) *PrefsInstance {
+func newPrefsInstance(__model *Model, __a___ctx_store Store, __a___on_language *string, __a___on_count *int) *PrefsInstance {
 	c := &PrefsInstance{}
 	c.__model = __model
 	c.__prop___ctx_store = __a___ctx_store
 	c.__prop___on_language = __a___on_language
 	c.__prop___on_count = __a___on_count
+	c.held__inst0 = nil
+	c.held__inst1 = nil
 	c.__effect0_live = []bool{}
 	c.__effect0_desired = []bool{}
-	c.__effect1_key = ""
+	c.__effect1_key = nil
 	c.__effect1_dirty = false
 	c.__effect2_live = []bool{}
 	c.__effect2_desired = []bool{}
-	c.__effect3_key = 0
+	c.__effect3_key = nil
 	c.__effect3_dirty = false
 	c.__effects0_settling = false
 	c.__effects0_pending = false
@@ -1613,10 +1824,15 @@ func newPrefsInstance(__model *Model, __a___ctx_store Store, __a___on_language s
 
 func (c *PrefsInstance) __effect0_mount() {
 	got := c.__model.load__string("language", c.__prop___ctx_store)
+	var __lt4 *string
 	if got != nil {
-		c.__model.language = (*(got))
-		c.__model.__effect5_dirty = true
+		__lt4 = got
+	} else {
+		__lt4 = snglSome("English")
 	}
+	c.held__inst0 = __lt4
+	c.__model.language = c.held__inst0
+	c.__model.__effect6_dirty = true
 	c.__model.__effects1_settle()
 }
 
@@ -1639,15 +1855,23 @@ func (c *PrefsInstance) __effect0_up() {
 }
 
 func (c *PrefsInstance) __effect1_update() {
-	c.__model.save__string("language", c.__effect1_key, c.__prop___ctx_store)
+	if (c.__effect1_key != nil) && !snglOptEq(c.held__inst0, (*(c.__effect1_key))) {
+		c.__model.save__string("language", (*(c.__effect1_key)), c.__prop___ctx_store)
+		c.held__inst0 = c.__effect1_key
+	}
 }
 
 func (c *PrefsInstance) __effect2_mount() {
 	got := c.__model.load__int("count", c.__prop___ctx_store)
+	var __lt5 *int
 	if got != nil {
-		c.__model.count = (*(got))
-		c.__model.__effect7_dirty = true
+		__lt5 = got
+	} else {
+		__lt5 = snglSome(1)
 	}
+	c.held__inst1 = __lt5
+	c.__model.count = c.held__inst1
+	c.__model.__effect8_dirty = true
 	c.__model.__effects1_settle()
 }
 
@@ -1670,7 +1894,10 @@ func (c *PrefsInstance) __effect2_up() {
 }
 
 func (c *PrefsInstance) __effect3_update() {
-	c.__model.save__int("count", c.__effect3_key, c.__prop___ctx_store)
+	if (c.__effect3_key != nil) && !snglOptEq(c.held__inst1, (*(c.__effect3_key))) {
+		c.__model.save__int("count", (*(c.__effect3_key)), c.__prop___ctx_store)
+		c.held__inst1 = c.__effect3_key
+	}
 }
 
 func (c *PrefsInstance) __effects0_settle() {
@@ -1712,16 +1939,16 @@ func (c *PrefsInstance) Set__ctx_store(__v Store) {
 	c.__effects0_settle()
 }
 
-func (c *PrefsInstance) Set__on_language(__v string) {
-	if c.__prop___on_language != __v {
+func (c *PrefsInstance) Set__on_language(__v *string) {
+	if !snglOptEqual(c.__prop___on_language, __v) {
 		c.__effect1_dirty = true
 	}
 	c.__prop___on_language = __v
 	c.__effects0_settle()
 }
 
-func (c *PrefsInstance) Set__on_count(__v int) {
-	if c.__prop___on_count != __v {
+func (c *PrefsInstance) Set__on_count(__v *int) {
+	if !snglOptEqual(c.__prop___on_count, __v) {
 		c.__effect3_dirty = true
 	}
 	c.__prop___on_count = __v
@@ -1735,19 +1962,19 @@ func (c *PrefsInstance) Destroy() {
 	}
 }
 
-func (m *Model) Language() string {
+func (m *Model) Language() *string {
 	return m.language
 }
 
-func (m *Model) SetLanguage(v string) {
+func (m *Model) SetLanguage(v *string) {
 	m.language = v
 }
 
-func (m *Model) Count() int {
+func (m *Model) Count() *int {
 	return m.count
 }
 
-func (m *Model) SetCount(v int) {
+func (m *Model) SetCount(v *int) {
 	m.count = v
 }
 
@@ -1765,6 +1992,22 @@ func (m *Model) Shown() bool {
 
 func (m *Model) SetShown(v bool) {
 	m.shown = v
+}
+
+func (m *Model) Held__inst0__inst0() *string {
+	return m.held__inst0__inst0
+}
+
+func (m *Model) SetHeld__inst0__inst0(v *string) {
+	m.held__inst0__inst0 = v
+}
+
+func (m *Model) Held__inst1__inst0() *int {
+	return m.held__inst1__inst0
+}
+
+func (m *Model) SetHeld__inst1__inst0(v *int) {
+	m.held__inst1__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -1849,17 +2092,19 @@ lateinit var state: MainScreenState
 
 class MainScreenState {
     init { state = this }
-    var language by mutableStateOf("English")
-    var count by mutableStateOf(1)
+    var language by mutableStateOf<String?>(null)
+    var count by mutableStateOf<Int?>(null)
     var memory by mutableStateOf(mapOf<String, String>())
     var __ctx_store by mutableStateOf(Store())
     var shown by mutableStateOf(true)
-    var __effect5_key by mutableStateOf("")
-    var __effect5_dirty by mutableStateOf(false)
-    var __effect5_absent by mutableStateOf(false)
-    var __effect7_key by mutableStateOf(0)
-    var __effect7_dirty by mutableStateOf(false)
-    var __effect7_absent by mutableStateOf(false)
+    var held__inst0__inst0 by mutableStateOf<String?>(null)
+    var held__inst1__inst0 by mutableStateOf<Int?>(null)
+    var __effect6_key by mutableStateOf<String?>(null)
+    var __effect6_dirty by mutableStateOf(false)
+    var __effect6_absent by mutableStateOf(false)
+    var __effect8_key by mutableStateOf<Int?>(null)
+    var __effect8_dirty by mutableStateOf(false)
+    var __effect8_absent by mutableStateOf(false)
     var __effects1_settling by mutableStateOf(false)
     var __effects1_pending by mutableStateOf(false)
     var __effects1_torn by mutableStateOf(false)
@@ -1912,11 +2157,17 @@ class MainScreenState {
         	}
         }
     }
-    fun __effect5_update() {
-        save__string("language", __effect5_key, __ctx_store)
+    fun __effect6_update() {
+        if (((__effect6_key != null) && (__effect6_key!! != held__inst0__inst0))) {
+        	save__string("language", __effect6_key!!, __ctx_store)
+        	held__inst0__inst0 = __effect6_key
+        }
     }
-    fun __effect7_update() {
-        save__int("count", __effect7_key, __ctx_store)
+    fun __effect8_update() {
+        if (((__effect8_key != null) && (__effect8_key!! != held__inst1__inst0))) {
+        	save__int("count", __effect8_key!!, __ctx_store)
+        	held__inst1__inst0 = __effect8_key
+        }
     }
     fun __effects1_settle() {
         if (!__effects1_torn) {
@@ -1929,35 +2180,35 @@ class MainScreenState {
         		while ((__effects1_pending && (__effects1_steps < 512))) {
         			__effects1_pending = false
         			__effects1_steps = (__effects1_steps + 1)
-        			var __effect5_seen = false
+        			var __effect6_seen = false
         			if (shown) {
-        				if (__effect5_dirty) {
-        					__effect5_dirty = false
-        					if (!__effect5_absent) {
-        						__effect5_key = language
-        						__effect5_update()
+        				if (__effect6_dirty) {
+        					__effect6_dirty = false
+        					if (!__effect6_absent) {
+        						__effect6_key = language
+        						__effect6_update()
         					}
         				}
-        				__effect5_seen = true
+        				__effect6_seen = true
         			}
-        			__effect5_absent = !__effect5_seen
-        			if (__effect5_absent) {
-        				__effect5_dirty = false
+        			__effect6_absent = !__effect6_seen
+        			if (__effect6_absent) {
+        				__effect6_dirty = false
         			}
-        			var __effect7_seen = false
+        			var __effect8_seen = false
         			if (shown) {
-        				if (__effect7_dirty) {
-        					__effect7_dirty = false
-        					if (!__effect7_absent) {
-        						__effect7_key = count
-        						__effect7_update()
+        				if (__effect8_dirty) {
+        					__effect8_dirty = false
+        					if (!__effect8_absent) {
+        						__effect8_key = count
+        						__effect8_update()
         					}
         				}
-        				__effect7_seen = true
+        				__effect8_seen = true
         			}
-        			__effect7_absent = !__effect7_seen
-        			if (__effect7_absent) {
-        				__effect7_dirty = false
+        			__effect8_absent = !__effect8_seen
+        			if (__effect8_absent) {
+        				__effect8_dirty = false
         			}
         		}
         		__effects1_settling = false
@@ -1967,11 +2218,8 @@ class MainScreenState {
         	}
         }
     }
-    fun __effect5_mark() {
-        __effect5_dirty = true
-    }
-    fun __effect7_mark() {
-        __effect7_dirty = true
+    fun __effect6_mark() {
+        __effect6_dirty = true
     }
 }
 
@@ -1981,21 +2229,25 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     if (state.shown) {
         DisposableEffect(Unit) {
-            var got = state.load__string("language", state.__ctx_store)
-            if ((got != null)) {
-            	state.language = got!!
-            	state.__effect5_dirty = true
+            state.held__inst0__inst0 = null
+            state.held__inst1__inst0 = null
+            onDispose {
             }
+        }
+        DisposableEffect(Unit) {
+            var got = state.load__string("language", state.__ctx_store)
+            state.held__inst0__inst0 = (if ((got != null)) got else "English")
+            state.language = state.held__inst0__inst0
+            state.__effect6_dirty = true
             state.__effects1_settle()
             onDispose {
             }
         }
         DisposableEffect(Unit) {
             var got = state.load__int("count", state.__ctx_store)
-            if ((got != null)) {
-            	state.count = got!!
-            	state.__effect7_dirty = true
-            }
+            state.held__inst1__inst0 = (if ((got != null)) got else 1)
+            state.count = state.held__inst1__inst0
+            state.__effect8_dirty = true
             state.__effects1_settle()
             onDispose {
             }
@@ -2004,10 +2256,12 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 }
 
 @Composable
-fun Prefs(__ctx_store: Store = Store(), __on_language: String, __on_count: Int) {
-    var __effect1_key by remember { mutableStateOf("") }
+fun Prefs(__ctx_store: Store = Store(), __on_language: String?, __on_count: Int?) {
+    var held__inst0 by remember { mutableStateOf<String?>(null) }
+    var held__inst1 by remember { mutableStateOf<Int?>(null) }
+    var __effect1_key by remember { mutableStateOf<String?>(null) }
     var __effect1_dirty by remember { mutableStateOf(false) }
-    var __effect3_key by remember { mutableStateOf(0) }
+    var __effect3_key by remember { mutableStateOf<Int?>(null) }
     var __effect3_dirty by remember { mutableStateOf(false) }
     var __effects0_settling by remember { mutableStateOf(false) }
     var __effects0_pending by remember { mutableStateOf(false) }
@@ -2015,11 +2269,17 @@ fun Prefs(__ctx_store: Store = Store(), __on_language: String, __on_count: Int) 
     var __effects0_steps by remember { mutableStateOf(0) }
 
     fun __effect1_update() {
-        state.save__string("language", __effect1_key, __ctx_store)
+        if (((__effect1_key != null) && (__effect1_key!! != held__inst0))) {
+        	state.save__string("language", __effect1_key!!, __ctx_store)
+        	held__inst0 = __effect1_key
+        }
     }
 
     fun __effect3_update() {
-        state.save__int("count", __effect3_key, __ctx_store)
+        if (((__effect3_key != null) && (__effect3_key!! != held__inst1))) {
+        	state.save__int("count", __effect3_key!!, __ctx_store)
+        	held__inst1 = __effect3_key
+        }
     }
 
     fun __effects0_settle() {
@@ -2074,20 +2334,18 @@ fun Prefs(__ctx_store: Store = Store(), __on_language: String, __on_count: Int) 
 
     DisposableEffect(Unit) {
         var got = state.load__string("language", __ctx_store)
-        if ((got != null)) {
-        	state.language = got!!
-        	state.__effect5_dirty = true
-        }
+        held__inst0 = (if ((got != null)) got else "English")
+        state.language = held__inst0
+        state.__effect6_dirty = true
         state.__effects1_settle()
         onDispose {
         }
     }
     DisposableEffect(Unit) {
         var got = state.load__int("count", __ctx_store)
-        if ((got != null)) {
-        	state.count = got!!
-        	state.__effect7_dirty = true
-        }
+        held__inst1 = (if ((got != null)) got else 1)
+        state.count = held__inst1
+        state.__effect8_dirty = true
         state.__effects1_settle()
         onDispose {
         }
@@ -2472,7 +2730,7 @@ import org.robolectric.annotation.GraphicsMode
 class MainScreenTest {
     @get:Rule val composeRule = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun testStartsAtTheInitializer() {
+    @Test fun testStartsAtTheDefaultAndWritesNothing() {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
@@ -2486,7 +2744,7 @@ class MainScreenTest {
         composeRule.setContent { MainScreen(c) }
         composeTestRule.runOnUiThread {
             c.language = "Deutsch"
-            c.__effect5_mark()
+            c.__effect6_mark()
             c.__effects1_settle()
         }
         composeTestRule.waitForIdle()
@@ -2498,7 +2756,7 @@ class MainScreenTest {
         composeTestRule.waitForIdle()
         composeTestRule.runOnUiThread {
             c.language = "English"
-            c.__effect5_mark()
+            c.__effect6_mark()
             c.__effects1_settle()
         }
         composeTestRule.waitForIdle()
@@ -2527,7 +2785,10 @@ class MainScreenTest {
             c.__effects1_settle()
         }
         composeTestRule.waitForIdle()
-        c.save__int("count", 7, Store())
+        composeTestRule.runOnUiThread {
+            c.save__int("count", 7, Store())
+        }
+        composeTestRule.waitForIdle()
         composeTestRule.runOnUiThread {
             c.shown = true
             c.__effects1_settle()
@@ -2545,11 +2806,8 @@ class MainScreenTest {
             c.__effects1_settle()
         }
         composeTestRule.waitForIdle()
-        c.save__string("count", "seven", Store())
         composeTestRule.runOnUiThread {
-            c.count = 2
-            c.__effect7_mark()
-            c.__effects1_settle()
+            c.save__string("count", "seven", Store())
         }
         composeTestRule.waitForIdle()
         composeTestRule.runOnUiThread {
@@ -2557,18 +2815,24 @@ class MainScreenTest {
             c.__effects1_settle()
         }
         composeTestRule.waitForIdle()
-        org.junit.Assert.assertTrue("(c.count == 2)", (c.count == 2))
+        org.junit.Assert.assertTrue("(c.count == 1)", (c.count == 1))
     }
 
     @Test fun testAScopeKeepsItsOwn() {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        c.save__string("language", "Español", Store())
+        composeTestRule.runOnUiThread {
+            c.save__string("language", "Español", Store())
+        }
+        composeTestRule.waitForIdle()
         // t.setContext("store", ...): context override recorded; full mount-time wiring is a TODO.
         @Suppress("UNUSED_VARIABLE") val __test_ctx_store = Store(scope = "other")
         org.junit.Assert.assertTrue("(c.load__string(\"language\", Store(scope = \"other\")) == null)", (c.load__string("language", Store(scope = "other")) == null))
-        c.save__string("language", "Français", Store(scope = "other"))
+        composeTestRule.runOnUiThread {
+            c.save__string("language", "Français", Store(scope = "other"))
+        }
+        composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.load__string(\"language\", Store(scope = \"other\")) == \"Français\")", (c.load__string("language", Store(scope = "other")) == "Français"))
     }
 
@@ -2605,7 +2869,7 @@ window.__sngl_reset = () => {
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
-  var state = { language: "English", count: 1, memory: null, shown: true };
+  var state = { language: null, count: null, memory: null, shown: true, held__inst0__inst0: null, held__inst1__inst0: null };
   state.memory = /* @__PURE__ */ new Map([]);
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
@@ -2671,85 +2935,106 @@ window.__sngl_boot = () => {
   function _slot(s, name) {
     return (s.scope !== null ? s.scope : "") + "/" + name;
   }
-  function __effect4_mount() {
+  function __effect5_mount() {
     let got = load__string("language", __ctx_store);
-    if (got !== null) {
-      ;
-      state.language = got;
-      __effect5_dirty = true;
-    }
-    ;
+    state.held__inst0__inst0 = got !== null ? got : "English";
+    state.language = state.held__inst0__inst0;
+    __effect6_dirty = true;
     __effects1_settle();
   }
-  function __effect5_update() {
-    save__string("language", __effect5_key, __ctx_store);
+  function __effect6_update() {
+    if (__effect6_key !== null && __effect6_key !== state.held__inst0__inst0) {
+      ;
+      save__string("language", __effect6_key, __ctx_store);
+      state.held__inst0__inst0 = __effect6_key;
+    }
+    ;
   }
-  function __effect6_mount() {
+  function __effect7_mount() {
     let got = load__int("count", __ctx_store);
-    if (got !== null) {
-      ;
-      state.count = got;
-      __effect7_dirty = true;
-    }
-    ;
+    state.held__inst1__inst0 = got !== null ? got : 1;
+    state.count = state.held__inst1__inst0;
+    __effect8_dirty = true;
     __effects1_settle();
   }
-  function __effect7_update() {
-    save__int("count", __effect7_key, __ctx_store);
+  function __effect8_update() {
+    if (__effect8_key !== null && __effect8_key !== state.held__inst1__inst0) {
+      ;
+      save__int("count", __effect8_key, __ctx_store);
+      state.held__inst1__inst0 = __effect8_key;
+    }
+    ;
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { load__string, save__int, save__string, load__int, _slot, __effect4_mount, __effect5_update, __effect6_mount, __effect7_update });
+    Object.assign(window, { load__string, save__int, save__string, load__int, _slot, __effect5_mount, __effect6_update, __effect7_mount, __effect8_update });
   }
   var __ctx_store = { scope: null, place: "platform" };
   var __effect4_live = [];
   var __effect4_desired = [];
-  var __effect5_key = "";
-  var __effect5_dirty = false;
-  var __effect5_absent = false;
-  var __effect6_live = [];
-  var __effect6_desired = [];
-  var __effect7_key = 0;
-  var __effect7_dirty = false;
-  var __effect7_absent = false;
+  var __effect5_live = [];
+  var __effect5_desired = [];
+  var __effect6_key = null;
+  var __effect6_dirty = false;
+  var __effect6_absent = false;
+  var __effect7_live = [];
+  var __effect7_desired = [];
+  var __effect8_key = null;
+  var __effect8_dirty = false;
+  var __effect8_absent = false;
   var __effects1_settling = false;
   var __effects1_pending = false;
   var __effects1_torn = false;
   var __effects1_steps = 0;
-  function __effect4_down() {
+  function __effect4_enter() {
     __effect4_desired = [];
     if (state.shown) {
-      __effect4_desired.push(true);
-    }
-  }
-  function __effect4_up() {
-    for (const [__effect4_i, __effect4_k] of __effect4_desired.entries()) {
-      if (__effect4_i >= __effect4_live.length) {
-        __effect4_mount();
-      } else {
-        if (__effect4_live[__effect4_i] !== __effect4_k) {
-          __effect4_mount();
-        }
+      let __effect4_fresh = true;
+      if (__effect4_desired.length < __effect4_live.length) {
+        __effect4_fresh = __effect4_live[__effect4_desired.length] !== true;
       }
+      if (__effect4_fresh) {
+        state.held__inst0__inst0 = null;
+        state.held__inst1__inst0 = null;
+      }
+      __effect4_desired.push(true);
     }
     __effect4_live = __effect4_desired;
   }
-  function __effect6_down() {
-    __effect6_desired = [];
+  function __effect5_down() {
+    __effect5_desired = [];
     if (state.shown) {
-      __effect6_desired.push(true);
+      __effect5_desired.push(true);
     }
   }
-  function __effect6_up() {
-    for (const [__effect6_i, __effect6_k] of __effect6_desired.entries()) {
-      if (__effect6_i >= __effect6_live.length) {
-        __effect6_mount();
+  function __effect5_up() {
+    for (const [__effect5_i, __effect5_k] of __effect5_desired.entries()) {
+      if (__effect5_i >= __effect5_live.length) {
+        __effect5_mount();
       } else {
-        if (__effect6_live[__effect6_i] !== __effect6_k) {
-          __effect6_mount();
+        if (__effect5_live[__effect5_i] !== __effect5_k) {
+          __effect5_mount();
         }
       }
     }
-    __effect6_live = __effect6_desired;
+    __effect5_live = __effect5_desired;
+  }
+  function __effect7_down() {
+    __effect7_desired = [];
+    if (state.shown) {
+      __effect7_desired.push(true);
+    }
+  }
+  function __effect7_up() {
+    for (const [__effect7_i, __effect7_k] of __effect7_desired.entries()) {
+      if (__effect7_i >= __effect7_live.length) {
+        __effect7_mount();
+      } else {
+        if (__effect7_live[__effect7_i] !== __effect7_k) {
+          __effect7_mount();
+        }
+      }
+    }
+    __effect7_live = __effect7_desired;
   }
   function __effects1_settle() {
     if (!__effects1_torn) {
@@ -2762,40 +3047,41 @@ window.__sngl_boot = () => {
         while (__effects1_pending && __effects1_steps < 512) {
           __effects1_pending = false;
           __effects1_steps = __effects1_steps + 1;
-          let __effect5_seen = false;
+          __effect4_enter();
+          let __effect6_seen = false;
           if (state.shown) {
-            if (__effect5_dirty) {
-              __effect5_dirty = false;
-              if (!__effect5_absent) {
-                __effect5_key = state.language;
-                __effect5_update();
+            if (__effect6_dirty) {
+              __effect6_dirty = false;
+              if (!__effect6_absent) {
+                __effect6_key = state.language;
+                __effect6_update();
               }
             }
-            __effect5_seen = true;
+            __effect6_seen = true;
           }
-          __effect5_absent = !__effect5_seen;
-          if (__effect5_absent) {
-            __effect5_dirty = false;
+          __effect6_absent = !__effect6_seen;
+          if (__effect6_absent) {
+            __effect6_dirty = false;
           }
-          let __effect7_seen = false;
+          let __effect8_seen = false;
           if (state.shown) {
-            if (__effect7_dirty) {
-              __effect7_dirty = false;
-              if (!__effect7_absent) {
-                __effect7_key = state.count;
-                __effect7_update();
+            if (__effect8_dirty) {
+              __effect8_dirty = false;
+              if (!__effect8_absent) {
+                __effect8_key = state.count;
+                __effect8_update();
               }
             }
-            __effect7_seen = true;
+            __effect8_seen = true;
           }
-          __effect7_absent = !__effect7_seen;
-          if (__effect7_absent) {
-            __effect7_dirty = false;
+          __effect8_absent = !__effect8_seen;
+          if (__effect8_absent) {
+            __effect8_dirty = false;
           }
-          __effect6_down();
-          __effect4_down();
-          __effect4_up();
-          __effect6_up();
+          __effect7_down();
+          __effect5_down();
+          __effect5_up();
+          __effect7_up();
         }
         __effects1_settling = false;
         if (__effects1_pending) {
@@ -2804,14 +3090,11 @@ window.__sngl_boot = () => {
       }
     }
   }
-  function __effect5_mark() {
-    __effect5_dirty = true;
-  }
-  function __effect7_mark() {
-    __effect7_dirty = true;
+  function __effect6_mark() {
+    __effect6_dirty = true;
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { __effects1_settle, __effect5_mark, __effect7_mark });
+    Object.assign(window, { __effects1_settle, __effect6_mark });
   }
   function _snglCodecFail(m) {
     const e = new Error(m);
@@ -3005,12 +3288,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:bc33be59331e0384e15a5ec4f2ccb9b5
+pass sha256:aeb2afa09d978c7c2f45b981331449d6
 -- run/go/fyne --
-pass sha256:11d18d22521c8e0bb25aa0ac63254048
+pass sha256:7570ca4f03865955af032a80abe6130e
 -- run/go/gtk4 --
-pass sha256:63cbd9c08c60d59b9338cb6f0ee5ebec
+pass sha256:6b1af5a1e6801463fab3e6096e31071b
 -- run/kotlin/android --
-pass sha256:4e8c3ffad9a0bd105b246626ac595752
+pass sha256:304fe043dc0582b649a42d8ccd5baf37
 -- run/none/html --
-pass sha256:cebd79637c429b0f328aa6f604c5608b
+pass sha256:a09ca4e946f0a0039d6f5b69ce4442b0

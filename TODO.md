@@ -216,7 +216,12 @@ session.
      with nothing instantiating it, so a fixture whose components bind a
      two-way prop needs `SKIP(codegen)`.
    - The value loads in a mount effect, so a kept setting shows its
-     initializer for the first frame on every target.
+     initializer for the first frame on every target. Fixed (Jonathan's
+     call): `kept` takes a `default`, and its value is an `option[T]`, null
+     until the store answers, so a program shows what it chooses meanwhile
+     and a store answering late can keep it null; loading writes nothing
+     back. Pinned by `testdata/settings_kept.sngl`'s `NullUntilItMounts` and
+     `StartsAtTheDefaultAndWritesNothing`, and `settings_kept.txtar`.
    - Nothing relaunches an android activity, so SharedPreferences is pinned
      by the golden's code, not by a run.
    - html on `--lang go` keeps settings in localStorage too; a cookie, so

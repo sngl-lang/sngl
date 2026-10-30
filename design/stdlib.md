@@ -544,10 +544,16 @@ type, an argument whose parameter names no type parameter binding nothing
 
 ## Settings
 
-**A setting is a var a component binds** (`lib/settings/settings.sngl`):
-`settings.kept(name="language", :value=language)` loads the stored value
-into the var on mount and saves it from `@update`, so the var's initializer
-stays the default and only a change is ever written. `kept`, `load` and
+**A setting is an option var a component binds** (`lib/settings/settings.sngl`):
+`settings.kept(name="language", default="English", :value=language)` leaves
+the var null until the store answers, loads the stored value, or `default`
+where none is, on mount, and saves from `@update` only what differs from what
+it last loaded or saved (`held`), so loading writes nothing back and a reader
+who never chose keeps following `default`. It took a plain var whose
+initializer was the default and showed it for the first frame on every
+target, as if it were the setting; null says "not yet", which a store that
+answers late (DataStore, a server's cookie) can keep saying as long as it
+takes, and the program chooses what to show meanwhile (Jonathan's call). `kept`, `load` and
 `save` are SNGL over `sngl:json`, which needed a generic body to encode its
 own T (*HTTP and JSON*). The prop is `name` because `key=` is a node's
 identity in a loop.

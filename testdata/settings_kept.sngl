@@ -1,7 +1,8 @@
-// settings.kept binds a var to a stored value: loaded when it mounts, where
-// one is stored, and written on every change after, so a remount reads back
-// what was chosen before it. A test keeps its values in memory and starts
-// with none.
+// settings.kept binds an option var to a stored value: null until it mounts,
+// then the value stored, or the default where none is, and written on every
+// change the program makes after, so a remount reads back what was chosen
+// before it. Loading writes nothing back. A test keeps its values in memory
+// and starts with none.
 
 // SKIP(codegen) "a platform harness compiles these components with nothing instantiating them, which a build never does; every target's code is settings_kept.txtar"
 
@@ -9,12 +10,12 @@ import settings "sngl:settings"
 import . "sngl:test"
 import ui "sngl:ui"
 
-var language = "English"
-var count = 1
+var language option[string] = null
+var count option[int] = null
 
 component prefs ui.node {
-    settings.kept(name="language", :value=language)
-    settings.kept(name="count", :value=count)
+    settings.kept(name="language", default="English", :value=language)
+    settings.kept(name="count", default=1, :value=count)
 }
 
 component app ui.node {
@@ -24,7 +25,20 @@ component app ui.node {
     }
 }
 
-func testStartsAtTheInitializer(t Test, c app) {
+component later ui.node {
+    var shown = false
+    if shown {
+        prefs
+    }
+}
+
+func testNullUntilItMounts(t Test, c later) {
+    t.assert(language == null)
+    c.shown = true
+    t.assert(language == "English")
+}
+
+func testStartsAtTheDefaultAndWritesNothing(t Test, c app) {
     t.assert(language == "English")
     t.assert(settings.load[string]("language") == null)
 }
@@ -53,9 +67,8 @@ func testASeededValueIsLoaded(t Test, c app) {
 func testAValueThatNoLongerReadsIsPassedOver(t Test, c app) {
     c.shown = false
     settings.save("count", "seven")
-    count = 2
     c.shown = true
-    t.assert(count == 2)
+    t.assert(count == 1)
 }
 
 func testAScopeKeepsItsOwn(t Test, c app) {
