@@ -22,18 +22,18 @@ Go. Two things stand in the way today:
   fetches build-tools now. That works, but it is several hundred MB and needs
   KVM/HVF, so it comes last.
 
-| Tool          | Today                                                   | Plan                                                                  | Confidence                         |
-|---------------|---------------------------------------------------------|-----------------------------------------------------------------------|------------------------------------|
-| `kotlinc`     | JetBrains zip, runs on a JDK                            | native-image, with the compose and serialization plugins built in     | Works: spike done, 3–6x faster     |
-| `d8`          | build-tools wrapper, runs on a JDK                      | native-image of `com.android.tools:r8`                                | High: pure Java, little reflection |
-| `apksigner`   | build-tools jar, runs on a JDK; `jarsigner` as fallback | Go, inside sngl (`apksig` v2/v3 scheme)                               | High                               |
-| `keytool`     | system JDK                                              | Go, inside sngl (PKCS#12 debug keystore)                              | High                               |
-| `zipalign`    | build-tools, native                                     | Go, inside sngl                                                       | High                               |
-| `aapt2`       | build-tools, native                                     | unchanged, or from our release (see licensing)                        | already native                     |
-| `adb`         | `ANDROID_HOME` platform-tools                           | build from AOSP source and publish in our release                     | High, but licensing applies        |
-| `android.jar` | Google SDK repo                                         | unchanged: data, no JVM                                               | n/a                                |
-| Robolectric   | Gradle `:app:testDebugUnitTest`                         | still needs a JVM; drop Gradle and run it with `java` directly        | n/a                                |
-| Gradle path   | Gradle + AGP + daemon                                   | `android.aapt2FromMavenOverride` at most; the rest runs in the daemon | low value                          |
+| Tool          | Today                                                   | Plan                                                                  | Confidence                           |
+|---------------|---------------------------------------------------------|-----------------------------------------------------------------------|--------------------------------------|
+| `kotlinc`     | JetBrains zip, runs on a JDK                            | native-image, with the compose and serialization plugins built in     | Works: spike done, 3–6x faster       |
+| `d8`          | build-tools wrapper, runs on a JDK                      | native-image of `com.android.tools:r8`                                | Works: 1.6x (app), 6x (cold pre-dex) |
+| `apksigner`   | build-tools jar, runs on a JDK; `jarsigner` as fallback | Go, inside sngl (`apksig` v2/v3 scheme)                               | High                                 |
+| `keytool`     | system JDK                                              | Go, inside sngl (PKCS#12 debug keystore)                              | High                                 |
+| `zipalign`    | build-tools, native                                     | Go, inside sngl                                                       | High                                 |
+| `aapt2`       | build-tools, native                                     | unchanged, or from our release (see licensing)                        | already native                       |
+| `adb`         | `ANDROID_HOME` platform-tools                           | build from AOSP source and publish in our release                     | High, but licensing applies          |
+| `android.jar` | Google SDK repo                                         | unchanged: data, no JVM                                               | n/a                                  |
+| Robolectric   | Gradle `:app:testDebugUnitTest`                         | still needs a JVM; drop Gradle and run it with `java` directly        | n/a                                  |
+| Gradle path   | Gradle + AGP + daemon                                   | `android.aapt2FromMavenOverride` at most; the rest runs in the daemon | low value                            |
 
 Notes on the table:
 
@@ -184,11 +184,16 @@ optional.
    refused and the user is pointed at `gradle=true`. `adbInstall` uninstalls
    and retries an app installed with another key. kotlinc and d8 are now the
    only JVM tools left in `directBuild` (sngl step 3).
-3. **Set up the `sngl-lang/android-tools` repo** with d8 first, the easy
-   image, to prove the release pipeline, checksums and the sngl download
-   path (sngl steps 1 and 2).
-4. **Add kotlinc to the repo,** or the jlink JRE fallback if the spike
-   failed.
+3. **Done: d8 and kotlinc are in `sngl-lang/android-tools`,** with a
+   release workflow (linux amd64/arm64, darwin arm64/amd64, windows amd64)
+   that smoke-tests a Compose + serialization source on each host and
+   publishes a `v*` tag with `SHA256SUMS`. The tags are `v<N>`, one release
+   for every tool, not one per tool version. d8 is r8 8.7.18, the version
+   AGP 8.7.3 ships, and its output is byte-identical to the JVM's. On
+   pokedex's classes it takes 3.8s vs 6.2s on the JVM. A cold pre-dex of the
+   98 library jars takes 37.6s vs 3m45s.
+4. **Teach sngl to download them** (sngl steps 1 and 2), and add
+   `kotlin-stdlib.jar`, which the kotlinc asset carries under `lib/`.
 5. **Fetch `adb` from Google's platform-tools** when there is no
    `ANDROID_HOME` (sngl step 5).
 6. **Make `sngl run` build gradle-free by default** (sngl step 8, for run
