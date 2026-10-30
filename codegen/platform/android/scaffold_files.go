@@ -311,8 +311,7 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.activity:activity-compose:%s")
-    implementation("io.coil-kt:coil-compose:%s")`, d.ComposeBOM, d.ActivityCompose, d.Coil)
+    implementation("androidx.activity:activity-compose:%s")`, d.ComposeBOM, d.ActivityCompose)
 	if d.HasNav {
 		fmt.Fprintf(w, `
     implementation("androidx.navigation:navigation-compose:%s")

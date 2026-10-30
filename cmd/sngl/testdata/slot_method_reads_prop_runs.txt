@@ -102,7 +102,7 @@ ui.window {
     pickAgain()
 }
 -- testrun/android/kotlin/app.sngl/pick/1 --
-sha256:d14031119958e84978e494e2bc7756d5
+sha256:99e08f9fbd111e4912bc03bb8ffe306e
 {
   "results": [
     {
@@ -112,7 +112,7 @@ sha256:d14031119958e84978e494e2bc7756d5
   ]
 }
 -- testrun/android/kotlin/app.sngl/pickAgain/1 --
-sha256:f643a4a126c888bd45f67565d3e93cea
+sha256:542165365fd20b0067189af83f0e4bf7
 {
   "results": [
     {
@@ -122,7 +122,7 @@ sha256:f643a4a126c888bd45f67565d3e93cea
   ]
 }
 -- testrun/bubbletea/go/app.sngl/pick/1 --
-sha256:cef8a20392f94778a5e318cac9cb8243
+sha256:47046e3f26e83bd0d1a3c181fcd3de4f
 {
   "results": [
     {
@@ -132,7 +132,7 @@ sha256:cef8a20392f94778a5e318cac9cb8243
   ]
 }
 -- testrun/bubbletea/go/app.sngl/pickAgain/1 --
-sha256:ec6558e9ebcf2ee006874876c39872aa
+sha256:08d01b4fe02cb41de2800f21bcdb22b6
 {
   "results": [
     {
@@ -162,7 +162,7 @@ sha256:e7abd83821dcbf1c9a1f0e68fc45542c
   ]
 }
 -- testrun/gtk4/go/app.sngl/pick/1 --
-sha256:6d4b92c9e7e93f9fea0d6a5df9360302
+sha256:c8f81a2a5c3c8cfc395df237ad0cc32c
 {
   "results": [
     {
@@ -172,7 +172,7 @@ sha256:6d4b92c9e7e93f9fea0d6a5df9360302
   ]
 }
 -- testrun/gtk4/go/app.sngl/pickAgain/1 --
-sha256:1de04b5c22ef0bd5b0a902c6ad4f55e0
+sha256:6f33bcd45be9802eaca588805ca63063
 {
   "results": [
     {

@@ -2,8 +2,10 @@ package android
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -13,6 +15,7 @@ import (
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/internal/androidtc"
+	"duckfam.us/sngl/internal/apksign"
 	"duckfam.us/sngl/internal/jdk"
 	"duckfam.us/sngl/ir"
 )
@@ -37,17 +40,50 @@ func androidTool(name string) (string, error) {
 	if p, err := exec.LookPath(name); err == nil {
 		return p, nil
 	}
+	subdir, ok := androidToolDirs[name]
 	home := sdkRoot()
-	if home == "" {
-		return "", fmt.Errorf("%s not found in PATH and ANDROID_HOME is not set", name)
-	}
-	if subdir, ok := androidToolDirs[name]; ok {
-		p := filepath.Join(home, subdir, name)
+	if ok && home != "" {
+		p := filepath.Join(home, subdir, name+exeSuffix())
 		if _, err := os.Stat(p); err == nil {
 			return p, nil
 		}
 	}
+	if name == "adb" {
+		if p := cachedAdb(); fileExists(p) {
+			return p, nil
+		}
+	}
+	if home == "" {
+		return "", fmt.Errorf("%s not found in PATH and ANDROID_HOME is not set", name)
+	}
 	return "", fmt.Errorf("%s not found in PATH or ANDROID_HOME (%s)", name, home)
+}
+
+// cachedAdb is where fetchAdb puts adb: Google's platform-tools, which may
+// be downloaded but not redistributed, so it comes from Google rather than
+// from sngl-lang/android-tools.
+func cachedAdb() string {
+	return filepath.Join(toolchainCacheDir(), "platform-tools", "adb"+exeSuffix())
+}
+
+// fetchAdb is adb, downloaded into the toolchain cache when neither PATH nor
+// the SDK has one. Only `sngl run` and screenshots fetch it; a test runner
+// that finds no adb skips instead.
+func fetchAdb() (string, error) {
+	if p, err := androidTool("adb"); err == nil {
+		return p, nil
+	}
+	dest := filepath.Dir(cachedAdb())
+	if err := fetchSDKPackage("platform-tools", dest, "Android platform-tools"); err != nil {
+		return "", fmt.Errorf("adb not found and could not be fetched (%w); install platform-tools or set ANDROID_HOME", err)
+	}
+	p := cachedAdb()
+	if !fileExists(p) {
+		return "", fmt.Errorf("adb not found in the downloaded platform-tools")
+	}
+	// The archive does not always carry the execute bit.
+	os.Chmod(p, 0o755)
+	return p, nil
 }
 
 // androidEnv returns the current environment with ANDROID_SDK_ROOT set
@@ -124,7 +160,7 @@ func moveFile(src, dst string) error {
 // Android project, ensures an ADB device is available (starting an emulator
 // if needed), installs the APK, and launches the main activity.
 func (g *Generator) Run(dir string, opts *ir.StructLit) error {
-	if _, err := androidTool("adb"); err != nil {
+	if _, err := fetchAdb(); err != nil {
 		return err
 	}
 
@@ -142,6 +178,7 @@ func (g *Generator) Run(dir string, opts *ir.StructLit) error {
 		return fmt.Errorf("android: %w", err)
 	}
 	cfg = cfg.withDefaults()
+	cfg.GoLib = dirExists(filepath.Join(dir, "golib"))
 	pkg := cfg.Package
 	if cfg.UseGradle() {
 		if p, err := readPackage(dir); err == nil {
@@ -149,7 +186,7 @@ func (g *Generator) Run(dir string, opts *ir.StructLit) error {
 		}
 	}
 
-	if err := adbInstall(apk); err != nil {
+	if err := adbInstall(apk, pkg); err != nil {
 		return err
 	}
 
@@ -267,16 +304,85 @@ func gradleBuild(dir string, combo androidtc.Combo) error {
 	return nil
 }
 
-func adbInstall(apk string) error {
+// adbInstall installs apk over pkg. A device keeps an installed app only
+// for an update signed with the same key, so an app last installed from
+// another build -- Gradle's debug keystore, or a debug key since replaced --
+// is refused with INSTALL_FAILED_UPDATE_INCOMPATIBLE; that one is
+// uninstalled, losing its data, and the install retried.
+func adbInstall(apk, pkg string) error {
 	adb, _ := androidTool("adb")
 	slog.Info("exec", "cmd", "adb install", "apk", apk)
+	var out bytes.Buffer
 	install := exec.Command(adb, "install", "-r", "-d", apk)
-	install.Stdout = os.Stdout
-	install.Stderr = os.Stderr
-	if err := install.Run(); err != nil {
+	install.Stdout = io.MultiWriter(os.Stdout, &out)
+	install.Stderr = io.MultiWriter(os.Stderr, &out)
+	err := install.Run()
+	if err == nil {
+		return nil
+	}
+	if pkg == "" || !strings.Contains(out.String(), "INSTALL_FAILED_UPDATE_INCOMPATIBLE") {
+		return fmt.Errorf("adb install failed: %w", err)
+	}
+	// Replacing it means uninstalling it, which loses its data, so that is
+	// done only for a debug build -- Gradle's, or an earlier sngl key's. One
+	// signed with any other key may be the user's own release of the app.
+	debug, why := installedIsDebug(adb, pkg)
+	if !debug {
+		return fmt.Errorf("%s is already installed, signed with a key that is not a debug key (%s); it may be a release build, so sngl will not uninstall it: run `adb uninstall %s` yourself to replace it, which loses its data", pkg, why, pkg)
+	}
+	fmt.Fprintf(os.Stderr, "sngl: %s is installed as a debug build signed with another key; uninstalling it (its data is lost) and installing again\n", pkg)
+	if err := exec.Command(adb, "uninstall", pkg).Run(); err != nil {
+		return fmt.Errorf("adb uninstall %s: %w", pkg, err)
+	}
+	retry := exec.Command(adb, "install", "-d", apk)
+	retry.Stdout = os.Stdout
+	retry.Stderr = os.Stderr
+	if err := retry.Run(); err != nil {
 		return fmt.Errorf("adb install failed: %w", err)
 	}
 	return nil
+}
+
+// installedIsDebug reports whether the installed pkg is signed with a debug
+// certificate, reading the APK the device has; why says what was found.
+func installedIsDebug(adb, pkg string) (bool, string) {
+	out, err := exec.Command(adb, "shell", "pm", "path", pkg).Output()
+	if err != nil {
+		return false, "its APK could not be found"
+	}
+	var remote string
+	for line := range strings.SplitSeq(string(out), "\n") {
+		if p, ok := strings.CutPrefix(strings.TrimSpace(line), "package:"); ok && strings.HasSuffix(p, "/base.apk") {
+			remote = p
+		}
+	}
+	if remote == "" {
+		return false, "its APK could not be found"
+	}
+	dir, err := os.MkdirTemp("", "sngl-installed-")
+	if err != nil {
+		return false, err.Error()
+	}
+	defer os.RemoveAll(dir)
+	local := filepath.Join(dir, "base.apk")
+	if err := exec.Command(adb, "pull", remote, local).Run(); err != nil {
+		return false, "its APK could not be read"
+	}
+	data, err := os.ReadFile(local)
+	if err != nil {
+		return false, err.Error()
+	}
+	certs, err := apksign.SignerCerts(data)
+	if err != nil {
+		return false, "its signature could not be read: " + err.Error()
+	}
+	if len(certs) == 0 {
+		return false, "it carries no certificate"
+	}
+	if !apksign.IsDebug(certs) {
+		return false, "signed by " + certs[0].Subject.String()
+	}
+	return true, ""
 }
 
 func adbLaunch(pkg string) error {

@@ -114,7 +114,7 @@ ui.window {
     main()
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:2a054ee32774159100abd05ad33af2d9
+sha256:25326221379d81f0c0f4393362d36efb
 {
   "results": [
     {
@@ -144,7 +144,7 @@ sha256:2a054ee32774159100abd05ad33af2d9
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:afd51d57222d6b29efa63dcd89c78c4f
+sha256:52da2343ba91e88288350c1d1beb4c69
 {
   "results": [
     {

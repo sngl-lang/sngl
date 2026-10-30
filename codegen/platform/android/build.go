@@ -2,7 +2,6 @@ package android
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"duckfam.us/sngl/codegen"
@@ -19,13 +18,13 @@ func (g *Generator) Build(dir string, opts *ir.StructLit) (string, error) {
 		return "", fmt.Errorf("android: %w", err)
 	}
 	cfg = cfg.withDefaults()
-	useGradle := cfg.UseGradle()
-	pkg := cfg.Package
-	combo := cfg.combo()
-
 	// If a Go module is present (go+android), run gomobile bind first.
 	goLibDir := filepath.Join(dir, "golib")
-	if info, err := os.Stat(goLibDir); err == nil && info.IsDir() {
+	cfg.GoLib = dirExists(goLibDir)
+	useGradle := cfg.UseGradle()
+	combo := cfg.combo()
+
+	if cfg.GoLib {
 		aarPath := filepath.Join(dir, "golib.aar")
 		if err := gomobileBind(goLibDir, aarPath, combo); err != nil {
 			return "", fmt.Errorf("gomobile bind: %w", err)
@@ -33,9 +32,9 @@ func (g *Generator) Build(dir string, opts *ir.StructLit) (string, error) {
 	}
 
 	if useGradle {
-		var err error
-		pkg, err = readPackage(dir)
-		if err != nil {
+		// A Gradle build of a directory that is not a Gradle project fails
+		// here, naming the file it looked for, rather than inside gradlew.
+		if _, err := readPackage(dir); err != nil {
 			return "", err
 		}
 		if err := gradleBuild(dir, combo); err != nil {
@@ -48,5 +47,5 @@ func (g *Generator) Build(dir string, opts *ir.StructLit) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolving toolchain: %w", err)
 	}
-	return directBuild(dir, tc, pkg)
+	return directBuild(dir, tc, cfg.minSdk())
 }

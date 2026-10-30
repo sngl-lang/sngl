@@ -781,7 +781,7 @@ pass sha256:9939ebf0a40428b775c15cf9b2223ba7
 -- run/go/gtk4 --
 pass sha256:cfb0cc5ee5597a307ca1e135fd0a96e6
 -- run/kotlin/android --
-pass sha256:768a35354220d97be8c0e5fe093daa37
+pass sha256:e75ed625d832d40f580389bca4b52f88
 -- run/none/html --
 pass sha256:94f7d9b0a6e88ec9edb741715a53b7fa
 -- testrun/html/none/component_duration_display.sngl/main/1 --

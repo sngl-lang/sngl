@@ -58,7 +58,6 @@ type scaffoldData struct {
 	ComposePluginV  string
 	ComposeBOM      string
 	ActivityCompose string
-	Coil            string
 	// HasNav adds what a sngl:ui/nav stack is built on: navigation-compose,
 	// and the serialization plugin its typed routes are written with.
 	HasNav        bool
@@ -94,7 +93,6 @@ func newScaffoldData(cfg Config) scaffoldData {
 		ComposePluginV:  combo.ComposePlugin,
 		ComposeBOM:      combo.ComposeBOM,
 		ActivityCompose: combo.ActivityCompose,
-		Coil:            combo.Coil,
 		HasNav:          cfg.Nav,
 		Navigation:      combo.Navigation,
 		Serialization:   combo.Serialization,

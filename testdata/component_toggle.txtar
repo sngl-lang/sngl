@@ -711,7 +711,7 @@ pass sha256:eef4ec4eb72893a7f52b22d07b39617e
 -- run/go/gtk4 --
 pass sha256:70c0b1912c1ecd49153340f537d8f3e4
 -- run/kotlin/android --
-pass sha256:de7c033c21e9f0dadfe221da73be8c91
+pass sha256:45ef00317407c700d1ccb657302f4ce3
 -- run/none/html --
 pass sha256:ef0b727ccb1aecfaa7cf12b2431d9179
 -- testrun/html/none/component_toggle.sngl/main/1 --

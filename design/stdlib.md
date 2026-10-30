@@ -511,7 +511,13 @@ request with `pkg/go/snglhttp`; JavaScript to a page helper
 (`javascript.CodecHelperJS`, published on `window` where a test calls it);
 Kotlin to `SnglCodec`, written beside MainScreen.kt
 (`codegen/platform/android/codec.kt`, org.json and `HttpURLConnection` on
-`Dispatchers.IO`), whose descriptor also builds and reads each struct; the
+`Dispatchers.IO`), whose descriptor also builds and reads each struct. A
+Kotlin codec is typed by its value, `SnglCodec<T>`, built from a factory per
+kind (`SnglCodec.list(SnglCodec.int())`), and a struct is built from
+`a.at(i)`, which the constructor parameter types, so the generated code holds
+no cast: it was `a[i] as List<T>`, unchecked, and a pokedex build warned
+about it ninety times. Each integer width is its own factory, since a `Byte`
+or `UInt` field decoded as an `Int` failed its cast; the
 interpreter walks the plan over its own values (`internal/interp/codec.go`).
 The `Result` the call answers is built by translating IR around the names
 the runtime handed back (`codegen.ResultOK`, `ResultFailed`, `HostValue`), so

@@ -1,8 +1,7 @@
 # ui.tabs, run on every target: a tab is a record written as a child, and the
 # panel is what the selected one was written with. The panel shown follows
-# `selected`, every panel stays mounted, so a node of one not shown is present
-# all the same (tabs_panels_stay_loaded_runs.txt), a panel's handler writes the
-# caller's state, and a `var` written in a panel is state of that panel.
+# `selected`, a panel's handler writes the caller's state, and a `var` written
+# in a panel is state of that panel.
 #
 # A test switches tabs as a user does, by pressing one: `c.strip.change(1)`
 # clicks the tab at 1, which writes `selected` and fires @change. No node of
@@ -99,7 +98,7 @@ func testSwitchingShowsAnotherPanel(t Test, c app) {
     c.strip.change(1)
     t.assert(c.idx == 1)
     t.assert(c.changed == 1)
-    t.assert(c.hit != null)
+    t.assert(c.hit == null)
     t.assert(c.twice != null)
     if c.twice != null {
         c.twice.click()
@@ -141,7 +140,7 @@ ui.window {
     app
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:5de2b71a5ae21f07101d49cbcf237a84
+sha256:078321285c030e17d9215d982fa6b42b
 {
   "results": [
     {
@@ -163,7 +162,7 @@ sha256:5de2b71a5ae21f07101d49cbcf237a84
   ]
 }
 -- testrun/android/kotlin/app.sngl/pair/1 --
-sha256:fffd6d952c009a691c7a377616c276c3
+sha256:587c9e6678bc53479d45d9a1279c6845
 {
   "results": [
     {
@@ -173,7 +172,7 @@ sha256:fffd6d952c009a691c7a377616c276c3
   ]
 }
 -- testrun/android/kotlin/app.sngl/wrapped/1 --
-sha256:79a28a17621696fdaced030d1358bfec
+sha256:97022dbddd59cd7f69d8f1dd571bb8bb
 {
   "results": [
     {
@@ -183,7 +182,7 @@ sha256:79a28a17621696fdaced030d1358bfec
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:e42583c66901289b9af2019680cbd8cc
+sha256:81e3b93dffbaff60e5ae1b93a73797ae
 {
   "results": [
     {
@@ -205,7 +204,7 @@ sha256:e42583c66901289b9af2019680cbd8cc
   ]
 }
 -- testrun/bubbletea/go/app.sngl/pair/1 --
-sha256:0b96bf7fd060dbba828171e64ceee6d1
+sha256:f4363eae7f03dd92455cd88c38a001a5
 {
   "results": [
     {
@@ -215,7 +214,7 @@ sha256:0b96bf7fd060dbba828171e64ceee6d1
   ]
 }
 -- testrun/bubbletea/go/app.sngl/wrapped/1 --
-sha256:44ff8edd2227fe3294a474dfbc7b7fd2
+sha256:4d284524b9689a375a0a16f5b1a2f036
 {
   "results": [
     {
@@ -225,7 +224,7 @@ sha256:44ff8edd2227fe3294a474dfbc7b7fd2
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:b9add47f3e4a3104dcd44af8e4d9e4bb
+sha256:147b23e29a29adb97b173a76df3ce736
 {
   "results": [
     {
@@ -247,7 +246,7 @@ sha256:b9add47f3e4a3104dcd44af8e4d9e4bb
   ]
 }
 -- testrun/fyne/go/app.sngl/pair/1 --
-sha256:60d2b5e6eb4ae7c6d210eeb1e0b96b09
+sha256:8e8dc1303a2cef955a65010365fe5eb4
 {
   "results": [
     {
@@ -257,7 +256,7 @@ sha256:60d2b5e6eb4ae7c6d210eeb1e0b96b09
   ]
 }
 -- testrun/fyne/go/app.sngl/wrapped/1 --
-sha256:d24d7635d52e1208ee32662e161f5144
+sha256:6e275de16a4a55d1a35c128300b165d7
 {
   "results": [
     {
@@ -267,7 +266,7 @@ sha256:d24d7635d52e1208ee32662e161f5144
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:1724da50d481c1781695ff95aa97c875
+sha256:d737af4eb0feba17f1c83f3ddff2c8ea
 {
   "results": [
     {
@@ -289,7 +288,7 @@ sha256:1724da50d481c1781695ff95aa97c875
   ]
 }
 -- testrun/gtk4/go/app.sngl/pair/1 --
-sha256:f82c908d111d22a0a56092bf299d55bc
+sha256:30d25072303184379801b3b7f35a3c2b
 {
   "results": [
     {
@@ -299,7 +298,7 @@ sha256:f82c908d111d22a0a56092bf299d55bc
   ]
 }
 -- testrun/gtk4/go/app.sngl/wrapped/1 --
-sha256:c8811a2c953db7b321e81f787afabd72
+sha256:8d87fd961cf244c91fa99f29a2b9c60e
 {
   "results": [
     {
@@ -309,7 +308,7 @@ sha256:c8811a2c953db7b321e81f787afabd72
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:6a979056986c56ea7c8ca6d43ba597d2
+sha256:b0a8207e8f308ccd588ad7b9e36da2a4
 {
   "results": [
     {
@@ -331,7 +330,7 @@ sha256:6a979056986c56ea7c8ca6d43ba597d2
   ]
 }
 -- testrun/html/none/app.sngl/pair/1 --
-sha256:ef6f7b85c170d76ad78a7b965d0d037c
+sha256:af09613cc93723727251f2e889f45807
 {
   "results": [
     {
@@ -341,7 +340,7 @@ sha256:ef6f7b85c170d76ad78a7b965d0d037c
   ]
 }
 -- testrun/html/none/app.sngl/wrapped/1 --
-sha256:5eac0b4039adbc7764cee183d7fe76c6
+sha256:4098fbe58cbfd3996471e5505410aa6f
 {
   "results": [
     {

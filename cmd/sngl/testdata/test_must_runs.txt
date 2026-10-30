@@ -65,7 +65,7 @@ ui.window {
     ui.text(value="x")
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:ef613e70c1b41862e6556b837281edb6
+sha256:f53b67fc587c823b8a843b2422d05a5a
 {
   "results": [
     {
@@ -103,7 +103,7 @@ sha256:ef613e70c1b41862e6556b837281edb6
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:fe4930b535b316b775691a7b4b4432e3
+sha256:358d9414b081a0bee4ea347c1af823cc
 {
   "results": [
     {

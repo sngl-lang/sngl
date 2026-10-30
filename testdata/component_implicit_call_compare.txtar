@@ -662,7 +662,7 @@ pass sha256:e42006eee4976ebcf3b67b54847ad2c9
 -- run/go/gtk4 --
 pass sha256:fca55c68c3faaa84561d127d89d0eeda
 -- run/kotlin/android --
-pass sha256:134ffd28533413cce2250cbe262c673d
+pass sha256:e91ab03bab1aa0e2b03b9dacb8f7f8ae
 -- run/none/html --
 pass sha256:dce9f14868eb9dcc6519bb320e6b3c7e
 -- testrun/html/none/component_implicit_call_compare.sngl/main/1 --

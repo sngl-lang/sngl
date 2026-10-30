@@ -51,7 +51,7 @@ ui.window {
     ui.text(value="{shareOr(held)}")
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:7ad8cc29d747a29bb9ba5a0faaaae84a
+sha256:99fc470976203e3722531c2c50edd8dc
 {
   "results": [
     {
@@ -65,7 +65,7 @@ sha256:7ad8cc29d747a29bb9ba5a0faaaae84a
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:7130901ed7406c9eb3320e169039cbc8
+sha256:7669ff63050f41fd52bc41e465aa2b92
 {
   "results": [
     {

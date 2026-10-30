@@ -73,7 +73,7 @@ ui.window {
     card
 }
 -- testrun/android/kotlin/app.sngl/card/1 --
-sha256:ca124e2d236ecad529a2ebad2323bcb8
+sha256:f01c1ec8b3a57a4f602e8b67264968ab
 {
   "results": [
     {
@@ -87,7 +87,7 @@ sha256:ca124e2d236ecad529a2ebad2323bcb8
   ]
 }
 -- testrun/bubbletea/go/app.sngl/card/1 --
-sha256:772322c90107d263685c0d9dec70b0fa
+sha256:3c4251e99ae652a7550131f81eb1a90c
 {
   "results": [
     {

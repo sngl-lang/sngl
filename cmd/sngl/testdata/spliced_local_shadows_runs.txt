@@ -69,7 +69,7 @@ ui.window {
     cards()
 }
 -- testrun/android/kotlin/app.sngl/cards/1 --
-sha256:956216d74cbdd1ece4c977d7ec78ef2c
+sha256:42e85984943b2e0c29ea2cf295b1c08d
 {
   "results": [
     {
@@ -79,7 +79,7 @@ sha256:956216d74cbdd1ece4c977d7ec78ef2c
   ]
 }
 -- testrun/bubbletea/go/app.sngl/cards/1 --
-sha256:74031bfdb030aa5eafe1033d3d5ea7df
+sha256:469420b306aa35d7df754da4c274849c
 {
   "results": [
     {
@@ -99,7 +99,7 @@ sha256:b67f4d65f4ca30b62da3ee60e410d975
   ]
 }
 -- testrun/gtk4/go/app.sngl/cards/1 --
-sha256:45822980237bfda7ca0d29afc3c86574
+sha256:0cec2275156bbc6a7e025bbe476044e6
 {
   "results": [
     {

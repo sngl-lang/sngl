@@ -44,7 +44,7 @@ ui.window {
     counter(inc=3, start=1)
 }
 -- testrun/android/kotlin/app.sngl/counter/1 --
-sha256:341f673110d6eda5afe35abe78ce3037
+sha256:5f8193a9307ad2f5d3617761876c159c
 {
   "results": [
     {
@@ -54,7 +54,7 @@ sha256:341f673110d6eda5afe35abe78ce3037
   ]
 }
 -- testrun/bubbletea/go/app.sngl/counter/1 --
-sha256:b9e66ba1acfeeea9a1f7d49d8663840a
+sha256:5b909e541e181ecd679b68a98eb16e13
 {
   "results": [
     {

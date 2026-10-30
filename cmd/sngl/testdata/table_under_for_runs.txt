@@ -39,7 +39,7 @@ func testEachGroupHasItsTable(t test.Test, c groups) {
     t.assert(c.title[1] != null && c.title[1].value == "b")
 }
 -- testrun/android/kotlin/app.sngl/groups/1 --
-sha256:bf3a686c3e3191213566dfac5703b5c0
+sha256:45418d8673b89fea209eaf6e137cbb8b
 {
   "results": [
     {
@@ -49,7 +49,7 @@ sha256:bf3a686c3e3191213566dfac5703b5c0
   ]
 }
 -- testrun/bubbletea/go/app.sngl/groups/1 --
-sha256:78d37c083af93ca1365524606a1c9a5f
+sha256:886550bac9c94a1cd260cfc517d61c57
 {
   "results": [
     {

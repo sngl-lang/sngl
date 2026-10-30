@@ -22,7 +22,7 @@ type Config struct {
 	Package    string // Kotlin package name (default: "test.sngl.app")
 	AppName    string // display name override; empty falls back to stdlib Name
 	Main       bool   // emit MainActivity.kt + project scaffold
-	Gradle     *bool  // use Gradle build system (default: true; nil = use default)
+	Gradle     *bool  // use Gradle (nil = choose; see UseGradle)
 	Icon       string // path to icon file (SVG or PNG); empty falls back to stdlib Icon
 	Color      string // theme/icon background color as hex (#RRGGBB)
 	ProjectDir string // project root directory (for resolving relative icon paths)
@@ -35,6 +35,10 @@ type Config struct {
 	Sdk           int    // override compileSdk / targetSdk (0 = combo default)
 	MinSdk        int    // override minSdk (0 = default 26)
 	GradleVersion string // override Gradle distribution version
+
+	// Set by the build for `sngl build`/`run` and `sngl test`.
+	Executable bool
+	Test       bool
 
 	// Stdlib globals (lib/options.sngl).
 	Name        string
@@ -81,19 +85,26 @@ func (c Config) withDefaults() Config {
 	return c
 }
 
-// UseGradle reports whether the gradle build system should be used. Defaults
-// to true when the gradle option is unset.
+// UseGradle reports whether the build goes through Gradle. The gradle option
+// decides where it is set. Unset, a generated project is a Gradle one, which
+// is what Android Studio opens, and a build or run is gradle-free, which
+// needs no JVM; a test and a Go program still use Gradle, since the
+// gradle-free build runs no Robolectric and does not bind a golib.aar.
 func (c Config) UseGradle() bool {
-	if c.Gradle == nil {
-		return true
+	if c.Gradle != nil {
+		return *c.Gradle
 	}
-	return *c.Gradle
+	return !c.Executable || c.Test || c.GoLib
 }
 
 // defaultMinSdk is the minSdk used when the option is unset. It is an app-level
 // choice, not a toolchain-compatibility constraint, so it lives outside the
 // combo matrix.
 const defaultMinSdk = 26
+
+// composeMinSdk is the lowest API level Compose runs on, and so the lowest
+// minSdk the gradle-free build accepts.
+const composeMinSdk = 21
 
 // combo resolves the toolchain combo for this config: the named combo (or the
 // default), with per-field overrides applied. An unknown Toolchain name falls

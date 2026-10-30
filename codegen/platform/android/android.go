@@ -219,7 +219,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := emitCodecFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package); err != nil {
 			return err
 		}
-		if err := emitAssetsFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package, "app/src/main/assets"); err != nil {
+		if err := emitAssetsFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package, assetsDirFor(true)); err != nil {
 			return err
 		}
 		if err := emitSettingsFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package); err != nil {
@@ -275,7 +275,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := emitCodecFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
 			return err
 		}
-		if err := emitAssetsFile(req, sink, "MainScreen.kt", cfg.Package, ""); err != nil {
+		if err := emitAssetsFile(req, sink, "MainScreen.kt", cfg.Package, assetsDirFor(false)); err != nil {
 			return err
 		}
 		if err := emitSettingsFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
@@ -285,6 +285,11 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
+			// Boilerplate as the Gradle project's copies are.
+			if f.Name == "Theme.kt" && cfg.accent != "" {
+				continue
+			}
+			codegen.MarkBoilerplate(sink, f.Name)
 		}
 		if iconRes, err := iconFiles(cfg); err == nil {
 			for _, f := range iconRes {
@@ -300,10 +305,11 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 	// set whenever a full project is emitted — including agent/test builds
 	// that force the scaffold on while cfg.Main is false.
 	if usesI18n && effectiveMain {
-		if err := emitI18nRuntimeFile(sink); err != nil {
+		gradle := cfg.UseGradle()
+		if err := emitI18nRuntimeFile(sink, gradle); err != nil {
 			return err
 		}
-		if err := emitI18nManifestFile(sink, cfg, req.ProjectFS); err != nil {
+		if err := emitI18nManifestFile(sink, cfg, req.ProjectFS, assetsDirFor(gradle)); err != nil {
 			return err
 		}
 	}
@@ -695,4 +701,13 @@ func keyedInstanceIDs(pkg *ir.Package) map[string]bool {
 	ids := codegen.KeyedInstanceIDs(pkg)
 	maps.Copy(ids, codegen.InstanceRootIDs(pkg))
 	return ids
+}
+
+// assetsDirFor is where an app's assets go: a Gradle project's source set,
+// or the assets directory the gradle-free build hands aapt2.
+func assetsDirFor(gradle bool) string {
+	if gradle {
+		return "app/src/main/assets"
+	}
+	return "assets"
 }

@@ -854,7 +854,7 @@ pass sha256:cf36bd9aa53b32d770ef87feaf4386fc
 -- run/go/gtk4 --
 pass sha256:796aca140e6d95b36a844d7c6dfe84e2
 -- run/kotlin/android --
-pass sha256:9ffaf54d5a6b366e293182dea0ca7e4b
+pass sha256:482f99db41982208424b5b481728bef9
 -- run/none/html --
 pass sha256:89f41f967128f3fce1d5987ae63fc7c9
 -- testrun/html/none/component_map_index_write.sngl/main/1 --

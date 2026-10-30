@@ -81,7 +81,7 @@ window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:cffca0e017667c3b697121ead784ab84
+sha256:e1b955ccc5c093904c81c5e5bcf0bc0f
 {
   "results": [
     {
@@ -99,7 +99,7 @@ sha256:cffca0e017667c3b697121ead784ab84
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:9eacc39143f580517f39870a0a779654
+sha256:f43de2976c516e2bc4caff001189619b
 {
   "results": [
     {
