@@ -363,13 +363,10 @@ session.
    - A document's `<title>` on html was written only where the window's
      title folds to a literal; one that reads anything else is now set as
      the script starts, once, which covers a title from a route's params.
-     A route-mode server still renders no `<title>` for it, and a title
-     reading state does not follow the state. The second is fixed: the page
-     dropped every write to the document's props, the title's updater with
-     them; it is `document.title` now
-     (`TestWindow_ATitleReadingStateFollowsIt`). The first is open: the
-     server writes each page as fixed bytes and evaluates no SNGL, so a
-     `<title>` from route params is a feature.
+     A title reading state did not follow the state: the page dropped every
+     write to the document's props, the title's updater with them; it is
+     `document.title` now (`TestWindow_ATitleReadingStateFollowsIt`). A
+     route-mode server rendering no `<title>` for one is #300.
    - On html a test page for a component that is not a window cannot read
      `pages.current` (`current` is undefined), with or without `titleOf`; a
      window's documents answer it. Fixed: a document published the page's
