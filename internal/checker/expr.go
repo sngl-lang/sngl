@@ -733,7 +733,14 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 		}
 		return c.finishBinary(x, c.checkExprExpecting(x.Left, leftExpected), rightExpr)
 	}
-	leftExpr := c.checkExpr(x.Left)
+	// An operator other than a comparison of equality takes no option, so an
+	// option the result is wanted as is its element to the operands: wanting
+	// the option, `count = n + 1` left a narrowed `n` an option.
+	operandExpected := c.expected
+	if operandExpected != nil && operandExpected.Kind == ir.TypeOption && x.Op != ast.BinEq && x.Op != ast.BinNeq {
+		operandExpected = optionElem(operandExpected)
+	}
+	leftExpr := c.checkExprExpecting(x.Left, operandExpected)
 	// `a && b` evaluates b only where a held, so a null test in a narrows what
 	// follows it; `a || b` evaluates b only where a failed, which is the same
 	// fact negated.
@@ -754,7 +761,7 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 	// against an expected type, and the only thing `a == 1000ms` offers the
 	// literal is the type of what it is being compared with. Only a unit,
 	// because `2 * 3px` would otherwise expect the int the left is.
-	rightExpected := c.expected
+	rightExpected := operandExpected
 	if lt := exprType(leftExpr); ir.UnitDeclOf(lt) != nil {
 		rightExpected = lt
 	}

@@ -1,0 +1,123 @@
+# A narrowed option read in an operand of an assignment back to an option:
+# `count = n + 1` under `n != null`. The assignment wanted an option, and the
+# checker handed that want to the operator's operands, so the narrowed `n`
+# was left an option and `+` was refused ("operator + not defined for
+# option[int] and int"). An operator other than == and != takes the option's
+# element instead. Each target wraps the sum back into the option.
+
+sngl test --platform=none app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +2 tests, 0 failures'
+
+-- app.sngl --
+import "sngl:test"
+import ui "sngl:ui"
+
+var count option[int] = 1
+
+func bump() {
+    var n = count
+    if n != null {
+        count = n + 1
+    }
+}
+
+component main ui.node {
+    var total option[int] = 10
+    ui.button #add(text="add", @click {
+        var t = total
+        if t != null {
+            total = t * 2 + 1
+        }
+    })
+}
+
+func testAPackageOptionTakesTheSum(t test.Test, c main) {
+    bump()
+    bump()
+    t.assert(count == 3)
+}
+
+func testAComponentOptionTakesTheProduct(t test.Test, c main) {
+    c.add.click()
+    t.assert(c.total == 21)
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:6a12242097fa4b40f7930283da1ad4de
+{
+  "results": [
+    {
+      "Desc": "AComponentOptionTakesTheProduct",
+      "Passed": true
+    },
+    {
+      "Desc": "APackageOptionTakesTheSum",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:b89510074af2c033005aa7879c34329c
+{
+  "results": [
+    {
+      "Desc": "AComponentOptionTakesTheProduct",
+      "Passed": true
+    },
+    {
+      "Desc": "APackageOptionTakesTheSum",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:3e563a81ceb8ddcff7e70679d1f04691
+{
+  "results": [
+    {
+      "Desc": "AComponentOptionTakesTheProduct",
+      "Passed": true
+    },
+    {
+      "Desc": "APackageOptionTakesTheSum",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:c0344b3044fdc40b65ffcfa815d4cb22
+{
+  "results": [
+    {
+      "Desc": "AComponentOptionTakesTheProduct",
+      "Passed": true
+    },
+    {
+      "Desc": "APackageOptionTakesTheSum",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:202ee81d6254dfb11a68fe20d8ddc7a7
+{
+  "results": [
+    {
+      "Desc": "AComponentOptionTakesTheProduct",
+      "Passed": true
+    },
+    {
+      "Desc": "APackageOptionTakesTheSum",
+      "Passed": true
+    }
+  ]
+}
