@@ -314,3 +314,28 @@ func findApksigner() string {
 	}
 	return ""
 }
+
+// TestSignerCertsReadsTheSignature reads back the certificate Sign wrote,
+// which is how `sngl run` tells a debug build it may replace from a release
+// it must not.
+func TestSignerCertsReadsTheSignature(t *testing.T) {
+	apk, _ := testAPK(t)
+	k := testKey(t)
+	signed, err := Sign(apk, k, 24)
+	if err != nil {
+		t.Fatal(err)
+	}
+	certs, err := SignerCerts(signed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(certs) != 1 || !bytes.Equal(certs[0].Raw, k.Cert.Raw) {
+		t.Fatalf("SignerCerts = %d certificates, want the signing one", len(certs))
+	}
+	if !IsDebug(certs) {
+		t.Error("the debug key's certificate is not a debug one")
+	}
+	if _, err := SignerCerts(apk); err == nil {
+		t.Error("an unsigned APK reported certificates")
+	}
+}

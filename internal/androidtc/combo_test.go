@@ -21,7 +21,7 @@ func TestCombosWellFormed(t *testing.T) {
 		names[c.Name] = true
 
 		if c.Name == "" || c.Gradle == "" || c.AGP == "" || c.Kotlin == "" ||
-			c.ComposePlugin == "" || c.ComposeBOM == "" || c.ComposeRuntime == "" ||
+			c.ComposePlugin == "" || c.ComposeBOM == "" ||
 			c.BuildTools == "" || c.ActivityCompose == "" {
 			t.Errorf("combo %q has an empty version field: %+v", c.Name, c)
 		}

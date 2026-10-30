@@ -82,7 +82,7 @@ func testEachBookIsAskedForOnce(t test.Test, c page) {
     t.assert(c.count != null && c.count.value == "2")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:5f16a87fa9da748007621e73c8a9eca3
+sha256:857cc04e8e1f3bc4842f3fc741de6521
 {
   "results": [
     {

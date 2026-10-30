@@ -62,8 +62,8 @@ func TestFetchArchiveUnpacksExecutable(t *testing.T) {
 	if !fileExists(filepath.Join(dest, "lib", "kotlin-stdlib.jar")) {
 		t.Error("lib/kotlin-stdlib.jar was not unpacked")
 	}
-	if dirExists(dest+".part") || fileExists(dest+".download") {
-		t.Error("staging files were left behind")
+	if left, _ := os.ReadDir(filepath.Dir(dest)); len(left) != 1 {
+		t.Errorf("staging files were left behind: %d entries beside the tool", len(left))
 	}
 }
 
@@ -76,8 +76,8 @@ func TestFetchArchiveRefusesWrongSum(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "checksum mismatch") {
 		t.Fatalf("err = %v, want a checksum mismatch", err)
 	}
-	if dirExists(dest) {
-		t.Error("a download that failed its checksum was unpacked")
+	if left, _ := os.ReadDir(filepath.Dir(dest)); len(left) != 0 {
+		t.Error("a download that failed its checksum left files behind")
 	}
 }
 

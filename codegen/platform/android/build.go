@@ -22,7 +22,6 @@ func (g *Generator) Build(dir string, opts *ir.StructLit) (string, error) {
 	goLibDir := filepath.Join(dir, "golib")
 	cfg.GoLib = dirExists(goLibDir)
 	useGradle := cfg.UseGradle()
-	pkg := cfg.Package
 	combo := cfg.combo()
 
 	if cfg.GoLib {
@@ -33,9 +32,9 @@ func (g *Generator) Build(dir string, opts *ir.StructLit) (string, error) {
 	}
 
 	if useGradle {
-		var err error
-		pkg, err = readPackage(dir)
-		if err != nil {
+		// A Gradle build of a directory that is not a Gradle project fails
+		// here, naming the file it looked for, rather than inside gradlew.
+		if _, err := readPackage(dir); err != nil {
 			return "", err
 		}
 		if err := gradleBuild(dir, combo); err != nil {
@@ -48,5 +47,5 @@ func (g *Generator) Build(dir string, opts *ir.StructLit) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolving toolchain: %w", err)
 	}
-	return directBuild(dir, tc, pkg, cfg.minSdk())
+	return directBuild(dir, tc, cfg.minSdk())
 }

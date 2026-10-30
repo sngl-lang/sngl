@@ -2773,12 +2773,12 @@ class SnglCodec<T>(val kind: Int) {
     var wires: List<String> = emptyList()
     var values: List<Any> = emptyList()
 
-    // An integer's range, and how it is made from and read as a Long: every
-    // width and sign of SNGL integer is one kind.
+    // An integer's range, and how it is made from a Long: every width and
+    // sign of SNGL integer is one kind. Each is written by its toString,
+    // which is its decimal value -- a ULong past Long.MAX_VALUE included.
     var lo: Long = Long.MIN_VALUE
     var hi: Long = Long.MAX_VALUE
     var fromLong: (Long) -> Any = { it }
-    var toLong: (Any) -> Long = { (it as Number).toLong() }
     var fromDouble: (Double) -> Any = { it }
 
     class Decoded<T>(private val v: Any?, val error: String?) {
@@ -2820,24 +2820,23 @@ class SnglCodec<T>(val kind: Int) {
         fun float(): SnglCodec<Double> = SnglCodec(FLOAT)
         fun float32(): SnglCodec<Float> = SnglCodec<Float>(FLOAT).also { it.fromDouble = { d -> d.toFloat() } }
 
-        private fun <T : Any> integer(lo: Long, hi: Long, from: (Long) -> T, to: (T) -> Long): SnglCodec<T> =
+        private fun <T : Any> integer(lo: Long, hi: Long, from: (Long) -> T): SnglCodec<T> =
             SnglCodec<T>(INT).also {
                 it.lo = lo
                 it.hi = hi
                 it.fromLong = from
-                @Suppress("UNCHECKED_CAST")
-                it.toLong = { v -> to(v as T) }
             }
 
-        fun int(): SnglCodec<Int> = integer(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong(), { it.toInt() }, { it.toLong() })
-        fun long(): SnglCodec<Long> = integer(Long.MIN_VALUE, Long.MAX_VALUE, { it }, { it })
-        fun short(): SnglCodec<Short> = integer(Short.MIN_VALUE.toLong(), Short.MAX_VALUE.toLong(), { it.toShort() }, { it.toLong() })
-        fun byte(): SnglCodec<Byte> = integer(Byte.MIN_VALUE.toLong(), Byte.MAX_VALUE.toLong(), { it.toByte() }, { it.toLong() })
-        fun ubyte(): SnglCodec<UByte> = integer(0, 0xff, { it.toUByte() }, { it.toLong() })
-        fun ushort(): SnglCodec<UShort> = integer(0, 0xffff, { it.toUShort() }, { it.toLong() })
-        fun uint(): SnglCodec<UInt> = integer(0, 0xffffffffL, { it.toUInt() }, { it.toLong() })
-        // A ULong past Long.MAX_VALUE has no exact JSON number here.
-        fun ulong(): SnglCodec<ULong> = integer(0, Long.MAX_VALUE, { it.toULong() }, { it.toLong() })
+        fun int(): SnglCodec<Int> = integer(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()) { it.toInt() }
+        fun long(): SnglCodec<Long> = integer(Long.MIN_VALUE, Long.MAX_VALUE) { it }
+        fun short(): SnglCodec<Short> = integer(Short.MIN_VALUE.toLong(), Short.MAX_VALUE.toLong()) { it.toShort() }
+        fun byte(): SnglCodec<Byte> = integer(Byte.MIN_VALUE.toLong(), Byte.MAX_VALUE.toLong()) { it.toByte() }
+        fun ubyte(): SnglCodec<UByte> = integer(0, 0xff) { it.toUByte() }
+        fun ushort(): SnglCodec<UShort> = integer(0, 0xffff) { it.toUShort() }
+        fun uint(): SnglCodec<UInt> = integer(0, 0xffffffffL) { it.toUInt() }
+        // Read through a Long, so a ULong past Long.MAX_VALUE is refused on
+        // the way in; it is still written exactly.
+        fun ulong(): SnglCodec<ULong> = integer(0, Long.MAX_VALUE) { it.toULong() }
 
         fun <E> option(e: SnglCodec<E>): SnglCodec<E?> = SnglCodec<E?>(OPTION).also { it.elem = e }
         fun <E> list(e: SnglCodec<E>): SnglCodec<List<E>> = SnglCodec<List<E>>(LIST).also { it.elem = e }
@@ -2968,7 +2967,7 @@ class SnglCodec<T>(val kind: Int) {
             when (c.kind) {
                 OPTION -> if (v == null) b.append("null") else enc(b, v, c.elem!!)
                 BOOL -> b.append(if (v == true) "true" else "false")
-                INT -> b.append(c.toLong(v!!).toString())
+                INT -> b.append(v.toString())
                 FLOAT -> b.append(number((v as Number).toDouble()))
                 STRING, DATE, DATETIME -> quote(b, v as String)
                 ENUM -> quote(b, enumWire(c, v))
@@ -3065,7 +3064,7 @@ class SnglCodec<T>(val kind: Int) {
             OPTION -> if (v == null) emptyList() else queryValues(v, c.elem!!)
             LIST -> (v as List<*>).flatMap { queryValues(it, c.elem!!) }
             BOOL -> listOf(if (v == true) "true" else "false")
-            INT -> listOf(c.toLong(v!!).toString())
+            INT -> listOf(v.toString())
             FLOAT -> listOf(number((v as Number).toDouble()))
             ENUM -> listOf(enumWire(c, v))
             else -> listOf(v.toString())
@@ -4245,6 +4244,6 @@ pass sha256:15cf70c176a165fa6b55545893595cdc
 -- run/go/gtk4 --
 pass sha256:097aa2b75ff7514893ebb82f24868383
 -- run/kotlin/android --
-pass sha256:df721ac9db949de3ea6da9e621f0c73f
+pass sha256:7b2e3e045f304e8751ba24e87abce915
 -- run/none/html --
 pass sha256:c6da311f018f1d8306dc1ca7f526b4aa

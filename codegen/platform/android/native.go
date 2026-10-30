@@ -89,37 +89,52 @@ func (tc *toolchain) fetchNative(tool, version string) (dir string, ok bool, err
 }
 
 // fetchArchive downloads the archive at url, checks it against sum, and
-// unpacks it into dest. It is unpacked beside dest and renamed into place,
-// so an interrupted download never leaves a directory a later build reads as
-// complete.
+// unpacks it into dest. The archive and the directory it unpacks into are
+// both named for this build alone and the directory is renamed into place,
+// so neither an interrupted build nor another unpacking the same archive at
+// once leaves a directory a later build reads as complete.
 func fetchArchive(url, sum, dest string) error {
-	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+	return fetchAndUnpack(url, dest, func(archive string) error {
+		return checkSum(archive, sum)
+	}, func(archive, staging string) error {
+		if strings.HasSuffix(url, ".zip") {
+			return extractZip(archive, staging, "")
+		}
+		return extractTarGz(archive, staging)
+	})
+}
+
+// fetchAndUnpack downloads url, checks it, and unpacks it into dest through
+// a staging directory of this build's own. A dest another build put in place
+// first is kept.
+func fetchAndUnpack(url, dest string, check func(archive string) error, unpack func(archive, staging string) error) error {
+	parent := filepath.Dir(dest)
+	if err := os.MkdirAll(parent, 0o755); err != nil {
 		return err
 	}
-	archive := dest + ".download"
+	f, err := os.CreateTemp(parent, filepath.Base(dest)+".*.download")
+	if err != nil {
+		return err
+	}
+	archive := f.Name()
+	f.Close()
 	defer os.Remove(archive)
 	if err := downloadFile(url, archive); err != nil {
 		return err
 	}
-	if err := checkSum(archive, sum); err != nil {
+	if err := check(archive); err != nil {
 		return err
 	}
-	staging := dest + ".part"
-	os.RemoveAll(staging)
-	var err error
-	if strings.HasSuffix(url, ".zip") {
-		err = extractZip(archive, staging, "")
-	} else {
-		err = extractTarGz(archive, staging)
-	}
+	staging, err := os.MkdirTemp(parent, filepath.Base(dest)+".*.part")
 	if err != nil {
-		os.RemoveAll(staging)
+		return err
+	}
+	defer os.RemoveAll(staging)
+	if err := unpack(archive, staging); err != nil {
 		return err
 	}
 	if err := os.Rename(staging, dest); err != nil {
-		os.RemoveAll(staging)
 		if dirExists(dest) {
-			// Another build unpacked the same archive first.
 			return nil
 		}
 		return err

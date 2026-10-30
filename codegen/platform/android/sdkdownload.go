@@ -2,6 +2,8 @@ package android
 
 import (
 	"archive/zip"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -42,6 +44,7 @@ type sdkRepo struct {
 			Archive []struct {
 				HostOS string `xml:"host-os"`
 				URL    string `xml:"complete>url"`
+				SHA1   string `xml:"complete>checksum"`
 			} `xml:"archive"`
 		} `xml:"archives"`
 	} `xml:"remotePackage"`
@@ -60,9 +63,11 @@ func sdkHostOS() string {
 }
 
 // sdkArchiveURL resolves an sdkmanager package path ("platforms;android-35")
-// to the archive for this host. An archive with no host-os is
-// platform-independent and matches anything.
-func sdkArchiveURL(pkgPath string) (string, error) {
+// to the archive for this host and the SHA-1 the manifest gives it. An
+// archive with no host-os is platform-independent and matches anything. A
+// linux archive holds x86-64 programs -- the manifest names no other arch --
+// so another linux arch is refused here rather than failing to run them.
+func sdkArchiveURL(pkgPath string) (url, sha1 string, err error) {
 	host := sdkHostOS()
 	var firstErr error
 	for _, manifest := range sdkRepoManifests {
@@ -97,15 +102,18 @@ func sdkArchiveURL(pkgPath string) (string, error) {
 					continue
 				}
 				if a.HostOS == "" || a.HostOS == host {
-					return sdkRepoBase + a.URL, nil
+					if a.HostOS == "linux" && runtime.GOARCH != "amd64" {
+						return "", "", fmt.Errorf("Google publishes %s for linux only as x86-64, and this is linux/%s: install it yourself and set ANDROID_HOME", pkgPath, runtime.GOARCH)
+					}
+					return sdkRepoBase + a.URL, a.SHA1, nil
 				}
 			}
 		}
 	}
 	if firstErr != nil {
-		return "", fmt.Errorf("locating %s: %w", pkgPath, firstErr)
+		return "", "", fmt.Errorf("locating %s: %w", pkgPath, firstErr)
 	}
-	return "", fmt.Errorf("%s is not published for %s", pkgPath, host)
+	return "", "", fmt.Errorf("%s is not published for %s", pkgPath, host)
 }
 
 // zipRoot is the single top-level directory every entry sits under, or "" when
@@ -138,40 +146,50 @@ func zipRoot(zipPath string) (string, error) {
 }
 
 // fetchSDKPackage downloads one sdkmanager package and unpacks it into dest,
-// stripping the archive's own root directory. The download is skipped when
-// dest already exists.
+// stripping the archive's own root directory, after checking it against the
+// SHA-1 Google's manifest gives it. The download is skipped when dest
+// already exists.
 func fetchSDKPackage(pkgPath, dest, label string) error {
 	if dirExists(dest) {
 		return nil
 	}
-	url, err := sdkArchiveURL(pkgPath)
+	url, sum, err := sdkArchiveURL(pkgPath)
 	if err != nil {
 		return err
 	}
 	fmt.Fprintf(os.Stderr, "sngl: downloading %s...\n", label)
-
-	tmp := dest + ".zip"
-	if err := downloadFile(url, tmp); err != nil {
-		return fmt.Errorf("downloading %s: %w", label, err)
-	}
-	defer os.Remove(tmp)
-
-	root, err := zipRoot(tmp)
+	err = fetchAndUnpack(url, dest, func(archive string) error {
+		return checkSHA1(archive, sum)
+	}, func(archive, staging string) error {
+		root, err := zipRoot(archive)
+		if err != nil {
+			return err
+		}
+		return extractZip(archive, staging, root)
+	})
 	if err != nil {
-		return fmt.Errorf("reading %s: %w", label, err)
+		return fmt.Errorf("%s: %w", label, err)
 	}
-	// Unpacked beside the destination and moved into place, so an interrupted
-	// extraction never leaves a directory the next run reads as complete.
-	staging := dest + ".part"
-	os.RemoveAll(staging)
-	if err := extractZip(tmp, staging, root); err != nil {
-		os.RemoveAll(staging)
-		return fmt.Errorf("extracting %s: %w", label, err)
+	return nil
+}
+
+// checkSHA1 checks path against the SHA-1 Google's SDK manifest gives it.
+// A manifest entry naming none is not taken on trust.
+func checkSHA1(path, want string) error {
+	if want == "" {
+		return fmt.Errorf("the SDK manifest gives no checksum")
 	}
-	os.MkdirAll(filepath.Dir(dest), 0o755)
-	if err := os.Rename(staging, dest); err != nil {
-		os.RemoveAll(staging)
-		return fmt.Errorf("installing %s: %w", label, err)
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	h := sha1.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return err
+	}
+	if got := hex.EncodeToString(h.Sum(nil)); got != strings.ToLower(want) {
+		return fmt.Errorf("checksum mismatch: got %s, want %s", got, want)
 	}
 	return nil
 }

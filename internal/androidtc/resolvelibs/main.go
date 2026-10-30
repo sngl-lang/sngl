@@ -243,10 +243,11 @@ type moduleFile struct {
 }
 
 type moduleDependency struct {
-	Group   string `json:"group"`
-	Module  string `json:"module"`
-	URL     string `json:"url"`
-	Version struct {
+	Group      string         `json:"group"`
+	Module     string         `json:"module"`
+	URL        string         `json:"url"`
+	Attributes map[string]any `json:"attributes"`
+	Version    struct {
 		Requires string `json:"requires"`
 		Strictly string `json:"strictly"`
 		Prefers  string `json:"prefers"`
@@ -307,6 +308,16 @@ func fromModule(data []byte, dir string) (*meta, error) {
 		return m, nil
 	}
 	for _, d := range v.Deps {
+		// A platform (a BOM) is not a library: what it contributes is its
+		// constraints, which Gradle applies to the graph as any other.
+		if d.Attributes["org.gradle.category"] == "platform" {
+			cs, err := platformConstraints(d.req())
+			if err != nil {
+				return nil, fmt.Errorf("platform %s: %w", d.req().coord, err)
+			}
+			m.constraints = append(m.constraints, cs...)
+			continue
+		}
 		m.deps = append(m.deps, d.req())
 	}
 	for _, d := range v.Constraints {
@@ -500,4 +511,40 @@ type availableAt struct {
 	Group   string `json:"group"`
 	Module  string `json:"module"`
 	Version string `json:"version"`
+}
+
+// platformConstraints are the versions a platform module (a BOM) sets: its
+// platform variant's dependency constraints, or its POM's managed
+// dependencies where it publishes no module metadata.
+func platformConstraints(p req) ([]req, error) {
+	base := strings.ReplaceAll(p.group, ".", "/") + "/" + p.module + "/" + p.version + "/"
+	data, _, err := get(base + p.module + "-" + p.version + ".module")
+	if errors.Is(err, errNotFound) {
+		managed, err := pomManaged(p.group, p.module, p.version)
+		if err != nil {
+			return nil, err
+		}
+		var out []req
+		for c, v := range managed {
+			out = append(out, req{c, v})
+		}
+		return out, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var mf moduleFile
+	if err := json.Unmarshal(data, &mf); err != nil {
+		return nil, err
+	}
+	var out []req
+	for _, v := range mf.Variants {
+		if v.Attributes["org.gradle.category"] != "platform" || v.Attributes["org.gradle.usage"] != "java-runtime" {
+			continue
+		}
+		for _, d := range v.Constraints {
+			out = append(out, d.req())
+		}
+	}
+	return out, nil
 }

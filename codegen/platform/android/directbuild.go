@@ -25,7 +25,7 @@ import (
 // directBuild compiles Kotlin sources to a signed debug APK without Gradle.
 // Pipeline: aapt2 (resources) → kotlinc (with R.java) → d8 → APK assembly →
 // align and sign (internal/apksign)
-func directBuild(dir string, tc *toolchain, pkg string, minSdk int) (string, error) {
+func directBuild(dir string, tc *toolchain, minSdk int) (string, error) {
 	// Compose runs from API 21; apksign adds a v1 signature below 24, which
 	// is what a device before Nougat reads.
 	if minSdk < composeMinSdk {
@@ -205,7 +205,7 @@ func directBuild(dir string, tc *toolchain, pkg string, minSdk int) (string, err
 
 	// Pre-dex library JARs (cached)
 	// A dex is written for an API level, so the cache keeps one per minSdk.
-	libDexDir := filepath.Join(tc.CacheDir, "lib-dex", "api"+strconv.Itoa(minSdk))
+	libDexDir := filepath.Join(tc.CacheDir, "lib-dex", tc.d8Key(), "api"+strconv.Itoa(minSdk))
 	libDexes, err := preDexLibraries(tc, libDexDir, minSdk)
 	if err != nil {
 		return "", err
@@ -285,6 +285,7 @@ func apkDigest(dir string, tc *toolchain, minSdk int, keyPath string) (string, e
 	field(strconv.Itoa(minSdk))
 	for _, p := range []string{tc.AndroidJar, tc.Aapt2, tc.Kotlinc, tc.D8, tc.ComposePlugin, tc.SerializationPlugin} {
 		field(p)
+		field(toolStamp(p))
 	}
 	for _, f := range tc.kotlincFlags {
 		field(f)
@@ -294,6 +295,7 @@ func apkDigest(dir string, tc *toolchain, minSdk int, keyPath string) (string, e
 	}
 	for _, j := range tc.KotlinLibs {
 		field(j)
+		field(toolStamp(j))
 	}
 	keyPEM, err := os.ReadFile(keyPath)
 	if err != nil {
@@ -332,9 +334,16 @@ func storeAPK(cached, apk string) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return
 	}
-	tmp := cached + ".tmp"
-	if copyFile(apk, tmp) != nil || os.Rename(tmp, cached) != nil {
-		os.Remove(tmp)
+	err := writeFileAtomic(cached, func(f *os.File) error {
+		src, err := os.Open(apk)
+		if err != nil {
+			return err
+		}
+		defer src.Close()
+		_, err = io.Copy(f, src)
+		return err
+	})
+	if err != nil {
 		return
 	}
 	entries, _ := filepath.Glob(filepath.Join(dir, "*.apk"))
@@ -648,61 +657,84 @@ func dexSuffix(i int) string {
 // preDexLibraries dexes each library JAR individually and caches the result.
 // On subsequent builds, only JARs that changed are re-dexed.
 func preDexLibraries(tc *toolchain, cacheDir string, minSdk int) ([]string, error) {
-	os.MkdirAll(cacheDir, 0o755)
-	allJars := append(append([]string{}, tc.ComposeJars...), tc.KotlinLibs...)
-
-	var dexDirs []string
-	var toDex []string
-
-	for _, jar := range allJars {
-		base := filepath.Base(jar)
-		dexDir := filepath.Join(cacheDir, base+".dex")
-		dexFile := filepath.Join(dexDir, "classes.dex")
-		// A jar with no classes (metadata alone) dexes to nothing, and is
-		// marked so it is not dexed again.
-		emptyMarker := filepath.Join(dexDir, ".empty")
-
-		if fileExists(emptyMarker) {
-			continue
-		}
-
-		if fileExists(dexFile) {
-			jarInfo, _ := os.Stat(jar)
-			dexInfo, _ := os.Stat(dexFile)
-			if jarInfo != nil && dexInfo != nil && !jarInfo.ModTime().After(dexInfo.ModTime()) {
-				dexDirs = append(dexDirs, dexDir)
-				continue
-			}
-		}
-		toDex = append(toDex, jar)
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return nil, err
 	}
-
-	if len(toDex) > 0 {
-		fmt.Fprintf(os.Stderr, "sngl: pre-dexing %d libraries (cached for future builds)...\n", len(toDex))
-		for _, jar := range toDex {
-			base := filepath.Base(jar)
-			dexDir := filepath.Join(cacheDir, base+".dex")
-			os.MkdirAll(dexDir, 0o755)
-			args := []string{
-				"--lib", tc.AndroidJar,
-				"--output", dexDir,
-				"--min-api", strconv.Itoa(minSdk),
+	type job struct{ jar, dir string }
+	var dexDirs []string
+	var toDex []job
+	for _, jar := range append(append([]string{}, tc.ComposeJars...), tc.KotlinLibs...) {
+		// Keyed by the jar's content: two combos' kotlin-stdlib.jar share a
+		// name, and an mtime says nothing about which one was dexed.
+		sum, err := fileSHA256(jar)
+		if err != nil {
+			return nil, err
+		}
+		dir := filepath.Join(cacheDir, filepath.Base(jar)+"-"+sum[:16]+".dex")
+		switch {
+		case fileExists(filepath.Join(dir, ".empty")):
+			// A jar with no classes (metadata alone) dexes to nothing.
+		case fileExists(filepath.Join(dir, "classes.dex")):
+			dexDirs = append(dexDirs, dir)
+		default:
+			toDex = append(toDex, job{jar, dir})
+		}
+	}
+	if len(toDex) == 0 {
+		return dexDirs, nil
+	}
+	fmt.Fprintf(os.Stderr, "sngl: pre-dexing %d libraries (cached for future builds)...\n", len(toDex))
+	for _, j := range toDex {
+		// d8 writes into a directory of this build's own, renamed into place
+		// once it has finished, so a killed or failed d8 leaves nothing a
+		// later build would take for the library's dex.
+		staging, err := os.MkdirTemp(cacheDir, ".dexing-*")
+		if err != nil {
+			return nil, err
+		}
+		args := []string{
+			"--lib", tc.AndroidJar,
+			"--output", staging,
+			"--min-api", strconv.Itoa(minSdk),
+		}
+		args = append(args, libClasspath(tc, j.jar)...)
+		args = append(args, j.jar)
+		// A library left out of the APK fails only at launch, on the first
+		// class the app reaches in it, so a failure stops the build.
+		if err := runD8(tc, args); err != nil {
+			os.RemoveAll(staging)
+			return nil, fmt.Errorf("pre-dexing %s: %w", filepath.Base(j.jar), err)
+		}
+		empty := !fileExists(filepath.Join(staging, "classes.dex"))
+		if empty {
+			os.WriteFile(filepath.Join(staging, ".empty"), nil, 0o644)
+		}
+		if err := os.Rename(staging, j.dir); err != nil {
+			os.RemoveAll(staging)
+			if !dirExists(j.dir) {
+				return nil, err
 			}
-			args = append(args, libClasspath(tc, jar)...)
-			args = append(args, jar)
-			// A library left out of the APK fails only at launch, on the
-			// first class the app reaches in it, so a failure stops the build.
-			if err := runD8(tc, args); err != nil {
-				return nil, fmt.Errorf("pre-dexing %s: %w", base, err)
-			}
-			if !fileExists(filepath.Join(dexDir, "classes.dex")) {
-				os.WriteFile(filepath.Join(dexDir, ".empty"), nil, 0o644)
-				continue
-			}
-			dexDirs = append(dexDirs, dexDir)
+			// Another build dexed it first.
+		}
+		if !empty {
+			dexDirs = append(dexDirs, j.dir)
 		}
 	}
 	return dexDirs, nil
+}
+
+// fileSHA256 is the hex SHA-256 of a file's content.
+func fileSHA256(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // libClasspath is d8's --classpath for every library jar but skip, which d8

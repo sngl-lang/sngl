@@ -235,7 +235,8 @@ optional.
    call `fetchAdb`, which unpacks the latest `platform-tools` into
    `android-toolchain/platform-tools/`. `androidTool("adb")` looks there
    too, but never downloads, so a test runner without adb still skips.
-   Google publishes no linux-arm64 adb, so that host still needs its own.
+   Google publishes no linux-arm64 adb (nor aapt2), so that host still needs
+   its own, and the download says so rather than fetching x86-64 programs.
    With an empty `HOME`, no `java`, no `ANDROID_HOME` and no `~/.gradle`,
    a gradle-free hello build took 45s. It downloaded the platform,
    build-tools, both native tools and the Compose libraries from Maven.

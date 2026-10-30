@@ -2,8 +2,12 @@ package android
 
 import (
 	"archive/zip"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -12,6 +16,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"duckfam.us/sngl/internal/androidtc"
 )
@@ -355,7 +360,12 @@ func (tc *toolchain) findComposeJars() error {
 // fetchLib downloads lib to dest, checked against its SHA-256 before it is
 // put in place.
 func fetchLib(lib androidtc.Lib, dest string) error {
-	tmp := dest + ".download"
+	f, err := os.CreateTemp(filepath.Dir(dest), filepath.Base(dest)+".*.download")
+	if err != nil {
+		return err
+	}
+	tmp := f.Name()
+	f.Close()
 	defer os.Remove(tmp)
 	if err := downloadFile(lib.URL, tmp); err != nil {
 		return err
@@ -364,6 +374,25 @@ func fetchLib(lib androidtc.Lib, dest string) error {
 		return err
 	}
 	return os.Rename(tmp, dest)
+}
+
+// d8Key names the d8 a dex was made by, for the pre-dex cache: the native
+// r8 and the build-tools d8 are different compilers, and a dex is the
+// output of one.
+func (tc *toolchain) d8Key() string {
+	h := sha256.Sum256([]byte(fmt.Sprintf("%s\x00%v\x00%s", tc.D8, tc.nativeD8, toolStamp(tc.D8))))
+	return hex.EncodeToString(h[:6])
+}
+
+// toolStamp is a tool file's size and modification time: what changes when
+// a package manager replaces it in place under the same path. Hashing the
+// file itself would cost every build a read of a 150MB kotlinc.
+func toolStamp(path string) string {
+	info, err := os.Stat(path)
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("%d@%d", info.Size(), info.ModTime().UnixNano())
 }
 
 // needsJDK reports whether a tool the build runs is still a JVM one.
@@ -416,9 +445,29 @@ func findJars(dir string, prefix string) []string {
 	return jars
 }
 
+// downloadClient gives up on a server that does not answer, and
+// downloadFile on a body that stops arriving: neither puts a bound on a large
+// download that is still moving.
+var downloadClient = &http.Client{Transport: &http.Transport{
+	Proxy:                 http.ProxyFromEnvironment,
+	DialContext:           (&net.Dialer{Timeout: 30 * time.Second}).DialContext,
+	TLSHandshakeTimeout:   30 * time.Second,
+	ResponseHeaderTimeout: time.Minute,
+}}
+
+// downloadStall is how long a download may receive nothing before it fails.
+var downloadStall = time.Minute
+
+// downloadFile downloads url to dest, written beside it and renamed into
+// place, so dest is either absent or whole.
 func downloadFile(url, dest string) error {
-	os.MkdirAll(filepath.Dir(dest), 0o755)
-	resp, err := http.Get(url)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := downloadClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -426,12 +475,50 @@ func downloadFile(url, dest string) error {
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, url)
 	}
-	f, err := os.Create(dest)
+	stall := time.AfterFunc(downloadStall, cancel)
+	defer stall.Stop()
+	body := readerFunc(func(p []byte) (int, error) {
+		n, err := resp.Body.Read(p)
+		stall.Reset(downloadStall)
+		return n, err
+	})
+	err = writeFileAtomic(dest, func(f *os.File) error {
+		_, err := io.Copy(f, body)
+		return err
+	})
+	if err != nil && ctx.Err() != nil {
+		return fmt.Errorf("%s: nothing received for %s", url, downloadStall)
+	}
+	return err
+}
+
+type readerFunc func([]byte) (int, error)
+
+func (f readerFunc) Read(p []byte) (int, error) { return f(p) }
+
+// writeFileAtomic writes dest through write, into a file of its own beside
+// dest that is renamed into place only when write succeeds: a build killed
+// or failing partway, or another build writing the same file, never leaves a
+// partial file that a later build would take for a whole one.
+func writeFileAtomic(dest string, write func(*os.File) error) error {
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return err
+	}
+	f, err := os.CreateTemp(filepath.Dir(dest), filepath.Base(dest)+".*.tmp")
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = io.Copy(f, resp.Body)
+	tmp := f.Name()
+	err = write(f)
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = os.Rename(tmp, dest)
+	}
+	if err != nil {
+		os.Remove(tmp)
+	}
 	return err
 }
 
@@ -489,22 +576,19 @@ func extractClassesJar(aarPath, destJar string) error {
 		return err
 	}
 	defer r.Close()
-
 	for _, f := range r.File {
-		if f.Name == "classes.jar" {
-			rc, err := f.Open()
-			if err != nil {
-				return err
-			}
-			defer rc.Close()
-			out, err := os.Create(destJar)
-			if err != nil {
-				return err
-			}
-			defer out.Close()
-			_, err = io.Copy(out, rc)
+		if f.Name != "classes.jar" {
+			continue
+		}
+		rc, err := f.Open()
+		if err != nil {
 			return err
 		}
+		defer rc.Close()
+		return writeFileAtomic(destJar, func(out *os.File) error {
+			_, err := io.Copy(out, rc)
+			return err
+		})
 	}
 	return fmt.Errorf("classes.jar not found in %s", aarPath)
 }

@@ -85,8 +85,24 @@ func createDebugKey(path string) (*Key, error) {
 	if err := tmp.Close(); err != nil {
 		return nil, err
 	}
+	// A link refuses to replace a key another build made first. A file system
+	// without hard links gets the same answer from an exclusive create.
 	if err := os.Link(tmp.Name(), path); err != nil && !errors.Is(err, os.ErrExist) {
-		return nil, err
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		switch {
+		case errors.Is(err, os.ErrExist):
+		case err != nil:
+			return nil, err
+		default:
+			_, werr := f.Write(data)
+			if cerr := f.Close(); werr == nil {
+				werr = cerr
+			}
+			if werr != nil {
+				os.Remove(path)
+				return nil, werr
+			}
+		}
 	}
 	return DebugKey(path)
 }

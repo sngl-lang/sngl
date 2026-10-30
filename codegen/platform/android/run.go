@@ -15,6 +15,7 @@ import (
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/internal/androidtc"
+	"duckfam.us/sngl/internal/apksign"
 	"duckfam.us/sngl/internal/jdk"
 	"duckfam.us/sngl/ir"
 )
@@ -322,7 +323,14 @@ func adbInstall(apk, pkg string) error {
 	if pkg == "" || !strings.Contains(out.String(), "INSTALL_FAILED_UPDATE_INCOMPATIBLE") {
 		return fmt.Errorf("adb install failed: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "sngl: %s is installed with a different signing key; uninstalling it (its data is lost) and installing again\n", pkg)
+	// Replacing it means uninstalling it, which loses its data, so that is
+	// done only for a debug build -- Gradle's, or an earlier sngl key's. One
+	// signed with any other key may be the user's own release of the app.
+	debug, why := installedIsDebug(adb, pkg)
+	if !debug {
+		return fmt.Errorf("%s is already installed, signed with a key that is not a debug key (%s); it may be a release build, so sngl will not uninstall it: run `adb uninstall %s` yourself to replace it, which loses its data", pkg, why, pkg)
+	}
+	fmt.Fprintf(os.Stderr, "sngl: %s is installed as a debug build signed with another key; uninstalling it (its data is lost) and installing again\n", pkg)
 	if err := exec.Command(adb, "uninstall", pkg).Run(); err != nil {
 		return fmt.Errorf("adb uninstall %s: %w", pkg, err)
 	}
@@ -333,6 +341,48 @@ func adbInstall(apk, pkg string) error {
 		return fmt.Errorf("adb install failed: %w", err)
 	}
 	return nil
+}
+
+// installedIsDebug reports whether the installed pkg is signed with a debug
+// certificate, reading the APK the device has; why says what was found.
+func installedIsDebug(adb, pkg string) (bool, string) {
+	out, err := exec.Command(adb, "shell", "pm", "path", pkg).Output()
+	if err != nil {
+		return false, "its APK could not be found"
+	}
+	var remote string
+	for line := range strings.SplitSeq(string(out), "\n") {
+		if p, ok := strings.CutPrefix(strings.TrimSpace(line), "package:"); ok && strings.HasSuffix(p, "/base.apk") {
+			remote = p
+		}
+	}
+	if remote == "" {
+		return false, "its APK could not be found"
+	}
+	dir, err := os.MkdirTemp("", "sngl-installed-")
+	if err != nil {
+		return false, err.Error()
+	}
+	defer os.RemoveAll(dir)
+	local := filepath.Join(dir, "base.apk")
+	if err := exec.Command(adb, "pull", remote, local).Run(); err != nil {
+		return false, "its APK could not be read"
+	}
+	data, err := os.ReadFile(local)
+	if err != nil {
+		return false, err.Error()
+	}
+	certs, err := apksign.SignerCerts(data)
+	if err != nil {
+		return false, "its signature could not be read: " + err.Error()
+	}
+	if len(certs) == 0 {
+		return false, "it carries no certificate"
+	}
+	if !apksign.IsDebug(certs) {
+		return false, "signed by " + certs[0].Subject.String()
+	}
+	return true, ""
 }
 
 func adbLaunch(pkg string) error {

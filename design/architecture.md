@@ -169,11 +169,19 @@ target with no way to say a field is meant for one.
   no `zipalign`. The debug key is a PEM file, `debug-key.pem` in the
   toolchain cache, made once and kept: a device replaces an app only with
   one signed by the same key. `adbInstall` uninstalls and retries an app a
-  different key installed (Gradle's keystore, or an earlier one). v2 alone
+  different key installed only when that key is a debug one (`CN=Android Debug`, Gradle's keystore or an earlier sngl key, read from the installed
+  APK by `apksign.SignerCerts`): uninstalling loses the app's data, and an
+  app signed otherwise may be the user's own release. v2 alone
   installs from API 24; below that it adds a v1 (JAR) signature first, with
   SHA-256 digests and a PKCS#7 block apksigner's shape, as apksigner does.
   The floor is Compose's API 21, and d8's `--min-api` and the pre-dex cache
-  (`lib-dex/api<N>`) follow `minSdk`. `internal/apksign`'s tests hold the
+  (`lib-dex/<d8>/api<N>/<jar>-<sha256>.dex`, keyed by the jar's content and
+  the d8 that dexed it) follow `minSdk`. Every file the toolchain cache
+  holds is written under a name of its own and renamed into place, so a
+  killed build, or two building at once, never leaves a partial download,
+  jar, dex or APK a later build takes for whole; Google's SDK archives are
+  checked against the SHA-1 its manifest gives, and a linux host other than
+  x86-64, which Google publishes no tools for, is refused with that reason. `internal/apksign`'s tests hold the
   output to `apksigner verify` at API 21 and 24, a recorded run that
   reruns apksigner only when the signed bytes move.
 

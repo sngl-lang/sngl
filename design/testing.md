@@ -85,7 +85,8 @@ memory.
 generates it as `sngl build` would, and with the `gradle` option unset that is
 the gradle-free layout, so `internal/toolchain` verifies it through
 `android.buildApk` -- native kotlinc and d8, Go signing -- rather than
-`gradlew`, one at a time because those builds fill a shared library cache. A
+`gradlew`, one at a time within a test binary, since each fills the shared
+library cache as it goes; across binaries the cache's writes are atomic. A
 golden carrying tests is a Robolectric run and still goes through Gradle, and
 `generate_android_i18n.txtar` sets `gradle=true` so a Gradle build of a plain
 program stays covered.
