@@ -300,13 +300,16 @@ func (tc *toolchain) findComposePlugin() error {
 	return nil
 }
 
-func (tc *toolchain) findComposeJars() error {
-	cacheDir := filepath.Join(tc.CacheDir, "compose-libs")
-	os.MkdirAll(cacheDir, 0o755)
+// libsDir holds the libraries a gradle-free build compiles and dexes against:
+// exactly the pinned set downloadComposeArtifacts names, and nothing from
+// ~/.gradle. Seeded from Gradle's cache, the set differed by machine -- other
+// versions beside the pinned ones, test libraries in the APK, and a jar
+// without the AAR whose R.txt makes its R class, which crashed at launch.
+func (tc *toolchain) libsDir() string { return filepath.Join(tc.CacheDir, "maven-libs") }
 
-	// Seed from Gradle cache if available — captures the transitive
-	// dependency tree from a prior Gradle build.
-	extractFromGradleCache(cacheDir)
+func (tc *toolchain) findComposeJars() error {
+	cacheDir := tc.libsDir()
+	os.MkdirAll(cacheDir, 0o755)
 	tc.ensureAARs(cacheDir)
 
 	// Always run the explicit artifact download list to fill gaps. Each
@@ -421,7 +424,15 @@ func (tc *toolchain) downloadComposeArtifacts(cacheDir string) error {
 			// Download AAR, extract classes.jar
 			aarDest := filepath.Join(cacheDir, fmt.Sprintf("%s-%s.aar", dlName, a.version))
 			jarDest = filepath.Join(cacheDir, fmt.Sprintf("%s-%s.jar", dlName, a.version))
-			if fileExists(jarDest) {
+			// The AAR is kept beside its classes: its R.txt is where the
+			// library's R class comes from, and without it the app built
+			// and then failed at launch on that class.
+			if fileExists(aarDest) {
+				if !fileExists(jarDest) {
+					if err := extractClassesJar(aarDest, jarDest); err != nil {
+						fmt.Fprintf(os.Stderr, "sngl: warning: failed to extract classes.jar from %s: %v\n", dlName, err)
+					}
+				}
 				continue
 			}
 			url := fmt.Sprintf("https://dl.google.com/dl/android/maven2/%s/%s/%s/%s-%s.aar",
@@ -441,81 +452,6 @@ func (tc *toolchain) downloadComposeArtifacts(cacheDir string) error {
 	}
 
 	return nil
-}
-
-// extractFromGradleCache walks the Gradle module cache and extracts
-// classes.jar from all AndroidX/Compose/Kotlinx AARs, copying JARs directly.
-// Returns the list of extracted JAR paths, or nil if the cache isn't available.
-func extractFromGradleCache(destDir string) []string {
-	home, _ := os.UserHomeDir()
-	cacheBase := filepath.Join(home, ".gradle", "caches", "modules-2", "files-2.1")
-	if !dirExists(cacheBase) {
-		return nil
-	}
-
-	os.MkdirAll(destDir, 0o755)
-	// Only extract AndroidX and kotlinx runtime libraries — NOT the kotlin
-	// compiler itself (kotlin-stdlib comes from the kotlinc distribution).
-	prefixes := []string{"androidx.", "org.jetbrains.kotlinx"}
-
-	var jars []string
-	entries, _ := os.ReadDir(cacheBase)
-	for _, groupEntry := range entries {
-		groupName := groupEntry.Name()
-		match := false
-		for _, p := range prefixes {
-			if strings.HasPrefix(groupName, p) {
-				match = true
-				break
-			}
-		}
-		if !match {
-			continue
-		}
-
-		groupDir := filepath.Join(cacheBase, groupName)
-		artEntries, _ := os.ReadDir(groupDir)
-		for _, artEntry := range artEntries {
-			artDir := filepath.Join(groupDir, artEntry.Name())
-			// Find highest version
-			verEntries, _ := os.ReadDir(artDir)
-			if len(verEntries) == 0 {
-				continue
-			}
-			verDir := filepath.Join(artDir, verEntries[len(verEntries)-1].Name())
-			// Find the AAR or JAR in hash subdirectories
-			filepath.Walk(verDir, func(path string, info os.FileInfo, err error) error {
-				if err != nil || info.IsDir() {
-					return nil
-				}
-				base := info.Name()
-				destName := artEntry.Name() + "-" + verEntries[len(verEntries)-1].Name()
-
-				if strings.HasSuffix(base, ".aar") {
-					jarDest := filepath.Join(destDir, destName+".jar")
-					if !fileExists(jarDest) {
-						if err := extractClassesJar(path, jarDest); err == nil {
-							jars = append(jars, jarDest)
-						}
-					} else {
-						jars = append(jars, jarDest)
-					}
-				} else if strings.HasSuffix(base, ".jar") && !strings.Contains(base, "sources") && !strings.Contains(base, "javadoc") {
-					jarDest := filepath.Join(destDir, destName+".jar")
-					if !fileExists(jarDest) {
-						copyFile(path, jarDest)
-					}
-					jars = append(jars, jarDest)
-				}
-				return nil
-			})
-		}
-	}
-
-	if len(jars) > 0 {
-		fmt.Fprintf(os.Stderr, "sngl: extracted %d libraries from Gradle cache\n", len(jars))
-	}
-	return jars
 }
 
 // ensureAARs downloads AARs for libraries that need resource extraction.

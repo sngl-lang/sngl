@@ -249,27 +249,11 @@ func directBuild(dir string, tc *toolchain, pkg string, minSdk int) (string, err
 	return signedApk, nil
 }
 
-// generateLibraryRClasses scans AARs in the compose-libs cache for R.txt files
-// and generates stub R.java/R.class files so the runtime can find them.
 // collectLibraryPackages reads AndroidManifest.xml from each library AAR
 // to get its package name. These are passed to aapt2 --extra-packages so
 // R.java is generated for each library, not just the app.
 func collectLibraryPackages(tc *toolchain) []string {
-	var aars []string
-	cacheDir := filepath.Join(tc.CacheDir, "compose-libs")
-	cached, _ := filepath.Glob(filepath.Join(cacheDir, "*.aar"))
-	aars = append(aars, cached...)
-
-	home, _ := os.UserHomeDir()
-	gradleCache := filepath.Join(home, ".gradle", "caches", "modules-2", "files-2.1")
-	if dirExists(gradleCache) {
-		filepath.Walk(gradleCache, func(path string, info os.FileInfo, err error) error {
-			if err == nil && strings.HasSuffix(path, ".aar") && strings.Contains(path, "androidx") {
-				aars = append(aars, path)
-			}
-			return nil
-		})
-	}
+	aars, _ := filepath.Glob(filepath.Join(tc.libsDir(), "*.aar"))
 
 	seen := map[string]bool{}
 	var packages []string
@@ -313,21 +297,7 @@ func readAARPackage(aarPath string) string {
 // values/lib_ids.xml declaring all id resources. This ensures aapt2 assigns
 // real resource IDs for library id resources (like poolingcontainer tags).
 func generateLibraryIds(tc *toolchain, dir string) {
-	var aars []string
-	cacheDir := filepath.Join(tc.CacheDir, "compose-libs")
-	cached, _ := filepath.Glob(filepath.Join(cacheDir, "*.aar"))
-	aars = append(aars, cached...)
-
-	home, _ := os.UserHomeDir()
-	gradleCache := filepath.Join(home, ".gradle", "caches", "modules-2", "files-2.1")
-	if dirExists(gradleCache) {
-		filepath.Walk(gradleCache, func(path string, info os.FileInfo, err error) error {
-			if err == nil && strings.HasSuffix(path, ".aar") && strings.Contains(path, "androidx") {
-				aars = append(aars, path)
-			}
-			return nil
-		})
-	}
+	aars, _ := filepath.Glob(filepath.Join(tc.libsDir(), "*.aar"))
 
 	ids := map[string]bool{}
 	for _, aarPath := range aars {
@@ -390,21 +360,7 @@ func generateLibraryRKotlinWithIDs(tc *toolchain, rKtDir string, resourceIDs map
 	}
 
 	// Collect library packages that need R classes
-	var aars []string
-	cacheDir := filepath.Join(tc.CacheDir, "compose-libs")
-	cached, _ := filepath.Glob(filepath.Join(cacheDir, "*.aar"))
-	aars = append(aars, cached...)
-
-	home, _ := os.UserHomeDir()
-	gradleCache := filepath.Join(home, ".gradle", "caches", "modules-2", "files-2.1")
-	if dirExists(gradleCache) {
-		filepath.Walk(gradleCache, func(path string, info os.FileInfo, err error) error {
-			if err == nil && strings.HasSuffix(path, ".aar") && strings.Contains(path, "androidx") {
-				aars = append(aars, path)
-			}
-			return nil
-		})
-	}
+	aars, _ := filepath.Glob(filepath.Join(tc.libsDir(), "*.aar"))
 
 	seen := map[string]bool{}
 	for _, aarPath := range aars {
@@ -474,10 +430,7 @@ func readResourceIDs(path string) map[string]int {
 func extractLibraryResources(tc *toolchain, dir string) {
 	resDir := filepath.Join(dir, "res")
 
-	// Only extract from our explicitly downloaded AARs to avoid version
-	// conflicts from the Gradle cache which may have multiple versions.
-	cacheDir := filepath.Join(tc.CacheDir, "compose-libs")
-	aars, _ := filepath.Glob(filepath.Join(cacheDir, "*.aar"))
+	aars, _ := filepath.Glob(filepath.Join(tc.libsDir(), "*.aar"))
 
 	for _, aarPath := range aars {
 		aarBase := filepath.Base(aarPath)
