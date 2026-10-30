@@ -188,7 +188,20 @@ session.
    - An effect in a component copied per row of a const loop cannot read a
      prop bound to the loop variable ("an effect's @mount reads the loop
      variable"), so `settings.kept(name=row.id, …)` under a `for` is
-     refused.
+     refused. Fixed on bubbletea, the one target refusing it: the splice
+     substitutes the prop as the loop variable, and the effect is keyed by
+     the copy now, its handlers reading the loop variables at the copy's
+     index and an `@unmount` reading what a recorder kept for a copy the list
+     no longer holds (`cmd/sngl/testdata/component_effect_reads_loop_prop_runs.txt`).
+     Found while pinning it:
+     - On android a test's `@unmount` wrote into the next test's state. Fixed
+       (`cmd/sngl/testdata/test_unmount_stays_in_its_test_runs.txt`).
+     - Open: bubbletea runs every copy's `@update` when the program replaces
+       the list (`c.rows = […]`) with the keys unchanged; the interpreter,
+       html and fyne run none.
+     - Open: android's `@unmount` reads a prop as the copy mounted with it:
+       rows `[a, b, c]` then `[a, c]` then `[a]` unmount `c` and then `b`,
+       where the interpreter, html, fyne and bubbletea unmount `c` twice.
    - The interpreter read another package's var from its initializer on
      every access, so a library's state never changed under `sngl test`.
      Fixed here (`importedVarOwner`).

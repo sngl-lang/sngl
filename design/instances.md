@@ -550,7 +550,18 @@ reads -- a call site's `@load(got) { seen[w] = got }` under `for var w` -- is
 bound where it starts, by walking the loop's iterable to the index the key
 holds (`loopVarsFrom`); the handler runs from the settle, outside the loop, and
 the read was refused
-(`cmd/sngl/testdata/instance_reuse_reads_loop_var_runs.txt`). A timer under a loop is then a schedule per copy, which
+(`cmd/sngl/testdata/instance_reuse_reads_loop_var_runs.txt`). So is a prop
+bound to one, which the splice substitutes into the effect's handlers as the
+loop variable: an effect whose handlers read one is keyed by the copy whether
+or not it touches a cell (`handlersReadLoops`), where `settings.kept(name = row.id)` under a `for` was refused as reading the loop variable. An `@unmount`
+runs once the list no longer holds its copy, so it reads what a recorder kept
+instead (`loopRecorders`): an effect ahead of it, keyed on the copy and what
+the `@unmount` reads through the loop variables, whose `@mount` stores those
+values by the copy, the last the copy was rendered with. Walking the list there
+found nothing for a removed row, and indexed past the end of it under `for var &`. A key paired with the copy steps into the loop through its `on` half
+(`copyPairOn`), so a write to one row's key runs that row's `@update` alone,
+not every row's
+(`cmd/sngl/testdata/component_effect_reads_loop_prop_runs.txt`). A timer under a loop is then a schedule per copy, which
 bubbletea keeps keyed the same way and routes through Update
 (`codegen.CollectLoopTimers`, `bubbletea/timers.go`); it used to be
 collected by nobody and never ran. A timer under no loop is the same

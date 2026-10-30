@@ -1641,10 +1641,15 @@ func (st *inlineCompState) expandPerCopy(n *ir.NodeInst, rc reactiveCtx) ([]ir.S
 		return body, true, nil
 	}
 	funcs := slices.Clone((*st.hoist.funcs)[funcStart:])
-	body, err = perCopyCells(nodePos(n), body, vars, funcs, rc.loops)
+	if st.effect == nil {
+		st.effect = effectComponent()
+	}
+	rec := &loopRecorders{effect: st.effect, pkg: st.pkg, name: func(base string) string { return st.names.next(base, "inst") }}
+	body, err = perCopyCells(nodePos(n), body, vars, funcs, rc.loops, rec)
 	if err == nil {
 		st.recordCells(n, inits, rc.loops)
 	}
+	*st.hoist.vars = append(*st.hoist.vars, rec.vars...)
 	return body, true, err
 }
 
