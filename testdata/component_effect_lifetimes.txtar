@@ -3926,7 +3926,7 @@ pass sha256:6357c5c561d48a55a91fe49677262c2b
 -- run/go/gtk4 --
 pass sha256:9aa02568880e9df0c6088bc8ec0fa213
 -- run/kotlin/android --
-pass sha256:52745e2bccaa7f3c5a37b07dd92b728e
+pass sha256:be70f06dfe6cb3666e3f9db9fc32cbc5
 -- run/none/html --
 pass sha256:52911bf3128f3df890ef86621ac1935f
 -- testrun/html/none/component_effect_lifetimes.sngl/branch/1 --

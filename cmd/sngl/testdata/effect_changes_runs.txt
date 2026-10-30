@@ -383,7 +383,7 @@ ui.window(title = "Changes") {
     rows
 }
 -- testrun/android/kotlin/app.sngl/changes/1 --
-sha256:49562938ae8258435c4d2a9dfa11e9b2
+sha256:7c8d257f11a4681f15171bb09f4c4084
 {
   "results": [
     {
@@ -417,7 +417,7 @@ sha256:49562938ae8258435c4d2a9dfa11e9b2
   ]
 }
 -- testrun/android/kotlin/app.sngl/field/1 --
-sha256:f5ae488f0cebb20c859132d6285b2b9a
+sha256:3914e9d4b3692fb7ce1a4372b76879e2
 {
   "results": [
     {
@@ -427,7 +427,7 @@ sha256:f5ae488f0cebb20c859132d6285b2b9a
   ]
 }
 -- testrun/android/kotlin/app.sngl/gated/1 --
-sha256:c83ed3d75ffd47b962545803d8c7f724
+sha256:9651578f94584557c35c3b72c6248d5c
 {
   "results": [
     {
@@ -437,7 +437,7 @@ sha256:c83ed3d75ffd47b962545803d8c7f724
   ]
 }
 -- testrun/android/kotlin/app.sngl/partial/1 --
-sha256:82acc872a70609114e1f26bd890a5c9d
+sha256:5964c06e1c3a89946398b104fbf5df69
 {
   "results": [
     {
@@ -447,7 +447,7 @@ sha256:82acc872a70609114e1f26bd890a5c9d
   ]
 }
 -- testrun/android/kotlin/app.sngl/rows/1 --
-sha256:664f790445961a593168c5f74798f9c5
+sha256:515fe497cd06bdc248545342c3c1ffb7
 {
   "results": [
     {
@@ -485,7 +485,7 @@ sha256:664f790445961a593168c5f74798f9c5
   ]
 }
 -- testrun/android/kotlin/app.sngl/twice/1 --
-sha256:8ba15b2f31c6c57534a1ba2f7b1a6ab1
+sha256:05ed2c534ceb34081f50d3604b3d811b
 {
   "results": [
     {

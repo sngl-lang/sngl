@@ -177,6 +177,7 @@ func (g *Generator) Run(dir string, opts *ir.StructLit) error {
 		return fmt.Errorf("android: %w", err)
 	}
 	cfg = cfg.withDefaults()
+	cfg.GoLib = dirExists(filepath.Join(dir, "golib"))
 	pkg := cfg.Package
 	if cfg.UseGradle() {
 		if p, err := readPackage(dir); err == nil {

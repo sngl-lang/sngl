@@ -242,17 +242,26 @@ optional.
    The libraries are 51 jars, against the 80 that the `~/.gradle` seed
    mixes in, some at other versions. Whether that APK launches is still
    to be checked on a device.
-6. **`gradle` as `option[bool]` with auto-detection** (sngl step 8), with
-   `run` and `build` gradle-free. Then confirm the goal: in a clean
-   container (`debian:stable`, no `java`, no `ANDROID_HOME`, no
-   `~/.gradle`), with a phone attached over `adb connect`, `sngl run --platform android` on a hello-world deploys and launches. Add a CLI
-   script test that takes the build half of this run in a clean
-   environment and checks that no `java` was executed.
+6. **Done, except on a device: `gradle` is `option[bool]` and null
+   chooses** (sngl step 8). `Config.UseGradle` uses Gradle for a generated
+   project (no `executable` option), a test (`test`) and a Go program
+   (`golib/`). `sngl build` and `sngl run` are gradle-free otherwise. Option
+   decoding now reads `null`, and a value wrapped into an option, into a
+   `*bool`. The gradle-free layout now carries the i18n runtime and manifest
+   and the program's assets (`assets/`, handed to `aapt2 link -A`), which it
+   dropped before. `cmd/sngl/testdata/build_android_gradle_free.txt` builds
+   hello with an empty `PATH` and no `JAVA_HOME`. Still to do: the
+   clean-container `sngl run` onto a phone.
 7. **Close the gradle-free gaps** (sngl step 9): Go's `golib.aar`,
    Robolectric without Gradle, and the device runner on `directBuild`.
    Measure the time for a full `go tool verify` before and after.
-8. **Move fixtures gradle-free and drop Coil** (sngl steps 10 and 11), with
-   one rerecord. One or two fixtures keep `gradle=true`.
+8. **Done: fixtures are gradle-free and Coil is gone** (sngl steps 10 and
+   11), with one `go tool verify -update` (2h, almost all of it the `sngl test` scripts still on Gradle). A golden without tests now generates the
+   gradle-free layout, and `internal/toolchain` verifies it with
+   `android.buildApk` (about 3s each, serialized because the library caches
+   are shared) instead of `gradlew`. A golden with tests stays on Gradle, so
+   the Gradle test path is still covered. `generate_android_i18n.txtar`
+   opts into `gradle=true`, so a Gradle build without tests is covered too.
 9. *(Tests)* **Add device tests through the env var** (sngl step 7).
 10. **Update the docs** (sngl step 12).
 11. *(Optional)* **Provision an emulator with nothing installed:** fetch

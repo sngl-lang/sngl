@@ -57,7 +57,7 @@ func testSwitchingDropsTheFirstPanel(t test.Test, c main) {
     t.assert(c.flavor == null)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:c41ecd2442d44b27eb3ad2fa7b1530d7
+sha256:91db02ca1225abca42b8963f18c12ba4
 {
   "results": [
     {

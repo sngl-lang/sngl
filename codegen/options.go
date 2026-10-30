@@ -170,6 +170,11 @@ func assignValue(dst reflect.Value, e ir.Expr) error {
 	e = resolveConst(e)
 	switch v := e.(type) {
 	case *ir.Literal:
+		if ir.IsNullLiteral(v) {
+			// null is the option left unset: a pointer stays nil.
+			dst.Set(reflect.Zero(dst.Type()))
+			return nil
+		}
 		return assignLiteral(dst, v)
 	case *ir.StructLit:
 		if dst.Kind() == reflect.Pointer {
@@ -268,6 +273,11 @@ func resolveConst(e ir.Expr) ir.Expr {
 	case *ir.Binary:
 		if folded := foldComparison(v); folded != nil {
 			return folded
+		}
+	case *ir.Conversion:
+		// A value or null handed an option[T] option is itself.
+		if v.Type != nil && v.Type.Kind == ir.TypeOption {
+			return resolveConst(v.Operand)
 		}
 	}
 	return e

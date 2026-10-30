@@ -32,7 +32,6 @@ type Combo struct {
 	// Shared SDK + AndroidX.
 	CompileSdk      int    // compileSdk / default targetSdk (Android API level)
 	ActivityCompose string // androidx.activity:activity-compose version
-	Coil            string // io.coil-kt:coil-compose version
 	Navigation      string // androidx.navigation:navigation-compose version
 	Serialization   string // org.jetbrains.kotlinx:kotlinx-serialization-json version
 
@@ -61,7 +60,6 @@ var combos = []Combo{
 		R8:              "8.7.18",
 		CompileSdk:      35,
 		ActivityCompose: "1.9.3",
-		Coil:            "2.7.0",
 		Navigation:      "2.8.9",
 		Serialization:   "1.7.3",
 		JDKMin:          17,
@@ -86,7 +84,6 @@ var combos = []Combo{
 		BuildTools:      "36.0.0",
 		CompileSdk:      36,
 		ActivityCompose: "1.10.1",
-		Coil:            "2.7.0",
 		Navigation:      "2.8.9",
 		Serialization:   "1.7.3",
 		JDKMin:          17,

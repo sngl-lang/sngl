@@ -81,6 +81,15 @@ JVM and a Kotlin daemon of 2 GB each, the Kotlin one outliving the build, and
 the script and golden harnesses running several at once ran the machine out of
 memory.
 
+**An android golden without tests is built without Gradle.** The harness
+generates it as `sngl build` would, and with the `gradle` option unset that is
+the gradle-free layout, so `internal/toolchain` verifies it through
+`android.buildApk` -- native kotlinc and d8, Go signing -- rather than
+`gradlew`, one at a time because those builds fill a shared library cache. A
+golden carrying tests is a Robolectric run and still goes through Gradle, and
+`generate_android_i18n.txtar` sets `gradle=true` so a Gradle build of a plain
+program stays covered.
+
 **verify launches nothing a record answers.** It runs no `sngl test` of its
 own: the examples are all `./...` reaches, and `examples_runs.txt` runs them
 on every target from its records. Run unrecorded in verify, every launch

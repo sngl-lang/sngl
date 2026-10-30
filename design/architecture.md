@@ -177,6 +177,14 @@ target with no way to say a field is meant for one.
   output to `apksigner verify` at API 21 and 24, a recorded run that
   reruns apksigner only when the signed bytes move.
 
+  **`gradle` unset chooses** (`Config.UseGradle`). A generated project is
+  a Gradle one, to open in Android Studio. `sngl build` and `sngl run` (the
+  `executable` option) build gradle-free. A test, which runs on Robolectric,
+  and a Go program, whose `golib.aar` the gradle-free build does not bind,
+  still use Gradle. The gradle-free layout keeps everything at its root: the
+  `.kt` files it compiles, `res/`, and `assets/` (pictures and the i18n
+  manifest), which it hands to `aapt2 link -A`.
+
   **The gradle-free build runs no JVM.** Its kotlinc and d8 are GraalVM
   native images from `github.com/sngl-lang/android-tools`, one release
   (`androidtc.NativeRelease`) carrying both for each host, downloaded on

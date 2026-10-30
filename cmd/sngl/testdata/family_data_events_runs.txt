@@ -112,7 +112,7 @@ window {
     failing
 }
 -- testrun/android/kotlin/app.sngl/failing/1 --
-sha256:ce4d4244c5592c49f7270d1ff179570d
+sha256:8ff02a24860218d3c3d56da09903fac4
 {
   "results": [
     {
@@ -122,7 +122,7 @@ sha256:ce4d4244c5592c49f7270d1ff179570d
   ]
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:a246cda499a4168d598409d590b0fa13
+sha256:e2e2666c4cfce545cfa919163828a6af
 {
   "results": [
     {

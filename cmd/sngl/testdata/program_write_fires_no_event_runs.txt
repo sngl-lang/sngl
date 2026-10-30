@@ -95,7 +95,7 @@ ui.window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:771cb7b3382329d7e1693828e53494d8
+sha256:2e5f598500a72877db0fe1d81613445d
 {
   "results": [
     {

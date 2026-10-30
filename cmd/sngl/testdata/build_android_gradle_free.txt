@@ -1,0 +1,19 @@
+# sngl build on android builds without Gradle when the gradle option is left
+# unset, and runs no JVM: kotlinc and d8 are the native builds from
+# sngl-lang/android-tools and the APK is signed in Go. With nothing on PATH
+# and no JAVA_HOME, there is no java for a step to have run.
+
+env PATH=
+env JAVA_HOME=
+sngl build --platform=android --lang=kotlin app.sngl
+[toolchain] exists app
+
+-- app.sngl --
+import ui "sngl:ui"
+
+ui.window(title="Hello") {
+    ui.text(value="hello")
+}
+-- testrun/build/android/kotlin/app.sngl/1 --
+sha256:59f208ee1df62ca2588f91e901ac2254
+{}

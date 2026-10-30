@@ -182,4 +182,4 @@ class MainScreenTest {
 
 }
 -- run/kotlin/android --
-pass sha256:f26f42aa48becddd35adba150b3f6244
+pass sha256:c7106c96ec48d9239f1f53d957897261

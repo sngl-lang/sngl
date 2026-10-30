@@ -917,7 +917,7 @@ pass sha256:2d6f825513c85e98e4306550a0260f50
 -- run/go/fyne --
 pass sha256:89b7d64c7adb5dcb7b70ee0eda18ef73
 -- run/kotlin/android --
-pass sha256:1eee66e533a68a5a2db49ec52cda586e
+pass sha256:c8b8af46eab3fff7bf9e3b9dd62c4edd
 -- run/none/html --
 pass sha256:edf9fcafa6f3788c4174da93c4911858
 -- testrun/html/none/component_modal.sngl/main/1 --

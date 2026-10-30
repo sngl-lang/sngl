@@ -2,7 +2,6 @@ package android
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"duckfam.us/sngl/codegen"
@@ -19,13 +18,14 @@ func (g *Generator) Build(dir string, opts *ir.StructLit) (string, error) {
 		return "", fmt.Errorf("android: %w", err)
 	}
 	cfg = cfg.withDefaults()
+	// If a Go module is present (go+android), run gomobile bind first.
+	goLibDir := filepath.Join(dir, "golib")
+	cfg.GoLib = dirExists(goLibDir)
 	useGradle := cfg.UseGradle()
 	pkg := cfg.Package
 	combo := cfg.combo()
 
-	// If a Go module is present (go+android), run gomobile bind first.
-	goLibDir := filepath.Join(dir, "golib")
-	if info, err := os.Stat(goLibDir); err == nil && info.IsDir() {
+	if cfg.GoLib {
 		aarPath := filepath.Join(dir, "golib.aar")
 		if err := gomobileBind(goLibDir, aarPath, combo); err != nil {
 			return "", fmt.Errorf("gomobile bind: %w", err)

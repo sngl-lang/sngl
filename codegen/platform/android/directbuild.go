@@ -72,6 +72,10 @@ func directBuild(dir string, tc *toolchain, pkg string, minSdk int) (string, err
 	if len(libPackages) > 0 {
 		linkArgs = append(linkArgs, "--extra-packages", strings.Join(libPackages, ":"))
 	}
+	// The program's pictures and the i18n manifest, at the paths it reads.
+	if assets := filepath.Join(dir, assetsDirFor(false)); dirExists(assets) {
+		linkArgs = append(linkArgs, "-A", assets)
+	}
 	if dirExists(resDir) {
 		compiledRes := filepath.Join(outDir, "compiled_res.zip")
 		slog.Info("exec", "cmd", "aapt2 compile", "dir", resDir)

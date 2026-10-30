@@ -981,7 +981,7 @@ pass sha256:1384240ba062b0ed0e6c5aa47563e398
 -- run/go/gtk4 --
 pass sha256:68b28120be62aa63dc42a422e202f4ce
 -- run/kotlin/android --
-pass sha256:a9e5cac0cb7d3a0c07e4d5af888e5d36
+pass sha256:42005f7bed51cfedd2a0122fbb3d2b8f
 -- run/none/html --
 pass sha256:83472eaabd995e251cbba81be42b886c
 -- testrun/html/none/component_table.sngl/main/1 --

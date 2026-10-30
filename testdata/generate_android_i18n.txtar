@@ -19,7 +19,7 @@ app/src/main/assets/, where the runtime loads it.
 import . "sngl:ui"
 import "sngl:i18n"
 
-output { kotlin { android(main=true) } }
+output { kotlin { android(main=true, gradle=true) } }
 
 component main node {
     var count int = 1
@@ -582,4 +582,4 @@ private fun loadManifest(ctx: Context): Manifest {
     }
 }
 -- run/kotlin/android --
-pass sha256:53ff4a1b0fcb68358523409d33084763
+pass sha256:ab434fef235e802b80f983efe035b358

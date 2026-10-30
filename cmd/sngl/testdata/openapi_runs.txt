@@ -326,7 +326,7 @@ components:
       - name
       - parent_breed
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:0dc783461c28e8994008e7f07fd0efec
+sha256:2040fe46dff2e8d4b2adab3aa8521889
 {
   "results": [
     {
@@ -344,7 +344,7 @@ sha256:0dc783461c28e8994008e7f07fd0efec
   ]
 }
 -- testrun/android/kotlin/app.sngl/pager/1 --
-sha256:2385562228798b54c5b4439829dea30d
+sha256:5fe1891a051eae2bbb9a9010bc045fbc
 {
   "results": [
     {

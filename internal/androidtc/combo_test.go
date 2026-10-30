@@ -22,7 +22,7 @@ func TestCombosWellFormed(t *testing.T) {
 
 		if c.Name == "" || c.Gradle == "" || c.AGP == "" || c.Kotlin == "" ||
 			c.ComposePlugin == "" || c.ComposeBOM == "" || c.ComposeRuntime == "" ||
-			c.BuildTools == "" || c.ActivityCompose == "" || c.Coil == "" {
+			c.BuildTools == "" || c.ActivityCompose == "" {
 			t.Errorf("combo %q has an empty version field: %+v", c.Name, c)
 		}
 		if c.CompileSdk <= 0 {
