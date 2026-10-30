@@ -282,6 +282,11 @@ member selected off a component value -- which is how a test's `c.range` and
 their names, being read by spelling (a route's path, a serialized record): Go
 exports a field and JavaScript takes a keyword as a key, so only Kotlin escapes
 one, in backticks, from its language's own default (`codegen.LanguageReserves`).
+A prop keeps its name too, and html's factory for a component built at run
+time binds each prop as a local, so one JavaScript reserves is bound under
+another spelling (`javascript.SafeIdent`): `let default = props.default;` was
+a page esbuild refused, `settings.kept` under a `for`
+(`cmd/sngl/testdata/runtime_instance_reserved_prop_runs.txt`).
 So does a host's declaration -- foreign, native, intrinsic, builtin -- and a
 native's parameters, which Kotlin's `named` flag passes by name. Two more are
 a harness's: a test function's parameters, which the test emitter spells in a

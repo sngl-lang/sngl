@@ -196,6 +196,10 @@ session.
      Found while pinning it:
      - On android a test's `@unmount` wrote into the next test's state. Fixed
        (`cmd/sngl/testdata/test_unmount_stays_in_its_test_runs.txt`).
+     - On html a component built at run time with a prop JavaScript reserves
+       -- `kept`'s `default` -- was bound as `let default = …`, which esbuild
+       refused. Fixed
+       (`cmd/sngl/testdata/runtime_instance_reserved_prop_runs.txt`).
      - Open: bubbletea runs every copy's `@update` when the program replaces
        the list (`c.rows = […]`) with the keys unchanged; the interpreter,
        html and fyne run none.
