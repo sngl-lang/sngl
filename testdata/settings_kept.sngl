@@ -4,8 +4,6 @@
 // before it. Loading writes nothing back. A test keeps its values in memory
 // and starts with none.
 
-// SKIP(codegen) "a platform harness compiles these components with nothing instantiating them, which a build never does; every target's code is settings_kept.txtar"
-
 import settings "sngl:settings"
 import . "sngl:test"
 import ui "sngl:ui"

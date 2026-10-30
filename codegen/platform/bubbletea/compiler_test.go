@@ -42,18 +42,25 @@ func compileAndVerify(t *testing.T, doc *ast.Document, pkg ...*ir.Package) []byt
 	if len(pkg) > 0 {
 		p = pkg[0]
 	}
+	return compileRootedAndVerify(t, doc, p, "")
+}
+
+func compileRootedAndVerify(t *testing.T, doc *ast.Document, p *ir.Package, root string) []byte {
+	t.Helper()
+	var opts *ir.StructLit
 	if p != nil {
+		p, opts = testutil.RootAt(p, root)
 		p = ir.ClonePackage(p)
 		if err := optimize.Optimize(p, &optimize.Config{Platform: "bubbletea", Language: "go"}); err != nil {
 			t.Fatalf("optimize: %v", err)
 		}
 		gen := &Generator{}
 		goLang := codegen.LookupLang("go")
-		if err := lower.Lower(p, codegen.CapsOrNone(goLang.LanguageIdentifier(), gen.PlatformIdentifier()), lower.Options{Platform: "bubbletea", Language: "go"}); err != nil {
+		if err := lower.Lower(p, codegen.CapsOrNone(goLang.LanguageIdentifier(), gen.PlatformIdentifier()), lower.Options{Platform: "bubbletea", Language: "go", RootComponent: root}); err != nil {
 			t.Fatalf("lower: %v", err)
 		}
 	}
-	ctx := codegen.NewCodegenCtx(&codegen.Request{Doc: doc, Pkg: p}, "bubbletea")
+	ctx := codegen.NewCodegenCtx(&codegen.Request{Doc: doc, Pkg: p, Options: opts}, "bubbletea")
 	src, err := CompileIR(ctx, Config{})
 	// A second window is a program this platform refuses by design, and the
 	// fixture harness compiles every fixture in testdata for it.
@@ -86,7 +93,11 @@ func TestFixtures(t *testing.T) {
 			if hasErrors(diags) {
 				t.Fatalf("check: %s", firstError(diags))
 			}
-			compileAndVerify(t, doc, pkg)
+			for _, root := range testutil.Roots(pkg) {
+				t.Run(root, func(t *testing.T) {
+					compileRootedAndVerify(t, doc, pkg, root)
+				})
+			}
 		})
 	}
 }

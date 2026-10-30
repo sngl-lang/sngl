@@ -567,7 +567,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 				if literal {
 					at = h + ", a pattern"
 				}
-				return nil, fmt.Errorf("%s: page %q is served at %s: a static site writes one document per page and cannot serve one; compile with a server language (e.g. --lang go)", ir.NodePos(doc.Page), doc.Page.ID, at)
+				return nil, &PatternPageError{fmt.Sprintf("%s: page %q is served at %s: a static site writes one document per page and cannot serve one; compile with a server language (e.g. --lang go)", ir.NodePos(doc.Page), doc.Page.ID, at)}
 			}
 			name = pathFromHref(h)
 		}
@@ -4322,3 +4322,11 @@ func instanceCopySelector(id, key string) string {
 func staticCopy(els, id, key string) string {
 	return fmt.Sprintf("%s.find((e) => document.querySelector(%s).contains(e))", els, copySelector(id, key))
 }
+
+// PatternPageError is a static site refusing a page served at a pattern. It is
+// a type so that a harness compiling every fixture for html with no server
+// language can tell a program the static site refuses by design from a
+// failure of the platform.
+type PatternPageError struct{ msg string }
+
+func (e *PatternPageError) Error() string { return e.msg }

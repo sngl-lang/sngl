@@ -239,7 +239,11 @@ session.
      (`cmd/sngl/testdata/examples_runs.txt`).
    - The per-platform fixture harnesses compile every component as an entry
      with nothing instantiating it, so a fixture whose components bind a
-     two-way prop needs `SKIP(codegen)`.
+     two-way prop needs `SKIP(codegen)`. Fixed (Jonathan's call): android's,
+     bubbletea's and html's harnesses build a fixture of components from each
+     one nothing else renders, rooted as a test build is (`testutil.Roots`),
+     and `settings_kept`, `json_generic` and `view_block_state` emit on all
+     three.
    - The value loads in a mount effect, so a kept setting shows its
      initializer for the first frame on every target. Fixed (Jonathan's
      call): `kept` takes a `default`, and its value is an `option[T]`, null

@@ -7,6 +7,19 @@
 
 **A fixture-first fixture the backends cannot emit yet carries `// SKIP(codegen) "reason"`.** Every platform harness compiles the *whole* of `testdata/` for its own target, so a fixture naming a construct no platform can lower does not fail one assertion — it takes that harness down. The directive is the fixture's own opt-out from codegen only: `TestFixtures` still parses, formats, checks and folds it, which is the point of writing the fixture before the implementation. The decision lives in one place, `testutil.CodegenSamples` (a `TestdataSamples` that drops the skipped) plus `RunComponentFixtures`; a platform harness walks testdata through those and never tests the flag itself. Remove the directive in the commit that makes the fixture emit.
 
+**A platform harness builds a fixture from its roots** (`testutil.Roots`,
+`RootAt`): the program where the package body renders something, and otherwise
+each component nothing else in the fixture renders, rooted as a test build is
+(`build.IsolateRootComponent`, each prop at its default or zero). A fixture of
+components alone was generated with no root, every component an entry nothing
+renders, which no build makes: a component binding a two-way prop of a generic
+one reached Go with T unbound, and html refused an unbound prop no call site
+would leave, so `settings_kept`, `json_generic` and `view_block_state` carried
+`SKIP(codegen)`. A generic component is no root, since nothing binds its type
+parameters. html's harness builds a static site, so a page served at a pattern
+is a refusal by design it skips (`PatternPageError`), as android's and
+bubbletea's skip a second window (`OneWindowError`).
+
 **Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, `grep`, and `!` for assertions. A script gets `$WORK` (its directory), its own `XDG_CONFIG_HOME` so it never reads or writes the user's trust config, and `GOENV` pinned to the user's so the go command's own config survives the move. A script that builds a Go module against the checkout writes its go.mod with `exec sh -c` from `$SNGL_HOST_GO_MOD` (a `go` line included, or an offline `go mod tidy` needs the unpruned graph, the checkout's `require` blocks, or the pruned graph selects versions the module cache was never given, and its `replace` lines, or tidy looks up the version a replace stands in for) and runs `go mod tidy` under `GOPROXY=off GOFLAGS=-mod=mod`; `trust_eval.txt` is the pattern.
 
 **Golden codegen fixtures** (`testdata/*.txtar`, run by `internal/goldentest`
