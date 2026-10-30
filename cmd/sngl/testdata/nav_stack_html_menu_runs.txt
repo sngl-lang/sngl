@@ -63,7 +63,7 @@ func testTheEntryBeforeTheLoopIsPicked(t test.Test, c app) {
     t.assert(c.size == "Medium" && c.main.menu[0].children[0].checked)
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:96e0ef9d5100013b3750c1cbd94347a2
+sha256:0e1ae026440f35bd541ca62169fdcf5e
 {
   "results": [
     {
