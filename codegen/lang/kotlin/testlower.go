@@ -119,6 +119,16 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 				}
 			}
 		}
+		// A package func writing state is a write as a test's own is: run
+		// where Compose recomposes, and waited for, so the effects keyed on
+		// what it wrote have run before the next assertion.
+		if c := n.Call; c != nil && c.Func != nil && !c.Func.IsMethod() && c.Func.Purity == ir.PurityMutates {
+			lines := []string{"composeTestRule.runOnUiThread {"}
+			for _, l := range surf.translator().EvalStmt(s) {
+				lines = append(lines, "    "+l)
+			}
+			return append(lines, "}", testIdleLine)
+		}
 	case *ir.If:
 		// A trigger on a node that may not be rendered is written under the
 		// null test that says it is, so the branches are a test's own lines.

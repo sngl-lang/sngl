@@ -241,7 +241,11 @@ These rules keep them agreeing:
   into the test named nodes the test file has none of, so a test writing a
   page var a node reads did not build on fyne or gtk4
   (`cmd/sngl/testdata/test_write_redraws_runs.txt`). bubbletea and android
-  draw from state and need no call.
+  draw from state and need no call. android runs a test's write, and its
+  call of a package func that writes state, on the UI thread with a wait
+  after it, so the effects keyed on what was written have run before the
+  next assertion; the call ran straight from the test, and they had not
+  (`cmd/sngl/testdata/page_write_through_func_runs.txt`).
 - **A test waiting lets time pass as the program's loop would**: `t.wait`
   asks its predicate between turns of whatever runs the target's schedules.
   bubbletea's test build runs no program, so each turn settles the Model the
