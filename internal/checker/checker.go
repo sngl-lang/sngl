@@ -352,6 +352,9 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// ownArgsID is the `#id` of the node whose props are being checked, which
+	// they cannot read (lookupValue).
+	ownArgsID string
 	// codecReported is the calls checkCodecCall has refused, since a
 	// component body is read twice.
 	codecReported map[ast.Pos]bool

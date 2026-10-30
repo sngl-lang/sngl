@@ -2048,9 +2048,13 @@ context-naming declaration tag; it is never a selection field nor written on
 its own as an operand.
 
 A handle is for reading. A node's properties may not be assigned through it
-(see [Assignment](#assignment)), and a node may not read its own `#id` in its
-own arguments (`ui.text #t(value = t.value)`), since the id names the instance
-that argument list is building. A handle that is read may not be rendered more
+(see [Assignment](#assignment)), and a node's own arguments may not read its
+`#id`, since the id names the instance that argument list is building: a name
+there reads what the id would have shadowed -- `ui.scroll #both(direction=both)`
+is the enum member -- and one nothing else declares is a recursive
+declaration (`ui.text #t(value = t.value)`). A handler among the arguments runs
+once the node is built, and reads it like any other code; so does the node's
+content. A handle that is read may not be rendered more
 than once — two copies of one body would share it, and neither read could say
 which it meant.
 

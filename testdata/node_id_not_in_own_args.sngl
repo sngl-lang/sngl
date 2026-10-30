@@ -1,0 +1,19 @@
+// A node's `#id` is not in scope in its own arguments, so a name it would
+// shadow there reads what it shadows: `scroll #both(direction=both)` is the
+// enum member, where it was the scroll, "cannot use scroll as
+// ScrollDirection".
+
+import "sngl:test"
+import ui "sngl:ui"
+
+const label = "outer"
+
+component main ui.node {
+    ui.scroll #both(direction=both) {
+        ui.text #label(value=label)
+    }
+}
+
+func testANodesIDShadowsNothingInItsOwnArguments(t test.Test, c main) {
+    t.assert(c.label.value == "outer")
+}

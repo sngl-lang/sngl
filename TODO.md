@@ -130,7 +130,12 @@ session.
    `gtk4-declared-protocol`, which merged main and was merged here. Found:
    - A node's `#id` shadows a bare enum variant or a const of the same name
      in its own arguments: `ui.scroll #both(direction=both)` is "cannot use
-     scroll as ScrollDirection", which names neither.
+     scroll as ScrollDirection", which names neither. Fixed: resolution
+     passes over the handle while the node's props are checked, so the name
+     reads what it shadows, and one nothing else declares is a recursive
+     declaration; a handler still reads its node (Jonathan's call). Pinned by
+     `testdata/node_id_not_in_own_args.sngl` and
+     `error_node_id_in_own_args.sngl`.
    - `ui.scroll`'s `scrollX`, `scrollY` and `showScrollbar` are read by no
      override, as the boxes' `scroll` was. Deleted (Jonathan's call);
      `component_scroll.txtar`, which only wrote the vars it bound them to,

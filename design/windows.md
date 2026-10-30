@@ -77,18 +77,24 @@ standing on re-entry -- the state a prop with no answer already reached codegen
 in. Keyed by node *and* prop, so two nodes naming each other terminate on the
 second key rather than looping on the first.
 
-**A node may not read its own `#id` in its own arguments**, and that is now a
-positioned checker error (`reportSelfReferentialProps`, `internal/checker/selfref.go`).
+**A node may not read its own `#id` in its own arguments**, and that is a
+positioned checker error, a recursive declaration. Resolution passes over
+the node's handle while its props are checked (`lookupValue`), so a name it
+would shadow reads the outer binding or the enum member
+(`ui.scroll #both(direction=both)`, which was "cannot use scroll as
+ScrollDirection" naming neither), and one nothing else declares is the error
+(`testdata/node_id_not_in_own_args.sngl`). It was asked after resolution, of
+the props alone, so the type error came first. A handler runs once the node is
+built and reads it (`checkbox #box(@change { seen = box.checked })`), as the
+node's content does (Jonathan's call: not Go's func-literal rule).
 The id names the instance the argument list is building, so `window #h(title = h.title)` asks the title for the title. All three forms of a node
 that carries an id are held to it — a window, an element-ref call
 (`text #t(value = t.value)`), and the `context` declaration, whose id *is* its
 own declaration, so `context #depth(depth)` is the same error rather than an
-`undefined` naming the context on the line declaring it. Matched by *symbol*:
-an id is a declaration in its component's scope and shadows an outer `foo`,
-so `text #foo(value=foo)` beside a package's `foo` reads the node and is this
-error, and beside a var of the component is a redeclaration (see
-design/nodes.md). A handler is untouched — `@click` is split
-off before the rule is asked, and a handler runs after mount.
+`undefined` naming the context on the line declaring it. Outside its own
+props an id shadows an outer `foo` as any declaration does, and beside a var
+of the component it is a redeclaration (see design/nodes.md); inside them
+`text #foo(value=foo)` beside a package's `foo` reads the package's.
 
 What it does not cover is a cycle through *other* declarations, which is the
 checker's cycle rule (`reportDeclarativeCycles`, `internal/checker/cycles.go`):
