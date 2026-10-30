@@ -50,14 +50,18 @@ type toolchain struct {
 	jdkMax       int
 }
 
+// toolchainCacheDir is where the SDK packages, the native tools and the
+// libraries a gradle-free build downloads are kept.
+func toolchainCacheDir() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".cache", "sngl", "android-toolchain")
+}
+
 // resolveToolchain locates all required tools for combo c, first checking
 // ANDROID_HOME and PATH, then falling back to the sngl toolchain cache.
 func resolveToolchain(c androidtc.Combo) (*toolchain, error) {
-	home, _ := os.UserHomeDir()
-	cacheDir := filepath.Join(home, ".cache", "sngl", "android-toolchain")
-
 	tc := &toolchain{
-		CacheDir:     cacheDir,
+		CacheDir:     toolchainCacheDir(),
 		cKotlin:      c.Kotlin,
 		cCompose:     c.ComposeRuntime,
 		cNavigation:  c.Navigation,
@@ -627,6 +631,9 @@ func extractZip(zipPath, destDir, stripPrefix string) error {
 			continue
 		}
 
+		if !filepath.IsLocal(filepath.FromSlash(name)) {
+			return fmt.Errorf("archive entry %q leaves its directory", f.Name)
+		}
 		target := filepath.Join(destDir, name)
 		if f.FileInfo().IsDir() {
 			os.MkdirAll(target, 0o755)

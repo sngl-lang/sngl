@@ -230,8 +230,18 @@ optional.
    still a JVM tool. A gradle-free hello build ran with no `java` on `PATH`
    and no `JAVA_HOME`. The libraries still came from `~/.gradle` there, so
    the Maven fallback is only confirmed by step 6's clean container.
-5. **Fetch `adb` from Google's platform-tools** when there is no
-   `ANDROID_HOME` (sngl step 5).
+5. **Done: fetch `adb` from Google's platform-tools** when neither `PATH`
+   nor `ANDROID_HOME` has one (sngl step 5). `sngl run` and screenshots
+   call `fetchAdb`, which unpacks the latest `platform-tools` into
+   `android-toolchain/platform-tools/`. `androidTool("adb")` looks there
+   too, but never downloads, so a test runner without adb still skips.
+   Google publishes no linux-arm64 adb, so that host still needs its own.
+   With an empty `HOME`, no `java`, no `ANDROID_HOME` and no `~/.gradle`,
+   a gradle-free hello build took 45s. It downloaded the platform,
+   build-tools, both native tools and the Compose libraries from Maven.
+   The libraries are 51 jars, against the 80 that the `~/.gradle` seed
+   mixes in, some at other versions. Whether that APK launches is still
+   to be checked on a device.
 6. **`gradle` as `option[bool]` with auto-detection** (sngl step 8), with
    `run` and `build` gradle-free. Then confirm the goal: in a clean
    container (`debian:stable`, no `java`, no `ANDROID_HOME`, no

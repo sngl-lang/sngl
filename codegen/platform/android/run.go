@@ -39,17 +39,50 @@ func androidTool(name string) (string, error) {
 	if p, err := exec.LookPath(name); err == nil {
 		return p, nil
 	}
+	subdir, ok := androidToolDirs[name]
 	home := sdkRoot()
-	if home == "" {
-		return "", fmt.Errorf("%s not found in PATH and ANDROID_HOME is not set", name)
-	}
-	if subdir, ok := androidToolDirs[name]; ok {
-		p := filepath.Join(home, subdir, name)
+	if ok && home != "" {
+		p := filepath.Join(home, subdir, name+exeSuffix())
 		if _, err := os.Stat(p); err == nil {
 			return p, nil
 		}
 	}
+	if name == "adb" {
+		if p := cachedAdb(); fileExists(p) {
+			return p, nil
+		}
+	}
+	if home == "" {
+		return "", fmt.Errorf("%s not found in PATH and ANDROID_HOME is not set", name)
+	}
 	return "", fmt.Errorf("%s not found in PATH or ANDROID_HOME (%s)", name, home)
+}
+
+// cachedAdb is where fetchAdb puts adb: Google's platform-tools, which may
+// be downloaded but not redistributed, so it comes from Google rather than
+// from sngl-lang/android-tools.
+func cachedAdb() string {
+	return filepath.Join(toolchainCacheDir(), "platform-tools", "adb"+exeSuffix())
+}
+
+// fetchAdb is adb, downloaded into the toolchain cache when neither PATH nor
+// the SDK has one. Only `sngl run` and screenshots fetch it; a test runner
+// that finds no adb skips instead.
+func fetchAdb() (string, error) {
+	if p, err := androidTool("adb"); err == nil {
+		return p, nil
+	}
+	dest := filepath.Dir(cachedAdb())
+	if err := fetchSDKPackage("platform-tools", dest, "Android platform-tools"); err != nil {
+		return "", fmt.Errorf("adb not found and could not be fetched (%w); install platform-tools or set ANDROID_HOME", err)
+	}
+	p := cachedAdb()
+	if !fileExists(p) {
+		return "", fmt.Errorf("adb not found in the downloaded platform-tools")
+	}
+	// The archive does not always carry the execute bit.
+	os.Chmod(p, 0o755)
+	return p, nil
 }
 
 // androidEnv returns the current environment with ANDROID_SDK_ROOT set
@@ -126,7 +159,7 @@ func moveFile(src, dst string) error {
 // Android project, ensures an ADB device is available (starting an emulator
 // if needed), installs the APK, and launches the main activity.
 func (g *Generator) Run(dir string, opts *ir.StructLit) error {
-	if _, err := androidTool("adb"); err != nil {
+	if _, err := fetchAdb(); err != nil {
 		return err
 	}
 
