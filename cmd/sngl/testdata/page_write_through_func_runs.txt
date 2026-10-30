@@ -1,0 +1,143 @@
+# A package func writing a package var that a component built at run time
+# reads -- in a branch of its own and in an effect's key -- reaches the
+# instance, on every target, as a handler's write and a test's do.
+#
+# A build rooted at a component filed that root's instances under it as well
+# as under the page, so the page's refresh never reached them, and the func,
+# which may run anywhere, re-fired the instance's render slot by a name only
+# the instance has: "__renderSlot0 is not defined" on html, "undefined:
+# __renderSlot0" on fyne.
+
+sngl test --platform=none app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +3 tests, 0 failures'
+
+-- app.sngl --
+import "sngl:test"
+import ui "sngl:ui"
+
+var dex option[string] = "national"
+var resets = 0
+
+func choose(name string) {
+    dex = name
+}
+
+component page ui.node {
+    var seen = 0
+    effect(on=dex, @update {
+        resets += 1
+        seen = resets
+    })
+    ui.text(value="{seen}")
+    if dex != null {
+        ui.text(value=dex)
+    }
+}
+
+component back ui.node {
+    var away = false
+    ui.button #leave(text="Leave", @click { away = !away })
+    ui.button #pick(text="Kanto", @click { dex = "kanto" })
+    if !away {
+        page #page
+    }
+}
+
+func testAWriteThroughAFuncReachesThePage(t test.Test, c back) {
+    var before = resets
+    choose("kanto")
+    t.assert(dex == "kanto")
+    t.assert(resets == before + 1)
+}
+
+func testAHandlersWriteReachesThePage(t test.Test, c back) {
+    var before = resets
+    c.pick.click()
+    t.assert(resets == before + 1)
+}
+
+func testATestsWriteReachesThePage(t test.Test, c back) {
+    var before = resets
+    dex = "johto"
+    t.assert(resets == before + 1)
+}
+-- testrun/bubbletea/go/app.sngl/back/1 --
+sha256:7bbf826f5c4697ce7d061701e21a0d5b
+{
+  "results": [
+    {
+      "Desc": "AHandlersWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncReachesThePage",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/back/1 --
+sha256:0c004f2b270b1cedc0719107a829c8ab
+{
+  "results": [
+    {
+      "Desc": "AHandlersWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncReachesThePage",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/back/1 --
+sha256:3b232d78633dd10244d005b2d3770439
+{
+  "results": [
+    {
+      "Desc": "AHandlersWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncReachesThePage",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/back/1 --
+sha256:d85b9e489b29116b2b664ca7407d6b8b
+{
+  "results": [
+    {
+      "Desc": "AHandlersWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncReachesThePage",
+      "Passed": true
+    }
+  ]
+}

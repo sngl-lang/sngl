@@ -1436,9 +1436,11 @@ func (st *reactivityState) reachable(v *ir.Var) ([]reactiveProp, []reactiveSlot,
 	if o, ok := st.owner.(pkgOwner); ok && o.root == ir.AppParent {
 		inComp = true
 	}
+	// A component the page's refresh reaches holds its nodes and slots
+	// itself, so no writer outside it names them, a package func included.
 	foreign := func(o reactivityOwner) bool {
-		_, other := o.(compOwner)
-		return inComp && other && st.owner != o
+		c, other := o.(compOwner)
+		return other && st.owner != o && (inComp || st.refresh.reaches(c.c, v))
 	}
 	var props []reactiveProp
 	for _, p := range st.reverseDeps[v] {

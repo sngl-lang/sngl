@@ -72,7 +72,12 @@ func (st *reactivityState) planPageRefresh(root *ir.Component) {
 		pr.held[nil] = append(pr.held[nil], st.heldInstances(root.Stmts)...)
 	}
 	for _, c := range st.pkg.Components {
-		pr.held[c] = st.heldInstances(c.Stmts)
+		// The root's instances are the page's: filed under it as well, they
+		// had a holder the refresh never reaches, and reaches answered no
+		// for every one of them.
+		if c != root {
+			pr.held[c] = st.heldInstances(c.Stmts)
+		}
 	}
 	for _, ns := range pr.held {
 		for _, n := range ns {

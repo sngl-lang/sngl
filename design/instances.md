@@ -717,6 +717,12 @@ instance it holds that has one -- those its slots' registries keep, and one
 at a position of its own, a recursion's, by its handle. The page's
 `__refreshPage_<v>` starts it from the page's own, the root component's in a
 build rooted at one, and every write of `v` calls it after its own updates.
+The root is the page there and holds nothing of its own: filed as a holder
+too, its instances had one the refresh never reached, so `reaches` said no,
+and a package func, which may run anywhere and so is held to no scope,
+re-fired an instance's render slot by a name only the instance has; a reader
+the refresh reaches is now left to it whoever writes
+(`cmd/sngl/testdata/page_write_through_func_runs.txt`).
 The instance reads `v` where it stands, so a handler of its own sees what was
 written, and what a registry holds is what is reached: an instance destroyed
 has left it. A row's own state survives, being patched rather than rebuilt
