@@ -205,12 +205,15 @@ session.
        -- `kept`'s `default` -- was bound as `let default = …`, which esbuild
        refused. Fixed
        (`cmd/sngl/testdata/runtime_instance_reserved_prop_runs.txt`).
-     - Open: bubbletea runs every copy's `@update` when the program replaces
-       the list (`c.rows = […]`) with the keys unchanged; the interpreter,
-       html and fyne run none.
-     - Open: android's `@unmount` reads a prop as the copy mounted with it:
-       rows `[a, b, c]` then `[a, c]` then `[a]` unmount `c` and then `b`,
-       where the interpreter, html, fyne and bubbletea unmount `c` twice.
+     - A write reaching an `@update` through a two-way prop is reported only
+       when it changes the value on the interpreter, html and fyne; bubbletea,
+       which splices the component, reports every write as the effect does
+       outside one (#302).
+     - android's `@unmount` reads the prop its copy mounted with, not the
+       one it holds (#301).
+     - A copy that leaves and one that rekeys in one settle run in different
+       orders on html and fyne (#303), and `key=` on a node in a loop is
+       honoured only by the interpreter (#304).
    - The interpreter read another package's var from its initializer on
      every access, so a library's state never changed under `sngl test`.
      Fixed here (`importedVarOwner`).
