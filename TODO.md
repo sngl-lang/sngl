@@ -154,12 +154,42 @@ android-tools/
    pick `launchDevice` for every fixture, without `testRunner=device` in
    the source. `launchDevice` uses `directBuild` instead of `gradlew :app:assembleDebug`, so a device run needs no JVM at all. Recorded runs
    stay recorded against Robolectric, and the device mode only reruns them.
-8. **Make the gradle-free path the default** (`Config.UseGradle` returns
-   true when unset today) once the fixtures pass on it. Gradle stays
-   available through `gradle=true` for people who open the scaffold in
-   Android Studio.
-9. **Update the docs:** `design/architecture.md` (android), `design/testing.md`
-   (runners, env var) and the CLAUDE.md test bullet on `ANDROID_HOME`.
+8. **`gradle` becomes `option[bool]`, and null means "choose".** It is
+   already a `*bool` in `Config`, where nil means `true` today. `true` and
+   `false` still force one path. Null resolves once, from the command and
+   the config, and both the generate-time file layout and the build read
+   that one answer:
+   - `sngl generate` writes the Gradle project, which is something to open
+     in Android Studio. Nothing is built.
+   - `build`, `run` and both test runners build gradle-free. Until the
+     gaps in step 9 are closed, anything that hits one of them uses Gradle.
+   - A `minSdk` below 24 uses Gradle, because the Go signer writes only v2.
+9. **Close the gradle-free gaps:**
+   - **`--lang go`:** `directBuild` never reads `golib.aar`. It has to put
+     the AAR's `classes.jar` on the kotlinc classpath and into the dex, and
+     its `jni/<abi>/*.so` into the APK under `lib/<abi>/`, stored and
+     page-aligned (`apksign` already aligns `.so`). `gomobile bind` itself
+     still runs `javac` and needs the NDK, so `go` stays JDK-bound. That is
+     separate from Gradle.
+   - **Robolectric:** sngl step 6. It still needs a JVM, but not Gradle.
+     Robolectric also wants the processed resources: the `base.apk` that
+     `aapt2 link` writes, named through `com/android/tools/test_config.properties`
+     on the test classpath, which is what AGP writes for it.
+   - **Device runner:** `launchDevice` builds with `gradlew :app:assembleDebug`.
+     It only needs an APK, so it switches to `directBuild`.
+10. **Fixtures run gradle-free by default.** One or two fixtures opt into
+    `gradle=true`: one golden that builds through Gradle, and one recorded
+    `sngl test` under Robolectric through Gradle, so the Gradle scaffold
+    stays exercised. At least one CLI script runs a gradle-free `sngl build`
+    on hello. No test covers `directBuild` today: no script or fixture sets
+    `gradle=false`.
+11. **Drop Coil.** The Gradle scaffold declares `io.coil-kt:coil-compose`,
+    which no generated code uses, and `androidtc.Combo` pins its version.
+    Removing it changes `build.gradle.kts`, which invalidates the recorded
+    runs of 258 android goldens. Step 10 invalidates the same set, so both
+    ship with one `go tool verify -update`.
+12. **Update the docs:** `design/architecture.md` (android), `design/testing.md`
+    (runners, env var) and the CLAUDE.md test bullet on `ANDROID_HOME`.
 
 ## Order of work
 
@@ -196,22 +226,44 @@ optional.
    `kotlin-stdlib.jar`, which the kotlinc asset carries under `lib/`.
 5. **Fetch `adb` from Google's platform-tools** when there is no
    `ANDROID_HOME` (sngl step 5).
-6. **Make `sngl run` build gradle-free by default** (sngl step 8, for run
-   only). Then confirm the goal: in a clean container (`debian:stable`, no
-   `java`, no `ANDROID_HOME`, no `~/.gradle`), with a phone attached over
-   `adb connect`, `sngl run --platform android` on a hello-world deploys and
-   launches. Add a CLI script test that takes the build half of this run in
-   a clean environment and checks that no `java` was executed.
-7. *(Optional)* **Provision an emulator with nothing installed:** fetch
-   `emulator` and a system image, then create an AVD in the sngl cache.
-8. *(Tests)* **Run Robolectric without Gradle** (sngl step 6). This still
-   needs a JVM, which is acceptable. Measure the time for a full
-   `go tool verify` before and after.
+6. **`gradle` as `option[bool]` with auto-detection** (sngl step 8), with
+   `run` and `build` gradle-free. Then confirm the goal: in a clean
+   container (`debian:stable`, no `java`, no `ANDROID_HOME`, no
+   `~/.gradle`), with a phone attached over `adb connect`, `sngl run --platform android` on a hello-world deploys and launches. Add a CLI
+   script test that takes the build half of this run in a clean
+   environment and checks that no `java` was executed.
+7. **Close the gradle-free gaps** (sngl step 9): Go's `golib.aar`,
+   Robolectric without Gradle, and the device runner on `directBuild`.
+   Measure the time for a full `go tool verify` before and after.
+8. **Move fixtures gradle-free and drop Coil** (sngl steps 10 and 11), with
+   one rerecord. One or two fixtures keep `gradle=true`.
 9. *(Tests)* **Add device tests through the env var** (sngl step 7).
-10. *(Tests)* **Flip the default for tests too,** rerecord with
-    `go tool verify -update`, and update the docs (sngl step 9).
-11. *(Optional)* **Build `adb` and `aapt2` from AOSP source,** so every tool
+10. **Update the docs** (sngl step 12).
+11. *(Optional)* **Provision an emulator with nothing installed:** fetch
+    `emulator` and a system image, then create an AVD in the sngl cache.
+12. *(Optional)* **Build `adb` and `aapt2` from AOSP source,** so every tool
     downloads from one place.
+
+## Gradle cannot use the native tools
+
+Asked: can a Gradle build prefer the GraalVM builds, ours or anyone's? No,
+apart from `aapt2`, which is native already.
+
+- **aapt2:** AGP takes `android.aapt2FromMavenOverride=<path>` in
+  `gradle.properties`. That would only swap one native binary for another.
+- **d8:** AGP runs D8 and R8 in-process, in a Gradle worker, from the R8 jar
+  on its own classpath. There is no setting that makes it exec an external
+  binary. A pinned `com.android.tools:r8` on the buildscript classpath still
+  runs on the JVM.
+- **kotlinc:** the Kotlin Gradle Plugin runs the compiler in the Kotlin
+  daemon, in process, or out of process
+  (`kotlin.compiler.execution.strategy`). All three load
+  `kotlin-compiler-embeddable` into a JVM. None takes a compiler binary.
+- No one publishes a native Gradle, and a Gradle build is JVM tasks from end
+  to end.
+
+So the speedup for fixtures comes from taking them off Gradle (steps 7–8),
+not from feeding Gradle native tools.
 
 ## Open questions
 
@@ -219,6 +271,7 @@ optional.
   GitHub because of the runners.
 - `aapt2`: keep fetching it from Google, or build it from AOSP and ship it
   with `adb`?
-- `gomobile bind` (`go+android`) still needs `javac` and the NDK. The goal
-  covers `--lang kotlin` only. Should `go` on android keep requiring a JDK?
+- `gomobile bind` (`go+android`) still needs `javac` and the NDK, even
+  without Gradle. Should `go` on android keep requiring a JDK, or should we
+  publish a native `javac` (or ecj)?
 - Should the `next` combo get native tools too, or only `stable` at first?
