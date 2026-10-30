@@ -804,6 +804,18 @@ func setVExpand(w Handle, v bool) { C.gtk_widget_set_vexpand(widget(w), gbool(v)
 
 func setHExpand(w Handle, v bool) { C.gtk_widget_set_hexpand(widget(w), gbool(v)) }
 
+func minWidth(w Handle) int {
+	var min, nat C.int
+	C.gtk_widget_measure(widget(w), C.GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, nil, nil)
+	return int(min)
+}
+
+func naturalWidth(w Handle) int {
+	var min, nat C.int
+	C.gtk_widget_measure(widget(w), C.GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, nil, nil)
+	return int(nat)
+}
+
 func allocate(w Handle, width, height int) {
 	var min, nat C.int
 	C.gtk_widget_measure(widget(w), C.GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, nil, nil)

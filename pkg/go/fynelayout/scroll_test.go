@@ -180,3 +180,21 @@ func TestReachEndSidewaysMeasuresWidth(t *testing.T) {
 		t.Errorf("the scroll moves along %v, want horizontally only", s.scroll.Direction)
 	}
 }
+
+// A vertical scroll is not as wide as its content: what is wider is cut off
+// at its edge, as html and android cut it, where Fyne's own asks for it all.
+func TestAVerticalScrollIsNotAsWideAsItsContent(t *testing.T) {
+	fynetest.NewTempApp(t)
+	wide := canvas.NewRectangle(nil)
+	wide.SetMinSize(fyne.NewSize(600, 40))
+	s := NewReachScroll()
+	s.Content = wide
+	w := fynetest.NewTempWindow(t, container.NewVBox(s))
+	w.Resize(fyne.NewSize(200, 200))
+	if got := s.MinSize().Width; got >= 600 {
+		t.Errorf("a vertical scroll asks for %v across, the width of its content", got)
+	}
+	if got := s.Size().Width; got > 200 {
+		t.Errorf("a vertical scroll is %v wide in a 200 window", got)
+	}
+}

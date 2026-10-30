@@ -147,7 +147,12 @@ session.
      scroll) and html's; what Compose limits is a test's scroll, which moves
      only the vertical one.
    - A vertical scroll is as wide as its content's minimum on fyne and gtk4,
-     where html and android cut the content off at the scroll's edge.
+     where html and android cut the content off at the scroll's edge. Fixed
+     (Jonathan's call: clip): gtk4's horizontal policy is
+     `GTK_POLICY_EXTERNAL`, its natural width the content's, and fynelayout's
+     `ReachScroll` reports Fyne's least scroll width, which has no natural
+     size to keep. Pinned by `TestAVerticalScrollIsNotAsWideAsItsContent` in
+     gtk4rt and fynelayout.
    - html writes `class=` twice on some image frames, and `.sngl-image`'s
      clip is a rule the page writes only beside a source, so a frame
      showing only its placeholder is not clipped. Fixed: a test build wrote

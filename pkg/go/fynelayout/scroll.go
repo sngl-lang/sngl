@@ -135,7 +135,20 @@ func (r *reachRenderer) Layout(size fyne.Size) {
 	r.s.check()
 }
 
-func (r *reachRenderer) MinSize() fyne.Size { return r.s.scroll.MinSize() }
+// MinSize is the scroll's, but no wider than Fyne's least scroll where it
+// scrolls vertically, which asks for its content's whole width: what is wider
+// is cut off at its edge, as html and android cut it.
+func (r *reachRenderer) MinSize() fyne.Size {
+	min := r.s.scroll.MinSize()
+	if r.s.scroll.Direction == container.ScrollVerticalOnly {
+		min.Width = scrollLeast
+	}
+	return min
+}
+
+// scrollLeast is the least a Fyne scroll is along an axis it moves
+// (internal/widget's scrollContainerMinSize, unexported).
+const scrollLeast = 32
 
 func (r *reachRenderer) Refresh() {
 	r.s.adopt()

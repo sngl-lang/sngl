@@ -59,7 +59,10 @@ static int sngl_probe_content(GtkWidget *sw) {
 // natural length, as a scroll's is in CSS. GTK's default is its minimum, and
 // a picture's minimum is nothing: content taller than the viewport squeezed
 // every picture in it to no height at all. Along one it does not, the content
-// is the viewport's size and no bar is shown. The viewport the scrolled
+// is the viewport's size and no bar is shown, and across a vertical one what
+// is wider is cut off, as html and android do: GTK_POLICY_NEVER made the
+// scroll ask for the content's whole width. Its natural width is still the
+// content's, so a row gives it that where it has the room. The viewport the scrolled
 // window wraps its child in is the scrollable whose policy says so, and it is
 // made as the child is set, so the policies are applied there as well as when
 // the axis is.
@@ -68,8 +71,9 @@ static int sngl_scroll_axis(GtkWidget *sw) {
 }
 static void sngl_scroll_policies(GtkScrolledWindow *sw) {
     int axis = sngl_scroll_axis(GTK_WIDGET(sw));
-    gtk_scrolled_window_set_policy(sw, axis == 0 ? GTK_POLICY_NEVER : GTK_POLICY_AUTOMATIC,
+    gtk_scrolled_window_set_policy(sw, axis == 0 ? GTK_POLICY_EXTERNAL : GTK_POLICY_AUTOMATIC,
         axis == 1 ? GTK_POLICY_NEVER : GTK_POLICY_AUTOMATIC);
+    gtk_scrolled_window_set_propagate_natural_width(sw, axis == 0);
     GtkWidget *c = gtk_scrolled_window_get_child(sw);
     if (c != NULL && !GTK_IS_SCROLLABLE(c)) c = gtk_widget_get_parent(c);
     if (c != NULL && GTK_IS_SCROLLABLE(c)) {
