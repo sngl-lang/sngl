@@ -891,7 +891,10 @@ class MainScreenTest {
         composeRule.setContent { MainScreen(c) }
         composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("b")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.a__inst0 == 1)", (c.a__inst0 == 1))
-        c.reset__inst0()
+        composeTestRule.runOnUiThread {
+            c.reset__inst0()
+        }
+        composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.a__inst0 == 0)", (c.a__inst0 == 0))
     }
 
@@ -973,6 +976,6 @@ pass sha256:0808281ece19022acb4140c09984a3cb
 -- run/go/gtk4 --
 pass sha256:c91405ae28241fe0b2c0119246d123be
 -- run/kotlin/android --
-pass sha256:da2ac341428fd37d6614a802a270b4c3
+pass sha256:0277445b191a378f4df6e4081b9f5a92
 -- run/none/html --
 pass sha256:672d8f43eb4e4b7725ee3ccda4ba5c16
