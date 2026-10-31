@@ -68,7 +68,7 @@ func testPlain(t test.Test, c plain) {
     t.assert(c.t.value == "x")
 }
 -- testrun/android/kotlin/app.sngl/greeting/1 --
-sha256:c945789a28ca93f6b791f837afb5dd53
+sha256:aa5dea070469b09635add3db6ca92792
 {
   "results": [
     {

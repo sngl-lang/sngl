@@ -205,7 +205,7 @@ func testNested(t Test, c outer) {
     t.assert(c.b.tap != null && c.b.tap.text == "1")
 }
 -- testrun/android/kotlin/branch.sngl/branch/1 --
-sha256:b4c7350202a982e68c1059ecbeb607ee
+sha256:5218abd2b42888580342ccd1fb7ce713
 {
   "results": [
     {
@@ -215,7 +215,7 @@ sha256:b4c7350202a982e68c1059ecbeb607ee
   ]
 }
 -- testrun/android/kotlin/once.sngl/outer/1 --
-sha256:95709ce18724c40348284011e228c5a9
+sha256:31398432d9f53bbdbe9aeed51add32af
 {
   "results": [
     {
@@ -225,7 +225,7 @@ sha256:95709ce18724c40348284011e228c5a9
   ]
 }
 -- testrun/android/kotlin/panel.sngl/panel/1 --
-sha256:b7fdd602006a6fa05a1c0690edb984f6
+sha256:2ea5f8067c571eec2280d65439d7199e
 {
   "results": [
     {
@@ -235,7 +235,7 @@ sha256:b7fdd602006a6fa05a1c0690edb984f6
   ]
 }
 -- testrun/android/kotlin/rows.sngl/rows/1 --
-sha256:9cd113f0c46ee2a20b887949aff259fa
+sha256:19559253acaaaa4bcf5d61e71b33aff3
 {
   "results": [
     {

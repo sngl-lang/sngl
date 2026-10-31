@@ -65,7 +65,7 @@ func testReadsThroughAMethodReadingAContext(t test.Test, c host) {
     t.assert(c.g.noisy[1][0].value == "c!")
 }
 -- testrun/android/kotlin/app.sngl/host/1 --
-sha256:082275fc268f5316713a561795d8b197
+sha256:5ca70c2f04ece4eda3fa84d1919319ff
 {
   "results": [
     {

@@ -260,7 +260,7 @@ sha256:996e6933ad5d547885e03d4965546cee
   ]
 }
 -- testrun/android/kotlin/app.sngl/slotted/1 --
-sha256:4342e6bb2cfe87037915c84605cd6bb4
+sha256:ab9c770023a1dea56c92afd3563e6d12
 {
   "results": [
     {

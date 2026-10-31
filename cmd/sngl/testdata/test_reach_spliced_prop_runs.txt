@@ -54,7 +54,7 @@ func testABadgeOfAnOptionIsRead(t test.Test, c held) {
     t.assert(c.inner.kind[1].value == "STONE")
 }
 -- testrun/android/kotlin/app.sngl/held/1 --
-sha256:1ccec6cfbd530031a17d7c4fe541ffd5
+sha256:20f928a0356c08ba2883463b5cb3d474
 {
   "results": [
     {

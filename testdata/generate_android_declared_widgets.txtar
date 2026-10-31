@@ -314,32 +314,32 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Column(modifier = Modifier.safeDrawingPadding()) {
+        Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
             Button(onClick = {
                 n__inst0 += 1
-            }, modifier = flexed(styleModifier(Style(padding = Measurement(px = 4.0)), false), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+            }, modifier = flexed(styleModifier(Style(padding = Measurement(px = 4.0)), false), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "bump", modifier = Modifier)
             }
             Button(onClick = {}, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "quiet", modifier = Modifier)
             }
-            Badge(modifier = flexed(styleModifier(Style(padding = Measurement(px = 6.0)), false), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), containerColor = BadgeDefaults.containerColor, contentColor = contentColorFor(BadgeDefaults.containerColor)) {
+            Badge(modifier = flexed(styleModifier(Style(padding = Measurement(px = 6.0)), false), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), containerColor = BadgeDefaults.containerColor, contentColor = contentColorFor(BadgeDefaults.containerColor)) {
                 Text(text = "7", modifier = Modifier)
             }
             Text(text = "Home", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default), color = MaterialTheme.colorScheme.primary)
             SnglImage(modifier = Modifier, onLoad = {}, onError = {}) {
                 SnglRemoteImage(url = "/logo.png")
             }
-            Row(modifier = modifierOf(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204, g = 204, b = 204), borderWidth = Measurement(px = 1.0), opacity = 1.0), { w: Float -> Modifier.weight(w).fillMaxWidth() }), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = modifierOf(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204, g = 204, b = 204), borderWidth = Measurement(px = 1.0), opacity = 1.0), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }).snglFlexible(true), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Tag", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
-            Column(modifier = flexed(styleModifier(Style(padding = Measurement(px = 9.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() })) {
+            Column(modifier = flexed(styleModifier(Style(padding = Measurement(px = 9.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() })) {
                 Button(onClick = {}, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = "New", modifier = Modifier)
                 }
             }
             Text(text = "", modifier = Modifier)
-            Text(text = "JD", modifier = modifierOf(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), alignItems = SnglAlignment.CENTER, justifyContent = SnglJustification.CENTER, textAlign = SnglTextAlign.CENTER, background = Color(r = 204, g = 204, b = 204), borderRadius = Measurement(px = 20.0), display = SnglDisplay.INLINEFLEX), { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
+            Text(text = "JD", modifier = modifierOf(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), alignItems = SnglAlignment.CENTER, justifyContent = SnglJustification.CENTER, textAlign = SnglTextAlign.CENTER, background = Color(r = 204, g = 204, b = 204), borderRadius = Measurement(px = 20.0), display = SnglDisplay.INLINEFLEX), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
         }
     }
 }
@@ -551,5 +551,124 @@ fun SnglRemoteImage(url: String) {
     val shown = bmp ?: return
     Image(bitmap = shown, contentDescription = null, modifier = Modifier)
 }
+-- out/kotlin/android/SnglFlexible.kt --
+package test.sngl.app
+
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.node.LayoutModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.TraversableNode
+import androidx.compose.ui.node.invalidateMeasurement
+import androidx.compose.ui.node.traverseAncestors
+import androidx.compose.ui.unit.Constraints
+
+// snglFlexible is a vbox's, hbox's or scroll's Row or Column, which a child
+// taking a share of it marks with snglFlexed. Compose measures a weight in an
+// unbounded axis -- a Row in a horizontal scroll, a Column in a vertical one --
+// to nothing, where html's flex takes the content's size; so a marked line
+// with no bound along it is bounded by its content's, and the weights share
+// that. A marked line also marks the line it sits in across it, as html's
+// stretched row fills its column: a column with no bound across it is then as
+// wide as its widest row, which each row fills, so the rows' shares line up as
+// a table's columns. Only a marked one asks, since asking costs a pass over
+// the subtree.
+fun Modifier.snglFlexible(horizontal: Boolean): Modifier = this then FlexibleElement(horizontal)
+
+fun Modifier.snglFlexed(): Modifier = this then FlexedElement
+
+private object FlexibleKey
+
+private data class FlexibleElement(val horizontal: Boolean) : ModifierNodeElement<FlexibleNode>() {
+    override fun create() = FlexibleNode(horizontal)
+    override fun update(node: FlexibleNode) {
+        node.horizontal = horizontal
+        node.invalidateMeasurement()
+    }
+}
+
+private class FlexibleNode(var horizontal: Boolean) : Modifier.Node(), LayoutModifierNode, TraversableNode {
+    override val traverseKey: Any get() = FlexibleKey
+    private var outer: FlexibleNode? = null
+    private var flexed = 0
+    private var across = 0
+
+    fun flex(by: Int) {
+        val was = flexed > 0
+        flexed += by
+        if (was != flexed > 0) cross(if (flexed > 0) 1 else -1)
+        invalidateMeasurement()
+    }
+
+    private fun cross(by: Int) {
+        outer?.takeIf { it.horizontal != horizontal }?.let {
+            it.across += by
+            it.invalidateMeasurement()
+        }
+    }
+
+    // Compose runs a parent's onAttach after its children's, so a line may
+    // already be marked when it finds the line it sits in.
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            outer = it as FlexibleNode
+            false
+        }
+        if (flexed > 0) cross(1)
+    }
+
+    override fun onDetach() {
+        if (flexed > 0) cross(-1)
+        outer = null
+    }
+
+    override fun MeasureScope.measure(measurable: Measurable, constraints: Constraints): MeasureResult {
+        val placeable = measurable.measure(bounded(measurable, constraints))
+        return layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }
+
+    private fun bounded(measurable: Measurable, c: Constraints): Constraints {
+        var out = c
+        // A SubcomposeLayout -- a pager, a lazy list -- refuses to be asked
+        // its intrinsic size; the line then measures as Compose would.
+        try {
+            if ((flexed > 0 && horizontal || across > 0 && !horizontal) && !out.hasBoundedWidth) {
+                out = out.copy(maxWidth = maxOf(out.minWidth, measurable.maxIntrinsicWidth(out.maxHeight)))
+            }
+            if ((flexed > 0 && !horizontal || across > 0 && horizontal) && !out.hasBoundedHeight) {
+                out = out.copy(maxHeight = maxOf(out.minHeight, measurable.maxIntrinsicHeight(out.maxWidth)))
+            }
+        } catch (_: IllegalStateException) {
+            return c
+        }
+        return out
+    }
+}
+
+private object FlexedElement : ModifierNodeElement<FlexedNode>() {
+    override fun create() = FlexedNode()
+    override fun update(node: FlexedNode) {}
+    override fun equals(other: Any?) = other === this
+    override fun hashCode() = 0
+}
+
+private class FlexedNode : Modifier.Node() {
+    private var line: FlexibleNode? = null
+
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            line = it as FlexibleNode
+            false
+        }
+        line?.flex(1)
+    }
+
+    override fun onDetach() {
+        line?.flex(-1)
+        line = null
+    }
+}
 -- run/kotlin/android --
-pass sha256:857d21d209fac7765987f28dad1eb030
+pass sha256:c73cd41c141d691509e702ac44679df8

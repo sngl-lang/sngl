@@ -161,7 +161,7 @@ sha256:a5c0e514babc7b5ec0d4e8f0f17bc87e
   ]
 }
 -- testrun/android/kotlin/fallback.sngl/main/1 --
-sha256:ec203ef30e74bcb12035d0e9995f4c97
+sha256:e989719b4371c16cf205d6c19c5d694b
 {
   "results": [
     {

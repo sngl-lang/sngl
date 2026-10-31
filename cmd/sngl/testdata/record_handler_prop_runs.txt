@@ -69,7 +69,7 @@ func testAnEntryOfTheUpdatedListUpdatesItAgain(t test.Test, c app) {
     t.assert(c.p.summary.value == "en fr [de]")
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:6e5b044e7614e3389de3c433b2ab8bdc
+sha256:15517b99844e90c0a68e36c83ed7c9c0
 {
   "results": [
     {

@@ -956,22 +956,22 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Column(modifier = Modifier.safeDrawingPadding()) {
+        Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
             Button(onClick = {
                 on = !on
                 n += 1
             }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "toggle", modifier = Modifier)
             }
-            Text(text = "weight", modifier = modifierOf(Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)), { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge((if (!((if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL) != SnglFontWeight.UNSET)) TextStyle.Default else TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = (when ((if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified))))
-            Text(text = "slant", modifier = modifierOf(Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)), { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge((if (!(((if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL) != SnglFontStyle.UNSET) || ((if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT) != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = (when ((if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL)) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = null, textAlign = (when ((if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
-            Text(text = "still", modifier = flexed(styleModifier(Style(textAlign = SnglTextAlign.CENTER), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
-            Text(text = "left", modifier = flexed(styleModifier(Style(textAlign = SnglTextAlign.LEFT, borderWidth = Measurement(px = 0.0), opacity = 1.0), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Start)))
-            Text(text = "justified", modifier = flexed(styleModifier(Style(textAlign = SnglTextAlign.JUSTIFY), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Justify)))
-            Text(text = "nested", modifier = modifierOf(Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))), { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge((if (!((if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT)) != SnglTextAlign.UNSET)) TextStyle.Default else TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = (when ((if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
-            Text(text = "grown", modifier = modifierOf(Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)), { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit((Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2).px + (16.0 * (Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2).em + Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2).rem))).toFloat(), TextUnitType.Sp), fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
-            Text(text = "box", modifier = modifierOf(Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), color = (if (on) Color(r = 255) else Color(g = 255)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), opacity = (if (on) 0.5 else 1.0)), { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color(red = (if (on) 255 else 0).toInt(), green = (if (on) 0 else 255).toInt(), blue = 0, alpha = 255), fontSize = TextUnit(((if (on) 20.0 else 12.0) + 0.0).toFloat(), TextUnitType.Sp), fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
-            Text(text = "scaled", modifier = flexed((if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)) == Style())) Modifier else styleModifier(Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)), true)), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = "weight", modifier = modifierOf(Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge((if (!((if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL) != SnglFontWeight.UNSET)) TextStyle.Default else TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = (when ((if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified))))
+            Text(text = "slant", modifier = modifierOf(Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge((if (!(((if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL) != SnglFontStyle.UNSET) || ((if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT) != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = (when ((if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL)) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = null, textAlign = (when ((if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+            Text(text = "still", modifier = flexed(styleModifier(Style(textAlign = SnglTextAlign.CENTER), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
+            Text(text = "left", modifier = flexed(styleModifier(Style(textAlign = SnglTextAlign.LEFT, borderWidth = Measurement(px = 0.0), opacity = 1.0), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Start)))
+            Text(text = "justified", modifier = flexed(styleModifier(Style(textAlign = SnglTextAlign.JUSTIFY), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Justify)))
+            Text(text = "nested", modifier = modifierOf(Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge((if (!((if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT)) != SnglTextAlign.UNSET)) TextStyle.Default else TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = (when ((if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+            Text(text = "grown", modifier = modifierOf(Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit((Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2).px + (16.0 * (Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2).em + Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2).rem))).toFloat(), TextUnitType.Sp), fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
+            Text(text = "box", modifier = modifierOf(Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), color = (if (on) Color(r = 255) else Color(g = 255)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), opacity = (if (on) 0.5 else 1.0)), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color(red = (if (on) 255 else 0).toInt(), green = (if (on) 0 else 255).toInt(), blue = 0, alpha = 255), fontSize = TextUnit(((if (on) 20.0 else 12.0) + 0.0).toFloat(), TextUnitType.Sp), fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
+            Text(text = "scaled", modifier = flexed((if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)) == Style())) Modifier else styleModifier(Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)), true)), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
             Text(text = buildAnnotatedString {
                 append("flow ")
                 withStyle(SpanStyle(fontWeight = (if (on) null else FontWeight.Light), fontStyle = (if (on) FontStyle.Italic else null), fontSize = ((((if (on) Measurement(px = 18.0) else Measurement(px = 0.0))).px + 16*(((if (on) Measurement(px = 18.0) else Measurement(px = 0.0))).em + ((if (on) Measurement(px = 18.0) else Measurement(px = 0.0))).rem))).let { if (it > 0) it.sp else TextUnit.Unspecified }, textDecoration = TextDecoration.combine(listOfNotNull(if (on) TextDecoration.Underline else null)))) {
@@ -985,7 +985,7 @@ fun MainScreen() {
                 withStyle(SpanStyle(color = (if (on) ComposeColor.Unspecified else ComposeColor(red = 255, green = 0, blue = 0, alpha = 255)))) {
                     append(" tinted")
                 }
-            }, modifier = modifierOf(Style(fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)), { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit(((if (on) 20.0 else 12.0) + 0.0).toFloat(), TextUnitType.Sp), fontWeight = (when ((if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
+            }, modifier = modifierOf(Style(fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit(((if (on) 20.0 else 12.0) + 0.0).toFloat(), TextUnitType.Sp), fontWeight = (when ((if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
         }
     }
 }
@@ -1046,7 +1046,126 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
 fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
 
 fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
+-- out/kotlin/android/SnglFlexible.kt --
+package test.sngl.app
+
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.node.LayoutModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.TraversableNode
+import androidx.compose.ui.node.invalidateMeasurement
+import androidx.compose.ui.node.traverseAncestors
+import androidx.compose.ui.unit.Constraints
+
+// snglFlexible is a vbox's, hbox's or scroll's Row or Column, which a child
+// taking a share of it marks with snglFlexed. Compose measures a weight in an
+// unbounded axis -- a Row in a horizontal scroll, a Column in a vertical one --
+// to nothing, where html's flex takes the content's size; so a marked line
+// with no bound along it is bounded by its content's, and the weights share
+// that. A marked line also marks the line it sits in across it, as html's
+// stretched row fills its column: a column with no bound across it is then as
+// wide as its widest row, which each row fills, so the rows' shares line up as
+// a table's columns. Only a marked one asks, since asking costs a pass over
+// the subtree.
+fun Modifier.snglFlexible(horizontal: Boolean): Modifier = this then FlexibleElement(horizontal)
+
+fun Modifier.snglFlexed(): Modifier = this then FlexedElement
+
+private object FlexibleKey
+
+private data class FlexibleElement(val horizontal: Boolean) : ModifierNodeElement<FlexibleNode>() {
+    override fun create() = FlexibleNode(horizontal)
+    override fun update(node: FlexibleNode) {
+        node.horizontal = horizontal
+        node.invalidateMeasurement()
+    }
+}
+
+private class FlexibleNode(var horizontal: Boolean) : Modifier.Node(), LayoutModifierNode, TraversableNode {
+    override val traverseKey: Any get() = FlexibleKey
+    private var outer: FlexibleNode? = null
+    private var flexed = 0
+    private var across = 0
+
+    fun flex(by: Int) {
+        val was = flexed > 0
+        flexed += by
+        if (was != flexed > 0) cross(if (flexed > 0) 1 else -1)
+        invalidateMeasurement()
+    }
+
+    private fun cross(by: Int) {
+        outer?.takeIf { it.horizontal != horizontal }?.let {
+            it.across += by
+            it.invalidateMeasurement()
+        }
+    }
+
+    // Compose runs a parent's onAttach after its children's, so a line may
+    // already be marked when it finds the line it sits in.
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            outer = it as FlexibleNode
+            false
+        }
+        if (flexed > 0) cross(1)
+    }
+
+    override fun onDetach() {
+        if (flexed > 0) cross(-1)
+        outer = null
+    }
+
+    override fun MeasureScope.measure(measurable: Measurable, constraints: Constraints): MeasureResult {
+        val placeable = measurable.measure(bounded(measurable, constraints))
+        return layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }
+
+    private fun bounded(measurable: Measurable, c: Constraints): Constraints {
+        var out = c
+        // A SubcomposeLayout -- a pager, a lazy list -- refuses to be asked
+        // its intrinsic size; the line then measures as Compose would.
+        try {
+            if ((flexed > 0 && horizontal || across > 0 && !horizontal) && !out.hasBoundedWidth) {
+                out = out.copy(maxWidth = maxOf(out.minWidth, measurable.maxIntrinsicWidth(out.maxHeight)))
+            }
+            if ((flexed > 0 && !horizontal || across > 0 && horizontal) && !out.hasBoundedHeight) {
+                out = out.copy(maxHeight = maxOf(out.minHeight, measurable.maxIntrinsicHeight(out.maxWidth)))
+            }
+        } catch (_: IllegalStateException) {
+            return c
+        }
+        return out
+    }
+}
+
+private object FlexedElement : ModifierNodeElement<FlexedNode>() {
+    override fun create() = FlexedNode()
+    override fun update(node: FlexedNode) {}
+    override fun equals(other: Any?) = other === this
+    override fun hashCode() = 0
+}
+
+private class FlexedNode : Modifier.Node() {
+    private var line: FlexibleNode? = null
+
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            line = it as FlexibleNode
+            false
+        }
+        line?.flex(1)
+    }
+
+    override fun onDetach() {
+        line?.flex(-1)
+        line = null
+    }
+}
 -- run/go/bubbletea --
 pass sha256:2fc153ef0d99379caf506ae74af3b92a
 -- run/kotlin/android --
-pass sha256:44c8ace724c7c02ffe5e44a507b4e362
+pass sha256:e0157b4327f81bc7715226a2e197d0d9
