@@ -14,9 +14,9 @@ func page(title string, shown *[]string) Handle {
 	return h
 }
 
-// Pages reach the stack however a render slot hands them to the tabs, and the
-// switcher shows a button per page in order, a disabled one insensitive.
-func TestTabsHoldTheirPagesInTheStack(t *testing.T) {
+// Pages reach the notebook however a render slot hands them to the tabs, and
+// it shows a tab per page in order, a disabled one insensitive.
+func TestTabsHoldTheirPagesInTheNotebook(t *testing.T) {
 	if !hasDisplay() {
 		t.Skip("gtk4 needs an X11/Wayland display")
 	}
@@ -85,5 +85,24 @@ func TestTabsReportTheUsersChoiceAlone(t *testing.T) {
 	tabsChoose(tb, off)
 	if tabsShown(tb) != one || !slices.Equal(shown, []string{"Two"}) {
 		t.Errorf("a disabled page was chosen: shown %q", shown)
+	}
+}
+
+// A `ui.tabs` is a GtkNotebook, which draws tabs along its edge. It was a
+// GtkStackSwitcher over a GtkStack, a row of linked buttons that looked like
+// no tabs at all.
+func TestTabsAreANotebook(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("gtk4 needs an X11/Wayland display")
+	}
+	Init()
+	var shown []string
+	tabs := TabsNew()
+	BoxAppend(tabs, page("One", &shown))
+	if !isNotebook(firstChild(tabs)) {
+		t.Fatal("the tabs hold no GtkNotebook")
+	}
+	if n := notebookPages(firstChild(tabs)); n != 1 {
+		t.Errorf("the notebook holds %d pages, want 1", n)
 	}
 }
