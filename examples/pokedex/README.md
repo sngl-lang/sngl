@@ -93,22 +93,25 @@ language are the species' own, so home asks for the species of each card
 shown, and a card shows the slug made readable until it answers. The names
 are the package's (`names` in `names.sngl`), which a Pokémon's page fills
 too, so nothing named once is asked for again, and a species that fails
-keeps its slug rather than being asked again:
+keeps its slug rather than being asked again.
+
+What home has asked for is `asking`, a list it only ever adds to: an effect
+adds each species coming into view that no page has named, and the requests
+are a `for` over it. A `for` matches its copies by position, so a request
+dropping out of the middle of the list, as one would once answered, moved
+every one after it, and each started again:
 
 ```sngl
-for var e = naming() {
-    if !known(`species`, e.pokemonSpecies.name) {
-        poke.pokemonSpeciesRetrieve(id=e.pokemonSpecies.name, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) }, @fail { names["species/{e.pokemonSpecies.name}"] = [] })
-    }
+effect(on="{chosenDex != null ? chosenDex.name : ""}/{namingAll}/{shown}", @mount { ask() })
+for var slug = asking {
+    poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) }, @fail { names["species/{slug}"] = [] })
 }
 ```
 
 **The search matches what the cards say.** It matches the slug or the name
 in the reader's language, so the first search of a dex asks for the species
 of every entry, under a spinner until all have answered; a search of a dex
-already named asks for nothing. `naming` is the cards shown, or the whole
-dex once it has been searched: either is a prefix of the dex, so a request
-keeps its place as the list grows.
+already named asks for nothing.
 
 A clickable `ui.card`, opened by a click anywhere on it, it shows the
 entry's number in this dex, its name and its official artwork, whose URL is
@@ -154,11 +157,15 @@ scrolls down.
 **About** is the species' newest description in the reader's language on one
 line (the games
 break a description with newlines and form feeds where their text box did),
-the Pokémon's height and weight in meters and kilograms -- `unit length { m }`
-and `unit mass { kg }`, since PokéAPI gives tenths of each -- its abilities with
+the Pokémon's height and weight in meters and kilograms, with feet and inches
+and pounds after them -- `unit length { m, in = 0.0254m }` and
+`unit mass { kg, lb = 0.45359237kg }`, since PokéAPI gives tenths of each, and
+`l / 1in` is a length in inches -- its abilities with
 a hidden one marked, the species' habitat (which may be `null`), egg groups,
 gender ratio (from `gender_rate`, eighths female or -1 for none) and capture
-rate. **Stats** is a bar per base stat against 255, their total, and the effort
+rate. **Stats** is a bar per base stat against 255, colored by how good the
+stat is (`statColor`: red under 30, through orange, yellow and two greens, to
+teal from 150), their total, and the effort
 values defeating the Pokémon gives. Each line's text is a function in
 `names.sngl`, which `testNames` checks beside the page's own tests; one that
 puts its pieces together -- `display`, `oneLine`, home's `dexLine` -- builds

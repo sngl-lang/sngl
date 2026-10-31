@@ -343,6 +343,7 @@ func testACardNamesItsSpeciesInTheReadersLanguage(t test.Test, c home) {
     t.assert(c.page.label(c.page.visible()[3]) == "Salamèche")
     // A species the server has no answer for keeps its slug's name.
     t.wait(func() => known(`species`, "squirtle"), 5000)
+    t.assert(known(`species`, "squirtle"))
     t.assert(c.page.label(c.page.visible()[6]) == "Squirtle")
 }
 
@@ -351,6 +352,7 @@ func testASearchAsksForEveryName(t test.Test, c home) {
     t.wait(func() => chosenDex != null, 5000)
     c.page.searchBox.input("bisa")
     t.wait(func() => !c.page.namesPending(), 5000)
+    t.assert(!c.page.namesPending())
     t.assert(c.page.visible().map(func(e poke.PokemonDexNumber) => e.pokemonSpecies.name).join(",") == "bulbasaur,ivysaur,venusaur")
 }
 
@@ -374,8 +376,8 @@ func testAboutTellsTheLatestDescription(t test.Test, c seed) {
 
 func testAboutGivesHeightAndWeight(t test.Test, c seed) {
     t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.height != null && c.detail.height.value == "0.7 m")
-    t.assert(c.detail.weight != null && c.detail.weight.value == "6.9 kg")
+    t.assert(c.detail.height != null && c.detail.height.value == "0.7 m (2 ft 4 in)")
+    t.assert(c.detail.weight != null && c.detail.weight.value == "6.9 kg (15.2 lbs)")
 }
 
 func testAboutMarksTheHiddenAbility(t test.Test, c seed) {
@@ -830,11 +832,20 @@ func testHowManyMovesIsAPlural(t test.Test, c seed) {
     t.assert(c.detail.movesCount != null && c.detail.movesCount.value == "Il apprend 15 capacités de cette façon.")
 }
 
+func testAStatsBarIsColoredByHowGoodItIs(t test.Test) {
+    t.assert(statColor(20) == #f34444)
+    t.assert(statColor(45) == #ff7f0f)
+    t.assert(statColor(65) == #ffdd57)
+    t.assert(statColor(100) == #a0e515)
+    t.assert(statColor(130) == #23cd5e)
+    t.assert(statColor(150) == #00c2b8)
+}
+
 func testADecimalCommaInFrench(t test.Test, c seed) {
     t.setContext(i18n.locale, "fr")
     t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.height != null && c.detail.height.value == "0,7 m")
-    t.assert(c.detail.weight != null && c.detail.weight.value == "6,9 kg")
+    t.assert(c.detail.height != null && c.detail.height.value == "0,7 m (2 ft 4 in)")
+    t.assert(c.detail.weight != null && c.detail.weight.value == "6,9 kg (15,2 lb)")
     t.assert(c.detail.gender != null && c.detail.gender.value == "87,5 % mâles, 12,5 % femelles")
 }
 

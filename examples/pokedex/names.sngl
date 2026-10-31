@@ -470,11 +470,11 @@ func oneLine(s string) string {
     return out.string()
 }
 
-// A length in meters.
-unit length { m }
+// A length in meters, or in inches for the reader who wants them too.
+unit length { m, in = 0.0254m }
 
-// A mass in kilograms.
-unit mass { kg }
+// A mass in kilograms, or in pounds.
+unit mass { kg, lb = 0.45359237kg }
 
 // A Pokémon's height, which PokéAPI gives in tenths of a meter.
 func heightOf(decimeters int) length {
@@ -496,6 +496,47 @@ func meters(l length) string {
 func kilograms(w mass) string {
     var n = i18n.numberFloat(float(w))
     return $"{n} kg"
+}
+
+// A height in feet and inches, to the nearest inch: "2 ft 4 in".
+func feetAndInches(l length) string {
+    var inches = int(float.round(l / 1in))
+    var ft = inches / 12
+    var rest = inches % 12
+    return $"{ft} ft {rest} in"
+}
+
+// A weight in pounds, to a tenth: "15.2 lbs".
+func pounds(w mass) string {
+    var n = i18n.numberFloat(float.round(w / 1lb * 10.0) / 10.0)
+    return $"{n} lbs"
+}
+
+// A height in meters with feet and inches after it: "0.7 m (2 ft 4 in)".
+func heightText(l length) => "{meters(l)} ({feetAndInches(l)})"
+
+// A weight in kilograms with pounds after it: "6.9 kg (15.2 lbs)".
+func weightText(w mass) => "{kilograms(w)} ({pounds(w)})"
+
+// How good a base stat is, as the color its bar fills with: red for the
+// weakest, through orange, yellow and two greens, to teal from 150 up.
+func statColor(base int) color {
+    if base < 30 {
+        return #f34444
+    }
+    if base < 60 {
+        return #ff7f0f
+    }
+    if base < 90 {
+        return #ffdd57
+    }
+    if base < 120 {
+        return #a0e515
+    }
+    if base < 150 {
+        return #23cd5e
+    }
+    return #00c2b8
 }
 
 // A Pokémon's abilities, a hidden one marked: "Overgrow, Chlorophyll (hidden)".

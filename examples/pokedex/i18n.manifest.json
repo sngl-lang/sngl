@@ -526,5 +526,21 @@
       "es": "Cargando nombres",
       "ja": "名前を読み込み中"
     }
+  },
+  "{ft} ft {rest} in": {
+    "translations": {
+      "fr": "{ft} ft {rest} in",
+      "de": "{ft} ft {rest} in",
+      "es": "{ft} ft {rest} in",
+      "ja": "{ft} ft {rest} in"
+    }
+  },
+  "{n} lbs": {
+    "translations": {
+      "fr": "{n} lb",
+      "de": "{n} lb",
+      "es": "{n} lb",
+      "ja": "{n} lb"
+    }
   }
 }

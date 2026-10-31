@@ -142,10 +142,10 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                                         }
                                     }
                                     fact(label=$"Height") {
-                                        ui.text #height(value=mon.height != null ? meters(heightOf(mon.height)) : $"Unknown")
+                                        ui.text #height(value=mon.height != null ? heightText(heightOf(mon.height)) : $"Unknown")
                                     }
                                     fact(label=$"Weight") {
-                                        ui.text #weight(value=mon.weight != null ? kilograms(weightOf(mon.weight)) : $"Unknown")
+                                        ui.text #weight(value=mon.weight != null ? weightText(weightOf(mon.weight)) : $"Unknown")
                                     }
                                     fact(label=$"Abilities") {
                                         ui.text #abilities(value=abilitiesOf(mon.abilities, names))
@@ -185,7 +185,7 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                                         ui.hbox(style={gap=8px, alignItems=center}) {
                                             ui.text #statName(value=statLabel(s.stat.name, names), style={width=120px})
                                             ui.text #base(value="{s.baseStat}", style={width=40px})
-                                            ui.progress(value=float(s.baseStat), max=float(maxStat), label=statLabel(s.stat.name, names), style={flex=1})
+                                            ui.progress(value=float(s.baseStat), max=float(maxStat), label=statLabel(s.stat.name, names), style={flex=1, color=statColor(s.baseStat)})
                                         }
                                     }
                                     fact(label=$"Total") {

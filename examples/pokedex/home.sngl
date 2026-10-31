@@ -35,6 +35,11 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
     var shown = pageSize
     var search = ""
     var namingAll = false
+    // The species home has asked for the names of, in the order it asked:
+    // only ever added to, so a request keeps its place in the loop below. A
+    // `for` matches its copies by position, so one dropping out of the middle
+    // moved every request after it, and each started again.
+    var asking list[string] = []
 
     // Every entry of the dex.
     func entries() list[poke.PokemonDexNumber] {
@@ -59,6 +64,16 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
     // once the dex has been searched. Either is a prefix of the dex, so a
     // request keeps its place as the list grows.
     func naming() => namingAll ? entries() : visible()
+
+    // Adds to `asking` each entry named nowhere yet.
+    func ask() {
+        for var e = naming() {
+            var slug = e.pokemonSpecies.name
+            if !known(`species`, slug) && !asking.contains(slug) {
+                asking.push(slug)
+            }
+        }
+    }
 
     // Whether a search is waiting on names still to arrive.
     func namesPending() => namingAll && entries().filter(func(e poke.PokemonDexNumber) => !known(`species`, e.pokemonSpecies.name)).length() > 0
@@ -91,12 +106,12 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
     if dexName != null {
         poke.pokedexRetrieve(id=dexName, :value=chosenDex, :pending=loading, :failure=failure)
     }
-    // A species already named is not asked for again, and one that fails is
-    // named by its slug rather than asked for again.
-    for var e = naming() {
-        if !known(`species`, e.pokemonSpecies.name) {
-            poke.pokemonSpeciesRetrieve(id=e.pokemonSpecies.name, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) }, @fail { names["species/{e.pokemonSpecies.name}"] = [] })
-        }
+    // Keyed on what decides how much of the dex `naming` covers, rather than
+    // on `naming` itself, which reads the names through the search.
+    effect(on="{chosenDex != null ? chosenDex.name : ""}/{namingAll}/{shown}", @mount { ask() })
+    // A species that fails is named by its slug rather than asked for again.
+    for var slug = asking {
+        poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) }, @fail { names["species/{slug}"] = [] })
     }
 
     ui.vbox(style={gap=8px, padding=8px, flex=1}) {
