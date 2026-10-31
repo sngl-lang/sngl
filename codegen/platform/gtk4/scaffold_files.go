@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
 )
 
 // model.go and callbacks.go are written straight to their FileEmitters
@@ -147,6 +148,13 @@ func (m *Model) Set%[1]s(v %[2]s) {
 // callbacksImports is what callbacks.go's own code imports; main() is
 // written into it too, and needs runtime, fmt and os under cgo.
 func callbacksImports(d scaffoldData) []string {
+	if d.Settings {
+		return append(callbacksMainImports(d), golang.SettingsImportPath)
+	}
+	return callbacksMainImports(d)
+}
+
+func callbacksMainImports(d scaffoldData) []string {
 	switch {
 	case d.Wrapped && d.Main:
 		return []string{gtk4rtPkg}

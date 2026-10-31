@@ -247,6 +247,16 @@ func init() {
 		})
 	}
 
+	// --- sngl:settings, over the place the program's main opened ---
+	for id, goName := range map[string]string{
+		"settings._persistent": "Persistent", "settings._read": "Read", "settings._write": "Write",
+	} {
+		call := "snglsettings." + goName
+		regImp(id, []string{SettingsImportPath}, func(a []string) string {
+			return call + "(" + strings.Join(a, ", ") + ")"
+		})
+	}
+
 	// --- html placement directives (GitLab #27) ---
 	// html.frontend(v)/html.backend(v) are identity directives consumed by the
 	// html platform's placement analysis; for any non-html target they emit as

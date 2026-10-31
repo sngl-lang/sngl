@@ -31,7 +31,7 @@ spec instead.
 
 - `design/language.md` — `const`; bodyless components and overrides; events; loops and for-else; view walks (`ir.ViewBlocks`, `blocks.go`); lambda bodies; `match`; payload enums; `async.query`; contexts
 - `design/architecture.md` — codegen registry and models, how each platform translates a `ui.Style`, per-platform details, `ir`/`checker`/`optimize`/`lower` packages and the always-on passes, runtime `pkg/` packages, AST
-- `design/stdlib.md` — `lib/` tiers and what each package holds, package docs, library loading/caching/freezing, clones, target nodes and reserved names, `#[builtin]`, marks, scalars, macros, i18n; `sngl:http` and `sngl:json`
+- `design/stdlib.md` — `lib/` tiers and what each package holds, package docs, library loading/caching/freezing, clones, target nodes and reserved names, `#[builtin]`, marks, scalars, macros, i18n; `sngl:http` and `sngl:json`; `sngl:settings`
 - `design/families.md` — families, data components and records, generated families (`gen.emit`), family inference and membership, `#[family.crosses]`, boundaries and raises
 - `design/windows.md` — `root`, windows, prop reads through an `#id`, self-reference and declarative cycles, view-block state, root components, `output` and `@run`, how each platform shows windows, unavailable targets
 - `design/slots.md` — slot types and counts, spreads and variadics, rest slots, entries, fallbacks, `.empty`, slots in runtime instances, populations

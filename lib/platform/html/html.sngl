@@ -147,6 +147,14 @@ struct ClickEvent {
     currentTarget Element
 }
 
+// A swipe as `sngl-swipe` dispatches it: `detail` is 1 where the finger moved
+// toward the start of the line, which brings in what follows, and -1 the other
+// way.
+#[js.native("CustomEvent")]
+struct SwipeEvent {
+    detail int
+}
+
 // An element a click went through, as far as a card asks of it.
 #[js.native("Element")]
 struct Element {}
@@ -253,6 +261,13 @@ component element(
     @close(),
     @select(),
     @keydown(e KeyEvent),
+    // Dispatched by `sngl-swipe`, an element the page defines
+    // (codegen/platform/html/swipe.go), as a finger or a pen swipes across it.
+    @swipe(e SwipeEvent),
+    // Dispatched by `sngl-back`, an element the page defines
+    // (codegen/platform/html/back.go), as the browser goes back through the
+    // history entry it keeps.
+    @back(),
     // Dispatched by `sngl-reach-end`, an element the page defines rather than
     // the DOM (codegen/platform/html/reachend.go). Declared because it is
     // camelCase, which the wildcard below refuses, and it is camelCase so a
@@ -308,10 +323,16 @@ const component ui.spacer[platform](style) {
 // wrapping an element that a wildcard cannot do for itself. `@reachEnd` has no
 // DOM event at all: `sngl-reach-end` is an element the page defines
 // (codegen/platform/html/reachend.go), written after the content, that
-// dispatches `reachEnd` as it comes within half the box's height of showing
-// and as the content resizes while it is there.
-const component ui.scroll[platform](style, @scroll, @scrollEnd, @reachEnd, content) {
-    html.div(style=css({...style, overflow=auto}), @scroll { scroll() }, @scrollend { scrollEnd() }) {
+// dispatches `reachEnd` as it comes within half the box of showing and as the
+// content resizes while it is there. The box scrolls along its direction by
+// its class, whose rules the page writes beside the element's definition.
+const component ui.scroll[platform](style, direction, @scroll, @scrollEnd, @reachEnd, content) {
+    html.div(
+        class = "sngl-scroll sngl-scroll-" + string(direction),
+        style = css(style),
+        @scroll { scroll() },
+        @scrollend { scrollEnd() },
+    ) {
         content
         html.element(tag="sngl-reach-end", @reachEnd { reachEnd() }) {}
     }
@@ -336,12 +357,12 @@ const component ui.button[platform](text, disabled, style, @click, @longPress) {
 // An image is a frame around the `<img>` its source renders: the frame carries
 // the style, the click and the description, as an `img` role, so the
 // placeholder stands in the same box where there is no source. The page's
-// rules fill the frame with the picture and fit it by the frame's class.
+// rules clip the frame, fill it with the picture and fit it by its class.
 const component ui.image[platform](alt, fit, style, @click, src) {
     html.span(
         class = "sngl-image sngl-image-" + string(fit),
         attrs = {"role"="img", "aria-label"=alt},
-        style = css({display=inlineBlock, overflow=hidden, ...style}),
+        style = css({display=inlineBlock, ...style}),
         @click { click() },
     ) {
         #[family.crosses]
@@ -466,11 +487,13 @@ const component ui.textarea[platform](placeholder, readonly, value, disabled, ro
 // `<progress>` with no `value` attribute is HTML's own indeterminate bar, so
 // the absent value is spelled by leaving the attribute off rather than by
 // choosing a number to stand for "unknown".
+//
+// A bar's fill is its accent-color, which CSS's color does not reach.
 const component ui.progress[platform](style, value, max) {
     if value != null {
-        html.progress(value=string(value), max=string(max), style=css(style)) {}
+        html.progress(value=string(value), max=string(max), style=[...css(style), Declaration{property="accent-color", value=colorOf(style.color)}]) {}
     } else {
-        html.progress(max=string(max), style=css(style)) {}
+        html.progress(max=string(max), style=[...css(style), Declaration{property="accent-color", value=colorOf(style.color)}]) {}
     }
 }
 
@@ -522,8 +545,10 @@ const component ui.spinner[platform](label, style) {
     }
 }
 
-// A tablist of the tabs' labels and a tabpanel showing the selected one's
-// content. `underline` marks the selected tab with a rule under it, `pills`
+// A tablist of the tabs' labels and a tabpanel per tab, every one in the
+// document and all but the selected one hidden. The panels are in a
+// `sngl-swipe`, an element the page defines (codegen/platform/html/swipe.go),
+// whose swipe chooses the next tab that way that is not disabled. `underline` marks the selected tab with a rule under it, `pills`
 // with a filled background.
 const component ui.tabs[platform](selected, variant, style, @change, items) {
     html.div(style=css({...style, display=flex, flexDirection=column})) {
@@ -550,14 +575,30 @@ const component ui.tabs[platform](selected, variant, style, @change, items) {
                 )
             }
         }
-        html.div(role="tabpanel") {
+        html.element(tag="sngl-swipe", @swipe(e) {
+            var k = swipedTo(items.map(func(t ui.tab) => t.disabled), selected, e.detail)
+            if k != selected {
+                selected = k
+                change(k)
+            }
+        }) {
             for var k, t = items {
-                if k == selected {
+                html.div(role="tabpanel", hidden=k != selected) {
                     t.content
                 }
             }
         }
     }
+}
+
+// The tab a swipe by `by` from `from` chooses: the nearest that way that is
+// not disabled, or `from` where there is none.
+const func swipedTo(disabled list[bool], from int, by int) int {
+    var k = from + by
+    for k >= 0 && k < disabled.length() && disabled[k] {
+        k += by
+    }
+    return k >= 0 && k < disabled.length() ? k : from
 }
 
 const component ui.link[platform](text, href, style, @click) {
@@ -571,6 +612,11 @@ const component ui.divider[platform](style) {
 }
 
 // --- Tier 3: Overlays & Layout ---
+
+// Goes back an entry in the browser's history, which is what the browser's own
+// back does.
+#[js.native("history.back")]
+func _historyBack()
 
 // A window is a surface: html writes its document from the first that no `if`
 // over state and no `for` can take away, which is the page, and shows every
@@ -593,8 +639,35 @@ component Window(
 
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
-const component ui.window[platform](title, visible, @error, @closed, content, favicon) {
+//
+// A window given a way back or a menu draws a header over its content: an up
+// arrow while it can go back, its title, and its menu as a bar. The arrow is
+// in a `sngl-back`, an element the page defines (codegen/platform/html/
+// back.go), which keeps a history entry of its own while it is there: the
+// browser's back pops it and the element dispatches `back`, and the arrow goes
+// back through the history too, so neither runs `@back` twice. A window given
+// neither -- its `canGoBack` the literal `false`, its menu empty -- draws no
+// header, the `if` folding away.
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, content, favicon, menu) {
     Window(title=title, :visible=visible, @closed { closed() }) {
+        if canGoBack || menu.length() > 0 {
+            html.header(class="sngl-bar", style=css({display=flex, alignItems=center, gap=8px, paddingY=8px, paddingX=12px, borderBottom="1px solid #ddd"})) {
+                if canGoBack {
+                    html.element(tag="sngl-back", @back { back() }) {
+                        html.button(
+                            attrs = {"aria-label"="Back"},
+                            textContent = "←",
+                            style = css({border="none", background=#00000000, fontSize=20px, cursor="pointer"}),
+                            @click {
+                                _historyBack()
+                            },
+                        )
+                    }
+                }
+                html.span(textContent=title, style=css({fontWeight=bold, flex=1}))
+                ui.menubar(items=menu)
+            }
+        }
         boundary(@error(e) { error(e) }) {
             content
         }
@@ -697,13 +770,37 @@ const component ui.menu[platform](style, open, items) {
     }
 }
 
-// The top-level entries; a submenu is not drawn yet.
+// The top-level entries, each a `<details>` whose summary picks it and opens
+// its submenu, where it holds one. An entry `checked` is marked with a check
+// and `aria-checked`.
 const component ui.menubar[platform](style, items) {
     html.nav(role="menubar", style=css({...style, display=flex, gap=4px})) {
-        for var it = items {
-            html.button(role="menuitem", disabled=it.disabled, textContent=it.label, @click {
-                it.select()
-            })
+        for var i, it = items {
+            html.details(style=css({position=relative})) {
+                html.summary(
+                    role = "menuitem",
+                    textContent = it.label,
+                    style = css({cursor="pointer", listStyleType=none, paddingY=4px, paddingX=8px}),
+                    @click {
+                        it.select()
+                    },
+                )
+                if it.children.length() > 0 {
+                    html.div(role="menu", style=css({position=absolute, right=0, display=flex, flexDirection=column, background=#fff, border="1px solid #ddd", borderRadius=4px, padding=4px, zIndex=100})) {
+                        for var j, sub = it.children {
+                            html.button(
+                                attrs = {"role"="menuitemcheckbox", "aria-checked"=sub.checked ? "true" : "false"},
+                                disabled = sub.disabled,
+                                textContent = sub.checked ? "✓ {sub.label}" : sub.label,
+                                style = css({textAlign=left, whiteSpace=nowrap, border="none", background=#00000000, paddingY=4px, paddingX=8px, cursor="pointer"}),
+                                @click {
+                                    sub.select()
+                                },
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1434,7 +1531,6 @@ const func css(s ui.Style) => [
     Declaration{property="border-collapse", value=s.borderCollapse},
     Declaration{property="opacity", value=s.opacity == null ? "" : "{s.opacity}"},
     Declaration{property="cursor", value=s.cursor},
-    Declaration{property="overflow", value=overflowOf(s.overflow)},
     Declaration{property="list-style-type", value=listStyleOf(s.listStyleType)},
     Declaration{property="-webkit-line-clamp", value=s.maxLines == null ? "" : "{s.maxLines}"},
     Declaration{property="overflow", value=s.maxLines == null ? "" : "hidden"},
@@ -1583,16 +1679,6 @@ const func whiteSpaceOf(w ui.WhiteSpace) string {
         preWrap => "pre-wrap"
         preLine => "pre-line"
         nowrap => "nowrap"
-        unset => ""
-    }
-}
-
-const func overflowOf(o ui.Overflow) string {
-    return match o {
-        visible => "visible"
-        hidden => "hidden"
-        scroll => "scroll"
-        auto => "auto"
         unset => ""
     }
 }

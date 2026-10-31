@@ -39,6 +39,7 @@ import us.duckfam.git.jonathan.sngl.testagent.Registry
 lateinit var composeTestRule: ComposeContentTestRule
 
 fun testFieldMethodAndI18n(t: T) {
+    clearCurrentTestModel()
     val __snglTestComponent = newTestComponent()
     setCurrentTestModel(__snglTestComponent)
     val c = __snglTestComponent

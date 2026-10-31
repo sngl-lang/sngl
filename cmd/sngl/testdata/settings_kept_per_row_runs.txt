@@ -1,0 +1,159 @@
+# settings.kept under a `for`, one per row, each under the row's own name.
+#
+# kept is `kept[T, F]`, F its family, which nothing binds at a call site with
+# no children. Under a `for` it is built at run time, and a target that does
+# not emit a generic component copies one per instantiation -- but only when
+# the call site bound every type parameter, so kept was emitted with T in it,
+# and its load[T] asked for a codec of T: "PlanCodec reached T" on html,
+# fyne, gtk4 and android. A family parameter left unbound no longer stops
+# the copy (componentInstance); a built-in, whose body is the host's, is not
+# copied. bubbletea refused the program until a per-copy effect could read a
+# prop bound to the loop variable (component_effect_reads_loop_prop_runs.txt),
+# and html until a runtime instance's `default` prop had a local it could
+# bind (runtime_instance_reserved_prop_runs.txt).
+
+sngl test --platform=none app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +3 tests, 0 failures'
+
+-- app.sngl --
+import settings "sngl:settings"
+import "sngl:test"
+import ui "sngl:ui"
+
+struct Row {
+    name  string
+    count option[int]
+}
+
+component app ui.node {
+    var shown = true
+    var rows = [Row{name="a", count=null}, Row{name="b", count=null}]
+
+    if shown {
+        for var &row = rows {
+            settings.kept(name=row.name, default=0, :value=row.count)
+        }
+    }
+}
+
+func testEachRowStartsAtTheDefault(t test.Test, c app) {
+    t.assert(c.rows[0].count == 0)
+    t.assert(c.rows[1].count == 0)
+    t.assert(settings.load[int]("a") == null)
+}
+
+func testEachRowKeepsUnderItsOwnName(t test.Test, c app) {
+    c.rows[1].count = 5
+    t.assert(settings.load[int]("b") == 5)
+    t.assert(settings.load[int]("a") == null)
+}
+
+func testARemountReadsEachRowBack(t test.Test, c app) {
+    c.rows[0].count = 3
+    c.rows[1].count = 4
+    c.shown = false
+    c.rows = [Row{name="a", count=null}, Row{name="b", count=null}]
+    c.shown = true
+    t.assert(c.rows[0].count == 3)
+    t.assert(c.rows[1].count == 4)
+}
+-- testrun/android/kotlin/app.sngl/app/1 --
+sha256:dbf628e38955b5ce4aaa9c005c967e7c
+{
+  "results": [
+    {
+      "Desc": "ARemountReadsEachRowBack",
+      "Passed": true
+    },
+    {
+      "Desc": "EachRowKeepsUnderItsOwnName",
+      "Passed": true
+    },
+    {
+      "Desc": "EachRowStartsAtTheDefault",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/app/1 --
+sha256:25f257c6690f37e2a33a757876328496
+{
+  "results": [
+    {
+      "Desc": "ARemountReadsEachRowBack",
+      "Passed": true
+    },
+    {
+      "Desc": "EachRowKeepsUnderItsOwnName",
+      "Passed": true
+    },
+    {
+      "Desc": "EachRowStartsAtTheDefault",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/app/1 --
+sha256:296ea2720560dfc0954c2a33d7f9d38c
+{
+  "results": [
+    {
+      "Desc": "ARemountReadsEachRowBack",
+      "Passed": true
+    },
+    {
+      "Desc": "EachRowKeepsUnderItsOwnName",
+      "Passed": true
+    },
+    {
+      "Desc": "EachRowStartsAtTheDefault",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/app/1 --
+sha256:9426e42a21744fb7bcb4c45bf52c81ec
+{
+  "results": [
+    {
+      "Desc": "ARemountReadsEachRowBack",
+      "Passed": true
+    },
+    {
+      "Desc": "EachRowKeepsUnderItsOwnName",
+      "Passed": true
+    },
+    {
+      "Desc": "EachRowStartsAtTheDefault",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/app/1 --
+sha256:ad553dc96e70bec6111422049a4e191e
+{
+  "results": [
+    {
+      "Desc": "ARemountReadsEachRowBack",
+      "Passed": true
+    },
+    {
+      "Desc": "EachRowKeepsUnderItsOwnName",
+      "Passed": true
+    },
+    {
+      "Desc": "EachRowStartsAtTheDefault",
+      "Passed": true
+    }
+  ]
+}

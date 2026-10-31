@@ -70,7 +70,7 @@ ui.window {
     names()
 }
 -- testrun/android/kotlin/app.sngl/names/1 --
-sha256:3067b1e0a7d6b744a9a89d42a3f65904
+sha256:fc14d51816d2724b5e0bb9f85a3af49c
 {
   "results": [
     {
@@ -84,7 +84,7 @@ sha256:3067b1e0a7d6b744a9a89d42a3f65904
   ]
 }
 -- testrun/bubbletea/go/app.sngl/names/1 --
-sha256:93d5e143cbc57057b536807ab691ecf4
+sha256:f2a99d5bf6e9629319ca1c660c829046
 {
   "results": [
     {

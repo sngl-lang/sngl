@@ -1,0 +1,199 @@
+# A package func writing a package var that a component built at run time
+# reads -- in a branch of its own and in an effect's key -- reaches the
+# instance, on every target, as a handler's write and a test's do.
+#
+# A build rooted at a component filed that root's instances under it as well
+# as under the page, so the page's refresh never reached them, and the func,
+# which may run anywhere, re-fired the instance's render slot by a name only
+# the instance has: "__renderSlot0 is not defined" on html, "undefined:
+# __renderSlot0" on fyne. And android ran the call straight from the test,
+# not on the UI thread with a wait after it, so the effect keyed on what it
+# wrote had not run when the next assertion read it. And an effect under the
+# instance's own `if dex != null` is keyed on that condition as well as on its
+# `on`: the condition read the var itself, so the func settled the instance's
+# effects by name too, "__effects0_settle is not defined".
+
+sngl test --platform=none app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +4 tests, 0 failures'
+
+-- app.sngl --
+import "sngl:test"
+import ui "sngl:ui"
+
+var dex option[string] = "national"
+var resets = 0
+var mounts = 0
+
+func choose(name option[string]) {
+    dex = name
+}
+
+component page ui.node {
+    var seen = 0
+    effect(on=dex, @update {
+        resets += 1
+        seen = resets
+    })
+    ui.text(value="{seen}")
+    if dex != null {
+        effect(on=dex, @mount(d) { mounts += 1 })
+        ui.text(value=dex)
+    }
+}
+
+component back ui.node {
+    var away = false
+    ui.button #leave(text="Leave", @click { away = !away })
+    ui.button #pick(text="Kanto", @click { dex = "kanto" })
+    if !away {
+        page #page
+    }
+}
+
+func testAWriteThroughAFuncReachesThePage(t test.Test, c back) {
+    var before = resets
+    choose("kanto")
+    t.assert(dex == "kanto")
+    t.assert(resets == before + 1)
+}
+
+func testAWriteThroughAFuncRemountsTheBranchsEffect(t test.Test, c back) {
+    var before = mounts
+    choose("hoenn")
+    t.assert(mounts == before + 1)
+    choose(null)
+    choose("sinnoh")
+    t.assert(mounts == before + 2)
+}
+
+func testAHandlersWriteReachesThePage(t test.Test, c back) {
+    var before = resets
+    c.pick.click()
+    t.assert(resets == before + 1)
+}
+
+func testATestsWriteReachesThePage(t test.Test, c back) {
+    var before = resets
+    dex = "johto"
+    t.assert(resets == before + 1)
+}
+-- testrun/android/kotlin/app.sngl/back/1 --
+sha256:2c187aa042aa44a91dcc40d045d4b42d
+{
+  "results": [
+    {
+      "Desc": "AHandlersWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncRemountsTheBranchsEffect",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/back/1 --
+sha256:92a3653d31625546591f1ba88ec26f1a
+{
+  "results": [
+    {
+      "Desc": "AHandlersWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncRemountsTheBranchsEffect",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/back/1 --
+sha256:c14bb32a43001c71630a435b2b65b4b8
+{
+  "results": [
+    {
+      "Desc": "AHandlersWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncRemountsTheBranchsEffect",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/back/1 --
+sha256:9f2141a6d37e7ee5f006e0667ff50242
+{
+  "results": [
+    {
+      "Desc": "AHandlersWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncRemountsTheBranchsEffect",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/back/1 --
+sha256:a8bbd01ec605012b7489db9b077be9ce
+{
+  "results": [
+    {
+      "Desc": "AHandlersWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsWriteReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncReachesThePage",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAFuncRemountsTheBranchsEffect",
+      "Passed": true
+    }
+  ]
+}

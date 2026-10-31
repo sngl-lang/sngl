@@ -114,6 +114,18 @@ calls where it stands; and the interpreter's lambda closing over another
 call's ended snapshot reads and writes through to where that snapshot was
 taken (`LambdaValue.Call`), or a closure made inside a `map` wrote nothing.
 
+**A prop whose expression holds such a handler is updated by a function**
+(`propSetter`): a widget's text drawn from records whose `@select` writes
+what their `checked` reads. passReactivity splices the update of every prop
+reading a var after each write of it, and here the write is in a handler the
+prop's own expression holds, so the update spliced in place held the handler
+it was spliced into and the IR became a cycle, which the next walk
+(`MatchLate`) followed until the stack overflowed. The update is written once
+as a function of the prop's owner, the handler calls it, and the function is
+not injected into, since the handler it holds is the one the node's prop
+holds (`testdata/record_handler_prop.txtar`,
+`cmd/sngl/testdata/record_handler_prop_runs.txt`).
+
 On html a loop over records a page writes into its markup unrolls with each
 record's handler a constant: in a document's fold a function literal is a
 value, a copy reading the values the fold bound for it (`heldLambda`), and

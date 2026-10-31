@@ -32,8 +32,6 @@ typedef struct {
     gboolean wrap0;
     int lines0;
     PangoEllipsizeMode ellipsize0;
-    gboolean clipped;
-    GtkOverflow overflow0;
     gboolean hidden, visible0;
     gboolean cursor;
     int justify;
@@ -593,10 +591,10 @@ static void sngl_look_size_label(GtkWidget *w, SnglLook *l, int wrap) {
 }
 
 static void sngl_set_look(GtkWidget *w, const char *css, int width, int height, double grow,
-                          int cross, int align, int lines, int wrap, int clip, int hidden, const char *cursor,
+                          int cross, int align, int lines, int wrap, int hidden, const char *cursor,
                           int justify, int spaced, int spacing) {
     SnglLook *l = sngl_look_of(w);
-    if (!l && !*css && !width && !height && grow <= 0 && !cross && !align && !lines && !wrap && !clip && !hidden && !*cursor && !justify) {
+    if (!l && !*css && !width && !height && grow <= 0 && !cross && !align && !lines && !wrap && !hidden && !*cursor && !justify) {
         if (spaced && GTK_IS_BOX(w)) gtk_box_set_spacing(GTK_BOX(w), spacing);
         return;
     }
@@ -620,11 +618,6 @@ static void sngl_set_look(GtkWidget *w, const char *css, int width, int height, 
     sngl_look_set_cross(w, l, cross);
     sngl_look_set_text(w, l, align, lines, wrap);
     sngl_look_size_label(w, l, wrap);
-    if (clip && !l->clipped) {
-        l->clipped = TRUE;
-        l->overflow0 = gtk_widget_get_overflow(w);
-    }
-    if (l->clipped) gtk_widget_set_overflow(w, clip ? GTK_OVERFLOW_HIDDEN : l->overflow0);
     if (hidden && !l->hidden) {
         l->visible0 = gtk_widget_get_visible(w);
         gtk_widget_set_visible(w, FALSE);
@@ -746,7 +739,6 @@ type Look struct {
 	Lines int
 	// Wrap is a label's: 1 one line, 2 wrapped.
 	Wrap   int
-	Clip   bool
 	Hidden bool
 	Cursor string
 	// Justify is a box's justifyContent: 1 center, 2 end, 3 space between,
@@ -765,7 +757,7 @@ func SetLook(w Handle, l Look) {
 	cursor, freeCursor := cstr(l.Cursor)
 	defer freeCursor()
 	C.sngl_set_look(widget(w), css, C.int(math.Round(l.Width)), C.int(math.Round(l.Height)), C.double(l.Grow),
-		C.int(l.Cross), C.int(l.TextAlign), C.int(l.Lines), C.int(l.Wrap), C.int(bool01(l.Clip)), C.int(bool01(l.Hidden)), cursor,
+		C.int(l.Cross), C.int(l.TextAlign), C.int(l.Lines), C.int(l.Wrap), C.int(bool01(l.Hidden)), cursor,
 		C.int(l.Justify), C.int(bool01(l.Spaced)), C.int(l.Spacing))
 }
 
@@ -811,6 +803,18 @@ func firstChild(w Handle) Handle {
 func setVExpand(w Handle, v bool) { C.gtk_widget_set_vexpand(widget(w), gbool(v)) }
 
 func setHExpand(w Handle, v bool) { C.gtk_widget_set_hexpand(widget(w), gbool(v)) }
+
+func minWidth(w Handle) int {
+	var min, nat C.int
+	C.gtk_widget_measure(widget(w), C.GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, nil, nil)
+	return int(min)
+}
+
+func naturalWidth(w Handle) int {
+	var min, nat C.int
+	C.gtk_widget_measure(widget(w), C.GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, nil, nil)
+	return int(nat)
+}
 
 func allocate(w Handle, width, height int) {
 	var min, nat C.int

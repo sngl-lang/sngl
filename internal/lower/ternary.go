@@ -149,6 +149,13 @@ func (st *ternState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 		}
 	case *ir.CallStmt:
 		if n.Call != nil {
+			// A record's handler read off a list a branch builds is the
+			// callee: `[...c ? [r] : []][0].select()`.
+			if n.Call.Callee != nil {
+				p, v := st.transformExpr(n.Call.Callee)
+				pre = append(pre, p...)
+				n.Call.Callee = v
+			}
 			if n.Call.Receiver != nil {
 				p, v := st.transformExpr(n.Call.Receiver)
 				pre = append(pre, p...)

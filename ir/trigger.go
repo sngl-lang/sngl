@@ -50,6 +50,29 @@ func TriggerTarget(c *Call) (recv, id string, path []Expr, ok bool) {
 	return base.Name, sel.Field, path, true
 }
 
+// TriggeredIDs is every `#id` a test fires an event on, `c.save.click()`, of
+// one copy or of the node.
+func TriggeredIDs(pkg *Package) map[string]bool {
+	out := map[string]bool{}
+	if pkg == nil {
+		return out
+	}
+	for _, fn := range pkg.Funcs {
+		if fn == nil || !fn.IsTest {
+			continue
+		}
+		_ = Walk(fn.Block, func(n Node) error {
+			if c, ok := n.(*Call); ok {
+				if _, id, _, ok := TriggerTarget(c); ok {
+					out[id] = true
+				}
+			}
+			return nil
+		})
+	}
+	return out
+}
+
 // IndexedRefIDs is every `#id` a test reaches one copy of -- triggers,
 // `c.row[1].change(true)`, null-tests, `c.row[1] == null`, and a member of an
 // instance read or called through one, `c.row[1].hits` -- by an index into a

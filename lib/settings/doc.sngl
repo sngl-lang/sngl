@@ -1,0 +1,36 @@
+// Values an app keeps from one run to the next: the language a reader chose,
+// the list they were looking at.
+//
+//	var language option[string] = null
+//	settings.kept(name="language", default="English", :value=language)
+//
+// **A setting is an option var**, null until its store answers: `kept` binds
+// it, and when it mounts it loads the stored value into the var, or its
+// `default` where none is stored, and it writes the var back on every change
+// the program makes after. A platform whose store answers late leaves it null
+// for as long as that takes, so a program shows what it chooses meanwhile
+// rather than the default dressed as the setting. Only a change is written,
+// so a reader who never chose keeps following `default` -- a default the
+// program moves reaches them. A value is anything `sngl:json` writes; one
+// stored by an older build that no longer reads as the var's type is passed
+// over, and the default stands.
+//
+// `load` and `save` reach the same values from a function or a handler.
+//
+// **Where values are kept is the `store` context**, whose default is the
+// platform's own place for this app's settings:
+//
+//   - android: the app's SharedPreferences
+//   - html: the page's `localStorage`
+//   - fyne: the app's Preferences, under an ID made from `output`'s name
+//   - gtk4 and bubbletea: `settings.json` in a directory named for `output`'s
+//     name under the user's configuration directory (`$XDG_CONFIG_HOME`)
+//
+// A store whose `scope` names one keeps its values apart from the app's
+// own; one whose `place` is `memory` keeps them for the run.
+//
+// **Nothing is kept where the app is not running as itself**: in `sngl run`
+// and `sngl test`, which interpret the program, and in a test on a target,
+// every store keeps its values in memory, and each test starts with none. A
+// test seeds one with `save`, or with a store of its own through
+// `t.setContext(settings.store, …)`.

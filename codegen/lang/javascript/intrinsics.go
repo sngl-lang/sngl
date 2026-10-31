@@ -40,6 +40,18 @@ func init() {
 		})
 	}
 
+	// --- sngl:settings, in the page's localStorage ---
+	// A test page says to keep them in memory (html's testBootOpen).
+	reg("settings._persistent", func(a []string) string {
+		return `(typeof localStorage !== "undefined" && !globalThis.__snglSettingsInMemory)`
+	})
+	reg("settings._read", func(a []string) string {
+		return `(localStorage.getItem("sngl.settings/" + ` + a[0] + ` + "/" + ` + a[1] + `) ?? "")`
+	})
+	reg("settings._write", func(a []string) string {
+		return `localStorage.setItem("sngl.settings/" + ` + a[0] + ` + "/" + ` + a[1] + `, ` + a[2] + `)`
+	})
+
 	// --- sngl:test ---
 	// A test body is lowered by testlower.go, which answers these first. A
 	// test function emitted into a page as an ordinary function calls the

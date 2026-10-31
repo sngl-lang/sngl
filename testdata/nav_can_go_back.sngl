@@ -1,0 +1,48 @@
+// `canGoBack` says whether `back` has a page to return to: not at the start,
+// after a `go`, and not once `back` has returned to the start. A window
+// showing the stack draws its up arrow from it, and its `@back` is what the
+// arrow, and the system's back, run.
+
+import . "sngl:test"
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+component app root {
+    var backs = 0
+
+    ui.window #main(title=pages.current.title, canGoBack=pages.canGoBack(), @back {
+        backs += 1
+        pages.back()
+    }) {
+        nav.stack #pages {
+            nav.page #home(href="/", title="Home") {
+                ui.text(value="home")
+            }
+            nav.page #about(href="/about", title="About") {
+                ui.text(value="about")
+            }
+        }
+        ui.button #toAbout(text="About", @click { pages.go(about) })
+    }
+}
+
+app()
+
+func testNotAtTheStart(t Test, c app) {
+    t.assert(!c.pages.canGoBack())
+    t.assert(!c.main.canGoBack)
+}
+
+func testAfterAGo(t Test, c app) {
+    c.toAbout.click()
+    t.assert(c.pages.canGoBack())
+    t.assert(c.main.canGoBack)
+}
+
+func testTheWindowsBackReturns(t Test, c app) {
+    c.toAbout.click()
+    c.main.back()
+    t.assert(c.backs == 1)
+    t.assert(c.main.title == "Home")
+    t.assert(!c.pages.canGoBack())
+}

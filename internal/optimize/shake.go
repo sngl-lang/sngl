@@ -369,6 +369,16 @@ func handlerPayloadTypes(pkg *ir.Package) []*ir.Type {
 					out = append(out, a.Value.ExprType())
 				}
 			}
+			// A test picking a record -- a window's menu entry -- on a
+			// target that draws nothing for it runs the record's own
+			// handler, off records the test builds.
+			if field, ok := v.Callee.(*ir.Select); ok {
+				if t := field.Operand.ExprType(); t != nil && t.Kind == ir.TypeStruct {
+					if sd, ok := t.Decl.(*ir.StructDef); ok && sd.RecordOf != nil {
+						out = append(out, t)
+					}
+				}
+			}
 		}
 		return nil
 	}

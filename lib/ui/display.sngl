@@ -158,7 +158,8 @@ component _example_avatar node {
     }
 }
 
-// Progress indicator, showing the fraction `value / max` filled.
+// Progress indicator, showing the fraction `value / max` filled. A style's
+// `color` is the color it fills with.
 //
 // Written with no `value` it is *indeterminate*: a bar that says work is
 // happening and not how much is left. That is why `value` is an `option` --

@@ -7,6 +7,19 @@
 
 **A fixture-first fixture the backends cannot emit yet carries `// SKIP(codegen) "reason"`.** Every platform harness compiles the *whole* of `testdata/` for its own target, so a fixture naming a construct no platform can lower does not fail one assertion — it takes that harness down. The directive is the fixture's own opt-out from codegen only: `TestFixtures` still parses, formats, checks and folds it, which is the point of writing the fixture before the implementation. The decision lives in one place, `testutil.CodegenSamples` (a `TestdataSamples` that drops the skipped) plus `RunComponentFixtures`; a platform harness walks testdata through those and never tests the flag itself. Remove the directive in the commit that makes the fixture emit.
 
+**A platform harness builds a fixture from its roots** (`testutil.Roots`,
+`RootAt`): the program where the package body renders something, and otherwise
+each component nothing else in the fixture renders, rooted as a test build is
+(`build.IsolateRootComponent`, each prop at its default or zero). A fixture of
+components alone was generated with no root, every component an entry nothing
+renders, which no build makes: a component binding a two-way prop of a generic
+one reached Go with T unbound, and html refused an unbound prop no call site
+would leave, so `settings_kept`, `json_generic` and `view_block_state` carried
+`SKIP(codegen)`. A generic component is no root, since nothing binds its type
+parameters. html's harness builds a static site, so a page served at a pattern
+is a refusal by design it skips (`PatternPageError`), as android's and
+bubbletea's skip a second window (`OneWindowError`).
+
 **Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, `grep`, and `!` for assertions. A script gets `$WORK` (its directory), its own `XDG_CONFIG_HOME` so it never reads or writes the user's trust config, and `GOENV` pinned to the user's so the go command's own config survives the move. A script that builds a Go module against the checkout writes its go.mod with `exec sh -c` from `$SNGL_HOST_GO_MOD` (a `go` line included, or an offline `go mod tidy` needs the unpruned graph, the checkout's `require` blocks, or the pruned graph selects versions the module cache was never given, and its `replace` lines, or tidy looks up the version a replace stands in for) and runs `go mod tidy` under `GOPROXY=off GOFLAGS=-mod=mod`; `trust_eval.txt` is the pattern.
 
 **Golden codegen fixtures** (`testdata/*.txtar`, run by `internal/goldentest`
@@ -227,7 +240,12 @@ These rules keep them agreeing:
   funcs reading it are spelled through the instance (`ExprCtx.StateReceiver`
   on Go and JS; on android the state members MainScreen spells as `state.<x>`,
   rebound to the instance). Each test starts from a fresh one — a new Model on
-  the Go targets, a remounted page on html.
+  the Go targets, a remounted page on html. android disposes the last test's
+  composition before it makes the next one's state (`clearCurrentTestModel`):
+  a new `MainScreenState` is the file's `state`, which a component other than
+  MainScreen reads, so the last test's `@unmount`, run as the next model
+  replaced it, wrote into the next test's log
+  (`cmd/sngl/testdata/test_unmount_stays_in_its_test_runs.txt`).
 - **The component a test takes is rendered with no call site**, so each of its
   props holds its default, or its type's zero where it has none: a var of the
   component on a compiled target (`bindRootProps`), bound ahead of its own vars
@@ -256,7 +274,11 @@ These rules keep them agreeing:
   into the test named nodes the test file has none of, so a test writing a
   page var a node reads did not build on fyne or gtk4
   (`cmd/sngl/testdata/test_write_redraws_runs.txt`). bubbletea and android
-  draw from state and need no call.
+  draw from state and need no call. android runs a test's write, and its
+  call of a package func that writes state, on the UI thread with a wait
+  after it, so the effects keyed on what was written have run before the
+  next assertion; the call ran straight from the test, and they had not
+  (`cmd/sngl/testdata/page_write_through_func_runs.txt`).
 - **A test waiting lets time pass as the program's loop would**: `t.wait`
   asks its predicate between turns of whatever runs the target's schedules.
   bubbletea's test build runs no program, so each turn settles the Model the
@@ -304,7 +326,16 @@ moves a node out of the body that wrote it:
   targets did not build (`cmd/sngl/testdata/test_reach_nested_loop_fire_runs.txt`).
   A method of the component its own body calls with the instance left
   implicit, `for var row = rows()`, is called through the instance, as a
-  test calls one (`test_reach_prop_through_method_runs.txt`). A
+  test calls one (`test_reach_prop_through_method_runs.txt`). A `var` a block
+  of the view declares is state of whatever instance passHoistState puts it
+  in, which it decides after this, so the read is recorded
+  (`blockReads.answer`) and placed there: off the instance it was read
+  through where the block joined that component, renamed with it, or through
+  the instance of the block's `__block_state<N>`, whose call site is given an
+  id (`tap__state0`) and read with the node's indices into the loops around
+  it. The Go targets had emitted the var bare and html threw on it; one
+  inside another instance or another such block is refused
+  (`cmd/sngl/testdata/test_reach_block_state_runs.txt`). A
   prop reading what a test cannot name -- a slot's parameter, a local, a pull
   sequence's element -- is left as written for a node of the test's own
   instance and refused with a position for one reached through another
@@ -358,7 +389,10 @@ moves a node out of the body that wrote it:
 - **A member of an instance built at run time is read off the instance the
   target holds** (`codegen.InstanceReads`, lowered by
   `codegen.LowerInstanceReads` to `<id>Read<Member>`, `<id>Call<Member>` and
-  their `At` variants on the test's surface): fyne's and gtk4's Model holds
+  their `At` variants on the test's surface, and an argument of one such call
+  read through an instance is lowered too -- a read answered from a call site,
+  `c.sCallLabel(c.s.rows[0][0])`, read the rows off nothing,
+  `testdata/slot_row_calls_owner_func.sngl`): fyne's and gtk4's Model holds
   each such record where its root is bound (`golang.HoldInstance`,
   `__inst_<id>` or `__insts_<id>` by key) and lets go in its Destroy; html's
   factory hangs the instance off its root element; android's composable

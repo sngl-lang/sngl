@@ -123,12 +123,14 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst, at string) *
 		// in that scope, so leaving it stale wrote the subtest's timer tick
 		// into the test containing it.
 		cached.parent = env
+		cached.types = componentTypes(env, inst)
 		return cached
 	}
 
 	child := NewEnv()
 	child.Pkg = env.Pkg
 	child.handling = env.handling
+	child.typeCalls = env.typeCalls
 	child.wlog = env.writes()
 	child.handles = env.owned()
 	child.Units = env.Units
@@ -136,6 +138,7 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst, at string) *
 	child.parent = env
 	child.inst = inst
 	child.ContextVals = capturedContext(env)
+	child.types = componentTypes(env, inst)
 
 	bindProps(env, child, comp, inst, true)
 	for _, v := range comp.Vars {
@@ -232,6 +235,7 @@ func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 	child := NewEnv()
 	child.Pkg = env.Pkg
 	child.handling = env.handling
+	child.typeCalls = env.typeCalls
 	child.wlog = env.writes()
 	child.handles = env.owned()
 	child.Units = env.Units

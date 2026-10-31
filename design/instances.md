@@ -346,7 +346,17 @@ prop (`handlerParams`): `options.map(func(o) => o.label)` in a looped component
 and `rows.map(func(r) => …)` in a tab's panel each made the parameter one,
 handed a name the site never declared
 (`testdata/slot_child_lambda_param.txtar`,
-`cmd/sngl/testdata/slot_child_literal_runs.txt`). A node is not lifted when its subtree holds
+`cmd/sngl/testdata/slot_child_literal_runs.txt`). A function literal that
+writes what the site binds travels whole, as a call reading state does:
+lifted read by read, a menu record's `@select { saved += 1 }` wrote the
+instance's copy of `saved`, and html's pick ran nothing anyone saw
+(`writesFree`, `cmd/sngl/testdata/window_menu_under_if_runs.txt`). A call
+that stays, reading what the slot binds, and calls a function of the
+component the body is lifted out of calls it through a prop holding it as a
+lambda (`funcValue`): the lifted component holds no such function, and html's
+grid row called its page's `label(entry)` by a name only the page declares
+(`testdata/slot_row_calls_owner_func.sngl`). A node is
+not lifted when its subtree holds
 a slot insertion, a boundary, a canvas or a window, or declares a handle
 something reads. bubbletea and android re-render the view anyway and are
 untouched (`testdata/slot_body_updates_in_place.txtar`,
@@ -370,6 +380,43 @@ one the brackets began with and reports nothing. Without it the `@update`
 never ran there either, and an owned derived value kept the first value it
 made (`testdata/owned_derived_built_once_on_entry.txtar`'s
 `testRebuiltOnAWriteWhileShown`).
+
+**A package var an effect is keyed on is a prop of an instance built at run
+time** (`passEffectOutsideKeys`, just before passEffect). The effect lowering
+marks a key's `@update` and settles its scope after each write to what the
+key reads, and a write outside the instance -- the page's, another
+component's handler, a `settings.kept` load in the page -- named the
+instance's flag and settle bare, which the writer does not have and which
+stand for however many instances are live. fyne, gtk4 and android did not
+build, and html built and ran none of it: no `@update`, no remount, no query
+asking again. So each package var a key reads by name becomes a prop,
+`__on_<var>`, bound to the var at every site, and the key reads the prop; the
+site's `liveUpdaters` and the setter above reach every live copy, and
+android's `emitPropReports`. A test's root is left alone, having no site
+(`testdata/effect_keyed_on_package_var_runtime_instance.txtar`,
+`cmd/sngl/testdata/effect_keyed_on_package_var_runs.txt`, which adds a query).
+A key reading the var through a call, `on=current()`, was still marked by bare
+name, with the same failures. It now calls a copy of each func on the way,
+`<func>__outside`, which takes each package var it reads, through what it
+calls too, as a trailing parameter, and is handed the prop; a func calling
+another calls that one's copy. A func that is a method, is variadic, writes
+the var, or calls one that cannot be copied keeps its call and the old
+failure. The interpreter read only the names `on` spelled and ran no
+`@update` for such a key anywhere; it follows the calls now
+(`cmd/sngl/testdata/effect_keyed_through_call_runs.txt`,
+`testdata/effect_update_through_call.sngl`). What decides whether a bracket
+is mounted keys it as much as its `on` does -- the condition of an `if`
+around it, a `for`'s iterable, a `match`'s subject -- so a package var read
+there is handed over as a prop too: `if dex != null { effect(…) }` left the
+condition reading `dex`, and a package func's write settled the instance's
+group by name, "__effects0_settle is not defined"
+(`cmd/sngl/testdata/page_write_through_func_runs.txt`).
+The other direction, a write *inside* an instance marking an effect of the
+Model, was spelled bare too in a test build rooted at a component, whose vars
+and funcs are the Model's: an instance resolves a name against that component
+after its own (`ExprCtx.ModelComponent`) and reaches it through `__model`
+(`testdata/settings_kept.txtar`'s `testAScopeKeepsItsOwn`, which `t.setContext`
+makes an instance).
 
 **An `@update` is owed only the writes made while its bracket ran**, as the
 interpreter has it: a bracket mounted after a write starts reading the log
@@ -482,7 +529,15 @@ run time there is a render function with nowhere to put one. So
 `passNoInlineComponents` splices a component that has state, holds a lifetime
 or declares a function where it is written (`expandPerCopy`) -- a render
 function's methods would be the Model's, which cannot read the props it is
-handed -- and under a `for` gives each of its vars one cell per copy
+handed. A component that only renders one of those is one too
+(`keepsState`), since splicing the callee into it gives it the callee's state:
+an adapter `openapi:` writes over `async.query` was built at run time, the
+query was spliced into its declaration, and every function the declaration
+then held was emitted on the Model, a second `__snglTeardown` among them. The
+Pokédex did not build on bubbletea wherever no provider handed the adapter a
+var of its own (#298,
+`cmd/sngl/testdata/bubbletea_stateless_wrapper_built_instance_runs.txt`).
+Under a `for` it gives each of the spliced vars one cell per copy
 (`perCopyCells`): a map keyed by the loops' indices (`lower.CopyKey`), read as
 `cell.get(key, init)` and written through a temporary stored back. On every
 target a function a splice hoists out of loops takes the loop variables it
@@ -500,7 +555,18 @@ reads -- a call site's `@load(got) { seen[w] = got }` under `for var w` -- is
 bound where it starts, by walking the loop's iterable to the index the key
 holds (`loopVarsFrom`); the handler runs from the settle, outside the loop, and
 the read was refused
-(`cmd/sngl/testdata/instance_reuse_reads_loop_var_runs.txt`). A timer under a loop is then a schedule per copy, which
+(`cmd/sngl/testdata/instance_reuse_reads_loop_var_runs.txt`). So is a prop
+bound to one, which the splice substitutes into the effect's handlers as the
+loop variable: an effect whose handlers read one is keyed by the copy whether
+or not it touches a cell (`handlersReadLoops`), where `settings.kept(name = row.id)` under a `for` was refused as reading the loop variable. An `@unmount`
+runs once the list no longer holds its copy, so it reads what a recorder kept
+instead (`loopRecorders`): an effect ahead of it, keyed on the copy and what
+the `@unmount` reads through the loop variables, whose `@mount` stores those
+values by the copy, the last the copy was rendered with. Walking the list there
+found nothing for a removed row, and indexed past the end of it under `for var &`. A key paired with the copy steps into the loop through its `on` half
+(`copyPairOn`), so a write to one row's key runs that row's `@update` alone,
+not every row's
+(`cmd/sngl/testdata/component_effect_reads_loop_prop_runs.txt`). A timer under a loop is then a schedule per copy, which
 bubbletea keeps keyed the same way and routes through Update
 (`codegen.CollectLoopTimers`, `bubbletea/timers.go`); it used to be
 collected by nobody and never ran. A timer under no loop is the same
@@ -673,6 +739,12 @@ instance it holds that has one -- those its slots' registries keep, and one
 at a position of its own, a recursion's, by its handle. The page's
 `__refreshPage_<v>` starts it from the page's own, the root component's in a
 build rooted at one, and every write of `v` calls it after its own updates.
+The root is the page there and holds nothing of its own: filed as a holder
+too, its instances had one the refresh never reached, so `reaches` said no,
+and a package func, which may run anywhere and so is held to no scope,
+re-fired an instance's render slot by a name only the instance has; a reader
+the refresh reaches is now left to it whoever writes
+(`cmd/sngl/testdata/page_write_through_func_runs.txt`).
 The instance reads `v` where it stands, so a handler of its own sees what was
 written, and what a registry holds is what is reached: an instance destroyed
 has left it. A row's own state survives, being patched rather than rebuilt

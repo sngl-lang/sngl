@@ -116,6 +116,10 @@ type KtIRContext struct {
 	// Used by the Android test-mode emit to route every component-level
 	// var through a hoisted state object (`count` → `state.count`).
 	IdentRewrites map[string]string
+	// StateVars are the vars the hoisted state holds, when IdentRewrites
+	// routes vars there; a var another composable declares under the same
+	// name is its own.
+	StateVars map[ir.Symbol]bool
 	// receiver is the parameter an extension function's body names its
 	// receiver by, which Kotlin spells `this` whatever the declaration
 	// called it. Matched by symbol: IdentRewrites skips parameters.
@@ -249,8 +253,29 @@ func (kc *KtIRContext) Binary(n *ir.Binary, left, right string) string {
 	if ir.IsUnitRatio(n) {
 		return "(" + left + ".toDouble() / " + right + ".toDouble())"
 	}
+	if n.Op == ast.BinEq || n.Op == ast.BinNeq {
+		left, right = comparableList(n.Left, left), comparableList(n.Right, right)
+	}
 	return "(" + left + " " + n.Op.String() + " " + right + ")"
 }
+
+// comparableList reads a list operand of == as a plain List: a list var is a
+// SnapshotStateList, whose equals is its identity, so `xs == listOf(1)` was
+// false wherever the var stood on the left.
+func comparableList(e ir.Expr, s string) string {
+	t := e.ExprType()
+	if _, lit := e.(*ir.ListLit); lit || t == nil {
+		return s
+	}
+	switch {
+	case t.Kind == ir.TypeList:
+		return s + ".toList()"
+	case t.Kind == ir.TypeOption && len(t.Elems) == 1 && t.Elems[0] != nil && t.Elems[0].Kind == ir.TypeList:
+		return s + "?.toList()"
+	}
+	return s
+}
+
 func (kc *KtIRContext) Unary(n *ir.Unary, operand string) string {
 	if n.Op == ast.UnaryNot {
 		return "!" + operand
@@ -806,6 +831,9 @@ func (kc *KtIRContext) stateRewrite(n *ir.Ident) (string, bool) {
 		return "", false
 	}
 	rewritten, ok := kc.IdentRewrites[n.Name]
+	if ok && kc.StateVars != nil && !kc.StateVars[v] {
+		return n.Name, true
+	}
 	return rewritten, ok
 }
 
@@ -1694,6 +1722,7 @@ func (kc *KtIRContext) WithLocal(name string) *KtIRContext {
 		Ctx:           kc.Ctx.WithLocal(name),
 		EventVar:      kc.EventVar,
 		IdentRewrites: kc.IdentRewrites,
+		StateVars:     kc.StateVars,
 		receiver:      kc.receiver,
 		imports:       kc.imports,
 		returnTo:      kc.returnTo,
@@ -1714,6 +1743,7 @@ func (kc *KtIRContext) ForComponent(comp *ir.Component) *KtIRContext {
 		Ctx:           kc.Ctx.ForComponent(comp),
 		EventVar:      kc.EventVar,
 		IdentRewrites: kc.IdentRewrites,
+		StateVars:     kc.StateVars,
 		receiver:      kc.receiver,
 		imports:       kc.imports,
 	}
@@ -1774,7 +1804,12 @@ func IRTypeToKt(t *ir.Type) string {
 		return "Map<Any, Any>"
 	case ir.TypeOption:
 		if len(t.Elems) > 0 {
-			return IRTypeToKt(t.Elems[0]) + "?"
+			inner := IRTypeToKt(t.Elems[0])
+			// `(T) -> R?` is a function returning a nullable R.
+			if t.Elems[0].Kind == ir.TypeFunc && t.Elems[0].Sig != nil {
+				inner = "(" + inner + ")"
+			}
+			return inner + "?"
 		}
 		return "Any?"
 	case ir.TypeStruct:

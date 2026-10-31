@@ -1,0 +1,196 @@
+# An effect in a component built at run time, keyed on a call that reads a
+# package var written outside it -- `current()`, and `scaled(2)` through it --
+# runs when the var is written: its `@update`, the remount of a keyed
+# `@mount`, and a query asking again, for the one instance under an `if` and
+# for every copy under a `for`. passEffectOutsideKeys moved only a var the key
+# named, so the page marked the instance's flag by bare name: fyne, gtk4 and
+# android did not build, and html built and ran none of it. The key now calls
+# a copy of each func that takes the var as a parameter, handed the instance's
+# prop. The page's own `current()` still reads the var. The interpreter ran no
+# `@update` for such a key either (testdata/effect_update_through_call.sngl).
+# effect_keyed_on_package_var_runs.txt is the key naming the var.
+
+sngl test --platform=none app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import ui "sngl:ui"
+import "sngl:test"
+
+var level = 0
+var asked list[int] = []
+var mounts list[int] = []
+
+func current() => level
+
+func scaled(k int) => current() * k
+
+func lookup(n int) async.Result[string] {
+    asked.push(n)
+    return {ok="level {n}"}
+}
+
+component gauge ui.node {
+    var seen = 0
+    var twice = 0
+    var answer option[string] = null
+
+    effect(on=current(), @update(n) {
+        seen = n
+    })
+    effect(on=scaled(2), @update(n) {
+        twice = n
+    })
+    effect(on=current(), @mount(n) {
+        mounts.push(n)
+    })
+    async.query(on=current(), fetch=lookup, :value=answer)
+    ui.text #shown(value=answer != null ? answer : "-")
+}
+
+component app ui.node {
+    var open = true
+    var copies = [1, 2]
+
+    ui.vbox {
+        ui.button #raise(text="raise", @click {
+            level += 1
+        })
+        ui.text #now(value="{current()}")
+        if open {
+            gauge #g
+        }
+        for var k = copies {
+            gauge #row
+        }
+    }
+}
+
+ui.window(title="t") {
+    app()
+}
+
+func testAWriteOutsideReachesTheEffect(t test.Test, c app) {
+    c.raise.click()
+    t.assert(c.now.value == "1")
+    t.assert(c.g != null && c.g.seen == 1 && c.g.twice == 2)
+    t.assert(c.row[0].seen == 1 && c.row[1].seen == 1)
+    t.assert(c.row[0].twice == 2 && c.row[1].twice == 2)
+}
+
+func testAWriteOutsideRemountsAKeyedEffect(t test.Test, c app) {
+    c.raise.click()
+    t.assert(mounts.join(",") == "0,0,0,1,1,1")
+}
+
+func testAWriteOutsideAsksTheQueryAgain(t test.Test, c app) {
+    c.raise.click()
+    t.wait(func() => c.g != null && c.g.answer != null && c.g.answer == "level 1", 2000)
+    t.assert(asked.join(",") == "0,0,0,1,1,1")
+}
+-- testrun/android/kotlin/app.sngl/app/1 --
+sha256:02f9b95290ef20408f08274ac60f6214
+{
+  "results": [
+    {
+      "Desc": "AWriteOutsideAsksTheQueryAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideReachesTheEffect",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideRemountsAKeyedEffect",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/app/1 --
+sha256:9fd9a9d62dd0460a09c8bde13f478824
+{
+  "results": [
+    {
+      "Desc": "AWriteOutsideAsksTheQueryAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideReachesTheEffect",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideRemountsAKeyedEffect",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/app/1 --
+sha256:146b4ce39fc911239c14e785ccdded47
+{
+  "results": [
+    {
+      "Desc": "AWriteOutsideAsksTheQueryAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideReachesTheEffect",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideRemountsAKeyedEffect",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/app/1 --
+sha256:3db646b4e5739ba421272b9952b78627
+{
+  "results": [
+    {
+      "Desc": "AWriteOutsideAsksTheQueryAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideReachesTheEffect",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideRemountsAKeyedEffect",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/app/1 --
+sha256:cb358ce6c1cac984d42af07ca086fb69
+{
+  "results": [
+    {
+      "Desc": "AWriteOutsideAsksTheQueryAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideReachesTheEffect",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideRemountsAKeyedEffect",
+      "Passed": true
+    }
+  ]
+}

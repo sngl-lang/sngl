@@ -59,7 +59,10 @@ type slotChildSynth struct {
 	// readHandles is every node handle something reads, which no lift may
 	// move behind a component boundary.
 	readHandles map[ir.Symbol]bool
-	n           int
+	// owned is every func a component owns, which the component it is lifted
+	// out of holds and the lifted one does not.
+	owned map[*ir.Func]bool
+	n     int
 }
 
 func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error {
@@ -69,6 +72,7 @@ func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error
 	st := &slotChildSynth{pkg: pkg, reactive: collectReactiveVars(pkg)}
 	st.cells = runtimeProps(pkg, rootComponent(pkg, opts))
 	st.readHandles = readNodeHandles(pkg)
+	st.owned = ownedFuncs(pkg)
 	// Rooted at the bodies a visual tree is written in. Reaching an
 	// imperative body under one costs nothing: only a view body holds a
 	// NodeInst, so a `for` in a handler has no top-level node to convert.
@@ -403,16 +407,36 @@ func paramsRead(stmts []ir.Stmt, params []*ir.Param) []*ir.Param {
 // boundary.
 //
 // A call reading one of local stays where it is, its reads lifted one by one:
-// its arguments name bindings the site does not have.
+// its arguments name bindings the site does not have. One that stays and calls
+// a func of the component the body is lifted out of calls it through a prop
+// holding it, since the lifted component holds no such func: the Pokédex's
+// grid row, built per copy, called its page's `label(entry)` by a name only
+// the page declares.
 func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 	_ = ir.Rewrite(n, func(node ir.Node) (ir.Node, error) {
 		switch x := node.(type) {
+		case *ir.Lambda:
+			// A callback writing the owner's state -- a record's handler a
+			// data slot's list carries -- travels whole too: lifted read by
+			// read, its write landed on the instance's copy of the var.
+			if !writesFree(x, local) || readsAny(x, local) {
+				return node, nil
+			}
+			p := l.prop("lambda#"+strconv.Itoa(l.uniq), x.ExprType(), x)
+			l.uniq++
+			return &ir.Ident{Name: p.Name, Type: x.ExprType(), Sym: p}, ir.SkipDir
 		case *ir.Call:
 			typ := x.ExprType()
 			// A render's raise travels whole too: the boundary that hears it
 			// is the site's, whose state the lifted body does not hold.
 			lifts := st.readsReactiveState(x) || x.ErrorMode == ir.ErrorRender
 			if typ == nil || typ.Kind == ir.TypeVoid || !lifts || readsAny(x, local) {
+				if x.Func != nil && st.owned[x.Func] {
+					fn := funcValue(x)
+					p := l.prop("func("+identityOf(x.Func)+")", fn.Type, fn)
+					x.Callee = &ir.Ident{Name: p.Name, Type: fn.Type, Sym: p}
+					x.Func = nil
+				}
 				return node, nil
 			}
 			key, ok := exprKey(x)
@@ -427,7 +451,7 @@ func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 			// its arguments stay written against the scope they were read in.
 			return &ir.Ident{Name: p.Name, Type: typ, Sym: p}, ir.SkipDir
 		case *ir.Ident:
-			if x.Sym == nil || !liftableSym(x.Sym) || local[x.Sym] || l.relayed[x.Sym] {
+			if x.Sym == nil || !liftableSym(x.Sym) || local[x.Sym] || l.relayed[x.Sym] || l.own[x.Sym] {
 				return node, nil
 			}
 			// The read as the site wrote it, before this walk repoints it, and
@@ -453,12 +477,14 @@ type lift struct {
 	// relayed is the parameters of the handlers left inside, which hand the
 	// host event's payload on and are nothing the site binds.
 	relayed map[ir.Symbol]bool
-	events  int
-	uniq    int
+	// own is the props the lift has declared, which a read already names.
+	own    map[ir.Symbol]bool
+	events int
+	uniq   int
 }
 
 func newLift(comp *ir.Component, inst *ir.NodeInst) *lift {
-	return &lift{comp: comp, inst: inst, seen: map[string]*ir.Param{}, relayed: map[ir.Symbol]bool{}}
+	return &lift{comp: comp, inst: inst, seen: map[string]*ir.Param{}, relayed: map[ir.Symbol]bool{}, own: map[ir.Symbol]bool{}}
 }
 
 func (l *lift) prop(key string, typ *ir.Type, value ir.Expr) *ir.Param {
@@ -467,9 +493,63 @@ func (l *lift) prop(key string, typ *ir.Type, value ir.Expr) *ir.Param {
 	}
 	p := &ir.Param{Name: "__p" + strconv.Itoa(len(l.seen)), Type: typ}
 	l.seen[key] = p
+	l.own[p] = true
 	l.comp.Props = append(l.comp.Props, &ir.Prop{Name: p.Name, Type: p.Type, Sym: p})
 	l.inst.Props = append(l.inst.Props, ir.Arg{Name: p.Name, Value: value})
 	return p
+}
+
+// funcValue is the func c calls as a value: a lambda calling it as c does,
+// with what it is handed in place of c's arguments. A method's receiver is
+// the site's, as c's is, and no parameter of the lambda.
+func funcValue(c *ir.Call) *ir.Lambda {
+	fn := c.Func
+	wrapper := &ir.Func{Return: fn.Return}
+	call := &ir.Call{Type: c.Type, Func: fn, Receiver: c.Receiver, ReceiverArg: c.ReceiverArg, TypeArgs: c.TypeArgs}
+	for i, a := range c.Args {
+		np := &ir.Param{Name: "__fnArg" + strconv.Itoa(i), Type: a.Value.ExprType()}
+		wrapper.Params = append(wrapper.Params, np)
+		call.Args = append(call.Args, ir.CallArg{Name: a.Name, Value: &ir.Ident{Name: np.Name, Type: np.Type, Sym: np}})
+	}
+	if fn.Return == nil || fn.Return.Kind == ir.TypeVoid {
+		wrapper.Block = []ir.Stmt{&ir.CallStmt{Call: call}}
+	} else {
+		wrapper.Block = []ir.Stmt{&ir.Return{Value: call}}
+	}
+	return &ir.Lambda{Type: &ir.Type{Kind: ir.TypeFunc, Sig: wrapper.FuncSig()}, Func: wrapper}
+}
+
+// writesFree reports whether lam's body writes a binding declared outside
+// local and lam itself.
+func writesFree(lam *ir.Lambda, local map[ir.Symbol]bool) bool {
+	if lam.Func == nil {
+		return false
+	}
+	own := map[ir.Symbol]bool{}
+	for _, p := range lam.Func.Params {
+		own[p] = true
+	}
+	found := false
+	_ = ir.Walk(lam.Func.Block, func(n ir.Node) error {
+		var target ir.Expr
+		switch x := n.(type) {
+		case *ir.LocalVar:
+			own[x.Sym] = true
+			return nil
+		case *ir.Assign:
+			target = x.Target
+		case *ir.Toggle:
+			target = x.Target
+		default:
+			return nil
+		}
+		if sym := exprRoot(target); sym != nil && liftableSym(sym) && !local[sym] && !own[sym] {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 func readsAny(e ir.Expr, syms map[ir.Symbol]bool) bool {

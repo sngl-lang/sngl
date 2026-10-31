@@ -1,0 +1,11 @@
+// What a person does to a phone, done by a test: for a test on android, and
+// on html as a phone's browser has it, and on no other target.
+//
+// `sngl:test` is portable -- a test reads the state a component holds and
+// fires the events it declares, and every target answers the same. A gesture
+// is not an event a component declares: it is the platform's to turn into one,
+// as a swipe across a tabs' panels chooses the next tab. So a test makes the
+// gesture here, a fixture importing this package builds for the targets that
+// answer it, and what the test then asserts is what the platform made of it.
+// Each function takes the node a test reaches by its `#id`, `c.strip` or one
+// copy of a loop's, `c.row[1]`.

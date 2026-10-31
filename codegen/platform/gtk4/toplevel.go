@@ -163,8 +163,9 @@ func emitBuildUIApp(b *strings.Builder, buildBuf *strings.Builder, first string,
 // gtk4rt.RunWindows then creates the toplevels attached to it. `run` is what
 // puts them on screen: a program that wrote `@run` and never called it runs
 // the loop with none shown.
-func emitGTK4AppMain(b *strings.Builder, pkg *ir.Package) {
+func emitGTK4AppMain(b *strings.Builder, pkg *ir.Package, open string) {
 	b.WriteString("\nfunc main() {\n")
+	b.WriteString(open)
 	b.WriteString("\tgtk4rt.Init()\n")
 	b.WriteString("\tm := New()\n")
 	b.WriteString("\tm.buildWidgetTree()\n")

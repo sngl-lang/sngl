@@ -1,0 +1,64 @@
+// A generic function or component may read and write its own type parameter
+// as JSON: the type is the one each call binds, and a call binding one with no
+// JSON form is refused there (error_json.sngl). The interpreter reads the
+// binding off the call, through a generic calling another.
+
+import json "sngl:json"
+import . "sngl:test"
+import . "sngl:ui"
+
+enum Kind {
+    #[json.identifier("hard-cover")]
+    hardcover
+    paperback
+}
+
+struct Book {
+    id   int
+    kind Kind
+}
+
+func roundTrip[T any](value T, fallback T) => match var got = json.decode[T](json.encode(value)) {
+    ok => got
+    failed => fallback
+}
+
+func written[T any](value T) => json.encode(value)
+
+func twice[U any](value U) => written(value) + written(value)
+
+func readOr[T any](text string, fallback T) => match var got = json.decode[T](text) {
+    ok => got
+    failed => fallback
+}
+
+component stored[T any](text string, :value T) node {
+    var last = ""
+    effect(@mount { value = readOr(text, value) })
+    effect(on=value, @update(v) { last = json.encode(v) })
+    text #shown(value=last)
+}
+
+component shelf node {
+    var book = Book{id=0, kind=Kind.paperback}
+    var count = 0
+    stored(text=`{"id": 7, "kind": "hard-cover"}`, :value=book)
+    stored(text=`3`, :value=count)
+}
+
+func testFunctions(t Test) {
+    t.assert(roundTrip(Book{id=1, kind=Kind.hardcover}, Book{id=0, kind=Kind.paperback}).kind == Kind.hardcover)
+    t.assert(roundTrip([1, 2], []) == [1, 2])
+    t.assert(written(Kind.hardcover) == `"hard-cover"`)
+    var none option[int] = null
+    t.assert(twice(none) == "nullnull")
+    t.assert(readOr(`"x"`, 5) == 5)
+}
+
+func testComponent(t Test, c shelf) {
+    t.assert(c.book.id == 7)
+    t.assert(c.book.kind == Kind.hardcover)
+    t.assert(c.count == 3)
+    c.count = 4
+    t.assert(c.count == 4)
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -247,7 +248,14 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		// topLevel holds the widget ids no AppendChild consumed: a harness
 		// root's content. At the application root every node was attached.
 		tops := tr.topLevel
-		if !appRoot {
+		window := slices.IndexFunc(tops, func(ref string) bool { return tr.specs[ref] != nil && tr.specs[ref].toplevel })
+		switch {
+		case appRoot:
+		case window >= 0:
+			// A harness's root holding a window shows its content, as the
+			// application's root does; a Toplevel is no container fyne draws.
+			fmt.Fprintf(&buildBuf, "\tcontent := fyne.CanvasObject(%s.Container)\n", gc.EvalExpr(topRef(tr, tops[window])))
+		default:
 			switch len(tops) {
 			case 0:
 				// A purely reactive body has no top-level widgets; a
@@ -434,9 +442,13 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 
 	if cfg.Main {
+		if codegen.UsesSettings(ctx.Pkg) {
+			gc.RequireImport(golang.SettingsImportPath)
+			gc.RequireImport(golang.FyneSettingsImportPath)
+		}
 		if appRoot {
 			gc.RequireImport(fyneLayoutImportPath)
-			emitIRAppMain(&b, ctx.Pkg)
+			emitIRAppMain(&b, cfg, ctx.Pkg)
 		} else {
 			if ctx.Pkg.Run != nil {
 				gc.RequireImport(fyneLayoutImportPath)
@@ -797,13 +809,22 @@ func renderIRComponentMethod(
 	return b.String(), compFields, startLabel, startContainer
 }
 
+// fyneApp is how a main makes its app: with an ID where it keeps settings,
+// since fyne keeps Preferences under the app's ID, and keeps none without one.
+func fyneApp(cfg Config, pkg *ir.Package) string {
+	if open := golang.OpenSettings(pkg, "fyneprefs.Of(a)"); open != "" {
+		return fmt.Sprintf("\ta := app.NewWithID(%q)\n", golang.SettingsApp(cfg.Name)) + open
+	}
+	return "\ta := app.New()\n"
+}
+
 func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Package) {
 	if pkg != nil && pkg.Run != nil {
 		emitIRRunMain(b, cfg, pkg)
 		return
 	}
 	b.WriteString("func main() {\n")
-	b.WriteString("\ta := app.New()\n")
+	b.WriteString(fyneApp(cfg, pkg))
 	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
 	b.WriteString("\tm := New()\n")
 	// fyne 2.7 lays out SetContent's tree against the *current* window
@@ -830,7 +851,7 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Packag
 // fyne keeps running with no window until something quits.
 func emitIRRunMain(b *strings.Builder, cfg Config, pkg *ir.Package) {
 	b.WriteString("func main() {\n")
-	b.WriteString("\ta := app.New()\n")
+	b.WriteString(fyneApp(cfg, pkg))
 	b.WriteString("\tm := New()\n")
 	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
 	b.WriteString("\tw.SetContent(m.BuildUI())\n")

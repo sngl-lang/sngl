@@ -34,7 +34,12 @@ func firstError(diags []ir.Diagnostic) string {
 
 func compileAndVerify(t *testing.T, doc *ast.Document, pkg *ir.Package) []byte {
 	t.Helper()
-	ctx := codegen.NewCodegenCtx(&codegen.Request{Doc: doc, Pkg: pkg}, "android")
+	return compileAndVerifyWith(t, doc, pkg, nil)
+}
+
+func compileAndVerifyWith(t *testing.T, doc *ast.Document, pkg *ir.Package, opts *ir.StructLit) []byte {
+	t.Helper()
+	ctx := codegen.NewCodegenCtx(&codegen.Request{Doc: doc, Pkg: pkg, Options: opts}, "android")
 	src, err := CompileIR(ctx, Config{})
 	// A second window is a program this platform refuses by design, and the
 	// fixture harness compiles every fixture in testdata for it.
@@ -117,11 +122,16 @@ func TestFixtures(t *testing.T) {
 			}
 			gen := &Generator{}
 			kotlinLang := codegen.LookupLang("kotlin")
-			pkg = ir.ClonePackage(pkg)
-			if err := lower.Lower(pkg, codegen.CapsOrNone(kotlinLang.LanguageIdentifier(), gen.PlatformIdentifier()), lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
-				t.Fatalf("lower: %v", err)
+			for _, root := range testutil.Roots(pkg) {
+				t.Run(root, func(t *testing.T) {
+					rooted, opts := testutil.RootAt(pkg, root)
+					rooted = ir.ClonePackage(rooted)
+					if err := lower.Lower(rooted, codegen.CapsOrNone(kotlinLang.LanguageIdentifier(), gen.PlatformIdentifier()), lower.Options{Platform: gen.PlatformIdentifier(), RootComponent: root}); err != nil {
+						t.Fatalf("lower: %v", err)
+					}
+					compileAndVerifyWith(t, doc, rooted, opts)
+				})
 			}
-			compileAndVerify(t, doc, pkg)
 		})
 	}
 }

@@ -117,7 +117,6 @@ type Style struct {
 	Opacity        *float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -152,7 +151,7 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.held = Style{PaddingX: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 51, G: 102, B: 153, A: 255}), FontSize: snglSome(Measurement{Em: 1}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 238, G: 238, B: 238, A: 255}), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+	m.held = Style{PaddingX: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 51, G: 102, B: 153, A: 255}), FontSize: snglSome(Measurement{Em: 1}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 238, G: 238, B: 238, A: 255}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	m.visible__inst0 = true
 	return m
 }
@@ -390,4 +389,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:93c00242adbf56b7447410038a2774d0
+pass sha256:49557ebf1be3d013eb50acf118ceb1ad

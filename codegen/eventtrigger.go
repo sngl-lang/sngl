@@ -33,3 +33,13 @@ func EventTriggerTarget(c *ir.Call) (EventTrigger, bool) {
 // more than once, given the name of the invoker for the node: it takes the
 // copy's key (ir.CopyKey) ahead of the event's arguments.
 func InvokerAt(name string) string { return name + "At" }
+
+// EnumMemberName is the member e names where it is one written out, as
+// `mobile.Toward.left` is.
+func EnumMemberName(e ir.Expr) (string, bool) {
+	id, ok := e.(*ir.Ident)
+	if !ok || id.Member == "" || id.Type == nil || id.Type.Kind != ir.TypeEnum {
+		return "", false
+	}
+	return id.Member, true
+}

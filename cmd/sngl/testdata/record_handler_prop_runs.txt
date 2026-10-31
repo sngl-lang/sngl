@@ -1,0 +1,140 @@
+# A prop reading records whose handler writes what the prop reads, run on every
+# target a test can execute on: picking an entry writes the language, the
+# summary drawn from the records follows, and an entry of the list the update
+# rebuilt patches the summary in its turn. testdata/record_handler_prop.txtar
+# is the code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+
+const languages = ["en", "fr", "de"]
+
+component picker(items ...component ui.menuItem) ui.node {
+    ui.vbox {
+        ui.text #summary(value=items.map(func(it) => it.checked ? "[{it.label}]" : it.label).join(" "))
+        for var it = items {
+            ui.button #pick(text=it.label, @click {
+                it.select()
+            })
+        }
+    }
+}
+
+component app root {
+    var language = "en"
+
+    ui.window(title="Languages") {
+        picker #p {
+            for var l = languages {
+                ui.menuItem(label=l, checked=l == language, @select {
+                    language = l
+                })
+            }
+        }
+    }
+}
+
+app()
+
+func testPickingAnEntryUpdatesTheSummary(t test.Test, c app) {
+    t.assert(c.p.summary.value == "[en] fr de")
+    c.p.pick[1].click()
+    t.assert(c.language == "fr")
+    t.assert(c.p.summary.value == "en [fr] de")
+}
+
+func testAnEntryOfTheUpdatedListUpdatesItAgain(t test.Test, c app) {
+    c.p.pick[1].click()
+    c.p.pick[2].click()
+    t.assert(c.language == "de")
+    t.assert(c.p.summary.value == "en fr [de]")
+}
+-- testrun/android/kotlin/app.sngl/app/1 --
+sha256:15517b99844e90c0a68e36c83ed7c9c0
+{
+  "results": [
+    {
+      "Desc": "AnEntryOfTheUpdatedListUpdatesItAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "PickingAnEntryUpdatesTheSummary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/app/1 --
+sha256:3839c9ec25205af17baffd813964d7f7
+{
+  "results": [
+    {
+      "Desc": "AnEntryOfTheUpdatedListUpdatesItAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "PickingAnEntryUpdatesTheSummary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/app/1 --
+sha256:b9c6ac69d432c95cea6d16d35f29c31f
+{
+  "results": [
+    {
+      "Desc": "AnEntryOfTheUpdatedListUpdatesItAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "PickingAnEntryUpdatesTheSummary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/app/1 --
+sha256:4fb691997f09aea5686c82eae70a8fa9
+{
+  "results": [
+    {
+      "Desc": "AnEntryOfTheUpdatedListUpdatesItAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "PickingAnEntryUpdatesTheSummary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/app/1 --
+sha256:6bfff5b84d9cb65169c6e62f2cbbc7c6
+{
+  "results": [
+    {
+      "Desc": "AnEntryOfTheUpdatedListUpdatesItAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "PickingAnEntryUpdatesTheSummary",
+      "Passed": true
+    }
+  ]
+}

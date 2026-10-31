@@ -140,7 +140,6 @@ type Style struct {
 	Opacity        *float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -451,8 +450,8 @@ func (m *Model) __n7_click_handler() {
 	} else {
 		__lt16 = snglcolor.Color{R: 51, G: 51, B: 51, A: 128}
 	}
-	m.__n3__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt16), FontSize: snglSome(Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}), FontWeight: "unset", FontStyle: "italic", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
-	m.__n4__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 16, G: 16, B: 16, A: 255}), BorderRadius: snglSome(Measurement{Px: Measurement{Px: 2}.Px * float64(m.active), Em: Measurement{Px: 2}.Em * float64(m.active), Rem: Measurement{Px: 2}.Rem * float64(m.active)}), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	m.__n3__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt16), FontSize: snglSome(Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}), FontWeight: "unset", FontStyle: "italic", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
+	m.__n4__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 16, G: 16, B: 16, A: 255}), BorderRadius: snglSome(Measurement{Px: Measurement{Px: 2}.Px * float64(m.active), Em: Measurement{Px: 2}.Em * float64(m.active), Rem: Measurement{Px: 2}.Rem * float64(m.active)}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	for __inst1_live_ui, _ := range m.__inst1_live {
 		m.__inst1_live[__inst1_live_ui].Set__p1(m.active)
 	}
@@ -514,11 +513,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3 = widget.NewLabel("")
 	m.__n3__box = fynelayout.NewBox(m.__n3)
 	m.__n3.SetText("hint")
-	m.__n3__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt17), FontSize: snglSome(Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}), FontWeight: "unset", FontStyle: "italic", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	m.__n3__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt17), FontSize: snglSome(Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}), FontWeight: "unset", FontStyle: "italic", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	m.__n2.Add(m.__n3__box)
 	m.__n4 = fynelayout.NewVBox()
 	m.__n4__box = fynelayout.NewBox(m.__n4)
-	m.__n4__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 16, G: 16, B: 16, A: 255}), BorderRadius: snglSome(Measurement{Px: Measurement{Px: 2}.Px * float64(m.active), Em: Measurement{Px: 2}.Em * float64(m.active), Rem: Measurement{Px: 2}.Rem * float64(m.active)}), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	m.__n4__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 16, G: 16, B: 16, A: 255}), BorderRadius: snglSome(Measurement{Px: Measurement{Px: 2}.Px * float64(m.active), Em: Measurement{Px: 2}.Em * float64(m.active), Rem: Measurement{Px: 2}.Rem * float64(m.active)}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	m.__n9 = widget.NewLabel("")
 	m.__n9__box = fynelayout.NewBox(m.__n9)
 	m.__n9.SetText("static")
@@ -569,7 +568,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__n0 = widget.NewButton("", nil)
 	c.__n0__box = fynelayout.NewBox(c.__n0)
 	c.__n0.SetText(c.__prop_label)
-	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt10, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt11), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt10, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt11), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	c.__n0.OnTapped = func() {
 		c.on = !c.on
 		var __lt12 string
@@ -584,7 +583,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		} else {
 			__lt13 = snglcolor.Color{B: 255, A: 255}
 		}
-		c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt12, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt13), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+		c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt12, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt13), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	}
 	c.Root = c.__n0__box
 	return c
@@ -629,7 +628,7 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 int) *__child
 	c.__n1 = widget.NewLabel("")
 	c.__n1__box = fynelayout.NewBox(c.__n1)
 	c.__n1.SetText(c.__prop___p0)
-	c.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt15), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	c.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt15), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	c.Root = c.__n1__box
 	return c
 }
@@ -647,7 +646,7 @@ func (c *__child0Instance) Set__p1(__v int) {
 	} else {
 		__lt14 = snglcolor.Color{G: 255, A: 255}
 	}
-	c.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt14), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	c.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt14), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 }
 
 func (c *__child0Instance) Destroy() {}
@@ -661,4 +660,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:610214069bfd9d9b2e358b75c394b92b
+pass sha256:00e6f886e7d79c1ff4c757d74cc1c0d5

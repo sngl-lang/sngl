@@ -1,5 +1,8 @@
 // A node's `#id` names the instance the argument list is building, so an
-// argument of that list cannot read it. All three forms of a node that carries
+// argument of that list cannot read it: a name the id would have shadowed
+// reads what it shadows (testdata/node_id_not_in_own_args.sngl), and one
+// nothing else declares is a recursive declaration. A handler runs once the
+// node is built, and reads it. All three forms of a node that carries
 // an id are held to it: a window, an element-ref call, and the `context`
 // declaration, whose id is its own declaration.
 //
@@ -20,4 +23,10 @@ component probe node {
 
 window #h(title=h.title) { // ERROR(check) "#h names the node this argument list declares"
     probe()
+}
+
+component closer node {
+    var seen = ""
+    button #b(text="close", @click { seen = b.text })
+    button #c(text=c.text) // ERROR(check) "#c names the node this argument list declares, so its arguments cannot read it (recursive declaration)"
 }

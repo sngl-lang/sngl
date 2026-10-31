@@ -128,7 +128,6 @@ data class Style(
     var opacity: Double? = null,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.UNSET,
-    var overflow: SnglOverflow = SnglOverflow.UNSET,
     var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
@@ -252,16 +251,6 @@ enum class SnglDisplay(private val sngl: String) {
     INLINEFLEX("inlineFlex"),
     NONE("none"),
     GRID("grid");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglOverflow(private val sngl: String) {
-    UNSET("unset"),
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
 
     override fun toString(): String = sngl
 }
@@ -394,4 +383,4 @@ val snglFlexShare: (Float) -> Modifier = { w ->
     Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
 }
 -- run/kotlin/android --
-pass sha256:2fa635af752718af3660184e7eeb32fc
+pass sha256:050e2b255908e2ecce821aeda92233dc

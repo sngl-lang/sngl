@@ -131,7 +131,6 @@ data class Style(
     var opacity: Double? = null,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.UNSET,
-    var overflow: SnglOverflow = SnglOverflow.UNSET,
     var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
@@ -259,16 +258,6 @@ enum class SnglDisplay(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
-enum class SnglOverflow(private val sngl: String) {
-    UNSET("unset"),
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
-
-    override fun toString(): String = sngl
-}
-
 enum class SnglListStyle(private val sngl: String) {
     UNSET("unset"),
     NONE("none"),
@@ -293,13 +282,13 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Column(modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "heavy", modifier = flexed(styleModifier(Style(fontWeight = SnglFontWeight.BOLD), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = FontWeight.Bold, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
-            Text(text = "light", modifier = flexed(styleModifier(Style(fontWeight = SnglFontWeight.LIGHTER), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = FontWeight.Light, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
-            Text(text = "slanted", modifier = flexed(styleModifier(Style(fontStyle = SnglFontStyle.ITALIC), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = FontStyle.Italic, fontFamily = null, textAlign = TextAlign.Unspecified)))
-            Text(text = "also slanted", modifier = flexed(styleModifier(Style(fontStyle = SnglFontStyle.OBLIQUE), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = FontStyle.Italic, fontFamily = null, textAlign = TextAlign.Unspecified)))
-            Text(text = "code", modifier = flexed(styleModifier(Style(fontFamily = "monospace"), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = FontFamily.Monospace, textAlign = TextAlign.Unspecified)))
-            Text(text = "a face nobody registered", modifier = flexed(styleModifier(Style(fontFamily = "Comic Sans"), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = FontFamily.Default, textAlign = TextAlign.Unspecified)))
+        Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
+            Text(text = "heavy", modifier = flexed(styleModifier(Style(fontWeight = SnglFontWeight.BOLD), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = FontWeight.Bold, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
+            Text(text = "light", modifier = flexed(styleModifier(Style(fontWeight = SnglFontWeight.LIGHTER), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = FontWeight.Light, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
+            Text(text = "slanted", modifier = flexed(styleModifier(Style(fontStyle = SnglFontStyle.ITALIC), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = FontStyle.Italic, fontFamily = null, textAlign = TextAlign.Unspecified)))
+            Text(text = "also slanted", modifier = flexed(styleModifier(Style(fontStyle = SnglFontStyle.OBLIQUE), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = FontStyle.Italic, fontFamily = null, textAlign = TextAlign.Unspecified)))
+            Text(text = "code", modifier = flexed(styleModifier(Style(fontFamily = "monospace"), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = FontFamily.Monospace, textAlign = TextAlign.Unspecified)))
+            Text(text = "a face nobody registered", modifier = flexed(styleModifier(Style(fontFamily = "Comic Sans"), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = FontFamily.Default, textAlign = TextAlign.Unspecified)))
             Text(text = "plain", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
@@ -359,5 +348,124 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
 fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
 
 fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
+-- out/kotlin/android/SnglFlexible.kt --
+package test.sngl.app
+
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.node.LayoutModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.TraversableNode
+import androidx.compose.ui.node.invalidateMeasurement
+import androidx.compose.ui.node.traverseAncestors
+import androidx.compose.ui.unit.Constraints
+
+// snglFlexible is a vbox's, hbox's or scroll's Row or Column, which a child
+// taking a share of it marks with snglFlexed. Compose measures a weight in an
+// unbounded axis -- a Row in a horizontal scroll, a Column in a vertical one --
+// to nothing, where html's flex takes the content's size; so a marked line
+// with no bound along it is bounded by its content's, and the weights share
+// that. A marked line also marks the line it sits in across it, as html's
+// stretched row fills its column: a column with no bound across it is then as
+// wide as its widest row, which each row fills, so the rows' shares line up as
+// a table's columns. Only a marked one asks, since asking costs a pass over
+// the subtree.
+fun Modifier.snglFlexible(horizontal: Boolean): Modifier = this then FlexibleElement(horizontal)
+
+fun Modifier.snglFlexed(): Modifier = this then FlexedElement
+
+private object FlexibleKey
+
+private data class FlexibleElement(val horizontal: Boolean) : ModifierNodeElement<FlexibleNode>() {
+    override fun create() = FlexibleNode(horizontal)
+    override fun update(node: FlexibleNode) {
+        node.horizontal = horizontal
+        node.invalidateMeasurement()
+    }
+}
+
+private class FlexibleNode(var horizontal: Boolean) : Modifier.Node(), LayoutModifierNode, TraversableNode {
+    override val traverseKey: Any get() = FlexibleKey
+    private var outer: FlexibleNode? = null
+    private var flexed = 0
+    private var across = 0
+
+    fun flex(by: Int) {
+        val was = flexed > 0
+        flexed += by
+        if (was != flexed > 0) cross(if (flexed > 0) 1 else -1)
+        invalidateMeasurement()
+    }
+
+    private fun cross(by: Int) {
+        outer?.takeIf { it.horizontal != horizontal }?.let {
+            it.across += by
+            it.invalidateMeasurement()
+        }
+    }
+
+    // Compose runs a parent's onAttach after its children's, so a line may
+    // already be marked when it finds the line it sits in.
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            outer = it as FlexibleNode
+            false
+        }
+        if (flexed > 0) cross(1)
+    }
+
+    override fun onDetach() {
+        if (flexed > 0) cross(-1)
+        outer = null
+    }
+
+    override fun MeasureScope.measure(measurable: Measurable, constraints: Constraints): MeasureResult {
+        val placeable = measurable.measure(bounded(measurable, constraints))
+        return layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }
+
+    private fun bounded(measurable: Measurable, c: Constraints): Constraints {
+        var out = c
+        // A SubcomposeLayout -- a pager, a lazy list -- refuses to be asked
+        // its intrinsic size; the line then measures as Compose would.
+        try {
+            if ((flexed > 0 && horizontal || across > 0 && !horizontal) && !out.hasBoundedWidth) {
+                out = out.copy(maxWidth = maxOf(out.minWidth, measurable.maxIntrinsicWidth(out.maxHeight)))
+            }
+            if ((flexed > 0 && !horizontal || across > 0 && horizontal) && !out.hasBoundedHeight) {
+                out = out.copy(maxHeight = maxOf(out.minHeight, measurable.maxIntrinsicHeight(out.maxWidth)))
+            }
+        } catch (_: IllegalStateException) {
+            return c
+        }
+        return out
+    }
+}
+
+private object FlexedElement : ModifierNodeElement<FlexedNode>() {
+    override fun create() = FlexedNode()
+    override fun update(node: FlexedNode) {}
+    override fun equals(other: Any?) = other === this
+    override fun hashCode() = 0
+}
+
+private class FlexedNode : Modifier.Node() {
+    private var line: FlexibleNode? = null
+
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            line = it as FlexibleNode
+            false
+        }
+        line?.flex(1)
+    }
+
+    override fun onDetach() {
+        line?.flex(-1)
+        line = null
+    }
+}
 -- run/kotlin/android --
-pass sha256:46ab16b5101a9129435ee8acbd431b35
+pass sha256:a41909c417029130ace9ee23fa0104f4

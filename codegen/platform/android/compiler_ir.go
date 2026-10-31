@@ -56,7 +56,10 @@ type Config struct {
 	// accent is Color as the program wrote it, before withDefaults fills in
 	// the launcher's default: the theme's primary where it is set, and the
 	// device's own colors where it is not.
-	accent    string
+	accent string
+	// settings is whether the program keeps settings, which MainActivity
+	// then opens.
+	settings  bool
 	defaulted bool
 }
 
@@ -576,6 +579,10 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			rewrites[fn.Name] = "state." + fn.Name
 		}
 		kc.IdentRewrites = rewrites
+		kc.StateVars = map[ir.Symbol]bool{}
+		for _, ov := range ctx.ModelState() {
+			kc.StateVars[ov.Sym] = true
+		}
 		testRewrites = maps.Clone(rewrites)
 	}
 
@@ -938,6 +945,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		// This one renders the window's own content. A sub-component's
 		// composable never does, so the cutout padding belongs here alone.
 		atRoot: true,
+		icon:   launcherIcon(cfg),
 	}
 
 	screen, err := codegen.SoleScreen(view, intrinsicNS+"Screen", "android", screenPos)

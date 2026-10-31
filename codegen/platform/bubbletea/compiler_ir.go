@@ -63,6 +63,30 @@ type widgetBind struct {
 	target string
 	get    string
 	set    string
+	prop   string
+	// handler is the bind's own handler where it does more than write the
+	// target -- the effect lowering's marks and settle for an effect keyed
+	// on it -- so a write-back runs it rather than assigning alone.
+	handler *ir.Func
+}
+
+func bindMethod(w widgetInfo, bd widgetBind) string { return "__" + w.fieldName + "_" + bd.prop }
+
+// writeBack writes a widget's value back into the var bd binds, at indent:
+// through the bind's handler where it has one, run only when the value
+// moved, since an assignment of the same value is a no-op.
+func writeBack(w widgetInfo, bd widgetBind, binds []irBind, indent string) string {
+	read := bindReadBack(w.fieldName, bd.get)
+	if bd.handler == nil {
+		return indent + "m." + bd.target + " = " + read + "\n"
+	}
+	moved := "__v != m." + bd.target
+	for _, b := range binds {
+		if b.name == bd.target && b.goType == "*time.Time" {
+			moved = "!(__v == m." + bd.target + " || __v != nil && m." + bd.target + " != nil && __v.Equal(*m." + bd.target + "))"
+		}
+	}
+	return indent + "if __v := " + read + "; " + moved + " {\n" + indent + "\tm." + bindMethod(w, bd) + "(__v)\n" + indent + "}\n"
 }
 
 // bindReadBack builds the Go expression reading a widget's value out of model
@@ -90,6 +114,15 @@ var widgetSyncGoTypes = map[string]struct{}{
 	"int":    {},
 	// An option[date], which tui.DateInput reads and writes.
 	"*time.Time": {},
+}
+
+func bindGoType(binds []irBind, target string) string {
+	for _, b := range binds {
+		if b.name == target {
+			return b.goType
+		}
+	}
+	return ""
 }
 
 // bindTargetSyncs keeps the constructor seed, the Set* setter and the Update
@@ -345,7 +378,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// An empty __focused prop (passFocusOrder did not run) means focus
 	// tracking is not active.
 	view := viewStmts(ctx)
-	loopsOf := widgetLoops(view)
+	loopsOf, tempsOf := widgetLoops(view), loopTemps(view)
 	codegen.WalkVisualTree(view, func(n *ir.NodeInst, _ int) bool {
 		if btIntrinsic(n) != "Widget" {
 			return false
@@ -364,16 +397,19 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		// first whose body assigns to a var, prop-named handler first.
 		var binds []widgetBind
 		for _, bm := range bp.Binds {
-			target := ""
+			bd := widgetBind{get: bm.Get, set: bm.Set, prop: bm.Prop}
 			for _, hname := range []string{bm.Prop, "input", "change", "select"} {
 				if h := codegen.NodeHandler(n, hname); h != nil && h.Func != nil {
 					if t := extractIRAssignTarget(h.Func.Block); t != "" {
-						target = t
+						bd.target = t
+						if h.WriteBack && len(h.Func.Block) > 1 {
+							bd.handler = h.Func
+						}
 						break
 					}
 				}
 			}
-			binds = append(binds, widgetBind{target: target, get: bm.Get, set: bm.Set})
+			binds = append(binds, bd)
 		}
 		if bp.Model.Pkg != "" {
 			gc.RequireImport(bp.Model.Pkg)
@@ -404,6 +440,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 		if loops := loopsOf[n]; len(loops) > 0 && len(bp.Binds) > 0 {
 			if lw := newLoopWidget(n, loops, bp.Binds[0].Prop); lw != nil {
+				lw.temps = tempsOf[loops[0]]
 				wi.loop, wi.focusExpr = lw, ""
 				for i := range wi.binds {
 					wi.binds[i].target = ""
@@ -754,6 +791,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 
 	if cfg.Main {
 		b.WriteString("func main() {\n")
+		if open := golang.OpenSettings(ctx.Pkg, golang.SettingsFile(cfg.Name)); open != "" {
+			gc.RequireImport(golang.SettingsImportPath)
+			b.WriteString(open)
+		}
 		b.WriteString("\tp := tea.NewProgram(New())\n")
 		if usesPictures(ctx.Pkg) {
 			// Any message draws the view again, which is all a picture that has
@@ -1021,6 +1062,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("\t\tswitch {\n")
 	b.WriteString("\t\tcase msg.Code == 'c' && msg.Mod == tea.ModCtrl:\n")
 	emitScreenClose(b, info, gc)
+	emitScreenBack(b, info, gc, hasOverlays)
 
 	// Escape closes the topmost open overlay. Overlays are listed in source
 	// order; the last-declared open one is closed first (a simple modal-over-
@@ -1112,7 +1154,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		fmt.Fprintf(b, "%s\tcmds = append(cmds, cmd)\n", fwdIndent)
 		for _, bd := range w.binds {
 			if bindTargetSyncs(info.binds, bd.target) {
-				fmt.Fprintf(b, "%s\tm.%s = %s\n", fwdIndent, bd.target, bindReadBack(w.fieldName, bd.get))
+				b.WriteString(writeBack(w, bd, info.binds, fwdIndent+"\t"))
 			}
 		}
 		if hasInput {
@@ -1169,7 +1211,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 // is open. Handlers inside an Overlay primitive get NO guard — overlay-content
 // buttons (e.g. a modal's Close) stay live while the overlay captures input.
 func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string, invokerSink btInvokerSink) {
-	emitIRButtonHandlersWalk(b, stmts, info, gc, bgGuard, false, invokerSink)
+	emitIRButtonHandlersWalk(b, stmts, loopTemps(stmts), info, gc, bgGuard, false, invokerSink)
 }
 
 // btInvokerSink records one (node, event) pair a test can drive. nil where
@@ -1178,10 +1220,11 @@ type btInvokerSink func(inv btEventInvoker)
 
 // emitIRButtonHandlersWalk traverses visual IR emitting KeyEnter cases for
 // button/checkbox handlers. A for-loop is a loop slot as a whole, answered by
-// emitLoopSlotHandlers. bgGuard is appended to each case unless inOverlay is
+// emitLoopSlotHandlers, which is handed the view's temps it reads (loopTemps).
+// bgGuard is appended to each case unless inOverlay is
 // set (overlay-content handlers stay unguarded so they keep working while the
 // overlay is open).
-func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string, inOverlay bool, invokerSink btInvokerSink) {
+func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, temps map[*ir.For][]ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string, inOverlay bool, invokerSink btInvokerSink) {
 	overlayGuard := bgGuard
 	if inOverlay {
 		overlayGuard = ""
@@ -1203,13 +1246,13 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.For:
-			emitLoopSlotHandlers(b, n, info, gc, overlayGuard, invokerSink)
+			emitLoopSlotHandlers(b, n, temps[n], info, gc, overlayGuard, invokerSink)
 		case *ir.If, *ir.Match:
 			for _, blk := range ir.TransparentBlocks(n) {
-				emitIRButtonHandlersWalk(b, *blk, info, gc, bgGuard, inOverlay, invokerSink)
+				emitIRButtonHandlersWalk(b, *blk, temps, info, gc, bgGuard, inOverlay, invokerSink)
 			}
 		case *ir.ErrorBoundary:
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, bgGuard, inOverlay, invokerSink)
+			emitIRButtonHandlersWalk(b, n.Children, temps, info, gc, bgGuard, inOverlay, invokerSink)
 		case *ir.NodeInst:
 			// Blueprint-driven activation: an inlined Styled primitive that
 			// carries Event records maps each event name to a key. The user's
@@ -1237,7 +1280,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			// descend into an Overlay primitive with inOverlay set (drops bgGuard).
 			childInOverlay := inOverlay || btIntrinsic(n) == "Overlay"
 			for _, s := range ir.SuppliedContent(n) {
-				emitIRButtonHandlersWalk(b, s.Body, info, gc, bgGuard, childInOverlay, invokerSink)
+				emitIRButtonHandlersWalk(b, s.Body, temps, info, gc, bgGuard, childInOverlay, invokerSink)
 			}
 		case *ir.SlotInst:
 			// Slot expansion happens elsewhere; no buttons inside the marker.
@@ -1397,9 +1440,21 @@ func emitBtDirectInvokers(b *strings.Builder, stmts []ir.Stmt, keyed []btEventIn
 		if _, ok := s.(*ir.For); ok {
 			return false
 		}
+		n, ok := s.(*ir.NodeInst)
+		// A window's back is esc, while it can go back.
+		if ok && programID(n) && btIntrinsic(n) == "Screen" && screenGoesBack(n) != nil && triggered[n.ID+".back"] && !done[n.ID+".back"] {
+			done[n.ID+".back"] = true
+			name := n.ID + "Back"
+			fmt.Fprintf(b, "// %s presses esc, the #%s window's way back; for tests.\n", name, n.ID)
+			fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
+			b.WriteString("\tnm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})\n")
+			b.WriteString("\t*m = nm.(Model)\n")
+			drawAfterUpdate(b)
+			b.WriteString("}\n\n")
+			return true
+		}
 		// A layout takes no input, so nothing else answers its events; a
 		// control's are its keys' and its widget's.
-		n, ok := s.(*ir.NodeInst)
 		if !ok || !programID(n) || extractBlueprint(n).Kind != bpLayout {
 			return true
 		}
@@ -1538,6 +1593,24 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 		if w.loop != nil {
 			continue
 		}
+		for _, bd := range w.binds {
+			if bd.handler == nil || !bindTargetSyncs(info.binds, bd.target) {
+				continue
+			}
+			hgc := gc
+			fmt.Fprintf(b, "func (m *Model) %s(__v %s) {\n", bindMethod(w, bd), bindGoType(info.binds, bd.target))
+			if len(bd.handler.Params) > 0 {
+				name := bd.handler.Params[0].Name
+				hgc = gc.WithLocal(name)
+				fmt.Fprintf(b, "\t%s := __v\n\t_ = %s\n", name, name)
+			}
+			for _, stmt := range bd.handler.Block {
+				for _, line := range hgc.EvalStmt(stmt) {
+					fmt.Fprintf(b, "\t%s\n", line)
+				}
+			}
+			b.WriteString("}\n\n")
+		}
 		// A widget whose only subscriber is its binding -- a cell the call
 		// site left unbound, or a `:value` with no handler -- still takes a
 		// test's value: into the widget, and back into the var the way
@@ -1558,7 +1631,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			fmt.Fprintf(b, "\tm.%s%s(v)\n", w.fieldName, val.set)
 			for _, bd := range w.binds {
 				if bindTargetSyncs(info.binds, bd.target) {
-					fmt.Fprintf(b, "\tm.%s = %s\n", bd.target, bindReadBack(w.fieldName, bd.get))
+					b.WriteString(writeBack(w, bd, info.binds, "\t"))
 				}
 			}
 			b.WriteString("}\n\n")
@@ -1596,7 +1669,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			// handler, so a handler reading the bound var reads the text.
 			for _, bd := range w.binds {
 				if bindTargetSyncs(info.binds, bd.target) {
-					fmt.Fprintf(b, "\tm.%s = %s\n", bd.target, bindReadBack(w.fieldName, bd.get))
+					b.WriteString(writeBack(w, bd, info.binds, "\t"))
 				}
 			}
 			fmt.Fprintf(b, "\tm.%s(v)\n}\n\n", widgetEventMethod(w, ev.name))
@@ -1790,6 +1863,30 @@ func emitScreenClose(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContex
 	b.WriteString("\t\t\t\treturn m, tea.Quit\n")
 	b.WriteString("\t\t\t}\n")
 	b.WriteString("\t\t\treturn m, nil\n")
+}
+
+// emitScreenBack is esc while the window can go back: its `@back`, where it
+// was given a way back (screenGoesBack). An open overlay takes esc first.
+func emitScreenBack(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext, hasOverlays bool) {
+	if info.screen == nil {
+		return
+	}
+	can := screenGoesBack(info.screen.Node)
+	h := codegen.NodeHandler(info.screen.Node, "back")
+	if can == nil || h == nil || h.Func == nil {
+		return
+	}
+	guard := ""
+	if hasOverlays {
+		guard = " && !overlayOpen"
+	}
+	fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEsc && (%s)%s:\n", gc.EvalExpr(can), guard)
+	for _, stmt := range h.Func.Block {
+		for _, line := range gc.EvalStmt(stmt) {
+			fmt.Fprintf(b, "\t\t\t%s\n", line)
+		}
+	}
+	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
 }
 
 func emitScreenClosedHandler(b *strings.Builder, n *ir.NodeInst, info *irAnalysis, gc *golang.GoIRContext, indent string) {

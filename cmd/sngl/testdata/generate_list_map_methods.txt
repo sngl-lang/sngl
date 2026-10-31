@@ -75,5 +75,5 @@ window {
     main
 }
 -- testrun/build/bubbletea/go/bt.sngl/1 --
-sha256:b7450bb035846d36b383d78d10522830
+sha256:f575a17c43df2448de6e1ac09868e3f5
 {}

@@ -25,7 +25,7 @@ import (
 //
 // Keyed by position, as a composable's state is by default: a list the program
 // reorders keeps each cell with the position rather than the element.
-func perCopyCells(at string, body []ir.Stmt, vars []*ir.Var, funcs []*ir.Func, loops []*ir.For) ([]ir.Stmt, error) {
+func perCopyCells(at string, body []ir.Stmt, vars []*ir.Var, funcs []*ir.Func, loops []*ir.For, rec *loopRecorders) ([]ir.Stmt, error) {
 	cells := map[*ir.Var]ir.Expr{}
 	for _, v := range vars {
 		init := v.Init
@@ -45,10 +45,11 @@ func perCopyCells(at string, body []ir.Stmt, vars []*ir.Var, funcs []*ir.Func, l
 		fn.Params = append(fn.Params, param)
 		fn.Block = rewriteCells(fn.Block, cells, keyed, temps, func() ir.Expr { return paramIdent(param) })
 	}
-	restore, err := keyEffectsByCopy(at, body, cells, keyed, temps, loops)
+	restore, err := keyEffectsByCopy(at, body, cells, keyed, temps, loops, rec)
 	if err != nil {
 		return nil, err
 	}
+	body = rec.insert(body)
 	body = rewriteCells(body, cells, keyed, temps, func() ir.Expr { return CopyKey(loops) })
 	restore()
 	passLoopVars(body, funcs, loops)
@@ -115,7 +116,7 @@ func uniqueCellTemps(stmts []ir.Stmt, seen map[string]bool) {
 // The handlers are rewritten here and held out of the body's rewrite, which
 // would otherwise route the cells it already routed a second time; restore
 // puts them back.
-func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keyed map[*ir.Func]*ir.Param, temps *int, loops []*ir.For) (restore func(), err error) {
+func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keyed map[*ir.Func]*ir.Param, temps *int, loops []*ir.For, rec *loopRecorders) (restore func(), err error) {
 	var held []func()
 	restore = func() {
 		for _, f := range held {
@@ -124,7 +125,7 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 	}
 	_ = ir.WalkStmts(body, func(s ir.Stmt) error {
 		n, ok := s.(*ir.NodeInst)
-		if !ok || !isEffectNode(n) || n.Enter || !handlersTouchCells(n, cells, keyed) {
+		if !ok || !isEffectNode(n) || n.Enter || !handlersTouchCells(n, cells, keyed) && !handlersReadLoops(n, loops) {
 			return nil
 		}
 		// Keyed by the copy already, by the splice of a component inside this
@@ -143,7 +144,7 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 					return &ir.Ident{Name: local.Name, Type: local.Type, Sym: local, Synthesized: true}
 				}
 				block = keyPartsFrom(block, loops, keyOf)
-				block = loopVarsFrom(block, loops, keyOf)
+				block = rec.bind(n, n.Handlers[i].Name, block, loops, keyOf)
 				fn.Block = nil
 				held = append(held, func() { fn.Block = block })
 			}
@@ -163,12 +164,12 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 		if on != nil {
 			pair := &ir.StructDef{Anon: true, Fields: []*ir.StructField{
 				{Name: "copy", Type: ir.TypString},
-				{Name: "on", Type: on.ExprType()},
+				{Name: ir.EffectOn, Type: on.ExprType()},
 			}}
 			keyType = pair.SymType()
 			key = &ir.StructLit{Type: keyType, Def: pair, Fields: []ir.FieldInit{
 				{Name: "copy", Value: key},
-				{Name: "on", Value: on},
+				{Name: ir.EffectOn, Value: on},
 			}}
 			n.Props = slices.DeleteFunc(n.Props, func(a ir.Arg) bool { return a.Name == ir.EffectOn })
 			if len(n.TypeArgs) > 0 {
@@ -203,13 +204,13 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 			if on != nil {
 				if len(h.Func.Params) > 0 {
 					was = h.Func.Params[0]
-					onOf = local(was.Name, was.Type, &ir.Select{Type: was.Type, Operand: paramIdent(param), Field: "on"})
+					onOf = local(was.Name, was.Type, &ir.Select{Type: was.Type, Operand: paramIdent(param), Field: ir.EffectOn})
 				}
 			}
 			h.Func.Params = []*ir.Param{param}
 			block := rewriteCells(h.Func.Block, cells, keyed, temps, func() ir.Expr { return CopyKey(loops) })
 			block = keyPartsFrom(block, loops, copyOf)
-			block = loopVarsFrom(block, loops, copyOf)
+			block = rec.bind(n, h.Name, block, loops, copyOf)
 			if was != nil {
 				block = newExprWalker(func(e ir.Expr) ir.Expr {
 					if id, ok := e.(*ir.Ident); ok && id.Sym == ir.Symbol(was) {
@@ -229,6 +230,19 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 		restore()
 	}
 	return restore, err
+}
+
+// copyPairOn is the `on` half of a key keyEffectsByCopy paired with the copy,
+// or nil for any other key. Where that half steps into the loop the copy is
+// made by, `rows[i].n`, the copy half adds nothing a write could change, so
+// the write reaches the copy through the cell the `on` half names: read as
+// one opaque struct, a write to one row ran every row's @update.
+func copyPairOn(key ir.Expr) ir.Expr {
+	lit, ok := key.(*ir.StructLit)
+	if !ok || lit.Def == nil || !lit.Def.Anon || len(lit.Fields) != 2 || lit.Fields[0].Name != "copy" || lit.Fields[1].Name != ir.EffectOn {
+		return nil
+	}
+	return lit.Fields[1].Value
 }
 
 // copyKeyName is the local an effect's handler reads its copy's key into
@@ -296,6 +310,243 @@ func keyPartsFrom(block []ir.Stmt, loops []*ir.For, key func() ir.Expr) []ir.Stm
 		return &ir.Index{Type: ir.TypString, Operand: split, Idx: intLiteralLit(k)}, nil
 	})
 	return block
+}
+
+// loopRecorders remembers, for each copy, what an effect's @unmount reads
+// through the loop variables -- a prop bound to one was substituted into it
+// as that read: `logger(name = row)` under `for var row` reads `row`, and
+// under `for var &row` the `rows[i].name` passRefLoop made of `row.name`. The
+// handler runs from the settle, outside the loops, and the list there no
+// longer holds a copy that left it: the @unmount of a removed row read "", or
+// an index out of range, where an instance reads the value it was last
+// handed.
+//
+// So each such effect is preceded by a recorder: an effect keyed on the copy
+// and those values together, whose @mount stores them in a cell keyed by the
+// copy. A change of value rekeys the recorder alone, and the @unmount reads
+// what it stored, the last values the copy was rendered with. A write through
+// a loop variable -- a two-way prop bound to `rows[i].count` -- still lands in
+// the list, at the index the recorder kept.
+type loopRecorders struct {
+	effect *ir.Component
+	pkg    *ir.Package
+	name   func(string) string
+	// before is each effect's recorder, inserted ahead of it.
+	before map[*ir.NodeInst]*ir.NodeInst
+	held   map[*ir.NodeInst]*loopRecord
+	// vars are the cells the recorders write, for the owner to declare.
+	vars []*ir.Var
+}
+
+type loopRecord struct {
+	cell  *ir.Var
+	key   *ir.Type
+	reads []string
+}
+
+// bind binds what block, n's handler for event, reads through a loop
+// variable for the copy key names. Every handler but @unmount runs while the
+// copy is in the list -- an @update runs before the bracket rekeys, so a
+// recorder would hand it the value from before the write -- and reads it
+// there (loopVarsFrom); an @unmount reads what n's recorder stored.
+func (rec *loopRecorders) bind(n *ir.NodeInst, event string, block []ir.Stmt, loops []*ir.For, key func() ir.Expr) []ir.Stmt {
+	if event != ir.EffectUnmount {
+		return loopVarsFrom(block, loops, key)
+	}
+	if len(loopVarsRead(block, loops)) == 0 {
+		return block
+	}
+	r := rec.record(n, loops)
+	locals := map[string]*ir.Var{}
+	var binds []ir.Stmt
+	block = replaceCopyReads(block, loops, func(k string, e ir.Expr) ir.Expr {
+		v := locals[k]
+		if v == nil {
+			i := slices.Index(r.reads, k)
+			t := e.ExprType()
+			v = &ir.Var{Name: fmt.Sprintf("__copied%d", i), Type: t, Synthesized: true}
+			stored := cellGet(r.cell, ir.ZeroExpr(r.key), key())
+			binds = append(binds, &ir.LocalVar{Name: v.Name, Type: t, Sym: v, Init: &ir.Select{Type: t, Operand: stored, Field: fmt.Sprintf("v%d", i)}})
+			locals[k] = v
+		}
+		return &ir.Ident{Name: v.Name, Type: v.Type, Sym: v, Synthesized: true}
+	})
+	at := 0
+	for i, st := range block {
+		if lv, ok := st.(*ir.LocalVar); ok && lv.Name == copyKeyName {
+			at = i + 1
+		}
+	}
+	return slices.Concat(block[:at], binds, block[at:])
+}
+
+// record is n's recorder: it stores every read through a loop variable n's
+// @unmount makes.
+func (rec *loopRecorders) record(n *ir.NodeInst, loops []*ir.For) *loopRecord {
+	if r := rec.held[n]; r != nil {
+		return r
+	}
+	def := &ir.StructDef{Anon: true, Fields: []*ir.StructField{{Name: "copy", Type: ir.TypString}}}
+	inits := []ir.FieldInit{{Name: "copy", Value: CopyKey(loops)}}
+	r := &loopRecord{}
+	for _, h := range n.Handlers {
+		if h.Func == nil || h.Name != ir.EffectUnmount {
+			continue
+		}
+		replaceCopyReads(deepCloneStmts(h.Func.Block), loops, func(k string, e ir.Expr) ir.Expr {
+			if !slices.Contains(r.reads, k) {
+				name := fmt.Sprintf("v%d", len(r.reads))
+				r.reads = append(r.reads, k)
+				def.Fields = append(def.Fields, &ir.StructField{Name: name, Type: e.ExprType()})
+				inits = append(inits, ir.FieldInit{Name: name, Value: deepCloneExpr(e)})
+			}
+			return e
+		})
+	}
+	r.key = def.SymType()
+	cellType := ir.MapOf(ir.TypString, r.key)
+	r.cell = &ir.Var{Name: rec.name("__copied"), Type: cellType, Init: &ir.MapLitIR{Type: cellType}, Synthesized: true}
+	param := &ir.Param{Name: "__rendered", Type: r.key}
+	recorder := &ir.NodeInst{Name: n.Name, Component: rec.effect, Props: []ir.Arg{
+		{Name: ir.EffectOn, Value: &ir.StructLit{Type: r.key, Def: def, Fields: inits}},
+	}, Handlers: []ir.EventHandler{{Name: ir.EffectMount, Func: &ir.Func{Pkg: rec.pkg, Params: []*ir.Param{param}, Block: []ir.Stmt{
+		&ir.Assign{
+			Target: &ir.Index{Type: r.key, Operand: cellIdent(r.cell), Idx: &ir.Select{Type: ir.TypString, Operand: paramIdent(param), Field: "copy"}},
+			Op:     ast.AssignSet,
+			Value:  paramIdent(param),
+		},
+	}}}}}
+	if rec.held == nil {
+		rec.held, rec.before = map[*ir.NodeInst]*loopRecord{}, map[*ir.NodeInst]*ir.NodeInst{}
+	}
+	rec.held[n], rec.before[n] = r, recorder
+	rec.vars = append(rec.vars, r.cell)
+	return r
+}
+
+// insert puts each recorder ahead of the effect it records for.
+func (rec *loopRecorders) insert(body []ir.Stmt) []ir.Stmt {
+	if len(rec.before) == 0 {
+		return body
+	}
+	return ir.RewriteBlocks(body, func(stmts []ir.Stmt) []ir.Stmt {
+		var out []ir.Stmt
+		for _, s := range stmts {
+			if n, ok := s.(*ir.NodeInst); ok && rec.before[n] != nil {
+				out = append(out, rec.before[n])
+				delete(rec.before, n)
+			}
+			out = append(out, s)
+		}
+		return out
+	})
+}
+
+// replaceCopyReads hands with each widest read in block that goes through a
+// variable of loops -- a chain of fields and indices from a var or a loop
+// variable, with a loop variable somewhere in it -- and puts what with
+// returns in its place. A write's target stays a place: only the reads it
+// indexes by are handed over.
+func replaceCopyReads(block []ir.Stmt, loops []*ir.For, with func(key string, e ir.Expr) ir.Expr) []ir.Stmt {
+	vars := map[*ir.LoopVar]bool{}
+	for _, fs := range loops {
+		for _, lv := range []*ir.LoopVar{fs.KeySym, fs.ValueSym} {
+			if lv != nil {
+				vars[lv] = true
+			}
+		}
+	}
+	var path func(ir.Expr) (string, bool, bool)
+	path = func(e ir.Expr) (key string, ok, viaLoop bool) {
+		switch x := e.(type) {
+		case *ir.Ident:
+			switch sym := x.Sym.(type) {
+			case *ir.LoopVar:
+				return "id(" + identityOf(sym) + ")", true, vars[sym]
+			case *ir.Var:
+				return "id(" + identityOf(sym) + ")", true, false
+			}
+		case *ir.Literal:
+			return "lit(" + x.Value + ")", true, false
+		case *ir.Select:
+			k, ok, via := path(x.Operand)
+			return k + "." + x.Field, ok, via
+		case *ir.Index:
+			k, ok, via := path(x.Operand)
+			ik, iok, ivia := path(x.Idx)
+			return k + "[" + ik + "]", ok && iok, via || ivia
+		}
+		return "", false, false
+	}
+	visit := func(nd ir.Node) (ir.Node, error) {
+		if e, ok := nd.(ir.Expr); ok {
+			if k, ok, via := path(e); ok && via {
+				return with(k, e), ir.SkipDir
+			}
+		}
+		return nd, nil
+	}
+	reads := func(e ir.Expr) ir.Expr {
+		if e == nil {
+			return nil
+		}
+		holder := []ir.Stmt{&ir.Return{Value: e}}
+		_ = ir.Rewrite(holder, visit)
+		return holder[0].(*ir.Return).Value
+	}
+	var place func(ir.Expr) ir.Expr
+	place = func(e ir.Expr) ir.Expr {
+		switch x := e.(type) {
+		case *ir.Select:
+			x.Operand = place(x.Operand)
+		case *ir.Index:
+			x.Operand = place(x.Operand)
+			x.Idx = reads(x.Idx)
+		}
+		return e
+	}
+	_ = ir.Rewrite(block, func(nd ir.Node) (ir.Node, error) {
+		switch x := nd.(type) {
+		case *ir.Assign:
+			x.Target, x.Value = place(x.Target), reads(x.Value)
+			return x, ir.SkipDir
+		case *ir.Toggle:
+			x.Target = place(x.Target)
+			return x, ir.SkipDir
+		case *ir.CallStmt:
+			if x.Call != nil && len(x.Call.Args) > 0 && mutatesReceiver(x.Call.Func) {
+				x.Call.Args[0].Value = place(x.Call.Args[0].Value)
+				for i := range x.Call.Args[1:] {
+					x.Call.Args[i+1].Value = reads(x.Call.Args[i+1].Value)
+				}
+				return x, ir.SkipDir
+			}
+		}
+		return visit(nd)
+	})
+	return block
+}
+
+// loopVarsRead is each variable of loops block reads, in the loops' order.
+func loopVarsRead(block []ir.Stmt, loops []*ir.For) []*ir.LoopVar {
+	seen := map[*ir.LoopVar]bool{}
+	_ = ir.Walk(block, func(nd ir.Node) error {
+		if id, ok := nd.(*ir.Ident); ok {
+			if lv, ok := id.Sym.(*ir.LoopVar); ok {
+				seen[lv] = true
+			}
+		}
+		return nil
+	})
+	var out []*ir.LoopVar
+	for _, fs := range loops {
+		for _, lv := range []*ir.LoopVar{fs.KeySym, fs.ValueSym} {
+			if lv != nil && seen[lv] && !slices.Contains(out, lv) {
+				out = append(out, lv)
+			}
+		}
+	}
+	return out
 }
 
 // loopVarsFrom binds each loop variable block reads -- a loop's index or its
@@ -419,6 +670,16 @@ func handlersTouchCells(n *ir.NodeInst, cells map[*ir.Var]ir.Expr, keyed map[*ir
 		})
 	}
 	return touches
+}
+
+// handlersReadLoops reports whether any of n's handlers reads a variable of
+// loops: a prop bound to one, `kept(name = row.id)` under `for var row`, is
+// substituted into the handler as that variable, which the settle running it
+// does not bind.
+func handlersReadLoops(n *ir.NodeInst, loops []*ir.For) bool {
+	return slices.ContainsFunc(n.Handlers, func(h ir.EventHandler) bool {
+		return h.Func != nil && len(loopVarsRead(h.Func.Block, loops)) > 0
+	})
 }
 
 // passLoopVars hands each func the loop variables it reads as parameters.

@@ -103,9 +103,11 @@ type reactivityState struct {
 	// are the page's, or nil. inTest says the walk is in a test's body, and
 	// wrote is the function a test calls after writing each var
 	// (testWriteUpdates).
-	root   *ir.Component
-	inTest bool
-	wrote  map[*ir.Var]*ir.Func
+	root        *ir.Component
+	inTest      bool
+	wrote       map[*ir.Var]*ir.Func
+	setters     map[setterKey]*ir.Func
+	setterFuncs map[*ir.Func]bool
 	// err holds the first fatal lowering diagnostic (e.g. an unsupported
 	// nested reactive structure). Recorded rather than panicked so the
 	// build fails with a positioned compile error; the partially-built IR
@@ -228,6 +230,8 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		held:         make(map[*ir.Component][]*slotInstance),
 		root:         rootComponent(pkg, opts),
 		wrote:        map[*ir.Var]*ir.Func{},
+		setters:      map[setterKey]*ir.Func{},
+		setterFuncs:  map[*ir.Func]bool{},
 	}
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
@@ -262,7 +266,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		st.owner = compOwner{comp}
 		comp.Stmts = st.rewriteAndInject(comp.Stmts)
 		for _, f := range comp.Funcs {
-			if injected[f] {
+			if injected[f] || st.setterFuncs[f] {
 				continue
 			}
 			injected[f] = true
@@ -298,7 +302,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		st.owner = o
 	}
 	for _, f := range pkg.Funcs {
-		if owned[f] || injected[f] {
+		if owned[f] || injected[f] || st.setterFuncs[f] {
 			continue
 		}
 		injected[f] = true
@@ -1432,9 +1436,11 @@ func (st *reactivityState) reachable(v *ir.Var) ([]reactiveProp, []reactiveSlot,
 	if o, ok := st.owner.(pkgOwner); ok && o.root == ir.AppParent {
 		inComp = true
 	}
+	// A component the page's refresh reaches holds its nodes and slots
+	// itself, so no writer outside it names them, a package func included.
 	foreign := func(o reactivityOwner) bool {
-		_, other := o.(compOwner)
-		return inComp && other && st.owner != o
+		c, other := o.(compOwner)
+		return other && st.owner != o && (inComp || st.refresh.reaches(c.c, v))
 	}
 	var props []reactiveProp
 	for _, p := range st.reverseDeps[v] {
@@ -1513,7 +1519,7 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 			if rebuilt[p.NodeID] {
 				continue
 			}
-			out = append(out, &ir.CallStmt{Call: &ir.Call{
+			out = append(out, st.propSetter(p, fieldRewrite, &ir.CallStmt{Call: &ir.Call{
 				Type: ir.TypVoid,
 				Func: st.intrinsics[ir.NodeOpUpdateComponent],
 				Args: []ir.CallArg{
@@ -1521,10 +1527,10 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 					{Value: &ir.Literal{Type: ir.TypString, Value: p.Key}},
 					{Value: value},
 				},
-			}})
+			}}))
 			continue
 		}
-		out = append(out, &ir.Assign{
+		out = append(out, st.propSetter(p, fieldRewrite, &ir.Assign{
 			Target: &ir.Select{
 				Type:    propType(p.Node, p.Key, p.Expr),
 				Operand: nodeRef(),
@@ -1532,7 +1538,7 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 			},
 			Op:    ast.AssignSet,
 			Value: value,
-		})
+		}))
 	}
 	// After every prop the live instances could absorb, so a rebuild that
 	// reads a sibling node's state reads the state this update settled on.
@@ -1556,6 +1562,71 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 		}})
 	}
 	return out
+}
+
+// propSetter hoists write into a function of p's owner where p's expression
+// holds a handler writing state: spliced in place, the update would hold the
+// handler it is spliced into (design/families.md). The function is never
+// injected into; its handler is the node's own, injected with the body.
+func (st *reactivityState) propSetter(p reactiveProp, fieldRewrite map[ir.Symbol]ir.Expr, write ir.Stmt) ir.Stmt {
+	if len(fieldRewrite) > 0 || !sameScope(p.owner, st.owner) || !st.holdsWriter(p.Expr) {
+		return write
+	}
+	key := setterKey{p.Node, p.Key}
+	f := st.setters[key]
+	if f == nil {
+		f = &ir.Func{
+			Name:        "__set" + strings.TrimLeft(p.NodeID, "_") + "_" + p.Key,
+			Return:      ir.TypVoid,
+			Purity:      ir.PurityMutates,
+			Synthesized: true,
+			Block:       []ir.Stmt{write},
+		}
+		st.setters[key] = f
+		st.setterFuncs[f] = true
+		p.owner.addFunc(f)
+	}
+	return callOf(f)
+}
+
+// The package is walked as the application's body and again for its funcs,
+// as owners whose roots differ.
+func sameScope(a, b reactivityOwner) bool {
+	pa, aPkg := a.(pkgOwner)
+	pb, bPkg := b.(pkgOwner)
+	if aPkg && bPkg {
+		return pa.pkg == pb.pkg
+	}
+	return a == b
+}
+
+type setterKey struct {
+	node *ir.NodeInst
+	prop string
+}
+
+func (st *reactivityState) holdsWriter(e ir.Expr) bool {
+	found := false
+	_ = ir.Walk(e, func(n ir.Node) error {
+		var target ir.Expr
+		switch x := n.(type) {
+		case *ir.Assign:
+			target = x.Target
+		case *ir.Toggle:
+			target = x.Target
+		case *ir.CallStmt:
+			target = mutatingCallReceiver(x.Call)
+		}
+		if target == nil {
+			return nil
+		}
+		if v, _ := st.assignTargetVar(target); v != nil {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // rebuildsFor decides, for one update, which instances at a fixed position it

@@ -111,16 +111,16 @@ func sameVarMap(x, y map[string]*ir.Var) bool {
 // build and for the funcs a document's writes are dropped from; a document's
 // own body is walked for its own.
 func TestWindowSharedWalksTheScriptOnce(t *testing.T) {
-	writeTitle := func() ir.Stmt {
+	writeVisible := func() ir.Stmt {
 		return &ir.Assign{
-			Target: &ir.Select{Operand: &ir.Ident{Name: "page"}, Field: "title"},
-			Value:  &ir.Literal{Type: ir.TypString, Value: "x"},
+			Target: &ir.Select{Operand: &ir.Ident{Name: "page"}, Field: "visible"},
+			Value:  &ir.Literal{Type: ir.TypBool, Value: "false"},
 		}
 	}
 	create := &ir.Func{Name: ir.NodeOpCreateNode, Intrinsic: ir.NodeOpCreateNode}
 	shared := &ir.Func{Name: "shared", Block: []ir.Stmt{
 		&ir.LocalVar{Name: "w", Init: &ir.Call{Func: create, Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: windowElement}}}}},
-		writeTitle(),
+		writeVisible(),
 	}}
 	pkg := &ir.Package{Funcs: []*ir.Func{shared}}
 	ws := newWindowShared("", nil)
@@ -135,7 +135,7 @@ func TestWindowSharedWalksTheScriptOnce(t *testing.T) {
 	}
 
 	doc := &ir.NodeInst{ID: "page"}
-	handler := &ir.Func{Block: []ir.Stmt{writeTitle()}}
+	handler := &ir.Func{Block: []ir.Stmt{writeVisible()}}
 	body := []ir.Stmt{&ir.NodeInst{Name: "div", Handlers: []ir.EventHandler{{Name: "click", Func: handler}}}}
 	ws.respellWindowWrites(pkg, doc, body)
 	if len(shared.Block) != 1 || len(handler.Block) != 0 {

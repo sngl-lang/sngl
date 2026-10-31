@@ -220,6 +220,14 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 		names = append(names, v.Name)
 	}
 	ctx := g.ctx.ForComponent(comp).WithLocals(names...)
+	// A prop keeps the name its call sites bind (passReservedNames), so one
+	// JavaScript reserves -- settings.kept's `default` -- is a local of
+	// another spelling.
+	for _, p := range comp.Props {
+		if local := javascript.SafeIdent(p.Name); local != p.Name {
+			ctx = ctx.WithRenamedLocal(p.Name, local)
+		}
+	}
 	ctx.ClosureMethods = true
 	jc := javascript.NewIRContext(ctx)
 
@@ -240,7 +248,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 			// esbuild rejected the whole page.
 			read = fmt.Sprintf("%s ?? (%s)", read, jc.EvalExpr(p.Default))
 		}
-		fmt.Fprintf(b, "\tlet %s = %s;\n", p.Name, read)
+		fmt.Fprintf(b, "\tlet %s = %s;\n", javascript.SafeIdent(p.Name), read)
 	}
 	for _, v := range comp.Vars {
 		// __root is the wrapper, already bound above.

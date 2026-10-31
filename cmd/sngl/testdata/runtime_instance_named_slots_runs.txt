@@ -266,7 +266,7 @@ window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:56bd6af7269e4e7bce486f32e7409fb4
+sha256:2860bf6c69e4e7cba015d0873d44eb50
 {
   "results": [
     {
@@ -279,7 +279,7 @@ sha256:56bd6af7269e4e7bce486f32e7409fb4
   }
 }
 -- testrun/bubbletea/go/rebind.sngl/main/1 --
-sha256:5fe32fa1bca1029a7af1a8c52fd88b79
+sha256:74d7ed3c44e52907be327a1ea8f587f6
 {
   "results": [
     {

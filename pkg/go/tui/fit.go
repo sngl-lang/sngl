@@ -17,9 +17,6 @@ type Fit struct {
 	// written, none broken, CSS's pre. A line the box is too narrow for is cut
 	// at its edge, a terminal having nothing beyond the box to draw it on.
 	Wrap int
-	// Clip cuts what is taller than the box's height inside its frame, where
-	// lipgloss lets it grow the box past the height.
-	Clip bool
 	// Hidden draws nothing.
 	Hidden bool
 }
@@ -29,27 +26,16 @@ func Render(look lipgloss.Style, fit Fit, text string) string {
 	if fit.Hidden {
 		return ""
 	}
-	w, h := Inner(look, 0, 0)
-	switch {
-	case fit.Wrap == 1 || fit.Wrap == 2:
+	if fit.Wrap == 1 || fit.Wrap == 2 {
 		if fit.Wrap == 1 {
 			text = strings.ReplaceAll(text, "\n", " ")
 		}
-		if w > 0 {
+		if w, _ := Inner(look, 0, 0); w > 0 {
 			lines := strings.Split(text, "\n")
 			for i, l := range lines {
 				lines[i] = ansi.Truncate(l, w, "")
 			}
 			text = strings.Join(lines, "\n")
-		}
-	case fit.Clip && w > 0:
-		// Wrapped here rather than by look, so the lines cut below are the
-		// lines drawn.
-		text = lipgloss.Wrap(text, w, "")
-	}
-	if fit.Clip && h > 0 {
-		if lines := strings.Split(text, "\n"); len(lines) > h {
-			text = strings.Join(lines[:h], "\n")
 		}
 	}
 	return look.Render(text)

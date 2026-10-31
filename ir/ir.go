@@ -205,6 +205,14 @@ type Package struct {
 	// passComponentProps, whose setter is the one write it gets.
 	PropReports map[*Param][]PropReport `json:"-"`
 
+	// RecordPicks are the calls in a test that fire an event on a record a
+	// node's data slot holds -- `c.main.menu[1].children[2].select()`, an
+	// entry of a window's menu -- by the path each was written with: noted by
+	// passTestReach as it answers the path with the records the call site
+	// wrote, and read by the inliner, which presses what the node draws for
+	// the record where it draws something (lower.NameRecordPresses).
+	RecordPicks map[*Call]*RecordPick `json:"-"`
+
 	// Run is the build's function for the target's `@run` handler: it takes
 	// the command line and the host's `run`, and the host's own entry point
 	// calls it before anything the program renders exists. Nil where the
@@ -213,6 +221,15 @@ type Package struct {
 	// RunPos is where the handler Run was made from is written, which a host
 	// names when the handler calls `run` a second time.
 	RunPos ast.Pos `json:"-"`
+}
+
+// RecordPick is the path a test reached a record by: the select naming the
+// node, the data slot read at each level and the index into it.
+type RecordPick struct {
+	Root  *Select
+	Slots []string
+	Idx   []Expr
+	Event string
 }
 
 // PropReport is one effect a prop's setter marks written and settles.
@@ -719,8 +736,8 @@ type Func struct {
 	Purity         Purity
 	Const          bool `json:",omitempty"`
 	IsTest         bool
-	Reads          []*Var // vars read (directly or via called functions)
-	Writes         []*Var // vars mutated (directly or via called functions)
+	Reads          []*Var // vars the body reads itself; what it calls reads is the callee's
+	Writes         []*Var // vars the body mutates itself, likewise
 	HasContextArg  bool
 	HasErrorReturn bool
 	CanError       bool // set by effect analysis; true if body raises or calls a CanError func

@@ -914,6 +914,7 @@ under `lib/` is one package, `lib/<path>` being `sngl:<path>`:
 | `sngl:math`         | `pi`, `tau`                                                                                        |
 | `sngl:async`        | `start`, `do`                                                                                      |
 | `sngl:dialog`       | `Alert`, `File`                                                                                    |
+| `sngl:settings`     | `kept`, `load`, `save` and the `store` context: values an app keeps from one run to the next       |
 | `sngl:test`         | `Test`                                                                                             |
 | `sngl:i18n`         | the translation surface `$"…"` lowers to                                                           |
 | `sngl:macro`        | the marks a package writes to describe its own declarations (`foreign`, …)                         |
@@ -2047,9 +2048,13 @@ context-naming declaration tag; it is never a selection field nor written on
 its own as an operand.
 
 A handle is for reading. A node's properties may not be assigned through it
-(see [Assignment](#assignment)), and a node may not read its own `#id` in its
-own arguments (`ui.text #t(value = t.value)`), since the id names the instance
-that argument list is building. A handle that is read may not be rendered more
+(see [Assignment](#assignment)), and a node's own arguments may not read its
+`#id`, since the id names the instance that argument list is building: a name
+there reads what the id would have shadowed -- `ui.scroll #both(direction=both)`
+is the enum member -- and one nothing else declares is a recursive
+declaration (`ui.text #t(value = t.value)`). A handler among the arguments runs
+once the node is built, and reads it like any other code; so does the node's
+content. A handle that is read may not be rendered more
 than once — two copies of one body would share it, and neither read could say
 which it meant.
 
@@ -2128,10 +2133,10 @@ ui.window {
 }
 ```
 
-An effect also **reports writes** to what `on` reads. `@update(v)` runs after
-each settle in which something wrote it -- an assignment, a list mutation, a
-write to a field or an element below it -- and is handed the value `on` then
-has; it does not run on mount. When `on` reads a list held in a cell (a var, a
+An effect also **reports writes** to what `on` reads, through the functions it
+calls too. `@update(v)` runs after each settle in which something wrote it --
+an assignment, a list mutation, a write to a field or an element below it --
+and is handed the value `on` then has; it does not run on mount. When `on` reads a list held in a cell (a var, a
 field of one, an element bound with `&`), `@insert(at, item)`,
 `@set(at, item)`, `@remove(at, item)` and `@clear` report that list's changes
 one by one, in the order made and before `@update`. A write none of them

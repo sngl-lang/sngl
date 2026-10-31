@@ -1,0 +1,106 @@
+# A window's menu whose entries an `if` adds after the first frame: picking
+# Save runs its handler, which the window's title reads, on every target.
+#
+# The bar's `if menu.length() > 0` cannot be settled, so html built the bar as
+# an instance at run time, and lifting it made each value the menu's records
+# read a prop of their own -- `saved` with them -- so Save's handler wrote the
+# instance's copy and the pick ran nothing anyone saw, with no error
+# (liftValues now carries such a handler whole). The condition counts the
+# same records, handlers and all, and the walk translating the platform's
+# intrinsics never entered a condition, so their `UpdateComponent` for the
+# title reached JavaScript raw. And on bubbletea, which draws no menu, the pick
+# calls the handler read off the list the branch builds, and NoTernary hoisted
+# no ternary out of a callee.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import "sngl:test"
+import ui "sngl:ui"
+
+component app root {
+    var deep = false
+    var saved = 0
+
+    ui.window #main(title="Saves {saved}") {
+        component menu {
+            if deep {
+                ui.menuItem(label="File") {
+                    ui.menuItem(label="Save", @select { saved += 1 })
+                }
+            }
+        }
+        ui.button #dive(text="dive", @click { deep = true })
+    }
+}
+
+func testAPickInAMenuShownLaterRuns(t test.Test, c app) {
+    c.dive.click()
+    c.main.menu[0].select()
+    c.main.menu[0].children[0].select()
+    t.assert(c.saved == 1)
+    t.assert(c.main.title == "Saves 1")
+}
+
+app()
+-- testrun/android/kotlin/app.sngl/app/1 --
+sha256:e72ae4d21190183e50c88f5a9ef669f3
+{
+  "results": [
+    {
+      "Desc": "APickInAMenuShownLaterRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/app/1 --
+sha256:ecd474b2cea329b8240e55c279f2abc3
+{
+  "results": [
+    {
+      "Desc": "APickInAMenuShownLaterRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/app/1 --
+sha256:dbef4a5439511d028a9af88e01b39da8
+{
+  "results": [
+    {
+      "Desc": "APickInAMenuShownLaterRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/app/1 --
+sha256:affedcdda153a542531e8ad64d2d11a8
+{
+  "results": [
+    {
+      "Desc": "APickInAMenuShownLaterRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/app/1 --
+sha256:7e64ddefbcb2f5473c2bd3af4a99bb74
+{
+  "results": [
+    {
+      "Desc": "APickInAMenuShownLaterRuns",
+      "Passed": true
+    }
+  ]
+}

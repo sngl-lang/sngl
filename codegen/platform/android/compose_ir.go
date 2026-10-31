@@ -21,6 +21,9 @@ type irComposeContext struct {
 	indent int
 	// screen is the window the view draws, which the system back closes.
 	screen *codegen.Screen
+	// icon is the launcher icon's resource, which a window's app bar shows
+	// where it is given no favicon, or "" where the output has none.
+	icon string
 	// atRoot marks the window's own content, which is the node the display
 	// cutout has to be kept out of.
 	atRoot bool
@@ -630,6 +633,10 @@ func (cc *irComposeContext) slotArgs(n *ir.NodeInst, comp *ir.Component) []strin
 		}
 		sc := n.Slots[slot.Name]
 		if sc == nil {
+			continue
+		}
+		if len(slot.Params) > 0 {
+			args = append(args, slot.Name+" = "+cc.slotLambda(slot, sc, sc.Body))
 			continue
 		}
 		body := cc.renderNested(sc.Body)

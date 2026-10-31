@@ -125,7 +125,6 @@ data class Style(
     var opacity: Double? = null,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.UNSET,
-    var overflow: SnglOverflow = SnglOverflow.UNSET,
     var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
@@ -253,16 +252,6 @@ enum class SnglDisplay(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
-enum class SnglOverflow(private val sngl: String) {
-    UNSET("unset"),
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
-
-    override fun toString(): String = sngl
-}
-
 enum class SnglListStyle(private val sngl: String) {
     UNSET("unset"),
     NONE("none"),
@@ -287,24 +276,26 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Column(modifier = Modifier.safeDrawingPadding()) {
-            Row(modifier = flexed(styleModifier(Style(alignItems = SnglAlignment.CENTER), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "HP", modifier = flexed(styleModifier(Style(width = Measurement(px = 120.0)), true), null, { w: Float -> Modifier.weight(w) }), style = LocalTextStyle.current.merge(TextStyle.Default))
+        Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
+            Row(modifier = flexed(styleModifier(Style(alignItems = SnglAlignment.CENTER), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }).snglFlexible(true), verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "HP", modifier = flexed(styleModifier(Style(width = Measurement(px = 120.0)), true), null, { w: Float -> Modifier.weight(w).snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
                 LinearProgressIndicator(progress = fun(): Float {
                     return 0.1764706f
-                }, modifier = flexed(styleModifier(Style(flex = 1.0), true), 1.0, { w: Float -> Modifier.weight(w) }))
+                }, modifier = flexed(styleModifier(Style(flex = 1.0), true), 1.0, { w: Float -> Modifier.weight(w).snglFlexed() }))
             }
-            Row(modifier = Modifier) {
-                Button(onClick = {}, modifier = flexed(styleModifier(Style(flex = 1.0), false), 1.0, { w: Float -> Modifier.weight(w).fillMaxHeight() }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+            Row(modifier = Modifier.snglFlexible(true)) {
+                Button(onClick = {}, modifier = flexed(styleModifier(Style(flex = 1.0), false), 1.0, { w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = "7", modifier = Modifier)
                 }
-                Button(onClick = {}, modifier = flexed(styleModifier(Style(flex = 1.0), false), 1.0, { w: Float -> Modifier.weight(w).fillMaxHeight() }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                Button(onClick = {}, modifier = flexed(styleModifier(Style(flex = 1.0), false), 1.0, { w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = "8", modifier = Modifier)
                 }
             }
         }
     }
 }
+
+fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
 
 fun flexed(m: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if (((flex == null) || (flex!! <= 0.0))) m else m.then(share(flex!!.toFloat())))
 
@@ -357,8 +348,125 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     return m
 }
 
-fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
-
 fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
+-- out/kotlin/android/SnglFlexible.kt --
+package test.sngl.app
+
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.node.LayoutModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.TraversableNode
+import androidx.compose.ui.node.invalidateMeasurement
+import androidx.compose.ui.node.traverseAncestors
+import androidx.compose.ui.unit.Constraints
+
+// snglFlexible is a vbox's, hbox's or scroll's Row or Column, which a child
+// taking a share of it marks with snglFlexed. Compose measures a weight in an
+// unbounded axis -- a Row in a horizontal scroll, a Column in a vertical one --
+// to nothing, where html's flex takes the content's size; so a marked line
+// with no bound along it is bounded by its content's, and the weights share
+// that. A marked line also marks the line it sits in across it, as html's
+// stretched row fills its column: a column with no bound across it is then as
+// wide as its widest row, which each row fills, so the rows' shares line up as
+// a table's columns. Only a marked one asks, since asking costs a pass over
+// the subtree.
+fun Modifier.snglFlexible(horizontal: Boolean): Modifier = this then FlexibleElement(horizontal)
+
+fun Modifier.snglFlexed(): Modifier = this then FlexedElement
+
+private object FlexibleKey
+
+private data class FlexibleElement(val horizontal: Boolean) : ModifierNodeElement<FlexibleNode>() {
+    override fun create() = FlexibleNode(horizontal)
+    override fun update(node: FlexibleNode) {
+        node.horizontal = horizontal
+        node.invalidateMeasurement()
+    }
+}
+
+private class FlexibleNode(var horizontal: Boolean) : Modifier.Node(), LayoutModifierNode, TraversableNode {
+    override val traverseKey: Any get() = FlexibleKey
+    private var outer: FlexibleNode? = null
+    private var flexed = 0
+    private var across = 0
+
+    fun flex(by: Int) {
+        val was = flexed > 0
+        flexed += by
+        if (was != flexed > 0) cross(if (flexed > 0) 1 else -1)
+        invalidateMeasurement()
+    }
+
+    private fun cross(by: Int) {
+        outer?.takeIf { it.horizontal != horizontal }?.let {
+            it.across += by
+            it.invalidateMeasurement()
+        }
+    }
+
+    // Compose runs a parent's onAttach after its children's, so a line may
+    // already be marked when it finds the line it sits in.
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            outer = it as FlexibleNode
+            false
+        }
+        if (flexed > 0) cross(1)
+    }
+
+    override fun onDetach() {
+        if (flexed > 0) cross(-1)
+        outer = null
+    }
+
+    override fun MeasureScope.measure(measurable: Measurable, constraints: Constraints): MeasureResult {
+        val placeable = measurable.measure(bounded(measurable, constraints))
+        return layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }
+
+    private fun bounded(measurable: Measurable, c: Constraints): Constraints {
+        var out = c
+        // A SubcomposeLayout -- a pager, a lazy list -- refuses to be asked
+        // its intrinsic size; the line then measures as Compose would.
+        try {
+            if ((flexed > 0 && horizontal || across > 0 && !horizontal) && !out.hasBoundedWidth) {
+                out = out.copy(maxWidth = maxOf(out.minWidth, measurable.maxIntrinsicWidth(out.maxHeight)))
+            }
+            if ((flexed > 0 && !horizontal || across > 0 && horizontal) && !out.hasBoundedHeight) {
+                out = out.copy(maxHeight = maxOf(out.minHeight, measurable.maxIntrinsicHeight(out.maxWidth)))
+            }
+        } catch (_: IllegalStateException) {
+            return c
+        }
+        return out
+    }
+}
+
+private object FlexedElement : ModifierNodeElement<FlexedNode>() {
+    override fun create() = FlexedNode()
+    override fun update(node: FlexedNode) {}
+    override fun equals(other: Any?) = other === this
+    override fun hashCode() = 0
+}
+
+private class FlexedNode : Modifier.Node() {
+    private var line: FlexibleNode? = null
+
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            line = it as FlexibleNode
+            false
+        }
+        line?.flex(1)
+    }
+
+    override fun onDetach() {
+        line?.flex(-1)
+        line = null
+    }
+}
 -- run/kotlin/android --
-pass sha256:015a5c9cfe90eec37b0048c42a514129
+pass sha256:a9378774f2b578098818b89fa3f207dd

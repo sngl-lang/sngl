@@ -298,7 +298,7 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 
 func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err error) {
 	c.wrapped = wrapped
-	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), scrolls: collectScrolls(c.ctx.Pkg), toplevelIcons: map[string]string{}}
+	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), scrolls: collectScrolls(c.ctx.Pkg), menuEntries: collectPrimitives(c.ctx.Pkg, menuEntryTag), backs: collectPrimitives(c.ctx.Pkg, backTag), tabPages: collectPrimitives(c.ctx.Pkg, tabPageTag), toplevelIcons: map[string]string{}}
 	if !wrapped {
 		if err := refuseCgoVisibleWrites(c.ctx.Pkg, c.shared.toplevels); err != nil {
 			c.shared.fail(err)
@@ -439,6 +439,15 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 			cgoIcon = c.shared.toplevelIcons[appChildren[0]]
 		}
 	}
+	// A harness's root component holding a window shows that window, as the
+	// application's root does, rather than its box inside one of its own.
+	window := cgoWindow
+	if !appRoot {
+		if i := slices.IndexFunc(topLevelRefs, func(ref string) bool { return c.shared.toplevels[ref] }); i >= 0 {
+			window = topLevelRefs[i]
+			cgoIcon = c.shared.toplevelIcons[window]
+		}
+	}
 	// The Model struct needs the __root field whenever emitBuildUI will emit
 	// the synthetic wrapper; needsRootWrapper mirrors its conditions.
 	if appRoot && c.wrapped {
@@ -470,7 +479,7 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 		}
 		emitBuildUIApp(&buildUIBuf, &buildBuf, first, widgetFieldNames(widgetFields))
 	} else {
-		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, cgoWindow, cgoIcon, widgetFieldNames(widgetFields))
+		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, window, cgoIcon, c.shared.toplevels, widgetFieldNames(widgetFields))
 	}
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
@@ -520,6 +529,7 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 
 	var modelBuf, callbacksBuf strings.Builder
 	writeModelHead(&modelBuf, td)
+	td.Settings = c.cfg.Main && codegen.UsesSettings(c.ctx.Pkg)
 	writeCallbacksHead(&callbacksBuf, td)
 	modelBuf.WriteString(buildUIBuf.String())
 	modelBuf.WriteString(eventInvokersBuf.String())
@@ -1007,6 +1017,19 @@ func collectScrolls(pkg *ir.Package) map[string]bool {
 	return out
 }
 
+// collectPrimitives is every id of a primitive of tag, for the reason
+// collectToplevels is.
+func collectPrimitives(pkg *ir.Package, tag string) map[string]bool {
+	_, prims := collectNodeTags(pkg)
+	out := map[string]bool{}
+	for id, t := range prims {
+		if t == tag {
+			out[id] = true
+		}
+	}
+	return out
+}
+
 func collectNodeTags(pkg *ir.Package) (map[string]string, map[string]string) {
 	out := map[string]string{}
 	prims := map[string]string{}
@@ -1286,9 +1309,9 @@ func isWindowClass(cType string) bool {
 // widget refs not consumed by an AppendChild are parented into m.__root,
 // except when the sole top-level ref is itself a window-class widget, which
 // BuildUI returns directly.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, window, icon string, fields map[string]bool) {
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, window, icon string, toplevels, fields map[string]bool) {
 	if wrapped {
-		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, "", fields)
+		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, window, toplevels, fields)
 		return
 	}
 	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
@@ -1632,19 +1655,20 @@ func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, w string, wr
 // emitGTK4Main appends the GTK application bootstrap to callbacks.go, whose
 // preamble is declarations only, so the //export snglActivate can coexist.
 func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package, app bool) error {
+	open := golang.OpenSettings(pkg, golang.SettingsFile(cfg.Name))
 	if app {
-		emitGTK4AppMain(b, pkg)
+		emitGTK4AppMain(b, pkg, open)
 		return nil
 	}
 	if pkg != nil && pkg.Run != nil {
 		if !wrapped {
 			return errors.New("gtk4: @run needs the gtk4rt entry point, and this program's generated code calls into cgo directly")
 		}
-		emitGTK4RunMainWrapped(b, pkg)
+		emitGTK4RunMainWrapped(b, pkg, open)
 		return nil
 	}
 	if wrapped {
-		emitGTK4MainWrapped(b, pkg.Teardown)
+		emitGTK4MainWrapped(b, pkg.Teardown, open)
 		return nil
 	}
 	teardown := pkg != nil && pkg.Teardown != nil
@@ -1667,6 +1691,7 @@ func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package,
 	b.WriteString("}\n\n")
 	b.WriteString("var snglActivateSignal = C.CString(\"activate\")\n\n")
 	b.WriteString("func main() {\n")
+	b.WriteString(open)
 	b.WriteString("\truntime.LockOSThread()\n")
 	// G_APPLICATION_NON_UNIQUE avoids needing an app-id, which
 	// gtk_application_new otherwise requires to be reverse-DNS-valid.

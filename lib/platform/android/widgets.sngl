@@ -12,14 +12,31 @@ import . "sngl:internal/marks"
 // --- The window ---
 
 // The window's `@error` is the outermost boundary of what it renders, and
-// catches whether or not the call site handles one.
-const component ui.window[platform](visible, @error, @closed, content) {
-    Screen(visible=visible, onBack=func() {
+// catches whether or not the call site handles one. Its menu's entries are
+// drawn two deep: an action and its DropdownMenu.
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, content, favicon, menu) {
+    Screen(visible=visible, title=title, canGoBack=canGoBack, onUp=func() { back() }, onBack=func() {
         visible = false
         closed()
     }) {
         boundary(@error(e) { error(e) }) {
             content
+        }
+        component icon {
+            if !favicon.empty {
+                SnglImage(modifier=modifier.width(dpOf(24.0)).height(dpOf(24.0))) {
+                    favicon
+                }
+            }
+        }
+        component actions {
+            for var i, it = menu {
+                SnglMenuAction(label=it.label, enabled=!it.disabled, hasEntries=it.children.length() > 0, modifier=modifier, onClick=func() { it.select() }) {
+                    for var j, sub = it.children {
+                        SnglMenuEntry(label=sub.label, enabled=!sub.disabled, checked=sub.checked, modifier=modifier, onClick=func() { sub.select() })
+                    }
+                }
+            }
         }
     }
 }
@@ -28,11 +45,11 @@ const component ui.window[platform](visible, @error, @closed, content) {
 
 const component ui.vbox[platform](style, children) {
     Column(
-        modifier = modifierOf(style, flexShare),
+        modifier = modifierOf(style, flexShare).snglFlexible(false),
         verticalArrangement = columnArrangement(style),
         horizontalAlignment = columnAlignment(style.alignItems),
     ) {
-        flexShare(stretches(style) ? func(w float32) => modifier.weight(w).fillMaxWidth() : func(w float32) => modifier.weight(w)) {
+        flexShare(stretches(style) ? func(w float32) => modifier.weight(w).fillMaxWidth().snglFlexed() : func(w float32) => modifier.weight(w).snglFlexed()) {
             children
         }
     }
@@ -40,11 +57,11 @@ const component ui.vbox[platform](style, children) {
 
 const component ui.hbox[platform](style, children) {
     Row(
-        modifier = modifierOf(style, flexShare),
+        modifier = modifierOf(style, flexShare).snglFlexible(true),
         horizontalArrangement = rowArrangement(style),
         verticalAlignment = rowAlignment(style.alignItems),
     ) {
-        flexShare(stretches(style) ? func(w float32) => modifier.weight(w).fillMaxHeight() : func(w float32) => modifier.weight(w)) {
+        flexShare(stretches(style) ? func(w float32) => modifier.weight(w).fillMaxHeight().snglFlexed() : func(w float32) => modifier.weight(w).snglFlexed()) {
             children
         }
     }
@@ -62,9 +79,9 @@ const component ui.spacer[platform](style) {
     Spacer(modifier=modifierOf({flex=1, ...style}, flexShare)) {}
 }
 
-const component ui.scroll[platform](style, @reachEnd, content) {
-    SnglScroll(modifier=modifierOf(style, flexShare), onReachEnd=func() { reachEnd() }) {
-        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
+const component ui.scroll[platform](style, direction, @reachEnd, content) {
+    SnglScroll(modifier=modifierOf(style, flexShare), direction=string(direction), onReachEnd=func() { reachEnd() }) {
+        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth().snglFlexed()) {
             content
         }
     }
@@ -323,16 +340,29 @@ const component ui.datepicker[platform](placeholder, value, disabled, style, @ch
 // Compose's determinate/indeterminate split is by *presence* of the `progress`
 // argument, which is the shape `value` being an `option` gives the override:
 // the null test picks the call, and neither branch invents a fraction.
+// A style's color is the bar's, and with none the call leaves `color` out:
+// Material's default is the theme's accent, read where the bar is drawn,
+// which no function outside a composable may read.
 const component ui.progress[platform](style, value, max) {
     if value != null {
         // The null test is repeated inside the lambda because narrowing does
         // not cross into one: a lambda runs later, and the checker will not
         // assume a binding still holds what it held when it was written. The
         // branch the outer `if` already settled is the unreachable one.
-        LinearProgressIndicator(
-            progress = func() => (value != null ? float32(value / max) : float32(0.0)),
-            modifier = modifierOf(style, flexShare),
-        ) {}
+        if style.color != null {
+            LinearProgressIndicator(
+                progress = func() => (value != null ? float32(value / max) : float32(0.0)),
+                modifier = modifierOf(style, flexShare),
+                color = composeOf(style.color),
+            ) {}
+        } else {
+            LinearProgressIndicator(
+                progress = func() => (value != null ? float32(value / max) : float32(0.0)),
+                modifier = modifierOf(style, flexShare),
+            ) {}
+        }
+    } else if style.color != null {
+        LinearProgressIndicator(modifier=modifierOf(style, flexShare), color=composeOf(style.color)) {}
     } else {
         LinearProgressIndicator(modifier=modifierOf(style, flexShare)) {}
     }
@@ -386,7 +416,8 @@ const component ui.link[platform](text, style) {
     ) {}
 }
 
-// Material's TabRow of a Tab per tab, and the selected one's content under it.
+// Material's TabRow of a Tab per tab over a pager of their panels, which a
+// swipe moves between as a press of a tab does.
 const component ui.tabs[platform](selected, style, @change, items) {
     Column(
         modifier = modifierOf(style, flexShare),
@@ -405,10 +436,24 @@ const component ui.tabs[platform](selected, style, @change, items) {
                 }
             }
         }
-        for var k, t = items {
-            if k == selected {
-                flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
-                    t.content
+        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth().snglFlexed()) {
+            SnglPager(
+                modifier = modifier.fillMaxWidth().fillMaxHeight(),
+                selected = selected,
+                disabled = items.map(func(t ui.tab) => t.disabled),
+                onSelect = func(chosen int) {
+                    selected = chosen
+                    change(chosen)
+                },
+            ) {
+                component page(p) {
+                    Column(modifier=modifier.fillMaxWidth().snglFlexible(false)) {
+                        for var k, t = items {
+                            if k == p {
+                                t.content
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -1,0 +1,129 @@
+# A test of a component that is not the window reads `pages.current` of a
+# stack whose pages include one served at a pattern, with or without a
+# `titleOf`.
+#
+# On html a test reads `current` from the record each document publishes,
+# and a document published it only where its own script read `current` at run
+# time -- a `nav.link`'s state, say. Here the fold settled every read the
+# document makes, so it published nothing, and the test, whose script is its
+# own, read `undefined`. A test build's documents now always publish it.
+
+sngl test --platform=none app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +2 tests, 0 failures'
+
+-- app.sngl --
+import "sngl:test"
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct Mon {
+    name string
+}
+
+component site ui.node {
+    nav.stack #pages {
+        nav.page #detail(href=`/p/{name}`, title="Pokémon", titleOf=func(p Mon) => p.name, params=Mon{name="bulbasaur"}) {
+            component content(p) {
+                ui.text(value=p.name)
+            }
+        }
+        nav.page #home(href="/", title="Home") {
+            ui.text(value="home")
+        }
+    }
+    ui.text #heading(value="Site - {pages.current.title}")
+}
+
+ui.window(title="Site") {
+    site()
+}
+
+func testTheCurrentPageIsTheRoot(t test.Test, c site) {
+    t.assert(c.pages.current == c.home)
+    t.assert(c.pages.current != c.detail)
+}
+
+func testTheCurrentPagesTitleIsRead(t test.Test, c site) {
+    t.assert(c.pages.current.title == "Home")
+    t.assert(c.heading.value == "Site - Home")
+}
+-- testrun/android/kotlin/app.sngl/site/1 --
+sha256:794b1773b85078815a18094db24d5a5b
+{
+  "results": [
+    {
+      "Desc": "TheCurrentPageIsTheRoot",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCurrentPagesTitleIsRead",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/site/1 --
+sha256:f6186b4905e4cee73dd6dcb63a1b81e4
+{
+  "results": [
+    {
+      "Desc": "TheCurrentPageIsTheRoot",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCurrentPagesTitleIsRead",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/site/1 --
+sha256:13a632f21825c0bbdab0d682d39e3967
+{
+  "results": [
+    {
+      "Desc": "TheCurrentPageIsTheRoot",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCurrentPagesTitleIsRead",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/site/1 --
+sha256:f819f351081700a002775f77c52267c6
+{
+  "results": [
+    {
+      "Desc": "TheCurrentPageIsTheRoot",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCurrentPagesTitleIsRead",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/site/1 --
+sha256:21897ed94ed9fd58f23e26444f5cdada
+{
+  "results": [
+    {
+      "Desc": "TheCurrentPageIsTheRoot",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCurrentPagesTitleIsRead",
+      "Passed": true
+    }
+  ]
+}

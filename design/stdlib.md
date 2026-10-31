@@ -83,9 +83,11 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/http/` → `sngl:http`** and **`lib/json/` → `sngl:json`** — a
   request while the program runs, and a declared type read from and written
   as JSON. Neither knows the other; see **HTTP and JSON** below.
+- **`lib/settings/` → `sngl:settings`** — values an app keeps from one run to the next: `kept`, which binds a var to a stored value, `load` and `save`, and the `store` context saying where. See **Settings** below.
 - **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/test/browser/` → `sngl:test/browser`** — what a page shows, read in the browser a test runs in: an element's text, attribute, markup and computed style, how many elements a node renders, and a pixel it paints. Each takes the node a test reaches by its `#id` and is answered by html's JavaScript alone, so a fixture importing it builds for html only -- `sngl:test` stays portable, and a question about the document is asked where only a document answers it.
+- **`lib/test/mobile/` → `sngl:test/mobile`** — what a person does to a phone, done by a test: `swipe` across a node, answered by android's Compose test and by html as a phone's browser has it, so a fixture importing it builds for those two. A gesture is not an event a component declares but the platform's to turn into one -- a swipe across a `ui.tabs`' panels chooses a tab -- and the system back, a relaunch and the lifecycle are what it is for next.
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
 - **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not this vocabulary but targets, described below — under `lib/platform/` and `lib/language/` once moved.
 - **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass -- `navigation` is that shape: every target gets `passNavigation` until it says it renders `sngl:ui/nav` itself. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. `#[gen.protocol(op)]` is what a platform writes on functions rather than the node: how it makes, fills, writes and connects an `#[intrinsic]` component's widget, as SNGL calling the host, so every call is one a pass sees (`design/nodes.md`). Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member, and `sngl:x/gen/trust`, the user's grants (see *Trust*), the third. It also holds the host API a build-time function reads the machine through (`host.sngl`), and what a handler writes through (`scheme.sngl`): `out.file(name)` opens one file and hands back a `gen.File` handle whose `add` and `line` write into a buffer the build host owns (`buildhost.Output`), so a file built a line at a time costs its length; each file is written when the handler returns, and a name opened twice is an error at the open (`cmd/sngl/testdata/scheme_errors.txt`). Where a mark may be written is checked in `finishFamilyMarks` rather than in the handler, which measures it against the return position `bindFamily` read, beside the other rules about what a component's marks say of its tree.
@@ -280,6 +282,11 @@ member selected off a component value -- which is how a test's `c.range` and
 their names, being read by spelling (a route's path, a serialized record): Go
 exports a field and JavaScript takes a keyword as a key, so only Kotlin escapes
 one, in backticks, from its language's own default (`codegen.LanguageReserves`).
+A prop keeps its name too, and html's factory for a component built at run
+time binds each prop as a local, so one JavaScript reserves is bound under
+another spelling (`javascript.SafeIdent`): `let default = props.default;` was
+a page esbuild refused, `settings.kept` under a `for`
+(`cmd/sngl/testdata/runtime_instance_reserved_prop_runs.txt`).
 So does a host's declaration -- foreign, native, intrinsic, builtin -- and a
 native's parameters, which Kotlin's `named` flag passes by name. Two more are
 a harness's: a test function's parameters, which the test emitter spells in a
@@ -479,8 +486,22 @@ needs the struct.
 **What has no wire form is refused at the call** (`checkCodecCall`,
 `ir.CodecProblem`): a function, a unit, a payload enum (not yet), a map keyed
 by anything but a string, two fields written under one name, a query field
-holding a struct -- and a type parameter, since the type has to be known where
-the call is (`testdata/error_json.sngl`).
+holding a struct (`testdata/error_json.sngl`).
+
+**A generic body may encode its own type parameter**, which `sngl:settings`
+needs: `kept[T]` writes its `T`. The body is checked with the parameter open
+(`ir.CodecProblemOpen`), and each call or node binding it is checked at the
+type it binds, through the generics between (`ir.GenericCodecs`,
+`checkGenericCodecs`). Every codec reads the type at the call, so no target
+emits such a body once: `passMonomorphizeCodecs` copies a function per
+binding on every target, JavaScript included, after the splice that binds
+a generic component's calls, and `instantiateRuntime` copies a component built
+at run time where a codec reaches its parameter. The interpreter has no
+copies, so a frame holds its bindings (`Env.types`): a call reads them under
+the caller's before its arguments run, and the callee's frame takes them,
+since a function with no result runs in its caller's scope, where two
+generics may each name a T (`testdata/json_generic.sngl`,
+`testdata/json_generic.txtar`).
 
 **Every language renders one plan** (`ir.PlanCodec`): the type's shape and
 each field's and member's wire name, every struct and enum once so a type
@@ -531,3 +552,44 @@ first run made through `EnumDef.InstanceOf`. And a generic call's arguments
 are inferred from what they state rather than under the call's own expected
 type, an argument whose parameter names no type parameter binding nothing
 (`testdata/generic_call_argument_unexpected.sngl`).
+
+## Settings
+
+**A setting is an option var a component binds** (`lib/settings/settings.sngl`):
+`settings.kept(name="language", default="English", :value=language)` leaves
+the var null until the store answers, loads the stored value, or `default`
+where none is, on mount, and saves from `@update` only what differs from what
+it last loaded or saved (`held`), so loading writes nothing back and a reader
+who never chose keeps following `default`. It took a plain var whose
+initializer was the default and showed it for the first frame on every
+target, as if it were the setting; null says "not yet", which a store that
+answers late (DataStore, a server's cookie) can keep saying as long as it
+takes, and the program chooses what to show meanwhile (Jonathan's call). `kept`, `load` and
+`save` are SNGL over `sngl:json`, which needed a generic body to encode its
+own T (*HTTP and JSON*). The prop is `name` because `key=` is a node's
+identity in a loop.
+
+**Where a value lives is three intrinsics and a var.** `_read`, `_write` and
+`_persistent` are answered per language: Go by `pkg/go/snglsettings`, Kotlin
+by `SnglSettings.kt` beside the screen, JavaScript by `localStorage` under
+`sngl.settings/<scope>/<name>`. The memory store is `memory`, a package var
+of `lib/settings`, which every target holds as the program's own state
+(`lower.promoteVars`), and the interpreter at the program's root
+(`importedVarOwner`): it read another package's var from its initializer on
+every access, so a write went nowhere a later read looked.
+
+**Only the program's own entry point opens the platform's place**, so a
+test never touches the reader's settings and each test starts with none,
+without a flag saying it is one: a Go `main` calls `snglsettings.Open`
+(gtk4 and bubbletea a JSON file in `os.UserConfigDir()/<output name>`, fyne
+its Preferences, made with `app.NewWithID(<output name>)`), android's
+MainActivity calls `SnglSettings.init`, and a Go test, the test agent's
+`main` and a Robolectric test on a plain `ComponentActivity` run none of
+them. html has no entry point of its own, so a test page says
+`__snglSettingsInMemory`. The interpreter opens nothing (see `design/trust.md`).
+`codegen.UsesSettings` gates each of these, so a program keeping no settings
+emits what it did. `settings_kept.sngl` and `settings_kept.txtar` are the
+memory side, `cmd/sngl/testdata/settings_kept_runs.txt` runs gtk4 and fyne
+twice, `TestSettings_AKeptValueOutlivesAReload` reloads a page in Chromium,
+and `pkg/go/snglsettings`' tests hold the file. Nothing yet relaunches an
+android activity.

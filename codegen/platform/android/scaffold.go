@@ -27,6 +27,9 @@ type scaffoldData struct {
 	// HasAssets is true when the program reads pictures out of the app's
 	// assets, and MainActivity hands SnglAssets the context to read them with.
 	HasAssets bool
+	// HasSettings is true when the program keeps settings, and MainActivity
+	// opens SnglSettings: a test, on an activity of its own, never does.
+	HasSettings bool
 	// Permissions are what the manifest asks for: what the program reaches
 	// asks (permissions), and INTERNET for the on-device test agent.
 	Permissions []string
@@ -75,6 +78,7 @@ type ManifestActivity struct {
 func newScaffoldData(cfg Config) scaffoldData {
 	combo := cfg.combo()
 	return scaffoldData{
+		HasSettings:     cfg.settings,
 		Package:         cfg.Package,
 		AppName:         appLabel(cfg),
 		HasIcon:         cfg.Icon != "",

@@ -122,7 +122,6 @@ type Style struct {
 	Opacity        *float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -152,7 +151,7 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.held = Style{PaddingX: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 51, G: 102, B: 153, A: 255}), FontSize: snglSome(Measurement{Em: 1}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 238, G: 238, B: 238, A: 255}), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+	m.held = Style{PaddingX: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 51, G: 102, B: 153, A: 255}), FontSize: snglSome(Measurement{Em: 1}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 238, G: 238, B: 238, A: 255}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	m.tone = snglcolor.Color{R: 51, G: 102, B: 153, A: 255}
 	m.visible__inst0 = true
 	return m
@@ -176,7 +175,7 @@ func LookHidden(s Style, hidden bool, spaced bool, spacing int) gtk4rt.Look {
 	} else {
 		__lt1 = (*(s.MaxLines))
 	}
-	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor, Justify: JustifyOf(s.JustifyContent), Spaced: spaced, Spacing: spacing}
+	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor, Justify: JustifyOf(s.JustifyContent), Spaced: spaced, Spacing: spacing}
 	return look
 }
 
@@ -248,137 +247,126 @@ func WrapOf(w string) int {
 	return __lt7
 }
 
-func ClipOf(o string) bool {
-	var __lt8 bool
-	switch o {
-	case "hidden", "scroll", "auto":
-		__lt8 = true
+func JustifyOf(j string) int {
+	var __lt8 int
+	switch j {
+	case "center":
+		__lt8 = 1
+	case "end":
+		__lt8 = 2
+	case "spaceBetween":
+		__lt8 = 3
+	case "spaceAround":
+		__lt8 = 4
+	case "spaceEvenly":
+		__lt8 = 5
 	default:
-		__lt8 = false
+		__lt8 = 0
 	}
 	return __lt8
 }
 
-func JustifyOf(j string) int {
-	var __lt9 int
-	switch j {
-	case "center":
-		__lt9 = 1
-	case "end":
-		__lt9 = 2
-	case "spaceBetween":
-		__lt9 = 3
-	case "spaceAround":
-		__lt9 = 4
-	case "spaceEvenly":
-		__lt9 = 5
-	default:
-		__lt9 = 0
+func Decl(name string, value string) string {
+	var __lt9 string
+	if value == "" {
+		__lt9 = ""
+	} else {
+		__lt9 = (((name + ": ") + value) + "; ")
 	}
 	return __lt9
 }
 
-func Decl(name string, value string) string {
-	var __lt10 string
-	if value == "" {
-		__lt10 = ""
-	} else {
-		__lt10 = (((name + ": ") + value) + "; ")
-	}
-	return __lt10
-}
-
 func Side(all *Measurement, axis *Measurement, own *Measurement) string {
-	var __lt12 *Measurement
+	var __lt11 *Measurement
 	if own != nil {
-		__lt12 = own
+		__lt11 = own
 	} else {
-		var __lt11 *Measurement
+		var __lt10 *Measurement
 		if axis != nil {
-			__lt11 = axis
+			__lt10 = axis
 		} else {
-			__lt11 = all
+			__lt10 = all
 		}
-		__lt12 = __lt11
+		__lt11 = __lt10
 	}
-	return Length(__lt12)
+	return Length(__lt11)
 }
 
 func Length(m__r1 *Measurement) string {
-	var __lt13 string
+	var __lt12 string
 	if m__r1 == nil {
+		__lt12 = ""
+	} else {
+		__lt12 = (fmt.Sprint(Inset(m__r1)) + "px")
+	}
+	return __lt12
+}
+
+func CssColor(c__r0 *snglcolor.Color) string {
+	var __lt13 string
+	if c__r0 == nil {
 		__lt13 = ""
 	} else {
-		__lt13 = (fmt.Sprint(Inset(m__r1)) + "px")
+		__lt13 = (*(c__r0)).Hex()
 	}
 	return __lt13
 }
 
-func CssColor(c__r0 *snglcolor.Color) string {
+func WeightOf(w string) string {
 	var __lt14 string
-	if c__r0 == nil {
+	switch w {
+	case "normal":
+		__lt14 = "normal"
+	case "bold":
+		__lt14 = "bold"
+	case "bolder":
+		__lt14 = "bolder"
+	case "lighter":
+		__lt14 = "lighter"
+	default:
 		__lt14 = ""
-	} else {
-		__lt14 = (*(c__r0)).Hex()
 	}
 	return __lt14
 }
 
-func WeightOf(w string) string {
+func SlantOf(s string) string {
 	var __lt15 string
-	switch w {
+	switch s {
 	case "normal":
 		__lt15 = "normal"
-	case "bold":
-		__lt15 = "bold"
-	case "bolder":
-		__lt15 = "bolder"
-	case "lighter":
-		__lt15 = "lighter"
+	case "italic":
+		__lt15 = "italic"
+	case "oblique":
+		__lt15 = "oblique"
 	default:
 		__lt15 = ""
 	}
 	return __lt15
 }
 
-func SlantOf(s string) string {
-	var __lt16 string
-	switch s {
-	case "normal":
-		__lt16 = "normal"
-	case "italic":
-		__lt16 = "italic"
-	case "oblique":
-		__lt16 = "oblique"
-	default:
-		__lt16 = ""
-	}
-	return __lt16
-}
-
 func LineOf(s Style) string {
-	var __lt17 string
+	var __lt16 string
 	switch s.BorderStyle {
 	case "solid":
-		__lt17 = "solid"
+		__lt16 = "solid"
 	case "dashed":
-		__lt17 = "dashed"
+		__lt16 = "dashed"
 	case "dotted":
-		__lt17 = "dotted"
+		__lt16 = "dotted"
 	case "double":
-		__lt17 = "double"
+		__lt16 = "double"
 	case "none":
-		__lt17 = "none"
+		__lt16 = "none"
 	default:
-		var __lt18 string
+		var __lt17 string
 		if s.BorderWidth != nil {
-			__lt18 = "solid"
+			__lt17 = "solid"
 		} else {
-			__lt18 = ""
+			__lt17 = ""
 		}
-		__lt17 = __lt18
+		__lt16 = __lt17
 	}
-	return __lt17
+	return __lt16
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -391,7 +379,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n6_clicked_handler() {
 	m.tone = snglcolor.Color{R: 153, G: 51, B: 102, A: 255}
-	gtk4rt.SetLook(m.__n3, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(m.tone), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	gtk4rt.SetLook(m.__n3, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(m.tone), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 }
 
 func (m *Model) __n9_clicked_handler() {
@@ -455,7 +443,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n3 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n3, "reactive")
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
-	gtk4rt.SetLook(m.__n3, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(m.tone), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	gtk4rt.SetLook(m.__n3, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(m.tone), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	gtk4rt.BoxAppend(m.__n4, m.__n3)
 	m.__n6 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n6, "recolor")
@@ -506,4 +494,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/gtk4 --
-pass sha256:30fd93654ffc56f3cd5e3d92dd9d9dab
+pass sha256:156ecb81161e9478d08406e17a9be037

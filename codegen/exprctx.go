@@ -121,6 +121,10 @@ type ExprCtx struct {
 	// derived from one of its nodes included.
 	OuterReceiver string
 	OuterNodes    map[string]bool
+	// ModelComponent is the component the Model is, where a test build roots
+	// it at one: its vars and funcs are the Model's, reached through
+	// OuterReceiver, as the package's are.
+	ModelComponent *ir.Component
 	// ClosureMethods says Component's own methods are closures of the
 	// function translating it -- an html instance factory -- so a call to one
 	// names it bare and hands it no receiver.
@@ -188,8 +192,11 @@ func (ctx *ExprCtx) Resolve(name string) (ir.Symbol, NameKind) {
 	}
 
 	// Component-scoped declarations.
-	if ctx.Component != nil {
-		for _, v := range ctx.Component.Vars {
+	for _, comp := range []*ir.Component{ctx.Component, ctx.ModelComponent} {
+		if comp == nil {
+			continue
+		}
+		for _, v := range comp.Vars {
 			if v.Name == name {
 				if v.IsConst {
 					return v, NameConst
@@ -197,7 +204,7 @@ func (ctx *ExprCtx) Resolve(name string) (ir.Symbol, NameKind) {
 				return v, NameStateVar
 			}
 		}
-		for _, f := range ctx.Component.Funcs {
+		for _, f := range comp.Funcs {
 			if f.Name == name {
 				if IsComputed(f) {
 					return f, NameComputed
@@ -382,6 +389,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		StateFieldsExported: ctx.StateFieldsExported,
 		OuterReceiver:       ctx.OuterReceiver,
 		OuterNodes:          ctx.OuterNodes,
+		ModelComponent:      ctx.ModelComponent,
 		ClosureMethods:      ctx.ClosureMethods,
 		memo:                ctx.memo,
 	}
@@ -531,7 +539,19 @@ func TriggerArgs(pkg *ir.Package) map[string][]*ir.Type {
 	for _, fn := range fns {
 		_ = ir.Walk(fn.Block, func(n ir.Node) error {
 			c, ok := n.(*ir.Call)
-			if !ok || len(c.Args) == 0 {
+			if !ok {
+				return nil
+			}
+			// A record a test picks on a target that draws nothing for it --
+			// a window's menu on bubbletea -- is one the test builds.
+			if field, ok := c.Callee.(*ir.Select); ok {
+				if t := field.Operand.ExprType(); t != nil {
+					if sd, ok := t.Decl.(*ir.StructDef); ok && sd.RecordOf != nil {
+						out["record."+sd.Name] = []*ir.Type{t}
+					}
+				}
+			}
+			if len(c.Args) == 0 {
 				return nil
 			}
 			tt, ok := EventTriggerTarget(c)

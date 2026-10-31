@@ -36,7 +36,6 @@ struct Look {
     textAlign int
     lines     int
     wrap      int
-    clip      bool
     hidden    bool
     cursor    string
     justify   int

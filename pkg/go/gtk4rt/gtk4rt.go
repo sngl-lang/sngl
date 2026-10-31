@@ -365,10 +365,15 @@ func BoxAppend(box, child Handle) {
 		AppAttach(child)
 		return
 	}
+	if t := tabsOf[box]; t != nil {
+		t.add(child)
+		return
+	}
 	if adopted(box, child) {
 		return
 	}
 	C.gtk_box_append((*C.GtkBox)(p(box)), widget(child))
+	menuMoved(box, child)
 }
 
 func BoxRemove(box, child Handle) {
@@ -376,11 +381,16 @@ func BoxRemove(box, child Handle) {
 		AppDetach(child)
 		return
 	}
+	if t := tabsOf[box]; t != nil {
+		t.remove(child)
+		return
+	}
 	if t := topOf(box); t != nil && t.icon != nil && t.icon.pic == child {
 		t.icon.onChange, t.icon = nil, nil
 		return
 	}
 	C.gtk_box_remove((*C.GtkBox)(p(box)), widget(child))
+	menuMoved(box, child)
 }
 
 // SlotAnchor returns the anchor a render slot inserts its entries before: a,
@@ -420,7 +430,7 @@ func ParentOf(w Handle) Handle {
 // InsertBefore puts child into box immediately before anchor, or at the end
 // of box when box does not hold anchor.
 func InsertBefore(box, anchor, child Handle) {
-	if box == App || anchor == nil || C.gtk_widget_get_parent(widget(anchor)) != widget(box) {
+	if box == App || tabsOf[box] != nil || anchor == nil || C.gtk_widget_get_parent(widget(anchor)) != widget(box) {
 		BoxAppend(box, child)
 		return
 	}
@@ -429,6 +439,7 @@ func InsertBefore(box, anchor, child Handle) {
 	}
 	prev := C.gtk_widget_get_prev_sibling(widget(anchor))
 	C.gtk_box_insert_child_after((*C.GtkBox)(p(box)), widget(child), prev)
+	menuMoved(box, child)
 }
 
 func children(parent Handle) []Handle {

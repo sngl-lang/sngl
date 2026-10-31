@@ -103,6 +103,9 @@ type fyneTranslator struct {
 	// is not rendered, though its field still holds it.
 	present     map[string]bool
 	slotPresent []string
+	// triggered are the ids a test fires an event on, which a record's slot
+	// hands the Model as their own widget for the invoker to drive.
+	triggered map[string]bool
 	// failSink is where a prop this platform cannot emit is reported. See
 	// withFailSink.
 	failSink func(error)
@@ -256,8 +259,8 @@ func (t *fyneTranslator) withIndexed(indexed, present map[string]bool, stmts []i
 // widgets of the ids a test null-tests to the Model (namedWidgetField), which
 // a test reaches no record through; stmts is the scope's body, whose creates
 // of them a slot's reset takes back.
-func (t *fyneTranslator) withRecordPresent(present map[string]bool, stmts []ir.Stmt) *fyneTranslator {
-	t.present = present
+func (t *fyneTranslator) withRecordPresent(present, triggered map[string]bool, stmts []ir.Stmt) *fyneTranslator {
+	t.present, t.triggered = present, triggered
 	t.slotPresent = nil
 	_ = ir.Walk(stmts, func(n ir.Node) error {
 		lv, ok := n.(*ir.LocalVar)
@@ -270,7 +273,7 @@ func (t *fyneTranslator) withRecordPresent(present map[string]bool, stmts []ir.S
 		}
 		switch c.Func.Intrinsic {
 		case ir.NodeOpCreateNode:
-			if present[lv.Name] {
+			if present[lv.Name] || triggered[lv.Name] {
 				t.slotPresent = append(t.slotPresent, lv.Name)
 			}
 		case ir.NodeOpComponentRoot:
@@ -482,9 +485,13 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	if t.indexed[id] {
 		t.sinkField(copiesField(id), copyMapType(goType))
 	}
-	if t.record && t.present[id] {
+	if t.record && (t.present[id] || t.triggered[id]) {
 		named := namedWidgetField(id)
-		t.modelSink(named, fyneWidgetHandleType)
+		if t.triggered[id] {
+			t.modelSink(named, goType)
+		} else {
+			t.modelSink(named, fyneWidgetHandleType)
+		}
 		create = append(create, &ir.Assign{Target: t.modelPresentRef(named), Op: ast.AssignSet, Value: t.fieldRef(id)})
 	}
 	return create
@@ -671,7 +678,28 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 }
 
 func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
-	return append(t.removeChild(parent, child), t.unlistRemoved(child)...)
+	return append(append(t.removeChild(parent, child), t.unlistRemoved(child)...), t.releaseRemovedInstances(child)...)
+}
+
+// releaseRemovedInstances takes back an instance's presentField a record
+// handed the Model where child, which a render removes, is the root it holds.
+// Several records render one slot body -- a tab's panel each -- and each one's
+// render reached the field, where only the one building the instance sets it.
+func (t *fyneTranslator) releaseRemovedInstances(child ir.Expr) []ir.Stmt {
+	if !t.record {
+		return nil
+	}
+	var out []ir.Stmt
+	for _, field := range t.slotPresent {
+		if !strings.HasPrefix(field, presentField("")) {
+			continue
+		}
+		out = append(out, &ir.If{
+			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: t.modelPresentRef(field), Right: t.qualifyChildExpr(ir.CloneExpr(child))},
+			Body: []ir.Stmt{&ir.Assign{Target: t.modelPresentRef(field), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}}},
+		})
+	}
+	return out
 }
 
 func (t *fyneTranslator) removeChild(parent, child ir.Expr) []ir.Stmt {
@@ -963,7 +991,9 @@ func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 			continue
 		}
 		if t.record {
-			reset = append(reset, t.releasePresent(id))
+			if !strings.HasPrefix(id, presentField("")) {
+				reset = append(reset, t.releasePresent(id))
+			}
 			continue
 		}
 		reset = append(reset, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(id), id, ir.NativeGoNamed("fyne.CanvasObject")), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
@@ -972,13 +1002,9 @@ func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 }
 
 // releasePresent takes back what a record handed the Model for a test's null
-// test of field -- a node's id, or an instance's presentField. A node is taken
-// back only where the Model still holds this record's widget: another record
-// may have handed its own since.
+// test of a node's id, only where the Model still holds this record's widget:
+// another record may have handed its own since.
 func (t *fyneTranslator) releasePresent(field string) ir.Stmt {
-	if strings.HasPrefix(field, presentField("")) {
-		return &ir.Assign{Target: t.modelPresentRef(field), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}}
-	}
 	held := t.modelPresentRef(namedWidgetField(field))
 	return &ir.If{
 		Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: held, Right: t.fieldRef(field)},

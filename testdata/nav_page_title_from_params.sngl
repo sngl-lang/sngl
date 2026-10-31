@@ -1,0 +1,52 @@
+// A page whose name depends on what it shows gives `titleOf`, and
+// `pages.current.title` is what it returns for the params the page is showing:
+// at the start, after a `go` that hands it others, and after a `back` that
+// restores them. A page that gives none is named by its `title`, and so is the
+// page itself read through its handle, `item.title`.
+
+import . "sngl:test"
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct Item {
+    name string
+}
+
+func named(p Item) => "Item {p.name}"
+
+component app ui.node {
+    nav.stack #pages {
+        nav.page #home(href="/", title="Home") {
+            ui.text(value="home")
+        }
+        nav.page #item(href=`/items/{name}`, title="Item", params=Item{name="first"}, titleOf=named) {
+            component content(p) {
+                ui.text(value=p.name)
+            }
+        }
+    }
+    ui.text #heading(value=pages.current.title)
+    ui.button #toFirst(text="First", @click { pages.go(item) })
+    ui.button #toSecond(text="Second", @click { pages.go(item, Item{name="second"}) })
+    ui.button #back(text="Back", @click { pages.back() })
+}
+
+func testAPageWithNoTitleOfIsItsTitle(t Test, c app) {
+    t.assert(c.heading.value == "Home")
+}
+
+func testTheTitleIsOfTheParamsShowing(t Test, c app) {
+    c.toFirst.click()
+    t.assert(c.heading.value == "Item first")
+    c.toSecond.click()
+    t.assert(c.heading.value == "Item second")
+    c.back.click()
+    t.assert(c.heading.value == "Item first")
+    c.back.click()
+    t.assert(c.heading.value == "Home")
+}
+
+func testThePageItselfIsItsTitle(t Test, c app) {
+    c.toSecond.click()
+    t.assert(c.item.title == "Item")
+}

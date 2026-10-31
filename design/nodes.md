@@ -255,6 +255,11 @@ declaration itself. Two things about the name that are easy to get wrong:
   writes in a tick reached the emitter untranslated: a bare `__n0.Text =`, which
   is neither a field any Fyne widget has nor a name in scope. The same blind
   spot design/language.md records for the lowering passes, one layer out.
+  An `if`'s condition is a fifth: `menu.length() > 0` over a data slot counts
+  records holding the call site's handlers, and walked only through `OnCond`
+  their `UpdateComponent` reached JavaScript raw. `walkExprLambdas` also
+  enters an operator's operands, a member read and an index
+  (`cmd/sngl/testdata/window_menu_under_if_runs.txt`).
 
   **The hand-over it also held is `async.do`**, which a platform package may
   name: `#[intrinsic("async.do")] func do(f func())` dispatches through
@@ -376,7 +381,11 @@ the instance's id in `NodeInst.Instances` (`ir.InstancesOf`). bubbletea's
 view answers from those. On every other compiled target `passCopyKeys` stamps
 each root node `ir.InstanceRootProp` (`__instance_<id>`), holding the key of
 the copy the instance stands in -- the loops around where it was written,
-not a `for` of its own body -- or "" for one rendered once: html writes it as
+not a `for` of its own body -- or "" for one rendered once. A root that is
+a component built at run time is left unstamped: it declares no such prop,
+and a reactive `for`'s reuse pushed it to a setter none has, which refused
+the Pokédex's home once each card asked for its species
+(`testdata/null_test_instance_query_in_loop.sngl`): html writes it as
 `data-sngl-root-<id>`; fyne and gtk4 list the root in the instance's
 `__copies_<id>` or `__present_<id>`, take it out where a render removes it
 and where a record that listed it is destroyed (`__rooted`,
@@ -589,6 +598,120 @@ trigger runs its call site's handler) and `ui.tabs` met both;
 `internal/interp`'s `TestChoosingPressesByTheRuleTheTargetsDo` pins it. Android's `Tab` takes a
 `modifier` so the copy carries its testTag. `cmd/sngl/testdata/tabs_runs.txt`
 runs it on all six, through an instance as well.
+
+Where the pressed node is a primitive the override writes, rather than a
+component whose own override re-raises its event, the handler's
+`ComponentEvent` is the tabs' `change` it raises, and that is what gtk4 and
+fyne name the invoker for (`codegen.TriggerEventName`). A button's is `click`,
+the name its own override hands on, which NamePresses also wrote, and the two
+agreed by that alone. gtk4's and fyne's `TabPage` therefore declares its event
+`@change`: a page whose event was `@shown` was pressed as `shown` and invoked
+as `change`, and the test's call named a method nobody wrote.
+testdata/tabs_look.txtar.
+
+**A menu entry is picked by pressing what the window drew for it.** A
+test reaches an entry as a record through the window's data slot,
+`c.main.menu[1].children[2].select()`, and the interpreter runs the record's
+`@select`. A compiled target's record is the call site's list re-evaluated
+in the test, whose handler writes the state and runs none of the updates the
+window's own drawing carries, so passTestReach notes each pick's path
+(`ir.Package.RecordPicks`) as it answers the slot with that list, and the
+inliner that splices the window turns the pick into a press
+(`lower.NameRecordPresses`, beside NamePresses): the node the body draws
+under an indexed loop over the slot, and one over each record's slot below,
+whose handler or callback fires the record's event is named
+`<id>__<slot>[__<slot>]` -- `main__menu__children` -- and the pick becomes a
+press of its copy at the record's indexes, from the test's own instance as
+passTestReach flattens every other ref. Where the body hands the slot on --
+html's window writes `ui.menubar(items=menu)` -- the pick follows it to that
+node (`forwardPick`). A target that draws nothing for the records, bubbletea's
+window, leaves the noted list standing, and the record's handler runs. A test
+opens a submenu before picking from it, `c.main.menu[1].select()` first, as a
+person does: android draws an entry only while its DropdownMenu is open. A
+window's own event that takes nothing, `c.main.back()`, is a press of the node
+its body draws that emits it (`windowPresses`): fyne's and gtk4's `Back`,
+which is there only while the window can go back. testdata/window_menu.txtar.
+
+A test's read of a record's field, `c.main.menu[1].children[2].checked`, is
+that one entry as its call site wrote it (`lower.answerTestRecordRead`, ahead
+of the slot's own answer in passTestReach). The records DataFamilies wrote are
+walked by the test's indexes: a `for` among them is its map's function applied
+to the list at the index, an entry after the loop is counted past a const's
+length, and the field is the answering record's -- `sizes[2] == c.size`. That
+is what the window drew the entry from, as a looped node's prop is read off
+its loop's list at the index. It used to read the slot whole and index it, so
+the test built every entry and each handler with it, and a handler writing
+what an instance built at run time reads brought that instance's updates
+(`UpdateComponent`, which no test emitter had) into a test that only read.
+Where the list does not say which record an index names -- an `if` or a
+forwarded slot before it, a non-literal index past an entry -- the slot is
+still answered whole. An event is a pick and goes as above, so bubbletea's
+pick still runs the rebuilt record's handler. testdata/window_menu.txtar
+denies the rebuilt menu in the tests, and
+cmd/sngl/testdata/window_menu_checked_runs.txt reads entries before, in and
+after a loop on all six.
+
+**Every tab's panel is mounted with the tabs, and selecting one shows it.**
+`ui.tabs`' body puts each panel, in its record's iteration, in a `vbox`
+whose `display` is `none` unless its tab is selected. It rendered the selected
+one alone under `if k == selected`, so leaving a tab dropped its panel and
+coming back started it again: a counter at zero, a query asked again. A null
+test asks whether a node is mounted, so a node of a panel not shown is
+present (`tabs_runs.txt`, `tabs_panel_presence_runs.txt`). The interpreter
+keeps that body; every other target overrides it, and shows one panel its own
+way. gtk4's `Tabs` is gtk4rt's GtkStackSwitcher over a GtkStack, each panel a
+`TabPage` the stack holds; fyne's is fynelayout's AppTabs, each panel a
+`TabPage` whose box is an item's content; html keeps a `role=tabpanel` per tab
+with all but one `hidden`; bubbletea puts each panel in a Layout whose
+`fit.hidden` draws nothing while its children still render, under a bar of
+tui.TabLook boxes. Tab passes over a hidden panel's controls, as over any box
+displayed none (design/instances.md's *A stop that draws nothing is passed
+over*; `TestTabPassesOverAHiddenTabPanel`).
+
+A page reaches the stack, or the AppTabs, however the render slot of the
+strip's loop hands it to the tabs: gtk4rt's `BoxAppend`, `InsertBefore` and
+`BoxRemove` route a child of a `Tabs` to its stack, and fynelayout's `Tabs`
+is a widget drawing the AppTabs whose `Container` -- the box the slot inserts
+into, drawn nowhere -- holds the pages, its layout making their items the
+AppTabs'. A `Tabs` that embedded the box drew nothing, since Fyne walks into a
+`*fyne.Container` and a widget and nothing else. GTK and Fyne report the
+program's own change of the page shown as they do the user's, so each runtime
+fires a page's `@change` only for a page the program did not select.
+testdata/tabs_look.txtar and cmd/sngl/testdata/tabs_look_runs.txt.
+
+On fyne and gtk4 each panel's page is lifted into an instance of its own
+(`liftSlotBodies`), one per tab, which put two gaps in reach. Each one's
+render cleared the Model's `__present_<id>` for an instance only another
+builds, so after a switch the counter in the first panel read as gone; a
+record now takes the field back only where a render removes the root it holds
+(`releaseRemovedInstances`). And a widget a test fires that the record's slot
+builds, a button written straight in a panel, had no invoker, since a
+record's invokers were gathered from its body alone: its slot now hands the
+widget to the Model as `__named_<id>` and its invoker goes through that
+(`ir.TriggeredIDs`).
+
+android pages through the panels: `SnglPager` (`codegen/platform/android/ pager.kt`) is a HorizontalPager under the TabRow, `beyondViewportPageCount`
+one less than the count so no page is disposed, its page a slot taking the
+index -- the first intrinsic slot with parameters, which `slotArgs` now
+binds. `selected` moves it, and a swipe settling on another page hands it to
+`onSelect`; one settling on a disabled page goes on to the next that is not,
+or back. It fills the height under the TabRow with `fillMaxHeight` rather than
+a weight: in a `ui.scroll` the Column has no height to share, a weight there
+measures to nothing, and the Pokédex's detail panels collapsed, where
+`fillMaxHeight` lets the pager take its page's height. The override's `change(k)` there sits under `flexShare`, and an emit
+under a context provider was never answered, coming out as an `onChange`
+nothing declared (`substituteEvents`). html's panels are in `sngl-swipe`
+(`codegen/platform/html/swipe.go`), an element the page defines that hears a
+touch or a pen move sideways and dispatches `swipe`, `detail` 1 toward what
+follows; one starting in a sideways scroll is the scroll's, and a mouse
+selects text. Its handler chooses the nearest tab that way not disabled.
+
+A test swipes with `sngl:test/mobile`'s `swipe(node, toward)`: android's
+Compose test injects the finger into what scrolls in the node
+(`performTouchInput`), html dispatches a touch's pointer events on its
+`sngl-swipe`. `testdata/tabs_panels_stay_loaded.{sngl,txtar}` and
+`cmd/sngl/testdata/tabs_panels_stay_loaded_runs.txt` pin all of it, the
+swipe on android and html.
 
 **A record's content is counted by where it was written.** A data family's
 content becomes a population of its container's hidden content slot,

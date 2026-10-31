@@ -149,7 +149,6 @@ type Style struct {
 	Opacity        *float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -191,8 +190,8 @@ func RowsOf(m__r0 *Measurement) int {
 
 func BoxLook(s Style, words bool) lipgloss.Style {
 	if func(_a1, _b2 Style) bool {
-		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
-	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
@@ -396,7 +395,7 @@ func (m Model) View() tea.View {
 	for i := range m.shown {
 		_ = i
 		var content_0_0Item string
-		content_0_0Item = BoxLook(Style{Height: snglSome(Measurement{Px: 48}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("row " + fmt.Sprint(i))))
+		content_0_0Item = BoxLook(Style{Height: snglSome(Measurement{Px: 48}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("row " + fmt.Sprint(i))))
 		content_0_0Items = append(content_0_0Items, content_0_0Item)
 	}
 	content_0_0 = tui.Spaced(false, lipgloss.Left, 0, content_0_0Items...)
@@ -404,10 +403,10 @@ func (m Model) View() tea.View {
 		content_0Children = append(content_0Children, content_0_0)
 	}
 	content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
-	content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0)
+	content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0)
 	contentChildren = append(contentChildren, content_0)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = BoxLook(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
+	content = BoxLook(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -534,6 +533,7 @@ func (m *Model) SetShown(v int) {
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.list = fynelayout.NewReachScroll()
 	m.list__box = fynelayout.NewBox(m.list)
+	m.list.SetDirection("vertical")
 	m.list__box.SetLook(fynelayout.Look{Grow: 1.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 	m.list.OnReachEnd = m.list_reachEnd_handler
 	m.__n1 = fynelayout.NewVBox()
@@ -674,7 +674,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.list = gtk4rt.ScrollNew()
-	gtk4rt.ScrollSetDirection(m.list, "")
+	gtk4rt.ScrollSetDirection(m.list, "vertical")
 	gtk4rt.SetLook(m.list, gtk4rt.Look{Grow: 1.0})
 	gtk4rt.ScrollOnReachEnd(m.list, m.list_reachEnd_handler)
 	m.__n1 = gtk4rt.New("GtkBox")
@@ -788,7 +788,6 @@ data class Style(
     var opacity: Double? = null,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.UNSET,
-    var overflow: SnglOverflow = SnglOverflow.UNSET,
     var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
@@ -916,16 +915,6 @@ enum class SnglDisplay(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
-enum class SnglOverflow(private val sngl: String) {
-    UNSET("unset"),
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
-
-    override fun toString(): String = sngl
-}
-
 enum class SnglListStyle(private val sngl: String) {
     UNSET("unset"),
     NONE("none"),
@@ -946,14 +935,14 @@ class MainScreenState {
 @Composable
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
-    SnglScroll(modifier = Modifier.testTag("list").then(flexed(styleModifier(Style(flex = 1.0), true), 1.0, state.__ctx_flexShare)).safeDrawingPadding(), onReachEnd = {
+    SnglScroll(modifier = Modifier.testTag("list").then(flexed(styleModifier(Style(flex = 1.0), true), 1.0, state.__ctx_flexShare)).safeDrawingPadding(), direction = "vertical", onReachEnd = {
         if ((state.shown < 60)) {
         	state.shown += 10
         }
     }) {
-        Column(modifier = Modifier) {
+        Column(modifier = Modifier.snglFlexible(false)) {
             for (i in 0 until state.shown) {
-                Text(text = ("row " + i.toString()), modifier = flexed(styleModifier(Style(height = Measurement(px = 48.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+                Text(text = ("row " + i.toString()), modifier = flexed(styleModifier(Style(height = Measurement(px = 48.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
             }
         }
     }
@@ -1037,9 +1026,129 @@ val LocalFlexShare = compositionLocalOf<((Float) -> Modifier)?> { null }
 val snglFlexShare: (Float) -> Modifier = { w ->
     Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
 }
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexible.kt --
+package test.sngl.app
+
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.node.LayoutModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.TraversableNode
+import androidx.compose.ui.node.invalidateMeasurement
+import androidx.compose.ui.node.traverseAncestors
+import androidx.compose.ui.unit.Constraints
+
+// snglFlexible is a vbox's, hbox's or scroll's Row or Column, which a child
+// taking a share of it marks with snglFlexed. Compose measures a weight in an
+// unbounded axis -- a Row in a horizontal scroll, a Column in a vertical one --
+// to nothing, where html's flex takes the content's size; so a marked line
+// with no bound along it is bounded by its content's, and the weights share
+// that. A marked line also marks the line it sits in across it, as html's
+// stretched row fills its column: a column with no bound across it is then as
+// wide as its widest row, which each row fills, so the rows' shares line up as
+// a table's columns. Only a marked one asks, since asking costs a pass over
+// the subtree.
+fun Modifier.snglFlexible(horizontal: Boolean): Modifier = this then FlexibleElement(horizontal)
+
+fun Modifier.snglFlexed(): Modifier = this then FlexedElement
+
+private object FlexibleKey
+
+private data class FlexibleElement(val horizontal: Boolean) : ModifierNodeElement<FlexibleNode>() {
+    override fun create() = FlexibleNode(horizontal)
+    override fun update(node: FlexibleNode) {
+        node.horizontal = horizontal
+        node.invalidateMeasurement()
+    }
+}
+
+private class FlexibleNode(var horizontal: Boolean) : Modifier.Node(), LayoutModifierNode, TraversableNode {
+    override val traverseKey: Any get() = FlexibleKey
+    private var outer: FlexibleNode? = null
+    private var flexed = 0
+    private var across = 0
+
+    fun flex(by: Int) {
+        val was = flexed > 0
+        flexed += by
+        if (was != flexed > 0) cross(if (flexed > 0) 1 else -1)
+        invalidateMeasurement()
+    }
+
+    private fun cross(by: Int) {
+        outer?.takeIf { it.horizontal != horizontal }?.let {
+            it.across += by
+            it.invalidateMeasurement()
+        }
+    }
+
+    // Compose runs a parent's onAttach after its children's, so a line may
+    // already be marked when it finds the line it sits in.
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            outer = it as FlexibleNode
+            false
+        }
+        if (flexed > 0) cross(1)
+    }
+
+    override fun onDetach() {
+        if (flexed > 0) cross(-1)
+        outer = null
+    }
+
+    override fun MeasureScope.measure(measurable: Measurable, constraints: Constraints): MeasureResult {
+        val placeable = measurable.measure(bounded(measurable, constraints))
+        return layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }
+
+    private fun bounded(measurable: Measurable, c: Constraints): Constraints {
+        var out = c
+        // A SubcomposeLayout -- a pager, a lazy list -- refuses to be asked
+        // its intrinsic size; the line then measures as Compose would.
+        try {
+            if ((flexed > 0 && horizontal || across > 0 && !horizontal) && !out.hasBoundedWidth) {
+                out = out.copy(maxWidth = maxOf(out.minWidth, measurable.maxIntrinsicWidth(out.maxHeight)))
+            }
+            if ((flexed > 0 && !horizontal || across > 0 && horizontal) && !out.hasBoundedHeight) {
+                out = out.copy(maxHeight = maxOf(out.minHeight, measurable.maxIntrinsicHeight(out.maxWidth)))
+            }
+        } catch (_: IllegalStateException) {
+            return c
+        }
+        return out
+    }
+}
+
+private object FlexedElement : ModifierNodeElement<FlexedNode>() {
+    override fun create() = FlexedNode()
+    override fun update(node: FlexedNode) {}
+    override fun equals(other: Any?) = other === this
+    override fun hashCode() = 0
+}
+
+private class FlexedNode : Modifier.Node() {
+    private var line: FlexibleNode? = null
+
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            line = it as FlexibleNode
+            false
+        }
+        line?.flex(1)
+    }
+
+    override fun onDetach() {
+        line?.flex(-1)
+        line = null
+    }
+}
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglScroll.kt --
 package test.sngl.app
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.rememberScrollState
@@ -1055,26 +1164,37 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 
-// SnglScroll is sngl:ui's scroll: a column scrolled vertically, which calls
+// SnglScroll is sngl:ui's scroll: a column scrolled along `direction` --
+// "horizontal", "both", or vertically for anything else -- which calls
 // onReachEnd when the end of its content comes within half a viewport of
 // being shown -- once as it arrives, and again whenever the content changes
 // size while it is there, so a handler that adds a page is asked for another
-// while the end still shows. The content's height is measured past the
-// scroll, where it is the whole of it rather than the viewport.
+// while the end still shows. The end is the right edge of a horizontal
+// scroll and the bottom of any other. The content's extent is measured past
+// the scroll, where it is the whole of it rather than the viewport.
 @Composable
 fun SnglScroll(
     modifier: Modifier,
+    direction: String = "vertical",
     onReachEnd: () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val state = rememberScrollState()
-    var height by remember { mutableIntStateOf(0) }
+    val across = rememberScrollState()
+    val down = rememberScrollState()
+    val sideways = direction == "horizontal"
+    val state = if (sideways) across else down
+    var extent by remember { mutableIntStateOf(0) }
     val reach by rememberUpdatedState(onReachEnd)
     LaunchedEffect(state) {
-        snapshotFlow { (state.maxValue - state.value <= state.viewportSize / 2) to height }
+        snapshotFlow { (state.maxValue - state.value <= state.viewportSize / 2) to extent }
             .collect { (atEnd, _) -> if (atEnd) reach() }
     }
-    Column(modifier.verticalScroll(state).onSizeChanged { height = it.height }, content = content)
+    // The outer scroll's ScrollBy is the node's, which a test's trigger runs:
+    // scrolling either way, that is the vertical one, whose end is reported.
+    var scrolled = modifier
+    if (!sideways) scrolled = scrolled.verticalScroll(down)
+    if (sideways || direction == "both") scrolled = scrolled.horizontalScroll(across)
+    Column(scrolled.onSizeChanged { extent = if (sideways) it.width else it.height }.snglFlexible(false), content = content)
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
 // Code generated by sngl (android) from app.sngl; DO NOT EDIT.
@@ -1104,7 +1224,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         var before = c.shown
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("list")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, Float.MAX_VALUE) }; composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("list")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(Float.MAX_VALUE, Float.MAX_VALUE) }; composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.shown > before)", (c.shown > before))
     }
 
@@ -1124,13 +1244,19 @@ body { display: flex; flex-direction: column; }
   </style>
 </head><body>
 
-<div style="flex:1;min-width:0;min-height:0;overflow:auto" data-sngl-id="list">
+<div class="sngl-scroll sngl-scroll-vertical" style="flex:1;min-width:0;min-height:0" data-sngl-id="list">
   <div id="__n2" data-sngl-id="__n2" style="display:flex;flex-direction:column">
     <span data-sngl-slot="0" style="display:contents"></span>
   </div>
   <sngl-reach-end id="$1">
   </sngl-reach-end>
 </div>
+<style>
+.sngl-scroll-vertical { overflow-x: hidden; overflow-y: auto; }
+.sngl-scroll-horizontal { overflow-x: auto; overflow-y: hidden; display: flex; align-items: flex-start; }
+.sngl-scroll-horizontal > *, .sngl-scroll-horizontal > [data-sngl-slot] > *, .sngl-scroll-horizontal > [data-sngl-inst] > * { flex: none; }
+.sngl-scroll-both { overflow: auto; }
+</style>
 
 <script>
 window.__snglErrors = [];
@@ -1260,15 +1386,20 @@ window.__sngl_boot = () => {
       const box = this.parentElement;
       if (!box) return;
       this.style.display = "block";
+      const across = box.classList.contains("sngl-scroll-horizontal");
       const fire = () => this.dispatchEvent(new Event("reachEnd"));
-      const near = () => this.getBoundingClientRect().top - box.getBoundingClientRect().bottom <= box.clientHeight / 2;
+      const near = () => {
+        const at = this.getBoundingClientRect(), view = box.getBoundingClientRect();
+        return across ? at.left - view.right <= box.clientWidth / 2 : at.top - view.bottom <= box.clientHeight / 2;
+      };
       this._io = new IntersectionObserver((es) => {
         if (es[es.length - 1].isIntersecting) fire();
-      }, { root: box, rootMargin: "0px 0px 50% 0px" });
+      }, { root: box, rootMargin: across ? "0px 50% 0px 0px" : "0px 0px 50% 0px" });
       this._io.observe(this);
-      let last = this.offsetTop, asked = false;
+      const where = () => across ? this.offsetLeft : this.offsetTop;
+      let last = where(), asked = false;
       const grew = () => {
-        const h = this.offsetTop;
+        const h = where();
         if (h !== last && !asked) {
           asked = true;
           requestAnimationFrame(() => {
@@ -1313,12 +1444,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b64bdb621fac409e67831c39e299edef
+pass sha256:818db2543683a8920241798a06b283c9
 -- run/go/fyne --
-pass sha256:5dcad8ae64d56bc3426c3991249d6dcd
+pass sha256:52ee0924f584320b8c8c03cee986a4a1
 -- run/go/gtk4 --
-pass sha256:85b8aa6bc551858ba1b2fafc82235a22
+pass sha256:8067cabf330f25a768af03d00c8c3f0e
 -- run/kotlin/android --
-pass sha256:d21baed24f62b9b3425e37fd60e9aeda
+pass sha256:b2e3e9771d83f312adf3326dc2465424
 -- run/none/html --
-pass sha256:aa51060536d43daed931d36745e06f64
+pass sha256:82c5750c83fa9dea36ef9d0b440c277d

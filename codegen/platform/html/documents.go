@@ -91,8 +91,10 @@ func documentsOf(pkg *ir.Package, fold codegen.Fold, static bool) iter.Seq2[*cod
 			dfold := fold.Child()
 			body := cloneWithOnly(stack, pc, func() []ir.Stmt { return dfold.Clone(root.Stmts) })
 			page := pageDocument(&body, pc, dfold, true)
-			body = dropOtherPagesWrites(dfold.Stmts(body), stack)
-			if !yieldDocument(yield, &codegen.Document{Body: body, Page: page.node}, dfold, static) {
+			body = dfold.Stmts(body)
+			gone := otherPagesNodes(body, stack)
+			body = dropWritesTo(body, gone)
+			if !yieldDocument(yield, &codegen.Document{Body: body, Page: page.node, Absent: gone}, dfold, static) {
 				return
 			}
 		}
@@ -235,8 +237,9 @@ func surfaceDocuments(w *ir.NodeInst, wfold codegen.Fold, static bool, want func
 		if err := dfold.Err(); err != nil {
 			return false, err
 		}
-		doc.Children = dropOtherPagesWrites(doc.Children, stack)
-		if !yield(i, &codegen.Document{Surface: doc, Body: doc.Children, Page: page.node}, dfold) {
+		gone := otherPagesNodes(doc.Children, stack)
+		doc.Children = dropWritesTo(doc.Children, gone)
+		if !yield(i, &codegen.Document{Surface: doc, Body: doc.Children, Page: page.node, Absent: gone}, dfold) {
 			return false, nil
 		}
 	}
@@ -387,12 +390,12 @@ func cloneWithOnly(stack *ir.NodeInst, pc pageCopy, clone func() []ir.Stmt) []ir
 	return clone()
 }
 
-// dropOtherPagesWrites is body, a document holding one of stack's pages,
-// without its writes to the nodes of the others. A handler outside the stack
-// -- a select above it -- writes every node that shows what it changed,
-// whichever page that node is on, and a document holds no other page's node
-// to write to: the write threw, and the rest of the handler never ran.
-func dropOtherPagesWrites(body []ir.Stmt, stack *ir.NodeInst) []ir.Stmt {
+// otherPagesNodes is the handles of the nodes on stack's pages that body, a
+// document holding one of them, does not hold. A handler outside the stack --
+// a select above it -- writes every node that shows what it changed, whichever
+// page that node is on, and a document holds no other page's node to write
+// to: the write threw, and the rest of the handler never ran.
+func otherPagesNodes(body []ir.Stmt, stack *ir.NodeInst) map[string]bool {
 	here := map[string]bool{}
 	_ = ir.Walk(body, func(n ir.Node) error {
 		if x, ok := n.(*ir.NodeInst); ok && x.ID != "" {
@@ -407,6 +410,12 @@ func dropOtherPagesWrites(body []ir.Stmt, stack *ir.NodeInst) []ir.Stmt {
 		}
 		return nil
 	})
+	return gone
+}
+
+// dropWritesTo is body without its writes to the nodes gone names, rewritten
+// in place.
+func dropWritesTo(body []ir.Stmt, gone map[string]bool) []ir.Stmt {
 	if len(gone) == 0 {
 		return body
 	}
@@ -416,6 +425,28 @@ func dropOtherPagesWrites(body []ir.Stmt, stack *ir.NodeInst) []ir.Stmt {
 			return ok && writesNodeOf(a.Target, gone)
 		})
 	})
+}
+
+// writesTo reports whether body writes a node gone names.
+func writesTo(body []ir.Stmt, gone map[string]bool) bool {
+	found := false
+	_ = ir.Walk(body, func(n ir.Node) error {
+		if a, ok := n.(*ir.Assign); ok && writesNodeOf(a.Target, gone) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
+// heldWrites is block, a func every document shares, without its writes to
+// the nodes this document does not hold.
+func (g *htmlGen) heldWrites(block []ir.Stmt) []ir.Stmt {
+	if !writesTo(block, g.absent) {
+		return block
+	}
+	return dropWritesTo(ir.CloneStmtsSharingDecls(block), g.absent)
 }
 
 // writesNodeOf reports whether target is a prop of a node whose handle is

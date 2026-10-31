@@ -1,0 +1,47 @@
+// A row a slot builds per copy is lifted into a component of its own, and a
+// call it makes of a func of the component it was lifted out of, with the
+// row's own loop variable, reaches that func through a prop: the lifted
+// component holds no func of that name.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component tag(name string) node {
+    text #t(value=name)
+}
+
+component shelf node {
+    var rows = [["fig", "kiwi"], ["plum"]]
+    var mark = "!"
+
+    func label(n string) => "{n}{mark}"
+
+    for var row = rows {
+        hbox {
+            for var n = row {
+                tag #tags(name=label(n))
+            }
+        }
+    }
+    button #louder(text="Louder", @click { mark = "!!" })
+}
+
+component app node {
+    var away = false
+    button #leave(text="Leave", @click { away = !away })
+    if !away {
+        shelf #s
+    }
+}
+
+func testARowCallsItsOwnersFunc(t Test, c app) {
+    t.assert(c.s != null && c.s.tags[0][0].t.value == "fig!" && c.s.tags[1][0].t.value == "plum!")
+    if c.s != null {
+        c.s.louder.click()
+    }
+    t.assert(c.s != null && c.s.tags[0][1].t.value == "kiwi!!")
+}
+
+window {
+    app
+}

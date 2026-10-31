@@ -1,0 +1,148 @@
+# A component with no state of its own that renders one with state, under a
+# reactive `if`: an adapter over async.query, as `openapi:` writes one per
+# operation (#298). One call site binds every two-way prop and the other
+# leaves two to implicit state, as the Pokédex's do; either failed on
+# bubbletea, and on android the page's own `pending` and `failure` named the
+# wrapper's cells (android_child_var_named_like_root_runs.txt). bubbletea
+# keeps no state of an instance's own, so the adapter has to be spliced where
+# it is written, as the query in it is. It was built at run time instead,
+# because the inliner asked only the adapter's own vars, funcs and lifetimes;
+# the query was then spliced into the declaration, every function of which
+# became a Model method -- a second `Model.__snglTeardown` beside the root's,
+# and an effect settle reading cells no Model declared -- and the build
+# failed. The Pokédex built only where a provider of `server` gave the adapter
+# a var of its own.
+#
+# The other targets keep an instance's state and build the adapter at run
+# time, which is what they are held to here.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func lookup(name string) async.Result[int] {
+    return {ok=name.length()}
+}
+
+component lengthOf(name string, :value option[int] = null, :pending bool = false, :failure option[async.Failure] = null) ui.node {
+    async.query(on=name, fetch=lookup, :value=value, :pending=pending, :failure=failure)
+}
+
+component lengths ui.node {
+    var shown = true
+    var name = "fig"
+    var a option[int] = null
+    var b option[int] = null
+    var pending = false
+    var failure option[async.Failure] = null
+    if shown {
+        lengthOf(name=name, :value=a, :pending=pending, :failure=failure)
+        lengthOf(name="apricot", :value=b)
+    }
+    ui.button #grape(text="grape", @click { name = "grape" })
+    ui.button #toggle(text="toggle", @click { shown = !shown })
+}
+
+func testEachAsksForItsOwn(t test.Test, c lengths) {
+    t.assert(c.a == 3)
+    t.assert(c.b == 7)
+    c.grape.click()
+    t.assert(c.a == 5)
+}
+
+func testAskedAgainWhenShownAgain(t test.Test, c lengths) {
+    c.toggle.click()
+    c.grape.click()
+    t.assert(c.a == 3)
+    c.toggle.click()
+    t.assert(c.a == 5)
+}
+-- testrun/android/kotlin/app.sngl/lengths/1 --
+sha256:b75b3faa05cb01aa6ba089e4ef3c4a2f
+{
+  "results": [
+    {
+      "Desc": "AskedAgainWhenShownAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "EachAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/lengths/1 --
+sha256:ce9cecead53d995ce2d8bec418ea1948
+{
+  "results": [
+    {
+      "Desc": "AskedAgainWhenShownAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "EachAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/lengths/1 --
+sha256:dc894f72633d18f67c3e800a258d99ff
+{
+  "results": [
+    {
+      "Desc": "AskedAgainWhenShownAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "EachAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/lengths/1 --
+sha256:93756eb06f2369f01cc3f2e1dbdb4aa7
+{
+  "results": [
+    {
+      "Desc": "AskedAgainWhenShownAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "EachAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/lengths/1 --
+sha256:23fe50e433d3dc69b2efdee572009de3
+{
+  "results": [
+    {
+      "Desc": "AskedAgainWhenShownAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "EachAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}

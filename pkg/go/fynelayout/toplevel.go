@@ -9,6 +9,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/widget"
 )
 
 // Toplevel is what a `ui.window` is on fyne: a node holding its content in a
@@ -34,6 +35,10 @@ type Toplevel struct {
 	OnClosed func()
 	// icon is the image source a `ui.window`'s favicon is.
 	icon *ImageSource
+	// back is the button over the content a Back among it shows, made the
+	// first time one does, so a window that never goes back lays out as it
+	// did.
+	back *widget.Button
 }
 
 // App is the parent a node at the root of the package body is attached to.
@@ -59,7 +64,9 @@ var (
 // NewToplevel makes a toplevel and its content box. The window is made when
 // the node is attached to the application and the loop is running.
 func NewToplevel() *Toplevel {
-	return &Toplevel{Container: NewVBox(), visible: true}
+	t := &Toplevel{Container: NewVBox(), visible: true}
+	toplevels[t.Container] = t
+	return t
 }
 
 // SetTitle sets the title the window shows.
@@ -88,6 +95,48 @@ func (t *Toplevel) SetVisible(v bool) {
 	}
 }
 
+// applyMenu sets the window's main menu from the entries among its content: a
+// menu per top-level entry, holding its submenu, or the entry alone where it
+// has none.
+func (t *Toplevel) applyMenu() {
+	top := entriesIn(t.Container)
+	for _, e := range top {
+		e.adopt(t)
+	}
+	if t.w == nil {
+		return
+	}
+	if len(top) == 0 {
+		if t.w.MainMenu() != nil {
+			t.w.SetMainMenu(nil)
+		}
+		return
+	}
+	menus := make([]*fyne.Menu, 0, len(top))
+	for _, e := range top {
+		kids := e.entries()
+		if len(kids) == 0 {
+			kids = []*MenuEntry{e}
+		}
+		menus = append(menus, fyne.NewMenu(e.label, menuItems(kids)...))
+	}
+	t.w.SetMainMenu(fyne.NewMainMenu(menus...))
+}
+
+func menuItems(entries []*MenuEntry) []*fyne.MenuItem {
+	items := make([]*fyne.MenuItem, 0, len(entries))
+	for _, e := range entries {
+		it := fyne.NewMenuItem(e.label, e.Select)
+		it.Disabled = e.disabled
+		it.Checked = e.checked
+		if kids := e.entries(); len(kids) > 0 {
+			it.ChildMenu = fyne.NewMenu("", menuItems(kids)...)
+		}
+		items = append(items, it)
+	}
+	return items
+}
+
 // Visible is the value SetVisible last wrote or the window last reported.
 func (t *Toplevel) Visible() bool { return t.visible }
 
@@ -110,6 +159,7 @@ func (t *Toplevel) create() {
 	t.w.Resize(fyne.NewSize(480, 640))
 	t.w.SetCloseIntercept(t.closeRequested)
 	t.applyIcon()
+	t.applyMenu()
 }
 
 func (t *Toplevel) report(v bool) {
@@ -155,6 +205,7 @@ func AppAttach(o fyne.CanvasObject) {
 	}
 	t.attached = true
 	attached = append(attached, t)
+	toplevels[t.Container] = t
 	if started {
 		t.create()
 		if t.visible {
@@ -171,6 +222,7 @@ func AppDetach(o fyne.CanvasObject) {
 	}
 	t.attached = false
 	attached = slices.DeleteFunc(attached, func(x *Toplevel) bool { return x == t })
+	delete(toplevels, t.Container)
 	if t.w != nil {
 		w := t.w
 		t.w = nil
@@ -187,6 +239,7 @@ func Remove(c *fyne.Container, o fyne.CanvasObject) {
 		return
 	}
 	c.Remove(o)
+	menuMoved(c, o)
 }
 
 // RunWindows runs the loop over the toplevels attached so far and those
@@ -223,7 +276,7 @@ func RunWindows(a fyne.App, show bool) {
 }
 
 // Add puts o in the window's box, or makes it the window's icon when it is an
-// image source: a `ui.window`'s favicon.
+// image source: a `ui.window`'s favicon. A menu entry joins the window's menu.
 func (t *Toplevel) Add(o fyne.CanvasObject) {
 	if s, ok := o.(*ImageSource); ok {
 		t.icon = s
@@ -233,6 +286,7 @@ func (t *Toplevel) Add(o fyne.CanvasObject) {
 	}
 	Adopt(t.Container, o)
 	t.Container.Add(o)
+	menuMoved(t.Container, o)
 }
 
 func (t *Toplevel) applyIcon() {

@@ -9,45 +9,74 @@ const dexLimit = 50
 // How many cards a row holds.
 const columns = 3
 
-// The Pokédex chosen on home, by name and as PokéAPI answers it. Both outlive
-// the page: home starts at the dex chosen when it is shown again, and a
-// Pokémon's page lists the moves of the latest game the dex covers.
-var dexName = "national"
+// The Pokédex chosen, by name and as PokéAPI answers it. The window's menu
+// chooses it and keeps the name from one run to the next, so the name is null
+// until the kept one has loaded; home shows it, and a Pokémon's page lists
+// the moves of the latest game the dex covers.
+var dexName option[string] = null
 
 var chosenDex option[poke.PokedexDetail] = null
 
-// Home: a choice of Pokédex, what it is, and a grid of its Pokémon,
-// `pageSize` cards at a time, the next page shown as the grid is scrolled to
-// its end. The dex is one request keyed on its name, so choosing another moves
-// the key; every entry arrives with it, so the search covers the whole dex and
-// a page more asks for nothing.
+// Chooses the Pokédex named `name`.
+func chooseDex(name string) {
+    dexName = name
+}
+
+// Home: what the Pokédex chosen is, and a grid of its Pokémon, `pageSize`
+// cards at a time, the next page shown as the grid is scrolled to its end. The
+// dex is one request keyed on its name, so choosing another moves the key and
+// starts the grid again; every entry arrives with it, so a page more asks for
+// nothing. An entry names its species only by PokéAPI's slug, so a card shown
+// asks for its species' names, where no page has yet; the first search of a
+// dex asks for every one, so it matches what the cards say.
 component homePage(pageSize = 30, @open(name string)) ui.node {
-    var dexes list[poke.PokedexSummary] = []
-    var chosen = display(dexName)
     var loading = false
     var failure option[async.Failure] = null
     var shown = pageSize
     var search = ""
+    var namingAll = false
+    // The species home has asked for the names of, in the order it asked:
+    // only ever added to, so a request keeps its place in the loop below. A
+    // `for` matches its copies by position, so one dropping out of the middle
+    // moved every request after it, and each started again.
+    var asking list[string] = []
 
-    // Shows the dex whose label is `label`, from its first page of cards.
-    func pick(label string) {
-        for var d = dexes {
-            if display(d.name) == label {
-                dexName = d.name
-                shown = pageSize
+    // Every entry of the dex.
+    func entries() list[poke.PokemonDexNumber] {
+        if chosenDex != null {
+            return chosenDex.pokemonEntries
+        }
+        return []
+    }
+
+    // The species' name in the reader's language, its slug until its names
+    // have arrived.
+    func label(e poke.PokemonDexNumber) => called(names, `species`, e.pokemonSpecies.name)
+
+    // The dex's entries the search matches, all of them: by slug, or by the
+    // name a card shows.
+    func matching() list[poke.PokemonDexNumber] {
+        var q = string.lower(search)
+        return entries().filter(func(e poke.PokemonDexNumber) => string.contains(e.pokemonSpecies.name, q) || string.contains(string.lower(label(e)), q))
+    }
+
+    // The entries whose names are asked for: the cards shown, or every one
+    // once the dex has been searched. Either is a prefix of the dex, so a
+    // request keeps its place as the list grows.
+    func naming() => namingAll ? entries() : visible()
+
+    // Adds to `asking` each entry named nowhere yet.
+    func ask() {
+        for var e = naming() {
+            var slug = e.pokemonSpecies.name
+            if !known(`species`, slug) && !asking.contains(slug) {
+                asking.push(slug)
             }
         }
     }
 
-    // The dex's entries the search matches, all of them.
-    func matching() list[poke.PokemonDexNumber] {
-        var q = string.lower(search)
-        var all list[poke.PokemonDexNumber] = []
-        if chosenDex != null {
-            all = chosenDex.pokemonEntries
-        }
-        return all.filter(func(e poke.PokemonDexNumber) => string.contains(e.pokemonSpecies.name, q))
-    }
+    // Whether a search is waiting on names still to arrive.
+    func namesPending() => namingAll && entries().filter(func(e poke.PokemonDexNumber) => !known(`species`, e.pokemonSpecies.name)).length() > 0
 
     // The matches the grid shows.
     func visible() list[poke.PokemonDexNumber] {
@@ -65,21 +94,34 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
         }
     }
 
-    poke.pokedexList(limit=dexLimit, offset=0, @load(page) { dexes = page.results })
-    poke.pokedexRetrieve(id=dexName, :value=chosenDex, :pending=loading, :failure=failure)
+    effect(on=dexName, @update {
+        shown = pageSize
+        namingAll = search != ""
+    })
+    effect(on=search, @update {
+        if search != "" {
+            namingAll = true
+        }
+    })
+    if dexName != null {
+        poke.pokedexRetrieve(id=dexName, :value=chosenDex, :pending=loading, :failure=failure)
+    }
+    // Keyed on what decides how much of the dex `naming` covers, rather than
+    // on `naming` itself, which reads the names through the search.
+    effect(on="{chosenDex != null ? chosenDex.name : ""}/{namingAll}/{shown}", @mount { ask() })
+    // A species that fails is named by its slug rather than asked for again.
+    for var slug = asking {
+        poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) }, @fail { names["species/{slug}"] = [] })
+    }
 
     ui.vbox(style={gap=8px, padding=8px, flex=1}) {
-        ui.hbox(style={gap=8px, alignItems=center}) {
-            ui.select #dexPick(:value=chosen, @change(v) { pick(v) }) {
-                for var d = dexes {
-                    ui.choice(label=display(d.name))
-                }
-            }
-            if chosenDex != null {
-                ui.text #about(value=dexLine(chosenDex))
-            }
+        if chosenDex != null {
+            ui.text #about(value=dexLine(chosenDex))
         }
         ui.input #searchBox(placeholder=$"Search this Pokédex", :value=search)
+        if namesPending() {
+            ui.spinner #namesLoading(label=$"Loading names")
+        }
         if failure != null {
             ui.text(value=couldNotLoadDex(failure.message))
         }
@@ -91,7 +133,7 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
                 for var row = grid() {
                     ui.hbox(style={gap=8px}) {
                         for var entry = row {
-                            card(entry=entry, @open { open(entry.pokemonSpecies.name) })
+                            card(entry=entry, name=label(entry), @open { open(entry.pokemonSpecies.name) })
                         }
                     }
                 }
@@ -102,15 +144,15 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
 
 // One Pokémon of a dex: its artwork, its number in this dex and its name,
 // opened by a click anywhere on it. The picture's URL comes from the species
-// id in the entry, so a card asks for nothing.
-component card(entry poke.PokemonDexNumber, @open()) ui.node {
+// id in the entry.
+component card(entry poke.PokemonDexNumber, name string, @open()) ui.node {
     ui.card(clickable=true, style={width=128px}, @click { open() }) {
         ui.vbox(style={gap=4px, alignItems=center}) {
             ui.image(alt=entry.pokemonSpecies.name, style={width=96px, height=96px}) {
                 ui.remote(url=artworkOf(artwork, idOf(entry.pokemonSpecies.url)))
             }
             ui.text(value=number(entry.entryNumber))
-            ui.text(value=display(entry.pokemonSpecies.name))
+            ui.text(value=name)
         }
     }
 }

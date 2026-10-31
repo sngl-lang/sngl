@@ -525,6 +525,22 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 	if fn == nil {
 		return nil, false, nil
 	}
+	// One the interpreter answers natively -- a stack's `canGoBack` -- has no
+	// body to run, and is handed the instance ahead of its arguments, as GetField
+	// hands `current`.
+	if fn.Intrinsic != "" {
+		vals := []any{cv}
+		for _, a := range args {
+			v, err := env.Eval(a.Value)
+			if err != nil {
+				return nil, true, err
+			}
+			vals = append(vals, v)
+		}
+		if v, ok, err := interp.RunIntrinsic(fn.Intrinsic, vals); ok {
+			return v, true, err
+		}
+	}
 	// Evaluate args against the CALLER's env (env) so that intra-component
 	// recursive calls like `fib(n-1)` see the caller frame's local `n`.
 	// Then run the body against compEnv (which carries the component's own

@@ -16,7 +16,7 @@ const maxStat = 255
 // Every name the page shows of a resource of its own -- a type, an ability,
 // a move -- is a request keyed on it, made where the name is shown, and
 // `names` keeps each answer's names in every language.
-component detailPage(name string, form = "", @back(), @open(name string, form string)) ui.node {
+component detailPage(name string, form = "", @open(name string, form string)) ui.node {
     var about option[poke.PokemonSpeciesDetail] = null
     var mon option[poke.PokemonDetail] = null
     var shape option[poke.PokemonFormDetail] = null
@@ -25,9 +25,12 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
     var monFailure option[async.Failure] = null
     var evolution option[poke.EvolutionChainDetail] = null
     var tab = 0
+    // Whether the Moves tab has been shown: its rows ask for a move each, and
+    // their types, so they wait for it, where every other panel asks as the
+    // page opens. Its panel is mounted all the same and keeps what it got.
+    var movesShown = false
     var method = "level-up"
     var methodLabel = $"Level"
-    var names map[string, list[Named]] = {}
     var moveFacts map[string, MoveFact] = {}
 
     // The Pokémon the page shows: the form asked for, or the species' default.
@@ -82,7 +85,7 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
         return evolution != null ? evolutionRows(evolution.chain, names) : []
     }
 
-    poke.pokemonSpeciesRetrieve(id=name, :value=about, :pending=loading, :failure=failure)
+    poke.pokemonSpeciesRetrieve(id=name, :value=about, :pending=loading, :failure=failure, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) })
     if about != null {
         poke.pokemonRetrieve(id=shown(), :value=mon, :failure=monFailure)
         poke.evolutionChainRetrieve(id=idOf(about.evolutionChain.url), :value=evolution)
@@ -92,9 +95,6 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
     }
 
     ui.vbox(style={gap=8px, padding=8px, flex=1}) {
-        ui.hbox {
-            ui.button #backButton(text=$"‹ Back", @click { back() })
-        }
         ui.scroll(style={flex=1}) {
             ui.vbox(style={gap=8px}) {
                 if about == null && loading {
@@ -118,36 +118,48 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                             if mon != null {
                                 ui.hbox(style={gap=4px}) {
                                     for var t = mon.types {
-                                        poke.typeRetrieve(id=t.type.name, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                        if !known(`type`, t.type.name) {
+                                            poke.typeRetrieve(id=t.type.name, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                        }
                                         typeBadge #types(kind=t.type.name, value=called(names, `type`, t.type.name))
                                     }
                                 }
                             }
                         }
                     }
-                    ui.tabs #tabs(:selected=tab) {
+                    ui.tabs #tabs(:selected=tab, @change(i) {
+                        if i == 4 {
+                            movesShown = true
+                        }
+                    }) {
                         ui.tab(label=$"About") {
                             ui.vbox(style={gap=6px, padding=8px}) {
                                 ui.text #flavor(value=latestFlavor(about.flavorTextEntries))
                                 if mon != null {
                                     for var a = mon.abilities {
-                                        poke.abilityRetrieve(id=a.ability.name, @load(got) { names["ability/{got.name}"] = abilityNamed(got.names) })
+                                        if !known(`ability`, a.ability.name) {
+                                            poke.abilityRetrieve(id=a.ability.name, @load(got) { names["ability/{got.name}"] = abilityNamed(got.names) })
+                                        }
                                     }
                                     fact(label=$"Height") {
-                                        ui.text #height(value=mon.height != null ? meters(heightOf(mon.height)) : $"Unknown")
+                                        ui.text #height(value=mon.height != null ? heightText(heightOf(mon.height)) : $"Unknown")
                                     }
                                     fact(label=$"Weight") {
-                                        ui.text #weight(value=mon.weight != null ? kilograms(weightOf(mon.weight)) : $"Unknown")
+                                        ui.text #weight(value=mon.weight != null ? weightText(weightOf(mon.weight)) : $"Unknown")
                                     }
                                     fact(label=$"Abilities") {
                                         ui.text #abilities(value=abilitiesOf(mon.abilities, names))
                                     }
                                 }
                                 if about.habitat != null {
-                                    poke.pokemonHabitatRetrieve(id=about.habitat.name, @load(got) { names["habitat/{got.name}"] = habitatNamed(got.names) })
+                                    if !known(`habitat`, about.habitat.name) {
+                                        poke.pokemonHabitatRetrieve(id=about.habitat.name, @load(got) { names["habitat/{got.name}"] = habitatNamed(got.names) })
+                                    }
                                 }
                                 for var g = about.eggGroups {
-                                    poke.eggGroupRetrieve(id=g.name, @load(got) { names["egg-group/{got.name}"] = eggGroupNamed(got.names) })
+                                    if !known(`egg-group`, g.name) {
+                                        poke.eggGroupRetrieve(id=g.name, @load(got) { names["egg-group/{got.name}"] = eggGroupNamed(got.names) })
+                                    }
                                 }
                                 fact(label=$"Habitat") {
                                     ui.text #habitat(value=about.habitat != null ? called(names, `habitat`, about.habitat.name) : $"Unknown")
@@ -167,11 +179,13 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                             ui.vbox(style={gap=6px, padding=8px}) {
                                 if mon != null {
                                     for var s = mon.stats {
-                                        poke.statRetrieve(id=s.stat.name, @load(got) { names["stat/{got.name}"] = statNamed(got.names) })
+                                        if !known(`stat`, s.stat.name) {
+                                            poke.statRetrieve(id=s.stat.name, @load(got) { names["stat/{got.name}"] = statNamed(got.names) })
+                                        }
                                         ui.hbox(style={gap=8px, alignItems=center}) {
                                             ui.text #statName(value=statLabel(s.stat.name, names), style={width=120px})
                                             ui.text #base(value="{s.baseStat}", style={width=40px})
-                                            ui.progress(value=float(s.baseStat), max=float(maxStat), label=statLabel(s.stat.name, names), style={flex=1})
+                                            ui.progress(value=float(s.baseStat), max=float(maxStat), label=statLabel(s.stat.name, names), style={flex=1, color=statColor(s.baseStat)})
                                         }
                                     }
                                     fact(label=$"Total") {
@@ -186,37 +200,49 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                         ui.tab(label=$"Evolution") {
                             ui.vbox(style={gap=12px, padding=8px}) {
                                 for var slug = chainSlugs(`item`) {
-                                    poke.itemRetrieve(id=slug, @load(got) { names["item/{got.name}"] = itemNamed(got.names) })
+                                    if !known(`item`, slug) {
+                                        poke.itemRetrieve(id=slug, @load(got) { names["item/{got.name}"] = itemNamed(got.names) })
+                                    }
                                 }
                                 for var slug = chainSlugs(`type`) {
-                                    poke.typeRetrieve(id=slug, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                    if !known(`type`, slug) {
+                                        poke.typeRetrieve(id=slug, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                    }
                                 }
                                 for var slug = chainSlugs(`move`) {
-                                    poke.moveRetrieve(id=slug, @load(got) { names["move/{got.name}"] = moveNamed(got.names) })
+                                    if !known(`move`, slug) {
+                                        poke.moveRetrieve(id=slug, @load(got) { names["move/{got.name}"] = moveNamed(got.names) })
+                                    }
                                 }
                                 for var slug = chainSlugs(`trigger`) {
-                                    poke.evolutionTriggerRetrieve(id=slug, @load(got) { names["trigger/{got.name}"] = triggerNamed(got.names) })
+                                    if !known(`trigger`, slug) {
+                                        poke.evolutionTriggerRetrieve(id=slug, @load(got) { names["trigger/{got.name}"] = triggerNamed(got.names) })
+                                    }
                                 }
-                                for var row = chainRows() {
-                                    ui.hbox(style={gap=8px, alignItems=center}) {
-                                        for var stage = row {
-                                            ui.vbox(style={gap=8px}) {
-                                                ui.hbox(style={gap=8px, alignItems=center}) {
-                                                    if stage.trigger != "" {
-                                                        ui.vbox(style={alignItems=center, width=96px}) {
-                                                            ui.text(value="→")
-                                                            ui.text #trigger(value=stage.trigger)
+                                ui.scroll(direction=horizontal) {
+                                    ui.vbox(style={gap=12px}) {
+                                        for var row = chainRows() {
+                                            ui.hbox(style={gap=8px, alignItems=center}) {
+                                                for var stage = row {
+                                                    ui.vbox(style={gap=8px}) {
+                                                        ui.hbox(style={gap=8px, alignItems=center}) {
+                                                            if stage.trigger != "" {
+                                                                ui.vbox(style={alignItems=center, width=96px}) {
+                                                                    ui.text(value="→")
+                                                                    ui.text #trigger(value=stage.trigger)
+                                                                }
+                                                            }
+                                                            stageCard #step(stage=stage, @open { open(stage.name, "") })
                                                         }
-                                                    }
-                                                    stageCard #step(stage=stage, @open { open(stage.name, "") })
-                                                }
-                                                for var f = stage.forms {
-                                                    ui.hbox(style={gap=8px, alignItems=center}) {
-                                                        ui.vbox(style={alignItems=center, width=96px}) {
-                                                            ui.text(value="→")
-                                                            ui.text #formTrigger(value=f.trigger)
+                                                        for var f = stage.forms {
+                                                            ui.hbox(style={gap=8px, alignItems=center}) {
+                                                                ui.vbox(style={alignItems=center, width=96px}) {
+                                                                    ui.text(value="→")
+                                                                    ui.text #formTrigger(value=f.trigger)
+                                                                }
+                                                                formCard #formStep(form=f.form, @open(p) { open(stage.name, p) })
+                                                            }
                                                         }
-                                                        formCard #formStep(form=f.form, @open(p) { open(stage.name, p) })
                                                     }
                                                 }
                                             }
@@ -227,23 +253,29 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                         }
                         ui.tab(label=$"Sprites") {
                             ui.vbox(style={gap=8px, padding=8px}) {
-                                for var row = rows(pictures(), 4) {
-                                    ui.hbox(style={gap=8px}) {
-                                        for var p = row {
-                                            ui.vbox(style={gap=4px, alignItems=center, width=112px}) {
-                                                ui.image(alt=p.label, style={width=96px, height=96px}) {
-                                                    ui.remote(url=p.url)
+                                ui.scroll(direction=horizontal) {
+                                    ui.vbox(style={gap=8px}) {
+                                        for var row = rows(pictures(), 4) {
+                                            ui.hbox(style={gap=8px}) {
+                                                for var p = row {
+                                                    ui.vbox(style={gap=4px, alignItems=center, width=112px}) {
+                                                        ui.image(alt=p.label, style={width=96px, height=96px}) {
+                                                            ui.remote(url=p.url)
+                                                        }
+                                                        ui.text #spriteLabel(value=p.label)
+                                                    }
                                                 }
-                                                ui.text #spriteLabel(value=p.label)
                                             }
                                         }
                                     }
                                 }
                                 if forms().length() > 0 {
                                     ui.text(value=$"Forms", style={fontWeight=bold})
-                                    ui.hbox(style={gap=8px}) {
-                                        for var v = forms() {
-                                            formCard #variety(form=v, @open(p) { open(name, formOf(p)) })
+                                    ui.scroll(direction=horizontal) {
+                                        ui.hbox(style={gap=8px}) {
+                                            for var v = forms() {
+                                                formCard #variety(form=v, @open(p) { open(name, formOf(p)) })
+                                            }
                                         }
                                     }
                                 }
@@ -251,14 +283,18 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                         }
                         ui.tab(label=$"Moves") {
                             ui.vbox(style={gap=8px, padding=8px}) {
-                                for var slug = moveSlugs() {
-                                    poke.moveRetrieve(id=slug, @load(got) {
-                                        names["move/{got.name}"] = moveNamed(got.names)
-                                        moveFacts[got.name] = moveFactOf(got)
-                                    })
-                                }
-                                for var slug = moveTypes() {
-                                    poke.typeRetrieve(id=slug, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                if movesShown {
+                                    for var slug = moveSlugs() {
+                                        poke.moveRetrieve(id=slug, @load(got) {
+                                            names["move/{got.name}"] = moveNamed(got.names)
+                                            moveFacts[got.name] = moveFactOf(got)
+                                        })
+                                    }
+                                    for var slug = moveTypes() {
+                                        if !known(`type`, slug) {
+                                            poke.typeRetrieve(id=slug, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                        }
+                                    }
                                 }
                                 // The way is PokéAPI's name, and the select
                                 // shows its label in the reader's language,
@@ -269,15 +305,17 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                                         ui.choice(label=m.label)
                                     }
                                 }
-                                ui.vbox #moveTable(style={gap=4px}) {
-                                    moveLine(level=$"Level", name=$"Move", power=$"Power", accuracy=$"Accuracy", style={fontWeight=bold}) {
-                                        ui.text(value=$"Type", style={fontWeight=bold})
-                                    }
-                                    ui.divider()
-                                    for var r = moveRows() {
-                                        moveLine(level=r.level, name=r.name, power=r.power, accuracy=r.accuracy) {
-                                            if r.kind != "" {
-                                                typeBadge(kind=r.kindSlug, value=r.kind)
+                                ui.scroll(direction=horizontal) {
+                                    ui.vbox #moveTable(style={gap=4px}) {
+                                        moveLine(level=$"Level", name=$"Move", power=$"Power", accuracy=$"Accuracy", style={fontWeight=bold}) {
+                                            ui.text(value=$"Type", style={fontWeight=bold})
+                                        }
+                                        ui.divider()
+                                        for var r = moveRows() {
+                                            moveLine(level=r.level, name=r.name, power=r.power, accuracy=r.accuracy) {
+                                                if r.kind != "" {
+                                                    typeBadge(kind=r.kindSlug, value=r.kind)
+                                                }
                                             }
                                         }
                                     }

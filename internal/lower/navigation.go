@@ -688,7 +688,7 @@ func (nv *navigation) startRecord(st *navStack) ir.Expr {
 		return ir.CloneExprSharingDecls(st.startExpr)
 	}
 	if lit, ok := pg.node.Prop(ir.NavPageHref).(*ir.Literal); (ok && lit.Value == "/" && !pg.looped() && len(pg.conds) == 0) || !st.wrapped() {
-		st.startExpr = nv.record(pg)
+		st.startExpr = nv.titledRecord(pg, pg.start())
 		return ir.CloneExprSharingDecls(st.startExpr)
 	}
 	fn := &ir.Func{Name: nv.fresh(st.name + "__start"), Return: st.fam.typ, Purity: ir.PurityPure}
@@ -702,7 +702,7 @@ func (nv *navigation) startRecord(st *navStack) ir.Expr {
 				cond = &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd, Left: c, Right: cond}
 			}
 		}
-		var s ir.Stmt = &ir.Return{Value: nv.record(pg)}
+		var s ir.Stmt = &ir.Return{Value: nv.titledRecord(pg, pg.start())}
 		if cond != nil {
 			s = &ir.If{Cond: cond, Body: []ir.Stmt{s}}
 		}
@@ -857,6 +857,55 @@ func (nv *navigation) record(pg *navPage) ir.Expr {
 		lit.Fields = append(lit.Fields, ir.FieldInit{Name: "copy", Value: pg.copyOf()})
 	}
 	return lit
+}
+
+// titledRecord is pg's record as the current page, showing params: its title
+// is what its `titleOf` gives them, where it gives one. Read as a value, a
+// page is its record as declared, which is what `item.title` reads.
+func (nv *navigation) titledRecord(pg *navPage, params ir.Expr) ir.Expr {
+	rec := nv.record(pg)
+	of := PageTitleOf(pg.node)
+	lit, ok := rec.(*ir.StructLit)
+	if of == nil || !ok || params == nil {
+		return rec
+	}
+	for i, f := range lit.Fields {
+		if f.Name == "title" {
+			lit.Fields[i].Value = TitleCall(of, params)
+		}
+	}
+	return lit
+}
+
+// PageTitleOf is the function a page's `titleOf` names, or nil for a page
+// that gives none.
+func PageTitleOf(n *ir.NodeInst) ir.Expr {
+	v := n.Prop(ir.NavPageTitleOf)
+	for {
+		cv, ok := v.(*ir.Conversion)
+		if !ok {
+			break
+		}
+		v = cv.Operand
+	}
+	if v == nil {
+		return nil
+	}
+	if t := v.ExprType(); t != nil && t.Kind == ir.TypeNull {
+		return nil
+	}
+	return v
+}
+
+// TitleCall is the call of a page's `titleOf`, of, with params.
+func TitleCall(of, params ir.Expr) ir.Expr {
+	args := []ir.CallArg{{Value: params}}
+	if id, ok := of.(*ir.Ident); ok {
+		if fn, ok := id.Sym.(*ir.Func); ok {
+			return &ir.Call{Type: ir.TypString, Func: fn, Args: args}
+		}
+	}
+	return &ir.Call{Type: ir.TypString, Callee: ir.CloneExprSharingDecls(of), Args: args}
 }
 
 func navInt(n int) *ir.Literal {
@@ -1022,7 +1071,11 @@ func (nv *navigation) goStmts(pg *navPage, params ir.Expr) []ir.Stmt {
 		}
 		out = append(out, &ir.Assign{Target: ir.CloneExprSharingDecls(pg.params), Op: ast.AssignSet, Value: params})
 	}
-	out = append(out, &ir.Assign{Target: ir.CloneExprSharingDecls(st.current), Op: ast.AssignSet, Value: nv.record(pg)})
+	shown := pg.empty
+	if pg.params != nil {
+		shown = ir.CloneExprSharingDecls(pg.params)
+	}
+	out = append(out, &ir.Assign{Target: ir.CloneExprSharingDecls(st.current), Op: ast.AssignSet, Value: nv.titledRecord(pg, shown)})
 	return out
 }
 
@@ -1298,12 +1351,23 @@ func (nv *navigation) valueExpr(n ir.Node) (ir.Node, error) {
 	return n, nil
 }
 
-// structureExpr reads `pages.current` as the cell that holds it.
+// structureExpr reads `pages.current` as the cell that holds it, and
+// `pages.canGoBack()` as whether the history holds an entry.
 func (nv *navigation) structureExpr(n ir.Node) (ir.Node, error) {
-	if x, ok := n.(*ir.Call); ok && x.Func != nil && x.Func.Intrinsic == ir.NavCurrentID && len(x.Args) > 0 {
-		if st, ok := nv.resolve(x.Args[0].Value).(*navStack); ok {
-			return rebase(st.current, x.Args[0].Value), ir.SkipDir
-		}
+	x, ok := n.(*ir.Call)
+	if !ok || x.Func == nil || len(x.Args) == 0 {
+		return n, nil
+	}
+	st, ok := nv.resolve(x.Args[0].Value).(*navStack)
+	if !ok {
+		return n, nil
+	}
+	switch x.Func.Intrinsic {
+	case ir.NavCurrentID:
+		return rebase(st.current, x.Args[0].Value), ir.SkipDir
+	case ir.NavCanGoBackID:
+		hist := rebase(varIdent(st.history), x.Args[0].Value)
+		return &ir.Binary{Type: ir.TypBool, Op: ast.BinGt, Left: listLength(hist), Right: navInt(0)}, ir.SkipDir
 	}
 	return n, nil
 }

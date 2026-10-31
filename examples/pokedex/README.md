@@ -3,9 +3,11 @@
 A choice of Pokédex from [PokéAPI](https://pokeapi.co) and a grid of its
 Pokémon, and a page per species and per form of one: a header of its artwork,
 name, number, genus and types over tabs about it, in English, French, German,
-Spanish or Japanese. It builds for html, fyne, gtk4, bubbletea and android,
-and the interpreter runs it. Nothing in it makes a request by hand, and nothing in
-it says how a target waits for one.
+Spanish or Japanese. The window's bar names the page shown, goes back through
+the pages, and holds a menu choosing the language and the Pokédex, both kept
+from one run to the next. It builds for html, fyne, gtk4, bubbletea and
+android, and the interpreter runs it. Nothing in it makes a request by hand,
+and nothing in it says how a target waits for one.
 
 ```
 sngl generate --platform html      --lang go     -o /tmp/dex-web examples/pokedex
@@ -19,16 +21,16 @@ launcher red.
 
 ## How it is put together
 
-| file                 | what is in it                                                                                       |
-|----------------------|-----------------------------------------------------------------------------------------------------|
-| `app.sngl`           | the window: a choice of language over a `nav.stack` of home, a page per Pokémon and a page per form |
-| `home.sngl`          | a `ui.select` of Pokédex and a grid of its Pokémon, 30 at a time                                    |
-| `detail.sngl`        | a species' page: a header over About, Stats, Evolution, Sprites and Moves                           |
-| `names.sngl`         | ids, names, rows, the artwork, an evolution's rows, a gallery, the moves, and lines' text           |
-| `icon.svg`           | the app's icon, which `output` names                                                                |
-| `pokeapi.yml`        | PokéAPI's OpenAPI document, vendored                                                                |
-| `i18n.manifest.json` | the app's own words in French, German, Spanish and Japanese                                         |
-| `pokedex_test.sngl`  | the tests, against the answers in `testdata/http`                                                   |
+| file                 | what is in it                                                                                   |
+|----------------------|-------------------------------------------------------------------------------------------------|
+| `app.sngl`           | the window: its bar and menu over a `nav.stack` of home, a page per Pokémon and a page per form |
+| `home.sngl`          | the Pokédex chosen, a search, and a grid of its Pokémon, 30 at a time                           |
+| `detail.sngl`        | a species' page: a header over About, Stats, Evolution, Sprites and Moves                       |
+| `names.sngl`         | ids, names, rows, the artwork, an evolution's rows, a gallery, the moves, and lines' text       |
+| `icon.svg`           | the app's icon, which `output` names                                                            |
+| `pokeapi.yml`        | PokéAPI's OpenAPI document, vendored                                                            |
+| `i18n.manifest.json` | the app's own words in French, German, Spanish and Japanese                                     |
+| `pokedex_test.sngl`  | the tests, against the answers in `testdata/http`                                               |
 
 **The API is an import.** `import poke "openapi:./pokeapi.yml"` reads
 PokéAPI's own OpenAPI document and writes a SNGL package from it: a struct for
@@ -58,35 +60,63 @@ page draws a spinner or what went wrong next to whatever it still has.
 `loading` and `failure` are the page's own state, bound with `:` the way a
 text field's value is, and a page that does not care leaves them out.
 
-**Home is two requests.** One lists the Pokédexes, with a limit that holds
-every one PokéAPI has (it answers 20 a page otherwise), and fills the
-`ui.select`. The other is the dex chosen, keyed on its name, so choosing
-another moves the key; `@change` maps the label chosen back to the dex's name:
+**The window chooses the dex, and home shows it.** The window lists the
+Pokédexes, with a limit that holds every one PokéAPI has (it answers 20 a
+page otherwise), and its menu's Pokédex entry offers each, the one chosen
+checked. Home asks for the dex chosen, keyed on its name, so choosing another
+moves the key and starts the grid again:
 
 ```sngl
 poke.pokedexList(limit=dexLimit, offset=0, @load(page) { dexes = page.results })
-poke.pokedexRetrieve(id=dexName, :value=dex, :pending=loading, :failure=failure)
+poke.pokedexRetrieve(id=dexName, :value=chosenDex, :pending=loading, :failure=failure)
 ```
 
-Beside the select are the dex's name, its region ("every region" for the
-National dex, which has none) and how many Pokémon it holds.
+Over the grid are the dex's name, its region ("every region" for the National
+dex, which has none) and how many Pokémon it holds, and a search of it.
 
 The dex chosen is the package's, not the page's: `dexName` and the answer,
-`chosenDex`, are package `var`s home's select and request write. So home
+`chosenDex`, are package `var`s the menu and home's request write. So home
 shown again starts at the dex chosen, and a Pokémon's page lists the moves of
-the latest game that dex covers.
+the latest game that dex covers. `dexName` is kept from one run to the next
+(see [Kept settings](#kept-settings)).
 
-**Every entry arrives with the dex**, so the search covers the whole dex and
-a page more asks for nothing: the grid's scroll fires `@reachEnd` as its end
-comes into view, and home shows the next 30 of what matches. A first page too
+**Every entry arrives with the dex**, so a page more asks for nothing: the
+grid's scroll fires `@reachEnd` as its end comes into view, and home shows the
+next 30 of what matches. A first page too
 short to scroll has its end in view already, so the next one follows it at
 once. The grid is rows of three that `rows` in `names.sngl` cuts, since a
 `Style` neither wraps a row nor lays out columns.
 
-**A card asks for nothing.** A clickable `ui.card`, opened by a click
-anywhere on it, it shows the entry's number in this dex, its name and its
-official artwork, whose URL is the species id out of the entry's URL
-put into `artwork`, a context holding where the artwork is:
+**A card shows its species' name in the reader's language.** An entry names
+its species only by PokéAPI's slug, `nidoran-f`, and the names in each
+language are the species' own, so home asks for the species of each card
+shown, and a card shows the slug made readable until it answers. The names
+are the package's (`names` in `names.sngl`), which a Pokémon's page fills
+too, so nothing named once is asked for again, and a species that fails
+keeps its slug rather than being asked again.
+
+What home has asked for is `asking`, a list it only ever adds to: an effect
+adds each species coming into view that no page has named, and the requests
+are a `for` over it. A `for` matches its copies by position, so a request
+dropping out of the middle of the list, as one would once answered, moved
+every one after it, and each started again:
+
+```sngl
+effect(on="{chosenDex != null ? chosenDex.name : ""}/{namingAll}/{shown}", @mount { ask() })
+for var slug = asking {
+    poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) }, @fail { names["species/{slug}"] = [] })
+}
+```
+
+**The search matches what the cards say.** It matches the slug or the name
+in the reader's language, so the first search of a dex asks for the species
+of every entry, under a spinner until all have answered; a search of a dex
+already named asks for nothing.
+
+A clickable `ui.card`, opened by a click anywhere on it, it shows the
+entry's number in this dex, its name and its official artwork, whose URL is
+the species id out of the entry's URL put into `artwork`, a context holding
+where the artwork is:
 
 ```sngl
 context #artwork(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{id}.png`)
@@ -112,16 +142,30 @@ and genus, its national number as `#001` -- but for its types, which wait for
 the Pokémon and are asked for by name (see [Languages](#languages)). A type
 is a `typeBadge`, a `ui.badge` in the type's own color (`typeColors` in
 `names.sngl`), its name dark over the light types and white over the rest.
-Under it is a `ui.tabs`: About, Stats, Evolution, Sprites and Moves.
+Under it is a `ui.tabs`: About, Stats, Evolution, Sprites and Moves, drawn as
+each target draws tabs -- a Material TabRow on android, a GtkStackSwitcher on
+gtk4, an AppTabs on fyne, a bar of boxed labels on bubbletea. Every panel is
+mounted as the page opens and kept while another shows, so a panel left and
+come back to is as it was, and on android and html the panels swipe. Moves is
+the one that waits: its rows ask for a move each and for their types, so they
+ask the first time its tab is shown (`movesShown`).
+
+Evolution, Sprites and Moves are wider than a phone, so each scrolls
+sideways, a `ui.scroll(direction=horizontal)` around its rows, while the page
+scrolls down.
 
 **About** is the species' newest description in the reader's language on one
 line (the games
 break a description with newlines and form feeds where their text box did),
-the Pokémon's height and weight in meters and kilograms -- `unit length { m }`
-and `unit mass { kg }`, since PokéAPI gives tenths of each -- its abilities with
+the Pokémon's height and weight in meters and kilograms, with feet and inches
+and pounds after them -- `unit length { m, in = 0.0254m }` and
+`unit mass { kg, lb = 0.45359237kg }`, since PokéAPI gives tenths of each, and
+`l / 1in` is a length in inches -- its abilities with
 a hidden one marked, the species' habitat (which may be `null`), egg groups,
 gender ratio (from `gender_rate`, eighths female or -1 for none) and capture
-rate. **Stats** is a bar per base stat against 255, their total, and the effort
+rate. **Stats** is a bar per base stat against 255, colored by how good the
+stat is (`statColor`: red under 30, through orange, yellow and two greens, to
+teal from 150), their total, and the effort
 values defeating the Pokémon gives. Each line's text is a function in
 `names.sngl`, which `testNames` checks beside the page's own tests; one that
 puts its pieces together -- `display`, `oneLine`, home's `dexLine` -- builds
@@ -223,16 +267,22 @@ and the select's labels are the app's own words; a move's name is PokéAPI's
 in the reader's language, asked for by name, and the ways with no level order
 by it.
 
-**Pages.** The app is a `nav.stack` of three pages: home, a species and a form of one. The detail page's params are
-a struct, and its href names their field:
+**Pages.** The app is a `nav.stack` of three pages: home, a species and a
+form of one. The detail page's params are a struct, and its href names their
+field:
 
 ```sngl
-nav.page #detail(href=`/pokemon/{name}`, title="Pokémon", params=Mon{name="bulbasaur"}) {
+nav.page #detail(href=`/pokemon/{name}`, title="Pokémon", params=Mon{name="bulbasaur"}, titleOf=func(p Mon) => display(p.name)) {
     component content(p) {
-        detailPage(name=p.name, @back { pages.back() }, @open(name, form) { show(name, form) })
+        detailPage(name=p.name, @open(name, form) { show(name, form) })
     }
 }
 ```
+
+`titleOf` is the page's title as a function of its params, so the window's
+bar reads "Bulbasaur" while that page shows, and "Pokédex" on home. It is the
+species' name as its slug spells it, in every language: the title is asked
+for before the page has fetched anything.
 
 A form's page is a second `nav.page`, `/pokemon/{name}/{form}` with a `Form`
 of both, since html serves a page's params from its path alone. `show`, a func
@@ -243,25 +293,75 @@ On html each page is a route, so the app is served by a Go program
 (`--lang go`). Elsewhere the stack is the target's own: a NavHost on android,
 a field of the model on the desktop and in the terminal.
 
-## Languages
+## The window
 
-The app reads in English, French, German, Spanish or Japanese. Above the
-stack is a `ui.select` of the five, each named in itself, and the stack is
-under an `i18n.locale` provider holding the one chosen:
+`Pokedex` is its window, so the stack, the language and the dexes are in
+scope where the window's bar is written:
 
 ```sngl
-ui.select #languagePick(:value=language) {
-    for var l = languages {
-        ui.choice(label=l.label)
+ui.window #pokedex(title=pages.current.title, canGoBack=pages.canGoBack(), @back { pages.back() }) {
+    component menu {
+        ui.menuItem(label=$"Language") {
+            for var l = languages {
+                ui.menuItem(label=l.label, checked=l.label == language, @select { language = l.label })
+            }
+        }
+        ui.menuItem(label=$"Pokédex") {
+            for var d = dexes {
+                ui.menuItem(label=display(d.name), checked=d.name == dexName, @select { chooseDex(d.name) })
+            }
+        }
     }
-}
-i18n.locale(localeLabeled(language)) {
-    nav.stack #pages { … }
+    …
 }
 ```
 
-It starts at the process's locale -- `fr_CA.UTF-8` is French -- and at English
-where that is none of the five (`languageLabel`).
+The bar is the page's title, a way back while the stack has somewhere to go
+back to, and the menu, a submenu for the language and one for the dex, each
+marking the one chosen. No page draws a back button of its own. Each target
+draws the bar as its own:
+
+| target      | the bar                                                                                                                |
+|-------------|------------------------------------------------------------------------------------------------------------------------|
+| `android`   | a Material3 TopAppBar: the launcher icon, the title, an up arrow, and an action per submenu; the system back goes back |
+| `html`      | a `<header>`: the title, an up arrow, and the menu as a menubar; the browser's back goes back                          |
+| `gtk4`      | the header bar: the title, a back button, and a menu button opening the menu                                           |
+| `fyne`      | the window's main menu, and a back button over the content                                                             |
+| `bubbletea` | a title line, `‹` before it while esc goes back; a terminal has no menu                                                |
+
+### Kept settings
+
+The language and the dex outlive the process. `sngl:settings` binds each to
+a name, loads what was kept when the window mounts, and keeps every change:
+
+```sngl
+settings.kept(name="language", default=languageLabel(i18n.defaultLocale()), :value=language)
+settings.kept(name="dexName", default="national", :value=dexName)
+```
+
+Each target keeps them where it keeps an app's settings: SharedPreferences on
+android, `localStorage` on html, fyne's preferences, and on gtk4 and
+bubbletea a JSON file per setting under the user's config directory, in
+`Pokédex/`. Each is null until the kept value loads: the window speaks the
+process's language meanwhile, and home asks for no dex until it knows which.
+A test keeps values in memory and starts with none.
+
+## Languages
+
+The app reads in English, French, German, Spanish or Japanese. The window's
+Language menu offers the five, each named in itself, and the window is under
+an `i18n.locale` provider holding the one chosen, so its title and its menu
+are in it too:
+
+```sngl
+i18n.locale(localeLabeled(language)) {
+    ui.window #pokedex(…) { … }
+}
+```
+
+It starts at the language kept from the last run, and on a first run at the
+process's locale -- `fr_CA.UTF-8` is French -- or English where that is none
+of the five (`languageLabel`).
 
 **What PokéAPI says is picked by one function.** `pokeLanguages` turns a SNGL
 locale into PokéAPI's names for its language, in the order to look for them,
@@ -307,24 +407,24 @@ What that costs per page, beside the page's own three or four requests:
 | Evolution  | each item, type, move or trigger a step names  | 0         |
 | Moves      | each move the way chosen teaches, and its type | 18        |
 
-Eevee's Evolution asks for six: five stones and the Fairy type. The requests
-of a tab are made when it is shown, since a tab's panel mounts then.
+Eevee's Evolution asks for six: five stones and the Fairy type. Every panel
+mounts as the page opens, so every tab's requests but Moves' go out then;
+Moves' go out the first time its tab is shown.
 
 **A resource is asked for once per place it is shown.** A tab asks for each
 name it shows once, however many times it shows it -- a move learned at two
-levels, a stone two stages reach. Nothing is kept between places or between
-showings: the header's Fairy type and a Fairy move in Evolution are two
-requests, and a tab shown again asks again, though what the first answer
-put in `names` shows while the second is on its way. A page opened again
-starts with no names.
+levels, a stone two stages reach. Nothing is kept between places: the
+header's Fairy type and a Fairy move in Evolution are two requests. A tab
+shown again asks for nothing, since its panel stayed mounted, and a page
+opened again starts with no names.
 
 **The app's own words are `$"..."`**, and `i18n.manifest.json` translates
 each into the four other languages: the tab labels, About's and Stats'
 labels, the sprite labels, the Moves tab's headings, choices and note, the
 words of an evolution's step, the search's placeholder, the
-errors and "Genderless". A word is a key, and a key has one meaning: the
-page's back button is "‹ Back", since a sprite's "Back" is the Pokémon's back
-(French "Retour" and "Dos"). A line joining several names joins them with
+errors, "Genderless", and the menu's "Language" and "Pokédex". A word is a
+key, and a key has one meaning: "Back" is a sprite's, the Pokémon's back
+(French "Dos"). A line joining several names joins them with
 `$"{text}, {p}"`, so Japanese joins with 「、」.
 
 Two counts are plurals: a dex's, "40 Pokémon" ("40匹" in Japanese), and the
@@ -344,9 +444,8 @@ for.
 
 Left in English, or as PokéAPI's slug made readable: a card's name on home
 and in Evolution -- a species' name lives on the species, and a card asks for
-nothing -- a dex's region, and the dex select's choices, which home maps back
-to a dex by the same readable slug. A page's title is the app's own word left in English too: android reads a
-page's title off its route's declaration, so it is a constant.
+nothing -- a dex's region, the Pokédex menu's entries, and a page's title,
+the slug of the species its params name.
 
 ## Where each target stands
 
@@ -458,11 +557,14 @@ drops what the last test's page posted as the next test starts: the Moves tab
 redraws its list for each move's answer, and the next test's waits ran the
 last test's redraws and timed out.
 
-**The language switch** is tested through `shell`, the app's own `Pokedex`
-under the test's server: choosing "Español" in the shell's select turns
-home's dex line into "Nacional · todas las regiones · 40 Pokémon". A test's
+**The window's menu** is tested through `shell`, the app's own `Pokedex`
+under the test's server. A test opens a submenu and picks from it as a person
+does, `c.app.pokedex.menu[0].select()` and then the entry under it: choosing
+"Español" turns home's dex line into "Nacional · todas las regiones · 40
+Pokémon", and choosing Kanto is the dex home shows and the one kept. A test's
 read of a node's prop is read under the providers around the node, so it
-reads home in the language the shell chose, not the test's.
+reads home in the language the shell chose, not the test's. No test checks
+the kept language, only the kept dex.
 
 ## The document
 

@@ -122,7 +122,13 @@ func lowerPropBindings(inst *ir.NodeInst) {
 			continue
 		}
 		paramName := "__" + b.PropName
-		param := &ir.Param{Name: paramName, Type: prop.Type}
+		// The handler is the call site's, so its parameter has the type the
+		// site binds: `T` erased to `any` on a copy built at run time.
+		pt := prop.Type
+		if tb := ir.ComponentBindings(inst); tb != nil {
+			pt = pt.Substitute(tb)
+		}
+		param := &ir.Param{Name: paramName, Type: pt}
 		inst.Handlers = append(inst.Handlers, ir.EventHandler{
 			Name:      b.PropName,
 			WriteBack: true,
@@ -133,7 +139,7 @@ func lowerPropBindings(inst *ir.NodeInst) {
 					Op:     ast.AssignSet,
 					// Sym must point to param so passInlinePure's
 					// bindEventParams can substitute the call-site arg.
-					Value: &ir.Ident{Name: paramName, Type: prop.Type, Sym: param},
+					Value: &ir.Ident{Name: paramName, Type: pt, Sym: param},
 				}},
 				Synthesized: true,
 			},

@@ -567,7 +567,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 				if literal {
 					at = h + ", a pattern"
 				}
-				return nil, fmt.Errorf("%s: page %q is served at %s: a static site writes one document per page and cannot serve one; compile with a server language (e.g. --lang go)", ir.NodePos(doc.Page), doc.Page.ID, at)
+				return nil, &PatternPageError{fmt.Sprintf("%s: page %q is served at %s: a static site writes one document per page and cannot serve one; compile with a server language (e.g. --lang go)", ir.NodePos(doc.Page), doc.Page.ID, at)}
 			}
 			name = pathFromHref(h)
 		}
@@ -594,6 +594,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.canvasByID, gen.canvasByNode = canvasutil.Collect(gen.canvasDraws)
 		gen.irWindow = win.Surface
 		gen.page = doc.Page
+		gen.absent = doc.Absent
 		if !staticMode && href != nil {
 			gen.routePath, _ = codegen.IRLiteralString(href)
 		}
@@ -791,6 +792,8 @@ type htmlGen struct {
 	// page is the page of a nav.stack this document is written for, nil for a
 	// window that holds none.
 	page *ir.NodeInst
+	// absent is the nodes of the stack's other pages (codegen.Document.Absent).
+	absent map[string]bool
 	// routePath is the pattern route mode serves this document at, which the
 	// window's params cell is read from on the client; empty on a static site.
 	routePath string
@@ -1314,7 +1317,7 @@ func (g *htmlGen) generate() (string, error) {
 	}
 	if script := scriptBuf.String(); strings.Contains(script, navPageMarker) {
 		decl := ""
-		if strings.Contains(script, "globalThis."+navPageGlobal) {
+		if g.testMode || strings.Contains(script, "globalThis."+navPageGlobal) {
 			decl = fmt.Sprintf("globalThis.%s = %s;\n", navPageGlobal, g.literalToJS(g.page.Record))
 		}
 		scriptBuf.Reset()
@@ -1393,6 +1396,11 @@ func (g *htmlGen) generate() (string, error) {
 		b.WriteString(sharedTags)
 		b.WriteString("<script>\n")
 		if g.testMode {
+			// A test page keeps sngl:settings in memory, as a test on every
+			// target does, so no test reads what another left in localStorage.
+			if codegen.UsesSettings(g.pkg) {
+				b.WriteString("window.__snglSettingsInMemory = true;\n")
+			}
 			b.WriteString(testBootOpen)
 			b.WriteString(script)
 			b.WriteString(testBootClose)
@@ -2206,7 +2214,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// here: `pages.current` read where no document's fold reaches -- a
 	// function's body, a test's -- is this (emitNavCurrent).
 	// Written in place once the rest of the script is, and only if the rest
-	// reads it.
+	// reads it or a test, whose script is its own, may.
 	if g.page != nil && g.page.Record != nil {
 		b.WriteString(navPageMarker)
 	}
@@ -2281,6 +2289,14 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("if (typeof window !== 'undefined') { window.__sngl_state = state; }\n")
 	}
 	b.WriteString("\n")
+
+	// A title that does not fold to the document's own -- one a page's
+	// `titleOf` gives the params a route binds -- is the document's as the
+	// script starts. A document shows one page with one set of params, a
+	// `go` being another document, so it is set once.
+	if t := g.documentTitle(); t != nil {
+		fmt.Fprintf(b, "document.title = %s;\n\n", g.exprToJS(t))
+	}
 
 	structs := g.pkgStructs()
 	for _, sd := range structs {
@@ -2448,6 +2464,15 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 	if g.pkg != nil && rendersReachEnd(g.pkg) {
 		b.WriteString(reachEndHelper + "\n")
+		for _, r := range scrollRules {
+			g.AddStyle(r)
+		}
+	}
+	if g.pkg != nil && rendersSwipe(g.pkg) {
+		b.WriteString(swipeHelper + "\n")
+	}
+	if g.pkg != nil && rendersBack(g.pkg) {
+		b.WriteString(backHelper + "\n")
 	}
 	if g.ctx.Helpers[cssTextHelper] {
 		b.WriteString(cssTextHelperJS + "\n")
@@ -2615,7 +2640,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 
 	for _, fn := range synthFuncs {
 		tr := g.newHTMLTranslator(jc)
-		body := codegen.WalkLowered(context.Background(), fn.Block, tr)
+		body := codegen.WalkLowered(context.Background(), g.heldWrites(fn.Block), tr)
 		synthesized := &ir.Func{
 			Name:   fn.Name,
 			Params: fn.Params,
@@ -3574,7 +3599,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 		jc = jc.WithLocal(name)
 	}
 	tr := g.newHTMLTranslator(jc)
-	lowered := codegen.WalkLowered(context.Background(), fn.Block, tr)
+	lowered := codegen.WalkLowered(context.Background(), g.heldWrites(fn.Block), tr)
 	for _, s := range lowered {
 		g.collectLoweredRefs(s)
 		for _, line := range jc.EvalStmt(s) {
@@ -3582,6 +3607,22 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 		}
 	}
 	b.WriteString("}\n")
+}
+
+// documentTitle is the window's title where it does not fold to a literal
+// the document's <title> holds, or nil.
+func (g *htmlGen) documentTitle() ir.Expr {
+	if g.title != "" || g.irWindow == nil {
+		return nil
+	}
+	t := g.irWindow.Prop(windowTitle)
+	if t == nil {
+		return nil
+	}
+	if _, ok := codegen.IRLiteralString(t); ok {
+		return nil
+	}
+	return t
 }
 
 func (g *htmlGen) exprToJS(expr ir.Expr) string {
@@ -3732,16 +3773,11 @@ func splitJSConcat(s string) []string {
 	return parts
 }
 
-// writeUserAttrs emits user-specified id and class attributes in test mode.
+// writeUserAttrs emits a node's user-specified id in test mode. Its class is
+// every build's.
 func (g *htmlGen) writeUserAttrs(b *strings.Builder, internalID string, n *ir.NodeInst) {
 	if !g.testMode {
 		return
-	}
-	classExpr := codegen.NodeProp(n, "class")
-	if codegen.IRIsLiteral(classExpr) {
-		if s, ok := codegen.IRLiteralString(classExpr); ok {
-			fmt.Fprintf(b, " class=%q", s)
-		}
 	}
 	if n.ID != "" && !strings.HasPrefix(n.ID, "__n") {
 		fmt.Fprintf(b, " data-sngl-id=%q", n.ID)
@@ -4097,10 +4133,10 @@ func (g *htmlGen) renderDialog(b *strings.Builder, n *ir.NodeInst, depth int) {
 	g.addEventHandler(close, "click", &ir.Func{Block: block})
 }
 
-// respellWindowWrites drops what the lowering wrote to the document's props
-// through its handle: the document cannot leave the screen, and its title is
-// the page's, written once. A dialog's are written as its element's, a
-// `visible` as its `open` (domPropForProp).
+// respellWindowWrites respells what the lowering wrote to the document's
+// props through its handle: its title is `document.title`, and the rest are
+// dropped, since the document cannot leave the screen. A dialog's are written
+// as its element's, a `visible` as its `open` (domPropForProp).
 //
 // The package's funcs are filtered once per document id, since every document
 // shares them; the body is this document's own clone.
@@ -4174,6 +4210,13 @@ func dropDocWrites(id string, funcs []*ir.Func) {
 			switch x := s.(type) {
 			case *ir.Assign:
 				if writesDoc(x) {
+					if x.Target.(*ir.Select).Field == windowTitle {
+						out = append(out, &ir.Assign{
+							Target: &ir.Select{Operand: &ir.Ident{Name: "document", Synthesized: true}, Field: windowTitle, Type: ir.TypString},
+							Op:     ast.AssignSet,
+							Value:  x.Value,
+						})
+					}
 					continue
 				}
 			case *ir.If:
@@ -4279,3 +4322,11 @@ func instanceCopySelector(id, key string) string {
 func staticCopy(els, id, key string) string {
 	return fmt.Sprintf("%s.find((e) => document.querySelector(%s).contains(e))", els, copySelector(id, key))
 }
+
+// PatternPageError is a static site refusing a page served at a pattern. It is
+// a type so that a harness compiling every fixture for html with no server
+// language can tell a program the static site refuses by design from a
+// failure of the platform.
+type PatternPageError struct{ msg string }
+
+func (e *PatternPageError) Error() string { return e.msg }

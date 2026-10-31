@@ -134,3 +134,67 @@ func TestReachEndNotAskedWhileTheEndIsHidden(t *testing.T) {
 		t.Errorf("a scroll whose end is far out of sight asked %d times", calls)
 	}
 }
+
+func column() fyne.CanvasObject {
+	r := canvas.NewRectangle(nil)
+	r.SetMinSize(fyne.NewSize(100, 50))
+	return r
+}
+
+// A horizontal scroll's end is its right edge: a first page narrower than the
+// scroll asks for the next, the content growing wider while its edge shows
+// asks again, though no taller, and an edge out of sight asks for nothing.
+func TestReachEndSidewaysMeasuresWidth(t *testing.T) {
+	fynetest.NewTempApp(t)
+	p := catchPosts(t)
+	list := container.NewHBox(column())
+	calls := 0
+	s := NewReachScroll()
+	s.SetDirection("horizontal")
+	s.Content = list
+	s.OnReachEnd = func() { calls++ }
+	w := fynetest.NewWindow(s)
+	defer w.Close()
+	w.Resize(fyne.NewSize(400, 200))
+	p.run()
+	if calls != 1 {
+		t.Fatalf("a first page narrower than the scroll asked %d times, want 1", calls)
+	}
+
+	list.Add(column())
+	frame(s)
+	p.run()
+	if calls != 2 {
+		t.Fatalf("the content grew wider with its edge showing and the scroll asked %d times, want 2", calls)
+	}
+
+	for range 20 {
+		list.Add(column())
+	}
+	frame(s)
+	p.run()
+	if calls != 2 {
+		t.Errorf("a scroll whose right edge is far out of sight asked %d more times", calls-2)
+	}
+	if s.scroll.Direction != container.ScrollHorizontalOnly {
+		t.Errorf("the scroll moves along %v, want horizontally only", s.scroll.Direction)
+	}
+}
+
+// A vertical scroll is not as wide as its content: what is wider is cut off
+// at its edge, as html and android cut it, where Fyne's own asks for it all.
+func TestAVerticalScrollIsNotAsWideAsItsContent(t *testing.T) {
+	fynetest.NewTempApp(t)
+	wide := canvas.NewRectangle(nil)
+	wide.SetMinSize(fyne.NewSize(600, 40))
+	s := NewReachScroll()
+	s.Content = wide
+	w := fynetest.NewTempWindow(t, container.NewVBox(s))
+	w.Resize(fyne.NewSize(200, 200))
+	if got := s.MinSize().Width; got >= 600 {
+		t.Errorf("a vertical scroll asks for %v across, the width of its content", got)
+	}
+	if got := s.Size().Width; got > 200 {
+		t.Errorf("a vertical scroll is %v wide in a 200 window", got)
+	}
+}

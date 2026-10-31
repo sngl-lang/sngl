@@ -1,10 +1,9 @@
 // Vertical box layout container. Children are stacked top to bottom and
-// laid out along the cross axis via `style.alignItems`. Enable `scroll`
-// to make overflow scrollable; set `refreshing` alongside `@refresh`
-// to opt in to pull-to-refresh on platforms that support it. Use
-// `style.gap` to control spacing between children.
+// laid out along the cross axis via `style.alignItems`. A box does not
+// scroll: put it in a `scroll` for that. Set `refreshing` alongside
+// `@refresh` to opt in to pull-to-refresh on platforms that support it.
+// Use `style.gap` to control spacing between children.
 component vbox(
-    scroll     bool = false,
     refreshing bool = false,
     style      Style = Style{},
     @refresh(),
@@ -21,11 +20,11 @@ component _example_vbox node {
 
 // Horizontal box layout container. Children are placed side by side
 // along the main axis and aligned via `style.alignItems` /
-// `style.justifyContent`. Enable `scroll` to make horizontal overflow
-// scrollable. Use `style.gap` for spacing between children.
+// `style.justifyContent`. A box does not scroll: put it in a
+// `scroll(direction=horizontal)` for that. Use `style.gap` for spacing
+// between children.
 component hbox(
     style    Style = Style{},
-    scroll   bool = false,
     children ...component,
 ) node
 
@@ -54,15 +53,18 @@ component _example_stack node {
     }
 }
 
-// Scrollable viewport that wraps a single child. `direction` is
-// "vertical", "horizontal", or "both". `scrollX`/`scrollY` are
-// two-way bound scroll offsets, useful for programmatic scrolling or
-// scroll-linked effects. `showScrollbar` is "auto", "always", or
-// "never". `@scroll` fires continuously while scrolling; `@scrollEnd`
-// fires once motion settles.
+// The axis a `scroll` moves along.
+enum ScrollDirection { vertical, horizontal, both }
+
+// Scrollable viewport that wraps a single child. `direction` is the axis
+// it scrolls along; a scroll given none scrolls vertically, as a page
+// does. Content wider than a vertical scroll, or taller than a
+// horizontal one, does not scroll. `@scroll` fires continuously while
+// scrolling; `@scrollEnd` fires once motion settles.
 //
 // `@reachEnd` fires when the end of the content comes within half a
-// viewport of being shown: once when it arrives, and again whenever the
+// viewport of being shown -- the bottom, or the right edge of a
+// horizontal scroll: once when it arrives, and again whenever the
 // content changes size while it is there. A handler that adds content
 // is how a list loads its next page as it is scrolled to -- and since
 // content too short to scroll has its end shown already, it fires on
@@ -73,19 +75,16 @@ component _example_stack node {
 // terminal, and the interpreter lays nothing out: both fire it only when
 // a test does.
 component scroll(
-    style         Style = Style{},
-    direction     string = "",
-    scrollX       float = 0.0,
-    scrollY       float = 0.0,
-    showScrollbar string = "",
+    style     Style = Style{},
+    direction ScrollDirection = ScrollDirection.vertical,
     @scroll(),
     @scrollEnd(),
     @reachEnd(),
-    content       ...component option[node],
+    content   ...component option[node],
 ) node
 
 component _example_scroll node {
-    scroll(direction="vertical", style={height=120px}) {
+    scroll(style={height=120px}) {
         vbox(style={gap=4px, padding=8px}) {
             text(value="Line 1")
             text(value="Line 2")

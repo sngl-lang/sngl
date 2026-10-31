@@ -218,13 +218,20 @@ func (c *converter) convertVarDecl(v *Var) *ast.VarDecl {
 
 func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
 	name := f.Name
+	recvTypeParams := receiverTypeParams(f.RecvTypeParams)
+	typeParams := c.convertTypeParams(f.TypeParams)
 	if f.IsMethod() {
 		name = f.RecvName() + "." + f.Name
+	} else if len(recvTypeParams) > 0 {
+		// Inlining a generic component demotes its methods to plain
+		// functions that keep the receiver's type params.
+		typeParams = append(recvTypeParams, typeParams...)
+		recvTypeParams = nil
 	}
 	fd := &ast.FuncDef{
 		Name:           name,
-		RecvTypeParams: receiverTypeParams(f.RecvTypeParams),
-		TypeParams:     c.convertTypeParams(f.TypeParams),
+		RecvTypeParams: recvTypeParams,
+		TypeParams:     typeParams,
 		Params:         c.convertParamList(f.Params),
 		Attrs:          c.foreignAttrs(f.Foreign, f),
 		Const:          f.Const,
@@ -314,6 +321,7 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		// method on type `Comp` rather than a component method.
 		if f.IsMethod() && f.RecvName() == comp.Name {
 			fd.Name = f.Name
+			fd.RecvTypeParams = nil
 		}
 		bodyStmts = append(bodyStmts, fd)
 	}

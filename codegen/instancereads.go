@@ -188,7 +188,8 @@ func LowerInstanceReads(stmts []ir.Stmt, pkg *ir.Package) []ir.Stmt {
 		return stmts
 	}
 	out := ir.CloneStmtsSharingDecls(stmts)
-	_ = ir.Rewrite(out, func(n ir.Node) (ir.Node, error) {
+	var visit func(ir.Node) (ir.Node, error)
+	visit = func(n ir.Node) (ir.Node, error) {
 		r, ok := instanceRead(n, runtime)
 		if !ok {
 			return n, nil
@@ -210,13 +211,19 @@ func LowerInstanceReads(stmts []ir.Stmt, pkg *ir.Package) []ir.Stmt {
 			args = append(args, ir.CallArg{Value: key})
 		}
 		args = append(args, rest...)
-		return &ir.Call{
+		call := &ir.Call{
 			Type:     r.Type(),
 			Receiver: instanceBase(operand),
 			Func:     &ir.Func{Name: InstanceReadMethod(r), Return: r.Type()},
 			Args:     args,
-		}, ir.SkipDir
-	})
+		}
+		// An argument reads through an instance too: `label(n)` answered for
+		// a row is `c.sCallLabel(c.s.rows[0][0])`, which reads the instance's
+		// rows.
+		_ = ir.Rewrite(call, visit)
+		return call, ir.SkipDir
+	}
+	_ = ir.Rewrite(out, visit)
 	return out
 }
 

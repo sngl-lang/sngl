@@ -53,6 +53,9 @@ type emitShared struct {
 	images map[string]string
 	// scrolls are every Scroll primitive id the file creates.
 	scrolls map[string]bool
+	// menuEntries, backs and tabPages are every MenuEntry, Back and TabPage
+	// primitive id the file creates.
+	menuEntries, backs, tabPages map[string]bool
 	// toplevelIcons is each window's icon source in an inline-cgo build, by
 	// the window's id.
 	toplevelIcons map[string]string
@@ -181,6 +184,9 @@ type gtk4Translator struct {
 	// is not rendered, though its field still holds it.
 	present     map[string]bool
 	slotPresent []string
+	// triggered are the ids a test fires an event on, which a record's slot
+	// hands the Model for the invoker to fire.
+	triggered map[string]bool
 	// instanceCopies are the ids a test reaches one copy of whose instances,
 	// built at run time, this scope lists by root in a Model map, declared
 	// through modelSink: a record's own fields are not the Model's. No slot
@@ -239,8 +245,8 @@ func (t *gtk4Translator) withIndexed(indexed, present map[string]bool, stmts []i
 // widgets of the ids a test null-tests to the Model (namedWidgetField), which
 // a test reaches no record through; stmts is the scope's body, whose creates
 // of them a slot's reset takes back.
-func (t *gtk4Translator) withRecordPresent(present map[string]bool, stmts []ir.Stmt) *gtk4Translator {
-	t.present = present
+func (t *gtk4Translator) withRecordPresent(present, triggered map[string]bool, stmts []ir.Stmt) *gtk4Translator {
+	t.present, t.triggered = present, triggered
 	t.slotPresent = nil
 	_ = ir.Walk(stmts, func(n ir.Node) error {
 		lv, ok := n.(*ir.LocalVar)
@@ -253,7 +259,7 @@ func (t *gtk4Translator) withRecordPresent(present map[string]bool, stmts []ir.S
 		}
 		switch c.Func.Intrinsic {
 		case ir.NodeOpCreateNode:
-			if present[lv.Name] {
+			if present[lv.Name] || triggered[lv.Name] {
 				t.slotPresent = append(t.slotPresent, lv.Name)
 			}
 		case ir.NodeOpComponentRoot:
@@ -273,13 +279,9 @@ func (t *gtk4Translator) modelPresentRef(field, cType string) ir.Expr {
 }
 
 // releasePresent takes back what a record handed the Model for a test's null
-// test of field -- a node's id, or an instance's presentField. A node is taken
-// back only where the Model still holds this record's widget: another record
-// may have handed its own since.
+// test of a node's id, only where the Model still holds this record's widget:
+// another record may have handed its own since.
 func (t *gtk4Translator) releasePresent(field string) ir.Stmt {
-	if strings.HasPrefix(field, presentField("")) {
-		return &ir.Assign{Target: t.modelPresentRef(field, "GtkWidget"), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}}
-	}
 	cType := t.idCTypes[field]
 	return &ir.If{
 		Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: t.modelPresentRef(namedWidgetField(field), cType), Right: t.fieldRef(field)},
@@ -605,6 +607,8 @@ func (t *gtk4Translator) createNode(id, tag string, made ir.Expr) []ir.Stmt {
 		return t.emitImageCreate(id, tag, made)
 	case scrollTag:
 		return t.emitScrollCreate(id, made)
+	case menuEntryTag, backTag, tabsTag, tabPageTag:
+		return t.emitConstructorAssign(id, primitiveCType(tag), made)
 	case flowTag:
 		return t.emitFlowCreate(id, made)
 	case spanTag:
@@ -825,7 +829,7 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 	if t.indexed[id] {
 		t.sinkField(copiesField(id), copyMapType(cType))
 	}
-	if t.record && t.present[id] {
+	if t.record && (t.present[id] || t.triggered[id]) {
 		named := namedWidgetField(id)
 		t.modelSink(named, cType)
 		create = append(create, &ir.Assign{Target: t.modelPresentRef(named, cType), Op: ast.AssignSet, Value: t.fieldRef(id)})
@@ -978,7 +982,32 @@ func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 	if t.isSkipped(parent) || t.isSkipped(child) {
 		return nil
 	}
-	return append(t.unlistRemoved(child), t.removeChild(parent, child, nil)...)
+	return append(append(t.unlistRemoved(child), t.releaseRemovedInstances(child)...), t.removeChild(parent, child, nil)...)
+}
+
+// releaseRemovedInstances takes back an instance's presentField a record
+// handed the Model where child, which a render removes, is the root it holds.
+// Several records render one slot body -- a tab's panel each -- and each one's
+// render reached the field, where only the one building the instance sets it.
+func (t *gtk4Translator) releaseRemovedInstances(child ir.Expr) []ir.Stmt {
+	if !t.record {
+		return nil
+	}
+	var out []ir.Stmt
+	for _, field := range t.slotPresent {
+		if !strings.HasPrefix(field, presentField("")) {
+			continue
+		}
+		var w ir.Expr = cgoCast("GtkWidget", t.qualifyNodeExpr(ir.CloneExpr(child)))
+		if t.wrapped {
+			w = t.qualifyNodeExpr(ir.CloneExpr(child))
+		}
+		out = append(out, &ir.If{
+			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: t.modelPresentRef(field, "GtkWidget"), Right: w},
+			Body: []ir.Stmt{&ir.Assign{Target: t.modelPresentRef(field, "GtkWidget"), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}}},
+		})
+	}
+	return out
 }
 
 // OnRemoveThrough is a RemoveChild carrying the call the parent class's
@@ -987,7 +1016,7 @@ func (t *gtk4Translator) OnRemoveThrough(ctx context.Context, parent, child, cal
 	if t.isSkipped(parent) || t.isSkipped(child) {
 		return nil
 	}
-	return append(t.unlistRemoved(child), t.removeChild(parent, child, call)...)
+	return append(append(t.unlistRemoved(child), t.releaseRemovedInstances(child)...), t.removeChild(parent, child, call)...)
 }
 
 func (t *gtk4Translator) removeChild(parent, child, call ir.Expr) []ir.Stmt {
@@ -1362,6 +1391,18 @@ func (t *gtk4Translator) attachHandler(node ir.Expr, event string, handler, call
 		t.refuseCgoClosed(event, handler)
 		return t.connectThrough(bare, event, handler, call)
 	}
+	if t.shared != nil && t.shared.menuEntries[bare] {
+		t.recordRtInvoker(node, event, handler, "GtkBox", "MenuEntrySelect")
+		return t.connectThrough(bare, event, handler, call)
+	}
+	if t.shared != nil && t.shared.backs[bare] {
+		t.recordRtInvoker(node, event, handler, "GtkLabel", "BackPress")
+		return t.connectThrough(bare, event, handler, call)
+	}
+	if t.shared != nil && t.shared.tabPages[bare] {
+		t.recordRtInvoker(node, event, handler, "GtkBox", "TabPageShow")
+		return t.connectThrough(bare, event, handler, call)
+	}
 	if t.imageTagOf(bare) != "" {
 		return t.connectThrough(bare, event, handler, call)
 	}
@@ -1459,7 +1500,9 @@ func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 			continue
 		}
 		if t.record {
-			stmts = append(stmts, t.releasePresent(id))
+			if !strings.HasPrefix(id, presentField("")) {
+				stmts = append(stmts, t.releasePresent(id))
+			}
 			continue
 		}
 		stmts = append(stmts, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(id), id, ir.NativeGoNamed(widgetFieldGoType("GtkWidget", t.wrapped))), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})

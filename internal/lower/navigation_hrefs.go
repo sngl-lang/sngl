@@ -69,6 +69,7 @@ func lowerNavigationHrefs(pkg *ir.Package, feats Features, opts Options) error {
 			}
 			h.pageCell(pg)
 		}
+		titleByParams(pkg, st)
 	}
 	h.surfaces = surfaces
 	for _, b := range imperativeBlocks(pkg) {
@@ -220,6 +221,48 @@ func (h *navHrefs) pageCell(pg *navPage) {
 			Right: copyMatch(&ir.Select{Type: ir.ListOf(ir.TypInt), Operand: ir.CloneExprSharingDecls(call), Field: "copy"}, pg.copyIndices())}
 	}
 	n.Children = []ir.Stmt{&ir.If{Cond: cond, Body: n.Children}}
+}
+
+// titleByParams answers `pages.current.title` where a page of st gives
+// `titleOf`: what it gives the params the page is showing -- the cell
+// pageCell made, which a document folds to its page's own on a static site
+// and binds from the request in route mode -- while it is current, and the
+// current page's title otherwise. A document folds the choice to its own page.
+func titleByParams(pkg *ir.Package, st *navStack) {
+	var titled []*navPage
+	for _, pg := range st.pages {
+		if PageTitleOf(pg.node) != nil && pg.node.Params != nil && !pg.looped() {
+			titled = append(titled, pg)
+		}
+	}
+	current := st.node.Component.MethodByIntrinsic(ir.NavCurrentID)
+	if len(titled) == 0 || current == nil || st.node.Handle == nil {
+		return
+	}
+	_ = ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
+		sel, ok := n.(*ir.Select)
+		if !ok || sel.Field != "title" {
+			return n, nil
+		}
+		call, ok := sel.Operand.(*ir.Call)
+		if !ok || call.Func != current || len(call.Args) == 0 {
+			return n, nil
+		}
+		if id, ok := call.Args[0].Value.(*ir.Ident); !ok || id.Sym != ir.Symbol(st.node.Handle) {
+			return n, nil
+		}
+		var out ir.Expr = sel
+		for _, pg := range slices.Backward(titled) {
+			p := pg.node.Params
+			out = &ir.Ternary{
+				Type: ir.TypString,
+				Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: &ir.Select{Type: ir.TypInt, Operand: ir.CloneExprSharingDecls(call), Field: "id"}, Right: navInt(pg.id)},
+				Then: TitleCall(PageTitleOf(pg.node), &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}),
+				Else: out,
+			}
+		}
+		return out, ir.SkipDir
+	})
 }
 
 // calls passes the page's own params to every `go` that passes none.

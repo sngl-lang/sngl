@@ -1,0 +1,147 @@
+# The app bar, where a person goes back and picks from a menu: android's
+# TopAppBar and DropdownMenu, and html's header. A test opens a submenu by
+# picking its top-level entry, which on android clicks the action and opens its
+# DropdownMenu, and then picks a checked entry inside it. The system back is
+# sngl:test/mobile's `back`: android's back key, which the window's BackHandler
+# answers with `@back` while `canGoBack` holds, ahead of a NavHost's own pop,
+# and the browser's back on html, which pops the entry the window's
+# `sngl-back` keeps. testdata/window_menu.txtar and nav_can_go_back.txtar are
+# the code.
+
+sngl test --platform=html back.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin back.sngl
+stdout 'ok   3 tests, 0 failures'
+
+# Over a NavHost, the system back is the window's `@back`, which pops the page.
+sngl test --platform=android --language=kotlin navback.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- back.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+import mobile "sngl:test/mobile"
+
+const sizes = ["Small", "Medium", "Large"]
+
+component app root {
+    var size = "Medium"
+    var depth = 0
+    var backs = 0
+
+    ui.window #main(title="Depth {depth}", canGoBack=depth > 0, @back {
+        backs += 1
+        depth -= 1
+    }) {
+        component menu {
+            ui.menuItem(label="Size") {
+                for var s = sizes {
+                    ui.menuItem(label=s, checked=s == size, @select { size = s })
+                }
+            }
+        }
+        ui.text #shown(value=size)
+        ui.button #deeper(text="Deeper", @click { depth += 1 })
+    }
+}
+
+app()
+
+func testAPickedEntryIsChecked(t test.Test, c app) {
+    t.assert(c.main.menu[0].children[1].checked)
+    c.main.menu[0].select()
+    c.main.menu[0].children[2].select()
+    t.assert(c.shown.value == "Large")
+    t.assert(c.main.menu[0].children[2].checked && !c.main.menu[0].children[1].checked)
+}
+
+func testTheSystemBackGoesBack(t test.Test, c app) {
+    c.deeper.click()
+    t.assert(c.main.canGoBack)
+    mobile.back()
+    t.assert(c.depth == 0 && c.backs == 1)
+    t.assert(!c.main.canGoBack)
+}
+
+func testTheUpArrowGoesBack(t test.Test, c app) {
+    c.deeper.click()
+    c.deeper.click()
+    c.main.back()
+    t.assert(c.depth == 1 && c.backs == 1)
+}
+-- navback.sngl --
+import ui "sngl:ui"
+import nav "sngl:ui/nav"
+import "sngl:test"
+import mobile "sngl:test/mobile"
+
+component app root {
+    ui.window #main(title=pages.current.title, canGoBack=pages.canGoBack(), @back { pages.back() }) {
+        nav.stack #pages {
+            nav.page #home(href="/", title="Home") {
+                ui.text(value="home")
+            }
+            nav.page #about(href="/about", title="About") {
+                ui.text(value="about")
+            }
+        }
+        ui.button #toAbout(text="About", @click { pages.go(about) })
+    }
+}
+
+app()
+
+func testTheSystemBackPopsThePage(t test.Test, c app) {
+    c.toAbout.click()
+    t.assert(c.main.title == "About")
+    mobile.back()
+    t.assert(c.main.title == "Home")
+    t.assert(!c.pages.canGoBack())
+}
+-- testrun/android/kotlin/back.sngl/app/1 --
+sha256:db420acb89d4db98fec5e1a5f4366e4c
+{
+  "results": [
+    {
+      "Desc": "APickedEntryIsChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSystemBackGoesBack",
+      "Passed": true
+    },
+    {
+      "Desc": "TheUpArrowGoesBack",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/navback.sngl/app/1 --
+sha256:1119338ddaff9698b04460e65c09dbee
+{
+  "results": [
+    {
+      "Desc": "TheSystemBackPopsThePage",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/back.sngl/app/1 --
+sha256:4f2301c0a38d2a5380769b6048654d63
+{
+  "results": [
+    {
+      "Desc": "APickedEntryIsChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSystemBackGoesBack",
+      "Passed": true
+    },
+    {
+      "Desc": "TheUpArrowGoesBack",
+      "Passed": true
+    }
+  ]
+}

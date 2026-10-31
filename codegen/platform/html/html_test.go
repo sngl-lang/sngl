@@ -1,11 +1,13 @@
 package html
 
 import (
+	"errors"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 
 	"duckfam.us/sngl/codegen"
@@ -20,6 +22,12 @@ import (
 
 func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 	t.Helper()
+	doc, pkg := checkHTMLSample(t, s)
+	return generateHTMLRooted(t, doc, pkg, "")
+}
+
+func checkHTMLSample(t *testing.T, s testutil.Sample) (*ast.Document, *ir.Package) {
+	t.Helper()
 	doc, err := parser.Parse(s.Filename, []byte(s.Source))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -33,7 +41,11 @@ func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 	if len(diags) > 0 {
 		t.Fatalf("check: %v", diags[0])
 	}
+	return doc, pkg
+}
 
+func generateHTMLRooted(t *testing.T, doc *ast.Document, pkg *ir.Package, root string) string {
+	t.Helper()
 	lang := codegen.LookupLang("none")
 	if lang == nil {
 		t.Fatal("none language translator not registered")
@@ -41,6 +53,7 @@ func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 
 	gen := &Generator{}
 	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier())
+	pkg, opts := testutil.RootAt(pkg, root)
 	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: gen.PlatformIdentifier(),
@@ -48,15 +61,19 @@ func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 	}); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: gen.PlatformIdentifier(), RootComponent: root}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	mem := codegen.NewMemSink()
 	if err := gen.Generate(&codegen.Request{
-		Doc:  doc,
-		Pkg:  pkg,
-		Lang: lang,
+		Doc:     doc,
+		Pkg:     pkg,
+		Lang:    lang,
+		Options: opts,
 	}, mem); err != nil {
+		if refused := (*PatternPageError)(nil); errors.As(err, &refused) {
+			t.Skipf("a static site: %v", refused)
+		}
 		t.Fatalf("generate: %v", err)
 	}
 	for name, content := range mem.Files() {
@@ -134,17 +151,22 @@ func TestFixtures(t *testing.T) {
 			continue
 		}
 		t.Run(s.Name, func(t *testing.T) {
-			html := generateHTMLFromSample(t, s)
+			doc, pkg := checkHTMLSample(t, s)
+			for _, root := range testutil.Roots(pkg) {
+				t.Run(root, func(t *testing.T) {
+					html := generateHTMLRooted(t, doc, pkg, root)
 
-			// Basic structure checks
-			if !strings.Contains(html, "<!DOCTYPE html>") {
-				t.Error("missing <!DOCTYPE html>")
-			}
-			if !strings.Contains(html, "<script>") {
-				t.Error("missing <script> tag")
-			}
-			if !strings.Contains(html, "state = {") {
-				t.Error("missing state initialization")
+					// Basic structure checks
+					if !strings.Contains(html, "<!DOCTYPE html>") {
+						t.Error("missing <!DOCTYPE html>")
+					}
+					if !strings.Contains(html, "<script>") {
+						t.Error("missing <script> tag")
+					}
+					if !strings.Contains(html, "state = {") {
+						t.Error("missing state initialization")
+					}
+				})
 			}
 		})
 	}

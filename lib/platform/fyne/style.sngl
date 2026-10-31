@@ -15,7 +15,6 @@ import ui "sngl:ui"
 //     table borders.
 //   - borderStyle: a canvas.Rectangle strokes a solid line only.
 //   - opacity: Fyne fades no widget it draws.
-//   - overflow: Fyne clips only a scroll's content, which is ui.scroll's.
 //   - listStyleType: no widget here draws a list marker.
 const unstyled list[string] = [
     "flexDirection",
@@ -32,7 +31,6 @@ const unstyled list[string] = [
     "borderCollapse",
     "borderStyle",
     "opacity",
-    "overflow",
     "listStyleType",
 ]
 

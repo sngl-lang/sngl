@@ -1,4 +1,3 @@
-// SKIP(codegen) "a platform harness compiles these components with nothing instantiating them, which a build never does; every target's code is view_block_state.txtar"
 // A `var` written in a block of a view -- a node's children, a loop's body, a
 // branch, a page -- is state of that block, as a component's `var` is state of
 // the component. It lives as long as the block is rendered: once where the

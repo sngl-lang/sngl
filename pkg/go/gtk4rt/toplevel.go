@@ -28,6 +28,13 @@ static void sngl_top_connect_activate(GtkApplication *app) {
 static void sngl_top_watch(GObject *box, int idx) {
     g_object_weak_ref(box, snglToplevelGone, GINT_TO_POINTER(idx));
 }
+static void sngl_top_window_destroyed(GtkWidget *win, gpointer data) {
+    (void)win;
+    snglToplevelGone(data, NULL);
+}
+static void sngl_top_watch_window(GtkWidget *win, int idx) {
+    g_signal_connect(win, "destroy", G_CALLBACK(sngl_top_window_destroyed), GINT_TO_POINTER(idx));
+}
 */
 import "C"
 
@@ -63,6 +70,10 @@ type toplevel struct {
 	gone      int
 	// icon is the image source a `ui.window`'s favicon is.
 	icon *source
+	// bar is the header bar holding the back button and the menu button,
+	// made as the window is where it has either to show (applyBar).
+	bar, backButton, menuButton *C.GtkWidget
+	barDecided                  bool
 }
 
 // App is the parent a node at the root of the package body is attached to.
@@ -214,6 +225,20 @@ func ToplevelWindow(app, h Handle) Handle {
 	}
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), widget(t.box))
 	t.win = (*C.GtkWindow)(unsafe.Pointer(win))
+	// A harness makes a window per snapshot and destroys it after, taking
+	// the bar with it: the next window decides its own.
+	gone := cbind.Register(func() {
+		if t.win != (*C.GtkWindow)(unsafe.Pointer(win)) {
+			return
+		}
+		t.win = nil
+		if t.bar != nil {
+			t.backButton = nil
+		}
+		t.bar, t.menuButton, t.barDecided = nil, nil, false
+	})
+	C.sngl_top_watch_window(win, C.int(gone))
+	t.applyMenu()
 	return Handle(unsafe.Pointer(win))
 }
 
@@ -255,6 +280,7 @@ func (t *toplevel) create() {
 	idx := cbind.Register(t.closeRequested)
 	C.sngl_top_connect_close(t.win, C.int(idx))
 	t.applyIcon()
+	t.applyMenu()
 }
 
 // report is the host changing `visible` itself.

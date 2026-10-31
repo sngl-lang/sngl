@@ -42,10 +42,6 @@ import (
 	"os"
 )
 
-type TableRow__record struct {
-	Cells []string
-}
-
 // Model holds the state for this SNGL UI.
 type Model struct {
 	cols__inst0    []string
@@ -58,7 +54,6 @@ type Model struct {
 	__n0    *fynelayout.Toplevel
 	__n3    *widget.Button
 	__n1    *fyne.Container
-	__n4    *widget.Label
 	__built bool
 }
 
@@ -151,13 +146,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = container.NewGridWithColumns(len(m.cols__inst0))
 	fynelayout.SetGridColumns(m.__n1, len(m.cols__inst0))
 	m.__renderSlot0(m.__n1)
-	for _, row := range []TableRow__record{} {
-		for _, cell := range row.Cells {
-			m.__n4 = widget.NewLabel("")
-			m.__n4.SetText(cell)
-			m.__n1.Add(m.__n4)
-		}
-	}
 	m.__n0.Add(m.__n1)
 	fynelayout.AppAttach(m.__n0)
 	return m.__n0.Container
@@ -171,4 +159,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:69b8c8e9e292e7375ec407af8b78f329
+pass sha256:ce583f088352373121a76e942b352df4

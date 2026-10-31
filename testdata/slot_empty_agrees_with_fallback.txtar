@@ -140,7 +140,6 @@ type Style struct {
 	Opacity        *float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -210,8 +209,8 @@ func RowsOf(m__r0 *Measurement) int {
 
 func BoxLook(s Style, words bool) lipgloss.Style {
 	if func(_a1, _b2 Style) bool {
-		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
-	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
@@ -557,33 +556,33 @@ func (m Model) View() tea.View {
 			__lt16 = "asks: full"
 		}
 		var part0Part_2 string
-		part0Part_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt16))
+		part0Part_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt16))
 		part0Parts = append(part0Parts, part0Part_2)
 		var part0Part_3 string
 		var part0Part_3Children []string
 		var part0Part_3_0 string
 		if m.a__inst0 {
-			part0Part_3_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("a"))
+			part0Part_3_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("a"))
 		}
 		if part0Part_3_0 != "" {
 			part0Part_3Children = append(part0Part_3Children, part0Part_3_0)
 		}
 		var part0Part_3_1 string
 		if m.b__inst0 {
-			part0Part_3_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("b"))
+			part0Part_3_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("b"))
 		}
 		if part0Part_3_1 != "" {
 			part0Part_3Children = append(part0Part_3Children, part0Part_3_1)
 		}
 		var part0Part_3_2 string
 		if !m.a__inst0 && !m.b__inst0 {
-			part0Part_3_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("fallback"))
+			part0Part_3_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("fallback"))
 		}
 		if part0Part_3_2 != "" {
 			part0Part_3Children = append(part0Part_3Children, part0Part_3_2)
 		}
 		part0Part_3 = lipgloss.JoinVertical(lipgloss.Left, part0Part_3Children...)
-		part0Part_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0Part_3)
+		part0Part_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_3)
 		part0Parts = append(part0Parts, part0Part_3)
 		var __lt17 string
 		if len(m.xs__inst0) == 0 {
@@ -592,7 +591,7 @@ func (m Model) View() tea.View {
 			__lt17 = "asks: full"
 		}
 		var part0Part_6 string
-		part0Part_6 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt17))
+		part0Part_6 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt17))
 		part0Parts = append(part0Parts, part0Part_6)
 		var part0Part_7 string
 		var part0Part_7Children []string
@@ -601,7 +600,7 @@ func (m Model) View() tea.View {
 		for _, x := range m.xs__inst0 {
 			_ = x
 			var part0Part_7_0Item string
-			part0Part_7_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(x)))
+			part0Part_7_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(x)))
 			part0Part_7_0Items = append(part0Part_7_0Items, part0Part_7_0Item)
 		}
 		part0Part_7_0 = tui.Spaced(false, lipgloss.Left, 0, part0Part_7_0Items...)
@@ -610,28 +609,28 @@ func (m Model) View() tea.View {
 		}
 		var part0Part_7_1 string
 		if len(m.xs__inst0) == 0 {
-			part0Part_7_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("fallback"))
+			part0Part_7_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("fallback"))
 		}
 		if part0Part_7_1 != "" {
 			part0Part_7Children = append(part0Part_7Children, part0Part_7_1)
 		}
 		part0Part_7 = lipgloss.JoinVertical(lipgloss.Left, part0Part_7Children...)
-		part0Part_7 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0Part_7)
+		part0Part_7 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_7)
 		part0Parts = append(part0Parts, part0Part_7)
 		__lt18 := "asks: empty"
 		var part0Part_9 string
-		part0Part_9 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt18))
+		part0Part_9 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt18))
 		part0Parts = append(part0Parts, part0Part_9)
 		var part0Part_10 string
 		var part0Part_10Children []string
 		var part0Part_10_0 string
-		part0Part_10_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("fallback"))
+		part0Part_10_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("fallback"))
 		part0Part_10Children = append(part0Part_10Children, part0Part_10_0)
 		part0Part_10 = lipgloss.JoinVertical(lipgloss.Left, part0Part_10Children...)
-		part0Part_10 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0Part_10)
+		part0Part_10 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_10)
 		part0Parts = append(part0Parts, part0Part_10)
 		var part0Part_11 string
-		part0Part_11 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("mounted " + fmt.Sprint(m.mounted__inst0))))
+		part0Part_11 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("mounted " + fmt.Sprint(m.mounted__inst0))))
 		part0Parts = append(part0Parts, part0Part_11)
 		var part0Part_12 string
 		part0Part_12Focused := (m.__focusID == 0)
@@ -639,7 +638,7 @@ func (m Model) View() tea.View {
 		if part0Part_12Focused {
 			part0Part_12Prefix = ">"
 		}
-		part0Part_12 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0Part_12Prefix + " " + fmt.Sprint("show"))
+		part0Part_12 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_12Prefix + " " + fmt.Sprint("show"))
 		part0Parts = append(part0Parts, part0Part_12)
 		part0 = tui.Spaced(false, lipgloss.Left, 0, part0Parts...)
 	}
@@ -1401,23 +1400,23 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) show_clicked_handler() {
 	m.b__inst0 = true
-	var __lt22 string
+	var __lt21 string
 	if !m.a__inst0 && !m.b__inst0 {
+		__lt21 = "asks: empty"
+	} else {
+		__lt21 = "asks: full"
+	}
+	gtk4rt.LabelSetLabel(m.two, __lt21)
+	m.__renderSlot1(m.__n7)
+	m.__renderSlot2(m.__n7)
+	m.xs__inst0 = []int{7}
+	var __lt22 string
+	if len(m.xs__inst0) == 0 {
 		__lt22 = "asks: empty"
 	} else {
 		__lt22 = "asks: full"
 	}
-	gtk4rt.LabelSetLabel(m.two, __lt22)
-	m.__renderSlot1(m.__n7)
-	m.__renderSlot2(m.__n7)
-	m.xs__inst0 = []int{7}
-	var __lt23 string
-	if len(m.xs__inst0) == 0 {
-		__lt23 = "asks: empty"
-	} else {
-		__lt23 = "asks: full"
-	}
-	gtk4rt.LabelSetLabel(m.loop, __lt23)
+	gtk4rt.LabelSetLabel(m.loop, __lt22)
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
 }
@@ -1471,14 +1470,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	var __lt19 string
+	var __lt18 string
 	if !m.a__inst0 && !m.b__inst0 {
-		__lt19 = "asks: empty"
+		__lt18 = "asks: empty"
 	} else {
-		__lt19 = "asks: full"
+		__lt18 = "asks: full"
 	}
 	m.two = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.two, __lt19)
+	gtk4rt.LabelSetLabel(m.two, __lt18)
 	gtk4rt.LabelSetXAlign(m.two, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.two)
 	m.__n7 = gtk4rt.New("GtkBox")
@@ -1488,14 +1487,14 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot1(m.__n7)
 	m.__renderSlot2(m.__n7)
 	gtk4rt.BoxAppend(m.__n0, m.__n7)
-	var __lt20 string
+	var __lt19 string
 	if len(m.xs__inst0) == 0 {
-		__lt20 = "asks: empty"
+		__lt19 = "asks: empty"
 	} else {
-		__lt20 = "asks: full"
+		__lt19 = "asks: full"
 	}
 	m.loop = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.loop, __lt20)
+	gtk4rt.LabelSetLabel(m.loop, __lt19)
 	gtk4rt.LabelSetXAlign(m.loop, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.loop)
 	m.__n8 = gtk4rt.New("GtkBox")
@@ -1504,9 +1503,9 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
 	gtk4rt.BoxAppend(m.__n0, m.__n8)
-	__lt21 := "asks: empty"
+	__lt20 := "asks: empty"
 	m.lifetime = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.lifetime, __lt21)
+	gtk4rt.LabelSetLabel(m.lifetime, __lt20)
 	gtk4rt.LabelSetXAlign(m.lifetime, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.lifetime)
 	m.__n9 = gtk4rt.New("GtkBox")
@@ -1592,7 +1591,7 @@ fun MainScreen() {
         }
         Column {
             Text(text = (if ((!a__inst0 && !b__inst0)) "asks: empty" else "asks: full"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
-            Column(modifier = Modifier.safeDrawingPadding()) {
+            Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
                 if (a__inst0) {
                     Text(text = "a", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
@@ -1604,7 +1603,7 @@ fun MainScreen() {
                 }
             }
             Text(text = (if ((xs__inst0.size == 0)) "asks: empty" else "asks: full"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
-            Column(modifier = Modifier.safeDrawingPadding()) {
+            Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
                 for (x in xs__inst0) {
                     Text(text = x.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
@@ -1613,7 +1612,7 @@ fun MainScreen() {
                 }
             }
             Text(text = "asks: empty", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
-            Column(modifier = Modifier.safeDrawingPadding()) {
+            Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
                 DisposableEffect(Unit) {
                     mounted__inst0 = (mounted__inst0 + 1)
                     onDispose {
@@ -1629,6 +1628,125 @@ fun MainScreen() {
                 Text(text = "show", modifier = Modifier)
             }
         }
+    }
+}
+-- out/kotlin/android/SnglFlexible.kt --
+package test.sngl.app
+
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.node.LayoutModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.TraversableNode
+import androidx.compose.ui.node.invalidateMeasurement
+import androidx.compose.ui.node.traverseAncestors
+import androidx.compose.ui.unit.Constraints
+
+// snglFlexible is a vbox's, hbox's or scroll's Row or Column, which a child
+// taking a share of it marks with snglFlexed. Compose measures a weight in an
+// unbounded axis -- a Row in a horizontal scroll, a Column in a vertical one --
+// to nothing, where html's flex takes the content's size; so a marked line
+// with no bound along it is bounded by its content's, and the weights share
+// that. A marked line also marks the line it sits in across it, as html's
+// stretched row fills its column: a column with no bound across it is then as
+// wide as its widest row, which each row fills, so the rows' shares line up as
+// a table's columns. Only a marked one asks, since asking costs a pass over
+// the subtree.
+fun Modifier.snglFlexible(horizontal: Boolean): Modifier = this then FlexibleElement(horizontal)
+
+fun Modifier.snglFlexed(): Modifier = this then FlexedElement
+
+private object FlexibleKey
+
+private data class FlexibleElement(val horizontal: Boolean) : ModifierNodeElement<FlexibleNode>() {
+    override fun create() = FlexibleNode(horizontal)
+    override fun update(node: FlexibleNode) {
+        node.horizontal = horizontal
+        node.invalidateMeasurement()
+    }
+}
+
+private class FlexibleNode(var horizontal: Boolean) : Modifier.Node(), LayoutModifierNode, TraversableNode {
+    override val traverseKey: Any get() = FlexibleKey
+    private var outer: FlexibleNode? = null
+    private var flexed = 0
+    private var across = 0
+
+    fun flex(by: Int) {
+        val was = flexed > 0
+        flexed += by
+        if (was != flexed > 0) cross(if (flexed > 0) 1 else -1)
+        invalidateMeasurement()
+    }
+
+    private fun cross(by: Int) {
+        outer?.takeIf { it.horizontal != horizontal }?.let {
+            it.across += by
+            it.invalidateMeasurement()
+        }
+    }
+
+    // Compose runs a parent's onAttach after its children's, so a line may
+    // already be marked when it finds the line it sits in.
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            outer = it as FlexibleNode
+            false
+        }
+        if (flexed > 0) cross(1)
+    }
+
+    override fun onDetach() {
+        if (flexed > 0) cross(-1)
+        outer = null
+    }
+
+    override fun MeasureScope.measure(measurable: Measurable, constraints: Constraints): MeasureResult {
+        val placeable = measurable.measure(bounded(measurable, constraints))
+        return layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }
+
+    private fun bounded(measurable: Measurable, c: Constraints): Constraints {
+        var out = c
+        // A SubcomposeLayout -- a pager, a lazy list -- refuses to be asked
+        // its intrinsic size; the line then measures as Compose would.
+        try {
+            if ((flexed > 0 && horizontal || across > 0 && !horizontal) && !out.hasBoundedWidth) {
+                out = out.copy(maxWidth = maxOf(out.minWidth, measurable.maxIntrinsicWidth(out.maxHeight)))
+            }
+            if ((flexed > 0 && !horizontal || across > 0 && horizontal) && !out.hasBoundedHeight) {
+                out = out.copy(maxHeight = maxOf(out.minHeight, measurable.maxIntrinsicHeight(out.maxWidth)))
+            }
+        } catch (_: IllegalStateException) {
+            return c
+        }
+        return out
+    }
+}
+
+private object FlexedElement : ModifierNodeElement<FlexedNode>() {
+    override fun create() = FlexedNode()
+    override fun update(node: FlexedNode) {}
+    override fun equals(other: Any?) = other === this
+    override fun hashCode() = 0
+}
+
+private class FlexedNode : Modifier.Node() {
+    private var line: FlexibleNode? = null
+
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            line = it as FlexibleNode
+            false
+        }
+        line?.flex(1)
+    }
+
+    override fun onDetach() {
+        line?.flex(-1)
+        line = null
     }
 }
 -- out/none/html/index.html --
@@ -2012,12 +2130,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:102e15e30598f230335e970b7601614b
+pass sha256:529c1a74d9e1a50cbe69b35e56d2fe7d
 -- run/go/fyne --
 pass sha256:2c7a6c687d2c399a12cf2301066990f5
 -- run/go/gtk4 --
-pass sha256:378cd0e16dcc7212c89ffffaec74fc6f
+pass sha256:9b265b145a8cf0b3b737d21e5c65c885
 -- run/kotlin/android --
-pass sha256:5141f9ca3aee8f84959d8e409d72b939
+pass sha256:301ce7243a929be0dd3a4993b8b96a46
 -- run/none/html --
 pass sha256:f08bf5bf3eb5884ef214a4c2d8fe522c

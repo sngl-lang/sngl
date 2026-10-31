@@ -8,19 +8,23 @@
 # holding them. JavaScript's === is an array's identity, so two lists written
 # alike were unequal there. Both now write the comparison out from the type,
 # as html already did for a struct (Go's goEqualer, JavaScript's jsEqual).
+#
+# Kotlin holds a list var as a SnapshotStateList, whose equals is its
+# identity, so a list var on the left of == was unequal to every list but
+# itself, in a test and in a func handed the var alike.
 
 sngl test --platform=none app.sngl
-stdout 'ok +4 tests, 0 failures'
+stdout 'ok +5 tests, 0 failures'
 sngl test --platform=html app.sngl
-stdout 'ok +4 tests, 0 failures'
+stdout 'ok +5 tests, 0 failures'
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok +4 tests, 0 failures'
+stdout 'ok +5 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
-stdout 'ok +4 tests, 0 failures'
+stdout 'ok +5 tests, 0 failures'
 sngl test --platform=gtk4 --language=go app.sngl
-stdout 'ok +4 tests, 0 failures'
+stdout 'ok +5 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
-stdout 'ok +4 tests, 0 failures'
+stdout 'ok +5 tests, 0 failures'
 
 -- app.sngl --
 import test "sngl:test"
@@ -46,8 +50,14 @@ component page ui.node {
     var name = "a"
     var tag = "x"
     var n = 1
+    var tags = ["x", "y"]
 
     ui.text(value=name)
+    ui.button #more(text="more", @click { tags = [...tags, "z"] })
+}
+
+func isXY(tags list[string]) bool {
+    return tags == ["x", "y"]
 }
 
 func tagged(name string, tag string) Tagged {
@@ -70,6 +80,15 @@ func testListsCompareElementByElement(t test.Test, c page) {
     t.assert([tagged(c.name, c.tag)] == [tagged(c.name, c.tag)])
 }
 
+func testAListVarComparesItsElements(t test.Test, c page) {
+    t.assert(c.tags == ["x", "y"])
+    t.assert(isXY(c.tags))
+    c.more.click()
+    t.assert(c.tags != ["x", "y"])
+    t.assert(c.tags == ["x", "y", "z"])
+    t.assert(!isXY(c.tags))
+}
+
 func testAStructHoldingAnOptionComparesWhatItHolds(t test.Test, c page) {
     t.assert(box(c.name, c.tag, c.n) == box(c.name, c.tag, c.n))
     t.assert(box(c.name, c.tag, c.n) != box(c.name, c.tag, c.n + 1))
@@ -87,9 +106,13 @@ func testAnOptionOfAStructComparesWhatItHolds(t test.Test, c page) {
     t.assert(x == y)
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:1ef1b2d288ce3489282c8fbe6794ab4d
+sha256:cc7f7f616ad7793dee9504e5cd523275
 {
   "results": [
+    {
+      "Desc": "AListVarComparesItsElements",
+      "Passed": true
+    },
     {
       "Desc": "AStructHoldingAListComparesItsElements",
       "Passed": true
@@ -109,9 +132,13 @@ sha256:1ef1b2d288ce3489282c8fbe6794ab4d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:f61caff19e2b0a5020272211b23ae8e6
+sha256:e5878fb5844e07e56f44753718cbace6
 {
   "results": [
+    {
+      "Desc": "AListVarComparesItsElements",
+      "Passed": true
+    },
     {
       "Desc": "AStructHoldingAListComparesItsElements",
       "Passed": true
@@ -131,9 +158,13 @@ sha256:f61caff19e2b0a5020272211b23ae8e6
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:158694f83ee52f175aa396890d6f8e03
+sha256:93a71c1f193b06adcfd4c75df2573d5a
 {
   "results": [
+    {
+      "Desc": "AListVarComparesItsElements",
+      "Passed": true
+    },
     {
       "Desc": "AStructHoldingAListComparesItsElements",
       "Passed": true
@@ -153,9 +184,13 @@ sha256:158694f83ee52f175aa396890d6f8e03
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:af3a0909098fb4921f920b408f04fd40
+sha256:4d94b88cfa3779c7cefd815692e713bd
 {
   "results": [
+    {
+      "Desc": "AListVarComparesItsElements",
+      "Passed": true
+    },
     {
       "Desc": "AStructHoldingAListComparesItsElements",
       "Passed": true
@@ -175,9 +210,13 @@ sha256:af3a0909098fb4921f920b408f04fd40
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:5d941fd629f9927968ca4d3f9781ad4c
+sha256:b7b55ad0b2bf44026c9631a2d8e267c6
 {
   "results": [
+    {
+      "Desc": "AListVarComparesItsElements",
+      "Passed": true
+    },
     {
       "Desc": "AStructHoldingAListComparesItsElements",
       "Passed": true

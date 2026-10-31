@@ -475,12 +475,48 @@ const alignJustify TextAlign
 // close, the counterpart of a window manager's: `onBack` runs -- the override
 // reports `visible = false` before the window's own `@closed` -- and the
 // activity finishes when no screen is drawn after it.
+//
+// A screen given a way back or a menu draws its app bar over the content
+// (appbar.kt's SnglAppBar): `title`, the `icon` -- the output's own where it
+// is given none -- an up arrow running `onUp` while `canGoBack` holds, and
+// `actions`. The system back runs `onUp` too while `canGoBack` holds, ahead
+// of a NavHost's own pop and of the close. A screen given neither -- its
+// `canGoBack` the literal `false`, its actions empty -- draws no bar.
 #[intrinsic("android:Screen")]
 component Screen(
-    visible  bool = true,
-    onBack   func(),
-    children ...component ui.node,
+    visible   bool = true,
+    title     string = "",
+    canGoBack bool = false,
+    onBack    func(),
+    onUp      func(),
+    children  ...component ui.node,
+    icon      option[component ui.node],
+    actions   component ui.node,
 ) root
+
+// One top-level entry of a window's menu, among its app bar's actions: a text
+// button that runs `onClick` and opens a DropdownMenu of its `entries`, where
+// it has any. appbar.kt is its Kotlin.
+#[intrinsic("android:SnglMenuAction")]
+component SnglMenuAction(
+    label      string,
+    enabled    bool,
+    hasEntries bool,
+    modifier   Modifier,
+    onClick    func(),
+    entries    ...component ui.node,
+) ui.node
+
+// One entry of a menu action's DropdownMenu, checked with a check before it,
+// which closes the menu as it runs `onClick`.
+#[intrinsic("android:SnglMenuEntry")]
+component SnglMenuEntry(
+    label    string,
+    enabled  bool,
+    checked  bool,
+    modifier Modifier,
+    onClick  func(),
+) ui.node
 
 #[gen.renders(identity)]
 #[kt.native("Column", "androidx.compose.foundation.layout.Column")]
@@ -551,6 +587,7 @@ component CircularProgressIndicator(
 component LinearProgressIndicator(
     progress func() float32,
     modifier Modifier,
+    color    option[ComposeColor] = null,
 ) ui.node
 
 // A Button paints its own surface, so a background in the modifier lands
@@ -658,18 +695,36 @@ component SnglDateField(
     onValueChange func(value option[time.date]),
 ) ui.node
 
-// SnglScroll is a scroll: a column scrolled vertically, reporting its end
-// coming into view. Kotlin the platform ships with the app
-// (codegen/platform/android/scroll.kt), since how far it has scrolled and how
-// tall its content is are state its effect reads. `onReachEnd` is called as
+// SnglScroll is a scroll: a column scrolled along `direction`, a
+// ui.ScrollDirection's name, reporting its end coming into view. Kotlin the
+// platform ships with the app (codegen/platform/android/scroll.kt), since how
+// far it has scrolled and how long its content is are state its effect
+// reads. `onReachEnd` is called as
 // the end of the content comes within half a viewport of showing, and again
 // when the content changes size while it is there.
 #[gen.renders(identity)]
 #[intrinsic("android:SnglScroll")]
 component SnglScroll(
     modifier   Modifier,
+    direction  string,
     onReachEnd func(),
     children   ...component,
+) ui.node
+
+// SnglPager is a tabs' panels: a page per tab, swiped between, every one kept
+// composed. Kotlin the platform ships with the app (codegen/platform/android/
+// pager.kt), since which page shows and how far a swipe has gone are state its
+// effects read. `disabled` says, per page, whether its tab is disabled, and
+// how many pages there are; `selected` moves it, and `onSelect` is handed the
+// page a swipe settled on.
+#[gen.renders(identity)]
+#[intrinsic("android:SnglPager")]
+component SnglPager(
+    modifier Modifier,
+    selected int,
+    disabled list[bool],
+    onSelect func(int),
+    page     component(index int) ui.node,
 ) ui.node
 
 // Makes a select's box a dropdown list that setting the text of chooses by:
@@ -678,6 +733,16 @@ component SnglScroll(
 // Compose says it in a lambda with a receiver, which SNGL has no way to write.
 #[kt.native("snglChooses", "", method)]
 const func Modifier.snglChooses(onText func(string)) Modifier
+
+// A Row or Column whose children take shares of it, and a child taking one:
+// a marked line along which nothing bounds it is bounded by its content, as
+// html's flex is, where a weight would measure to nothing (codegen/platform/
+// android/flexible.kt).
+#[kt.native("snglFlexible", "", method)]
+const func Modifier.snglFlexible(horizontal bool) Modifier
+
+#[kt.native("snglFlexed", "", method)]
+const func Modifier.snglFlexed() Modifier
 
 #[gen.renders(identity)]
 #[kt.native("Dialog", "androidx.compose.ui.window.Dialog")]

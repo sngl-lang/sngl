@@ -8,6 +8,7 @@ import (
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/codegen/lang/kotlin"
+	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/ir"
 )
 
@@ -43,6 +44,7 @@ import (
 func init() {
 	codegen.RegisterPlatformIntrinsic("android", ir.NavGoID, emitNavGo)
 	codegen.RegisterPlatformIntrinsic("android", ir.NavBackID, emitNavBack)
+	codegen.RegisterPlatformIntrinsic("android", ir.NavCanGoBackID, emitNavCanGoBack)
 	codegen.RegisterPlatformIntrinsic("android", "nav.current", emitNavCurrent)
 }
 
@@ -85,6 +87,22 @@ type navPageK struct {
 }
 
 func (pg *navPageK) looped() bool { return len(pg.loops) > 0 }
+
+// titled is pg's record showing params: its title what its `titleOf` gives
+// them, where it gives one, and as declared otherwise.
+func (pg *navPageK) titled(params ir.Expr) ir.Expr {
+	of := lower.PageTitleOf(pg.node)
+	if of == nil || params == nil {
+		return pg.record
+	}
+	lit := ir.CloneExprSharingDecls(pg.record).(*ir.StructLit)
+	for i, f := range lit.Fields {
+		if f.Name == "title" {
+			lit.Fields[i].Value = lower.TitleCall(of, params)
+		}
+	}
+	return lit
+}
 
 func (pg *navPageK) route() string {
 	return routeName(pg.record.Def, pg.id)
@@ -358,8 +376,17 @@ func (nav *androidNav) emitNavDecls(b *strings.Builder, kc *kotlin.KtIRContext) 
 		b.WriteString("    val destination = entry?.destination ?: return null\n")
 		b.WriteString("    return when {\n")
 		for _, pg := range nav.pages[def] {
+			if !pg.looped() && lower.PageTitleOf(pg.node) != nil && pg.params != nil {
+				// Titled by what it shows: the params its route carries.
+				fmt.Fprintf(b, "        destination.%s<%s>() -> run {\n", hasRoute, pg.route())
+				fmt.Fprintf(b, "            val __p = entry.%s<%s>().params\n", toRoute, pg.route())
+				shown := &ir.Ident{Name: "__p", Type: pg.params}
+				fmt.Fprintf(b, "            %s\n", kc.WithLocal("__p").EvalExpr(pg.titled(shown)))
+				b.WriteString("        }\n")
+				continue
+			}
 			if !pg.looped() {
-				fmt.Fprintf(b, "        destination.%s<%s>() -> %s\n", hasRoute, pg.route(), kc.EvalExpr(pg.record))
+				fmt.Fprintf(b, "        destination.%s<%s>() -> %s\n", hasRoute, pg.route(), kc.EvalExpr(pg.titled(pg.node.Prop(ir.NavPageParams))))
 				continue
 			}
 			fmt.Fprintf(b, "        destination.%s<%s>() -> run {\n", hasRoute, pg.route())
@@ -752,7 +779,7 @@ func (st *navStackK) startValue() ir.Expr {
 	if st.startRecord != nil {
 		return st.startRecord
 	}
-	return st.start.record
+	return st.start.titled(st.start.node.Prop(ir.NavPageParams))
 }
 
 // handedParams is the params a `go` or a link passed, nil where it passed
@@ -819,6 +846,26 @@ func emitNavBack(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		return "", nil
 	}
 	return fmt.Sprintf("run { if (%s.previousBackStackEntry != null) %s.popBackStack() }", nav, nav), nil
+}
+
+// emitNavCanGoBack is `pages.canGoBack()`: whether the controller holds an
+// entry under the one showing. A composable reads the entry state as well, so
+// a navigation recomposes what reads it; a test asks the controller the state
+// class holds.
+func emitNavCanGoBack(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+	if len(args) < 1 {
+		return "", nil
+	}
+	nav := stackRef(args[0], "__nav", ir.NativeNamed("NavHostController"), tr)
+	if nav == "" {
+		return "", nil
+	}
+	below := nav + ".previousBackStackEntry != null"
+	if _, ok := args[0].(*ir.Ident); ok {
+		entry := stackRef(args[0], "__entry", ir.NativeNamed("NavBackStackEntry"), tr)
+		return fmt.Sprintf("(%s != null && %s)", entry, below), nil
+	}
+	return "(" + below + ")", nil
 }
 
 // emitNavCurrent is `pages.current`: the record of the entry showing.

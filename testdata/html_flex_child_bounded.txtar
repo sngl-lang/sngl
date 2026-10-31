@@ -51,7 +51,7 @@ body { display: flex; flex-direction: column; }
 
 <div style="padding:8px;display:flex;flex-direction:column;flex:1;min-width:0;min-height:0">
   <span>items</span>
-  <div style="flex:1;min-width:0;min-height:0;overflow:auto">
+  <div class="sngl-scroll sngl-scroll-vertical" style="flex:1;min-width:0;min-height:0">
     <div id="__n3" data-sngl-id="__n3" style="display:flex;flex-direction:column">
       <span data-sngl-slot="0" style="display:contents"></span>
     </div>
@@ -59,6 +59,12 @@ body { display: flex; flex-direction: column; }
     </sngl-reach-end>
   </div>
 </div>
+<style>
+.sngl-scroll-vertical { overflow-x: hidden; overflow-y: auto; }
+.sngl-scroll-horizontal { overflow-x: auto; overflow-y: hidden; display: flex; align-items: flex-start; }
+.sngl-scroll-horizontal > *, .sngl-scroll-horizontal > [data-sngl-slot] > *, .sngl-scroll-horizontal > [data-sngl-inst] > * { flex: none; }
+.sngl-scroll-both { overflow: auto; }
+</style>
 
 <script>
 (() => {
@@ -163,15 +169,20 @@ body { display: flex; flex-direction: column; }
       const box = this.parentElement;
       if (!box) return;
       this.style.display = "block";
+      const across = box.classList.contains("sngl-scroll-horizontal");
       const fire = () => this.dispatchEvent(new Event("reachEnd"));
-      const near = () => this.getBoundingClientRect().top - box.getBoundingClientRect().bottom <= box.clientHeight / 2;
+      const near = () => {
+        const at = this.getBoundingClientRect(), view = box.getBoundingClientRect();
+        return across ? at.left - view.right <= box.clientWidth / 2 : at.top - view.bottom <= box.clientHeight / 2;
+      };
       this._io = new IntersectionObserver((es) => {
         if (es[es.length - 1].isIntersecting) fire();
-      }, { root: box, rootMargin: "0px 0px 50% 0px" });
+      }, { root: box, rootMargin: across ? "0px 50% 0px 0px" : "0px 0px 50% 0px" });
       this._io.observe(this);
-      let last = this.offsetTop, asked = false;
+      const where = () => across ? this.offsetLeft : this.offsetTop;
+      let last = where(), asked = false;
       const grew = () => {
-        const h = this.offsetTop;
+        const h = where();
         if (h !== last && !asked) {
           asked = true;
           requestAnimationFrame(() => {
@@ -210,4 +221,4 @@ body { display: flex; flex-direction: column; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d5fcf35e9d1792a1cda47f1bf95ff3a3
+pass sha256:73a9e350321077838845e4e8f1f79cad

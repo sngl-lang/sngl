@@ -13,7 +13,9 @@ const reachEndTag = "sngl-reach-end"
 
 // reachEndHelper defines reachEndTag. An IntersectionObserver rooted at the
 // parent fires as the element comes within half the parent's height of
-// showing -- including at once, where the content is too short to scroll --
+// showing, or its width in a horizontal scroll, where the element sits after
+// the content along the row -- including at once, where the content is too
+// short to scroll --
 // and a ResizeObserver on the parent's content asks again whenever the
 // content changes size while it is there, so a handler that adds a page is
 // asked for the next while the end still shows. The content grew where the
@@ -33,15 +35,20 @@ const reachEndHelper = `if (!customElements.get("sngl-reach-end")) customElement
     const box = this.parentElement;
     if (!box) return;
     this.style.display = "block";
+    const across = box.classList.contains("sngl-scroll-horizontal");
     const fire = () => this.dispatchEvent(new Event("reachEnd"));
-    const near = () => this.getBoundingClientRect().top - box.getBoundingClientRect().bottom <= box.clientHeight / 2;
+    const near = () => {
+      const at = this.getBoundingClientRect(), view = box.getBoundingClientRect();
+      return across ? at.left - view.right <= box.clientWidth / 2 : at.top - view.bottom <= box.clientHeight / 2;
+    };
     this._io = new IntersectionObserver((es) => {
       if (es[es.length - 1].isIntersecting) fire();
-    }, { root: box, rootMargin: "0px 0px 50% 0px" });
+    }, { root: box, rootMargin: across ? "0px 50% 0px 0px" : "0px 0px 50% 0px" });
     this._io.observe(this);
-    let last = this.offsetTop, asked = false;
+    const where = () => across ? this.offsetLeft : this.offsetTop;
+    let last = where(), asked = false;
     const grew = () => {
-      const h = this.offsetTop;
+      const h = where();
       if (h !== last && !asked) {
         asked = true;
         requestAnimationFrame(() => {
@@ -67,6 +74,19 @@ const reachEndHelper = `if (!customElements.get("sngl-reach-end")) customElement
   }
 });
 `
+
+// scrollRules scroll the box ui.scroll's override writes along the axis its
+// class names; the override renders reachEndTag in every one, so a page
+// defining the element needs them. A horizontal scroll lays its content out
+// in a row, each part at its own width, so reachEndTag sits after it along x
+// rather than below it -- a part a slot renders included, which lands in a
+// `display:contents` span.
+var scrollRules = []string{
+	".sngl-scroll-vertical { overflow-x: hidden; overflow-y: auto; }",
+	".sngl-scroll-horizontal { overflow-x: auto; overflow-y: hidden; display: flex; align-items: flex-start; }",
+	".sngl-scroll-horizontal > *, .sngl-scroll-horizontal > [data-sngl-slot] > *, .sngl-scroll-horizontal > [data-sngl-inst] > * { flex: none; }",
+	".sngl-scroll-both { overflow: auto; }",
+}
 
 // rendersReachEnd reports whether the page writes reachEndTag anywhere, which
 // is when it needs the element defined.

@@ -87,7 +87,7 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	// initializer. It need not be a compile-time constant (e.g. the stdlib
 	// `#locale` context defaults to the runtime `i18n.defaultLocale()`).
 	// Declared before its own default is checked, which is what lets the rule
-	// below match by symbol the way reportSelfReferentialProps does. Bound
+	// below match by symbol. Bound
 	// after, `context #depth(depth)` was an `undefined` naming the context
 	// being declared on the line declaring it -- and where an outer `depth`
 	// existed it was not even that, the default quietly reading a different
@@ -139,8 +139,8 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 }
 
 // reportSelfReferentialDefault reports a context default that reads the
-// context it is declaring -- the rule reportSelfReferentialProps states for a
-// node's id, asked of the one node whose id is its own declaration.
+// context it is declaring -- the rule lookupValue holds a node's id to in its
+// own arguments, asked of the one node whose id is its own declaration.
 func (c *checker) reportSelfReferentialDefault(pos ast.Pos, ctx *ir.Context, def ir.Expr) {
 	reported := false
 	_ = ir.Walk(def, func(n ir.Node) error {

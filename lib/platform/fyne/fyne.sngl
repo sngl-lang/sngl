@@ -83,15 +83,66 @@ component Toplevel(
     content  ...component ui.node,
 ) root
 
+// A window's way back, while it can go back: drawn nowhere where it is
+// written, among the window's content, it has the window show a back button
+// over the content, which presses it.
+#[intrinsic("fyne:Back")]
+component Back(@press()) ui.node
+
+// One entry of a window's main menu, and its submenu's entries: drawn
+// nowhere where it is written, among the window's content, and built into the
+// window's menu by the Toplevel holding it.
+#[intrinsic("fyne:MenuEntry")]
+component MenuEntry(
+    label    string,
+    disabled bool = false,
+    checked  bool = false,
+    @select(),
+    entries  ...component ui.node,
+) ui.node
+
+// A `ui.tabs`: fynelayout's AppTabs, an item per TabPage among its children,
+// and `selected` the one shown.
+#[intrinsic("fyne:Tabs")]
+component Tabs(
+    selected int,
+    look     Look,
+    pages    ...component ui.node,
+) ui.node
+
+// One tab: its panel, which the AppTabs shows under a tab titled `title`.
+// `@change` is the user choosing it, named for the tabs' event it raises,
+// which is what a test's press of it calls.
+#[intrinsic("fyne:TabPage")]
+component TabPage(
+    title    string,
+    disabled bool = false,
+    @change(),
+    content  ...component ui.node,
+) ui.node
+
 // The window's `@error` is the outermost boundary of what it renders, and
-// catches whether or not the call site handles one.
-const component ui.window[platform](title, visible, @error, @closed, content, favicon) {
+// catches whether or not the call site handles one. Its menu's entries are
+// drawn two deep: a top-level entry and its submenu. A window whose call site
+// gives it no `canGoBack` writes no Back, the `if` folding away, and nor does
+// one with no menu write an entry.
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, content, favicon, menu) {
     Toplevel(title=title, :visible=visible, @closed { closed() }) {
         boundary(@error(e) { error(e) }) {
             content
         }
         #[family.crosses]
         favicon
+        if canGoBack {
+            Back(@press { back() })
+        }
+        for var i, it = menu {
+            MenuEntry(label=it.label, disabled=it.disabled, checked=it.checked, @select { it.select() }) {
+                for var j, sub = it.children {
+                    MenuEntry(label=sub.label, disabled=sub.disabled, checked=sub.checked, @select { sub.select() })
+                }
+            }
+        }
     }
 }
 
@@ -492,18 +543,26 @@ const component VScroll(style ui.Style = ui.Style{}, content ...component option
     }
 }
 
-// A vertical scroll reporting the end of its content coming within half a
-// viewport of showing (pkg/go/fynelayout's ReachScroll): Fyne reports a scroll
-// and nothing about the content growing, which is what a handler adding a page
-// does, so the scroll watches its content itself and posts what it sees.
-const component ReachScroll(style ui.Style = ui.Style{}, @reachEnd(), content ...component option[ui.node]) ui.node {
+// A scroll along `direction` reporting the end of its content coming within
+// half a viewport of showing (pkg/go/fynelayout's ReachScroll): Fyne reports
+// a scroll and nothing about the content growing, which is what a handler
+// adding a page does, so the scroll watches its content itself and posts what
+// it sees.
+const component ReachScroll(
+    style     ui.Style = ui.Style{},
+    direction ui.ScrollDirection = ui.ScrollDirection.vertical,
+    @reachEnd(),
+    content   ...component option[ui.node],
+) ui.node {
     Wrapper(
         spec = Spec{
             new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewReachScroll"},
             goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*ReachScroll"},
             content = "Content",
+            setters = [Setter{prop="text", call="SetDirection"}],
             handlers = [Handler{on="reachEnd", field="OnReachEnd", signature="func()"}],
         },
+        text = string(direction),
         look = lookOf(style),
         @reachEnd { reachEnd() },
     ) {
@@ -534,8 +593,21 @@ const component ui.stack[platform](style, layers) {
     }
 }
 
-const component ui.scroll[platform](style, @reachEnd, content) {
-    ReachScroll(style=style, @reachEnd { reachEnd() }) {
+const component ui.tabs[platform](selected, style, @change, items) {
+    Tabs(selected=selected, look=lookOf(style)) {
+        for var k, t = items {
+            TabPage(title=t.label, disabled=t.disabled, @change {
+                selected = k
+                change(k)
+            }) {
+                t.content
+            }
+        }
+    }
+}
+
+const component ui.scroll[platform](style, direction, @reachEnd, content) {
+    ReachScroll(style=style, direction=direction, @reachEnd { reachEnd() }) {
         content
     }
 }

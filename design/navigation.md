@@ -144,8 +144,10 @@ A static document is written at the page's href (`/about` is
 about/index.html), and route mode serves a route per page named for it, with
 `routesConflict` asking the pages. What no document's fold reaches -- a
 function, a test body, the step an effect in a page settles by -- reads
-`globalThis.__sngl_page`, which a document publishes only when its script
-names it. A `go` is `location.assign` and `back` is `history.back()`: the
+`globalThis.__sngl_page`, which a document publishes when its script names
+it, and always in a test build: a test's script is its own, so a document
+whose reads the fold had all settled published nothing and the test read
+`undefined` (`cmd/sngl/testdata/nav_current_test_page_runs.txt`). A `go` is `location.assign` and `back` is `history.back()`: the
 browser's history, so at its bottom it leaves the site. A window holds one
 stack. Refused with a position:
 `cmd/sngl/testdata/nav_html_refused.txt`. `testdata/nav_stack_html.txtar` and
@@ -156,10 +158,19 @@ for a page at a pattern, which no test reaches, rather than refusing it as
 `generate` does (`nav_stack_html_pattern_page_test_runs.txt`).
 
 A document holds no other page's node, so it leaves out a handler's writes to
-one (`dropOtherPagesWrites`): a select beside the stack writes every node that
-shows what it changed, on whichever page, and the home document's write to the
-item page's label threw before the handler reached the heading it does hold
-(`testdata/nav_stack_html_other_pages_writes.txtar`).
+one (`dropWritesTo`): a select beside the stack writes every node that shows
+what it changed, on whichever page, and the home document's write to the item
+page's label threw before the handler reached the heading it does hold
+(`testdata/nav_stack_html_other_pages_writes.txtar`). The package's funcs are
+every document's, so the document names those nodes
+(`codegen.Document.Absent`) and its emitter leaves the writes out of its own
+copy of each (`heldWrites`): a window menu's render func and a func an entry
+calls wrote the about page's text on the home page
+(`testdata/nav_stack_html_menu_const.txtar`,
+`cmd/sngl/testdata/nav_stack_html_menu_runs.txt`). The same menu looping over
+a list const raised as the home page loaded: a site of more than one page
+loads such a const from an asset where its script names it (`scriptIdents`),
+and the `.` ending the spread in `[...sizes.map(…)]` read as a member access.
 
 **A stack's pages are fixed when it is built, and need not be written one by
 one.** A `for` over a constant writes a page per element, an `if` over
@@ -214,6 +225,28 @@ or an `if` reading it, and a composition of pages with state of its own.
 run it on the interpreter, which needed nothing new -- each copy is an
 instance of its own -- and the two `.txtar`s are the code on html, gtk4, fyne,
 bubbletea and android.
+
+**`canGoBack` and `titleOf` are what a window's bar reads.**
+`pages.canGoBack()` (`nav.canGoBack`) is whether `back` has a page to return
+to: the history's length on the interpreter and the lowered targets, the
+controller's previous entry on android, read under the entry state so it
+recomposes, and the browser's own on html, `navigation.canGoBack` read once
+as the document loads, since the entry a window's `sngl-back` pushes answers
+for it after. A page whose name depends on what it shows gives `titleOf`, a
+function of its params, and `pages.current.title` is what it returns: the
+interpreter's `current` copies the page with its title computed, the lowered
+targets' `go` and start write the record that way (`titledRecord`), android's
+`<Record>Of` reads the route's params, and html answers each read by
+`current.id` with the page's params cell, which a static document folds and
+route mode binds from the request; a title that does not fold is set as the
+document's script starts, and a write the title reads sets it again: the
+updater the lowering writes to the window's `title` is `document.title`
+(`respellWindowWrites`), where it was dropped with the document's other props
+(`TestWindow_ATitleReadingStateFollowsIt`). A route-mode server writes each
+page as fixed bytes, so a title from route params is the script's, not the
+server's `<title>`. The page itself, `item.title`, is its record as
+declared. testdata/nav_can_go_back.txtar,
+nav_page_title_from_params{,_html}.txtar.
 
 **A window lost `href` and `params`, and `output(entry=…)` went**: a destination is a page, and a stack starts at the page at "/", or
 its first. Every program that was a window per page is a window holding a

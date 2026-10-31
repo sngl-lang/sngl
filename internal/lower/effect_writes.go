@@ -75,6 +75,12 @@ func cellOfKey(key ir.Expr, frames []effectFrame) *effectCell {
 		}
 		return nil
 	}
+	if on := copyPairOn(key); on != nil {
+		if c := cellOfKey(on, frames); c != nil && c.loop != nil {
+			return c
+		}
+		return nil
+	}
 	c := &effectCell{}
 	for {
 		switch n := key.(type) {

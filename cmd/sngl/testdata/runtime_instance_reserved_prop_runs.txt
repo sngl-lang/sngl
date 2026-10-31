@@ -1,0 +1,99 @@
+# A component built at run time may name a prop with a word the target's
+# language reserves. A call site binds a prop by name, so passReservedNames
+# leaves it as written, and html's factory bound each prop as a local of its
+# own name: `let default = props.default;`, which esbuild refused, so a page
+# holding settings.kept under a `for` did not build. A prop JavaScript
+# reserves is a local of another spelling now (javascript.SafeIdent).
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import "sngl:test"
+import ui "sngl:ui"
+
+var log list[string] = []
+
+component field(label string, default string) ui.node {
+    var typed = ""
+
+    effect(@mount {
+        typed = default
+        log.push("{label}={typed}")
+    })
+    ui.text(value="{label}: {typed}")
+}
+
+component app ui.node {
+    var labels = ["a", "b"]
+
+    ui.vbox {
+        for var label = labels {
+            field(label=label, default="none")
+        }
+    }
+}
+
+func testEachCopyStartsFromItsDefault(t test.Test, c app) {
+    t.assert(log.join(",") == "a=none,b=none")
+}
+-- testrun/android/kotlin/app.sngl/app/1 --
+sha256:a26e46877b7ebdd6a3f70698ae9020cb
+{
+  "results": [
+    {
+      "Desc": "EachCopyStartsFromItsDefault",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/app/1 --
+sha256:be6acd52c1755470483b47fc5798a063
+{
+  "results": [
+    {
+      "Desc": "EachCopyStartsFromItsDefault",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/app/1 --
+sha256:f9cfd87cf0ce93f3b8f1da2129a49ac4
+{
+  "results": [
+    {
+      "Desc": "EachCopyStartsFromItsDefault",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/app/1 --
+sha256:d40f27f9e79060c55c9215e0f4eff1ae
+{
+  "results": [
+    {
+      "Desc": "EachCopyStartsFromItsDefault",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/app/1 --
+sha256:94305c7bf131d050ced652b844eec38f
+{
+  "results": [
+    {
+      "Desc": "EachCopyStartsFromItsDefault",
+      "Passed": true
+    }
+  ]
+}

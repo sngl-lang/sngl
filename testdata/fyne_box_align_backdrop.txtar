@@ -119,7 +119,6 @@ type Style struct {
 	Opacity        *float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -302,7 +301,7 @@ func (m *Model) __n8_click_handler() {
 	} else {
 		__lt11 = snglcolor.Color{R: 51, G: 153, B: 51, A: 255}
 	}
-	m.__n1__box.SetLook(LookOf(Style{PaddingX: snglSome(Measurement{Px: 8}), PaddingY: snglSome(Measurement{Px: 2}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt11), BorderRadius: snglSome(Measurement{Px: 12}), BorderStyle: "unset", Display: "inlineBlock", Overflow: "unset", ListStyleType: "unset"}))
+	m.__n1__box.SetLook(LookOf(Style{PaddingX: snglSome(Measurement{Px: 8}), PaddingY: snglSome(Measurement{Px: 2}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt11), BorderRadius: snglSome(Measurement{Px: 12}), BorderStyle: "unset", Display: "inlineBlock", ListStyleType: "unset"}))
 }
 
 func (m *Model) Hot__inst0() bool {
@@ -356,7 +355,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = widget.NewLabel("")
 	m.__n1__box = fynelayout.NewBox(m.__n1)
 	m.__n1.SetText("Shifting")
-	m.__n1__box.SetLook(LookOf(Style{PaddingX: snglSome(Measurement{Px: 8}), PaddingY: snglSome(Measurement{Px: 2}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt10), BorderRadius: snglSome(Measurement{Px: 12}), BorderStyle: "unset", Display: "inlineBlock", Overflow: "unset", ListStyleType: "unset"}))
+	m.__n1__box.SetLook(LookOf(Style{PaddingX: snglSome(Measurement{Px: 8}), PaddingY: snglSome(Measurement{Px: 2}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt10), BorderRadius: snglSome(Measurement{Px: 12}), BorderStyle: "unset", Display: "inlineBlock", ListStyleType: "unset"}))
 	m.__n3.Add(m.__n1__box)
 	m.__n2.Add(m.__n3__box)
 	m.__n6 = fynelayout.NewVBox()
@@ -383,4 +382,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:0e874991235d2f48c4605e0867751b4c
+pass sha256:a41924f3d9e7f981d209980b7cdf8671

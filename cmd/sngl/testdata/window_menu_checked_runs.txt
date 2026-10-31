@@ -1,0 +1,185 @@
+# A test reads an entry of a window's menu, `c.main.menu[1].children[3].checked`,
+# as the one entry its call site wrote: the loop's variable bound to the list at
+# the index, an entry before or after the loop counted by the records and the
+# const's length. It rebuilt every entry instead, each handler with it, and a
+# handler writing what an instance built at run time reads carried that
+# instance's updates into the test, `UpdateComponent`, which no test emitter
+# has. Here the handlers write the var an effect in the instance under the `if`
+# is keyed on. testdata/window_menu.txtar denies the rebuilt list.
+
+sngl test --platform=none app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+
+const sizes = ["Small", "Medium", "Large"]
+
+var size = "Medium"
+
+component badge ui.node {
+    var seen = ""
+
+    effect(on=size, @update(s) {
+        seen = s
+    })
+    ui.text #label(value=seen)
+}
+
+component app root {
+    var open = true
+    var autosave = false
+    var saved = 0
+
+    ui.window #main(title="Sizes") {
+        component menu {
+            ui.menuItem(label="File") {
+                ui.menuItem(label="Save", @select { saved += 1 })
+                ui.menuItem(label="Autosave", checked=autosave, @select { autosave = !autosave })
+            }
+            ui.menuItem(label="Size") {
+                ui.menuItem(label="Default", checked=size == "Medium", @select { size = "Medium" })
+                for var s = sizes {
+                    ui.menuItem(label=s, checked=s == size, @select { size = s })
+                }
+                ui.menuItem(label="Huge", checked=size == "Huge", @select { size = "Huge" })
+            }
+        }
+        ui.button #toggle(text="toggle", @click { open = !open })
+        if open {
+            badge #b
+        }
+    }
+}
+
+app()
+
+func testAPickedEntryIsChecked(t test.Test, c app) {
+    t.assert(c.main.menu[1].children[2].checked && c.main.menu[1].children[0].checked)
+    c.main.menu[1].select()
+    c.main.menu[1].children[3].select()
+    t.assert(c.b != null && c.b.seen == "Large")
+    t.assert(c.main.menu[1].children[3].checked && !c.main.menu[1].children[2].checked)
+    t.assert(!c.main.menu[1].children[0].checked)
+}
+
+func testAnEntryAfterTheLoopIsChecked(t test.Test, c app) {
+    t.assert(c.main.menu[1].children[4].label == "Huge" && !c.main.menu[1].children[4].checked)
+    c.main.menu[1].select()
+    c.main.menu[1].children[4].select()
+    t.assert(c.b != null && c.b.seen == "Huge")
+    t.assert(c.main.menu[1].children[4].checked && !c.main.menu[1].children[3].checked)
+}
+
+func testAToggleEntryFollowsItsState(t test.Test, c app) {
+    t.assert(!c.main.menu[0].children[1].checked)
+    c.main.menu[0].select()
+    c.main.menu[0].children[1].select()
+    t.assert(c.autosave && c.main.menu[0].children[1].checked)
+}
+-- testrun/android/kotlin/app.sngl/app/1 --
+sha256:cb238799c153ee9dcf5059643c19e8c6
+{
+  "results": [
+    {
+      "Desc": "APickedEntryIsChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "AToggleEntryFollowsItsState",
+      "Passed": true
+    },
+    {
+      "Desc": "AnEntryAfterTheLoopIsChecked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/app/1 --
+sha256:8a16a6bfa0bba97bc61214b09fc9c44d
+{
+  "results": [
+    {
+      "Desc": "APickedEntryIsChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "AToggleEntryFollowsItsState",
+      "Passed": true
+    },
+    {
+      "Desc": "AnEntryAfterTheLoopIsChecked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/app/1 --
+sha256:3801cf6cd6cdcfe2c6fd41d57d74e921
+{
+  "results": [
+    {
+      "Desc": "APickedEntryIsChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "AToggleEntryFollowsItsState",
+      "Passed": true
+    },
+    {
+      "Desc": "AnEntryAfterTheLoopIsChecked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/app/1 --
+sha256:667928cd52d30b71f7d0cb60aea9b061
+{
+  "results": [
+    {
+      "Desc": "APickedEntryIsChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "AToggleEntryFollowsItsState",
+      "Passed": true
+    },
+    {
+      "Desc": "AnEntryAfterTheLoopIsChecked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/app/1 --
+sha256:2881557b72c66ded7014586b644d3210
+{
+  "results": [
+    {
+      "Desc": "APickedEntryIsChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "AToggleEntryFollowsItsState",
+      "Passed": true
+    },
+    {
+      "Desc": "AnEntryAfterTheLoopIsChecked",
+      "Passed": true
+    }
+  ]
+}

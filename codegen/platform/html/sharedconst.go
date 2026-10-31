@@ -107,8 +107,8 @@ func (g *htmlGen) linkSharedConsts(script string) (tags, linked string) {
 }
 
 // scriptIdents is every name script reads as a free identifier: each run of
-// identifier characters not reached through a `.`. A shared const is linked
-// into a page whose script names it.
+// identifier characters not reached through a `.`, a spread's `...` aside. A
+// shared const is linked into a page whose script names it.
 //
 // One pass per page. It was a regexp per shared const per page, each scanning
 // the whole script, which on the docs site -- a thousand pages -- was a third
@@ -124,7 +124,7 @@ func scriptIdents(script string) map[string]bool {
 		for i < len(script) && isJSIdentByte(script[i]) {
 			i++
 		}
-		if start == 0 || script[start-1] != '.' {
+		if start == 0 || script[start-1] != '.' || strings.HasSuffix(script[:start], "...") {
 			out[script[start:i]] = true
 		}
 	}

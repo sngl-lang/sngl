@@ -111,13 +111,6 @@ const func wrapOf(w ui.WhiteSpace) int {
     }
 }
 
-const func clipOf(o ui.Overflow) bool {
-    return match o {
-        hidden, scroll, auto => true
-        unset, visible => false
-    }
-}
-
 // What GTK takes for a Style: CSS for the widget's own node, and beside it
 // what GTK says through properties instead. A block rather than an
 // expression, so the optimizer calls it instead of splicing a computed Style
@@ -176,7 +169,6 @@ const func lookHidden(s ui.Style, hidden bool, spaced bool, spacing int) gtk.Loo
         textAlign = textAlignOf(s.textAlign),
         lines = s.maxLines == null ? 0 : s.maxLines,
         wrap = wrapOf(s.whiteSpace),
-        clip = clipOf(s.overflow),
         hidden = hidden,
         cursor = s.cursor,
         justify = justifyOf(s.justifyContent),

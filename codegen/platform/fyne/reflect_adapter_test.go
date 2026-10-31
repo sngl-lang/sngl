@@ -56,6 +56,10 @@ var fyneCtors = map[string]any{
 	"duckfam.us/sngl/pkg/go/fynelayout.NewImageSource": fynelayout.NewImageSource,
 	"duckfam.us/sngl/pkg/go/fynelayout.NewReachScroll": fynelayout.NewReachScroll,
 	"duckfam.us/sngl/pkg/go/fynelayout.NewTap":         fynelayout.NewTap,
+	"duckfam.us/sngl/pkg/go/fynelayout.NewBack":        fynelayout.NewBack,
+	"duckfam.us/sngl/pkg/go/fynelayout.NewMenuEntry":   fynelayout.NewMenuEntry,
+	"duckfam.us/sngl/pkg/go/fynelayout.NewTabs":        fynelayout.NewTabs,
+	"duckfam.us/sngl/pkg/go/fynelayout.NewTabPage":     fynelayout.NewTabPage,
 }
 
 // allSpecs decodes every Spec the fyne overrides reach, keyed by the stdlib

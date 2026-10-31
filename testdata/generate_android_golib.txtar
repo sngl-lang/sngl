@@ -234,7 +234,6 @@ data class Style(
     var opacity: Double? = null,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.UNSET,
-    var overflow: SnglOverflow = SnglOverflow.UNSET,
     var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
@@ -358,16 +357,6 @@ enum class SnglDisplay(private val sngl: String) {
     INLINEFLEX("inlineFlex"),
     NONE("none"),
     GRID("grid");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglOverflow(private val sngl: String) {
-    UNSET("unset"),
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
 
     override fun toString(): String = sngl
 }

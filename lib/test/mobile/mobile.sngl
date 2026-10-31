@@ -1,0 +1,15 @@
+import marks "sngl:internal/marks"
+import ui "sngl:ui"
+
+// Which way a finger moves across the screen.
+enum Toward { left, right }
+
+// Swipes a finger across the node toward one side. Swiping left brings in
+// what follows, as a page turns: across a `ui.tabs`, the next tab's panel.
+#[marks.intrinsic("mobile.swipe")]
+func swipe(node ui.node, toward Toward)
+
+// Presses the system's back: android's back, and the browser's on html, which
+// goes back an entry in the history.
+#[marks.intrinsic("mobile.back")]
+func back()

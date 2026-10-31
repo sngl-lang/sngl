@@ -352,6 +352,9 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// ownArgsID is the `#id` of the node whose props are being checked, which
+	// they cannot read (lookupValue).
+	ownArgsID string
 	// codecReported is the calls checkCodecCall has refused, since a
 	// component body is read twice.
 	codecReported map[ast.Pos]bool
@@ -3869,6 +3872,7 @@ func (c *checker) pass2() {
 	c.checkGenSchemes()
 	c.checkCLinks()
 	c.reportUnlinkedCNativeCalls()
+	c.checkGenericCodecs()
 	c.checkOwnedReleases()
 
 	// Every body has now been read, which is what a family read off one waits

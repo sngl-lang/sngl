@@ -514,6 +514,14 @@ type Env struct {
 	wlog *writeLog
 	// handles is the program's owned values, shared the same way (owned()).
 	handles *handles
+	// imported is the vars the packages this program imports declare, which
+	// the program's root holds once one is reached (importedVarOwner).
+	imported map[*ir.Var]bool
+	// types is what the type parameters of the declaration running in this
+	// scope are bound to, and typeCalls the bindings calls have made that no
+	// frame has taken yet, shared like handling (typeargs.go).
+	types     map[string]*ir.Type
+	typeCalls *[]typeCall
 }
 
 func NewEnv() *Env {
@@ -521,6 +529,7 @@ func NewEnv() *Env {
 		vals:      map[ir.Symbol]any{},
 		childEnvs: map[childKey]*Env{},
 		handling:  new(int),
+		typeCalls: new([]typeCall),
 		wlog:      &writeLog{},
 	}
 }
@@ -693,6 +702,8 @@ func (env *Env) scopeCopy(size int) *Env {
 		origin:     env,
 		spreadVals: env.spreadVals,
 		handling:   env.handling,
+		types:      env.types,
+		typeCalls:  env.typeCalls,
 		wlog:       env.writes(),
 		handles:    env.owned(),
 		build:      env.build,
@@ -1362,7 +1373,7 @@ func (env *Env) findVarOwner(sym ir.Symbol) *Env {
 			return e
 		}
 	}
-	return nil
+	return env.importedVarOwner(sym)
 }
 
 // registerBoundary notes that a boundary with a fallback renders in this
@@ -1942,6 +1953,7 @@ func (r *listRef) set(v any) { r.list[r.idx] = v }
 
 func (env *Env) evalCall(call *ir.Call) (any, error) {
 	defer env.enterCall(call)()
+	defer env.pushCallTypes(call)()
 	v, err := env.evalCallSite(call)
 	if raised, ok := err.(*RaisedError); ok {
 		if call.ErrorMode == ir.ErrorRender {
@@ -2807,6 +2819,11 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 
 func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 	defer env.enterFunc(fn)()
+	if types := env.takeCallTypes(fn); types != nil {
+		saved := env.types
+		env.types = types
+		defer func() { env.types = saved }()
+	}
 	env.depth++
 	if env.depth > maxCallDepth {
 		env.depth--

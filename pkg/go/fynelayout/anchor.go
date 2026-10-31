@@ -58,6 +58,7 @@ func InsertBefore(c *fyne.Container, anchor, o fyne.CanvasObject) {
 		return
 	}
 	Adopt(c, o)
+	defer menuMoved(c, o)
 	themeLater.Lock()
 	themeLater.inserted = append(themeLater.inserted, insertion{c, o})
 	themeLater.Unlock()

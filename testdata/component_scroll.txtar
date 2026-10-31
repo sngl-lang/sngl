@@ -6,23 +6,19 @@ carries.
 import . "sngl:ui"
 import . "sngl:test"
 
-// scroll: state-binding fixture — mutating bound scrollX/scrollY
-// propagates through the scroll viewport.
+// scroll: a control inside a scroll that moves both ways is pressed as
+// one outside it is.
 component main node {
-    var x = 0.0
-    var y = 0.0
-    scroll(direction="both", scrollX=x, scrollY=y) {
-        text(value="content")
+    var taps = 0
+    scroll(direction=both) {
+        button #tap(text="tap", @click { taps += 1 })
     }
 }
 
-func testScrollOffsetsMutate(t Test, c main) {
-    t.assert(c.x == 0.0)
-    t.assert(c.y == 0.0)
-    c.x = 12.5
-    c.y = 42.0
-    t.assert(c.x == 12.5)
-    t.assert(c.y == 42.0)
+func testAControlInsideAScrollIsPressed(t Test, c main) {
+    t.assert(c.taps == 0)
+    c.tap.click()
+    t.assert(c.taps == 1)
 }
 
 window {
@@ -120,7 +116,6 @@ type Style struct {
 	Opacity        *float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -131,8 +126,8 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
-	x float64
-	y float64
+	taps      int
+	__focusID int
 
 	width, height int
 }
@@ -140,8 +135,8 @@ type modelState struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{&modelState{}}
-	m.x = 0.0
-	m.y = 0.0
+	m.taps = 0
+	m.__focusID = 0
 	return m
 }
 
@@ -164,8 +159,8 @@ func RowsOf(m__r0 *Measurement) int {
 
 func BoxLook(s Style, words bool) lipgloss.Style {
 	if func(_a1, _b2 Style) bool {
-		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
-	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
@@ -313,34 +308,31 @@ func LineCap(height__r0 int, lines int) int {
 	return __lt15
 }
 
-func (m Model) X() float64 {
-	return m.x
+func (m *Model) __focusNext() {
+	if m.__focusID == 0 {
+		m.__focusID = 0
+	}
 }
 
-func (m Model) SetX(v float64) Model {
-	m.x = v
+func (m *Model) __focusPrev() {
+	if m.__focusID == 0 {
+		m.__focusID = 0
+	}
+}
+
+func (m Model) Taps() int {
+	return m.taps
+}
+
+func (m Model) SetTaps(v int) Model {
+	m.taps = v
 	return m
 }
 
-type setXMsg struct{ value float64 }
+type setTapsMsg struct{ value int }
 
-func SetXCmd(v float64) tea.Cmd {
-	return func() tea.Msg { return setXMsg{value: v} }
-}
-
-func (m Model) Y() float64 {
-	return m.y
-}
-
-func (m Model) SetY(v float64) Model {
-	m.y = v
-	return m
-}
-
-type setYMsg struct{ value float64 }
-
-func SetYCmd(v float64) tea.Cmd {
-	return func() tea.Msg { return setYMsg{value: v} }
+func SetTapsCmd(v int) tea.Cmd {
+	return func() tea.Msg { return setTapsMsg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -352,10 +344,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setXMsg:
-		m = m.SetX(msg.value)
-	case setYMsg:
-		m = m.SetY(msg.value)
+	case setTapsMsg:
+		m = m.SetTaps(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -363,19 +353,41 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
 			return m, tea.Quit
+		case msg.Code == tea.KeyTab && msg.Mod == 0:
+			m.__focusNext()
+		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
+			m.__focusPrev()
+		case msg.Code == tea.KeyEnter && m.__focusID == 0:
+			m.taps += 1
 		}
 	}
 	return m, tea.Batch(cmds...)
+}
+
+// tapClick activates the #tap widget the way a keypress does; for tests.
+func (m *Model) tapClick() {
+	prev := m.__focusID
+	m.__focusID = 0
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	*m = nm.(Model)
+	m.__focusID = prev
+	_ = m.View()
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
 	var content string
 	var contentChildren []string
 	var content_0 string
-	content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("content"))
+	content_0Focused := (m.__focusID == 0)
+	content_0Prefix := " "
+	if content_0Focused {
+		content_0Prefix = ">"
+	}
+	content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("tap"))
 	contentChildren = append(contentChildren, content_0)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
+	content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -394,15 +406,12 @@ package main
 
 import "testing"
 
-func TestScrollOffsetsMutate(t *testing.T) {
+func TestAControlInsideAScrollIsPressed(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if !((c.x == 0.0)) { t.Errorf("assert failed: %s", "(c.x == 0.0)") }
-	if !((c.y == 0.0)) { t.Errorf("assert failed: %s", "(c.y == 0.0)") }
-	c.x = 12.5
-	c.y = 42.0
-	if !((c.x == 12.5)) { t.Errorf("assert failed: %s", "(c.x == 12.5)") }
-	if !((c.y == 42.0)) { t.Errorf("assert failed: %s", "(c.y == 42.0)") }
+	if !((c.taps == 0)) { t.Errorf("assert failed: %s", "(c.taps == 0)") }
+	c.tapClick()
+	if !((c.taps == 1)) { t.Errorf("assert failed: %s", "(c.taps == 1)") }
 }
 
 
@@ -422,47 +431,50 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	x float64
-	y float64
+	taps int
 
 	__n0 *fynelayout.ReachScroll
-	__n1 *widget.Label
+	tap  *widget.Button
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.x = 0.0
-	m.y = 0.0
+	m.taps = 0
 	return m
 }
 
 func (m *Model) __n0_reachEnd_handler() {
 }
 
-func (m *Model) X() float64 {
-	return m.x
+func (m *Model) tap_click_handler() {
+	m.taps += 1
 }
 
-func (m *Model) SetX(v float64) {
-	m.x = v
+// tapClick invokes the OnTapped callback on the #tap widget; for tests.
+func (m *Model) tapClick() {
+	if m.tap.OnTapped != nil {
+		m.tap.OnTapped()
+	}
 }
 
-func (m *Model) Y() float64 {
-	return m.y
+func (m *Model) Taps() int {
+	return m.taps
 }
 
-func (m *Model) SetY(v float64) {
-	m.y = v
+func (m *Model) SetTaps(v int) {
+	m.taps = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewReachScroll()
+	m.__n0.SetDirection("both")
 	m.__n0.OnReachEnd = m.__n0_reachEnd_handler
-	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText("content")
-	m.__n0.Content = m.__n1
+	m.tap = widget.NewButton("", nil)
+	m.tap.SetText("tap")
+	m.tap.OnTapped = m.tap_click_handler
+	m.__n0.Content = m.tap
 	content := fyne.CanvasObject(m.__n0)
 	return content
 }
@@ -481,15 +493,12 @@ package main
 
 import "testing"
 
-func TestScrollOffsetsMutate(t *testing.T) {
+func TestAControlInsideAScrollIsPressed(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if !((c.x == 0.0)) { t.Errorf("assert failed: %s", "(c.x == 0.0)") }
-	if !((c.y == 0.0)) { t.Errorf("assert failed: %s", "(c.y == 0.0)") }
-	c.x = 12.5
-	c.y = 42.0
-	if !((c.x == 12.5)) { t.Errorf("assert failed: %s", "(c.x == 12.5)") }
-	if !((c.y == 42.0)) { t.Errorf("assert failed: %s", "(c.y == 42.0)") }
+	if !((c.taps == 0)) { t.Errorf("assert failed: %s", "(c.taps == 0)") }
+	c.tapClick()
+	if !((c.taps == 1)) { t.Errorf("assert failed: %s", "(c.taps == 1)") }
 }
 
 -- out/go/fyne/testcomponent_test.go --
@@ -524,8 +533,8 @@ import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	x      float64
-	y      float64
+	taps   int
+	tap    gtk4rt.Handle
 	__root gtk4rt.Handle
 }
 
@@ -533,28 +542,23 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.x = 0.0
-	m.y = 0.0
+	m.taps = 0
 	return m
 }
 
 func (m *Model) __n0_reachEnd_handler() {
 }
 
-func (m *Model) X() float64 {
-	return m.x
+func (m *Model) tap_clicked_handler() {
+	m.taps += 1
 }
 
-func (m *Model) SetX(v float64) {
-	m.x = v
+func (m *Model) Taps() int {
+	return m.taps
 }
 
-func (m *Model) Y() float64 {
-	return m.y
-}
-
-func (m *Model) SetY(v float64) {
-	m.y = v
+func (m *Model) SetTaps(v int) {
+	m.taps = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -565,10 +569,10 @@ func (m *Model) buildWidgetTree() {
 	__n0 := gtk4rt.ScrollNew()
 	gtk4rt.ScrollSetDirection(__n0, "both")
 	gtk4rt.ScrollOnReachEnd(__n0, m.__n0_reachEnd_handler)
-	__n1 := gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(__n1, "content")
-	gtk4rt.LabelSetXAlign(__n1, 0.0)
-	gtk4rt.ScrolledWindowSetChild(__n0, __n1)
+	m.tap = gtk4rt.New("GtkButton")
+	gtk4rt.ButtonSetLabel(m.tap, "tap")
+	gtk4rt.Connect(m.tap, "clicked", m.tap_clicked_handler)
+	gtk4rt.ScrolledWindowSetChild(__n0, m.tap)
 	gtk4rt.BoxAppend(m.__root, __n0)
 }
 
@@ -579,6 +583,11 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	gtk4rt.WindowSetDefaultSize(win, 480, 640)
 	gtk4rt.WindowSetChild(win, m.__root)
 	return win
+}
+
+// tapClick fires the "clicked" signal on the #tap widget; for tests.
+func (m *Model) tapClick() {
+	gtk4rt.Emit(m.tap, "clicked")
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from component_scroll.sngl; DO NOT EDIT.
@@ -593,9 +602,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.Button
+import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
-import androidx.compose.material3.LocalTextStyle
-import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -605,16 +616,19 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 class MainScreenState {
     var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
-    var x by mutableStateOf(0.0)
-    var y by mutableStateOf(0.0)
+    var taps by mutableStateOf(0)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
-    SnglScroll(modifier = Modifier.safeDrawingPadding(), onReachEnd = {}) {
-        Text(text = "content", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+    SnglScroll(modifier = Modifier.safeDrawingPadding(), direction = "both", onReachEnd = {}) {
+        Button(onClick = {
+            state.taps += 1
+        }, modifier = Modifier.testTag("tap"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+            Text(text = "tap", modifier = Modifier)
+        }
     }
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
@@ -641,9 +655,129 @@ val LocalFlexShare = compositionLocalOf<((Float) -> Modifier)?> { null }
 val snglFlexShare: (Float) -> Modifier = { w ->
     Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
 }
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexible.kt --
+package test.sngl.app
+
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.node.LayoutModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.TraversableNode
+import androidx.compose.ui.node.invalidateMeasurement
+import androidx.compose.ui.node.traverseAncestors
+import androidx.compose.ui.unit.Constraints
+
+// snglFlexible is a vbox's, hbox's or scroll's Row or Column, which a child
+// taking a share of it marks with snglFlexed. Compose measures a weight in an
+// unbounded axis -- a Row in a horizontal scroll, a Column in a vertical one --
+// to nothing, where html's flex takes the content's size; so a marked line
+// with no bound along it is bounded by its content's, and the weights share
+// that. A marked line also marks the line it sits in across it, as html's
+// stretched row fills its column: a column with no bound across it is then as
+// wide as its widest row, which each row fills, so the rows' shares line up as
+// a table's columns. Only a marked one asks, since asking costs a pass over
+// the subtree.
+fun Modifier.snglFlexible(horizontal: Boolean): Modifier = this then FlexibleElement(horizontal)
+
+fun Modifier.snglFlexed(): Modifier = this then FlexedElement
+
+private object FlexibleKey
+
+private data class FlexibleElement(val horizontal: Boolean) : ModifierNodeElement<FlexibleNode>() {
+    override fun create() = FlexibleNode(horizontal)
+    override fun update(node: FlexibleNode) {
+        node.horizontal = horizontal
+        node.invalidateMeasurement()
+    }
+}
+
+private class FlexibleNode(var horizontal: Boolean) : Modifier.Node(), LayoutModifierNode, TraversableNode {
+    override val traverseKey: Any get() = FlexibleKey
+    private var outer: FlexibleNode? = null
+    private var flexed = 0
+    private var across = 0
+
+    fun flex(by: Int) {
+        val was = flexed > 0
+        flexed += by
+        if (was != flexed > 0) cross(if (flexed > 0) 1 else -1)
+        invalidateMeasurement()
+    }
+
+    private fun cross(by: Int) {
+        outer?.takeIf { it.horizontal != horizontal }?.let {
+            it.across += by
+            it.invalidateMeasurement()
+        }
+    }
+
+    // Compose runs a parent's onAttach after its children's, so a line may
+    // already be marked when it finds the line it sits in.
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            outer = it as FlexibleNode
+            false
+        }
+        if (flexed > 0) cross(1)
+    }
+
+    override fun onDetach() {
+        if (flexed > 0) cross(-1)
+        outer = null
+    }
+
+    override fun MeasureScope.measure(measurable: Measurable, constraints: Constraints): MeasureResult {
+        val placeable = measurable.measure(bounded(measurable, constraints))
+        return layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }
+
+    private fun bounded(measurable: Measurable, c: Constraints): Constraints {
+        var out = c
+        // A SubcomposeLayout -- a pager, a lazy list -- refuses to be asked
+        // its intrinsic size; the line then measures as Compose would.
+        try {
+            if ((flexed > 0 && horizontal || across > 0 && !horizontal) && !out.hasBoundedWidth) {
+                out = out.copy(maxWidth = maxOf(out.minWidth, measurable.maxIntrinsicWidth(out.maxHeight)))
+            }
+            if ((flexed > 0 && !horizontal || across > 0 && horizontal) && !out.hasBoundedHeight) {
+                out = out.copy(maxHeight = maxOf(out.minHeight, measurable.maxIntrinsicHeight(out.maxWidth)))
+            }
+        } catch (_: IllegalStateException) {
+            return c
+        }
+        return out
+    }
+}
+
+private object FlexedElement : ModifierNodeElement<FlexedNode>() {
+    override fun create() = FlexedNode()
+    override fun update(node: FlexedNode) {}
+    override fun equals(other: Any?) = other === this
+    override fun hashCode() = 0
+}
+
+private class FlexedNode : Modifier.Node() {
+    private var line: FlexibleNode? = null
+
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            line = it as FlexibleNode
+            false
+        }
+        line?.flex(1)
+    }
+
+    override fun onDetach() {
+        line?.flex(-1)
+        line = null
+    }
+}
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglScroll.kt --
 package test.sngl.app
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.rememberScrollState
@@ -659,26 +793,37 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 
-// SnglScroll is sngl:ui's scroll: a column scrolled vertically, which calls
+// SnglScroll is sngl:ui's scroll: a column scrolled along `direction` --
+// "horizontal", "both", or vertically for anything else -- which calls
 // onReachEnd when the end of its content comes within half a viewport of
 // being shown -- once as it arrives, and again whenever the content changes
 // size while it is there, so a handler that adds a page is asked for another
-// while the end still shows. The content's height is measured past the
-// scroll, where it is the whole of it rather than the viewport.
+// while the end still shows. The end is the right edge of a horizontal
+// scroll and the bottom of any other. The content's extent is measured past
+// the scroll, where it is the whole of it rather than the viewport.
 @Composable
 fun SnglScroll(
     modifier: Modifier,
+    direction: String = "vertical",
     onReachEnd: () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val state = rememberScrollState()
-    var height by remember { mutableIntStateOf(0) }
+    val across = rememberScrollState()
+    val down = rememberScrollState()
+    val sideways = direction == "horizontal"
+    val state = if (sideways) across else down
+    var extent by remember { mutableIntStateOf(0) }
     val reach by rememberUpdatedState(onReachEnd)
     LaunchedEffect(state) {
-        snapshotFlow { (state.maxValue - state.value <= state.viewportSize / 2) to height }
+        snapshotFlow { (state.maxValue - state.value <= state.viewportSize / 2) to extent }
             .collect { (atEnd, _) -> if (atEnd) reach() }
     }
-    Column(modifier.verticalScroll(state).onSizeChanged { height = it.height }, content = content)
+    // The outer scroll's ScrollBy is the node's, which a test's trigger runs:
+    // scrolling either way, that is the vertical one, whose end is reported.
+    var scrolled = modifier
+    if (!sideways) scrolled = scrolled.verticalScroll(down)
+    if (sideways || direction == "both") scrolled = scrolled.horizontalScroll(across)
+    Column(scrolled.onSizeChanged { extent = if (sideways) it.width else it.height }.snglFlexible(false), content = content)
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
 // Code generated by sngl (android) from component_scroll.sngl; DO NOT EDIT.
@@ -687,6 +832,8 @@ package test.sngl.app
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performSemanticsAction
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -701,22 +848,13 @@ import org.robolectric.annotation.GraphicsMode
 class MainScreenTest {
     @get:Rule val composeRule = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun testScrollOffsetsMutate() {
+    @Test fun testAControlInsideAScrollIsPressed() {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        org.junit.Assert.assertTrue("(c.x == 0.0)", (c.x == 0.0))
-        org.junit.Assert.assertTrue("(c.y == 0.0)", (c.y == 0.0))
-        composeTestRule.runOnUiThread {
-            c.x = 12.5
-        }
-        composeTestRule.waitForIdle()
-        composeTestRule.runOnUiThread {
-            c.y = 42.0
-        }
-        composeTestRule.waitForIdle()
-        org.junit.Assert.assertTrue("(c.x == 12.5)", (c.x == 12.5))
-        org.junit.Assert.assertTrue("(c.y == 42.0)", (c.y == 42.0))
+        org.junit.Assert.assertTrue("(c.taps == 0)", (c.taps == 0))
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("tap")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        org.junit.Assert.assertTrue("(c.taps == 1)", (c.taps == 1))
     }
 
 }
@@ -733,11 +871,19 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="overflow:auto">
-  <span>content</span>
+<div class="sngl-scroll sngl-scroll-both">
+  <button id="$0" data-sngl-id="tap">
+    <span>tap</span>
+  </button>
   <sngl-reach-end>
   </sngl-reach-end>
 </div>
+<style>
+.sngl-scroll-vertical { overflow-x: hidden; overflow-y: auto; }
+.sngl-scroll-horizontal { overflow-x: auto; overflow-y: hidden; display: flex; align-items: flex-start; }
+.sngl-scroll-horizontal > *, .sngl-scroll-horizontal > [data-sngl-slot] > *, .sngl-scroll-horizontal > [data-sngl-inst] > * { flex: none; }
+.sngl-scroll-both { overflow: auto; }
+</style>
 
 <script>
 window.__snglErrors = [];
@@ -756,7 +902,8 @@ window.__sngl_reset = () => {
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
-  var state = { x: 0, y: 0 };
+  var state = { taps: 0 };
+  state.tapClick = () => $0.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -765,15 +912,20 @@ window.__sngl_boot = () => {
       const box = this.parentElement;
       if (!box) return;
       this.style.display = "block";
+      const across = box.classList.contains("sngl-scroll-horizontal");
       const fire = () => this.dispatchEvent(new Event("reachEnd"));
-      const near = () => this.getBoundingClientRect().top - box.getBoundingClientRect().bottom <= box.clientHeight / 2;
+      const near = () => {
+        const at = this.getBoundingClientRect(), view = box.getBoundingClientRect();
+        return across ? at.left - view.right <= box.clientWidth / 2 : at.top - view.bottom <= box.clientHeight / 2;
+      };
       this._io = new IntersectionObserver((es) => {
         if (es[es.length - 1].isIntersecting) fire();
-      }, { root: box, rootMargin: "0px 0px 50% 0px" });
+      }, { root: box, rootMargin: across ? "0px 50% 0px 0px" : "0px 0px 50% 0px" });
       this._io.observe(this);
-      let last = this.offsetTop, asked = false;
+      const where = () => across ? this.offsetLeft : this.offsetTop;
+      let last = where(), asked = false;
       const grew = () => {
-        const h = this.offsetTop;
+        const h = where();
         if (h !== last && !asked) {
           asked = true;
           requestAnimationFrame(() => {
@@ -800,27 +952,31 @@ window.__sngl_boot = () => {
       if (this._mo) this._mo.disconnect();
     }
   });
+  var $0 = document.getElementById("$0");
+  $0.addEventListener("click", function() {
+    state.taps += 1;
+  });
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6346ae3275a7f97cb687f4715a6d0679
+pass sha256:56fd76e08f9a6e915c46dff5a4242352
 -- run/go/fyne --
-pass sha256:11c55c3d741fa8807110baebc0c01fbc
+pass sha256:6c8191b6b1f8a9bff8cc160ac95fbb80
 -- run/go/gtk4 --
-pass sha256:56b7c27db5ba1dc2c97c0e5b92740ae8
+pass sha256:006ee129b6c1b9e861752e83ebbd6408
 -- run/kotlin/android --
-pass sha256:e8bf122f13650029a42aec7970542803
+pass sha256:3fe53b55dde921ab8da1832533fa3e6e
 -- run/none/html --
-pass sha256:5e65749aae03c3cede2de699c91cd2e7
+pass sha256:bb87a6329da8d9a12a145a9c021ef547
 -- testrun/html/none/component_scroll.sngl/main/1 --
-sha256:7a886042b2bb5debc6ee80a0511a17f2
+sha256:5d4cfd0791d2f2af3d149a7c53e533d6
 {
   "results": [
     {
-      "Desc": "ScrollOffsetsMutate",
+      "Desc": "AControlInsideAScrollIsPressed",
       "Passed": true
     }
   ]

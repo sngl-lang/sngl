@@ -193,6 +193,15 @@ func WidgetSpecsFrom(pkg *ir.Package) ([]WidgetSpec, error) {
 			}
 		}
 		out = append(out, w)
+		// The primitives the override holds below its root -- a window's
+		// way back and menu entries -- are built by constructor too.
+		for _, p := range prims[1:] {
+			extra, err := specFromProps(p.Name, nodeProps(p))
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", name, err)
+			}
+			out = append(out, WidgetSpec{Element: name, CtorPath: extra.New.Path, CtorName: extra.New.Name})
+		}
 	}
 	return out, nil
 }

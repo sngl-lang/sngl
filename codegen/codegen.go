@@ -731,6 +731,9 @@ type Document struct {
 	// nil for a document that holds no stack. The stack stands for it alone in
 	// Body.
 	Page *ir.NodeInst
+	// Absent is the handles of the nodes on the stack's other pages, which
+	// the package's funcs, shared by every document, may still write.
+	Absent map[string]bool
 	// FileAssets are the file: assets only this document's fold resolved.
 	FileAssets []FileAsset
 }

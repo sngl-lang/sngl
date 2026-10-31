@@ -54,11 +54,6 @@ enum Position { unset, static, relative, absolute, fixed, sticky }
 // inside is block or flex.
 enum Display { unset, flex, block, inline, inlineBlock, inlineFlex, none, grid }
 
-// Behavior when content exceeds its container's bounds. `auto` adds
-// scrollbars only when needed; `scroll` always reserves them;
-// `hidden` clips without scrolling; `visible` lets content spill out.
-enum Overflow { unset, visible, hidden, scroll, auto }
-
 // How an `image`'s contents are sized to fit its frame. `contain`
 // letterboxes, `cover` fills and crops, `fill` stretches,
 // `scaleDown` is `contain` except the image is never scaled up.
@@ -166,6 +161,5 @@ struct Style {
 
     // Display
     display       Display
-    overflow      Overflow
     listStyleType ListStyle
 }

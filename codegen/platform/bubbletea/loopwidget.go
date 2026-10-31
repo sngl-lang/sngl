@@ -2,6 +2,7 @@ package bubbletea
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -27,6 +28,9 @@ type loopWidget struct {
 	// loops are the loops around the node, outermost first: the copy key's
 	// indices, and the first is the slot the walks run over.
 	loops []*ir.For
+	// temps are the view's locals the first loop reads (loopTemps), which a
+	// walk starting at it makes as View does.
+	temps []ir.Stmt
 	lf    loopFocus
 	// cell reads the copy's current value, off the write-back handler's read
 	// of its per-copy cell; nil for a widget nothing binds.
@@ -184,7 +188,7 @@ func walkSlot(b *strings.Builder, w widgetInfo, gc *golang.GoIRContext, indent i
 	}
 	vw.line("%s := 0", w.loop.lf.pos)
 	vw.line("_ = %s", w.loop.lf.pos)
-	vw.stmts([]ir.Stmt{w.loop.loops[0]}, gc)
+	vw.stmts(append(slices.Clip(w.loop.temps), w.loop.loops[0]), gc)
 }
 
 // walkCopies writes a walk of w's loop calling at on each copy of w's node,
@@ -192,7 +196,7 @@ func walkSlot(b *strings.Builder, w widgetInfo, gc *golang.GoIRContext, indent i
 func walkCopies(b *strings.Builder, w widgetInfo, gc *golang.GoIRContext, indent int, at func(vw *viewWalk, gc *golang.GoIRContext)) {
 	vw := &viewWalk{b: b, indent: indent, wants: func(n *ir.NodeInst) bool { return n == w.node }}
 	vw.visit = func(vw *viewWalk, _ *ir.NodeInst, gc *golang.GoIRContext) { at(vw, gc) }
-	vw.stmts([]ir.Stmt{w.loop.loops[0]}, gc)
+	vw.stmts(append(slices.Clip(w.loop.temps), w.loop.loops[0]), gc)
 }
 
 // emitCopyHandler writes the handler h of a copy, its parameter bound to the

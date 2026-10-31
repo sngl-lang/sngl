@@ -1,0 +1,225 @@
+# An effect in a component built once per copy of a loop reads the props that
+# copy was handed: its @mount and @update the copy's current ones, its
+# @unmount the ones it had when it left.
+#
+# bubbletea splices the component into each copy, so a prop bound to the loop
+# variable is that variable in the effect's handlers -- and passEffect runs
+# them from the settle, outside the loop, so "an effect's @mount reads the
+# loop variable" refused the program. The effect is keyed by the copy now,
+# its handlers read the loop variables at the copy's index, and an @unmount,
+# which runs once the list no longer holds the copy, reads what a recorder
+# kept for it. A write to one row's key runs that row's @update alone.
+
+sngl test --platform=none app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +4 tests, 0 failures'
+
+-- app.sngl --
+import "sngl:test"
+import ui "sngl:ui"
+
+var log list[string] = []
+
+component greeter(name string) ui.node {
+    effect(@mount { log.push("+" + name) }, @unmount { log.push("-" + name) })
+    ui.text(value=name)
+}
+
+component counter(name string, :value int) ui.node {
+    effect(on=value, @update(v) { log.push("{name}={v}") })
+    ui.text(value=name)
+}
+
+struct Row {
+    name string
+    n    int
+}
+
+component names ui.node {
+    var names = ["a", "b", "c"]
+
+    ui.vbox {
+        for var name = names {
+            greeter(name=name)
+        }
+    }
+}
+
+component rows ui.node {
+    var rows = [Row{name="a", n=0}, Row{name="b", n=0}, Row{name="c", n=0}]
+
+    ui.vbox {
+        for var &row = rows {
+            counter(name=row.name, :value=row.n)
+        }
+    }
+}
+
+func testEachCopyMountsWithItsOwnName(t test.Test, c names) {
+    t.assert(log.join(",") == "+a,+b,+c")
+}
+
+func testARemovedCopyUnmountsWithItsName(t test.Test, c names) {
+    c.names = ["a", "b"]
+    t.assert(log.join(",") == "+a,+b,+c,-c")
+}
+
+func testAnUpdateReadsItsCopysName(t test.Test, c rows) {
+    c.rows[1].n = 5
+    t.assert(log.join(",") == "b=5")
+}
+
+func testAnUpdateReadsARenamedCopysNewName(t test.Test, c rows) {
+    c.rows[1].name = "z"
+    c.rows[1].n = 7
+    t.assert(log.join(",") == "z=7")
+}
+-- testrun/android/kotlin/app.sngl/names/1 --
+sha256:1b3fdc30f451b9201d0cb3cce904e5bd
+{
+  "results": [
+    {
+      "Desc": "ARemovedCopyUnmountsWithItsName",
+      "Passed": true
+    },
+    {
+      "Desc": "EachCopyMountsWithItsOwnName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/rows/1 --
+sha256:5ceba8b00ff022277f6f0c0493d8fc07
+{
+  "results": [
+    {
+      "Desc": "AnUpdateReadsARenamedCopysNewName",
+      "Passed": true
+    },
+    {
+      "Desc": "AnUpdateReadsItsCopysName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/names/1 --
+sha256:539f6dd6155095d32522d8aea92f31bd
+{
+  "results": [
+    {
+      "Desc": "ARemovedCopyUnmountsWithItsName",
+      "Passed": true
+    },
+    {
+      "Desc": "EachCopyMountsWithItsOwnName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/rows/1 --
+sha256:9dcf663dadaed56b7dc26166fcff86a4
+{
+  "results": [
+    {
+      "Desc": "AnUpdateReadsARenamedCopysNewName",
+      "Passed": true
+    },
+    {
+      "Desc": "AnUpdateReadsItsCopysName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/names/1 --
+sha256:4ee61e271e9a6c53a99934fbc610c6dd
+{
+  "results": [
+    {
+      "Desc": "ARemovedCopyUnmountsWithItsName",
+      "Passed": true
+    },
+    {
+      "Desc": "EachCopyMountsWithItsOwnName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/rows/1 --
+sha256:118dc5130ccc06b3eb44b3e6ca3aa568
+{
+  "results": [
+    {
+      "Desc": "AnUpdateReadsARenamedCopysNewName",
+      "Passed": true
+    },
+    {
+      "Desc": "AnUpdateReadsItsCopysName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/names/1 --
+sha256:0aeb02dff4f01b3351977ffbf979e511
+{
+  "results": [
+    {
+      "Desc": "ARemovedCopyUnmountsWithItsName",
+      "Passed": true
+    },
+    {
+      "Desc": "EachCopyMountsWithItsOwnName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/rows/1 --
+sha256:2bd49b82308321c500ce3be3b29a4edd
+{
+  "results": [
+    {
+      "Desc": "AnUpdateReadsARenamedCopysNewName",
+      "Passed": true
+    },
+    {
+      "Desc": "AnUpdateReadsItsCopysName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/names/1 --
+sha256:9cae8087c3c2b0b91abbb9aea23218c0
+{
+  "results": [
+    {
+      "Desc": "ARemovedCopyUnmountsWithItsName",
+      "Passed": true
+    },
+    {
+      "Desc": "EachCopyMountsWithItsOwnName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/rows/1 --
+sha256:024f2a076c9f7738bc56ff3ccf16685a
+{
+  "results": [
+    {
+      "Desc": "AnUpdateReadsARenamedCopysNewName",
+      "Passed": true
+    },
+    {
+      "Desc": "AnUpdateReadsItsCopysName",
+      "Passed": true
+    }
+  ]
+}

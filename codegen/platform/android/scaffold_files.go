@@ -161,6 +161,10 @@ func writeActivityKt(w io.Writer, d scaffoldData, class, screenImport string) {
 		io.WriteString(e, `
         SnglAssets.init(this)`)
 	}
+	if d.HasSettings {
+		io.WriteString(e, `
+        SnglSettings.init(this)`)
+	}
 	if d.HasTestAgentBootstrap {
 		io.WriteString(e, `
         if ((intent?.getIntExtra("SNGL_AGENT_PORT", 0) ?: 0) > 0) {

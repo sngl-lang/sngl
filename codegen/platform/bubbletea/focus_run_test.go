@@ -336,3 +336,81 @@ func TestAGrowingStopKeepsItsPlace(t *testing.T) {
 func TestAGrowingStopInALoopKeepsItsPlace(t *testing.T) {
 	runEmittedProgram(t, focusGrowRunSrc, focusGrowRunDriver)
 }
+
+// focusTabPanelsRunSrc's tabs keep every panel mounted, each in a box
+// displayed none while its tab is not selected.
+const focusTabPanelsRunSrc = `
+import ui "sngl:ui"
+
+var picked = ""
+
+component second ui.node {
+    ui.button(text="two", @click { picked = "two" })
+}
+
+ui.window {
+    var idx = 0
+
+    ui.vbox {
+        ui.tabs(:selected=idx) {
+            ui.tab(label="One") {
+                ui.button(text="one", @click { picked = "one" })
+            }
+            ui.tab(label="Two") {
+                second
+            }
+        }
+        ui.button(text="end", @click { picked = "end" })
+    }
+}
+`
+
+const focusTabPanelsRunDriver = `package ui
+
+import (
+	"slices"
+	"strings"
+	"testing"
+
+	"charm.land/bubbletea/v2"
+)
+
+func key(m Model, k tea.Msg) Model {
+	next, _ := m.Update(k)
+	return next.(Model)
+}
+
+func focused(m Model) string {
+	for _, line := range strings.Split(m.View().Content, "\n") {
+		if i := strings.Index(line, "> "); i >= 0 {
+			return strings.Fields(line[i+2:])[0]
+		}
+	}
+	return ""
+}
+
+func stops(m Model) []string {
+	var got []string
+	for range 5 {
+		got = append(got, focused(m))
+		m = key(m, tea.KeyPressMsg{Code: tea.KeyTab})
+	}
+	return got
+}
+
+func TestTabPassesOverAHiddenPanel(t *testing.T) {
+	m := key(New(), tea.WindowSizeMsg{Width: 80, Height: 24})
+	if got, want := stops(m), []string{"One", "Two", "one", "end", "One"}; !slices.Equal(got, want) {
+		t.Fatalf("Tab stopped on %q, want %q\n%s", got, want, m.View().Content)
+	}
+	m.idx = 1
+	m = key(m, tea.WindowSizeMsg{Width: 80, Height: 24})
+	if got, want := stops(m), []string{"Two", "two", "end", "One", "Two"}; !slices.Equal(got, want) {
+		t.Fatalf("Tab stopped on %q, want %q\n%s", got, want, m.View().Content)
+	}
+}
+`
+
+func TestTabPassesOverAHiddenTabPanel(t *testing.T) {
+	runEmittedProgram(t, focusTabPanelsRunSrc, focusTabPanelsRunDriver)
+}

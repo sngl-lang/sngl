@@ -10,7 +10,7 @@ and Kotlin read the field's zero, so `p.y + 1` is NaN and `p.c.r` throws.
 Comparing such a field as a color throws as `p.c.r` does, where `===` used to
 answer false. An `option[color]` compared with a color is still `===`.
 html's run-time style helper reads a field's presence as having been set, so
-writing every field waits on a Style that can say "unset" (TODO.md).
+writing every field waits on a Style that can say "unset".
 
 deny out/none/html/index.html `tint === \{` -- a color is compared channel by channel, never by identity
 

@@ -18,8 +18,8 @@ import (
 //
 // A cycle of functions alone is recursion and is left alone: a call runs when
 // it is made, and its value is what the call returns. A node reading its own
-// `#id` is reportSelfReferentialProps', which refuses any such read and not
-// only a cycle, so the graph has no self-edge for one.
+// `#id` in its own props is refused as it resolves (lookupValue), so the graph
+// has no self-edge for one.
 //
 // Reported once per cycle, at the read that leaves the declaration written
 // first, naming every read on the way round. The fold's re-entry guards

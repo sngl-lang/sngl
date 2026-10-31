@@ -77,18 +77,24 @@ standing on re-entry -- the state a prop with no answer already reached codegen
 in. Keyed by node *and* prop, so two nodes naming each other terminate on the
 second key rather than looping on the first.
 
-**A node may not read its own `#id` in its own arguments**, and that is now a
-positioned checker error (`reportSelfReferentialProps`, `internal/checker/selfref.go`).
+**A node may not read its own `#id` in its own arguments**, and that is a
+positioned checker error, a recursive declaration. Resolution passes over
+the node's handle while its props are checked (`lookupValue`), so a name it
+would shadow reads the outer binding or the enum member
+(`ui.scroll #both(direction=both)`, which was "cannot use scroll as
+ScrollDirection" naming neither), and one nothing else declares is the error
+(`testdata/node_id_not_in_own_args.sngl`). It was asked after resolution, of
+the props alone, so the type error came first. A handler runs once the node is
+built and reads it (`checkbox #box(@change { seen = box.checked })`), as the
+node's content does (Jonathan's call: not Go's func-literal rule).
 The id names the instance the argument list is building, so `window #h(title = h.title)` asks the title for the title. All three forms of a node
 that carries an id are held to it — a window, an element-ref call
 (`text #t(value = t.value)`), and the `context` declaration, whose id *is* its
 own declaration, so `context #depth(depth)` is the same error rather than an
-`undefined` naming the context on the line declaring it. Matched by *symbol*:
-an id is a declaration in its component's scope and shadows an outer `foo`,
-so `text #foo(value=foo)` beside a package's `foo` reads the node and is this
-error, and beside a var of the component is a redeclaration (see
-design/nodes.md). A handler is untouched — `@click` is split
-off before the rule is asked, and a handler runs after mount.
+`undefined` naming the context on the line declaring it. Outside its own
+props an id shadows an outer `foo` as any declaration does, and beside a var
+of the component it is a redeclaration (see design/nodes.md); inside them
+`text #foo(value=foo)` beside a package's `foo` reads the package's.
 
 What it does not cover is a cycle through *other* declarations, which is the
 checker's cycle rule (`reportDeclarativeCycles`, `internal/checker/cycles.go`):
@@ -142,7 +148,8 @@ declaring a `var` in a scope of its own (`blockEnv`), cached by the list's path
 as a component instance's is and evicted with it, and a handler's write in it
 is carried back through every loop snapshot above (`Env.writeBack`).
 `testdata/view_block_state.sngl` runs it on the interpreter and
-`view_block_state.txtar` is the code on all six targets.
+`view_block_state.txtar` is the code on all six targets. A test reading a prop
+over such a var reads it off that instance (`design/testing.md`).
 
 That made a two-way prop written inside a component built at run time reach
 codegen, which it never had: passPropBindings names the write-back event for
@@ -315,6 +322,18 @@ window are ordinary box operations. BuildUI -- what a test and a snapshot take
 -- shows the first Toplevel's content (`gtk4rt.ToplevelWindow`); `main` builds
 the tree, its first settle included, and runs `RunWindows(show)`.
 
+**A test whose root component holds a window shows that window too.** A test
+build roots at a component, not the package body, so the window is a node of
+it rather than an application child; BuildUI used to append its box to a box
+of the harness's own, in a window of its own -- on gtk4 a bare title bar over
+content given no height, and on fyne nothing, a Toplevel being no container
+fyne draws (#299). Now BuildUI hands the first Toplevel among the root's nodes
+to `gtk4rt.ToplevelWindow`, and fyne's returns its `Container`, as an
+application root does. A snapshot makes a window per call and destroys it
+after, so `ToplevelWindow` forgets that window and its bar on `destroy`: the
+next one builds its own, where the toplevel used to keep writing titles and
+menus to the destroyed one. `cmd/sngl/testdata/test_root_window_snapshot_runs.txt`.
+
 What makes that reach the two platforms is generic: `ui.window` is an ordinary
 component, composed through its override like any other, and a builtin node
 whose declaration the target overrides is composed the same way
@@ -460,6 +479,53 @@ mode builds one window with no `@closed` and no state-driven `visible`, and
 refuses the rest. On gtk4 `WAYLAND_DEBUG` is how a fixture tells a window
 reached the screen (`testdata/window_open_runs.txtar`,
 `window_several_runs.txtar`, `window_visible_runs.txtar`).
+
+**A window draws a bar where it has a way back or a menu, and only then.**
+`ui.window`'s `canGoBack` and `@back` are an up arrow and the system's back,
+and its `menu` slot is the window's menu, each top-level entry holding its
+submenu. A window whose call site binds no `canGoBack` -- the literal
+`false`, its default -- and populates no menu draws as it did, so no program
+written before moved (Jonathan's call): an empty slot is the empty list,
+whose loop the inliners drop and whose length they read as its count
+(`dropEmptyLoops`), settling an `if` its literals decide; and
+passImplicitState hands an empty list straight to the window rather than
+making it its wrapper's prop. Each target:
+
+- android's Screen wraps the content in appbar.kt's `SnglAppBar`, a Material3
+  Scaffold whose TopAppBar holds the favicon or the launcher icon, the title,
+  the up arrow and one `SnglMenuAction` per top-level entry, opening a
+  DropdownMenu of `SnglMenuEntry`s; a second BackHandler, added after the
+  content and so asked first, runs `@back` while `canGoBack` holds, ahead of a
+  NavHost's pop and of the close. Decided in the Screen's codegen, which sees
+  the literal, as a node's `if` around the content could not: content is
+  inserted once.
+- gtk4 and fyne keep the entries as hidden nodes among the window's content
+  (gtk4rt's and fynelayout's `MenuEntry`), which a render slot inserts and
+  removes like any node; `BoxAppend`, `InsertBefore` and `Remove` tell the
+  window, which builds a GMenu behind a header bar's menu button, or fyne's
+  main menu. A `Back` node under `if canGoBack` is the way back: gtk4 puts its
+  button in the header bar where the window has one -- made as the window is,
+  since GTK warns setting a title bar on a realized window -- and over the
+  content where it has none, as fyne does.
+- html draws a `<header>` with the title, the menu as `ui.menubar` (a
+  `<details>` per top-level entry) and an up arrow in a `sngl-back`, which
+  keeps a history entry while it is there: the browser's back pops it and the
+  element dispatches `back`; the arrow goes back through the history too.
+- bubbletea draws a bold title line, `‹` before it while it can go back, and
+  esc runs `@back`; a terminal has no place for a menu, so it draws none.
+
+The menu is a population of the window's slot, drawn as nodes, and never
+handed a primitive as a list of records. testdata/window_menu.txtar,
+testdata/nav_can_go_back.txtar, cmd/sngl/testdata/window_app_bar_runs.txt.
+A test picks an entry by pressing what the window drew for it, and reads one
+as the entry its call site wrote rather than the menu rebuilt in the test:
+nodes.md's *A menu entry is picked*.
+A prop holding a record whose handler writes what the prop reads once put
+the updater inside the handler it updated, and the lowering looped
+(`MatchLate` overflowed); passReactivity now writes such a prop's update
+once, as a function of its owner the handler calls (`propSetter`;
+testdata/record_handler_prop.txtar,
+cmd/sngl/testdata/record_handler_prop_runs.txt).
 
 **A selected platform that cannot be used here is refused before the check**
 (`internal/build.Check`), by the platform's own `Unavailable()` -- gtk4 with

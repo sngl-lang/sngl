@@ -3,6 +3,7 @@ package lower
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -774,8 +775,10 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// would shadow it wherever a target spells both by name.
 	body = freshenShadowingParams(body, callsiteNames(callsite), st.names)
 
+	pressRecords := NameRecordPresses(st.pkg, body, callsite)
+
 	// Apply param substitution (Ident-with-Param-Sym matching by name).
-	body = substituteParams(body, bindings)
+	body = dropEmptyLoops(substituteParams(body, bindings))
 	// A provided context value is the caller's expression, so it goes in
 	// after the props: substituted first, a `style` it read became this
 	// component's `style`.
@@ -786,6 +789,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// Before the slots are spliced, since an emit in the content the call
 	// site supplied is the caller's own and names none of these events.
 	NamePresses(st.pkg, body, callsite)()
+	pressRecords()
 	body = substituteEvents(body, callsite.Handlers)
 
 	// Apply slot substitution: replace each *ir.SlotInst with what the call
@@ -1128,7 +1132,9 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 			if h := n.Handler; h != nil && h.Func != nil {
 				h.Func.Block = substituteEventsUnder(h.Func.Block, handlers, h.Func, under)
 			}
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle, *ir.ContextProvider,
+		case *ir.ContextProvider:
+			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle,
 			*ir.Break, *ir.Continue:
 			// No child statement list of their own; the lambda walk below is
 			// what reaches an emit written inside one of their expressions.
@@ -1864,4 +1870,117 @@ func decidedBranch(n *ir.If) ([]ir.Stmt, bool) {
 		}
 	}
 	return taken, true
+}
+
+// dropEmptyLoops replaces each `for` over an empty list literal with its
+// `else`, and reads the length of a list literal as its count: a slot the call
+// site left unpopulated is the empty list, and one it populated a literal of
+// the records it wrote. A body walking it -- a window's menu -- otherwise kept
+// a loop over nothing in every program that writes none, and a body asking
+// whether it holds any -- the bar a window draws for its menu -- asked a
+// question of state the records' handlers write, which reactivity cannot
+// answer without the handler holding itself.
+func dropEmptyLoops(body []ir.Stmt) []ir.Stmt {
+	_ = ir.RewriteExprs(body, func(e ir.Expr) (ir.Expr, error) {
+		c, ok := e.(*ir.Call)
+		if !ok || c.Func == nil || c.Func.Intrinsic != "list.length" || len(c.Args) != 1 {
+			return e, nil
+		}
+		l, ok := c.Args[0].Value.(*ir.ListLit)
+		if !ok || slices.ContainsFunc(l.Elems, func(x ir.Expr) bool { _, spread := x.(*ir.Spread); return spread }) {
+			return e, nil
+		}
+		return &ir.Literal{Type: ir.TypInt, Value: strconv.Itoa(len(l.Elems))}, nil
+	})
+	return ir.RewriteBlocks(body, func(stmts []ir.Stmt) []ir.Stmt {
+		var out []ir.Stmt
+		for _, s := range stmts {
+			switch x := s.(type) {
+			case *ir.For:
+				if l, ok := x.Iter.(*ir.ListLit); ok && len(l.Elems) == 0 {
+					out = append(out, x.Else...)
+					continue
+				}
+			case *ir.If:
+				// What the window's bar is drawn under, `canGoBack || n > 0`,
+				// is settled here where the call site wrote literals, as
+				// reactivity reads it, rather than by the fold after: an
+				// element it built for a branch the fold then dropped was
+				// numbered and updated all the same.
+				if b, ok := literalCondition(x.Cond); ok && x.Catch == nil && x.Finally == nil {
+					if b {
+						out = append(out, x.Body...)
+					} else {
+						out = append(out, x.Else...)
+					}
+					continue
+				}
+			}
+			out = append(out, s)
+		}
+		return out
+	})
+}
+
+// literalCondition is the value of a condition its literals settle,
+// `false || 0 > 0` or `canGoBack || 2 > 0`, where they do.
+func literalCondition(e ir.Expr) (bool, bool) {
+	switch x := e.(type) {
+	case *ir.Literal:
+		if x.Type != nil && x.Type.Kind == ir.TypeBool {
+			return x.Value == "true", true
+		}
+	case *ir.Unary:
+		if v, ok := literalCondition(x.Operand); ok && x.Op == ast.UnaryNot {
+			return !v, true
+		}
+	case *ir.Binary:
+		switch x.Op {
+		case ast.BinOr, ast.BinAnd:
+			// A literal side that decides it decides it whatever the other
+			// says: `canGoBack || true`.
+			l, lok := literalCondition(x.Left)
+			r, rok := literalCondition(x.Right)
+			decides := x.Op == ast.BinOr
+			if lok && l == decides || rok && r == decides {
+				return decides, true
+			}
+			if !lok || !rok {
+				return false, false
+			}
+			if x.Op == ast.BinOr {
+				return l || r, true
+			}
+			return l && r, true
+		case ast.BinGt, ast.BinLt, ast.BinGte, ast.BinLte, ast.BinEq, ast.BinNeq:
+			l, lok := literalInt(x.Left)
+			r, rok := literalInt(x.Right)
+			if !lok || !rok {
+				return false, false
+			}
+			switch x.Op {
+			case ast.BinGt:
+				return l > r, true
+			case ast.BinLt:
+				return l < r, true
+			case ast.BinGte:
+				return l >= r, true
+			case ast.BinLte:
+				return l <= r, true
+			case ast.BinEq:
+				return l == r, true
+			}
+			return l != r, true
+		}
+	}
+	return false, false
+}
+
+func literalInt(e ir.Expr) (int, bool) {
+	lit, ok := e.(*ir.Literal)
+	if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeInt {
+		return 0, false
+	}
+	n, err := strconv.Atoi(lit.Value)
+	return n, err == nil
 }

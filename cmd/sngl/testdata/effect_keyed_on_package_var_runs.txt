@@ -1,0 +1,182 @@
+# An effect in a component built at run time, keyed on a package var written
+# outside it, runs when the var is written: its `@update`, the remount of a
+# keyed `@mount`, and a query asking again, for the one instance under an `if`
+# and for every copy under a `for`. The write in the page named the
+# instance's flag and settle bare, so fyne, gtk4 and android did not build,
+# and html built and ran none of it. passEffectOutsideKeys hands the instance
+# the var as a prop. testdata/effect_keyed_on_package_var_runtime_instance.txtar
+# is the code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import ui "sngl:ui"
+import "sngl:test"
+
+var level = 0
+var asked list[int] = []
+var mounts list[int] = []
+
+func lookup(n int) async.Result[string] {
+    asked.push(n)
+    return {ok="level {n}"}
+}
+
+component gauge ui.node {
+    var seen = 0
+    var answer option[string] = null
+
+    effect(on=level, @update(n) {
+        seen = n
+    })
+    effect(on=level, @mount(n) {
+        mounts.push(n)
+    })
+    async.query(on=level, fetch=lookup, :value=answer)
+    ui.text #shown(value=answer != null ? answer : "-")
+}
+
+component app ui.node {
+    var open = true
+    var copies = [1, 2]
+
+    ui.vbox {
+        ui.button #raise(text="raise", @click {
+            level += 1
+        })
+        if open {
+            gauge #g
+        }
+        for var k = copies {
+            gauge #row
+        }
+    }
+}
+
+ui.window(title="t") {
+    app()
+}
+
+func testAWriteOutsideReachesTheEffect(t test.Test, c app) {
+    c.raise.click()
+    t.assert(c.g != null && c.g.seen == 1)
+    t.assert(c.row[0].seen == 1 && c.row[1].seen == 1)
+}
+
+func testAWriteOutsideRemountsAKeyedEffect(t test.Test, c app) {
+    c.raise.click()
+    t.assert(mounts.join(",") == "0,0,0,1,1,1")
+}
+
+func testAWriteOutsideAsksTheQueryAgain(t test.Test, c app) {
+    c.raise.click()
+    t.wait(func() => c.g != null && c.g.answer != null && c.g.answer == "level 1", 2000)
+    t.assert(asked.join(",") == "0,0,0,1,1,1")
+}
+-- testrun/android/kotlin/app.sngl/app/1 --
+sha256:91a87c22af66678707204aebfe35992c
+{
+  "results": [
+    {
+      "Desc": "AWriteOutsideAsksTheQueryAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideReachesTheEffect",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideRemountsAKeyedEffect",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/app/1 --
+sha256:9f80d8ac3bc8b0d239f59f6cd5dbd546
+{
+  "results": [
+    {
+      "Desc": "AWriteOutsideAsksTheQueryAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideReachesTheEffect",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideRemountsAKeyedEffect",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/app/1 --
+sha256:20b813c8e598ccca1dbf9e7e0fbc9cbf
+{
+  "results": [
+    {
+      "Desc": "AWriteOutsideAsksTheQueryAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideReachesTheEffect",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideRemountsAKeyedEffect",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/app/1 --
+sha256:3eb38ee1f3943dbbf43cb6bf5c5d3bf8
+{
+  "results": [
+    {
+      "Desc": "AWriteOutsideAsksTheQueryAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideReachesTheEffect",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideRemountsAKeyedEffect",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/app/1 --
+sha256:325886be5e3a45873a449250630f84fc
+{
+  "results": [
+    {
+      "Desc": "AWriteOutsideAsksTheQueryAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideReachesTheEffect",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteOutsideRemountsAKeyedEffect",
+      "Passed": true
+    }
+  ]
+}

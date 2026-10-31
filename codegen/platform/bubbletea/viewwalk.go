@@ -2,6 +2,7 @@ package bubbletea
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -228,6 +229,87 @@ func keepsTemps(s ir.Stmt) bool {
 		return true
 	}
 	return ir.ComputesValue(s)
+}
+
+// loopTemps is, for each loop of a view, the view's locals and writes before
+// it that it reads, and what those read in turn, in the order View makes
+// them: a walk that starts at a loop makes them as View does, or reads a name
+// it never declared -- a list an `if` extends is one, hoisted.
+func loopTemps(stmts []ir.Stmt) map[*ir.For][]ir.Stmt {
+	out := map[*ir.For][]ir.Stmt{}
+	var walk func(stmts, temps []ir.Stmt)
+	walk = func(stmts, temps []ir.Stmt) {
+		temps = slices.Clip(temps)
+		for _, s := range stmts {
+			if keepsTemps(s) {
+				temps = append(temps, s)
+				continue
+			}
+			switch n := s.(type) {
+			case *ir.NodeInst:
+				for _, sc := range ir.SuppliedContent(n) {
+					walk(sc.Body, temps)
+				}
+			case *ir.For:
+				out[n] = tempsFor(n, temps)
+				walk(n.Body, temps)
+				walk(n.Else, temps)
+			case *ir.If, *ir.Match, *ir.ErrorBoundary:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b, temps)
+				}
+			}
+		}
+	}
+	walk(stmts, nil)
+	return out
+}
+
+func tempsFor(f *ir.For, temps []ir.Stmt) []ir.Stmt {
+	reads := map[string]bool{}
+	read := func(root any) {
+		ir.WalkExprs(root, func(e ir.Expr) error {
+			if id, ok := e.(*ir.Ident); ok {
+				reads[id.Name] = true
+			}
+			return nil
+		})
+	}
+	read(f)
+	keep := make([]bool, len(temps))
+	for i := len(temps) - 1; i >= 0; i-- {
+		for _, name := range tempWrites(temps[i]) {
+			if reads[name] {
+				keep[i] = true
+			}
+		}
+		if keep[i] {
+			read(temps[i])
+		}
+	}
+	var out []ir.Stmt
+	for i, t := range temps {
+		if keep[i] {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+func tempWrites(s ir.Stmt) []string {
+	var out []string
+	ir.WalkStmts(s, func(st ir.Stmt) error {
+		switch x := st.(type) {
+		case *ir.LocalVar:
+			out = append(out, x.Name)
+		case *ir.Assign:
+			if id, ok := x.Target.(*ir.Ident); ok {
+				out = append(out, id.Name)
+			}
+		}
+		return nil
+	})
+	return out
 }
 
 func (w *viewWalk) declare(name string) {

@@ -154,6 +154,7 @@ func (g *Generator) configFromRequest(req *codegen.Request) (Config, error) {
 
 func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error {
 	cfg := c.cfg
+	cfg.settings = codegen.UsesSettings(req.Pkg)
 	ctx := c.ctx
 	// In --opt test=true builds the Compose source needs a hoisted
 	// MainScreenState class so generated tests can construct a state
@@ -204,6 +205,9 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := emitAssetsFile(req, sink, "MainScreen.kt", cfg.Package, ""); err != nil {
 			return err
 		}
+		if err := emitSettingsFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
+			return err
+		}
 	} else if cfg.UseGradle() {
 		pkgPath := pkgToPath(cfg.Package)
 		if err := src.write(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", req.Lang, ktOpts); err != nil {
@@ -216,6 +220,9 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			return err
 		}
 		if err := emitAssetsFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package, assetsDirFor(true)); err != nil {
+			return err
+		}
+		if err := emitSettingsFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package); err != nil {
 			return err
 		}
 		testAgentInc := ""
@@ -269,6 +276,9 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			return err
 		}
 		if err := emitAssetsFile(req, sink, "MainScreen.kt", cfg.Package, assetsDirFor(false)); err != nil {
+			return err
+		}
+		if err := emitSettingsFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
 			return err
 		}
 		for _, f := range directBuildFiles(cfg, usesI18n, usesAssets(req.Pkg), permissions(req.Pkg), deviceAgent) {
@@ -403,6 +413,15 @@ var onTestModelSet: () -> Unit = {}
 
 fun setCurrentTestModel(m: MainScreenState) {
     __snglCurrentModel.value = m
+    onTestModelSet()
+}
+
+// Disposes the last test's composition before the next test builds its state:
+// a new MainScreenState is the file's ` + "`state`" + `, so an @unmount running in
+// the old composition's teardown wrote into the next test's model.
+fun clearCurrentTestModel() {
+    if (__snglCurrentModel.value == null) return
+    __snglCurrentModel.value = null
     onTestModelSet()
 }
 fun currentTestModel(): MainScreenState =

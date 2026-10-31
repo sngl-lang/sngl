@@ -1,0 +1,78 @@
+// settings.kept binds an option var to a stored value: null until it mounts,
+// then the value stored, or the default where none is, and written on every
+// change the program makes after, so a remount reads back what was chosen
+// before it. Loading writes nothing back. A test keeps its values in memory
+// and starts with none.
+
+import settings "sngl:settings"
+import . "sngl:test"
+import ui "sngl:ui"
+
+var language option[string] = null
+var count option[int] = null
+
+component prefs ui.node {
+    settings.kept(name="language", default="English", :value=language)
+    settings.kept(name="count", default=1, :value=count)
+}
+
+component app ui.node {
+    var shown = true
+    if shown {
+        prefs
+    }
+}
+
+component later ui.node {
+    var shown = false
+    if shown {
+        prefs
+    }
+}
+
+func testNullUntilItMounts(t Test, c later) {
+    t.assert(language == null)
+    c.shown = true
+    t.assert(language == "English")
+}
+
+func testStartsAtTheDefaultAndWritesNothing(t Test, c app) {
+    t.assert(language == "English")
+    t.assert(settings.load[string]("language") == null)
+}
+
+func testAChangeOutlivesARemount(t Test, c app) {
+    language = "Deutsch"
+    t.assert(settings.load[string]("language") == "Deutsch")
+    c.shown = false
+    language = "English"
+    c.shown = true
+    t.assert(language == "Deutsch")
+}
+
+func testEachTestStartsWithNone(t Test, c app) {
+    t.assert(settings.load[string]("language") == null)
+    t.assert(language == "English")
+}
+
+func testASeededValueIsLoaded(t Test, c app) {
+    c.shown = false
+    settings.save("count", 7)
+    c.shown = true
+    t.assert(count == 7)
+}
+
+func testAValueThatNoLongerReadsIsPassedOver(t Test, c app) {
+    c.shown = false
+    settings.save("count", "seven")
+    c.shown = true
+    t.assert(count == 1)
+}
+
+func testAScopeKeepsItsOwn(t Test, c app) {
+    settings.save("language", "Español")
+    t.setContext(settings.store, settings.Store{scope="other"})
+    t.assert(settings.load[string]("language") == null)
+    settings.save("language", "Français")
+    t.assert(settings.load[string]("language") == "Français")
+}

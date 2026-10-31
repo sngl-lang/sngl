@@ -443,8 +443,30 @@ func (c *checker) eventAsFunc(x *ast.IdentExpr) ir.Expr {
 	return &ir.Lambda{Type: &ir.Type{Kind: ir.TypeFunc, Sig: fn.FuncSig()}, Func: fn}
 }
 
+// lookupValue is the scope's binding of name, passing over the handle of the
+// node whose props are being checked, which they cannot read; recursive
+// reports that it did, so a name nothing else answers says why.
+func (c *checker) lookupValue(name string) (sym ir.Symbol, ok, recursive bool) {
+	if name != c.ownArgsID {
+		sym, ok = c.scope.Lookup(name)
+		return sym, ok, false
+	}
+	for sc := c.scope; sc != nil; sc = sc.Parent {
+		s, found := sc.Symbols[name]
+		if !found {
+			continue
+		}
+		if v, isVar := s.(*ir.Var); isVar && v.NodeHandle {
+			recursive = true
+			continue
+		}
+		return s, true, recursive
+	}
+	return nil, false, recursive
+}
+
 func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
-	sym, ok := c.scope.Lookup(x.Name)
+	sym, ok, recursive := c.lookupValue(x.Name)
 	if !ok {
 		// When expected type is an enum, resolve bare member names. An
 		// option of one wants a member as readily: the slot wraps it.
@@ -494,6 +516,10 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 				funcType := &ir.Type{Kind: ir.TypeFunc, Sig: sig}
 				return &ir.Ident{AST: x, Type: funcType, Name: x.Name, Sym: fn}
 			}
+		}
+		if recursive {
+			c.error(x.Pos, "#%s names the node this argument list declares, so its arguments cannot read it (recursive declaration)", x.Name)
+			return &ir.Ident{AST: x, Type: TypInvalid, Name: x.Name}
 		}
 		c.error(x.Pos, "undefined: %s%s%s", x.Name, c.captureHint(x.Name), c.stdlibHint(x.Name))
 		return &ir.Ident{AST: x, Type: TypInvalid, Name: x.Name}
@@ -707,7 +733,14 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 		}
 		return c.finishBinary(x, c.checkExprExpecting(x.Left, leftExpected), rightExpr)
 	}
-	leftExpr := c.checkExpr(x.Left)
+	// An operator other than a comparison of equality takes no option, so an
+	// option the result is wanted as is its element to the operands: wanting
+	// the option, `count = n + 1` left a narrowed `n` an option.
+	operandExpected := c.expected
+	if operandExpected != nil && operandExpected.Kind == ir.TypeOption && x.Op != ast.BinEq && x.Op != ast.BinNeq {
+		operandExpected = optionElem(operandExpected)
+	}
+	leftExpr := c.checkExprExpecting(x.Left, operandExpected)
 	// `a && b` evaluates b only where a held, so a null test in a narrows what
 	// follows it; `a || b` evaluates b only where a failed, which is the same
 	// fact negated.
@@ -728,7 +761,7 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 	// against an expected type, and the only thing `a == 1000ms` offers the
 	// literal is the type of what it is being compared with. Only a unit,
 	// because `2 * 3px` would otherwise expect the int the left is.
-	rightExpected := c.expected
+	rightExpected := operandExpected
 	if lt := exprType(leftExpr); ir.UnitDeclOf(lt) != nil {
 		rightExpected = lt
 	}
@@ -4594,7 +4627,10 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	if comp != nil {
 		written, writtenTypes = c.bindWritten(vn.Pos, name, vn.TypeArgs, comp.TypeParams)
 	}
+	outerArgsID := c.ownArgsID
+	c.ownArgsID = vn.ID
 	spec := c.bindComponentTypeParams(vn.Pos, comp, vn.Args, written)
+	c.ownArgsID = outerArgsID
 	if spec != comp {
 		c.specializeHandle(vn.ID, comp, spec)
 	}
@@ -4651,8 +4687,10 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 			c.checkFamilyMembership(owner, at, children, slotWant(node, node.RestSlot(), children), "in "+node.DisplayName())
 		})
 	}
+	c.ownArgsID = vn.ID
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, spec)
-	c.reportSelfReferentialProps(vn.Pos, vn.ID, c.nodeHandleSym(vn.ID), props)
+	key := c.keyArgExpr(vn.Args)
+	c.ownArgsID = outerArgsID
 
 	emitName := name
 	if qualifiedLocal != "" {
@@ -4670,7 +4708,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 		Slots:     slotContent,
 		ID:        vn.ID,
 		Handle:    c.nodeHandleSym(vn.ID),
-		Key:       c.keyArgExpr(vn.Args),
+		Key:       key,
 	}
 	node.TypeArgs = c.specArgs[spec]
 	node.WrittenTypeArgs = writtenTypes
@@ -5078,7 +5116,11 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 				c.declare(arg.Pos, p)
 			}
 			restore := c.enterFuncBody()
+			// A handler runs once the node is built, so it may read the node.
+			ownArgsID := c.ownArgsID
+			c.ownArgsID = ""
 			fn.Block = c.checkBlockIR(&arg.Body)
+			c.ownArgsID = ownArgsID
 			restore()
 			c.popScope()
 			// A primitive's handler is the host callback itself, which hands

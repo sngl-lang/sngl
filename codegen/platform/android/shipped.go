@@ -9,8 +9,10 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// dateFieldKt is SnglDateField's source, scrollKt SnglScroll's, choosesKt
-// snglChooses's and flexShareKt snglFlexShare's.
+// dateFieldKt is SnglDateField's source, scrollKt SnglScroll's, pagerKt
+// SnglPager's, choosesKt snglChooses's, flexShareKt snglFlexShare's,
+// flexibleKt snglFlexible's and snglFlexed's, and appbarKt SnglAppBar's with
+// the menu's composables.
 //
 //go:embed datefield.kt
 var dateFieldKt string
@@ -18,11 +20,20 @@ var dateFieldKt string
 //go:embed scroll.kt
 var scrollKt string
 
+//go:embed pager.kt
+var pagerKt string
+
 //go:embed chooses.kt
 var choosesKt string
 
+//go:embed appbar.kt
+var appbarKt string
+
 //go:embed flexshare.kt
 var flexShareKt string
+
+//go:embed flexible.kt
+var flexibleKt string
 
 // shippedComposables are the Kotlin the platform writes beside MainScreen.kt
 // for a program that uses it: a composable by the intrinsic id
@@ -35,8 +46,11 @@ var shippedComposables = []struct {
 }{
 	{intrinsic: intrinsicNS + "SnglDateField", name: "SnglDateField", src: dateFieldKt},
 	{intrinsic: intrinsicNS + "SnglScroll", name: "SnglScroll", src: scrollKt},
+	{intrinsic: intrinsicNS + "SnglPager", name: "SnglPager", src: pagerKt},
 	{call: "snglChooses", name: "SnglChooses", src: choosesKt},
+	{intrinsic: intrinsicNS + "Screen", name: "SnglAppBar", src: appbarKt},
 	{call: flexShareName, name: "SnglFlexShare", src: flexShareKt},
+	{intrinsic: intrinsicNS + "SnglScroll", call: "snglFlexible", name: "SnglFlexible", src: flexibleKt},
 }
 
 // flexShareName is the shipped default of sngl:ui's flexShare, and
@@ -69,7 +83,9 @@ func shippedUses(pkg *ir.Package) (rendered, called map[string]bool) {
 	_ = ir.Walk(pkg, func(n ir.Node) error {
 		switch n := n.(type) {
 		case *ir.NodeInst:
-			if n.Component != nil && n.Component.Intrinsic != "" {
+			// A Screen is every program's window; only one drawing its app
+			// bar needs SnglAppBar.
+			if n.Component != nil && n.Component.Intrinsic != "" && (n.Component.Intrinsic != intrinsicNS+"Screen" || screenDrawsBar(n)) {
 				rendered[n.Component.Intrinsic] = true
 			}
 		case *ir.Call:

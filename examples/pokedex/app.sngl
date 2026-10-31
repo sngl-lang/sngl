@@ -1,4 +1,6 @@
 import i18n "sngl:i18n"
+import poke "openapi:./pokeapi.yml"
+import settings "sngl:settings"
 import nav "sngl:ui/nav"
 import ui "sngl:ui"
 
@@ -55,8 +57,12 @@ func languageLabel(locale string) string {
     return languages[0].label
 }
 
-// The locale of the language labeled `label`, English's where none is.
-func localeLabeled(label string) string {
+// The locale of the language labeled `label`, English's where none is, and
+// the process's while the kept choice is still loading.
+func localeLabeled(label option[string]) string {
+    if label == null {
+        return localeLabeled(languageLabel(i18n.defaultLocale()))
+    }
     for var l = languages {
         if l.label == label {
             return l.locale
@@ -65,13 +71,16 @@ func localeLabeled(label string) string {
     return languages[0].locale
 }
 
-// The list and a page per Pokémon, and a page per form of one, under a
-// choice of language that starts at the process's. A page is named below
-// where it is written, so the detail page is written after the form's page,
-// which its handler names, and before the list, whose handler names it; the
-// stack starts at "/" wherever that is.
-component Pokedex ui.node {
-    var language = languageLabel(i18n.defaultLocale())
+// The window: the list and a page per Pokémon, and a page per form of one,
+// under a choice of language that starts at the process's and is kept from
+// one run to the next. The window's menu chooses the language and the
+// Pokédex, its bar is the page's title, and it goes back through the pages.
+// A page is named below where it is written, so the detail page is written
+// after the form's page, which its handler names, and before the list, whose
+// handler names it; the stack starts at "/" wherever that is.
+component Pokedex root {
+    var language option[string] = null
+    var dexes list[poke.PokedexSummary] = []
 
     // Opens the species' page, or its page showing a form where `form` is
     // one of its varieties.
@@ -83,24 +92,38 @@ component Pokedex ui.node {
         }
     }
 
-    ui.vbox(style={gap=4px, flex=1}) {
-        ui.hbox(style={padding=8px}) {
-            ui.select #languagePick(:value=language) {
-                for var l = languages {
-                    ui.choice(label=l.label)
-                }
-            }
-        }
-        i18n.locale(localeLabeled(language)) {
-            nav.stack #pages {
-                nav.page #variety(href=`/pokemon/{name}/{form}`, title="Pokémon", params=Form{name="vulpix", form="vulpix-alola"}) {
-                    component content(p) {
-                        detailPage(name=p.name, form=p.form, @back { pages.back() }, @open(name, form) { show(name, form) })
+    // Around the window, so its title and its menu are in the language too.
+    i18n.locale(localeLabeled(language)) {
+        ui.window #pokedex(title=pages.current.title, canGoBack=pages.canGoBack(), @back { pages.back() }) {
+            component menu {
+                ui.menuItem(label=$"Language") {
+                    for var l = languages {
+                        ui.menuItem(label=l.label, checked=l.label == language, @select { language = l.label })
                     }
                 }
-                nav.page #detail(href=`/pokemon/{name}`, title="Pokémon", params=Mon{name="bulbasaur"}) {
+                ui.menuItem(label=$"Pokédex") {
+                    for var d = dexes {
+                        ui.menuItem(label=display(d.name), checked=d.name == dexName, @select { chooseDex(d.name) })
+                    }
+                }
+            }
+            settings.kept(name="language", default=languageLabel(i18n.defaultLocale()), :value=language)
+            settings.kept(name="dexName", default="national", :value=dexName)
+            poke.pokedexList(limit=dexLimit, offset=0, @load(page) { dexes = page.results })
+            nav.stack #pages {
+                nav.page #variety(
+                    href = `/pokemon/{name}/{form}`,
+                    title = "Pokémon",
+                    params = Form{name="vulpix", form="vulpix-alola"},
+                    titleOf = func(p Form) => display(p.name),
+                ) {
                     component content(p) {
-                        detailPage(name=p.name, @back { pages.back() }, @open(name, form) { show(name, form) })
+                        detailPage(name=p.name, form=p.form, @open(name, form) { show(name, form) })
+                    }
+                }
+                nav.page #detail(href=`/pokemon/{name}`, title="Pokémon", params=Mon{name="bulbasaur"}, titleOf=func(p Mon) => display(p.name)) {
+                    component content(p) {
+                        detailPage(name=p.name, @open(name, form) { show(name, form) })
                     }
                 }
                 nav.page #home(href="/", title="Pokédex") {
@@ -111,6 +134,4 @@ component Pokedex ui.node {
     }
 }
 
-ui.window #pokedex(title="Pokédex") {
-    Pokedex()
-}
+Pokedex()

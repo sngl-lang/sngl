@@ -35,6 +35,10 @@ type instance struct {
 }
 
 type monomorph struct {
+	// lib is where a library generic copy says to copy is declared, nil where
+	// a library's are left alone.
+	lib       *[]*ir.Func
+	copy      func(*ir.Func) bool
 	slot      map[*ir.Func]*[]*ir.Func
 	instances map[*ir.Func][]instance
 	kept      map[*ir.Func]bool
@@ -42,11 +46,39 @@ type monomorph struct {
 	pending   []*ir.Func
 }
 
-func lowerMonomorphize(pkg *ir.Package, _ Features, _ Options) error {
-	if pkg == nil {
+// passMonomorphizeCodecs copies, on every target, each generic function a
+// codec call reaches at one of its type parameters (ir.GenericCodecs): every
+// language's codec reads the type at the call, which a body emitted once
+// does not know. After the splice, since a generic component's body is
+// spliced at its bound types only then, and the calls it makes are bound
+// only from then.
+var passMonomorphizeCodecs = pass{
+	name:    "MonomorphizeCodecs",
+	enabled: func(Features) bool { return true },
+	apply: func(pkg *ir.Package, _ Features, _ Options) error {
+		var reach ir.CodecReach
+		monomorphizeFuncs(pkg, func(fn *ir.Func) bool { return len(reach.GenericCodecs(fn)) > 0 }, false)
 		return nil
+	},
+}
+
+// A library's generic is promoted only later, by LibFuncs, so the codec pass
+// takes in one a call reaches and declares its copies among the program's.
+
+func lowerMonomorphize(pkg *ir.Package, _ Features, _ Options) error {
+	monomorphizeFuncs(pkg, func(*ir.Func) bool { return true }, true)
+	return nil
+}
+
+// monomorphizeFuncs copies each generic function copy says to per
+// instantiation, and with types the struct and enum instantiations the
+// copies name.
+func monomorphizeFuncs(pkg *ir.Package, copy func(*ir.Func) bool, types bool) {
+	if pkg == nil {
+		return
 	}
 	m := &monomorph{
+		copy:      copy,
 		slot:      map[*ir.Func]*[]*ir.Func{},
 		instances: map[*ir.Func][]instance{},
 		kept:      map[*ir.Func]bool{},
@@ -56,7 +88,7 @@ func lowerMonomorphize(pkg *ir.Package, _ Features, _ Options) error {
 	note := func(funcs *[]*ir.Func) {
 		for _, fn := range *funcs {
 			m.names[fn.Name] = true
-			if isGenericBody(fn) {
+			if isGenericBody(fn) && copy(fn) {
 				m.slot[fn] = funcs
 				_ = ir.Walk(fn, func(n ir.Node) error {
 					inside[n] = true
@@ -74,11 +106,16 @@ func lowerMonomorphize(pkg *ir.Package, _ Features, _ Options) error {
 	}
 	// The structs after the functions: a function's copy names the struct
 	// instantiations its bindings make, which the struct pass then finds.
-	defer monomorphizeEnums(pkg, m.names)
-	defer monomorphizeStructs(pkg, m.names)
-	defer monomorphizeEnums(pkg, m.names)
-	if len(m.slot) == 0 {
-		return nil
+	if !types {
+		m.lib = &pkg.Funcs
+	}
+	if types {
+		defer monomorphizeEnums(pkg, m.names)
+		defer monomorphizeStructs(pkg, m.names)
+		defer monomorphizeEnums(pkg, m.names)
+	}
+	if len(m.slot) == 0 && m.lib == nil {
+		return
 	}
 	_ = ir.Walk(pkg, func(n ir.Node) error {
 		if !inside[n] {
@@ -100,7 +137,6 @@ func lowerMonomorphize(pkg *ir.Package, _ Features, _ Options) error {
 			*funcs = slices.DeleteFunc(slices.Clone(*funcs), func(f *ir.Func) bool { return f == fn })
 		}
 	}
-	return nil
 }
 
 // keepCallees keeps every generic a kept original reaches: its body is
@@ -138,7 +174,7 @@ func isGenericBody(fn *ir.Func) bool {
 func (m *monomorph) visit(n ir.Node) {
 	switch x := n.(type) {
 	case *ir.Call:
-		if _, ok := m.slot[x.Func]; !ok {
+		if _, ok := m.slot[x.Func]; !ok && !m.takeLib(x.Func) {
 			return
 		}
 		b := map[string]*ir.Type{}
@@ -183,6 +219,15 @@ func (m *monomorph) visit(n ir.Node) {
 	}
 }
 
+// takeLib slots fn where it is a library generic m copies.
+func (m *monomorph) takeLib(fn *ir.Func) bool {
+	if m.lib == nil || !isGenericBody(fn) || fn.PkgPath() == "" || !m.copy(fn) {
+		return false
+	}
+	m.slot[fn] = m.lib
+	return true
+}
+
 // instance is fn's copy under b, made the first time it is asked for, or nil
 // where b leaves a parameter unbound and the reference keeps the original.
 func (m *monomorph) instance(fn *ir.Func, b map[string]*ir.Type) *ir.Func {
@@ -213,8 +258,11 @@ func (m *monomorph) instance(fn *ir.Func, b map[string]*ir.Type) *ir.Func {
 	inst.Name = m.fresh(fn.Name + "__" + strings.Join(key, "_"))
 	m.instances[fn] = append(m.instances[fn], instance{args, inst})
 	funcs := m.slot[fn]
-	i := slices.Index(*funcs, fn)
-	*funcs = slices.Insert(slices.Clone(*funcs), i+len(m.instances[fn]), inst)
+	if i := slices.Index(*funcs, fn); i >= 0 {
+		*funcs = slices.Insert(slices.Clone(*funcs), i+len(m.instances[fn]), inst)
+	} else {
+		*funcs = append(slices.Clone(*funcs), inst)
+	}
 	m.pending = append(m.pending, inst)
 	return inst
 }

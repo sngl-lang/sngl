@@ -154,6 +154,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__renderSlot0(m.__n2)
 	m.__n4 = fynelayout.NewReachScroll()
 	m.__n4__box = fynelayout.NewBox(m.__n4)
+	m.__n4.SetDirection("vertical")
 	m.__n4__box.SetLook(fynelayout.Look{Grow: 1.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 	m.__n4.OnReachEnd = m.__n4_reachEnd_handler
 	m.__n5 = widget.NewLabel("")
@@ -300,7 +301,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n2, m.__n3)
 	m.__renderSlot0(m.__n2)
 	m.__n4 = gtk4rt.ScrollNew()
-	gtk4rt.ScrollSetDirection(m.__n4, "")
+	gtk4rt.ScrollSetDirection(m.__n4, "vertical")
 	gtk4rt.SetLook(m.__n4, gtk4rt.Look{Grow: 1.0})
 	gtk4rt.ScrollOnReachEnd(m.__n4, m.__n4_reachEnd_handler)
 	m.__n5 = gtk4rt.New("GtkLabel")
@@ -319,6 +320,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:2c483ef9db25ac6882716433997f90a7
+pass sha256:666170efd7c1c8d3c9f9ea5841db406c
 -- run/go/gtk4 --
-pass sha256:7d239fcfe3492d1080617f0ed28ac289
+pass sha256:a3e9ef4a6e1ad1faf53e913dab3f24ff

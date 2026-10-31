@@ -47,7 +47,8 @@ var passTestReach = pass{
 				return err
 			}
 			answerInstancePresence(fn, params)
-			if err := answerTestPropReads(fn, params); err != nil {
+			noteRecordPicks(pkg, fn)
+			if err := answerTestPropReads(fn, params, opts.blockReads); err != nil {
 				return err
 			}
 			if err := f.fireTriggers(fn); err != nil {
@@ -322,7 +323,7 @@ func (f *reachFlattener) uid(node *ir.NodeInst) string {
 // answerTestPropReads answers each one-way prop fn reads through its instance
 // (rewriteTestPropRead), to a fixed point: an answer may read another prop.
 // Before the flattening, which leaves a node no path to its call site.
-func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool) error {
+func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool, reads blockReads) error {
 	for {
 		changed := false
 		if err := ir.Rewrite(fn.Block, func(n ir.Node) (ir.Node, error) {
@@ -334,7 +335,11 @@ func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool) error {
 			if !ok {
 				return n, nil
 			}
-			if e := rewriteTestPropRead(sel, params); e != nil {
+			e := answerTestRecordRead(sel, params)
+			if e == nil {
+				e = rewriteTestPropRead(sel, params, reads)
+			}
+			if e != nil {
 				changed = true
 				return e, ir.SkipDir
 			}
@@ -369,6 +374,37 @@ func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool) error {
 		return nil
 	})
 	return bad
+}
+
+// noteRecordPicks notes the path of each record fn fires an event on through
+// a node -- `c.main.menu[1].children[2].select()` -- before the read of the
+// slot is answered with the records the call site wrote, which is what runs
+// on a target that draws nothing for them. The inliner presses what a target
+// does draw (NameRecordPresses).
+func noteRecordPicks(pkg *ir.Package, fn *ir.Func) {
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		c, ok := n.(*ir.Call)
+		if !ok || c.Event != "" {
+			return nil
+		}
+		field, ok := c.Callee.(*ir.Select)
+		if !ok {
+			return nil
+		}
+		root, slots, idx := recordPath(field.Operand)
+		if root == nil {
+			return nil
+		}
+		if pkg.RecordPicks == nil {
+			pkg.RecordPicks = map[*ir.Call]*ir.RecordPick{}
+		}
+		pick := &ir.RecordPick{Root: root, Slots: slots, Event: field.Field}
+		for _, ix := range idx {
+			pick.Idx = append(pick.Idx, ir.CloneExprSharingDecls(ix))
+		}
+		pkg.RecordPicks[c] = pick
+		return nil
+	})
 }
 
 // wholeLoopedRef is the select of e, a test's ref to a looped `#id`

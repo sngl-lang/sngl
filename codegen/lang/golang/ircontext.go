@@ -733,6 +733,11 @@ func (gc *GoIRContext) MutTargetField(n *ir.Select) string {
 	if field, ok := gc.modelField(n); ok {
 		return field
 	}
+	// A test's instance is read raw, so it is written raw: spelled exported,
+	// a handler run from a test wrote a field the Model does not declare.
+	if gc.rawFieldAccess(n.Operand) {
+		return n.Field
+	}
 	return ExportName(n.Field)
 }
 

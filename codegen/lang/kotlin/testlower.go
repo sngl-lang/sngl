@@ -86,6 +86,9 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 		if line, ok := lowerEventTrigger(n, surf, compRecvs); ok {
 			return []string{line}
 		}
+		if line, ok := lowerMobileCall(n.Call); ok {
+			return []string{line}
+		}
 		if line, ok := lowerInstanceRead(n.Call, surf, compRecvs); ok {
 			return []string{"composeTestRule.runOnUiThread {", "    " + line, "}", testIdleLine}
 		}
@@ -115,6 +118,16 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 					"composeTestRule.waitForIdle()",
 				}
 			}
+		}
+		// A package func writing state is a write as a test's own is: run
+		// where Compose recomposes, and waited for, so the effects keyed on
+		// what it wrote have run before the next assertion.
+		if c := n.Call; c != nil && c.Func != nil && !c.Func.IsMethod() && c.Func.Purity == ir.PurityMutates {
+			lines := []string{"composeTestRule.runOnUiThread {"}
+			for _, l := range surf.translator().EvalStmt(s) {
+				lines = append(lines, "    "+l)
+			}
+			return append(lines, "}", testIdleLine)
 		}
 	case *ir.If:
 		// A trigger on a node that may not be rendered is written under the
@@ -295,6 +308,11 @@ func lowerEventTrigger(call *ir.CallStmt, surf TestSurface, compRecvs map[string
 		return "", false
 	}
 	id, event := tt.ID, c.Event
+	// A window's back is its app bar's up arrow, which android's SnglAppBar
+	// tags with the window's id.
+	if event == "back" && tt.Key() == nil && len(c.Args) == 0 {
+		return fmt.Sprintf("composeTestRule.onNodeWithTag(%q)%s; composeTestRule.waitForIdle()", id+"__back", clickAction), true
+	}
 	tag := copyMatcher(id, tt.Key())
 	if carriesState(c.Args) {
 		// The tag sits on the override's root, the Row around the control and
@@ -344,12 +362,54 @@ func composeAction(event string, args []ir.CallArg, lower func(ir.Expr) string) 
 	case "reachEnd":
 		// A scroll's end is reached by scrolling to it, which SnglScroll's
 		// effect reports as it would a finger's: the scroll's own semantics
-		// action, as far as it goes. Content too short to scroll reported its
-		// end as it arrived.
-		return "performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, Float.MAX_VALUE) }"
+		// action, as far as it goes along either axis, since the trigger
+		// does not know which one the scroll has. Content too short to
+		// scroll reported its end as it arrived.
+		return "performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(Float.MAX_VALUE, Float.MAX_VALUE) }"
 	}
 	return ""
 }
+
+// lowerMobileCall answers sngl:test/mobile. A swipe is a finger's, injected
+// into what scrolls in the node -- a tabs' pager, or the node where it
+// scrolls itself -- since the tag sits on the override's root, around the
+// strip as well.
+func lowerMobileCall(c *ir.Call) (string, bool) {
+	// The system back is the activity's: its dispatcher asks the handlers a
+	// composition registered, the last added first, as the back key does. The
+	// rule a test is handed as a ComposeContentTestRule is the activity's.
+	if c != nil && c.Func != nil && c.Func.Intrinsic == "mobile.back" {
+		return "(composeTestRule as androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, *>).let { __rule -> __rule.runOnUiThread { __rule.activity.onBackPressedDispatcher.onBackPressed() } }; composeTestRule.waitForIdle()", true
+	}
+	if c == nil || c.Func == nil || c.Func.Intrinsic != "mobile.swipe" || len(c.Args) != 2 {
+		return "", false
+	}
+	node := c.Args[0].Value
+	for cv, ok := node.(*ir.Conversion); ok; cv, ok = node.(*ir.Conversion) {
+		node = cv.Operand
+	}
+	var path []ir.Expr
+	for ix, ok := node.(*ir.Index); ok; ix, ok = node.(*ir.Index) {
+		path = append([]ir.Expr{ix.Idx}, path...)
+		node = ix.Operand
+	}
+	sel, ok := node.(*ir.Select)
+	if !ok {
+		return "", false
+	}
+	gesture := "swipeRight()"
+	if member, ok := codegen.EnumMemberName(c.Args[1].Value); ok && member == "left" {
+		gesture = "swipeLeft()"
+	}
+	tag := copyMatcher(sel.Field, ir.CopyKey(path))
+	return fmt.Sprintf("composeTestRule.onAllNodes(androidx.compose.ui.test.hasScrollAction() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s))).onFirst().performTouchInput { %s }; composeTestRule.waitForIdle()", tag, tag, gesture), true
+}
+
+// swipeImports are what lowerMobileCall's swipe names: extension functions.
+const swipeImports = "import androidx.compose.ui.test.onFirst\n" +
+	"import androidx.compose.ui.test.performTouchInput\n" +
+	"import androidx.compose.ui.test.swipeLeft\n" +
+	"import androidx.compose.ui.test.swipeRight\n"
 
 // carriesState reports whether a trigger hands a control its on/off state --
 // a checkbox's or a toggle's `@change(checked bool)`.
@@ -411,6 +471,9 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 	case *ir.Binary:
 		left := lowerTestExpr(n.Left, surf, compRecvs)
 		right := lowerTestExpr(n.Right, surf, compRecvs)
+		if n.Op == ast.BinEq || n.Op == ast.BinNeq {
+			left, right = comparableList(n.Left, left), comparableList(n.Right, right)
+		}
 		return "(" + left + " " + n.Op.String() + " " + right + ")"
 	case *ir.Unary:
 		if n.Op == ast.UnaryNot {
@@ -626,6 +689,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 			fmt.Fprintf(&b, "fun test%s(t: T) {\n", suffix)
 			// See the Go and JS lowerers: the instance is always built, the
 			// declared name bound only when the test declared one.
+			b.WriteString("    clearCurrentTestModel()\n")
 			b.WriteString("    val " + testInstanceVar + " = newTestComponent()\n")
 			b.WriteString("    setCurrentTestModel(" + testInstanceVar + ")\n")
 			if recv := codegen.TestComponentParam(fn); recv != "" {
@@ -677,6 +741,9 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 	}
 	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performSemanticsAction(") {
 		imports += composeActionImports
+	}
+	if strings.Contains(src, ".performTouchInput {") {
+		imports += swipeImports
 	}
 	for _, path := range slices.Compact(slices.Sorted(slices.Values(required))) {
 		imports += "import " + path + "\n"

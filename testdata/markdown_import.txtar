@@ -84,7 +84,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="overflow:auto">
+<div class="sngl-scroll sngl-scroll-vertical">
   <div style="gap:12px;display:flex;flex-direction:column">
     <h1 style="margin:0px;font-size:32px;font-weight:bold;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
     <p style="margin:0px;white-space:pre-wrap"><span>A paragraph with </span><strong><span>bold</span></strong><span>, </span><em><span>italic</span></em><span> and </span><s><span>struck</span></s><span> words, a soft break, </span><code><span>code</span></code><span>, and a </span><a href="https://example.com"><span>link</span></a><span>.</span></p>
@@ -124,7 +124,7 @@ body { font-family: system-ui, sans-serif; }
       </tbody>
     </table>
     <hr/>
-    <p style="margin:0px;white-space:pre-wrap"><span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="a duck" role="img"><img alt="" src="duck.png"/></span></p>
+    <p style="margin:0px;white-space:pre-wrap"><span class="sngl-image sngl-image-contain" style="display:inline-block" aria-label="a duck" role="img"><img alt="" src="duck.png"/></span></p>
   </div>
   <sngl-reach-end>
   </sngl-reach-end>
@@ -137,11 +137,16 @@ body { font-family: system-ui, sans-serif; }
 @media (prefers-color-scheme: dark) { :where(.sngl-tok-type) { color:#ffa657 } }
 :where(.sngl-tok-number) { color:#0550ae }
 @media (prefers-color-scheme: dark) { :where(.sngl-tok-number) { color:#79c0ff } }
+.sngl-image { overflow: hidden; }
 .sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .sngl-image-cover img { object-fit: cover; }
 .sngl-image-fill img { object-fit: fill; }
 .sngl-image-none img { object-fit: none; }
 .sngl-image-scaleDown img { object-fit: scale-down; }
+.sngl-scroll-vertical { overflow-x: hidden; overflow-y: auto; }
+.sngl-scroll-horizontal { overflow-x: auto; overflow-y: hidden; display: flex; align-items: flex-start; }
+.sngl-scroll-horizontal > *, .sngl-scroll-horizontal > [data-sngl-slot] > *, .sngl-scroll-horizontal > [data-sngl-inst] > * { flex: none; }
+.sngl-scroll-both { overflow: auto; }
 </style>
 
 <script>
@@ -153,15 +158,20 @@ body { font-family: system-ui, sans-serif; }
       const box = this.parentElement;
       if (!box) return;
       this.style.display = "block";
+      const across = box.classList.contains("sngl-scroll-horizontal");
       const fire = () => this.dispatchEvent(new Event("reachEnd"));
-      const near = () => this.getBoundingClientRect().top - box.getBoundingClientRect().bottom <= box.clientHeight / 2;
+      const near = () => {
+        const at = this.getBoundingClientRect(), view = box.getBoundingClientRect();
+        return across ? at.left - view.right <= box.clientWidth / 2 : at.top - view.bottom <= box.clientHeight / 2;
+      };
       this._io = new IntersectionObserver((es) => {
         if (es[es.length - 1].isIntersecting) fire();
-      }, { root: box, rootMargin: "0px 0px 50% 0px" });
+      }, { root: box, rootMargin: across ? "0px 50% 0px 0px" : "0px 0px 50% 0px" });
       this._io.observe(this);
-      let last = this.offsetTop, asked = false;
+      const where = () => across ? this.offsetLeft : this.offsetTop;
+      let last = where(), asked = false;
       const grew = () => {
-        const h = this.offsetTop;
+        const h = where();
         if (h !== last && !asked) {
           asked = true;
           requestAnimationFrame(() => {
@@ -192,4 +202,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:153212987fd4a1823e5c77e997769073
+pass sha256:1adf009fb03b5ba451c6460a9a6492ad

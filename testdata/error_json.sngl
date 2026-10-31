@@ -1,9 +1,10 @@
 // What sngl:json and sngl:http's query refuse, each at the call that reaches
-// a type with no form on the wire, and the marks written where they name
-// nothing.
+// a type with no form on the wire -- a generic's at the call binding it --
+// and the marks written where they name nothing.
 
 import http "sngl:http"
 import json "sngl:json"
+import ui "sngl:ui"
 
 struct Handler {
     run func()
@@ -36,7 +37,21 @@ func shape(s Shape) => json.encode(s) // ERROR(check) "json.encode cannot write 
 
 func ticks(t tick) => json.encode(t) // ERROR(check) "json.encode cannot write tick, which has no JSON form"
 
-func generic[T any](t string) => json.decode[T](t) // ERROR(check) "json.decode cannot read T, a type parameter: the type has to be known where the call is"
+func generic[T any](t string) => json.decode[T](t)
+
+func outer[U any](t string) => generic[U](t)
+
+func bound(t string) => outer[Handler](t) // ERROR(check) "json.decode cannot read func(), which has no JSON form, in outer called with U = Handler"
+
+component kept[T any](:value T) ui.node {
+    var text = ""
+    effect(on=value, @update(v) { text = json.encode(v) })
+}
+
+component keeper ui.node {
+    var h = Handler{run=func() {}}
+    kept(:value=h) // ERROR(check) "json.encode cannot write func(), which has no JSON form, in kept called with T = Handler"
+}
 
 func nested() => http.get(url="http://example.com", query=Nested{inner=Clash{a="", b=""}}) // ERROR(check) "http.get cannot send a query of field inner of Nested, a Clash, which has no place in a URL"
 

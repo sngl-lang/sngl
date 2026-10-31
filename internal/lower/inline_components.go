@@ -369,6 +369,7 @@ type inlineCompState struct {
 	// not, compInsts is each generic component's copies (instantiateRuntime),
 	// and taken the names a copy may not take.
 	genericComponents bool
+	codecs            ir.CodecReach
 	compInsts         map[*ir.Component][]componentInstance
 	taken             map[string]bool
 	// names is passInlinePure's as well; see Options.names.
@@ -1045,7 +1046,10 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// functions too: built at run time, a component is a render function
 		// of the Model there, and its functions the Model's, which cannot read
 		// the props the render function is handed.
-		if !st.instanceState && st.captureOnly == nil && n.Component != nil && (len(n.Component.Vars) > 0 || len(n.Component.Funcs) > 0 || holdsLifetime(n.Component.Stmts)) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+		//
+		// What it renders counts as its own: the splice of a stateful callee
+		// into a declaration built at run time gives it the callee's state.
+		if !st.instanceState && st.captureOnly == nil && n.Component != nil && !st.cycles[n.Component] && st.inlinable(n.Component) && st.keepsState(n.Component, map[*ir.Component]bool{}) {
 			return st.expandPerCopy(n, rc)
 		}
 		// Nor does its focus order reach a render function of the Model, so a
@@ -1387,7 +1391,10 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 			bindings[p.Name] = val
 		}
 	}
-	body = substituteParams(body, bindings)
+	// Before the props, as passInlinePure names them: a loop over a data slot
+	// is still a loop over the slot's prop here.
+	pressRecords := NameRecordPresses(st.pkg, body, n)
+	body = dropEmptyLoops(substituteParams(body, bindings))
 
 	// Prop refs may appear in the hoisted callee-scope Vars/Funcs too.
 	for i := varStart; i < len(*hoist.vars); i++ {
@@ -1407,6 +1414,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// The caller's handlers land inside the body's own, so a parameter of the
 	// body's sharing a name they read is renamed first (freshenShadowingParams).
 	body = freshenShadowingParams(body, callsiteNames(n), st.names)
+	pressRecords()
 	// Events before slots: an emit in spliced slot content names the caller's
 	// event, and would otherwise be matched against the callee's handlers.
 	body = substituteEvents(body, n.Handlers)
@@ -1633,10 +1641,15 @@ func (st *inlineCompState) expandPerCopy(n *ir.NodeInst, rc reactiveCtx) ([]ir.S
 		return body, true, nil
 	}
 	funcs := slices.Clone((*st.hoist.funcs)[funcStart:])
-	body, err = perCopyCells(nodePos(n), body, vars, funcs, rc.loops)
+	if st.effect == nil {
+		st.effect = effectComponent()
+	}
+	rec := &loopRecorders{effect: st.effect, pkg: st.pkg, name: func(base string) string { return st.names.next(base, "inst") }}
+	body, err = perCopyCells(nodePos(n), body, vars, funcs, rc.loops, rec)
 	if err == nil {
 		st.recordCells(n, inits, rc.loops)
 	}
+	*st.hoist.vars = append(*st.hoist.vars, rec.vars...)
 	return body, true, err
 }
 
@@ -1680,6 +1693,21 @@ func (st *inlineCompState) restartOnEntry(vars []*ir.Var, loops []*ir.For) *ir.N
 		n.Props = []ir.Arg{{Name: ir.EffectOn, Value: CopyKey(loops)}}
 	}
 	return n
+}
+
+// keepsState reports whether c, or a component it renders that would be
+// spliced into it, declares a var or a function or holds a lifetime.
+func (st *inlineCompState) keepsState(c *ir.Component, seen map[*ir.Component]bool) bool {
+	if seen[c] {
+		return false
+	}
+	seen[c] = true
+	if len(c.Vars) > 0 || len(c.Funcs) > 0 || holdsLifetime(c.Stmts) {
+		return true
+	}
+	return places(c.Stmts, func(n *ir.NodeInst) bool {
+		return n.Component != nil && !st.cycles[n.Component] && st.inlinable(n.Component) && st.keepsState(n.Component, seen)
+	})
 }
 
 // rendersFocusStop reports whether c's body, or a component it renders, holds

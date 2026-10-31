@@ -5,6 +5,7 @@ import "duckfam.us/sngl/codegen/lang/golang"
 // Config controls GTK4 code generation. Fields are populated via --opt flags.
 type Config struct {
 	Package string `option:"package"` // default: "main"
+	Name    string `option:"name"`    // output's name, which settings are kept under
 	Main    bool   `option:"main"`    // emit main() entrypoint
 	GIRPath string `option:"gir"`     // default: "" — autodetect from standard paths
 	// Set by internal/build for a build that becomes a binary.
@@ -50,6 +51,7 @@ type scaffoldData struct {
 	// handler reads its payload through.
 	NeedsCalendarDate bool
 	HasCanvas         bool // emit the cairo draw-func trampoline glue in callbacks.go
+	Settings          bool // main opens sngl:settings' store
 	Wrapped           bool // wrapped mode: import pkg/go/gtk4rt, omit the cgo preamble
 	// CLinks is the #cgo flags and #include lines of the c.link directives
 	// the program reaches, for the `#[cnative]` functions it calls. Its
