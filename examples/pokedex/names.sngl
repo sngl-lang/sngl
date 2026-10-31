@@ -325,6 +325,13 @@ struct Named {
     name     string
 }
 
+// Every name asked for, keyed "kind/slug" and shared by every page, so a name
+// one page asked for is not asked for again.
+var names map[string, list[Named]] = {}
+
+// Whether the names of `slug` of `kind` have been answered.
+func known(kind string, slug string) => names.contains("{kind}/{slug}")
+
 // `entries` as a page keeps them.
 func namedIn[T any](entries list[T], language func(T) string, name func(T) string) list[Named] {
     return entries.map(func(e T) => Named{language=language(e), name=name(e)})
@@ -733,6 +740,8 @@ func movesNote(count int) => $"{count, plural, =0{It learns no moves this way.} 
 func dexCount(count int) => $"{count, plural, one{# Pokémon} other{# Pokémon}}"
 
 // What a page keeps of each kind of resource it asks a name of.
+func speciesNamed(names list[poke.PokemonSpeciesName]) => namedIn(names, func(n poke.PokemonSpeciesName) => n.language.name, func(n poke.PokemonSpeciesName) => n.name)
+
 func typeNamed(names list[poke.TypeName]) => namedIn(names, func(n poke.TypeName) => n.language.name, func(n poke.TypeName) => n.name)
 
 func abilityNamed(names list[poke.AbilityName]) => namedIn(names, func(n poke.AbilityName) => n.language.name, func(n poke.AbilityName) => n.name)

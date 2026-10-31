@@ -334,6 +334,26 @@ func testTheSearchCoversTheWholeDex(t test.Test, c home) {
     t.assert(c.page.grid().length() == 1)
 }
 
+func testACardNamesItsSpeciesInTheReadersLanguage(t test.Test, c home) {
+    t.setContext(i18n.locale, "fr")
+    t.wait(func() => chosenDex != null, 5000)
+    t.wait(func() => c.page.label(c.page.visible()[0]) == "Bulbizarre", 5000)
+    t.assert(c.page.label(c.page.visible()[0]) == "Bulbizarre")
+    t.wait(func() => c.page.label(c.page.visible()[3]) == "Salamèche", 5000)
+    t.assert(c.page.label(c.page.visible()[3]) == "Salamèche")
+    // A species the server has no answer for keeps its slug's name.
+    t.wait(func() => known(`species`, "squirtle"), 5000)
+    t.assert(c.page.label(c.page.visible()[6]) == "Squirtle")
+}
+
+func testASearchAsksForEveryName(t test.Test, c home) {
+    t.setContext(i18n.locale, "de")
+    t.wait(func() => chosenDex != null, 5000)
+    c.page.searchBox.input("bisa")
+    t.wait(func() => !c.page.namesPending(), 5000)
+    t.assert(c.page.visible().map(func(e poke.PokemonDexNumber) => e.pokemonSpecies.name).join(",") == "bulbasaur,ivysaur,venusaur")
+}
+
 func testTheHeaderNamesTheSpecies(t test.Test, c seed) {
     t.wait(func() => c.detail.mon != null, 5000)
     t.assert(c.detail.title != null && c.detail.title.value == "Bulbasaur")

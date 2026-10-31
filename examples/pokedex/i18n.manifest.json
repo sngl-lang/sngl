@@ -518,5 +518,13 @@
       "es": "Pokédex",
       "ja": "ずかん"
     }
+  },
+  "Loading names": {
+    "translations": {
+      "fr": "Chargement des noms",
+      "de": "Namen werden geladen",
+      "es": "Cargando nombres",
+      "ja": "名前を読み込み中"
+    }
   }
 }

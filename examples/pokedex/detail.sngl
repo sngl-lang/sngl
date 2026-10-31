@@ -31,7 +31,6 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
     var movesShown = false
     var method = "level-up"
     var methodLabel = $"Level"
-    var names map[string, list[Named]] = {}
     var moveFacts map[string, MoveFact] = {}
 
     // The Pokémon the page shows: the form asked for, or the species' default.
@@ -86,7 +85,7 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
         return evolution != null ? evolutionRows(evolution.chain, names) : []
     }
 
-    poke.pokemonSpeciesRetrieve(id=name, :value=about, :pending=loading, :failure=failure)
+    poke.pokemonSpeciesRetrieve(id=name, :value=about, :pending=loading, :failure=failure, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) })
     if about != null {
         poke.pokemonRetrieve(id=shown(), :value=mon, :failure=monFailure)
         poke.evolutionChainRetrieve(id=idOf(about.evolutionChain.url), :value=evolution)
@@ -119,7 +118,9 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                             if mon != null {
                                 ui.hbox(style={gap=4px}) {
                                     for var t = mon.types {
-                                        poke.typeRetrieve(id=t.type.name, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                        if !known(`type`, t.type.name) {
+                                            poke.typeRetrieve(id=t.type.name, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                        }
                                         typeBadge #types(kind=t.type.name, value=called(names, `type`, t.type.name))
                                     }
                                 }
@@ -136,7 +137,9 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                                 ui.text #flavor(value=latestFlavor(about.flavorTextEntries))
                                 if mon != null {
                                     for var a = mon.abilities {
-                                        poke.abilityRetrieve(id=a.ability.name, @load(got) { names["ability/{got.name}"] = abilityNamed(got.names) })
+                                        if !known(`ability`, a.ability.name) {
+                                            poke.abilityRetrieve(id=a.ability.name, @load(got) { names["ability/{got.name}"] = abilityNamed(got.names) })
+                                        }
                                     }
                                     fact(label=$"Height") {
                                         ui.text #height(value=mon.height != null ? meters(heightOf(mon.height)) : $"Unknown")
@@ -149,10 +152,14 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                                     }
                                 }
                                 if about.habitat != null {
-                                    poke.pokemonHabitatRetrieve(id=about.habitat.name, @load(got) { names["habitat/{got.name}"] = habitatNamed(got.names) })
+                                    if !known(`habitat`, about.habitat.name) {
+                                        poke.pokemonHabitatRetrieve(id=about.habitat.name, @load(got) { names["habitat/{got.name}"] = habitatNamed(got.names) })
+                                    }
                                 }
                                 for var g = about.eggGroups {
-                                    poke.eggGroupRetrieve(id=g.name, @load(got) { names["egg-group/{got.name}"] = eggGroupNamed(got.names) })
+                                    if !known(`egg-group`, g.name) {
+                                        poke.eggGroupRetrieve(id=g.name, @load(got) { names["egg-group/{got.name}"] = eggGroupNamed(got.names) })
+                                    }
                                 }
                                 fact(label=$"Habitat") {
                                     ui.text #habitat(value=about.habitat != null ? called(names, `habitat`, about.habitat.name) : $"Unknown")
@@ -172,7 +179,9 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                             ui.vbox(style={gap=6px, padding=8px}) {
                                 if mon != null {
                                     for var s = mon.stats {
-                                        poke.statRetrieve(id=s.stat.name, @load(got) { names["stat/{got.name}"] = statNamed(got.names) })
+                                        if !known(`stat`, s.stat.name) {
+                                            poke.statRetrieve(id=s.stat.name, @load(got) { names["stat/{got.name}"] = statNamed(got.names) })
+                                        }
                                         ui.hbox(style={gap=8px, alignItems=center}) {
                                             ui.text #statName(value=statLabel(s.stat.name, names), style={width=120px})
                                             ui.text #base(value="{s.baseStat}", style={width=40px})
@@ -191,16 +200,24 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                         ui.tab(label=$"Evolution") {
                             ui.vbox(style={gap=12px, padding=8px}) {
                                 for var slug = chainSlugs(`item`) {
-                                    poke.itemRetrieve(id=slug, @load(got) { names["item/{got.name}"] = itemNamed(got.names) })
+                                    if !known(`item`, slug) {
+                                        poke.itemRetrieve(id=slug, @load(got) { names["item/{got.name}"] = itemNamed(got.names) })
+                                    }
                                 }
                                 for var slug = chainSlugs(`type`) {
-                                    poke.typeRetrieve(id=slug, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                    if !known(`type`, slug) {
+                                        poke.typeRetrieve(id=slug, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                    }
                                 }
                                 for var slug = chainSlugs(`move`) {
-                                    poke.moveRetrieve(id=slug, @load(got) { names["move/{got.name}"] = moveNamed(got.names) })
+                                    if !known(`move`, slug) {
+                                        poke.moveRetrieve(id=slug, @load(got) { names["move/{got.name}"] = moveNamed(got.names) })
+                                    }
                                 }
                                 for var slug = chainSlugs(`trigger`) {
-                                    poke.evolutionTriggerRetrieve(id=slug, @load(got) { names["trigger/{got.name}"] = triggerNamed(got.names) })
+                                    if !known(`trigger`, slug) {
+                                        poke.evolutionTriggerRetrieve(id=slug, @load(got) { names["trigger/{got.name}"] = triggerNamed(got.names) })
+                                    }
                                 }
                                 ui.scroll(direction=horizontal) {
                                     ui.vbox(style={gap=12px}) {
@@ -274,7 +291,9 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                                         })
                                     }
                                     for var slug = moveTypes() {
-                                        poke.typeRetrieve(id=slug, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                        if !known(`type`, slug) {
+                                            poke.typeRetrieve(id=slug, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                        }
                                     }
                                 }
                                 // The way is PokéAPI's name, and the select

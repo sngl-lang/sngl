@@ -80,17 +80,40 @@ shown again starts at the dex chosen, and a Pokémon's page lists the moves of
 the latest game that dex covers. `dexName` is kept from one run to the next
 (see [Kept settings](#kept-settings)).
 
-**Every entry arrives with the dex**, so the search covers the whole dex and
-a page more asks for nothing: the grid's scroll fires `@reachEnd` as its end
-comes into view, and home shows the next 30 of what matches. A first page too
+**Every entry arrives with the dex**, so a page more asks for nothing: the
+grid's scroll fires `@reachEnd` as its end comes into view, and home shows the
+next 30 of what matches. A first page too
 short to scroll has its end in view already, so the next one follows it at
 once. The grid is rows of three that `rows` in `names.sngl` cuts, since a
 `Style` neither wraps a row nor lays out columns.
 
-**A card asks for nothing.** A clickable `ui.card`, opened by a click
-anywhere on it, it shows the entry's number in this dex, its name and its
-official artwork, whose URL is the species id out of the entry's URL
-put into `artwork`, a context holding where the artwork is:
+**A card shows its species' name in the reader's language.** An entry names
+its species only by PokéAPI's slug, `nidoran-f`, and the names in each
+language are the species' own, so home asks for the species of each card
+shown, and a card shows the slug made readable until it answers. The names
+are the package's (`names` in `names.sngl`), which a Pokémon's page fills
+too, so nothing named once is asked for again, and a species that fails
+keeps its slug rather than being asked again:
+
+```sngl
+for var e = naming() {
+    if !known(`species`, e.pokemonSpecies.name) {
+        poke.pokemonSpeciesRetrieve(id=e.pokemonSpecies.name, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) }, @fail { names["species/{e.pokemonSpecies.name}"] = [] })
+    }
+}
+```
+
+**The search matches what the cards say.** It matches the slug or the name
+in the reader's language, so the first search of a dex asks for the species
+of every entry, under a spinner until all have answered; a search of a dex
+already named asks for nothing. `naming` is the cards shown, or the whole
+dex once it has been searched: either is a prefix of the dex, so a request
+keeps its place as the list grows.
+
+A clickable `ui.card`, opened by a click anywhere on it, it shows the
+entry's number in this dex, its name and its official artwork, whose URL is
+the species id out of the entry's URL put into `artwork`, a context holding
+where the artwork is:
 
 ```sngl
 context #artwork(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{id}.png`)
