@@ -45,11 +45,11 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
 
 const component ui.vbox[platform](style, children) {
     Column(
-        modifier = modifierOf(style, flexShare),
+        modifier = modifierOf(style, flexShare).snglFlexible(false),
         verticalArrangement = columnArrangement(style),
         horizontalAlignment = columnAlignment(style.alignItems),
     ) {
-        flexShare(stretches(style) ? func(w float32) => modifier.weight(w).fillMaxWidth() : func(w float32) => modifier.weight(w)) {
+        flexShare(stretches(style) ? func(w float32) => modifier.weight(w).fillMaxWidth().snglFlexed() : func(w float32) => modifier.weight(w).snglFlexed()) {
             children
         }
     }
@@ -57,11 +57,11 @@ const component ui.vbox[platform](style, children) {
 
 const component ui.hbox[platform](style, children) {
     Row(
-        modifier = modifierOf(style, flexShare),
+        modifier = modifierOf(style, flexShare).snglFlexible(true),
         horizontalArrangement = rowArrangement(style),
         verticalAlignment = rowAlignment(style.alignItems),
     ) {
-        flexShare(stretches(style) ? func(w float32) => modifier.weight(w).fillMaxHeight() : func(w float32) => modifier.weight(w)) {
+        flexShare(stretches(style) ? func(w float32) => modifier.weight(w).fillMaxHeight().snglFlexed() : func(w float32) => modifier.weight(w).snglFlexed()) {
             children
         }
     }
@@ -81,7 +81,7 @@ const component ui.spacer[platform](style) {
 
 const component ui.scroll[platform](style, direction, @reachEnd, content) {
     SnglScroll(modifier=modifierOf(style, flexShare), direction=string(direction), onReachEnd=func() { reachEnd() }) {
-        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
+        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth().snglFlexed()) {
             content
         }
     }
@@ -423,7 +423,7 @@ const component ui.tabs[platform](selected, style, @change, items) {
                 }
             }
         }
-        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
+        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth().snglFlexed()) {
             SnglPager(
                 modifier = modifier.fillMaxWidth().fillMaxHeight(),
                 selected = selected,
@@ -434,7 +434,7 @@ const component ui.tabs[platform](selected, style, @change, items) {
                 },
             ) {
                 component page(p) {
-                    Column(modifier=modifier.fillMaxWidth()) {
+                    Column(modifier=modifier.fillMaxWidth().snglFlexible(false)) {
                         for var k, t = items {
                             if k == p {
                                 t.content

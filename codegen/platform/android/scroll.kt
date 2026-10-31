@@ -46,5 +46,5 @@ fun SnglScroll(
     var scrolled = modifier
     if (!sideways) scrolled = scrolled.verticalScroll(down)
     if (sideways || direction == "both") scrolled = scrolled.horizontalScroll(across)
-    Column(scrolled.onSizeChanged { extent = if (sideways) it.width else it.height }, content = content)
+    Column(scrolled.onSizeChanged { extent = if (sideways) it.width else it.height }.snglFlexible(false), content = content)
 }

@@ -733,6 +733,16 @@ component SnglPager(
 #[kt.native("snglChooses", "", method)]
 const func Modifier.snglChooses(onText func(string)) Modifier
 
+// A Row or Column whose children take shares of it, and a child taking one:
+// a marked line along which nothing bounds it is bounded by its content, as
+// html's flex is, where a weight would measure to nothing (codegen/platform/
+// android/flexible.kt).
+#[kt.native("snglFlexible", "", method)]
+const func Modifier.snglFlexible(horizontal bool) Modifier
+
+#[kt.native("snglFlexed", "", method)]
+const func Modifier.snglFlexed() Modifier
+
 #[gen.renders(identity)]
 #[kt.native("Dialog", "androidx.compose.ui.window.Dialog")]
 component Dialog(

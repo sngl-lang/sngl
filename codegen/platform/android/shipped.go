@@ -10,8 +10,9 @@ import (
 )
 
 // dateFieldKt is SnglDateField's source, scrollKt SnglScroll's, pagerKt
-// SnglPager's, choosesKt snglChooses's, flexShareKt snglFlexShare's and
-// appbarKt SnglAppBar's with the menu's composables.
+// SnglPager's, choosesKt snglChooses's, flexShareKt snglFlexShare's,
+// flexibleKt snglFlexible's and snglFlexed's, and appbarKt SnglAppBar's with
+// the menu's composables.
 //
 //go:embed datefield.kt
 var dateFieldKt string
@@ -31,6 +32,9 @@ var appbarKt string
 //go:embed flexshare.kt
 var flexShareKt string
 
+//go:embed flexible.kt
+var flexibleKt string
+
 // shippedComposables are the Kotlin the platform writes beside MainScreen.kt
 // for a program that uses it: a composable by the intrinsic id
 // lib/platform/android declares it under, or a function by the native name a
@@ -46,6 +50,7 @@ var shippedComposables = []struct {
 	{call: "snglChooses", name: "SnglChooses", src: choosesKt},
 	{intrinsic: intrinsicNS + "Screen", name: "SnglAppBar", src: appbarKt},
 	{call: flexShareName, name: "SnglFlexShare", src: flexShareKt},
+	{intrinsic: intrinsicNS + "SnglScroll", call: "snglFlexible", name: "SnglFlexible", src: flexibleKt},
 }
 
 // flexShareName is the shipped default of sngl:ui's flexShare, and
