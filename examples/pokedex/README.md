@@ -93,7 +93,7 @@ language are the species' own, so home asks for the species of each card
 shown, and a card shows the slug made readable until it answers. The names
 are the package's (`names` in `names.sngl`), which a Pokémon's page fills
 too, so nothing named once is asked for again, and a species that fails
-keeps its slug rather than being asked again.
+keeps its slug until the sign of the failed lookups asks again.
 
 What home has asked for is `asking`, a list it only ever adds to: an effect
 adds each species coming into view that no page has named, and the requests
@@ -104,9 +104,20 @@ every one after it, and each started again:
 ```sngl
 effect(on="{chosenDex != null ? chosenDex.name : ""}/{namingAll}/{shown}", @mount { ask() })
 for var slug = asking {
-    poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) }, @fail { names["species/{slug}"] = [] })
+    poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) }, @fail(f) { lookupFailed(`species`, slug, f) })
 }
 ```
+
+**A request that fails says so, and asks again when told to.** Each is a
+⚠ sign whose tooltip says what went wrong, and a click asks again
+(`loadError`). A page's own requests -- the dex, the species, its Pokémon,
+its evolution chain, a form -- each have a sign where what they would show
+is, and each is mounted unless what it would ask for is what last failed, so
+asking for something else asks at once and the sign asks again by forgetting
+the failure. A name is shown by its slug until its own arrives, so the
+lookups that fail are counted on one sign per page (`lookupsError`), which
+starts the next round of asking (`round`, `failures` in `names.sngl`): a
+lookup that failed in the last round is mounted again, and asks.
 
 **The search matches what the cards say.** It matches the slug or the name
 in the reader's language, so the first search of a dex asks for the species
@@ -143,7 +154,7 @@ the Pokémon and are asked for by name (see [Languages](#languages)). A type
 is a `typeBadge`, a `ui.badge` in the type's own color (`typeColors` in
 `names.sngl`), its name dark over the light types and white over the rest.
 Under it is a `ui.tabs`: About, Stats, Evolution, Sprites and Moves, drawn as
-each target draws tabs -- a Material TabRow on android, a GtkStackSwitcher on
+each target draws tabs -- a Material TabRow on android, a GtkNotebook on
 gtk4, an AppTabs on fyne, a bar of boxed labels on bubbletea. Every panel is
 mounted as the page opens and kept while another shows, so a panel left and
 come back to is as it was, and on android and html the panels swipe. Moves is

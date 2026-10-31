@@ -1,3 +1,4 @@
+import async "sngl:async"
 import i18n "sngl:i18n"
 import poke "openapi:./pokeapi.yml"
 import settings "sngl:settings"
@@ -81,6 +82,7 @@ func localeLabeled(label option[string]) string {
 component Pokedex root {
     var language option[string] = null
     var dexes list[poke.PokedexSummary] = []
+    var dexesFailure option[async.Failure] = null
 
     // Opens the species' page, or its page showing a form where `form` is
     // one of its varieties.
@@ -102,6 +104,11 @@ component Pokedex root {
                     }
                 }
                 ui.menuItem(label=$"Pokédex") {
+                    // A menu holds no sign, so the failure is an item that
+                    // asks again when chosen.
+                    if dexesFailure != null {
+                        ui.menuItem(label=couldNotLoadDexes(whyOf(dexesFailure)), @select { dexesFailure = null })
+                    }
                     for var d = dexes {
                         ui.menuItem(label=display(d.name), checked=d.name == dexName, @select { chooseDex(d.name) })
                     }
@@ -109,7 +116,9 @@ component Pokedex root {
             }
             settings.kept(name="language", default=languageLabel(i18n.defaultLocale()), :value=language)
             settings.kept(name="dexName", default="national", :value=dexName)
-            poke.pokedexList(limit=dexLimit, offset=0, @load(page) { dexes = page.results })
+            if dexesFailure == null {
+                poke.pokedexList(limit=dexLimit, offset=0, :failure=dexesFailure, @load(page) { dexes = page.results })
+            }
             nav.stack #pages {
                 nav.page #variety(
                     href = `/pokemon/{name}/{form}`,
