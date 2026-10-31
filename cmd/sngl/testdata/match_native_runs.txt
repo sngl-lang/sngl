@@ -130,7 +130,7 @@ ui.window {
     pad
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:c6a40594f390504b6086138d63887a71
+sha256:2cfe930e747cd40ce6a74272ee075599
 {
   "results": [
     {
@@ -148,7 +148,7 @@ sha256:c6a40594f390504b6086138d63887a71
   ]
 }
 -- testrun/android/kotlin/app.sngl/pad/1 --
-sha256:4a43f0e829bf918d2e96ed7e3ed9e488
+sha256:ba200b6a8fc01ec3bc7cddf4bee3e7f8
 {
   "results": [
     {

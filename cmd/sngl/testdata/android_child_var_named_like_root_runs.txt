@@ -55,7 +55,7 @@ func testEachCountIsItsOwn(t test.Test, c page) {
     }
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:c3f1c77257c4713e9099cc7b729ff4dc
+sha256:4b6342692e34f3d1bead29c82cd570e2
 {
   "results": [
     {

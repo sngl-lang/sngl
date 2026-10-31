@@ -84,7 +84,7 @@ ui.window {
     ui.text(value="{over(held).w}")
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:25205a358830f2dbee06dc3d5d5d6d5a
+sha256:81988ff0a83c187f2b93b220de85c9f2
 {
   "results": [
     {

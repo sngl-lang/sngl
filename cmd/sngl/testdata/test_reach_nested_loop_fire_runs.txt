@@ -58,7 +58,7 @@ func testTapOpensItsCell(t test.Test, c host) {
     t.assert(c.opened == "b")
 }
 -- testrun/android/kotlin/app.sngl/host/1 --
-sha256:78621f81f5d408b95bbd41ccf2656640
+sha256:0ba79313ec3943a452fe458b3151cfd0
 {
   "results": [
     {

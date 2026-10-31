@@ -52,7 +52,7 @@ func testAComponentOptionTakesTheProduct(t test.Test, c main) {
     t.assert(c.total == 21)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:18fb98ed3d4e40c629da319ff85bc5fc
+sha256:f618b0909e4300d57bd7ab709871cc8e
 {
   "results": [
     {

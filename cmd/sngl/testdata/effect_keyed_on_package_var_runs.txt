@@ -91,7 +91,7 @@ func testAWriteOutsideAsksTheQueryAgain(t test.Test, c app) {
     t.assert(asked.join(",") == "0,0,0,1,1,1")
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:28504071b346cb5b2d8cb4a9da81d21c
+sha256:7be0c9843afb42a5dbe8f043ea5f052a
 {
   "results": [
     {

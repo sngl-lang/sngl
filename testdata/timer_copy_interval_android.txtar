@@ -393,7 +393,7 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
 fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
 
 fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
--- out/kotlin/android/app/src/main/java/test/sngl/app/SnglPager.kt --
+-- out/kotlin/android/SnglPager.kt --
 package test.sngl.app
 
 import androidx.compose.foundation.pager.HorizontalPager
@@ -450,4 +450,4 @@ fun SnglPager(
     ) { p -> page(p) }
 }
 -- run/kotlin/android --
-pass sha256:7b42c4e108a3514ccb94e20d8100fbbd
+pass sha256:b09036efaf85681c56c2b52e3985066e

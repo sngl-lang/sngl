@@ -174,7 +174,7 @@ func testComponent(t Test, c panel) {
     t.assert(c.outcome.value == "failed: odd")
 }
 -- testrun/android/kotlin/app.sngl/panel/1 --
-sha256:6c3c483d3021508925375551dd2a4c47
+sha256:a0e4be9ee19c55378b9b63fefe334931
 {
   "results": [
     {

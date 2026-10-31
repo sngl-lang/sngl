@@ -94,7 +94,7 @@ func testAToggleEntryFollowsItsState(t test.Test, c app) {
     t.assert(c.autosave && c.main.menu[0].children[1].checked)
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:3d86373d62105ae34789e881d19d4a00
+sha256:cb238799c153ee9dcf5059643c19e8c6
 {
   "results": [
     {

@@ -95,7 +95,7 @@ func testAWindowWithNoMenu(t test.Test, c plain) {
     t.snapshot("plain")
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:2dc211647241f37db5678f4c3bebb997
+sha256:916ac850918521b17b3eccfee8e0fbc8
 {
   "results": [
     {
@@ -111,7 +111,7 @@ sha256:2dc211647241f37db5678f4c3bebb997
   }
 }
 -- testrun/android/kotlin/app.sngl/plain/1 --
-sha256:2e10c71f96294878812ba93cd489b0b5
+sha256:2389e71c17d346c008a56931d2b49359
 {
   "results": [
     {

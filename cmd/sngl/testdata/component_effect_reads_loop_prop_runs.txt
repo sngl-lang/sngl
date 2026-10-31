@@ -84,7 +84,7 @@ func testAnUpdateReadsARenamedCopysNewName(t test.Test, c rows) {
     t.assert(log.join(",") == "z=7")
 }
 -- testrun/android/kotlin/app.sngl/names/1 --
-sha256:82c150e220e933055f184cfaf46c372f
+sha256:56203dee54534ba08a43f76940948589
 {
   "results": [
     {
@@ -98,7 +98,7 @@ sha256:82c150e220e933055f184cfaf46c372f
   ]
 }
 -- testrun/android/kotlin/app.sngl/rows/1 --
-sha256:c7c355662586910494c7df76555a4e34
+sha256:d93bd0fcdeb8564791b919670fcbb455
 {
   "results": [
     {

@@ -118,7 +118,7 @@ func testView(t Test, c panel) {
     t.assert(c.named != null)
 }
 -- testrun/android/kotlin/app.sngl/panel/1 --
-sha256:4f73e4bb15e5416a5cd4b2d6b1635cae
+sha256:5ca121344fc999d2b465c67ecf3d5895
 {
   "results": [
     {

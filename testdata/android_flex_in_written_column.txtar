@@ -488,4 +488,4 @@ fun SnglScroll(
     Column(scrolled.onSizeChanged { extent = if (sideways) it.width else it.height }, content = content)
 }
 -- run/kotlin/android --
-pass sha256:301e748df02f8c9a599138e344d61543
+pass sha256:b0287e73830325042d7230831b31f3ac

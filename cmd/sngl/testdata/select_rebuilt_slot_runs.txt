@@ -62,7 +62,7 @@ func testAChoiceAfterTheSelectIsBuiltAgain(t test.Test, c page) {
     t.assert(c.kind == "Blue")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:557360130418d973f5f56d55b9dc5af9
+sha256:005edc41b9a542e39481ae4af7680af6
 {
   "results": [
     {

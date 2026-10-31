@@ -48,7 +48,7 @@ func testTheSecondSeesNoUnmountOfTheFirst(t test.Test, c app) {
     t.assert(log.join(",") == "+a")
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:6e7a8da14b749f3a406fe3efc68ea84d
+sha256:202149acca4d51dc47de679944dfb6c9
 {
   "results": [
     {

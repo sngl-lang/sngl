@@ -64,7 +64,7 @@ func testTheOtherInstanceReadsTheWrite(t test.Test, c main) {
     t.assert(c.s != null && c.s.shown.value == "picked b")
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:9e6eb5893e0b4a49579a4ba8a5676983
+sha256:b71a23705ec98e564e5d445d699a6f77
 {
   "results": [
     {

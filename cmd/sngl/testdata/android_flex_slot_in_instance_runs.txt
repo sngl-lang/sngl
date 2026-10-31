@@ -104,7 +104,7 @@ ui.window(title="Flex") {
     }
 }
 -- testrun/android/kotlin/built.sngl/_/1 --
-sha256:5eb5b26b2fa6c7244db32fa19460162a
+sha256:789c9b8afabb581ae4515c354db6bb24
 {
   "results": [
     {
@@ -117,7 +117,7 @@ sha256:5eb5b26b2fa6c7244db32fa19460162a
   }
 }
 -- testrun/android/kotlin/shown.sngl/_/1 --
-sha256:d034d80c3730065f0cd9008dabc577ca
+sha256:edc6f22f926060b987c35fd1dd048688
 {
   "results": [
     {
@@ -130,7 +130,7 @@ sha256:d034d80c3730065f0cd9008dabc577ca
   }
 }
 -- testrun/android/kotlin/spliced.sngl/_/1 --
-sha256:4031bd9d57a91766060cf6b83f109e8d
+sha256:7f501f27d221f6431788777ce7cade52
 {
   "results": [
     {

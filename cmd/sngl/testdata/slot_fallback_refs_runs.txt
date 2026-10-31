@@ -56,7 +56,7 @@ func testEmpty(t Test, x empty) {
     t.assert(x.c.dflt != null)
 }
 -- testrun/android/kotlin/app.sngl/empty/1 --
-sha256:370da07882e0307eb90b441a45fc7ab6
+sha256:16c388d4d2a15ec82f4074feccd2a9ce
 {
   "results": [
     {
@@ -66,7 +66,7 @@ sha256:370da07882e0307eb90b441a45fc7ab6
   ]
 }
 -- testrun/android/kotlin/app.sngl/filled/1 --
-sha256:e0acc008d4e208b52bde4634a89dcfe3
+sha256:ee35d918b5123e04826ed8f3314e89ca
 {
   "results": [
     {
