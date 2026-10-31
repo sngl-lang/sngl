@@ -66,7 +66,8 @@ arguments are to C's.
 
 **`import pets "openapi:./petstore.yml"` writes a package from an OpenAPI 3
 document**, YAML or JSON: a declaration per schema, a `…Call` function per
-operation answering `async.Result`, a component over `async.query` per `GET`,
+operation answering `async.Result`, a component over `async.query` per `GET`
+(its `refresh` the query's, so a caller retries through its `#id`),
 and `server`, a context defaulting to the spec's first server
 (`lib/x/scheme/openapi`). The path is the project's own file, read through
 the project; one outside it is refused before anything is read.

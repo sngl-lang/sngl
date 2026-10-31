@@ -3,29 +3,29 @@
 # every target.
 
 sngl test --platform=none app.sngl
-stdout '4 tests, 0 failures'
+stdout '5 tests, 0 failures'
 stderr 'import "openapi:./petstore.yml": field breed_lineage of PetBreedDetail is left out: a map of any value'
 
 sngl test --platform=fyne --language=go app.sngl
-stdout '4 tests, 0 failures'
+stdout '5 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
-stdout '4 tests, 0 failures'
+stdout '5 tests, 0 failures'
 
 sngl test --platform=html app.sngl
-stdout '4 tests, 0 failures'
+stdout '5 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
-stdout '4 tests, 0 failures'
+stdout '5 tests, 0 failures'
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout '4 tests, 0 failures'
+stdout '5 tests, 0 failures'
 
 -- app.sngl --
 // The package an openapi: import writes, run against the local server: a
 // function called from a test with server set for it, a 404 classified, a
 // query written from a function's parameters, and the adapter component
-// asking again when its key changes.
+// asking again when its key changes, and when its `refresh` is called.
 
 import async "sngl:async"
 import pets "openapi:./petstore.yml"
@@ -90,6 +90,22 @@ func testAdapterAsksAgain(t Test, c pager) {
     c.more.click()
     t.wait(func() => c.first.value == "milo", 5000)
     t.assert(c.first.value == "milo")
+}
+
+component retrier node {
+    var fails = 0
+    pets.server(local) {
+        pets.petRetrieve #lookup(id="nobody", @fail { fails += 1 })
+    }
+    text #failed(value="{fails}")
+    button #retry(text="Retry", @click { lookup.refresh() })
+}
+
+func testAdapterRefreshes(t Test, c retrier) {
+    t.wait(func() => c.failed.value == "1", 5000)
+    c.retry.click()
+    t.wait(func() => c.failed.value == "2", 5000)
+    t.assert(c.failed.value == "2")
 }
 
 window {
