@@ -295,6 +295,8 @@ fun MainScreen() {
     }
 }
 
+fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
+
 fun flexed(m: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if (((flex == null) || (flex!! <= 0.0))) m else m.then(share(flex!!.toFloat())))
 
 fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
@@ -345,8 +347,6 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     }
     return m
 }
-
-fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
 
 fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
 -- out/kotlin/android/SnglFlexible.kt --
@@ -469,4 +469,4 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/kotlin/android --
-pass sha256:c5b0ca552d03ec40f3d46afdb3f39d30
+pass sha256:a9378774f2b578098818b89fa3f207dd
