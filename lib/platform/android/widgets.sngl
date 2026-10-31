@@ -425,7 +425,7 @@ const component ui.tabs[platform](selected, style, @change, items) {
         }
         flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
             SnglPager(
-                modifier = modifierOf({flex=1}, flexShare),
+                modifier = modifier.fillMaxWidth().fillMaxHeight(),
                 selected = selected,
                 disabled = items.map(func(t ui.tab) => t.disabled),
                 onSelect = func(chosen int) {

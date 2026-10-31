@@ -691,7 +691,10 @@ one less than the count so no page is disposed, its page a slot taking the
 index -- the first intrinsic slot with parameters, which `slotArgs` now
 binds. `selected` moves it, and a swipe settling on another page hands it to
 `onSelect`; one settling on a disabled page goes on to the next that is not,
-or back. The override's `change(k)` there sits under `flexShare`, and an emit
+or back. It fills the height under the TabRow with `fillMaxHeight` rather than
+a weight: in a `ui.scroll` the Column has no height to share, a weight there
+measures to nothing, and the Pokédex's detail panels collapsed, where
+`fillMaxHeight` lets the pager take its page's height. The override's `change(k)` there sits under `flexShare`, and an emit
 under a context provider was never answered, coming out as an `onChange`
 nothing declared (`substituteEvents`). html's panels are in `sngl-swipe`
 (`codegen/platform/html/swipe.go`), an element the page defines that hears a
