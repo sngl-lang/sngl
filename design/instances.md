@@ -350,7 +350,12 @@ handed a name the site never declared
 writes what the site binds travels whole, as a call reading state does:
 lifted read by read, a menu record's `@select { saved += 1 }` wrote the
 instance's copy of `saved`, and html's pick ran nothing anyone saw
-(`writesFree`, `cmd/sngl/testdata/window_menu_under_if_runs.txt`). A node is
+(`writesFree`, `cmd/sngl/testdata/window_menu_under_if_runs.txt`). A call
+that stays, reading what the slot binds, and calls a function of the
+component the body is lifted out of calls it through a prop holding it as a
+lambda (`funcValue`): the lifted component holds no such function, and html's
+grid row called its page's `label(entry)` by a name only the page declares
+(`testdata/slot_row_calls_owner_func.sngl`). A node is
 not lifted when its subtree holds
 a slot insertion, a boundary, a canvas or a window, or declares a handle
 something reads. bubbletea and android re-render the view anyway and are
