@@ -489,11 +489,14 @@ const component ui.textarea[platform](placeholder, readonly, value, disabled, ro
 // choosing a number to stand for "unknown".
 const component ui.progress[platform](style, value, max) {
     if value != null {
-        html.progress(value=string(value), max=string(max), style=css(style)) {}
+        html.progress(value=string(value), max=string(max), style=progressCss(style)) {}
     } else {
-        html.progress(max=string(max), style=css(style)) {}
+        html.progress(max=string(max), style=progressCss(style)) {}
     }
 }
+
+// A bar's fill is its accent-color, which CSS's color does not reach.
+const func progressCss(s ui.Style) => [...css(s), Declaration{property="accent-color", value=colorOf(s.color)}]
 
 // badge, chip and avatar render as sngl:ui's own bodies do, and say what they
 // are in a class: `sngl-<name>`, and a modifier for each choice the props

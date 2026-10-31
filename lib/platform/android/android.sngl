@@ -587,6 +587,7 @@ component CircularProgressIndicator(
 component LinearProgressIndicator(
     progress func() float32,
     modifier Modifier,
+    color    option[ComposeColor] = null,
 ) ui.node
 
 // A Button paints its own surface, so a background in the modifier lands

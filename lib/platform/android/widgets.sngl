@@ -340,16 +340,29 @@ const component ui.datepicker[platform](placeholder, value, disabled, style, @ch
 // Compose's determinate/indeterminate split is by *presence* of the `progress`
 // argument, which is the shape `value` being an `option` gives the override:
 // the null test picks the call, and neither branch invents a fraction.
+// A style's color is the bar's, and with none the call leaves `color` out:
+// Material's default is the theme's accent, read where the bar is drawn,
+// which no function outside a composable may read.
 const component ui.progress[platform](style, value, max) {
     if value != null {
         // The null test is repeated inside the lambda because narrowing does
         // not cross into one: a lambda runs later, and the checker will not
         // assume a binding still holds what it held when it was written. The
         // branch the outer `if` already settled is the unreachable one.
-        LinearProgressIndicator(
-            progress = func() => (value != null ? float32(value / max) : float32(0.0)),
-            modifier = modifierOf(style, flexShare),
-        ) {}
+        if style.color != null {
+            LinearProgressIndicator(
+                progress = func() => (value != null ? float32(value / max) : float32(0.0)),
+                modifier = modifierOf(style, flexShare),
+                color = composeOf(style.color),
+            ) {}
+        } else {
+            LinearProgressIndicator(
+                progress = func() => (value != null ? float32(value / max) : float32(0.0)),
+                modifier = modifierOf(style, flexShare),
+            ) {}
+        }
+    } else if style.color != null {
+        LinearProgressIndicator(modifier=modifierOf(style, flexShare), color=composeOf(style.color)) {}
     } else {
         LinearProgressIndicator(modifier=modifierOf(style, flexShare)) {}
     }
