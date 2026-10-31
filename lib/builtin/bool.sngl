@@ -1,3 +1,9 @@
+// `true` or `false`: what `"{b}"` writes.
+const func bool.format(b bool) => _text(b)
+
+// Puts b's format on the end of out.
+func bool.appendFormat(b bool, out ref[builder]) { out.add(_text(b)) }
+
 const (
     true = 0 == 0
     false = 0 != 0

@@ -1,6 +1,6 @@
 // A builder grows text in place: `add` and `line` put a string on the end, and
-// `string()` -- the builder's string form, so `"{b}"` and `string(b)` too --
-// reads what has been built. It is a value, as a list is: storing one stores a
+// `string()` -- the builder's format, so `"{b}"` and `string(b)` too -- reads
+// what has been built. It is a value, as a list is: storing one stores a
 // copy, a parameter is a copy, and `ref[builder]` is the caller's.
 
 import . "sngl:test"

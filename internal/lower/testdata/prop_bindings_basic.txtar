@@ -21,7 +21,7 @@ component Stepper(:count int = 0, @count(count int)) node {
     button(text="-", @click {
         count(count - 1)
     })
-    text(value=string(count))
+    text(value=count.format(base=10, width=0, pad=" "))
 }
 component main node {
     var steps int = 0
@@ -31,6 +31,6 @@ component main node {
     button(text="-", @click {
         steps = steps - 1
     })
-    text(value=string(steps))
-    text(value="steps=" + string(steps))
+    text(value=steps.format(base=10, width=0, pad=" "))
+    text(value="steps=" + steps.format(base=10, width=0, pad=" "))
 }

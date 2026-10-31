@@ -352,6 +352,11 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// formatBuilders is the function buildInterpolation declared for each
+	// string it writes with a builder, and formatBuilderCount how many it has
+	// named.
+	formatBuilders     map[*ast.InterpolationExpr]*ir.Func
+	formatBuilderCount int
 	// ownArgsID is the `#id` of the node whose props are being checked, which
 	// they cannot read (lookupValue).
 	ownArgsID string
@@ -2474,6 +2479,8 @@ func (c *checker) nonConstRef(e ast.Expr) string {
 		return ""
 	case *ast.SelectExpr:
 		return c.nonConstRef(x.Operand)
+	case *ast.FormatExpr:
+		return c.nonConstCallRef(&ast.CallExpr{Pos: x.Pos, Func: &ast.SelectExpr{Pos: x.Pos, Operand: x.Value, Field: "format"}, Args: x.Args})
 	case *ast.InterpolationExpr:
 		for _, part := range x.Parts {
 			if name := c.nonConstRef(part); name != "" {

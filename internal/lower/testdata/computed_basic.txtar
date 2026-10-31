@@ -13,5 +13,5 @@ component main node {
 import . "sngl:ui"
 component main node {
     var n int = 5
-    text(value=string(n * 2))
+    text(value=(n * 2).format(base=10, width=0, pad=" "))
 }

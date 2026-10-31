@@ -19,5 +19,5 @@ component main node {
     timer(interval=2s, enabled=true, @tick {
         tick__inst0 = tick__inst0 + 1
     })
-    text(value=string(tick__inst0))
+    text(value=tick__inst0.format(base=10, width=0, pad=" "))
 }

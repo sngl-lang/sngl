@@ -2854,7 +2854,7 @@ func (b *builder) buildListElem(it nodeIter) ast.Expr {
 // --- String interpolation ---
 
 func (b *builder) buildInterpStr(it nodeIter) ast.Expr {
-	// InterpStr = str_start Expr { str_resume Expr } str_end .
+	// InterpStr = str_start InterpField { str_resume InterpField } str_end .
 	var parts []ast.Expr
 	pos := ast.Pos{}
 	for !it.done() {
@@ -2874,14 +2874,14 @@ func (b *builder) buildInterpStr(it nodeIter) ast.Expr {
 				}
 			}
 		} else {
-			parts = append(parts, b.buildExpr(it.enter()))
+			parts = append(parts, b.buildInterpField(it.enter()))
 		}
 	}
 	return &ast.InterpolationExpr{Pos: pos, Parts: parts, Style: ast.StyleDouble}
 }
 
 func (b *builder) buildTripleInterp(it nodeIter) ast.Expr {
-	// TripleInterp = triple_start Expr { str_resume Expr } triple_end .
+	// TripleInterp = triple_start InterpField { str_resume InterpField } triple_end .
 	var parts []ast.Expr
 	pos := ast.Pos{}
 	for !it.done() {
@@ -2901,10 +2901,24 @@ func (b *builder) buildTripleInterp(it nodeIter) ast.Expr {
 				}
 			}
 		} else {
-			parts = append(parts, b.buildExpr(it.enter()))
+			parts = append(parts, b.buildInterpField(it.enter()))
 		}
 	}
 	return &ast.InterpolationExpr{Pos: pos, Parts: parts, Style: ast.StyleTriple}
+}
+
+// buildInterpField builds one {...} field of an interpolated string: the bare
+// value, or a FormatExpr when arguments follow it.
+func (b *builder) buildInterpField(it nodeIter) ast.Expr {
+	// InterpField = Expr [ comma ArgList ] .
+	value := b.buildExpr(it.enter())
+	for !it.done() {
+		if it.isNonTerminal() && it.symbol() == ArgList {
+			return &ast.FormatExpr{Pos: *value.ExprPos(), Value: value, Args: b.buildArgList(it.enter(), 0)}
+		}
+		it.skip() // comma
+	}
+	return value
 }
 
 func (b *builder) buildI18nInterpStr(it nodeIter) ast.Expr {

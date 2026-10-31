@@ -43,6 +43,7 @@ var passes = []pass{
 	passTestRefOwner,
 	passHoistBodyTypes,
 	passHoistState,
+	passBuiltinMethods,
 	passStringBuilders,
 	// Before every pass that writes a store of its own: what it copies is
 	// what the program wrote. After passHoistState, which turns a view block's

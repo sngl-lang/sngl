@@ -32,7 +32,7 @@ component main node {
                     __slot0 = []
                     for var item = items {
                         var __n0 text = lower.CreateNode("text")
-                        __n0.value = string(item)
+                        __n0.value = item.format(base=10, width=0, pad=" ")
                         lower.AppendChild(parent, __n0)
                         list.push(__slot0, __n0)
                     }

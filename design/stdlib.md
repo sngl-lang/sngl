@@ -15,9 +15,11 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods, plus `output`, the error channel and `root`, the family a package body accepts. The build directive is here rather than in a tier of its own because a package names its own targets without importing anything; `error`, `error.raise` and the `boundary` that catches one are here because a boundary is generic over the tree it was placed in and so belongs to no family — it is the compiler's construct, not a widget. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
 
   **A builder** (`lib/builtin/strings.sngl`, `ir/builder.go`) grows text in
-  place: `b.add(x)`, `b.line(x)` and `b.string()`, which is its string form,
-  so `"{b}"` and `string(b)` read it too (`inferBuiltinConversion` converts
-  to a string through a declared `string()`). Adding to a string with `+`
+  place: `b.add(x)`, `b.line(x)` and `b.string()`, and its `format` reads
+  the same text, so `"{b}"` and `string(b)` do too. Every formattable type
+  in `sngl:builtin` also declares `appendFormat(out ref[builder], …)`, which
+  puts its format on the end of one (see *Formatting an interpolated field*
+  in `design/language.md`). Adding to a string with `+`
   copies it, so a loop building one that way is quadratic; a builder is not.
   It is a value, copied by a store as a list is (`ir.HoldsValue`), and no
   state: a package or component var, a view block's `var`, a prop and a

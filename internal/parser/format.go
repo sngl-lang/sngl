@@ -1458,6 +1458,13 @@ func (f *formatter) writeExpr(e ast.Expr) {
 		f.writeI18nInterp(x)
 	case *ast.I18nPlaceholderExpr:
 		f.writeI18nPlaceholder(x)
+	case *ast.FormatExpr:
+		// A string holds its fields on the line it is written on.
+		args := x.Args
+		args.IsMultiline = false
+		f.writeExpr(x.Value)
+		f.write(", ")
+		f.writeArgs(args)
 	case *ast.LambdaExpr:
 		f.writeLambda(x)
 	case *ast.ParenExpr:

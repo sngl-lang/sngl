@@ -83,3 +83,34 @@ func TestEscapeStringRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+// A field written with arguments is a FormatExpr, reprinted as it was written:
+// the value, then its format's arguments, named ones and nested strings
+// included, on the line the string is on.
+func TestFormatInterpolationArguments(t *testing.T) {
+	for _, src := range []string{
+		`const A = "{n, 16}"`,
+		`const A = "a {n, base=16, width=4, pad="0"} b"`,
+		`const A = """{r, places=2}"""`,
+		`const A = "{p.q(1), sep=", "}"`,
+	} {
+		t.Run(src, func(t *testing.T) {
+			got := strings.TrimSpace(roundTrip(t, src))
+			if got != src {
+				t.Errorf("format changed the field:\ngot:  %s\nwant: %s", got, src)
+			}
+		})
+	}
+	doc, err := Parse("t.sngl", []byte(`const A = "{n, 16, width=4}"`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	interp := doc.Stmts[0].(*ast.ConstDecl).Specs[0].Default.(*ast.InterpolationExpr)
+	f, ok := interp.Parts[0].(*ast.FormatExpr)
+	if !ok {
+		t.Fatalf("field is %T, want *ast.FormatExpr", interp.Parts[0])
+	}
+	if len(f.Args.Args) != 2 || f.Args.Args[1].(ast.Arg).Name != "width" {
+		t.Errorf("args = %#v, want 16 and width=4", f.Args.Args)
+	}
+}

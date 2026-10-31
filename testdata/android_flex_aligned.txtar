@@ -281,13 +281,13 @@ fun MainScreen() {
                 Text(text = "HP", modifier = flexed(styleModifier(Style(width = Measurement(px = 120.0)), true), null, { w: Float -> Modifier.weight(w).snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
                 LinearProgressIndicator(progress = fun(): Float {
                     return 0.1764706f
-                }, modifier = flexed(styleModifier(Style(flex = 1.0), true), 1.0, { w: Float -> Modifier.weight(w).snglFlexed() }))
+                }, modifier = styleModifier(Style(flex = 1.0), true).then({ w: Float -> Modifier.weight(w).snglFlexed() }(1.0f)))
             }
             Row(modifier = Modifier.snglFlexible(true)) {
-                Button(onClick = {}, modifier = flexed(styleModifier(Style(flex = 1.0), false), 1.0, { w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                Button(onClick = {}, modifier = styleModifier(Style(flex = 1.0), false).then({ w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }(1.0f)), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = "7", modifier = Modifier)
                 }
-                Button(onClick = {}, modifier = flexed(styleModifier(Style(flex = 1.0), false), 1.0, { w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                Button(onClick = {}, modifier = styleModifier(Style(flex = 1.0), false).then({ w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }(1.0f)), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = "8", modifier = Modifier)
                 }
             }
@@ -469,4 +469,4 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/kotlin/android --
-pass sha256:a9378774f2b578098818b89fa3f207dd
+pass sha256:dfa25df7570e4a5d0b1f91f3a3281978

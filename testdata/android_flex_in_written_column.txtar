@@ -315,14 +315,14 @@ fun MainScreen() {
                     Column {
                         CompositionLocalProvider(LocalFlexShare provides { w: Float -> Modifier.weight(w).fillMaxWidth() }) {
                             Text(text = "head", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
-                            SnglScroll(modifier = flexed(styleModifier(Style(flex = 1.0), true), 1.0, snglFlexShare), direction = "vertical", onReachEnd = {}) {
+                            SnglScroll(modifier = styleModifier(Style(flex = 1.0), true).then(snglFlexShare(1.0f)), direction = "vertical", onReachEnd = {}) {
                                 Text(text = "page grows", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                             }
                         }
                     }
                 }
             }
-            SnglScroll(modifier = flexed(styleModifier(Style(flex = 1.0), true), 1.0, snglFlexShare), direction = "vertical", onReachEnd = {}) {
+            SnglScroll(modifier = styleModifier(Style(flex = 1.0), true).then(snglFlexShare(1.0f)), direction = "vertical", onReachEnd = {}) {
                 Text(text = "window grows", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
             Text(text = "bottom", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
@@ -357,8 +357,6 @@ fun __window_state0(__start_visible: Boolean = true, title: String, slotContent:
         }
     }
 }
-
-fun flexed(m: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if (((flex == null) || (flex!! <= 0.0))) m else m.then(share(flex!!.toFloat())))
 
 fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var m: androidx.compose.ui.Modifier = Modifier
@@ -607,4 +605,4 @@ fun SnglScroll(
     Column(scrolled.onSizeChanged { extent = if (sideways) it.width else it.height }.snglFlexible(false), content = content)
 }
 -- run/kotlin/android --
-pass sha256:581ff9e71743b4a788757589b5a4873e
+pass sha256:8caeaa1315d96ea0c635f585918827e5

@@ -1,0 +1,89 @@
+// An interpolated field is its value's format: `{x}` is `x.format()`, and
+// `{x, a, b}` is `x.format(a, b)`, its arguments checked as any call's are,
+// named ones and defaults included. `string(x)` is `x.format()` too: there is
+// no string cast besides it.
+
+import . "sngl:test"
+
+struct Point {
+    x int = 0
+    y int = 0
+}
+
+func Point.format(p Point, sep string = ",") => "({p.x}{sep}{p.y})"
+
+func testIntBase(t Test) {
+    var n = 255
+    t.assert("{n, 16}" == "ff")
+    t.assert("{n, base=2}" == "11111111")
+    t.assert("{-n, 16}" == "-ff")
+    t.assert("{0, 16}" == "0")
+}
+
+func testIntWidth(t Test) {
+    var n = 42
+    t.assert("{n, width=5}" == "   42")
+    t.assert("{n, width=5, pad="0"}" == "00042")
+    t.assert("{-n, width=5, pad="0"}" == "-0042")
+    t.assert("{-n, width=5}" == "  -42")
+    t.assert("{n, 16, 4, "0"}" == "002a")
+    t.assert("{n, width=1}" == "42")
+}
+
+func testFloatPlaces(t Test) {
+    var r = 3.14159
+    t.assert("{r, places=2}" == "3.14")
+    t.assert("{r, 0}" == "3")
+    t.assert("{2.5, places=0}" == "3")
+    t.assert("{-r, places=3}" == "-3.142")
+    t.assert("{-0.001, places=2}" == "0.00")
+    t.assert("{1.05, places=1}" == "1.1")
+    t.assert("{r}" == string(r))
+}
+
+func testOwnFormat(t Test) {
+    var p = Point{x=1, y=2}
+    t.assert("{p}" == "(1,2)")
+    t.assert("{p, sep=" "}" == "(1 2)")
+    t.assert(string(p) == "(1,2)")
+    t.assert(p.format(";") == "(1;2)")
+}
+
+func testStringIsFormat(t Test) {
+    var n = 255
+    var on = true
+    t.assert(string(n) == "255")
+    t.assert(string(n) == n.format())
+    t.assert(string(on) == "true")
+    t.assert(string([1, 2]) == "{[1, 2]}")
+}
+
+func testAppendFormat(t Test) {
+    var b builder
+    var n = 7
+    n.appendFormat(&b, width=3, pad="0")
+    b.add(" ")
+    3.5.appendFormat(&b, places=2)
+    t.assert(b.string() == "007 3.50")
+}
+
+// A type that also declares appendFormat is appended by it: a string with such
+// a part is written by one builder rather than a `+` chain.
+struct Tag {
+    name string = ""
+}
+
+func Tag.format(t Tag, upper bool = false) => upper ? "#" + t.name.upper() : "#" + t.name
+
+func Tag.appendFormat(t Tag, out ref[builder], upper bool = false) {
+    out.add("#")
+    out.add(upper ? t.name.upper() : t.name)
+}
+
+func testBuiltWithAppendFormat(t Test) {
+    var tag = Tag{name="go"}
+    var n = 3
+    t.assert("{tag} and {tag, upper=true}, {n, width=2}" == "#go and #GO,  3")
+    t.assert("[{tag, true}]" == "[#GO]")
+    t.assert(string(tag) == "#go")
+}

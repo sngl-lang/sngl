@@ -335,7 +335,7 @@ var callback func(string) int = null
 
 ### Explicit conversions
 
-`int(x)`, `float(x)`, `string(x)`, and `bool(x)` are the only cast forms. They accept **primitive operands only** — struct, func, component, list, and option values are rejected. The cast syntax never dispatches to user-defined methods; define a method and call it as `x.string()` instead.
+`int(x)`, `float(x)`, and `bool(x)` are the cast forms, and they accept **primitive operands only** — struct, func, component, list and option values are rejected. `string(x)` is not a cast: it is `x.format()`, the same text `"{x}"` holds, so it works for any type that declares `format` and passes it no options.
 
 <!-- SNGL-component -->
 
@@ -351,12 +351,11 @@ func _g() => float("3.14")
 
 Allow-lists per target:
 
-| Target   | Accepts                                                                 |
-|----------|-------------------------------------------------------------------------|
-| `int`    | `int`, `float`, `string`, `bool`, `enum`, single-base `unit`            |
-| `float`  | `int`, `float`, `string`, `bool`, `enum`, single-base `unit`            |
-| `string` | any primitive / string-representable (`color`, `date`, …) / enum / unit |
-| `bool`   | `bool`, `string`                                                        |
+| Target  | Accepts                                                      |
+|---------|--------------------------------------------------------------|
+| `int`   | `int`, `float`, `string`, `bool`, `enum`, single-base `unit` |
+| `float` | `int`, `float`, `string`, `bool`, `enum`, single-base `unit` |
+| `bool`  | `bool`, `string`                                             |
 
 A cast of a unit reads its magnitude in the unit's base: `int(1500ms)` is `1500`. A multi-base unit such as `measurement` has no single number, so `int(m)` is refused; read one base with `m.px` instead.
 
@@ -381,19 +380,21 @@ Narrow list — most type changes are rejected and require an explicit cast.
 
 These are compile errors:
 
-| Conversion                                           | Error                                            |
-|------------------------------------------------------|--------------------------------------------------|
-| `null` → struct                                      | `cannot initialize T with null`                  |
-| struct → `int()` / `float()` / `string()` / `bool()` | `cannot convert` — define a method instead       |
-| list/option/func/component → cast                    | `cannot convert` — define a method instead       |
-| non-zero `int` → unit                                | `cannot initialize` / `cannot pass`              |
-| string → enum                                        | `cannot initialize` — write the member           |
-| wrong type → component param                         | `does not match`                                 |
-| bad string literal → string-repr. type               | format-specific error (e.g. invalid date, color) |
+| Conversion                                   | Error                                            |
+|----------------------------------------------|--------------------------------------------------|
+| `null` → struct                              | `cannot initialize T with null`                  |
+| struct → `int()` / `float()` / `bool()`      | `cannot convert` — define a method instead       |
+| `string()` of a type without `format`        | `cannot format` — declare `format`               |
+| list/option → `int()` / `float()` / `bool()` | `cannot convert` — define a method instead       |
+| func/component → cast                        | `cannot convert` — define a method instead       |
+| non-zero `int` → unit                        | `cannot initialize` / `cannot pass`              |
+| string → enum                                | `cannot initialize` — write the member           |
+| wrong type → component param                 | `does not match`                                 |
+| bad string literal → string-repr. type       | format-specific error (e.g. invalid date, color) |
 
 ### String interpolation
 
-Inside `"{expr}"`, a primitive, string-representable type, enum, unit, `null`, list, option, or zero-arg function flows through automatically. For any other type — struct, component, etc. — the compiler looks up a `.string()` method on the value's type and calls it. When no such method exists the interpolation is a compile error:
+Each `{expr}` field is the string its value's `format` method writes, and arguments after a comma are that method's: `{x, a, b}` is `x.format(a, b)`, checked like any call, so named arguments and defaults work. `int` takes `base`, `width` and `pad`; `float` takes `places`; every other builtin type has no options, a list and an option are written as the target writes one, and an enum without payloads, a unit and `null` by name or magnitude. A zero-arg function is called first, and `string(x)` is the same call as `"{x}"`. For any other type — struct, component, etc. — declare `format`; a type without one is a compile error:
 
 <!-- SNGL-component -->
 
@@ -402,14 +403,37 @@ struct Point {
     x int = 0
     y int = 0
 }
-func Point.string(p Point) => "({p.x},{p.y})"
-var count = 42
-var active = true
+func Point.format(p Point, sep string = ",") => "({p.x}{sep}{p.y})"
+var count = 255
+var ratio = 0.4567
 var origin = Point{x=0, y=0}
-func label() => "count={count}, active={active}, origin={origin}"
+func label() => "count={count, base=16, width=4, pad="0"}, ratio={ratio, places=2}, origin={origin, sep="; "}"
 ```
 
-Removing the `Point.string` method makes the `{origin}` interpolation a compile error, not a silent `{...}` render.
+Removing `Point.format` makes the `{origin}` interpolation a compile error, not a silent `{...}` render.
+
+A type that builds its text a piece at a time can also declare `appendFormat`, which puts the same text on the end of a builder. A string with such a field is then written with one builder instead of a `+` chain, and the field appends straight onto it:
+
+<!-- SNGL-component -->
+
+```sngl
+struct Path {
+    parts list[string] = []
+}
+func Path.format(p Path) => p.parts.join("/")
+func Path.appendFormat(p Path, out ref[builder]) {
+    for var i, part = p.parts {
+        if i > 0 {
+            out.add("/")
+        }
+        out.add(part)
+    }
+}
+var path = Path{parts=["usr", "lib"]}
+func where() => "at /{path}"
+```
+
+Declare `format` always; `appendFormat` is optional, and takes `format`'s parameters after the builder.
 
 Interpolation is `{expr}`. A `$` before the brace is a literal dollar sign, not part of the syntax.
 

@@ -5,6 +5,12 @@ import macro "sngl:macro"
 #[marks.builtin("date")]
 struct date {}
 
+// The canonical form, "YYYY-MM-DD": what `"{x}"` writes.
+const func date.format(x date) string { return x }
+
+// Puts x's format on the end of out.
+func date.appendFormat(x date, out ref[builder]) { out.add(date.format(x)) }
+
 // The year of a date.
 const func date.year(d date) => int.parse(string(d).substring(0, 4), 10)
 
@@ -63,9 +69,21 @@ const func _daysIn(y int, m int) int {
 #[marks.builtin("time")]
 struct time {}
 
+// The canonical form, "HH:MM" or "HH:MM:SS": what `"{x}"` writes.
+const func time.format(x time) string { return x }
+
+// Puts x's format on the end of out.
+func time.appendFormat(x time, out ref[builder]) { out.add(time.format(x)) }
+
 // ISO-8601 date and time together.
 #[marks.builtin("datetime")]
 struct datetime {}
+
+// Its ISO-8601 form: what `"{x}"` writes.
+const func datetime.format(x datetime) string { return x }
+
+// Puts x's format on the end of out.
+func datetime.appendFormat(x datetime, out ref[builder]) { out.add(datetime.format(x)) }
 
 // Time quantity used by `timer.interval` and animation APIs. Unit
 // literals: `ms`, `s`, `m`, `h`.

@@ -121,6 +121,11 @@ func primitiveConvertible(from, target *ir.Type) bool {
 		// platform-codegen time.
 		return from.Kind == ir.TypeString
 	}
+	// A list or an option is written as each target's own formatter writes
+	// one: `_text`, which `list.format` and `option.format` are written over.
+	if target.Kind == ir.TypeString && (from.Kind == ir.TypeList || from.Kind == ir.TypeOption) {
+		return true
+	}
 	if !isConvertiblePrimitive(from.Kind) {
 		return false
 	}

@@ -570,6 +570,13 @@ func walkStructExprs(doc *ast.Document, fn func(*ast.StructExpr)) {
 			for _, st := range x.Block.Stmts {
 				walkS(st)
 			}
+		case *ast.FormatExpr:
+			walkE(x.Value)
+			for _, a := range x.Args.Args {
+				if arg, ok := a.(ast.Arg); ok {
+					walkE(arg.Value)
+				}
+			}
 		case *ast.InterpolationExpr:
 			for _, p := range x.Parts {
 				walkE(p)

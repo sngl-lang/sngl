@@ -68,6 +68,8 @@ var alwaysOn = []string{
 	"BoundaryFailed",
 	// Once every raise is resolved a boundary holds nothing, on any target.
 	"BoundaryPassthrough",
+	// No target declares a method on an int.
+	"BuiltinMethods",
 	// A C call's argument crosses the one way C takes it, on every target.
 	"CMarshal",
 	"CSE",

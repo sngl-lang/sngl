@@ -35,6 +35,12 @@ const func color.opacity(c color, a uint8) color { return color{r=c.r, g=c.g, b=
 #[_intrinsic("color.hex")]
 const func color.hex(c color) string
 
+// c's `hex()`: what `"{c}"` writes.
+const func color.format(c color) => color.hex(c)
+
+// Puts c's format on the end of out.
+func color.appendFormat(c color, out ref[builder]) { out.add(color.hex(c)) }
+
 // Mixes c toward white by pct (0.0-1.0) on each RGB channel,
 // preserving alpha. `lighten(c, 0.0)` returns c; `lighten(c, 1.0)`
 // returns opaque white at c's alpha.

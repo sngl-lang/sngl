@@ -14,10 +14,10 @@ struct __lambda0_caps {
 }
 func __lambda0(state __lambda0_caps) {
     *state.count = *state.count + 1
-    __n0.value = "Count: " + string(*state.count)
+    __n0.value = "Count: " + (*state.count).format(base=10, width=0, pad=" ")
 }
 component counter node {
     var count int = 0
     var inc func() = __closure(__lambda0, __lambda0_caps{count=&count})
-    text #__n0(value="Count: " + string(count))
+    text #__n0(value="Count: " + count.format(base=10, width=0, pad=" "))
 }

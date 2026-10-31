@@ -11,9 +11,9 @@ component main node {
 import . "sngl:ui"
 component main node {
     var n int = 0
-    text #__n0(value=string(n))
+    text #__n0(value=n.format(base=10, width=0, pad=" "))
     button(text="+", @click {
         n = n + 1
-        __n0.value = string(n)
+        __n0.value = n.format(base=10, width=0, pad=" ")
     })
 }

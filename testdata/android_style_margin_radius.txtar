@@ -292,13 +292,13 @@ fun MainScreen() {
             }
         }
         Column(modifier = flexed(styleModifier(Style(margin = Measurement(px = 12.0), borderRadius = Measurement(px = 6.0)), true), null, snglFlexShare).snglFlexible(false).safeDrawingPadding()) {
-            Text(text = "literal", modifier = flexed(styleModifier(Style(margin = Measurement(px = 4.0), flex = 1.0, borderRadius = Measurement(px = 2.0)), true), 1.0, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = "literal", modifier = styleModifier(Style(margin = Measurement(px = 4.0), flex = 1.0, borderRadius = Measurement(px = 2.0)), true).then({ w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }(1.0f)), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {}, modifier = flexed((if ((held == Style())) Modifier else styleModifier(held, false)), held.flex, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), colors = ButtonDefaults.buttonColors(containerColor = (if ((held.background == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = held.background!!.r.toInt(), green = held.background!!.g.toInt(), blue = held.background!!.b.toInt(), alpha = held.background!!.a.toInt())), contentColor = (if ((held.color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = held.color!!.r.toInt(), green = held.color!!.g.toInt(), blue = held.color!!.b.toInt(), alpha = held.color!!.a.toInt()))), shape = (if ((held.borderRadius == null)) CircleShape else RoundedCornerShape(Dp((held.borderRadius!!.px + (16.0 * (held.borderRadius!!.em + held.borderRadius!!.rem))).toFloat())))) {
                 Text(text = "held", modifier = Modifier)
             }
             Text(text = "prop", modifier = flexed(styleModifier(Style(margin = Measurement(px = 3.0), borderRadius = Measurement(px = 5.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
             Row(modifier = Modifier.snglFlexible(true)) {
-                Text(text = "row", modifier = flexed(styleModifier(Style(flex = 2.0), true), 2.0, { w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+                Text(text = "row", modifier = styleModifier(Style(flex = 2.0), true).then({ w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }(2.0f)), style = LocalTextStyle.current.merge(TextStyle.Default))
                 for (l in listOf("a", "b")) {
                     Tally(label = l, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() })
                 }
@@ -313,7 +313,7 @@ fun Tally(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Mo
 
     Button(onClick = {
         n = (n + 1)
-    }, modifier = flexed(styleModifier(Style(flex = 1.0), false), 1.0, __ctx_flexShare), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+    }, modifier = styleModifier(Style(flex = 1.0), false).then(__ctx_flexShare(1.0f)), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = ((label + " ") + n.toString()), modifier = Modifier)
     }
 }
@@ -516,4 +516,4 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/kotlin/android --
-pass sha256:8910960445e515be91b0f6ae2e9162d6
+pass sha256:402fa7f5ba3e5994f8343ee4ef0841f5
