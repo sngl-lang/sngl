@@ -473,7 +473,7 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c.__model = __model
 	c.__prop_name = __a_name
 	c.open = true
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	c.__root = gtk4rt.ContentsNew()
 	c.__slot0 = nil
 	c.__inst0_live = []*__child0Instance{}
 	c.__rendering0 = false
@@ -654,4 +654,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:85cce9bb6b20a61ea5d4d69a0fdfa3fb
 -- run/go/gtk4 --
-pass sha256:de3b2eef6e22c784a3771252c00844d7
+pass sha256:f82ad547d915e59e8748f0c8929facc1

@@ -2401,7 +2401,7 @@ func newBadge__site0Instance(__model *Model, __a_label string) *Badge__site0Inst
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.hits = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	c.__root = gtk4rt.ContentsNew()
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
@@ -2537,7 +2537,7 @@ func newBadge__site1Instance(__model *Model, __a_label string, __a___copy string
 	c.__prop_label = __a_label
 	c.__prop___copy = __a___copy
 	c.hits = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	c.__root = gtk4rt.ContentsNew()
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
@@ -2711,7 +2711,7 @@ func newBadge__site2Instance(__model *Model, __a_label string) *Badge__site2Inst
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.hits = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	c.__root = gtk4rt.ContentsNew()
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
@@ -4153,7 +4153,7 @@ pass sha256:bfc8c74879a6b7556769da0a2a3df006
 -- run/go/fyne --
 pass sha256:a85171300ef273fb5dcdfbcf2d012812
 -- run/go/gtk4 --
-pass sha256:d9806514e094db61b8dfab7681d44a9e
+pass sha256:7e511ef42c54f88e253c99d7c6106c8c
 -- run/kotlin/android --
 pass sha256:2b55cf0aa1d4661c1eb8eb0273689198
 -- run/none/html --

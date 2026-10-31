@@ -39,10 +39,13 @@ typedef struct {
     int spacing;
     // GTK's own layout of a box, kept while gtk4rt's lays the box out.
     GtkLayoutManager *box_layout;
+    // A box that is no box of the program's: its grow is its children's.
+    gboolean contents;
 } SnglLook;
 
 static void sngl_unpin(SnglLook *l, int axis);
 static void sngl_box_update(GtkWidget *box);
+static void sngl_contents_update(GtkWidget *box);
 
 static void sngl_look_free(gpointer data) {
     SnglLook *l = data;
@@ -101,6 +104,7 @@ static void sngl_pin(GtkWidget *box, SnglLook *l, int axis) {
     l->grow_box = box;
     g_object_add_weak_pointer(G_OBJECT(box), (gpointer *)&l->grow_box);
     sngl_box_update(box);
+    sngl_contents_update(box);
 }
 
 static void sngl_unpin(SnglLook *l, int axis) {
@@ -111,7 +115,11 @@ static void sngl_unpin(SnglLook *l, int axis) {
     SnglLook *bl = sngl_look_of(box);
     if (!bl) return;
     sngl_box_update(box);
-    if (--bl->growers > 0) return;
+    // The contents gives its own grow back before the box its expand, which
+    // the grow was set over.
+    bl->growers--;
+    sngl_contents_update(box);
+    if (bl->growers > 0) return;
     sngl_set_expand(box, axis, bl->box_expand0);
     if (axis == 0) gtk_widget_set_hexpand_set(box, bl->box_expand_set0);
     else gtk_widget_set_vexpand_set(box, bl->box_expand_set0);
@@ -419,6 +427,24 @@ static void sngl_look_watch_parent(GtkWidget *w, SnglLook *l) {
     if (l->watching_parent) return;
     l->watching_parent = TRUE;
     g_signal_connect(w, "notify::parent", G_CALLBACK(sngl_look_parent_changed), NULL);
+}
+
+// A contents grows by the most any child growing in it asks, in the box it
+// sits in, as CSS's display: contents makes its children that box's items.
+// The child still grows in the contents, which is then all of its room.
+static void sngl_contents_update(GtkWidget *box) {
+    SnglLook *l = sngl_look_of(box);
+    if (!l || !l->contents) return;
+    double grow = 0;
+    for (GtkWidget *c = gtk_widget_get_first_child(box); c; c = gtk_widget_get_next_sibling(c)) {
+        SnglLook *cl = sngl_look_of(c);
+        if (cl && cl->grow_box == box && cl->grow > grow) grow = cl->grow;
+    }
+    if (grow == l->grow) return;
+    l->grow = grow;
+    if (grow > 0) sngl_look_watch_parent(box, l);
+    sngl_look_place(box);
+    if (l->grow_box) sngl_box_update(l->grow_box);
 }
 
 static void sngl_look_place_kids(GtkWidget *box) {
@@ -759,6 +785,16 @@ func SetLook(w Handle, l Look) {
 	C.sngl_set_look(widget(w), css, C.int(math.Round(l.Width)), C.int(math.Round(l.Height)), C.double(l.Grow),
 		C.int(l.Cross), C.int(l.TextAlign), C.int(l.Lines), C.int(l.Wrap), C.int(bool01(l.Hidden)), cursor,
 		C.int(l.Justify), C.int(bool01(l.Spaced)), C.int(l.Spacing))
+}
+
+// ContentsNew is the box an instance of a component holds its widgets in,
+// which the program never wrote: a child growing in it grows the box too, in
+// the box it sits in, as CSS's display: contents makes its children that
+// box's items.
+func ContentsNew() Handle {
+	box := BoxNew(OrientationVertical, 6)
+	C.sngl_look_ensure(widget(box)).contents = 1
+	return box
 }
 
 func bool01(b bool) int {

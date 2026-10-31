@@ -1458,7 +1458,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(retExpr))
 	case wrapped:
 		var tb strings.Builder
-		tb.WriteString("\t__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)\n")
+		fmt.Fprintf(&tb, "\t__box := %s\n", contentsBox(compGC, wrapped))
 		for _, ref := range tops {
 			childRef := tr.qualifyNodeExpr(&ir.Ident{Name: ref, IsElementRef: true, Synthesized: true})
 			fmt.Fprintf(&tb, "\tgtk4rt.BoxAppend(__box, %s)\n", compGC.EvalExpr(childRef))
@@ -1467,9 +1467,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 		trailer = tb.String()
 	default:
 		var tb strings.Builder
-		boxCtorCall := nativeCall("gtk_box_new", ir.NativePointerOf("GtkWidget"), cOrientationVertical(), intLit("6"))
-		boxInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: boxCtorCall}
-		fmt.Fprintf(&tb, "\t__box := %s\n", compGC.EvalExpr(boxInit))
+		fmt.Fprintf(&tb, "\t__box := %s\n", contentsBox(compGC, wrapped))
 		boxRef := &ir.Ident{Name: "__box"}
 		for _, ref := range tops {
 			childRef := tr.qualifyNodeExpr(&ir.Ident{Name: ref, IsElementRef: true, Synthesized: true})

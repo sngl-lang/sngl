@@ -640,7 +640,7 @@ func newNestInstance(__model *Model, __a_tag string, __a_depth int, __a_note fun
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	c.__root = gtk4rt.ContentsNew()
 	c.__slot0 = nil
 	c.__inst0_live = []*NestInstance{}
 	c.__rendering0 = false
@@ -1309,7 +1309,7 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:ad43060835daf52eb6528e1823cdfcb7
 -- run/go/gtk4 --
-pass sha256:3de39f5d86aaf16f625aac1f97524277
+pass sha256:49f6a19e9afe182310c0b795ee33fdd5
 -- run/kotlin/android --
 pass sha256:b7b519e8140cb3a0efeacf45f9156a09
 -- run/none/html --
