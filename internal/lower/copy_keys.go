@@ -155,7 +155,11 @@ func (st *copyKeys) stamp(stmts []ir.Stmt, loops []*ir.For, prefix *ir.Param, ro
 				setCopyProp(n, key)
 			}
 		}
-		if isNode && st.rootProps {
+		// A component built at run time declares no root prop, and what it
+		// draws is in its own body: a request a page writes with its value
+		// unbound, under a `for`, had every copy's reuse push a prop it has no
+		// setter for. The instance is found by its other roots.
+		if isNode && st.rootProps && !hasRealComponentBody(n.Component) {
 			for _, id := range slices.Sorted(maps.Keys(here)) {
 				var key ir.Expr = stringLit("")
 				if st.indexed[id] {

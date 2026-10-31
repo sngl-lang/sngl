@@ -1,0 +1,55 @@
+// A spliced instance a test null-tests whose roots include a query under a
+// `for`: each copy's query is a component built at run time, which carries no
+// node a target could find, so the instance is found by its other roots.
+
+import async "sngl:async"
+import nav "sngl:ui/nav"
+import . "sngl:test"
+import . "sngl:ui"
+
+var seen list[string] = []
+
+func lookup(name string) async.Result[int] {
+    return {ok=name.length()}
+}
+
+// A request a page writes with its value unbound, as an OpenAPI import's are.
+component lengthOf(name string, :value option[int] = null, @load(n int)) node {
+    async.query(on=name, fetch=lookup, :value=value, @load(got) { load(got) })
+}
+
+component shelf node {
+    var names = ["fig", "kiwi"]
+    for var n = names {
+        lengthOf(name=n, @load(got) { seen.push("{n} {got}") })
+    }
+    text #count(value="{names.length()}")
+    button #add(text="Add", @click { names.push("plum") })
+}
+
+component app node {
+    nav.stack #pages {
+        nav.page #home(href="/", title="Home") {
+            shelf #list
+        }
+    }
+}
+
+component root node {
+    app #app
+}
+
+func testTheShelfIsFoundByItsOtherRoot(t Test, c root) {
+    t.wait(func() => c.app.list != null && c.app.list.count != null, 5000)
+    t.assert(c.app.list != null && c.app.list.count != null && c.app.list.count.value == "2")
+    t.assert(seen.join(",") == "fig 3,kiwi 4")
+    if c.app.list != null {
+        c.app.list.add.click()
+    }
+    t.assert(seen.join(",") == "fig 3,kiwi 4,plum 4")
+    t.assert(c.app.list != null && c.app.list.count != null && c.app.list.count.value == "3")
+}
+
+window {
+    root
+}

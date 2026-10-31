@@ -381,7 +381,11 @@ the instance's id in `NodeInst.Instances` (`ir.InstancesOf`). bubbletea's
 view answers from those. On every other compiled target `passCopyKeys` stamps
 each root node `ir.InstanceRootProp` (`__instance_<id>`), holding the key of
 the copy the instance stands in -- the loops around where it was written,
-not a `for` of its own body -- or "" for one rendered once: html writes it as
+not a `for` of its own body -- or "" for one rendered once. A root that is
+a component built at run time is left unstamped: it declares no such prop,
+and a reactive `for`'s reuse pushed it to a setter none has, which refused
+the Pokédex's home once each card asked for its species
+(`testdata/null_test_instance_query_in_loop.sngl`): html writes it as
 `data-sngl-root-<id>`; fyne and gtk4 list the root in the instance's
 `__copies_<id>` or `__present_<id>`, take it out where a render removes it
 and where a record that listed it is destroyed (`__rooted`,
