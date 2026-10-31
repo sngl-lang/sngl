@@ -843,6 +843,11 @@ func (c *stmtCloner) stmt(s ir.Stmt) ir.Stmt {
 		return &cp
 	case *ir.Assign:
 		cp := *n
+		// The target too: `names["species/{slug}"] = …` in a handler shared
+		// its index with the declaration's body, so the first splice's
+		// substitution of `slug` wrote its argument into the declaration, and
+		// every later splice of it keyed its write by the first one's.
+		cp.Target = cloneExpr(n.Target)
 		cp.Value = cloneExpr(n.Value)
 		return &cp
 	case *ir.CallStmt:

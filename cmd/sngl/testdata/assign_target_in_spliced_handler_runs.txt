@@ -1,0 +1,95 @@
+# A handler a component's body writes, assigning to an index that reads a
+# prop, writes what each call site handed it. The optimizer splices such a
+# body where a constant prop folds a branch away, and its copy shared the
+# assignment's target with the declaration, so the first splice's argument
+# was written into the declaration and every later copy wrote under the
+# first one's key -- the Pokédex's names, all filed under the slug of a type
+# on a page the test never opened.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+var written map[string, int] = {}
+
+component tally(kind string, word string) ui.node {
+    if kind == "a" {
+        effect(@mount { written["a/{word}"] = 1 })
+    } else {
+        effect(@mount { written["b/{word}"] = 2 })
+    }
+    ui.text(value=word)
+}
+
+component pair ui.node {
+    var first = "fig"
+    var second = "kiwi"
+
+    tally(kind="a", word=first)
+    tally(kind="b", word=second)
+}
+
+func testEachCopyWritesItsOwnKey(t test.Test, c pair) {
+    t.assert(written.get("a/fig", 0) == 1)
+    t.assert(written.get("b/kiwi", 0) == 2)
+    t.assert(written.length() == 2)
+}
+
+ui.window {
+    pair
+}
+-- testrun/bubbletea/go/app.sngl/pair/1 --
+sha256:88da9c3cef85a3e86181850282b7f832
+{
+  "results": [
+    {
+      "Desc": "EachCopyWritesItsOwnKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/pair/1 --
+sha256:2fa5b8f7c8ffdc7469f4f7a0a770593e
+{
+  "results": [
+    {
+      "Desc": "EachCopyWritesItsOwnKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/pair/1 --
+sha256:438fbc1a89468db1c51200e3a3d047d7
+{
+  "results": [
+    {
+      "Desc": "EachCopyWritesItsOwnKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/pair/1 --
+sha256:7b95669861668275325917afb4999b76
+{
+  "results": [
+    {
+      "Desc": "EachCopyWritesItsOwnKey",
+      "Passed": true
+    }
+  ]
+}

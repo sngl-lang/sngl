@@ -563,40 +563,80 @@ func cellReadError(w *ir.Component, v *ir.Var, copies int) error {
 // The call names the declaration's method and a handle, and the splice renamed
 // neither: left alone it came out as `m.details.open()`, a field and a method
 // no emitted type has. A handle whose node was rendered more than once cannot
-// say which copy the call means, the rule repointCellReads holds a read to.
+// say which copy the call means, the rule repointCellReads holds a read to --
+// unless one copy was hoisted onto the owner the call is in (owner): a
+// component built at run time splices the node into its own body, and spliced
+// whole elsewhere it carries a copy of that clone to the owner it lands in.
 //
 // What no splice answered is refused by refuseUnsplicedHandleCalls, once the
 // components nothing renders are gone.
-func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.Func) error {
+func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.Func, owner map[*ir.Func]*[]*ir.Func) error {
 	if len(methods) == 0 {
 		return nil
 	}
 	var bad error
-	err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
-		call, ok := n.(*ir.Call)
-		if !ok || call.Func == nil {
-			return n, nil
-		}
-		h, asArg := handleReceiver(call)
-		if h == nil {
-			return n, nil
-		}
-		clones := methods[h][call.Func]
-		switch {
-		case len(clones) == 1:
-			call.Func, call.Receiver = clones[0], nil
-			if asArg {
-				call.Args = slices.Delete(slices.Clone(call.Args), 0, 1)
+	repoint := func(root any, funcs *[]*ir.Func) {
+		_ = ir.Rewrite(root, func(n ir.Node) (ir.Node, error) {
+			call, ok := n.(*ir.Call)
+			if !ok || call.Func == nil {
+				return n, nil
 			}
-		case len(clones) > 1 && bad == nil:
-			bad = fmt.Errorf("%s: `#%s` is rendered more than once, so a call of its %s cannot say which copy it means; give each copy its own id", handleCallPos(call), h.WrittenName(), call.Func.Name)
-		}
-		return n, nil
-	})
-	if err != nil {
-		return err
+			h, asArg := handleReceiver(call)
+			if h == nil {
+				return n, nil
+			}
+			clones := methods[h][call.Func]
+			if len(clones) > 1 && funcs != nil {
+				var own []*ir.Func
+				for _, c := range clones {
+					if owner[c] == funcs {
+						own = append(own, c)
+					}
+				}
+				if len(own) == 1 {
+					clones = own
+				}
+			}
+			switch {
+			case len(clones) == 1:
+				pointCallAt(call, clones[0], asArg)
+			case len(clones) > 1 && bad == nil && funcs == nil:
+				bad = fmt.Errorf("%s: `#%s` is rendered more than once, so a call of its %s cannot say which copy it means; give each copy its own id", handleCallPos(call), h.WrittenName(), call.Func.Name)
+			}
+			return n, nil
+		})
 	}
+	// Each component's own first, its methods being the package's funcs too,
+	// then the package's, then whatever is left, which no owner told apart.
+	methodsOf := map[*ir.Func]bool{}
+	for _, c := range pkg.Components {
+		repoint(c.Stmts, &c.Funcs)
+		for _, f := range c.Funcs {
+			repoint(f, &c.Funcs)
+			methodsOf[f] = true
+		}
+	}
+	repoint(pkg.Body, &pkg.Funcs)
+	for _, f := range pkg.Funcs {
+		if !methodsOf[f] {
+			repoint(f, &pkg.Funcs)
+		}
+	}
+	repoint(pkg, nil)
 	return bad
+}
+
+// pointCallAt makes call, a call through a handle, a call of clone.
+func pointCallAt(call *ir.Call, clone *ir.Func, asArg bool) {
+	call.Func, call.Receiver = clone, nil
+	if asArg {
+		call.Args = slices.Delete(slices.Clone(call.Args), 0, 1)
+	}
+	// Handed a copy's key under loops (nodeMethods) that the clone, touching
+	// no cell, does not take.
+	if len(call.Args) > len(clone.Params) {
+		call.Args = call.Args[:len(clone.Params)]
+	}
 }
 
 // refuseUnsplicedHandleCalls reports a method called through a node's `#id`
