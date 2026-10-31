@@ -16,7 +16,11 @@ import androidx.compose.ui.unit.Constraints
 // unbounded axis -- a Row in a horizontal scroll, a Column in a vertical one --
 // to nothing, where html's flex takes the content's size; so a marked line
 // with no bound along it is bounded by its content's, and the weights share
-// that. Only a marked one asks, since asking costs a pass over the subtree.
+// that. A marked line also marks the line it sits in across it, as html's
+// stretched row fills its column: a column with no bound across it is then as
+// wide as its widest row, which each row fills, so the rows' shares line up as
+// a table's columns. Only a marked one asks, since asking costs a pass over
+// the subtree.
 fun Modifier.snglFlexible(horizontal: Boolean): Modifier = this then FlexibleElement(horizontal)
 
 fun Modifier.snglFlexed(): Modifier = this then FlexedElement
@@ -33,7 +37,38 @@ private data class FlexibleElement(val horizontal: Boolean) : ModifierNodeElemen
 
 private class FlexibleNode(var horizontal: Boolean) : Modifier.Node(), LayoutModifierNode, TraversableNode {
     override val traverseKey: Any get() = FlexibleKey
-    var flexed = 0
+    private var outer: FlexibleNode? = null
+    private var flexed = 0
+    private var across = 0
+
+    fun flex(by: Int) {
+        val was = flexed > 0
+        flexed += by
+        if (was != flexed > 0) cross(if (flexed > 0) 1 else -1)
+        invalidateMeasurement()
+    }
+
+    private fun cross(by: Int) {
+        outer?.takeIf { it.horizontal != horizontal }?.let {
+            it.across += by
+            it.invalidateMeasurement()
+        }
+    }
+
+    // Compose runs a parent's onAttach after its children's, so a line may
+    // already be marked when it finds the line it sits in.
+    override fun onAttach() {
+        traverseAncestors(FlexibleKey) {
+            outer = it as FlexibleNode
+            false
+        }
+        if (flexed > 0) cross(1)
+    }
+
+    override fun onDetach() {
+        if (flexed > 0) cross(-1)
+        outer = null
+    }
 
     override fun MeasureScope.measure(measurable: Measurable, constraints: Constraints): MeasureResult {
         val placeable = measurable.measure(bounded(measurable, constraints))
@@ -41,18 +76,20 @@ private class FlexibleNode(var horizontal: Boolean) : Modifier.Node(), LayoutMod
     }
 
     private fun bounded(measurable: Measurable, c: Constraints): Constraints {
-        if (flexed == 0) return c
+        var out = c
         // A SubcomposeLayout -- a pager, a lazy list -- refuses to be asked
         // its intrinsic size; the line then measures as Compose would.
-        return try {
-            when {
-                horizontal && !c.hasBoundedWidth -> c.copy(maxWidth = maxOf(c.minWidth, measurable.maxIntrinsicWidth(c.maxHeight)))
-                !horizontal && !c.hasBoundedHeight -> c.copy(maxHeight = maxOf(c.minHeight, measurable.maxIntrinsicHeight(c.maxWidth)))
-                else -> c
+        try {
+            if ((flexed > 0 && horizontal || across > 0 && !horizontal) && !out.hasBoundedWidth) {
+                out = out.copy(maxWidth = maxOf(out.minWidth, measurable.maxIntrinsicWidth(out.maxHeight)))
+            }
+            if ((flexed > 0 && !horizontal || across > 0 && horizontal) && !out.hasBoundedHeight) {
+                out = out.copy(maxHeight = maxOf(out.minHeight, measurable.maxIntrinsicHeight(out.maxWidth)))
             }
         } catch (_: IllegalStateException) {
-            c
+            return c
         }
+        return out
     }
 }
 
@@ -71,17 +108,11 @@ private class FlexedNode : Modifier.Node() {
             line = it as FlexibleNode
             false
         }
-        line?.let {
-            it.flexed++
-            it.invalidateMeasurement()
-        }
+        line?.flex(1)
     }
 
     override fun onDetach() {
-        line?.let {
-            it.flexed--
-            it.invalidateMeasurement()
-        }
+        line?.flex(-1)
         line = null
     }
 }
