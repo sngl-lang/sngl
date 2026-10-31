@@ -168,7 +168,6 @@ type Style struct {
 	Opacity        *float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -256,8 +255,8 @@ func SeedOf(s Style) SpanStyle {
 
 func BoxLook(s Style, words bool) lipgloss.Style {
 	if func(_a1, _b2 Style) bool {
-		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
-	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
@@ -512,7 +511,7 @@ func (m Model) View() tea.View {
 		if content_0Focused {
 			content_0Prefix = ">"
 		}
-		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("toggle"))
+		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("toggle"))
 		contentChildren = append(contentChildren, content_0)
 		var __lt19 string
 		if m.on {
@@ -521,7 +520,7 @@ func (m Model) View() tea.View {
 			__lt19 = "normal"
 		}
 		var content_3 string
-		content_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt19, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("weight"))
+		content_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt19, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("weight"))
 		contentChildren = append(contentChildren, content_3)
 		var __lt20 string
 		if m.on {
@@ -536,16 +535,16 @@ func (m Model) View() tea.View {
 			__lt21 = "right"
 		}
 		var content_8 string
-		content_8 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: __lt20, TextAlign: __lt21, WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("slant"))
+		content_8 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: __lt20, TextAlign: __lt21, WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("slant"))
 		contentChildren = append(contentChildren, content_8)
 		var content_9 string
-		content_9 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("still"))
+		content_9 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("still"))
 		contentChildren = append(contentChildren, content_9)
 		var content_10 string
-		content_10 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "left", WhiteSpace: "unset", BorderWidth: snglSome(Measurement{Px: 0}), BorderStyle: "unset", Opacity: snglSome(1.0), Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("left"))
+		content_10 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "left", WhiteSpace: "unset", BorderWidth: snglSome(Measurement{Px: 0}), BorderStyle: "unset", Opacity: snglSome(1.0), Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("left"))
 		contentChildren = append(contentChildren, content_10)
 		var content_11 string
-		content_11 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "justify", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("justified"))
+		content_11 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "justify", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("justified"))
 		contentChildren = append(contentChildren, content_11)
 		var __lt23 string
 		if m.on {
@@ -560,7 +559,7 @@ func (m Model) View() tea.View {
 			__lt23 = __lt22
 		}
 		var content_14 string
-		content_14 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: __lt23, WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("nested"))
+		content_14 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: __lt23, WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("nested"))
 		contentChildren = append(contentChildren, content_14)
 		var __lt24 Measurement
 		if m.on {
@@ -569,7 +568,7 @@ func (m Model) View() tea.View {
 			__lt24 = Measurement{Px: 10}
 		}
 		var content_17 string
-		content_17 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(Measurement{Px: __lt24.Px * 2, Em: __lt24.Em * 2, Rem: __lt24.Rem * 2}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("grown"))
+		content_17 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(Measurement{Px: __lt24.Px * 2, Em: __lt24.Em * 2, Rem: __lt24.Rem * 2}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("grown"))
 		contentChildren = append(contentChildren, content_17)
 		var __lt25 Measurement
 		if m.on {
@@ -608,10 +607,10 @@ func (m Model) View() tea.View {
 			__lt30 = snglcolor.Color{G: 255, A: 255}
 		}
 		var content_30 string
-		content_30 = BoxLook(Style{Padding: snglSome(__lt25), Width: snglSome(__lt26), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt30), FontSize: snglSome(__lt27), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderWidth: snglSome(__lt29), BorderStyle: "unset", Opacity: snglSome(__lt28), Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("box"))
+		content_30 = BoxLook(Style{Padding: snglSome(__lt25), Width: snglSome(__lt26), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt30), FontSize: snglSome(__lt27), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderWidth: snglSome(__lt29), BorderStyle: "unset", Opacity: snglSome(__lt28), Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("box"))
 		contentChildren = append(contentChildren, content_30)
 		var content_31 string
-		content_31 = BoxLook(Style{PaddingLeft: snglSome(Measurement{Px: Measurement{Px: 8}.Px * float64(m.n), Em: Measurement{Px: 8}.Em * float64(m.n), Rem: Measurement{Px: 8}.Rem * float64(m.n)}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("scaled"))
+		content_31 = BoxLook(Style{PaddingLeft: snglSome(Measurement{Px: Measurement{Px: 8}.Px * float64(m.n), Em: Measurement{Px: 8}.Em * float64(m.n), Rem: Measurement{Px: 8}.Rem * float64(m.n)}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("scaled"))
 		contentChildren = append(contentChildren, content_31)
 		var __lt31 string
 		if m.on {
@@ -638,7 +637,7 @@ func (m Model) View() tea.View {
 			__lt34 = Measurement{Px: 12}
 		}
 		var content_40 string
-		content_40Seed := SeedOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(__lt34), FontWeight: __lt33, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
+		content_40Seed := SeedOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(__lt34), FontWeight: __lt33, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"})
 		_ = content_40Seed
 		_ = content_40Seed
 		_ = content_40Seed
@@ -680,10 +679,10 @@ func (m Model) View() tea.View {
 			__lt39 = snglcolor.Color{R: 255, A: 255}
 		}
 		content_40 += lipgloss.NewStyle().Foreground(lipgloss.Color(__lt39.Or(content_40Seed.Color.Or("")))).Bold((content_40Seed.FontWeight == "bold" || content_40Seed.FontWeight == "bolder")).Italic((content_40Seed.FontStyle == "italic" || content_40Seed.FontStyle == "oblique")).Underline(content_40Seed.Underline).Strikethrough(content_40Seed.Strike).Faint((content_40Seed.FontWeight == "lighter")).Render(fmt.Sprint(" tinted"))
-		content_40 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(__lt32), FontWeight: __lt31, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, false).Render(content_40)
+		content_40 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(__lt32), FontWeight: __lt31, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, false).Render(content_40)
 		contentChildren = append(contentChildren, content_40)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
+		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -804,7 +803,6 @@ data class Style(
     var opacity: Double? = null,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.UNSET,
-    var overflow: SnglOverflow = SnglOverflow.UNSET,
     var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
@@ -932,16 +930,6 @@ enum class SnglDisplay(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
-enum class SnglOverflow(private val sngl: String) {
-    UNSET("unset"),
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
-
-    override fun toString(): String = sngl
-}
-
 enum class SnglListStyle(private val sngl: String) {
     UNSET("unset"),
     NONE("none"),
@@ -1059,6 +1047,6 @@ fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.u
 
 fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
 -- run/go/bubbletea --
-pass sha256:cf6e532d6a0affc4432fbf479c8574e3
+pass sha256:2fc153ef0d99379caf506ae74af3b92a
 -- run/kotlin/android --
 pass sha256:af826b50f57b6d6e12314faea6550b8e

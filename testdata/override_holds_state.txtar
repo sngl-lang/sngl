@@ -152,7 +152,6 @@ type Style struct {
 	Opacity        *float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -241,8 +240,8 @@ func RowsOf(m__r0 *Measurement) int {
 
 func BoxLook(s Style, words bool) lipgloss.Style {
 	if func(_a1, _b2 Style) bool {
-		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.Overflow == _b2.Overflow) && (_a1.ListStyleType == _b2.ListStyleType)
-	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
+		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.ListStyleType == _b2.ListStyleType)
+	}(s, Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
@@ -851,7 +850,7 @@ func (m Model) View() tea.View {
 		if part0_0Focused {
 			part0_0Prefix = ">"
 		}
-		part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint(("top " + fmt.Sprint(m.hits__inst0))))
+		part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint(("top " + fmt.Sprint(m.hits__inst0))))
 		part0Children = append(part0Children, part0_0)
 		var part0_1 string
 		__focusPos1 := 0
@@ -866,7 +865,7 @@ func (m Model) View() tea.View {
 			if part0_1ItemFocused {
 				part0_1ItemPrefix = ">"
 			}
-			part0_1Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_1ItemPrefix + " " + fmt.Sprint(((r + " ") + fmt.Sprint(func() int {
+			part0_1Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1ItemPrefix + " " + fmt.Sprint(((r + " ") + fmt.Sprint(func() int {
 				if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
 					return __v
 				}
@@ -890,7 +889,7 @@ func (m Model) View() tea.View {
 			if part0_2Part_0Focused {
 				part0_2Part_0Prefix = ">"
 			}
-			part0_2Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_2Part_0Prefix + " " + fmt.Sprint(("if " + fmt.Sprint(m.hits__inst2))))
+			part0_2Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2Part_0Prefix + " " + fmt.Sprint(("if " + fmt.Sprint(m.hits__inst2))))
 			part0_2Parts = append(part0_2Parts, part0_2Part_0)
 			var part0_2Part_1 string
 			part0_2Part_1Focused := (m.__focusID == 3)
@@ -898,7 +897,7 @@ func (m Model) View() tea.View {
 			if part0_2Part_1Focused {
 				part0_2Part_1Prefix = ">"
 			}
-			part0_2Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_2Part_1Prefix + " " + fmt.Sprint("hide"))
+			part0_2Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2Part_1Prefix + " " + fmt.Sprint("hide"))
 			part0_2Parts = append(part0_2Parts, part0_2Part_1)
 			part0_2 = tui.Spaced(false, lipgloss.Left, 0, part0_2Parts...)
 		}
@@ -906,7 +905,7 @@ func (m Model) View() tea.View {
 			part0Children = append(part0Children, part0_2)
 		}
 		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
-		part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0)
+		part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0)
 	}
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
@@ -1097,9 +1096,6 @@ func __merge_Style(base, ov Style) Style {
 	if ov.Display != "unset" {
 		base.Display = ov.Display
 	}
-	if ov.Overflow != "unset" {
-		base.Overflow = ov.Overflow
-	}
 	if ov.ListStyleType != "unset" {
 		base.ListStyleType = ov.ListStyleType
 	}
@@ -1163,7 +1159,6 @@ type Style struct {
 	Opacity        *float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -1491,12 +1486,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						__n3.SetSize("medium")
 						__n3.SetVariant("circle")
 						__n3.SetAlt("")
-						__n3.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
+						__n3.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"})
 					} else {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n3__new := newAvatarInstance(m, r, "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, func() {
+						__n3__new := newAvatarInstance(m, r, "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, func() {
 						})
 						__n3 = __n3__new
 					}
@@ -1545,12 +1540,12 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 						__n4.SetSize("medium")
 						__n4.SetVariant("circle")
 						__n4.SetAlt("")
-						__n4.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
+						__n4.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"})
 					} else {
 						if len(m.__inst1_live) > __inst1_i {
 							m.__inst1_live[__inst1_i].Destroy()
 						}
-						__n4__new := newAvatarInstance(m, "if", "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, func() {
+						__n4__new := newAvatarInstance(m, "if", "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, func() {
 						})
 						__n4 = __n4__new
 					}
@@ -1699,7 +1694,7 @@ func newAvatarInstance(__model *Model, __a_initials string, __a_size string, __a
 	c.__n0 = widget.NewButton("", nil)
 	c.__n0__box = fynelayout.NewBox(c.__n0)
 	c.__n0.SetText(((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
-	c.__n0__box.SetLook(LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, c.__prop_style)))
+	c.__n0__box.SetLook(LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, c.__prop_style)))
 	c.__n0.OnTapped = func() {
 		c.hits = (c.hits + 1)
 		c.__n0.SetText(((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
@@ -1727,7 +1722,7 @@ func (c *AvatarInstance) SetAlt(__v string) {
 
 func (c *AvatarInstance) SetStyle(__v Style) {
 	c.__prop_style = __v
-	c.__n0__box.SetLook(LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, c.__prop_style)))
+	c.__n0__box.SetLook(LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, c.__prop_style)))
 }
 
 func (c *AvatarInstance) SetClick(__v func()) {
@@ -1927,9 +1922,6 @@ func __merge_Style(base, ov Style) Style {
 	if ov.Display != "unset" {
 		base.Display = ov.Display
 	}
-	if ov.Overflow != "unset" {
-		base.Overflow = ov.Overflow
-	}
 	if ov.ListStyleType != "unset" {
 		base.ListStyleType = ov.ListStyleType
 	}
@@ -1993,7 +1985,6 @@ type Style struct {
 	Opacity        *float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -2105,298 +2096,291 @@ func LookHidden(s Style, hidden bool, spaced bool, spacing int) gtk4rt.Look {
 	default:
 		__lt8 = 0
 	}
-	var __lt9 bool
-	switch s.Overflow {
-	case "hidden", "scroll", "auto":
-		__lt9 = true
-	default:
-		__lt9 = false
-	}
-	var __lt10 int
+	var __lt9 int
 	switch s.JustifyContent {
 	case "center":
-		__lt10 = 1
+		__lt9 = 1
 	case "end":
-		__lt10 = 2
+		__lt9 = 2
 	case "spaceBetween":
-		__lt10 = 3
+		__lt9 = 3
 	case "spaceAround":
-		__lt10 = 4
+		__lt9 = 4
 	case "spaceEvenly":
-		__lt10 = 5
+		__lt9 = 5
 	default:
-		__lt10 = 0
+		__lt9 = 0
 	}
-	look := gtk4rt.Look{Css: CssOf(s), Width: __lt2, Height: __lt3, Grow: __lt4, Cross: __lt5, TextAlign: __lt6, Lines: __lt7, Wrap: __lt8, Clip: __lt9, Hidden: hidden, Cursor: s.Cursor, Justify: __lt10, Spaced: spaced, Spacing: spacing}
+	look := gtk4rt.Look{Css: CssOf(s), Width: __lt2, Height: __lt3, Grow: __lt4, Cross: __lt5, TextAlign: __lt6, Lines: __lt7, Wrap: __lt8, Hidden: hidden, Cursor: s.Cursor, Justify: __lt9, Spaced: spaced, Spacing: spacing}
 	return look
 }
 
 func CssOf(s Style) string {
-	var __lt12 *Measurement
+	var __lt11 *Measurement
 	if s.MarginTop != nil {
-		__lt12 = s.MarginTop
+		__lt11 = s.MarginTop
 	} else {
-		var __lt11 *Measurement
+		var __lt10 *Measurement
 		if s.MarginY != nil {
-			__lt11 = s.MarginY
+			__lt10 = s.MarginY
 		} else {
-			__lt11 = s.Margin
+			__lt10 = s.Margin
 		}
-		__lt12 = __lt11
+		__lt11 = __lt10
 	}
-	var __lt14 *Measurement
+	var __lt13 *Measurement
 	if s.MarginRight != nil {
-		__lt14 = s.MarginRight
+		__lt13 = s.MarginRight
 	} else {
-		var __lt13 *Measurement
+		var __lt12 *Measurement
 		if s.MarginX != nil {
-			__lt13 = s.MarginX
+			__lt12 = s.MarginX
 		} else {
-			__lt13 = s.Margin
+			__lt12 = s.Margin
 		}
-		__lt14 = __lt13
+		__lt13 = __lt12
 	}
-	var __lt16 *Measurement
+	var __lt15 *Measurement
 	if s.MarginBottom != nil {
-		__lt16 = s.MarginBottom
+		__lt15 = s.MarginBottom
 	} else {
-		var __lt15 *Measurement
+		var __lt14 *Measurement
 		if s.MarginY != nil {
-			__lt15 = s.MarginY
+			__lt14 = s.MarginY
 		} else {
-			__lt15 = s.Margin
+			__lt14 = s.Margin
 		}
-		__lt16 = __lt15
+		__lt15 = __lt14
 	}
-	var __lt18 *Measurement
+	var __lt17 *Measurement
 	if s.MarginLeft != nil {
-		__lt18 = s.MarginLeft
+		__lt17 = s.MarginLeft
 	} else {
-		var __lt17 *Measurement
+		var __lt16 *Measurement
 		if s.MarginX != nil {
-			__lt17 = s.MarginX
+			__lt16 = s.MarginX
 		} else {
-			__lt17 = s.Margin
+			__lt16 = s.Margin
 		}
-		__lt18 = __lt17
+		__lt17 = __lt16
 	}
-	var __lt20 *Measurement
+	var __lt19 *Measurement
 	if s.PaddingTop != nil {
-		__lt20 = s.PaddingTop
+		__lt19 = s.PaddingTop
 	} else {
-		var __lt19 *Measurement
+		var __lt18 *Measurement
 		if s.PaddingY != nil {
-			__lt19 = s.PaddingY
+			__lt18 = s.PaddingY
 		} else {
-			__lt19 = s.Padding
+			__lt18 = s.Padding
 		}
-		__lt20 = __lt19
+		__lt19 = __lt18
 	}
-	var __lt22 *Measurement
+	var __lt21 *Measurement
 	if s.PaddingRight != nil {
-		__lt22 = s.PaddingRight
+		__lt21 = s.PaddingRight
 	} else {
-		var __lt21 *Measurement
+		var __lt20 *Measurement
 		if s.PaddingX != nil {
-			__lt21 = s.PaddingX
+			__lt20 = s.PaddingX
 		} else {
-			__lt21 = s.Padding
+			__lt20 = s.Padding
 		}
-		__lt22 = __lt21
+		__lt21 = __lt20
 	}
-	var __lt24 *Measurement
+	var __lt23 *Measurement
 	if s.PaddingBottom != nil {
-		__lt24 = s.PaddingBottom
+		__lt23 = s.PaddingBottom
 	} else {
-		var __lt23 *Measurement
+		var __lt22 *Measurement
 		if s.PaddingY != nil {
-			__lt23 = s.PaddingY
+			__lt22 = s.PaddingY
 		} else {
-			__lt23 = s.Padding
+			__lt22 = s.Padding
 		}
-		__lt24 = __lt23
+		__lt23 = __lt22
 	}
-	var __lt26 *Measurement
+	var __lt25 *Measurement
 	if s.PaddingLeft != nil {
-		__lt26 = s.PaddingLeft
+		__lt25 = s.PaddingLeft
 	} else {
-		var __lt25 *Measurement
+		var __lt24 *Measurement
 		if s.PaddingX != nil {
-			__lt25 = s.PaddingX
+			__lt24 = s.PaddingX
 		} else {
-			__lt25 = s.Padding
+			__lt24 = s.Padding
 		}
-		__lt26 = __lt25
+		__lt25 = __lt24
+	}
+	var __lt27 string
+	if s.MinWidth == nil {
+		__lt27 = ""
+	} else {
+		var __lt26 float64
+		if s.MinWidth == nil {
+			__lt26 = 0.0
+		} else {
+			__lt26 = max(((*(s.MinWidth)).Px + (16.0 * ((*(s.MinWidth)).Em + (*(s.MinWidth)).Rem))), 0.0)
+		}
+		__lt27 = (fmt.Sprint(__lt26) + "px")
 	}
 	var __lt28 string
-	if s.MinWidth == nil {
+	if s.Color == nil {
 		__lt28 = ""
 	} else {
-		var __lt27 float64
-		if s.MinWidth == nil {
-			__lt27 = 0.0
-		} else {
-			__lt27 = max(((*(s.MinWidth)).Px + (16.0 * ((*(s.MinWidth)).Em + (*(s.MinWidth)).Rem))), 0.0)
-		}
-		__lt28 = (fmt.Sprint(__lt27) + "px")
+		__lt28 = (*(s.Color)).Hex()
 	}
-	var __lt29 string
-	if s.Color == nil {
-		__lt29 = ""
+	var __lt30 string
+	if s.FontSize == nil {
+		__lt30 = ""
 	} else {
-		__lt29 = (*(s.Color)).Hex()
+		var __lt29 float64
+		if s.FontSize == nil {
+			__lt29 = 0.0
+		} else {
+			__lt29 = max(((*(s.FontSize)).Px + (16.0 * ((*(s.FontSize)).Em + (*(s.FontSize)).Rem))), 0.0)
+		}
+		__lt30 = (fmt.Sprint(__lt29) + "px")
 	}
 	var __lt31 string
-	if s.FontSize == nil {
+	if s.FontFamily == "" {
 		__lt31 = ""
 	} else {
-		var __lt30 float64
-		if s.FontSize == nil {
-			__lt30 = 0.0
-		} else {
-			__lt30 = max(((*(s.FontSize)).Px + (16.0 * ((*(s.FontSize)).Em + (*(s.FontSize)).Rem))), 0.0)
-		}
-		__lt31 = (fmt.Sprint(__lt30) + "px")
+		__lt31 = (("font-family: " + s.FontFamily) + "; ")
 	}
 	var __lt32 string
-	if s.FontFamily == "" {
-		__lt32 = ""
-	} else {
-		__lt32 = (("font-family: " + s.FontFamily) + "; ")
-	}
-	var __lt33 string
 	switch s.FontWeight {
 	case "normal":
-		__lt33 = "normal"
+		__lt32 = "normal"
 	case "bold":
-		__lt33 = "bold"
+		__lt32 = "bold"
 	case "bolder":
-		__lt33 = "bolder"
+		__lt32 = "bolder"
 	case "lighter":
-		__lt33 = "lighter"
+		__lt32 = "lighter"
+	default:
+		__lt32 = ""
+	}
+	var __lt33 string
+	switch s.FontStyle {
+	case "normal":
+		__lt33 = "normal"
+	case "italic":
+		__lt33 = "italic"
+	case "oblique":
+		__lt33 = "oblique"
 	default:
 		__lt33 = ""
 	}
 	var __lt34 string
-	switch s.FontStyle {
-	case "normal":
-		__lt34 = "normal"
-	case "italic":
-		__lt34 = "italic"
-	case "oblique":
-		__lt34 = "oblique"
-	default:
-		__lt34 = ""
-	}
-	var __lt35 string
 	if s.Background == nil {
-		__lt35 = ""
+		__lt34 = ""
 	} else {
-		__lt35 = (*(s.Background)).Hex()
+		__lt34 = (*(s.Background)).Hex()
+	}
+	var __lt36 string
+	if s.BorderRadius == nil {
+		__lt36 = ""
+	} else {
+		var __lt35 float64
+		if s.BorderRadius == nil {
+			__lt35 = 0.0
+		} else {
+			__lt35 = max(((*(s.BorderRadius)).Px + (16.0 * ((*(s.BorderRadius)).Em + (*(s.BorderRadius)).Rem))), 0.0)
+		}
+		__lt36 = (fmt.Sprint(__lt35) + "px")
 	}
 	var __lt37 string
-	if s.BorderRadius == nil {
+	if s.BorderColor == nil {
 		__lt37 = ""
 	} else {
-		var __lt36 float64
-		if s.BorderRadius == nil {
-			__lt36 = 0.0
-		} else {
-			__lt36 = max(((*(s.BorderRadius)).Px + (16.0 * ((*(s.BorderRadius)).Em + (*(s.BorderRadius)).Rem))), 0.0)
-		}
-		__lt37 = (fmt.Sprint(__lt36) + "px")
+		__lt37 = (*(s.BorderColor)).Hex()
 	}
-	var __lt38 string
-	if s.BorderColor == nil {
-		__lt38 = ""
+	var __lt39 string
+	if s.BorderWidth == nil {
+		__lt39 = ""
 	} else {
-		__lt38 = (*(s.BorderColor)).Hex()
+		var __lt38 float64
+		if s.BorderWidth == nil {
+			__lt38 = 0.0
+		} else {
+			__lt38 = max(((*(s.BorderWidth)).Px + (16.0 * ((*(s.BorderWidth)).Em + (*(s.BorderWidth)).Rem))), 0.0)
+		}
+		__lt39 = (fmt.Sprint(__lt38) + "px")
 	}
 	var __lt40 string
-	if s.BorderWidth == nil {
-		__lt40 = ""
-	} else {
-		var __lt39 float64
-		if s.BorderWidth == nil {
-			__lt39 = 0.0
-		} else {
-			__lt39 = max(((*(s.BorderWidth)).Px + (16.0 * ((*(s.BorderWidth)).Em + (*(s.BorderWidth)).Rem))), 0.0)
-		}
-		__lt40 = (fmt.Sprint(__lt39) + "px")
-	}
-	var __lt41 string
 	switch s.BorderStyle {
 	case "solid":
-		__lt41 = "solid"
+		__lt40 = "solid"
 	case "dashed":
-		__lt41 = "dashed"
+		__lt40 = "dashed"
 	case "dotted":
-		__lt41 = "dotted"
+		__lt40 = "dotted"
 	case "double":
-		__lt41 = "double"
+		__lt40 = "double"
 	case "none":
-		__lt41 = "none"
+		__lt40 = "none"
 	default:
-		var __lt42 string
+		var __lt41 string
 		if s.BorderWidth != nil {
-			__lt42 = "solid"
+			__lt41 = "solid"
 		} else {
-			__lt42 = ""
+			__lt41 = ""
 		}
-		__lt41 = __lt42
+		__lt40 = __lt41
+	}
+	var __lt42 string
+	if s.Border == "" {
+		__lt42 = ""
+	} else {
+		__lt42 = (("border: " + s.Border) + "; ")
 	}
 	var __lt43 string
-	if s.Border == "" {
+	if s.BorderBottom == "" {
 		__lt43 = ""
 	} else {
-		__lt43 = (("border: " + s.Border) + "; ")
+		__lt43 = (("border-bottom: " + s.BorderBottom) + "; ")
 	}
 	var __lt44 string
-	if s.BorderBottom == "" {
+	if s.BorderLeft == "" {
 		__lt44 = ""
 	} else {
-		__lt44 = (("border-bottom: " + s.BorderBottom) + "; ")
+		__lt44 = (("border-left: " + s.BorderLeft) + "; ")
 	}
 	var __lt45 string
-	if s.BorderLeft == "" {
+	if s.Opacity == nil {
 		__lt45 = ""
 	} else {
-		__lt45 = (("border-left: " + s.BorderLeft) + "; ")
+		__lt45 = fmt.Sprint((*(s.Opacity)))
 	}
-	var __lt46 string
-	if s.Opacity == nil {
-		__lt46 = ""
-	} else {
-		__lt46 = fmt.Sprint((*(s.Opacity)))
-	}
-	css := ((((((((((((((((((((((Decl("margin-top", Length(__lt12)) + Decl("margin-right", Length(__lt14))) + Decl("margin-bottom", Length(__lt16))) + Decl("margin-left", Length(__lt18))) + Decl("padding-top", Length(__lt20))) + Decl("padding-right", Length(__lt22))) + Decl("padding-bottom", Length(__lt24))) + Decl("padding-left", Length(__lt26))) + Decl("min-width", __lt28)) + Decl("color", __lt29)) + Decl("font-size", __lt31)) + __lt32) + Decl("font-weight", __lt33)) + Decl("font-style", __lt34)) + Decl("background", __lt35)) + Decl("border-radius", __lt37)) + Decl("border-color", __lt38)) + Decl("border-width", __lt40)) + Decl("border-style", __lt41)) + __lt43) + __lt44) + __lt45) + Decl("opacity", __lt46))
+	css := ((((((((((((((((((((((Decl("margin-top", Length(__lt11)) + Decl("margin-right", Length(__lt13))) + Decl("margin-bottom", Length(__lt15))) + Decl("margin-left", Length(__lt17))) + Decl("padding-top", Length(__lt19))) + Decl("padding-right", Length(__lt21))) + Decl("padding-bottom", Length(__lt23))) + Decl("padding-left", Length(__lt25))) + Decl("min-width", __lt27)) + Decl("color", __lt28)) + Decl("font-size", __lt30)) + __lt31) + Decl("font-weight", __lt32)) + Decl("font-style", __lt33)) + Decl("background", __lt34)) + Decl("border-radius", __lt36)) + Decl("border-color", __lt37)) + Decl("border-width", __lt39)) + Decl("border-style", __lt40)) + __lt42) + __lt43) + __lt44) + Decl("opacity", __lt45))
 	return css
 }
 
 func Decl(name string, value string) string {
-	var __lt47 string
+	var __lt46 string
 	if value == "" {
-		__lt47 = ""
+		__lt46 = ""
 	} else {
-		__lt47 = (((name + ": ") + value) + "; ")
+		__lt46 = (((name + ": ") + value) + "; ")
 	}
-	return __lt47
+	return __lt46
 }
 
 func Length(m__r0 *Measurement) string {
-	var __lt49 string
+	var __lt48 string
 	if m__r0 == nil {
-		__lt49 = ""
+		__lt48 = ""
 	} else {
-		var __lt48 float64
+		var __lt47 float64
 		if m__r0 == nil {
-			__lt48 = 0.0
+			__lt47 = 0.0
 		} else {
-			__lt48 = max(((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
+			__lt47 = max(((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
 		}
-		__lt49 = (fmt.Sprint(__lt48) + "px")
+		__lt48 = (fmt.Sprint(__lt47) + "px")
 	}
-	return __lt49
+	return __lt48
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -2426,12 +2410,12 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						__n3.SetSize("medium")
 						__n3.SetVariant("circle")
 						__n3.SetAlt("")
-						__n3.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
+						__n3.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"})
 					} else {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n3__new := newAvatarInstance(m, r, "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, func() {
+						__n3__new := newAvatarInstance(m, r, "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, func() {
 						})
 						__n3 = __n3__new
 					}
@@ -2480,12 +2464,12 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 						__n4.SetSize("medium")
 						__n4.SetVariant("circle")
 						__n4.SetAlt("")
-						__n4.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
+						__n4.SetStyle(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"})
 					} else {
 						if len(m.__inst1_live) > __inst1_i {
 							m.__inst1_live[__inst1_i].Destroy()
 						}
-						__n4__new := newAvatarInstance(m, "if", "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, func() {
+						__n4__new := newAvatarInstance(m, "if", "medium", "circle", "", Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, func() {
 						})
 						__n4 = __n4__new
 					}
@@ -2576,7 +2560,7 @@ func newAvatarInstance(__model *Model, __a_initials string, __a_size string, __a
 	c.__slot1 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
-	gtk4rt.SetLook(c.__n0, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, c.__prop_style)))
+	gtk4rt.SetLook(c.__n0, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, c.__prop_style)))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.hits = (c.hits + 1)
 		gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
@@ -2605,7 +2589,7 @@ func (c *AvatarInstance) SetAlt(__v string) {
 
 func (c *AvatarInstance) SetStyle(__v Style) {
 	c.__prop_style = __v
-	gtk4rt.SetLook(c.__n0, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, c.__prop_style)))
+	gtk4rt.SetLook(c.__n0, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, c.__prop_style)))
 }
 
 func (c *AvatarInstance) SetClick(__v func()) {
@@ -2781,7 +2765,6 @@ data class Style(
     var opacity: Double? = null,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.UNSET,
-    var overflow: SnglOverflow = SnglOverflow.UNSET,
     var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
@@ -2853,7 +2836,6 @@ fun __merge_Style(base: Style, ov: Style): Style =
         opacity = ov.opacity ?: base.opacity,
         cursor = if (ov.cursor != "") ov.cursor else base.cursor,
         display = if (ov.display != SnglDisplay.UNSET) ov.display else base.display,
-        overflow = if (ov.overflow != SnglOverflow.UNSET) ov.overflow else base.overflow,
         listStyleType = if (ov.listStyleType != SnglListStyle.UNSET) ov.listStyleType else base.listStyleType,
     )
 
@@ -2976,16 +2958,6 @@ enum class SnglDisplay(private val sngl: String) {
     INLINEFLEX("inlineFlex"),
     NONE("none"),
     GRID("grid");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglOverflow(private val sngl: String) {
-    UNSET("unset"),
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
 
     override fun toString(): String = sngl
 }
@@ -3213,12 +3185,11 @@ body { font-family: system-ui, sans-serif; }
     if (ov.opacity != null) r.opacity = ov.opacity;
     if (ov.cursor != null && !(ov.cursor === "")) r.cursor = ov.cursor;
     if (ov.display != null && !(ov.display === "unset")) r.display = ov.display;
-    if (ov.overflow != null && !(ov.overflow === "unset")) r.overflow = ov.overflow;
     if (ov.listStyleType != null && !(ov.listStyleType === "unset")) r.listStyleType = ov.listStyleType;
     return r;
   }
   function css(s) {
-    return [{ property: "border", value: s.border }, { property: "margin", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? s.margin === null ? "" : s.margin.em === 0 && s.margin.rem === 0 ? String(s.margin.px) + "px" : s.margin.px === 0 && s.margin.rem === 0 ? String(s.margin.em) + "em" : s.margin.px === 0 && s.margin.em === 0 ? String(s.margin.rem) + "rem" : "calc(" + plus(plus(s.margin.px === 0 ? "" : String(s.margin.px) + "px", s.margin.em === 0 ? "" : String(s.margin.em) + "em"), s.margin.rem === 0 ? "" : String(s.margin.rem) + "rem") + ")" : "" }, { property: "margin-top", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginTop !== null ? s.marginTop : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-right", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginRight !== null ? s.marginRight : s.marginX !== null ? s.marginX : s.margin) }, { property: "margin-bottom", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginBottom !== null ? s.marginBottom : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-left", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginLeft !== null ? s.marginLeft : s.marginX !== null ? s.marginX : s.margin) }, { property: "padding", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? s.padding === null ? "" : s.padding.em === 0 && s.padding.rem === 0 ? String(s.padding.px) + "px" : s.padding.px === 0 && s.padding.rem === 0 ? String(s.padding.em) + "em" : s.padding.px === 0 && s.padding.em === 0 ? String(s.padding.rem) + "rem" : "calc(" + plus(plus(s.padding.px === 0 ? "" : String(s.padding.px) + "px", s.padding.em === 0 ? "" : String(s.padding.em) + "em"), s.padding.rem === 0 ? "" : String(s.padding.rem) + "rem") + ")" : "" }, { property: "padding-top", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingTop !== null ? s.paddingTop : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-right", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingRight !== null ? s.paddingRight : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "padding-bottom", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingBottom !== null ? s.paddingBottom : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-left", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingLeft !== null ? s.paddingLeft : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "gap", value: s.gap === null ? "" : s.gap.em === 0 && s.gap.rem === 0 ? String(s.gap.px) + "px" : s.gap.px === 0 && s.gap.rem === 0 ? String(s.gap.em) + "em" : s.gap.px === 0 && s.gap.em === 0 ? String(s.gap.rem) + "rem" : "calc(" + plus(plus(s.gap.px === 0 ? "" : String(s.gap.px) + "px", s.gap.em === 0 ? "" : String(s.gap.em) + "em"), s.gap.rem === 0 ? "" : String(s.gap.rem) + "rem") + ")" }, { property: "display", value: s.display === "flex" ? "flex" : s.display === "block" ? "block" : s.display === "inline" ? "inline" : s.display === "inlineBlock" ? "inline-block" : s.display === "inlineFlex" ? "inline-flex" : s.display === "none" ? "none" : s.display === "grid" ? "grid" : "" }, { property: "flex-direction", value: s.flexDirection === "row" ? "row" : s.flexDirection === "column" ? "column" : s.flexDirection === "rowReverse" ? "row-reverse" : s.flexDirection === "columnReverse" ? "column-reverse" : "" }, { property: "align-items", value: s.alignItems === "start" ? "start" : s.alignItems === "center" ? "center" : s.alignItems === "end" ? "end" : s.alignItems === "stretch" ? "stretch" : s.alignItems === "baseline" ? "baseline" : "" }, { property: "justify-content", value: s.justifyContent === "start" ? "start" : s.justifyContent === "center" ? "center" : s.justifyContent === "end" ? "end" : s.justifyContent === "spaceBetween" ? "space-between" : s.justifyContent === "spaceAround" ? "space-around" : s.justifyContent === "spaceEvenly" ? "space-evenly" : "" }, { property: "flex", value: s.flex === null ? "" : String(s.flex) }, { property: "min-width", value: s.flex === null ? "" : "0" }, { property: "min-height", value: s.flex === null ? "" : "0" }, { property: "width", value: s.width === null ? "" : s.width.em === 0 && s.width.rem === 0 ? String(s.width.px) + "px" : s.width.px === 0 && s.width.rem === 0 ? String(s.width.em) + "em" : s.width.px === 0 && s.width.em === 0 ? String(s.width.rem) + "rem" : "calc(" + plus(plus(s.width.px === 0 ? "" : String(s.width.px) + "px", s.width.em === 0 ? "" : String(s.width.em) + "em"), s.width.rem === 0 ? "" : String(s.width.rem) + "rem") + ")" }, { property: "min-width", value: s.minWidth === null ? "" : s.minWidth.em === 0 && s.minWidth.rem === 0 ? String(s.minWidth.px) + "px" : s.minWidth.px === 0 && s.minWidth.rem === 0 ? String(s.minWidth.em) + "em" : s.minWidth.px === 0 && s.minWidth.em === 0 ? String(s.minWidth.rem) + "rem" : "calc(" + plus(plus(s.minWidth.px === 0 ? "" : String(s.minWidth.px) + "px", s.minWidth.em === 0 ? "" : String(s.minWidth.em) + "em"), s.minWidth.rem === 0 ? "" : String(s.minWidth.rem) + "rem") + ")" }, { property: "height", value: s.height === null ? "" : s.height.em === 0 && s.height.rem === 0 ? String(s.height.px) + "px" : s.height.px === 0 && s.height.rem === 0 ? String(s.height.em) + "em" : s.height.px === 0 && s.height.em === 0 ? String(s.height.rem) + "rem" : "calc(" + plus(plus(s.height.px === 0 ? "" : String(s.height.px) + "px", s.height.em === 0 ? "" : String(s.height.em) + "em"), s.height.rem === 0 ? "" : String(s.height.rem) + "rem") + ")" }, { property: "max-width", value: s.maxWidth === null ? "" : s.maxWidth.em === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.px) + "px" : s.maxWidth.px === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.em) + "em" : s.maxWidth.px === 0 && s.maxWidth.em === 0 ? String(s.maxWidth.rem) + "rem" : "calc(" + plus(plus(s.maxWidth.px === 0 ? "" : String(s.maxWidth.px) + "px", s.maxWidth.em === 0 ? "" : String(s.maxWidth.em) + "em"), s.maxWidth.rem === 0 ? "" : String(s.maxWidth.rem) + "rem") + ")" }, { property: "max-height", value: s.maxHeight === null ? "" : s.maxHeight.em === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.px) + "px" : s.maxHeight.px === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.em) + "em" : s.maxHeight.px === 0 && s.maxHeight.em === 0 ? String(s.maxHeight.rem) + "rem" : "calc(" + plus(plus(s.maxHeight.px === 0 ? "" : String(s.maxHeight.px) + "px", s.maxHeight.em === 0 ? "" : String(s.maxHeight.em) + "em"), s.maxHeight.rem === 0 ? "" : String(s.maxHeight.rem) + "rem") + ")" }, { property: "position", value: s.position === "static" ? "static" : s.position === "relative" ? "relative" : s.position === "absolute" ? "absolute" : s.position === "fixed" ? "fixed" : s.position === "sticky" ? "sticky" : "" }, { property: "top", value: s.top === null ? "" : s.top.em === 0 && s.top.rem === 0 ? String(s.top.px) + "px" : s.top.px === 0 && s.top.rem === 0 ? String(s.top.em) + "em" : s.top.px === 0 && s.top.em === 0 ? String(s.top.rem) + "rem" : "calc(" + plus(plus(s.top.px === 0 ? "" : String(s.top.px) + "px", s.top.em === 0 ? "" : String(s.top.em) + "em"), s.top.rem === 0 ? "" : String(s.top.rem) + "rem") + ")" }, { property: "bottom", value: s.bottom === null ? "" : s.bottom.em === 0 && s.bottom.rem === 0 ? String(s.bottom.px) + "px" : s.bottom.px === 0 && s.bottom.rem === 0 ? String(s.bottom.em) + "em" : s.bottom.px === 0 && s.bottom.em === 0 ? String(s.bottom.rem) + "rem" : "calc(" + plus(plus(s.bottom.px === 0 ? "" : String(s.bottom.px) + "px", s.bottom.em === 0 ? "" : String(s.bottom.em) + "em"), s.bottom.rem === 0 ? "" : String(s.bottom.rem) + "rem") + ")" }, { property: "left", value: s.left === null ? "" : s.left.em === 0 && s.left.rem === 0 ? String(s.left.px) + "px" : s.left.px === 0 && s.left.rem === 0 ? String(s.left.em) + "em" : s.left.px === 0 && s.left.em === 0 ? String(s.left.rem) + "rem" : "calc(" + plus(plus(s.left.px === 0 ? "" : String(s.left.px) + "px", s.left.em === 0 ? "" : String(s.left.em) + "em"), s.left.rem === 0 ? "" : String(s.left.rem) + "rem") + ")" }, { property: "right", value: s.right === null ? "" : s.right.em === 0 && s.right.rem === 0 ? String(s.right.px) + "px" : s.right.px === 0 && s.right.rem === 0 ? String(s.right.em) + "em" : s.right.px === 0 && s.right.em === 0 ? String(s.right.rem) + "rem" : "calc(" + plus(plus(s.right.px === 0 ? "" : String(s.right.px) + "px", s.right.em === 0 ? "" : String(s.right.em) + "em"), s.right.rem === 0 ? "" : String(s.right.rem) + "rem") + ")" }, { property: "z-index", value: s.zIndex === null ? "" : String(s.zIndex) }, { property: "color", value: s.color === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.color) }, { property: "font-size", value: s.fontSize === null ? "" : s.fontSize.em === 0 && s.fontSize.rem === 0 ? String(s.fontSize.px) + "px" : s.fontSize.px === 0 && s.fontSize.rem === 0 ? String(s.fontSize.em) + "em" : s.fontSize.px === 0 && s.fontSize.em === 0 ? String(s.fontSize.rem) + "rem" : "calc(" + plus(plus(s.fontSize.px === 0 ? "" : String(s.fontSize.px) + "px", s.fontSize.em === 0 ? "" : String(s.fontSize.em) + "em"), s.fontSize.rem === 0 ? "" : String(s.fontSize.rem) + "rem") + ")" }, { property: "font-family", value: s.fontFamily }, { property: "font-weight", value: s.fontWeight === "normal" ? "normal" : s.fontWeight === "bold" ? "bold" : s.fontWeight === "lighter" ? "lighter" : s.fontWeight === "bolder" ? "bolder" : "" }, { property: "font-style", value: s.fontStyle === "normal" ? "normal" : s.fontStyle === "italic" ? "italic" : s.fontStyle === "oblique" ? "oblique" : "" }, { property: "text-align", value: s.textAlign === "left" ? "left" : s.textAlign === "center" ? "center" : s.textAlign === "right" ? "right" : s.textAlign === "justify" ? "justify" : "" }, { property: "white-space", value: s.whiteSpace === "normal" ? "normal" : s.whiteSpace === "pre" ? "pre" : s.whiteSpace === "preWrap" ? "pre-wrap" : s.whiteSpace === "preLine" ? "pre-line" : s.whiteSpace === "nowrap" ? "nowrap" : "" }, { property: "background-color", value: s.background === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.background) }, { property: "border-radius", value: s.borderRadius === null ? "" : s.borderRadius.em === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.px) + "px" : s.borderRadius.px === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.em) + "em" : s.borderRadius.px === 0 && s.borderRadius.em === 0 ? String(s.borderRadius.rem) + "rem" : "calc(" + plus(plus(s.borderRadius.px === 0 ? "" : String(s.borderRadius.px) + "px", s.borderRadius.em === 0 ? "" : String(s.borderRadius.em) + "em"), s.borderRadius.rem === 0 ? "" : String(s.borderRadius.rem) + "rem") + ")" }, { property: "border-width", value: s.borderWidth === null ? "" : s.borderWidth.em === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.px) + "px" : s.borderWidth.px === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.em) + "em" : s.borderWidth.px === 0 && s.borderWidth.em === 0 ? String(s.borderWidth.rem) + "rem" : "calc(" + plus(plus(s.borderWidth.px === 0 ? "" : String(s.borderWidth.px) + "px", s.borderWidth.em === 0 ? "" : String(s.borderWidth.em) + "em"), s.borderWidth.rem === 0 ? "" : String(s.borderWidth.rem) + "rem") + ")" }, { property: "border-style", value: s.borderStyle === "none" ? "none" : s.borderStyle === "solid" ? "solid" : s.borderStyle === "dashed" ? "dashed" : s.borderStyle === "dotted" ? "dotted" : s.borderStyle === "double" ? "double" : s.borderWidth !== null && s.border === "" ? "solid" : "" }, { property: "border-color", value: s.borderColor === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.borderColor) }, { property: "border-collapse", value: s.borderCollapse }, { property: "opacity", value: s.opacity === null ? "" : String(s.opacity) }, { property: "cursor", value: s.cursor }, { property: "overflow", value: s.overflow === "visible" ? "visible" : s.overflow === "hidden" ? "hidden" : s.overflow === "scroll" ? "scroll" : s.overflow === "auto" ? "auto" : "" }, { property: "list-style-type", value: s.listStyleType === "none" ? "none" : s.listStyleType === "disc" ? "disc" : s.listStyleType === "circle" ? "circle" : s.listStyleType === "square" ? "square" : s.listStyleType === "decimal" ? "decimal" : "" }, { property: "-webkit-line-clamp", value: s.maxLines === null ? "" : String(s.maxLines) }, { property: "overflow", value: s.maxLines === null ? "" : "hidden" }, { property: "display", value: s.maxLines === null ? "" : "-webkit-box" }, { property: "-webkit-box-orient", value: s.maxLines === null ? "" : "vertical" }, { property: "border-bottom", value: s.borderBottom }, { property: "border-left", value: s.borderLeft }];
+    return [{ property: "border", value: s.border }, { property: "margin", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? s.margin === null ? "" : s.margin.em === 0 && s.margin.rem === 0 ? String(s.margin.px) + "px" : s.margin.px === 0 && s.margin.rem === 0 ? String(s.margin.em) + "em" : s.margin.px === 0 && s.margin.em === 0 ? String(s.margin.rem) + "rem" : "calc(" + plus(plus(s.margin.px === 0 ? "" : String(s.margin.px) + "px", s.margin.em === 0 ? "" : String(s.margin.em) + "em"), s.margin.rem === 0 ? "" : String(s.margin.rem) + "rem") + ")" : "" }, { property: "margin-top", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginTop !== null ? s.marginTop : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-right", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginRight !== null ? s.marginRight : s.marginX !== null ? s.marginX : s.margin) }, { property: "margin-bottom", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginBottom !== null ? s.marginBottom : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-left", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginLeft !== null ? s.marginLeft : s.marginX !== null ? s.marginX : s.margin) }, { property: "padding", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? s.padding === null ? "" : s.padding.em === 0 && s.padding.rem === 0 ? String(s.padding.px) + "px" : s.padding.px === 0 && s.padding.rem === 0 ? String(s.padding.em) + "em" : s.padding.px === 0 && s.padding.em === 0 ? String(s.padding.rem) + "rem" : "calc(" + plus(plus(s.padding.px === 0 ? "" : String(s.padding.px) + "px", s.padding.em === 0 ? "" : String(s.padding.em) + "em"), s.padding.rem === 0 ? "" : String(s.padding.rem) + "rem") + ")" : "" }, { property: "padding-top", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingTop !== null ? s.paddingTop : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-right", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingRight !== null ? s.paddingRight : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "padding-bottom", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingBottom !== null ? s.paddingBottom : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-left", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingLeft !== null ? s.paddingLeft : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "gap", value: s.gap === null ? "" : s.gap.em === 0 && s.gap.rem === 0 ? String(s.gap.px) + "px" : s.gap.px === 0 && s.gap.rem === 0 ? String(s.gap.em) + "em" : s.gap.px === 0 && s.gap.em === 0 ? String(s.gap.rem) + "rem" : "calc(" + plus(plus(s.gap.px === 0 ? "" : String(s.gap.px) + "px", s.gap.em === 0 ? "" : String(s.gap.em) + "em"), s.gap.rem === 0 ? "" : String(s.gap.rem) + "rem") + ")" }, { property: "display", value: s.display === "flex" ? "flex" : s.display === "block" ? "block" : s.display === "inline" ? "inline" : s.display === "inlineBlock" ? "inline-block" : s.display === "inlineFlex" ? "inline-flex" : s.display === "none" ? "none" : s.display === "grid" ? "grid" : "" }, { property: "flex-direction", value: s.flexDirection === "row" ? "row" : s.flexDirection === "column" ? "column" : s.flexDirection === "rowReverse" ? "row-reverse" : s.flexDirection === "columnReverse" ? "column-reverse" : "" }, { property: "align-items", value: s.alignItems === "start" ? "start" : s.alignItems === "center" ? "center" : s.alignItems === "end" ? "end" : s.alignItems === "stretch" ? "stretch" : s.alignItems === "baseline" ? "baseline" : "" }, { property: "justify-content", value: s.justifyContent === "start" ? "start" : s.justifyContent === "center" ? "center" : s.justifyContent === "end" ? "end" : s.justifyContent === "spaceBetween" ? "space-between" : s.justifyContent === "spaceAround" ? "space-around" : s.justifyContent === "spaceEvenly" ? "space-evenly" : "" }, { property: "flex", value: s.flex === null ? "" : String(s.flex) }, { property: "min-width", value: s.flex === null ? "" : "0" }, { property: "min-height", value: s.flex === null ? "" : "0" }, { property: "width", value: s.width === null ? "" : s.width.em === 0 && s.width.rem === 0 ? String(s.width.px) + "px" : s.width.px === 0 && s.width.rem === 0 ? String(s.width.em) + "em" : s.width.px === 0 && s.width.em === 0 ? String(s.width.rem) + "rem" : "calc(" + plus(plus(s.width.px === 0 ? "" : String(s.width.px) + "px", s.width.em === 0 ? "" : String(s.width.em) + "em"), s.width.rem === 0 ? "" : String(s.width.rem) + "rem") + ")" }, { property: "min-width", value: s.minWidth === null ? "" : s.minWidth.em === 0 && s.minWidth.rem === 0 ? String(s.minWidth.px) + "px" : s.minWidth.px === 0 && s.minWidth.rem === 0 ? String(s.minWidth.em) + "em" : s.minWidth.px === 0 && s.minWidth.em === 0 ? String(s.minWidth.rem) + "rem" : "calc(" + plus(plus(s.minWidth.px === 0 ? "" : String(s.minWidth.px) + "px", s.minWidth.em === 0 ? "" : String(s.minWidth.em) + "em"), s.minWidth.rem === 0 ? "" : String(s.minWidth.rem) + "rem") + ")" }, { property: "height", value: s.height === null ? "" : s.height.em === 0 && s.height.rem === 0 ? String(s.height.px) + "px" : s.height.px === 0 && s.height.rem === 0 ? String(s.height.em) + "em" : s.height.px === 0 && s.height.em === 0 ? String(s.height.rem) + "rem" : "calc(" + plus(plus(s.height.px === 0 ? "" : String(s.height.px) + "px", s.height.em === 0 ? "" : String(s.height.em) + "em"), s.height.rem === 0 ? "" : String(s.height.rem) + "rem") + ")" }, { property: "max-width", value: s.maxWidth === null ? "" : s.maxWidth.em === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.px) + "px" : s.maxWidth.px === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.em) + "em" : s.maxWidth.px === 0 && s.maxWidth.em === 0 ? String(s.maxWidth.rem) + "rem" : "calc(" + plus(plus(s.maxWidth.px === 0 ? "" : String(s.maxWidth.px) + "px", s.maxWidth.em === 0 ? "" : String(s.maxWidth.em) + "em"), s.maxWidth.rem === 0 ? "" : String(s.maxWidth.rem) + "rem") + ")" }, { property: "max-height", value: s.maxHeight === null ? "" : s.maxHeight.em === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.px) + "px" : s.maxHeight.px === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.em) + "em" : s.maxHeight.px === 0 && s.maxHeight.em === 0 ? String(s.maxHeight.rem) + "rem" : "calc(" + plus(plus(s.maxHeight.px === 0 ? "" : String(s.maxHeight.px) + "px", s.maxHeight.em === 0 ? "" : String(s.maxHeight.em) + "em"), s.maxHeight.rem === 0 ? "" : String(s.maxHeight.rem) + "rem") + ")" }, { property: "position", value: s.position === "static" ? "static" : s.position === "relative" ? "relative" : s.position === "absolute" ? "absolute" : s.position === "fixed" ? "fixed" : s.position === "sticky" ? "sticky" : "" }, { property: "top", value: s.top === null ? "" : s.top.em === 0 && s.top.rem === 0 ? String(s.top.px) + "px" : s.top.px === 0 && s.top.rem === 0 ? String(s.top.em) + "em" : s.top.px === 0 && s.top.em === 0 ? String(s.top.rem) + "rem" : "calc(" + plus(plus(s.top.px === 0 ? "" : String(s.top.px) + "px", s.top.em === 0 ? "" : String(s.top.em) + "em"), s.top.rem === 0 ? "" : String(s.top.rem) + "rem") + ")" }, { property: "bottom", value: s.bottom === null ? "" : s.bottom.em === 0 && s.bottom.rem === 0 ? String(s.bottom.px) + "px" : s.bottom.px === 0 && s.bottom.rem === 0 ? String(s.bottom.em) + "em" : s.bottom.px === 0 && s.bottom.em === 0 ? String(s.bottom.rem) + "rem" : "calc(" + plus(plus(s.bottom.px === 0 ? "" : String(s.bottom.px) + "px", s.bottom.em === 0 ? "" : String(s.bottom.em) + "em"), s.bottom.rem === 0 ? "" : String(s.bottom.rem) + "rem") + ")" }, { property: "left", value: s.left === null ? "" : s.left.em === 0 && s.left.rem === 0 ? String(s.left.px) + "px" : s.left.px === 0 && s.left.rem === 0 ? String(s.left.em) + "em" : s.left.px === 0 && s.left.em === 0 ? String(s.left.rem) + "rem" : "calc(" + plus(plus(s.left.px === 0 ? "" : String(s.left.px) + "px", s.left.em === 0 ? "" : String(s.left.em) + "em"), s.left.rem === 0 ? "" : String(s.left.rem) + "rem") + ")" }, { property: "right", value: s.right === null ? "" : s.right.em === 0 && s.right.rem === 0 ? String(s.right.px) + "px" : s.right.px === 0 && s.right.rem === 0 ? String(s.right.em) + "em" : s.right.px === 0 && s.right.em === 0 ? String(s.right.rem) + "rem" : "calc(" + plus(plus(s.right.px === 0 ? "" : String(s.right.px) + "px", s.right.em === 0 ? "" : String(s.right.em) + "em"), s.right.rem === 0 ? "" : String(s.right.rem) + "rem") + ")" }, { property: "z-index", value: s.zIndex === null ? "" : String(s.zIndex) }, { property: "color", value: s.color === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.color) }, { property: "font-size", value: s.fontSize === null ? "" : s.fontSize.em === 0 && s.fontSize.rem === 0 ? String(s.fontSize.px) + "px" : s.fontSize.px === 0 && s.fontSize.rem === 0 ? String(s.fontSize.em) + "em" : s.fontSize.px === 0 && s.fontSize.em === 0 ? String(s.fontSize.rem) + "rem" : "calc(" + plus(plus(s.fontSize.px === 0 ? "" : String(s.fontSize.px) + "px", s.fontSize.em === 0 ? "" : String(s.fontSize.em) + "em"), s.fontSize.rem === 0 ? "" : String(s.fontSize.rem) + "rem") + ")" }, { property: "font-family", value: s.fontFamily }, { property: "font-weight", value: s.fontWeight === "normal" ? "normal" : s.fontWeight === "bold" ? "bold" : s.fontWeight === "lighter" ? "lighter" : s.fontWeight === "bolder" ? "bolder" : "" }, { property: "font-style", value: s.fontStyle === "normal" ? "normal" : s.fontStyle === "italic" ? "italic" : s.fontStyle === "oblique" ? "oblique" : "" }, { property: "text-align", value: s.textAlign === "left" ? "left" : s.textAlign === "center" ? "center" : s.textAlign === "right" ? "right" : s.textAlign === "justify" ? "justify" : "" }, { property: "white-space", value: s.whiteSpace === "normal" ? "normal" : s.whiteSpace === "pre" ? "pre" : s.whiteSpace === "preWrap" ? "pre-wrap" : s.whiteSpace === "preLine" ? "pre-line" : s.whiteSpace === "nowrap" ? "nowrap" : "" }, { property: "background-color", value: s.background === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.background) }, { property: "border-radius", value: s.borderRadius === null ? "" : s.borderRadius.em === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.px) + "px" : s.borderRadius.px === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.em) + "em" : s.borderRadius.px === 0 && s.borderRadius.em === 0 ? String(s.borderRadius.rem) + "rem" : "calc(" + plus(plus(s.borderRadius.px === 0 ? "" : String(s.borderRadius.px) + "px", s.borderRadius.em === 0 ? "" : String(s.borderRadius.em) + "em"), s.borderRadius.rem === 0 ? "" : String(s.borderRadius.rem) + "rem") + ")" }, { property: "border-width", value: s.borderWidth === null ? "" : s.borderWidth.em === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.px) + "px" : s.borderWidth.px === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.em) + "em" : s.borderWidth.px === 0 && s.borderWidth.em === 0 ? String(s.borderWidth.rem) + "rem" : "calc(" + plus(plus(s.borderWidth.px === 0 ? "" : String(s.borderWidth.px) + "px", s.borderWidth.em === 0 ? "" : String(s.borderWidth.em) + "em"), s.borderWidth.rem === 0 ? "" : String(s.borderWidth.rem) + "rem") + ")" }, { property: "border-style", value: s.borderStyle === "none" ? "none" : s.borderStyle === "solid" ? "solid" : s.borderStyle === "dashed" ? "dashed" : s.borderStyle === "dotted" ? "dotted" : s.borderStyle === "double" ? "double" : s.borderWidth !== null && s.border === "" ? "solid" : "" }, { property: "border-color", value: s.borderColor === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.borderColor) }, { property: "border-collapse", value: s.borderCollapse }, { property: "opacity", value: s.opacity === null ? "" : String(s.opacity) }, { property: "cursor", value: s.cursor }, { property: "list-style-type", value: s.listStyleType === "none" ? "none" : s.listStyleType === "disc" ? "disc" : s.listStyleType === "circle" ? "circle" : s.listStyleType === "square" ? "square" : s.listStyleType === "decimal" ? "decimal" : "" }, { property: "-webkit-line-clamp", value: s.maxLines === null ? "" : String(s.maxLines) }, { property: "overflow", value: s.maxLines === null ? "" : "hidden" }, { property: "display", value: s.maxLines === null ? "" : "-webkit-box" }, { property: "-webkit-box-orient", value: s.maxLines === null ? "" : "vertical" }, { property: "border-bottom", value: s.borderBottom }, { property: "border-left", value: s.borderLeft }];
   }
   function plus(a, b) {
     return a === "" ? b : b === "" ? a : a + " + " + b;
@@ -3249,7 +3220,7 @@ body { font-family: system-ui, sans-serif; }
     let size = props.size ?? "medium";
     let variant = props.variant ?? "circle";
     let alt = props.alt ?? "";
-    let style = props.style ?? { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" };
+    let style = props.style ?? { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", listStyleType: "unset" };
     let click = props.click ?? (() => {
     });
     let __prop_initials = initials;
@@ -3277,14 +3248,14 @@ body { font-family: system-ui, sans-serif; }
     }
     function __set_style(__v) {
       __prop_style = __v;
-      __n0.style.cssText = _snglCSSText(css(__merge_Style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" }, __prop_style)));
+      __n0.style.cssText = _snglCSSText(css(__merge_Style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", listStyleType: "unset" }, __prop_style)));
     }
     function __set_click(__v) {
       __prop_click = __v;
     }
     let __n0 = document.createElement("button");
     __n0.disabled = false;
-    __n0.style.cssText = _snglCSSText(css(__merge_Style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" }, __prop_style)));
+    __n0.style.cssText = _snglCSSText(css(__merge_Style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", listStyleType: "unset" }, __prop_style)));
     __n0.addEventListener("click", () => {
       hits = hits + 1;
       __n1.textContent = __prop_initials + " " + String(hits);
@@ -3337,12 +3308,12 @@ body { font-family: system-ui, sans-serif; }
               __n4.__set_size("medium");
               __n4.__set_variant("circle");
               __n4.__set_alt("");
-              __n4.__set_style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" });
+              __n4.__set_style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", listStyleType: "unset" });
             } else {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n4__new = __cf_avatar({ initials: r, size: "medium", variant: "circle", alt: "", style: { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" } });
+              let __n4__new = __cf_avatar({ initials: r, size: "medium", variant: "circle", alt: "", style: { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", listStyleType: "unset" } });
               __n4 = __n4__new;
             }
             __inst1_next.push(__n4);
@@ -3399,12 +3370,12 @@ body { font-family: system-ui, sans-serif; }
               __n5.__set_size("medium");
               __n5.__set_variant("circle");
               __n5.__set_alt("");
-              __n5.__set_style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" });
+              __n5.__set_style({ padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", listStyleType: "unset" });
             } else {
               if (__inst3_live.length > __inst3_i) {
                 __inst3_live[__inst3_i].__destroy();
               }
-              let __n5__new = __cf_avatar({ initials: "if", size: "medium", variant: "circle", alt: "", style: { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" } });
+              let __n5__new = __cf_avatar({ initials: "if", size: "medium", variant: "circle", alt: "", style: { padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", listStyleType: "unset" } });
               __n5 = __n5__new;
             }
             __inst3_next.push(__n5);
@@ -3485,12 +3456,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ee44002c17e6ca7518163145b10fb3bc
+pass sha256:b70e9a5d8565e370b8bc18097c3224fe
 -- run/go/fyne --
-pass sha256:c555bb761c1db5deca14de844674625b
+pass sha256:ac5eef243acdc1b45c009dfb67cff092
 -- run/go/gtk4 --
-pass sha256:982e0c8736eeb3de5e7f2979a9761b01
+pass sha256:c786bcfd028af0b5788facaa74b9d9da
 -- run/kotlin/android --
 pass sha256:e9d526686d1519c5b9631294ddfd0d56
 -- run/none/html --
-pass sha256:54332b1033531162ff3a4141f5029092
+pass sha256:756177390ef016edfb69070db9a99881

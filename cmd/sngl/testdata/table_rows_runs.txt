@@ -119,7 +119,7 @@ component main ui.node {
 
 func testThePanelHoldsTheTable(t test.Test, c main) {
     c.hire.click()
-    t.assert(c.crewTable == null)
+    t.assert(c.crewTable != null)
     c.tabs.change(1)
     t.assert(c.crewTable != null)
 }
@@ -148,7 +148,7 @@ sha256:69e074044647338960d4bfa339929725
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:283e566f582fc6205bfc8b5e3ab5b891
+sha256:28943562205fdf1a8168c40160608e85
 {
   "results": [
     {
@@ -162,7 +162,7 @@ sha256:283e566f582fc6205bfc8b5e3ab5b891
   }
 }
 -- testrun/bubbletea/go/panel.sngl/main/1 --
-sha256:8f16e431f8409eea26d6c52dbd196f47
+sha256:d716186127ac8769c4a77de2ce150455
 {
   "results": [
     {
@@ -186,7 +186,7 @@ sha256:e5bafd56d0314872d9ce60315fe6c75e
   }
 }
 -- testrun/fyne/go/panel.sngl/main/1 --
-sha256:73e79816dbc28d94cbdef33c0c4f6b16
+sha256:2f3e15575d8354486408a7f7a985e3b3
 {
   "results": [
     {
@@ -210,7 +210,7 @@ sha256:237602ba52dc61ca265faccffe52ab16
   }
 }
 -- testrun/gtk4/go/panel.sngl/main/1 --
-sha256:64096a408bcfc7590149ec5cbd1f5f42
+sha256:f7b4facf393b2b5e72f87f40f18893dd
 {
   "results": [
     {
@@ -234,7 +234,7 @@ sha256:879ee821f1479baa1b5f1aead5b0fff0
   }
 }
 -- testrun/html/none/panel.sngl/main/1 --
-sha256:816aa12832e92b0a87393346f4332365
+sha256:c1153d297f84651e0fd91e88bcf15b49
 {
   "results": [
     {

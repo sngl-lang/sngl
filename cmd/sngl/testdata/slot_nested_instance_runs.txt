@@ -8,6 +8,12 @@
 # the About panel built the next and never destroyed the last: its effects
 # ran on, and a test still found its `#flavor`. Each is now held, and
 # destroyed by the render that builds its replacement.
+#
+# A switch of tabs drops no panel since every one stays mounted, so the test
+# drops the About tab itself, which is under an `if`. On bubbletea a tab under
+# an `if` beside a panel with a focus stop did not build: its focus functions
+# read the list of tabs the view hoists into a local of its own
+# (`undefined: __lt11`), and now declare it as View does (tempsFor).
 
 sngl test --platform=none app.sngl
 stdout 'ok +1 tests, 0 failures'
@@ -31,12 +37,16 @@ component main ui.node {
     var tab = 0
     var note = "hello"
     var kind = "Red"
+    var about = true
 
     ui.button #load(text="load", @click { ready = true })
+    ui.button #drop(text="drop", @click { about = false })
     if ready {
         ui.tabs #tabs(:selected=tab) {
-            ui.tab(label="About") {
-                ui.text #flavor(value=note)
+            if about {
+                ui.tab(label="About") {
+                    ui.text #flavor(value=note)
+                }
             }
             ui.tab(label="Kinds") {
                 ui.select(:value=kind) {
@@ -48,12 +58,10 @@ component main ui.node {
     }
 }
 
-func testSwitchingDropsTheFirstPanel(t test.Test, c main) {
+func testDroppingATabDropsItsPanel(t test.Test, c main) {
     c.load.click()
     t.assert(c.flavor != null)
-    if c.tabs != null {
-        c.tabs.change(1)
-    }
+    c.drop.click()
     t.assert(c.flavor == null)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
@@ -61,47 +69,47 @@ sha256:91db02ca1225abca42b8963f18c12ba4
 {
   "results": [
     {
-      "Desc": "SwitchingDropsTheFirstPanel",
+      "Desc": "DroppingATabDropsItsPanel",
       "Passed": true
     }
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:b4ae1e8ca091d148970dee1dd2b50696
+sha256:bd131e83d5e37ded1ed6aa28828829e1
 {
   "results": [
     {
-      "Desc": "SwitchingDropsTheFirstPanel",
+      "Desc": "DroppingATabDropsItsPanel",
       "Passed": true
     }
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:728953df81d66f5fe229b0a3fdacd789
+sha256:26d280f772c26e4db4abc75ad05c6461
 {
   "results": [
     {
-      "Desc": "SwitchingDropsTheFirstPanel",
+      "Desc": "DroppingATabDropsItsPanel",
       "Passed": true
     }
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:76d9cb0a7e97ca1bb3180f2f9c64e93a
+sha256:569bafa3f5e5d7d634eaf755981b6954
 {
   "results": [
     {
-      "Desc": "SwitchingDropsTheFirstPanel",
+      "Desc": "DroppingATabDropsItsPanel",
       "Passed": true
     }
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:c29743a52493946698ad3bb32c50b9f8
+sha256:7149e0dabe275813d700e6895fc3cd14
 {
   "results": [
     {
-      "Desc": "SwitchingDropsTheFirstPanel",
+      "Desc": "DroppingATabDropsItsPanel",
       "Passed": true
     }
   ]
