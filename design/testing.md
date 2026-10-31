@@ -389,7 +389,10 @@ moves a node out of the body that wrote it:
 - **A member of an instance built at run time is read off the instance the
   target holds** (`codegen.InstanceReads`, lowered by
   `codegen.LowerInstanceReads` to `<id>Read<Member>`, `<id>Call<Member>` and
-  their `At` variants on the test's surface): fyne's and gtk4's Model holds
+  their `At` variants on the test's surface, and an argument of one such call
+  read through an instance is lowered too -- a read answered from a call site,
+  `c.sCallLabel(c.s.rows[0][0])`, read the rows off nothing,
+  `testdata/slot_row_calls_owner_func.sngl`): fyne's and gtk4's Model holds
   each such record where its root is bound (`golang.HoldInstance`,
   `__inst_<id>` or `__insts_<id>` by key) and lets go in its Destroy; html's
   factory hangs the instance off its root element; android's composable
