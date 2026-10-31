@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -183,18 +184,18 @@ func svgToVectorDrawable(svgData []byte) ([]byte, error) {
 		return nil, fmt.Errorf("invalid viewBox: %q", viewBox)
 	}
 
-	// Adaptive icons use a 108dp canvas where the inner 72dp (66%) is the
-	// visible safe zone. We use a 108x108 viewport and wrap the SVG content
-	// in a group that scales and centers it to fill the safe zone.
+	// Adaptive icons use a 108dp canvas a launcher masks to its own shape.
+	// Only the centered circle 66dp across survives every mask, so the SVG is
+	// scaled until its diagonal fits that circle: filling the 72dp square a
+	// mask shows at most, a square icon lost its corners to a round mask.
 	var svgW, svgH float64
 	fmt.Sscanf(parts[2], "%f", &svgW)
 	fmt.Sscanf(parts[3], "%f", &svgH)
 
 	const canvasSize = 108.0
-	const safeZone = 72.0
+	const safeZone = 66.0
 
-	// Scale to fit the safe zone
-	scale := safeZone / max(svgW, svgH)
+	scale := safeZone / math.Hypot(svgW, svgH)
 	// Center within the canvas
 	tx := (canvasSize - svgW*scale) / 2
 	ty := (canvasSize - svgH*scale) / 2
