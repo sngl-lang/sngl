@@ -1036,13 +1036,17 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 			funcExpr = c.convertExpr(call.Receiver)
 		}
 	} else if call.Func != nil {
-		if call.ReceiverArg && len(call.Args) > 0 {
-			// The receiver is no parameter, so it goes before the dot.
+		// The receiver is no parameter, so it goes before the dot; and a
+		// type's method called on a value, `n.abs()`, is printed so, its
+		// receiver passed unnamed where `int.abs(x=n)` names it -- printed
+		// as `int.abs(n)` it read back as the second, a different call.
+		if len(call.Args) > 0 && (call.ReceiverArg || call.Args[0].Name == "" && takesReceiver(call.Func)) {
 			recv := c.convertExpr(call.Args[0].Value)
 			// A brace may not open an `if` or `for` head, so a literal
-			// before the dot is parenthesized wherever it stands.
+			// before the dot is parenthesized wherever it stands, and so is
+			// an operator, which would otherwise take the call as its operand.
 			switch r := recv.(type) {
-			case *ast.MapLit:
+			case *ast.MapLit, *ast.BinaryExpr, *ast.UnaryExpr, *ast.TernaryExpr:
 				recv = &ast.ParenExpr{Inner: r}
 			case *ast.StructExpr:
 				if r.Name == "" {
@@ -1078,6 +1082,16 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 		Func: c.typeArgCallee(funcExpr, call),
 		Args: c.convertCallArgList(call.Args),
 	}
+}
+
+// takesReceiver reports whether fn is a type's method whose first parameter is
+// the value it is called on: `func int.abs(x int)`.
+func takesReceiver(fn *Func) bool {
+	if !fn.OnType() || len(fn.Params) == 0 || fn.Params[0].Type == nil {
+		return false
+	}
+	p := fn.Params[0]
+	return p.Receiver || p.Type.Decl != nil && p.Type.Decl == fn.RecvDecl()
 }
 
 // typeArgCallee is callee with the type arguments call was written with.

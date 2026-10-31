@@ -157,6 +157,10 @@ const (
 	BuiltinCInt    BuiltinKind = "cInt"
 	BuiltinCDouble BuiltinKind = "cDouble"
 	BuiltinCBool   BuiltinKind = "cBool"
+	// Text is sngl:builtin's `_text`, a value's text as the target writes it,
+	// which the checker makes an ir.Conversion: the primitive each builtin
+	// type's format is written over, since `string(x)` is `x.format()`.
+	BuiltinText BuiltinKind = "text"
 
 	// Predeclared constants. These annotate a const declaration whose written
 	// value is a placeholder: the real one is not known until a build picks a
@@ -292,7 +296,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink, BuiltinApplication,
 		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode, BuiltinGenRun, BuiltinGenBuild,
-		BuiltinCString, BuiltinCInt, BuiltinCDouble, BuiltinCBool,
+		BuiltinCString, BuiltinCInt, BuiltinCDouble, BuiltinCBool, BuiltinText,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
 }
@@ -301,5 +305,5 @@ func AllBuiltinKinds() []BuiltinKind {
 // not an unrecognized string).
 func (b BuiltinKind) Valid() bool {
 	return b == BuiltinAny || b == BuiltinApplication || b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
-		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsCMarshal() || b.IsConst()
+		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsCMarshal() || b.IsConst() || b == BuiltinText
 }

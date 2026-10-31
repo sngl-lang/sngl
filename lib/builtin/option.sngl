@@ -3,6 +3,13 @@
 #[_builtin(option)]
 struct option[T any] {}
 
+// The value, or `null` where there is none, as the target's own formatter
+// writes it: what `"{x}"` writes.
+const func option[T].format() => _text(this)
+
+// Puts the option's format on the end of out.
+func option[T].appendFormat(out ref[builder]) { out.add(_text(this)) }
+
 // Mutable reference cell: `ref[T]` is a handle to a `T` rather than a copy of
 // one, so what holds it goes on seeing what that cell becomes. T is the referent
 // type. `&x` makes one and `*r` reads through it.

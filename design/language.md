@@ -824,3 +824,64 @@ and a first argument that is not a context is a positioned error
 a `sngl:` method whose first parameter is a bare type parameter took its
 operand as that parameter, since every operand fits one, so such a parameter
 receives the operand only where it is marked the receiver (`receivesOperand`).
+
+## Formatting an interpolated field
+
+**A field is its value's `format`, checked as a call** (`interpolateFormat`):
+`{x}` and `{x, a, b}` are `x.format()` and `x.format(a, b)`, built as a
+`SelectExpr`/`CallExpr` over the already-checked operand and handed to
+`inferMethodCallOn`, so arguments, names and defaults are a call's. The parser
+keeps a field written with arguments as an `ast.FormatExpr` (`InterpField` in
+the grammar) and a bare one as the expression. `string(x)` is no cast but the
+same call, whatever x is (`inferBuiltinConversion` hands it to
+`interpolateFormat`). Only a payload-free enum, a unit and `null` keep a
+default (`defaultFormatted`): each is a declaration the compiler makes, with
+nothing a library could hang a method on. Every builtin type's `format` is
+declared in `sngl:builtin` or `sngl:time`, written over `_text`, marked
+`#[_builtin(text)]` and found by that mark: the checker makes a call of it the
+`ir.Conversion` to string that every target already spells
+(`textConversion`), since `string(x)` in a format's own body would be the
+format again. `sngl:time` cannot see an unexported `sngl:builtin` name, and a
+date's format returns the date, which coerces to its canonical string
+(`testdata/format_options.sngl`, `error_format.sngl`).
+
+**A builtin's method reaches a target only by being inlined**: no output
+declares a method on an int, and `passLibFuncs` promotes plain helpers, not
+methods. So each builtin `format` reads every parameter once and leaves the
+deciding to plain helpers (`_intText`, `_padded`, `_placesText`), and the
+inliner settles a conditional its constant arguments decide before counting
+reads (`settledBranches`) -- with its defaults `int.format(n)` is `_text(n)`,
+which is why no golden moved for a bare `{n}`. `appendFormat` is a statement,
+which `inlineCall` never sees, so `inlineCallStmt` splices a builtin method
+whose body is one call, and `*&b` folds to `b` once the `ref[builder]`
+argument meets the body's deref. Both bind arguments the way
+`passCallDefaults` reads them: in parameter order, a named argument for its
+own parameter (`callSubs`); a positional binding gave `{n, width=3}`'s 3 to
+`base`.
+
+**A string with a field whose type declares `appendFormat` is written by one
+builder** (`buildInterpolation`), and any other stays the `+` chain, which
+every target joins in one allocation. The decision is the checker's because
+the optimizer inlines a program's pure `format` before lowering sees it. The
+builder is a package function, `__fmtN`, taking what the string reads as
+arguments: a view or a var initializer holds no statements, and arguments keep
+what the string reads visible to reactivity. Its body is AST checked against
+those parameters (`checkFormatBuilder`), the builder type taken from
+appendFormat's own `out` parameter rather than by name. An appender must take
+format's parameters after the builder, by name and type, or the field falls
+back to its format. A component body is checked twice, so the function is
+memoized per string (`formatBuilders`). JavaScript gets `+=` through
+`passStringBuilders` (`testdata/format_builder.txtar`).
+
+**A pipeline that lowers without optimizing still reaches a builtin method**,
+which `passBuiltinMethods` answers before `StringBuilders` and `CallDefaults`
+see it -- gtk4's and android's integration tests lower unoptimized, and
+emitted `d.format(10, 0, " ")` on a Go int. It inlines what it can as the
+optimizer would, arguments substituted and conditionals they settle taken
+(`inlineSettled`), so `string(d)` is `d.toString()` there too; and what is left
+it makes a function of the package, `__int_format`. Promoting alone put
+`_intText`'s conditional in android's go-lib, whose Go emitter takes none. And
+`ir.Convert` prints a type's method called on a value as `n.format()`: printed
+`int.format(n)`, it read back as the static call, whose argument the checker
+names, and `dump --stage checked` stopped reading back as itself
+(`cmd/sngl/testdata/event_params_roundtrip.txt`).

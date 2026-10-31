@@ -18,7 +18,7 @@ import . "sngl:ui"
 component main node {
     var clicks int = 0
     var n__inst0 int = 0
-    button(text=string(n__inst0), @click {
+    button(text=n__inst0.format(base=10, width=0, pad=" "), @click {
         n__inst0 = n__inst0 + 1
         clicks = n__inst0
     })

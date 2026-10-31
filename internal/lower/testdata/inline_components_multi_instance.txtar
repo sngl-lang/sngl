@@ -15,6 +15,6 @@ import . "sngl:ui"
 component main node {
     var n__inst0 int = 5
     var n__inst1 int = 10
-    text(value=string(n__inst0))
-    text(value=string(n__inst1))
+    text(value=n__inst0.format(base=10, width=0, pad=" "))
+    text(value=n__inst1.format(base=10, width=0, pad=" "))
 }

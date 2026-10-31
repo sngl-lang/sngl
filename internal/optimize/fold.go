@@ -76,6 +76,11 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		// storage may be mutated through aliases, and `&literal` is not a
 		// valid emission. Leave the operand untouched so the codegen still
 		// sees the original lvalue identifier.
+		// What `&b` refers to is b: a reference handed to a ref[T] parameter
+		// and read through once the body is spliced in.
+		if addr, ok := x.Operand.(*ir.Unary); ok && x.Op == ast.UnaryDeref && addr.Op == ast.UnaryAddr {
+			return addr.Operand
+		}
 		if x.Op == ast.UnaryDeref && !isRef(x.Operand) {
 			// A plain T that stood in for a ref[T] parameter: the coercion
 			// leaves the value as it is, so what the body wrote as `*p` is now
@@ -393,6 +398,13 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 			}
 			if n.Call.ErrorHandler != nil && n.Call.ErrorHandler.Func != nil {
 				n.Call.ErrorHandler.Func.Block = foldStmts(n.Call.ErrorHandler.Func.Block, ctx)
+			}
+			if inlined := inlineCallStmt(n.Call, ctx); inlined != nil {
+				if ctx != nil && n.Call.Func != nil {
+					ctx.inliningFuncs[n.Call.Func] = true
+					defer delete(ctx.inliningFuncs, n.Call.Func)
+				}
+				return foldStmt(inlined, ctx)
 			}
 		}
 	case *ir.LocalVar:

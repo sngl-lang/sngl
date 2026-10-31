@@ -40,6 +40,51 @@ const func int.abs(x int) int { return x < 0 ? -x : x }
 #[_intrinsic("int.clamp")]
 const func int.clamp(x int, lo int, hi int) int { return int.max(lo, int.min(x, hi)) }
 
+// Writes x in base, from 2 through 36 (another writes base 10), at least width
+// characters wide: pad fills on the left, after the sign when it is "0".
+// `"{n, base=16, width=4, pad="0"}"` is `n.format(base=16, width=4, pad="0")`.
+//
+// A builtin's method reaches a target only by being inlined, so its body reads
+// each parameter once, and what is left to decide is in helpers.
+const func int.format(x int, base int = 10, width int = 0, pad string = " ") => _padded(_intText(x, base), width, pad)
+
+// Puts x's format on the end of out.
+func int.appendFormat(x int, out ref[builder], base int = 10, width int = 0, pad string = " ") { out.add(int.format(x, base, width, pad)) }
+
+// x in base, its sign first.
+const func _intText(x int, base int) => base == 10 ? _text(x) : _baseText(x, base)
+
+const func _baseText(x int, base int) string {
+    if base < 2 || base > 36 {
+        return _text(x)
+    }
+    if x == 0 {
+        return "0"
+    }
+    var out = ""
+    var m = int.abs(x)
+    for m > 0 {
+        var d = m % base
+        out = "0123456789abcdefghijklmnopqrstuvwxyz".substring(d, d + 1) + out
+        m = m / base
+    }
+    return x < 0 ? "-" + out : out
+}
+
+// text filled on the left with pad to at least width characters, after its
+// sign when pad is "0".
+const func _padded(text string, width int, pad string) => width == 0 ? text : _fill(text, width, pad)
+
+const func _fill(text string, width int, pad string) string {
+    var sign = pad == "0" && text.startsWith("-") ? "-" : ""
+    var digits = text.substring(sign.length(), text.length())
+    var fill = ""
+    for pad != "" && sign.length() + fill.length() + digits.length() < width {
+        fill = fill + pad
+    }
+    return sign + fill + digits
+}
+
 // Parse s in the given base (2, 8, 10, 16). No target other than the headless
 // interpreter implements this yet.
 #[_intrinsic("int.parse")]
@@ -105,6 +150,30 @@ const func float.ceil(x float) float { return x > 0.0 && float(int(x)) != x ? fl
 #[_intrinsic("float.round")]
 const func float.round(x float) float { return x < 0.0 ? -float(int(-x + 0.5)) : float(int(x + 0.5)) }
 
+// Writes x with places digits after the point, rounding half away from zero;
+// a negative places, the default, writes it as the target writes a float.
+const func float.format(x float, places int = -1) => _placesText(x, places)
+
+// Puts x's format on the end of out.
+func float.appendFormat(x float, out ref[builder], places int = -1) { out.add(float.format(x, places)) }
+
+const func _placesText(x float, places int) => places < 0 ? _text(x) : _fixedText(x, places)
+
+const func _fixedText(x float, places int) string {
+    var scale = 1
+    var i = 0
+    for i < places {
+        scale = scale * 10
+        i = i + 1
+    }
+    var r = int(float.round(float.abs(x) * float(scale)))
+    var sign = x < 0.0 && r != 0 ? "-" : ""
+    if places == 0 {
+        return sign + _text(r)
+    }
+    return sign + _text(r / scale) + "." + _fill(_text(r % scale), places, "0")
+}
+
 // --- Sized numerics ---
 //
 // A number of a stated width, for a value whose width is part of what it
@@ -120,39 +189,99 @@ const func float.round(x float) float { return x < 0.0 ? -float(int(-x + 0.5)) :
 #[_builtin(int8)]
 struct int8 {}
 
+// x in decimal: what `"{x}"` writes.
+const func int8.format(x int8) => _text(x)
+
+// Puts x's format on the end of out.
+func int8.appendFormat(x int8, out ref[builder]) { out.add(_text(x)) }
+
 // 16-bit signed integer.
 #[_builtin(int16)]
 struct int16 {}
+
+// x in decimal: what `"{x}"` writes.
+const func int16.format(x int16) => _text(x)
+
+// Puts x's format on the end of out.
+func int16.appendFormat(x int16, out ref[builder]) { out.add(_text(x)) }
 
 // 32-bit signed integer.
 #[_builtin(int32)]
 struct int32 {}
 
+// x in decimal: what `"{x}"` writes.
+const func int32.format(x int32) => _text(x)
+
+// Puts x's format on the end of out.
+func int32.appendFormat(x int32, out ref[builder]) { out.add(_text(x)) }
+
 // 64-bit signed integer: `int` at a width stated rather than assumed.
 #[_builtin(int64)]
 struct int64 {}
+
+// x in decimal: what `"{x}"` writes.
+const func int64.format(x int64) => _text(x)
+
+// Puts x's format on the end of out.
+func int64.appendFormat(x int64, out ref[builder]) { out.add(_text(x)) }
 
 // 8-bit unsigned integer, a byte: the channels of a `color`.
 #[_builtin(uint8)]
 struct uint8 {}
 
+// x in decimal: what `"{x}"` writes.
+const func uint8.format(x uint8) => _text(x)
+
+// Puts x's format on the end of out.
+func uint8.appendFormat(x uint8, out ref[builder]) { out.add(_text(x)) }
+
 // 16-bit unsigned integer.
 #[_builtin(uint16)]
 struct uint16 {}
+
+// x in decimal: what `"{x}"` writes.
+const func uint16.format(x uint16) => _text(x)
+
+// Puts x's format on the end of out.
+func uint16.appendFormat(x uint16, out ref[builder]) { out.add(_text(x)) }
 
 // 32-bit unsigned integer.
 #[_builtin(uint32)]
 struct uint32 {}
 
+// x in decimal: what `"{x}"` writes.
+const func uint32.format(x uint32) => _text(x)
+
+// Puts x's format on the end of out.
+func uint32.appendFormat(x uint32, out ref[builder]) { out.add(_text(x)) }
+
 // 64-bit unsigned integer.
 #[_builtin(uint64)]
 struct uint64 {}
+
+// x in decimal: what `"{x}"` writes.
+const func uint64.format(x uint64) => _text(x)
+
+// Puts x's format on the end of out.
+func uint64.appendFormat(x uint64, out ref[builder]) { out.add(_text(x)) }
 
 // 32-bit IEEE-754 floating-point number.
 #[_builtin(float32)]
 struct float32 {}
 
+// x in decimal: what `"{x}"` writes.
+const func float32.format(x float32) => _text(x)
+
+// Puts x's format on the end of out.
+func float32.appendFormat(x float32, out ref[builder]) { out.add(_text(x)) }
+
 // 64-bit IEEE-754 floating-point number: `float` at a width stated rather
 // than assumed.
 #[_builtin(float64)]
 struct float64 {}
+
+// x in decimal: what `"{x}"` writes.
+const func float64.format(x float64) => _text(x)
+
+// Puts x's format on the end of out.
+func float64.appendFormat(x float64, out ref[builder]) { out.add(_text(x)) }

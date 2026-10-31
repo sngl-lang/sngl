@@ -66,5 +66,5 @@ func compare(a Bag, b Bag) bool {
 }
 
 func spelled(s Shape) string {
-    return "{s}" // ERROR(check) "cannot interpolate Shape: type has no string() method"
+    return "{s}" // ERROR(check) "cannot format Shape: type has no format method"
 }

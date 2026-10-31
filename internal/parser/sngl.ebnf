@@ -175,8 +175,12 @@ native_value      = `\x5B` .
 
 # ── String interpolation ────────────────────────────────────────────────────
 
-InterpStr    = str_start Expr { str_resume Expr } str_end .
-TripleInterp = triple_start Expr { str_resume Expr } triple_end .
+InterpStr    = str_start InterpField { str_resume InterpField } str_end .
+TripleInterp = triple_start InterpField { str_resume InterpField } triple_end .
+
+# The value a {...} field interpolates, and the arguments its format method
+# takes: `{x, a, b}` is `x.format(a, b)`.
+InterpField = Expr [ comma ArgList ] .
 
 # ── Translatable strings ─────────────────────────────────────────────────────
 

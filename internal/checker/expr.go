@@ -1134,6 +1134,7 @@ func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
 	// What a call to one of these intrinsics is handed is held to rules its
 	// signature cannot state.
 	defer func() {
+		out = c.textConversion(x, out)
 		c.refuseSetContextName(out)
 		c.checkI18nCall(x, out)
 		c.checkCodecCall(x, out)
@@ -1151,9 +1152,7 @@ func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
 	}
 
 	// Check if it's a builtin conversion. Only primitive→primitive conversions
-	// are permitted; struct/func/component/list/option operands must define a
-	// user method and be called as `x.string()` etc. — the cast form never
-	// dispatches to user methods.
+	// are permitted, except to string: `string(x)` is `x.format()`.
 	if ident, ok := x.Func.(*ast.IdentExpr); ok {
 		// A scalar cast and a struct-backed one (color/date/time) are both
 		// found through scope, so a program's own declaration of the name is
@@ -1301,6 +1300,22 @@ func (c *checker) inferUnitConversion(x *ast.CallExpr, target *ir.Type) ir.Expr 
 	return argExpr
 }
 
+// textConversion is out, a call of sngl:builtin's `_text`, as the
+// conversion it stands for: the target's own text for a value of a type it
+// has one for, which is what each builtin format is written over. Any other
+// call is out.
+func (c *checker) textConversion(x *ast.CallExpr, out ir.Expr) ir.Expr {
+	call, ok := out.(*ir.Call)
+	if !ok || call.Func == nil || call.Func.Builtin != ir.BuiltinText || len(call.Args) != 1 {
+		return out
+	}
+	operand := call.Args[0].Value
+	if from := exprType(operand); from != nil && !from.Equal(TypString) && !primitiveConvertible(from, TypString) {
+		c.error(x.Pos, "%s has no text of the target's: declare a format and call it", from)
+	}
+	return &ir.Conversion{AST: x, Type: TypString, Operand: operand}
+}
+
 // stringReprCast reports the cast target when sym is one of the string-repr
 // structs — color, date, time, datetime — which are stdlib StructDef-backed
 // rather than scalar primitives, so LookupBuiltinScalar does not answer for
@@ -1334,10 +1349,15 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 		c.error(x.Pos, "%s(): expected 1 argument, got %d", name, len(x.Args.Args))
 		return &ir.Conversion{AST: x, Type: target, Operand: operand}
 	}
-	// Implicit func() T collapse: `string(fn)` where fn: func() T becomes
-	// `string(fn())` so zero-arg funcs can flow into a cast like any other
-	// value.
 	arg, _ := x.Args.Args[0].(ast.Arg)
+	// `string(x)` is the field `"{x}"`: x's format, a zero-arg function
+	// called first.
+	if target.Kind == ir.TypeString && arg.Value != nil && arg.Name == "" {
+		return c.interpolateFormat(arg.Value)
+	}
+	// Implicit func() T collapse: `int(fn)` where fn: func() T becomes
+	// `int(fn())` so zero-arg funcs can flow into a cast like any other
+	// value.
 	if arg.Value != nil {
 		argExpr := c.checkExpr(arg.Value)
 		from := exprType(argExpr)
@@ -1356,13 +1376,6 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 			c.error(x.Pos, "%s(): %s carries a magnitude per base, so it has no single number; read one with %s",
 				name, from, baseNameList(ud))
 		} else if from != nil && !from.Equal(target) && !primitiveConvertible(from, target) {
-			// A type that declares its string form is converted by it, as
-			// it is interpolated by it.
-			if target.Kind == ir.TypeString {
-				if fn, ok := c.lookupMethod(from.String(), "string"); ok {
-					return &ir.Call{AST: x, Type: TypString, Func: fn, Args: []ir.CallArg{{Value: argExpr}}}
-				}
-			}
 			c.error(x.Pos, "%s(): cannot convert %s", name, from)
 		}
 		return &ir.Conversion{AST: x, Type: target, Operand: argExpr}
@@ -1507,8 +1520,12 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	}
 	// Determine if operand is a type name (static call) vs a value (instance call).
 	isStatic := isTypeSym(c.staticReceiverSym(sel.Operand))
+	return c.inferMethodCallOn(sel, call, c.checkExpr(sel.Operand), isStatic)
+}
 
-	receiverExpr := c.checkExpr(sel.Operand)
+// inferMethodCallOn is inferMethodCall with its operand already checked as
+// receiverExpr: sel names the method and call carries its arguments.
+func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, receiverExpr ir.Expr, isStatic bool) ir.Expr {
 	receiver := exprType(receiverExpr)
 
 	if c.rejectVoidReceiver(receiver, sel.Operand) {
@@ -1530,34 +1547,10 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			return &ir.Call{AST: call, Type: TypInvalid, Args: c.checkCallArgs(call.Args, nil)}
 		}
 	}
-	// The receiver's declaration owns its members, so ask it directly. Only
-	// when the type has no declaration to ask — a builtin generic, whose
-	// members hang off the bare constructor name — does the name matter.
-	fn, ok := c.memberOf(receiver.Decl, sel.Field)
-	if !ok {
-		fn, ok = c.lookupMethod(typeName, sel.Field)
-	}
-	// Fallback for generic types: list[int] → "list", option[int] → "option",
-	// map[K,V] → "map".
-	if !ok {
-		switch receiver.Kind {
-		case ir.TypeList:
-			fn, ok = c.lookupMethod("list", sel.Field)
-		case ir.TypeOption:
-			fn, ok = c.lookupMethod("option", sel.Field)
-		case ir.TypeMap:
-			fn, ok = c.lookupMethod("map", sel.Field)
-		}
-	}
-	// A method reached through `option[Struct]` resolves against the struct,
-	// the same way a field read through one does (see inferSelect). Asked after
-	// `option`'s own members, so a name the option itself declares still wins.
-	if !ok && receiver.Kind == ir.TypeOption && len(receiver.Elems) == 1 &&
-		receiver.Elems[0] != nil && receiver.Elems[0].Kind == ir.TypeStruct {
-		if fn, ok = c.memberOf(receiver.Elems[0].Decl, sel.Field); ok {
-			receiver = receiver.Elems[0]
-			typeName = receiver.String()
-		}
+	fn, recv, ok := c.resolveMethod(receiver, sel.Field)
+	if ok && recv != receiver {
+		receiver = recv
+		typeName = receiver.String()
 	}
 	if ok {
 		sig := fn.FuncSig()
@@ -1770,6 +1763,51 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		Args:     args,
 		Event:    event,
 	}
+}
+
+// resolveMethod is the method named field a value of receiver has, and the
+// type that declares it: receiver itself, or the struct an `option[Struct]`
+// holds.
+func (c *checker) resolveMethod(receiver *ir.Type, field string) (*ir.Func, *ir.Type, bool) {
+	// The receiver's declaration owns its members, so ask it directly. Only
+	// when the type has no declaration to ask — a builtin generic, whose
+	// members hang off the bare constructor name — does the name matter.
+	if fn, ok := c.memberOf(receiver.Decl, field); ok {
+		// The caller reads fn.Return, which an expression body has none of
+		// until it is checked (see lookupMethod).
+		c.ensureReturnType(fn)
+		return fn, receiver, true
+	}
+	if fn, ok := c.lookupMethod(receiver.String(), field); ok {
+		return fn, receiver, true
+	}
+	// Fallback for generic types: list[int] → "list", option[int] → "option",
+	// map[K,V] → "map".
+	generic := ""
+	switch receiver.Kind {
+	case ir.TypeList:
+		generic = "list"
+	case ir.TypeOption:
+		generic = "option"
+	case ir.TypeMap:
+		generic = "map"
+	}
+	if generic != "" {
+		if fn, ok := c.lookupMethod(generic, field); ok {
+			return fn, receiver, true
+		}
+	}
+	// A method reached through `option[Struct]` resolves against the struct,
+	// the same way a field read through one does (see inferSelect). Asked after
+	// `option`'s own members, so a name the option itself declares still wins.
+	if receiver.Kind == ir.TypeOption && len(receiver.Elems) == 1 &&
+		receiver.Elems[0] != nil && receiver.Elems[0].Kind == ir.TypeStruct {
+		if fn, ok := c.memberOf(receiver.Elems[0].Decl, field); ok {
+			c.ensureReturnType(fn)
+			return fn, receiver.Elems[0], true
+		}
+	}
+	return nil, receiver, false
 }
 
 // elementEvent returns the event named event declared on the component recv
@@ -2747,106 +2785,96 @@ func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
 	return &ir.MapLitIR{AST: x, Type: c.mapOf(keyT, valT), Entries: entries}
 }
 
-// interpPartAlreadyString reports whether an interpolation part's type can be
-// concatenated into a string chain without any coercion.
-func interpPartAlreadyString(t *ir.Type) bool {
-	if t == nil {
-		return true
+// interpolateFormat is a field of an interpolated string as the string its
+// format method writes: `{x}` is `x.format()` and `{x, a, b}` is
+// `x.format(a, b)`, checked as any call is. A zero-arg function is called
+// first, `{fn}` being `{fn()}`. A string is itself, and an enum carrying no
+// payload, a unit and `null` that declare no format are written as `string(x)`
+// writes them; any other type without a format method may not be formatted.
+func (c *checker) interpolateFormat(part ast.Expr) ir.Expr {
+	valueAST, args := part, ast.ArgList{}
+	if f, ok := part.(*ast.FormatExpr); ok {
+		valueAST, args = f.Value, f.Args
 	}
-	switch t.Kind {
-	case ir.TypeString, ir.TypeInvalid:
-		return true
-	}
-	return false
-}
-
-// interpPartPrimitive reports whether a part's type is a stringifiable
-// primitive that can flow into an interpolation via an ir.Conversion — no
-// user-defined `.string()` method required.
-func interpPartPrimitive(t *ir.Type) bool {
-	if t == nil {
-		return false
-	}
-	// color/date/time/datetime are StructDef-backed but still stringify like
-	// string-domain primitives in interpolation.
-	if ir.StringReprStruct(t) {
-		return true
-	}
-	// A value holding a payload is spelled by a string() method, or matched.
-	if ir.PayloadEnum(t) != nil {
-		return false
-	}
-	switch t.Kind {
-	case ir.TypeInt, ir.TypeFloat, ir.TypeBool,
-		ir.TypeEnum, ir.TypeUnit, ir.TypeNull:
-		return true
-	}
-	return false
-}
-
-// interpolateStringify turns an interpolation part into a string-typed ir.Expr.
-// Primitives and an invalid part, already reported, flow through (with a
-// wrapping Conversion for primitives);
-// zero-arg funcs get an implicit call; other types must define a `.string()`
-// method. When no path exists an error is emitted and the original expr is
-// returned so chain assembly continues.
-func (c *checker) interpolateStringify(partAst ast.Expr, expr ir.Expr, pos ast.Pos) ir.Expr {
+	pos := *valueAST.ExprPos()
+	expr := c.checkExpr(valueAST)
 	t := exprType(expr)
 	// Implicit call: `{fn}` where fn returns T becomes `{fn()}`. Re-check via
 	// the ast layer so Func resolution (plain / method / namespace) runs.
 	if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil &&
-		len(t.Sig.Params) == 0 && t.Sig.Return != nil && partAst != nil {
-		call := &ast.CallExpr{Pos: *partAst.ExprPos(), Func: partAst}
-		expr = c.checkExpr(call)
+		len(t.Sig.Params) == 0 && t.Sig.Return != nil {
+		valueAST = &ast.CallExpr{Pos: pos, Func: valueAST}
+		expr = c.checkExpr(valueAST)
 		t = exprType(expr)
 	}
-	if interpPartAlreadyString(t) {
+	if t == nil || t.Kind == ir.TypeInvalid {
+		c.checkCallArgs(args, nil)
 		return expr
 	}
-	if interpPartPrimitive(t) {
-		return &ir.Conversion{Type: TypString, Operand: expr}
+	if len(args.Args) == 0 {
+		if t.Kind == ir.TypeString {
+			return expr
+		}
+		if defaultFormatted(t) {
+			if _, ok := c.memberOf(t.Decl, "format"); !ok {
+				return &ir.Conversion{Type: TypString, Operand: expr}
+			}
+		}
 	}
-	// User-defined or stdlib method lookup: `.string()` on the value's type.
-	typeName := t.String()
-	if fn, ok := c.lookupMethod(typeName, "string"); ok {
-		return &ir.Call{Type: TypString, Func: fn, Args: []ir.CallArg{{Value: expr}}}
+	recv := t
+	if (recv.Kind == ir.TypeRef || recv.Kind == ir.TypeReadonly) && len(recv.Elems) > 0 {
+		recv = recv.Elems[0]
 	}
-	// Generic-type fallbacks so list/option implementations can register under
-	// their bare name and apply to any instantiation.
+	if _, _, ok := c.resolveMethod(recv, "format"); !ok {
+		c.error(pos, "cannot format %s: type has no format method", t)
+		c.checkCallArgs(args, nil)
+		return expr
+	}
+	sel := &ast.SelectExpr{Pos: pos, Operand: valueAST, Field: "format"}
+	out := c.inferMethodCallOn(sel, &ast.CallExpr{Pos: pos, Func: sel, Args: args}, expr, false)
+	if rt := exprType(out); rt != nil && rt.Kind != ir.TypeInvalid && rt.Kind != ir.TypeString {
+		c.error(pos, "cannot format %s: its format method returns %s, not string", t, rt)
+	}
+	return out
+}
+
+// defaultFormatted reports whether a value of t is written by `string(x)`
+// where its type declares no format: an enum carrying no payload, whose
+// member's name it is, a unit, and `null`. Each is a declaration the compiler
+// makes rather than one a library can attach a method to.
+func defaultFormatted(t *ir.Type) bool {
 	switch t.Kind {
-	case ir.TypeList:
-		if fn, ok := c.lookupMethod("list", "string"); ok {
-			return &ir.Call{Type: TypString, Func: fn, Args: []ir.CallArg{{Value: expr}}}
-		}
-		// No stdlib method yet — fall back to the generic stringify path so
-		// `{myList}` still produces a rendered list at runtime. Platform
-		// codegen for ir.Conversion over a list emits its language-native
-		// formatter (fmt.Sprint / String() / toString()).
-		return &ir.Conversion{Type: TypString, Operand: expr}
-	case ir.TypeOption:
-		if fn, ok := c.lookupMethod("option", "string"); ok {
-			return &ir.Call{Type: TypString, Func: fn, Args: []ir.CallArg{{Value: expr}}}
-		}
-		return &ir.Conversion{Type: TypString, Operand: expr}
+	case ir.TypeEnum:
+		return ir.PayloadEnum(t) == nil
+	case ir.TypeUnit, ir.TypeNull:
+		return true
 	}
-	c.error(pos, "cannot interpolate %s: type has no string() method", t)
-	return expr
+	return false
 }
 
 func (c *checker) inferInterpolation(x *ast.InterpolationExpr) ir.Expr {
-	// Desugar interpolation to a chain of Binary + operations. Each string
-	// literal part becomes an ir.Literal; each expression part is checked and
-	// stringified via interpolateStringify so the chain is string-typed end to
+	// Each string literal part becomes an ir.Literal; each expression part is
+	// the string its format method writes (interpolateFormat). A string with a
+	// part a builder appends better is written by one (buildInterpolation),
+	// and any other is a chain of Binary + operations, string-typed end to
 	// end.
-	var chain ir.Expr
+	var parts []ir.Expr
+	var text []bool
 	for _, part := range x.Parts {
-		var partExpr ir.Expr
 		if lit, ok := x.Text(part); ok {
 			v, _ := lit.StringValue()
-			partExpr = &ir.Literal{AST: lit, Type: TypString, Value: v}
+			parts = append(parts, &ir.Literal{AST: lit, Type: TypString, Value: v})
+			text = append(text, true)
 		} else {
-			partExpr = c.interpolateStringify(part, c.checkExpr(part), *part.ExprPos())
+			parts = append(parts, c.interpolateFormat(part))
+			text = append(text, false)
 		}
+	}
+	if built := c.buildInterpolation(x, parts, text); built != nil {
+		return built
+	}
+	var chain ir.Expr
+	for _, partExpr := range parts {
 		if chain == nil {
 			chain = partExpr
 		} else {

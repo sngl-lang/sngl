@@ -39,6 +39,9 @@ func stmtBlocks(s ast.Stmt) (blocks []*ast.StmtBlock, commit func()) {
 	walkExpr = func(e ast.Expr) {
 		switch x := e.(type) {
 		case nil:
+		case *ast.FormatExpr:
+			walkExpr(x.Value)
+			walkArgs(&x.Args)
 		case *ast.InterpolationExpr:
 			for _, p := range x.Parts {
 				walkExpr(p)
