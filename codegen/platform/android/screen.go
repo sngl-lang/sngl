@@ -197,9 +197,9 @@ func (cc *irComposeContext) screenIcon(n *ir.NodeInst) string {
 		return "{\n" + b.String() + strings.Repeat("    ", cc.indent) + "}"
 	}
 	if cc.icon != "" {
-		return fmt.Sprintf("{ %s(%s(%s), contentDescription = null, modifier = %s.%s(24.dp)) }",
+		return fmt.Sprintf("{ %s(%s(%s), contentDescription = null, modifier = %s.%s(%s)) }",
 			cc.kc.Name("androidx.compose.foundation.Image"), cc.kc.Name("androidx.compose.ui.res.painterResource"), cc.icon,
-			cc.kc.Name(ktModifier), cc.kc.Name("androidx.compose.foundation.layout.size"))
+			cc.kc.Name(ktModifier), cc.kc.Name("androidx.compose.foundation.layout.size"), dp(cc.kc, "24"))
 	}
 	return "null"
 }

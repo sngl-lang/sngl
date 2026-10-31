@@ -10,9 +10,11 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -518,7 +520,23 @@ func generateLibraryRKotlinWithIDs(tc *toolchain, rKtDir string, resourceIDs map
 		os.WriteFile(filepath.Join(rKtDir, filename), []byte(sb.String()), 0o644)
 	}
 
-	_ = appPkg
+	if appPkg == "" || seen[appPkg] {
+		return
+	}
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "package %s\n\n", appPkg)
+	sb.WriteString("object R {\n")
+	for _, typeName := range slices.Sorted(maps.Keys(resTypes)) {
+		entries := resTypes[typeName]
+		slices.SortFunc(entries, func(a, b resEntry) int { return strings.Compare(a.name, b.name) })
+		fmt.Fprintf(&sb, "    object %s {\n", typeName)
+		for _, e := range entries {
+			fmt.Fprintf(&sb, "        const val %s: Int = 0x%08x\n", strings.ReplaceAll(e.name, ".", "_"), e.id)
+		}
+		sb.WriteString("    }\n")
+	}
+	sb.WriteString("}\n")
+	os.WriteFile(filepath.Join(rKtDir, strings.ReplaceAll(appPkg, ".", "_")+"_R.kt"), []byte(sb.String()), 0o644)
 }
 
 // readResourceIDs parses the --emit-ids output from aapt2 link.
