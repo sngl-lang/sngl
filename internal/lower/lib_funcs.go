@@ -50,20 +50,16 @@ func lowerLibFuncs(pkg *ir.Package, _ Features, _ Options) error {
 	// promoted and reached the backend undeclared.
 	var roots []any
 	push := func(v any) { roots = append(roots, v) }
-	var added, promoted []*ir.Func
+	var added []*ir.Func
 	foreign := importedVars(pkg)
 	for {
 		push(pkg)
 		promoteFuncs(&roots, push, wanted, have, &added)
 		pkg.Funcs = append(pkg.Funcs, added...)
-		promoted = append(promoted, added...)
 		added = nil
 		if !promoteVars(pkg, foreign) {
 			break
 		}
-	}
-	if err := rewriteBuiltinMethods(pkg, promoted); err != nil {
-		return err
 	}
 	inlineLibConsts(pkg)
 	// The structs those helpers' signatures name are promoted by the shake

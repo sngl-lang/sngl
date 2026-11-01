@@ -609,38 +609,38 @@ func New() *Model {
 }
 
 func (m *Model) __wrote_dark() {
+	var __lt18 string
+	if m.dark {
+		__lt18 = "dark"
+	} else {
+		__lt18 = "light"
+	}
+	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt18))
 	var __lt19 string
 	if m.dark {
 		__lt19 = "dark"
 	} else {
 		__lt19 = "light"
 	}
-	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt19))
+	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt19))
+}
+
+func (m *Model) __n3_clicked_handler() {
+	m.dark = !m.dark
 	var __lt20 string
 	if m.dark {
 		__lt20 = "dark"
 	} else {
 		__lt20 = "light"
 	}
-	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt20))
-}
-
-func (m *Model) __n3_clicked_handler() {
-	m.dark = !m.dark
+	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt20))
 	var __lt21 string
 	if m.dark {
 		__lt21 = "dark"
 	} else {
 		__lt21 = "light"
 	}
-	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt21))
-	var __lt22 string
-	if m.dark {
-		__lt22 = "dark"
-	} else {
-		__lt22 = "light"
-	}
-	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt22))
+	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt21))
 }
 
 func (m *Model) Dark() bool {
@@ -663,24 +663,24 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ButtonSetLabel(__n3, "toggle")
 	gtk4rt.Connect(__n3, "clicked", m.__n3_clicked_handler)
 	gtk4rt.BoxAppend(__n2, __n3)
+	var __lt22 string
+	if m.dark {
+		__lt22 = "dark"
+	} else {
+		__lt22 = "light"
+	}
+	m.__n0 = gtk4rt.New("GtkLabel")
+	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt22))
+	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
+	gtk4rt.BoxAppend(__n2, m.__n0)
 	var __lt23 string
 	if m.dark {
 		__lt23 = "dark"
 	} else {
 		__lt23 = "light"
 	}
-	m.__n0 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt23))
-	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
-	gtk4rt.BoxAppend(__n2, m.__n0)
-	var __lt24 string
-	if m.dark {
-		__lt24 = "dark"
-	} else {
-		__lt24 = "light"
-	}
 	m.__n1 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt24))
+	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt23))
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(__n2, m.__n1)
 	gtk4rt.BoxAppend(m.__root, __n2)
@@ -991,7 +991,7 @@ pass sha256:0787523f9a04a300115a104f07ee5e3e
 -- run/go/fyne --
 pass sha256:c74bec998e0514f1e19401f49ce574a9
 -- run/go/gtk4 --
-pass sha256:fdb415830c2b6cd76ef5ef4e65e9e3d0
+pass sha256:d735374b1c33622f9f17fa675d948603
 -- run/kotlin/android --
 pass sha256:13124a836a6a55703707455ef277345e
 -- run/none/html --

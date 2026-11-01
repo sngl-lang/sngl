@@ -1409,14 +1409,14 @@ func new__child0Instance(__model *Model, __a___p0 _page__value, __a___p1 int) *_
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__slot4 = nil
-	var __lt21 string
+	var __lt20 string
 	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
-		__lt21 = "showing"
+		__lt20 = "showing"
 	} else {
-		__lt21 = "hidden"
+		__lt20 = "hidden"
 	}
 	c.__n0 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(c.__n0, __lt21)
+	gtk4rt.LabelSetLabel(c.__n0, __lt20)
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
@@ -1425,6 +1425,17 @@ func new__child0Instance(__model *Model, __a___p0 _page__value, __a___p1 int) *_
 
 func (c *__child0Instance) Set__p0(__v _page__value) {
 	c.__prop___p0 = __v
+	var __lt18 string
+	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
+		__lt18 = "showing"
+	} else {
+		__lt18 = "hidden"
+	}
+	gtk4rt.LabelSetLabel(c.__n0, __lt18)
+}
+
+func (c *__child0Instance) Set__p1(__v int) {
+	c.__prop___p1 = __v
 	var __lt19 string
 	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
 		__lt19 = "showing"
@@ -1432,17 +1443,6 @@ func (c *__child0Instance) Set__p0(__v _page__value) {
 		__lt19 = "hidden"
 	}
 	gtk4rt.LabelSetLabel(c.__n0, __lt19)
-}
-
-func (c *__child0Instance) Set__p1(__v int) {
-	c.__prop___p1 = __v
-	var __lt20 string
-	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
-		__lt20 = "showing"
-	} else {
-		__lt20 = "hidden"
-	}
-	gtk4rt.LabelSetLabel(c.__n0, __lt20)
 }
 
 func (c *__child0Instance) Destroy() {
@@ -2070,7 +2070,7 @@ pass sha256:7766c4e9b25ba462b8b27eb0b9cb486e
 -- run/go/fyne --
 pass sha256:b816172eac397f51dcb9e122f87723fc
 -- run/go/gtk4 --
-pass sha256:e958843260c5727c60c99f4eb8e9c39b
+pass sha256:a92ce9037d0541f2fb1462900730b91b
 -- run/kotlin/android --
 pass sha256:ae566d640377ffc649874b145020b0ac
 -- run/none/html --

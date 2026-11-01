@@ -1400,23 +1400,23 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) show_clicked_handler() {
 	m.b__inst0 = true
-	var __lt22 string
+	var __lt21 string
 	if !m.a__inst0 && !m.b__inst0 {
+		__lt21 = "asks: empty"
+	} else {
+		__lt21 = "asks: full"
+	}
+	gtk4rt.LabelSetLabel(m.two, __lt21)
+	m.__renderSlot1(m.__n7)
+	m.__renderSlot2(m.__n7)
+	m.xs__inst0 = []int{7}
+	var __lt22 string
+	if len(m.xs__inst0) == 0 {
 		__lt22 = "asks: empty"
 	} else {
 		__lt22 = "asks: full"
 	}
-	gtk4rt.LabelSetLabel(m.two, __lt22)
-	m.__renderSlot1(m.__n7)
-	m.__renderSlot2(m.__n7)
-	m.xs__inst0 = []int{7}
-	var __lt23 string
-	if len(m.xs__inst0) == 0 {
-		__lt23 = "asks: empty"
-	} else {
-		__lt23 = "asks: full"
-	}
-	gtk4rt.LabelSetLabel(m.loop, __lt23)
+	gtk4rt.LabelSetLabel(m.loop, __lt22)
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
 }
@@ -1470,14 +1470,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	var __lt19 string
+	var __lt18 string
 	if !m.a__inst0 && !m.b__inst0 {
-		__lt19 = "asks: empty"
+		__lt18 = "asks: empty"
 	} else {
-		__lt19 = "asks: full"
+		__lt18 = "asks: full"
 	}
 	m.two = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.two, __lt19)
+	gtk4rt.LabelSetLabel(m.two, __lt18)
 	gtk4rt.LabelSetXAlign(m.two, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.two)
 	m.__n7 = gtk4rt.New("GtkBox")
@@ -1487,14 +1487,14 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot1(m.__n7)
 	m.__renderSlot2(m.__n7)
 	gtk4rt.BoxAppend(m.__n0, m.__n7)
-	var __lt20 string
+	var __lt19 string
 	if len(m.xs__inst0) == 0 {
-		__lt20 = "asks: empty"
+		__lt19 = "asks: empty"
 	} else {
-		__lt20 = "asks: full"
+		__lt19 = "asks: full"
 	}
 	m.loop = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.loop, __lt20)
+	gtk4rt.LabelSetLabel(m.loop, __lt19)
 	gtk4rt.LabelSetXAlign(m.loop, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.loop)
 	m.__n8 = gtk4rt.New("GtkBox")
@@ -1503,9 +1503,9 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
 	gtk4rt.BoxAppend(m.__n0, m.__n8)
-	__lt21 := "asks: empty"
+	__lt20 := "asks: empty"
 	m.lifetime = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.lifetime, __lt21)
+	gtk4rt.LabelSetLabel(m.lifetime, __lt20)
 	gtk4rt.LabelSetXAlign(m.lifetime, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.lifetime)
 	m.__n9 = gtk4rt.New("GtkBox")
@@ -2134,7 +2134,7 @@ pass sha256:529c1a74d9e1a50cbe69b35e56d2fe7d
 -- run/go/fyne --
 pass sha256:2c7a6c687d2c399a12cf2301066990f5
 -- run/go/gtk4 --
-pass sha256:378cd0e16dcc7212c89ffffaec74fc6f
+pass sha256:9b265b145a8cf0b3b737d21e5c65c885
 -- run/kotlin/android --
 pass sha256:301ce7243a929be0dd3a4993b8b96a46
 -- run/none/html --

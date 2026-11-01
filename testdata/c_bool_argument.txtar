@@ -744,13 +744,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n1_clicked_handler() {
 	m.on = !m.on
-	var __lt18 int
+	var __lt17 int
 	if m.on {
-		__lt18 = 1
+		__lt17 = 1
 	} else {
-		__lt18 = 0
+		__lt17 = 0
 	}
-	m.v = int(C.abs(C.int(__lt18)))
+	m.v = int(C.abs(C.int(__lt17)))
 	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n1)), fmt.Sprint(m.v))
 }
 
@@ -809,4 +809,4 @@ pass sha256:5cc24867bbb56fbd9e72026704152b97
 -- run/go/fyne --
 pass sha256:6192cd49f2cc4f6d5d2f924f777ca3c4
 -- run/go/gtk4 --
-pass sha256:b968a8e5b7805edfdc7662e2bea89c32
+pass sha256:b4327c5686b7d98dbb210ed61317b7ea
