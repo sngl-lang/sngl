@@ -839,6 +839,14 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 				fmt.Fprintf(&body, "var %s by %s%s(%s)\n\n", bind.name, kc.Name(ktMutableStateOf), stateTypeArg(bind, initVal), initVal)
 			}
 		}
+		// A getter, as the test build's: a composable reading it reads the
+		// state it does, and recomposes when that changes.
+		for _, comp := range info.computeds {
+			if atFileLevel[comp.fn] {
+				body.WriteString(computedGetterKt(comp, kc, ""))
+				body.WriteString("\n")
+			}
+		}
 	}
 
 	// Main composable
@@ -885,6 +893,9 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// non-test mode.
 	if !testMode {
 		for _, comp := range info.computeds {
+			if atFileLevel[comp.fn] {
+				continue
+			}
 			stateDelegate(kc)
 			fmt.Fprintf(&body, "    val %s by %s { %s }\n", comp.name, kc.Name(ktRemember), computedCalcKt(comp, cfg, kc, "    "))
 		}
@@ -1627,11 +1638,13 @@ func composedRoots(ctx *codegen.CodegenCtx) []any {
 // composedCallees is every package function a composable other than MainScreen
 // calls, and what those call in turn. Such a composable reaches the page only
 // through the file, so these are declared there in an app, where they would
-// otherwise be local funs of MainScreen, and what they read is shared.
+// otherwise be local funs of MainScreen, and what they read is shared. A
+// computed among them is a getter there rather than MainScreen's remembered
+// derivedStateOf.
 func composedCallees(ctx *codegen.CodegenCtx) map[*ir.Func]bool {
 	pkgFunc := map[*ir.Func]bool{}
 	for _, fn := range ctx.Pkg.Funcs {
-		if fn != nil && !fn.OnType() && !fn.IsTest && !codegen.IsComputed(fn) {
+		if fn != nil && !fn.OnType() && !fn.IsTest {
 			pkgFunc[fn] = true
 		}
 	}
