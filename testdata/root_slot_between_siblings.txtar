@@ -753,7 +753,7 @@ func newCardInstance(__model *Model, __a_xs []string) *CardInstance {
 	c.__model = __model
 	c.__prop_xs = __a_xs
 	c.open = true
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	c.__root = gtk4rt.ContentsNew()
 	c.__slot0 = nil
 	c.__rendering0 = false
 	c.__renderAgain0 = false
@@ -930,4 +930,4 @@ func (m *Model) moreClick() {
 -- run/go/fyne --
 pass sha256:861426bc4124fb44698446297144567f
 -- run/go/gtk4 --
-pass sha256:bc4d3e2a14403bab28d67e32eb0558fe
+pass sha256:88a8afaefc7e73018c5d33c1631ccbed

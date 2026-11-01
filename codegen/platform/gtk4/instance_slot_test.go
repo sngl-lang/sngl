@@ -46,10 +46,9 @@ func TestInstanceSlotWidgetsAreDiscovered(t *testing.T) {
 	model := generateGTK4ModelBuilt(t, slotInstanceSrc)
 	ctor := instanceCtorBody(t, model, "newCardInstance")
 
-	// The box exists before the first render appends into it. Which
-	// constructor spells it depends on the mode this host emits, so the claim
-	// is that it is a box and not nil.
-	if strings.Contains(ctor, "c.__root = nil") || !strings.Contains(ctor, "box_new") && !strings.Contains(ctor, "BoxNew(") {
+	// The box exists before the first render appends into it, gtk4rt's
+	// contents in either mode, and not nil.
+	if strings.Contains(ctor, "c.__root = nil") || !strings.Contains(ctor, "ContentsNew()") {
 		t.Errorf("the box a slot renders into is not constructed\n--- ctor ---\n%s", ctor)
 	}
 	// And it is in the tree, at the position the slot was written -- after the

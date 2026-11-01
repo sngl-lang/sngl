@@ -319,7 +319,7 @@ func newPanelInstance(__model *Model, __a_items []string) *PanelInstance {
 	c.__model = __model
 	c.__prop_items = __a_items
 	c.seen = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	c.__root = gtk4rt.ContentsNew()
 	c.__slot0 = nil
 	c.__inst0_live = []*__child0Instance{}
 	c.__rendering0 = false
@@ -524,4 +524,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n2)
 }
 -- run/go/gtk4 --
-pass sha256:1a2fe86c41dab1f54b350f6d03b1b7b4
+pass sha256:b59428c098f493f8877332d86cbdf23d

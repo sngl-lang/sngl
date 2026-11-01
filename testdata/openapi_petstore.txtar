@@ -4182,7 +4182,12 @@ component petList[F any](
     @load(value PaginatedPetSummaryList),
     @fail(f async.Failure),
 ) F {
-    async.query(
+    // Asks again without a change of key: a retry.
+    func refresh() {
+        query.refresh()
+    }
+
+    async.query #query(
         on = {limit=limit, offset=offset},
         fetch = func(k struct {
             limit  option[int]
@@ -4207,7 +4212,12 @@ component petRetrieve[F any](
     @load(value PetDetail),
     @fail(f async.Failure),
 ) F {
-    async.query(
+    // Asks again without a change of key: a retry.
+    func refresh() {
+        query.refresh()
+    }
+
+    async.query #query(
         on = id,
         fetch = petRetrieveCall,
         :value = value,
@@ -4229,7 +4239,12 @@ component petBreedRetrieve[F any](
     @load(value PetBreedDetail),
     @fail(f async.Failure),
 ) F {
-    async.query(
+    // Asks again without a change of key: a retry.
+    func refresh() {
+        query.refresh()
+    }
+
+    async.query #query(
         on = id,
         fetch = petBreedRetrieveCall,
         :value = value,

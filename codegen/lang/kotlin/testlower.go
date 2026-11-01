@@ -533,7 +533,7 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 	case *ir.Index:
 		operand := lowerTestExpr(n.Operand, surf, compRecvs)
 		idx := lowerTestExpr(n.Idx, surf, compRecvs)
-		return operand + "[" + idx + "]"
+		return indexExpr(n, operand, idx)
 	case *ir.Call:
 		// `c.f(…)` on the instance: a method of the state object, or a
 		// `derivedStateOf` property when f is a computed.

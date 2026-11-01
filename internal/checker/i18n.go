@@ -23,7 +23,15 @@ type bindArg struct {
 	expr ast.Expr
 }
 
+// addBareName binds name once, however many branches of a plural or select
+// write it: bound per mention, `{why}` in both of a plural's branches was two
+// entries of one key, which Go refuses in a map literal.
 func (b *templateBuilder) addBareName(name string, expr ast.Expr) string {
+	for _, a := range b.args {
+		if a.name == name {
+			return name
+		}
+	}
 	b.args = append(b.args, bindArg{name: name, expr: expr})
 	return name
 }

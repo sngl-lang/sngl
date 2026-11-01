@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -39,9 +40,13 @@ func perCopyCells(at string, body []ir.Stmt, vars []*ir.Var, funcs []*ir.Func, l
 		v.Init = &ir.MapLitIR{Type: v.Type}
 	}
 
-	keyed := cellFuncs(funcs, cells)
+	through := nodeMethods(body)
+	keyed := cellFuncs(funcs, cells, through)
 	temps := new(int)
 	for fn, param := range keyed {
+		if through[fn] != nil {
+			continue
+		}
 		fn.Params = append(fn.Params, param)
 		fn.Block = rewriteCells(fn.Block, cells, keyed, temps, func() ir.Expr { return paramIdent(param) })
 	}
@@ -800,10 +805,32 @@ func loopBoundValue(id *ir.Ident, fn *ir.Func, arity int, lvs []*ir.LoopVar, arg
 	return &ir.Lambda{Type: id.Type, Func: wrapper}
 }
 
-// cellFuncs is the funcs that read or write a cell, directly or through one
-// another, each with the parameter its key arrives in.
-func cellFuncs(funcs []*ir.Func, cells map[*ir.Var]ir.Expr) map[*ir.Func]*ir.Param {
+// nodeMethods is the methods of each node body renders, which a call through
+// the node's `#id` names until repointHandleCalls points it at the copy the
+// splice of the node made. That copy is spliced under the same loops, so its
+// cells are keyed by the same copy, and a call of it is handed the key as a
+// call of a keyed func is; one whose copy keys nothing drops it there. Without
+// the key, an openapi adapter's `refresh` under a `for` called its query's
+// with an argument short on bubbletea.
+func nodeMethods(body []ir.Stmt) map[*ir.Func]*ir.Param {
 	out := map[*ir.Func]*ir.Param{}
+	_ = ir.Walk(body, func(nd ir.Node) error {
+		if n, ok := nd.(*ir.NodeInst); ok && n.Handle != nil && n.Component != nil {
+			for _, f := range n.Component.Funcs {
+				out[f] = &ir.Param{Name: "__copy", Type: ir.TypString}
+			}
+		}
+		return nil
+	})
+	return out
+}
+
+// cellFuncs is the funcs that read or write a cell, directly or through one
+// another, each with the parameter its key arrives in. Seeded with through,
+// the methods of nodes the body renders (nodeMethods), whose callers are keyed
+// as a cell's are.
+func cellFuncs(funcs []*ir.Func, cells map[*ir.Var]ir.Expr, through map[*ir.Func]*ir.Param) map[*ir.Func]*ir.Param {
+	out := maps.Clone(through)
 	for changed := true; changed; {
 		changed = false
 		for _, fn := range funcs {

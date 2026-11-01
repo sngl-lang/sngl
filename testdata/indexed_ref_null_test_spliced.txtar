@@ -2558,7 +2558,7 @@ func new__block_state0Instance(__model *Model, __a_n string, __a_skip string, __
 	c.__prop_skip = __a_skip
 	c.__prop___on_skip = __a___on_skip
 	c.local = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	c.__root = gtk4rt.ContentsNew()
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
@@ -4501,7 +4501,7 @@ pass sha256:164c3d7982b51fde4193cb60504e633b
 -- run/go/fyne --
 pass sha256:2382136363f52d3c7b062282a3031bdb
 -- run/go/gtk4 --
-pass sha256:97d39a1b6fefb6c4e448ab501252d81b
+pass sha256:3c6036892d2ddd2e4f29fd775fedaec9
 -- run/kotlin/android --
 pass sha256:b4fa0f60f9185d182065e1aded37a3a5
 -- run/none/html --

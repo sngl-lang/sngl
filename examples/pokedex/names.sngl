@@ -1,6 +1,8 @@
+import async "sngl:async"
 import i18n "sngl:i18n"
 import seq "sngl:seq"
 import poke "openapi:./pokeapi.yml"
+import ui "sngl:ui"
 
 // The last segment of a PokéAPI resource URL, which is the resource's id:
 // "https://pokeapi.co/api/v2/evolution-chain/1/" is "1". A summary names
@@ -331,6 +333,91 @@ var names map[string, list[Named]] = {}
 
 // Whether the names of `slug` of `kind` have been answered.
 func known(kind string, slug string) => names.contains("{kind}/{slug}")
+
+// A lookup that failed: why, and in which round of asking.
+struct Failed {
+    why   string
+    round int
+}
+
+// Every lookup that failed, keyed as `names` is. A failure holds for the
+// round it failed in, so the lookup is not asked again in a loop; `retry`
+// starts the next round, and every lookup that failed asks again.
+var failures map[string, Failed] = {}
+
+// The round of asking.
+var round = 0
+
+// Records that the lookup of `slug` of `kind` failed this round.
+func lookupFailed(kind string, slug string, f async.Failure) {
+    failures["{kind}/{slug}"] = Failed{why=f.message, round=round}
+}
+
+// Whether the lookup of `slug` of `kind` failed this round.
+func failedNow(kind string, slug string) => failures.get("{kind}/{slug}", Failed{why="", round=-1}).round == round
+
+// Whether to ask for the names of `slug` of `kind`: not answered, and not
+// failed this round.
+func wanted(kind string, slug string) => !known(kind, slug) && !failedNow(kind, slug)
+
+// Why the lookup of `slug` of `kind` failed this round, "" where it did not.
+func whyFailed(kind string, slug string) => failedNow(kind, slug) ? failures["{kind}/{slug}"].why : ""
+
+// The lookups that failed this round.
+func failing() => failures.values().filter(func(f Failed) => f.round == round)
+
+// Asks again for every lookup that failed.
+func retry() {
+    round += 1
+}
+
+// Asks for the names of `slug` of `kind` where no page has, keeping them in
+// `names`, or that the lookup failed in `failures`. It renders nothing, so it
+// goes wherever the name is shown.
+component lookup(kind string, slug string) ui.node {
+    if wanted(kind, slug) {
+        if kind == `species` {
+            poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{slug}"] = speciesNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+        } else if kind == `type` {
+            poke.typeRetrieve(id=slug, @load(got) { names["type/{slug}"] = typeNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+        } else if kind == `ability` {
+            poke.abilityRetrieve(id=slug, @load(got) { names["ability/{slug}"] = abilityNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+        } else if kind == `stat` {
+            poke.statRetrieve(id=slug, @load(got) { names["stat/{slug}"] = statNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+        } else if kind == `egg-group` {
+            poke.eggGroupRetrieve(id=slug, @load(got) { names["egg-group/{slug}"] = eggGroupNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+        } else if kind == `habitat` {
+            poke.pokemonHabitatRetrieve(id=slug, @load(got) { names["habitat/{slug}"] = habitatNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+        } else if kind == `item` {
+            poke.itemRetrieve(id=slug, @load(got) { names["item/{slug}"] = itemNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+        } else if kind == `trigger` {
+            poke.evolutionTriggerRetrieve(id=slug, @load(got) { names["trigger/{slug}"] = triggerNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+        } else if kind == `move` {
+            poke.moveRetrieve(id=slug, @load(got) { names["move/{slug}"] = moveNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+        }
+    }
+}
+
+// A request that failed: a sign whose tooltip says why, which asks again
+// when clicked.
+component loadError(why string, @retry()) ui.node {
+    ui.tooltip(text=why) {
+        ui.button #sign(text="⚠", @click { retry() })
+    }
+}
+
+// The lookups that failed this round, as one sign that asks for every one
+// again: a name is shown by its slug until its own arrives, so a failed one
+// is no hole on the page, only a word in the wrong language. `again` fires
+// once the next round has started, for a page that asks in a way of its own.
+component lookupsError(@again()) ui.node {
+    if failing().length() > 0 {
+        loadError #lookupsSign(why=lookupsFailed(failing().length(), failing()[0].why), @retry {
+            retry()
+            again()
+        })
+    }
+}
 
 // `entries` as a page keeps them.
 func namedIn[T any](entries list[T], language func(T) string, name func(T) string) list[Named] {
@@ -804,6 +891,23 @@ func loadingName(name string) => $"Loading {name}"
 
 // What a page says where `name` failed to load, and why.
 func couldNotLoad(name string, why string) => $"Could not load {name}: {why}"
+
+// What the sign of the failed lookups says: how many failed, and why the
+// first did.
+func lookupsFailed(count int, why string) => $"{count, plural, one{# request failed: {why}} other{# requests failed, the first: {why}}}"
+
+// What the Evolution tab says where the chain failed to load, and why.
+func couldNotLoadChain(why string) => $"Could not load the evolution chain: {why}"
+
+// Why a request failed, "" where it has not.
+func whyOf(f option[async.Failure]) => f != null ? f.message : ""
+
+// What the menu says where the list of Pokédexes failed to load: why, and
+// that choosing it asks again.
+func couldNotLoadDexes(why string) => $"Could not load the Pokédexes: {why}. Choose to try again."
+
+// What a sign says where one request failed, and why.
+func requestFailed(why string) => $"Could not load this: {why}"
 
 // What a page says where `name`'s Pokémon failed to load, and why.
 func couldNotLoadMon(name string, why string) => $"Could not load {name}'s types and stats: {why}"

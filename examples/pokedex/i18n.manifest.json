@@ -542,5 +542,37 @@
       "es": "{n} lb",
       "ja": "{n} lb"
     }
+  },
+  "{count, plural, one{# request failed: {why}} other{# requests failed, the first: {why}}}": {
+    "translations": {
+      "fr": "{count, plural, one{# requête a échoué : {why}} other{# requêtes ont échoué, la première : {why}}}",
+      "de": "{count, plural, one{# Anfrage ist fehlgeschlagen: {why}} other{# Anfragen sind fehlgeschlagen, die erste: {why}}}",
+      "es": "{count, plural, one{# solicitud falló: {why}} other{# solicitudes fallaron, la primera: {why}}}",
+      "ja": "{count, plural, other{#件のリクエストが失敗しました。最初の原因：{why}}}"
+    }
+  },
+  "Could not load this: {why}": {
+    "translations": {
+      "fr": "Impossible de charger ceci : {why}",
+      "de": "Konnte nicht geladen werden: {why}",
+      "es": "No se pudo cargar: {why}",
+      "ja": "読み込めませんでした：{why}"
+    }
+  },
+  "Could not load the evolution chain: {why}": {
+    "translations": {
+      "fr": "Impossible de charger la chaîne d’évolution : {why}",
+      "de": "Die Entwicklungsreihe konnte nicht geladen werden: {why}",
+      "es": "No se pudo cargar la cadena evolutiva: {why}",
+      "ja": "進化の系統を読み込めませんでした：{why}"
+    }
+  },
+  "Could not load the Pokédexes: {why}. Choose to try again.": {
+    "translations": {
+      "fr": "Impossible de charger les Pokédex : {why}. Choisissez pour réessayer.",
+      "de": "Die Pokédexe konnten nicht geladen werden: {why}. Zum erneuten Versuch auswählen.",
+      "es": "No se pudieron cargar las Pokédex: {why}. Elige para volver a intentarlo.",
+      "ja": "図鑑の一覧を読み込めませんでした：{why}。選ぶと再試行します。"
+    }
   }
 }

@@ -402,7 +402,7 @@ func instanceRootBinding(tr *gtk4Translator, igc *golang.GoIRContext, wrapped bo
 		return fmt.Sprintf("\t%s = %s\n", root, igc.EvalExpr(widget))
 	case wrapped:
 		var b strings.Builder
-		b.WriteString("\t__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)\n")
+		fmt.Fprintf(&b, "\t__box := %s\n", contentsBox(igc, wrapped))
 		for _, id := range tops {
 			fmt.Fprintf(&b, "\tgtk4rt.BoxAppend(__box, %s)\n", igc.EvalExpr(nodeRef(id)))
 		}
@@ -410,8 +410,7 @@ func instanceRootBinding(tr *gtk4Translator, igc *golang.GoIRContext, wrapped bo
 		return b.String()
 	}
 	var b strings.Builder
-	boxInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: nativeCall("gtk_box_new", ir.NativePointerOf("GtkWidget"), cOrientationVertical(), intLit("6"))}
-	fmt.Fprintf(&b, "\t__box := %s\n", igc.EvalExpr(boxInit))
+	fmt.Fprintf(&b, "\t__box := %s\n", contentsBox(igc, wrapped))
 	boxRef := &ir.Ident{Name: "__box"}
 	for _, id := range tops {
 		b.WriteString(boxAppendLine(igc, boxRef, nodeRef(id)))
@@ -496,15 +495,22 @@ func instanceVarInit(v *ir.Var, igc *golang.GoIRContext, wrapped bool) string {
 	// of the ctor rather than fields of a struct literal, which is what made
 	// the Model's reason for binding its own __root later not apply.
 	if v.Synthesized && v.Name == instanceRootVar {
-		if wrapped {
-			return "gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)"
-		}
-		return igc.EvalExpr(&ir.Conversion{
-			Type:    ir.NativePointerOf("GtkBox"),
-			Operand: nativeCall("gtk_box_new", ir.NativePointerOf("GtkWidget"), cOrientationVertical(), intLit("6")),
-		})
+		return contentsBox(igc, wrapped)
 	}
 	return irVarInit(v, igc)
+}
+
+// contentsBox is the box an instance holds its widgets in where it has more
+// than one, or a reactive slot: gtk4rt's contents, so that a widget growing in
+// it grows in the box the instance is in, as it does on html. A plain box held
+// it at its size, and a page's growing grid stopped at its first row.
+func contentsBox(igc *golang.GoIRContext, wrapped bool) string {
+	rt := igc.AliasFor(gtk4rtPkg)
+	if wrapped {
+		return rt + ".ContentsNew()"
+	}
+	igc.RequireImport("unsafe")
+	return "(*C.GtkBox)(unsafe.Pointer(" + rt + ".ContentsNew()))"
 }
 
 // isInstanceComponent reports whether a component's body belongs to a record

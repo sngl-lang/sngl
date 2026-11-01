@@ -35,8 +35,7 @@ const (
 )
 
 // tabsTag and tabPageTag are gtk4.sngl's `Tabs` and `TabPage`, gtk4rt's
-// GtkStackSwitcher over a GtkStack and one page of it, which take children
-// as a box does.
+// GtkNotebook and one page of it, which take children as a box does.
 const (
 	tabsTag    = "Tabs"
 	tabPageTag = "TabPage"

@@ -1613,7 +1613,7 @@ sha256:7291a3d95e175f63eff4230c8c53bfa3
   ]
 }
 -- testrun/gtk4/go/copies.sngl/main/1 --
-sha256:554a45386286aa52ca2b9d5ab1b5a0ae
+sha256:78f91ae5734b73a562af7abed5fb005c
 {
   "results": [
     {

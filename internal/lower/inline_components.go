@@ -40,8 +40,9 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, nativeEffects: feats.Effects, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, nativeEffects: feats.Effects, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}, methodOwner: map[*ir.Func]*[]*ir.Func{}, methodOf: map[*ir.Func]handleMethod{}}
 	cellOwners := implicitCellOwners(pkg)
+	st.readAbroad = handlesReadAbroad(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
 	st.reach.instanceState = feats.InstanceState
 	if err := st.run(); err != nil {
@@ -50,7 +51,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	if err := repointCellReads(pkg, cellOwners, st.cells); err != nil {
 		return err
 	}
-	if err := repointHandleCalls(pkg, st.methods); err != nil {
+	if err := repointHandleCalls(pkg, st.methods, st.methodOwner); err != nil {
 		return err
 	}
 	clearDemotedReceivers(pkg, st.demoted)
@@ -348,6 +349,9 @@ func identPos(id *ir.Ident) string {
 type inlineCompState struct {
 	pkg  *ir.Package
 	main *ir.Component
+	// readAbroad is every handle read outside the component that declares it,
+	// which a splice leaves shared (handlesReadAbroad).
+	readAbroad map[*ir.Var]bool
 	// onList is pkg.Components as the pass found it: what the prune at the end
 	// is allowed to keep.
 	onList map[*ir.Component]bool
@@ -383,6 +387,12 @@ type inlineCompState struct {
 	// methods is, per node handle, each method of the component splicing that
 	// node cloned and the clones, for repointHandleCalls.
 	methods map[*ir.Var]map[*ir.Func][]*ir.Func
+	// methodOwner is the funcs of the owner each of those clones was hoisted
+	// onto, and methodOf the handle and method each is a clone of: a component
+	// built at run time whose body spliced a node is spliced whole somewhere
+	// else too, and the copy of the clone it holds is that owner's.
+	methodOwner map[*ir.Func]*[]*ir.Func
+	methodOf    map[*ir.Func]handleMethod
 	// insts is what each spliced node carrying an id became, for a test
 	// reaching into it (repointTestReaches).
 	insts []splice
@@ -1336,6 +1346,11 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 			clone.TypeParams, clone.RecvTypeParams = f.TypeParams, f.RecvTypeParams
 		}
 		clone.Name = st.names.next(f.Name, "inst")
+		// A clone of a node's method this component's body already spliced
+		// is the node's method again, in the owner this splice lands in.
+		if m, ok := st.methodOf[f]; ok {
+			st.recordMethod(m.handle, m.decl, clone, hoist.funcs)
+		}
 		renames[f] = clone.Name
 		symRenames[f] = clone
 		if !hoist.method {
@@ -1345,10 +1360,24 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		carryPointsTo(st.pkg, ir.SlotReturnKey(f), ir.SlotReturnKey(clone))
 		*hoist.funcs = append(*hoist.funcs, clone)
 		if n.Handle != nil {
-			if st.methods[n.Handle] == nil {
-				st.methods[n.Handle] = map[*ir.Func][]*ir.Func{}
-			}
-			st.methods[n.Handle][f] = append(st.methods[n.Handle][f], clone)
+			st.recordMethod(n.Handle, f, clone, hoist.funcs)
+		}
+	}
+
+	// A handle the body declares and calls a method through, and nothing
+	// outside it reads, is the copy's own, as its state is: the checker
+	// declares one per body, so every copy shared it, and a method of the
+	// copy's calling through it -- an openapi adapter's `refresh` calling its
+	// query's -- could not say which copy's node it meant. One a component
+	// outside reads -- a node passImplicitState moved into a wrapper of its
+	// own, which the body around the wrapper calls -- stays shared, since the
+	// reads of it are not in this splice, and so does one only a test
+	// reaches, which the test's reach is pointed through as it was.
+	called := handlesCalledIn(comp)
+	for _, h := range ownNodeHandles(comp) {
+		if called[h] && !st.readAbroad[h] {
+			clone := *h
+			symRenames[h] = &clone
 		}
 	}
 
@@ -1365,6 +1394,8 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		fn.Writes = renameVarList(fn.Writes, symRenames)
 	}
 	body := renameIdents(splicedBody(comp, typeArgs), renames, symRenames)
+	repointNodeHandles(body, symRenames)
+	st.pointSpliceCalls(comp, symRenames, body, (*hoist.funcs)[funcStart:])
 
 	bindings := map[string]ir.Expr{}
 	for _, p := range comp.Props {
@@ -1467,6 +1498,143 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 // `level`, a prop it bound to the call site's argument. Both by symbol, so the
 // caller's own names stand, a prop of the caller's named like the callee's
 // included.
+// handleMethod is a method of the node a handle names.
+type handleMethod struct {
+	handle *ir.Var
+	decl   *ir.Func
+}
+
+// recordMethod notes clone as a copy of the method decl of the node handle
+// names, hoisted onto owner's funcs.
+func (st *inlineCompState) recordMethod(handle *ir.Var, decl, clone *ir.Func, owner *[]*ir.Func) {
+	if st.methods[handle] == nil {
+		st.methods[handle] = map[*ir.Func][]*ir.Func{}
+	}
+	st.methods[handle][decl] = append(st.methods[handle][decl], clone)
+	st.methodOwner[clone] = owner
+	st.methodOf[clone] = handleMethod{handle: handle, decl: decl}
+}
+
+// pointSpliceCalls points each call this splice copied through a handle at the
+// copy it made of the method that call means, where comp's body already
+// spliced the node and holds the clone of its method among its own: the
+// splice's own copy is the one it means, wherever else comp is spliced.
+// Left to repointHandleCalls, two splices of one component onto one owner
+// held two such copies and neither call could say which.
+func (st *inlineCompState) pointSpliceCalls(comp *ir.Component, symRenames map[ir.Symbol]ir.Symbol, body []ir.Stmt, funcs []*ir.Func) {
+	copies := map[handleMethod]*ir.Func{}
+	for _, f := range comp.Funcs {
+		if m, ok := st.methodOf[f]; ok {
+			if c, ok := symRenames[f].(*ir.Func); ok {
+				copies[m] = c
+			}
+		}
+	}
+	if len(copies) == 0 {
+		return
+	}
+	point := func(root any) {
+		_ = ir.Walk(root, func(n ir.Node) error {
+			call, ok := n.(*ir.Call)
+			if !ok || call.Func == nil {
+				return nil
+			}
+			h, asArg := handleReceiver(call)
+			if h == nil {
+				return nil
+			}
+			if c, ok := copies[handleMethod{handle: h, decl: call.Func}]; ok {
+				pointCallAt(call, c, asArg)
+			}
+			return nil
+		})
+	}
+	point(body)
+	for _, f := range funcs {
+		point(f)
+	}
+}
+
+// ownNodeHandles is every handle a `#id` in comp's own body declares, the
+// nodes its children slots hold included; a caller's slot content is not
+// spliced in yet, so none of the caller's is among them.
+func ownNodeHandles(comp *ir.Component) []*ir.Var {
+	var out []*ir.Var
+	seen := map[*ir.Var]bool{}
+	_ = ir.Walk(comp.Stmts, func(node ir.Node) error {
+		if n, ok := node.(*ir.NodeInst); ok && n.Handle != nil && !seen[n.Handle] {
+			seen[n.Handle] = true
+			out = append(out, n.Handle)
+		}
+		return nil
+	})
+	return out
+}
+
+// handlesCalledIn is every handle comp's body or methods call a method through.
+func handlesCalledIn(comp *ir.Component) map[*ir.Var]bool {
+	out := map[*ir.Var]bool{}
+	_ = ir.Walk(comp, func(n ir.Node) error {
+		if call, ok := n.(*ir.Call); ok && call.Func != nil {
+			if h, _ := handleReceiver(call); h != nil {
+				out[h] = true
+			}
+		}
+		return nil
+	})
+	return out
+}
+
+// handlesReadAbroad is every handle read somewhere other than the component
+// whose body declares it: by the package, or by another component.
+func handlesReadAbroad(pkg *ir.Package) map[*ir.Var]bool {
+	out := map[*ir.Var]bool{}
+	reads := func(root any, own map[*ir.Var]bool) {
+		_ = ir.WalkExprs(root, func(e ir.Expr) error {
+			if id, ok := e.(*ir.Ident); ok {
+				if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle && !own[v] {
+					out[v] = true
+				}
+			}
+			return nil
+		})
+	}
+	// A component's methods are the package's funcs too, and read as its.
+	methods := map[*ir.Func]bool{}
+	for _, c := range pkg.Components {
+		for _, f := range c.Funcs {
+			methods[f] = true
+		}
+	}
+	reads(pkg.Body, nil)
+	for _, f := range pkg.Funcs {
+		if !methods[f] {
+			reads(f, nil)
+		}
+	}
+	for _, c := range pkg.Components {
+		own := map[*ir.Var]bool{}
+		for _, h := range ownNodeHandles(c) {
+			own[h] = true
+		}
+		reads(c, own)
+	}
+	return out
+}
+
+// repointNodeHandles points each node of a spliced body at the copy of its
+// handle symRenames made, as renameIdents points the reads of it.
+func repointNodeHandles(body []ir.Stmt, symRenames map[ir.Symbol]ir.Symbol) {
+	_ = ir.Walk(body, func(node ir.Node) error {
+		if n, ok := node.(*ir.NodeInst); ok && n.Handle != nil {
+			if h, ok := symRenames[n.Handle].(*ir.Var); ok {
+				n.Handle = h
+			}
+		}
+		return nil
+	})
+}
+
 func calleeReadsInContent(body []ir.Stmt, props map[ir.Symbol]ir.Expr, renames map[ir.Symbol]string, symRenames map[ir.Symbol]ir.Symbol) []ir.Stmt {
 	body = renameIdents(body, renames, symRenames)
 	if len(props) == 0 {

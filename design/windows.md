@@ -462,7 +462,17 @@ calls emitted nowhere
 substitutes a component's events into its hoisted methods too, which is how a
 method's write of a bound prop reaches the caller. The override binds the prop
 through (`Toplevel(:visible=visible)`), which works because passPropBindings
-also lowers the bindings of every library body the program renders.
+also lowers the bindings of every library body the program renders. A handle a component's own body calls a method through, and nothing
+outside reads, is the copy's own in each splice (`handlesCalledIn`,
+`handlesReadAbroad`), as its state is: shared, a method of the copy's calling
+through it could not say which copy's node it meant. A clone is recorded with
+the owner it was hoisted onto, and so is the copy a later splice makes of
+it, where a component built at run time spliced the node into its own body
+and is spliced whole elsewhere too: a call is pointed at the clone in its
+own owner, and one a splice copied at that splice's own copy
+(`pointSpliceCalls`). Each was the Pokédex's retries, an openapi adapter's
+`refresh` calling its query's
+(`cmd/sngl/testdata/handle_call_in_spliced_copies_runs.txt`).
 
 The host reports a window manager's close as `visible = false` and then fires
 `@closed` -- renamed from `@close`, which clashed with the `close` method --
