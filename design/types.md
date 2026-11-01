@@ -104,7 +104,12 @@ un-interned whatever its fields, since two of the same fields may name
 different functions, and `MapChildren` carries its methods over. A type is
 measured against one by the call it would take (`methodUnsatisfied`, over
 `ir.MethodParams`), not by signature equality, so `int.format`, which takes
-`width` and `pad` too, satisfies `const func format(base int) string`. A call
+`width` and `pad` too, satisfies `const func format(base int) string`. A
+constraint's parameter may default to a constant, and the method has to
+default to the same one (`ir.SameConstant` through any `const` naming it);
+the method's defaults are checked with its body, which may come after the
+call that binds it, so the comparison waits for the end of the check
+(`matchDefaults`). A call
 through one is the bound type's own method once the type is bound
 (`ir.BoundCall`, beside `_format`'s), which the interpreter asks with the
 running frame's bindings, the optimizer once a body is spliced or specialized

@@ -37,6 +37,10 @@ func padded[T struct {
     const func format(base int, width int) string
 }](v T) => "{v, 2, width=8}"
 
+func plain[T struct {
+    const func format(base int = 10) string
+}](v T) => "{v.format()}/{v}"
+
 func label[T struct {
     const func format() string
 }](v T) => "{show(v)}!"
@@ -58,6 +62,7 @@ func testShowAll(t Test) {
 func testArguments(t Test) {
     t.assert(inBase(255) == "ff")
     t.assert(padded(5) == "     101")
+    t.assert(plain(255) == "255/255")
 }
 
 func testThroughAnother(t Test) {

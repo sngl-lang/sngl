@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/parser"
 	"duckfam.us/sngl/ir"
 )
 
@@ -78,16 +79,24 @@ func (c *checker) constraintWithFuncs(fields []*ir.StructField, funcs []*ast.Fun
 			c.error(f.Pos, "a constraint's function takes no type parameters")
 			continue
 		}
-		for _, p := range f.Params.Params {
-			if p.Default != nil {
-				c.error(p.Pos, "a constraint's parameter takes no default: the type's own method says what one left out is")
-			}
-		}
 		if _, dup := sd.Methods[f.Name]; dup || ir.FieldNamed(fields, f.Name) != nil {
 			c.error(f.Pos, "duplicate declaration of %q in a constraint", f.Name)
 			continue
 		}
 		fn := c.buildFunc(f)
+		// A default is a constant, which the type's method must default to
+		// as well (methodUnsatisfied): a call through the constraint may
+		// leave it out, and the method is what is called.
+		for _, ap := range f.Params.Params {
+			p := ir.ParamNamed(fn.Params, ap.Name)
+			if ap.Default == nil || p == nil {
+				continue
+			}
+			p.Default = c.checkExprAs(ap.Default, p.Type, defaultSlot(*ap.Default.ExprPos()))
+			if !plainConstant(p.Default) {
+				c.error(*ap.Default.ExprPos(), "a constraint's parameter defaults to a constant, a literal or an enum member: the type's method must default to the same")
+			}
+		}
 		fn.Receiver = self
 		fn.RecvParam = &ir.Param{Name: ir.ReceiverParam, Type: self, Receiver: true}
 		if f.Const {
@@ -199,7 +208,8 @@ func (c *checker) methodUnsatisfied(t *ir.Type, want *ir.Func, bindings map[stri
 		}
 	}
 	for _, q := range params {
-		if q.Default == nil && !ir.IsFormatArgs(q.Type) && ir.ParamNamed(want.Params, q.Name) == nil {
+		p := ir.ParamNamed(want.Params, q.Name)
+		if q.Default == nil && !ir.IsFormatArgs(q.Type) && (p == nil || p.Default != nil) {
 			return fmt.Sprintf("its %s's parameter %q has no default", want.Name, q.Name)
 		}
 	}
@@ -209,7 +219,90 @@ func (c *checker) methodUnsatisfied(t *ir.Type, want *ir.Func, bindings map[stri
 	if want.Const && !fn.Const {
 		return fmt.Sprintf("its %s is not const", want.Name)
 	}
+	c.matchDefaults(t, want, fn)
 	return ""
+}
+
+// matchDefaults records, for runDefaultMatches, each default of want's that
+// fn, t's method, has to default to as well. A method's defaults are checked
+// with its body, which may come after the call measuring it.
+func (c *checker) matchDefaults(t *ir.Type, want, fn *ir.Func) {
+	pos := c.measuredAt
+	for _, p := range want.Params {
+		q := ir.ParamNamed(fn.Params, p.Name)
+		if p.Default == nil || q == nil || ir.IsConstraintMethod(fn) {
+			continue
+		}
+		c.defaultMatches = append(c.defaultMatches, func() {
+			if !ir.SameConstant(constantOf(p.Default), constantOf(q.Default)) {
+				c.error(pos, "%s does not satisfy its constraint: its %s's parameter %q defaults to %s, not %s",
+					t, want.Name, p.Name, defaultText(fn, q), defaultText(want, p))
+			}
+		})
+	}
+}
+
+// defaultText spells p's default, a parameter of fn, as it was written.
+func defaultText(fn *ir.Func, p *ir.Param) string {
+	if fn.AST != nil {
+		for _, ap := range fn.AST.Params.Params {
+			if ap.Name == p.Name && ap.Default != nil {
+				return parser.FormatExpr(ap.Default)
+			}
+		}
+	}
+	return "something else"
+}
+
+// runDefaultMatches judges what matchDefaults recorded.
+func (c *checker) runDefaultMatches() {
+	for _, match := range c.defaultMatches {
+		match()
+	}
+	c.defaultMatches = nil
+}
+
+// plainConstant reports whether e is a constant SameConstant can compare: a
+// literal, null, an enum member, a conversion of one, a struct literal of
+// them, or a const naming one.
+func plainConstant(e ir.Expr) bool {
+	e = constantOf(e)
+	if ir.IsNullLiteral(e) {
+		return true
+	}
+	switch x := e.(type) {
+	case *ir.Literal:
+		return true
+	case *ir.Ident:
+		return x.Member != ""
+	case *ir.Conversion:
+		return plainConstant(x.Operand)
+	case *ir.StructLit:
+		for _, f := range x.Fields {
+			if f.Spread || !plainConstant(f.Value) {
+				return false
+			}
+		}
+		return x.Def != nil
+	}
+	return false
+}
+
+// constantOf is e with each const it names, through any chain of them, its
+// value: `base int = DEFAULT_BASE` defaults to what DEFAULT_BASE is.
+func constantOf(e ir.Expr) ir.Expr {
+	for range 64 {
+		id, ok := e.(*ir.Ident)
+		if !ok {
+			return e
+		}
+		v, ok := id.Sym.(*ir.Var)
+		if !ok || !v.IsConst || v.Init == nil {
+			return e
+		}
+		e = v.Init
+	}
+	return e
 }
 
 // inferFromConstraints binds the parameters of params a constraint's fields
@@ -259,6 +352,7 @@ func inferFromConstraints(params []ir.TypeParam, bindings map[string]*ir.Type) {
 // says. Every place a type parameter is bound asks this.
 func (c *checker) checkConstraint(pos ast.Pos, tp ir.TypeParam, t *ir.Type, bindings map[string]*ir.Type) {
 	con := tp.Constraint.Substitute(bindings)
+	c.measuredAt = pos
 	if why := c.unsatisfied(t, con, bindings); why != "" {
 		c.error(pos, "%s does not satisfy %s, the constraint on %s: %s", t, con, tp.Name, why)
 	}

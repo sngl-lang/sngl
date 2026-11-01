@@ -746,12 +746,14 @@ fits. A type's method satisfies a constraint's function when it has the
 function's name, each of the function's parameters is one of the method's of
 that name at an equal type, every other parameter of the method has a default,
 it returns an equal type, and it is `const` where the function is. A
-constraint's function takes no body, no type parameters and no default for a
-parameter: what a call leaves out is the method's own to say. A constraint
-declaring functions and no fields asks for nothing else, so any type with
-those methods satisfies it, a builtin type, an enum and a list included; one
-declaring fields, or nothing at all, is satisfied only by a type with fields.
-A function's parameter may name the type parameter it constrains or another
+constraint's function takes no body and no type parameters. A parameter of one
+may have a default, which lets a call through the constraint leave it out;
+the default is a constant -- a literal, an enum member, or a `const` naming
+one -- and the method must declare the same default for that parameter. A
+constraint declaring functions and no fields asks for nothing else, so any
+type with those methods satisfies it, a builtin type, an enum and a list
+included; one declaring fields, or nothing at all, is satisfied only by a type
+with fields. A function's parameter may name the type parameter it constrains or another
 of the list, as a field may.
 
 ```sngl

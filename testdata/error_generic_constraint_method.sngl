@@ -37,10 +37,29 @@ func bodied[T struct {
 }](v T) => v
 
 func defaulted[T struct {
-    const func format(base int = 10) string // ERROR(check) "a constraint's parameter takes no default"
+    const func format(base int = 10) string
+}](v T) => v.format()
+
+func computed[T struct {
+    const func format(base int = 2 + 8) string // ERROR(check) "a constraint's parameter defaults to a constant"
 }](v T) => v
 
-var a = show(Plain{})    // ERROR(check) "it has no method \"format\""
-var b = show(Wide{})     // ERROR(check) "its format's parameter \"sep\" has no default"
-var c = show(Loose{})    // ERROR(check) "its format gives int, not string"
-var d = show(Changing{}) // ERROR(check) "its format is not const"
+struct Octal {
+    n int = 0
+}
+
+const func Octal.format(o Octal, base int = 8) => "{o.n, base}"
+
+struct Required {
+    n int = 0
+}
+
+const func Required.format(r Required, base int) => "{r.n, base}"
+
+var a = show(Plain{})         // ERROR(check) "it has no method \"format\""
+var b = show(Wide{})          // ERROR(check) "its format's parameter \"sep\" has no default"
+var c = show(Loose{})         // ERROR(check) "its format gives int, not string"
+var d = show(Changing{})      // ERROR(check) "its format is not const"
+var e = defaulted(Octal{})    // ERROR(check) "its format's parameter \"base\" defaults to 8, not 10"
+var f = defaulted(Required{}) // ERROR(check) "its format's parameter \"base\" has no default"
+var g = defaulted(7)
