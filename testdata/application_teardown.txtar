@@ -55,7 +55,7 @@ component probe ui.node {
     effect(@unmount {
         log.push("unmount")
     })
-    ui.text(value=log.join(","))
+    ui.text(value=log.format(","))
 }
 
 ui.window {

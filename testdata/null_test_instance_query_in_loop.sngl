@@ -42,11 +42,11 @@ component root node {
 func testTheShelfIsFoundByItsOtherRoot(t Test, c root) {
     t.wait(func() => c.app.list != null && c.app.list.count != null, 5000)
     t.assert(c.app.list != null && c.app.list.count != null && c.app.list.count.value == "2")
-    t.assert(seen.join(",") == "fig 3,kiwi 4")
+    t.assert(seen.format(",") == "fig 3,kiwi 4")
     if c.app.list != null {
         c.app.list.add.click()
     }
-    t.assert(seen.join(",") == "fig 3,kiwi 4,plum 4")
+    t.assert(seen.format(",") == "fig 3,kiwi 4,plum 4")
     t.assert(c.app.list != null && c.app.list.count != null && c.app.list.count.value == "3")
 }
 

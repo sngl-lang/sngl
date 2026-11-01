@@ -99,7 +99,7 @@ component todoList ui.node {
     ui.button(text="reset", @click {
         reset()
     })
-    ui.text(value=saved.join(","))
+    ui.text(value=saved.format(","))
 }
 
 component field ui.node {

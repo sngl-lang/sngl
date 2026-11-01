@@ -83,7 +83,7 @@ component scalar node {
         n += 1
     })
 
-    text(value=log.join(","))
+    text(value=log.format(","))
 }
 
 window {

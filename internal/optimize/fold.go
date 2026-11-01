@@ -139,6 +139,9 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		if x.ErrorHandler != nil && x.ErrorHandler.Func != nil {
 			x.ErrorHandler.Func.Block = foldStmts(x.ErrorHandler.Func.Block, ctx)
 		}
+		if operand := identityMap(x); operand != nil {
+			return operand
+		}
 		// An argument the inliner would not copy into a body reading it
 		// twice may have folded to one it will: `s == blank ? modifier : …`
 		// is `modifier` once s is the blank Style.
@@ -859,4 +862,30 @@ func literalField(x *ir.Select) ir.Expr {
 		found = cloneExpr(sl.Field(x.Field))
 	}
 	return found
+}
+
+// identityMap is the list call maps, where call is `xs.map(func(x) => x)`
+// at one type, and nil otherwise. A list of strings formatted or joined is
+// one: each item's format is the item (`list.format`).
+func identityMap(call *ir.Call) ir.Expr {
+	if call.Func == nil || call.Func.Intrinsic != "list.map" || len(call.Args) != 2 {
+		return nil
+	}
+	lam, ok := call.Args[1].Value.(*ir.Lambda)
+	if !ok || lam.Func == nil || len(lam.Func.Params) != 1 || len(lam.Func.Block) != 1 {
+		return nil
+	}
+	ret, ok := lam.Func.Block[0].(*ir.Return)
+	if !ok {
+		return nil
+	}
+	id, ok := ret.Value.(*ir.Ident)
+	if !ok || id.Sym != ir.Symbol(lam.Func.Params[0]) {
+		return nil
+	}
+	list := call.Args[0].Value
+	if t := list.ExprType(); t == nil || call.Type == nil || !t.Equal(call.Type) {
+		return nil
+	}
+	return list
 }

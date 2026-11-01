@@ -50,7 +50,7 @@ window {
     button #bump(text="+", @click {
         tags = ["a"]
     })
-    text #out(value=log.join(","))
+    text #out(value=log.format(","))
 }
 `
 

@@ -39,7 +39,7 @@ func labelOf(tags list[option[Tag]]) string {
             out.push(label.label)
         }
     }
-    return out.join(",")
+    return out.format(",")
 }
 
 component page(label = "") ui.node {

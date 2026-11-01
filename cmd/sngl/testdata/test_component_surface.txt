@@ -115,7 +115,7 @@ func testListReads(t Test, c comp) {
     t.assert(c.xs[1] == 2)
     t.assert(c.xs.contains(3))
     t.assert(c.xs.indexOf(2) == 1)
-    t.assert(c.xs.join(",") == "1,2,3")
+    t.assert(c.xs.format(",") == "1,2,3")
     t.assert(c.xs.filter(func(x int) => x > 1).length() == 2)
     t.assert(c.xs.map(func(x int) => x * 2)[2] == 6)
 }
@@ -208,7 +208,7 @@ sha256:581e04350bcd380a9723319e5379c585
   ]
 }
 -- testrun/bubbletea/go/app.sngl/comp/1 --
-sha256:baafc9162b4d064bdb5d778784f9596c
+sha256:a0b147e5d2369a1338fcf1ad414e6939
 {
   "results": [
     {
@@ -268,7 +268,7 @@ sha256:aed50c63f0b79065ce76371aa72211ba
   ]
 }
 -- testrun/fyne/go/app.sngl/comp/1 --
-sha256:85f88a1a1ede3625cbf2117564ba51af
+sha256:af391e0af694b68542f20dcd9f5fdbf9
 {
   "results": [
     {
@@ -328,7 +328,7 @@ sha256:54e4de76327e17a0b7fddd40710bb315
   ]
 }
 -- testrun/gtk4/go/app.sngl/comp/1 --
-sha256:1525544a640616dbc6c8bcef47f829be
+sha256:98efdf74391471a055b98bc35405c993
 {
   "results": [
     {
@@ -388,7 +388,7 @@ sha256:e516cb8a8bde9f36454a32980b4c920e
   ]
 }
 -- testrun/html/none/app.sngl/comp/1 --
-sha256:c7dd25ddaa379efd00daff04e37068c9
+sha256:2a88c04347cac05ce3ee72111a8159bf
 {
   "results": [
     {

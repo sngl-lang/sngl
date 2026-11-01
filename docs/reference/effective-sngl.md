@@ -420,7 +420,7 @@ A type that builds its text a piece at a time can also declare `appendFormat`, w
 struct Path {
     parts list[string] = []
 }
-func Path.format(p Path) => p.parts.join("/")
+func Path.format(p Path) => p.parts.format("/")
 func Path.appendFormat(p Path, out ref[builder]) {
     for var i, part = p.parts {
         if i > 0 {
@@ -1300,7 +1300,7 @@ import ui "sngl:ui"
 component Room(name string) ui.node {
     var log list[string] = []
     effect(on=name, @mount(r) { log.push("join {r}") }, @unmount(r) { log.push("leave {r}") })
-    ui.text(value=log.join(", "))
+    ui.text(value=log.format(", "))
 }
 
 ui.window {

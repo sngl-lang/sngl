@@ -31,7 +31,7 @@ component shelf ui.node {
 
     ui.tabs #strip(:selected=idx) {
         ui.tab(label="One") {
-            ui.text #joined(value=rows.map(func(r int) => "<{r}>").join(""))
+            ui.text #joined(value=rows.map(func(r int) => "<{r}>").format(""))
         }
         ui.tab(label="Two") {
             ui.text(value="two")

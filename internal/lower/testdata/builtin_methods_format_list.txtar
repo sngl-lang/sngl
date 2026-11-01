@@ -22,7 +22,7 @@ const func __list_format__list_int(this list[int], sep string = ", ", _item stru
 }) string {
     return this.map(fn=func(x int) string {
         return x.format(base=_item.base, width=_item.width, pad=_item.pad)
-    }).join(sep=sep)
+    })._join(sep=sep)
 }
 const func __list_format__list_option_float(this list[option[float]], sep string = ", ", _item struct {
     none  string
@@ -32,7 +32,7 @@ const func __list_format__list_option_float(this list[option[float]], sep string
 }) string {
     return this.map(fn=func(x option[float]) string {
         return __option_format__option_float(x, none=_item.none, _item=_item._item)
-    }).join(sep=sep)
+    })._join(sep=sep)
 }
 const func __option_format__option_float(this option[float], none string = "", _item struct {
     places int

@@ -60,7 +60,7 @@ func pkgConfig(args list[string]) list[string] {
         }
     }
     if p.code() != 0 {
-        error.raise("pkg-config " + args.join(" ") + " failed: is the library installed, and pkg-config with it?", "import")
+        error.raise("pkg-config " + args.format(" ") + " failed: is the library installed, and pkg-config with it?", "import")
     }
     return fields
 }
@@ -90,4 +90,4 @@ func link(f gen.File, include string, system bool, cflags list[string], ldflags 
 
 const func quote(s string) => "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\{", "\\\{").replace("\}", "\\\}") + "\""
 
-const func quoteAll(xs list[string]) => "[" + xs.map(func(x string) => quote(x)).join(", ") + "]"
+const func quoteAll(xs list[string]) => "[" + xs.map(func(x string) => quote(x)).format(", ") + "]"

@@ -18,7 +18,7 @@ func testAnEmitReachesTheCallSiteHandler(t Test, c main) {
 }
 
 func testAnEmitCarriesItsPayload(t Test, c main) {
-    t.assert(log.join(",") == "hello")
+    t.assert(log.format(",") == "hello")
 }
 
 func testAnUnsubscribedEmitGoesNowhere(t Test, c main) {

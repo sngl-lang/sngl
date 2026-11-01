@@ -83,7 +83,7 @@ func encode(members list[Entry]) string {
     for var e = members {
         parts.push(e.color == "" ? e.full : "{e.full}#{e.color}")
     }
-    return parts.join("|")
+    return parts.format("|")
 }
 
 // A click arrives as "<index> <button>" on a line of stdin. When stdin closes

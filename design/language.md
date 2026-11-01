@@ -906,7 +906,12 @@ for arguments once T is bound (`ir.FormatCall`): the interpreter asks with the
 running frame's bindings, the optimizer once the inliner has spliced the body
 at the call's types, and `passBuiltinMethods` in the copies it makes. A type
 with format and no appendFormat is appended as `out.add(x.format(…))`, since
-format is the one a type must declare. The LSP resolves such an argument to
+format is the one a type must declare. A list has no `join`: format with `sep` is
+the one way a list becomes a string, so none reaches one by a target's own
+conversion. The intrinsic format is written over is `_join`, on the strings
+the items' formats made, and the optimizer drops the `map` a list of strings
+makes of itself (`identityMap`).
+The LSP resolves such an argument to
 the element format's parameter (`indexer.argParam`, `ir.FormatArgDecl`,
 `testdata/lsp_definition/format.sngl`).
 

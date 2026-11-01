@@ -65,23 +65,23 @@ component rows ui.node {
 }
 
 func testEachCopyMountsWithItsOwnName(t test.Test, c names) {
-    t.assert(log.join(",") == "+a,+b,+c")
+    t.assert(log.format(",") == "+a,+b,+c")
 }
 
 func testARemovedCopyUnmountsWithItsName(t test.Test, c names) {
     c.names = ["a", "b"]
-    t.assert(log.join(",") == "+a,+b,+c,-c")
+    t.assert(log.format(",") == "+a,+b,+c,-c")
 }
 
 func testAnUpdateReadsItsCopysName(t test.Test, c rows) {
     c.rows[1].n = 5
-    t.assert(log.join(",") == "b=5")
+    t.assert(log.format(",") == "b=5")
 }
 
 func testAnUpdateReadsARenamedCopysNewName(t test.Test, c rows) {
     c.rows[1].name = "z"
     c.rows[1].n = 7
-    t.assert(log.join(",") == "z=7")
+    t.assert(log.format(",") == "z=7")
 }
 -- testrun/android/kotlin/app.sngl/names/1 --
 sha256:1b3fdc30f451b9201d0cb3cce904e5bd

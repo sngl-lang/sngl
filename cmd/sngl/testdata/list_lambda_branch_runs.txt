@@ -36,8 +36,8 @@ func short(name string) string {
 
 component compass ui.node {
     var headings = ["north", "south", "up"]
-    ui.text #label(value=headings.map(func(h string) => short(h)).join(","))
-    ui.text #flags(value=headings.map(func(h string) => h == "up" ? "^" : "-").join(""))
+    ui.text #label(value=headings.map(func(h string) => short(h)).format(","))
+    ui.text #flags(value=headings.map(func(h string) => h == "up" ? "^" : "-").format(""))
 }
 
 func testALiteralInAPropLiftsItsBranches(t test.Test, c compass) {
@@ -46,9 +46,9 @@ func testALiteralInAPropLiftsItsBranches(t test.Test, c compass) {
 }
 
 func testALiteralInATestLiftsItsBranches(t test.Test, c compass) {
-    var marks = c.headings.map(func(h string) => h == "north" ? "y" : "n").join("")
+    var marks = c.headings.map(func(h string) => h == "north" ? "y" : "n").format("")
     t.assert(marks == "ynn")
-    t.assert(c.headings.map(func(h string) => short(h)).join("") == "NS?")
+    t.assert(c.headings.map(func(h string) => short(h)).format("") == "NS?")
 }
 -- testrun/android/kotlin/app.sngl/compass/1 --
 sha256:bd66333d170a1a7f3db1a78eba04621d
