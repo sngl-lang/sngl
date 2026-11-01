@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -27,6 +28,7 @@ import (
 )
 
 func TestScript(t *testing.T) {
+	scrubEnv(t)
 	// Pre-detect the host go.mod from the test process's starting cwd (inside
 	// the sngl repo) so that codegen.DetectHostGoMod can still resolve a
 	// replace directive after the script test chdir's into its sandbox.
@@ -151,6 +153,40 @@ func TestScript(t *testing.T) {
 			}
 		})
 	}
+}
+
+// scrubEnv unsets, for the length of t, every variable scriptKeeps does not
+// name. scripttest logs a script's whole environment under -v, and a
+// developer's shell exports credentials a test has no business reading, let
+// alone printing. The process's own environment is what is scrubbed, not
+// only the scripts': `sngl` runs in-process, reading it and handing it to
+// the toolchains and programs it launches.
+func scrubEnv(t *testing.T) {
+	for _, kv := range os.Environ() {
+		name, value, _ := strings.Cut(kv, "=")
+		if scriptKeeps(name) {
+			continue
+		}
+		os.Unsetenv(name)
+		t.Cleanup(func() { os.Setenv(name, value) })
+	}
+}
+
+// scriptKeeps reports whether a script, the toolchains it runs or the
+// programs they build read the variable name.
+func scriptKeeps(name string) bool {
+	names := map[string]bool{
+		"PATH": true, "HOME": true, "USER": true, "LOGNAME": true, "SHELL": true,
+		"TMPDIR": true, "LANG": true, "TERM": true, "COLORTERM": true,
+		"CI": true, "GITLAB_CI": true,
+		"DISPLAY": true, "WAYLAND_DISPLAY": true, "DBUS_SESSION_BUS_ADDRESS": true,
+		"JAVA_HOME": true, "HTTP_PROXY": true, "HTTPS_PROXY": true, "NO_PROXY": true,
+		"http_proxy": true, "https_proxy": true, "no_proxy": true,
+		"SSL_CERT_FILE": true, "SSL_CERT_DIR": true,
+		"CC": true, "CXX": true, "PKG_CONFIG_PATH": true, "LD_LIBRARY_PATH": true,
+	}
+	prefixes := []string{"LC_", "GO", "CGO_", "SNGL_", "ANDROID_", "GRADLE_", "XDG_", "GTK_", "GDK_", "GSK_", "WLR_"}
+	return names[name] || slices.ContainsFunc(prefixes, func(p string) bool { return strings.HasPrefix(name, p) })
 }
 
 // Without -update or -verify a launch is answered from its testrun/ record, so
