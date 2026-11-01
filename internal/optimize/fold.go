@@ -359,6 +359,22 @@ func initTernaryTemp(out, branch []ir.Stmt) []ir.Stmt {
 	return append(out, decl)
 }
 
+// foldTarget folds the expressions an assignment's target reads -- an index,
+// and what a selected or indexed operand indexes by -- leaving the storage it
+// names alone. Left unfolded, `names["b/{slug}"] = …` in a component spliced
+// with a literal `slug` kept naming the parameter once its value was folded
+// in everywhere else, and no declaration of `slug` was left for it to read.
+func foldTarget(e ir.Expr, ctx *evalCtx) ir.Expr {
+	switch t := e.(type) {
+	case *ir.Index:
+		t.Operand = foldTarget(t.Operand, ctx)
+		t.Idx = foldExpr(t.Idx, ctx)
+	case *ir.Select:
+		t.Operand = foldTarget(t.Operand, ctx)
+	}
+	return e
+}
+
 // foldStmt folds constants and eliminates dead branches in a statement.
 // Returns nil to remove the statement.
 func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
@@ -379,6 +395,7 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		n.Body = foldStmts(n.Body, ctx)
 		n.Else = foldStmts(n.Else, ctx)
 	case *ir.Assign:
+		n.Target = foldTarget(n.Target, ctx)
 		n.Value = foldOwned(n.Value, ctx)
 	case *ir.CallStmt:
 		if n.Call != nil {

@@ -1,0 +1,101 @@
+# A component spliced with a literal prop has that prop folded into its body,
+# and an assignment's index is part of the body: the optimizer folded the
+# value written but never the target, so `names["b/{slug}"] = "B {slug}"`
+# became `names["b/" + slug] = "B x"`, naming a parameter of a component that
+# no longer existed. html raised "slug is not defined" as the page loaded --
+# the Pokédex's test of a move's name, its lookup written with a literal slug.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+var names map[string, string] = {}
+
+component lookup(kind string, slug string) ui.node {
+    if kind == "a" {
+        effect(@mount { names["a/{slug}"] = "A {slug}" })
+    } else {
+        effect(@mount { names["b/{slug}"] = "B {slug}" })
+    }
+}
+
+component holder ui.node {
+    lookup(kind="b", slug="x")
+}
+
+func testTheWriteIsKeyedByTheArgument(t test.Test, c holder) {
+    t.wait(func() => names.get("b/x", "") != "", 2000)
+    t.assert(names.get("b/x", "") == "B x")
+}
+
+ui.window {
+    holder
+}
+-- testrun/android/kotlin/app.sngl/holder/1 --
+sha256:993ff8e388756dc47c608c6c47780ac8
+{
+  "results": [
+    {
+      "Desc": "TheWriteIsKeyedByTheArgument",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/holder/1 --
+sha256:dbc965740457e20b3109d6c735e81d0d
+{
+  "results": [
+    {
+      "Desc": "TheWriteIsKeyedByTheArgument",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/holder/1 --
+sha256:59b9c3bfef439d65aa80003ac2b158af
+{
+  "results": [
+    {
+      "Desc": "TheWriteIsKeyedByTheArgument",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/holder/1 --
+sha256:a5152431df1f6bd69496b2f2dc7e63bf
+{
+  "results": [
+    {
+      "Desc": "TheWriteIsKeyedByTheArgument",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/holder/1 --
+sha256:61afd4c4c583119aa646901d0984b797
+{
+  "results": [
+    {
+      "Desc": "TheWriteIsKeyedByTheArgument",
+      "Passed": true
+    }
+  ]
+}
