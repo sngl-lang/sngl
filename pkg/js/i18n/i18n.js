@@ -212,10 +212,11 @@ function splitCases(raw) {
 
 // argGet retrieves a named argument from either a Map or a plain object.
 // SNGL lowers i18n args as Map for most target langs but as plain objects
-// in some codegen contexts; this helper handles both.
+// in some codegen contexts; this helper handles both. A null option is the
+// empty string, as it is on every target.
 function argGet(args, name) {
-  if (args instanceof Map) return args.get(name);
-  return args[name];
+  const v = args instanceof Map ? args.get(name) : args[name];
+  return v === null || v === undefined ? "" : v;
 }
 
 function renderPlaceholder(out, locale, currency, body, args, current) {

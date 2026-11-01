@@ -288,6 +288,8 @@ An interpolation field in a translatable string may carry up to three
 comma-separated parts — the value, a format keyword or function, and a style
 or message body — following ICU MessageFormat conventions for plurals and
 selects.
+An `option` value in a field is its value where it holds one and the empty
+string where it is null: `$"Hello {name}!"` with `name` null is `"Hello !"`.
 
 ### Color literals
 
