@@ -1132,11 +1132,11 @@ func (m *Model) __n2_clicked_handler() {
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	at := Point{}
 	C.cairo_save(ctx)
-	var __lt17 []_step__record
+	var __lt18 []_step__record
 	if m.closed__inst0 {
-		__lt17 = []_step__record{_step__record{Op: "close"}}
+		__lt18 = []_step__record{_step__record{Op: "close"}}
 	} else {
-		__lt17 = []_step__record{}
+		__lt18 = []_step__record{}
 	}
 	for _, c__r3 := range slices.Concat([]_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0}}, func() []_step__record {
 		__out := make([]_step__record, len(m.corners__inst0))
@@ -1144,7 +1144,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 			__out[__i] = func(c__r4 Point) _step__record { return _step__record{Op: "lineTo", X: c__r4.X, Y: c__r4.Y} }(__item)
 		}
 		return __out
-	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, R: 4.0}}, __lt17) {
+	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, R: 4.0}}, __lt18) {
 		if c__r3.Op == "moveTo" {
 			C.cairo_move_to(ctx, C.double(c__r3.X), C.double(c__r3.Y))
 			at = Point{X: c__r3.X, Y: c__r3.Y}
@@ -1739,7 +1739,7 @@ pass sha256:f848ec1c274022a633f566b53546a85b
 -- run/go/fyne --
 pass sha256:65d65bd43bd516f33398d5c3b584ee27
 -- run/go/gtk4 --
-pass sha256:cb33a1be299458348a55170db942e76e
+pass sha256:89f264efdfd22761faa0bbd50b9d9352
 -- run/kotlin/android --
 pass sha256:1d5b8036d1323fef3d2d11019b0482af
 -- run/none/html --
