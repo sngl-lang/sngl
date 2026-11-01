@@ -12,7 +12,7 @@ func counted(n int) string {
     for var i = seq.count(n) {
         out.push(i)
     }
-    return out.join(",")
+    return out.format(",")
 }
 
 func ranged(start int, end int) string {
@@ -20,7 +20,7 @@ func ranged(start int, end int) string {
     for var i = seq.range(start, end) {
         out.push(i)
     }
-    return out.join(",")
+    return out.format(",")
 }
 
 func stepped(start int, end int, by int) string {
@@ -28,7 +28,7 @@ func stepped(start int, end int, by int) string {
     for var i = seq.step(start, end, by) {
         out.push(i)
     }
-    return out.join(",")
+    return out.format(",")
 }
 
 // A sequence in a variable is an ordinary iter[int]: the numbers exist, and
@@ -98,7 +98,7 @@ func indexed(n int) string {
     for var i, v = seq.step(0, n, 5) {
         out.push("{i}:{v}")
     }
-    return out.join(",")
+    return out.format(",")
 }
 
 func testTwoVariableFormOverASequence(t Test) {

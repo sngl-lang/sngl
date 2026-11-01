@@ -31,22 +31,22 @@ component keyed node {
     button #again(text="again", @click { limit = 2 })
     button #clear(text="clear", @click { name = null })
     effect(on={limit=limit, name=name}, @mount { log.push("+") }, @unmount { log.push("-") })
-    text(value=log.join(","))
+    text(value=log.format(","))
 }
 
 func testSameValuesHoldTheLifetime(t Test, c keyed) {
-    t.assert(c.log.join(",") == "+")
+    t.assert(c.log.format(",") == "+")
     c.same.click()
-    t.assert(c.log.join(",") == "+")
+    t.assert(c.log.format(",") == "+")
 }
 
 func testPresenceAndValueRekey(t Test, c keyed) {
     c.set.click()
-    t.assert(c.log.join(",") == "+,-,+")
+    t.assert(c.log.format(",") == "+,-,+")
     c.again.click()
-    t.assert(c.log.join(",") == "+,-,+")
+    t.assert(c.log.format(",") == "+,-,+")
     c.clear.click()
-    t.assert(c.log.join(",") == "+,-,+,-,+")
+    t.assert(c.log.format(",") == "+,-,+,-,+")
 }
 
 window {

@@ -142,7 +142,7 @@ func testColorHex(t Test, c main) {
 func testListMethods(t Test, c main) {
     t.assert([1, 2, 3].indexOf(2) == 1)
     t.assert([1, 2, 3].indexOf(5) == -1)
-    t.assert(["a", "b", "c"].join(", ") == "a, b, c")
+    t.assert(["a", "b", "c"].format(", ") == "a, b, c")
     t.assert([1, 2, 3].contains(2))
     t.assert(![1, 2, 3].contains(5))
 }

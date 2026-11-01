@@ -3,12 +3,20 @@
 #[_builtin(option)]
 struct option[T any] {}
 
-// The value, or `null` where there is none, as the target's own formatter
-// writes it: what `"{x}"` writes.
-const func option[T].format() => _text(this)
+// The value's format, or none where there is no value: what `"{x}"` writes. A
+// named argument the option does not declare is the value's:
+// `"{x, none="-", places=2}"`. Only an option of a type that declares a format
+// has one.
+const func option[T].format(none string = "", _item _formatArgs[T]) => this == null ? none : _format(this, _item)
 
 // Puts the option's format on the end of out.
-func option[T].appendFormat(out ref[builder]) { out.add(_text(this)) }
+func option[T].appendFormat(out ref[builder], none string = "", _item _formatArgs[T]) {
+    if this == null {
+        out.add(none)
+    } else {
+        _appendFormat(this, out, _item)
+    }
+}
 
 // Mutable reference cell: `ref[T]` is a handle to a `T` rather than a copy of
 // one, so what holds it goes on seeing what that cell becomes. T is the referent

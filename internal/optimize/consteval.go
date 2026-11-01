@@ -237,6 +237,12 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		}
 		return nil, false
 	case *ir.Call:
+		// The format the compiler declared for an enum or a unit is the
+		// conversion its body is, folded as one: evaluated as a call, a
+		// unit's argument arrives a bare magnitude and was spelled `250`.
+		if ir.IsDefaultFormat(x.Func) && len(x.Args) == 1 {
+			return evalConversion(&ir.Conversion{Type: x.Type, Operand: x.Args[0].Value}, ctx)
+		}
 		return evalCall(x, ctx)
 	case *ir.Conversion:
 		return evalConversion(x, ctx)

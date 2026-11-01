@@ -57,7 +57,9 @@ func InstantiateStmts(stmts []Stmt, bindings map[string]*Type) []Stmt {
 
 // InstantiateExpr is e copied with bindings applied to every type in it, as
 // InstantiateStmts copies a statement list: a prop's default written in a
-// generic declaration, read at the types a call site bound.
+// generic declaration, read at the types a call site bound, or a generic
+// method's body spliced where it was called. A lambda in e is e's own, and is
+// copied with its parameters at those types.
 func InstantiateExpr(e Expr, bindings map[string]*Type) Expr {
 	if e == nil || len(bindings) == 0 {
 		return e
@@ -66,6 +68,7 @@ func InstantiateExpr(e Expr, bindings map[string]*Type) Expr {
 	c.shareDecls = true
 	c.subst = bindings
 	c.own = map[uintptr]bool{}
+	addOwnDecls(c.own, []Stmt{&Return{Value: e}})
 	return c.clone(reflect.ValueOf(&e).Elem()).Interface().(Expr)
 }
 

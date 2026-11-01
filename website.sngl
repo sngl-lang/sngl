@@ -441,7 +441,7 @@ component site() root {
                     for var p = targets.platforms {
                         markup.heading3 { markup.text(value=p.name) }
                         markup.paragraph { markup.text(value=p.doc) }
-                        markup.paragraph { markup.text(value="Supported languages: " + p.languages.join(", ")) }
+                        markup.paragraph { markup.text(value="Supported languages: " + p.languages.format(", ")) }
                         markup.heading4 { markup.text(value="Options") }
                         ui.table(columns=["Name", "Type", "Description"]) {
                             for var r = optionRows(p.options) {

@@ -394,7 +394,7 @@ These are compile errors:
 
 ### String interpolation
 
-Each `{expr}` field is the string its value's `format` method writes, and arguments after a comma are that method's: `{x, a, b}` is `x.format(a, b)`, checked like any call, so named arguments and defaults work. `int` takes `base`, `width` and `pad`; `float` takes `places`; every other builtin type has no options, a list and an option are written as the target writes one, and an enum without payloads, a unit and `null` by name or magnitude. A zero-arg function is called first, and `string(x)` is the same call as `"{x}"`. For any other type — struct, component, etc. — declare `format`; a type without one is a compile error:
+Each `{expr}` field is the string its value's `format` method writes, and arguments after a comma are that method's: `{x, a, b}` is `x.format(a, b)`, checked like any call, so named arguments and defaults work. `int` takes `base`, `width` and `pad`; `float` takes `places`; a list joins its elements' formats with `sep` (`, `, no brackets) and an option writes its value's or `none` (empty), and any named argument either does not declare goes to the element: `{prices, sep=" / ", places=2}`. An enum without payloads and a unit format by name and magnitude unless they declare their own; every other builtin type has no options. A zero-arg function is called first, and `string(x)` is the same call as `"{x}"`. For any other type — struct, component, etc. — declare `format`; a type without one is a compile error:
 
 <!-- SNGL-component -->
 
@@ -420,7 +420,7 @@ A type that builds its text a piece at a time can also declare `appendFormat`, w
 struct Path {
     parts list[string] = []
 }
-func Path.format(p Path) => p.parts.join("/")
+func Path.format(p Path) => p.parts.format("/")
 func Path.appendFormat(p Path, out ref[builder]) {
     for var i, part = p.parts {
         if i > 0 {
@@ -1300,7 +1300,7 @@ import ui "sngl:ui"
 component Room(name string) ui.node {
     var log list[string] = []
     effect(on=name, @mount(r) { log.push("join {r}") }, @unmount(r) { log.push("leave {r}") })
-    ui.text(value=log.join(", "))
+    ui.text(value=log.format(", "))
 }
 
 ui.window {

@@ -1,0 +1,49 @@
+# A call of a constraint's function is the bound type's own method once the
+# type is bound, and a generic function making one is copied at the types
+# each call binds for that, before the builtin methods are lowered: the
+# int's format in `show__int` is then promoted as any other is, and the
+# list's format in `all__int` copied at `list[int]`.
+caps: NoComputed
+-- input.sngl --
+import . "sngl:ui"
+
+func show[T struct {
+    const func format(base int) string
+}](v T) string {
+    return v.format(16)
+}
+
+func all[T struct {
+    const func format() string
+}](vs list[T]) string {
+    return "[{vs}]"
+}
+
+component main node {
+    var n = 255
+    var xs = [1, 2]
+
+    text(value="{show(n)} {all(xs)}")
+}
+-- expected.sngl --
+import . "sngl:ui"
+func show__int(v int) string {
+    return v.format(base=16, width=0, pad=" ")
+}
+func all__int(vs list[int]) string {
+    return "[" + __list_format__list_int(vs, sep=", ", _item={}) + "]"
+}
+const func __list_format__list_int(this list[int], sep string = ", ", _item struct {
+    base  int
+    width int
+    pad   string
+}) string {
+    return this.map(fn=func(x int) string {
+        return x.format(base=_item.base, width=_item.width, pad=_item.pad)
+    })._join(sep=sep)
+}
+component main node {
+    var n int = 255
+    var xs list[int] = [1, 2]
+    text(value=show__int(v=n) + " " + all__int(vs=xs))
+}

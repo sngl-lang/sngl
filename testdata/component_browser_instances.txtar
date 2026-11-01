@@ -53,7 +53,7 @@ func testAnUnrolledRecursionRendersEveryLevel(t Test, c unrolled) {
 component row(label string) node {
     var log list[string] = []
     effect(on=label, @mount { log.push("+") }, @unmount { log.push("-") })
-    text #shown(value="{label}[{log.join(",")}]")
+    text #shown(value="{label}[{log.format(",")}]")
 }
 
 // An instance under a reactive `if` mounts its effect once and is destroyed

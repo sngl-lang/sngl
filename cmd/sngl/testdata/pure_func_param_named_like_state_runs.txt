@@ -32,7 +32,7 @@ func shout(name string) string {
     for var part = string.split(name, "-") {
         out.push(string.upper(part))
     }
-    return out.join(" ")
+    return out.format(" ")
 }
 
 // What a chip says after its label.

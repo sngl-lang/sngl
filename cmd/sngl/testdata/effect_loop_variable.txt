@@ -35,7 +35,7 @@ component main node {
         effect(on=it, @mount { log.push(it) })
     }
 
-    text(value=log.join(","))
+    text(value=log.format(","))
 }
 
 window {
@@ -54,7 +54,7 @@ component main node {
         effect(on=it, @mount(v) { log.push(v) })
     }
 
-    text(value=log.join(","))
+    text(value=log.format(","))
 }
 
 window {

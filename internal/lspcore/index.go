@@ -830,26 +830,50 @@ func (x *indexer) call(v *ir.Call) {
 	if v.AST == nil || v.Func == nil {
 		return
 	}
-	p, qual, ok := x.calleeName(v.AST.Func, v.Func.Name)
-	if !ok {
-		return
+	// An interpolated field's format names no method where it is written,
+	// `"{n, base=16}"`, and its arguments are the ones written all the same.
+	p, qual, named := x.calleeName(v.AST.Func, v.Func.Name)
+	if named {
+		if v.Qualifier != nil {
+			x.namespace(qual)
+		}
+		x.named(p, v.Func.Name, v.Func, kindOf(v.Func))
+		x.members(v.Func)
 	}
-	if v.Qualifier != nil {
-		x.namespace(qual)
-	}
-	x.named(p, v.Func.Name, v.Func, kindOf(v.Func))
-	x.members(v.Func)
 	for _, a := range v.AST.Args.Args {
 		arg, isArg := a.(ast.Arg)
 		if !isArg || arg.Name == "" || !arg.NamePos.IsSet() {
 			continue
 		}
-		for _, param := range v.Func.Params {
-			if param.Name == arg.Name {
-				x.named(arg.NamePos, arg.Name, param, KindParameter)
-			}
+		if param := x.argParam(v, arg.Name); param != nil {
+			x.named(arg.NamePos, arg.Name, param, KindParameter)
 		}
 	}
+}
+
+// argParam is the parameter v's argument named name is passed to: one of
+// v's callee's, or, where the callee takes the arguments it declares no
+// parameter for as a `_formatArgs`, the formatted type's format's.
+func (x *indexer) argParam(v *ir.Call, name string) *ir.Param {
+	for _, param := range v.Func.Params {
+		if param.Name == name {
+			x.members(v.Func)
+			return param
+		}
+	}
+	if x.pkg == nil || x.pkg.Symbols == nil {
+		return nil
+	}
+	for _, a := range v.Args {
+		if t := a.Value.ExprType(); ir.IsFormatArgs(t) {
+			fn, param := ir.FormatArgDecl(x.pkg.Symbols.Root, t, name)
+			if param != nil {
+				x.members(fn)
+			}
+			return param
+		}
+	}
+	return nil
 }
 
 func (x *indexer) selectExpr(v *ir.Select) {

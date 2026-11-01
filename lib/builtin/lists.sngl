@@ -6,13 +6,24 @@
 #[_builtin(list)]
 struct list[T any] {}
 
-// Number of items in l.
-// The elements written as the target's own formatter writes a list:
-// what `"{xs}"` writes.
-const func list[T].format() => _text(this)
+// The elements' formats with sep between them, no brackets: what `"{xs}"`
+// writes, `1, 2, 3`. A named argument the list does not declare is each
+// element's: `"{xs, sep="; ", base=16}"` writes `a; b; c` of 10, 11, 12. Only
+// a list of a type that declares a format has one.
+const func list[T].format(sep string = ", ", _item _formatArgs[T]) => this.map(func(x T) => _format(x, _item))._join(sep)
 
-// Puts the list's format on the end of out.
-func list[T].appendFormat(out ref[builder]) { out.add(_text(this)) }
+// Puts the list's format on the end of out, each element by its own
+// appendFormat.
+func list[T].appendFormat(out ref[builder], sep string = ", ", _item _formatArgs[T]) {
+    for var i, x = this {
+        if i > 0 {
+            out.add(sep)
+        }
+        _appendFormat(x, out, _item)
+    }
+}
+
+// Number of items in l.
 
 #[_intrinsic("list.length")]
 const func list[T].length() int
@@ -58,10 +69,10 @@ func list[T].clear()
 #[_intrinsic("list.indexOf")]
 const func list[T].indexOf(item T) int
 
-// Joins the items of l into a single string, separated by sep. Items
-// are coerced via the platform's default string conversion.
+// The strings of a list of strings, sep between them: what format is written
+// over, once each item is its format.
 #[_intrinsic("list.join")]
-const func list[T].join(sep string) string
+const func list[T]._join(sep string) string
 
 // Returns a copy of l with items in reverse order.
 #[_intrinsic("list.reverse")]

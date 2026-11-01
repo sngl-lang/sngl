@@ -40,7 +40,7 @@ component main node {
     var c color = #ff0000
     var hx string = c.hex()
 
-    text(value=string(idx) + string(rev.length()) + string(sl.length()) + string(ev.length()) + ss.join(",") + string(n) + string(ks.length()) + string(vs.length()) + string(has) + string(got) + hx)
+    text(value=string(idx) + string(rev.length()) + string(sl.length()) + string(ev.length()) + ss.format(",") + string(n) + string(ks.length()) + string(vs.length()) + string(has) + string(got) + hx)
 }
 
 window {
@@ -68,7 +68,7 @@ component main node {
     var c color = #ff0000
     var hx string = c.hex()
 
-    text(value=string(idx) + string(rev.length()) + string(sl.length()) + string(ev.length()) + ss.join(",") + string(n) + string(ks.length()) + string(vs.length()) + string(has) + string(got) + hx)
+    text(value=string(idx) + string(rev.length()) + string(sl.length()) + string(ev.length()) + ss.format(",") + string(n) + string(ks.length()) + string(vs.length()) + string(has) + string(got) + hx)
 }
 
 window {

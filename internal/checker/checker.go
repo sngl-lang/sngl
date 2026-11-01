@@ -784,6 +784,12 @@ type checker struct {
 	// Arguments bound to a const parameter or prop, judged with the
 	// assertions above. See constparams.go.
 	constArgs []constArg
+	// defaultMatches are the defaults a type's method was measured against a
+	// constraint's by, judged once every body's defaults are checked.
+	defaultMatches []func()
+	// measuredAt is where the type being measured against a constraint was
+	// bound, for a diagnostic reported later (matchDefaults).
+	measuredAt ast.Pos
 	// Nodes populating a const slot, whose populations are held to the const
 	// render rule at the same moment. See constcomponents.go.
 	constSlotNodes []*ir.NodeInst
@@ -1784,6 +1790,9 @@ func (c *checker) registerImport(imp *ast.Import) {
 				}
 				for _, e := range native.Enums {
 					e.Pkg = nsPkg
+					if e.Format == nil {
+						e.Format = ir.NewDefaultFormat(e.SymType(), nsPkg)
+					}
 					c.bindLib(imp.Pos, nsPkg.Symbols.Root, e)
 				}
 				for _, f := range native.Funcs {
@@ -4072,6 +4081,7 @@ func (c *checker) finishDeclarations(pkg *ir.Package) {
 		}
 	}
 	c.runConstArgChecks()
+	c.runDefaultMatches()
 	c.runConstSlotChecks()
 	c.reportDeclarativeCycles(pkg)
 	for _, comp := range pkg.Components {

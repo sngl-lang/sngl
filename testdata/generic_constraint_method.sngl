@@ -1,0 +1,70 @@
+// A constraint may name functions as well as fields: a type satisfies
+// `struct { const func format() string }` when a call of its own `format`
+// with no arguments is legal and gives a string, whatever else that format
+// takes. In a generic body such a function is called through the constraint,
+// and the call is the bound type's own method once T is bound.
+
+import . "sngl:test"
+
+struct Point {
+    x int = 0
+    y int = 0
+
+    const func format() => "({x}, {y})"
+}
+
+struct Tag {
+    name string = ""
+}
+
+const func Tag.format(t Tag, prefix string = "#") => "{prefix}{t.name}"
+
+enum Hue { red, green }
+
+func show[T struct {
+    const func format() string
+}](v T) => "<{v}>"
+
+func showAll[T struct {
+    const func format() string
+}](vs list[T]) => "[{vs}]"
+
+func inBase[T struct {
+    const func format(base int) string
+}](v T) => v.format(16)
+
+func padded[T struct {
+    const func format(base int, width int) string
+}](v T) => "{v, 2, width=8}"
+
+func plain[T struct {
+    const func format(base int = 10) string
+}](v T) => "{v.format()}/{v}"
+
+func label[T struct {
+    const func format() string
+}](v T) => "{show(v)}!"
+
+func testShow(t Test) {
+    t.assert(show(3) == "<3>")
+    t.assert(show("s") == "<s>")
+    t.assert(show(Point{x=1, y=2}) == "<(1, 2)>")
+    t.assert(show(Tag{name="a"}) == "<#a>")
+    t.assert(show(Hue.green) == "<green>")
+    t.assert(show([1, 2]) == "<1, 2>")
+}
+
+func testShowAll(t Test) {
+    t.assert(showAll([1, 2]) == "[1, 2]")
+    t.assert(showAll([Point{x=1}, Point{y=2}]) == "[(1, 0), (0, 2)]")
+}
+
+func testArguments(t Test) {
+    t.assert(inBase(255) == "ff")
+    t.assert(padded(5) == "     101")
+    t.assert(plain(255) == "255/255")
+}
+
+func testThroughAnother(t Test) {
+    t.assert(label(7) == "<7>!")
+}

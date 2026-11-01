@@ -1,0 +1,6 @@
+func hex[T struct {
+    const func format(base int) string
+}](v T) => v.format(base=16)
+
+// DEFINITION(v.^format) "    const func ^format(base int) string"
+// DEFINITION(^base=16) "    const func format(^base int) string"

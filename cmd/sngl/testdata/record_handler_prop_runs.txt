@@ -30,7 +30,7 @@ const languages = ["en", "fr", "de"]
 
 component picker(items ...component ui.menuItem) ui.node {
     ui.vbox {
-        ui.text #summary(value=items.map(func(it) => it.checked ? "[{it.label}]" : it.label).join(" "))
+        ui.text #summary(value=items.map(func(it) => it.checked ? "[{it.label}]" : it.label).format(" "))
         for var it = items {
             ui.button #pick(text=it.label, @click {
                 it.select()

@@ -6,10 +6,9 @@
 struct string {}
 
 // x's text as the target writes it: a number's digits, `true` or `false`, a
-// color's or a date's canonical form, a list or an option as the target's own
-// formatter writes one. Each builtin type's format is written over it, since
-// `string(x)` is `x.format()` and so cannot say what that is; anything else
-// formats through a format.
+// color's or a date's canonical form. Each builtin scalar's format is written
+// over it, since `string(x)` is `x.format()` and so cannot say what that is; a
+// list and an option format through their elements' formats.
 #[_builtin(text)]
 const func _text[T any](x T) string
 

@@ -123,7 +123,7 @@ component changes node {
         xs = [7]
     }
 
-    text #out(value=log.join(","))
+    text #out(value=log.format(","))
 }
 
 func testChangesInTheOrderMade(t Test, c changes) {
@@ -170,7 +170,7 @@ component partial node {
         xs.remove(0)
     }
 
-    text #out(value=log.join(","))
+    text #out(value=log.format(","))
 }
 
 func testUnhandledChangeReachesUpdate(t Test, c partial) {
@@ -199,7 +199,7 @@ component scalar node {
         },
     )
 
-    text #out(value=log.join(","))
+    text #out(value=log.format(","))
 }
 
 func testUpdateRunsBeforeTheRekey(t Test, c scalar) {
@@ -271,7 +271,7 @@ component field node {
         h = Holder{items=[5]}
     }
 
-    text #out(value="{h.items.length()} {log.join(",")}")
+    text #out(value="{h.items.length()} {log.format(",")}")
 }
 
 func testFieldKey(t Test, c field) {
@@ -339,7 +339,7 @@ component rows node {
         xs = [Row{items=[7]}]
     }
 
-    text #out(value=log.join(","))
+    text #out(value=log.format(","))
 }
 
 func testPerCopyChange(t Test, c rows) {

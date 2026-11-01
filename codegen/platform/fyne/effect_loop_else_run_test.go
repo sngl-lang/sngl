@@ -30,7 +30,7 @@ window {
 
     button #empty(text="clear", @click { items = [] })
     button #fill(text="fill", @click { items = ["a"] })
-    text #out(value=log.join(","))
+    text #out(value=log.format(","))
 }
 `
 

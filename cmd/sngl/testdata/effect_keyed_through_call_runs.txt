@@ -96,16 +96,16 @@ func testAWriteOutsideReachesTheEffect(t test.Test, c app) {
 
 func testAWriteOutsideRemountsAKeyedEffect(t test.Test, c app) {
     c.raise.click()
-    t.assert(mounts.join(",") == "0,0,0,1,1,1")
+    t.assert(mounts.format(",") == "0,0,0,1,1,1")
 }
 
 func testAWriteOutsideAsksTheQueryAgain(t test.Test, c app) {
     c.raise.click()
     t.wait(func() => c.g != null && c.g.answer != null && c.g.answer == "level 1", 2000)
-    t.assert(asked.join(",") == "0,0,0,1,1,1")
+    t.assert(asked.format(",") == "0,0,0,1,1,1")
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:02f9b95290ef20408f08274ac60f6214
+sha256:55882ce79a94cda74354ae85b80e6533
 {
   "results": [
     {
@@ -123,7 +123,7 @@ sha256:02f9b95290ef20408f08274ac60f6214
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:9fd9a9d62dd0460a09c8bde13f478824
+sha256:4f8682a5a171780aa5f2cf08906a9843
 {
   "results": [
     {
@@ -141,7 +141,7 @@ sha256:9fd9a9d62dd0460a09c8bde13f478824
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:146b4ce39fc911239c14e785ccdded47
+sha256:1dc66c68b8582de76b2c4cfe4d49519a
 {
   "results": [
     {
@@ -159,7 +159,7 @@ sha256:146b4ce39fc911239c14e785ccdded47
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:3db646b4e5739ba421272b9952b78627
+sha256:ae555bff8861cc3fab523a878b9100fa
 {
   "results": [
     {
@@ -177,7 +177,7 @@ sha256:3db646b4e5739ba421272b9952b78627
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:cb358ce6c1cac984d42af07ca086fb69
+sha256:a0abbab80f448d0de7487f0bd0af5dab
 {
   "results": [
     {

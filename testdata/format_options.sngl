@@ -87,3 +87,63 @@ func testBuiltWithAppendFormat(t Test) {
     t.assert("[{tag, true}]" == "[#GO]")
     t.assert(string(tag) == "#go")
 }
+
+// A list's format is its elements' formats with sep between them, no
+// brackets, and an option's is its value's or none; a named argument neither
+// declares is the element's. A type that declares format and no appendFormat
+// is appended as the string its format writes.
+enum Hue {
+    red
+    green
+}
+
+enum Mood {
+    calm
+}
+
+func Mood.format(m Mood, loud bool = false) => loud ? "CALM" : "calm"
+
+func testListFormat(t Test) {
+    var xs = [10, 11, 12]
+    t.assert("{xs}" == "10, 11, 12")
+    t.assert("{xs, sep="; ", base=16}" == "a; b; c")
+    t.assert("{xs, "/", width=3, pad="0"}" == "010/011/012")
+    var none list[int] = []
+    t.assert("[{none}]" == "[]")
+    var grid = [[1, 2], [3]]
+    t.assert("{grid, sep=" | ", base=2}" == "1, 10 | 11")
+    var ps = [Point{x=1, y=2}, Point{}]
+    t.assert("{ps, sep=" "}" == "(1,2) (0,0)")
+}
+
+func testOptionFormat(t Test) {
+    var o option[int] = null
+    t.assert("[{o}]" == "[]")
+    t.assert("{o, none="-"}" == "-")
+    o = 255
+    t.assert("{o, base=16}" == "ff")
+    var ys list[option[float]] = [1.5, null]
+    t.assert("{ys, none="?", places=2}" == "1.50, ?")
+}
+
+// An enum carrying no payload has the format the compiler declares, its
+// member's name, where it declares none of its own.
+func testEnumFormat(t Test) {
+    var h = Hue.green
+    t.assert("{h}" == "green")
+    t.assert(h.format() == "green")
+    var hs = [Hue.red, Hue.green]
+    t.assert("{hs, sep="/"}" == "red/green")
+    var ms = [Mood.calm]
+    t.assert("{ms, loud=true}" == "CALM")
+}
+
+func testListAppendFormat(t Test) {
+    var b builder
+    var xs = [1, 2]
+    xs.appendFormat(&b, sep="-", width=2, pad="0")
+    b.add("|")
+    var hs = [Hue.red, Hue.green]
+    hs.appendFormat(&b)
+    t.assert(b.string() == "01-02|red, green")
+}

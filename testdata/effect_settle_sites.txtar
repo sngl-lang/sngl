@@ -70,7 +70,7 @@ component main node {
     button(text="add", @click {
         items.push("b")
     })
-    text(value=log.join(","))
+    text(value=log.format(","))
 }
 
 window {

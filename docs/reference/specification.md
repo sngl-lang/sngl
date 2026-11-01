@@ -740,8 +740,34 @@ parameters bound, and where one is not -- nothing written or passed binds it
 `valueOf(Cell{value=1})` binds `T` to `int`. A default binds its list the
 same way where its declaration is checked.
 
+A constraint may also declare functions, each written as a method in a
+struct's body is and conventionally without one: `[T struct { const func format() string }]` is any type with a `format` that a call of that shape
+fits. A type's method satisfies a constraint's function when it has the
+function's name, each of the function's parameters is one of the method's of
+that name at an equal type, every other parameter of the method has a default,
+it returns an equal type, and it is `const` where the function is. A
+constraint's function takes no body and no type parameters. A parameter of one
+may have a default, which lets a call through the constraint leave it out;
+the default is a constant -- a literal, an enum member, or a `const` naming
+one -- and the method must declare the same default for that parameter. A
+constraint declaring functions and no fields asks for nothing else, so any
+type with those methods satisfies it, a builtin type, an enum and a list
+included; one declaring fields, or nothing at all, is satisfied only by a type
+with fields. A function's parameter may name the type parameter it constrains or another
+of the list, as a field may.
+
+```sngl
+func hex[T struct {
+    const func format(base int) string
+}](v T) => v.format(16)
+
+var a = hex(255) // "ff": int.format also takes width and pad, which have defaults
+```
+
 In a generic body a value of a constrained `T` has the constraint's fields,
-typed from the constraint, and nothing else: `v.name` reads one, and any other
+typed from the constraint, and its functions, and nothing else: `v.name` reads
+a field, `v.format(16)` calls the bound type's own method of that name, with
+its defaults for any parameter the constraint does not declare, and any other
 member is unknown. A spread of a `T` binds those fields by name, as a struct's
 spread binds its own.
 
@@ -1472,21 +1498,37 @@ format returns `string`.
 A type is formatted only if it declares `format`, and `string(x)` is the same
 call. The builtin types do:
 
-| Type                       | Format                                                                                                 | Options                                                                                                                        |
-|----------------------------|--------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
-| `int`                      | decimal, or in `base` from 2 to 36                                                                     | `base = 10`, `width = 0`, `pad = " "`: at least `width` characters, `pad` filling on the left, after the sign when it is `"0"` |
-| `float`                    | as the target writes the number, or with `places` digits after the point, rounding half away from zero | `places = -1`                                                                                                                  |
-| sized numbers              | decimal                                                                                                | none                                                                                                                           |
-| `bool`                     | `true` or `false`                                                                                      | none                                                                                                                           |
-| `string`                   | itself                                                                                                 | none                                                                                                                           |
-| `color`                    | its `hex()`                                                                                            | none                                                                                                                           |
-| `date`, `time`, `datetime` | the canonical form a literal of it is written in                                                       | none                                                                                                                           |
-| `builder`                  | what has been built                                                                                    | none                                                                                                                           |
-| `list[T]`, `option[T]`     | as the target's own formatter writes one                                                               | none                                                                                                                           |
+| Type                        | Format                                                                                                 | Options                                                                                                                        |
+|-----------------------------|--------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
+| `int`                       | decimal, or in `base` from 2 to 36                                                                     | `base = 10`, `width = 0`, `pad = " "`: at least `width` characters, `pad` filling on the left, after the sign when it is `"0"` |
+| `float`                     | as the target writes the number, or with `places` digits after the point, rounding half away from zero | `places = -1`                                                                                                                  |
+| sized numbers               | decimal                                                                                                | none                                                                                                                           |
+| `bool`                      | `true` or `false`                                                                                      | none                                                                                                                           |
+| `string`                    | itself                                                                                                 | none                                                                                                                           |
+| `color`                     | its `hex()`                                                                                            | none                                                                                                                           |
+| `date`, `time`, `datetime`  | the canonical form a literal of it is written in                                                       | none                                                                                                                           |
+| `builder`                   | what has been built                                                                                    | none                                                                                                                           |
+| `list[T]`                   | each element's format, `sep` between them, no brackets                                                 | `sep = ", "`, and the element's                                                                                                |
+| `option[T]`                 | its value's format, or `none` where there is none                                                      | `none = ""`, and the value's                                                                                                   |
+| an enum carrying no payload | its member's name                                                                                      | none                                                                                                                           |
+| a unit                      | its magnitude per base                                                                                 | none                                                                                                                           |
 
-An enum carrying no payload is written as its member's name, a unit as its
-magnitude per base, and `null` as `null`, where the type declares no format. A
-parameterless computed in an interpolation is called implicitly.
+An enum's and a unit's format is one the compiler declares, and one the
+type declares is the one called instead. `null` has no type to format, so
+`{null}` is an error. A parameterless computed in an interpolation is called
+implicitly.
+
+A value of a type parameter is formatted where its constraint declares
+`format` (see [Generic type parameters](#generic-type-parameters)), and its
+field may pass what that function declares: `{v}` is the format of the type
+bound to it.
+
+A list and an option are formatted only where their element type is, and a
+named argument a list's or an option's format does not declare is passed to
+each element's: `{xs, sep="; ", base=16}` writes each int in base 16, and
+`{grid, base=2}` reaches the ints of a `list[list[int]]`. A name the
+container declares is the container's, so an element parameter of that name
+is not reachable from the field.
 
 A type may also declare `appendFormat`, taking a `ref[builder]` after the
 receiver and then format's parameters, which puts the same text on the end of
