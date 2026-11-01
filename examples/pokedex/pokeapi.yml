@@ -5152,7 +5152,9 @@ components:
           - type: 'null'
           readOnly: true
         contest_type:
-          $ref: '#/components/schemas/ContestTypeSummary'
+          oneOf:
+          - $ref: '#/components/schemas/ContestTypeSummary'
+          - type: 'null'
         contest_effect:
           oneOf:
           - $ref: '#/components/schemas/ContestEffectSummary'
@@ -5172,8 +5174,9 @@ components:
         generation:
           $ref: '#/components/schemas/GenerationSummary'
         meta:
-          allOf:
+          oneOf:
           - $ref: '#/components/schemas/MoveMeta'
+          - type: 'null'
           readOnly: true
         names:
           type: array
@@ -5191,7 +5194,9 @@ components:
             $ref: '#/components/schemas/MoveMetaStatChange'
           readOnly: true
         super_contest_effect:
-          $ref: '#/components/schemas/SuperContestEffectSummary'
+          oneOf:
+          - $ref: '#/components/schemas/SuperContestEffectSummary'
+          - type: 'null'
         target:
           $ref: '#/components/schemas/MoveTargetSummary'
         type:

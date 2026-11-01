@@ -28,7 +28,7 @@ launcher red.
 | `detail.sngl`        | a species' page: a header over About, Stats, Evolution, Sprites and Moves                       |
 | `names.sngl`         | ids, names, rows, the artwork, an evolution's rows, a gallery, the moves, and lines' text       |
 | `icon.svg`           | the app's icon, which `output` names                                                            |
-| `pokeapi.yml`        | PokéAPI's OpenAPI document, vendored                                                            |
+| `pokeapi.yml`        | PokéAPI's OpenAPI document, vendored, with the nulls it leaves out                              |
 | `i18n.manifest.json` | the app's own words in French, German, Spanish and Japanese                                     |
 | `pokedex_test.sngl`  | the tests, against the answers in `testdata/http`                                               |
 
@@ -39,6 +39,12 @@ async function for each operation (`poke.pokemonRetrieveCall(id="pikachu")`,
 answering an `async.Result`), and, for each `GET`, a component that asks when
 it mounts. A JSON key that is no SNGL name is camelCased and keeps its wire
 name in a mark, so `front_default` is `sprites.frontDefault`.
+
+The document says a move's `contest_type`, `super_contest_effect` and `meta`
+are always there, but PokéAPI answers null for moves newer than contests, Acid
+Spray among them, and a response that is not what the document says is a
+failure. The vendored copy says they may be null, as it already said of
+`contest_effect`.
 
 `poke.server` is a context holding the document's first server,
 `https://pokeapi.co`. Provide another around a subtree, or in a test, and

@@ -114,6 +114,14 @@ component alolan ui.node {
     }
 }
 
+// The lookup of a move newer than contests, whose contest fields PokéAPI
+// answers null.
+component spray ui.node {
+    poke.server(local) {
+        lookup(kind=`move`, slug="acid-spray")
+    }
+}
+
 // The same, from Pikachu's line, through its stages' cards.
 component spark ui.node {
     var name = "pikachu"
@@ -332,6 +340,15 @@ func testTheSearchCoversTheWholeDex(t test.Test, c home) {
     c.page.searchBox.input("GGLY")
     t.assert(c.page.visible().map(func(e poke.PokemonDexNumber) => e.pokemonSpecies.name).join(",") == "jigglypuff,wigglytuff")
     t.assert(c.page.grid().length() == 1)
+}
+
+// PokéAPI's document says a move's contest type is always there, and Acid
+// Spray's is null: read as the document says, every page learning it showed
+// its move failed, however often it was asked again.
+func testAMoveWithNoContestTypeIsNamed(t test.Test, c spray) {
+    t.wait(func() => known(`move`, "acid-spray") || failedNow(`move`, "acid-spray"), 5000)
+    t.assert(!failedNow(`move`, "acid-spray"))
+    t.assert(called(names, `move`, "acid-spray") == "Acid Spray")
 }
 
 func testACardNamesItsSpeciesInTheReadersLanguage(t test.Test, c home) {
@@ -571,6 +588,7 @@ func testTappingAnAlolanFormOpensIt(t test.Test, c spark) {
     t.assert(c.name == "raichu" && c.form == "raichu-alola")
     t.wait(func() => c.detail.mon != null && c.detail.mon.name == "raichu-alola", 5000)
     t.wait(func() => c.detail.shape != null, 5000)
+    t.wait(func() => c.detail.title != null && c.detail.title.value == "Alolan Raichu", 5000)
     t.assert(c.detail.title != null && c.detail.title.value == "Alolan Raichu")
     t.assert(c.detail.types[1] != null && c.detail.types[1].value == "Psychic")
 }
