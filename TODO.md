@@ -1,11 +1,11 @@
-# Constraints as a package
+# Constraints as builtin declarations
 
 A plan for review. It replaces the open questions on `!285` about what a
 constraint can say: a struct constraint grew functions there, and the next
 asks -- a struct with any fields, the types of fields it does not name, a
 body reading those fields (#309) -- each wanted another rule in the
-language. Instead, constraints become declarations of a library package,
-`sngl:constraints`, named through aliases.
+language. Instead, constraints become declarations in `lib/builtin`, named
+through aliases.
 
 Nothing here is built.
 
@@ -28,13 +28,11 @@ Nothing here is built.
 ## 1. Aliases
 
 ```sngl
-import c "sngl:constraints"
-
-struct Formattable = c.methodsOf[struct {
+struct Formattable = methodsOf[struct {
     const func format() string
 }]
 
-struct Keyed[K c.any] = c.fieldsOf[struct {
+struct Keyed[K any] = fieldsOf[struct {
     key K
 }]
 
@@ -45,8 +43,8 @@ An alias is written with the keyword of what it aliases, `struct Name = Type`, a
 new one. There is no `type` keyword. An alias may take type parameters,
 which its right-hand side names.
 
-For now an alias is of a constraint only: the `sngl:constraints` builtins
-are declared as structs, so `struct` is the keyword that aliases them, and
+For now an alias is of a constraint only: the constraint builtins are
+declared as structs, so `struct` is the keyword that aliases them, and
 an alias of any other type is refused. `enum Name = …` and `unit Name = …`
 follow the same grammar when an alias of one is wanted.
 
@@ -55,59 +53,54 @@ hover shows the alias and what it stands for.
 
 ## 2. A constraint names a declaration
 
-A constraint is a type expression whose type is a constraint: a
-`sngl:constraints` builtin, or an alias of one. `resolveConstraint` resolves
+A constraint is a type expression whose type is a constraint: a constraint
+builtin, or an alias of one. `resolveConstraint` resolves
 it as a type and asks the declaration's builtin kind what it requires,
 rather than matching two syntactic forms. Each builtin is declared with
 `#[builtin("…")]` and found by its mark, never by name, so a program may
 shadow one.
 
 A bare struct is no constraint: `[T struct { name string }]` and
-`[T Named]` are errors naming `c.fieldsOf`, and `[T struct {}]` one naming
-`c.anyStruct`.
+`[T Named]` are errors naming `fieldsOf`, and `[T struct {}]` one naming
+`anyStruct`.
 
-## 3. `sngl:constraints`
+## 3. The constraint builtins
 
-```sngl
-import c "sngl:constraints"
-```
+Declared in `lib/builtin`, so every file has them without an import: `any`
+alone is written in about 330 constraints across 160 files (44 in `lib`,
+the rest fixtures, goldens and examples), and a first generic should not
+fail for want of an import.
 
-| Builtin          | A type bound to the parameter must                                               |
-|------------------|----------------------------------------------------------------------------------|
-| `c.any`          | be anything: what `any` is today, which it replaces                              |
-| `c.anyStruct`    | be a struct, whatever its fields                                                 |
-| `c.anyFields`    | have fields: a struct or a component                                             |
-| `c.fieldsOf[S]`  | have S's fields, each at an equal type (what `struct { … }` is today)            |
-| `c.methodsOf[S]` | have a method fitting each function S declares (`!285`'s rule, defaults and all) |
+| Builtin        | A type bound to the parameter must                                               |
+|----------------|----------------------------------------------------------------------------------|
+| `any`          | be anything: the spelling stays, now a declaration rather than a scalar          |
+| `anyStruct`    | be a struct, whatever its fields                                                 |
+| `anyFields`    | have fields: a struct or a component                                             |
+| `fieldsOf[S]`  | have S's fields, each at an equal type (what `struct { … }` is today)            |
+| `methodsOf[S]` | have a method fitting each function S declares (`!285`'s rule, defaults and all) |
 
 S is an anonymous struct, of fields for `fieldsOf` and of bodyless functions
-for `methodsOf`. `c.union` and `c.intersection` are added when the standard
+for `methodsOf`. `union` and `intersection` are added when the standard
 library needs one: asking for fields and methods at once is an intersection.
 
-`any` is gone: `[T any]` is an error naming `c.any`, and every declaration
-in the repository moves to it.
-
-Decide: `[T any]` is the most common constraint, in `lib/builtin` too
-(`struct list[T any]`). Does every file declaring a generic import
-`sngl:constraints`, or is `c.any` reachable without one -- the builtin
-package re-exporting it, or `sngl:constraints` imported by every file the
-way `sngl:builtin` is?
+Used so far: `any` everywhere; `anyStruct` by the 16 `struct {}`
+constraints in `lib`; `fieldsOf` by 30 field constraints, all in fixtures;
+`methodsOf` by `!285`'s fixtures, and by `list[T].format` once it says what
+T needs. `anyFields` has no user yet.
 
 ## 4. The standard library moves to it
 
 From the survey on `!285`:
 
-| Declaration                           | Today           | Becomes           |
-|---------------------------------------|-----------------|-------------------|
-| `http.send`, `get` (`Q`)              | `[Q struct {}]` | `[Q c.anyStruct]` |
-| `i18n.tr`, `trInline`, `format` (`A`) | `[A struct {}]` | `[A c.anyStruct]` |
-| `nav` params `T`, meta `M`            | `[T struct {}]` | `[T c.anyStruct]` |
-| every `[T any]`                       | `[T any]`       | `[T c.any]`       |
+| Declaration                           | Today           | Becomes         |
+|---------------------------------------|-----------------|-----------------|
+| `http.send`, `get` (`Q`)              | `[Q struct {}]` | `[Q anyStruct]` |
+| `i18n.tr`, `trInline`, `format` (`A`) | `[A struct {}]` | `[A anyStruct]` |
+| `nav` params `T`, meta `M`            | `[T struct {}]` | `[T anyStruct]` |
 
 Each is a struct the target reads field by field -- http's query encoder,
 i18n's `RecordArgs`, android's serialized route, html's path -- so
-`c.anyStruct`, not `c.anyFields`: a component's fields are no record. Nothing
-in the standard library asks for `c.anyFields` yet.
+`anyStruct`, not `anyFields`: a component's fields are no record.
 
 The field types each accepts stay where they are checked today until unions
 exist: http's `queryProblem` (bool, int, float, string, plain enum, date,
@@ -124,20 +117,20 @@ yet reproduced; a bug to file separately.
 
 ## 5. Reading the fields (#309)
 
-`c.fieldsOf(v)` in a generic body: the bound type's fields as
+A generic body reading the bound type's fields as
 `list[struct { name string; value … }]`, expanded at each binding where a
 constraint's function is resolved now (`ir.BoundCall`, the per-binding
-copies in `passBuiltinMethods`). What `value` is needs `c.union` or the
-payload-enum spelling from #309, so this waits with them.
+copies in `passBuiltinMethods`). What `value` is needs `union` or the
+payload-enum spelling from #309, so this waits with them, and so does its
+name: `fieldsOf` is the constraint.
 
 ## Order
 
 1. Aliases of constraints, with fixtures and the spec.
-2. Constraints name declarations; `sngl:constraints` with `c.any`,
-   `c.anyStruct`, `c.anyFields`, `c.fieldsOf` and `c.methodsOf`, declared and
-   marked.
-3. `!285`'s struct-constraint functions move to `c.methodsOf`, and a bare
-   struct constraint becomes an error.
-4. `any` becomes `c.any` everywhere; http, i18n and nav move to
-   `c.anyStruct`.
-5. Later: `c.union`, `c.intersection`, then #309.
+2. Constraints name declarations; `any`, `anyStruct`, `anyFields`,
+   `fieldsOf` and `methodsOf` declared in `lib/builtin` and marked, `any`
+   moving from a scalar to the constraint declaration.
+3. `!285`'s struct-constraint functions move to `methodsOf`, and a bare
+   struct constraint becomes an error, its uses moved to `fieldsOf`.
+4. http, i18n and nav move to `anyStruct`.
+5. Later: `union`, `intersection`, then #309.
