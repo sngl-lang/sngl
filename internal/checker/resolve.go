@@ -574,13 +574,15 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 		}
 		c.applyMarks(m, members[i])
 	}
-	return &ir.EnumDef{
+	ed := &ir.EnumDef{
 		AST:        e,
 		Name:       e.Name,
 		Pkg:        c.declPkg(),
 		TypeParams: typeParamShells(e.TypeParams),
 		Members:    members,
 	}
+	ed.Format = ir.NewDefaultFormat(ed.SymType(), ed.Pkg)
+	return ed
 }
 
 // resolveEnumBody resolves what each member carries, which may name any
@@ -653,6 +655,7 @@ func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
 	// registration is the only place that knows the suffixes have been
 	// resolved, and a lookup that had to derive it would be a second answer.
 	ud.Fields = ir.UnitFields(ud)
+	ud.Format = ir.NewDefaultFormat(ud.SymType(), ud.Pkg)
 	return ud
 }
 

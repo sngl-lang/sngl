@@ -32,6 +32,13 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 
 	// Try function inlining.
 	if call, ok := e.(*ir.Call); ok {
+		// `_format(x, args)` at a bound type is that type's format, which
+		// inlines in turn.
+		if ctx != nil && ctx.pkg != nil && ctx.pkg.Symbols != nil {
+			if formatted, ok := ir.FormatCall(ctx.pkg.Symbols.Root, call); ok {
+				return foldExpr(formatted, ctx)
+			}
+		}
 		// An argument bound to a const parameter is held to a literal before
 		// the call is inlined away: the contract is the call site's, and once
 		// the body is spliced in there is no parameter left to hold it to.

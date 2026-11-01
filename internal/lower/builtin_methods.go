@@ -9,7 +9,8 @@ import (
 
 // passBuiltinMethods makes each library method of a builtin type that a call
 // still names a function of the package: `n.format(16)` is
-// `__int_format(n, 16)`.
+// `__int_format(n, 16)`, and `xs.format()` of a `list[int]` is
+// `__list_format__int(xs)`, a copy at the receiver's types.
 //
 // No output can declare a method on an int, and passLibFuncs promotes plain
 // helpers only, so such a method reaches a target by being inlined or not at
@@ -19,11 +20,18 @@ import (
 // without optimizing does, and emitted `d.format(10, 0, " ")` on a Go int
 // (gtk4's TestIntegration_ComputedBodyImportCollected).
 //
+// A method on a generic builtin is copied at the types its call binds, with
+// its `this` the copy's first parameter, rather than left to ReceiverParam
+// and Monomorphize: its body may call `_format` or `_appendFormat`, which are
+// a call of the bound type's own format only once there is one, and a target
+// keeping generic functions whole would have no type to ask. The `_formatArgs`
+// such a format takes is then the anonymous struct of the bound type's
+// format's parameters (ir.FormatArgsFields).
+//
 // Early, so that each pass after it sees an ordinary function: an
 // appendFormat's builder becomes a string under StringBuilders and its
 // `ref[builder]` a value handed back under RefParams, and a format's defaults
-// are written by CallDefaults. A generic receiver's method is left alone: its
-// `this` is no parameter until ReceiverParam, and Monomorphize copies it.
+// are written by CallDefaults.
 var passBuiltinMethods = pass{
 	name:    "BuiltinMethods",
 	enabled: func(Features) bool { return true },
@@ -31,31 +39,175 @@ var passBuiltinMethods = pass{
 }
 
 func lowerBuiltinMethods(pkg *ir.Package, _ Features, _ Options) error {
-	if err := ir.RewriteExprs(pkg, func(e ir.Expr) (ir.Expr, error) {
-		if call, ok := e.(*ir.Call); ok && promotableBuiltinMethod(call.Func) {
-			if inlined := inlineSettled(call, 0); inlined != nil {
-				return inlined, nil
-			}
-		}
-		return e, nil
-	}); err != nil {
+	if pkg == nil {
+		return nil
+	}
+	b := &builtinMethods{pkg: pkg, names: map[string]bool{}, promoted: map[*ir.Func]bool{}}
+	if pkg.Symbols != nil {
+		b.scope = pkg.Symbols.Root
+	}
+	for _, fn := range pkg.Funcs {
+		b.names[fn.Name] = true
+	}
+	// A function this makes the package's -- a promoted method, a copy -- is
+	// rewritten in turn: `__int_appendFormat` calls the int's format.
+	if err := b.visit(pkg); err != nil {
 		return err
 	}
-	promoted := map[*ir.Func]bool{}
-	return ir.Walk(pkg, func(n ir.Node) error {
+	for len(b.pending) > 0 {
+		fn := b.pending[0]
+		b.pending = b.pending[1:]
+		if err := b.visit(fn); err != nil {
+			return err
+		}
+	}
+	b.packTypes()
+	return nil
+}
+
+type builtinMethods struct {
+	pkg       *ir.Package
+	scope     *ir.Scope
+	names     map[string]bool
+	instances []builtinInstance
+	promoted  map[*ir.Func]bool
+	pending   []*ir.Func
+	packs     map[*ir.Type]*ir.Type
+}
+
+// visit rewrites root's calls (rewrite) and makes each builtin method one of
+// them still names a function of the package.
+func (b *builtinMethods) visit(root any) error {
+	if err := ir.RewriteExprs(root, b.rewrite); err != nil {
+		return err
+	}
+	return ir.Walk(root, func(n ir.Node) error {
 		call, ok := n.(*ir.Call)
-		if !ok || !promotableBuiltinMethod(call.Func) {
+		if !ok || !promotableBuiltinMethod(call.Func) || b.promoted[call.Func] {
 			return nil
 		}
 		fn := call.Func
-		if !promoted[fn] {
-			promoted[fn] = true
-			fn.Name = "__" + fn.RecvName() + "_" + fn.Name
-			fn.Receiver = nil
-			pkg.Funcs = append(pkg.Funcs, fn)
+		b.promoted[fn] = true
+		fn.Name = "__" + fn.RecvName() + "_" + fn.Name
+		fn.Receiver = nil
+		b.pkg.Funcs = append(b.pkg.Funcs, fn)
+		b.pending = append(b.pending, fn)
+		return nil
+	})
+}
+
+type builtinInstance struct {
+	fn   *ir.Func
+	recv *ir.Type
+	copy *ir.Func
+}
+
+// rewrite is e with a `_format` at a bound type that type's format, a
+// builtin method the optimizer would have inlined inlined, and a generic
+// builtin's method called through its copy at the call's types.
+func (b *builtinMethods) rewrite(e ir.Expr) (ir.Expr, error) {
+	call, ok := e.(*ir.Call)
+	if !ok {
+		return e, nil
+	}
+	if formatted, ok := ir.FormatCall(b.scope, call); ok {
+		return b.rewrite(formatted)
+	}
+	// An enum's or a unit's format the compiler declared is declared by no
+	// output either, and is the text the target writes for the value.
+	if ir.IsDefaultFormat(call.Func) && len(call.Args) == 1 {
+		return &ir.Conversion{Type: call.Type, Operand: call.Args[0].Value}, nil
+	}
+	if promotableBuiltinMethod(call.Func) {
+		if inlined := inlineSettled(call, 0); inlined != nil {
+			return inlined, nil
+		}
+	}
+	if cp := b.instance(call); cp != nil {
+		call.Func = cp
+		call.ReceiverArg = false
+	}
+	return e, nil
+}
+
+// instance is the copy of call's method on a generic builtin at the types its
+// receiver binds, made the first time one is asked for; nil for any other
+// call, and for one whose receiver is still generic.
+func (b *builtinMethods) instance(call *ir.Call) *ir.Func {
+	fn := call.Func
+	if fn == nil || !ir.ReceiverOutsideParams(fn) || len(fn.RecvTypeParams) == 0 || len(fn.TypeParams) > 0 ||
+		fn.PkgPath() == "" || fn.Intrinsic != "" || fn.Foreign.Path != "" || len(fn.Block) == 0 ||
+		len(call.Args) == 0 || !call.ReceiverArg {
+		return nil
+	}
+	recv := call.Args[0].Value.ExprType()
+	if recv == nil || recv.HasTypeParam() {
+		return nil
+	}
+	for _, in := range b.instances {
+		if in.fn == fn && in.recv.Equal(recv) {
+			return in.copy
+		}
+	}
+	bind := map[string]*ir.Type{}
+	ir.BindTypeParams(fn.RecvParam.Type, recv, bind)
+	cp := ir.InstantiateFunc(fn, bind)
+	cp.Params = append([]*ir.Param{cp.RecvParam}, cp.Params...)
+	cp.RecvParam = nil
+	cp.Receiver = nil
+	// The program's, from here: every pass after this one writes it.
+	cp.Frozen = false
+	cp.Name = freshName(b.names, "__"+fn.RecvName()+"_"+fn.Name+"__"+typeKey(recv))
+	b.instances = append(b.instances, builtinInstance{fn, recv, cp})
+	b.pkg.Funcs = append(b.pkg.Funcs, cp)
+	b.pending = append(b.pending, cp)
+	return cp
+}
+
+// packTypes makes every `_formatArgs[X]` left the anonymous struct of X's
+// format's parameters, for passAnonStructs to declare.
+func (b *builtinMethods) packTypes() {
+	b.packs = map[*ir.Type]*ir.Type{}
+	ir.RewriteTypes(b.pkg, b.packType)
+	_ = ir.Walk(b.pkg, func(n ir.Node) error {
+		// A literal names its declaration as well as its type.
+		if lit, ok := n.(*ir.StructLit); ok && (lit.Def == nil || lit.Def.Builtin == ir.BuiltinFormatArgs) {
+			if sd := ir.AnonStructDef(lit.Type); sd != nil {
+				lit.Def = sd
+			}
 		}
 		return nil
 	})
+}
+
+func (b *builtinMethods) packType(t *ir.Type) *ir.Type {
+	if t == nil {
+		return nil
+	}
+	if !ir.IsFormatArgs(t) {
+		if !t.Any(ir.IsFormatArgs) {
+			return t
+		}
+		return t.MapChildren(b.packType)
+	}
+	if out, ok := b.packs[t]; ok {
+		return out
+	}
+	x := t.Elems[0]
+	fields, ok := ir.FormatArgsFields(b.scope, x)
+	if !ok || x.HasTypeParam() {
+		return t
+	}
+	for i, f := range fields {
+		g := *f
+		g.Type = b.packType(f.Type)
+		g.Default = nil
+		g.DefaultWritten = false
+		fields[i] = &g
+	}
+	out := &ir.Type{Kind: ir.TypeStruct, Decl: &ir.StructDef{Anon: true, Fields: fields}}
+	b.packs[t] = out
+	return out
 }
 
 // inlineSettled is call, of a library function whose body returns one

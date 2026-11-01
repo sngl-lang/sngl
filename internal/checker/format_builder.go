@@ -170,3 +170,39 @@ func (c *checker) formatBuilderName() string {
 		return '_'
 	}, path), n)
 }
+
+// formatArgsLit is the `_formatArgs[X]` of type t a call's args make: a field
+// per parameter of X's format after its receiver, holding the argument args
+// give it, bound as a call of that format binds them, or its default. A
+// parameter that is itself a `_formatArgs` takes what X's format declares no
+// parameter for in turn, so `"{xss, base=16}"` reaches each int. fits is false,
+// after an error, where X declares no format to take them.
+func (c *checker) formatArgsLit(pos ast.Pos, t *ir.Type, args []ast.ArgOrEventHandler) (lit ir.Expr, fits bool) {
+	out := &ir.StructLit{Type: t}
+	x := t.Elems[0]
+	if x == nil || x.Kind == ir.TypeInvalid {
+		return out, false
+	}
+	_, params, ok := ir.FormatParams(c.scope, x, "format")
+	if !ok || x.HasTypeParam() {
+		c.error(pos, "cannot format %s: type has no format method", x)
+		for _, a := range args {
+			c.checkExpr(a.(ast.Arg).Value)
+		}
+		return out, false
+	}
+	bound, fits := c.bindArgs(pos, args, &ir.FuncSig{Params: params})
+	for i, p := range params {
+		var v ir.Expr
+		switch {
+		case bound[i] != nil:
+			v = *bound[i]
+		case p.Default != nil:
+			v = typeParamZeroFor(ir.CloneExprSharingDecls(p.Default), p.Type)
+		default:
+			continue
+		}
+		out.Fields = append(out.Fields, ir.FieldInit{Name: p.Name, Value: v})
+	}
+	return out, fits
+}

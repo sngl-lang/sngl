@@ -21,3 +21,11 @@ var b = "{s}"          // ERROR(check) "its format method returns int, not strin
 var c = "{p, 2}"       // ERROR(check) "cannot format Plain: type has no format method"
 var d = "{n, "x"}"     // ERROR(check) "cannot pass string as int"
 var e = string(p)      // ERROR(check) "cannot format Plain: type has no format method"
+
+// A list or an option is formatted by its elements' format, and so only where
+// they have one; an argument neither it nor its element's format declares is
+// refused where it is written.
+var ps = [p]
+var f = "{ps}"           // ERROR(check) "cannot format Plain: type has no format method"
+var g = "{[n], bogus=1}" // ERROR(check) "unknown parameter \"bogus\""
+var h = "{null}"         // ERROR(check) "cannot format null: type has no format method"

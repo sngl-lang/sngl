@@ -1472,21 +1472,32 @@ format returns `string`.
 A type is formatted only if it declares `format`, and `string(x)` is the same
 call. The builtin types do:
 
-| Type                       | Format                                                                                                 | Options                                                                                                                        |
-|----------------------------|--------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
-| `int`                      | decimal, or in `base` from 2 to 36                                                                     | `base = 10`, `width = 0`, `pad = " "`: at least `width` characters, `pad` filling on the left, after the sign when it is `"0"` |
-| `float`                    | as the target writes the number, or with `places` digits after the point, rounding half away from zero | `places = -1`                                                                                                                  |
-| sized numbers              | decimal                                                                                                | none                                                                                                                           |
-| `bool`                     | `true` or `false`                                                                                      | none                                                                                                                           |
-| `string`                   | itself                                                                                                 | none                                                                                                                           |
-| `color`                    | its `hex()`                                                                                            | none                                                                                                                           |
-| `date`, `time`, `datetime` | the canonical form a literal of it is written in                                                       | none                                                                                                                           |
-| `builder`                  | what has been built                                                                                    | none                                                                                                                           |
-| `list[T]`, `option[T]`     | as the target's own formatter writes one                                                               | none                                                                                                                           |
+| Type                        | Format                                                                                                 | Options                                                                                                                        |
+|-----------------------------|--------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
+| `int`                       | decimal, or in `base` from 2 to 36                                                                     | `base = 10`, `width = 0`, `pad = " "`: at least `width` characters, `pad` filling on the left, after the sign when it is `"0"` |
+| `float`                     | as the target writes the number, or with `places` digits after the point, rounding half away from zero | `places = -1`                                                                                                                  |
+| sized numbers               | decimal                                                                                                | none                                                                                                                           |
+| `bool`                      | `true` or `false`                                                                                      | none                                                                                                                           |
+| `string`                    | itself                                                                                                 | none                                                                                                                           |
+| `color`                     | its `hex()`                                                                                            | none                                                                                                                           |
+| `date`, `time`, `datetime`  | the canonical form a literal of it is written in                                                       | none                                                                                                                           |
+| `builder`                   | what has been built                                                                                    | none                                                                                                                           |
+| `list[T]`                   | each element's format, `sep` between them, no brackets                                                 | `sep = ", "`, and the element's                                                                                                |
+| `option[T]`                 | its value's format, or `none` where there is none                                                      | `none = ""`, and the value's                                                                                                   |
+| an enum carrying no payload | its member's name                                                                                      | none                                                                                                                           |
+| a unit                      | its magnitude per base                                                                                 | none                                                                                                                           |
 
-An enum carrying no payload is written as its member's name, a unit as its
-magnitude per base, and `null` as `null`, where the type declares no format. A
-parameterless computed in an interpolation is called implicitly.
+An enum's and a unit's format is one the compiler declares, and one the
+type declares is the one called instead. `null` has no type to format, so
+`{null}` is an error. A parameterless computed in an interpolation is called
+implicitly.
+
+A list and an option are formatted only where their element type is, and a
+named argument a list's or an option's format does not declare is passed to
+each element's: `{xs, sep="; ", base=16}` writes each int in base 16, and
+`{grid, base=2}` reaches the ints of a `list[list[int]]`. A name the
+container declares is the container's, so an element parameter of that name
+is not reachable from the field.
 
 A type may also declare `appendFormat`, taking a `ref[builder]` after the
 receiver and then format's parameters, which puts the same text on the end of

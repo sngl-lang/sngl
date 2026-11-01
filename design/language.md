@@ -834,9 +834,11 @@ receives the operand only where it is marked the receiver (`receivesOperand`).
 keeps a field written with arguments as an `ast.FormatExpr` (`InterpField` in
 the grammar) and a bare one as the expression. `string(x)` is no cast but the
 same call, whatever x is (`inferBuiltinConversion` hands it to
-`interpolateFormat`). Only a payload-free enum, a unit and `null` keep a
-default (`defaultFormatted`): each is a declaration the compiler makes, with
-nothing a library could hang a method on. Every builtin type's `format` is
+`interpolateFormat`). A payload-free enum and a unit have a format the
+compiler declares (`ir.NewDefaultFormat`, a Conversion of the value), held on
+the declaration's `Format` rather than in its member table so that one the
+program declares is found first and is no duplicate; `ir.ResolveMethod` asks
+it last. `null` has none, being no value of any type. Every builtin type's `format` is
 declared in `sngl:builtin` or `sngl:time`, written over `_text`, marked
 `#[_builtin(text)]` and found by that mark: the checker makes a call of it the
 `ir.Conversion` to string that every target already spells
@@ -885,3 +887,37 @@ it makes a function of the package, `__int_format`. Promoting alone put
 `int.format(n)`, it read back as the static call, whose argument the checker
 names, and `dump --stage checked` stopped reading back as itself
 (`cmd/sngl/testdata/event_params_roundtrip.txt`).
+
+**A container's format forwards what it does not declare to its element's**,
+through a parameter typed `_formatArgs[T]` (`#[_builtin(formatArgs)]`): the
+arguments T's format takes after its receiver, one field per parameter. It is
+a type rather than a mark on the function so that forwarding is a value the
+body passes on, and so that the requirement is in the signature: where T
+declares no format, `_formatArgs[T]` has no fields to make and the call is
+refused, so `list[Point].format` exists only where `Point.format` does. The
+checker fills it at every call, from the named arguments the callee declares
+no parameter for (`bindArgs`, `formatArgsLit`), bound as a call of T's format
+binds them, a nested `_formatArgs` taking what is left in turn; the parameter's
+name begins with `_`, so no call can name it, and the arguments are flat:
+`{xs, sep="; ", base=16}`. A name the container declares is the container's.
+The body hands it to `_format(x, args)` or `_appendFormat(x, out, args)`
+(`formatWith`, `appendFormatWith`), which are `x.format(…)` with the fields
+for arguments once T is bound (`ir.FormatCall`): the interpreter asks with the
+running frame's bindings, the optimizer once the inliner has spliced the body
+at the call's types, and `passBuiltinMethods` in the copies it makes. A type
+with format and no appendFormat is appended as `out.add(x.format(…))`, since
+format is the one a type must declare. The LSP resolves such an argument to
+the element format's parameter (`indexer.argParam`, `ir.FormatArgDecl`,
+`testdata/lsp_definition/format.sngl`).
+
+**A generic builtin's method the optimizer leaves is copied at its call's
+types** by `passBuiltinMethods` (`__list_appendFormat__list_int`), its `this`
+the first parameter, rather than left to `ReceiverParam` and `Monomorphize`:
+JavaScript keeps generic functions whole, and a `_format` in one has no type
+to resolve against. Each `_formatArgs[X]` left is then the anonymous struct of
+X's format's parameters, which `passAnonStructs` declares. The inliner
+substitutes the receiver's bindings into a generic method's body as it splices
+it (`ir.InstantiateExpr`, which owns the lambdas it copies), or `list.format`'s
+`func(x T)` reached Go with T in it; and it takes the receiver from a call's
+`ReceiverArg`, since the checker leaves defaults unwritten
+(`testdata/format_list.txtar`, `internal/lower/testdata/builtin_methods_format_list.txtar`).

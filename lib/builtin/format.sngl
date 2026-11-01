@@ -1,0 +1,18 @@
+// The arguments T's format takes after its receiver, as one value: a field per
+// parameter, holding what a call gave it or its default. A container's format
+// declares a parameter of it last, and a call's named arguments that the
+// container's format does not declare are T's: `"{xs, sep="; ", base=16}"`
+// gives each int's format `base=16`. Only where T declares a format is there
+// one, so a container of T is formatted only where T is.
+#[_builtin(formatArgs)]
+struct _formatArgs[T any] {}
+
+// x's format, given args: `x.format(…)` with each of args' fields passed to
+// the parameter of its name.
+#[_builtin(formatWith)]
+const func _format[T any](x T, args _formatArgs[T]) string
+
+// Puts x's format, given args, on the end of out: `x.appendFormat(out, …)`
+// with each of args' fields passed to the parameter of its name.
+#[_builtin(appendFormatWith)]
+func _appendFormat[T any](x T, out ref[builder], args _formatArgs[T])

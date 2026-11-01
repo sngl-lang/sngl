@@ -1784,6 +1784,9 @@ func (c *checker) registerImport(imp *ast.Import) {
 				}
 				for _, e := range native.Enums {
 					e.Pkg = nsPkg
+					if e.Format == nil {
+						e.Format = ir.NewDefaultFormat(e.SymType(), nsPkg)
+					}
 					c.bindLib(imp.Pos, nsPkg.Symbols.Root, e)
 				}
 				for _, f := range native.Funcs {

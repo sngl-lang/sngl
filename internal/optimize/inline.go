@@ -130,6 +130,17 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	// Clone the return expression and substitute parameters.
 	result := cloneExpr(body)
 	result = substituteParams(result, subs)
+	// A method on a generic builtin is written at its receiver's T, which
+	// the call bound: a lambda in `xs.format()` takes the int it is handed.
+	if f.RecvParam != nil && len(f.RecvTypeParams) > 0 {
+		b := map[string]*ir.Type{}
+		if recv := subs[f.RecvParam]; recv != nil {
+			ir.BindTypeParams(f.RecvParam.Type, recv.ExprType(), b)
+		}
+		if len(b) > 0 {
+			result = ir.InstantiateExpr(result, b)
+		}
+	}
 	return result
 }
 
@@ -149,7 +160,7 @@ func callSubs(call *ir.Call, f *ir.Func) (map[*ir.Param]ir.Expr, bool) {
 		switch {
 		case call.Receiver != nil:
 			subs[f.RecvParam] = call.Receiver
-		case len(args) == len(f.Params)+1:
+		case len(args) == len(f.Params)+1 || len(args) > 0 && call.ReceiverArg && ir.ReceiverOutsideParams(f):
 			subs[f.RecvParam] = args[0].Value
 			args = args[1:]
 		default:

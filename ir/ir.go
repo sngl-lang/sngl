@@ -1577,6 +1577,9 @@ type EnumDef struct {
 	Members    []*EnumMember
 	BodyOwner  string           `json:",omitempty"` // see StructDef.BodyOwner
 	Methods    map[string]*Func `json:"-"`
+	// Format is the format the compiler declares for the enum, its member's
+	// name, which a value has where the enum declares none (DefaultFormat).
+	Format *Func `json:"-"`
 	// InstanceOf and InstanceArgs are the generic enum this one is a copy of
 	// and the type arguments it was copied at, on a target that copies a
 	// generic per instantiation: what lets a later copying find this one
@@ -1616,6 +1619,10 @@ type UnitDef struct {
 	Fields    []*StructField
 	BodyOwner string           `json:",omitempty"` // see StructDef.BodyOwner
 	Methods   map[string]*Func `json:"-"`
+	// Format is the format the compiler declares for the unit, a magnitude
+	// per base, which a value has where the unit declares none
+	// (DefaultFormat).
+	Format *Func `json:"-"`
 }
 
 func (u *UnitDef) SymName() string           { return u.Name }

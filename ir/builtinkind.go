@@ -161,6 +161,17 @@ const (
 	// which the checker makes an ir.Conversion: the primitive each builtin
 	// type's format is written over, since `string(x)` is `x.format()`.
 	BuiltinText BuiltinKind = "text"
+	// FormatArgs is sngl:builtin's `_formatArgs[T]`: the arguments T's format
+	// takes after its receiver, one field per parameter. A parameter of it
+	// takes a call's named arguments its function does not declare, and the
+	// type is a struct of T's format's parameters wherever T is bound
+	// (FormatArgsFields).
+	BuiltinFormatArgs BuiltinKind = "formatArgs"
+	// FormatWith and AppendFormatWith are `_format` and `_appendFormat`: the
+	// call of a T's format, or appendFormat, with a `_formatArgs[T]`'s fields
+	// for its arguments, which is that call once T is bound (FormatCall).
+	BuiltinFormatWith       BuiltinKind = "formatWith"
+	BuiltinAppendFormatWith BuiltinKind = "appendFormatWith"
 
 	// Predeclared constants. These annotate a const declaration whose written
 	// value is a placeholder: the real one is not known until a build picks a
@@ -297,6 +308,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink, BuiltinApplication,
 		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode, BuiltinGenRun, BuiltinGenBuild,
 		BuiltinCString, BuiltinCInt, BuiltinCDouble, BuiltinCBool, BuiltinText,
+		BuiltinFormatArgs, BuiltinFormatWith, BuiltinAppendFormatWith,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
 }
@@ -305,5 +317,6 @@ func AllBuiltinKinds() []BuiltinKind {
 // not an unrecognized string).
 func (b BuiltinKind) Valid() bool {
 	return b == BuiltinAny || b == BuiltinApplication || b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
-		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsCMarshal() || b.IsConst() || b == BuiltinText
+		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsCMarshal() || b.IsConst() || b == BuiltinText ||
+		b == BuiltinFormatArgs || b == BuiltinFormatWith || b == BuiltinAppendFormatWith
 }

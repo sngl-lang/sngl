@@ -1,0 +1,53 @@
+# A list's and an option's format are methods of a generic builtin, which no
+# output can declare: each is copied at the types its call binds, its `this`
+# the copy's first parameter, and the `_format` in it is the element's own
+# format, with the arguments it forwards an anonymous struct of that format's
+# parameters.
+caps: NoComputed
+-- input.sngl --
+import . "sngl:ui"
+
+component main node {
+    var xs = [10, 11, 12]
+    var ys list[option[float]] = [1.5, null]
+
+    text(value="{xs, sep="; ", base=16} {ys, none="-", places=2}")
+}
+-- expected.sngl --
+import . "sngl:ui"
+const func __list_format__list_int(this list[int], sep string = ", ", _item struct {
+    base  int
+    width int
+    pad   string
+}) string {
+    return this.map(fn=func(x int) string {
+        return x.format(base=_item.base, width=_item.width, pad=_item.pad)
+    }).join(sep=sep)
+}
+const func __list_format__list_option_float(this list[option[float]], sep string = ", ", _item struct {
+    none  string
+    _item struct {
+        places int
+    }
+}) string {
+    return this.map(fn=func(x option[float]) string {
+        return __option_format__option_float(x, none=_item.none, _item=_item._item)
+    }).join(sep=sep)
+}
+const func __option_format__option_float(this option[float], none string = "", _item struct {
+    places int
+}) string {
+    return this == null ? none : float(this).format(places=_item.places)
+}
+component main node {
+    var xs list[int] = [10, 11, 12]
+    var ys list[option[float]] = [1.5, null]
+    text(value=__list_format__list_int(xs, sep="; ", _item={
+        base = 16,
+        width = 0,
+        pad = " ",
+    }) + " " + __list_format__list_option_float(ys, sep=", ", _item={
+        none = "-",
+        _item = {places=2},
+    }))
+}
