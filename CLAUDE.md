@@ -42,7 +42,7 @@ spec instead.
 - `design/plugins.md` — plugin principles and known gaps
 - `design/import-schemes.md` — plugin schemes, `c:` and `openapi:`
 - `design/navigation.md` — `sngl:ui/nav` on each target
-- `design/types.md` — anonymous and generic structs, monomorphization, units and their display, member lookup
+- `design/types.md` — anonymous and generic structs, constraint functions and aliases, monomorphization, units and their display, member lookup
 - `design/testing.md` — fixture directives, goldens and `deny`, recorded runs, the two harnesses, test lowering and test reach
 - `design/performance.md` — profiling, the store (`internal/gencache`), what costs
 - `design/trust.md` — grants, `--allow-eval`, fetch gating, the LSP

@@ -157,6 +157,10 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 			c.error(t.Pos, "`%s` is a constraint, not a type: only a type parameter's constraint names it", t.Name)
 			return TypInvalid
 		}
+		if _, ok := sym.(*ir.Alias); ok {
+			c.error(t.Pos, "`%s` is an alias of a constraint, not a type: only a type parameter's constraint names it", t.Name)
+			return TypInvalid
+		}
 	}
 	// `component` has no `<T>` decl to carry a marker; it is a bare kind.
 	if t.Name == "component" {
@@ -291,6 +295,10 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 	if ns.Pkg == nil {
 		// An import that resolved to no package -- a check with no resolver
 		// -- has no members, and the import is where that is the problem.
+		return TypInvalid
+	}
+	if a := c.qualifiedAlias(t); a != nil {
+		c.error(t.Pos, "`%s.%s` is an alias of a constraint, not a type: only a type parameter's constraint names it", pkg, name)
 		return TypInvalid
 	}
 	if tsym, ok := ns.Pkg.Symbols.LookupMemberType(name); ok {

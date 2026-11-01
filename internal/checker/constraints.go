@@ -26,13 +26,20 @@ import (
 // field of the type bound to U is what binds it (inferFromConstraints).
 
 // resolveConstraint resolves what a type parameter's constraint names, a
-// constraint sngl:builtin declares, found in scope as any declaration is so a
-// program's own of the name shadows it. The list's parameters are in scope, so
+// constraint sngl:builtin declares or an alias of one, found in scope as any
+// declaration is so a program's own of the name shadows it. The list's parameters are in scope, so
 // S's field may name one, which makes S an anonymous struct like any other
 // naming a type parameter: declared un-interned (anonStructType), its fields
 // meaning this list's parameters and no other. self is the parameter it
 // constrains, which a function `methodsOf` names is called on.
 func (c *checker) resolveConstraint(te ast.TypeExpr, self *ir.Type) *ir.Type {
+	return c.resolveConstraintFor(te, self, false)
+}
+
+// resolveConstraintFor is resolveConstraint for a type parameter, or for an
+// alias where alias is set, which only the refusal of what names neither
+// tells apart.
+func (c *checker) resolveConstraintFor(te ast.TypeExpr, self *ir.Type, alias bool) *ir.Type {
 	switch t := te.(type) {
 	case *ast.NamedType:
 		if con, ok := c.namedConstraint(t, self); ok {
@@ -51,18 +58,33 @@ func (c *checker) resolveConstraint(te ast.TypeExpr, self *ir.Type) *ir.Type {
 			return ir.TypAny
 		}
 	}
-	c.error(*te.ExprPos(), "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]` or `methodsOf[S]`")
+	if alias {
+		c.error(*te.ExprPos(), "an alias names a constraint, for now: `any`, `anyStruct`, `anyFields`, `fieldsOf[S]`, `methodsOf[S]` or another alias")
+		return ir.TypAny
+	}
+	c.error(*te.ExprPos(), "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]`, `methodsOf[S]` or an alias of one")
 	return ir.TypAny
 }
 
-// namedConstraint is the constraint t names, ok false where it names none.
+// namedConstraint is the constraint t names, a builtin or an alias of one, ok
+// false where it names neither.
 func (c *checker) namedConstraint(t *ast.NamedType, self *ir.Type) (*ir.Type, bool) {
 	if t.Package != "" {
-		return nil, false
+		a := c.qualifiedAlias(t)
+		if a == nil {
+			return nil, false
+		}
+		if c.rejectUnexported(t.Pos, a) {
+			return ir.TypAny, true
+		}
+		return c.expandAlias(t, a, self), true
 	}
 	sym, ok := c.scope.Lookup(t.Name)
 	if !ok {
 		return nil, false
+	}
+	if a, ok := sym.(*ir.Alias); ok {
+		return c.expandAlias(t, a, self), true
 	}
 	if typ, _, ok := scalarOf(sym); ok && typ == ir.TypAny {
 		if len(t.TypeArgs) > 0 {
@@ -414,4 +436,19 @@ func (c *checker) checkConstraints(pos ast.Pos, params []ir.TypeParam, bindings 
 			c.checkConstraint(pos, tp, t, bindings)
 		}
 	}
+}
+
+// qualifiedAlias is the alias t, `pkg.Name`, names, nil where it names none.
+func (c *checker) qualifiedAlias(t *ast.NamedType) *ir.Alias {
+	sym, ok := c.scope.Lookup(t.Package)
+	if !ok {
+		return nil
+	}
+	ns, _ := sym.(*ir.Namespace)
+	if ns == nil || ns.Pkg == nil {
+		return nil
+	}
+	member, _ := ns.Pkg.Symbols.LookupMember(t.Name)
+	a, _ := member.(*ir.Alias)
+	return a
 }

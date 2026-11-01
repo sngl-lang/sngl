@@ -380,6 +380,11 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 		f.writeTypeParams(s.TypeParams)
 		f.write(" ")
 	}
+	if s.Alias != nil {
+		f.write("= ")
+		f.writeType(s.Alias)
+		return
+	}
 	if len(s.Body) == 0 {
 		f.write("{}")
 		return

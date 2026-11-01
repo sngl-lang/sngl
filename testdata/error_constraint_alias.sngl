@@ -1,0 +1,59 @@
+// What an alias refuses.
+
+struct Formattable = methodsOf[struct {
+    const func format() string
+}]
+
+struct Keyed[K any] = fieldsOf[struct {
+    key K
+}]
+
+// An alias names a constraint, for now.
+struct Number = int // ERROR(check) "an alias names a constraint, for now"
+
+struct Record = struct { // ERROR(check) "a struct is no constraint: `fieldsOf[struct { … }]` asks for its fields"
+    name string
+}
+
+// An alias naming itself, directly or through another.
+struct Loop = Loop // ERROR(check) "the alias Loop names itself"
+
+struct Ping = Pong // ERROR(check) "the alias Ping names itself"
+
+struct Pong = Ping
+
+// An alias is no type.
+func f1(v Formattable) => 1 // ERROR(check) "`Formattable` is an alias of a constraint, not a type"
+
+// Its type arguments.
+func f2[T Keyed](v T) => v.key // ERROR(check) "Keyed requires a type argument for K, which has no default"
+
+func f3[T Formattable[int]](v T) => v // ERROR(check) "Formattable takes 0 type argument(s), got 1"
+
+struct Ranked[R fieldsOf[struct {
+    rank int
+}]] = fieldsOf[struct {
+    key R
+}]
+
+func f4[T Ranked[int]](v T) => v // ERROR(check) "int does not satisfy fieldsOf[struct { rank int }], the constraint on R: it has no fields"
+
+struct Slot {
+    key int
+}
+
+func keyOf[K any, T Keyed[K]](v T) => v.key
+
+func show[T Formattable](v T) => "<{v}>"
+
+struct Plain {
+    x int
+}
+
+func use() {
+    // A type measured through an alias is measured by what it names.
+    var a = keyOf[string](Slot{key=1}) // ERROR(check) "Slot does not satisfy fieldsOf[struct { key string }], the constraint on T: its field \"key\" is int, not string"
+    var b = show(Plain{x=1})           // ERROR(check) "Plain does not satisfy methodsOf[struct { const func format() string }], the constraint on T: it has no method \"format\""
+    // An alias is declared at a package's top level.
+    struct Inner = Formattable // ERROR(check) "an alias is declared at a package's top level"
+}

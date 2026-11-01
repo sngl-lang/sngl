@@ -1,0 +1,28 @@
+// A binding named like a type -- a node `#int`, a variable `string` -- hides
+// none of the type's methods: a method is looked up on the declaration the
+// type's name finds, past whatever binding of it can hold none.
+
+import . "sngl:ui"
+import . "sngl:test"
+
+component shown node {
+    var n = 255
+    text #int(value="{n}")
+    text #hex(value=n.format(base=16))
+}
+
+func shadowed() string {
+    var s = "x"
+    var string = 1
+    return "{s}{string}"
+}
+
+func testShown(t Test, c shown) {
+    t.assert(c.int.value == "255")
+    t.assert(c.hex.value == "ff")
+    t.assert(shadowed() == "x1")
+}
+
+window {
+    shown()
+}

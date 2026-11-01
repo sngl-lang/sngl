@@ -127,6 +127,24 @@ literal at the running bindings (`ir.FormatArgsLit`)
 `error_generic_constraint_method.sngl`, `generic_constraint_method.txtar`,
 `internal/lower/testdata/builtin_methods_constraint.txtar`).
 
+**An alias is an `ir.Alias`, not a struct** (`internal/checker/aliases.go`):
+`struct Name = Type` parses as an `ast.StructDef` whose `Alias` holds the
+type, so its doc comment, export and position are a declaration's, but the
+checker declares it apart from `Package.Structs`, which every later phase
+walks and none should meet one in. Since an alias names a constraint only, it
+is read where a constraint is resolved (`namedConstraint`) and refused
+wherever a type is written. Its constraint is resolved once, on demand, at
+the package root through its own file's imports, whichever scope first names
+it, so a use may come before the declaration; `aliasing` catches one naming
+itself. A function `methodsOf` names is called on the parameter it
+constrains, which an alias does not know, so the alias resolves its
+constraint on a `Self` of its own and each use substitutes the parameter for
+it and its arguments for its parameters (`ir.ExpandAlias`). That substitution
+reaches into each function's parameters, result and receiver
+(`ir.SubstituteConstraint`), which `Type.Substitute` leaves to a struct's
+declaration (`testdata/constraint_alias.sngl`, `error_constraint_alias.sngl`,
+`constraint_alias.txtar`).
+
 Four things follow from a struct having no one declaration. Its identity is
 its fields everywhere, so the intern key spells an anonymous struct inside a
 field by *its* fields rather than its address (`ir.AnonTypeKey`), or
@@ -383,6 +401,13 @@ whichever node a target found: index it, or test it against null first (see
 `elementRef`).
 
 Stdlib collection types support generic methods: `func list[T].filter(f func(T) bool) list[T]`, `func list[T].map[U any](f func(T) U) list[U]`, `func map[K, V].keys() list[K]`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list[int]` binds `T=int`). Method-level type parameters (the `[U any]` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
+
+**A method is looked up on the declaration its receiver's name finds, past
+any binding of the name that holds no method** (`ir.LookupMethodIn`). A
+scalar's type names no declaration, so its methods are found by name, and a
+node `#int` or a variable `string` bound between the program and sngl:builtin
+answered first: `"{n}"` with `n` an int was "cannot format int"
+(`testdata/method_lookup_past_binding.sngl`).
 
 **A program may add a method to a library type, and may not redefine one it
 has.** `func int.twice` is an addition; `func int.abs` collides with the

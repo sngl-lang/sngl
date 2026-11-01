@@ -710,8 +710,8 @@ called, which may be after the test has stopped holding.
 Type parameters are introduced by a type-parameter list in brackets
 (`[T any]`, `[K any, V any]`) on a struct, a function, a method's name, or a
 component. Every type parameter names a **constraint** after its name: what a
-type bound to it must be. A constraint is one `sngl:builtin` declares, and
-every file has them without an import:
+type bound to it must be. A constraint is one `sngl:builtin` declares, or an
+alias of one, and every file has them without an import:
 
 | Constraint     | A type bound to the parameter must                  |
 |----------------|-----------------------------------------------------|
@@ -729,6 +729,30 @@ program can name. A type parameter may also carry a default after its
 constraint (`[T any = struct {}]`), used when nothing binds it; a constraint
 is never a default, so a parameter with no default has none, and
 `[T anyStruct = struct {}]` writes both.
+
+An **alias** names a constraint under another name: `struct Name = Type`,
+written with the keyword of what it names. It is that constraint wherever it
+is written, not a new one, so a type satisfies the alias exactly when it
+satisfies what the alias names. An alias may take type parameters, which what
+it names may use and which a use binds, each held to its own constraint; it
+may name another alias, and may be named before it is declared. It is exported
+by case, like any declaration, and declared at a package's top level only.
+For now an alias names a constraint and nothing else, and like a constraint
+it is no type a value may have.
+
+```sngl
+struct Formattable = methodsOf[struct {
+    const func format() string
+}]
+
+struct Keyed[K any] = fieldsOf[struct {
+    key K
+}]
+
+func show[T Formattable](v T) => "<{v}>"
+
+func keyOf[K any, T Keyed[K]](v T) => v.key
+```
 
 `fieldsOf[S]` says the type has **at least** S's fields, each at an equal
 type: `[T fieldsOf[struct { name string }]]` is any type with a `name` field
@@ -2974,7 +2998,7 @@ ImportDecl = "import" [ IDENT | "." ] STRING [ "=>" STRING ]
 ```
 
 ```ebnf
-StructDecl = "struct" [ IDENT ] [ TypeParamList ] "{" { StructBodyItem [ ";" ] } "}"
+StructDecl = "struct" [ IDENT ] [ TypeParamList ] ( "{" { StructBodyItem [ ";" ] } "}" | "=" Type )
 
 StructField = IdentList Type [ "=" Expr ]
 

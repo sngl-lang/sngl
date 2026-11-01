@@ -787,6 +787,9 @@ type checker struct {
 	// defaultMatches are the defaults a type's method was measured against a
 	// constraint's by, judged once every body's defaults are checked.
 	defaultMatches []func()
+	// aliasing is the aliases whose constraint is being resolved, which one
+	// naming itself meets again (aliasConstraint).
+	aliasing map[*ir.Alias]bool
 	// measuredAt is where the type being measured against a constraint was
 	// bound, for a diagnostic reported later (matchDefaults).
 	measuredAt ast.Pos
@@ -1544,8 +1547,13 @@ func (c *checker) pass1() {
 		doc *ast.Document
 		ed  *ir.EnumDef
 	}
+	type pendingAlias struct {
+		doc *ast.Document
+		a   *ir.Alias
+	}
 	var structShells []pendingShell
 	var enumShells []pendingEnum
+	var aliases []pendingAlias
 	var pendingComponents []pendingComp
 	c.pendingMarks = &[]pendingMark{}
 	c.pendingInits = &[]pendingInit{}
@@ -1554,6 +1562,10 @@ func (c *checker) pass1() {
 		for _, stmt := range d.Stmts {
 			switch s := stmt.(type) {
 			case *ast.StructDef:
+				if s.Alias != nil {
+					aliases = append(aliases, pendingAlias{d, c.registerAlias(s)})
+					continue
+				}
 				structShells = append(structShells, pendingShell{d, c.registerStructShell(s)})
 			case *ast.EnumDef:
 				enumShells = append(enumShells, pendingEnum{d, c.registerEnum(s)})
@@ -1574,6 +1586,10 @@ func (c *checker) pass1() {
 	for _, p := range structShells {
 		c.resumeFile(p.doc)
 		c.resolveStructBody(p.sd)
+	}
+	for _, p := range aliases {
+		c.resumeFile(p.doc)
+		c.aliasConstraint(p.a)
 	}
 	for _, p := range enumShells {
 		c.resumeFile(p.doc)
@@ -2219,6 +2235,10 @@ func (c *checker) registerBodyDecl(stmt ast.Stmt, owner string) ir.Symbol {
 		// reportBodyComponentCollisions' after pass2.
 		return c.registerComponentDecl(s, true)
 	case *ast.StructDef:
+		if s.Alias != nil {
+			c.error(s.Pos, "an alias is declared at a package's top level")
+			return nil
+		}
 		sd := c.buildStructDef(s)
 		sd.Builtin = c.stampBuiltinKind(s.Attrs)
 		sd.BodyOwner = owner

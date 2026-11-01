@@ -546,7 +546,7 @@ func (b *builder) buildImportDecl(it nodeIter) *ast.Import {
 // --- Struct declaration ---
 
 func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
-	// StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace { StructBodyItem } rbrace .
+	// StructDecl = kw_struct [ ident ] [ TypeParamList ] ( lbrace { StructBodyItem } rbrace | assign Type ) .
 	pos := b.posFromToken(it.shift()) // kw_struct
 	s := &ast.StructDef{Pos: pos}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
@@ -554,6 +554,13 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
 		s.TypeParams = b.buildTypeParams(it.enter())
+	}
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
+		it.skip() // assign
+		if !it.done() && it.isNonTerminal() && it.symbol() == Type {
+			s.Alias = b.buildType(it.enter())
+		}
+		return s
 	}
 	lbraceLine, rbraceLine := 0, 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {

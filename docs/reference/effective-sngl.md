@@ -730,6 +730,23 @@ func hex[T methodsOf[struct {
 }]](v T) => v.format(16)
 ```
 
+A constraint written more than once deserves a name. An alias gives it one,
+with the keyword of what it names, and may take parameters of its own:
+
+```sngl
+struct Formattable = methodsOf[struct {
+    const func format() string
+}]
+
+struct Keyed[K any] = fieldsOf[struct {
+    key K
+}]
+
+func show[T Formattable](v T) => "<{v}>"
+
+func keyOf[K any, T Keyed[K]](v T) => v.key
+```
+
 `any` is only a constraint: `var x any` is an error, since every value has a
 type you can name. Nor is the constraint optional: a bracket
 holding a bare name after a declaration's name is the target an override is

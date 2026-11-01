@@ -211,11 +211,15 @@ func docForPos(doc *ast.Document, pos ast.Pos) string {
 
 func formatStructHover(s *ast.StructDef, doc *ast.Document) string {
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "```sngl\nstruct %s {\n", s.Name)
-	for _, f := range s.Fields() {
-		fmt.Fprintf(&sb, "    %s %s\n", strings.Join(f.Names, ", "), typeExprString(f.Type))
+	if s.Alias != nil {
+		fmt.Fprintf(&sb, "```sngl\nstruct %s = %s\n```\n", s.Name, typeExprString(s.Alias))
+	} else {
+		fmt.Fprintf(&sb, "```sngl\nstruct %s {\n", s.Name)
+		for _, f := range s.Fields() {
+			fmt.Fprintf(&sb, "    %s %s\n", strings.Join(f.Names, ", "), typeExprString(f.Type))
+		}
+		sb.WriteString("}\n```\n")
 	}
-	sb.WriteString("}\n```\n")
 	if d := docForPos(doc, s.Pos); d != "" {
 		sb.WriteByte('\n')
 		sb.WriteString(d)

@@ -40,9 +40,12 @@ type Package struct {
 	// declarations are the library's to vouch for -- a `#[cnative]` one names
 	// a header the target's own preamble includes -- where a program's must
 	// say so itself.
-	Library    bool `json:",omitempty"`
-	Imports    []*Import
-	Structs    []*StructDef
+	Library bool `json:",omitempty"`
+	Imports []*Import
+	Structs []*StructDef
+	// Aliases are the package's `struct Name = Type` declarations, which
+	// name a constraint and declare no type.
+	Aliases    []*Alias
 	Enums      []*EnumDef
 	Units      []*UnitDef
 	Consts     []*Var

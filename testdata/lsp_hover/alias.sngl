@@ -1,0 +1,12 @@
+// An alias hovers as what it stands for, at its declaration and where a
+// constraint names it.
+// HOVER(@8:8) "struct Formattable = methodsOf"
+// HOVER(@12:13) "struct Formattable = methodsOf"
+// HOVER(@12:13) "A type with a format."
+
+// A type with a format.
+struct Formattable = methodsOf[struct {
+    const func format() string
+}]
+
+func show[T Formattable](v T) => "<{v}>"
