@@ -740,8 +740,32 @@ parameters bound, and where one is not -- nothing written or passed binds it
 `valueOf(Cell{value=1})` binds `T` to `int`. A default binds its list the
 same way where its declaration is checked.
 
+A constraint may also declare functions, each written as a method in a
+struct's body is and conventionally without one: `[T struct { const func format() string }]` is any type with a `format` that a call of that shape
+fits. A type's method satisfies a constraint's function when it has the
+function's name, each of the function's parameters is one of the method's of
+that name at an equal type, every other parameter of the method has a default,
+it returns an equal type, and it is `const` where the function is. A
+constraint's function takes no body, no type parameters and no default for a
+parameter: what a call leaves out is the method's own to say. A constraint
+declaring functions and no fields asks for nothing else, so any type with
+those methods satisfies it, a builtin type, an enum and a list included; one
+declaring fields, or nothing at all, is satisfied only by a type with fields.
+A function's parameter may name the type parameter it constrains or another
+of the list, as a field may.
+
+```sngl
+func hex[T struct {
+    const func format(base int) string
+}](v T) => v.format(16)
+
+var a = hex(255) // "ff": int.format also takes width and pad, which have defaults
+```
+
 In a generic body a value of a constrained `T` has the constraint's fields,
-typed from the constraint, and nothing else: `v.name` reads one, and any other
+typed from the constraint, and its functions, and nothing else: `v.name` reads
+a field, `v.format(16)` calls the bound type's own method of that name, with
+its defaults for any parameter the constraint does not declare, and any other
 member is unknown. A spread of a `T` binds those fields by name, as a struct's
 spread binds its own.
 
@@ -1491,6 +1515,11 @@ An enum's and a unit's format is one the compiler declares, and one the
 type declares is the one called instead. `null` has no type to format, so
 `{null}` is an error. A parameterless computed in an interpolation is called
 implicitly.
+
+A value of a type parameter is formatted where its constraint declares
+`format` (see [Generic type parameters](#generic-type-parameters)), and its
+field may pass what that function declares: `{v}` is the format of the type
+bound to it.
 
 A list and an option are formatted only where their element type is, and a
 named argument a list's or an option's format does not declare is passed to

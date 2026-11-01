@@ -46,6 +46,13 @@ func lowerBuiltinMethods(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg.Symbols != nil {
 		b.scope = pkg.Symbols.Root
 	}
+	// A generic function calling a constraint's function, or formatting a
+	// value of its type parameter, is copied at each binding first: the call
+	// is the bound type's own only once there is one.
+	var reach ir.BoundReach
+	monomorphizeFuncs(pkg, func(fn *ir.Func) bool {
+		return reach.Reaches(fn) && !(ir.ReceiverOutsideParams(fn) && len(fn.RecvTypeParams) > 0)
+	}, false)
 	for _, fn := range pkg.Funcs {
 		b.names[fn.Name] = true
 	}
@@ -110,7 +117,7 @@ func (b *builtinMethods) rewrite(e ir.Expr) (ir.Expr, error) {
 	if !ok {
 		return e, nil
 	}
-	if formatted, ok := ir.FormatCall(b.scope, call); ok {
+	if formatted, ok := ir.BoundCall(b.scope, call); ok {
 		return b.rewrite(formatted)
 	}
 	// An enum's or a unit's format the compiler declared is declared by no

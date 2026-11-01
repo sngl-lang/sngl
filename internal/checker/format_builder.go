@@ -184,7 +184,7 @@ func (c *checker) formatArgsLit(pos ast.Pos, t *ir.Type, args []ast.ArgOrEventHa
 		return out, false
 	}
 	_, params, ok := ir.FormatParams(c.scope, x, "format")
-	if !ok || x.HasTypeParam() {
+	if !ok {
 		c.error(pos, "cannot format %s: type has no format method", x)
 		for _, a := range args {
 			c.checkExpr(a.(ast.Arg).Value)

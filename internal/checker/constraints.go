@@ -2,6 +2,9 @@ package checker
 
 import (
 	"fmt"
+	"maps"
+	"slices"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -17,14 +20,21 @@ import (
 // the one it constrains: `[T any, U struct { value T }]`. It is measured with
 // what the list's other parameters are bound to, and where one is not, the
 // field of the type bound to U is what binds it (inferFromConstraints).
+//
+// A constraint may name functions too, `struct { const func format() string }`:
+// the type's method of that name has to take a call of the constraint's
+// shape (methodUnsatisfied). A constraint naming functions and no fields asks
+// for nothing else, so an int may satisfy one; one naming fields, or nothing at
+// all, is still satisfied by a type with fields only.
 
 // resolveConstraint resolves what a type parameter's constraint names: `any`,
 // found in scope as a scalar is so a program's own `any` shadows it, or an
 // anonymous struct. The list's parameters are in scope, so a field may name
 // one, which makes it an anonymous struct like any other naming a type
 // parameter: declared un-interned (anonStructType), its fields meaning this
-// list's parameters and no other.
-func (c *checker) resolveConstraint(te ast.TypeExpr) *ir.Type {
+// list's parameters and no other. self is the parameter it constrains, which
+// a function it names is called on.
+func (c *checker) resolveConstraint(te ast.TypeExpr, self *ir.Type) *ir.Type {
 	switch t := te.(type) {
 	case *ast.NamedType:
 		if t.Package == "" && len(t.TypeArgs) == 0 {
@@ -41,11 +51,54 @@ func (c *checker) resolveConstraint(te ast.TypeExpr) *ir.Type {
 					c.error(f.Pos, "a constraint's field takes no default: a constraint says what a type has, not what it starts with")
 				}
 			}
-			return c.anonStructType(c.buildStructDef(t).Fields)
+			fields := c.buildStructDef(t).Fields
+			if len(t.Funcs()) == 0 {
+				return c.anonStructType(fields)
+			}
+			return c.constraintWithFuncs(fields, t.Funcs(), self)
 		}
 	}
 	c.error(*te.ExprPos(), "a type parameter's constraint is `any` or an anonymous struct, `struct { name string }`")
 	return ir.TypAny
+}
+
+// constraintWithFuncs is the constraint of fields and the functions funcs
+// declare, each called on self. It is declared un-interned whatever its
+// fields: two constraints of the same fields may name different functions.
+func (c *checker) constraintWithFuncs(fields []*ir.StructField, funcs []*ast.FuncDef, self *ir.Type) *ir.Type {
+	canon := slices.SortedStableFunc(slices.Values(fields), func(a, b *ir.StructField) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+	sd := &ir.StructDef{Pkg: c.declPkg(), Fields: canon, Anon: true, Methods: map[string]*ir.Func{}}
+	for _, f := range funcs {
+		if funcHasBody(f) {
+			c.error(f.Pos, "a constraint's function takes no body: a constraint says what a type has, not what it does")
+		}
+		if len(f.TypeParams) > 0 {
+			c.error(f.Pos, "a constraint's function takes no type parameters")
+			continue
+		}
+		for _, p := range f.Params.Params {
+			if p.Default != nil {
+				c.error(p.Pos, "a constraint's parameter takes no default: the type's own method says what one left out is")
+			}
+		}
+		if _, dup := sd.Methods[f.Name]; dup || ir.FieldNamed(fields, f.Name) != nil {
+			c.error(f.Pos, "duplicate declaration of %q in a constraint", f.Name)
+			continue
+		}
+		fn := c.buildFunc(f)
+		fn.Receiver = self
+		fn.RecvParam = &ir.Param{Name: ir.ReceiverParam, Type: self, Receiver: true}
+		if f.Const {
+			fn.Purity = ir.PurityPure
+		}
+		if fn.Return == nil {
+			fn.Return = ir.TypVoid
+		}
+		sd.Methods[f.Name] = fn
+	}
+	return sd.SymType()
 }
 
 // constraintStruct is the anonymous struct a constraint names, nil for one
@@ -77,11 +130,16 @@ func paramConstraint(t *ir.Type) *ir.StructDef {
 // constrains -- one a substitution made rather than a scope -- so both pass.
 // A type parameter is measured by its own constraint: a T constrained to more
 // fields than a U asks for may be handed on to U.
-func unsatisfied(t, constraint *ir.Type) string {
+//
+// The functions it names are measured with bindings, which binds the list it
+// constrains: a function's parameter may name any of it, the constrained
+// parameter included.
+func (c *checker) unsatisfied(t, constraint *ir.Type, bindings map[string]*ir.Type) string {
 	want := constraintStruct(constraint)
 	if want == nil || t == nil {
 		return ""
 	}
+	fielded := len(want.Fields) > 0 || len(want.Methods) == 0
 	switch t.Kind {
 	case ir.TypeInvalid:
 		return ""
@@ -89,13 +147,21 @@ func unsatisfied(t, constraint *ir.Type) string {
 		if sym, _ := t.Decl.(*ir.TypeParamSym); sym == nil {
 			return ""
 		}
-		if paramConstraint(t) == nil {
+		if fielded && paramConstraint(t) == nil {
 			return "its constraint says nothing about its fields"
 		}
 	case ir.TypeStruct:
 		if t.Decl == nil {
 			return ""
 		}
+	}
+	for _, name := range slices.Sorted(maps.Keys(want.Methods)) {
+		if why := c.methodUnsatisfied(t, want.Methods[name], bindings); why != "" {
+			return why
+		}
+	}
+	if !fielded {
+		return ""
 	}
 	fields, ok := ir.FieldsOf(t)
 	if !ok {
@@ -109,6 +175,39 @@ func unsatisfied(t, constraint *ir.Type) string {
 		if !got.Type.Equal(w.Type) {
 			return fmt.Sprintf("its field %q is %s, not %s", w.Name, got.Type, w.Type)
 		}
+	}
+	return ""
+}
+
+// methodUnsatisfied says why t's method named as want is does not take a call
+// of want's shape, "" where it does: each of want's parameters is one of the
+// method's of that name at an equal type, the method's others each have a
+// default, it gives what want gives, and it is const where want is. A type
+// parameter's is its own constraint's function, measured alike.
+func (c *checker) methodUnsatisfied(t *ir.Type, want *ir.Func, bindings map[string]*ir.Type) string {
+	if _, _, ok := c.resolveMethod(t, want.Name); !ok {
+		return fmt.Sprintf("it has no method %q", want.Name)
+	}
+	fn, params, result, _ := ir.MethodParams(c.scope, t, want.Name)
+	for _, p := range want.Params {
+		q := ir.ParamNamed(params, p.Name)
+		if q == nil {
+			return fmt.Sprintf("its %s takes no parameter %q", want.Name, p.Name)
+		}
+		if wt := p.Type.Substitute(bindings); !q.Type.Equal(wt) {
+			return fmt.Sprintf("its %s's parameter %q is %s, not %s", want.Name, p.Name, q.Type, wt)
+		}
+	}
+	for _, q := range params {
+		if q.Default == nil && !ir.IsFormatArgs(q.Type) && ir.ParamNamed(want.Params, q.Name) == nil {
+			return fmt.Sprintf("its %s's parameter %q has no default", want.Name, q.Name)
+		}
+	}
+	if wt := want.Return.Substitute(bindings); !result.Equal(wt) {
+		return fmt.Sprintf("its %s gives %s, not %s", want.Name, result, wt)
+	}
+	if want.Const && !fn.Const {
+		return fmt.Sprintf("its %s is not const", want.Name)
 	}
 	return ""
 }
@@ -160,7 +259,7 @@ func inferFromConstraints(params []ir.TypeParam, bindings map[string]*ir.Type) {
 // says. Every place a type parameter is bound asks this.
 func (c *checker) checkConstraint(pos ast.Pos, tp ir.TypeParam, t *ir.Type, bindings map[string]*ir.Type) {
 	con := tp.Constraint.Substitute(bindings)
-	if why := unsatisfied(t, con); why != "" {
+	if why := c.unsatisfied(t, con, bindings); why != "" {
 		c.error(pos, "%s does not satisfy %s, the constraint on %s: %s", t, con, tp.Name, why)
 	}
 }

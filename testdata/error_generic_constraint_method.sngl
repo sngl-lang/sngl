@@ -1,0 +1,46 @@
+struct Plain {
+    n int = 0
+}
+
+struct Wide {
+    n int = 0
+}
+
+func Wide.format(w Wide, sep string) => "{w.n}{sep}"
+
+struct Loose {
+    n int = 0
+}
+
+const func Loose.format(l Loose) => l.n
+
+struct Changing {
+    n int = 0
+}
+
+func Changing.format(c Changing) string {
+    return "{c.n}"
+}
+
+func show[T struct {
+    const func format() string
+}](v T) => "<{v}>"
+
+func open[T any](v T) => show(v) // ERROR(check) "T does not satisfy"
+
+func other[T struct {
+    const func format() string
+}](v T) => v.size() // ERROR(check) "no method \"size\""
+
+func bodied[T struct {
+    const func format() => "x" // ERROR(check) "a constraint's function takes no body"
+}](v T) => v
+
+func defaulted[T struct {
+    const func format(base int = 10) string // ERROR(check) "a constraint's parameter takes no default"
+}](v T) => v
+
+var a = show(Plain{})    // ERROR(check) "it has no method \"format\""
+var b = show(Wide{})     // ERROR(check) "its format's parameter \"sep\" has no default"
+var c = show(Loose{})    // ERROR(check) "its format gives int, not string"
+var d = show(Changing{}) // ERROR(check) "its format is not const"

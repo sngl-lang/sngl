@@ -32,10 +32,10 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 
 	// Try function inlining.
 	if call, ok := e.(*ir.Call); ok {
-		// `_format(x, args)` at a bound type is that type's format, which
-		// inlines in turn.
+		// `_format(x, args)` at a bound type is that type's format, and a
+		// constraint's function its own method, which inline in turn.
 		if ctx != nil && ctx.pkg != nil && ctx.pkg.Symbols != nil {
-			if formatted, ok := ir.FormatCall(ctx.pkg.Symbols.Root, call); ok {
+			if formatted, ok := ir.BoundCall(ctx.pkg.Symbols.Root, call); ok {
 				return foldExpr(formatted, ctx)
 			}
 		}

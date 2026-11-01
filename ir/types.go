@@ -2,6 +2,8 @@ package ir
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -131,18 +133,43 @@ func IterOf(elem *Type) *Type {
 
 // anonStructString spells an interned anonymous struct structurally. No cycle
 // guard: a field cannot name a type that has no name.
+// A constraint's functions are spelled after its fields, each as declared.
 func anonStructString(sd *StructDef) string {
-	if len(sd.Fields) == 0 {
+	if len(sd.Fields) == 0 && len(sd.Methods) == 0 {
 		return "struct {}"
 	}
-	parts := make([]string, 0, len(sd.Fields))
+	parts := make([]string, 0, len(sd.Fields)+len(sd.Methods))
 	for _, f := range sd.Fields {
 		if f == nil {
 			continue
 		}
 		parts = append(parts, f.Name+" "+f.Type.String())
 	}
+	for _, name := range slices.Sorted(maps.Keys(sd.Methods)) {
+		parts = append(parts, constraintFuncString(sd.Methods[name]))
+	}
 	return "struct { " + strings.Join(parts, ", ") + " }"
+}
+
+// constraintFuncString spells fn, a constraint's function, as declared:
+// `const func format(base int) string`.
+func constraintFuncString(fn *Func) string {
+	var b strings.Builder
+	if fn.Const {
+		b.WriteString("const ")
+	}
+	b.WriteString("func " + fn.Name + "(")
+	for i, p := range fn.Params {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(p.Name + " " + p.Type.String())
+	}
+	b.WriteString(")")
+	if fn.Return != nil && fn.Return.Kind != TypeVoid {
+		b.WriteString(" " + fn.Return.String())
+	}
+	return b.String()
 }
 
 func (t *Type) String() string {
@@ -786,6 +813,16 @@ func AnonStructDef(t *Type) *StructDef {
 		return nil
 	}
 	return anonStructDef(t)
+}
+
+// ParamNamed is the parameter of params called name, nil for none.
+func ParamNamed(params []*Param, name string) *Param {
+	for _, p := range params {
+		if p.Name == name {
+			return p
+		}
+	}
+	return nil
 }
 
 // FieldNamed is the field of fields called name, nil for none.

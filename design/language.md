@@ -902,7 +902,8 @@ name begins with `_`, so no call can name it, and the arguments are flat:
 `{xs, sep="; ", base=16}`. A name the container declares is the container's.
 The body hands it to `_format(x, args)` or `_appendFormat(x, out, args)`
 (`formatWith`, `appendFormatWith`), which are `x.format(…)` with the fields
-for arguments once T is bound (`ir.FormatCall`): the interpreter asks with the
+for arguments once T is bound (`ir.FormatCall`, which `ir.BoundCall` asks
+along with a call of a constraint's function, design/types.md): the interpreter asks with the
 running frame's bindings, the optimizer once the inliner has spliced the body
 at the call's types, and `passBuiltinMethods` in the copies it makes. A type
 with format and no appendFormat is appended as `out.add(x.format(…))`, since

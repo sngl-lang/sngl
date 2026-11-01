@@ -1560,7 +1560,8 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 		// recvParamStyle tracks whether the receiver is passed as the first
 		// explicit param (receiver-as-first-param convention) vs. a new-style
 		// RecvTypeParams method where the receiver is implicit (not a param).
-		recvParamStyle := len(sig.RecvTypeParams) == 0
+		// A constraint's function takes its receiver implicitly as well.
+		recvParamStyle := len(sig.RecvTypeParams) == 0 && !ir.ReceiverOutsideParams(fn)
 
 		// If the method was declared with receiver-level type params
 		// (e.g. func list[T].filter(...)), bind them from the receiver's concrete

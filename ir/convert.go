@@ -2,6 +2,7 @@ package ir
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"sort"
 	"strings"
@@ -154,6 +155,16 @@ func (c *converter) convertStructDef(s *StructDef) *ast.StructDef {
 func (c *converter) convertAnonStructType(sd *StructDef) ast.TypeExpr {
 	def := c.convertStructDef(sd)
 	def.Name = ""
+	// A constraint's functions, each as declared, with no body.
+	for _, name := range slices.Sorted(maps.Keys(sd.Methods)) {
+		fn := sd.Methods[name]
+		fd := &ast.FuncDef{Name: fn.Name, Params: c.convertParamList(fn.Params), Const: fn.Const}
+		if fn.Return != nil && fn.Return.Kind != TypeVoid {
+			fd.ReturnType = c.convertType(fn.Return)
+		}
+		def.Body = append(def.Body, fd)
+		def.IsMultiline = true
+	}
 	return def
 }
 

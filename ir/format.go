@@ -6,10 +6,14 @@ import "duckfam.us/sngl/ast"
 // lookup through scope sees it, and the type it is a method of: the
 // declaration's own member, else one by the type's name, else a builtin
 // generic's by its constructor's (`list[int]` asks `list`), else, through an
-// `option` of a struct, the struct's.
+// `option` of a struct, the struct's. A type parameter's is its constraint's
+// (ConstraintMethod).
 func ResolveMethod(scope *Scope, receiver *Type, field string) (*Func, *Type, bool) {
 	if receiver == nil {
 		return nil, receiver, false
+	}
+	if fn := ConstraintMethod(receiver, field); fn != nil {
+		return fn, receiver, true
 	}
 	if sym, ok := receiver.Decl.(Symbol); ok {
 		if fn, ok := MethodOn(scope, sym, field); ok {
@@ -77,9 +81,26 @@ func FormatArgsParam(params []*Param) int {
 // after the builder an appendFormat appends to -- at the types x binds. ok is
 // false where x declares no such method.
 func FormatParams(scope *Scope, x *Type, method string) (fn *Func, params []*Param, ok bool) {
+	fn, params, _, ok = MethodParams(scope, x, method)
+	if !ok {
+		return nil, nil, false
+	}
+	if method == "appendFormat" {
+		if len(params) == 0 {
+			return nil, nil, false
+		}
+		params = params[1:]
+	}
+	return fn, params, true
+}
+
+// MethodParams is x's method named method, the parameters a call of it is
+// given after its receiver and its result, each at the types x binds. ok is
+// false where x declares no such method.
+func MethodParams(scope *Scope, x *Type, method string) (fn *Func, params []*Param, result *Type, ok bool) {
 	fn, recv, ok := ResolveMethod(scope, x, method)
 	if !ok || fn == nil {
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
 	params = fn.Params
 	b := map[string]*Type{}
@@ -92,12 +113,6 @@ func FormatParams(scope *Scope, x *Type, method string) (fn *Func, params []*Par
 		BindTypeParams(params[0].Type, recv, b)
 		params = params[1:]
 	}
-	if method == "appendFormat" {
-		if len(params) == 0 {
-			return nil, nil, false
-		}
-		params = params[1:]
-	}
 	out := make([]*Param, len(params))
 	for i, p := range params {
 		q := *p
@@ -106,7 +121,7 @@ func FormatParams(scope *Scope, x *Type, method string) (fn *Func, params []*Par
 		}
 		out[i] = &q
 	}
-	return fn, out, true
+	return fn, out, fn.Return.Substitute(b), true
 }
 
 // FormatArgDecl is the parameter a call's argument named name reaches through
@@ -219,7 +234,12 @@ func formatCall(scope *Scope, call *Call, method string, x, out, pack Expr) (Exp
 	for _, p := range params {
 		var v Expr
 		if lit != nil {
-			v = lit.Field(p.Name)
+			// A literal written where the type was a parameter holds what
+			// its constraint's format takes, and leaves the rest to the
+			// format's own defaults.
+			if v = lit.Field(p.Name); v == nil {
+				continue
+			}
 		}
 		if v == nil {
 			v = &Select{Type: p.Type, Operand: CloneExprSharingDecls(pack), Field: p.Name}

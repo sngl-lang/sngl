@@ -423,7 +423,8 @@ func (c *checker) typeParamConstraint(sd *ir.StructDef, i int) *ir.Type {
 	var t *ir.Type
 	c.quietly(func() {
 		defer pushTypeParams(c, sd.AST.TypeParams)()
-		t = c.resolveConstraint(sd.AST.TypeParams[i].Constraint)
+		p := sd.AST.TypeParams[i]
+		t = c.resolveConstraint(p.Constraint, c.typeParamSym(p.Name, p.Pos).SymType())
 	})
 	return t
 }
@@ -494,8 +495,9 @@ func (c *checker) resolveTypeParams(ps []ast.TypeParam) []ir.TypeParam {
 	for i, p := range ps {
 		out[i] = ir.TypeParam{Pos: p.Pos, Name: p.Name}
 		if p.Constraint != nil {
-			out[i].Constraint = c.resolveConstraint(p.Constraint)
-			if sym := c.typeParamSym(p.Name, p.Pos); sym.Constraint == nil {
+			sym := c.typeParamSym(p.Name, p.Pos)
+			out[i].Constraint = c.resolveConstraint(p.Constraint, sym.SymType())
+			if sym.Constraint == nil {
 				sym.Constraint = out[i].Constraint
 			}
 		}

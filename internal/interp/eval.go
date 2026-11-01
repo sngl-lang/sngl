@@ -1655,6 +1655,7 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 	if e.Def != nil && e.Def.Intrinsic == ir.BuilderIntrinsic {
 		return &Builder{}, nil
 	}
+	e = env.formatArgsLit(e)
 	s := NewStruct(e.Def, e.Type)
 	if e.Def != nil && e.Def.Release != nil {
 		var at ast.Pos
@@ -2018,7 +2019,7 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 	if isCNative(call.Func) {
 		return env.callCNative(call)
 	}
-	if formatted, ok := env.formatCall(call); ok {
+	if formatted, ok := env.boundCall(call); ok {
 		return env.Eval(formatted)
 	}
 	// i18n by the id, before the call shape is examined: the `i18n._*`
