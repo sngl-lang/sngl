@@ -427,9 +427,9 @@ user-defined types.
 | `float`  | 64-bit IEEE-754 floating point.                        |
 | `string` | Immutable UTF-8 text.                                  |
 
-`any` is predeclared beside them and is no type a value may have: it is the
-constraint that says nothing about a type parameter (see
-[Generic type parameters](#generic-type-parameters)).
+`any`, `anyStruct`, `anyFields`, `fieldsOf` and `methodsOf` are predeclared
+beside them and are no type a value may have: they are the constraints a type
+parameter names (see [Generic type parameters](#generic-type-parameters)).
 
 A type may be designated *string-representable*: it has a canonical textual
 form and converts implicitly to and from `string` in both directions (a literal
