@@ -360,11 +360,21 @@ sha256:69997f94f9af2253a3bc755e99280950
   ]
 }
 -- testrun/android/kotlin/app.sngl/pager/1 --
-sha256:2e0a570fb883447bfa7c0d6353af71aa
+sha256:03e2eb99f5123a316efe0a6c65f05217
 {
   "results": [
     {
       "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/retrier/1 --
+sha256:ffe41017059e7f50db86aba3a4c7d3a0
+{
+  "results": [
+    {
+      "Desc": "AdapterRefreshes",
       "Passed": true
     }
   ]
@@ -388,11 +398,21 @@ sha256:258f3245633d7e704618c39c7f86ebd0
   ]
 }
 -- testrun/bubbletea/go/app.sngl/pager/1 --
-sha256:45e3ca48e6cb2d883ba0ccadfadbb105
+sha256:d8f1d16d89c624a6ca917bbfe304542f
 {
   "results": [
     {
       "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/retrier/1 --
+sha256:980b3758b82093d2317ea5822482d804
+{
+  "results": [
+    {
+      "Desc": "AdapterRefreshes",
       "Passed": true
     }
   ]
@@ -416,11 +436,21 @@ sha256:8296586c04dfa419c1bc0476a288b081
   ]
 }
 -- testrun/fyne/go/app.sngl/pager/1 --
-sha256:4659443f0a12a5012d5fdaa73a3abc78
+sha256:d2207d97d5f21adfbd6ddf4f9dbea06b
 {
   "results": [
     {
       "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/retrier/1 --
+sha256:a5309037a059e99872246d48e22039ce
+{
+  "results": [
+    {
+      "Desc": "AdapterRefreshes",
       "Passed": true
     }
   ]
@@ -444,11 +474,21 @@ sha256:ed9288a386161e88e5615878e322e916
   ]
 }
 -- testrun/gtk4/go/app.sngl/pager/1 --
-sha256:942a473869e8a061e5418773da945636
+sha256:84c0b8a91e596bcad5bfcb592a7ea41d
 {
   "results": [
     {
       "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/retrier/1 --
+sha256:8b5e584501634145790b4a81429a0fd6
+{
+  "results": [
+    {
+      "Desc": "AdapterRefreshes",
       "Passed": true
     }
   ]
@@ -472,11 +512,21 @@ sha256:7d4d519f516c83cfa2c3575c107148d2
   ]
 }
 -- testrun/html/none/app.sngl/pager/1 --
-sha256:f81ed69d03973f71e7ad664f8dca09b5
+sha256:7ce08b77509a4f7ee849a1f5bca17746
 {
   "results": [
     {
       "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/retrier/1 --
+sha256:6758d538d4a0493515e01d2d1a378d2b
+{
+  "results": [
+    {
+      "Desc": "AdapterRefreshes",
       "Passed": true
     }
   ]
