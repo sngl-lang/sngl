@@ -305,6 +305,12 @@ func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
 }
 
 func (kc *KtIRContext) Index(n *ir.Index, operand, idx string) string {
+	return indexExpr(n, operand, idx)
+}
+
+// indexExpr reads a map's missing key as its value type's zero, as SNGL
+// does, where Kotlin's own get answers null.
+func indexExpr(n *ir.Index, operand, idx string) string {
 	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
 		valZero := ktMapValZero(t)
 		return "(" + operand + "[" + idx + "] ?: " + valZero + ")"
