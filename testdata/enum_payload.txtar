@@ -1199,50 +1199,50 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) grow_clicked_handler() {
-	var __lt20 Shape
+	var __lt21 Shape
 	switch {
 	case (m.shape__inst0.tag == 0):
-		__lt20 = Shape{tag: 1, Circle: 1.0}
+		__lt21 = Shape{tag: 1, Circle: 1.0}
 	case (m.shape__inst0.tag == 1):
-		__lt20 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
+		__lt21 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
 	default:
-		__lt20 = Shape{tag: 0}
+		__lt21 = Shape{tag: 0}
 	}
-	m.shape__inst0 = __lt20
+	m.shape__inst0 = __lt21
 	gtk4rt.LabelSetLabel(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
-	var __lt21 string
-	if m.shape__inst0.tag == 1 {
-		__lt21 = "round"
-	} else {
-		__lt21 = "not round"
-	}
-	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt21) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 	var __lt22 string
 	if m.shape__inst0.tag == 1 {
-		__lt22 = fmt.Sprint(m.shape__inst0.Circle)
+		__lt22 = "round"
 	} else {
-		__lt22 = "none"
+		__lt22 = "not round"
 	}
-	gtk4rt.LabelSetLabel(m.radius, __lt22)
+	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt22) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	var __lt23 string
+	if m.shape__inst0.tag == 1 {
+		__lt23 = fmt.Sprint(m.shape__inst0.Circle)
+	} else {
+		__lt23 = "none"
+	}
+	gtk4rt.LabelSetLabel(m.radius, __lt23)
 	m.__renderSlot0(m.__n0)
 }
 
 func (m *Model) odd_clicked_handler() {
 	m.result__inst0 = Half(3)
-	var __lt23 string
-	if m.result__inst0.tag == 0 {
-		__lt23 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
-	} else {
-		__lt23 = ("failed: " + m.result__inst0.Failed.Message)
-	}
-	gtk4rt.LabelSetLabel(m.outcome, __lt23)
 	var __lt24 string
-	if m.shape__inst0.tag == 1 {
-		__lt24 = "round"
+	if m.result__inst0.tag == 0 {
+		__lt24 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
 	} else {
-		__lt24 = "not round"
+		__lt24 = ("failed: " + m.result__inst0.Failed.Message)
 	}
-	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt24) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	gtk4rt.LabelSetLabel(m.outcome, __lt24)
+	var __lt25 string
+	if m.shape__inst0.tag == 1 {
+		__lt25 = "round"
+	} else {
+		__lt25 = "not round"
+	}
+	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt25) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -1329,34 +1329,34 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetLabel(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
 	gtk4rt.LabelSetXAlign(m.shownArea, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.shownArea)
-	var __lt17 string
+	var __lt18 string
 	if m.result__inst0.tag == 0 {
-		__lt17 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
+		__lt18 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
 	} else {
-		__lt17 = ("failed: " + m.result__inst0.Failed.Message)
+		__lt18 = ("failed: " + m.result__inst0.Failed.Message)
 	}
 	m.outcome = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.outcome, __lt17)
+	gtk4rt.LabelSetLabel(m.outcome, __lt18)
 	gtk4rt.LabelSetXAlign(m.outcome, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.outcome)
-	var __lt18 string
-	if m.shape__inst0.tag == 1 {
-		__lt18 = "round"
-	} else {
-		__lt18 = "not round"
-	}
-	m.facts = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt18) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
-	gtk4rt.LabelSetXAlign(m.facts, 0.0)
-	gtk4rt.BoxAppend(m.__n0, m.facts)
 	var __lt19 string
 	if m.shape__inst0.tag == 1 {
-		__lt19 = fmt.Sprint(m.shape__inst0.Circle)
+		__lt19 = "round"
 	} else {
-		__lt19 = "none"
+		__lt19 = "not round"
+	}
+	m.facts = gtk4rt.New("GtkLabel")
+	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt19) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	gtk4rt.LabelSetXAlign(m.facts, 0.0)
+	gtk4rt.BoxAppend(m.__n0, m.facts)
+	var __lt20 string
+	if m.shape__inst0.tag == 1 {
+		__lt20 = fmt.Sprint(m.shape__inst0.Circle)
+	} else {
+		__lt20 = "none"
 	}
 	m.radius = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.radius, __lt19)
+	gtk4rt.LabelSetLabel(m.radius, __lt20)
 	gtk4rt.LabelSetXAlign(m.radius, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.radius)
 	m.__renderSlot0(m.__n0)
@@ -1714,7 +1714,7 @@ pass sha256:100bb151240c555aac13eaf0ee3576d1
 -- run/go/fyne --
 pass sha256:a59b159ba8d4013b95d801fb72e02108
 -- run/go/gtk4 --
-pass sha256:fe4aa55afc0463c0fa13b81e0b05c644
+pass sha256:2bbc573ba26bfaaaf8972401eb55c97c
 -- run/kotlin/android --
 pass sha256:ca61db144d85b2ab45d50f4f92b85c5e
 -- run/none/html --

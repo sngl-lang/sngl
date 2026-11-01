@@ -77,12 +77,12 @@ func testEachChoiceTakes(t test.Test, c page) {
         c.pick.change("Green")
     }
     t.assert(c.kind == "Green")
-    t.assert(c.words().join(",") == "Green-a!,Green-b!")
+    t.assert(c.words().format(",") == "Green-a!,Green-b!")
     if c.pick != null {
         c.pick.change("Yellow")
     }
     t.assert(c.kind == "Yellow")
-    t.assert(c.words().join(",") == "Yellow-a!,Yellow-b!")
+    t.assert(c.words().format(",") == "Yellow-a!,Yellow-b!")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
 sha256:c1e53ec2ad750d94cf5b03c6cdd006e9

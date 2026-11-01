@@ -27,7 +27,7 @@ import ui "sngl:ui"
 
 component shelf ui.node {
     var names = ["ash", "elm"]
-    ui.text #joined(value=names.map(func(n string) => string.upper(n)).join(", "))
+    ui.text #joined(value=names.map(func(n string) => string.upper(n)).format(", "))
 }
 
 component wrapped ui.node {

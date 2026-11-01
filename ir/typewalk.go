@@ -58,7 +58,7 @@ func (t *Type) MapChildren(f func(*Type) *Type) *Type {
 		if fields == nil {
 			return t
 		}
-		return (&StructDef{Pkg: sd.Pkg, Fields: fields, Anon: true}).SymType()
+		return (&StructDef{Pkg: sd.Pkg, Fields: fields, Anon: true, Methods: sd.Methods}).SymType()
 	}
 	var elems []*Type
 	for i, e := range t.Elems {

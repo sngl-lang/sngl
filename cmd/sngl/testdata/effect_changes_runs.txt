@@ -107,7 +107,7 @@ component changes ui.node {
         xs = [7]
     }
 
-    ui.text #out(value = log.join(","))
+    ui.text #out(value = log.format(","))
 }
 
 func testOrder(t test.Test, c changes) {
@@ -166,7 +166,7 @@ component partial ui.node {
         xs.remove(0)
     }
 
-    ui.text #out(value = log.join(","))
+    ui.text #out(value = log.format(","))
 }
 
 func testPartial(t test.Test, c partial) {
@@ -207,7 +207,7 @@ component field ui.node {
         h = Holder{items=[5]}
     }
 
-    ui.text #out(value = "{h.items.length()} {log.join(",")}")
+    ui.text #out(value = "{h.items.length()} {log.format(",")}")
 }
 
 func testField(t test.Test, c field) {
@@ -238,7 +238,7 @@ component twice ui.node {
         xs[0].n = 2
     }
 
-    ui.text #out(value = log.join(","))
+    ui.text #out(value = log.format(","))
 }
 
 func testSetTwice(t test.Test, c twice) {
@@ -270,7 +270,7 @@ component gated ui.node {
         xs.push(2)
     }
 
-    ui.text #out(value = log.join(","))
+    ui.text #out(value = log.format(","))
 }
 
 func testGated(t test.Test, c gated) {
@@ -331,7 +331,7 @@ component rows ui.node {
         xs = [Row{items=[7]}]
     }
 
-    ui.text #out(value = log.join(","))
+    ui.text #out(value = log.format(","))
 }
 
 func testPerCopyChange(t test.Test, c rows) {

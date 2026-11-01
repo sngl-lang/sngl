@@ -64,7 +64,7 @@ component rows ui.node {
     ui.button(text="first", @click {
         xs.insert(0, Row{items=[9]})
     })
-    ui.text(value=log.join(","))
+    ui.text(value=log.format(","))
 }
 
 ui.window(title="Rows") {

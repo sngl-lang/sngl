@@ -32,7 +32,7 @@ component greenFruit(label string, ripe bool = false) {
 }
 
 func names(fs list[fruit]) string {
-    return fs.map(func(f fruit) => f.name).join(",")
+    return fs.map(func(f fruit) => f.name).format(",")
 }
 
 component basket(fruits ...component fruit) ui.node {

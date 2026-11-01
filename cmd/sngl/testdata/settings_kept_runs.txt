@@ -73,12 +73,12 @@ sha256:dd29f23c0671ecbe29a0065121ee827e
   "stdout": "count 1\n"
 }
 -- testrun/run/gtk4/go/app.sngl/1 --
-sha256:5d0bd5036856b2916496c3d8abc9152b
+sha256:869176d79dc6c4cb00f37e7a60bbbbed
 {
   "stdout": "count 0\n"
 }
 -- testrun/run/gtk4/go/app.sngl/2 --
-sha256:5d0bd5036856b2916496c3d8abc9152b
+sha256:869176d79dc6c4cb00f37e7a60bbbbed
 {
   "stdout": "count 1\n"
 }

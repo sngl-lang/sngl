@@ -82,7 +82,7 @@ func encode(members list[Entry]) string {
     for var e = members {
         parts.push(e.full)
     }
-    return parts.join("|")
+    return parts.format("|")
 }
 
 component block[go.language] {

@@ -1,0 +1,6 @@
+func show(xs list[int], ys list[option[float]]) => "{xs, sep="; ", base=16} {ys, none="-", places=2}"
+
+// DEFINITION(xs, ^sep=) "builtin/lists.sngl: const func list[T].format(^sep string"
+// DEFINITION(^base=16) "builtin/numbers.sngl: const func int.format(x int, ^base int"
+// DEFINITION(^none=) "builtin/option.sngl: const func option[T].format(^none string"
+// DEFINITION(^places=2) "builtin/numbers.sngl: const func float.format(x float, ^places"

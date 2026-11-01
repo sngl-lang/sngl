@@ -1560,7 +1560,8 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 		// recvParamStyle tracks whether the receiver is passed as the first
 		// explicit param (receiver-as-first-param convention) vs. a new-style
 		// RecvTypeParams method where the receiver is implicit (not a param).
-		recvParamStyle := len(sig.RecvTypeParams) == 0
+		// A constraint's function takes its receiver implicitly as well.
+		recvParamStyle := len(sig.RecvTypeParams) == 0 && !ir.ReceiverOutsideParams(fn)
 
 		// If the method was declared with receiver-level type params
 		// (e.g. func list[T].filter(...)), bind them from the receiver's concrete
@@ -1769,45 +1770,13 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 // type that declares it: receiver itself, or the struct an `option[Struct]`
 // holds.
 func (c *checker) resolveMethod(receiver *ir.Type, field string) (*ir.Func, *ir.Type, bool) {
-	// The receiver's declaration owns its members, so ask it directly. Only
-	// when the type has no declaration to ask — a builtin generic, whose
-	// members hang off the bare constructor name — does the name matter.
-	if fn, ok := c.memberOf(receiver.Decl, field); ok {
+	fn, recv, ok := ir.ResolveMethod(c.scope, receiver, field)
+	if ok {
 		// The caller reads fn.Return, which an expression body has none of
 		// until it is checked (see lookupMethod).
 		c.ensureReturnType(fn)
-		return fn, receiver, true
 	}
-	if fn, ok := c.lookupMethod(receiver.String(), field); ok {
-		return fn, receiver, true
-	}
-	// Fallback for generic types: list[int] → "list", option[int] → "option",
-	// map[K,V] → "map".
-	generic := ""
-	switch receiver.Kind {
-	case ir.TypeList:
-		generic = "list"
-	case ir.TypeOption:
-		generic = "option"
-	case ir.TypeMap:
-		generic = "map"
-	}
-	if generic != "" {
-		if fn, ok := c.lookupMethod(generic, field); ok {
-			return fn, receiver, true
-		}
-	}
-	// A method reached through `option[Struct]` resolves against the struct,
-	// the same way a field read through one does (see inferSelect). Asked after
-	// `option`'s own members, so a name the option itself declares still wins.
-	if receiver.Kind == ir.TypeOption && len(receiver.Elems) == 1 &&
-		receiver.Elems[0] != nil && receiver.Elems[0].Kind == ir.TypeStruct {
-		if fn, ok := c.memberOf(receiver.Elems[0].Decl, field); ok {
-			c.ensureReturnType(fn)
-			return fn, receiver.Elems[0], true
-		}
-	}
-	return nil, receiver, false
+	return fn, recv, ok
 }
 
 // elementEvent returns the event named event declared on the component recv
@@ -2788,15 +2757,18 @@ func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
 // interpolateFormat is a field of an interpolated string as the string its
 // format method writes: `{x}` is `x.format()` and `{x, a, b}` is
 // `x.format(a, b)`, checked as any call is. A zero-arg function is called
-// first, `{fn}` being `{fn()}`. A string is itself, and an enum carrying no
-// payload, a unit and `null` that declare no format are written as `string(x)`
-// writes them; any other type without a format method may not be formatted.
+// first, `{fn}` being `{fn()}`. A string is itself; a type without a format
+// method may not be formatted, and an enum carrying no payload and a unit have
+// the one the compiler declares where they declare none (ir.DefaultFormat).
 func (c *checker) interpolateFormat(part ast.Expr) ir.Expr {
 	valueAST, args := part, ast.ArgList{}
 	if f, ok := part.(*ast.FormatExpr); ok {
 		valueAST, args = f.Value, f.Args
 	}
 	pos := *valueAST.ExprPos()
+	// What the format's arguments are refused for is said where the field
+	// is: `"{xs}"` has no argument list to point at.
+	args.Pos = pos
 	expr := c.checkExpr(valueAST)
 	t := exprType(expr)
 	// Implicit call: `{fn}` where fn returns T becomes `{fn()}`. Re-check via
@@ -2811,15 +2783,8 @@ func (c *checker) interpolateFormat(part ast.Expr) ir.Expr {
 		c.checkCallArgs(args, nil)
 		return expr
 	}
-	if len(args.Args) == 0 {
-		if t.Kind == ir.TypeString {
-			return expr
-		}
-		if defaultFormatted(t) {
-			if _, ok := c.memberOf(t.Decl, "format"); !ok {
-				return &ir.Conversion{Type: TypString, Operand: expr}
-			}
-		}
+	if len(args.Args) == 0 && t.Kind == ir.TypeString {
+		return expr
 	}
 	recv := t
 	if (recv.Kind == ir.TypeRef || recv.Kind == ir.TypeReadonly) && len(recv.Elems) > 0 {
@@ -2828,7 +2793,8 @@ func (c *checker) interpolateFormat(part ast.Expr) ir.Expr {
 	if _, _, ok := c.resolveMethod(recv, "format"); !ok {
 		c.error(pos, "cannot format %s: type has no format method", t)
 		c.checkCallArgs(args, nil)
-		return expr
+		// Still a string, so that nothing reading it reports again.
+		return &ir.Conversion{Type: TypString, Operand: expr}
 	}
 	sel := &ast.SelectExpr{Pos: pos, Operand: valueAST, Field: "format"}
 	out := c.inferMethodCallOn(sel, &ast.CallExpr{Pos: pos, Func: sel, Args: args}, expr, false)
@@ -2836,20 +2802,6 @@ func (c *checker) interpolateFormat(part ast.Expr) ir.Expr {
 		c.error(pos, "cannot format %s: its format method returns %s, not string", t, rt)
 	}
 	return out
-}
-
-// defaultFormatted reports whether a value of t is written by `string(x)`
-// where its type declares no format: an enum carrying no payload, whose
-// member's name it is, a unit, and `null`. Each is a declaration the compiler
-// makes rather than one a library can attach a method to.
-func defaultFormatted(t *ir.Type) bool {
-	switch t.Kind {
-	case ir.TypeEnum:
-		return ir.PayloadEnum(t) == nil
-	case ir.TypeUnit, ir.TypeNull:
-		return true
-	}
-	return false
 }
 
 func (c *checker) inferInterpolation(x *ast.InterpolationExpr) ir.Expr {
@@ -3112,6 +3064,11 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 		return TypInvalid
 	}
 
+	// A format's `_formatArgs` parameter takes the named arguments the
+	// function declares no parameter for: they are the formatted type's.
+	pack := ir.FormatArgsParam(sig.Params)
+	var packArgs []ast.ArgOrEventHandler
+
 	for _, a := range args {
 		arg, isArg := a.(ast.Arg)
 		if !isArg {
@@ -3223,6 +3180,10 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 					break
 				}
 			}
+			if idx == -1 && pack >= 0 {
+				packArgs = append(packArgs, arg)
+				continue
+			}
 			if idx == -1 {
 				hasUnnamed := false
 				for _, p := range sig.Params {
@@ -3266,6 +3227,24 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			bound[variadic] = &lit
 		case extras != nil:
 			c.error(*extrasPos, "parameter %q already provided", sig.Params[variadic].Name)
+			ok = false
+		}
+	}
+
+	if pack >= 0 {
+		switch {
+		case bound[pack] == nil:
+			lit, fits := c.formatArgsLit(callPos, sig.Params[pack].Type, packArgs)
+			if !fits {
+				ok = false
+			}
+			bound[pack] = &lit
+		case len(packArgs) > 0:
+			for _, a := range packArgs {
+				arg := a.(ast.Arg)
+				c.error(arg.NamePos, "unknown parameter %q", arg.Name)
+				c.checkExpr(arg.Value)
+			}
 			ok = false
 		}
 	}

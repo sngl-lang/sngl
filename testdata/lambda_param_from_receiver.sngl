@@ -23,7 +23,7 @@ func legs(ps list[Pet]) list[int] {
 
 func testTheParameterIsTheElement(t Test) {
     var ps = [Pet{name="cat", legs=4}, Pet{name="hen", legs=2}]
-    t.assert(names(ps).join(",") == "cat,hen")
+    t.assert(names(ps).format(",") == "cat,hen")
     t.assert(legs(ps)[1] == 4)
 }
 

@@ -757,13 +757,13 @@ func (m *Model) free_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.free) != m.checked__inst0 {
 		m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.free)
 		gtk4rt.CheckButtonSetActive(m.free, m.checked__inst0)
-		var __lt18 string
+		var __lt19 string
 		if m.checked__inst0 {
-			__lt18 = "on"
+			__lt19 = "on"
 		} else {
-			__lt18 = "off"
+			__lt19 = "off"
 		}
-		gtk4rt.LabelSetLabel(m.seen, __lt18)
+		gtk4rt.LabelSetLabel(m.seen, __lt19)
 	}
 }
 
@@ -772,13 +772,13 @@ func (m *Model) flip_clicked_handler() {
 	gtk4rt.CheckButtonSetActive(m.bound, m.shown__inst0)
 	m.checked__inst0 = !m.checked__inst0
 	gtk4rt.CheckButtonSetActive(m.free, m.checked__inst0)
-	var __lt20 string
+	var __lt21 string
 	if m.checked__inst0 {
-		__lt20 = "on"
+		__lt21 = "on"
 	} else {
-		__lt20 = "off"
+		__lt21 = "off"
 	}
-	gtk4rt.LabelSetLabel(m.seen, __lt20)
+	gtk4rt.LabelSetLabel(m.seen, __lt21)
 }
 
 func (m *Model) Shown__inst0() bool {
@@ -827,14 +827,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.CheckButtonSetActive(m.free, m.checked__inst0)
 	gtk4rt.Connect(m.free, "toggled", m.free_toggled_handler)
 	gtk4rt.BoxAppend(m.__n1, m.free)
-	var __lt19 string
+	var __lt20 string
 	if m.checked__inst0 {
-		__lt19 = "on"
+		__lt20 = "on"
 	} else {
-		__lt19 = "off"
+		__lt20 = "off"
 	}
 	m.seen = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.seen, __lt19)
+	gtk4rt.LabelSetLabel(m.seen, __lt20)
 	gtk4rt.LabelSetXAlign(m.seen, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.seen)
 	m.flip = gtk4rt.New("GtkButton")
@@ -1132,7 +1132,7 @@ pass sha256:5164291034b4caad5bb304b2cc769b33
 -- run/go/fyne --
 pass sha256:0ebc499a0e76905470ccc3e51ca73e41
 -- run/go/gtk4 --
-pass sha256:5c9323f91e6a1df637d6fcc574e683fc
+pass sha256:d27de629c73305337eff0f6a037fb0ae
 -- run/kotlin/android --
 pass sha256:c5fb6e94f29ba19355caa333b18a0bad
 -- run/none/html --
