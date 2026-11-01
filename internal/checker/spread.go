@@ -106,10 +106,12 @@ func spreadFieldsOf(operand ir.Expr) ([]spreadField, bool) {
 	if t != nil && t.Kind == ir.TypeStruct {
 		sd, _ = t.Decl.(*ir.StructDef)
 	}
-	// A T a struct constrains spreads the constraint's fields: they are all
+	// A T a constraint gives fields spreads them: they are all
 	// a generic body knows the value has.
 	if sd == nil {
-		sd = paramConstraint(t)
+		if fields, _, ok := paramFields(t); ok {
+			sd = &ir.StructDef{Fields: fields, Anon: true}
+		}
 		t = nil
 	}
 	if sd == nil {

@@ -153,6 +153,10 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		if sd, ok := sym.(*ir.StructDef); ok && sd.Builtin.IsGeneric() {
 			return c.constructBuiltinGeneric(sd.Builtin, sd, t)
 		}
+		if sd, ok := sym.(*ir.StructDef); ok && sd.Builtin.IsConstraint() {
+			c.error(t.Pos, "`%s` is a constraint, not a type: only a type parameter's constraint names it", t.Name)
+			return TypInvalid
+		}
 	}
 	// `component` has no `<T>` decl to carry a marker; it is a bare kind.
 	if t.Name == "component" {

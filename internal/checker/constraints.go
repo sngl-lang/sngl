@@ -4,73 +4,116 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/parser"
 	"duckfam.us/sngl/ir"
 )
 
-// A type parameter's constraint says what a type bound to it must be. `any`
-// says nothing; an anonymous struct says the type is a struct with at least
-// its fields, each at an equal type. A named struct satisfies one as readily
-// as an anonymous struct -- the constraint is about fields, not identity --
-// and a field default on the struct being measured plays no part.
+// A type parameter's constraint says what a type bound to it must be, and is
+// one of sngl:builtin's constraints: `any` says nothing, `anyStruct` asks for
+// a struct, `anyFields` for a type with fields, `fieldsOf[S]` for one with at
+// least S's fields at equal types, and `methodsOf[S]` for one with a method
+// fitting each of S's functions. A named struct satisfies `fieldsOf` as
+// readily as an anonymous one -- the constraint is about fields, not
+// identity -- and so does a component, and a field default on the type being
+// measured plays no part. `methodsOf` asks for nothing else, so an int may
+// satisfy one.
 //
-// A constraint's field may name another type parameter of the same list, or
-// the one it constrains: `[T any, U struct { value T }]`. It is measured with
+// S's field may name another type parameter of the same list, or the one it
+// constrains: `[T any, U fieldsOf[struct { value T }]]`. It is measured with
 // what the list's other parameters are bound to, and where one is not, the
 // field of the type bound to U is what binds it (inferFromConstraints).
-//
-// A constraint may name functions too, `struct { const func format() string }`:
-// the type's method of that name has to take a call of the constraint's
-// shape (methodUnsatisfied). A constraint naming functions and no fields asks
-// for nothing else, so an int may satisfy one; one naming fields, or nothing at
-// all, is still satisfied by a type with fields only.
 
-// resolveConstraint resolves what a type parameter's constraint names: `any`,
-// found in scope as a scalar is so a program's own `any` shadows it, or an
-// anonymous struct. The list's parameters are in scope, so a field may name
-// one, which makes it an anonymous struct like any other naming a type
-// parameter: declared un-interned (anonStructType), its fields meaning this
-// list's parameters and no other. self is the parameter it constrains, which
-// a function it names is called on.
+// resolveConstraint resolves what a type parameter's constraint names, a
+// constraint sngl:builtin declares, found in scope as any declaration is so a
+// program's own of the name shadows it. The list's parameters are in scope, so
+// S's field may name one, which makes S an anonymous struct like any other
+// naming a type parameter: declared un-interned (anonStructType), its fields
+// meaning this list's parameters and no other. self is the parameter it
+// constrains, which a function `methodsOf` names is called on.
 func (c *checker) resolveConstraint(te ast.TypeExpr, self *ir.Type) *ir.Type {
 	switch t := te.(type) {
 	case *ast.NamedType:
-		if t.Package == "" && len(t.TypeArgs) == 0 {
-			if sym, ok := c.scope.Lookup(t.Name); ok {
-				if typ, _, ok := scalarOf(sym); ok && typ == ir.TypAny {
-					return typ
-				}
-			}
+		if con, ok := c.namedConstraint(t, self); ok {
+			return con
 		}
 	case *ast.StructDef:
 		if len(t.TypeParams) == 0 {
-			for _, f := range t.Fields() {
-				if f.Default != nil {
-					c.error(f.Pos, "a constraint's field takes no default: a constraint says what a type has, not what it starts with")
-				}
+			switch {
+			case len(t.Funcs()) > 0:
+				c.error(t.Pos, "a struct is no constraint: `methodsOf[struct { … }]` asks for its functions")
+			case len(t.Fields()) > 0:
+				c.error(t.Pos, "a struct is no constraint: `fieldsOf[struct { … }]` asks for its fields")
+			default:
+				c.error(t.Pos, "a struct is no constraint: `anyStruct` asks for a struct, and `anyFields` for a type with fields")
 			}
-			fields := c.buildStructDef(t).Fields
-			if len(t.Funcs()) == 0 {
-				return c.anonStructType(fields)
-			}
-			return c.constraintWithFuncs(fields, t.Funcs(), self)
+			return ir.TypAny
 		}
 	}
-	c.error(*te.ExprPos(), "a type parameter's constraint is `any` or an anonymous struct, `struct { name string }`")
+	c.error(*te.ExprPos(), "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]` or `methodsOf[S]`")
 	return ir.TypAny
 }
 
-// constraintWithFuncs is the constraint of fields and the functions funcs
-// declare, each called on self. It is declared un-interned whatever its
-// fields: two constraints of the same fields may name different functions.
-func (c *checker) constraintWithFuncs(fields []*ir.StructField, funcs []*ast.FuncDef, self *ir.Type) *ir.Type {
-	canon := slices.SortedStableFunc(slices.Values(fields), func(a, b *ir.StructField) int {
-		return strings.Compare(a.Name, b.Name)
-	})
-	sd := &ir.StructDef{Pkg: c.declPkg(), Fields: canon, Anon: true, Methods: map[string]*ir.Func{}}
+// namedConstraint is the constraint t names, ok false where it names none.
+func (c *checker) namedConstraint(t *ast.NamedType, self *ir.Type) (*ir.Type, bool) {
+	if t.Package != "" {
+		return nil, false
+	}
+	sym, ok := c.scope.Lookup(t.Name)
+	if !ok {
+		return nil, false
+	}
+	if typ, _, ok := scalarOf(sym); ok && typ == ir.TypAny {
+		if len(t.TypeArgs) > 0 {
+			c.error(t.Pos, "`any` takes no type arguments")
+		}
+		return typ, true
+	}
+	sd, _ := sym.(*ir.StructDef)
+	if sd == nil || !sd.Builtin.IsConstraint() {
+		return nil, false
+	}
+	con := &ir.Type{Kind: ir.TypeConstraint, Decl: sd}
+	switch sd.Builtin {
+	case ir.BuiltinAnyStruct, ir.BuiltinAnyFields:
+		if len(t.TypeArgs) > 0 {
+			c.error(t.Pos, "`%s` takes no type arguments", t.Name)
+		}
+		return con, true
+	}
+	var s *ast.StructDef
+	if len(t.TypeArgs) == 1 {
+		s, _ = t.TypeArgs[0].(*ast.StructDef)
+	}
+	if s == nil || len(s.TypeParams) > 0 {
+		c.error(t.Pos, "`%s` takes an anonymous struct, `%s[struct { … }]`", t.Name, t.Name)
+		return ir.TypAny, true
+	}
+	if sd.Builtin == ir.BuiltinFieldsOf {
+		for _, f := range s.Funcs() {
+			c.error(f.Pos, "`fieldsOf` asks for fields; `methodsOf` asks for functions")
+		}
+		for _, f := range s.Fields() {
+			if f.Default != nil {
+				c.error(f.Pos, "a constraint's field takes no default: a constraint says what a type has, not what it starts with")
+			}
+		}
+		con.Elems = []*ir.Type{c.anonStructType(c.buildStructDef(s).Fields)}
+		return con, true
+	}
+	for _, f := range s.Fields() {
+		c.error(f.Pos, "`methodsOf` asks for functions; `fieldsOf` asks for fields")
+	}
+	con.Elems = []*ir.Type{c.constraintFuncs(s.Funcs(), self)}
+	return con, true
+}
+
+// constraintFuncs is the anonymous struct of the functions funcs declare,
+// each called on self. It is declared un-interned: two of the same functions
+// constrain different parameters.
+func (c *checker) constraintFuncs(funcs []*ast.FuncDef, self *ir.Type) *ir.Type {
+	sd := &ir.StructDef{Pkg: c.declPkg(), Anon: true, Methods: map[string]*ir.Func{}}
 	for _, f := range funcs {
 		if funcHasBody(f) {
 			c.error(f.Pos, "a constraint's function takes no body: a constraint says what a type has, not what it does")
@@ -79,7 +122,7 @@ func (c *checker) constraintWithFuncs(fields []*ir.StructField, funcs []*ast.Fun
 			c.error(f.Pos, "a constraint's function takes no type parameters")
 			continue
 		}
-		if _, dup := sd.Methods[f.Name]; dup || ir.FieldNamed(fields, f.Name) != nil {
+		if _, dup := sd.Methods[f.Name]; dup {
 			c.error(f.Pos, "duplicate declaration of %q in a constraint", f.Name)
 			continue
 		}
@@ -110,53 +153,47 @@ func (c *checker) constraintWithFuncs(fields []*ir.StructField, funcs []*ast.Fun
 	return sd.SymType()
 }
 
-// constraintStruct is the anonymous struct a constraint names, nil for one
-// that says nothing.
-func constraintStruct(constraint *ir.Type) *ir.StructDef {
-	if constraint == nil || constraint.Kind != ir.TypeStruct {
-		return nil
-	}
-	sd, _ := constraint.Decl.(*ir.StructDef)
-	return sd
-}
-
-// paramConstraint is the struct constraint of the type parameter t is, nil
-// where t is none or its parameter's constraint says nothing. In a generic
-// body this is what a select and a spread of a T read.
-func paramConstraint(t *ir.Type) *ir.StructDef {
+// paramFields is the fields the constraint on t, a type parameter, asks a
+// type to have, and the constraint; ok is false where t is none or its
+// constraint asks for no fields. In a generic body these are what a select
+// and a spread of a T read.
+func paramFields(t *ir.Type) (fields []*ir.StructField, con *ir.Type, ok bool) {
 	if t == nil || t.Kind != ir.TypeTypeParam {
-		return nil
+		return nil, nil, false
 	}
 	sym, _ := t.Decl.(*ir.TypeParamSym)
-	if sym == nil {
-		return nil
+	if sym == nil || !ir.ConstraintFielded(sym.Constraint) {
+		return nil, nil, false
 	}
-	return constraintStruct(sym.Constraint)
+	return ir.ConstraintFields(sym.Constraint), sym.Constraint, true
 }
 
 // unsatisfied says why t does not satisfy constraint, "" where it does. An
-// invalid type says nothing to measure, and neither does a type parameter no declaration
-// constrains -- one a substitution made rather than a scope -- so both pass.
-// A type parameter is measured by its own constraint: a T constrained to more
-// fields than a U asks for may be handed on to U.
+// invalid type says nothing to measure, and neither does a type parameter no
+// declaration constrains -- one a substitution made rather than a scope -- so
+// both pass. A type parameter is measured by its own constraint: a T
+// constrained to more fields than a U asks for may be handed on to U.
 //
-// The functions it names are measured with bindings, which binds the list it
-// constrains: a function's parameter may name any of it, the constrained
-// parameter included.
+// The functions `methodsOf` names are measured with bindings, which binds the
+// list it constrains: a function's parameter may name any of it, the
+// constrained parameter included.
 func (c *checker) unsatisfied(t, constraint *ir.Type, bindings map[string]*ir.Type) string {
-	want := constraintStruct(constraint)
-	if want == nil || t == nil {
+	kind := ir.ConstraintKind(constraint)
+	if kind == ir.BuiltinAny || t == nil {
 		return ""
 	}
-	fielded := len(want.Fields) > 0 || len(want.Methods) == 0
 	switch t.Kind {
 	case ir.TypeInvalid:
 		return ""
 	case ir.TypeTypeParam:
-		if sym, _ := t.Decl.(*ir.TypeParamSym); sym == nil {
+		sym, _ := t.Decl.(*ir.TypeParamSym)
+		if sym == nil {
 			return ""
 		}
-		if fielded && paramConstraint(t) == nil {
+		switch {
+		case kind == ir.BuiltinAnyStruct && ir.ConstraintKind(sym.Constraint) != ir.BuiltinAnyStruct:
+			return "its constraint does not say it is a struct"
+		case kind != ir.BuiltinMethodsOf && !ir.ConstraintFielded(sym.Constraint):
 			return "its constraint says nothing about its fields"
 		}
 	case ir.TypeStruct:
@@ -164,19 +201,29 @@ func (c *checker) unsatisfied(t, constraint *ir.Type, bindings map[string]*ir.Ty
 			return ""
 		}
 	}
-	for _, name := range slices.Sorted(maps.Keys(want.Methods)) {
-		if why := c.methodUnsatisfied(t, want.Methods[name], bindings); why != "" {
-			return why
+	switch kind {
+	case ir.BuiltinMethodsOf:
+		methods := ir.ConstraintMethods(constraint)
+		for _, name := range slices.Sorted(maps.Keys(methods)) {
+			if why := c.methodUnsatisfied(t, methods[name], bindings); why != "" {
+				return why
+			}
 		}
-	}
-	if !fielded {
+		return ""
+	case ir.BuiltinAnyStruct:
+		if t.Kind == ir.TypeTypeParam {
+			return ""
+		}
+		if sd, _ := t.Decl.(*ir.StructDef); t.Kind != ir.TypeStruct || sd == nil || sd.RecordOf != nil {
+			return "it is no struct"
+		}
 		return ""
 	}
 	fields, ok := ir.FieldsOf(t)
 	if !ok {
-		return "it is no struct"
+		return "it has no fields"
 	}
-	for _, w := range want.Fields {
+	for _, w := range ir.ConstraintFields(constraint) {
 		got := ir.FieldNamed(fields, w.Name)
 		if got == nil {
 			return fmt.Sprintf("it has no field %q", w.Name)
@@ -307,7 +354,7 @@ func constantOf(e ir.Expr) ir.Expr {
 
 // inferFromConstraints binds the parameters of params a constraint's fields
 // name from the fields of the type bound to the parameter it constrains:
-// `[T any, U struct { value T }]` with U a struct whose value is an int binds
+// `[T any, U fieldsOf[struct { value T }]]` with U a struct whose value is an int binds
 // T to int. Repeated until nothing more binds, since what one binds may be
 // what another's constraint is measured against. Nothing already bound is
 // rebound, and only params' own names are: a field may name a parameter of
@@ -320,7 +367,7 @@ func inferFromConstraints(params []ir.TypeParam, bindings map[string]*ir.Type) {
 	for changed := true; changed; {
 		changed = false
 		for _, tp := range params {
-			want := constraintStruct(tp.Constraint)
+			want := ir.ConstraintFields(tp.Constraint)
 			t := bindings[tp.Name]
 			if want == nil || t == nil {
 				continue
@@ -329,7 +376,7 @@ func inferFromConstraints(params []ir.TypeParam, bindings map[string]*ir.Type) {
 			if !ok {
 				continue
 			}
-			for _, w := range want.Fields {
+			for _, w := range want {
 				got := ir.FieldNamed(fields, w.Name)
 				if got == nil || !w.Type.HasTypeParam() {
 					continue

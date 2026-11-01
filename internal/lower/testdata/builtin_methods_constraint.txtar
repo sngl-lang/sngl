@@ -7,15 +7,15 @@ caps: NoComputed
 -- input.sngl --
 import . "sngl:ui"
 
-func show[T struct {
+func show[T methodsOf[struct {
     const func format(base int) string
-}](v T) string {
+}]](v T) string {
     return v.format(16)
 }
 
-func all[T struct {
+func all[T methodsOf[struct {
     const func format() string
-}](vs list[T]) string {
+}]](vs list[T]) string {
     return "[{vs}]"
 }
 

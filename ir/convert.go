@@ -1291,6 +1291,15 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 			}
 		}
 		return nt
+	case TypeConstraint:
+		nt := &ast.NamedType{Name: "constraint"}
+		if t.Decl != nil {
+			nt.Name = t.Decl.SymName()
+		}
+		for _, e := range t.Elems {
+			nt.TypeArgs = append(nt.TypeArgs, c.convertType(e))
+		}
+		return nt
 	case TypeFunc:
 		return c.convertFuncType(t.Sig)
 	case TypeTypeParam:

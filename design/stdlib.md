@@ -408,7 +408,7 @@ Notable stdlib packages:
 
   **A translation's arguments are a struct**, a field per placeholder:
   `i18n.format(t, {name=n})`. `tr`, `trInline` and `format`
-  take them as a type parameter constrained to a struct, `[A struct {}]`,
+  take them as a type parameter constrained to a struct, `[A anyStruct]`,
   which an anonymous struct literal binds and which refuses anything else;
   `$"..."` builds
   the same literal. Every runtime takes a string-keyed map, which only the

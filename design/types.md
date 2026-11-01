@@ -94,14 +94,14 @@ directory-imported package interns its own `struct { v int }`, which spells
 the program's host name, and the output declared both
 (`testdata/anon_struct_from_package.txtar`).
 
-**A constraint's functions are methods of its struct**
-(`constraintWithFuncs`): each is a bodyless `Func` whose `Receiver` is the
-type parameter it constrains and whose `this` is a `RecvParam`, held in the
-constraint's `StructDef.Methods`, so `ir.ResolveMethod` on a T finds it
+**`methodsOf[S]`'s functions are methods of S**
+(`constraintFuncs`): each is a bodyless `Func` whose `Receiver` is the
+type parameter it constrains and whose `this` is a `RecvParam`, held in
+S's `StructDef.Methods`, so `ir.ResolveMethod` on a T finds it
 (`ir.ConstraintMethod`) and the checker's method call, the formatting of
-`"{v}"` and the LSP need nothing else. Such a constraint is declared
-un-interned whatever its fields, since two of the same fields may name
-different functions, and `MapChildren` carries its methods over. A type is
+`"{v}"` and the LSP need nothing else. S is declared un-interned, since two
+of the same functions constrain different parameters, and `MapChildren`
+carries its methods over. A type is
 measured against one by the call it would take (`methodUnsatisfied`, over
 `ir.MethodParams`), not by signature equality, so `int.format`, which takes
 `width` and `pad` too, satisfies `const func format(base int) string`. A

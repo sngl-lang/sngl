@@ -21,8 +21,8 @@ type Symbol interface {
 type TypeParamSym struct {
 	Name string
 	// Constraint is what a type bound to the parameter must be: ir.TypAny,
-	// which says nothing, or an anonymous struct whose fields the type must
-	// have. Nil for a parameter no declaration constrains -- an intrinsic's.
+	// which says nothing, or a TypeConstraint naming what it asks. Nil for a
+	// parameter no declaration constrains -- an intrinsic's.
 	// A receiver's restated name takes its declaration's.
 	Constraint *Type
 }

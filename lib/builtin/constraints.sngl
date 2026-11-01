@@ -1,0 +1,33 @@
+// What a type parameter's constraint names: what a type bound to the
+// parameter must be. Each is a constraint only, and no type a value may have;
+// an alias names one under another name, `struct Formattable =
+// methodsOf[struct { const func format() string }]`.
+
+// Says nothing about the type: `func first[T any](xs list[T]) option[T]`.
+#[_builtin(any)]
+struct any {}
+
+// A struct, whatever its fields: what a record of named values is passed as,
+// `func get[Q anyStruct](url string, query Q)`. A component is no struct.
+#[_builtin(anyStruct)]
+struct anyStruct {}
+
+// A type with fields, a struct or a component, whatever they are.
+#[_builtin(anyFields)]
+struct anyFields {}
+
+// A type with each of S's fields, at an equal type, and maybe others: a
+// struct or a component. S is an anonymous struct of fields, and they are
+// what a generic body may read of a value of the type: `[T fieldsOf[struct {
+// name string }]]` reads a T's name.
+#[_builtin(fieldsOf)]
+struct fieldsOf[S any] {}
+
+// A type with a method fitting each function S declares, whatever else it
+// is: an int as readily as a struct. S is an anonymous struct of functions,
+// conventionally without bodies. A method fits one when it takes each of its
+// parameters by name at an equal type, defaults the rest, gives what it gives
+// and is const where it is; a parameter's default there is a constant the
+// method defaults to as well.
+#[_builtin(methodsOf)]
+struct methodsOf[S any] {}

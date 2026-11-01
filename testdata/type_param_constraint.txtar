@@ -36,9 +36,9 @@ struct Pet {
 
 var n = 1
 
-func nameOf[T struct {
+func nameOf[T fieldsOf[struct {
     name string
-}](v T) string {
+}]](v T) string {
     if n < 0 {
         return ""
     }
@@ -47,9 +47,9 @@ func nameOf[T struct {
 
 func greet(name string) => "hi {name}"
 
-func greetAll[T struct {
+func greetAll[T fieldsOf[struct {
     name string
-}](v T) string {
+}]](v T) string {
     if n < 0 {
         return ""
     }
@@ -61,18 +61,18 @@ struct Cell {
     label string
 }
 
-func valueOf[T any, U struct {
+func valueOf[T any, U fieldsOf[struct {
     value T
-}](u U) T {
+}]](u U) T {
     if n < 0 {
         return u.value
     }
     return u.value
 }
 
-struct Holder[T struct {
+struct Holder[T fieldsOf[struct {
     name string
-}] {
+}]] {
     item T
 }
 

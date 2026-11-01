@@ -18,29 +18,44 @@ struct Pet {
 }
 
 // A select on a T reads the constraint's field, typed from the constraint.
-func nameOf[T struct {
+func nameOf[T fieldsOf[struct {
     name string
-}](v T) => v.name
+}]](v T) => v.name
 
 func greet(name string) => "hi {name}"
 
 // A spread of a T binds the constraint's fields and nothing beyond them: a
 // User's age reaches no parameter here.
-func greetAll[T struct {
+func greetAll[T fieldsOf[struct {
     name string
-}](v T) => greet(...v)
+}]](v T) => greet(...v)
 
 // Any struct at all.
-func same[T struct {}](v T) => v
+func same[T anyStruct](v T) => v
+
+// A struct handed on to a struct.
+func sameAgain[T anyStruct](v T) => same(v)
+
+// A type with fields, a data component's record as readily as a struct, and
+// one whose constraint asks for fields of its own.
+func fielded[T anyFields](v T) => true
+
+func relayFielded[T fieldsOf[struct {
+    name string
+}]](v T) => fielded(v)
+
+component fruit(name string) fruit
+
+func firstFielded(fs list[fruit]) => fielded(fs[0])
 
 // A default satisfies its own constraint.
-func named[T struct {
+func named[T fieldsOf[struct {
     name string
-} = User](v option[T] = null) => v == null
+}] = User](v option[T] = null) => v == null
 
-struct Holder[T struct {
+struct Holder[T fieldsOf[struct {
     name string
-}] {
+}]] {
     item T
 }
 
@@ -48,9 +63,9 @@ struct Holder[T struct {
 func Holder[T].label() => "<{this.item.name}>"
 
 // A T handed on is measured by its own constraint.
-func relay[T struct {
+func relay[T fieldsOf[struct {
     name string
-}](v T) => nameOf(v)
+}]](v T) => nameOf(v)
 
 // A constraint's field may name another parameter of its list: what the
 // argument's field is binds it, or a written argument settles it.
@@ -59,15 +74,15 @@ struct Cell {
     label string
 }
 
-func valueOf[T any, U struct {
+func valueOf[T any, U fieldsOf[struct {
     value T
-}](u U) => u.value
+}]](u U) => u.value
 
 // A T bound to a parameter is measured by that parameter's constraint, with
 // what the field names carried across.
-func relayValue[A any, B struct {
+func relayValue[A any, B fieldsOf[struct {
     value A
-}](b B) => valueOf(b)
+}]](b B) => valueOf(b)
 
 // Or the parameter it constrains: a list of itself.
 struct Link {
@@ -75,18 +90,18 @@ struct Link {
     next option[Link]
 }
 
-func hasNext[T struct {
+func hasNext[T fieldsOf[struct {
     next option[T]
-}](v T) => v.next != null
+}]](v T) => v.next != null
 
 // A default binds what its constraint names, as an argument does.
-func defaulted[T any, U struct {
+func defaulted[T any, U fieldsOf[struct {
     value T
-} = Cell](u option[U] = null) => u == null
+}] = Cell](u option[U] = null) => u == null
 
-struct Keyed[K any, V struct {
+struct Keyed[K any, V fieldsOf[struct {
     key K
-}] {
+}]] {
     item V
 }
 
@@ -97,9 +112,9 @@ struct Entry {
 // A receiver may spell the parameters differently.
 func Keyed[A, B].keyOf() => this.item.key
 
-component badge[T struct {
+component badge[T fieldsOf[struct {
     name string
-}](item T) node {
+}]](item T) node {
     text(value=item.name)
 }
 
@@ -120,6 +135,9 @@ func testConstraint(t Test, c main) {
     t.assert(nameOf[User]({name="bob"}) == "bob")
     t.assert(greetAll(User{name="cy"}) == "hi cy")
     t.assert(same(Pet{name="a", legs=2}).legs == 2)
+    t.assert(sameAgain(User{name="eve"}).name == "eve")
+    t.assert(fielded(Pet{name="f", legs=1}))
+    t.assert(relayFielded(User{name="fay"}))
     t.assert(named())
     var h = Holder[Pet]{item=Pet{name="p", legs=3}}
     t.assert(nameOf(h.item) == "p")

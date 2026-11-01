@@ -671,30 +671,30 @@ parameter appears only in its result, called where nothing expects a type,
 They go in brackets after the name, bind the leading parameters, and leave the
 rest to inference.
 
-When a generic body needs to read a field, say which: an anonymous struct as
-the constraint is any struct with at least those fields, at those types, so a
-named struct satisfies it as readily as a literal does.
+When a generic body needs to read a field, say which: `fieldsOf` an anonymous
+struct is any type with at least those fields, at those types, so a named
+struct satisfies it as readily as a literal does.
 
 <!-- SNGL-component
 struct User { name string; age int = 0 }
 -->
 
 ```sngl
-func nameOf[T struct {
+func nameOf[T fieldsOf[struct {
     name string
-}](v T) => v.name
+}]](v T) => v.name
 
 func names() => [nameOf(User{name="ann"}), nameOf({name="anon"})]
 ```
 
 A field of a constraint may name another type parameter, and the argument's
-own field is what binds it, so a function can say "a struct whose `value` is
+own field is what binds it, so a function can say "a type whose `value` is
 some T" and return that T:
 
 ```sngl
-func valueOf[T any, U struct {
+func valueOf[T any, U fieldsOf[struct {
     value T
-}](u U) => u.value
+}]](u U) => u.value
 ```
 
 An anonymous struct in a signature may name a type parameter too, which is how
@@ -716,10 +716,19 @@ func firstOf[T any](p struct {
 }) => p.first
 ```
 
-`[T struct {}]` takes any struct and says nothing about its fields, which is
+`[T anyStruct]` takes any struct and says nothing about its fields, which is
 what a function handing its argument to something that reads fields by name
 wants: `i18n.format` takes its arguments that way. A constraint's field takes
 no default -- a constraint says what a type has, not what it starts with.
+
+When it needs to call a method, `methodsOf` an anonymous struct of bodyless
+functions asks for a method fitting each, whatever else the type is:
+
+```sngl
+func hex[T methodsOf[struct {
+    const func format(base int) string
+}]](v T) => v.format(16)
+```
 
 `any` is only a constraint: `var x any` is an error, since every value has a
 type you can name. Nor is the constraint optional: a bracket

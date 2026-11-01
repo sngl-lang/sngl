@@ -1483,9 +1483,9 @@ type TypeParam struct {
 	Pos  ast.Pos `json:"-"`
 	Name string
 	// Constraint is what the declaration says a type bound to the parameter
-	// must be: ir.TypAny, which says nothing, or an anonymous struct whose
-	// fields the type must have. A receiver's list restates names only and
-	// takes its declaration's.
+	// must be: ir.TypAny, which says nothing, or a TypeConstraint naming what
+	// it asks. A receiver's list restates names only and takes its
+	// declaration's.
 	Constraint *Type `json:"-"`
 	Default    *Type `json:"-"`
 }

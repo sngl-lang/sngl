@@ -1,5 +1,5 @@
-# `dump --stage checked` prints a struct constraint, one naming another
-# parameter of its list, a method on a generic struct, and an anonymous struct
+# `dump --stage checked` prints each builtin constraint as it was written,
+# `fieldsOf` naming another parameter of its list, `methodsOf`, a method on a generic struct, and an anonymous struct
 # naming a type parameter back so the dump checks again and is a fixed point.
 #
 # A method's receiver list was dropped, `func Box.get()`, which named no type
@@ -14,7 +14,9 @@ cmp first.sngl second.sngl
 
 grep 'func Box\[T\]\.get\(\)' first.sngl
 grep 'func Keyed\[A, B\]\.keyOf\(\)' first.sngl
-grep 'func valueOf\[T any, U struct \{' first.sngl
+grep 'func valueOf\[T any, U fieldsOf\[struct \{' first.sngl
+grep 'func hex\[T methodsOf\[struct \{' first.sngl
+grep 'func record\[Q anyStruct\]' first.sngl
 grep 'func unwrap\[T any\]\(w struct \{' first.sngl
 grep 'inner struct \{' first.sngl
 
@@ -32,21 +34,27 @@ struct Cell {
     value int
 }
 
-func valueOf[T any, U struct {
+func valueOf[T any, U fieldsOf[struct {
     value T
-}](u U) => u.value
+}]](u U) => u.value
 
 struct Entry {
     key string
 }
 
-struct Keyed[K any, V struct {
+struct Keyed[K any, V fieldsOf[struct {
     key K
-}] {
+}]] {
     item V
 }
 
 func Keyed[A, B].keyOf() => this.item.key
+
+func hex[T methodsOf[struct {
+    const func format(base int) string
+}]](v T) => v.format(16)
+
+func record[Q anyStruct](q Q) => 1
 
 func unwrap[T any](w struct {
     v T
@@ -72,6 +80,7 @@ func testRoundTrip(t Test) {
     var b = Box[int]{value=3}
     var k = Keyed[string, Entry]{item=Entry{key="k"}}
     t.assert(b.get() == 3 && valueOf(Cell{value=1}) == 1 && k.keyOf() == "k")
+    t.assert(hex(255) == "ff" && record(Cell{value=1}) == 1)
 }
 
 window {

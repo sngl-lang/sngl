@@ -22,27 +22,27 @@ func Changing.format(c Changing) string {
     return "{c.n}"
 }
 
-func show[T struct {
+func show[T methodsOf[struct {
     const func format() string
-}](v T) => "<{v}>"
+}]](v T) => "<{v}>"
 
 func open[T any](v T) => show(v) // ERROR(check) "T does not satisfy"
 
-func other[T struct {
+func other[T methodsOf[struct {
     const func format() string
-}](v T) => v.size() // ERROR(check) "no method \"size\""
+}]](v T) => v.size() // ERROR(check) "no method \"size\""
 
-func bodied[T struct {
+func bodied[T methodsOf[struct {
     const func format() => "x" // ERROR(check) "a constraint's function takes no body"
-}](v T) => v
+}]](v T) => v
 
-func defaulted[T struct {
+func defaulted[T methodsOf[struct {
     const func format(base int = 10) string
-}](v T) => v.format()
+}]](v T) => v.format()
 
-func computed[T struct {
+func computed[T methodsOf[struct {
     const func format(base int = 2 + 8) string // ERROR(check) "a constraint's parameter defaults to a constant"
-}](v T) => v
+}]](v T) => v
 
 struct Octal {
     n int = 0

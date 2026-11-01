@@ -12,75 +12,120 @@ struct Tag {
     name int
 }
 
-func nameOf[T struct {
+func nameOf[T fieldsOf[struct {
     name string
-}](v T) => v.name
+}]](v T) => v.name
 
-// A constraint is `any` or an anonymous struct.
-func f1[T int](v T) => v // ERROR(check) "a type parameter's constraint is `any` or an anonymous struct"
+// A constraint is one sngl:builtin declares.
+func f1[T int](v T) => v // ERROR(check) "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]` or `methodsOf[S]`"
 
-func f2[T User](v T) => v // ERROR(check) "a type parameter's constraint is `any` or an anonymous struct"
+func f2[T User](v T) => v // ERROR(check) "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]` or `methodsOf[S]`"
 
-// A constraint says what a type has, not what it starts with.
-func f3[T struct {
-    name string = "x" // ERROR(check) "a constraint's field takes no default"
+// A struct names no constraint: what it asks is written with one that does.
+func s1[T struct {}](v T) => v // ERROR(check) "a struct is no constraint: `anyStruct` asks for a struct, and `anyFields` for a type with fields"
+
+func s2[T struct { // ERROR(check) "a struct is no constraint: `fieldsOf[struct { … }]` asks for its fields"
+    name string
 }](v T) => v
 
-// A default satisfies its own constraint.
-func f4[T struct {
+func s3[T struct { // ERROR(check) "a struct is no constraint: `methodsOf[struct { … }]` asks for its functions"
+    func format() string
+}](v T) => v
+
+// Each constraint takes what it says.
+func s4[T fieldsOf[struct {
+    func format() string // ERROR(check) "`fieldsOf` asks for fields; `methodsOf` asks for functions"
+}]](v T) => v
+
+func s5[T methodsOf[struct {
+    name string // ERROR(check) "`methodsOf` asks for functions; `fieldsOf` asks for fields"
+}]](v T) => v
+
+func s6[T fieldsOf[User]](v T) => v // ERROR(check) "`fieldsOf` takes an anonymous struct, `fieldsOf[struct { … }]`"
+
+func s7[T anyStruct[User]](v T) => v // ERROR(check) "`anyStruct` takes no type arguments"
+
+// A constraint is no type.
+func s8(v anyStruct) => 1 // ERROR(check) "`anyStruct` is a constraint, not a type"
+
+func s9(v fieldsOf[struct { // ERROR(check) "`fieldsOf` is a constraint, not a type"
     name string
-} = Tag](v option[T] = null) => v // ERROR(check) "Tag does not satisfy struct"
+}]) => 1
+
+func record[Q anyStruct](q Q) => 1
+
+func fielded[Q anyFields](q Q) => 1
+
+// A T a constraint gives fields is no struct for all that.
+func relayRecord[Q anyFields](q Q) => record(q) // ERROR(check) "Q does not satisfy anyStruct, the constraint on Q: its constraint does not say it is a struct"
+
+func relayAny[T any](v T) => fielded(v) // ERROR(check) "T does not satisfy anyFields, the constraint on Q: its constraint says nothing about its fields"
+
+// A data component's record has fields, and is no struct.
+component fruit(name string) fruit
+
+func pick(fs list[fruit]) => fielded(fs[0]) + record(fs[0]) // ERROR(check) "fruit does not satisfy anyStruct, the constraint on Q: it is no struct"
+
+// A constraint says what a type has, not what it starts with.
+func f3[T fieldsOf[struct {
+    name string = "x" // ERROR(check) "a constraint's field takes no default"
+}]](v T) => v
+
+// A default satisfies its own constraint.
+func f4[T fieldsOf[struct {
+    name string
+}] = Tag](v option[T] = null) => v // ERROR(check) "Tag does not satisfy fieldsOf"
 
 // Only the constraint's fields are visible.
-func f5[T struct {
+func f5[T fieldsOf[struct {
     name string
-}](v T) => v.age // ERROR(check) "age"
+}]](v T) => v.age // ERROR(check) "age"
 
-struct Holder[T struct {
+struct Holder[T fieldsOf[struct {
     name string
-}] {
+}]] {
     item T
 }
 
-component badge[T struct {
+component badge[T fieldsOf[struct {
     name string
-}](item T) node {
+}]](item T) node {
     text(value=item.name)
 }
 
 // A family's arguments, written in a member's return position.
-component tagged[M struct {
+component tagged[M fieldsOf[struct {
     name string
-}](meta M) build.family
+}]](meta M) build.family
 
-component plain(meta int) tagged[int] {} // ERROR(check) "int does not satisfy struct"
+component plain(meta int) tagged[int] {} // ERROR(check) "int does not satisfy fieldsOf"
 
-component item[M struct {
+component item[M fieldsOf[struct {
     name string
-}](meta M) tagged[M] {}
+}]](meta M) tagged[M] {}
 
 // A family's arguments, bound by the children a slot holds.
-component shelf[M struct {
+component shelf[M fieldsOf[struct {
     label string
     name  string
-}](items ...component tagged[M]) node {
+}]](items ...component tagged[M]) node {
     #[family.crosses]
     items
 }
 
 // A field naming another parameter is measured with what that one is bound
 // to.
-func valueOf[T any, U struct {
+func valueOf[T any, U fieldsOf[struct {
     value T
-}](u U) => u.value
+}]](u U) => u.value
 
 struct Cell {
     value int
 }
 
-struct Keyed[K any, V struct {
+struct Keyed[K any, V fieldsOf[struct {
     key K
-}] {
+}]] {
     item V
 }
 
@@ -90,31 +135,37 @@ struct Entry {
 
 component main node {
     // A type that is no struct.
-    var a = nameOf(1) // ERROR(check) "int does not satisfy struct"
+    var a = nameOf(1) // ERROR(check) "int does not satisfy fieldsOf"
 
     // A struct missing the field.
-    var b = nameOf({other=1}) // ERROR(check) "does not satisfy struct"
+    var b = nameOf({other=1}) // ERROR(check) "does not satisfy fieldsOf"
 
     // The field at another type.
-    var c = nameOf(Tag{name=1}) // ERROR(check) "Tag does not satisfy struct"
+    var c = nameOf(Tag{name=1}) // ERROR(check) "Tag does not satisfy fieldsOf"
 
     // A written type argument.
-    var d = nameOf[int](1) // ERROR(check) "int does not satisfy struct"
+    var d = nameOf[int](1) // ERROR(check) "int does not satisfy fieldsOf"
 
     // A type's own argument.
-    var e Holder[int] = {item=1} // ERROR(check) "int does not satisfy struct"
+    var e Holder[int] = {item=1} // ERROR(check) "int does not satisfy fieldsOf"
 
     // A written argument the field's type contradicts.
-    var f = valueOf[string](Cell{value=1}) // ERROR(check) "Cell does not satisfy struct { value string }"
+    var f = valueOf[string](Cell{value=1}) // ERROR(check) "Cell does not satisfy fieldsOf[struct { value string }]"
+
+    // A struct asked for, of no field in particular.
+    var h = record(1) // ERROR(check) "int does not satisfy anyStruct, the constraint on Q: it is no struct"
+
+    // Fields asked for, of no name in particular.
+    var i = fielded(1) // ERROR(check) "int does not satisfy anyFields, the constraint on Q: it has no fields"
 
     // A type's own arguments, one naming the other.
-    var g Keyed[int, Entry] = {item={key="k"}} // ERROR(check) "Entry does not satisfy struct { key int }"
+    var g Keyed[int, Entry] = {item={key="k"}} // ERROR(check) "Entry does not satisfy fieldsOf[struct { key int }]"
 
     vbox {
         // A component's prop.
-        badge(item=Tag{name=2}) // ERROR(check) "Tag does not satisfy struct"
+        badge(item=Tag{name=2}) // ERROR(check) "Tag does not satisfy fieldsOf"
         shelf {
-            item(meta=User{name="u"}) // ERROR(check) "User does not satisfy struct"
+            item(meta=User{name="u"}) // ERROR(check) "User does not satisfy fieldsOf"
         }
     }
 }

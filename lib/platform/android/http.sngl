@@ -14,7 +14,7 @@ func permission(name string) ir.Macro
 
 #[permission("android.permission.INTERNET")]
 #[marks.intrinsic("http.send", async)]
-func send[Q struct {} = struct {}](
+func send[Q anyStruct = struct {}](
     method  http.Method,
     url     string,
     query   Q = Q{},
@@ -24,4 +24,4 @@ func send[Q struct {} = struct {}](
 
 #[permission("android.permission.INTERNET")]
 #[marks.intrinsic("http.get", async)]
-func get[Q struct {} = struct {}](url string, query Q = Q{}) async.Result[http.Response]
+func get[Q anyStruct = struct {}](url string, query Q = Q{}) async.Result[http.Response]

@@ -45,6 +45,12 @@ const (
 	// value's type is written -- so it is met on a TypeParamSym's Constraint
 	// and nowhere else.
 	TypeAny
+	// TypeConstraint is a constraint that says something about a type
+	// parameter: Decl is the sngl:builtin struct whose kind says what
+	// (BuiltinAnyStruct …), and Elems holds the struct `fieldsOf[S]` and
+	// `methodsOf[S]` name. Like TypeAny it is met on a TypeParamSym's
+	// Constraint and nowhere else.
+	TypeConstraint
 )
 
 // Type is the unified representation of all SNGL types.
@@ -181,6 +187,15 @@ func (t *Type) String() string {
 		return "<invalid>"
 	case TypeAny:
 		return "any"
+	case TypeConstraint:
+		// The constraint as written: `fieldsOf[struct { name string }]`.
+		if t.Decl == nil {
+			return "constraint"
+		}
+		if len(t.Elems) == 0 {
+			return t.Decl.SymName()
+		}
+		return t.Decl.SymName() + "[" + t.Elems[0].String() + "]"
 	case TypeBool:
 		return "bool"
 	case TypeInt:
@@ -236,6 +251,10 @@ func (t *Type) String() string {
 		}
 		if t.Decl != nil {
 			name = t.Decl.SymName()
+		}
+		// A data component's record is written as the component's name.
+		if sd, ok := t.Decl.(*StructDef); ok && sd.RecordOf != nil {
+			name = sd.RecordOf.Name
 		}
 		// A generic instantiation prints its arguments: two Box types that
 		// differ only in them are different types, and a diagnostic that
@@ -552,7 +571,7 @@ func (t *Type) Equal(other *Type) bool {
 			}
 		}
 		return true
-	case TypeComponent, TypeEnum:
+	case TypeComponent, TypeEnum, TypeConstraint:
 		// `page[P]` is the instances whose call site bound the declaration's
 		// type parameters that way, and a handle carries what its call site
 		// bound. A bare `component` names no declaration and carries none.
@@ -583,7 +602,7 @@ func (t *Type) Equal(other *Type) bool {
 		a, aok := t.Meta.(NativeTypeRef)
 		b, bok := other.Meta.(NativeTypeRef)
 		return aok && bok && a == b
-	case TypeInvalid, TypeBool, TypeString, TypeNull, TypeVoid:
+	case TypeInvalid, TypeBool, TypeString, TypeNull, TypeVoid, TypeAny:
 		// Kinds carrying no distinguishing payload: the Kind comparison above
 		// has already settled them. Listed explicitly rather than defaulted so
 		// that a new kind with an identity field cannot be answered "equal" by
@@ -844,15 +863,15 @@ func IsUninternedAnon(sd *StructDef) bool {
 }
 
 // FieldsOf is the fields a value of type t is known to have, each at its
-// type: a struct's own with t's type arguments bound, or a type parameter's
-// struct constraint's. ok is false for a type that has no fields to measure.
+// type: a struct's own with t's type arguments bound, or those a type
+// parameter's constraint asks for. ok is false for a type that has no fields to measure.
 func FieldsOf(t *Type) (fields []*StructField, ok bool) {
 	if t == nil {
 		return nil, false
 	}
 	if t.Kind == TypeTypeParam {
-		if sym, _ := t.Decl.(*TypeParamSym); sym != nil && sym.Constraint != nil && sym.Constraint.Kind == TypeStruct {
-			return FieldsOf(sym.Constraint)
+		if con := paramConstraint(t); ConstraintFielded(con) {
+			return ConstraintFields(con), true
 		}
 		return nil, false
 	}

@@ -2081,15 +2081,13 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 			}
 		}
 
-		// A T a struct constrains has the constraint's fields, typed from
+		// A T a constraint gives fields has those, typed from
 		// it, and nothing else a generic body can name.
-		if sd := paramConstraint(operand); sd != nil {
-			for _, f := range sd.Fields {
-				if f.Name == x.Field {
-					return &ir.Select{AST: x, Type: f.Type, Operand: operandExpr, Field: x.Field}
-				}
+		if fields, con, ok := paramFields(operand); ok {
+			if f := ir.FieldNamed(fields, x.Field); f != nil {
+				return &ir.Select{AST: x, Type: f.Type, Operand: operandExpr, Field: x.Field}
 			}
-			c.error(x.Pos, "no field %q on %s, whose constraint is %s", x.Field, operand, sd.SymType())
+			c.error(x.Pos, "no field %q on %s, whose constraint is %s", x.Field, operand, con)
 			return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
 		}
 
