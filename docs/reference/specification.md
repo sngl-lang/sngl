@@ -261,8 +261,11 @@ TripleInterp = TRIPLE_START Expr { STR_RESUME Expr } TRIPLE_END
 
 For example `"a {x} b {y} c"` produces the segments `STR_START "a "`, the
 expression `x`, `STR_RESUME " b "`, the expression `y`, and `STR_END " c"`.
-Each interpolated expression is implicitly converted to `string` (see
-[Conversions](#conversions)).
+A comma after the expression begins the arguments of its format, `"{n, 16}"`,
+lexed as any argument list is; a string inside them is a string of its own,
+so `"{n, pad="0"}"` holds one. Each field is the string its value's format
+method writes (see
+[String interpolation expressions](#string-interpolation-expressions)).
 
 ### Translatable (i18n) strings
 
@@ -532,7 +535,7 @@ enum Result[T any] {
 - The zero value is the first member's, with its payload's zero.
 - Two values are equal when they hold one member with equal payloads; an
   enum whose payloads do not all compare is not comparable, and one carrying
-  payloads has no string form unless it declares `string()`.
+  payloads has no format unless it declares `format`.
 
 #### Unit types
 
@@ -653,14 +656,14 @@ permitted conversions among primitives are:
 - to `int` — from `int`, `float` (truncating), `string`, `bool`, an enum, or a
   single-base unit;
 - to `float` — from the same set as `int`;
-- to `string` — from `int`, `float`, `bool`, an enum, a unit, or a
-  string-representable type;
 - to `bool` — from `bool` or `string`;
 - to a string-representable type — from `string` or from itself.
 
-Conversions whose operand is a struct, component, function, list,
-option, or `null` are rejected, and so are `int` and `float` of a multi-base
-unit (see [Unit types](#unit-types)).
+`string(x)` is no conversion: it is `x.format()`, the string `"{x}"` holds (see
+[String interpolation expressions](#string-interpolation-expressions)), and is
+rejected where x's type declares no format. Other conversions whose operand is
+a struct, component, function, list, option, or `null` are rejected, and so
+are `int` and `float` of a multi-base unit (see [Unit types](#unit-types)).
 
 ### Narrowing an option
 
@@ -737,8 +740,34 @@ parameters bound, and where one is not -- nothing written or passed binds it
 `valueOf(Cell{value=1})` binds `T` to `int`. A default binds its list the
 same way where its declaration is checked.
 
+A constraint may also declare functions, each written as a method in a
+struct's body is and conventionally without one: `[T struct { const func format() string }]` is any type with a `format` that a call of that shape
+fits. A type's method satisfies a constraint's function when it has the
+function's name, each of the function's parameters is one of the method's of
+that name at an equal type, every other parameter of the method has a default,
+it returns an equal type, and it is `const` where the function is. A
+constraint's function takes no body and no type parameters. A parameter of one
+may have a default, which lets a call through the constraint leave it out;
+the default is a constant -- a literal, an enum member, or a `const` naming
+one -- and the method must declare the same default for that parameter. A
+constraint declaring functions and no fields asks for nothing else, so any
+type with those methods satisfies it, a builtin type, an enum and a list
+included; one declaring fields, or nothing at all, is satisfied only by a type
+with fields. A function's parameter may name the type parameter it constrains or another
+of the list, as a field may.
+
+```sngl
+func hex[T struct {
+    const func format(base int) string
+}](v T) => v.format(16)
+
+var a = hex(255) // "ff": int.format also takes width and pad, which have defaults
+```
+
 In a generic body a value of a constrained `T` has the constraint's fields,
-typed from the constraint, and nothing else: `v.name` reads one, and any other
+typed from the constraint, and its functions, and nothing else: `v.name` reads
+a field, `v.format(16)` calls the bound type's own method of that name, with
+its defaults for any parameter the constraint does not declare, and any other
 member is unknown. A spread of a `T` binds those fields by name, as a struct's
 spread binds its own.
 
@@ -1460,18 +1489,61 @@ operand is converted to `float` and the result is `float`.
 
 ### String interpolation expressions
 
-The segments of an interpolated string surround expressions that are each
-implicitly converted to `string`. A custom type participates in interpolation
-only if it converts to `string` (lists and options fall back to a built-in
-stringification). A parameterless computed in an interpolation is called
+The segments of an interpolated string surround fields, each the string its
+value's `format` method writes: `{x}` is `x.format()`, and `{x, a, b}` is
+`x.format(a, b)`. The arguments are checked as any call's are, so a format
+may declare defaults and a field may pass them by name, `{n, width=4}`. A
+format returns `string`.
+
+A type is formatted only if it declares `format`, and `string(x)` is the same
+call. The builtin types do:
+
+| Type                        | Format                                                                                                 | Options                                                                                                                        |
+|-----------------------------|--------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
+| `int`                       | decimal, or in `base` from 2 to 36                                                                     | `base = 10`, `width = 0`, `pad = " "`: at least `width` characters, `pad` filling on the left, after the sign when it is `"0"` |
+| `float`                     | as the target writes the number, or with `places` digits after the point, rounding half away from zero | `places = -1`                                                                                                                  |
+| sized numbers               | decimal                                                                                                | none                                                                                                                           |
+| `bool`                      | `true` or `false`                                                                                      | none                                                                                                                           |
+| `string`                    | itself                                                                                                 | none                                                                                                                           |
+| `color`                     | its `hex()`                                                                                            | none                                                                                                                           |
+| `date`, `time`, `datetime`  | the canonical form a literal of it is written in                                                       | none                                                                                                                           |
+| `builder`                   | what has been built                                                                                    | none                                                                                                                           |
+| `list[T]`                   | each element's format, `sep` between them, no brackets                                                 | `sep = ", "`, and the element's                                                                                                |
+| `option[T]`                 | its value's format, or `none` where there is none                                                      | `none = ""`, and the value's                                                                                                   |
+| an enum carrying no payload | its member's name                                                                                      | none                                                                                                                           |
+| a unit                      | its magnitude per base                                                                                 | none                                                                                                                           |
+
+An enum's and a unit's format is one the compiler declares, and one the
+type declares is the one called instead. `null` has no type to format, so
+`{null}` is an error. A parameterless computed in an interpolation is called
 implicitly.
+
+A value of a type parameter is formatted where its constraint declares
+`format` (see [Generic type parameters](#generic-type-parameters)), and its
+field may pass what that function declares: `{v}` is the format of the type
+bound to it.
+
+A list and an option are formatted only where their element type is, and a
+named argument a list's or an option's format does not declare is passed to
+each element's: `{xs, sep="; ", base=16}` writes each int in base 16, and
+`{grid, base=2}` reaches the ints of a `list[list[int]]`. A name the
+container declares is the container's, so an element parameter of that name
+is not reachable from the field.
+
+A type may also declare `appendFormat`, taking a `ref[builder]` after the
+receiver and then format's parameters, which puts the same text on the end of
+the builder. The compiler may write a string whose fields include such a type
+with one builder, calling appendFormat for those fields in place of format;
+what the string holds is the same either way.
 
 <!-- BEGIN GENERATED: grammar-string-interpolation -->
 
 ```ebnf
-InterpStr = STR_START Expr { STR_RESUME Expr } STR_END
+InterpStr = STR_START InterpField { STR_RESUME InterpField } STR_END
 
-TripleInterp = TRIPLE_START Expr { STR_RESUME Expr } TRIPLE_END
+TripleInterp = TRIPLE_START InterpField { STR_RESUME InterpField } TRIPLE_END
+
+InterpField = Expr [ "," ArgList ]
 
 I18nInterpStr = I18N_STR_START I18nPlaceholder { I18N_STR_RESUME I18nPlaceholder } I18N_STR_END
 
@@ -3076,9 +3148,11 @@ FuncLit = "func" [ "(" [ ParamList ] ")" ] FuncBodyTail
 ```
 
 ```ebnf
-InterpStr = STR_START Expr { STR_RESUME Expr } STR_END
+InterpStr = STR_START InterpField { STR_RESUME InterpField } STR_END
 
-TripleInterp = TRIPLE_START Expr { STR_RESUME Expr } TRIPLE_END
+TripleInterp = TRIPLE_START InterpField { STR_RESUME InterpField } TRIPLE_END
+
+InterpField = Expr [ "," ArgList ]
 
 I18nInterpStr = I18N_STR_START I18nPlaceholder { I18N_STR_RESUME I18nPlaceholder } I18N_STR_END
 

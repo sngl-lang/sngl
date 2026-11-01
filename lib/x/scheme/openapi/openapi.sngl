@@ -52,7 +52,7 @@ gen.scheme(name="openapi", @generate(out, importPath) {
     for var line = gen.lines(importPath) {
         lines.push(line)
     }
-    var pkg = generate(lines.join("\n"), importPath)
+    var pkg = generate(lines.format("\n"), importPath)
     for var n = pkg.notes {
         out.note(n)
     }

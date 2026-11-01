@@ -177,13 +177,7 @@ func (m *monomorph) visit(n ir.Node) {
 		if _, ok := m.slot[x.Func]; !ok && !m.takeLib(x.Func) {
 			return
 		}
-		b := map[string]*ir.Type{}
-		for i, p := range x.Func.Params {
-			if i < len(x.Args) && x.Args[i].Value != nil {
-				ir.BindTypeParams(p.Type, x.Args[i].Value.ExprType(), b)
-			}
-		}
-		ir.BindTypeParams(x.Func.Return, x.Type, b)
+		_, b := ir.GenericCallee(x)
 		if inst := m.instance(x.Func, b); inst != nil {
 			x.Func = inst
 			// A default CallDefaults wrote is typed by the declaration's T.

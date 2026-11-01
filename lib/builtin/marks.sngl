@@ -46,6 +46,10 @@ enum _Kind {
     application
     targetPlatform
     targetLanguage
+    text
+    formatArgs
+    formatWith
+    appendFormatWith
 }
 
 // Names the IR construct a declaration dispatches to: sngl:internal/marks'

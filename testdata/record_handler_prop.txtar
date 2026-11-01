@@ -29,7 +29,7 @@ const languages = ["en", "fr", "de"]
 
 component picker(items ...component ui.menuItem) ui.node {
     ui.vbox {
-        ui.text #summary(value=items.map(func(it) => it.checked ? "[{it.label}]" : it.label).join(" "))
+        ui.text #summary(value=items.map(func(it) => it.checked ? "[{it.label}]" : it.label).format(" "))
         for var it = items {
             ui.button #pick(text=it.label, @click {
                 it.select()
@@ -1002,13 +1002,13 @@ func (m *Model) __setsummary_label() {
 			return __out
 		}()) {
 			__out[__i] = func(it MenuItem__record) string {
-				var __lt18 string
+				var __lt19 string
 				if it.Checked {
-					__lt18 = (("[" + it.Label) + "]")
+					__lt19 = (("[" + it.Label) + "]")
 				} else {
-					__lt18 = it.Label
+					__lt19 = it.Label
 				}
-				return __lt18
+				return __lt19
 			}(__item)
 		}
 		return __out
@@ -1081,13 +1081,13 @@ func (m *Model) buildWidgetTree() {
 			return __out
 		}()) {
 			__out[__i] = func(it MenuItem__record) string {
-				var __lt18 string
+				var __lt19 string
 				if it.Checked {
-					__lt18 = (("[" + it.Label) + "]")
+					__lt19 = (("[" + it.Label) + "]")
 				} else {
-					__lt18 = it.Label
+					__lt19 = it.Label
 				}
-				return __lt18
+				return __lt19
 			}(__item)
 		}
 		return __out
@@ -1438,7 +1438,7 @@ pass sha256:d0c37af0741ed6bc5a065d956e589f2a
 -- run/go/fyne --
 pass sha256:6d9ee17570b96284e87561b9955fc87b
 -- run/go/gtk4 --
-pass sha256:ea28213298673035f5c386d617a25eef
+pass sha256:e191eae07639cbabdc941da2b91bbcad
 -- run/go/html --
 pass sha256:5510c033443eae0827f90d3aa3e3e6d0
 -- run/kotlin/android --

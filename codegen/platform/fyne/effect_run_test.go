@@ -20,7 +20,7 @@ window {
     )
 
     button #bump(text="+", @click { n += 1 })
-    text #out(value=log.join(","))
+    text #out(value=log.format(","))
 }
 `
 

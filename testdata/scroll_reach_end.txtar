@@ -935,7 +935,7 @@ class MainScreenState {
 @Composable
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
-    SnglScroll(modifier = Modifier.testTag("list").then(flexed(styleModifier(Style(flex = 1.0), true), 1.0, state.__ctx_flexShare)).safeDrawingPadding(), direction = "vertical", onReachEnd = {
+    SnglScroll(modifier = Modifier.testTag("list").then(styleModifier(Style(flex = 1.0), true).then(state.__ctx_flexShare(1.0f))).safeDrawingPadding(), direction = "vertical", onReachEnd = {
         if ((state.shown < 60)) {
         	state.shown += 10
         }
@@ -1450,6 +1450,6 @@ pass sha256:52ee0924f584320b8c8c03cee986a4a1
 -- run/go/gtk4 --
 pass sha256:8067cabf330f25a768af03d00c8c3f0e
 -- run/kotlin/android --
-pass sha256:b2e3e9771d83f312adf3326dc2465424
+pass sha256:4d117b599b360a544b395c349928a0b2
 -- run/none/html --
 pass sha256:82c5750c83fa9dea36ef9d0b440c277d

@@ -71,9 +71,9 @@ func encode(members list[Entry]) string {
         if e.separatorWidth >= 0 {
             fs.push("\"separator_block_width\":{e.separatorWidth}")
         }
-        blocks.push(`{` + fs.join(",") + `}`)
+        blocks.push(`{` + fs.format(",") + `}`)
     }
-    return "[" + blocks.join(",") + "],"
+    return "[" + blocks.format(",") + "],"
 }
 
 // The value of a scalar field of one click object, or "" where the line has

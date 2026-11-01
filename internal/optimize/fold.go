@@ -32,6 +32,13 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 
 	// Try function inlining.
 	if call, ok := e.(*ir.Call); ok {
+		// `_format(x, args)` at a bound type is that type's format, and a
+		// constraint's function its own method, which inline in turn.
+		if ctx != nil && ctx.pkg != nil && ctx.pkg.Symbols != nil {
+			if formatted, ok := ir.BoundCall(ctx.pkg.Symbols.Root, call); ok {
+				return foldExpr(formatted, ctx)
+			}
+		}
 		// An argument bound to a const parameter is held to a literal before
 		// the call is inlined away: the contract is the call site's, and once
 		// the body is spliced in there is no parameter left to hold it to.
@@ -76,6 +83,11 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		// storage may be mutated through aliases, and `&literal` is not a
 		// valid emission. Leave the operand untouched so the codegen still
 		// sees the original lvalue identifier.
+		// What `&b` refers to is b: a reference handed to a ref[T] parameter
+		// and read through once the body is spliced in.
+		if addr, ok := x.Operand.(*ir.Unary); ok && x.Op == ast.UnaryDeref && addr.Op == ast.UnaryAddr {
+			return addr.Operand
+		}
 		if x.Op == ast.UnaryDeref && !isRef(x.Operand) {
 			// A plain T that stood in for a ref[T] parameter: the coercion
 			// leaves the value as it is, so what the body wrote as `*p` is now
@@ -126,6 +138,9 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		// the inliner never saw.
 		if x.ErrorHandler != nil && x.ErrorHandler.Func != nil {
 			x.ErrorHandler.Func.Block = foldStmts(x.ErrorHandler.Func.Block, ctx)
+		}
+		if operand := identityMap(x); operand != nil {
+			return operand
 		}
 		// An argument the inliner would not copy into a body reading it
 		// twice may have folded to one it will: `s == blank ? modifier : …`
@@ -410,6 +425,13 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 			}
 			if n.Call.ErrorHandler != nil && n.Call.ErrorHandler.Func != nil {
 				n.Call.ErrorHandler.Func.Block = foldStmts(n.Call.ErrorHandler.Func.Block, ctx)
+			}
+			if inlined := inlineCallStmt(n.Call, ctx); inlined != nil {
+				if ctx != nil && n.Call.Func != nil {
+					ctx.inliningFuncs[n.Call.Func] = true
+					defer delete(ctx.inliningFuncs, n.Call.Func)
+				}
+				return foldStmt(inlined, ctx)
 			}
 		}
 	case *ir.LocalVar:
@@ -857,4 +879,30 @@ func literalField(x *ir.Select) ir.Expr {
 		found = cloneExpr(sl.Field(x.Field))
 	}
 	return found
+}
+
+// identityMap is the list call maps, where call is `xs.map(func(x) => x)`
+// at one type, and nil otherwise. A list of strings formatted or joined is
+// one: each item's format is the item (`list.format`).
+func identityMap(call *ir.Call) ir.Expr {
+	if call.Func == nil || call.Func.Intrinsic != "list.map" || len(call.Args) != 2 {
+		return nil
+	}
+	lam, ok := call.Args[1].Value.(*ir.Lambda)
+	if !ok || lam.Func == nil || len(lam.Func.Params) != 1 || len(lam.Func.Block) != 1 {
+		return nil
+	}
+	ret, ok := lam.Func.Block[0].(*ir.Return)
+	if !ok {
+		return nil
+	}
+	id, ok := ret.Value.(*ir.Ident)
+	if !ok || id.Sym != ir.Symbol(lam.Func.Params[0]) {
+		return nil
+	}
+	list := call.Args[0].Value
+	if t := list.ExprType(); t == nil || call.Type == nil || !t.Equal(call.Type) {
+		return nil
+	}
+	return list
 }

@@ -35,6 +35,10 @@ func (c orderConstraint) String() string {
 
 // orderConstraints is every ordering the pipeline actually depends on.
 var orderConstraints = []orderConstraint{
+	{"BuiltinMethods", "StringBuilders",
+		"an appendFormat it makes a function of the package takes a builder, which is a string on a target without builders only once StringBuilders has seen it"},
+	{"BuiltinMethods", "CallDefaults",
+		"a builtin method's call is matched to its parameters with the receiver first, and the defaults are written for the function it becomes"},
 	{"StringBuilders", "ValueCopy",
 		"a builder is a value a store copies, and once it is a string the store copies nothing; copied first, the copy is a builder's the target cannot spell"},
 	{"StringBuilders", "RefParams",

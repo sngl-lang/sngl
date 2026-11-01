@@ -242,7 +242,7 @@ sha256:18efea574528dc67b67af04767dad017
   }
 }
 -- testrun/gtk4/go/app.sngl/grows/1 --
-sha256:d27261f0c8a6b04800074e70309fac22
+sha256:91bfeca640ca84ee00ba0cea5ad5d11a
 {
   "results": [
     {

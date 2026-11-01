@@ -525,6 +525,9 @@ func walkCallExprs(doc *ast.Document, fn func(*ast.CallExpr)) {
 		case *ast.LambdaExpr:
 			walkE(x.Body)
 			walkBlock(x.Block)
+		case *ast.FormatExpr:
+			walkE(x.Value)
+			walkArgs(x.Args)
 		case *ast.InterpolationExpr:
 			for _, p := range x.Parts {
 				walkE(p)

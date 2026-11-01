@@ -423,7 +423,8 @@ func (c *checker) typeParamConstraint(sd *ir.StructDef, i int) *ir.Type {
 	var t *ir.Type
 	c.quietly(func() {
 		defer pushTypeParams(c, sd.AST.TypeParams)()
-		t = c.resolveConstraint(sd.AST.TypeParams[i].Constraint)
+		p := sd.AST.TypeParams[i]
+		t = c.resolveConstraint(p.Constraint, c.typeParamSym(p.Name, p.Pos).SymType())
 	})
 	return t
 }
@@ -494,8 +495,9 @@ func (c *checker) resolveTypeParams(ps []ast.TypeParam) []ir.TypeParam {
 	for i, p := range ps {
 		out[i] = ir.TypeParam{Pos: p.Pos, Name: p.Name}
 		if p.Constraint != nil {
-			out[i].Constraint = c.resolveConstraint(p.Constraint)
-			if sym := c.typeParamSym(p.Name, p.Pos); sym.Constraint == nil {
+			sym := c.typeParamSym(p.Name, p.Pos)
+			out[i].Constraint = c.resolveConstraint(p.Constraint, sym.SymType())
+			if sym.Constraint == nil {
 				sym.Constraint = out[i].Constraint
 			}
 		}
@@ -574,13 +576,15 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 		}
 		c.applyMarks(m, members[i])
 	}
-	return &ir.EnumDef{
+	ed := &ir.EnumDef{
 		AST:        e,
 		Name:       e.Name,
 		Pkg:        c.declPkg(),
 		TypeParams: typeParamShells(e.TypeParams),
 		Members:    members,
 	}
+	ed.Format = ir.NewDefaultFormat(ed.SymType(), ed.Pkg)
+	return ed
 }
 
 // resolveEnumBody resolves what each member carries, which may name any
@@ -653,6 +657,7 @@ func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
 	// registration is the only place that knows the suffixes have been
 	// resolved, and a lookup that had to derive it would be a second answer.
 	ud.Fields = ir.UnitFields(ud)
+	ud.Format = ir.NewDefaultFormat(ud.SymType(), ud.Pkg)
 	return ud
 }
 

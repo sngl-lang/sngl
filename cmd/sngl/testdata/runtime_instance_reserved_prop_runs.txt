@@ -45,7 +45,7 @@ component app ui.node {
 }
 
 func testEachCopyStartsFromItsDefault(t test.Test, c app) {
-    t.assert(log.join(",") == "a=none,b=none")
+    t.assert(log.format(",") == "a=none,b=none")
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
 sha256:a26e46877b7ebdd6a3f70698ae9020cb

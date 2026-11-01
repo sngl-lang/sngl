@@ -73,10 +73,19 @@ func GenericCallee(n Node) (any, map[string]*Type) {
 			return nil, nil
 		}
 		b := map[string]*Type{}
+		// A receiver its parameters do not list comes first, and binds
+		// what its type names.
+		args := x.Args
+		if x.ReceiverArg && ReceiverOutsideParams(fn) && len(args) > 0 {
+			BindTypeParams(fn.RecvParam.Type, args[0].Value.ExprType(), b)
+			args = args[1:]
+		}
 		for i, p := range fn.Params {
-			arg := x.ArgFor(p.Name)
-			if arg == nil && i < len(x.Args) && x.Args[i].Name == "" {
-				arg = x.Args[i].Value
+			var arg Expr
+			for j, a := range args {
+				if a.Name == p.Name || a.Name == "" && j == i {
+					arg = a.Value
+				}
 			}
 			if arg != nil {
 				BindTypeParams(p.Type, arg.ExprType(), b)

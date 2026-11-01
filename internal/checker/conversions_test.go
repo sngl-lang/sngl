@@ -55,7 +55,7 @@ func test() {
     var v = Vec{x=1}
     var s = string(v)
 }
-`, "cannot convert")
+`, "cannot format Vec: type has no format method")
 }
 
 func TestConvBoolFromNonBoolRejected(t *testing.T) {
@@ -111,16 +111,16 @@ component main node {
     var v = Vec{x=1, y=2}
     text(value="v={v}")
 }
-`, "no string() method")
+`, "no format method")
 }
 
-func TestInterpolateStructWithStringMethod(t *testing.T) {
+func TestInterpolateStructWithFormatMethod(t *testing.T) {
 	expectNoErrors(t, `
 struct Vec {
     x int = 0
     y int = 0
 }
-func Vec.string(v Vec) => "{v.x},{v.y}"
+func Vec.format(v Vec) => "{v.x},{v.y}"
 component main node {
     var v = Vec{x=1, y=2}
     text(value="v={v}")
@@ -223,13 +223,14 @@ func test() {
 `, "cannot convert")
 }
 
-func TestConvStringFromListRejected(t *testing.T) {
-	expectError(t, `
+// A list's string is its format, as its interpolation is.
+func TestConvStringFromList(t *testing.T) {
+	expectNoErrors(t, `
 func test() {
     var xs list[int] = [1, 2, 3]
     var s = string(xs)
 }
-`, "cannot convert")
+`)
 }
 
 func TestConvExpectsOneArgument(t *testing.T) {
@@ -366,8 +367,7 @@ component main node {
 }
 
 func TestInterpolateList(t *testing.T) {
-	// Lists currently fall back to a language-native stringifier when no
-	// `list.string()` method exists — no checker error.
+	// A list is written by sngl:builtin's `list.format`.
 	expectNoErrors(t, `
 component main node {
     var xs list[int] = [1, 2, 3]
@@ -407,7 +407,7 @@ component main node {
     var inst = Inner()
     text(value="inst={inst}")
 }
-`, "no string() method")
+`, "no format method")
 }
 
 func TestMixedTypedMulRejected(t *testing.T) {
@@ -465,7 +465,7 @@ component main node {
 	}
 }
 
-func TestIRInterpolationEmitsConversion(t *testing.T) {
+func TestIRInterpolationCallsFormat(t *testing.T) {
 	doc, _ := parser.Parse("test.sngl", []byte(`
 import . "sngl:ui"
 
@@ -476,7 +476,7 @@ component main node {
 `))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
 	// Walk the text() node to find the interpolated value and check that
-	// its int part is wrapped in ir.Conversion to string.
+	// its int part is int.format(n).
 	found := false
 	var walk func(e ir.Expr)
 	walk = func(e ir.Expr) {
@@ -484,9 +484,9 @@ component main node {
 		case *ir.Binary:
 			walk(x.Left)
 			walk(x.Right)
-		case *ir.Conversion:
-			if x.Type != nil && x.Type.Kind == ir.TypeString {
-				if lit, ok := x.Operand.(*ir.Ident); ok && lit.Name == "n" {
+		case *ir.Call:
+			if x.Func != nil && x.Func.Name == "format" && x.Func.RecvName() == "int" && len(x.Args) > 0 {
+				if lit, ok := x.Args[0].Value.(*ir.Ident); ok && lit.Name == "n" {
 					found = true
 				}
 			}
@@ -502,7 +502,7 @@ component main node {
 		}
 	}
 	if !found {
-		t.Error("expected Conversion{string, n} in interpolation IR")
+		t.Error("expected int.format(n) in interpolation IR")
 	}
 }
 

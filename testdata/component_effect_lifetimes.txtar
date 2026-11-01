@@ -18,17 +18,17 @@ component branch node {
     if shown {
         effect(@mount { log.push("in") }, @unmount { log.push("out") })
     }
-    text(value=log.join(","))
+    text(value=log.format(","))
 }
 
 func testBranchIsTheLifetime(t Test, c branch) {
-    t.assert(c.log.join(",") == "in")
+    t.assert(c.log.format(",") == "in")
     c.toggle.click()
-    t.assert(c.log.join(",") == "in,out")
+    t.assert(c.log.format(",") == "in,out")
     c.toggle.click()
-    t.assert(c.log.join(",") == "in,out,in")
+    t.assert(c.log.format(",") == "in,out,in")
     c.toggle.click()
-    t.assert(c.log.join(",") == "in,out,in,out")
+    t.assert(c.log.format(",") == "in,out,in,out")
 }
 
 // One bracket per element, keyed by it: dropping one moves only its own, and
@@ -41,18 +41,18 @@ component perElement node {
     for var it = items {
         effect(on=it, @mount(v) { log.push("+" + v) }, @unmount(v) { log.push("-" + v) })
     }
-    text(value=log.join(","))
+    text(value=log.format(","))
 }
 
 func testEndingsRunNewestFirst(t Test, c perElement) {
-    t.assert(c.log.join(",") == "+a,+b,+c")
+    t.assert(c.log.format(",") == "+a,+b,+c")
     c.drop.click()
-    t.assert(c.log.join(",") == "+a,+b,+c,-c,-b")
+    t.assert(c.log.format(",") == "+a,+b,+c,-c,-b")
 }
 
 func testPushMountsTheNewBracket(t Test, c perElement) {
     c.add.click()
-    t.assert(c.log.join(",") == "+a,+b,+c,+d")
+    t.assert(c.log.format(",") == "+a,+b,+c,+d")
 }
 
 // Two positions rekeyed by one write both end before either begins.
@@ -62,13 +62,13 @@ component twoPositions node {
     button #rekey(text="rekey", @click { k = k + 1 })
     effect(on=k, @mount { log.push("+A") }, @unmount { log.push("-A") })
     effect(on=k, @mount { log.push("+B") }, @unmount { log.push("-B") })
-    text(value=log.join(","))
+    text(value=log.format(","))
 }
 
 func testBothEndBeforeEitherBegins(t Test, c twoPositions) {
-    t.assert(c.log.join(",") == "+A,+B")
+    t.assert(c.log.format(",") == "+A,+B")
     c.rekey.click()
-    t.assert(c.log.join(",") == "+A,+B,-B,-A,+A,+B")
+    t.assert(c.log.format(",") == "+A,+B,-B,-A,+A,+B")
 }
 
 struct counter {
@@ -92,17 +92,17 @@ component keys node {
     button #called(text="called", @click { n = n + 1 })
     effect(on=key.n, @mount { log.push("f+") }, @unmount { log.push("f-") })
     effect(on=scaled(2), @mount { log.push("c+") }, @unmount { log.push("c-") })
-    text(value=log.join(","))
+    text(value=log.format(","))
 }
 
 func testAFieldWriteRekeys(t Test, c keys) {
     c.field.click()
-    t.assert(c.log.join(",") == "f+,c+,f-,f+")
+    t.assert(c.log.format(",") == "f+,c+,f-,f+")
 }
 
 func testACalledKeyRekeys(t Test, c keys) {
     c.called.click()
-    t.assert(c.log.join(",") == "f+,c+,c-,c+")
+    t.assert(c.log.format(",") == "f+,c+,c-,c+")
 }
 
 // A struct key compares field by field: the same value written again is no
@@ -113,14 +113,14 @@ component structKey node {
     button #same(text="same", @click { key = pair{a=1, b="x"} })
     button #bump(text="bump", @click { key = pair{a=1, b="y"} })
     effect(on=key, @mount { log.push("m") }, @unmount { log.push("u") })
-    text(value=log.join(","))
+    text(value=log.format(","))
 }
 
 func testAStructKeyComparesFieldByField(t Test, c structKey) {
     c.same.click()
-    t.assert(c.log.join(",") == "m")
+    t.assert(c.log.format(",") == "m")
     c.bump.click()
-    t.assert(c.log.join(",") == "m,u,m")
+    t.assert(c.log.format(",") == "m,u,m")
 }
 
 window {

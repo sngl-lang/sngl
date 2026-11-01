@@ -2,6 +2,7 @@ package ir
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"sort"
 	"strings"
@@ -154,6 +155,16 @@ func (c *converter) convertStructDef(s *StructDef) *ast.StructDef {
 func (c *converter) convertAnonStructType(sd *StructDef) ast.TypeExpr {
 	def := c.convertStructDef(sd)
 	def.Name = ""
+	// A constraint's functions, each as declared, with no body.
+	for _, name := range slices.Sorted(maps.Keys(sd.Methods)) {
+		fn := sd.Methods[name]
+		fd := &ast.FuncDef{Name: fn.Name, Params: c.convertParamList(fn.Params), Const: fn.Const}
+		if fn.Return != nil && fn.Return.Kind != TypeVoid {
+			fd.ReturnType = c.convertType(fn.Return)
+		}
+		def.Body = append(def.Body, fd)
+		def.IsMultiline = true
+	}
 	return def
 }
 
@@ -1036,13 +1047,17 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 			funcExpr = c.convertExpr(call.Receiver)
 		}
 	} else if call.Func != nil {
-		if call.ReceiverArg && len(call.Args) > 0 {
-			// The receiver is no parameter, so it goes before the dot.
+		// The receiver is no parameter, so it goes before the dot; and a
+		// type's method called on a value, `n.abs()`, is printed so, its
+		// receiver passed unnamed where `int.abs(x=n)` names it -- printed
+		// as `int.abs(n)` it read back as the second, a different call.
+		if len(call.Args) > 0 && (call.ReceiverArg || call.Args[0].Name == "" && takesReceiver(call.Func)) {
 			recv := c.convertExpr(call.Args[0].Value)
 			// A brace may not open an `if` or `for` head, so a literal
-			// before the dot is parenthesized wherever it stands.
+			// before the dot is parenthesized wherever it stands, and so is
+			// an operator, which would otherwise take the call as its operand.
 			switch r := recv.(type) {
-			case *ast.MapLit:
+			case *ast.MapLit, *ast.BinaryExpr, *ast.UnaryExpr, *ast.TernaryExpr:
 				recv = &ast.ParenExpr{Inner: r}
 			case *ast.StructExpr:
 				if r.Name == "" {
@@ -1078,6 +1093,24 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 		Func: c.typeArgCallee(funcExpr, call),
 		Args: c.convertCallArgList(call.Args),
 	}
+}
+
+// takesReceiver reports whether fn is a type's method whose first parameter is
+// the value it is called on: `func int.abs(x int)`.
+// ReceiverOutsideParams reports whether a call of fn passes, as its first
+// argument, a receiver Params do not list: fn's RecvParam, the `this` of a
+// method on a generic builtin, where no parameter takes the receiver itself
+// (`func Box[T].same(b Box[T])` declares both).
+func ReceiverOutsideParams(fn *Func) bool {
+	return fn != nil && fn.RecvParam != nil && !takesReceiver(fn)
+}
+
+func takesReceiver(fn *Func) bool {
+	if !fn.OnType() || len(fn.Params) == 0 || fn.Params[0].Type == nil {
+		return false
+	}
+	p := fn.Params[0]
+	return p.Receiver || p.Type.Decl != nil && p.Type.Decl == fn.RecvDecl()
 }
 
 // typeArgCallee is callee with the type arguments call was written with.

@@ -120,7 +120,7 @@ component scalar ui.node {
         n = v
     }
 
-    ui.text #out(value=log.join(","))
+    ui.text #out(value=log.format(","))
 }
 
 func testUpdateBeforeRekey(t test.Test, c scalar) {

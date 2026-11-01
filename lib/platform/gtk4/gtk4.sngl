@@ -658,11 +658,11 @@ const component ui.select[platform](value, disabled, style, @change, options) {
     // Keyed on the drop-down as well as its labels, so a render that builds
     // the drop-down afresh offers the new one its choices: an effect whose
     // key reads a node mounts again wherever the node is built.
-    effect(on={labels=options.map(func(o) => o.label).join("\n"), drop=drop}, @mount(k) {
+    effect(on={labels=options.map(func(o) => o.label).format("\n"), drop=drop}, @mount(k) {
         offerChoices(drop, k.labels, value)
     })
     effect(on=value, @mount(v) {
-        offerChoices(drop, options.map(func(o) => o.label).join("\n"), v)
+        offerChoices(drop, options.map(func(o) => o.label).format("\n"), v)
     })
 }
 

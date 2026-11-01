@@ -29,7 +29,7 @@ it**, and grep `design/` for a function or pass name before concluding nothing
 explains it. A note there that only says what a construct means belongs in the
 spec instead.
 
-- `design/language.md` — `const`; bodyless components and overrides; events; loops and for-else; view walks (`ir.ViewBlocks`, `blocks.go`); lambda bodies; `match`; payload enums; `async.query`; contexts
+- `design/language.md` — `const`; bodyless components and overrides; events; loops and for-else; view walks (`ir.ViewBlocks`, `blocks.go`); lambda bodies; `match`; payload enums; `async.query`; contexts; formatting an interpolated field
 - `design/architecture.md` — codegen registry and models, how each platform translates a `ui.Style`, per-platform details, `ir`/`checker`/`optimize`/`lower` packages and the always-on passes, runtime `pkg/` packages, AST
 - `design/stdlib.md` — `lib/` tiers and what each package holds, package docs, library loading/caching/freezing, clones, target nodes and reserved names, `#[builtin]`, marks, scalars, macros, i18n; `sngl:http` and `sngl:json`; `sngl:settings`
 - `design/families.md` — families, data components and records, generated families (`gen.emit`), family inference and membership, `#[family.crosses]`, boundaries and raises

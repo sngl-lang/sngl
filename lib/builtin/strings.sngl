@@ -5,6 +5,19 @@
 #[_builtin(string)]
 struct string {}
 
+// x's text as the target writes it: a number's digits, `true` or `false`, a
+// color's or a date's canonical form. Each builtin scalar's format is written
+// over it, since `string(x)` is `x.format()` and so cannot say what that is; a
+// list and an option format through their elements' formats.
+#[_builtin(text)]
+const func _text[T any](x T) string
+
+// s itself: what `"{s}"` writes.
+const func string.format(s string) => s
+
+// Puts s on the end of out.
+func string.appendFormat(s string, out ref[builder]) { out.add(s) }
+
 // Number of Unicode codepoints in s (not bytes).
 #[_intrinsic("string.length")]
 const func string.length(s string) int
@@ -82,7 +95,13 @@ func builder.add(text string)
 #[_intrinsic("builder.line", mutates, mutatesReceiver)]
 func builder.line(text string = "")
 
-// What has been built, as a string. It is the builder's string form, so
-// `"{b}"` and `string(b)` read it too.
+// What has been built, as a string: the builder's format, so `"{b}"` and
+// `string(b)` read it too.
 #[_intrinsic("builder.string")]
 const func builder.string() string
+
+// What has been built: `"{b}"` and `string(b)` read it.
+const func builder.format(b builder) => b.string()
+
+// Puts what b has built on the end of out.
+func builder.appendFormat(b builder, out ref[builder]) { out.add(b.string()) }

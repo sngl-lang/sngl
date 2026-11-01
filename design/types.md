@@ -94,6 +94,39 @@ directory-imported package interns its own `struct { v int }`, which spells
 the program's host name, and the output declared both
 (`testdata/anon_struct_from_package.txtar`).
 
+**A constraint's functions are methods of its struct**
+(`constraintWithFuncs`): each is a bodyless `Func` whose `Receiver` is the
+type parameter it constrains and whose `this` is a `RecvParam`, held in the
+constraint's `StructDef.Methods`, so `ir.ResolveMethod` on a T finds it
+(`ir.ConstraintMethod`) and the checker's method call, the formatting of
+`"{v}"` and the LSP need nothing else. Such a constraint is declared
+un-interned whatever its fields, since two of the same fields may name
+different functions, and `MapChildren` carries its methods over. A type is
+measured against one by the call it would take (`methodUnsatisfied`, over
+`ir.MethodParams`), not by signature equality, so `int.format`, which takes
+`width` and `pad` too, satisfies `const func format(base int) string`. A
+constraint's parameter may default to a constant, and the method has to
+default to the same one (`ir.SameConstant` through any `const` naming it);
+the method's defaults are checked with its body, which may come after the
+call that binds it, so the comparison waits for the end of the check
+(`matchDefaults`). A call
+through one is the bound type's own method once the type is bound
+(`ir.BoundCall`, beside `_format`'s), which the interpreter asks with the
+running frame's bindings, the optimizer once a body is spliced or specialized
+at its call's types, and lowering in copies: `passBuiltinMethods` first copies
+every generic function that makes such a call at its own parameters, itself or
+through a generic it calls (`ir.BoundReach`), at each binding
+(`monomorphizeFuncs`), because a target keeping generic functions whole would
+have no type to call. `ir.GenericCallee` binds a receiver its parameters do
+not list for that, and `Monomorphize` binds through it too. A
+`_formatArgs[T]` written for a T holds what the constraint's format takes, and
+the bound type's may take more: `ir.FormatCall` leaves a field the literal
+does not hold to the format's default, and the interpreter completes such a
+literal at the running bindings (`ir.FormatArgsLit`)
+(`testdata/generic_constraint_method.sngl`,
+`error_generic_constraint_method.sngl`, `generic_constraint_method.txtar`,
+`internal/lower/testdata/builtin_methods_constraint.txtar`).
+
 Four things follow from a struct having no one declaration. Its identity is
 its fields everywhere, so the intern key spells an anonymous struct inside a
 field by *its* fields rather than its address (`ir.AnonTypeKey`), or

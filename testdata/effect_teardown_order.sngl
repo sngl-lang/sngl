@@ -52,8 +52,8 @@ component main node {
         },
     )
 
-    text #out(value=log.join(","))
-    text #pair(value=pairLog.join(","))
+    text #out(value=log.format(","))
+    text #pair(value=pairLog.format(","))
 }
 
 func testTwoEndingsRunNewestFirst(t Test, c main) {

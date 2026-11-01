@@ -14,7 +14,7 @@ component main node {
 import . "sngl:ui"
 component counter node {
     var count int = 0
-    button(text=string(count), @click {
+    button(text=count.format(base=10, width=0, pad=" "), @click {
         count = count + 1
     })
 }

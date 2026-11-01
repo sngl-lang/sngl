@@ -13,10 +13,10 @@ component main node {
     var n int = 0
     func __n1_click_handler() {
         n = n + 1
-        __n0.value = string(n)
+        __n0.value = n.format(base=10, width=0, pad=" ")
     }
     var __n0 text = lower.CreateNode("text")
-    __n0.value = string(n)
+    __n0.value = n.format(base=10, width=0, pad=" ")
     var __n1 button = lower.CreateNode("button")
     __n1.text = "+"
     lower.AttachHandler(__n1, "click", __n1_click_handler)

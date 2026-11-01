@@ -1,0 +1,31 @@
+// An interpolated field is its value's format, checked as any call is: an
+// argument format does not take is refused where it is written, and a format
+// that writes something other than a string cannot be interpolated. `string(x)`
+// is `x.format()`, refused where `"{x}"` is.
+
+struct Size {
+    w int = 0
+}
+
+func Size.format(s Size) => s.w
+
+struct Plain {
+    x int = 0
+}
+
+var n = 5
+var s = Size{w=2}
+var p = Plain{x=1}
+var a = "{n, bogus=1}" // ERROR(check) "unknown parameter \"bogus\""
+var b = "{s}"          // ERROR(check) "its format method returns int, not string"
+var c = "{p, 2}"       // ERROR(check) "cannot format Plain: type has no format method"
+var d = "{n, "x"}"     // ERROR(check) "cannot pass string as int"
+var e = string(p)      // ERROR(check) "cannot format Plain: type has no format method"
+
+// A list or an option is formatted by its elements' format, and so only where
+// they have one; an argument neither it nor its element's format declares is
+// refused where it is written.
+var ps = [p]
+var f = "{ps}"           // ERROR(check) "cannot format Plain: type has no format method"
+var g = "{[n], bogus=1}" // ERROR(check) "unknown parameter \"bogus\""
+var h = "{null}"         // ERROR(check) "cannot format null: type has no format method"

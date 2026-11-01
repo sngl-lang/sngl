@@ -1,7 +1,7 @@
 // Within the `if`, `label` is the node. A node id is a binding in the scope it
 // was written in, so it shadows an outer one of the same name exactly as a
 // nested declaration of any other kind does -- and a node handle has no
-// string() method, which is what makes the shadow observable here rather than
+// format method, which is what makes the shadow observable here rather than
 // only in the emitted names.
 //
 // The read outside the `if` is the var, unchanged: the counted hoist that puts
@@ -22,7 +22,7 @@ ui.window #w(title="t") {
         if show {
             ui.text #label(value="node")
 
-            ui.text(value="inside: {label}") // ERROR(check) "cannot interpolate text: type has no string() method"
+            ui.text(value="inside: {label}") // ERROR(check) "cannot format text: type has no format method"
         }
 
         ui.text(value="outside: {label}")

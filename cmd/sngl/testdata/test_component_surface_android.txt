@@ -99,7 +99,7 @@ func testListReads(t Test, c comp) {
     t.assert(c.xs[1] == 2)
     t.assert(c.xs.contains(3))
     t.assert(c.xs.indexOf(2) == 1)
-    t.assert(c.xs.join(",") == "1,2,3")
+    t.assert(c.xs.format(",") == "1,2,3")
     t.assert(c.xs.filter(func(x int) => x > 1).length() == 2)
     t.assert(c.xs.map(func(x int) => x * 2)[2] == 6)
 }
@@ -188,7 +188,7 @@ sha256:4b6a2621da01206dbfba071073422f13
   ]
 }
 -- testrun/android/kotlin/app.sngl/comp/1 --
-sha256:2c7c86aadef8b80ac2827381628c923d
+sha256:1f868615b77b2cd88641a23e416d21af
 {
   "results": [
     {

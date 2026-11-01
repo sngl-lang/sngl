@@ -26,7 +26,7 @@ import test "sngl:test"
 component main ui.node {
     var words = ["pear", "apple", "fig"]
 
-    ui.text(value=words.join(", "))
+    ui.text(value=words.format(", "))
 }
 
 // `words` in order, each put before the first it comes before.
@@ -49,7 +49,7 @@ func testStringsAreOrdered(t test.Test, c main) {
     t.assert(c.words[2] <= c.words[0] && c.words[0] <= c.words[0])
     t.assert(c.words[0] >= c.words[0] && !(c.words[1] >= c.words[2]))
     t.assert(c.words[0] < "pears")
-    t.assert(sorted(c.words).join(", ") == "apple, fig, pear")
+    t.assert(sorted(c.words).format(", ") == "apple, fig, pear")
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
 sha256:ba5de60634a0bc3188776e80d23e91d4

@@ -41,11 +41,11 @@ component app ui.node {
 }
 
 func testTheFirstSeesItsOwnMounts(t test.Test, c app) {
-    t.assert(log.join(",") == "+a")
+    t.assert(log.format(",") == "+a")
 }
 
 func testTheSecondSeesNoUnmountOfTheFirst(t test.Test, c app) {
-    t.assert(log.join(",") == "+a")
+    t.assert(log.format(",") == "+a")
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
 sha256:12295d2e53d0da00b2da89f5f399b41c

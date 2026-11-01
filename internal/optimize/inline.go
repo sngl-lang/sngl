@@ -114,7 +114,40 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 		return nil
 	}
 
-	// Build substitution map: param → argument expression.
+	subs, ok := callSubs(call, f)
+	if !ok {
+		return nil
+	}
+
+	// A branch the constant arguments settle is not a read: `_intText(x, base)
+	// => base == 10 ? string(x) : _baseText(x, base)` reads x once whichever
+	// way it goes, and with base 10 it is `string(x)`.
+	body := settledBranches(ret.Value, subs, ctx)
+	if !argsCopyable(subs, func(p *ir.Param) int { return paramReads(body, p) }, func(p *ir.Param) bool { return readsOnlyFields(body, p) }) {
+		return nil
+	}
+
+	// Clone the return expression and substitute parameters.
+	result := cloneExpr(body)
+	result = substituteParams(result, subs)
+	// A method on a generic builtin is written at its receiver's T, which
+	// the call bound: a lambda in `xs.format()` takes the int it is handed.
+	if f.RecvParam != nil && len(f.RecvTypeParams) > 0 {
+		b := map[string]*ir.Type{}
+		if recv := subs[f.RecvParam]; recv != nil {
+			ir.BindTypeParams(f.RecvParam.Type, recv.ExprType(), b)
+		}
+		if len(b) > 0 {
+			result = ir.InstantiateExpr(result, b)
+		}
+	}
+	return result
+}
+
+// callSubs binds each of f's parameters to what call passes it, its default
+// where the call passes nothing; ok is false where a parameter is bound to
+// nothing at all.
+func callSubs(call *ir.Call, f *ir.Func) (map[*ir.Param]ir.Expr, bool) {
 	subs := make(map[*ir.Param]ir.Expr, len(f.Params)+1)
 	// A method on a generic built-in says `this` in its body and declares no
 	// parameter for it. The receiver reaches the call either beside it or, once
@@ -127,57 +160,142 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 		switch {
 		case call.Receiver != nil:
 			subs[f.RecvParam] = call.Receiver
-		case len(args) == len(f.Params)+1:
+		case len(args) == len(f.Params)+1 || len(args) > 0 && call.ReceiverArg && ir.ReceiverOutsideParams(f):
 			subs[f.RecvParam] = args[0].Value
 			args = args[1:]
 		default:
-			return nil
+			return nil, false
 		}
 	}
-	for i, p := range f.Params {
-		if i < len(args) {
-			subs[p] = args[i].Value
-		} else if p.Default != nil {
+	// The checker writes the arguments in parameter order, each named one for
+	// its parameter, so one the call skipped is the parameter whose name the
+	// next argument does not carry (passCallDefaults reads them the same way).
+	next := 0
+	for _, p := range f.Params {
+		switch {
+		case next < len(args) && (args[next].Name == "" || args[next].Name == p.Name):
+			subs[p] = args[next].Value
+			next++
+		case p.Default != nil:
 			subs[p] = p.Default
-		} else {
-			return nil // missing argument
+		default:
+			return nil, false // missing argument
 		}
 	}
+	return subs, next == len(args)
+}
 
-	// The condition purity was standing in for, and standing in the wrong
-	// place: substitution copies the argument to wherever the parameter is
-	// read, so a parameter read twice evaluates its argument twice and one
-	// read nowhere drops it. Both are the argument's problem, not the
-	// function's -- `double(x) => x + x` is as pure as they come, and
-	// `double(bump())` counted by two.
-	//
-	// And copying a computed argument into every read is a cost when the
-	// reads are many: a body that reads a parameter a dozen times, spliced
-	// into one that does the same with its own computed argument, grows by
-	// the product. html's css reads a Style's lengths that way, and a held
-	// Style's spliced declarations came to 7KB a line, deep enough that the
-	// browser's stack gave out. So a computed argument read more than once is
-	// copied only where it is a path, a literal or a little arithmetic over
-	// them (cheapToCopy), or a struct literal the body reads a field at a time
-	// (literalField answers each with that field); otherwise the call stays,
-	// and evaluates it once.
+// argsCopyable reports whether each argument in subs may be copied to every
+// place the body reads its parameter: reads counts those, and onlyFields says
+// whether the body reads nothing of it but fields.
+//
+// The condition purity was standing in for, and standing in the wrong
+// place: substitution copies the argument to wherever the parameter is
+// read, so a parameter read twice evaluates its argument twice and one
+// read nowhere drops it. Both are the argument's problem, not the
+// function's -- `double(x) => x + x` is as pure as they come, and
+// `double(bump())` counted by two.
+//
+// And copying a computed argument into every read is a cost when the
+// reads are many: a body that reads a parameter a dozen times, spliced
+// into one that does the same with its own computed argument, grows by
+// the product. html's css reads a Style's lengths that way, and a held
+// Style's spliced declarations came to 7KB a line, deep enough that the
+// browser's stack gave out. So a computed argument read more than once is
+// copied only where it is a path, a literal or a little arithmetic over
+// them (cheapToCopy), or a struct literal the body reads a field at a time
+// (literalField answers each with that field); otherwise the call stays,
+// and evaluates it once.
+func argsCopyable(subs map[*ir.Param]ir.Expr, reads func(*ir.Param) int, onlyFields func(*ir.Param) bool) bool {
 	for p, arg := range subs {
-		reads := paramReads(ret.Value, p)
+		n := reads(p)
 		if !effectFree(arg) {
-			if reads != 1 {
-				return nil
+			if n != 1 {
+				return false
 			}
 			continue
 		}
-		if reads > 1 && !cheapToCopy(arg) && !(isStructLit(arg) && readsOnlyFields(ret.Value, p)) {
-			return nil
+		if n > 1 && !cheapToCopy(arg) && !(isStructLit(arg) && onlyFields(p)) {
+			return false
 		}
 	}
+	return true
+}
 
-	// Clone the return expression and substitute parameters.
-	result := cloneExpr(ret.Value)
-	result = substituteParams(result, subs)
-	return result
+// inlineCallStmt is a statement calling a builtin type's method whose body is
+// one call, as that call made with the arguments substituted, or nil where it
+// is not one. A builtin's method reaches a target only by being inlined -- no
+// output declares a method on an int -- and `n.appendFormat(&b)` is a
+// statement, which inlineCall, answering a value, never sees.
+func inlineCallStmt(call *ir.Call, ctx *evalCtx) *ir.CallStmt {
+	f := call.Func
+	if f == nil || !builtinMethod(f) || f.Intrinsic != "" || f.Foreign.Path != "" ||
+		len(f.TypeParams) > 0 || !hasWrittenBody(f) || len(f.Block) != 1 {
+		return nil
+	}
+	cs, ok := f.Block[0].(*ir.CallStmt)
+	if !ok || cs.Call == nil || callsFunc(cs.Call, f) {
+		return nil
+	}
+	if ctx != nil && ctx.inliningFuncs != nil && ctx.inliningFuncs[f] {
+		return nil
+	}
+	subs, ok := callSubs(call, f)
+	if !ok {
+		return nil
+	}
+	if !argsCopyable(subs, func(p *ir.Param) int { return paramReads(cs.Call, p) }, func(p *ir.Param) bool { return readsOnlyFields(cs.Call, p) }) {
+		return nil
+	}
+	inlined, ok := substituteParams(cloneExpr(cs.Call), subs).(*ir.Call)
+	if !ok {
+		return nil
+	}
+	return &ir.CallStmt{AST: cs.AST, Call: inlined}
+}
+
+// builtinMethod reports whether f is a library method of a builtin type -- an
+// int, a list, a builder -- which no output can declare.
+func builtinMethod(f *ir.Func) bool {
+	sd, ok := f.RecvDecl().(*ir.StructDef)
+	return ok && f.PkgPath() != "" && (sd.Builtin != "" || sd.Intrinsic != "")
+}
+
+// settledBranches is body with each conditional whose condition the constant
+// arguments in subs decide replaced by the branch taken, or body itself where
+// they decide none. The result shares body's nodes, and is only read and
+// cloned.
+func settledBranches(body ir.Expr, subs map[*ir.Param]ir.Expr, ctx *evalCtx) ir.Expr {
+	if ctx == nil {
+		return body
+	}
+	consts := map[*ir.Param]ir.Expr{}
+	for p, arg := range subs {
+		if _, ok := evalExpr(arg, ctx); ok {
+			consts[p] = arg
+		}
+	}
+	if len(consts) == 0 {
+		return body
+	}
+	var settle func(e ir.Expr) ir.Expr
+	settle = func(e ir.Expr) ir.Expr {
+		t, ok := e.(*ir.Ternary)
+		if !ok {
+			return e
+		}
+		cond := substituteParams(cloneExpr(t.Cond), consts)
+		if v, ok := evalExpr(cond, ctx); ok {
+			if b, isBool := v.(bool); isBool {
+				if b {
+					return settle(t.Then)
+				}
+				return settle(t.Else)
+			}
+		}
+		return e
+	}
+	return settle(body)
 }
 
 // callsFunc reports whether the expression contains a call to the given function.

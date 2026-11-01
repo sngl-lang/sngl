@@ -193,7 +193,7 @@ var sections = []section{
 	{"literals", []string{
 		"ListBody", "ListElem", "StructLitBody", "AnonStructLit", "AnonField", "FuncLit",
 	}},
-	{"string-interpolation", []string{"InterpStr", "TripleInterp", "I18nInterpStr", "I18nTriple", "I18nPlaceholder"}},
+	{"string-interpolation", []string{"InterpStr", "TripleInterp", "InterpField", "I18nInterpStr", "I18nTriple", "I18nPlaceholder"}},
 	{"types", []string{"Type", "TypeList", "FuncTypeParamList", "FuncTypeParam"}},
 }
 

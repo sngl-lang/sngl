@@ -370,6 +370,15 @@ func (x *InterpolationExpr) Text(part Expr) (*LiteralExpr, bool) {
 	return lit, lit.Kind == want
 }
 
+// FormatExpr is an interpolated field written with arguments, `{x, a, b}`,
+// which formats Value by its format method: `x.format(a, b)`. A field written
+// with none, `{x}`, is the bare expression.
+type FormatExpr struct {
+	Pos   Pos
+	Value Expr
+	Args  ArgList
+}
+
 // LambdaExpr is a function literal: func(params) => expr or func(params) [Type] { }.
 // Exactly one of Body or Block is set.
 type LambdaExpr struct {
@@ -546,6 +555,7 @@ func (x *MapLit) ExprPos() *Pos              { return &x.Pos }
 func (x *SpreadExpr) ExprPos() *Pos          { return &x.Pos }
 func (x *InterpolationExpr) ExprPos() *Pos   { return &x.Pos }
 func (x *LambdaExpr) ExprPos() *Pos          { return &x.Pos }
+func (x *FormatExpr) ExprPos() *Pos          { return &x.Pos }
 func (x *ParenExpr) ExprPos() *Pos           { return &x.Pos }
 func (x *ConstExpr) ExprPos() *Pos           { return &x.Pos }
 func (x *I18nInterpExpr) ExprPos() *Pos      { return &x.Pos }

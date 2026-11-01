@@ -1655,6 +1655,7 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 	if e.Def != nil && e.Def.Intrinsic == ir.BuilderIntrinsic {
 		return &Builder{}, nil
 	}
+	e = env.formatArgsLit(e)
 	s := NewStruct(e.Def, e.Type)
 	if e.Def != nil && e.Def.Release != nil {
 		var at ast.Pos
@@ -2017,6 +2018,9 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 	}
 	if isCNative(call.Func) {
 		return env.callCNative(call)
+	}
+	if formatted, ok := env.boundCall(call); ok {
+		return env.Eval(formatted)
 	}
 	// i18n by the id, before the call shape is examined: the `i18n._*`
 	// primitives arrive plain once the wrapper is inlined, so they are not
@@ -2773,6 +2777,11 @@ func (env *Env) boundArgValues(fn *ir.Func, callArgs []ir.CallArg, values []any)
 	if fn.OnComponent() && len(params) > 0 && params[0].Receiver && (len(callArgs) == 0 || callArgs[0].Name != "") {
 		params = params[1:]
 	}
+	// A method on a generic builtin is passed its receiver first, for the
+	// RecvParam its parameters leave out (runUserFunc binds it).
+	if ir.ReceiverOutsideParams(fn) && len(callArgs) > 0 && callArgs[0].Name == "" {
+		params = append([]*ir.Param{fn.RecvParam}, params...)
+	}
 	vals := make(map[*ir.Param]any, len(params))
 	positional := 0
 	for i, a := range callArgs {
@@ -2832,6 +2841,12 @@ func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 	defer func() { env.depth-- }()
 
 	isPure := fn.Return != nil
+	// A method on a generic builtin takes its receiver as RecvParam, which
+	// Params leave out, and every call passes it first.
+	params := fn.Params
+	if ir.ReceiverOutsideParams(fn) && len(args) == len(params)+1 {
+		params = append([]*ir.Param{fn.RecvParam}, params...)
+	}
 	for {
 		var execEnv *Env
 		if !isPure {
@@ -2845,13 +2860,13 @@ func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 		// as plain `foo(args)`), shift bindings so user args land in n,
 		// not in this. `this` is expected to be bound in execEnv already.
 		argOffset := 0
-		if len(fn.Params) > 0 && fn.Params[0].Receiver && len(args) == len(fn.Params)-1 {
+		if len(params) > 0 && params[0].Receiver && len(args) == len(params)-1 {
 			argOffset = 1
 		}
 		// A recursive call reuses the same Param symbols in the same env, so
 		// the previous frame's bindings still need saving and restoring.
-		savedVars := make(map[ir.Symbol]any, len(fn.Params))
-		for i, p := range fn.Params {
+		savedVars := make(map[ir.Symbol]any, len(params))
+		for i, p := range params {
 			if v, ok := execEnv.vals[p]; ok {
 				savedVars[p] = v
 			}
@@ -2865,7 +2880,7 @@ func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 			if isPure {
 				// A return type does not make a body pure: what it wrote to
 				// state outside its own frame has to reach the caller.
-				for _, p := range fn.Params {
+				for _, p := range params {
 					delete(execEnv.assigned, p)
 				}
 				for _, sym := range localVars {
@@ -2873,7 +2888,7 @@ func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 				}
 				env.RebindFrom(execEnv)
 			} else {
-				for _, p := range fn.Params {
+				for _, p := range params {
 					if orig, ok := savedVars[p]; ok {
 						execEnv.vals[p] = orig
 					} else {

@@ -16,7 +16,7 @@ component panel node {
     var got = ""
     func tag(x int) => "{x + base}"
     button #run(text="run", @click {
-        got = [4, 5].map(tag).join(",")
+        got = [4, 5].map(tag).format(",")
     })
     text(value=got)
 }

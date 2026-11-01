@@ -76,7 +76,7 @@ component main node {
         }
     }
 
-    text(value=log.join(","))
+    text(value=log.format(","))
 }
 
 window {
