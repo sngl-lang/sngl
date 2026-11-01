@@ -13,6 +13,7 @@ import (
 	"duckfam.us/sngl/codegen"
 	_ "duckfam.us/sngl/codegen/lang"
 	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
 	"duckfam.us/sngl/ir"
 )
 
@@ -126,9 +127,17 @@ window {
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
 	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
+	// A build's pipeline: optimize, lower, and optimize what lowering wrote.
 	pkg = ir.ClonePackage(pkg)
+	opt := &optimize.Config{Platform: "fyne", Language: "go"}
+	if err := optimize.Optimize(pkg, opt); err != nil {
+		t.Fatalf("optimize: %v", err)
+	}
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
+	}
+	if err := optimize.Optimize(pkg, opt); err != nil {
+		t.Fatalf("optimize: %v", err)
 	}
 
 	pngBytes, err := g.Snapshot(pkg, lang, 200, 200)

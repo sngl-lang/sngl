@@ -312,13 +312,13 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 				m.__slot0 = nil
 				m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
 				m.__copies_tabs__change = nil
-				var __lt18 []Tab__record
+				var __lt17 []Tab__record
 				if m.extra {
-					__lt18 = []Tab__record{Tab__record{Label: "More", __id: 2}}
+					__lt17 = []Tab__record{Tab__record{Label: "More", __id: 2}}
 				} else {
-					__lt18 = []Tab__record{}
+					__lt17 = []Tab__record{}
 				}
-				for k, t := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt18) {
+				for k, t := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt17) {
 					m.tabs__change = (*C.GtkBox)(unsafe.Pointer(gtk4rt.TabPageNew()))
 					gtk4rt.TabPageSetTitle(gtk4rt.Handle(unsafe.Pointer(m.tabs__change)), t.Label)
 					gtk4rt.TabPageSetDisabled(gtk4rt.Handle(unsafe.Pointer(m.tabs__change)), t.Disabled)
@@ -434,4 +434,4 @@ func (m *Model) __list_tabs__change(key string, w *C.GtkBox) {
 	m.__copies_tabs__change[key] = w
 }
 -- run/go/gtk4 --
-pass sha256:bc92370817964c79cdc15d285da60869
+pass sha256:18c6387b898d866f6719fd05b2dd0ced
