@@ -596,80 +596,86 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) string {
 }
 
 func Length(m__r1 *Measurement) string {
-	var __lt12 string
-	if m__r1 == nil {
-		__lt12 = ""
-	} else {
-		__lt12 = (fmt.Sprint(Inset(m__r1)) + "px")
-	}
-	return __lt12
-}
-
-func CssColor(c__r0 *snglcolor.Color) string {
 	var __lt13 string
-	if c__r0 == nil {
+	if m__r1 == nil {
 		__lt13 = ""
 	} else {
-		__lt13 = (*(c__r0)).Hex()
+		var __lt12 float64
+		if m__r1 == nil {
+			__lt12 = 0.0
+		} else {
+			__lt12 = max(((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem))), 0.0)
+		}
+		__lt13 = (fmt.Sprint(__lt12) + "px")
 	}
 	return __lt13
 }
 
-func WeightOf(w string) string {
+func CssColor(c__r0 *snglcolor.Color) string {
 	var __lt14 string
-	switch w {
-	case "normal":
-		__lt14 = "normal"
-	case "bold":
-		__lt14 = "bold"
-	case "bolder":
-		__lt14 = "bolder"
-	case "lighter":
-		__lt14 = "lighter"
-	default:
+	if c__r0 == nil {
 		__lt14 = ""
+	} else {
+		__lt14 = (*(c__r0)).Hex()
 	}
 	return __lt14
 }
 
-func SlantOf(s string) string {
+func WeightOf(w string) string {
 	var __lt15 string
-	switch s {
+	switch w {
 	case "normal":
 		__lt15 = "normal"
-	case "italic":
-		__lt15 = "italic"
-	case "oblique":
-		__lt15 = "oblique"
+	case "bold":
+		__lt15 = "bold"
+	case "bolder":
+		__lt15 = "bolder"
+	case "lighter":
+		__lt15 = "lighter"
 	default:
 		__lt15 = ""
 	}
 	return __lt15
 }
 
-func LineOf(s Style) string {
+func SlantOf(s string) string {
 	var __lt16 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt16 = "solid"
-	case "dashed":
-		__lt16 = "dashed"
-	case "dotted":
-		__lt16 = "dotted"
-	case "double":
-		__lt16 = "double"
-	case "none":
-		__lt16 = "none"
+	switch s {
+	case "normal":
+		__lt16 = "normal"
+	case "italic":
+		__lt16 = "italic"
+	case "oblique":
+		__lt16 = "oblique"
 	default:
-		var __lt17 string
-		if s.BorderWidth != nil {
-			__lt17 = "solid"
-		} else {
-			__lt17 = ""
-		}
-		__lt16 = __lt17
+		__lt16 = ""
 	}
 	return __lt16
+}
+
+func LineOf(s Style) string {
+	var __lt17 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt17 = "solid"
+	case "dashed":
+		__lt17 = "dashed"
+	case "dotted":
+		__lt17 = "dotted"
+	case "double":
+		__lt17 = "double"
+	case "none":
+		__lt17 = "none"
+	default:
+		var __lt18 string
+		if s.BorderWidth != nil {
+			__lt18 = "solid"
+		} else {
+			__lt18 = ""
+		}
+		__lt17 = __lt18
+	}
+	return __lt17
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -787,6 +793,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:0eb5e573bc2878dc5116560008939790
 -- run/go/gtk4 --
-pass sha256:da7540fe69ed65ea7d3a1f4b1856a8e5
+pass sha256:fa20379c0f3c17709e9b835f358e344a
 -- run/none/html --
 pass sha256:9b54f70edec4a3b3508d43ba7554bdba

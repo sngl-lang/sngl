@@ -53,12 +53,41 @@ func lowerBuiltinMethods(pkg *ir.Package, _ Features, _ Options) error {
 	monomorphizeFuncs(pkg, func(fn *ir.Func) bool {
 		return reach.Reaches(fn) && !(ir.ReceiverOutsideParams(fn) && len(fn.RecvTypeParams) > 0)
 	}, false)
-	for _, fn := range pkg.Funcs {
+	if err := b.run(pkg); err != nil {
+		return err
+	}
+	b.packTypes()
+	return nil
+}
+
+// rewriteBuiltinMethods is the rewrite of passBuiltinMethods applied to fns, a
+// library's helpers passLibFuncs made the package's after that pass ran:
+// `string(style.lineCap)` in go's applyStyle is an enum's format, which no
+// output declares either.
+func rewriteBuiltinMethods(pkg *ir.Package, fns []*ir.Func) error {
+	if len(fns) == 0 {
+		return nil
+	}
+	b := &builtinMethods{pkg: pkg, names: map[string]bool{}, promoted: map[*ir.Func]bool{}}
+	if pkg.Symbols != nil {
+		b.scope = pkg.Symbols.Root
+	}
+	for _, fn := range fns {
+		if err := b.run(fn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// run rewrites root, and each function a rewrite makes the package's -- a
+// promoted method, a copy -- in turn: `__int_appendFormat` calls the int's
+// format.
+func (b *builtinMethods) run(root any) error {
+	for _, fn := range b.pkg.Funcs {
 		b.names[fn.Name] = true
 	}
-	// A function this makes the package's -- a promoted method, a copy -- is
-	// rewritten in turn: `__int_appendFormat` calls the int's format.
-	if err := b.visit(pkg); err != nil {
+	if err := b.visit(root); err != nil {
 		return err
 	}
 	for len(b.pending) > 0 {
@@ -68,7 +97,6 @@ func lowerBuiltinMethods(pkg *ir.Package, _ Features, _ Options) error {
 			return err
 		}
 	}
-	b.packTypes()
 	return nil
 }
 
