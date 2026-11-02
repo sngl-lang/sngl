@@ -2770,6 +2770,12 @@ has `{name}` placeholders is handed their values as one struct value in its
 `content` slot, `component content(p) { … }`, and every field of that struct is
 one of the href's placeholders.
 
+A window's `@key` is a key pressed in it that nothing in it takes -- the
+text a focused field is typed, the Enter that presses a focused button and the
+Tab that moves focus are theirs -- named as a browser names it: the character
+typed, or `"Enter"`, `"Escape"`, `"Backspace"` and the rest `sngl:ui`'s
+`window` lists. A key pressed with Control, Alt or Meta held is not reported.
+
 A window's body is its content; state it declares belongs to what holds the
 window (see [State and derivation](#state-and-derivation)). A node's `#id` at
 the root of a file is the package's: every root statement, function and

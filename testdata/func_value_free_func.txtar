@@ -87,6 +87,9 @@ func Encode(xs []string) string {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -117,6 +120,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText(m.h__inst0.F([]string{"a"}))
@@ -185,6 +189,9 @@ func Encode(xs []string) string {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -214,6 +221,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, m.h__inst0.F([]string{"a"}))
@@ -229,6 +237,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:e5bf1f45331d11af7285e584293f4f28
+pass sha256:e018c03021651275276ec247fe867f74
 -- run/go/gtk4 --
-pass sha256:71061f2f8b2154822f181f57e1c88502
+pass sha256:04fa1ada175de5f7fac354826463319c

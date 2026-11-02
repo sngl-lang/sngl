@@ -18,7 +18,8 @@ const toplevelTag = "Toplevel"
 // Spec record because its type is this platform's runtime and not a Fyne
 // widget. Everything downstream is the ordinary path: the box takes children
 // through Add, `title` and `visible` have setters, and the host's reports are
-// callback fields.
+// callback fields. A test's key is pressed in the window (PressKey), which
+// reaches OnKey only while nothing focused takes it.
 func toplevelSpec(props map[string]ir.Expr) *fyneSpec {
 	return &fyneSpec{
 		New:       fyneNative{Path: fyneLayoutImportPath, Name: "NewToplevel"},
@@ -30,6 +31,7 @@ func toplevelSpec(props map[string]ir.Expr) *fyneSpec {
 		Handlers: map[string]fyneHandler{
 			"closed":  {Field: "OnClosed", Signature: "func()"},
 			"visible": {Field: "OnVisible", Signature: "func(visible bool)"},
+			"key":     {Field: "OnKey", Signature: "func(key string)", Press: "PressKey"},
 		},
 		toplevel: true,
 		slotBox:  "Container",

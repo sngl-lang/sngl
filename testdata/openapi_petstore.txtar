@@ -1074,6 +1074,9 @@ func (m *Model) __renderSlot3(__parent *fyne.Container) {
 func (m *Model) __n2_closed_handler() {
 }
 
+func (m *Model) __n2_key_handler(k string) {
+}
+
 func (m *Model) __n2_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n2.SetVisible(m.visible__inst0)
@@ -1222,6 +1225,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.SetTitle("Petstore")
 	m.__n2.SetVisible(m.visible__inst0)
 	m.__n2.OnClosed = m.__n2_closed_handler
+	m.__n2.OnKey = m.__n2_key_handler
 	m.__n2.OnVisible = m.__n2_visible_handler
 	m.__renderSlot0(m.__n2.Container)
 	m.__n9 = widget.NewButton("", nil)
@@ -2087,6 +2091,9 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 func (m *Model) __n2_closed_handler() {
 }
 
+func (m *Model) __n2_key_handler(k string) {
+}
+
 func (m *Model) __n2_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
@@ -2348,10 +2355,12 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.__n2, "Petstore")
 	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n2, m.__n2_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n2, m.__n2_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n2, m.__n2_visible_handler)
 	m.__renderSlot0(m.__n2)
 	m.__n9 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n9, "More")
+	gtk4rt.SetBool(m.__n9, "can-focus", true)
 	gtk4rt.Connect(m.__n9, "clicked", m.__n9_clicked_handler)
 	gtk4rt.BoxAppend(m.__n2, m.__n9)
 	m.__renderSlot1(m.__n2)
@@ -2359,6 +2368,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot3(m.__n2)
 	m.__n10 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n10, "Bred from")
+	gtk4rt.SetBool(m.__n10, "can-focus", true)
 	gtk4rt.Connect(m.__n10, "clicked", m.__n10_clicked_handler)
 	gtk4rt.BoxAppend(m.__n2, m.__n10)
 	m.__n3 = gtk4rt.New("GtkLabel")
@@ -4255,9 +4265,9 @@ component petBreedRetrieve[F any](
     )
 }
 -- run/go/fyne --
-pass sha256:15cf70c176a165fa6b55545893595cdc
+pass sha256:f4cb019aa370a5003254a66e0cc6b41f
 -- run/go/gtk4 --
-pass sha256:f322187d99c59d41d8854626a29a8824
+pass sha256:107a7bab0fbf7c4898c948e68ed2038d
 -- run/kotlin/android --
 pass sha256:7b2e3e045f304e8751ba24e87abce915
 -- run/none/html --

@@ -239,6 +239,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n3_closed_handler() {
 }
 
+func (m *Model) __n3_key_handler(k string) {
+}
+
 func (m *Model) __n3_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n3.SetVisible(m.visible__inst0)
@@ -269,6 +272,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3 = fynelayout.NewToplevel()
 	m.__n3.SetVisible(m.visible__inst0)
 	m.__n3.OnClosed = m.__n3_closed_handler
+	m.__n3.OnKey = m.__n3_key_handler
 	m.__n3.OnVisible = m.__n3_visible_handler
 	m.__n10 = fynelayout.NewVBox()
 	m.__renderSlot2(m.__n10)
@@ -753,6 +757,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n3_closed_handler() {
 }
 
+func (m *Model) __n3_key_handler(k string) {
+}
+
 func (m *Model) __n3_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n3, m.visible__inst0)
@@ -788,6 +795,7 @@ func newCard__slot3Instance(__model *Model) *Card__slot3Instance {
 	gtk4rt.SetLook(__n11, gtk4rt.Look{Spaced: true, Spacing: 6})
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ("hit " + fmt.Sprint(c.hits)))
+	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.hits = (c.hits + 1)
 		gtk4rt.ButtonSetLabel(c.__n0, ("hit " + fmt.Sprint(c.hits)))
@@ -795,6 +803,7 @@ func newCard__slot3Instance(__model *Model) *Card__slot3Instance {
 	gtk4rt.BoxAppend(__n11, c.__n0)
 	__n12 := gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(__n12, "BETA")
+	gtk4rt.SetBool(__n12, "can-focus", true)
 	gtk4rt.Connect(__n12, "clicked", func() {
 	})
 	gtk4rt.BoxAppend(__n11, __n12)
@@ -855,6 +864,7 @@ func newCard__slot2Instance(__model *Model, __a___p0 string) *Card__slot2Instanc
 	gtk4rt.SetLook(__n13, gtk4rt.Look{Spaced: true, Spacing: 6})
 	c.__n1 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n1, ("hit " + fmt.Sprint(c.hits)))
+	gtk4rt.SetBool(c.__n1, "can-focus", true)
 	gtk4rt.Connect(c.__n1, "clicked", func() {
 		c.hits = (c.hits + 1)
 		gtk4rt.ButtonSetLabel(c.__n1, ("hit " + fmt.Sprint(c.hits)))
@@ -1157,6 +1167,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n3 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n3, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n3, m.__n3_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n3, m.__n3_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n3, m.__n3_visible_handler)
 	m.__n10 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n10, 1)
@@ -1612,8 +1623,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:6662a6ee76af68a0fe2dfd9f5c6a7bf8
+pass sha256:b6da3c31ea28a81063660d4fae6336de
 -- run/go/gtk4 --
-pass sha256:42c22bb9e8a832b5e9b824dbcbdeb673
+pass sha256:674594ae5106fbf52daed03851f9061a
 -- run/none/html --
 pass sha256:c72c4f1943f59da2373fdde97678cfb2

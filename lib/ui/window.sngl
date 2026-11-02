@@ -46,6 +46,20 @@
 // on android, as they did. A window shows a stack of pages with
 // `canGoBack=pages.canGoBack(), @back { pages.back() }`; what going back means
 // is the program's, so `@back` may do more than a pop, or something else.
+//
+// `@key` is a key pressed in the window that nothing in it takes, named as a
+// browser names it: the character it types -- `"7"`, `"+"`, `"a"`, `"A"`,
+// `" "` -- or one of `"Enter"`, `"Escape"`, `"Backspace"`, `"Delete"`,
+// `"ArrowUp"`, `"ArrowDown"`, `"ArrowLeft"`, `"ArrowRight"`, `"Home"`,
+// `"End"`, `"PageUp"`, `"PageDown"`. What something in the window takes is
+// not the window's: the text a focused field is typed, the Enter and space
+// that press a focused button, and the Tab that moves focus between them; so
+// a keypad whose keys are `focusable=false` hears its Enter here, where
+// focus left on the last key pressed would press it again. A key pressed with
+// Control, Alt or Meta held is a shortcut of the system's or the target's own,
+// and the window hears none; nor does it hear the Escape that goes back while
+// it can, or one that closes an overlay. On android it is a hardware
+// keyboard's, as there is no other.
 component window(
     title     string = "",
     :visible  bool = true,
@@ -53,6 +67,7 @@ component window(
     @error(e error),
     @closed(),
     @back(),
+    @key(key string),
     content   ...component node,
     favicon   option[component option[imageSource]],
     menu      component menuItem,

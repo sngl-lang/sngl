@@ -140,6 +140,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -151,6 +159,7 @@ type modelState struct {
 	visible__inst0 bool
 	__focusID      int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -423,6 +432,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -444,7 +459,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentChildren []string
@@ -455,6 +483,7 @@ func (m Model) View() tea.View {
 			content_0Prefix = ">"
 		}
 		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("theme"))
+		content_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		content_1 = ""
@@ -462,10 +491,11 @@ func (m Model) View() tea.View {
 		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, false).Render(content_1)
 		contentChildren = append(contentChildren, content_1)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -566,6 +596,9 @@ func TokenColor(p Palette, kind string) snglcolor.Color {
 func (m *Model) home_closed_handler() {
 }
 
+func (m *Model) home_key_handler(k string) {
+}
+
 func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.home.SetVisible(m.visible__inst0)
@@ -581,6 +614,11 @@ func (m *Model) homeClosed() {
 	if m.home.OnClosed != nil {
 		m.home.OnClosed()
 	}
+}
+
+// homeKey calls PressKey on the #home widget; for tests.
+func (m *Model) homeKey(key string) {
+	m.home.PressKey(key)
 }
 
 // homeVisible invokes the OnVisible callback on the #home widget; for tests.
@@ -618,6 +656,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetTitle("t")
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
+	m.home.OnKey = m.home_key_handler
 	m.home.OnVisible = m.home_visible_handler
 	m.__n1 = fynelayout.NewVBox()
 	m.__n2 = widget.NewButton("", nil)
@@ -748,6 +787,9 @@ func TokenColor(p Palette, kind string) snglcolor.Color {
 func (m *Model) home_closed_handler() {
 }
 
+func (m *Model) home_key_handler(k string) {
+}
+
 func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
@@ -783,12 +825,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.home, "t")
 	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
+	gtk4rt.ToplevelOnKey(m.home, m.home_key_handler)
 	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
 	m.__n1 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n1, 1)
 	gtk4rt.SetLook(m.__n1, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n2 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n2, "theme")
+	gtk4rt.SetBool(m.__n2, "can-focus", true)
 	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
 	m.__n3 = gtk4rt.FlowNew()
@@ -803,6 +847,11 @@ func (m *Model) buildWidgetTree() {
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.home)
+}
+
+// homeKey fires "key" on the #home widget; for tests.
+func (m *Model) homeKey(v string) {
+	gtk4rt.ToplevelKey(m.home, v)
 }
 -- out/kotlin/android/MainScreen.kt --
 // Code generated by sngl (android) from main.sngl; DO NOT EDIT.
@@ -1165,11 +1214,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:32191982024b226e82e2f6826201e9c9
+pass sha256:ef05aaa1fe3473a43fb6cca294846037
 -- run/go/fyne --
-pass sha256:5295a861a2741769110ab2307d3316c8
+pass sha256:420b8acde176c14508b237e7aecb91ed
 -- run/go/gtk4 --
-pass sha256:47ec9be5e85d2c5927b3ccef623e2485
+pass sha256:796eb4c158bc60bd62414076d73e3fb6
 -- run/kotlin/android --
 pass sha256:b8a6033a9f972b83a292eb94f94cb726
 -- run/none/html --

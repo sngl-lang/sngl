@@ -67,7 +67,7 @@ ui.window {
     fit
 }
 -- testrun/bubbletea/go/app.sngl/fit/1 --
-sha256:160d269869ccdb47c4fc049721bcf6a0
+sha256:0a750238976ea05c4b43ab4bfdd876bc
 {
   "results": [
     {

@@ -368,7 +368,6 @@ func (m Model) View() tea.View {
 		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("top y"))
 		contentChildren = append(contentChildren, content_1)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -417,6 +416,9 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -439,6 +441,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = fynelayout.NewVBox()
 	m.__n2 = widget.NewLabel("")
@@ -500,6 +503,9 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -521,6 +527,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n1, 1)
@@ -734,11 +741,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:57177bb25b7e4f322ba373ea2487cf21
+pass sha256:0d3534d451e0b1745e2aa4c9d941db0f
 -- run/go/fyne --
-pass sha256:7096a72218772eba67519a6e005c4083
+pass sha256:50aa33edd70b4f2f787d17da87d6a198
 -- run/go/gtk4 --
-pass sha256:bdcd7d74ccff97860763f3c644446b8b
+pass sha256:e733d901cc9e1e77303939c1ef9740c4
 -- run/kotlin/android --
 pass sha256:a5437d26253b316a909ab9fc7bea7bb4
 -- run/none/html --

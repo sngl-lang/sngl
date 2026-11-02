@@ -72,6 +72,9 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -103,6 +106,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.__n0, "t")
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.down = gtk4rt.ScrollNew()
 	gtk4rt.ScrollSetDirection(m.down, "vertical")
@@ -153,4 +157,4 @@ func (m *Model) eitherReachEnd() {
 	gtk4rt.ScrollReachEnd(m.either)
 }
 -- run/go/gtk4 --
-pass sha256:d724657f74cc12f0cb597007ac63363e
+pass sha256:720f90986a19ccee39f48b8178b366a1

@@ -595,6 +595,9 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -625,6 +628,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText(m.caught)
@@ -765,6 +769,9 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -794,6 +801,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, m.caught)
@@ -1009,9 +1017,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:bd0eaf84bd9c874dce07f8036f8bfd6c
 -- run/go/fyne --
-pass sha256:338c69748557592cfa0d42f0ae362962
+pass sha256:54be2b346c0dea75b0679b394d78f36b
 -- run/go/gtk4 --
-pass sha256:e944e3bd45661e9e9897245fcd6392a9
+pass sha256:3d4893a420477d1daceacf26740625ad
 -- run/go/html --
 pass sha256:9fb894b5cf590d26d78ed83c9e3c7cae
 -- run/kotlin/android --

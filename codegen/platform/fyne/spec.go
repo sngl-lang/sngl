@@ -47,6 +47,11 @@ type fyneArg struct {
 type fyneHandler struct {
 	Field     string
 	Signature string
+	// Press is the method a test's trigger of the event calls, handed the
+	// event's arguments, where the event has a route into the widget the
+	// way a user's input takes it: a window's key, delivered to what is
+	// focused first. "" has the trigger run Field.
+	Press string
 }
 
 // fyneSpec is one widget's construction, decoded from the SNGL `Spec` record

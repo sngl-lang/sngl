@@ -56,7 +56,7 @@ window {
     counter
 }
 -- testrun/bubbletea/go/tagged.sngl/counter/1 --
-sha256:68b022f233964ffd99f351d32b93e616
+sha256:2ea5fd904dd3e7ff30b9ba85b121899b
 {
   "results": [
     {
@@ -76,7 +76,7 @@ sha256:54c662015283ef7a1cb0a602185b7f60
   ]
 }
 -- testrun/gtk4/go/tagged.sngl/counter/1 --
-sha256:bda78fcab73a323aa3c7168bf4ad780e
+sha256:bbd4956d1a27dc360183469767313673
 {
   "results": [
     {

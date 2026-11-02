@@ -288,6 +288,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) main_closed_handler() {
 }
 
+func (m *Model) main_key_handler(k string) {
+}
+
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.main.SetVisible(m.visible__inst0)
@@ -298,6 +301,11 @@ func (m *Model) mainClosed() {
 	if m.main.OnClosed != nil {
 		m.main.OnClosed()
 	}
+}
+
+// mainKey calls PressKey on the #main widget; for tests.
+func (m *Model) mainKey(key string) {
+	m.main.PressKey(key)
 }
 
 // mainVisible invokes the OnVisible callback on the #main widget; for tests.
@@ -367,6 +375,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.main.SetTitle("poll")
 	m.main.SetVisible(m.visible__inst0)
 	m.main.OnClosed = m.main_closed_handler
+	m.main.OnKey = m.main_key_handler
 	m.main.OnVisible = m.main_visible_handler
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(m.name__inst0)
@@ -549,6 +558,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) main_closed_handler() {
 }
 
+func (m *Model) main_key_handler(k string) {
+}
+
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
@@ -587,6 +599,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.main, "poll")
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
+	gtk4rt.ToplevelOnKey(m.main, m.main_key_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, m.name__inst0)
@@ -602,7 +615,12 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
+
+// mainKey fires "key" on the #main widget; for tests.
+func (m *Model) mainKey(v string) {
+	gtk4rt.ToplevelKey(m.main, v)
+}
 -- run/go/fyne --
-pass sha256:123cb637cc9927759f753223625f8b06
+pass sha256:359e11356f1c111eeb63f5bae50a493b
 -- run/go/gtk4 --
-pass sha256:f420f5708060c8fc8e5c3dd51f7bfd5c
+pass sha256:e1b7d7008982ea0465f3a3fb5b835055

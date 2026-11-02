@@ -7,7 +7,7 @@
 //	keypad/   the keys, as data, and the grid that lays them out
 //
 // What is left in app.sngl is the wiring: one `Calc`, one handler that maps a key to
-// the method that answers it, and a window to hang it in. The window is at the
-// root of the file, because that is what the root tree accepts and a `node`
-// component is not a place a window belongs. The tests are in calc_test.sngl
-// beside it.
+// the method that answers it, and a window to hang it in, whose `@key` presses
+// the key a keyboard's key is a shortcut of. `Calculator` is a `root`
+// component, the kind that renders windows, so the window's handler reaches
+// the calculator it presses. The tests are in calc_test.sngl beside it.

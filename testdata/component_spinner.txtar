@@ -121,12 +121,15 @@ type modelState struct {
 
 	widget0 spinner.Model
 
-	width, height int
+	__drawn, __asleep [1]bool
+	__wake            chan struct{}
+	width, height     int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{&modelState{}}
+	m.__wake = make(chan struct{}, 1)
 	m.visible__inst0 = true
 	m.widget0 = spinner.New()
 	return m
@@ -315,8 +318,19 @@ func SetVisible__inst0Cmd(v bool) tea.Cmd {
 	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
+// snglWakeMsg says the view drew a widget that was asleep.
+type snglWakeMsg struct{}
+
+// __awaitWake waits for the view to draw a widget that is asleep.
+func (m Model) __awaitWake() tea.Cmd {
+	return func() tea.Msg {
+		<-m.__wake
+		return snglWakeMsg{}
+	}
+}
+
 func (m Model) Init() tea.Cmd {
-	return m.widget0.Tick
+	return tea.Batch(m.widget0.Tick, m.__awaitWake())
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -326,6 +340,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
+	case snglWakeMsg:
+		if m.__asleep[0] && m.__drawn[0] {
+			m.__asleep[0] = false
+			cmds = append(cmds, m.widget0.Tick)
+		}
+		cmds = append(cmds, m.__awaitWake())
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -343,14 +363,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	{
 		m.widget0, cmd = m.widget0.Update(msg)
-		cmds = append(cmds, cmd)
+		if m.__drawn[0] {
+			cmds = append(cmds, cmd)
+		} else if cmd != nil {
+			m.__asleep[0] = true
+		}
 	}
 	return m, tea.Batch(cmds...)
 }
 
+// __widget0_drawn is the view drawing widget0, which wakes it where it was asleep.
+func (m Model) __widget0_drawn() {
+	m.__drawn[0] = true
+	if m.__asleep[0] {
+		select {
+		case m.__wake <- struct{}{}:
+		default:
+		}
+	}
+}
+
 func (m Model) View() tea.View {
+	m.__drawn = [1]bool{}
 	var content string
 	if m.visible__inst0 {
+		m.__widget0_drawn()
 		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(m.widget0.View())
 	}
 	v := tea.NewView(content)
@@ -398,6 +435,9 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -420,6 +460,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText("Loading...")
@@ -474,6 +515,9 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -495,6 +539,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.New("GtkSpinner")
 	gtk4rt.SetBool(m.__n1, "spinning", true)
@@ -576,11 +621,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a20183c02a0e27f5cdc36919677cbc17
+pass sha256:04038bdca6a7a46c3c4a50338d3a50a8
 -- run/go/fyne --
-pass sha256:31c6a0e68080b0c3fb4660295623f912
+pass sha256:80ad3a6dca5a851fbcafc6a4e7c7e1d4
 -- run/go/gtk4 --
-pass sha256:35c0ba30953724c015d7e6bbfa8dc084
+pass sha256:8bc63f7439e7d906f3bc27a20f3012ab
 -- run/kotlin/android --
 pass sha256:8672e3f39175dbd8d5e3b1545ad372d8
 -- run/none/html --

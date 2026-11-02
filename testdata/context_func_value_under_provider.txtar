@@ -100,6 +100,9 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -164,6 +167,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.ask__reach0 = widget.NewButton("", nil)
 	m.ask__reach0.SetText("ask")
@@ -402,7 +406,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:36ccbd2886fd27685f4f59c2d10fd456
+pass sha256:68a3ceb574ada2e8ba0be68c64194e7d
 -- run/kotlin/android --
 pass sha256:b69ce611fb1051fedbb642ff9e99846e
 -- run/none/html --

@@ -303,12 +303,13 @@ const component markup.token[platform](kind, content) {
 // its `@error` is, which catches whether or not the call site handles one.
 // Nothing draws it, so its title, its `visible`, its `canGoBack` and its menu
 // are state a test reads and nothing shows. Its `@back` is the up arrow and
-// the system's back, which a test fires through the window's `#id`.
+// the system's back, and its `@key` a key pressed in it, which a test fires
+// through the window's `#id`.
 #[intrinsic("none:Window")]
-component Window(@back(), content ...component ui.node) root
+component Window(@back(), @key(key string), content ...component ui.node) root
 
-const component ui.window[platform](@error, @back, content) {
-    Window(@back { back() }) {
+const component ui.window[platform](@error, @back, @key, content) {
+    Window(@back { back() }, @key(k) { key(k) }) {
         boundary(@error(e) { error(e) }) {
             content
         }

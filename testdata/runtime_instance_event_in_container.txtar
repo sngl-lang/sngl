@@ -519,7 +519,6 @@ func (m Model) View() tea.View {
 		}()))))
 		part0_0ItemChildren = append(part0_0ItemChildren, part0_0Item_0)
 		part0_0Item = lipgloss.JoinVertical(lipgloss.Left, part0_0ItemChildren...)
-		part0_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Item)
 		part0_0Items = append(part0_0Items, part0_0Item)
 	}
 	part0_0 = tui.Spaced(false, lipgloss.Left, 0, part0_0Items...)
@@ -527,7 +526,6 @@ func (m Model) View() tea.View {
 		part0Children = append(part0Children, part0_0)
 	}
 	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
-	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0)
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -1543,7 +1541,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6e351a1411b53c6abd4ce04f8b09ffdf
+pass sha256:67f1af6b505b12b9d068a8376d312988
 -- run/go/fyne --
 pass sha256:8fae0b7780f415bd96219da239de5418
 -- run/go/gtk4 --

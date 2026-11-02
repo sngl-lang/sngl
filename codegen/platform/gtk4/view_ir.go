@@ -51,6 +51,16 @@ type gtkEventInvoker struct {
 	RtFire string
 }
 
+// rtFireValue is the Go type of the value a test hands an RtFire invoker,
+// which passes it on to the gtk4rt function, or "" for one taking none: a
+// window's key is pressed by its name.
+func (inv gtkEventInvoker) rtFireValue() string {
+	if inv.RtFire == "ToplevelKey" {
+		return "string"
+	}
+	return ""
+}
+
 // --- Lookup tables (consumed by gtk4Translator) ---
 
 // gtkSetterEntry describes the C setter for one prop on one widget class.

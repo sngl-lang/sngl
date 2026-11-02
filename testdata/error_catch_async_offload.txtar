@@ -109,6 +109,9 @@ func Load(s string) string {
 func (m *Model) home_closed_handler() {
 }
 
+func (m *Model) home_key_handler(k string) {
+}
+
 func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.home.SetVisible(m.visible__inst0)
@@ -146,6 +149,11 @@ func (m *Model) homeClosed() {
 	if m.home.OnClosed != nil {
 		m.home.OnClosed()
 	}
+}
+
+// homeKey calls PressKey on the #home widget; for tests.
+func (m *Model) homeKey(key string) {
+	m.home.PressKey(key)
 }
 
 // homeVisible invokes the OnVisible callback on the #home widget; for tests.
@@ -191,6 +199,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetTitle("raise")
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
+	m.home.OnKey = m.home_key_handler
 	m.home.OnVisible = m.home_visible_handler
 	m.__n2 = fynelayout.NewVBox()
 	m.__n3 = widget.NewButton("", nil)
@@ -277,6 +286,9 @@ func Load(s string) string {
 func (m *Model) home_closed_handler() {
 }
 
+func (m *Model) home_key_handler(k string) {
+}
+
 func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
@@ -342,12 +354,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.home, "raise")
 	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
+	gtk4rt.ToplevelOnKey(m.home, m.home_key_handler)
 	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
 	m.__n2 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n2, 1)
 	gtk4rt.SetLook(m.__n2, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n3 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n3, "go")
+	gtk4rt.SetBool(m.__n3, "can-focus", true)
 	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
 	gtk4rt.BoxAppend(m.__n2, m.__n3)
 	m.__n0 = gtk4rt.New("GtkLabel")
@@ -368,7 +382,12 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.home)
 }
+
+// homeKey fires "key" on the #home widget; for tests.
+func (m *Model) homeKey(v string) {
+	gtk4rt.ToplevelKey(m.home, v)
+}
 -- run/go/fyne --
-pass sha256:fe280b6168bbe2ebc7d2d758e36f1018
+pass sha256:b4dea07a3949936fdb20065c0b8ecceb
 -- run/go/gtk4 --
-pass sha256:35dd5c00d1b7f425ed78d88b4914d1cc
+pass sha256:058c8ebbdcfd37d5a6cde74dbac52e48

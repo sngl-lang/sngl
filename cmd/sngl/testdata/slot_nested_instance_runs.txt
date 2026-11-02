@@ -65,7 +65,7 @@ func testDroppingATabDropsItsPanel(t test.Test, c main) {
     t.assert(c.flavor == null)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:3a1dd7e55f33e59920a4d40892c69149
+sha256:4f0714d45d58cb591692be502fafc3a0
 {
   "results": [
     {
@@ -75,7 +75,7 @@ sha256:3a1dd7e55f33e59920a4d40892c69149
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:bd131e83d5e37ded1ed6aa28828829e1
+sha256:cc37065fe17b4a1156418f73cbbb5ced
 {
   "results": [
     {
@@ -95,7 +95,7 @@ sha256:26d280f772c26e4db4abc75ad05c6461
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:569bafa3f5e5d7d634eaf755981b6954
+sha256:d6a684b6ba39392a6a629b6da4b3aed8
 {
   "results": [
     {

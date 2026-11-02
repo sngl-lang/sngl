@@ -217,6 +217,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -230,6 +238,7 @@ type modelState struct {
 	visible__inst0 bool
 	__focusID      int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -540,6 +549,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -572,6 +587,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 // growClick activates the #grow widget the way a keypress does; for tests.
 func (m *Model) growClick() {
 	prev := m.__focusID
@@ -595,6 +622,7 @@ func (m *Model) oddClick() {
 }
 
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
@@ -647,6 +675,7 @@ func (m Model) View() tea.View {
 			contentPart_11Prefix = ">"
 		}
 		contentPart_11 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_11Prefix + " " + fmt.Sprint("Grow"))
+		contentPart_11 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_11)
 		contentParts = append(contentParts, contentPart_11)
 		var contentPart_12 string
 		contentPart_12Focused := (m.__focusID == 1)
@@ -655,11 +684,14 @@ func (m Model) View() tea.View {
 			contentPart_12Prefix = ">"
 		}
 		contentPart_12 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_12Prefix + " " + fmt.Sprint("Odd"))
+		contentPart_12 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_12)
 		contentParts = append(contentParts, contentPart_12)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -833,6 +865,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -940,6 +975,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.shownArea = widget.NewLabel("")
 	m.shownArea.SetText(fmt.Sprint(Area(m.shape__inst0)))
@@ -1193,6 +1229,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -1324,6 +1363,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.shownArea = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
@@ -1362,10 +1402,12 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n0)
 	m.grow = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.grow, "Grow")
+	gtk4rt.SetBool(m.grow, "can-focus", true)
 	gtk4rt.Connect(m.grow, "clicked", m.grow_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.grow)
 	m.odd = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.odd, "Odd")
+	gtk4rt.SetBool(m.odd, "can-focus", true)
 	gtk4rt.Connect(m.odd, "clicked", m.odd_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.odd)
 	gtk4rt.AppAttach(m.__n0)
@@ -1710,11 +1752,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:100bb151240c555aac13eaf0ee3576d1
+pass sha256:f689476c28553ac28080b3a988e2ed18
 -- run/go/fyne --
-pass sha256:a59b159ba8d4013b95d801fb72e02108
+pass sha256:f048679f7a9c0354684f2f58d3374a2c
 -- run/go/gtk4 --
-pass sha256:fe4aa55afc0463c0fa13b81e0b05c644
+pass sha256:5afd6a9ecc45bc7189c799cbe1997f77
 -- run/kotlin/android --
 pass sha256:ca61db144d85b2ab45d50f4f92b85c5e
 -- run/none/html --

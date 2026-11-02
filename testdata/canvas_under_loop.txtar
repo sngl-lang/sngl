@@ -1111,6 +1111,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot1(m.__n2)
 	m.add = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
 	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.add)), "add")
+	gtk4rt.SetBool(gtk4rt.Handle(unsafe.Pointer(m.add)), "can-focus", true)
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.add)), "clicked", m.add_clicked_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.add)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
@@ -1477,6 +1478,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:b1e6d2666c25cafe94a06303ddaa4515
 -- run/go/gtk4 --
-pass sha256:8ac72ca6f83383a2cbda4356cf174327
+pass sha256:9da0395314811595ddb4523c0eba219b
 -- run/none/html --
 pass sha256:fd78b10547c6da64a5fde910316361f8

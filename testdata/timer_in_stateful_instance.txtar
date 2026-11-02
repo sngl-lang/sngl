@@ -579,6 +579,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
+func (m *Model) __n1_key_handler(k string) {
+}
+
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n1.SetVisible(m.visible__inst0)
@@ -602,6 +605,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetTitle("t")
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
+	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__renderSlot0(m.__n1.Container)
 	fynelayout.AppAttach(m.__n1)
@@ -918,6 +922,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
+func (m *Model) __n1_key_handler(k string) {
+}
+
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
@@ -1078,6 +1085,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.__n1, "t")
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n1, m.__n1_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__renderSlot0(m.__n1)
 	gtk4rt.AppAttach(m.__n1)
@@ -1295,8 +1303,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:482ae8603215b46c54cd8fc21fc70ab6
 -- run/go/fyne --
-pass sha256:c707a19cb6343ac5ab97e39c3452eb22
+pass sha256:05768a49cb551a144ee6f5dfdc987740
 -- run/go/gtk4 --
-pass sha256:aae328f8f8aad662a372aa1479078c7c
+pass sha256:05b0fe1163c42b13c5bebc82bea21338
 -- run/none/html --
 pass sha256:9b7af8324c29b3b7fb4b8a15424a83a5

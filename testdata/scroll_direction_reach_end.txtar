@@ -473,7 +473,6 @@ func (m Model) View() tea.View {
 			contentPart_0_0Children = append(contentPart_0_0Children, contentPart_0_0_0)
 		}
 		contentPart_0_0 = tui.Spaced(true, lipgloss.Top, 1, contentPart_0_0Children...)
-		contentPart_0_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_0_0)
 		contentPart_0Children = append(contentPart_0Children, contentPart_0_0)
 		contentPart_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0Children...)
 		contentPart_0 = BoxLook(Style{Height: snglSome(Measurement{Px: 120}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_0)
@@ -495,7 +494,6 @@ func (m Model) View() tea.View {
 			contentPart_1_0Children = append(contentPart_1_0Children, contentPart_1_0_0)
 		}
 		contentPart_1_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1_0Children...)
-		contentPart_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1_0)
 		contentPart_1Children = append(contentPart_1Children, contentPart_1_0)
 		contentPart_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1Children...)
 		contentPart_1 = BoxLook(Style{Height: snglSome(Measurement{Px: 240}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1)
@@ -658,6 +656,9 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -724,6 +725,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.list = fynelayout.NewReachScroll()
 	m.list__box = fynelayout.NewBox(m.list)
@@ -913,6 +915,9 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -964,6 +969,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.list = gtk4rt.ScrollNew()
 	gtk4rt.ScrollSetDirection(m.list, "horizontal")
@@ -1906,11 +1912,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ee0d139df8924a1ca6d159be1c53931c
+pass sha256:a1476a43aaaed4e93a21c3b14d7044d1
 -- run/go/fyne --
-pass sha256:a6533055b6ae9e2a3a1ce0b4f6bc9f80
+pass sha256:7fb2d6ddd6c1a2cb78e6da6ebcc7010a
 -- run/go/gtk4 --
-pass sha256:92c2acde730c28c3d44dd02352dcc2e5
+pass sha256:74fbca34fd089c0c44a28a35ccdc9fa6
 -- run/kotlin/android --
 pass sha256:dd3880b9abe03929bb3f37d36b2634b6
 -- run/none/html --

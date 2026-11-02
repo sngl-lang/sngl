@@ -841,6 +841,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.drop = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.drop, "drop")
+	gtk4rt.SetBool(m.drop, "can-focus", true)
 	gtk4rt.Connect(m.drop, "clicked", m.drop_clicked_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, ("log=" + m.log))
@@ -1309,7 +1310,7 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:ad43060835daf52eb6528e1823cdfcb7
 -- run/go/gtk4 --
-pass sha256:49f6a19e9afe182310c0b795ee33fdd5
+pass sha256:f3e2843e035df04e3369fd926c10e4b0
 -- run/kotlin/android --
 pass sha256:b7b519e8140cb3a0efeacf45f9156a09
 -- run/none/html --

@@ -239,6 +239,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
+func (m *Model) __n1_key_handler(k string) {
+}
+
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n1.SetVisible(m.visible__inst0)
@@ -282,6 +285,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = fynelayout.NewToplevel()
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
+	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__n10 = widget.NewLabel("")
 	m.__n10.SetText("header")
@@ -654,6 +658,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
+func (m *Model) __n1_key_handler(k string) {
+}
+
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
@@ -694,6 +701,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__slot3 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.n)))
+	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.n += 1
 		gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.n)))
@@ -777,6 +785,7 @@ func newCardInstance(__model *Model, __a_xs []string) *CardInstance {
 	gtk4rt.LabelSetXAlign(__n8, 0.0)
 	__n9 := gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(__n9, "flip")
+	gtk4rt.SetBool(__n9, "can-focus", true)
 	gtk4rt.Connect(__n9, "clicked", func() {
 		c.open = !c.open
 		c.__renderSlot1(c.__root)
@@ -894,6 +903,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n1, m.__n1_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__n10 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n10, "header")
@@ -911,6 +921,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n1, m.__n12)
 	m.more = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.more, "more")
+	gtk4rt.SetBool(m.more, "can-focus", true)
 	gtk4rt.Connect(m.more, "clicked", m.more_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.more)
 	gtk4rt.AppAttach(m.__n1)
@@ -928,6 +939,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:861426bc4124fb44698446297144567f
+pass sha256:a698ca5c43a6f86c8d6dc08b8b4e6550
 -- run/go/gtk4 --
-pass sha256:88a8afaefc7e73018c5d33c1631ccbed
+pass sha256:45a277f92cb2028cb5fd40dcd7675fc0

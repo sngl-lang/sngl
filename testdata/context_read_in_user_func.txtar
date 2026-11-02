@@ -227,6 +227,14 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -258,6 +266,7 @@ type modelState struct {
 	__effects0_steps    int
 	__focusID           int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -789,6 +798,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -804,6 +819,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, tea.Batch(cmds...)
+}
+
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
 }
 
 // tapClick activates the #tap widget the way a keypress does; for tests.
@@ -829,6 +856,7 @@ func (m *Model) wrapClick() {
 }
 
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var parts []string
 	var part0 string
 	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("d9"))
@@ -843,6 +871,7 @@ func (m Model) View() tea.View {
 		part2Prefix = ">"
 	}
 	part2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part2Prefix + " " + fmt.Sprint("tap"))
+	part2 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part2)
 	parts = append(parts, part2)
 	var part3 string
 	part3Focused := (m.__focusID == 1)
@@ -851,6 +880,7 @@ func (m Model) View() tea.View {
 		part3Prefix = ">"
 	}
 	part3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part3Prefix + " " + fmt.Sprint("wrap"))
+	part3 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part3)
 	parts = append(parts, part3)
 	var part4 string
 	part4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("d" + fmt.Sprint(m.__ctx_depth))))
@@ -859,8 +889,10 @@ func (m Model) View() tea.View {
 	part5 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((m.clicked + " ") + m.provided)))
 	parts = append(parts, part5)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -1610,9 +1642,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetXAlign(__n3, 0.0)
 	m.tap = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.tap, "tap")
+	gtk4rt.SetBool(m.tap, "can-focus", true)
 	gtk4rt.Connect(m.tap, "clicked", m.tap_clicked_handler)
 	m.wrap = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.wrap, "wrap")
+	gtk4rt.SetBool(m.wrap, "can-focus", true)
 	gtk4rt.Connect(m.wrap, "clicked", m.wrap_clicked_handler)
 	__n0 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n0, ("d" + fmt.Sprint(m.__ctx_depth)))
@@ -2013,11 +2047,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c4026b90c10a9f146420a1d05c43b866
+pass sha256:e09c11e359796de682dbef7883075030
 -- run/go/fyne --
 pass sha256:a0b7c7704ea0dae53f165f5bedb124f3
 -- run/go/gtk4 --
-pass sha256:f578407d7f56a072885c563412e6dcde
+pass sha256:e26adc6b07c4e4a7e800c81283250bf3
 -- run/go/html --
 pass sha256:c013206a0b6fb57fcd73783c51bdb0c6
 -- run/kotlin/android --

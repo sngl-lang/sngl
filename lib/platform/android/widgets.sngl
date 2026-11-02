@@ -13,9 +13,13 @@ import . "sngl:internal/marks"
 
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one. Its menu's entries are
-// drawn two deep: an action and its DropdownMenu.
-const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, content, favicon, menu) {
-    Screen(visible=visible, title=title, canGoBack=canGoBack, onUp=func() { back() }, onBack=func() {
+// drawn two deep: an action and its DropdownMenu. Its `@key` is a hardware
+// keyboard's key that nothing focused took, which reaches the activity once
+// Compose has passed it up from the focused composable; a test presses one
+// through the window's `#id` as the keyboard would, so a focused field takes
+// what is typed there too.
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content, favicon, menu) {
+    Screen(visible=visible, title=title, canGoBack=canGoBack, onUp=func() { back() }, onKey=func(k string) { key(k) }, onBack=func() {
         visible = false
         closed()
     }) {
@@ -100,10 +104,15 @@ const component ui.text[platform](value, style) {
     ) {}
 }
 
-const component ui.button[platform](text, style, @click) {
+// A control written `focusable=false` takes no focus, by a key or a press, so
+// the Enter and space a hardware keyboard presses a focused one with reach the
+// window instead.
+const func focusOf(m Modifier, focusable bool) => focusable ? m : m.snglUnfocusable()
+
+const component ui.button[platform](text, focusable, style, @click) {
     Button(
         onClick = func() { click() },
-        modifier = surfaceModifierOf(style, flexShare),
+        modifier = focusOf(surfaceModifierOf(style, flexShare), focusable),
         colors = buttonColorsOf(containerColor=colorOf(style.background), contentColor=colorOf(style.color)),
         shape = buttonShapeOf(style),
     ) {
@@ -184,13 +193,13 @@ const component ui.input[platform](placeholder, readonly, value, style, @input, 
     }
 }
 
-const component ui.checkbox[platform](label, checked, style, @change) {
+const component ui.checkbox[platform](label, checked, focusable, style, @change) {
     Row(
         modifier = modifierOf(style, flexShare),
         horizontalArrangement = rowArrangement(style),
         verticalAlignment = alignCenterVertically,
     ) {
-        Checkbox(checked=checked, onCheckedChange=func(on) {
+        Checkbox(checked=checked, modifier=focusOf(modifier, focusable), onCheckedChange=func(on) {
             checked = on
             change(on)
         }) {}
@@ -242,13 +251,13 @@ const component ui.radio[platform](value, direction, style, @change, options) {
     }
 }
 
-const component ui.toggle[platform](label, checked, style, @change) {
+const component ui.toggle[platform](label, checked, focusable, style, @change) {
     Row(
         modifier = modifierOf(style, flexShare),
         horizontalArrangement = rowArrangement(style),
         verticalAlignment = alignCenterVertically,
     ) {
-        Switch(checked=checked, onCheckedChange=func(on) {
+        Switch(checked=checked, modifier=focusOf(modifier, focusable), onCheckedChange=func(on) {
             checked = on
             change(on)
         }) {}
@@ -265,7 +274,7 @@ const component ui.toggle[platform](label, checked, style, @change) {
 // it. Setting the box's text chooses as picking does, which is how a test
 // chooses; a label that names no choice, or is the value already, reports
 // nothing.
-component ui.select[platform](placeholder, value, disabled, style, @change, options) {
+component ui.select[platform](placeholder, value, disabled, focusable, style, @change, options) {
     var open = false
     func choose(v string) {
         open = false
@@ -280,6 +289,7 @@ component ui.select[platform](placeholder, value, disabled, style, @change, opti
             readOnly = true,
             enabled = disabled == false,
             singleLine = true,
+            modifier = focusOf(modifier, focusable),
             onValueChange = func(v) {},
         ) {
             component label {
@@ -291,7 +301,7 @@ component ui.select[platform](placeholder, value, disabled, style, @change, opti
                 Text(text="▾") {}
             }
         }
-        Box(modifier=modifier.matchParentSize().clickable(enabled=disabled == false, onClick=func() { open = true })) {}
+        Box(modifier=focusOf(modifier.matchParentSize(), focusable).clickable(enabled=disabled == false, onClick=func() { open = true })) {}
         DropdownMenu(expanded=open, onDismissRequest=func() { open = false }) {
             for var opt = options {
                 DropdownMenuItem(onClick=func() { choose(opt.label) }) {

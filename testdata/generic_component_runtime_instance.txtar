@@ -349,6 +349,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n3_closed_handler() {
 }
 
+func (m *Model) __n3_key_handler(k string) {
+}
+
 func (m *Model) __n3_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n3.SetVisible(m.visible__inst0)
@@ -420,6 +423,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.SetTitle("x")
 	m.__n3.SetVisible(m.visible__inst0)
 	m.__n3.OnClosed = m.__n3_closed_handler
+	m.__n3.OnKey = m.__n3_key_handler
 	m.__n3.OnVisible = m.__n3_visible_handler
 	m.__renderSlot0(m.__n3.Container)
 	m.__renderSlot1(m.__n3.Container)
@@ -895,6 +899,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n3_closed_handler() {
 }
 
+func (m *Model) __n3_key_handler(k string) {
+}
+
 func (m *Model) __n3_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n3, m.visible__inst0)
@@ -932,6 +939,7 @@ func newShow__intInstance(__model *Model, __a_xs []int, __a_w __anon_v_853006, _
 	c.__slot2 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((fmt.Sprint(c.hits) + " ") + fmt.Sprint(len(c.__prop_xs))))
+	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.hits = (c.hits + 1)
 		gtk4rt.ButtonSetLabel(c.__n0, ((fmt.Sprint(c.hits) + " ") + fmt.Sprint(len(c.__prop_xs))))
@@ -1008,6 +1016,7 @@ func newShow__stringInstance(__model *Model, __a_xs []string, __a_w __anon_v_ba9
 	c.__slot2 = nil
 	c.__n1 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n1, ((fmt.Sprint(c.hits) + " ") + fmt.Sprint(len(c.__prop_xs))))
+	gtk4rt.SetBool(c.__n1, "can-focus", true)
 	gtk4rt.Connect(c.__n1, "clicked", func() {
 		c.hits = (c.hits + 1)
 		gtk4rt.ButtonSetLabel(c.__n1, ((fmt.Sprint(c.hits) + " ") + fmt.Sprint(len(c.__prop_xs))))
@@ -1082,6 +1091,7 @@ func newHeld__intInstance(__model *Model, __a_value int, __a_next int, __a___on_
 	c.__slot2 = nil
 	c.__n2 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n2, fmt.Sprint(c.hits))
+	gtk4rt.SetBool(c.__n2, "can-focus", true)
 	gtk4rt.Connect(c.__n2, "clicked", func() {
 		c.hits += 1
 		gtk4rt.ButtonSetLabel(c.__n2, fmt.Sprint(c.hits))
@@ -1185,6 +1195,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.__n3, "x")
 	gtk4rt.ToplevelSetVisible(m.__n3, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n3, m.__n3_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n3, m.__n3_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n3, m.__n3_visible_handler)
 	m.__renderSlot0(m.__n3)
 	m.__renderSlot1(m.__n3)
@@ -1684,9 +1695,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:0819a711d5828ce3145e3aadaeb3538d
+pass sha256:4ad83335acfd14b9010fb2382e64b543
 -- run/go/gtk4 --
-pass sha256:1344a406c293db690b9e7495db3867a0
+pass sha256:4ba669d04c80af2779d88dd8b306ce17
 -- run/kotlin/android --
 pass sha256:f100d63f3d531af54bc76c268a29fa01
 -- run/none/html --

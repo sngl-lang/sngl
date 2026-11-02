@@ -163,6 +163,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -177,6 +185,8 @@ type modelState struct {
 	__focusID           int
 	__focusLoop0_cursor int
 
+	__clicks      tui.Clicks[snglStop]
+	__pressing    bool
 	width, height int
 }
 
@@ -557,6 +567,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -571,7 +587,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
-		case msg.Code == tea.KeySpace && m.__focusID == 0:
+		case msg.Code == tea.KeySpace && m.__focusID == 0 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos0 := 0
 				for __copy0, b := range []_Block{_Block{Kind: "heading1", Anchor: "guide", Runs: []_Run{_Run{Text: "Guide", Token: "plain", Parts: []_Run{}}}, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "paragraph", Runs: []_Run{_Run{Text: "Some ", Token: "plain", Parts: []_Run{}}, _Run{Text: "emphasis", Italic: true, Token: "plain", Parts: []_Run{}}, _Run{Text: ", ", Token: "plain", Parts: []_Run{}}, _Run{Text: "weight", Bold: true, Token: "plain", Parts: []_Run{}}, _Run{Text: " and ", Token: "plain", Parts: []_Run{}}, _Run{Text: "code", Mono: true, Token: "plain", Parts: []_Run{}}, _Run{Text: ", with ", Token: "plain", Parts: []_Run{}}, _Run{Href: "/x", Token: "plain", Parts: []_Run{_Run{Text: "a link", Token: "plain", Parts: []_Run{}}}}, _Run{Text: " and ", Token: "plain", Parts: []_Run{}}, _Run{Text: "both", Bold: true, Italic: true, Token: "plain", Parts: []_Run{}}, _Run{Text: ".", Token: "plain", Parts: []_Run{}}}, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "list", Runs: []_Run{}, Start: 1, Items: []_Item{_Item{Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Runs: []_Run{_Run{Text: "one", Token: "plain", Parts: []_Run{}}}, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}, _Item{Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Runs: []_Run{_Run{Text: "two", Token: "plain", Parts: []_Run{}}}, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "list", Runs: []_Run{}, Ordered: true, Start: 1, Items: []_Item{_Item{Marker: "1.", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Runs: []_Run{_Run{Text: "nested", Token: "plain", Parts: []_Run{}}}, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}}, Columns: []string{}, Rows: [][]string{}}}}, _Item{Task: "done", Blocks: []_Block{_Block{Kind: "paragraph", Runs: []_Run{_Run{Text: "done", Token: "plain", Parts: []_Run{}}}, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "code", Runs: []_Run{_Run{Text: "x", Token: "variable", Parts: []_Run{}}, _Run{Text: " ", Token: "plain", Parts: []_Run{}}, _Run{Text: ":=", Token: "operator", Parts: []_Run{}}, _Run{Text: " ", Token: "plain", Parts: []_Run{}}, _Run{Text: "1", Token: "number", Parts: []_Run{}}}, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "table", Runs: []_Run{}, Items: []_Item{}, Columns: []string{"a", "b"}, Rows: [][]string{[]string{"1", "2"}}}} {
@@ -692,7 +708,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	prev := [...]int{m.__focusID, m.__focusLoop0_cursor}
+	m.__focusID = s.slot
+	switch s.slot {
+	case 0:
+		m.__focusLoop0_cursor = s.pos
+	}
+	tabbed := m.__focusShown()
+	var cmd tea.Cmd
+	if s.press {
+		m.__pressing = true
+		_, cmd = m.Update(s.key)
+		m.__pressing = false
+	}
+	if !tabbed {
+		m.__focusID = prev[0]
+		m.__focusLoop0_cursor = prev[1]
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentChildren []string
@@ -723,12 +764,13 @@ func (m Model) View() tea.View {
 						}
 						content_0Item_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt19))
 					} else {
-						content_0Item_0Item_0Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+						content_0Item_0Item_0Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0)) && m.__focusShown()
 						content_0Item_0Item_0Prefix := " "
 						if content_0Item_0Item_0Focused {
 							content_0Item_0Item_0Prefix = ">"
 						}
 						content_0Item_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_0Prefix + " " + fmt.Sprint(""))
+						content_0Item_0Item_0 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_0Item_0Item_0)
 						__focusPos0++
 					}
 					if content_0Item_0Item_0 != "" {
@@ -761,12 +803,13 @@ func (m Model) View() tea.View {
 									}
 									content_0Item_0Item_1_0Item_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt20))
 								} else {
-									content_0Item_0Item_1_0Item_0Item_0Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+									content_0Item_0Item_1_0Item_0Item_0Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0)) && m.__focusShown()
 									content_0Item_0Item_1_0Item_0Item_0Prefix := " "
 									if content_0Item_0Item_1_0Item_0Item_0Focused {
 										content_0Item_0Item_1_0Item_0Item_0Prefix = ">"
 									}
 									content_0Item_0Item_1_0Item_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item_0Prefix + " " + fmt.Sprint(""))
+									content_0Item_0Item_1_0Item_0Item_0 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_0Item_0Item_1_0Item_0Item_0)
 									__focusPos0++
 								}
 								if content_0Item_0Item_1_0Item_0Item_0 != "" {
@@ -799,12 +842,13 @@ func (m Model) View() tea.View {
 												}
 												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt21))
 											} else {
-												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0)) && m.__focusShown()
 												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Prefix := " "
 												if content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Focused {
 													content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Prefix = ">"
 												}
 												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Prefix + " " + fmt.Sprint(""))
+												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0)
 												__focusPos0++
 											}
 											if content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 != "" {
@@ -1604,7 +1648,6 @@ func (m Model) View() tea.View {
 																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0Children = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0Children, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0_0)
 																							}
 																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0 = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0Children...)
-																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 16}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0)
 																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0ItemChildren = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0ItemChildren, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0)
 																							var content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1 string
 																							var content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Items []string
@@ -1625,7 +1668,6 @@ func (m Model) View() tea.View {
 																									content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1ItemChildren = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1ItemChildren, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0)
 																								}
 																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1ItemChildren...)
-																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item = BoxLook(Style{Gap: snglSome(Measurement{Px: 16}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item)
 																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Items = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Items, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item)
 																							}
 																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1 = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Items...)
@@ -1633,7 +1675,6 @@ func (m Model) View() tea.View {
 																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0ItemChildren = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0ItemChildren, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1)
 																							}
 																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0ItemChildren...)
-																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item = BoxLook(Style{Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item)
 																						}
 																					}
 																				}
@@ -1654,10 +1695,8 @@ func (m Model) View() tea.View {
 												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1Children = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1Children, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0)
 											}
 											content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1 = lipgloss.JoinVertical(lipgloss.Left, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1Children...)
-											content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1)
 											content_0Item_0Item_1_0Item_0Item_1_0Item_0ItemChildren = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0ItemChildren, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1)
 											content_0Item_0Item_1_0Item_0Item_1_0Item_0Item = tui.Spaced(true, lipgloss.Top, 1, content_0Item_0Item_1_0Item_0Item_1_0Item_0ItemChildren...)
-											content_0Item_0Item_1_0Item_0Item_1_0Item_0Item = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "start", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item)
 											content_0Item_0Item_1_0Item_0Item_1_0Item_0Items = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0Items, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item)
 										}
 										content_0Item_0Item_1_0Item_0Item_1_0Item_0 = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_0Item_1_0Item_0Items...)
@@ -2454,7 +2493,6 @@ func (m Model) View() tea.View {
 																						content_0Item_0Item_1_0Item_0Item_1_0Item_0Children = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0Children, content_0Item_0Item_1_0Item_0Item_1_0Item_0_0)
 																					}
 																					content_0Item_0Item_1_0Item_0Item_1_0Item_0 = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_0Item_1_0Item_0Children...)
-																					content_0Item_0Item_1_0Item_0Item_1_0Item_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 16}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0)
 																					content_0Item_0Item_1_0Item_0Item_1_0ItemChildren = append(content_0Item_0Item_1_0Item_0Item_1_0ItemChildren, content_0Item_0Item_1_0Item_0Item_1_0Item_0)
 																					var content_0Item_0Item_1_0Item_0Item_1_0Item_1 string
 																					var content_0Item_0Item_1_0Item_0Item_1_0Item_1Items []string
@@ -2475,7 +2513,6 @@ func (m Model) View() tea.View {
 																							content_0Item_0Item_1_0Item_0Item_1_0Item_1ItemChildren = append(content_0Item_0Item_1_0Item_0Item_1_0Item_1ItemChildren, content_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0)
 																						}
 																						content_0Item_0Item_1_0Item_0Item_1_0Item_1Item = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_0Item_1_0Item_1ItemChildren...)
-																						content_0Item_0Item_1_0Item_0Item_1_0Item_1Item = BoxLook(Style{Gap: snglSome(Measurement{Px: 16}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_1Item)
 																						content_0Item_0Item_1_0Item_0Item_1_0Item_1Items = append(content_0Item_0Item_1_0Item_0Item_1_0Item_1Items, content_0Item_0Item_1_0Item_0Item_1_0Item_1Item)
 																					}
 																					content_0Item_0Item_1_0Item_0Item_1_0Item_1 = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_0Item_1_0Item_1Items...)
@@ -2483,7 +2520,6 @@ func (m Model) View() tea.View {
 																						content_0Item_0Item_1_0Item_0Item_1_0ItemChildren = append(content_0Item_0Item_1_0Item_0Item_1_0ItemChildren, content_0Item_0Item_1_0Item_0Item_1_0Item_1)
 																					}
 																					content_0Item_0Item_1_0Item_0Item_1_0Item = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_0Item_1_0ItemChildren...)
-																					content_0Item_0Item_1_0Item_0Item_1_0Item = BoxLook(Style{Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item_1_0Item)
 																				}
 																			}
 																		}
@@ -2505,10 +2541,8 @@ func (m Model) View() tea.View {
 									content_0Item_0Item_1_0Item_0Item_1Children = append(content_0Item_0Item_1_0Item_0Item_1Children, content_0Item_0Item_1_0Item_0Item_1_0)
 								}
 								content_0Item_0Item_1_0Item_0Item_1 = lipgloss.JoinVertical(lipgloss.Left, content_0Item_0Item_1_0Item_0Item_1Children...)
-								content_0Item_0Item_1_0Item_0Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item_1)
 								content_0Item_0Item_1_0Item_0ItemChildren = append(content_0Item_0Item_1_0Item_0ItemChildren, content_0Item_0Item_1_0Item_0Item_1)
 								content_0Item_0Item_1_0Item_0Item = tui.Spaced(true, lipgloss.Top, 1, content_0Item_0Item_1_0Item_0ItemChildren...)
-								content_0Item_0Item_1_0Item_0Item = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "start", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item)
 								content_0Item_0Item_1_0Item_0Items = append(content_0Item_0Item_1_0Item_0Items, content_0Item_0Item_1_0Item_0Item)
 							}
 							content_0Item_0Item_1_0Item_0 = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_0Items...)
@@ -3305,7 +3339,6 @@ func (m Model) View() tea.View {
 																			content_0Item_0Item_1_0Item_0Children = append(content_0Item_0Item_1_0Item_0Children, content_0Item_0Item_1_0Item_0_0)
 																		}
 																		content_0Item_0Item_1_0Item_0 = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_0Children...)
-																		content_0Item_0Item_1_0Item_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 16}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0)
 																		content_0Item_0Item_1_0ItemChildren = append(content_0Item_0Item_1_0ItemChildren, content_0Item_0Item_1_0Item_0)
 																		var content_0Item_0Item_1_0Item_1 string
 																		var content_0Item_0Item_1_0Item_1Items []string
@@ -3326,7 +3359,6 @@ func (m Model) View() tea.View {
 																				content_0Item_0Item_1_0Item_1ItemChildren = append(content_0Item_0Item_1_0Item_1ItemChildren, content_0Item_0Item_1_0Item_1Item_0)
 																			}
 																			content_0Item_0Item_1_0Item_1Item = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_1ItemChildren...)
-																			content_0Item_0Item_1_0Item_1Item = BoxLook(Style{Gap: snglSome(Measurement{Px: 16}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_1Item)
 																			content_0Item_0Item_1_0Item_1Items = append(content_0Item_0Item_1_0Item_1Items, content_0Item_0Item_1_0Item_1Item)
 																		}
 																		content_0Item_0Item_1_0Item_1 = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_1Items...)
@@ -3334,7 +3366,6 @@ func (m Model) View() tea.View {
 																			content_0Item_0Item_1_0ItemChildren = append(content_0Item_0Item_1_0ItemChildren, content_0Item_0Item_1_0Item_1)
 																		}
 																		content_0Item_0Item_1_0Item = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0ItemChildren...)
-																		content_0Item_0Item_1_0Item = BoxLook(Style{Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item)
 																	}
 																}
 															}
@@ -3356,10 +3387,8 @@ func (m Model) View() tea.View {
 						content_0Item_0Item_1Children = append(content_0Item_0Item_1Children, content_0Item_0Item_1_0)
 					}
 					content_0Item_0Item_1 = lipgloss.JoinVertical(lipgloss.Left, content_0Item_0Item_1Children...)
-					content_0Item_0Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1)
 					content_0Item_0ItemChildren = append(content_0Item_0ItemChildren, content_0Item_0Item_1)
 					content_0Item_0Item = tui.Spaced(true, lipgloss.Top, 1, content_0Item_0ItemChildren...)
-					content_0Item_0Item = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "start", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item)
 					content_0Item_0Items = append(content_0Item_0Items, content_0Item_0Item)
 				}
 				content_0Item_0 = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Items...)
@@ -4156,7 +4185,6 @@ func (m Model) View() tea.View {
 																content_0Item_0Children = append(content_0Item_0Children, content_0Item_0_0)
 															}
 															content_0Item_0 = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Children...)
-															content_0Item_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 16}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0)
 															content_0ItemChildren = append(content_0ItemChildren, content_0Item_0)
 															var content_0Item_1 string
 															var content_0Item_1Items []string
@@ -4177,7 +4205,6 @@ func (m Model) View() tea.View {
 																	content_0Item_1ItemChildren = append(content_0Item_1ItemChildren, content_0Item_1Item_0)
 																}
 																content_0Item_1Item = tui.Spaced(true, lipgloss.Top, 2, content_0Item_1ItemChildren...)
-																content_0Item_1Item = BoxLook(Style{Gap: snglSome(Measurement{Px: 16}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_1Item)
 																content_0Item_1Items = append(content_0Item_1Items, content_0Item_1Item)
 															}
 															content_0Item_1 = tui.Spaced(false, lipgloss.Left, 1, content_0Item_1Items...)
@@ -4185,7 +4212,6 @@ func (m Model) View() tea.View {
 																content_0ItemChildren = append(content_0ItemChildren, content_0Item_1)
 															}
 															content_0Item = tui.Spaced(false, lipgloss.Left, 1, content_0ItemChildren...)
-															content_0Item = BoxLook(Style{Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item)
 														}
 													}
 												}
@@ -4207,10 +4233,11 @@ func (m Model) View() tea.View {
 			contentChildren = append(contentChildren, content_0)
 		}
 		content = tui.Spaced(false, lipgloss.Left, 1, contentChildren...)
-		content = BoxLook(Style{Gap: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -9469,6 +9496,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
+func (m *Model) __n1_key_handler(k string) {
+}
+
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n1.SetVisible(m.visible__inst0)
@@ -9492,6 +9522,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetTitle("guide")
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
+	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__n861 = fynelayout.NewVBox()
 	m.__n861__box = fynelayout.NewBox(m.__n861)
@@ -9617,8 +9648,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:86fedadf37e9bfb6ae392c15a7072763
+pass sha256:373cd55b84418ffedbc07c78cd8aab98
 -- run/go/fyne --
-pass sha256:a1c9706bce75cdaf840f7e56f0e9723d
+pass sha256:ec5a5c6468c64d1c392fb6f98d54d5f8
 -- run/none/html --
 pass sha256:b9199f565b9a8bfec0d7b80b34f94adb

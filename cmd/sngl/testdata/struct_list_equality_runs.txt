@@ -106,7 +106,7 @@ func testAnOptionOfAStructComparesWhatItHolds(t test.Test, c page) {
     t.assert(x == y)
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:cc7f7f616ad7793dee9504e5cd523275
+sha256:a4b2ee27cb2376f2c35576dd40b90d1b
 {
   "results": [
     {
@@ -132,7 +132,7 @@ sha256:cc7f7f616ad7793dee9504e5cd523275
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:e5878fb5844e07e56f44753718cbace6
+sha256:752ae600e7193d3aa8611a7e56fc3360
 {
   "results": [
     {
@@ -184,7 +184,7 @@ sha256:93a71c1f193b06adcfd4c75df2573d5a
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:4d94b88cfa3779c7cefd815692e713bd
+sha256:482cd2c741c6ea68803b7576788b14d8
 {
   "results": [
     {

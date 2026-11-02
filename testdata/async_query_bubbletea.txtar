@@ -157,6 +157,14 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -180,6 +188,7 @@ type modelState struct {
 	__effects0_steps    int
 	__focusID           int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -634,6 +643,19 @@ type __snglPostMsg func()
 // __snglAwaitPost waits for the next posted closure.
 func __snglAwaitPost() tea.Msg { return __snglPostMsg(<-__snglPosts) }
 
+// __snglDrainPosts runs the closures already posted, as many as were waiting
+// when it began, so the answers that arrive together are drawn once.
+func __snglDrainPosts() {
+	for range len(__snglPosts) {
+		select {
+		case f := <-__snglPosts:
+			f()
+		default:
+			return
+		}
+	}
+}
+
 // __snglRunPosts runs what was posted within d, for a test, which
 // owns the Model as Update does.
 func __snglRunPosts(d time.Duration) {
@@ -717,10 +739,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetRefreshes__inst0(msg.value)
 	case __snglPostMsg:
 		msg()
+		__snglDrainPosts()
 		cmds = append(cmds, __snglAwaitPost)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -745,7 +774,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var parts []string
 	var part0 string
 	if m.visible__inst0 {
@@ -778,6 +820,7 @@ func (m Model) View() tea.View {
 			part0Part_7Prefix = ">"
 		}
 		part0Part_7 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_7Prefix + " " + fmt.Sprint("fig"))
+		part0Part_7 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_7)
 		part0Parts = append(part0Parts, part0Part_7)
 		var part0Part_8 string
 		part0Part_8Focused := (m.__focusID == 1)
@@ -786,13 +829,16 @@ func (m Model) View() tea.View {
 			part0Part_8Prefix = ">"
 		}
 		part0Part_8 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_8Prefix + " " + fmt.Sprint("again"))
+		part0Part_8 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_8)
 		part0Parts = append(part0Parts, part0Part_8)
 		part0 = tui.Spaced(false, lipgloss.Left, 0, part0Parts...)
 	}
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -829,4 +875,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:f0cc4a451142e400497079dfc170a6ce
+pass sha256:d57c5819dd41b33df0bdfb42f26ec14a

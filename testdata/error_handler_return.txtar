@@ -161,6 +161,14 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -172,6 +180,7 @@ type modelState struct {
 	after     string
 	__focusID int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -457,6 +466,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -472,6 +487,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, tea.Batch(cmds...)
+}
+
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
 }
 
 // callClick activates the #call widget the way a keypress does; for tests.
@@ -497,6 +524,7 @@ func (m *Model) raiseClick() {
 }
 
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var parts []string
 	var part0 string
 	part0Focused := (m.__focusID == 0)
@@ -505,6 +533,7 @@ func (m Model) View() tea.View {
 		part0Prefix = ">"
 	}
 	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Prefix + " " + fmt.Sprint("Call"))
+	part0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0)
 	parts = append(parts, part0)
 	var part1 string
 	part1Focused := (m.__focusID == 1)
@@ -513,10 +542,13 @@ func (m Model) View() tea.View {
 		part1Prefix = ">"
 	}
 	part1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part1Prefix + " " + fmt.Sprint("Raise"))
+	part1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part1)
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -816,9 +848,11 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.call = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.call, "Call")
+	gtk4rt.SetBool(m.call, "can-focus", true)
 	gtk4rt.Connect(m.call, "clicked", m.call_clicked_handler)
 	m.raise = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.raise, "Raise")
+	gtk4rt.SetBool(m.raise, "can-focus", true)
 	gtk4rt.Connect(m.raise, "clicked", m.raise_clicked_handler)
 	gtk4rt.BoxAppend(m.__root, m.call)
 	gtk4rt.BoxAppend(m.__root, m.raise)
@@ -1099,11 +1133,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a28a46ecb0306eaf7cc94f3d7effd19e
+pass sha256:9a30d733ac7a9dcd61a6e99c593cabde
 -- run/go/fyne --
 pass sha256:5664d1084bcbee756ab15f28561ffcd7
 -- run/go/gtk4 --
-pass sha256:03ce87cbafcb75d108d4b756869daef3
+pass sha256:5cea3fb31e239c51fe615ce0f1df136d
 -- run/go/html --
 pass sha256:cd912d584462f53a1a68ae5b0ff855ff
 -- run/kotlin/android --

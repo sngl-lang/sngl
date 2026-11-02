@@ -288,6 +288,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				for __copy0, r := range m.rows {
 					m.off = gtk4rt.New("GtkButton")
 					gtk4rt.ButtonSetLabel(m.off, ("Off " + fmt.Sprint(r)))
+					gtk4rt.SetBool(m.off, "can-focus", true)
 					m.__list_off(fmt.Sprint(__copy0), m.off)
 					gtk4rt.Connect(m.off, "clicked", func() {
 						m.on = false
@@ -382,4 +383,4 @@ func (m *Model) __list_off(key string, w gtk4rt.Handle) {
 -- run/go/fyne --
 pass sha256:7b07a161161b319b7c4c25b451d9c119
 -- run/go/gtk4 --
-pass sha256:d35badc0b8555089507b64d5c731b7de
+pass sha256:e9a2bf45abfec84e76a653b146a5faca

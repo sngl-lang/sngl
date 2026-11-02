@@ -110,6 +110,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -124,6 +132,8 @@ type modelState struct {
 
 	widget0 map[string]textinput.Model
 
+	__clicks      tui.Clicks[snglStop]
+	__pressing    bool
 	width, height int
 }
 
@@ -420,6 +430,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.resizeWidgets()
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -467,6 +483,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.widget0FocusSync()
 	}
 	return m, tea.Batch(cmds...)
+}
+
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	prev := [...]int{m.__focusID, m.__focusLoop0_cursor}
+	m.__focusID = s.slot
+	switch s.slot {
+	case 0:
+		m.__focusLoop0_cursor = s.pos
+	}
+	tabbed := m.__focusShown()
+	m.widget0FocusSync()
+	var cmd tea.Cmd
+	if s.press {
+		m.__pressing = true
+		_, cmd = m.Update(s.key)
+		m.__pressing = false
+	}
+	if !tabbed {
+		m.__focusID = prev[0]
+		m.__focusLoop0_cursor = prev[1]
+		m.widget0FocusSync()
+	}
+	return cmd
 }
 
 // widget0Copy is the copy of widget0 the key names, built the first time it renders
@@ -519,6 +561,7 @@ func (m *Model) widget0FocusSync() {
 }
 
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		__focusPos0 := 0
@@ -528,13 +571,16 @@ func (m Model) View() tea.View {
 			_ = __copy0
 			var contentItem string
 			contentItem = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(m.widget0Copy(fmt.Sprint(__copy0)).View())
+			contentItem = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: false, key: tea.KeyPressMsg{}}, contentItem)
 			__focusPos0++
 			contentItems = append(contentItems, contentItem)
 		}
 		content = tui.Spaced(false, lipgloss.Left, 0, contentItems...)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -547,4 +593,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:75ec12eb42b332b8c76684d6fe762324
+pass sha256:b65f160a8a7bc40b9899eb1cbec487fe

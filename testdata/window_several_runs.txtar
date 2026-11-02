@@ -255,12 +255,18 @@ func (m *Model) __snglTeardown() {
 func (m *Model) main_closed_handler() {
 }
 
+func (m *Model) main_key_handler(k string) {
+}
+
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.main.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) log_closed_handler() {
+}
+
+func (m *Model) log_key_handler(k string) {
 }
 
 func (m *Model) log_visible_handler(__visible bool) {
@@ -273,6 +279,11 @@ func (m *Model) mainClosed() {
 	if m.main.OnClosed != nil {
 		m.main.OnClosed()
 	}
+}
+
+// mainKey calls PressKey on the #main widget; for tests.
+func (m *Model) mainKey(key string) {
+	m.main.PressKey(key)
 }
 
 // mainVisible invokes the OnVisible callback on the #main widget; for tests.
@@ -289,6 +300,11 @@ func (m *Model) logClosed() {
 	if m.log.OnClosed != nil {
 		m.log.OnClosed()
 	}
+}
+
+// logKey calls PressKey on the #log widget; for tests.
+func (m *Model) logKey(key string) {
+	m.log.PressKey(key)
 }
 
 // logVisible invokes the OnVisible callback on the #log widget; for tests.
@@ -366,6 +382,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.main.SetTitle("Main")
 	m.main.SetVisible(m.visible__inst0)
 	m.main.OnClosed = m.main_closed_handler
+	m.main.OnKey = m.main_key_handler
 	m.main.OnVisible = m.main_visible_handler
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(fmt.Sprint(m.ticks))
@@ -375,6 +392,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.log.SetTitle("Log")
 	m.log.SetVisible(m.visible__inst1)
 	m.log.OnClosed = m.log_closed_handler
+	m.log.OnKey = m.log_key_handler
 	m.log.OnVisible = m.log_visible_handler
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText("log")
@@ -576,12 +594,18 @@ func (m *Model) __snglTeardown() {
 func (m *Model) main_closed_handler() {
 }
 
+func (m *Model) main_key_handler(k string) {
+}
+
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 }
 
 func (m *Model) log_closed_handler() {
+}
+
+func (m *Model) log_key_handler(k string) {
 }
 
 func (m *Model) log_visible_handler(__visible bool) {
@@ -630,6 +654,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.main, "Main")
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
+	gtk4rt.ToplevelOnKey(m.main, m.main_key_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.ticks))
@@ -640,6 +665,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.log, "Log")
 	gtk4rt.ToplevelSetVisible(m.log, m.visible__inst1)
 	gtk4rt.ToplevelOnClosed(m.log, m.log_closed_handler)
+	gtk4rt.ToplevelOnKey(m.log, m.log_key_handler)
 	gtk4rt.ToplevelOnVisible(m.log, m.log_visible_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, "log")
@@ -655,7 +681,17 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
+
+// mainKey fires "key" on the #main widget; for tests.
+func (m *Model) mainKey(v string) {
+	gtk4rt.ToplevelKey(m.main, v)
+}
+
+// logKey fires "key" on the #log widget; for tests.
+func (m *Model) logKey(v string) {
+	gtk4rt.ToplevelKey(m.log, v)
+}
 -- run/go/fyne --
-pass sha256:9e888574920267514f38cf4326cec67b
+pass sha256:5b81c61769c372ed4ed998e57de18b62
 -- run/go/gtk4 --
-pass sha256:1341150325ff56d0edad7f351962f3a2
+pass sha256:685ea065531f8e7d2276237b3da1b922

@@ -81,6 +81,9 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -106,6 +109,9 @@ func (m *Model) __n4_click_handler() {
 }
 
 func (m *Model) __n2_closed_handler() {
+}
+
+func (m *Model) __n2_key_handler(k string) {
 }
 
 func (m *Model) __n2_visible_handler(__visible bool) {
@@ -174,6 +180,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetTitle("A")
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n4 = widget.NewButton("", nil)
 	m.__n4.SetText("boom a")
@@ -187,6 +194,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.SetTitle("B")
 	m.__n2.SetVisible(m.visible__inst1)
 	m.__n2.OnClosed = m.__n2_closed_handler
+	m.__n2.OnKey = m.__n2_key_handler
 	m.__n2.OnVisible = m.__n2_visible_handler
 	m.__n5 = widget.NewButton("", nil)
 	m.__n5.SetText("boom b")
@@ -260,6 +268,9 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -285,6 +296,9 @@ func (m *Model) __n4_clicked_handler() {
 }
 
 func (m *Model) __n2_closed_handler() {
+}
+
+func (m *Model) __n2_key_handler(k string) {
 }
 
 func (m *Model) __n2_visible_handler(__visible bool) {
@@ -352,9 +366,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.__n0, "A")
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n4 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n4, "boom a")
+	gtk4rt.SetBool(m.__n4, "can-focus", true)
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n4)
 	m.__n1 = gtk4rt.New("GtkLabel")
@@ -366,9 +382,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.__n2, "B")
 	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
 	gtk4rt.ToplevelOnClosed(m.__n2, m.__n2_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n2, m.__n2_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n2, m.__n2_visible_handler)
 	m.__n5 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n5, "boom b")
+	gtk4rt.SetBool(m.__n5, "can-focus", true)
 	gtk4rt.Connect(m.__n5, "clicked", m.__n5_clicked_handler)
 	gtk4rt.BoxAppend(m.__n2, m.__n5)
 	m.__n3 = gtk4rt.New("GtkLabel")
@@ -472,8 +490,8 @@ dialog { margin: auto; padding: 1em; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:e74eb2d084201287c095c3bae46977c5
+pass sha256:f55f7c79fc15e805fed812d8abbacfa9
 -- run/go/gtk4 --
-pass sha256:432a8468ca5e85e7da129d7c6a122595
+pass sha256:f9bb282a585c35a8a4530f13382b3490
 -- run/none/html --
 pass sha256:e04fcd221a40373b10f1e666820f601e

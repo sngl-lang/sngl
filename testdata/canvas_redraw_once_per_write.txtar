@@ -121,6 +121,9 @@ func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -167,6 +170,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetTitle("t")
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = fynelayout.NewVBox()
 	m.__n2Ctx = snglcanvas.New(40, 40)
@@ -192,4 +196,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:4d63d561c27ae11b26a3fff1353b5527
+pass sha256:f4a4c9742c5ad45a08a8066839c00a72

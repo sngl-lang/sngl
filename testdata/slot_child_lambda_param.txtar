@@ -156,6 +156,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
+func (m *Model) __n1_key_handler(k string) {
+}
+
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n1.SetVisible(m.visible__inst0)
@@ -186,6 +189,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = fynelayout.NewToplevel()
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
+	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__renderSlot0(m.__n1.Container)
 	fynelayout.AppAttach(m.__n1)
@@ -262,4 +266,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:af0560327d6c0c55cf6970837f54f1b8
+pass sha256:99873b93878a4b9a2b47a3bb5d3d20f7

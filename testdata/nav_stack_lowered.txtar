@@ -182,6 +182,14 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -202,6 +210,8 @@ type modelState struct {
 	__effects0_steps    int
 	__focusID           int
 
+	__clicks      tui.Clicks[snglStop]
+	__pressing    bool
 	width, height int
 }
 
@@ -617,6 +627,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -631,23 +647,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
-		case msg.Code == tea.KeyEnter && m.__focusID == 0:
+		case msg.Code == tea.KeyEnter && m.__focusID == 0 && (m.__pressing || m.__focusShown()):
 			m.hits__inst0 += 1
-		case msg.Code == tea.KeyEnter && m.__focusID == 1:
+		case msg.Code == tea.KeyEnter && m.__focusID == 1 && (m.__pressing || m.__focusShown()):
 			m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
 			m.pages__current = _page__value{Id: 1, Href: "/about", Title: "About", Meta: Meta{Label: "about"}}
 			m.__effects0_settle()
-		case msg.Code == tea.KeyEnter && m.__focusID == 2:
+		case msg.Code == tea.KeyEnter && m.__focusID == 2 && (m.__pressing || m.__focusShown()):
 			m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
 			m.pkg__params = Pkg{Name: "first"}
 			m.pages__current = _page__value{Id: 2, Href: "/p/{name}", Title: "Package", Meta: Meta{Label: "pkg"}}
 			m.__effects0_settle()
-		case msg.Code == tea.KeyEnter && m.__focusID == 3:
+		case msg.Code == tea.KeyEnter && m.__focusID == 3 && (m.__pressing || m.__focusShown()):
 			m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
 			m.pkg__params = Pkg{Name: "sngl"}
 			m.pages__current = _page__value{Id: 2, Href: "/p/{name}", Title: "Package", Meta: Meta{Label: "pkg"}}
 			m.__effects0_settle()
-		case msg.Code == tea.KeyEnter && m.__focusID == 4:
+		case msg.Code == tea.KeyEnter && m.__focusID == 4 && (m.__pressing || m.__focusShown()):
 			if len(m.pages__history) > 0 {
 				m.pkg__params = m.pages__history[(len(m.pages__history) - 1)].Pkg
 				m.pages__current = m.pages__history[(len(m.pages__history) - 1)].Page
@@ -662,19 +678,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	prev := [...]int{m.__focusID}
+	m.__focusID = s.slot
+	tabbed := m.__focusShown()
+	var cmd tea.Cmd
+	if s.press {
+		m.__pressing = true
+		_, cmd = m.Update(s.key)
+		m.__pressing = false
+	}
+	if !tabbed {
+		m.__focusID = prev[0]
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var parts []string
 	var part0 string
 	if m.visible__inst0 {
 		var part0Children []string
 		var part0_0 string
 		if m.pages__current.Id == 0 {
-			part0_0Focused := (m.__focusID == 0)
+			part0_0Focused := (m.__focusID == 0) && m.__focusShown()
 			part0_0Prefix := " "
 			if part0_0Focused {
 				part0_0Prefix = ">"
 			}
 			part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint(("hits " + fmt.Sprint(m.hits__inst0))))
+			part0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_0)
 		} else {
 			if m.pages__current.Id == 1 {
 				part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("at " + m.pages__current.Title)))
@@ -691,36 +728,40 @@ func (m Model) View() tea.View {
 		part0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.pages__current.Meta.Label))
 		part0Children = append(part0Children, part0_1)
 		var part0_2 string
-		part0_2Focused := (m.__focusID == 1)
+		part0_2Focused := (m.__focusID == 1) && m.__focusShown()
 		part0_2Prefix := " "
 		if part0_2Focused {
 			part0_2Prefix = ">"
 		}
 		part0_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2Prefix + " " + fmt.Sprint("About"))
+		part0_2 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_2)
 		part0Children = append(part0Children, part0_2)
 		var part0_3 string
-		part0_3Focused := (m.__focusID == 2)
+		part0_3Focused := (m.__focusID == 2) && m.__focusShown()
 		part0_3Prefix := " "
 		if part0_3Focused {
 			part0_3Prefix = ">"
 		}
 		part0_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_3Prefix + " " + fmt.Sprint("first"))
+		part0_3 = m.__clicks.Mark(snglStop{slot: 2, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_3)
 		part0Children = append(part0Children, part0_3)
 		var part0_4 string
-		part0_4Focused := (m.__focusID == 3)
+		part0_4Focused := (m.__focusID == 3) && m.__focusShown()
 		part0_4Prefix := " "
 		if part0_4Focused {
 			part0_4Prefix = ">"
 		}
 		part0_4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_4Prefix + " " + fmt.Sprint("sngl"))
+		part0_4 = m.__clicks.Mark(snglStop{slot: 3, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_4)
 		part0Children = append(part0Children, part0_4)
 		var part0_5 string
-		part0_5Focused := (m.__focusID == 4)
+		part0_5Focused := (m.__focusID == 4) && m.__focusShown()
 		part0_5Prefix := " "
 		if part0_5Focused {
 			part0_5Prefix = ">"
 		}
 		part0_5 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_5Prefix + " " + fmt.Sprint("Back"))
+		part0_5 = m.__clicks.Mark(snglStop{slot: 4, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_5)
 		part0Children = append(part0Children, part0_5)
 		var part0_6 string
 		if m.pages__current.Id == 1 {
@@ -730,12 +771,13 @@ func (m Model) View() tea.View {
 			part0Children = append(part0Children, part0_6)
 		}
 		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
-		part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0)
 	}
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -984,6 +1026,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) main_closed_handler() {
 }
 
+func (m *Model) main_key_handler(k string) {
+}
+
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.main.SetVisible(m.visible__inst0)
@@ -1048,6 +1093,11 @@ func (m *Model) mainClosed() {
 	}
 }
 
+// mainKey calls PressKey on the #main widget; for tests.
+func (m *Model) mainKey(key string) {
+	m.main.PressKey(key)
+}
+
 // mainVisible invokes the OnVisible callback on the #main widget; for tests.
 func (m *Model) mainVisible(visible bool) {
 	if cb := m.main.OnVisible; cb != nil {
@@ -1099,6 +1149,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.main.SetTitle(("Docs - " + m.pages__current.Title))
 	m.main.SetVisible(m.visible__inst0)
 	m.main.OnClosed = m.main_closed_handler
+	m.main.OnKey = m.main_key_handler
 	m.main.OnVisible = m.main_visible_handler
 	m.__n8 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n8)
@@ -1480,6 +1531,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) main_closed_handler() {
 }
 
+func (m *Model) main_key_handler(k string) {
+}
+
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
@@ -1558,6 +1612,7 @@ func newCounterInstance(__model *Model) *CounterInstance {
 	c.__slot1 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ("hits " + fmt.Sprint(c.hits)))
+	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.hits += 1
 		gtk4rt.ButtonSetLabel(c.__n0, ("hits " + fmt.Sprint(c.hits)))
@@ -1711,6 +1766,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.main, ("Docs - " + m.pages__current.Title))
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
+	gtk4rt.ToplevelOnKey(m.main, m.main_key_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__n8 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n8, 1)
@@ -1722,18 +1778,22 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n8, m.__n3)
 	m.__n9 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n9, "About")
+	gtk4rt.SetBool(m.__n9, "can-focus", true)
 	gtk4rt.Connect(m.__n9, "clicked", m.__n9_clicked_handler)
 	gtk4rt.BoxAppend(m.__n8, m.__n9)
 	m.__n10 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n10, "first")
+	gtk4rt.SetBool(m.__n10, "can-focus", true)
 	gtk4rt.Connect(m.__n10, "clicked", m.__n10_clicked_handler)
 	gtk4rt.BoxAppend(m.__n8, m.__n10)
 	m.__n11 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n11, "sngl")
+	gtk4rt.SetBool(m.__n11, "can-focus", true)
 	gtk4rt.Connect(m.__n11, "clicked", m.__n11_clicked_handler)
 	gtk4rt.BoxAppend(m.__n8, m.__n11)
 	m.__n12 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n12, "Back")
+	gtk4rt.SetBool(m.__n12, "can-focus", true)
 	gtk4rt.Connect(m.__n12, "clicked", m.__n12_clicked_handler)
 	gtk4rt.BoxAppend(m.__n8, m.__n12)
 	m.__renderSlot1(m.__n8)
@@ -1747,9 +1807,14 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
+
+// mainKey fires "key" on the #main widget; for tests.
+func (m *Model) mainKey(v string) {
+	gtk4rt.ToplevelKey(m.main, v)
+}
 -- run/go/bubbletea --
-pass sha256:83215692be45c25d0d3e761986e60506
+pass sha256:dd6835befca5b1f607b524ebc82a99d7
 -- run/go/fyne --
-pass sha256:cc787973fa1585d18136ec94f62e8f97
+pass sha256:b0a2d9babadf314d850c9a42eb3a9b5e
 -- run/go/gtk4 --
-pass sha256:28cb3427e2e949c978b4aefe5661e953
+pass sha256:943aef67e5ca30590fb4652aa6d4ad83

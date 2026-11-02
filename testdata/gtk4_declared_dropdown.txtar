@@ -484,6 +484,9 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
@@ -543,6 +546,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(gtk4rt.Handle(unsafe.Pointer(m.__n0)), "t")
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_visible_handler)
 	m.__n1 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n1, C.int(20))
@@ -555,6 +559,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
 	m.drop = (*C.GtkDropDown)(unsafe.Pointer(gtk4rt.New("GtkDropDown")))
 	gtk4rt.SetBool(gtk4rt.Handle(unsafe.Pointer(m.drop)), "sensitive", true)
+	gtk4rt.SetBool(gtk4rt.Handle(unsafe.Pointer(m.drop)), "can-focus", true)
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.drop)), "notify::selected", m.drop_notifySelected_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.drop)))
 	m.__effect0_rebuilt()
@@ -577,4 +582,4 @@ func (m *Model) dropChange(v string) {
 	gtk4rt.DropDownSelect(gtk4rt.Handle(unsafe.Pointer(m.drop)), v)
 }
 -- run/go/gtk4 --
-pass sha256:7e00ce3b853f8ad1c54b3ee969888c88
+pass sha256:eb44d380fee6842135539fb372ef4401

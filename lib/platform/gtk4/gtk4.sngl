@@ -78,6 +78,8 @@ component platform(
 // removing one, as an `if` turning false does, destroys it and everything in
 // it. `visible` shows and hides it without destroying it, and the window
 // manager's close is reported as `visible = false` followed by `@closed`.
+// `@key` is a key the window's content left, which a controller on the
+// window hears as the key bubbles back up from the focused widget.
 //
 // The menu entries and the way back among its content are the menu behind
 // its header bar's menu button and its back button.
@@ -86,6 +88,7 @@ component Toplevel(
     title    string,
     :visible bool = true,
     @closed(),
+    @key(key string),
     content  ...component ui.node,
 ) root
 
@@ -106,6 +109,9 @@ func _rtToplevelOnClosed(w Toplevel, fn func())
 
 #[go.native(_rtPkg, "gtk4rt.ToplevelOnVisible")]
 func _rtToplevelOnVisible(w Toplevel, fn func(visible bool))
+
+#[go.native(_rtPkg, "gtk4rt.ToplevelOnKey")]
+func _rtToplevelOnKey(w Toplevel, fn func(key string))
 
 #[go.native(_rtPkg, "gtk4rt.BoxAppend")]
 func _rtToplevelAppend(box Toplevel, child ui.node)
@@ -148,6 +154,11 @@ func _on_Toplevel_closed(w Toplevel, closed func()) {
 #[gen.protocol(on)]
 func _on_Toplevel_visible(w Toplevel, visible func(visible bool)) {
     _rtToplevelOnVisible(w, visible)
+}
+
+#[gen.protocol(on)]
+func _on_Toplevel_key(w Toplevel, key func(key string)) {
+    _rtToplevelOnKey(w, key)
 }
 
 // A window's way back, while it can go back: a widget gtk4rt keeps hidden
@@ -244,11 +255,21 @@ func _on_MenuEntry(e MenuEntry, select func()) {
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
 //
+// Its `@key` is a key nothing in the window takes, heard by a key controller
+// on the GtkWindow in the bubble phase, so the focused widget declines it
+// first: the text a focused entry is typed, the Enter and space that activate
+// a focused button and Tab never reach it. GDK's keyval is named as a browser
+// names the key -- its character through `gdk_keyval_to_unicode`, or
+// "Enter", "Escape", "ArrowUp" and the rest, a keypad's key as the main
+// keyboard's -- and one held with Control, Alt, Super or Meta is a shortcut
+// the window does not hear. Escape goes back while the window can, and is
+// not reported then.
+//
 // Its menu's entries are drawn two deep: a top-level entry and its submenu. A
 // window whose call site gives it no `canGoBack` writes no Back, the `if`
 // folding away, and nor does one with no menu write an entry.
-const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, content, favicon, menu) {
-    Toplevel(title=title, :visible=visible, @closed { closed() }) {
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content, favicon, menu) {
+    Toplevel(title=title, :visible=visible, @closed { closed() }, @key(k) { key(k) }) {
         boundary(@error(e) { error(e) }) {
             content
         }
@@ -298,12 +319,16 @@ const component ui.text[platform](value, style) {
     gtk.GtkLabel(label=value, xalign=0.0, look=lookOf(style)) {}
 }
 
-const component ui.button[platform](text, style, @click) {
-    gtk.GtkButton(label=text, look=lookOf(style), @clicked { click() }) {}
+// A control written `focusable=false` is given `can-focus` false, which keeps
+// focus off the widget and off what it holds -- an entry's focus is on the
+// text widget inside it, and a drop-down's on its button -- by Tab and by a
+// click alike, and a click still presses it.
+const component ui.button[platform](text, focusable, style, @click) {
+    gtk.GtkButton(label=text, canFocus=focusable, look=lookOf(style), @clicked { click() }) {}
 }
 
-const component ui.checkbox[platform](label, checked, style, @change) {
-    gtk.GtkCheckButton(label=label, active=checked, look=lookOf(style), @toggled(b) {
+const component ui.checkbox[platform](label, checked, focusable, style, @change) {
+    gtk.GtkCheckButton(label=label, active=checked, canFocus=focusable, look=lookOf(style), @toggled(b) {
         if checkActive(b) != checked {
             checked = checkActive(b)
             change(checked)
@@ -333,8 +358,9 @@ const component ui.image[platform](fit, style, @click, @load, @error, src) {
 // deletes and reinserts it, firing "changed" for each, so writing back the
 // text "changed" just reported re-entered the handler until the stack
 // overflowed. Only a value the entry does not already show is written.
-const component ui.input[platform](value, style, @input, @change) {
+const component ui.input[platform](value, focusable, style, @input, @change) {
     gtk.GtkEntry #entry(
+        canFocus = focusable,
         look = lookOf(style),
         @changed(e) {
             if entryText(e) != value {
@@ -357,8 +383,9 @@ const component ui.input[platform](value, style, @input, @change) {
 // gtk4 has no lightweight multi-line entry; map textarea to GtkEntry so
 // the value binding + changed handler compile and round-trip. (Rich
 // multi-line GtkTextView support is a future enhancement.)
-const component ui.textarea[platform](value, style, @input, @change) {
+const component ui.textarea[platform](value, focusable, style, @input, @change) {
     gtk.GtkEntry #entry(
+        canFocus = focusable,
         look = lookOf(style),
         @changed(e) {
             if entryText(e) != value {
@@ -446,14 +473,14 @@ const component ui.divider[platform](style) {
     gtk.GtkSeparator(look=lookOf(style)) {}
 }
 
-const component ui.link[platform](text, href, disabled, style, @click) {
-    gtk.GtkLinkButton(uri=href, label=text, sensitive=(disabled == false), look=lookOf(style), @clicked { click() }) {}
+const component ui.link[platform](text, href, disabled, focusable, style, @click) {
+    gtk.GtkLinkButton(uri=href, label=text, sensitive=(disabled == false), canFocus=focusable, look=lookOf(style), @clicked { click() }) {}
 }
 
 // A flip reaches the program through `notify::active`: GtkSwitch's own
 // `state-set` returns a gboolean, which the connect trampoline cannot carry.
-const component ui.toggle[platform](checked, disabled, style, @change) {
-    gtk.GtkSwitch(active=checked, sensitive=(disabled == false), look=lookOf(style), @notifyActive(s) {
+const component ui.toggle[platform](checked, disabled, focusable, style, @change) {
+    gtk.GtkSwitch(active=checked, sensitive=(disabled == false), canFocus=focusable, look=lookOf(style), @notifyActive(s) {
         if switchActive(s) != checked {
             checked = switchActive(s)
             change(checked)
@@ -647,8 +674,8 @@ func dropDownLabel(d gtk.GtkDropDown) string
 // One drop-down, offered the choices' labels whenever they change and
 // selecting the bound value whenever it does. `placeholder`, `multiple` and
 // the focus events have nothing to reach.
-const component ui.select[platform](value, disabled, style, @change, options) {
-    gtk.GtkDropDown #drop(sensitive=(disabled == false), look=lookOf(style), @notifySelected(d) {
+const component ui.select[platform](value, disabled, focusable, style, @change, options) {
+    gtk.GtkDropDown #drop(sensitive=(disabled == false), canFocus=focusable, look=lookOf(style), @notifySelected(d) {
         var v = dropDownLabel(d)
         if v != "" && v != value {
             value = v

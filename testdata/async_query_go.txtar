@@ -375,6 +375,9 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 func (m *Model) __n1_closed_handler() {
 }
 
+func (m *Model) __n1_key_handler(k string) {
+}
+
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n1.SetVisible(m.visible__inst0)
@@ -467,6 +470,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = fynelayout.NewToplevel()
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
+	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	var __lt16 string
 	if m.length__inst0 != nil {
@@ -1003,6 +1007,9 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 func (m *Model) __n1_closed_handler() {
 }
 
+func (m *Model) __n1_key_handler(k string) {
+}
+
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
@@ -1287,6 +1294,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n1, m.__n1_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	var __lt23 string
 	if m.length__inst0 != nil {
@@ -1314,15 +1322,18 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n1, m.__n4)
 	m.__n6 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n6, "fig")
+	gtk4rt.SetBool(m.__n6, "can-focus", true)
 	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n6)
 	m.__n7 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n7, "again")
+	gtk4rt.SetBool(m.__n7, "can-focus", true)
 	gtk4rt.Connect(m.__n7, "clicked", m.__n7_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n7)
 	m.__renderSlot0(m.__n1)
 	m.__n8 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n8, "add")
+	gtk4rt.SetBool(m.__n8, "can-focus", true)
 	gtk4rt.Connect(m.__n8, "clicked", m.__n8_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n8)
 	gtk4rt.AppAttach(m.__n1)
@@ -1336,6 +1347,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/fyne --
-pass sha256:c9d9ad150a2cd0aeb7c7e431841247a5
+pass sha256:d5fbc11110741250ee1e5d5f1220aab8
 -- run/go/gtk4 --
-pass sha256:7198877f9fd14fbd33b392f1c67a1572
+pass sha256:ee21a03cb2b01a6f38f7b4b0f487e030

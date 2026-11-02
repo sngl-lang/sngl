@@ -1576,6 +1576,11 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 			preFire = fmt.Sprintf("gtk4rt.DropDownSelect(gtk4rt.Handle(unsafe.Pointer(%s)), v)", w)
 		}
 	}
+	fireArg := ""
+	if v := inv.rtFireValue(); v != "" {
+		valueParam = "v " + v
+		fireArg = ", v"
+	}
 	params := func(p string) string {
 		if lead == "" {
 			return p
@@ -1608,9 +1613,9 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 	}
 	switch prop, notify := strings.CutPrefix(inv.GTKSignal, "notify::"); {
 	case inv.RtFire != "" && wrapped:
-		fmt.Fprintf(b, "\tgtk4rt.%s(%s)\n", inv.RtFire, w)
+		fmt.Fprintf(b, "\tgtk4rt.%s(%s%s)\n", inv.RtFire, w, fireArg)
 	case inv.RtFire != "":
-		fmt.Fprintf(b, "\tgtk4rt.%s(gtk4rt.Handle(unsafe.Pointer(%s)))\n", inv.RtFire, w)
+		fmt.Fprintf(b, "\tgtk4rt.%s(gtk4rt.Handle(unsafe.Pointer(%s))%s)\n", inv.RtFire, w, fireArg)
 	case inv.GTKSignal == "pressed":
 		fmt.Fprintf(b, "\tC.sngl_emit_pressed(unsafe.Pointer(%s))\n", w)
 	case notify && wrapped:

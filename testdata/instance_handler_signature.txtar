@@ -450,6 +450,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__n0 = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(c.__n0, "")
 	gtk4rt.CheckButtonSetActive(c.__n0, c.checked__inst0)
+	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "toggled", func() {
 		if gtk4rt.CheckButtonGetActive(c.__n0) != c.checked__inst0 {
 			c.checked__inst0 = gtk4rt.CheckButtonGetActive(c.__n0)
@@ -462,6 +463,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__n1 = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(c.__n1, "")
 	gtk4rt.CheckButtonSetActive(c.__n1, c.checked__inst1)
+	gtk4rt.SetBool(c.__n1, "can-focus", true)
 	gtk4rt.Connect(c.__n1, "toggled", func() {
 		if gtk4rt.CheckButtonGetActive(c.__n1) != c.checked__inst1 {
 			c.checked__inst1 = gtk4rt.CheckButtonGetActive(c.__n1)
@@ -470,6 +472,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	})
 	gtk4rt.BoxAppend(__n5, c.__n1)
 	c.entry = gtk4rt.New("GtkEntry")
+	gtk4rt.SetBool(c.entry, "can-focus", true)
 	gtk4rt.Connect(c.entry, "changed", func() {
 		if gtk4rt.EditableGetText(c.entry) != c.value__inst0 {
 			c.value__inst0 = gtk4rt.EditableGetText(c.entry)
@@ -600,4 +603,4 @@ func (m *Model) entryChange(v string) {
 -- run/go/fyne --
 pass sha256:8e35a601d5d3e7ad9e9dc94be6c1df97
 -- run/go/gtk4 --
-pass sha256:cbcd3f6bdfa75749802d768c94c1165c
+pass sha256:a9799eee084e65178da826f19d8efde7

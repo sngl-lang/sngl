@@ -204,6 +204,9 @@ type fyneEventInvoker struct {
 	IDLabel   string // the #id a program wrote
 	SnglEvent string // the event a test writes, e.g. "click"
 	Field     string // the Go callback field, e.g. "OnTapped"
+	// Press is the widget's method the invoker calls in place of Field
+	// (fyneHandler.Press).
+	Press string
 	// Params are the callback's, from its Spec signature: what a test hands
 	// the invoker, which are the event's own arguments.
 	Params []*ir.Param
@@ -1123,6 +1126,7 @@ func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler) {
 		IDLabel:   id,
 		SnglEvent: event,
 		Field:     h.Field,
+		Press:     h.Press,
 		Params:    params,
 	}
 	inv.List = t.indexed[id]
@@ -1148,8 +1152,13 @@ func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 		if inv.Target != "" {
 			target = inv.Target
 		}
-		fmt.Fprintf(b, "// %s invokes the %s callback on the #%s widget; for tests.\n",
-			name, inv.Field, inv.IDLabel)
+		if inv.Press != "" {
+			fmt.Fprintf(b, "// %s calls %s on the #%s widget; for tests.\n",
+				name, inv.Press, inv.IDLabel)
+		} else {
+			fmt.Fprintf(b, "// %s invokes the %s callback on the #%s widget; for tests.\n",
+				name, inv.Field, inv.IDLabel)
+		}
 		emitFyneInvoker(b, inv, name, nil, "m."+target)
 		if !keyed[inv.IDLabel] {
 			continue
@@ -1171,6 +1180,10 @@ func emitFyneInvoker(b *strings.Builder, inv fyneEventInvoker, name string, lead
 	fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(decl, ", "))
 	if len(lead) > 0 {
 		fmt.Fprintf(b, "\tif %s == nil {\n\t\treturn\n\t}\n", w)
+	}
+	if inv.Press != "" {
+		fmt.Fprintf(b, "\t%s.%s(%s)\n}\n\n", w, inv.Press, strings.Join(call, ", "))
+		return
 	}
 	if len(inv.Params) == 0 {
 		fmt.Fprintf(b, "\tif %s.%s != nil {\n\t\t%s.%s()\n\t}\n}\n\n", w, inv.Field, w, inv.Field)

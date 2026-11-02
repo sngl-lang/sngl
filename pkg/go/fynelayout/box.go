@@ -138,6 +138,8 @@ func NewBox(content fyne.CanvasObject) *Box {
 		b.own.style, b.own.align, b.own.wrap = w.TextStyle, w.Alignment, w.Wrapping
 	case *widget.Button:
 		b.own.buttonAlign = w.Alignment
+	case *NoTabButton:
+		b.own.buttonAlign = w.Alignment
 	case *widget.Entry:
 		b.own.wrap = w.Wrapping
 	case *widget.Hyperlink:
@@ -205,6 +207,8 @@ func (b *Box) setText(l Look) {
 		style.Bold, style.Italic, style.Monospace = style.Bold || l.Bold, style.Italic || l.Italic, style.Monospace || l.Monospace
 		w.Alignment, w.Wrapping, w.TextStyle = align, wrap, style
 	case *widget.Button:
+		w.Alignment = buttonAlign
+	case *NoTabButton:
 		w.Alignment = buttonAlign
 	case *widget.Entry:
 		w.Wrapping = wrap

@@ -84,6 +84,16 @@
           </parameter>
         </parameters>
       </method>
+      <method name="set_can_focus" c:identifier="gtk_widget_set_can_focus">
+        <parameters>
+          <instance-parameter name="widget">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </instance-parameter>
+          <parameter name="can_focus">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
       <method name="set_tooltip_text" c:identifier="gtk_widget_set_tooltip_text">
         <parameters>
           <instance-parameter name="widget">
@@ -104,6 +114,9 @@
         <type name="gboolean" c:type="gboolean"/>
       </property>
       <property name="vexpand" writable="1" setter="set_vexpand">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="can-focus" writable="1" setter="set_can_focus">
         <type name="gboolean" c:type="gboolean"/>
       </property>
       <property name="tooltip-text" writable="1" setter="set_tooltip_text">

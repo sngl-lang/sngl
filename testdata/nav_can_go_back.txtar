@@ -155,6 +155,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -168,6 +176,7 @@ type modelState struct {
 	visible__inst0 bool
 	__focusID      int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -442,6 +451,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -472,6 +487,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 // toAboutClick activates the #toAbout widget the way a keypress does; for tests.
 func (m *Model) toAboutClick() {
 	prev := m.__focusID
@@ -491,6 +518,7 @@ func (m *Model) mainBack() {
 }
 
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentContent string
@@ -513,6 +541,7 @@ func (m Model) View() tea.View {
 			contentContentPart_1Prefix = ">"
 		}
 		contentContentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentContentPart_1Prefix + " " + fmt.Sprint("About"))
+		contentContentPart_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentContentPart_1)
 		contentContentParts = append(contentContentParts, contentContentPart_1)
 		contentContent = tui.Spaced(false, lipgloss.Left, 0, contentContentParts...)
 		contentBack := "  "
@@ -521,8 +550,10 @@ func (m Model) View() tea.View {
 		}
 		content = lipgloss.JoinVertical(lipgloss.Left, lipgloss.NewStyle().Bold(true).Render(contentBack+m.pages__current.Title), contentContent)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -711,6 +742,9 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 func (m *Model) main_closed_handler() {
 }
 
+func (m *Model) main_key_handler(k string) {
+}
+
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.main.SetVisible(m.visible__inst0)
@@ -729,6 +763,11 @@ func (m *Model) mainClosed() {
 	if m.main.OnClosed != nil {
 		m.main.OnClosed()
 	}
+}
+
+// mainKey calls PressKey on the #main widget; for tests.
+func (m *Model) mainKey(key string) {
+	m.main.PressKey(key)
 }
 
 // mainVisible invokes the OnVisible callback on the #main widget; for tests.
@@ -792,6 +831,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.main.SetTitle(m.pages__current.Title)
 	m.main.SetVisible(m.visible__inst0)
 	m.main.OnClosed = m.main_closed_handler
+	m.main.OnKey = m.main_key_handler
 	m.main.OnVisible = m.main_visible_handler
 	m.__renderSlot0(m.main.Container)
 	m.toAbout = widget.NewButton("", nil)
@@ -1005,6 +1045,9 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 func (m *Model) main_closed_handler() {
 }
 
+func (m *Model) main_key_handler(k string) {
+}
+
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
@@ -1059,10 +1102,12 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.main, m.pages__current.Title)
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
+	gtk4rt.ToplevelOnKey(m.main, m.main_key_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__renderSlot0(m.main)
 	m.toAbout = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.toAbout, "About")
+	gtk4rt.SetBool(m.toAbout, "can-focus", true)
 	gtk4rt.Connect(m.toAbout, "clicked", m.toAbout_clicked_handler)
 	gtk4rt.BoxAppend(m.main, m.toAbout)
 	m.__renderSlot1(m.main)
@@ -1072,6 +1117,11 @@ func (m *Model) buildWidgetTree() {
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.main)
+}
+
+// mainKey fires "key" on the #main widget; for tests.
+func (m *Model) mainKey(v string) {
+	gtk4rt.ToplevelKey(m.main, v)
 }
 
 // toAboutClick fires the "clicked" signal on the #toAbout widget; for tests.
@@ -1373,10 +1423,10 @@ class MainScreenTest {
 
 }
 -- run/go/bubbletea --
-pass sha256:1a3cde093a42b1e45de702e5b9d3ea40
+pass sha256:bb98660e7335025880a64e4efbf1b0c4
 -- run/go/fyne --
-pass sha256:e0a53dbfdfd756cf332b10bb0620f777
+pass sha256:775cc44b6b9b07c9b40408b45ba21946
 -- run/go/gtk4 --
-pass sha256:89a22edceec2baa377d0843b4ffe56d9
+pass sha256:1c5a15b9be46364f94d2d1b06fae3e88
 -- run/kotlin/android --
 pass sha256:aea3c8a019969ff737989e86957de55a

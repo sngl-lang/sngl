@@ -4,9 +4,9 @@ A pocket calculator, written to find out what SNGL is like to build a real
 application in rather than a demo of one feature.
 
 ```
-sngl test --platform none      examples/calculator   # 22 tests, the interpreter
-sngl test --platform html      examples/calculator   # the same 22, in a browser
-sngl test --platform bubbletea examples/calculator   # the same 22, as a Go binary
+sngl test --platform none      examples/calculator   # 24 tests, the interpreter
+sngl test --platform html      examples/calculator   # the same 24, in a browser
+sngl test --platform bubbletea examples/calculator   # the same 24, as a Go binary
 
 sngl generate --platform html      --lang none -o /tmp/calc     examples/calculator
 sngl generate --platform bubbletea --lang go   -o /tmp/calc-tui examples/calculator
@@ -47,20 +47,32 @@ than a label the handler has to parse back. `rows()` is a
 `list[list[Key]]`, so the layout is five lines long however many keys there
 turn out to be, and `Calculator` switches on the action.
 
+**The keyboard presses the keys.** Each `Key` lists the keys on a keyboard
+that press it, named as a window's `@key` names them: the digit or operator it
+shows, `*` beside `x` for times, Enter beside `=`, Escape and `c` for clear,
+Backspace for `<`, `_` for `+/-`. The window's `@key` hands a name to
+`keypad.keyFor`, and presses what comes back. The keys are
+`focusable=false`, as no calculator's keys take focus: one left focused by the
+last click would take the Enter that means `=`. On a terminal they are pressed
+with the mouse as well.
+
 **The keys fill the window.** Each row is an `hbox(style={flex=1})` and each
 key a `button(style={flex=1})`, so the grid takes whatever room the window
 gives it.
+
+`app.sngl`'s `output` names the app and gives it `icon.svg`, its launcher
+icon and favicon, and android's package `us.duckfam.sngl.calculator`.
 
 ## What works where
 
 | target      | tests | generated code                                   |
 |-------------|-------|--------------------------------------------------|
-| `none`      | 22/22 | — (the interpreter runs the program)             |
-| `html`      | 22/22 | runs in a browser; the readout is a 2D canvas    |
-| `bubbletea` | 22/22 | compiles and runs; ASCII readout                 |
-| `fyne`      | 22/22 | compiles and runs; the readout is a 2D canvas    |
-| `gtk4`      | 22/22 | compiles and runs; the readout is a cairo canvas |
-| `android`   | 22/22 | Robolectric; the readout is a Compose canvas     |
+| `none`      | 24/24 | — (the interpreter runs the program)             |
+| `html`      | 24/24 | runs in a browser; the readout is a 2D canvas    |
+| `bubbletea` | 24/24 | compiles and runs; ASCII readout                 |
+| `fyne`      | 24/24 | compiles and runs; the readout is a 2D canvas    |
+| `gtk4`      | 24/24 | compiles and runs; the readout is a cairo canvas |
+| `android`   | 24/24 | Robolectric; the readout is a Compose canvas     |
 
 `sngl snapshot examples/calculator` renders it on every target in its `output`
 block.

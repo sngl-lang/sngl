@@ -362,7 +362,6 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentChildren []string
 		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -408,6 +407,9 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -430,6 +432,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = fynelayout.NewHBox()
 	m.__n0.Add(m.__n1)
@@ -550,9 +553,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:dfa471f8774619b9b9c1499b09c0cd35
+pass sha256:636c9af38c8c57110b9bda79f1beb876
 -- run/go/fyne --
-pass sha256:90891e6eb1c4a22a5f4f758933065f0e
+pass sha256:02fee54318defa475bc5eb51a1e4dd54
 -- run/kotlin/android --
 pass sha256:3a3372d70e1c1d2f47e22a39710310f8
 -- run/none/html --

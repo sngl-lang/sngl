@@ -396,6 +396,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(__n4, m.__n3)
 	m.flip = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.flip, "flip")
+	gtk4rt.SetBool(m.flip, "can-focus", true)
 	gtk4rt.Connect(m.flip, "clicked", m.flip_clicked_handler)
 	gtk4rt.BoxAppend(__n4, m.flip)
 	gtk4rt.BoxAppend(m.__root, __n4)
@@ -417,4 +418,4 @@ func (m *Model) flipClick() {
 -- run/go/fyne --
 pass sha256:f65812f5003493ffadaca7411f0315d5
 -- run/go/gtk4 --
-pass sha256:a1803a4eb4199e09235013fcfa5e38ee
+pass sha256:e6ac0a841ed35d00a3047b10dba49b85

@@ -1,0 +1,21 @@
+// A window's `@key` is a key pressed in it that nothing in it takes, named as
+// a browser names it: the character typed, or a name such as "Enter".
+
+import . "sngl:test"
+import ui "sngl:ui"
+
+component app root {
+    var typed = ""
+
+    ui.window #main(title="Keys", @key(k) { typed = typed + "[" + k + "]" }) {
+        ui.text(value=typed)
+    }
+}
+
+app()
+
+func testAKeyReachesTheWindow(t Test, c app) {
+    c.main.key("7")
+    c.main.key("Enter")
+    t.assert(c.typed == "[7][Enter]")
+}

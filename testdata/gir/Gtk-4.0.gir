@@ -64,6 +64,16 @@
           </parameter>
         </parameters>
       </method>
+      <method name="set_can_focus" c:identifier="gtk_widget_set_can_focus">
+        <parameters>
+          <instance-parameter name="widget">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </instance-parameter>
+          <parameter name="can_focus">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
       <method name="set_hexpand" c:identifier="gtk_widget_set_hexpand">
         <parameters>
           <instance-parameter name="widget">
@@ -98,6 +108,9 @@
         <type name="gboolean" c:type="gboolean"/>
       </property>
       <property name="sensitive" writable="1" setter="set_sensitive">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="can-focus" writable="1" setter="set_can_focus">
         <type name="gboolean" c:type="gboolean"/>
       </property>
       <property name="hexpand" writable="1" setter="set_hexpand">

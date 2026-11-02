@@ -261,6 +261,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) details_closed_handler() {
 }
 
+func (m *Model) details_key_handler(k string) {
+}
+
 func (m *Model) details_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.details.SetVisible(m.visible__inst0)
@@ -276,6 +279,11 @@ func (m *Model) detailsClosed() {
 	if m.details.OnClosed != nil {
 		m.details.OnClosed()
 	}
+}
+
+// detailsKey calls PressKey on the #details widget; for tests.
+func (m *Model) detailsKey(key string) {
+	m.details.PressKey(key)
 }
 
 // detailsVisible invokes the OnVisible callback on the #details widget; for tests.
@@ -353,6 +361,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.details.SetTitle("Details")
 	m.details.SetVisible(m.visible__inst0)
 	m.details.OnClosed = m.details_closed_handler
+	m.details.OnKey = m.details_key_handler
 	m.details.OnVisible = m.details_visible_handler
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(fmt.Sprint(m.ticks))
@@ -559,6 +568,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) details_closed_handler() {
 }
 
+func (m *Model) details_key_handler(k string) {
+}
+
 func (m *Model) details_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.details, m.visible__inst0)
@@ -610,6 +622,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.details, "Details")
 	gtk4rt.ToplevelSetVisible(m.details, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.details, m.details_closed_handler)
+	gtk4rt.ToplevelOnKey(m.details, m.details_key_handler)
 	gtk4rt.ToplevelOnVisible(m.details, m.details_visible_handler)
 	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.ticks))
@@ -617,6 +630,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.details, m.__n0)
 	m.__n1 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n1, "Close")
+	gtk4rt.SetBool(m.__n1, "can-focus", true)
 	gtk4rt.Connect(m.__n1, "clicked", m.__n1_clicked_handler)
 	gtk4rt.BoxAppend(m.details, m.__n1)
 	gtk4rt.AppAttach(m.details)
@@ -629,7 +643,12 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.details)
 }
+
+// detailsKey fires "key" on the #details widget; for tests.
+func (m *Model) detailsKey(v string) {
+	gtk4rt.ToplevelKey(m.details, v)
+}
 -- run/go/fyne --
-pass sha256:df161454c49106de259772d11641edaa
+pass sha256:a3f7a8d71b0d162cc92367fa1e3d6d06
 -- run/go/gtk4 --
-pass sha256:d70a00a53a5311e9d60a5eeba82e7715
+pass sha256:589fe5b504a82ca5018e4f13e7757262

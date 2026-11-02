@@ -63,12 +63,12 @@ ui.window {
     ui.text(value="{n}")
 }
 -- testrun/run/fyne/go/app.sngl/1 --
-sha256:70b5c25230e7e647bd48578443466401
+sha256:b5f34e8a15467e18a121804313298917
 {
   "stdout": "before 0\nafter\ntick 0\n"
 }
 -- testrun/run/fyne/go/app.sngl/2 --
-sha256:be7407535715691b950003b0c682c545
+sha256:23bb72bcc354dcfa50e963ba72783fcf
 {
   "stdout": "before 2\ntick 2\n"
 }

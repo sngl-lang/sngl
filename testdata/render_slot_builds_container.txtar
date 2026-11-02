@@ -514,6 +514,7 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__n0 = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(c.__n0, "")
 	gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
+	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "toggled", func() {
 		if gtk4rt.CheckButtonGetActive(c.__n0) != c.checked {
 			c.checked = gtk4rt.CheckButtonGetActive(c.__n0)
@@ -570,6 +571,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n7, m.__n8)
 	m.more = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.more, "more")
+	gtk4rt.SetBool(m.more, "can-focus", true)
 	gtk4rt.Connect(m.more, "clicked", m.more_clicked_handler)
 	gtk4rt.BoxAppend(m.__n7, m.more)
 	gtk4rt.BoxAppend(m.__root, m.__n7)
@@ -591,4 +593,4 @@ func (m *Model) moreClick() {
 -- run/go/fyne --
 pass sha256:21a1e8496ee4a75dc25f8826efb41ce3
 -- run/go/gtk4 --
-pass sha256:394e4f78f49c2411f983d193f7c20c6a
+pass sha256:8bcad128f505f956a36ae8663244db81

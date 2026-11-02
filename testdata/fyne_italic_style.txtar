@@ -71,6 +71,9 @@ func New() *Model {
 func (m *Model) home_closed_handler() {
 }
 
+func (m *Model) home_key_handler(k string) {
+}
+
 func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.home.SetVisible(m.visible__inst0)
@@ -81,6 +84,11 @@ func (m *Model) homeClosed() {
 	if m.home.OnClosed != nil {
 		m.home.OnClosed()
 	}
+}
+
+// homeKey calls PressKey on the #home widget; for tests.
+func (m *Model) homeKey(key string) {
+	m.home.PressKey(key)
 }
 
 // homeVisible invokes the OnVisible callback on the #home widget; for tests.
@@ -110,6 +118,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetTitle("doc")
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
+	m.home.OnKey = m.home_key_handler
 	m.home.OnVisible = m.home_visible_handler
 	m.__n0 = fynelayout.NewVBox()
 	m.__n1 = widget.NewLabel("")
@@ -130,4 +139,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:9b64cd97502349d00ffbc6b63164d648
+pass sha256:eab3442311555c8fc32fb474e6c0d4b3

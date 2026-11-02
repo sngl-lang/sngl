@@ -366,14 +366,14 @@ fun Select(placeholder: String = "", value: String, disabled: Boolean = false, m
     Box(modifier = Modifier.then(if (__testTag.isEmpty()) Modifier else Modifier.testTag(__testTag)).then(flexed((if ((style == Style())) Modifier else styleModifier(style, true)), style.flex, __ctx_flexShare).snglChooses({ v: String ->
     choose(v)
 }))) {
-        OutlinedTextField(value = value, readOnly = true, enabled = (disabled == false), singleLine = true, modifier = Modifier, onValueChange = {}, label = {
+        OutlinedTextField(value = value, readOnly = true, enabled = (disabled == false), singleLine = true, modifier = (if (focusable) Modifier else Modifier.snglUnfocusable()), onValueChange = {}, label = {
             if ((placeholder != "")) {
                 Text(text = placeholder, modifier = Modifier)
             }
         }, trailingIcon = {
             Text(text = "▾", modifier = Modifier)
         })
-        Box(modifier = Modifier.matchParentSize().clickable(enabled = (disabled == false), onClick = {  ->
+        Box(modifier = focusOf(Modifier.matchParentSize(), focusable).clickable(enabled = (disabled == false), onClick = {  ->
     open = true
 })) {
         }
@@ -431,6 +431,8 @@ fun __select_state0(__start_value: String = "", placeholder: String, options: Li
         }
     }
 }
+
+fun focusOf(m: androidx.compose.ui.Modifier, focusable: Boolean): androidx.compose.ui.Modifier = (if (focusable) m else m.snglUnfocusable())
 
 fun flexed(m: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if (((flex == null) || (flex!! <= 0.0))) m else m.then(share(flex!!.toFloat())))
 
@@ -648,5 +650,16 @@ private class FlexedNode : Modifier.Node() {
         line = null
     }
 }
+-- out/kotlin/android/SnglUnfocusable.kt --
+package test.sngl.app
+
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
+
+// snglUnfocusable keeps the control it is put on from taking focus, by a key
+// or by a press: a component written `focusable=false`. A key the control
+// would have taken, focused, reaches the window instead. Compose says it in a
+// lambda with a receiver, which SNGL has no way to write.
+fun Modifier.snglUnfocusable(): Modifier = focusProperties { canFocus = false }
 -- run/kotlin/android --
-pass sha256:f7bf9d51ebae41fa64305a13e085723c
+pass sha256:b2b81395d7199deec676d90076f10363

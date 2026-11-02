@@ -180,3 +180,35 @@ func testPressingKeysDrivesTheCalculator(t test.Test, c Calculator) {
     c.press(keypad.Key{label="=", action=keypad.Action.equals})
     t.assert(c.state.entry == "24")
 }
+
+// A keyboard's key presses the keypad's key it is a shortcut of: the
+// character on the key, `*` for the times key, Enter for `=` and Escape for
+// clear.
+func testKeyboardShortcutsPressTheKeys(t test.Test, c Calculator) {
+    for var name = ["1", "2", "*", "3", "Enter"] {
+        c.calculator.key(name)
+    }
+    t.assert(c.state.entry == "36")
+    c.calculator.key("Backspace")
+    t.assert(c.state.entry == "36")
+    c.calculator.key("Escape")
+    t.assert(c.state.entry == "0")
+    c.calculator.key("q")
+    t.assert(c.state.entry == "0")
+}
+
+// Every key on the keypad has a shortcut, and no two share one.
+func testEveryKeyHasItsOwnShortcut(t test.Test) {
+    var seen list[string] = []
+    for var row = keypad.rows() {
+        for var k = row {
+            t.assert(k.shortcuts.length() > 0)
+            for var s = k.shortcuts {
+                t.assert(!seen.contains(s))
+                var found = keypad.keyFor(s)
+                t.assert(found != null && found.label == k.label)
+                seen.push(s)
+            }
+        }
+    }
+}

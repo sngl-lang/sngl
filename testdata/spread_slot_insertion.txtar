@@ -155,6 +155,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -165,6 +173,7 @@ type modelState struct {
 	seen      string
 	__focusID int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -393,6 +402,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -408,6 +423,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, tea.Batch(cmds...)
+}
+
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
 }
 
 // aClick activates the #a widget the way a keypress does; for tests.
@@ -433,6 +460,7 @@ func (m *Model) bClick() {
 }
 
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var parts []string
 	var part0 string
 	var part0Children []string
@@ -443,9 +471,9 @@ func (m Model) View() tea.View {
 		part0_0Prefix = ">"
 	}
 	part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint("row"))
+	part0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_0)
 	part0Children = append(part0Children, part0_0)
 	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
-	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0)
 	parts = append(parts, part0)
 	var part1 string
 	var part1Children []string
@@ -456,13 +484,15 @@ func (m Model) View() tea.View {
 		part1_0Prefix = ">"
 	}
 	part1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part1_0Prefix + " " + fmt.Sprint("part"))
+	part1_0 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part1_0)
 	part1Children = append(part1Children, part1_0)
 	part1 = lipgloss.JoinVertical(lipgloss.Left, part1Children...)
-	part1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part1)
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -664,6 +694,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.SetLook(m.w, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.a = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.a, "row")
+	gtk4rt.SetBool(m.a, "can-focus", true)
 	gtk4rt.Connect(m.a, "clicked", m.a_clicked_handler)
 	gtk4rt.BoxAppend(m.w, m.a)
 	m.m__r0 = gtk4rt.New("GtkBox")
@@ -671,6 +702,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.SetLook(m.m__r0, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.b = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.b, "part")
+	gtk4rt.SetBool(m.b, "can-focus", true)
 	gtk4rt.Connect(m.b, "clicked", m.b_clicked_handler)
 	gtk4rt.BoxAppend(m.m__r0, m.b)
 	gtk4rt.BoxAppend(m.__root, m.w)
@@ -988,11 +1020,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:fafab1d9c759c898ecd7b6d0471cd1ba
+pass sha256:b97d1ffee1810c3d25e98b5b02175dc8
 -- run/go/fyne --
 pass sha256:c086526eaa567ac5beb04fccc9f4434a
 -- run/go/gtk4 --
-pass sha256:e086ee2311f72fe2cf7d9ba9de5091bd
+pass sha256:7bc9456b22d02fd14ae87c45749a5434
 -- run/kotlin/android --
 pass sha256:e531f0fc1ccbffd8c910371de7784a5c
 -- run/none/html --

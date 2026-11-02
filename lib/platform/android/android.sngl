@@ -482,6 +482,12 @@ const alignJustify TextAlign
 // `actions`. The system back runs `onUp` too while `canGoBack` holds, ahead
 // of a NavHost's own pop and of the close. A screen given neither -- its
 // `canGoBack` the literal `false`, its actions empty -- draws no bar.
+//
+// `onKey` is handed each hardware keyboard key pressed while it is drawn that
+// nothing focused took (keys.kt's SnglWindowKeys): what a field is typed, the
+// Enter and space a focused button presses with, and the Tab and arrows that
+// move focus are theirs. An Escape is the system's back while `canGoBack`
+// holds, and the window hears it only while it does not.
 #[intrinsic("android:Screen")]
 component Screen(
     visible   bool = true,
@@ -489,6 +495,7 @@ component Screen(
     canGoBack bool = false,
     onBack    func(),
     onUp      func(),
+    onKey     func(key string),
     children  ...component ui.node,
     icon      option[component ui.node],
     actions   component ui.node,
@@ -644,6 +651,7 @@ component Tab(
 #[kt.native("Checkbox", "androidx.compose.material3.Checkbox")]
 component Checkbox(
     checked         bool,
+    modifier        Modifier = modifier,
     onCheckedChange func(bool),
 ) ui.node
 
@@ -651,6 +659,7 @@ component Checkbox(
 #[kt.native("Switch", "androidx.compose.material3.Switch")]
 component Switch(
     checked         bool,
+    modifier        Modifier = modifier,
     onCheckedChange func(bool),
 ) ui.node
 
@@ -733,6 +742,13 @@ component SnglPager(
 // Compose says it in a lambda with a receiver, which SNGL has no way to write.
 #[kt.native("snglChooses", "", method)]
 const func Modifier.snglChooses(onText func(string)) Modifier
+
+// Keeps a control from taking focus, by a key or a press: one written
+// `focusable=false`, whose keys then reach the window. Kotlin the platform
+// ships (codegen/platform/android/focus.kt), since Compose says it in a
+// lambda with a receiver.
+#[kt.native("snglUnfocusable", "", method)]
+const func Modifier.snglUnfocusable() Modifier
 
 // A Row or Column whose children take shares of it, and a child taking one:
 // a marked line along which nothing bounds it is bounded by its content, as

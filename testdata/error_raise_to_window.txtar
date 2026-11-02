@@ -117,6 +117,9 @@ func RequireAge(s string) int {
 func (m *Model) home_closed_handler() {
 }
 
+func (m *Model) home_key_handler(k string) {
+}
+
 func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.home.SetVisible(m.visible__inst0)
@@ -190,6 +193,11 @@ func (m *Model) homeClosed() {
 	}
 }
 
+// homeKey calls PressKey on the #home widget; for tests.
+func (m *Model) homeKey(key string) {
+	m.home.PressKey(key)
+}
+
 // homeVisible invokes the OnVisible callback on the #home widget; for tests.
 func (m *Model) homeVisible(visible bool) {
 	if cb := m.home.OnVisible; cb != nil {
@@ -233,6 +241,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetTitle("raise")
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
+	m.home.OnKey = m.home_key_handler
 	m.home.OnVisible = m.home_visible_handler
 	m.__n1 = fynelayout.NewVBox()
 	m.__n2 = widget.NewButton("", nil)
@@ -327,6 +336,9 @@ func RequireAge(s string) int {
 }
 
 func (m *Model) home_closed_handler() {
+}
+
+func (m *Model) home_key_handler(k string) {
 }
 
 func (m *Model) home_visible_handler(__visible bool) {
@@ -428,20 +440,24 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.home, "raise")
 	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
+	gtk4rt.ToplevelOnKey(m.home, m.home_key_handler)
 	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
 	m.__n1 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n1, 1)
 	gtk4rt.SetLook(m.__n1, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n2 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n2, "Save")
+	gtk4rt.SetBool(m.__n2, "can-focus", true)
 	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
 	m.__n3 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n3, "Check")
+	gtk4rt.SetBool(m.__n3, "can-focus", true)
 	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n3)
 	m.__n4 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n4, "Deep")
+	gtk4rt.SetBool(m.__n4, "can-focus", true)
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n4)
 	m.__n0 = gtk4rt.New("GtkLabel")
@@ -458,7 +474,12 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.home)
 }
+
+// homeKey fires "key" on the #home widget; for tests.
+func (m *Model) homeKey(v string) {
+	gtk4rt.ToplevelKey(m.home, v)
+}
 -- run/go/fyne --
-pass sha256:e43e088565cc64a920aef4557aa24f7e
+pass sha256:221433f731d6d5a437375b5954782294
 -- run/go/gtk4 --
-pass sha256:838259c0cdabb5ea9cf07d025a348dfa
+pass sha256:25cd785212dba2cba4c7ea696808348b

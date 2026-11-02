@@ -197,6 +197,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.SetLook(__n0, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.deeper = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.deeper, "deeper")
+	gtk4rt.SetBool(m.deeper, "can-focus", true)
 	gtk4rt.Connect(m.deeper, "clicked", m.deeper_clicked_handler)
 	gtk4rt.BoxAppend(__n0, m.deeper)
 	gtk4rt.BoxAppend(m.__root, __n0)
@@ -268,6 +269,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:8b8098e891318e0ae3958306702ed173
 -- run/go/gtk4 --
-pass sha256:cf0fe521ff23b42fadffdb6ecfe0a79d
+pass sha256:86d232300ee58d551aa97d9038a52ba9
 -- run/none/html --
 pass sha256:03c97ac12720adf0393c81f84f747afa

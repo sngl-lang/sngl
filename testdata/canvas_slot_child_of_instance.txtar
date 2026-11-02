@@ -755,6 +755,7 @@ func newFrame__slot0Instance(__model *Model, __a___p0 float64) *Frame__slot0Inst
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n3)), gtk4rt.Handle(unsafe.Pointer(c.__n4)))
 	__n5 := (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
 	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(__n5)), "hit")
+	gtk4rt.SetBool(gtk4rt.Handle(unsafe.Pointer(__n5)), "can-focus", true)
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(__n5)), "clicked", func() {
 		c.hits += 1
 		gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), ("hits " + fmt.Sprint(c.hits)))
@@ -807,6 +808,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n2)
 	m.add = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
 	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.add)), "add")
+	gtk4rt.SetBool(gtk4rt.Handle(unsafe.Pointer(m.add)), "can-focus", true)
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.add)), "clicked", m.add_clicked_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.add)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
@@ -1050,6 +1052,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:b8c89789109d7c29b3d5b0f4ec0fe43c
 -- run/go/gtk4 --
-pass sha256:17dab74ac8047bf6f1264bddc991043e
+pass sha256:db4dd666ea11d2c9f6f42f3f4f0c613c
 -- run/none/html --
 pass sha256:0379f8e991f94369ba67c108245c5e40

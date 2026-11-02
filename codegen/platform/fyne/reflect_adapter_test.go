@@ -60,6 +60,9 @@ var fyneCtors = map[string]any{
 	"duckfam.us/sngl/pkg/go/fynelayout.NewMenuEntry":   fynelayout.NewMenuEntry,
 	"duckfam.us/sngl/pkg/go/fynelayout.NewTabs":        fynelayout.NewTabs,
 	"duckfam.us/sngl/pkg/go/fynelayout.NewTabPage":     fynelayout.NewTabPage,
+	"duckfam.us/sngl/pkg/go/fynelayout.NewNoTabButton": fynelayout.NewNoTabButton,
+	"duckfam.us/sngl/pkg/go/fynelayout.NewNoTabCheck":  fynelayout.NewNoTabCheck,
+	"duckfam.us/sngl/pkg/go/fynelayout.NewNoTabSelect": fynelayout.NewNoTabSelect,
 }
 
 // allSpecs decodes every Spec the fyne overrides reach, keyed by the stdlib

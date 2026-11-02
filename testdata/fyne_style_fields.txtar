@@ -291,6 +291,9 @@ func CursorOf(name string) int {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -328,6 +331,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetTitle("Style")
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n3 = fynelayout.NewVBox()
 	m.__n3__box = fynelayout.NewBox(m.__n3)
@@ -389,4 +393,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:49557ebf1be3d013eb50acf118ceb1ad
+pass sha256:8104e5ad6d3c7fbd10b64fb23cde4c3e

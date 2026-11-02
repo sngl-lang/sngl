@@ -397,7 +397,6 @@ func (m Model) View() tea.View {
 		content_2 = BoxLook(Style{Width: snglSome(Measurement{Px: 64}), Height: snglSome(Measurement{Px: 64}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 32}), BorderStyle: "unset", Display: "inlineFlex", ListStyleType: "unset"}, true).Render(fmt.Sprint("XY"))
 		contentChildren = append(contentChildren, content_2)
 		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -576,6 +575,9 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -606,6 +608,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n8 = fynelayout.NewHBox()
 	m.__renderSlot0(m.__n8)
@@ -1401,9 +1404,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4ccb084695a7d548df61bd951e30c674
+pass sha256:dfdc3a0d71d29be933f842e095e2c842
 -- run/go/fyne --
-pass sha256:8f1fadb6118b5dddfe43288cb0f3b310
+pass sha256:75e0130d7e189d7afea35639c672bfd5
 -- run/kotlin/android --
 pass sha256:23d6f2f5a123c9eb41e87958b6efcd5a
 -- run/none/html --

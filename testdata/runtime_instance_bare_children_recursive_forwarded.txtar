@@ -102,6 +102,9 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -138,6 +141,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n15 = fynelayout.NewVBox()
 	m.__n1 = newFrame__slot0Instance(m, m.depth, 0)
@@ -679,6 +683,9 @@ func New() *Model {
 }
 
 func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -1276,6 +1283,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n15 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n15, 1)
@@ -1288,6 +1296,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n15, m.__n2__el)
 	m.__n16 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n16, "deeper")
+	gtk4rt.SetBool(m.__n16, "can-focus", true)
 	gtk4rt.Connect(m.__n16, "clicked", m.__n16_clicked_handler)
 	gtk4rt.BoxAppend(m.__n15, m.__n16)
 	gtk4rt.BoxAppend(m.__n0, m.__n15)
@@ -1789,8 +1798,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:c5875499bf66b838ad576b90ebe7f641
+pass sha256:51005ad799d3fe09b278dd532ba9eded
 -- run/go/gtk4 --
-pass sha256:009957c9c6d6bfb3bd4211cf054a43c6
+pass sha256:14766b0599a7d7c9065e7fa87d5edd35
 -- run/none/html --
 pass sha256:964f6914a0e0d65740ceb1a766d18793

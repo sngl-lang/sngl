@@ -453,6 +453,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
+func (m *Model) __n1_key_handler(k string) {
+}
+
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.visible__inst0)
@@ -501,6 +504,7 @@ func newSearchInstance(__model *Model) *SearchInstance {
 	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(__n4)), 1)
 	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n4)), gtk4rt.Look{Spaced: true, Spacing: 6})
 	c.box = (*C.GtkEntry)(unsafe.Pointer(gtk4rt.New("GtkEntry")))
+	gtk4rt.SetBool(gtk4rt.Handle(unsafe.Pointer(c.box)), "can-focus", true)
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(c.box)), "changed", func() {
 		if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box)))) != c.search {
 			c.search = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
@@ -599,6 +603,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.__n1_closed_handler)
+	gtk4rt.ToplevelOnKey(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.__n1_key_handler)
 	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.__n1_visible_handler)
 	m.__n3 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
 	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n3)), 1)
@@ -647,4 +652,4 @@ func (m *Model) boxChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__named_box)), sig)
 }
 -- run/go/gtk4 --
-pass sha256:046ef2b2c66ff5a7989a1c420bfbd185
+pass sha256:38e5f75b5cdb292db5f0cc6e8e877af3
