@@ -157,9 +157,8 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 			c.error(t.Pos, "`%s` is a constraint, not a type: only a type parameter's constraint names it", t.Name)
 			return TypInvalid
 		}
-		if _, ok := sym.(*ir.Alias); ok {
-			c.error(t.Pos, "`%s` is an alias of a constraint, not a type: only a type parameter's constraint names it", t.Name)
-			return TypInvalid
+		if typ, ok := c.aliasType(t, sym); ok {
+			return typ
 		}
 	}
 	// `component` has no `<T>` decl to carry a marker; it is a bare kind.
@@ -298,8 +297,11 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 		return TypInvalid
 	}
 	if a := c.qualifiedAlias(t); a != nil {
-		c.error(t.Pos, "`%s.%s` is an alias of a constraint, not a type: only a type parameter's constraint names it", pkg, name)
-		return TypInvalid
+		if c.rejectUnexported(t.Pos, a) {
+			return TypInvalid
+		}
+		typ, _ := c.aliasType(t, a)
+		return typ
 	}
 	if tsym, ok := ns.Pkg.Symbols.LookupMemberType(name); ok {
 		if c.rejectUnexported(t.Pos, tsym) {

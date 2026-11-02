@@ -132,6 +132,18 @@ func (c *checker) declareMethod(pos ast.Pos, fn *ir.Func) *ir.Func {
 	// is attached in.
 	name := fn.RecvName()
 	fn.Receiver = c.receiverType(name)
+	// An alias's method is held by the declaration it names.
+	if sym, ok := c.scope.Lookup(name); ok {
+		if a, isAlias := sym.(*ir.Alias); isAlias {
+			if fn.Receiver.Kind == ir.TypeInvalid || fn.Receiver.Decl == nil {
+				if a.Type != nil {
+					c.error(pos, "%s is an alias of %s, which is no declaration to hold a method: declare it on the declaration", name, a.Type)
+				}
+				return nil
+			}
+			name = fn.Receiver.Decl.SymName()
+		}
+	}
 	err := c.attachMethod(name, fn)
 	switch {
 	case err == nil, errors.Is(err, ir.ErrNoMethodHost):
@@ -299,6 +311,15 @@ func (c *checker) receiverType(name string) *ir.Type {
 	sym, ok := c.scope.Lookup(name)
 	if !ok {
 		return ir.ReceiverNamed(name)
+	}
+	// An alias's method is its declaration's: the alias is that type. One
+	// naming an instance of a generic, `struct Ints = Box[int]`, names no
+	// declaration of its own to hold one, which attaching reports.
+	if a, ok := sym.(*ir.Alias); ok {
+		c.resolveAlias(a)
+		if a.Type != nil && len(a.Type.Elems) == 0 && len(a.TypeParams) == 0 {
+			sym = c.aliasedDecl(a)
+		}
 	}
 	if t := sym.SymType(); t != nil && t.Decl == sym {
 		return t

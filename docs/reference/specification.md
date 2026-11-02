@@ -596,6 +596,52 @@ ternary's branch, in a loop's condition, or outside any statement is an error.
 So is taking such a function as a value, since what calls a value cannot know
 where its argument came from.
 
+### Aliases
+
+An **alias** names a type, or a [constraint](#generic-type-parameters), under
+another name: `struct Name = Type`. It is what it names wherever it is
+written, not a new type, so a value of one is a value of the other. It is
+written with the keyword of what it names: `enum Name = Type` names an enum,
+`unit Name = Type` a unit, and `struct Name = Type` anything else -- a
+struct, an anonymous struct, a builtin type or a constraint, all of which are
+declared as structs. Where its name stands for a declaration -- a literal
+`Alias{…}`, a member `Alias.member`, a conversion `Alias(x)`, a method's
+receiver `func Alias.m(this Alias)` -- it is the declaration it names. A
+method is declared on a declaration, so an alias of an instance of a generic,
+`struct Ints = Box[int]`, takes none.
+
+An alias may take type parameters, which what it names may use and which a
+use binds, each held to its own constraint. It may name another alias, and may
+be named before it is declared, but not, through any chain, itself. It is
+exported by case, like any declaration, and declared at a package's top level
+only.
+
+```sngl
+struct Point {
+    x int
+    y int
+}
+
+struct P = Point
+
+struct Box[T any] {
+    value T
+}
+
+struct Boxed[T any] = Box[T]
+
+enum Direction { up, down }
+
+enum Dir = Direction
+
+struct Count = int
+
+func area(p P) => p.x * p.y
+
+var b = Boxed[int]{value=1} // a Box[int]
+var d Dir = Dir.down        // a Direction
+```
+
 ### Type identity
 
 Two types are *identical* when:
@@ -732,29 +778,9 @@ constraint (`[T any = struct {}]`), used when nothing binds it; a constraint
 is never a default, so a parameter with no default has none, and
 `[T anyStruct = struct {}]` writes both.
 
-An **alias** names a constraint under another name: `struct Name = Type`,
-written with the keyword of what it names. It is that constraint wherever it
-is written, not a new one, so a type satisfies the alias exactly when it
-satisfies what the alias names. An alias may take type parameters, which what
-it names may use and which a use binds, each held to its own constraint; it
-may name another alias, and may be named before it is declared. It is exported
-by case, like any declaration, and declared at a package's top level only.
-For now an alias names a constraint and nothing else, and like a constraint
-it is no type a value may have.
-
-```sngl
-struct Formattable = methodsOf[struct {
-    const func format() string
-}]
-
-struct Keyed[K any] = fieldsOf[struct {
-    key K
-}]
-
-func show[T Formattable](v T) => "<{v}>"
-
-func keyOf[K any, T Keyed[K]](v T) => v.key
-```
+An [alias](#aliases) may name a constraint, `struct Formattable = methodsOf[…]`: a type satisfies the alias exactly when it satisfies what the
+alias names, and where a function `methodsOf` names is called on, the alias
+names the parameter it constrains.
 
 `fieldsOf[S]` says the type has **at least** S's fields, each at an equal
 type: `[T fieldsOf[struct { name string }]]` is any type with a `name` field
@@ -3004,9 +3030,9 @@ StructDecl = "struct" [ IDENT ] [ TypeParamList ] ( "{" { StructBodyItem [ ";" ]
 
 StructField = IdentList Type [ "=" Expr ]
 
-EnumDecl = "enum" [ IDENT ] [ TypeParamList ] "{" [ EnumBodyItem { ("," | ";") EnumBodyItem } [ "," | ";" ] ] "}"
+EnumDecl = "enum" [ IDENT ] [ TypeParamList ] ( "{" [ EnumBodyItem { ("," | ";") EnumBodyItem } [ "," | ";" ] ] "}" | "=" Type )
 
-UnitDecl = "unit" [ IDENT ] "{" [ ArgList ] "}"
+UnitDecl = "unit" [ IDENT ] ( "{" [ ArgList ] "}" | "=" Type )
 
 ```
 

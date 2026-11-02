@@ -135,9 +135,12 @@ func (*Comment) enumBodyItem() {}
 
 // EnumDef declares an enum type. Name is empty for anonymous enum types.
 type EnumDef struct {
-	Pos         Pos
-	Name        string
-	TypeParams  []TypeParam    `json:",omitempty"` // generic parameters: ["T"] for `enum Result[T any] {…}`
+	Pos        Pos
+	Name       string
+	TypeParams []TypeParam `json:",omitempty"` // generic parameters: ["T"] for `enum Result[T any] {…}`
+	// Alias is the type `enum Name = Type` names, nil for an enum with a
+	// body. An alias has no body.
+	Alias       TypeExpr       `json:",omitempty"`
 	Body        []EnumBodyItem // members and nested funcs, in source order
 	IsMultiline bool
 	Attrs       []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
@@ -243,8 +246,11 @@ type StructField struct {
 // UnitDef declares a unit type with named suffixes.
 // Name is empty for anonymous unit types.
 type UnitDef struct {
-	Pos         Pos
-	Name        string
+	Pos  Pos
+	Name string
+	// Alias is the type `unit Name = Type` names, nil for a unit with a
+	// body. An alias has no body.
+	Alias       TypeExpr       `json:",omitempty"`
 	Body        []UnitBodyItem // suffixes and comments, in source order
 	IsMultiline bool
 	Attrs       []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration

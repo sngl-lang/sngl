@@ -306,9 +306,9 @@ func (x *indexer) declSite(decl any) {
 			}
 		}
 	case *ir.Alias:
-		if d.AST != nil {
-			if p, ok := x.afterKeyword(d.AST.Pos, "struct", d.AST.Name); ok {
-				x.site(d, p, d.AST.Name)
+		if d.Decl != nil {
+			if p, ok := x.afterKeyword(d.Pos, d.Keyword, d.Name); ok {
+				x.site(d, p, d.Name)
 			}
 		}
 	case *ir.EnumDef:
@@ -615,15 +615,15 @@ func (x *indexer) typeParams(tps []ast.TypeParam) {
 }
 
 func (x *indexer) aliasDecl(a *ir.Alias) {
-	if a == nil || a.AST == nil {
+	if a == nil || a.Decl == nil {
 		return
 	}
 	x.declSite(a)
 	if s, ok := x.ix.Sites[a]; ok {
-		x.add(s.Pos, a.AST.Name, a, KindType, true)
+		x.add(s.Pos, a.Name, a, KindType, true)
 	}
-	x.typeParams(a.AST.TypeParams)
-	x.typeRefs(a.AST.Alias)
+	x.typeParams(a.WrittenParams)
+	x.typeRefs(a.Written)
 }
 
 func (x *indexer) componentDecl(c *ir.Component) {

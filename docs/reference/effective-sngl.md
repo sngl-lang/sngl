@@ -731,7 +731,8 @@ func hex[T methodsOf[struct {
 ```
 
 A constraint written more than once deserves a name. An alias gives it one,
-with the keyword of what it names, and may take parameters of its own:
+as it gives a type one, with the keyword of what it names, and may take
+parameters of its own:
 
 ```sngl
 struct Formattable = methodsOf[struct {

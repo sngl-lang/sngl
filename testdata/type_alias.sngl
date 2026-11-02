@@ -1,0 +1,73 @@
+// An alias names a type under another name, `struct Name = Type`: the same
+// type wherever it is written, not a new one. It is written with the keyword
+// of what it names -- `enum` an enum's, `unit` a unit's, `struct` any other's
+// -- and where its name stands for a declaration it is that declaration's: a
+// literal, a member, a conversion and a method's receiver.
+
+import . "sngl:test"
+
+struct Point {
+    x int = 0
+    y int = 0
+}
+
+struct P = Point
+
+func P.sum(this P) => this.x + this.y
+
+func area(p P) => p.x * p.y
+
+// An instance of a generic, and a generic alias of one.
+struct Box[T any] {
+    value T
+}
+
+struct IntBox = Box[int]
+
+struct Boxed[T any] = Box[T]
+
+// A builtin type, which may take a method and convert as the type does.
+struct Count = int
+
+func Count.twice(this Count) => this * 2
+
+struct Ints = list[int]
+
+// An anonymous struct.
+struct Named = struct {
+    name string
+}
+
+enum Direction { up, down }
+
+enum Dir = Direction
+
+unit distance { mm, cm = 10mm }
+
+unit Length = distance
+
+// An alias is named before it is declared as readily as after.
+func farther(a Far, b Far) => a > b
+
+unit Far = Length
+
+func testTypeAlias(t Test) {
+    var p P = {x=2, y=3}
+    var q = P{x=1}
+    var r Point = p
+    t.assert(area(p) == 6 && q.y == 0 && r.sum() == 5)
+    var b = IntBox{value=4}
+    var bb = Boxed[string]{value="s"}
+    var cb Box[int] = b
+    t.assert(cb.value == 4 && bb.value == "s")
+    var d Dir = Dir.down
+    t.assert(d == Direction.down)
+    var c Count = 3
+    t.assert(c.twice() == 6 && Count(2.5) == 2)
+    var xs Ints = [1, 2]
+    t.assert(xs.length == 2)
+    var n Named = {name="n"}
+    t.assert(n.name == "n")
+    var l Length = 2cm
+    t.assert(l == 20mm && farther(3cm, 2cm))
+}

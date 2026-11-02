@@ -8,12 +8,16 @@ struct Keyed[K any] = fieldsOf[struct {
     key K
 }]
 
-// An alias names a constraint, for now.
-struct Number = int // ERROR(check) "an alias names a constraint, for now"
+// An alias is written with the keyword of what it names.
+enum Number = int // ERROR(check) "int is a struct, so its alias is written `struct Number = …`"
 
-struct Record = struct { // ERROR(check) "a struct is no constraint: `fieldsOf[struct { … }]` asks for its fields"
-    name string
-}
+enum Ordering { less, same, more }
+
+struct Order = Ordering // ERROR(check) "Ordering is an enum, so its alias is written `enum Order = …`"
+
+unit Size = Ordering // ERROR(check) "Ordering is an enum, so its alias is written `enum Size = …`"
+
+enum Showable = Formattable // ERROR(check) "a constraint is aliased with `struct`: `struct Showable = …`"
 
 // An alias naming itself, directly or through another.
 struct Loop = Loop // ERROR(check) "the alias Loop names itself"
@@ -22,8 +26,24 @@ struct Ping = Pong // ERROR(check) "the alias Ping names itself"
 
 struct Pong = Ping
 
-// An alias is no type.
+// A constraint's alias is no type, and a type's is no constraint.
 func f1(v Formattable) => 1 // ERROR(check) "`Formattable` is an alias of a constraint, not a type"
+
+struct Count = int
+
+func f5[T Count](v T) => v // ERROR(check) "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]`, `methodsOf[S]` or an alias of one"
+
+// Nor is it a value.
+func f6() => Formattable // ERROR(check) "Formattable names a constraint, which is not a value"
+
+// A method is declared on a declaration, which an instance of a generic is not.
+struct Box[T any] {
+    value T
+}
+
+struct Ints = Box[int]
+
+func Ints.first(this Ints) => this.value // ERROR(check) "Ints is an alias of Box[int], which is no declaration to hold a method"
 
 // Its type arguments.
 func f2[T Keyed](v T) => v.key // ERROR(check) "Keyed requires a type argument for K, which has no default"

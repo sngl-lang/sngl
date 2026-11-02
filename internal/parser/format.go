@@ -542,6 +542,11 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 		f.writeTypeParams(e.TypeParams)
 		f.write(" ")
 	}
+	if e.Alias != nil {
+		f.write("= ")
+		f.writeType(e.Alias)
+		return
+	}
 	f.write("{")
 	// Funcs in the body force multiline form regardless of IsMultiline, and
 	// so does a mark, which takes a line of its own.
@@ -666,6 +671,11 @@ func (f *formatter) writeUnitDef(u *ast.UnitDef) {
 	if u.Name != "" {
 		f.write(u.Name)
 		f.write(" ")
+	}
+	if u.Alias != nil {
+		f.write("= ")
+		f.writeType(u.Alias)
+		return
 	}
 	f.write("{")
 	if u.IsMultiline {

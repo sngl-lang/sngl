@@ -2,22 +2,33 @@ package ir
 
 import "duckfam.us/sngl/ast"
 
-// Alias is `struct Name[…] = Type`: Type under another name, the same type
-// wherever it is written rather than a new one. For now an alias names a
-// constraint only, so it is met where a type parameter's constraint is
-// resolved and nowhere else.
+// Alias is `struct Name[…] = Type`, or `enum` or `unit` in place of
+// `struct`: Type under another name, the same type wherever it is written
+// rather than a new one. It names a type or a constraint, and the checker
+// replaces it with what it names wherever it is written, so nothing after the
+// check meets one.
 type Alias struct {
 	Name string
 	Pos  ast.Pos
-	Pkg  *Package       `json:"-"`
-	AST  *ast.StructDef `json:"-"`
-	// TypeParams are the alias's own, which Constraint names and a use
+	Pkg  *Package `json:"-"`
+	// Keyword is the one it is declared with: "struct", "enum" or "unit",
+	// which is the kind of type it names.
+	Keyword string
+	// Decl is the declaration that writes it, an *ast.StructDef, EnumDef or
+	// UnitDef; Written is what it names and WrittenParams its parameters, as
+	// written there.
+	Decl          ast.Stmt        `json:"-"`
+	Written       ast.TypeExpr    `json:"-"`
+	WrittenParams []ast.TypeParam `json:"-"`
+	// TypeParams are the alias's own, which what it names may use and a use
 	// binds: `struct Keyed[K any] = fieldsOf[struct { key K }]`.
 	TypeParams []TypeParam
-	// Constraint is what the alias names, resolved on Self: the type
+	// Type is the type it names, and Constraint the constraint, whichever it
+	// names; both nil until the checker resolves it, and both nil after for
+	// one that names itself. A constraint is resolved on Self: the type
 	// parameter a function `methodsOf` names is called on, which each use
-	// binds to the parameter it constrains (ExpandAlias). Nil until the
-	// checker resolves it.
+	// binds to the parameter it constrains (ExpandAlias).
+	Type       *Type         `json:"-"`
 	Constraint *Type         `json:"-"`
 	Self       *TypeParamSym `json:"-"`
 }
@@ -26,14 +37,20 @@ func (a *Alias) SymName() string  { return a.Name }
 func (a *Alias) SymType() *Type   { return nil }
 func (a *Alias) IsExported() bool { return isExportedName(a.Name) }
 
-// ExpandAlias is what a's constraint is where it is written with args for its
-// own parameters, constraining self.
+// ExpandAlias is what a names where it is written with args for its own
+// parameters: its type, or its constraint constraining self.
 func ExpandAlias(a *Alias, args []*Type, self *Type) *Type {
 	bindings := make(map[string]*Type, len(args)+1)
 	for i, tp := range a.TypeParams {
 		if i < len(args) {
 			bindings[tp.Name] = args[i]
 		}
+	}
+	if a.Type != nil {
+		if len(bindings) == 0 {
+			return a.Type
+		}
+		return a.Type.Substitute(bindings)
 	}
 	if a.Self != nil && self != nil {
 		bindings[a.Self.Name] = self

@@ -534,6 +534,14 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		c.rejectUnexported(x.Pos, sym)
 	}
 	c.reportUnusable(x.Pos, x.Name, sym)
+	// An alias of a type names the declaration it aliases: `Alias.member`
+	// is the enum's member. A constraint's is no value.
+	if a, ok := sym.(*ir.Alias); ok {
+		if sym = c.aliasedDecl(a); sym == ir.Symbol(a) {
+			c.error(x.Pos, "%s names a constraint, which is not a value", x.Name)
+			return &ir.Ident{AST: x, Type: TypInvalid, Name: x.Name}
+		}
+	}
 	// A family is a type with values -- each a handle to one of its members
 	// -- and is not one of them itself.
 	if f, ok := sym.(*ir.Component); ok && f.IsFamily() {
@@ -1158,6 +1166,7 @@ func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
 		// found through scope, so a program's own declaration of the name is
 		// no cast.
 		if sym, ok := c.scope.Lookup(ident.Name); ok {
+			sym = c.aliasedDecl(sym)
 			if typ, kind, ok := scalarOf(sym); ok && kind.IsConvertibleScalar() {
 				return c.inferBuiltinConversion(x, typ, ident.Name)
 			}
@@ -1396,7 +1405,7 @@ func (c *checker) staticReceiverSym(operand ast.Expr) ir.Symbol {
 	switch op := operand.(type) {
 	case *ast.IdentExpr:
 		if sym, ok := c.scope.Lookup(op.Name); ok {
-			return sym
+			return c.aliasedDecl(sym)
 		}
 	case *ast.SelectExpr:
 		ident, ok := op.Operand.(*ast.IdentExpr)
@@ -1412,7 +1421,7 @@ func (c *checker) staticReceiverSym(operand ast.Expr) ir.Symbol {
 			return nil
 		}
 		if member, ok := ns.Pkg.Symbols.LookupMember(op.Field); ok {
-			return member
+			return c.aliasedDecl(member)
 		}
 	}
 	return nil
@@ -2362,6 +2371,16 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			c.expected = c.resolveType(nt)
 		}
 		defer func() { c.expected = saved }()
+	}
+	// `Alias{…}` builds a value of the type the alias names, as a literal
+	// with no name does of the type expected where it stands.
+	if t := c.literalAlias(x); t != nil {
+		saved := c.expected
+		defer func() { c.expected = saved }()
+		c.expected = t
+		bare := *x
+		bare.Package, bare.Name, bare.TypeArgs = "", "", nil
+		x = &bare
 	}
 	if ed := c.literalEnum(x); ed != nil {
 		return c.inferEnumLit(x, ed)

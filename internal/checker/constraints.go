@@ -37,8 +37,7 @@ func (c *checker) resolveConstraint(te ast.TypeExpr, self *ir.Type) *ir.Type {
 }
 
 // resolveConstraintFor is resolveConstraint for a type parameter, or for an
-// alias where alias is set, which only the refusal of what names neither
-// tells apart.
+// alias where alias is set.
 func (c *checker) resolveConstraintFor(te ast.TypeExpr, self *ir.Type, alias bool) *ir.Type {
 	switch t := te.(type) {
 	case *ast.NamedType:
@@ -58,10 +57,6 @@ func (c *checker) resolveConstraintFor(te ast.TypeExpr, self *ir.Type, alias boo
 			return ir.TypAny
 		}
 	}
-	if alias {
-		c.error(*te.ExprPos(), "an alias names a constraint, for now: `any`, `anyStruct`, `anyFields`, `fieldsOf[S]`, `methodsOf[S]` or another alias")
-		return ir.TypAny
-	}
 	c.error(*te.ExprPos(), "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]`, `methodsOf[S]` or an alias of one")
 	return ir.TypAny
 }
@@ -77,14 +72,14 @@ func (c *checker) namedConstraint(t *ast.NamedType, self *ir.Type) (*ir.Type, bo
 		if c.rejectUnexported(t.Pos, a) {
 			return ir.TypAny, true
 		}
-		return c.expandAlias(t, a, self), true
+		return c.aliasConstraint(t, a, self)
 	}
 	sym, ok := c.scope.Lookup(t.Name)
 	if !ok {
 		return nil, false
 	}
 	if a, ok := sym.(*ir.Alias); ok {
-		return c.expandAlias(t, a, self), true
+		return c.aliasConstraint(t, a, self)
 	}
 	if typ, _, ok := scalarOf(sym); ok && typ == ir.TypAny {
 		if len(t.TypeArgs) > 0 {
@@ -436,6 +431,19 @@ func (c *checker) checkConstraints(pos ast.Pos, params []ir.TypeParam, bindings 
 			c.checkConstraint(pos, tp, t, bindings)
 		}
 	}
+}
+
+// aliasConstraint is the constraint t, naming a, says on self; ok is false
+// where a names a type, which is no constraint.
+func (c *checker) aliasConstraint(t *ast.NamedType, a *ir.Alias, self *ir.Type) (*ir.Type, bool) {
+	c.resolveAlias(a)
+	if a.Type != nil {
+		return nil, false
+	}
+	if con := c.expandAlias(t, a, self); con != nil {
+		return con, true
+	}
+	return ir.TypAny, true
 }
 
 // qualifiedAlias is the alias t, `pkg.Name`, names, nil where it names none.
