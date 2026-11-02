@@ -1,0 +1,256 @@
+{
+ "accuracy": 100,
+ "contest_combos": null,
+ "contest_effect": null,
+ "contest_type": null,
+ "damage_class": {
+  "name": "special",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-damage-class/3/"
+ },
+ "effect_chance": 100,
+ "effect_changes": [],
+ "effect_entries": [
+  {
+   "effect": "Inflicts regular damage.  Lowers the target’s Special Defense by two stages.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "short_effect": "Lowers the target’s Special Defense by two stages."
+  }
+ ],
+ "flavor_text_entries": [
+  {
+   "flavor_text": "The user spits fluid that works to melt\nthe target. This harshly reduces\nthe target’s Sp. Def stat.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "black-white",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/11/"
+   }
+  },
+  {
+   "flavor_text": "The user spits fluid that works to melt\nthe target. This harshly reduces\nthe target’s Sp. Def stat.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "black-2-white-2",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/14/"
+   }
+  },
+  {
+   "flavor_text": "The user spits fluid that works to melt\nthe target. This harshly lowers\nthe target’s Sp. Def stat.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "x-y",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/15/"
+   }
+  },
+  {
+   "flavor_text": "The user spits fluid that works to melt\nthe target. This harshly lowers\nthe target’s Sp. Def stat.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "omega-ruby-alpha-sapphire",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/16/"
+   }
+  },
+  {
+   "flavor_text": "The user spits fluid that works to melt the target.\nThis harshly lowers the target’s Sp. Def stat.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "sun-moon",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/17/"
+   }
+  },
+  {
+   "flavor_text": "The user spits fluid that works to melt the target.\nThis harshly lowers the target’s Sp. Def stat.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "ultra-sun-ultra-moon",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/18/"
+   }
+  },
+  {
+   "flavor_text": "The user spits fluid that works to melt the target.\nThis harshly lowers the target’s Sp. Def stat.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "lets-go-pikachu-lets-go-eevee",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/19/"
+   }
+  },
+  {
+   "flavor_text": "The user spits fluid that works to melt the target.\nThis harshly lowers the target’s Sp. Def stat.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "sword-shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/20/"
+   }
+  },
+  {
+   "flavor_text": "The user spits fluid that works to melt the target. This may also lower the target’s defensive stats.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "legends-arceus",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/24/"
+   }
+  },
+  {
+   "flavor_text": "The user attacks by spitting fluid that works to melt the target. This also harshly lowers the target's Sp. Def stat.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "scarlet-violet",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-v",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/5/"
+ },
+ "id": 491,
+ "learned_by_pokemon": [
+  {
+   "name": "bulbasaur",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/1/"
+  },
+  {
+   "name": "ivysaur",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/2/"
+  }
+ ],
+ "machines": [
+  {
+   "machine": {
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/machine/1828/"
+   },
+   "version_group": {
+    "name": "scarlet-violet",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+   }
+  },
+  {
+   "machine": {
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/machine/2082/"
+   },
+   "version_group": {
+    "name": "the-indigo-disk",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/27/"
+   }
+  }
+ ],
+ "meta": {
+  "ailment": {
+   "name": "none",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-ailment/0/"
+  },
+  "ailment_chance": 0,
+  "category": {
+   "name": "damage-lower",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-category/6/"
+  },
+  "crit_rate": 0,
+  "drain": 0,
+  "flinch_chance": 0,
+  "healing": 0,
+  "max_hits": null,
+  "max_turns": null,
+  "min_hits": null,
+  "min_turns": null,
+  "stat_chance": 100
+ },
+ "name": "acid-spray",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "アシッドボム"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Bombe Acide"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Säurespeier"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Bomba Ácida"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Acid Spray"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "アシッドボム"
+  }
+ ],
+ "past_values": [],
+ "power": 40,
+ "pp": 20,
+ "priority": 0,
+ "stat_changes": [
+  {
+   "change": -2,
+   "stat": {
+    "name": "special-defense",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/stat/5/"
+   }
+  }
+ ],
+ "super_contest_effect": null,
+ "target": {
+  "name": "selected-pokemon",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-target/10/"
+ },
+ "type": {
+  "name": "poison",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/4/"
+ }
+}

@@ -9,38 +9,47 @@ package gtk4rt
 extern void snglRtDispatch(int idx);
 extern void snglToplevelGone(gpointer data, GObject *where);
 
-// A stack its box let go of is being torn down, and the pages it drops as it
-// goes are no one's choice.
+// A notebook its box let go of is being torn down, and the pages it drops as
+// it goes are no one's choice.
 static void sngl_tabs_shown(GObject *o, GParamSpec *ps, gpointer data) {
     (void)ps;
     if (gtk_widget_get_parent(GTK_WIDGET(o)) == NULL) return;
     snglRtDispatch(GPOINTER_TO_INT(data));
 }
-static GtkWidget *sngl_tabs_new(int shown, GtkWidget **stack, GtkWidget **switcher) {
+// The notebook reports the page it shows through its `page` property, after
+// the change, where `switch-page` fires before it.
+static GtkWidget *sngl_tabs_new(int shown, GtkWidget **notebook) {
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    *switcher = gtk_stack_switcher_new();
-    *stack = gtk_stack_new();
-    gtk_stack_switcher_set_stack(GTK_STACK_SWITCHER(*switcher), GTK_STACK(*stack));
-    gtk_box_append(GTK_BOX(box), *switcher);
-    gtk_box_append(GTK_BOX(box), *stack);
-    g_signal_connect(*stack, "notify::visible-child", G_CALLBACK(sngl_tabs_shown), GINT_TO_POINTER(shown));
+    *notebook = gtk_notebook_new();
+    gtk_notebook_set_scrollable(GTK_NOTEBOOK(*notebook), TRUE);
+    gtk_box_append(GTK_BOX(box), *notebook);
+    g_signal_connect(*notebook, "notify::page", G_CALLBACK(sngl_tabs_shown), GINT_TO_POINTER(shown));
     return box;
 }
 static void sngl_tabs_watch(GObject *o, int idx) {
     g_object_weak_ref(o, snglToplevelGone, GINT_TO_POINTER(idx));
 }
-static void sngl_tabs_title(GtkWidget *stack, GtkWidget *page, const char *title) {
-    gtk_stack_page_set_title(gtk_stack_get_page(GTK_STACK(stack), page), title);
+static void sngl_tabs_title(GtkWidget *notebook, GtkWidget *page, const char *title) {
+    gtk_notebook_set_tab_label_text(GTK_NOTEBOOK(notebook), page, title);
 }
-static const char *sngl_tabs_title_of(GtkWidget *stack, GtkWidget *page) {
-    return gtk_stack_page_get_title(gtk_stack_get_page(GTK_STACK(stack), page));
+static const char *sngl_tabs_title_of(GtkWidget *notebook, GtkWidget *page) {
+    return gtk_notebook_get_tab_label_text(GTK_NOTEBOOK(notebook), page);
 }
-// The switcher's buttons are its children, one per page in the stack's order.
-static GtkWidget *sngl_tabs_button(GtkWidget *switcher, int i) {
-    GtkWidget *c = gtk_widget_get_first_child(switcher);
-    for (; c != NULL && i > 0; i--) c = gtk_widget_get_next_sibling(c);
-    return c;
+static GtkWidget *sngl_tabs_label(GtkWidget *notebook, GtkWidget *page) {
+    return gtk_notebook_get_tab_label(GTK_NOTEBOOK(notebook), page);
 }
+static void sngl_tabs_show(GtkWidget *notebook, GtkWidget *page) {
+    gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), gtk_notebook_page_num(GTK_NOTEBOOK(notebook), page));
+}
+static GtkWidget *sngl_tabs_shown_page(GtkWidget *notebook) {
+    int k = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
+    return k < 0 ? NULL : gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), k);
+}
+static void sngl_tabs_remove(GtkWidget *notebook, GtkWidget *page) {
+    gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), gtk_notebook_page_num(GTK_NOTEBOOK(notebook), page));
+}
+// Probes for tabs_test.go.
+static int sngl_is_notebook(GtkWidget *w) { return GTK_IS_NOTEBOOK(w); }
 */
 import "C"
 
@@ -51,14 +60,14 @@ import (
 	"duckfam.us/sngl/pkg/go/cbind"
 )
 
-// A tabs is a `ui.tabs` on gtk4: a box of a GtkStackSwitcher over a GtkStack.
-// A child appended or inserted into the box is a page of the stack, and
-// removing one takes it out; the box itself holds only the two, and a render
+// A tabs is a `ui.tabs` on gtk4: a box holding a GtkNotebook. A child
+// appended or inserted into the box is a page of the notebook, and removing
+// one takes it out; the box itself holds only the notebook, and a render
 // slot's anchor.
 type tabs struct {
-	stack, switcher Handle
-	pages           []Handle
-	// selected is the program's, which the stack shows.
+	notebook Handle
+	pages    []Handle
+	// selected is the program's, which the notebook shows.
 	selected int
 	// quiet is set while this package changes the page shown, which GTK
 	// reports as it would the user's.
@@ -82,9 +91,9 @@ var (
 func TabsNew() Handle {
 	t := &tabs{}
 	shown := cbind.Register(t.shown)
-	var stack, sw *C.GtkWidget
-	box := Handle(unsafe.Pointer(C.sngl_tabs_new(C.int(shown), &stack, &sw)))
-	t.stack, t.switcher = Handle(unsafe.Pointer(stack)), Handle(unsafe.Pointer(sw))
+	var nb *C.GtkWidget
+	box := Handle(unsafe.Pointer(C.sngl_tabs_new(C.int(shown), &nb)))
+	t.notebook = Handle(unsafe.Pointer(nb))
 	tabsOf[box] = t
 	gone := cbind.Register(func() {
 		delete(tabsOf, box)
@@ -153,7 +162,7 @@ func (t *tabs) add(page Handle) {
 		return
 	}
 	t.quiet = true
-	C.gtk_stack_add_child((*C.GtkStack)(p(t.stack)), widget(page))
+	C.gtk_notebook_append_page((*C.GtkNotebook)(p(t.notebook)), widget(page), nil)
 	t.quiet = false
 	t.pages = append(t.pages, page)
 	pg.host = t
@@ -168,7 +177,7 @@ func (t *tabs) remove(page Handle) {
 		return
 	}
 	t.quiet = true
-	C.gtk_stack_remove((*C.GtkStack)(p(t.stack)), widget(page))
+	C.sngl_tabs_remove(widget(t.notebook), widget(page))
 	t.quiet = false
 	t.pages = slices.Delete(t.pages, i, i+1)
 	if pg := tabPages[page]; pg != nil {
@@ -183,11 +192,11 @@ func (t *tabs) show() {
 		return
 	}
 	t.quiet = true
-	C.gtk_stack_set_visible_child((*C.GtkStack)(p(t.stack)), widget(t.pages[t.selected]))
+	C.sngl_tabs_show(widget(t.notebook), widget(t.pages[t.selected]))
 	t.quiet = false
 }
 
-// shown answers the stack showing another page: the user's choice, unless it
+// shown answers the notebook showing another page: the user's choice, unless it
 // is a disabled page's, which the program's own page replaces.
 func (t *tabs) shown() {
 	if t.quiet {
@@ -211,43 +220,51 @@ func (t *tabs) shown() {
 func (t *tabs) applyTitle(page Handle, pg *tabPage) {
 	c, free := cstr(pg.title)
 	defer free()
-	C.sngl_tabs_title(widget(t.stack), widget(page), c)
+	C.sngl_tabs_title(widget(t.notebook), widget(page), c)
 }
 
+// A disabled page's tab is insensitive. GTK still lets the user click it,
+// and shown puts the program's page back.
 func (t *tabs) applySensitive() {
-	for i, page := range t.pages {
+	for _, page := range t.pages {
 		on := C.gboolean(1)
 		if pg := tabPages[page]; pg != nil && pg.disabled {
 			on = 0
 		}
-		if b := C.sngl_tabs_button(widget(t.switcher), C.int(i)); b != nil {
-			C.gtk_widget_set_sensitive(b, on)
+		if l := C.sngl_tabs_label(widget(t.notebook), widget(page)); l != nil {
+			C.gtk_widget_set_sensitive(l, on)
 		}
 	}
 }
 
 func tabsShown(t *tabs) Handle {
-	return Handle(unsafe.Pointer(C.gtk_stack_get_visible_child((*C.GtkStack)(p(t.stack)))))
+	return Handle(unsafe.Pointer(C.sngl_tabs_shown_page(widget(t.notebook))))
 }
 
-// tabsChoose shows page as the switcher's button for it does.
+// tabsChoose shows page as clicking its tab does.
 func tabsChoose(t *tabs, page Handle) {
-	C.gtk_stack_set_visible_child((*C.GtkStack)(p(t.stack)), widget(page))
+	C.sngl_tabs_show(widget(t.notebook), widget(page))
 }
 
 func tabsTitles(t *tabs) []string {
 	var out []string
 	for _, page := range t.pages {
-		out = append(out, C.GoString(C.sngl_tabs_title_of(widget(t.stack), widget(page))))
+		out = append(out, C.GoString(C.sngl_tabs_title_of(widget(t.notebook), widget(page))))
 	}
 	return out
 }
 
 func tabsSensitive(t *tabs) []bool {
 	var out []bool
-	for i := range t.pages {
-		b := C.sngl_tabs_button(widget(t.switcher), C.int(i))
-		out = append(out, b != nil && C.gtk_widget_get_sensitive(b) != 0)
+	for _, page := range t.pages {
+		l := C.sngl_tabs_label(widget(t.notebook), widget(page))
+		out = append(out, l != nil && C.gtk_widget_get_sensitive(l) != 0)
 	}
 	return out
+}
+
+func isNotebook(w Handle) bool { return C.sngl_is_notebook(widget(w)) != 0 }
+
+func notebookPages(w Handle) int {
+	return int(C.gtk_notebook_get_n_pages((*C.GtkNotebook)(p(w))))
 }

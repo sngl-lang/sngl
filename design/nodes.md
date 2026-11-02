@@ -659,8 +659,9 @@ coming back started it again: a counter at zero, a query asked again. A null
 test asks whether a node is mounted, so a node of a panel not shown is
 present (`tabs_runs.txt`, `tabs_panel_presence_runs.txt`). The interpreter
 keeps that body; every other target overrides it, and shows one panel its own
-way. gtk4's `Tabs` is gtk4rt's GtkStackSwitcher over a GtkStack, each panel a
-`TabPage` the stack holds; fyne's is fynelayout's AppTabs, each panel a
+way. gtk4's `Tabs` is gtk4rt's GtkNotebook, each panel a `TabPage` the notebook
+holds -- a GtkStackSwitcher over a GtkStack drew a row of linked buttons, no
+tabs (`TestTabsAreANotebook`); fyne's is fynelayout's AppTabs, each panel a
 `TabPage` whose box is an item's content; html keeps a `role=tabpanel` per tab
 with all but one `hidden`; bubbletea puts each panel in a Layout whose
 `fit.hidden` draws nothing while its children still render, under a bar of

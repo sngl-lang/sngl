@@ -526,7 +526,7 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 	c.__model = __model
 	c.__prop_name = __a_name
 	c.taps = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	c.__root = gtk4rt.ContentsNew()
 	c.__slot0 = nil
 	c.__inst0_live = []*__child0Instance{}
 	c.__rendering0 = false
@@ -739,4 +739,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:e7ada5f69f865a5c2ef51a40ba142e2a
 -- run/go/gtk4 --
-pass sha256:fcb721c51ca5d11e820aa8b2e9798419
+pass sha256:7da690de8728bad53b01410d7b4fd7a2

@@ -1046,6 +1046,9 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 			vc.line(`if %s {`, focusExpr)
 			vc.line(`%s = append(%s, %s)`, childrenVar, childrenVar, text)
 			vc.line(`}`)
+		} else {
+			// Never shown, so a temp the text reads is read by nothing.
+			vc.discard(tip)
 		}
 	}
 	main := ""

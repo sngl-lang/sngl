@@ -114,6 +114,14 @@ component alolan ui.node {
     }
 }
 
+// The lookup of a move newer than contests, whose contest fields PokéAPI
+// answers null.
+component spray ui.node {
+    poke.server(local) {
+        lookup(kind=`move`, slug="acid-spray")
+    }
+}
+
 // The same, from Pikachu's line, through its stages' cards.
 component spark ui.node {
     var name = "pikachu"
@@ -334,6 +342,15 @@ func testTheSearchCoversTheWholeDex(t test.Test, c home) {
     t.assert(c.page.grid().length() == 1)
 }
 
+// PokéAPI's document says a move's contest type is always there, and Acid
+// Spray's is null: read as the document says, every page learning it showed
+// its move failed, however often it was asked again.
+func testAMoveWithNoContestTypeIsNamed(t test.Test, c spray) {
+    t.wait(func() => known(`move`, "acid-spray") || failedNow(`move`, "acid-spray"), 5000)
+    t.assert(!failedNow(`move`, "acid-spray"))
+    t.assert(called(names, `move`, "acid-spray") == "Acid Spray")
+}
+
 func testACardNamesItsSpeciesInTheReadersLanguage(t test.Test, c home) {
     t.setContext(i18n.locale, "fr")
     t.wait(func() => chosenDex != null, 5000)
@@ -341,10 +358,41 @@ func testACardNamesItsSpeciesInTheReadersLanguage(t test.Test, c home) {
     t.assert(c.page.label(c.page.visible()[0]) == "Bulbizarre")
     t.wait(func() => c.page.label(c.page.visible()[3]) == "Salamèche", 5000)
     t.assert(c.page.label(c.page.visible()[3]) == "Salamèche")
-    // A species the server has no answer for keeps its slug's name.
-    t.wait(func() => known(`species`, "squirtle"), 5000)
-    t.assert(known(`species`, "squirtle"))
+    // A species the server has no answer for keeps its slug's name, and the
+    // sign of the failed lookups counts it.
+    t.wait(func() => failedNow(`species`, "squirtle"), 5000)
+    t.assert(!known(`species`, "squirtle"))
     t.assert(c.page.label(c.page.visible()[6]) == "Squirtle")
+    t.assert(failing().length() > 0)
+    // The sign asks every one again, in a round of its own, and the server
+    // has no answer again.
+    var before = round
+    var sign = c.page.namesFailed.lookupsSign
+    t.assert(sign != null && string.contains(sign.why, "404"))
+    if sign != null {
+        sign.sign.click()
+    }
+    t.assert(round == before + 1)
+    t.wait(func() => failedNow(`species`, "squirtle"), 5000)
+    t.assert(failures["species/squirtle"].round == before + 1)
+}
+
+// A dex the server has no answer for says so beside a sign whose tooltip
+// says why, and the sign asks again.
+func testADexThatFailsAsksAgain(t test.Test, c home) {
+    t.wait(func() => chosenDex != null, 5000)
+    chooseDex("nowhere")
+    t.wait(func() => c.page.dexFailed != null, 5000)
+    var sign = c.page.dexFailed
+    t.assert(sign != null && string.contains(sign.why, "404"))
+    var failed = c.page.dexFailures
+    if sign != null {
+        sign.sign.click()
+    }
+    // Asked again, and failed again.
+    t.wait(func() => c.page.dexFailures == failed + 1, 5000)
+    t.assert(c.page.dexFailures == failed + 1)
+    t.assert(c.page.dexFailed != null)
 }
 
 func testASearchAsksForEveryName(t test.Test, c home) {
@@ -540,6 +588,7 @@ func testTappingAnAlolanFormOpensIt(t test.Test, c spark) {
     t.assert(c.name == "raichu" && c.form == "raichu-alola")
     t.wait(func() => c.detail.mon != null && c.detail.mon.name == "raichu-alola", 5000)
     t.wait(func() => c.detail.shape != null, 5000)
+    t.wait(func() => c.detail.title != null && c.detail.title.value == "Alolan Raichu", 5000)
     t.assert(c.detail.title != null && c.detail.title.value == "Alolan Raichu")
     t.assert(c.detail.types[1] != null && c.detail.types[1].value == "Psychic")
 }

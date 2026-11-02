@@ -196,7 +196,12 @@ func (w *writer) adapter(op Operation) {
 	w.line("@load(value %s),", result)
 	w.line("@fail(f async.Failure),")
 	w.line(") F {")
-	w.line("async.query(")
+	w.line("// Asks again without a change of key: a retry.")
+	w.line("func refresh() {")
+	w.line("query.refresh()")
+	w.line("}")
+	w.line("")
+	w.line("async.query #query(")
 	switch len(op.Params) {
 	case 0:
 		w.line("on=0,")

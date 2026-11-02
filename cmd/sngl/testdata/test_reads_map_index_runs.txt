@@ -1,0 +1,46 @@
+# A test reads a field of a map's value by its key. Kotlin's own get answers
+# null, so the app's code writes `(m[k] ?: zero)`; the test lowering wrote a
+# bare `m[k]`, and kotlinc refused `.round` on a nullable -- the Pokédex's test
+# of a failed dex asking again.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct Tried {
+    round int
+}
+
+var tries map[string, Tried] = {"a"=Tried{round=0}}
+
+component retry ui.node {
+    ui.button #again(text="again", @click {
+        tries["a"] = Tried{round=tries["a"].round + 1}
+    })
+}
+
+func testTheRoundIsReadByKey(t test.Test, c retry) {
+    t.assert(tries["a"].round == 0)
+    c.again.click()
+    t.assert(tries["a"].round == 1)
+}
+
+ui.window {
+    retry
+}
+-- testrun/android/kotlin/app.sngl/retry/1 --
+sha256:817f745cba6c0bfb0077e2d155c46314
+{
+  "results": [
+    {
+      "Desc": "TheRoundIsReadByKey",
+      "Passed": true
+    }
+  ]
+}

@@ -539,7 +539,13 @@ var of its own (#298,
 `cmd/sngl/testdata/bubbletea_stateless_wrapper_built_instance_runs.txt`).
 Under a `for` it gives each of the spliced vars one cell per copy
 (`perCopyCells`): a map keyed by the loops' indices (`lower.CopyKey`), read as
-`cell.get(key, init)` and written through a temporary stored back. On every
+`cell.get(key, init)` and written through a temporary stored back. A method
+of a node the copy renders, called through the node's `#id`, is keyed as a
+cell-touching func is (`nodeMethods`): the node is spliced under the same
+loops, so its own method takes the key, and a caller is handed it; one whose
+clone touches no cell drops it as repointHandleCalls points the call. An
+openapi adapter's `refresh` under a `for` called its query's short an
+argument on bubbletea (`cmd/sngl/testdata/handle_call_in_spliced_copies_runs.txt`). On every
 target a function a splice hoists out of loops takes the loop variables it
 reads as parameters (`passLoopVars`), since a prop bound to one is substituted
 into it as that variable, and one taken as a value is a lambda passing them

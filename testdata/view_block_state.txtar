@@ -1573,7 +1573,7 @@ func new__block_state0Instance(__model *Model) *__block_state0Instance {
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, ("hits " + fmt.Sprint(c.hits)))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
-	__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	__box := gtk4rt.ContentsNew()
 	gtk4rt.BoxAppend(__box, __n11)
 	gtk4rt.BoxAppend(__box, c.__n0)
 	c.Root = __box
@@ -1630,7 +1630,7 @@ func new__block_state1Instance(__model *Model, __a_it string, __a_total int, __a
 	c.__n2 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
 	gtk4rt.LabelSetXAlign(c.__n2, 0.0)
-	__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	__box := gtk4rt.ContentsNew()
 	gtk4rt.BoxAppend(__box, c.__n1)
 	gtk4rt.BoxAppend(__box, c.__n2)
 	c.Root = __box
@@ -2608,7 +2608,7 @@ pass sha256:14787f34c75ad9aaed9aa586ec763b4b
 -- run/go/fyne --
 pass sha256:e9c7afb4a1f1f0c92f4e1820a07588ca
 -- run/go/gtk4 --
-pass sha256:c9c62d7620a3a678a80062bebe787981
+pass sha256:765f28f5bb370b93d430711263f884f3
 -- run/kotlin/android --
 pass sha256:e80a51f23b807379727e1f80ea7aafff
 -- run/none/html --

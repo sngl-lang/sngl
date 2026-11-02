@@ -1,0 +1,109 @@
+# A component calling a method of a node its own body renders, through the
+# `#id` its body wrote, means its own copy of that node wherever it is. The
+# copies shared the handle the checker declared, so with one spliced in place
+# and others built at run time under a `for`, html refused the call as one
+# that could not say which copy it meant -- the Pokédex's retries, each an
+# openapi adapter's `refresh` calling its query's.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+var asked list[string] = []
+
+func lookup(name string) async.Result[int] {
+    asked.push(name)
+    return {ok=name.length()}
+}
+
+component asker(name string) ui.node {
+    var length option[int] = null
+    var pending = false
+    var failure option[async.Failure] = null
+
+    func again() {
+        q.refresh()
+    }
+
+    async.query #q(on=name, fetch=lookup, :value=length, :pending=pending, :failure=failure)
+    ui.button #retry(text="Again", @click { again() })
+}
+
+component pair ui.node {
+    asker #first(name="fig")
+    asker(name="kiwi")
+    asker #second(name="lemon")
+    for var n = ["plum", "pear"] {
+        asker(name=n)
+    }
+}
+
+func testEachCopyAsksAgain(t test.Test, c pair) {
+    t.wait(func() => asked.length() == 5, 5000)
+    c.first.retry.click()
+    t.wait(func() => asked.length() == 6, 5000)
+    t.assert(asked[5] == "fig")
+    c.second.retry.click()
+    t.wait(func() => asked.length() == 7, 5000)
+    t.assert(asked[6] == "lemon")
+}
+
+ui.window {
+    pair
+}
+-- testrun/bubbletea/go/app.sngl/pair/1 --
+sha256:c5ee3a03632192604c81796681f96243
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/pair/1 --
+sha256:6ba0424ad3644410cbd0051319deb9e9
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/pair/1 --
+sha256:906ca69d392b0f0e7c62c74fb6ed9ba3
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/pair/1 --
+sha256:61c3e59177e25f3b00325474f7f7090f
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksAgain",
+      "Passed": true
+    }
+  ]
+}

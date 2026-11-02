@@ -194,6 +194,40 @@ func TestLookTurnsABoxItLaysOut(t *testing.T) {
 	}
 }
 
+// The box an instance of a component wraps its widgets in is no box of the
+// program's, so a widget in it grows in the box the instance is in, as
+// CSS's display: contents places its children. It was a box like any other,
+// holding a growing child at that child's size, and the Pokédex's grid on a
+// nav page stopped at its first row.
+func TestContentsGrowsByWhatItHolds(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("gtk4 needs an X11/Wayland display")
+	}
+	Init()
+	col := BoxNew(OrientationVertical, 0)
+	Retain(col)
+	head := sized(10, 20)
+	wrap := ContentsNew()
+	grower := BoxNew(OrientationVertical, 0)
+	SetLook(grower, Look{Grow: 1})
+	BoxAppend(wrap, grower)
+	BoxAppend(col, head)
+	BoxAppend(col, wrap)
+	allocate(col, 50, 300)
+	if hw, hg := allocatedHeight(wrap), allocatedHeight(grower); hw != 280 || hg != 280 {
+		t.Errorf("a growing child of the contents: heights %d and %d, want 280 and 280", hw, hg)
+	}
+	// Its child stops growing, and the contents with it.
+	SetLook(grower, Look{})
+	allocate(col, 50, 300)
+	if hw := allocatedHeight(wrap); hw != 0 {
+		t.Errorf("the child no longer growing: the contents is %d high, want 0", hw)
+	}
+	if computesVExpand(wrap) {
+		t.Error("the child no longer growing: the contents still expands")
+	}
+}
+
 // In a box GTK lays out, a widget a program made grows by its own expand and
 // never by what it holds, as a CSS flex item grows by its own flex: a box
 // holding a widget given `hexpand` is its content's size, as it is on html,
