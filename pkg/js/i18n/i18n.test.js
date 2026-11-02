@@ -171,3 +171,9 @@ test("plural: works when args inside template uses Map", () => {
     "5 items"
   );
 });
+
+test("a null option argument is the empty string", () => {
+  const t = new Translator({}, "en");
+  assert.strictEqual(t.format("Hello {name}! {count}", { name: null, count: null }), "Hello ! ");
+  assert.strictEqual(t.format("Hello {name}! {count}", new Map([["name", "ann"], ["count", 3]])), "Hello ann! 3");
+});

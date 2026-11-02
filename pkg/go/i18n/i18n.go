@@ -8,7 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -144,8 +146,36 @@ func (t *Translator) Format(template string, args map[string]any) string {
 // template.
 func formatICU(tag language.Tag, cur currency.Unit, tmpl string, args map[string]any) string {
 	var out strings.Builder
-	formatICUInto(&out, tag, cur, tmpl, args, "")
+	formatICUInto(&out, tag, cur, tmpl, optionValues(args), "")
 	return out.String()
+}
+
+// optionValues is args with each option argument its value: what a pointer
+// points to where it holds one, and the empty string where it is null.
+func optionValues(args map[string]any) map[string]any {
+	var out map[string]any
+	for name, v := range args {
+		w := v
+		if v == nil {
+			w = ""
+		} else if rv := reflect.ValueOf(v); rv.Kind() == reflect.Pointer {
+			if rv.IsNil() {
+				w = ""
+			} else {
+				w = rv.Elem().Interface()
+			}
+		} else {
+			continue
+		}
+		if out == nil {
+			out = maps.Clone(args)
+		}
+		out[name] = w
+	}
+	if out == nil {
+		return args
+	}
+	return out
 }
 
 // formatICUInto writes the formatted template to out. `current` is the

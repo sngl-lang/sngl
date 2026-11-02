@@ -409,3 +409,23 @@ func TestDefaultLocaleFallback(t *testing.T) {
 		t.Errorf("DefaultLocale() = %q, want en-US (fallback)", got)
 	}
 }
+
+// An option argument is its value, or the empty string where it is null:
+// generated Go passes a pointer, the interpreter a nil.
+func TestFormatOptionArgs(t *testing.T) {
+	tr := NewTranslator(Manifest{}, "en")
+	name, count := "ann", 3
+	cases := []struct {
+		args map[string]any
+		want string
+	}{
+		{map[string]any{"name": nil, "count": nil}, "Hello ! "},
+		{map[string]any{"name": (*string)(nil), "count": (*int)(nil)}, "Hello ! "},
+		{map[string]any{"name": &name, "count": &count}, "Hello ann! 3"},
+	}
+	for _, c := range cases {
+		if got := tr.Format("Hello {name}! {count}", c.args); got != c.want {
+			t.Errorf("Format(%v) = %q, want %q", c.args, got, c.want)
+		}
+	}
+}
