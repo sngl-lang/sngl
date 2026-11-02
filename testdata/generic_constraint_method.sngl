@@ -21,29 +21,29 @@ const func Tag.format(t Tag, prefix string = "#") => "{prefix}{t.name}"
 
 enum Hue { red, green }
 
-func show[T struct {
+func show[T methodsOf[struct {
     const func format() string
-}](v T) => "<{v}>"
+}]](v T) => "<{v}>"
 
-func showAll[T struct {
+func showAll[T methodsOf[struct {
     const func format() string
-}](vs list[T]) => "[{vs}]"
+}]](vs list[T]) => "[{vs}]"
 
-func inBase[T struct {
+func inBase[T methodsOf[struct {
     const func format(base int) string
-}](v T) => v.format(16)
+}]](v T) => v.format(16)
 
-func padded[T struct {
+func padded[T methodsOf[struct {
     const func format(base int, width int) string
-}](v T) => "{v, 2, width=8}"
+}]](v T) => "{v, 2, width=8}"
 
-func plain[T struct {
+func plain[T methodsOf[struct {
     const func format(base int = 10) string
-}](v T) => "{v.format()}/{v}"
+}]](v T) => "{v.format()}/{v}"
 
-func label[T struct {
+func label[T methodsOf[struct {
     const func format() string
-}](v T) => "{show(v)}!"
+}]](v T) => "{show(v)}!"
 
 func testShow(t Test) {
     t.assert(show(3) == "<3>")

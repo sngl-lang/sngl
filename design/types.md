@@ -94,14 +94,14 @@ directory-imported package interns its own `struct { v int }`, which spells
 the program's host name, and the output declared both
 (`testdata/anon_struct_from_package.txtar`).
 
-**A constraint's functions are methods of its struct**
-(`constraintWithFuncs`): each is a bodyless `Func` whose `Receiver` is the
-type parameter it constrains and whose `this` is a `RecvParam`, held in the
-constraint's `StructDef.Methods`, so `ir.ResolveMethod` on a T finds it
+**`methodsOf[S]`'s functions are methods of S**
+(`constraintFuncs`): each is a bodyless `Func` whose `Receiver` is the
+type parameter it constrains and whose `this` is a `RecvParam`, held in
+S's `StructDef.Methods`, so `ir.ResolveMethod` on a T finds it
 (`ir.ConstraintMethod`) and the checker's method call, the formatting of
-`"{v}"` and the LSP need nothing else. Such a constraint is declared
-un-interned whatever its fields, since two of the same fields may name
-different functions, and `MapChildren` carries its methods over. A type is
+`"{v}"` and the LSP need nothing else. S is declared un-interned, since two
+of the same functions constrain different parameters, and `MapChildren`
+carries its methods over. A type is
 measured against one by the call it would take (`methodUnsatisfied`, over
 `ir.MethodParams`), not by signature equality, so `int.format`, which takes
 `width` and `pad` too, satisfies `const func format(base int) string`. A
@@ -127,262 +127,36 @@ literal at the running bindings (`ir.FormatArgsLit`)
 `error_generic_constraint_method.sngl`, `generic_constraint_method.txtar`,
 `internal/lower/testdata/builtin_methods_constraint.txtar`).
 
-Four things follow from a struct having no one declaration. Its identity is
-its fields everywhere, so the intern key spells an anonymous struct inside a
-field by *its* fields rather than its address (`ir.AnonTypeKey`), or
-`{o=wrap(1)}` and `{o={v=1}}` interned two Go types,
-and a spread's source is measured with `Type.Equal` rather than by
-declaration. A value the optimizer folds out of a generic body carries the type
-its literal was checked at there, `struct { v T }`, so `irFromValue` takes the
-type the call was checked at instead, and its fields' types for the fields'
-values -- read off the values, `wrap[option[int]](3)` was a
-`struct { v int }`. **A generic component is spliced at the types its call site bound**
-(`ir.InstantiateStmts`, `ir.ComponentBindings` off `NodeInst.TypeArgs`): the
-optimizer's `inlineComponentCall`, `passInlinePure` and
-`passNoInlineComponents` all copy its body that way (`splicedBody`,
-`cloneHoistedVar`), and the latter instantiates each method it hoists. Left
-as written, its state and methods reached Go as `any` and Kotlin as an
-unnamed type -- a plain `var held T` too, which is older than anonymous
-structs (`generic_anon_struct.txtar`'s `tally`).
+**An alias is an `ir.Alias`, not a declaration of what it names**
+(`internal/checker/aliases.go`): `struct Name = Type` parses as an
+`ast.StructDef` whose `Alias` holds the type -- `enum` and `unit` as their own
+-- so its doc comment, export and position are a declaration's, but the
+checker declares it apart from `Package.Structs`, which every later phase
+walks. It is replaced by what it names wherever it is written: a type where a
+type is (`aliasType`, from `resolveNamedType`), a constraint where a
+constraint is (`namedConstraint`), and the declaration where its name stands
+for one -- a literal, a member, a conversion, a method's receiver
+(`aliasedDecl`, `literalAlias`). So nothing after the check meets one, and
+no target emits one. What it names is resolved once, on demand, at the
+package root through its own file's imports, whichever scope first names it,
+so a use may come before the declaration; `aliasing` catches one naming
+itself, and reports it once. Whether it names a constraint is read off the
+name written (`namesConstraint`), since a constraint resolves on the
+parameter it constrains and a type does not. A function `methodsOf` names is
+called on that parameter, which an alias does not know, so a constraint's
+alias resolves on a `Self` of its own and each use substitutes the parameter
+for it and its arguments for its parameters (`ir.ExpandAlias`), into each
+function's parameters, result and receiver as well
+(`ir.SubstituteConstraint`), which `Type.Substitute` leaves to a struct's
+declaration (`testdata/type_alias.sngl`, `constraint_alias.sngl`,
+`error_alias.sngl`, `type_alias.txtar`, `constraint_alias.txtar`).
 
-**A generic component built at run time is copied per instantiation** on a
-target not holding `genericComponents` (Go and Kotlin; html holds it under any
-`--lang`, its instances being the page's JavaScript), as a function is by
-`passMonomorphize` and a struct by `monomorphizeStructs`: `show[int]` renders
-`show__int`, whose props, events, slots, state, methods and body hold the types
-its call site bound (`ir.InstantiateComponent`, which owns what the component
-declares and shares the rest). The copy is made where passNoInlineComponents
-elects the instantiation to be built (`instantiateRuntime`), the one place that
-knows -- a spliced one is already at its types -- and everything after reads it
-as an ordinary component, `passInstanceSlots`' per-content copies and android's
-composables included. Emitted once with T erased, a `list[T]` prop was `[]any`
-on fyne, which the call site's `[]int` is not, and `struct { v T }` had no
-spelling at all, so a component naming one was refused. A recursion's copy
-joins the cycle and points its own renders of the cycle at their copies; one
-that renders itself at a deeper type at every level would need a copy per
-level, and is refused at that render past `maxInstances` copies
-(`testdata/generic_component_runtime_instance.txtar`,
-`cmd/sngl/testdata/generic_component_runtime_instance_runs.txt`). A family
-parameter is the one a call site may leave unbound -- nothing binds `F` in
-`kept[T, F]` where the node has no children -- and the copy is made at the
-types it did bind; one copy was made only once every parameter was bound, so
-`kept` under a `for` was emitted with T in it and its `load[T]` asked for a
-codec of T, which no target has. html, which keeps the generic factory, copies
-it too, since its body encodes T (`GenericCodecs`). A built-in's body is the
-host's, and is not copied (`cmd/sngl/testdata/settings_kept_per_row_runs.txt`).
-
-**`==` is `interp.Equal`, in the interpreter and in the optimizer's fold**: a
-struct field by field by name, a list element by element, a number by value.
-It says where it cannot answer (a map, two scalars of different kinds), which
-the fold leaves to run and the interpreter compares by rendered form as it
-always did. Two copies had drifted: the fold compared a struct's pointer and
-panicked on a list. A compiled target writes the same comparison out from the
-operands' type wherever its own `==` would not be it
-(`cmd/sngl/testdata/struct_list_equality_runs.txt`): Go's goEqualer
-(`codegen/lang/golang/equal.go`) for a list, an option and a struct holding
-either -- a slice does not compile under `==`, and an option is a pointer, so
-two options holding 1 were unequal -- through `snglListEqual`,
-`snglOptEqual` and their `By` forms; JavaScript's `jsEqual` for a struct, a
-payload enum and a list, since `===` is an object's identity. Kotlin's `==`
-is a data class's and a list's `equals`, which already is, but a list var is
-a `SnapshotStateList`, whose `equals` is its identity, so a list operand
-other than a literal is read through `.toList()` (`comparableList`). A map
-compares as the host's.
-
-**A color's string is its `hex()`** (Jonathan's call): the interpreter's
-`Struct.String` answers it for a color, so the fold does too, and each
-language's `string(c)` calls its own `color.hex` emitter
-(`codegen.ColorStringConversion`). It was the struct's own form in the
-interpreter, `String` of the record on html (`[object Object]`), and
-snglcolor's CSS `String` on Go, `rgba(…)` where translucent; that `String`
-stays what a platform writes into CSS
-(`cmd/sngl/testdata/color_string_runs.txt`).
-
-**A unit's members are its bases, and they are registered like any other
-declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit measurement { px, em, rem }` declares three bases, so a
-value carries three numbers and every backend emits it as a record of them.
-`ir.UnitDef.Fields` is that record's member table — `ir.UnitFields`, one
-`float` per base, built at registration — and `ir.Fielded` is what a struct and
-a unit answer it through, the field half of what `ir.methodTable` already does
-for methods across four kinds. `checker.selectDeclaredMember` is the one lookup
-both use.
-
-A **single-base** unit has no members at all. `unit tick { tk }` is `type Tick float64` in Go, a `Double` in Kotlin and a number in JavaScript: there is
-nothing to select, and `float(x)`/`int(x)` is how that magnitude is read. So
-`t.tk` is an unknown member like any other, and a *reduced* suffix is one too —
-in `unit width { cm, mm = 0.1cm }`, `mm` is a tenth of a cm and no value
-carries a magnitude for it.
-
-`inferSelect` looks a unit member up in that table, so a member the unit does
-not declare (`m.value`) is an error, and a base (`m.px`) is a `float`, which
-takes the string conversion every other numeric operand gets in an
-interpolation.
-
-**A cast reads the magnitude, and it reads it in the unit's base.** `int(x)`
-and `float(x)` are the whole of how a single-base unit's value is got at, so
-every target has to answer them the same. A **multi-base** unit is refused
-there (`multiBaseUnitCast`): a value of one is a magnitude per base, so there
-is no single number to produce, and the diagnostic points at the per-base read
-that replaces the cast — `m.px`. That is the same premise the checker already
-applied to ordering two of them, extended to the one other place it decides
-anything. `string(m)` is untouched, being display rather than a magnitude.
-`duration` is the one that did not agree: Go carries one as a `time.Duration`,
-whose unit is nanoseconds, while the declared base is ms — so
-`GoIRContext.durationToNumber` divides at the cast. Only at the cast, because
-arithmetic stays inside the representation:
-`d + 100ms` and `d * 2` are `time.Duration` arithmetic and are correct in ns
-right up to the cast that divides them out. `float` divides as floats, since an
-integer division converted afterwards truncates a sub-millisecond duration to
-zero.
-
-`ClassifyUnit` is what gates it, and it reads `UnitDef.Builtin` —
-`ir.BuiltinDuration`, the kind `lib/time/time.sngl` marks — rather than the
-name `duration`. It asked the name in four places, which made the one built-in
-with a host representation the one built-in that was *not* shadowable: a
-program's own `unit duration { blip }` got `time.Duration(3) * time.Millisecond`
-for `3blip`, the `time` import, the `mustParseDuration` helper and a Kotlin
-`Long`. `testdata/unit_duration_shadowed.txtar` pins that it no longer does.
-`golang/helpers.go`'s `case "duration":` stays, switching on a scheme type
-*hint* beside `"color"` and `"date"` rather than on a declaration.
-
-**And the display, which is the same claim made without a cast.** A unit
-interpolated bare renders as its magnitude per base on every target: `"{d}"`
-of `500ms` is `500ms`, `"{m}"` of `3px + 2em` is `3px + 2em`. The rule is the
-representation restated rather than a second decision on top of it, and
-`ir.FormatUnitTerm`, `ir.UnitTermSep` and `ir.FormatUnitZero` are the one
-place it is written down — the interpreter and the optimizer call them, and
-each backend emits a runtime helper saying the same thing about values no
-compile-time caller can see.
-
-It was **five** answers, not one per target. A var-held `500ms` printed
-`500ms` on Go, `500` on JavaScript, `500.0` on Kotlin and `500ms` on the
-interpreter; a `const` one printed `500` on all four, because
-`optimize.evalConversion` folded a unit to the bare float64 its magnitude is
-and spelled that back with `%v`. Go's apparent agreement was a coincidence of
-the value: `time.Duration.String` normalizes across units, so 1100ms prints
-`1.1s` for a unit whose declared base is ms. And a multi-base value had no
-chosen spelling anywhere — `{3 2 0 0 0}` on Go, `[object Object]` on
-JavaScript, `Measurement(px=3.0, …)` on Kotlin — because nothing had ever
-asked the question; those are three host defaults leaking.
-
-Two consequences, and each is the representation asserting itself. **The
-written suffix is gone from display**: `2s` shows `2000ms`, because the record
-is the whole of what a compiled target holds and a spelling to prefer was a
-memory only `interp.unitValue.Suffix` had. And an **all-zero value prints in
-the first declared base**, so `0em` and `0px` both print `0px` — they are the
-same value under per-base equality, and equal values have to print equally.
-
-Go needs a helper per unit (`HelperSet.UnitStrings`, emitted by
-`EmitUnitStringFuncs`) because it has no expression form for the join;
-JavaScript and Kotlin inline an arrow and a `let`, which is also what binds
-the operand so it is not re-evaluated once per base. Each helper spells its
-magnitude with whatever that target already spells a bare float with —
-`fmt.Sprint`, `String`, `_snglFloatStr` — so unit display inherits the float
-agreement instead of restating it and drifting from it.
-
-**html spells a length for CSS in SNGL**, with the display above:
-`lib/platform/html/html.sngl`'s `cssLength` writes a measurement in the one
-unit it carries, `"{m.px}px"`, or a `calc()` summing the bases it does, so
-`7px` in a stylesheet and `7px` interpolated are one spelling, and a length
-the build folds is that text in the markup.
-
-**A measurement means one length on every target.** `px` is a
-device-independent pixel and `em` and `rem` are font sizes: html hands all
-three to CSS, and every other target, having no cascade, reads both as its
-base text size -- 16 on android and gtk4, 14 on fyne (the default theme's),
-and 16px, two cells, on bubbletea -- as one
-number, px + base*(em + rem) (`codegen.MeasurementPx` for a constant,
-`MeasurementSum` and `MeasurementPxExpr` for a value read at run time). A
-canvas's surface is pixels everywhere, so an em there is 16
-(`codegen.CanvasEmPx`). Each target used to read a constant's magnitude
-whatever its base -- `12em` was 12dp on android, `fontSize=17em` 17 on fyne --
-and a run-time value's px alone. `pct`, `vw` and `vh` went for the reason a
-base has to be every target's: a percentage padding exists on no host but
-html, and a viewport unit would have to follow a resize on hosts that apply a
-style once. `rem` was `16em`, which made `13rem` 208em on html. gtk4's em
-was Adwaita's 11 and its `fontSize` points, as Pango reads a span's `size`,
-while every other length there was pixels: `fontSize=16px` drew a third
-larger than html's, and `padding=1em` was 11px beside text 1em tall drawn at
-14.7. A font size is pixels there now, a label's CSS `font-size` and a run's
-`font_desc` (`testdata/gtk4_font_size.txtar`,
-`pkg/go/gtk4rt/paint_test.go`).
-
-The interpreter is a fourth implementation of all of this and has to be checked
-with the three backends: `interp.ToInt` needs its `unitValue` case (without it
-every `int(<unit>)` was 0 on `--platform=none`), `evalSelect` needs one to read
-a per-base member, and `unitTable.BaseOf` is what says which base a suffix
-reduces to, so `2s` counts in ms. `cmd/sngl/testdata/unit_magnitude_compiles.txt`
-runs one program under both `--platform=bubbletea --language=go` and
-`--platform=none` for exactly that reason.
-
-`interp.unitValue` **is** that record — `Amounts`, a magnitude per base, plus
-the suffix the value was written with for display. It was one `BaseAmount` and
-a suffix, the pre-`ea7b2f84` "a unit reduces to one number" model, and the
-member table is what made that visible: `1px + 2em` added to 3 and then
-answered 3 for `px` and 0 for `em`, so a per-base read off a value *arithmetic
-built* was quietly wrong where the same read off a literal was right. Both
-fixtures had only literals, which is why neither caught it.
-
-Four things follow, and the first three are the record restated:
-
-- **Arithmetic is per base.** `Add`/`Sub` combine base by base and `Scale`
-  scales each; a base whose magnitude is zero is absent rather than stored.
-- **Equality is per base**, and **ordering is refused** for a multi-base unit
-  (`orderable`): `3px` and `2em` are each the larger on their own base, so
-  there is no answer to invent. The checker already refuses the pair
-  (`IsSingleBaseUnit` gates `<`, `<=`, `>`, `>=`), so the guard is for IR
-  the checker did not see.
-- **A cast reads `magnitude()`** — the one base of a single-base unit, which is
-  every cast the checker's ordering rule leaves meaningful.
-- **Display sums the bases it carries**: `3px + 2em`, and a bare `3px` for a
-  value that only ever names one, which is what a program that never mixes
-  bases sees. In the bases, not in the spelling — `1s` displays `1000ms`.
-
-The timer is unaffected: `durationFromMs` goes through `toFloat`, and a
-duration is single-base.
-
-**The optimizer holds a multi-base value as the interpreter's**
-(`interp.UnitLiteralValue`, combined by `interp.UnitBinary`), since no number
-can stand for one, and `irFromValue` spells it back one literal per base. It
-used to be unevaluable, and so was any struct or list holding one: html's
-static unroll of a loop over rows carrying an indent wrote one copy with its
-variable bound to nothing. html spells a folded sum as `calc(…)`
-(`htmlutil.UnitSumToCSS`). Two values are one unit when their tables come from
-one declaration (`unitTable.Decl`): each environment builds its own tables,
-and compared by pointer, `Add` across two returned its left operand
-(`testdata/html_unroll_measurement.txtar`). A declaration copied for another
-target is the same unit, compared by name and bases. And the interpreter
-reads a literal's unit off its type (`Env.unitTableOf`) rather than its
-suffix: a program declaring its own `unit length { px, … }` claimed `px` for
-every body it ran, so a measurement sum met a `length` it could not be added
-to (`testdata/unit_suffix_two_units.sngl`).
-
-**Equality is per base on all four**, and the three compiled targets get there
-differently: Go compares its `Measurement` struct field-wise and Kotlin its
-`data class` component-wise, both without being asked, while JavaScript has no
-such operator for an object. `===` there is reference identity, so `a == b` for
-two equal measurements was false on every pair — `multiBaseUnitEqualJS` emits
-the conjunction over the bases instead, with `!=` its negation rather than a
-second walk. A single-base unit is a plain number in JS and keeps the bare
-operator; routing one through the walk is what `testdata/unit_equality.txtar`
-denies. `cmd/sngl/testdata/unit_equality_runs.txt` runs the comparisons under
-bubbletea, the interpreter and a real Chromium, because a golden shows the
-emitted text and only executing it shows the answer.
-
-The case that separates two plausible implementations is a base that canceled
-to zero: the interpreter's map holds no key for it where the JS and Go records
-hold a zero, so a comparison written over *the bases a value carries* rather
-than over the unit's declared bases disagrees with the other three.
-
-**A member a type does not have is an error on every kind** -- `o.value` off
-an `option`, `xs.bogus` off a `list`, `s.huh` off a `string`
-(`error_select_unknown_member.sngl`). Only an operand already typed invalid,
-whose error was reported where it was made, selects silently. An element ref
-naming a list or an option is refused a member read rather than reaching
-whichever node a target found: index it, or test it against null first (see
-`elementRef`).
-
-Stdlib collection types support generic methods: `func list[T].filter(f func(T) bool) list[T]`, `func list[T].map[U any](f func(T) U) list[U]`, `func map[K, V].keys() list[K]`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list[int]` binds `T=int`). Method-level type parameters (the `[U any]` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
+**A method is looked up on the declaration its receiver's name finds, past
+any binding of the name that holds no method** (`ir.LookupMethodIn`). A
+scalar's type names no declaration, so its methods are found by name, and a
+node `#int` or a variable `string` bound between the program and sngl:builtin
+answered first: `"{n}"` with `n` an int was "cannot format int"
+(`testdata/method_lookup_past_binding.sngl`).
 
 **A program may add a method to a library type, and may not redefine one it
 has.** `func int.twice` is an addition; `func int.abs` collides with the

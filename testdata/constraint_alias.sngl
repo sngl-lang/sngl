@@ -1,0 +1,64 @@
+// An alias names a constraint under another name, `struct Name = Type`: the
+// same constraint wherever it is written, not a new one. It may take
+// parameters of its own, which a use binds, and it may name another alias.
+
+import . "sngl:test"
+
+struct Formattable = methodsOf[struct {
+    const func format() string
+}]
+
+struct Keyed[K any] = fieldsOf[struct {
+    key K
+}]
+
+// An alias of an alias, its parameter bound.
+struct Named = Keyed[string]
+
+// An alias may be named before it is declared.
+func shout[T Loud](v T) => "{v}!"
+
+struct Loud = Formattable
+
+struct Point {
+    x int
+    y int
+
+    const func format() => "({x}, {y})"
+}
+
+struct Entry {
+    key  string
+    rank int
+}
+
+struct Slot {
+    key int
+}
+
+// A function the alias names is called on the parameter it constrains.
+func show[T Formattable](v T) => "<{v}>"
+
+// The alias's parameter is bound where it is used, here to another of the
+// list, which the argument's field binds.
+func keyOf[K any, T Keyed[K]](v T) => v.key
+
+func nameOf[T Named](v T) => v.key
+
+// A struct's parameter constrained through an alias.
+struct Index[T Keyed[int]] {
+    item T
+}
+
+func Index[T].key() => this.item.key
+
+func testAlias(t Test) {
+    t.assert(show(Point{x=1, y=2}) == "<(1, 2)>")
+    t.assert(show(7) == "<7>")
+    t.assert(shout(3) == "3!")
+    t.assert(keyOf(Entry{key="k", rank=1}) == "k")
+    t.assert(keyOf(Slot{key=4}) + 1 == 5)
+    t.assert(nameOf(Entry{key="n", rank=2}) == "n")
+    var ix = Index[Slot]{item=Slot{key=9}}
+    t.assert(ix.key() == 9)
+}

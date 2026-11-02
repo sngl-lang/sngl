@@ -335,7 +335,7 @@ func queryProblem(t *Type, open bool) string {
 	if t.Kind == TypeTypeParam {
 		return fmt.Sprintf("%s, a type parameter: the type has to be known where the call is", t)
 	}
-	// What is no struct at all is refused by Q's own constraint.
+	// What is no struct at all is refused by Q's own constraint, anyStruct.
 	if t.Kind != TypeStruct {
 		return ""
 	}

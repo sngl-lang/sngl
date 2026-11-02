@@ -545,8 +545,21 @@ func (b *builder) buildImportDecl(it nodeIter) *ast.Import {
 
 // --- Struct declaration ---
 
+// buildAlias reads `assign Type`, the type an alias declaration names; ok is
+// false where the declaration has a body instead.
+func (b *builder) buildAlias(it *nodeIter) (ast.TypeExpr, bool) {
+	if it.done() || it.isNonTerminal() || it.tokenType() != ASSIGN {
+		return nil, false
+	}
+	it.skip() // assign
+	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
+		return b.buildType(it.enter()), true
+	}
+	return nil, true
+}
+
 func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
-	// StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace { StructBodyItem } rbrace .
+	// StructDecl = kw_struct [ ident ] [ TypeParamList ] ( lbrace { StructBodyItem } rbrace | assign Type ) .
 	pos := b.posFromToken(it.shift()) // kw_struct
 	s := &ast.StructDef{Pos: pos}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
@@ -554,6 +567,10 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
 		s.TypeParams = b.buildTypeParams(it.enter())
+	}
+	if alias, ok := b.buildAlias(&it); ok {
+		s.Alias = alias
+		return s
 	}
 	lbraceLine, rbraceLine := 0, 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
@@ -704,7 +721,7 @@ func (b *builder) buildStructField(it nodeIter) *ast.StructField {
 // --- Enum declaration ---
 
 func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
-	// EnumDecl = kw_enum [ ident ] [ TypeParamList ] lbrace { EnumBodyItem (comma|semi) } rbrace .
+	// EnumDecl = kw_enum [ ident ] [ TypeParamList ] ( lbrace { EnumBodyItem (comma|semi) } rbrace | assign Type ) .
 	pos := b.posFromToken(it.shift()) // kw_enum
 	e := &ast.EnumDef{Pos: pos}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
@@ -712,6 +729,10 @@ func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
 		e.TypeParams = b.buildTypeParams(it.enter())
+	}
+	if alias, ok := b.buildAlias(&it); ok {
+		e.Alias = alias
+		return e
 	}
 	lbraceLine, rbraceLine := 0, 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
@@ -801,13 +822,17 @@ func (b *builder) buildEnumMember(it nodeIter) *ast.EnumMember {
 // --- Unit declaration ---
 
 func (b *builder) buildUnitDecl(it nodeIter) *ast.UnitDef {
-	// UnitDecl = kw_unit [ ident ] lbrace [ ArgList ] rbrace .
+	// UnitDecl = kw_unit [ ident ] ( lbrace [ ArgList ] rbrace | assign Type ) .
 	pos := b.posFromToken(it.shift()) // kw_unit
 	u := &ast.UnitDef{Pos: pos}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
 		u.Name = it.shift().Literal
 	}
 	if it.done() {
+		return u
+	}
+	if alias, ok := b.buildAlias(&it); ok {
+		u.Alias = alias
 		return u
 	}
 	lbraceLine, rbraceLine := 0, 0

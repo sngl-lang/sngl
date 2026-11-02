@@ -787,6 +787,9 @@ type checker struct {
 	// defaultMatches are the defaults a type's method was measured against a
 	// constraint's by, judged once every body's defaults are checked.
 	defaultMatches []func()
+	// aliasing is the aliases whose constraint is being resolved, which one
+	// naming itself meets again (aliasConstraint).
+	aliasing map[*ir.Alias]aliasState
 	// measuredAt is where the type being measured against a constraint was
 	// bound, for a diagnostic reported later (matchDefaults).
 	measuredAt ast.Pos
@@ -1544,14 +1547,26 @@ func (c *checker) pass1() {
 		doc *ast.Document
 		ed  *ir.EnumDef
 	}
+	type pendingAlias struct {
+		doc *ast.Document
+		a   *ir.Alias
+	}
 	var structShells []pendingShell
 	var enumShells []pendingEnum
+	var aliases []pendingAlias
 	var pendingComponents []pendingComp
 	c.pendingMarks = &[]pendingMark{}
 	c.pendingInits = &[]pendingInit{}
 	for _, d := range c.docs {
 		c.resumeFile(d)
 		for _, stmt := range d.Stmts {
+			switch s := stmt.(type) {
+			case *ast.StructDef, *ast.EnumDef, *ast.UnitDef:
+				if a, ok := c.registerAliasDecl(s); ok {
+					aliases = append(aliases, pendingAlias{d, a})
+					continue
+				}
+			}
 			switch s := stmt.(type) {
 			case *ast.StructDef:
 				structShells = append(structShells, pendingShell{d, c.registerStructShell(s)})
@@ -1574,6 +1589,10 @@ func (c *checker) pass1() {
 	for _, p := range structShells {
 		c.resumeFile(p.doc)
 		c.resolveStructBody(p.sd)
+	}
+	for _, p := range aliases {
+		c.resumeFile(p.doc)
+		c.resolveAlias(p.a)
 	}
 	for _, p := range enumShells {
 		c.resumeFile(p.doc)
@@ -2212,6 +2231,10 @@ func (c *checker) resolveStructBody(sd *ir.StructDef) {
 // owner names the body, which is what passHoistBodyTypes renames after when
 // two bodies claim one name; "" for a body the caller cannot name.
 func (c *checker) registerBodyDecl(stmt ast.Stmt, owner string) ir.Symbol {
+	if p := stmt.StmtPos(); isAliasDecl(stmt) && p != nil {
+		c.error(*p, "an alias is declared at a package's top level")
+		return nil
+	}
 	switch s := stmt.(type) {
 	case *ast.ComponentDecl:
 		// A component's flat-namespace collision is narrower -- only a
@@ -5514,4 +5537,17 @@ func (c *checker) refuseVarHandlers(spec ast.VarSpec, name string) {
 	for _, h := range spec.Handlers {
 		c.error(h.Pos, "a var takes no handler; to run code after a write to %s, write effect(on=%s, @update(v) { … })", name, name)
 	}
+}
+
+// isAliasDecl reports whether stmt declares an alias, `struct Name = Type`.
+func isAliasDecl(stmt ast.Stmt) bool {
+	switch s := stmt.(type) {
+	case *ast.StructDef:
+		return s.Alias != nil
+	case *ast.EnumDef:
+		return s.Alias != nil
+	case *ast.UnitDef:
+		return s.Alias != nil
+	}
+	return false
 }

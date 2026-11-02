@@ -2270,15 +2270,15 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	var __lt21 string
+	var __lt20 string
 	if c.__prop___p1 == "" {
-		__lt21 = fmt.Sprint(c.__prop___p2)
+		__lt20 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt21 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt20 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.cell = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.cell, c.__prop___p0)
-	c.__model.__list_cell(__lt21, c.cell)
+	c.__model.__list_cell(__lt20, c.cell)
 	gtk4rt.Connect(c.cell, "clicked", func() {
 		c.__prop___on0()
 	})
@@ -2295,6 +2295,17 @@ func (c *__child0Instance) Set__p0(__v string) {
 
 func (c *__child0Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
+	var __lt18 string
+	if c.__prop___p1 == "" {
+		__lt18 = fmt.Sprint(c.__prop___p2)
+	} else {
+		__lt18 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+	}
+	c.__model.__list_cell(__lt18, c.cell)
+}
+
+func (c *__child0Instance) Set__p2(__v int) {
+	c.__prop___p2 = __v
 	var __lt19 string
 	if c.__prop___p1 == "" {
 		__lt19 = fmt.Sprint(c.__prop___p2)
@@ -2302,17 +2313,6 @@ func (c *__child0Instance) Set__p1(__v string) {
 		__lt19 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.__model.__list_cell(__lt19, c.cell)
-}
-
-func (c *__child0Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
-	var __lt20 string
-	if c.__prop___p1 == "" {
-		__lt20 = fmt.Sprint(c.__prop___p2)
-	} else {
-		__lt20 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
-	}
-	c.__model.__list_cell(__lt20, c.cell)
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -2368,15 +2368,15 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	var __lt24 string
+	var __lt23 string
 	if c.__prop___p1 == "" {
-		__lt24 = fmt.Sprint(c.__prop___p2)
+		__lt23 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt24 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt23 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.mark = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.mark, c.__prop___p0)
-	c.__model.__list_mark(__lt24, c.mark)
+	c.__model.__list_mark(__lt23, c.mark)
 	gtk4rt.Connect(c.mark, "clicked", func() {
 		c.__prop___on0()
 	})
@@ -2393,6 +2393,17 @@ func (c *__child1Instance) Set__p0(__v string) {
 
 func (c *__child1Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
+	var __lt21 string
+	if c.__prop___p1 == "" {
+		__lt21 = fmt.Sprint(c.__prop___p2)
+	} else {
+		__lt21 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+	}
+	c.__model.__list_mark(__lt21, c.mark)
+}
+
+func (c *__child1Instance) Set__p2(__v int) {
+	c.__prop___p2 = __v
 	var __lt22 string
 	if c.__prop___p1 == "" {
 		__lt22 = fmt.Sprint(c.__prop___p2)
@@ -2400,17 +2411,6 @@ func (c *__child1Instance) Set__p1(__v string) {
 		__lt22 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.__model.__list_mark(__lt22, c.mark)
-}
-
-func (c *__child1Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
-	var __lt23 string
-	if c.__prop___p1 == "" {
-		__lt23 = fmt.Sprint(c.__prop___p2)
-	} else {
-		__lt23 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
-	}
-	c.__model.__list_mark(__lt23, c.mark)
 }
 
 func (c *__child1Instance) Set__on0(__v func()) {
@@ -3544,7 +3544,7 @@ pass sha256:5affecc82fb0f23b8c3815aef6d9e996
 -- run/go/fyne --
 pass sha256:220509a7b10ce072eb72e0c394c4c518
 -- run/go/gtk4 --
-pass sha256:e23642589c5dc6a2259f8c4101dd9cc1
+pass sha256:91a0795c5e3984720145eaabb5e4ebeb
 -- run/kotlin/android --
 pass sha256:712c3641a0a04bd353ab6d43b8c5d07f
 -- run/none/html --

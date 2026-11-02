@@ -1697,7 +1697,7 @@ sha256:15c4088b5f81b5cd2f46ac67bee2defc
   ]
 }
 -- testrun/gtk4/go/nested.sngl/main/1 --
-sha256:6b40022c7fb15a84a1f0e01a61a4cd18
+sha256:d22a2babf08853410d6749fe32d891c5
 {
   "results": [
     {

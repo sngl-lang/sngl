@@ -305,6 +305,12 @@ func (x *indexer) declSite(decl any) {
 				x.site(d, p, d.AST.Name)
 			}
 		}
+	case *ir.Alias:
+		if d.Decl != nil {
+			if p, ok := x.afterKeyword(d.Pos, d.Keyword, d.Name); ok {
+				x.site(d, p, d.Name)
+			}
+		}
 	case *ir.EnumDef:
 		if d.AST != nil {
 			if p, ok := x.afterKeyword(d.AST.Pos, "enum", d.AST.Name); ok {
@@ -479,7 +485,7 @@ func kindOf(decl any) SymbolKind {
 		return KindFunction
 	case *ir.Component:
 		return KindComponent
-	case *ir.StructDef, *ir.EnumDef, *ir.UnitDef, *ir.TypeSym:
+	case *ir.StructDef, *ir.EnumDef, *ir.UnitDef, *ir.TypeSym, *ir.Alias:
 		return KindType
 	case *ir.StructField, *ir.Prop:
 		return KindField
@@ -519,6 +525,9 @@ func (x *indexer) declarations() {
 	}
 	for _, ed := range p.Enums {
 		x.enumDecl(ed)
+	}
+	for _, a := range p.Aliases {
+		x.aliasDecl(a)
 	}
 	for _, ud := range p.Units {
 		if ud.AST != nil {
@@ -600,7 +609,21 @@ func (x *indexer) params(ps []*ir.Param, written []ast.Param) {
 func (x *indexer) typeParams(tps []ast.TypeParam) {
 	for _, tp := range tps {
 		x.add(tp.Pos, tp.Name, tp.Pos, KindTypeParameter, true)
+		x.typeRefs(tp.Constraint)
+		x.typeRefs(tp.Default)
 	}
+}
+
+func (x *indexer) aliasDecl(a *ir.Alias) {
+	if a == nil || a.Decl == nil {
+		return
+	}
+	x.declSite(a)
+	if s, ok := x.ix.Sites[a]; ok {
+		x.add(s.Pos, a.Name, a, KindType, true)
+	}
+	x.typeParams(a.WrittenParams)
+	x.typeRefs(a.Written)
 }
 
 func (x *indexer) componentDecl(c *ir.Component) {
@@ -723,7 +746,7 @@ func (x *indexer) typeRefs(te ast.TypeExpr) {
 			sym, _ = x.pkg.Symbols.Root.Lookup(t.Name)
 		}
 		switch sym.(type) {
-		case *ir.StructDef, *ir.EnumDef, *ir.UnitDef, *ir.Component:
+		case *ir.StructDef, *ir.EnumDef, *ir.UnitDef, *ir.Component, *ir.Alias:
 			x.named(namePos, t.Name, sym, kindOf(sym))
 		}
 	case *ast.FuncType:

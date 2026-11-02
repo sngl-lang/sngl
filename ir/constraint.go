@@ -1,21 +1,81 @@
 package ir
 
-// ConstraintMethod is the function named name the constraint on t, a type
-// parameter, declares: `[T struct { const func format() string }]` gives a T
-// a format. Nil where t is no type parameter or its constraint names none.
-func ConstraintMethod(t *Type, name string) *Func {
+// ConstraintKind is what con, a type parameter's constraint, asks of a type
+// bound to it: the kind of the sngl:builtin constraint it names, BuiltinAny
+// for `any` and for none at all.
+func ConstraintKind(con *Type) BuiltinKind {
+	if con == nil || con.Kind != TypeConstraint {
+		return BuiltinAny
+	}
+	sd, _ := con.Decl.(*StructDef)
+	if sd == nil {
+		return BuiltinAny
+	}
+	return sd.Builtin
+}
+
+// ConstraintStruct is the anonymous struct con names, `fieldsOf[S]`'s or
+// `methodsOf[S]`'s S, nil for a constraint naming none.
+func ConstraintStruct(con *Type) *StructDef {
+	if con == nil || con.Kind != TypeConstraint || len(con.Elems) == 0 {
+		return nil
+	}
+	return AnonStructDef(con.Elems[0])
+}
+
+// ConstraintFielded reports whether con asks for a type with fields:
+// `anyStruct`, `anyFields` and `fieldsOf[S]` do.
+func ConstraintFielded(con *Type) bool {
+	switch ConstraintKind(con) {
+	case BuiltinAnyStruct, BuiltinAnyFields, BuiltinFieldsOf:
+		return true
+	}
+	return false
+}
+
+// ConstraintFields is the fields con asks a type to have, each at the type it
+// asks: `fieldsOf[S]`'s S's, and none for any other.
+func ConstraintFields(con *Type) []*StructField {
+	if ConstraintKind(con) != BuiltinFieldsOf {
+		return nil
+	}
+	if sd := ConstraintStruct(con); sd != nil {
+		return sd.Fields
+	}
+	return nil
+}
+
+// ConstraintMethods is the functions con asks a type to have a method
+// fitting, by name: `methodsOf[S]`'s S's, and none for any other.
+func ConstraintMethods(con *Type) map[string]*Func {
+	if ConstraintKind(con) != BuiltinMethodsOf {
+		return nil
+	}
+	if sd := ConstraintStruct(con); sd != nil {
+		return sd.Methods
+	}
+	return nil
+}
+
+// paramConstraint is the constraint on t, a type parameter, nil where t is
+// none or nothing constrains it.
+func paramConstraint(t *Type) *Type {
 	if t == nil || t.Kind != TypeTypeParam {
 		return nil
 	}
 	sym, _ := t.Decl.(*TypeParamSym)
-	if sym == nil || sym.Constraint == nil {
+	if sym == nil {
 		return nil
 	}
-	sd, _ := sym.Constraint.Decl.(*StructDef)
-	if sd == nil {
-		return nil
-	}
-	return sd.Methods[name]
+	return sym.Constraint
+}
+
+// ConstraintMethod is the function named name the constraint on t, a type
+// parameter, declares: `[T methodsOf[struct { const func format() string }]]`
+// gives a T a format. Nil where t is no type parameter or its constraint names
+// none.
+func ConstraintMethod(t *Type, name string) *Func {
+	return ConstraintMethods(paramConstraint(t))[name]
 }
 
 // IsConstraintMethod reports whether fn is a function a constraint declares:

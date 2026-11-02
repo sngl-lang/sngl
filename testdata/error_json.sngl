@@ -55,7 +55,7 @@ component keeper ui.node {
 
 func nested() => http.get(url="http://example.com", query=Nested{inner=Clash{a="", b=""}}) // ERROR(check) "http.get cannot send a query of field inner of Nested, a Clash, which has no place in a URL"
 
-func scalar() => http.get(url="http://example.com", query=3) // ERROR(check) "int does not satisfy struct {}, the constraint on Q: it is no struct"
+func scalar() => http.get(url="http://example.com", query=3) // ERROR(check) "int does not satisfy anyStruct, the constraint on Q: it is no struct"
 
 #[json.identifier("x")] // ERROR(check) "#[json.identifier] cannot mark a struct; only a struct field or an enum member has a name in JSON"
 struct Marked {}

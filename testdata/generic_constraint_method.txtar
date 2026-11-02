@@ -29,9 +29,9 @@ struct Point {
     const func format() => "({x}, {y})"
 }
 
-func render[T struct {
+func render[T methodsOf[struct {
     const func format() string
-}](label string, vs list[T]) string {
+}]](label string, vs list[T]) string {
     var out = "{label}:"
     for var v = vs {
         out = out + " <{v}>"
@@ -39,9 +39,9 @@ func render[T struct {
     return out + " [{vs}]"
 }
 
-func hex[T struct {
+func hex[T methodsOf[struct {
     const func format(base int) string
-}](v T) string {
+}]](v T) string {
     var s = v.format(16)
     return s
 }

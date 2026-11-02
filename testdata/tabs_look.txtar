@@ -1032,13 +1032,13 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 				m.__copies_tabs__change = nil
-				var __lt18 []Tab__record
+				var __lt17 []Tab__record
 				if m.extra {
-					__lt18 = []Tab__record{Tab__record{Label: "More", __id: 2}}
+					__lt17 = []Tab__record{Tab__record{Label: "More", __id: 2}}
 				} else {
-					__lt18 = []Tab__record{}
+					__lt17 = []Tab__record{}
 				}
-				for k, t := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt18) {
+				for k, t := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt17) {
 					m.tabs__change = gtk4rt.TabPageNew()
 					gtk4rt.TabPageSetTitle(m.tabs__change, t.Label)
 					gtk4rt.TabPageSetDisabled(m.tabs__change, t.Disabled)
@@ -1154,4 +1154,4 @@ pass sha256:ebaa4ead15f0641b040e9958153a6be9
 -- run/go/fyne --
 pass sha256:30357886f247effae48e3510f19807c4
 -- run/go/gtk4 --
-pass sha256:c9c0280df088ca61a4c486bd6ac36a72
+pass sha256:4538b3cf18eea3e805413ed2a50e8d07

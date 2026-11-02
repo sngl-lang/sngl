@@ -1056,6 +1056,16 @@ func (m *Model) __n7_clicked_handler() {
 	switch m.roll__inst0() {
 	case "active":
 		m.status__inst0 = "inactive"
+		var __lt23 string
+		if m.status__inst0 == "active" {
+			__lt23 = "on"
+		} else {
+			__lt23 = "not on"
+		}
+		gtk4rt.LabelSetLabel(m.__n1, __lt23)
+		m.__renderSlot0(m.__n0)
+	case "inactive":
+		m.status__inst0 = "pending"
 		var __lt24 string
 		if m.status__inst0 == "active" {
 			__lt24 = "on"
@@ -1064,8 +1074,8 @@ func (m *Model) __n7_clicked_handler() {
 		}
 		gtk4rt.LabelSetLabel(m.__n1, __lt24)
 		m.__renderSlot0(m.__n0)
-	case "inactive":
-		m.status__inst0 = "pending"
+	default:
+		m.status__inst0 = "active"
 		var __lt25 string
 		if m.status__inst0 == "active" {
 			__lt25 = "on"
@@ -1074,25 +1084,15 @@ func (m *Model) __n7_clicked_handler() {
 		}
 		gtk4rt.LabelSetLabel(m.__n1, __lt25)
 		m.__renderSlot0(m.__n0)
-	default:
-		m.status__inst0 = "active"
-		var __lt26 string
-		if m.status__inst0 == "active" {
-			__lt26 = "on"
-		} else {
-			__lt26 = "not on"
-		}
-		gtk4rt.LabelSetLabel(m.__n1, __lt26)
-		m.__renderSlot0(m.__n0)
 	}
-	var __lt27 string
+	var __lt26 string
 	switch m.roll__inst0() {
 	case "active":
-		__lt27 = m.label(m.status__inst0)
+		__lt26 = m.label(m.status__inst0)
 	default:
-		__lt27 = "rolled"
+		__lt26 = "rolled"
 	}
-	m.last__inst0 = __lt27
+	m.last__inst0 = __lt26
 	gtk4rt.LabelSetLabel(m.__n3, m.last__inst0)
 }
 
@@ -1146,30 +1146,30 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__renderSlot0(m.__n0)
-	var __lt21 string
+	var __lt20 string
 	if m.status__inst0 == "active" {
-		__lt21 = "on"
+		__lt20 = "on"
 	} else {
-		__lt21 = "not on"
+		__lt20 = "not on"
 	}
 	m.__n1 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.__n1, __lt21)
+	gtk4rt.LabelSetLabel(m.__n1, __lt20)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
-	var __lt23 string
+	var __lt22 string
 	if m.rolls__inst0 > 10 {
-		__lt23 = "many"
+		__lt22 = "many"
 	} else {
-		var __lt22 string
+		var __lt21 string
 		if m.rolls__inst0 > 0 {
-			__lt22 = Describe(m.rolls__inst0)
+			__lt21 = Describe(m.rolls__inst0)
 		} else {
-			__lt22 = "none"
+			__lt21 = "none"
 		}
-		__lt23 = __lt22
+		__lt22 = __lt21
 	}
 	m.__n2 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(m.__n2, __lt23)
+	gtk4rt.LabelSetLabel(m.__n2, __lt22)
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
 	m.__n7 = gtk4rt.New("GtkButton")
@@ -1498,7 +1498,7 @@ pass sha256:93f684bb7eb7e44a77b2296fe6168237
 -- run/go/fyne --
 pass sha256:3b75ed515f047462de3b06ef2c916eea
 -- run/go/gtk4 --
-pass sha256:dd7563331fd9560c4fd63bf2cc6afe7e
+pass sha256:20aa253e3fe39a653ad15ff20bc59d64
 -- run/kotlin/android --
 pass sha256:3e70fef7309827fd0b084950fc7fe213
 -- run/none/html --

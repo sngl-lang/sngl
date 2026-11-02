@@ -10,6 +10,7 @@ import (
 )
 
 var navRE = regexp.MustCompile(`//\s*(DEFINITION|REFERENCES)\(([^)]+)\)\s+"((?:[^"\\]|\\.)*)"`)
+var navStartRE = regexp.MustCompile(`//\s*(DEFINITION|REFERENCES)\(`)
 var navFileRE = regexp.MustCompile(`^([\w./-]+\.sngl): `)
 
 // NavDirective is a parsed // DEFINITION(target) "expected" or
@@ -46,6 +47,11 @@ func ParseNavDirectives(path string, lib func(string) (string, bool)) ([]NavDire
 	for i, l := range lines {
 		m := navRE.FindStringSubmatch(l)
 		if m == nil {
+			// One that does not parse would assert nothing: a target holding
+			// `)` ends the directive early.
+			if navStartRE.MatchString(l) {
+				return nil, fmt.Errorf("%s:%d: a directive is `// DEFINITION(target) \"want\"`, and its target holds no `)`", path, i+1)
+			}
 			continue
 		}
 		dirLine := i + 1

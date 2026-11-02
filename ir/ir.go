@@ -40,9 +40,12 @@ type Package struct {
 	// declarations are the library's to vouch for -- a `#[cnative]` one names
 	// a header the target's own preamble includes -- where a program's must
 	// say so itself.
-	Library    bool `json:",omitempty"`
-	Imports    []*Import
-	Structs    []*StructDef
+	Library bool `json:",omitempty"`
+	Imports []*Import
+	Structs []*StructDef
+	// Aliases are the package's `struct Name = Type` declarations, which
+	// name a constraint and declare no type.
+	Aliases    []*Alias
 	Enums      []*EnumDef
 	Units      []*UnitDef
 	Consts     []*Var
@@ -1483,9 +1486,9 @@ type TypeParam struct {
 	Pos  ast.Pos `json:"-"`
 	Name string
 	// Constraint is what the declaration says a type bound to the parameter
-	// must be: ir.TypAny, which says nothing, or an anonymous struct whose
-	// fields the type must have. A receiver's list restates names only and
-	// takes its declaration's.
+	// must be: ir.TypAny, which says nothing, or a TypeConstraint naming what
+	// it asks. A receiver's list restates names only and takes its
+	// declaration's.
 	Constraint *Type `json:"-"`
 	Default    *Type `json:"-"`
 }

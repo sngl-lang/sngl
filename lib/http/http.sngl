@@ -22,7 +22,7 @@ struct Response {
 // host's own message beside it; a 404 is a response, and its status is read
 // off it.
 #[marks.intrinsic("http.send", async)]
-func send[Q struct {} = struct {}](
+func send[Q anyStruct = struct {}](
     method  Method,
     url     string,
     query   Q = Q{},
@@ -33,7 +33,7 @@ func send[Q struct {} = struct {}](
 // Sends a `get` to url, with query's fields added to it: `send` with the
 // method a read takes.
 #[marks.intrinsic("http.get", async)]
-func get[Q struct {} = struct {}](url string, query Q = Q{}) async.Result[Response]
+func get[Q anyStruct = struct {}](url string, query Q = Q{}) async.Result[Response]
 
 // The response, for a 2xx status; otherwise the failure the status says --
 // 401 and 403 `auth`, any other 4xx `request`, a 5xx `server` and anything

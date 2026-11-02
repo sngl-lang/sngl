@@ -437,12 +437,23 @@ of a declaration's own list, and a method's receiver list as names alone
 (`receiverTypeParams`), without which `func Box.get()` named no type
 (`cmd/sngl/testdata/type_param_constraint_roundtrip.txt`).
 
-**A constraint is `any` or an anonymous struct** (`resolveConstraint`,
-`internal/checker/constraints.go`): `[T struct { name string }]` is any
-struct with at least a `name` that is a `string`, matched by name at equal
-types (`Type.Equal`), a named struct as readily as an anonymous one. A
-constraint's field takes no default, and a satisfying struct's own defaults
-play no part. **Every binding is held to it by one function**,
+**A constraint is one sngl:builtin declares** (`resolveConstraint`,
+`internal/checker/constraints.go`; `lib/builtin/constraints.sngl`), found in
+scope by its `#[builtin]` kind (`ir.BuiltinKind.IsConstraint`) so a program's
+own of the name shadows it. `any` stays `ir.TypAny`; the others are an
+`ir.TypeConstraint` whose `Decl` is the builtin's declaration and whose
+`Elems` hold `fieldsOf`'s or `methodsOf`'s S, so a diagnostic and `ir.Convert`
+spell it as written. What one asks is read through `ir.ConstraintKind`,
+`ConstraintFields` and `ConstraintMethods`, never off S directly: a
+constraint on fields and one on methods were once one anonymous struct, and
+`struct {}` asked for fields while a struct of functions alone did not.
+`fieldsOf[struct { name string }]` is any type with at least a `name` that
+is a `string`, matched by name at equal types (`Type.Equal`), a named struct
+as readily as an anonymous one. S's field takes no default, and a satisfying
+struct's own defaults play no part. `anyStruct` refuses a data component's
+record (`StructDef.RecordOf`), which `anyFields` takes. A bare struct is no
+constraint, and the error names the builtin that asks what it would have.
+**Every binding is held to it by one function**,
 `checkConstraint`: call inference (`inferTypeParams`, which written type
 arguments flow into), a struct's or a component type's own arguments
 (`applyStructTypeArgs`, `applyComponentTypeArgs` -- the latter is also a
@@ -450,23 +461,23 @@ family's arguments in a member's return position), a component's props
 (`bindComponentTypeParams`), what the children bind (`bindFromChildren`, for
 what the props left), and a default against its own constraint
 (`resolveTypeParams`). A T bound to another type parameter is measured by that
-parameter's constraint. **A constraint's field may name a parameter of its
-list**, `[T any, U struct { value T }]`, or the one it constrains: such a
-constraint is never interned, its fields meaning that list's parameters and
+parameter's constraint: a `T anyFields` is no `anyStruct`. **A constraint's field may name a parameter of its
+list**, `[T any, U fieldsOf[struct { value T }]]`, or the one it constrains:
+its S is never interned, its fields meaning that list's parameters and
 no other. It is measured against the bindings substituted in
-(`substituteConstraint`), and a parameter nothing else bound is bound from
+(`checkConstraint`), and a parameter nothing else bound is bound from
 the field of the type bound to the one it constrains (`inferFromConstraints`,
 which `checkConstraints` runs first and `inferTypeParams` runs before the
 expected type binds); a default binds its list that way where it is declared,
 and a receiver's renamed list renames what the constraint names. In a generic
 body a select of a `T` reads the
-constraint's fields (`paramConstraint`) and a spread binds them
+constraint's fields (`paramFields`) and a spread binds them
 (`spreadFieldsOf`); a receiver's restated names take their declaration's
 constraints (`inheritReceiverConstraints`), before the signature is resolved,
 since `func stack[M].current() _page[M]` hands M on. Nothing after the checker
 learns of a constraint: Go and Kotlin read the field off each copy
 `passMonomorphize` made, and JavaScript and the interpreter off the value. So
-i18n's `tr`, `trInline` and `format` take `[A struct {}]`, which is what
+i18n's `tr`, `trInline` and `format` take `[A anyStruct]`, which is what
 refuses a map of arguments, and nav's page, link, `go`, `href` and `_follow`
 constrain their params and meta the same way
 (`testdata/type_param_constraint.sngl`, `error_type_param_constraint.sngl`,

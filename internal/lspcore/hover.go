@@ -210,6 +210,9 @@ func docForPos(doc *ast.Document, pos ast.Pos) string {
 }
 
 func formatStructHover(s *ast.StructDef, doc *ast.Document) string {
+	if s.Alias != nil {
+		return formatAliasHover("struct", s.Name, s.Alias, s.Pos, doc)
+	}
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "```sngl\nstruct %s {\n", s.Name)
 	for _, f := range s.Fields() {
@@ -224,7 +227,22 @@ func formatStructHover(s *ast.StructDef, doc *ast.Document) string {
 	return sb.String()
 }
 
+// formatAliasHover shows an alias as it is written, `struct Name = Type`.
+func formatAliasHover(keyword, name string, alias ast.TypeExpr, pos ast.Pos, doc *ast.Document) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "```sngl\n%s %s = %s\n```\n", keyword, name, typeExprString(alias))
+	if d := docForPos(doc, pos); d != "" {
+		sb.WriteByte('\n')
+		sb.WriteString(d)
+		sb.WriteByte('\n')
+	}
+	return sb.String()
+}
+
 func formatEnumHover(e *ast.EnumDef, doc *ast.Document) string {
+	if e.Alias != nil {
+		return formatAliasHover("enum", e.Name, e.Alias, e.Pos, doc)
+	}
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "```sngl\nenum %s {\n", e.Name)
 	for _, m := range e.Members() {
@@ -358,6 +376,9 @@ func literalValueString(e ast.Expr) string {
 }
 
 func formatUnitHover(u *ast.UnitDef, doc *ast.Document) string {
+	if u.Alias != nil {
+		return formatAliasHover("unit", u.Name, u.Alias, u.Pos, doc)
+	}
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "```sngl\nunit %s {\n", u.Name)
 	for _, sfx := range u.Suffixes() {

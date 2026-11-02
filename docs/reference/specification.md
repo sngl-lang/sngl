@@ -288,6 +288,8 @@ An interpolation field in a translatable string may carry up to three
 comma-separated parts — the value, a format keyword or function, and a style
 or message body — following ICU MessageFormat conventions for plurals and
 selects.
+An `option` value in a field is its value where it holds one and the empty
+string where it is null: `$"Hello {name}!"` with `name` null is `"Hello !"`.
 
 ### Color literals
 
@@ -427,9 +429,9 @@ user-defined types.
 | `float`  | 64-bit IEEE-754 floating point.                        |
 | `string` | Immutable UTF-8 text.                                  |
 
-`any` is predeclared beside them and is no type a value may have: it is the
-constraint that says nothing about a type parameter (see
-[Generic type parameters](#generic-type-parameters)).
+`any`, `anyStruct`, `anyFields`, `fieldsOf` and `methodsOf` are predeclared
+beside them and are no type a value may have: they are the constraints a type
+parameter names (see [Generic type parameters](#generic-type-parameters)).
 
 A type may be designated *string-representable*: it has a canonical textual
 form and converts implicitly to and from `string` in both directions (a literal
@@ -594,6 +596,52 @@ ternary's branch, in a loop's condition, or outside any statement is an error.
 So is taking such a function as a value, since what calls a value cannot know
 where its argument came from.
 
+### Aliases
+
+An **alias** names a type, or a [constraint](#generic-type-parameters), under
+another name: `struct Name = Type`. It is what it names wherever it is
+written, not a new type, so a value of one is a value of the other. It is
+written with the keyword of what it names: `enum Name = Type` names an enum,
+`unit Name = Type` a unit, and `struct Name = Type` anything else -- a
+struct, an anonymous struct, a builtin type or a constraint, all of which are
+declared as structs. Where its name stands for a declaration -- a literal
+`Alias{…}`, a member `Alias.member`, a conversion `Alias(x)`, a method's
+receiver `func Alias.m(this Alias)` -- it is the declaration it names. A
+method is declared on a declaration, so an alias of an instance of a generic,
+`struct Ints = Box[int]`, takes none.
+
+An alias may take type parameters, which what it names may use and which a
+use binds, each held to its own constraint. It may name another alias, and may
+be named before it is declared, but not, through any chain, itself. It is
+exported by case, like any declaration, and declared at a package's top level
+only.
+
+```sngl
+struct Point {
+    x int
+    y int
+}
+
+struct P = Point
+
+struct Box[T any] {
+    value T
+}
+
+struct Boxed[T any] = Box[T]
+
+enum Direction { up, down }
+
+enum Dir = Direction
+
+struct Count = int
+
+func area(p P) => p.x * p.y
+
+var b = Boxed[int]{value=1} // a Box[int]
+var d Dir = Dir.down        // a Direction
+```
+
 ### Type identity
 
 Two types are *identical* when:
@@ -710,38 +758,54 @@ called, which may be after the test has stopped holding.
 Type parameters are introduced by a type-parameter list in brackets
 (`[T any]`, `[K any, V any]`) on a struct, a function, a method's name, or a
 component. Every type parameter names a **constraint** after its name: what a
-type bound to it must be. A constraint is `any` or an anonymous struct. `any`
-is the constraint that says nothing. A constraint is a constraint only: `any`
+type bound to it must be. A constraint is one `sngl:builtin` declares, or an
+alias of one, and every file has them without an import:
+
+| Constraint     | A type bound to the parameter must                  |
+|----------------|-----------------------------------------------------|
+| `any`          | be anything                                         |
+| `anyStruct`    | be a struct, whatever its fields                    |
+| `anyFields`    | have fields: a struct, or a data component's record |
+| `fieldsOf[S]`  | have each of S's fields, at an equal type           |
+| `methodsOf[S]` | have a method fitting each function S declares      |
+
+S is an anonymous struct, of fields for `fieldsOf` and of functions for
+`methodsOf`. A struct is no constraint by itself: `[T struct { name string }]`
+is an error, and so is `[T struct {}]`. A constraint is a constraint only, and
 written where a value's type goes is an error: every value has a type the
-program can name. A type parameter may also carry a default
-after its constraint (`[T any = struct {}]`), used when nothing binds it; a
-constraint is never a default, so a parameter with no default has none, and
-`[T struct {} = struct {}]` writes both.
+program can name. A type parameter may also carry a default after its
+constraint (`[T any = struct {}]`), used when nothing binds it; a constraint
+is never a default, so a parameter with no default has none, and
+`[T anyStruct = struct {}]` writes both.
 
-An anonymous struct constraint says the type is a struct with **at least**
-those fields, each at an equal type: `[T struct {}]` is any struct, and
-`[T struct { name string }]` any struct with a `name` field that is a
-`string`. Fields are matched by name and at equal types, not assignable ones,
-and a named struct satisfies the constraint as readily as an anonymous one,
-since the constraint is about fields, not identity. A constraint's field may
-not carry a default -- a constraint says what a type has, not what it starts
-with -- and the defaults of a struct being measured play no part. Every type
-bound to a parameter is held to its constraint: one an argument binds, one
-written in brackets, a type's own argument, one the children of a slot bind, a
-family's argument in a member's return position, and a default. A type
-parameter bound to another is measured by the other's own constraint.
+An [alias](#aliases) may name a constraint, `struct Formattable = methodsOf[…]`: a type satisfies the alias exactly when it satisfies what the
+alias names, and where a function `methodsOf` names is called on, the alias
+names the parameter it constrains.
 
-A constraint's field may name another type parameter of the same list, or
-the one it constrains: `[T any, U struct { value T }]` is a `U` whose `value`
-is whatever `T` is, and `[T struct { next option[T] }]` a struct whose `next`
-holds one of its own type. The field is measured with the list's other
+`fieldsOf[S]` says the type has **at least** S's fields, each at an equal
+type: `[T fieldsOf[struct { name string }]]` is any type with a `name` field
+that is a `string`. Fields are matched by name and at equal types, not
+assignable ones, and a named struct satisfies the constraint as readily as an
+anonymous one, since the constraint is about fields, not identity. S's field
+may not carry a default -- a constraint says what a type has, not what it
+starts with -- and the defaults of a struct being measured play no part. Every
+type bound to a parameter is held to its constraint: one an argument binds,
+one written in brackets, a type's own argument, one the children of a slot
+bind, a family's argument in a member's return position, and a default. A
+type parameter bound to another is measured by the other's own constraint: a
+`T anyFields` is no `anyStruct`, and a `T fieldsOf[…]` is an `anyFields`.
+
+S's field may name another type parameter of the same list, or the one it
+constrains: `[T any, U fieldsOf[struct { value T }]]` is a `U` whose `value`
+is whatever `T` is, and `[T fieldsOf[struct { next option[T] }]]` a type whose
+`next` holds one of its own type. The field is measured with the list's other
 parameters bound, and where one is not -- nothing written or passed binds it
 -- the field of the type bound to the parameter it constrains does, so
 `valueOf(Cell{value=1})` binds `T` to `int`. A default binds its list the
 same way where its declaration is checked.
 
-A constraint may also declare functions, each written as a method in a
-struct's body is and conventionally without one: `[T struct { const func format() string }]` is any type with a `format` that a call of that shape
+`methodsOf[S]` declares functions, each written as a method in a struct's
+body is and conventionally without one: `[T methodsOf[struct { const func format() string }]]` is any type with a `format` that a call of that shape
 fits. A type's method satisfies a constraint's function when it has the
 function's name, each of the function's parameters is one of the method's of
 that name at an equal type, every other parameter of the method has a default,
@@ -749,27 +813,25 @@ it returns an equal type, and it is `const` where the function is. A
 constraint's function takes no body and no type parameters. A parameter of one
 may have a default, which lets a call through the constraint leave it out;
 the default is a constant -- a literal, an enum member, or a `const` naming
-one -- and the method must declare the same default for that parameter. A
-constraint declaring functions and no fields asks for nothing else, so any
-type with those methods satisfies it, a builtin type, an enum and a list
-included; one declaring fields, or nothing at all, is satisfied only by a type
-with fields. A function's parameter may name the type parameter it constrains or another
-of the list, as a field may.
+one -- and the method must declare the same default for that parameter.
+`methodsOf` asks for nothing else, so any type with those methods satisfies
+it, a builtin type, an enum and a list included. A function's parameter may
+name the type parameter it constrains or another of the list, as a field may.
 
 ```sngl
-func hex[T struct {
+func hex[T methodsOf[struct {
     const func format(base int) string
-}](v T) => v.format(16)
+}]](v T) => v.format(16)
 
 var a = hex(255) // "ff": int.format also takes width and pad, which have defaults
 ```
 
-In a generic body a value of a constrained `T` has the constraint's fields,
-typed from the constraint, and its functions, and nothing else: `v.name` reads
-a field, `v.format(16)` calls the bound type's own method of that name, with
-its defaults for any parameter the constraint does not declare, and any other
-member is unknown. A spread of a `T` binds those fields by name, as a struct's
-spread binds its own.
+In a generic body a value of a constrained `T` has the fields `fieldsOf`
+names, typed from the constraint, and the functions `methodsOf` names, and
+nothing else: `v.name` reads a field, `v.format(16)` calls the bound type's
+own method of that name, with its defaults for any parameter the constraint
+does not declare, and any other member is unknown. A spread of a `T` binds
+those fields by name, as a struct's spread binds its own.
 
 ```sngl
 struct User {
@@ -777,9 +839,9 @@ struct User {
     age  int
 }
 
-func nameOf[T struct {
+func nameOf[T fieldsOf[struct {
     name string
-}](v T) => v.name
+}]](v T) => v.name
 
 var a = nameOf(User{name="ann"}) // User may have other fields
 var b = nameOf({name="anon"})    // an anonymous struct
@@ -2964,13 +3026,13 @@ ImportDecl = "import" [ IDENT | "." ] STRING [ "=>" STRING ]
 ```
 
 ```ebnf
-StructDecl = "struct" [ IDENT ] [ TypeParamList ] "{" { StructBodyItem [ ";" ] } "}"
+StructDecl = "struct" [ IDENT ] [ TypeParamList ] ( "{" { StructBodyItem [ ";" ] } "}" | "=" Type )
 
 StructField = IdentList Type [ "=" Expr ]
 
-EnumDecl = "enum" [ IDENT ] [ TypeParamList ] "{" [ EnumBodyItem { ("," | ";") EnumBodyItem } [ "," | ";" ] ] "}"
+EnumDecl = "enum" [ IDENT ] [ TypeParamList ] ( "{" [ EnumBodyItem { ("," | ";") EnumBodyItem } [ "," | ";" ] ] "}" | "=" Type )
 
-UnitDecl = "unit" [ IDENT ] "{" [ ArgList ] "}"
+UnitDecl = "unit" [ IDENT ] ( "{" [ ArgList ] "}" | "=" Type )
 
 ```
 

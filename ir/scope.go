@@ -21,8 +21,8 @@ type Symbol interface {
 type TypeParamSym struct {
 	Name string
 	// Constraint is what a type bound to the parameter must be: ir.TypAny,
-	// which says nothing, or an anonymous struct whose fields the type must
-	// have. Nil for a parameter no declaration constrains -- an intrinsic's.
+	// which says nothing, or a TypeConstraint naming what it asks. Nil for a
+	// parameter no declaration constrains -- an intrinsic's.
 	// A receiver's restated name takes its declaration's.
 	Constraint *Type
 }
@@ -451,10 +451,23 @@ func (st *SymbolTable) LookupMethod(recv, method string) (*Func, bool) {
 // LookupMethodIn finds the method named method on the declaration that recv
 // resolves to in scope. A namespace's members are the declarations of the
 // package it names, so a namespace receiver resolves through that package
-// rather than a table here.
+// rather than a table here. A binding of the name that can hold no method is
+// passed over, as LookupComponent passes one over: a node `#int` or a
+// variable named `string` does not hide the scalar's methods.
 func LookupMethodIn(scope *Scope, recv, method string) (*Func, bool) {
-	sym, ok := scope.Lookup(recv)
-	if !ok {
+	var sym Symbol
+	for sc := scope; sc != nil && sym == nil; sc = sc.Parent {
+		s, ok := sc.Symbols[recv]
+		switch s.(type) {
+		case *Namespace, *TypeSym:
+			sym = s
+		default:
+			if ok && methodTable(s) != nil {
+				sym = s
+			}
+		}
+	}
+	if sym == nil {
 		return nil, false
 	}
 	if ns, isNS := sym.(*Namespace); isNS {

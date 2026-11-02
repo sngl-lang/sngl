@@ -153,6 +153,13 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		if sd, ok := sym.(*ir.StructDef); ok && sd.Builtin.IsGeneric() {
 			return c.constructBuiltinGeneric(sd.Builtin, sd, t)
 		}
+		if sd, ok := sym.(*ir.StructDef); ok && sd.Builtin.IsConstraint() {
+			c.error(t.Pos, "`%s` is a constraint, not a type: only a type parameter's constraint names it", t.Name)
+			return TypInvalid
+		}
+		if typ, ok := c.aliasType(t, sym); ok {
+			return typ
+		}
 	}
 	// `component` has no `<T>` decl to carry a marker; it is a bare kind.
 	if t.Name == "component" {
@@ -288,6 +295,13 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 		// An import that resolved to no package -- a check with no resolver
 		// -- has no members, and the import is where that is the problem.
 		return TypInvalid
+	}
+	if a := c.qualifiedAlias(t); a != nil {
+		if c.rejectUnexported(t.Pos, a) {
+			return TypInvalid
+		}
+		typ, _ := c.aliasType(t, a)
+		return typ
 	}
 	if tsym, ok := ns.Pkg.Symbols.LookupMemberType(name); ok {
 		if c.rejectUnexported(t.Pos, tsym) {

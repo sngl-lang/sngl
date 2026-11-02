@@ -408,7 +408,7 @@ Notable stdlib packages:
 
   **A translation's arguments are a struct**, a field per placeholder:
   `i18n.format(t, {name=n})`. `tr`, `trInline` and `format`
-  take them as a type parameter constrained to a struct, `[A struct {}]`,
+  take them as a type parameter constrained to a struct, `[A anyStruct]`,
   which an anonymous struct literal binds and which refuses anything else;
   `$"..."` builds
   the same literal. Every runtime takes a string-keyed map, which only the
@@ -420,7 +420,12 @@ Notable stdlib packages:
   operand that is not one is read a field at a time with a spread site, so
   passSpreadOnce evaluates a computed one once. Such a literal names no
   declaration for the shake (`walkNames`), since nothing declares a struct
-  for it. The interpreter reads a struct as the map.
+  for it. The interpreter reads a struct as the map. An `option` argument is
+  its value, or the empty string where it is null, which each runtime decides
+  rather than the emitted code: Go's (and the interpreter's, which is Go's)
+  `optionValues` dereferences a pointer and blanks a nil, JavaScript's
+  `argGet` blanks a null, and Kotlin's `?: ""` already did
+  (`testdata/i18n_option_arg.txtar`).
   **A template is written in backticks**, or with its braces escaped: a
   double-quoted string is interpolated where it is written, so `{name}` was
   gone before i18n read it and the arguments were read by nothing. An

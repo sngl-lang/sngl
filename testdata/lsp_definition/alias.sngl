@@ -1,0 +1,25 @@
+// A type with a format.
+struct Formattable = methodsOf[struct {
+    const func format() string
+}]
+
+func show[T Formattable](v T) => v.format()
+
+// DEFINITION([T ^Formattable]) "struct ^Formattable = methodsOf[struct {"
+// DEFINITION(v.^format) "    const func ^format() string"
+
+struct Point {
+    x int
+}
+
+// A point by another name.
+enum Dir = Direction
+
+enum Direction { up, down }
+
+struct P = Point
+
+func area(p P) => p.x
+
+// DEFINITION(area(p ^P) "struct ^P = Point"
+// DEFINITION(Dir = ^Direction) "enum ^Direction { up, down }"

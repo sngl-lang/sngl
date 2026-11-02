@@ -61,13 +61,13 @@ var c = pair({v=1}, {v="s"}) // ERROR(check) "cannot use"
 
 // Two declarations each writing `struct { v T }` share no declaration: each
 // field is its own declaration's T, and only the first one's names a field.
-func nameOf[T struct {
+func nameOf[T fieldsOf[struct {
     name string
-}](v T) => v.name
+}]](v T) => v.name
 
-func named[T struct {
+func named[T fieldsOf[struct {
     name string
-}](w struct {
+}]](w struct {
     v T
 }) => nameOf(w.v)
 

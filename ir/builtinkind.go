@@ -32,6 +32,14 @@ const (
 	// in scope, since sngl:family's `one[T any]` is checked first -- and is no
 	// type a value may have.
 	BuiltinAny BuiltinKind = "any"
+	// The constraints that say something, each a struct sngl:builtin declares
+	// and a type parameter's constraint names (TypeConstraint): AnyStruct a
+	// struct, AnyFields a type with fields, FieldsOf[S] one with S's fields
+	// and MethodsOf[S] one with a method fitting each function S declares.
+	BuiltinAnyStruct BuiltinKind = "anyStruct"
+	BuiltinAnyFields BuiltinKind = "anyFields"
+	BuiltinFieldsOf  BuiltinKind = "fieldsOf"
+	BuiltinMethodsOf BuiltinKind = "methodsOf"
 
 	// The sized numerics, each a scalar of the width and signedness its name
 	// says (TypInt8 … TypFloat64).
@@ -232,6 +240,16 @@ func (b BuiltinKind) IsFamilyRole() bool {
 	return false
 }
 
+// IsConstraint reports whether the kind marks a constraint that says
+// something about a type parameter, which only a constraint may name.
+func (b BuiltinKind) IsConstraint() bool {
+	switch b {
+	case BuiltinAnyStruct, BuiltinAnyFields, BuiltinFieldsOf, BuiltinMethodsOf:
+		return true
+	}
+	return false
+}
+
 // IsGeneric reports whether the kind is a generic type constructor
 // (list/map/iter/chan/ref/option).
 func (b BuiltinKind) IsGeneric() bool {
@@ -296,6 +314,7 @@ func (b BuiltinKind) IsConst() bool {
 func AllBuiltinKinds() []BuiltinKind {
 	return []BuiltinKind{
 		BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool, BuiltinAny,
+		BuiltinAnyStruct, BuiltinAnyFields, BuiltinFieldsOf, BuiltinMethodsOf,
 		BuiltinInt8, BuiltinInt16, BuiltinInt32, BuiltinInt64,
 		BuiltinUint8, BuiltinUint16, BuiltinUint32, BuiltinUint64,
 		BuiltinFloat32, BuiltinFloat64,
@@ -316,7 +335,7 @@ func AllBuiltinKinds() []BuiltinKind {
 // Valid reports whether the kind names a built-in (i.e. is not BuiltinNone and
 // not an unrecognized string).
 func (b BuiltinKind) Valid() bool {
-	return b == BuiltinAny || b == BuiltinApplication || b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
+	return b == BuiltinAny || b.IsConstraint() || b == BuiltinApplication || b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
 		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsCMarshal() || b.IsConst() || b == BuiltinText ||
 		b == BuiltinFormatArgs || b == BuiltinFormatWith || b == BuiltinAppendFormatWith
 }
