@@ -729,6 +729,7 @@ func newTestComponent() Model { m := New(); _ = m.View(); return m }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -746,10 +747,10 @@ type Model struct {
 	caught string
 	after  string
 
-	inHandler *widget.Button
-	inFunc    *widget.Button
-	deep      *widget.Button
-	fine      *widget.Button
+	inHandler *fynelayout.Button
+	inFunc    *fynelayout.Button
+	deep      *fynelayout.Button
+	fine      *fynelayout.Button
 	__n0      *widget.Label
 }
 
@@ -906,16 +907,16 @@ func (m *Model) SetAfter(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.inHandler = widget.NewButton("", nil)
+	m.inHandler = fynelayout.NewButton("", nil)
 	m.inHandler.SetText("Handler")
 	m.inHandler.OnTapped = m.inHandler_click_handler
-	m.inFunc = widget.NewButton("", nil)
+	m.inFunc = fynelayout.NewButton("", nil)
 	m.inFunc.SetText("Func")
 	m.inFunc.OnTapped = m.inFunc_click_handler
-	m.deep = widget.NewButton("", nil)
+	m.deep = fynelayout.NewButton("", nil)
 	m.deep.SetText("Deep")
 	m.deep.OnTapped = m.deep_click_handler
-	m.fine = widget.NewButton("", nil)
+	m.fine = fynelayout.NewButton("", nil)
 	m.fine.SetText("Fine")
 	m.fine.OnTapped = m.fine_click_handler
 	m.__n0 = widget.NewLabel("")
@@ -1553,7 +1554,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:4593644ce7ba6509b580e276856da792
 -- run/go/fyne --
-pass sha256:1112193df48bef5dc65ee8dbb21a8081
+pass sha256:22054a72464a18d41d20eba341b482f1
 -- run/go/gtk4 --
 pass sha256:d3a2d996a5da5488f85efbd019bbdee1
 -- run/go/html --

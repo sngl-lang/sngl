@@ -606,7 +606,7 @@ type Model struct {
 	__renderAgain0 bool
 
 	__n0 *fyne.Container
-	hide *widget.Button
+	hide *fynelayout.Button
 	__n2 *widget.Label
 	__n3 *widget.Label
 }
@@ -725,7 +725,7 @@ func (m *Model) SetName(v string) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewVBox()
-	m.hide = widget.NewButton("", nil)
+	m.hide = fynelayout.NewButton("", nil)
 	m.hide.SetText("h")
 	m.hide.OnTapped = m.hide_click_handler
 	m.__n0.Add(m.hide)
@@ -1487,7 +1487,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:a94a32c2177fa4a9c886228b305f0e2a
 -- run/go/fyne --
-pass sha256:a52d3236a9c89a6be540f1840771b3b4
+pass sha256:0efa3152e142f0a38b5c3902d4d77258
 -- run/go/gtk4 --
 pass sha256:d5b3ef7b13c387ee43e3047e817b1dc0
 -- run/kotlin/android --

@@ -1099,11 +1099,11 @@ type Model struct {
 	__renderAgain3 bool
 
 	__n1         *fyne.Container
-	toggle       *widget.Button
-	__named_hit  *widget.Button
+	toggle       *fynelayout.Button
+	__named_hit  *fynelayout.Button
 	__named_done fyne.CanvasObject
-	__named_tap  *widget.Button
-	__copies_tap map[string]*widget.Button
+	__named_tap  *fynelayout.Button
+	__copies_tap map[string]*fynelayout.Button
 	__copies_fin map[string]*widget.Label
 	__copies_r   map[string]fyne.CanvasObject
 	__inst_b     *BadgeInstance
@@ -1294,14 +1294,14 @@ func (m *Model) tapClickAt(key string) {
 	}
 }
 
-func (m *Model) __list_tap(key string, w *widget.Button) {
+func (m *Model) __list_tap(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_tap {
 		if c == w {
 			delete(m.__copies_tap, k)
 		}
 	}
 	if m.__copies_tap == nil {
-		m.__copies_tap = map[string]*widget.Button{}
+		m.__copies_tap = map[string]*fynelayout.Button{}
 	}
 	m.__copies_tap[key] = w
 }
@@ -1415,7 +1415,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = fynelayout.NewVBox()
 	m.__renderSlot2(m.__n1)
 	m.__renderSlot3(m.__n1)
-	m.toggle = widget.NewButton("", nil)
+	m.toggle = fynelayout.NewButton("", nil)
 	m.toggle.SetText("t")
 	m.toggle.OnTapped = m.toggle_click_handler
 	m.__n1.Add(m.toggle)
@@ -1441,7 +1441,7 @@ type BadgeInstance struct {
 	__slot3        []fyne.CanvasObject
 	__slot3_at     fyne.CanvasObject
 	shown          *widget.Label
-	hit            *widget.Button
+	hit            *fynelayout.Button
 	done           *widget.Label
 }
 
@@ -1459,7 +1459,7 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__slot3 = nil
 	c.shown = widget.NewLabel("")
 	c.shown.SetText((((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
-	c.hit = widget.NewButton("", nil)
+	c.hit = fynelayout.NewButton("", nil)
 	c.hit.SetText("hit")
 	c.hit.OnTapped = func() {
 		c.hits = (c.hits + 1)
@@ -1547,7 +1547,7 @@ type TileInstance struct {
 	__slot3        []fyne.CanvasObject
 	__slot3_at     fyne.CanvasObject
 	face           *widget.Label
-	tap            *widget.Button
+	tap            *fynelayout.Button
 }
 
 func newTileInstance(__model *Model, __a_label string, __a___copy string, __a_tapped func(int)) *TileInstance {
@@ -1567,7 +1567,7 @@ func newTileInstance(__model *Model, __a_label string, __a___copy string, __a_ta
 	c.__slot3 = nil
 	c.face = widget.NewLabel("")
 	c.face.SetText((((("<" + c.__prop_label) + ":") + fmt.Sprint(c.taps)) + ">"))
-	c.tap = widget.NewButton("", nil)
+	c.tap = fynelayout.NewButton("", nil)
 	c.tap.SetText("tap")
 	c.__model.__list_tap(c.__prop___copy, c.tap)
 	c.tap.OnTapped = func() {
@@ -3385,7 +3385,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:a38cd3f3768bcbd09a85a78ef1fb9205
 -- run/go/fyne --
-pass sha256:30789883304c40efd8590aaa6f2e51a2
+pass sha256:5ae686e2a97069ae5b48a5d0f4410df2
 -- run/go/gtk4 --
 pass sha256:ffac137b9e7bcb994a60f6af3f26d93b
 -- run/kotlin/android --

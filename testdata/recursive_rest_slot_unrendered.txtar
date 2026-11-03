@@ -60,7 +60,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -69,7 +68,7 @@ type Model struct {
 	depth int
 
 	__n0   *fyne.Container
-	deeper *widget.Button
+	deeper *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -101,7 +100,7 @@ func (m *Model) SetDepth(v int) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewVBox()
-	m.deeper = widget.NewButton("", nil)
+	m.deeper = fynelayout.NewButton("", nil)
 	m.deeper.SetText("deeper")
 	m.deeper.OnTapped = m.deeper_click_handler
 	m.__n0.Add(m.deeper)
@@ -267,7 +266,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:8b8098e891318e0ae3958306702ed173
+pass sha256:045b5139667f914afc3b6f40ba4e993a
 -- run/go/gtk4 --
 pass sha256:86d232300ee58d551aa97d9038a52ba9
 -- run/none/html --

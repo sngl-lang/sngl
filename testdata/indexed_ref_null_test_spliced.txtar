@@ -1125,12 +1125,12 @@ type Model struct {
 	__slot4_at     fyne.CanvasObject
 
 	__n10       *fyne.Container
-	move        *widget.Button
-	hide        *widget.Button
+	move        *fynelayout.Button
+	hide        *fynelayout.Button
 	__n16       *widget.Label
 	r           *StepInstance
 	r__el       fyne.CanvasObject
-	__n17       *widget.Button
+	__n17       *fynelayout.Button
 	__copies_th map[string]fyne.CanvasObject
 	w           *widget.Label
 	p           *widget.Label
@@ -1464,11 +1464,11 @@ func (m *Model) SetShown(v bool) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n10 = fynelayout.NewVBox()
-	m.move = widget.NewButton("", nil)
+	m.move = fynelayout.NewButton("", nil)
 	m.move.SetText("m")
 	m.move.OnTapped = m.move_click_handler
 	m.__n10.Add(m.move)
-	m.hide = widget.NewButton("", nil)
+	m.hide = fynelayout.NewButton("", nil)
 	m.hide.SetText("h")
 	m.hide.OnTapped = m.hide_click_handler
 	m.__n10.Add(m.hide)
@@ -1481,7 +1481,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n10.Add(m.r__el)
 	for __copy0, n := range []string{"x", "y"} {
 		if n != "y" {
-			m.__n17 = widget.NewButton("", nil)
+			m.__n17 = fynelayout.NewButton("", nil)
 			m.__n17.SetText(n)
 			m.__list_th(fmt.Sprint(__copy0), m.__n17)
 			m.__n17.OnTapped = func() {
@@ -4549,7 +4549,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:c486a3f50cab72c20877078aaff5ba9b
 -- run/go/fyne --
-pass sha256:2382136363f52d3c7b062282a3031bdb
+pass sha256:bcdb7bd01e2550aedf1b5772a5dbcba0
 -- run/go/gtk4 --
 pass sha256:ed5f4e7c318a35bb9724cb2feadffb15
 -- run/kotlin/android --

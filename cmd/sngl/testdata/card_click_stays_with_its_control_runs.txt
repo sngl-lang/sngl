@@ -85,7 +85,7 @@ sha256:f0a3975f7946dbf1eb79e3dc4ea13ef7
   ]
 }
 -- testrun/fyne/go/app.sngl/cardWithButton/1 --
-sha256:1d32c9e8c7b8c19bbf87b54f224b8037
+sha256:a832d0b0a49227507e4b6ce8c2dc6a5a
 {
   "results": [
     {

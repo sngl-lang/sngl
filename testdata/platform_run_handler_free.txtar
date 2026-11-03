@@ -63,9 +63,6 @@ func __run(args []string, run func()) {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -88,7 +85,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText("hi")
@@ -171,7 +167,7 @@ func __run(args []string, run func()) {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -211,6 +207,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:8a2c8d26ed9b555b5cb5e6858d97a7df
+pass sha256:3a8f2b55ac9005c524401aedb5c48657
 -- run/go/gtk4 --
-pass sha256:3e56c3aa212bff85e2b1e73edaad5b5c
+pass sha256:ae649e3a329e14a5530350c632441576

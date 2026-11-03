@@ -497,9 +497,6 @@ func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -530,7 +527,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetTitle("t")
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = fynelayout.NewVBox()
 	m.__n2 = fynelayout.NewVBox()
@@ -881,7 +877,7 @@ func LineJoinFunc(join string) C.cairo_line_join_t {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -1431,9 +1427,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:459417cb6b80964ec7e715d0c39e8f2f
 -- run/go/fyne --
-pass sha256:1694f7b942486bb63cccd00890bb8292
+pass sha256:13d872111dd4d25a69dc9ad2fb3c1cab
 -- run/go/gtk4 --
-pass sha256:5c011aa0cf868069dbcf09a7397c2ccd
+pass sha256:490e41ae392691cf2a92ed910ae93848
 -- run/kotlin/android --
 pass sha256:04d632dbcc994e072d51b40c89ed3e52
 -- run/none/html --

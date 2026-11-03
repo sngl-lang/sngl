@@ -32,7 +32,6 @@ import (
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -102,7 +101,7 @@ type Model struct {
 	visible__inst0 bool
 
 	__n0      *fynelayout.Toplevel
-	__n1      *widget.Button
+	__n1      *fynelayout.Button
 	__n1__box *fynelayout.Box
 	__built   bool
 }
@@ -250,9 +249,6 @@ func CursorOf(name string) int {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -294,7 +290,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	var __lt10 string
 	if m.on {
@@ -302,7 +297,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	} else {
 		__lt10 = "normal"
 	}
-	m.__n1 = widget.NewButton("", nil)
+	m.__n1 = fynelayout.NewButton("", nil)
 	m.__n1__box = fynelayout.NewBox(m.__n1)
 	m.__n1.SetText("x")
 	m.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt10, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
@@ -636,7 +631,7 @@ func LineOf(s Style) string {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -703,6 +698,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:c3862f2cb303b1349ca37beee0a58e45
+pass sha256:5d898c0cc540b4fd0102c39513680aee
 -- run/go/gtk4 --
-pass sha256:7a952d011d54e38371ff6954ca249246
+pass sha256:f2c6020e8d8d4a6829b0a374ac632426

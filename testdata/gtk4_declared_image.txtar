@@ -445,7 +445,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
@@ -698,4 +698,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:920a0746e447e4780d11ff7b752356fa
+pass sha256:bdb09b17aaeebb51f566bb78d28227ad

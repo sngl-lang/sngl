@@ -616,7 +616,7 @@ func LineOf(s Style) string {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -701,4 +701,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:173edbd7def0eb6a5982a4fb9a847fe1
+pass sha256:5a1f97ef8a1bc1184e688d6cb2d0df93

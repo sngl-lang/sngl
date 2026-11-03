@@ -785,12 +785,12 @@ type Model struct {
 	__n0    *fynelayout.Toplevel
 	__n4    *fyne.Container
 	__n5    *fyne.Container
-	all     *widget.Button
+	all     *fynelayout.Button
 	__n1    *widget.Label
 	__n2    *widget.Label
 	__n6    *fyne.Container
 	__n7    *fyne.Container
-	all__1  *widget.Button
+	all__1  *fynelayout.Button
 	__n3    *widget.Label
 	__built bool
 }
@@ -810,9 +810,6 @@ func New() *Model {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -961,11 +958,10 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n4 = fynelayout.NewVBox()
 	m.__n5 = fynelayout.NewVBox()
-	m.all = widget.NewButton("", nil)
+	m.all = fynelayout.NewButton("", nil)
 	m.all.SetText("all")
 	m.all.OnTapped = m.all_click_handler
 	m.__n5.Add(m.all)
@@ -979,7 +975,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.Add(m.__n4)
 	m.__n6 = fynelayout.NewVBox()
 	m.__n7 = fynelayout.NewVBox()
-	m.all__1 = widget.NewButton("", nil)
+	m.all__1 = fynelayout.NewButton("", nil)
 	m.all__1.SetText("all")
 	m.all__1.OnTapped = m.all__1_click_handler
 	m.__n7.Add(m.all__1)
@@ -1075,7 +1071,7 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -1600,9 +1596,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:4c46d3d919824d9a280ac69b6432adca
 -- run/go/fyne --
-pass sha256:3d7cdd532d620d462e6f7bbbb15cdb24
+pass sha256:82433ed73fec82617bd6c096b7788861
 -- run/go/gtk4 --
-pass sha256:9569bd889073c3b9575364a47fb244d7
+pass sha256:7302b9efb3954ca0daeed8f7c602586f
 -- run/kotlin/android --
 pass sha256:a4d2fd211cc9f0d8fe3e2b50f47faa45
 -- run/none/html --

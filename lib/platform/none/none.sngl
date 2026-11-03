@@ -306,10 +306,10 @@ const component markup.token[platform](kind, content) {
 // the system's back, and its `@key` a key pressed in it, which a test fires
 // through the window's `#id`.
 #[intrinsic("none:Window")]
-component Window(@back(), @key(key string), content ...component ui.node) root
+component Window(@back(), @key(e ui.KeyPress, stop func()), content ...component ui.node) root
 
 const component ui.window[platform](@error, @back, @key, content) {
-    Window(@back { back() }, @key(k) { key(k) }) {
+    Window(@back { back() }, @key(e, stop) { key(e, stop) }) {
         boundary(@error(e) { error(e) }) {
             content
         }

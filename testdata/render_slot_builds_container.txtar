@@ -81,7 +81,7 @@ type Model struct {
 	__n7      *fyne.Container
 	__n8      *fyne.Container
 	__n8__box *fynelayout.Box
-	more      *widget.Button
+	more      *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -229,7 +229,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n8__box.SetLook(fynelayout.Look{PaddingLeft: 20.0, Gap: 4.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 	m.__renderSlot1(m.__n8)
 	m.__n7.Add(m.__n8__box)
-	m.more = widget.NewButton("", nil)
+	m.more = fynelayout.NewButton("", nil)
 	m.more.SetText("more")
 	m.more.OnTapped = m.more_click_handler
 	m.__n7.Add(m.more)
@@ -249,7 +249,7 @@ type __checkbox_state0Instance struct {
 	__slot0_at             fyne.CanvasObject
 	__slot1                []fyne.CanvasObject
 	__slot1_at             fyne.CanvasObject
-	__n0                   *widget.Check
+	__n0                   *fynelayout.Check
 }
 
 func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_disabled bool) *__checkbox_state0Instance {
@@ -261,7 +261,7 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__n0 = widget.NewCheck("", nil)
+	c.__n0 = fynelayout.NewCheck("", nil)
 	c.__n0.SetText("")
 	c.__n0.SetChecked(c.checked)
 	c.__n0.OnChanged = func(on bool) {
@@ -591,6 +591,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:21a1e8496ee4a75dc25f8826efb41ce3
+pass sha256:b17afe81ee15f668f302ce85185b21aa
 -- run/go/gtk4 --
 pass sha256:8bcad128f505f956a36ae8663244db81

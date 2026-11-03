@@ -887,10 +887,10 @@ type Model struct {
 
 	__n1    *fynelayout.Toplevel
 	heading *widget.Label
-	toAbout *widget.Button
-	back    *widget.Button
+	toAbout *fynelayout.Button
+	back    *fynelayout.Button
 	__built bool
-	pick    *widget.Button
+	pick    *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -974,7 +974,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 							__n3__el := __n3.Root
 							fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
 							m.__slot0 = append(m.__slot0, __n3__el)
-							m.pick = widget.NewButton("", nil)
+							m.pick = fynelayout.NewButton("", nil)
 							m.pick.SetText("pick")
 							m.pick.OnTapped = func() {
 								m.pages__history__inst0 = append(m.pages__history__inst0, Pages__entry{Page: m.pages__current__inst0, Cell: m.cell__params__inst0})
@@ -1059,9 +1059,6 @@ func (m *Model) __snglTeardown() {
 }
 
 func (m *Model) __n1_closed_handler() {
-}
-
-func (m *Model) __n1_key_handler(k string) {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
@@ -1156,18 +1153,17 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetTitle("Grid")
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
-	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__renderSlot0(m.__n1.Container)
 	m.__renderSlot1(m.__n1.Container)
 	m.heading = widget.NewLabel("")
 	m.heading.SetText(m.pages__current__inst0.Title)
 	m.__n1.Add(m.heading)
-	m.toAbout = widget.NewButton("", nil)
+	m.toAbout = fynelayout.NewButton("", nil)
 	m.toAbout.SetText("About")
 	m.toAbout.OnTapped = m.toAbout_click_handler
 	m.__n1.Add(m.toAbout)
-	m.back = widget.NewButton("", nil)
+	m.back = fynelayout.NewButton("", nil)
 	m.back.SetText("Back")
 	m.back.OnTapped = m.back_click_handler
 	m.__n1.Add(m.back)
@@ -1545,7 +1541,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
@@ -1974,8 +1970,8 @@ fun MainScreen() {
 -- run/go/bubbletea --
 pass sha256:ee9ec2660d6f73e41a18ea03a0863dc9
 -- run/go/fyne --
-pass sha256:9e0d843c81addfda7112cf6374993623
+pass sha256:e51f1b5f04b192544684b883e12a3825
 -- run/go/gtk4 --
-pass sha256:a976a9e7d8addda201bc8e238c8e2e80
+pass sha256:7037adf5c5fddd9445491eb82780a9ec
 -- run/kotlin/android --
 pass sha256:80640a32d05895ed7e298d7be998bce5

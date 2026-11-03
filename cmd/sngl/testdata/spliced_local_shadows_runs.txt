@@ -89,7 +89,7 @@ sha256:abbde21541e1b9d5885c2fa696457fa7
   ]
 }
 -- testrun/fyne/go/app.sngl/cards/1 --
-sha256:b67f4d65f4ca30b62da3ee60e410d975
+sha256:92c33076f97134260288acf782c1bfc6
 {
   "results": [
     {

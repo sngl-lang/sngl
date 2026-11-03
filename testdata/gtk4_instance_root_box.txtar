@@ -227,7 +227,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n2_closed_handler() {
 }
 
-func (m *Model) __n2_key_handler(k string) {
+func (m *Model) __n2_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n2_visible_handler(__visible bool) {
@@ -529,4 +529,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n2)
 }
 -- run/go/gtk4 --
-pass sha256:27619018e326c23468f1b7846924d813
+pass sha256:5893e769fb98b9ef7eaad9e84bc4c284

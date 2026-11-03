@@ -455,7 +455,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -464,7 +463,7 @@ type Model struct {
 	taps int
 
 	__n0 *fynelayout.ReachScroll
-	tap  *widget.Button
+	tap  *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -501,7 +500,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewReachScroll()
 	m.__n0.SetDirection("both")
 	m.__n0.OnReachEnd = m.__n0_reachEnd_handler
-	m.tap = widget.NewButton("", nil)
+	m.tap = fynelayout.NewButton("", nil)
 	m.tap.SetText("tap")
 	m.tap.OnTapped = m.tap_click_handler
 	m.__n0.Content = m.tap
@@ -995,7 +994,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:cf79fbc7b99f1470f820cf0011533ab1
 -- run/go/fyne --
-pass sha256:6c8191b6b1f8a9bff8cc160ac95fbb80
+pass sha256:bb88f782c3be3b770379f4ff10c52ca1
 -- run/go/gtk4 --
 pass sha256:a09443377ba402d951a4095976109801
 -- run/kotlin/android --

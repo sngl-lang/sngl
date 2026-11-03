@@ -253,6 +253,9 @@ type irAnalysis struct {
 	hasFocus  bool // true when __focusOrder pass injected __focusID/__focusNext/__focusPrev
 	// sleepers counts the widgets that tick themselves (sleep.go).
 	sleepers int
+	// keyType is the Go type of the KeyPress the window's `@key` hears, ""
+	// where nothing reads one (windowKeyType).
+	keyType string
 	// settles is true where passFocusOrder declared __focusSettle: some stop
 	// may draw nothing, and focus is moved off one once Update has run.
 	settles bool
@@ -577,6 +580,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		emitClickFields(&b, info)
 	}
 	emitSleepFields(&b, info)
+	if screenKeyHandler(info) != nil {
+		fmt.Fprintf(&b, "\t%s bool\n", unheardField)
+	}
 	b.WriteString("\twidth, height int\n")
 	b.WriteString("}\n\n")
 
@@ -1022,6 +1028,8 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("\tvar cmds []tea.Cmd\n")
 	b.WriteString("\tvar cmd tea.Cmd\n")
 	b.WriteString("\t_ = cmd\n")
+	info.keyType = windowKeyType(info, ctx.Pkg)
+	emitScreenKeyFirst(b, info)
 
 	// Overlay focus capture: while any modal/drawer overlay is open, the
 	// background UI is frozen — its Tab focus-nav, key-activation handlers, and
@@ -1147,7 +1155,6 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		info.owners = triggerOwners(viewStmts(ctx), codegen.TriggeredEvents(ctx.Pkg))
 	}
 	emitIRButtonHandlers(b, viewStmts(ctx), info, gc, caseGuard, invokerSink)
-	emitScreenKeyCase(b, info, caseGuard)
 
 	b.WriteString("\t\t}\n") // end switch
 	b.WriteString("\t}\n")   // end type switch
@@ -1511,14 +1518,23 @@ func emitBtDirectInvokers(b *strings.Builder, stmts []ir.Stmt, keyed []btEventIn
 			drawAfterUpdate(b)
 			b.WriteString("}\n\n")
 		}
-		// A key is pressed, as the terminal would press it.
-		if ok && programID(n) && btIntrinsic(n) == "Screen" && triggered[n.ID+".key"] && !done[n.ID+".key"] {
+		// A key is pressed, as the terminal would press it: the window's
+		// handler hears the test's own KeyPress, and the key goes on through
+		// Update unless it stopped it, which the test's stop is told of.
+		if ok && programID(n) && btIntrinsic(n) == "Screen" && triggered[n.ID+".key"] && !done[n.ID+".key"] && info.keyType != "" {
 			done[n.ID+".key"] = true
 			name := n.ID + "Key"
 			gc.RequireImport(tuiImportPath)
-			fmt.Fprintf(b, "// %s presses the key named k in the #%s window; for tests.\n", name, n.ID)
-			fmt.Fprintf(b, "func (m *Model) %s(k string) {\n", name)
-			b.WriteString("\tnm, _ := m.Update(tui.KeyPress(k))\n")
+			fmt.Fprintf(b, "// %s presses the key e names in the #%s window; for tests.\n", name, n.ID)
+			fmt.Fprintf(b, "func (m *Model) %s(e %s, stop func()) {\n", name, info.keyType)
+			if screenKeyHandler(info) != nil {
+				fmt.Fprintf(b, "\tif m.%s(e) {\n\t\tstop()\n\t\treturn\n\t}\n", screenKeyMethod)
+				fmt.Fprintf(b, "\tm.%s = true\n", unheardField)
+			}
+			b.WriteString("\tnm, _ := m.Update(tui.KeyPress(e.Key, e.Ctrl, e.Alt, e.Shift, e.Meta))\n")
+			if screenKeyHandler(info) != nil {
+				fmt.Fprintf(b, "\tm.%s = false\n", unheardField)
+			}
 			b.WriteString("\t*m = nm.(Model)\n")
 			drawAfterUpdate(b)
 			b.WriteString("}\n\n")
@@ -1976,54 +1992,120 @@ func screenKeyHandler(info *irAnalysis) *ir.EventHandler {
 	return h
 }
 
-// emitScreenKeyCase is the key switch's last case: a key no case before it
-// took, which the window hears unless a widget holding focus takes it.
-func emitScreenKeyCase(b *strings.Builder, info *irAnalysis, guard string) {
+// unheardField says the key Update is sent is no key the window hears: a
+// click's pressing a stop, which pressed none, or a test's the window's
+// handler already heard (emitBtDirectInvokers).
+const unheardField = "__unheard"
+
+// windowKeyType is the Go type of the KeyPress the window's `@key` hears:
+// its handler's parameter's, else the one a test hands the trigger, else ""
+// where neither names it and so nothing reads one.
+func windowKeyType(info *irAnalysis, pkg *ir.Package) string {
+	h := screenKeyHandler(info)
+	if h == nil {
+		return ""
+	}
+	if ps := h.Func.Params; len(ps) > 0 {
+		return golang.IRTypeToGo(ps[0].Type)
+	}
+	for k, ts := range codegen.TriggerArgs(pkg) {
+		if strings.HasSuffix(k, ".key") && len(ts) > 0 {
+			return golang.IRTypeToGo(ts[0])
+		}
+	}
+	return ""
+}
+
+// emitScreenKeyFirst writes what Update does with a key before anything else
+// sees it: the window's `@key` hears it, and a handler that called stop leaves
+// msg nil, so no case of the switch and no widget it is forwarded to takes it.
+// ctrl+c, the close, is no key the window hears (tui.KeyName).
+func emitScreenKeyFirst(b *strings.Builder, info *irAnalysis) {
 	if screenKeyHandler(info) == nil {
 		return
 	}
-	var held []string
+	var typing []string
 	for _, w := range info.widgets {
-		if w.focusExpr != "" {
-			held = append(held, w.focusExpr)
+		if !typingStop(w.node) {
+			continue
 		}
 		if w.loop != nil {
 			if lf, ok := nodeLoopFocus(w.node); ok {
-				held = append(held, fmt.Sprintf("m.__focusID == %d", lf.slot))
+				typing = append(typing, fmt.Sprintf("m.__focusID == %d", lf.slot))
 			}
+		} else if w.focusExpr != "" {
+			typing = append(typing, w.focusExpr)
 		}
 	}
-	cond := "__k != \"\""
-	if len(held) > 0 {
-		cond += " && !(" + strings.Join(held, " || ") + ")"
+	editing := "false"
+	if len(typing) > 0 {
+		editing = strings.Join(typing, " || ")
+	}
+	arg := ""
+	if info.keyType != "" {
+		arg = fmt.Sprintf("%s{\n", info.keyType) +
+			"\t\t\tKey:     __k,\n" +
+			"\t\t\tCtrl:    __kp.Mod&tea.ModCtrl != 0,\n" +
+			"\t\t\tAlt:     __kp.Mod&tea.ModAlt != 0,\n" +
+			"\t\t\tShift:   __kp.Mod&tea.ModShift != 0,\n" +
+			"\t\t\tMeta:    __kp.Mod&(tea.ModMeta|tea.ModSuper) != 0,\n" +
+			"\t\t\tEditing: " + editing + ",\n" +
+			"\t\t}"
 	}
 	info.gc.RequireImport(tuiImportPath)
-	fmt.Fprintf(b, "\t\tcase true%s:\n", guard)
-	fmt.Fprintf(b, "\t\t\tif __k := tui.KeyName(msg); %s {\n", cond)
-	fmt.Fprintf(b, "\t\t\t\tm.%s(__k)\n", screenKeyMethod)
-	b.WriteString("\t\t\t}\n")
+	fmt.Fprintf(b, "\tif __kp, ok := msg.(tea.KeyPressMsg); ok && !m.%s {\n", unheardField)
+	fmt.Fprintf(b, "\t\tif __k := tui.KeyName(__kp); __k != \"\" && m.%s(%s) {\n", screenKeyMethod, arg)
+	b.WriteString("\t\t\tmsg = nil\n")
+	b.WriteString("\t\t}\n")
+	b.WriteString("\t}\n")
 }
 
-// emitScreenKeyMethod writes the method running the window's `@key`.
+// typingStop says the focus stop n takes what is typed (`Focus.typing`).
+func typingStop(n *ir.NodeInst) bool {
+	sl, ok := codegen.NodeProp(n, "focus").(*ir.StructLit)
+	if !ok {
+		return false
+	}
+	b, _ := codegen.IRLiteralBool(structField(sl, "typing"))
+	return b
+}
+
+// emitScreenKeyMethod writes the method running the window's `@key`, which
+// reports whether the handler stopped the key.
 func emitScreenKeyMethod(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext) {
 	h := screenKeyHandler(info)
 	if h == nil {
 		return
 	}
 	hgc := gc
-	fmt.Fprintf(b, "// %s runs the window's @key: a key nothing in it took.\n", screenKeyMethod)
-	fmt.Fprintf(b, "func (m *Model) %s(__k string) {\n", screenKeyMethod)
-	if len(h.Func.Params) > 0 {
-		name := h.Func.Params[0].Name
-		hgc = gc.WithLocal(name)
-		fmt.Fprintf(b, "\t%s := __k\n\t_ = %s\n", name, name)
+	ps := h.Func.Params
+	param := ""
+	if info.keyType != "" {
+		name := "_"
+		if len(ps) > 0 {
+			name = ps[0].Name
+			hgc = hgc.WithLocal(name)
+		}
+		param = name + " " + info.keyType
 	}
+	fmt.Fprintf(b, "// %s runs the window's @key, before anything in it hears the key.\n", screenKeyMethod)
+	fmt.Fprintf(b, "func (m *Model) %s(%s) bool {\n", screenKeyMethod, param)
+	b.WriteString("\t__stopped := false\n")
+	if len(ps) > 1 {
+		hgc = hgc.WithLocal(ps[1].Name)
+		fmt.Fprintf(b, "\t%s := func() { __stopped = true }\n", ps[1].Name)
+	}
+	// The body is a closure's, so a return in it ends the handler and not
+	// the method, which answers whether it stopped the key.
+	b.WriteString("\tfunc() {\n")
 	for _, stmt := range h.Func.Block {
 		for _, line := range hgc.EvalStmt(stmt) {
-			fmt.Fprintf(b, "\t%s\n", line)
+			fmt.Fprintf(b, "\t\t%s\n", line)
 		}
 	}
+	b.WriteString("\t}()\n")
 	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+	b.WriteString("\treturn __stopped\n")
 	b.WriteString("}\n\n")
 }
 

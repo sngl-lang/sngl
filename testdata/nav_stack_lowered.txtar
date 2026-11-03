@@ -845,10 +845,10 @@ type Model struct {
 	main    *fynelayout.Toplevel
 	__n8    *fyne.Container
 	__n3    *widget.Label
-	__n9    *widget.Button
-	__n10   *widget.Button
-	__n11   *widget.Button
-	__n12   *widget.Button
+	__n9    *fynelayout.Button
+	__n10   *fynelayout.Button
+	__n11   *fynelayout.Button
+	__n12   *fynelayout.Button
 	__built bool
 }
 
@@ -1026,9 +1026,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) main_closed_handler() {
 }
 
-func (m *Model) main_key_handler(k string) {
-}
-
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.main.SetVisible(m.visible__inst0)
@@ -1093,11 +1090,6 @@ func (m *Model) mainClosed() {
 	}
 }
 
-// mainKey calls PressKey on the #main widget; for tests.
-func (m *Model) mainKey(key string) {
-	m.main.PressKey(key)
-}
-
 // mainVisible invokes the OnVisible callback on the #main widget; for tests.
 func (m *Model) mainVisible(visible bool) {
 	if cb := m.main.OnVisible; cb != nil {
@@ -1149,26 +1141,25 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.main.SetTitle(("Docs - " + m.pages__current.Title))
 	m.main.SetVisible(m.visible__inst0)
 	m.main.OnClosed = m.main_closed_handler
-	m.main.OnKey = m.main_key_handler
 	m.main.OnVisible = m.main_visible_handler
 	m.__n8 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n8)
 	m.__n3 = widget.NewLabel("")
 	m.__n3.SetText(m.pages__current.Meta.Label)
 	m.__n8.Add(m.__n3)
-	m.__n9 = widget.NewButton("", nil)
+	m.__n9 = fynelayout.NewButton("", nil)
 	m.__n9.SetText("About")
 	m.__n9.OnTapped = m.__n9_click_handler
 	m.__n8.Add(m.__n9)
-	m.__n10 = widget.NewButton("", nil)
+	m.__n10 = fynelayout.NewButton("", nil)
 	m.__n10.SetText("first")
 	m.__n10.OnTapped = m.__n10_click_handler
 	m.__n8.Add(m.__n10)
-	m.__n11 = widget.NewButton("", nil)
+	m.__n11 = fynelayout.NewButton("", nil)
 	m.__n11.SetText("sngl")
 	m.__n11.OnTapped = m.__n11_click_handler
 	m.__n8.Add(m.__n11)
-	m.__n12 = widget.NewButton("", nil)
+	m.__n12 = fynelayout.NewButton("", nil)
 	m.__n12.SetText("Back")
 	m.__n12.OnTapped = m.__n12_click_handler
 	m.__n8.Add(m.__n12)
@@ -1188,7 +1179,7 @@ type CounterInstance struct {
 	__slot0_at fyne.CanvasObject
 	__slot1    []fyne.CanvasObject
 	__slot1_at fyne.CanvasObject
-	__n0       *widget.Button
+	__n0       *fynelayout.Button
 }
 
 func newCounterInstance(__model *Model) *CounterInstance {
@@ -1198,7 +1189,7 @@ func newCounterInstance(__model *Model) *CounterInstance {
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__n0 = widget.NewButton("", nil)
+	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(("hits " + fmt.Sprint(c.hits)))
 	c.__n0.OnTapped = func() {
 		c.hits += 1
@@ -1531,7 +1522,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) main_closed_handler() {
 }
 
-func (m *Model) main_key_handler(k string) {
+func (m *Model) main_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) main_visible_handler(__visible bool) {
@@ -1807,14 +1798,9 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
-
-// mainKey fires "key" on the #main widget; for tests.
-func (m *Model) mainKey(v string) {
-	gtk4rt.ToplevelKey(m.main, v)
-}
 -- run/go/bubbletea --
 pass sha256:dd6835befca5b1f607b524ebc82a99d7
 -- run/go/fyne --
-pass sha256:b0a2d9babadf314d850c9a42eb3a9b5e
+pass sha256:3779c07986c0de52f83990ab929308a7
 -- run/go/gtk4 --
-pass sha256:943aef67e5ca30590fb4652aa6d4ad83
+pass sha256:a553676a90ada017c98240f568442416

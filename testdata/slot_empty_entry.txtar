@@ -537,7 +537,7 @@ type Model struct {
 	__n3    *widget.Label
 	__n4    *widget.Label
 	__n1    *widget.Label
-	show    *widget.Button
+	show    *fynelayout.Button
 	__built bool
 }
 
@@ -582,9 +582,6 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -636,7 +633,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	__lt10 := "boxed full"
 	m.__n3 = widget.NewLabel("")
@@ -655,7 +651,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetText(__lt11)
 	m.__n0.Add(m.__n1)
 	m.__renderSlot0(m.__n0.Container)
-	m.show = widget.NewButton("", nil)
+	m.show = fynelayout.NewButton("", nil)
 	m.show.SetText("show")
 	m.show.OnTapped = m.show_click_handler
 	m.__n0.Add(m.show)
@@ -751,7 +747,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -981,9 +977,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:2c20ac46e7f4ae1f4c30c362237756eb
 -- run/go/fyne --
-pass sha256:972d8432363f3c2ec490e2c8f287aead
+pass sha256:9870d70a99e268b6e5ffd5df24c2a02e
 -- run/go/gtk4 --
-pass sha256:e23f4121e289c6ea1362a9dfbf04fe1b
+pass sha256:cc9203da5d4d3b0cb2e34355c031f897
 -- run/kotlin/android --
 pass sha256:b02cf01fcd90b2811d415051aa9acc81
 -- run/none/html --

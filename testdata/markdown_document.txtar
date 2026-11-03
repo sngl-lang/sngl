@@ -9496,9 +9496,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
-}
-
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n1.SetVisible(m.visible__inst0)
@@ -9522,7 +9519,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetTitle("guide")
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
-	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__n861 = fynelayout.NewVBox()
 	m.__n861__box = fynelayout.NewBox(m.__n861)
@@ -9543,7 +9539,7 @@ type __checkbox_state1Instance struct {
 	__root                 *fyne.Container
 	__slot0                []fyne.CanvasObject
 	__slot0_at             fyne.CanvasObject
-	__n0                   *widget.Check
+	__n0                   *fynelayout.Check
 }
 
 func new__checkbox_state1Instance(__model *Model, __a___start_checked bool, __a_disabled bool) *__checkbox_state1Instance {
@@ -9554,7 +9550,7 @@ func new__checkbox_state1Instance(__model *Model, __a___start_checked bool, __a_
 	c.checked = c.__prop___start_checked
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	c.__n0 = widget.NewCheck("", nil)
+	c.__n0 = fynelayout.NewCheck("", nil)
 	c.__n0.SetText("")
 	c.__n0.SetChecked(c.checked)
 	c.__n0.OnChanged = func(on bool) {
@@ -9650,6 +9646,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:373cd55b84418ffedbc07c78cd8aab98
 -- run/go/fyne --
-pass sha256:ec5a5c6468c64d1c392fb6f98d54d5f8
+pass sha256:4b89c572e82d4d2ad0ce9ec762102b29
 -- run/none/html --
 pass sha256:b9199f565b9a8bfec0d7b80b34f94adb

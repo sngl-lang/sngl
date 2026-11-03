@@ -535,7 +535,7 @@ type Model struct {
 
 	home    *fynelayout.Toplevel
 	__n1    *fyne.Container
-	__n2    *widget.Button
+	__n2    *fynelayout.Button
 	__n0    *widget.Label
 	__built bool
 }
@@ -556,9 +556,6 @@ func Check(s string) {
 }
 
 func (m *Model) home_closed_handler() {
-}
-
-func (m *Model) home_key_handler(k string) {
 }
 
 func (m *Model) home_visible_handler(__visible bool) {
@@ -595,11 +592,6 @@ func (m *Model) homeClosed() {
 	if m.home.OnClosed != nil {
 		m.home.OnClosed()
 	}
-}
-
-// homeKey calls PressKey on the #home widget; for tests.
-func (m *Model) homeKey(key string) {
-	m.home.PressKey(key)
 }
 
 // homeVisible invokes the OnVisible callback on the #home widget; for tests.
@@ -645,10 +637,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetTitle("raise")
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
-	m.home.OnKey = m.home_key_handler
 	m.home.OnVisible = m.home_visible_handler
 	m.__n1 = fynelayout.NewVBox()
-	m.__n2 = widget.NewButton("", nil)
+	m.__n2 = fynelayout.NewButton("", nil)
 	m.__n2.SetText("go")
 	m.__n2.OnTapped = m.__n2_click_handler
 	m.__n1.Add(m.__n2)
@@ -723,7 +714,7 @@ func Check(s string) {
 func (m *Model) home_closed_handler() {
 }
 
-func (m *Model) home_key_handler(k string) {
+func (m *Model) home_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) home_visible_handler(__visible bool) {
@@ -811,11 +802,6 @@ func (m *Model) buildWidgetTree() {
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.home)
-}
-
-// homeKey fires "key" on the #home widget; for tests.
-func (m *Model) homeKey(v string) {
-	gtk4rt.ToplevelKey(m.home, v)
 }
 -- out/go/html/server.go --
 package main
@@ -1118,9 +1104,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:2588b5956fa97ca16a12891c214b87dc
 -- run/go/fyne --
-pass sha256:ba373e9a045c5dc2a57a523f60c06752
+pass sha256:5716bbb0172587c565e85b7dcdf19721
 -- run/go/gtk4 --
-pass sha256:24632ce63c662a823710ceeb2ca4e41c
+pass sha256:1051bc6ba8d836783b61ab1b3c9be0e4
 -- run/go/html --
 pass sha256:6de026bae683d8cab435041655179fee
 -- run/kotlin/android --

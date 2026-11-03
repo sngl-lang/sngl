@@ -1802,23 +1802,23 @@ type Model struct {
 	__renderAgain2 bool
 
 	__n3          *fyne.Container
-	swap          *widget.Button
+	swap          *fynelayout.Button
 	__n5          *fyne.Container
-	pin           *widget.Button
-	__copies_pin  map[string]*widget.Button
+	pin           *fynelayout.Button
+	__copies_pin  map[string]*fynelayout.Button
 	__n6          *fyne.Container
-	tick          *widget.Button
-	__copies_tick map[string]*widget.Button
+	tick          *fynelayout.Button
+	__copies_tick map[string]*fynelayout.Button
 	__n4          *fyne.Container
 	__n0          *widget.Label
-	__named_mark  *widget.Check
-	__copies_mark map[string]*widget.Check
-	cell          *widget.Button
-	__copies_cell map[string]*widget.Button
-	even          *widget.Button
-	__copies_even map[string]*widget.Button
-	dot           *widget.Button
-	__copies_dot  map[string]*widget.Button
+	__named_mark  *fynelayout.Check
+	__copies_mark map[string]*fynelayout.Check
+	cell          *fynelayout.Button
+	__copies_cell map[string]*fynelayout.Button
+	even          *fynelayout.Button
+	__copies_even map[string]*fynelayout.Button
+	dot           *fynelayout.Button
+	__copies_dot  map[string]*fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -1869,7 +1869,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				for __copy0, row := range m.rows {
 					__n1 := fynelayout.NewHBox()
 					for __copy1, it := range row {
-						m.cell = widget.NewButton("", nil)
+						m.cell = fynelayout.NewButton("", nil)
 						m.cell.SetText(it)
 						m.__list_cell(((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), m.cell)
 						m.cell.OnTapped = func() {
@@ -1937,7 +1937,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				var __iterIdx0 int = -1
 				for e := range m.evens {
 					__iterIdx0 += 1
-					m.even = widget.NewButton("", nil)
+					m.even = fynelayout.NewButton("", nil)
 					m.even.SetText(fmt.Sprint(e))
 					m.__list_even(fmt.Sprint(__iterIdx0), m.even)
 					m.even.OnTapped = func() {
@@ -1971,7 +1971,7 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 				m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
 				m.__copies_dot = nil
 				for __copy0, __copyElem0, __end := 0, 0, m.dots; __copyElem0 < __end; __copy0, __copyElem0 = __copy0+1, __copyElem0+1 {
-					m.dot = widget.NewButton("", nil)
+					m.dot = fynelayout.NewButton("", nil)
 					m.dot.SetText(".")
 					m.__list_dot(fmt.Sprint(__copy0), m.dot)
 					m.dot.OnTapped = func() {
@@ -2112,74 +2112,74 @@ func (m *Model) dotClickAt(key string) {
 	}
 }
 
-func (m *Model) __list_pin(key string, w *widget.Button) {
+func (m *Model) __list_pin(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_pin {
 		if c == w {
 			delete(m.__copies_pin, k)
 		}
 	}
 	if m.__copies_pin == nil {
-		m.__copies_pin = map[string]*widget.Button{}
+		m.__copies_pin = map[string]*fynelayout.Button{}
 	}
 	m.__copies_pin[key] = w
 }
 
-func (m *Model) __list_tick(key string, w *widget.Button) {
+func (m *Model) __list_tick(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_tick {
 		if c == w {
 			delete(m.__copies_tick, k)
 		}
 	}
 	if m.__copies_tick == nil {
-		m.__copies_tick = map[string]*widget.Button{}
+		m.__copies_tick = map[string]*fynelayout.Button{}
 	}
 	m.__copies_tick[key] = w
 }
 
-func (m *Model) __list_mark(key string, w *widget.Check) {
+func (m *Model) __list_mark(key string, w *fynelayout.Check) {
 	for k, c := range m.__copies_mark {
 		if c == w {
 			delete(m.__copies_mark, k)
 		}
 	}
 	if m.__copies_mark == nil {
-		m.__copies_mark = map[string]*widget.Check{}
+		m.__copies_mark = map[string]*fynelayout.Check{}
 	}
 	m.__copies_mark[key] = w
 }
 
-func (m *Model) __list_cell(key string, w *widget.Button) {
+func (m *Model) __list_cell(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_cell {
 		if c == w {
 			delete(m.__copies_cell, k)
 		}
 	}
 	if m.__copies_cell == nil {
-		m.__copies_cell = map[string]*widget.Button{}
+		m.__copies_cell = map[string]*fynelayout.Button{}
 	}
 	m.__copies_cell[key] = w
 }
 
-func (m *Model) __list_even(key string, w *widget.Button) {
+func (m *Model) __list_even(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_even {
 		if c == w {
 			delete(m.__copies_even, k)
 		}
 	}
 	if m.__copies_even == nil {
-		m.__copies_even = map[string]*widget.Button{}
+		m.__copies_even = map[string]*fynelayout.Button{}
 	}
 	m.__copies_even[key] = w
 }
 
-func (m *Model) __list_dot(key string, w *widget.Button) {
+func (m *Model) __list_dot(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_dot {
 		if c == w {
 			delete(m.__copies_dot, k)
 		}
 	}
 	if m.__copies_dot == nil {
-		m.__copies_dot = map[string]*widget.Button{}
+		m.__copies_dot = map[string]*fynelayout.Button{}
 	}
 	m.__copies_dot[key] = w
 }
@@ -2219,7 +2219,7 @@ func (m *Model) SetLog(v string) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3 = fynelayout.NewVBox()
-	m.swap = widget.NewButton("", nil)
+	m.swap = fynelayout.NewButton("", nil)
 	m.swap.SetText("swap")
 	m.swap.OnTapped = m.swap_click_handler
 	m.__n3.Add(m.swap)
@@ -2227,7 +2227,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	for __copy0, row := range m.grid {
 		m.__n5 = fynelayout.NewHBox()
 		for __copy1, it := range row {
-			m.pin = widget.NewButton("", nil)
+			m.pin = fynelayout.NewButton("", nil)
 			m.pin.SetText(it)
 			m.__list_pin(((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), m.pin)
 			m.pin.OnTapped = func() {
@@ -2241,7 +2241,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	for __copy0, r := range []int{0, 1} {
 		m.__n6 = fynelayout.NewHBox()
 		for __copy1, k := range []int{0, 1} {
-			m.tick = widget.NewButton("", nil)
+			m.tick = fynelayout.NewButton("", nil)
 			m.tick.SetText((fmt.Sprint(r) + fmt.Sprint(k)))
 			m.__list_tick(((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), m.tick)
 			m.tick.OnTapped = func() {
@@ -2279,7 +2279,7 @@ type __checkbox_state0Instance struct {
 	__slot1_at             fyne.CanvasObject
 	__slot2                []fyne.CanvasObject
 	__slot2_at             fyne.CanvasObject
-	mark                   *widget.Check
+	mark                   *fynelayout.Check
 }
 
 func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_label string, __a___copy string, __a_change func(bool)) *__checkbox_state0Instance {
@@ -2294,7 +2294,7 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.mark = widget.NewCheck("", nil)
+	c.mark = fynelayout.NewCheck("", nil)
 	c.mark.SetText(c.__prop_label)
 	c.mark.SetChecked(c.checked)
 	c.__model.__list_mark(c.__prop___copy, c.mark)
@@ -3919,7 +3919,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:4258854a8e5ea279e67a4fd33d688338
 -- run/go/fyne --
-pass sha256:564d62318b92a75fd51bb95f914fdb9f
+pass sha256:fe65c3c4abe25842573d8eedbbb96a30
 -- run/go/gtk4 --
 pass sha256:df0f4239dd9f08c2676234b4ae868133
 -- run/kotlin/android --

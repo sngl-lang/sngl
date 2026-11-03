@@ -60,10 +60,10 @@ type Model struct {
 	visible__inst1 bool
 
 	__n0    *fynelayout.Toplevel
-	__n4    *widget.Button
+	__n4    *fynelayout.Button
 	__n1    *widget.Label
 	__n2    *fynelayout.Toplevel
-	__n5    *widget.Button
+	__n5    *fynelayout.Button
 	__n3    *widget.Label
 	__built bool
 }
@@ -79,9 +79,6 @@ func New() *Model {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -109,9 +106,6 @@ func (m *Model) __n4_click_handler() {
 }
 
 func (m *Model) __n2_closed_handler() {
-}
-
-func (m *Model) __n2_key_handler(k string) {
 }
 
 func (m *Model) __n2_visible_handler(__visible bool) {
@@ -180,9 +174,8 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetTitle("A")
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n4 = widget.NewButton("", nil)
+	m.__n4 = fynelayout.NewButton("", nil)
 	m.__n4.SetText("boom a")
 	m.__n4.OnTapped = m.__n4_click_handler
 	m.__n0.Add(m.__n4)
@@ -194,9 +187,8 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.SetTitle("B")
 	m.__n2.SetVisible(m.visible__inst1)
 	m.__n2.OnClosed = m.__n2_closed_handler
-	m.__n2.OnKey = m.__n2_key_handler
 	m.__n2.OnVisible = m.__n2_visible_handler
-	m.__n5 = widget.NewButton("", nil)
+	m.__n5 = fynelayout.NewButton("", nil)
 	m.__n5.SetText("boom b")
 	m.__n5.OnTapped = m.__n5_click_handler
 	m.__n2.Add(m.__n5)
@@ -268,7 +260,7 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -298,7 +290,7 @@ func (m *Model) __n4_clicked_handler() {
 func (m *Model) __n2_closed_handler() {
 }
 
-func (m *Model) __n2_key_handler(k string) {
+func (m *Model) __n2_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n2_visible_handler(__visible bool) {
@@ -490,8 +482,8 @@ dialog { margin: auto; padding: 1em; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:f55f7c79fc15e805fed812d8abbacfa9
+pass sha256:867ed9b6876d1027be4e54d7f9476254
 -- run/go/gtk4 --
-pass sha256:f9bb282a585c35a8a4530f13382b3490
+pass sha256:de22f99dd6f901a88911211a3195d162
 -- run/none/html --
 pass sha256:e04fcd221a40373b10f1e666820f601e

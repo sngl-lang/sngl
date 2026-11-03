@@ -703,8 +703,8 @@ type Model struct {
 
 	__n1    *fynelayout.Toplevel
 	__n8    *fyne.Container
-	__n9    *widget.Button
-	__n10   *widget.Button
+	__n9    *fynelayout.Button
+	__n10   *fynelayout.Button
 	__built bool
 }
 
@@ -929,9 +929,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
-}
-
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n1.SetVisible(m.visible__inst0)
@@ -990,7 +987,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetTitle(("Site - " + m.pages__current.Title))
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
-	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__n8 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n8)
@@ -998,11 +994,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__renderSlot2(m.__n8)
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
-	m.__n9 = widget.NewButton("", nil)
+	m.__n9 = fynelayout.NewButton("", nil)
 	m.__n9.SetText("Contact")
 	m.__n9.OnTapped = m.__n9_click_handler
 	m.__n8.Add(m.__n9)
-	m.__n10 = widget.NewButton("", nil)
+	m.__n10 = fynelayout.NewButton("", nil)
 	m.__n10.SetText("Back")
 	m.__n10.OnTapped = m.__n10_click_handler
 	m.__n8.Add(m.__n10)
@@ -1390,7 +1386,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
@@ -2109,9 +2105,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:255babf0eadeb774b066889b806d5df5
 -- run/go/fyne --
-pass sha256:b82a5a364f1c81906e742fbfd7fe723b
+pass sha256:9641f4db488b99541c1e4b7b2b8a27a2
 -- run/go/gtk4 --
-pass sha256:4861807c1eb8e171c855e09ff4bd5d9a
+pass sha256:bf70b31c07846ab47f783734b2285b97
 -- run/kotlin/android --
 pass sha256:ae566d640377ffc649874b145020b0ac
 -- run/none/html --

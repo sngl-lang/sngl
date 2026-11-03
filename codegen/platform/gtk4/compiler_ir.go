@@ -1577,9 +1577,8 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 		}
 	}
 	fireArg := ""
-	if v := inv.rtFireValue(); v != "" {
-		valueParam = "v " + v
-		fireArg = ", v"
+	if ps, args := inv.rtFireValue(); ps != "" {
+		valueParam, fireArg = ps, args
 	}
 	params := func(p string) string {
 		if lead == "" {

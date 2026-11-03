@@ -986,7 +986,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -1012,13 +1011,13 @@ type Model struct {
 
 	__n0            *fynelayout.Toplevel
 	__n3            *fyne.Container
-	ts              *widget.Button
+	ts              *fynelayout.Button
 	__n4            *fyne.Container
-	tp              *widget.Button
+	tp              *fynelayout.Button
 	__built         bool
-	__named_hit     *widget.Button
-	__named_k       *widget.Button
-	__named_k__own0 *widget.Button
+	__named_hit     *fynelayout.Button
+	__named_k       *fynelayout.Button
+	__named_k__own0 *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -1240,9 +1239,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -1352,17 +1348,16 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n3 = fynelayout.NewVBox()
-	m.ts = widget.NewButton("", nil)
+	m.ts = fynelayout.NewButton("", nil)
 	m.ts.SetText("s")
 	m.ts.OnTapped = m.ts_click_handler
 	m.__n3.Add(m.ts)
 	m.__renderSlot0(m.__n3)
 	m.__n0.Add(m.__n3)
 	m.__n4 = fynelayout.NewVBox()
-	m.tp = widget.NewButton("", nil)
+	m.tp = fynelayout.NewButton("", nil)
 	m.tp.SetText("p")
 	m.tp.OnTapped = m.tp_click_handler
 	m.__n4.Add(m.tp)
@@ -1383,7 +1378,7 @@ type BadgeInstance struct {
 	__slot0_at   fyne.CanvasObject
 	__slot1      []fyne.CanvasObject
 	__slot1_at   fyne.CanvasObject
-	hit          *widget.Button
+	hit          *fynelayout.Button
 }
 
 func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
@@ -1394,7 +1389,7 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.hit = widget.NewButton("", nil)
+	c.hit = fynelayout.NewButton("", nil)
 	c.hit.SetText((c.__prop_label + fmt.Sprint(c.hits)))
 	c.hit.OnTapped = func() {
 		c.hits = (c.hits + 1)
@@ -1423,7 +1418,7 @@ type __child0Instance struct {
 	__slot0_at   fyne.CanvasObject
 	__slot1      []fyne.CanvasObject
 	__slot1_at   fyne.CanvasObject
-	k            *widget.Button
+	k            *fynelayout.Button
 }
 
 func new__child0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__child0Instance {
@@ -1434,7 +1429,7 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.k = widget.NewButton("", nil)
+	c.k = fynelayout.NewButton("", nil)
 	c.k.SetText(("mk" + fmt.Sprint(c.__prop___p0)))
 	c.k.OnTapped = func() {
 		c.__prop___on0()
@@ -1470,7 +1465,7 @@ type __child1Instance struct {
 	__slot0_at   fyne.CanvasObject
 	__slot1      []fyne.CanvasObject
 	__slot1_at   fyne.CanvasObject
-	k__own0      *widget.Button
+	k__own0      *fynelayout.Button
 }
 
 func new__child1Instance(__model *Model, __a___p0 int, __a___on0 func()) *__child1Instance {
@@ -1481,7 +1476,7 @@ func new__child1Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.k__own0 = widget.NewButton("", nil)
+	c.k__own0 = fynelayout.NewButton("", nil)
 	c.k__own0.SetText(("pk" + fmt.Sprint(c.__prop___p0)))
 	c.k__own0.OnTapped = func() {
 		c.__prop___on0()
@@ -1828,7 +1823,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -2899,9 +2894,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:5af97c6ec3e84ee19645d725b3d1bd8b
 -- run/go/fyne --
-pass sha256:90c320599d402012d780d63e793083e7
+pass sha256:cd3dc104001c13c73d3f5f3e60f95d30
 -- run/go/gtk4 --
-pass sha256:4ac82203b4bd9155823543a7c3d66ad3
+pass sha256:860eb0cb1a7d7a8676eadf2a8e4301f9
 -- run/kotlin/android --
 pass sha256:78135c9e37ac2c2ea5665d57c7b53370
 -- run/none/html --

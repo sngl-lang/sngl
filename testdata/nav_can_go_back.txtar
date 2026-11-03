@@ -642,7 +642,7 @@ type Model struct {
 	__renderAgain1 bool
 
 	main       *fynelayout.Toplevel
-	toAbout    *widget.Button
+	toAbout    *fynelayout.Button
 	main__back *fynelayout.Back
 }
 
@@ -742,9 +742,6 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 func (m *Model) main_closed_handler() {
 }
 
-func (m *Model) main_key_handler(k string) {
-}
-
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.main.SetVisible(m.visible__inst0)
@@ -763,11 +760,6 @@ func (m *Model) mainClosed() {
 	if m.main.OnClosed != nil {
 		m.main.OnClosed()
 	}
-}
-
-// mainKey calls PressKey on the #main widget; for tests.
-func (m *Model) mainKey(key string) {
-	m.main.PressKey(key)
 }
 
 // mainVisible invokes the OnVisible callback on the #main widget; for tests.
@@ -831,10 +823,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.main.SetTitle(m.pages__current.Title)
 	m.main.SetVisible(m.visible__inst0)
 	m.main.OnClosed = m.main_closed_handler
-	m.main.OnKey = m.main_key_handler
 	m.main.OnVisible = m.main_visible_handler
 	m.__renderSlot0(m.main.Container)
-	m.toAbout = widget.NewButton("", nil)
+	m.toAbout = fynelayout.NewButton("", nil)
 	m.toAbout.SetText("About")
 	m.toAbout.OnTapped = m.toAbout_click_handler
 	m.main.Add(m.toAbout)
@@ -1045,7 +1036,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 func (m *Model) main_closed_handler() {
 }
 
-func (m *Model) main_key_handler(k string) {
+func (m *Model) main_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) main_visible_handler(__visible bool) {
@@ -1117,11 +1108,6 @@ func (m *Model) buildWidgetTree() {
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.main)
-}
-
-// mainKey fires "key" on the #main widget; for tests.
-func (m *Model) mainKey(v string) {
-	gtk4rt.ToplevelKey(m.main, v)
 }
 
 // toAboutClick fires the "clicked" signal on the #toAbout widget; for tests.
@@ -1425,8 +1411,8 @@ class MainScreenTest {
 -- run/go/bubbletea --
 pass sha256:bb98660e7335025880a64e4efbf1b0c4
 -- run/go/fyne --
-pass sha256:775cc44b6b9b07c9b40408b45ba21946
+pass sha256:aa0acee35f2b603a30a80369abbda664
 -- run/go/gtk4 --
-pass sha256:1c5a15b9be46364f94d2d1b06fae3e88
+pass sha256:305c499e8b9d8e4a0260a8d5e944143b
 -- run/kotlin/android --
 pass sha256:aea3c8a019969ff737989e86957de55a

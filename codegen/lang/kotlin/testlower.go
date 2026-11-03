@@ -311,12 +311,15 @@ func lowerEventTrigger(call *ir.CallStmt, surf TestSurface, compRecvs map[string
 	if event == "back" && tt.Key() == nil && len(c.Args) == 0 {
 		return fmt.Sprintf("composeTestRule.onNodeWithTag(%q)%s; composeTestRule.waitForIdle()", id+"__back", clickAction), true
 	}
-	// A window's key is pressed as a hardware keyboard presses it, handed to
-	// the activity's decor view (keys.kt's snglPressKey), so what is focused
-	// takes it before the window may.
-	if event == "key" && tt.Key() == nil && len(c.Args) == 1 && windowHandle(c.Receiver) {
-		name := lowerTestExpr(c.Args[0].Value, surf, compRecvs)
-		return fmt.Sprintf("composeTestRule.runOnUiThread { snglPressKey(%s, %s) }; composeTestRule.waitForIdle()", testActivity, name), true
+	// A window's key is heard by the window's `@key` as the test gives it,
+	// and pressed on, unless the handler stopped it, as a hardware keyboard
+	// presses it, handed to the activity's decor view (keys.kt's
+	// snglPressKey), so it goes where it would have gone. The test's stop is
+	// told of a stopped key once the UI thread is done with it.
+	if event == "key" && tt.Key() == nil && len(c.Args) == 2 && windowHandle(c.Receiver) {
+		press := lowerTestExpr(c.Args[0].Value, surf, compRecvs)
+		stop := lowerTestExpr(c.Args[1].Value, surf, compRecvs)
+		return fmt.Sprintf("run { val __press = %s; val __stop: () -> Unit = %s; var __stopped = false; composeTestRule.runOnUiThread { __stopped = snglPressKey(%s, __press, __press.key, __press.ctrl, __press.alt, __press.shift, __press.meta) }; composeTestRule.waitForIdle(); if (__stopped) __stop() }", press, stop, testActivity), true
 	}
 	tag := copyMatcher(id, tt.Key())
 	if carriesState(c.Args) {

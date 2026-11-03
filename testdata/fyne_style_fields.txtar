@@ -137,9 +137,9 @@ type Model struct {
 	__n5       *widget.Label
 	__n5__box  *fynelayout.Box
 	__n6       *fyne.Container
-	__n7       *widget.Button
+	__n7       *fynelayout.Button
 	__n7__box  *fynelayout.Box
-	__n8       *widget.Button
+	__n8       *fynelayout.Button
 	__n8__box  *fynelayout.Box
 	__n9       *fyne.Container
 	__n10      *widget.Label
@@ -291,9 +291,6 @@ func CursorOf(name string) int {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -331,7 +328,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetTitle("Style")
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n3 = fynelayout.NewVBox()
 	m.__n3__box = fynelayout.NewBox(m.__n3)
@@ -357,13 +353,13 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n5__box.SetLook(fynelayout.Look{Width: 200.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{R: 255, A: 255}, StrokeWidth: 2.0, Radius: 4.0, TextColor: snglcolor.Color{}, Monospace: true, TextAlign: 2})
 	m.__n3.Add(m.__n5__box)
 	m.__n6 = fynelayout.NewHBox()
-	m.__n7 = widget.NewButton("", nil)
+	m.__n7 = fynelayout.NewButton("", nil)
 	m.__n7__box = fynelayout.NewBox(m.__n7)
 	m.__n7.SetText("one")
 	m.__n7__box.SetLook(fynelayout.Look{MarginTop: 4.0, MarginRight: 4.0, MarginBottom: 4.0, MarginLeft: 4.0, Grow: 1.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
 	m.__n7.OnTapped = m.__n7_click_handler
 	m.__n6.Add(m.__n7__box)
-	m.__n8 = widget.NewButton("", nil)
+	m.__n8 = fynelayout.NewButton("", nil)
 	m.__n8__box = fynelayout.NewBox(m.__n8)
 	m.__n8.SetText("two")
 	m.__n8__box.SetLook(fynelayout.Look{MarginLeft: 14.0, Grow: 2.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}})
@@ -393,4 +389,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:8104e5ad6d3c7fbd10b64fb23cde4c3e
+pass sha256:a3ea1b9d969b8f61415ef880569d9cc1

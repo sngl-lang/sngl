@@ -443,9 +443,6 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -468,7 +465,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = fynelayout.NewVBox()
 	m.__n2 = fynelayout.NewVBox()
@@ -540,7 +536,7 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -802,9 +798,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:c1a64946f41f3bae3b5e44cfc0b0dffa
 -- run/go/fyne --
-pass sha256:e2cc0e56e5de80f3c7f8248dfac5545e
+pass sha256:9fdea091ffac25ec17ec3c820d111657
 -- run/go/gtk4 --
-pass sha256:951b82143a974a964b14bb94a6af88a6
+pass sha256:6d4adbd463eeb99cdc61e554b5481bcd
 -- run/kotlin/android --
 pass sha256:52798d976b83dc083f953fdd34ae5634
 -- run/none/html --

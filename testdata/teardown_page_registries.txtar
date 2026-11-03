@@ -554,7 +554,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -570,7 +569,7 @@ type Model struct {
 
 	__n1    *fynelayout.Toplevel
 	__n3    *fyne.Container
-	__n6    *widget.Button
+	__n6    *fynelayout.Button
 	__built bool
 }
 
@@ -646,9 +645,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
-}
-
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n1.SetVisible(m.visible__inst0)
@@ -685,11 +681,10 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetTitle("t")
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
-	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__n3 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n3)
-	m.__n6 = widget.NewButton("", nil)
+	m.__n6 = fynelayout.NewButton("", nil)
 	m.__n6.SetText("flip")
 	m.__n6.OnTapped = m.__n6_click_handler
 	m.__n3.Add(m.__n6)
@@ -855,7 +850,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
@@ -1053,6 +1048,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/bubbletea --
 pass sha256:4f35ae3eccd96fdb9b8ae61db7ddc2f1
 -- run/go/fyne --
-pass sha256:28f55b4da4525ef5c2993c7a91fb3f28
+pass sha256:405def3de789f5c4feeefb94cca02231
 -- run/go/gtk4 --
-pass sha256:04593562534d900cff300d0d2da74b99
+pass sha256:5fbbc9bbaeecd0e747b7f809d69b943b

@@ -83,8 +83,8 @@ type Model struct {
 	__renderAgain0 bool
 
 	__n6 *fyne.Container
-	box  *widget.Entry
-	__n3 *widget.Check
+	box  *fynelayout.Entry
+	__n3 *fynelayout.Check
 	__n4 *widget.Label
 }
 
@@ -249,13 +249,13 @@ func (m *Model) SetChecked__inst0(v bool) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n6 = fynelayout.NewVBox()
-	m.box = widget.NewEntry()
+	m.box = fynelayout.NewEntry()
 	m.box.SetText(m.value__inst0)
 	m.box.SetPlaceHolder("")
 	m.box.OnChanged = m.box_input_handler
 	m.box.OnSubmitted = m.box_change_handler
 	m.__n6.Add(m.box)
-	m.__n3 = widget.NewCheck("", nil)
+	m.__n3 = fynelayout.NewCheck("", nil)
 	m.__n3.SetText("")
 	m.__n3.SetChecked(m.checked__inst0)
 	m.__n3.OnChanged = m.__n3_toggle_handler
@@ -279,8 +279,8 @@ type RowInstance struct {
 	__root         *fyne.Container
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
-	__n0           *widget.Entry
-	__n1           *widget.Check
+	__n0           *fynelayout.Entry
+	__n1           *fynelayout.Check
 	__n2           *widget.Label
 }
 
@@ -294,7 +294,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	__n7 := fynelayout.NewHBox()
-	c.__n0 = widget.NewEntry()
+	c.__n0 = fynelayout.NewEntry()
 	c.__n0.SetText(c.value__inst1)
 	c.__n0.SetPlaceHolder("")
 	c.__n0.OnChanged = func(v string) {
@@ -310,7 +310,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		c.__n2.SetText(c.got)
 	}
 	__n7.Add(c.__n0)
-	c.__n1 = widget.NewCheck("", nil)
+	c.__n1 = fynelayout.NewCheck("", nil)
 	c.__n1.SetText("")
 	c.__n1.SetChecked(c.checked__inst1)
 	c.__n1.OnChanged = func(on bool) {
@@ -812,6 +812,6 @@ func (m *Model) entryChange(v string) {
 	gtk4rt.Emit(m.__named_entry, "activate")
 }
 -- run/go/fyne --
-pass sha256:ae3b4e0f9978200c4359051b27c2fcf9
+pass sha256:ac3b3774285541078def359e2991c8c0
 -- run/go/gtk4 --
 pass sha256:d6ae43194cdef1e7ae1539dd8438a539

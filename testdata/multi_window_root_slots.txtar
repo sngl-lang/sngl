@@ -85,11 +85,11 @@ type Model struct {
 	one     *fynelayout.Toplevel
 	__n3    *widget.Label
 	__n4    *widget.Label
-	more    *widget.Button
+	more    *fynelayout.Button
 	two     *fynelayout.Toplevel
 	__n5    *widget.Label
 	__n6    *widget.Label
-	note    *widget.Button
+	note    *fynelayout.Button
 	__built bool
 }
 
@@ -200,9 +200,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) one_closed_handler() {
 }
 
-func (m *Model) one_key_handler(k string) {
-}
-
 func (m *Model) one_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.one.SetVisible(m.visible__inst0)
@@ -216,9 +213,6 @@ func (m *Model) more_click_handler() {
 }
 
 func (m *Model) two_closed_handler() {
-}
-
-func (m *Model) two_key_handler(k string) {
 }
 
 func (m *Model) two_visible_handler(__visible bool) {
@@ -236,11 +230,6 @@ func (m *Model) oneClosed() {
 	if m.one.OnClosed != nil {
 		m.one.OnClosed()
 	}
-}
-
-// oneKey calls PressKey on the #one widget; for tests.
-func (m *Model) oneKey(key string) {
-	m.one.PressKey(key)
 }
 
 // oneVisible invokes the OnVisible callback on the #one widget; for tests.
@@ -264,11 +253,6 @@ func (m *Model) twoClosed() {
 	if m.two.OnClosed != nil {
 		m.two.OnClosed()
 	}
-}
-
-// twoKey calls PressKey on the #two widget; for tests.
-func (m *Model) twoKey(key string) {
-	m.two.PressKey(key)
 }
 
 // twoVisible invokes the OnVisible callback on the #two widget; for tests.
@@ -329,7 +313,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.one.SetTitle("One")
 	m.one.SetVisible(m.visible__inst0)
 	m.one.OnClosed = m.one_closed_handler
-	m.one.OnKey = m.one_key_handler
 	m.one.OnVisible = m.one_visible_handler
 	m.__n3 = widget.NewLabel("")
 	m.__n3.SetText("one head")
@@ -338,7 +321,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n4 = widget.NewLabel("")
 	m.__n4.SetText("one foot")
 	m.one.Add(m.__n4)
-	m.more = widget.NewButton("", nil)
+	m.more = fynelayout.NewButton("", nil)
 	m.more.SetText("more")
 	m.more.OnTapped = m.more_click_handler
 	m.one.Add(m.more)
@@ -347,7 +330,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.two.SetTitle("Two")
 	m.two.SetVisible(m.visible__inst1)
 	m.two.OnClosed = m.two_closed_handler
-	m.two.OnKey = m.two_key_handler
 	m.two.OnVisible = m.two_visible_handler
 	m.__n5 = widget.NewLabel("")
 	m.__n5.SetText("two head")
@@ -356,7 +338,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n6 = widget.NewLabel("")
 	m.__n6.SetText("two foot")
 	m.two.Add(m.__n6)
-	m.note = widget.NewButton("", nil)
+	m.note = fynelayout.NewButton("", nil)
 	m.note.SetText("note")
 	m.note.OnTapped = m.note_click_handler
 	m.two.Add(m.note)
@@ -375,7 +357,7 @@ type RowInstance struct {
 	__slot0_at   fyne.CanvasObject
 	__slot1      []fyne.CanvasObject
 	__slot1_at   fyne.CanvasObject
-	__n0         *widget.Button
+	__n0         *fynelayout.Button
 }
 
 func newRowInstance(__model *Model, __a_label string) *RowInstance {
@@ -386,7 +368,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__n0 = widget.NewButton("", nil)
+	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((c.__prop_label + " ") + fmt.Sprint(c.n)))
 	c.__n0.OnTapped = func() {
 		c.n += 1
@@ -570,7 +552,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) one_closed_handler() {
 }
 
-func (m *Model) one_key_handler(k string) {
+func (m *Model) one_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) one_visible_handler(__visible bool) {
@@ -588,7 +570,7 @@ func (m *Model) more_clicked_handler() {
 func (m *Model) two_closed_handler() {
 }
 
-func (m *Model) two_key_handler(k string) {
+func (m *Model) two_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) two_visible_handler(__visible bool) {
@@ -740,19 +722,9 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.one)
 }
 
-// oneKey fires "key" on the #one widget; for tests.
-func (m *Model) oneKey(v string) {
-	gtk4rt.ToplevelKey(m.one, v)
-}
-
 // moreClick fires the "clicked" signal on the #more widget; for tests.
 func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
-}
-
-// twoKey fires "key" on the #two widget; for tests.
-func (m *Model) twoKey(v string) {
-	gtk4rt.ToplevelKey(m.two, v)
 }
 
 // noteClick fires the "clicked" signal on the #note widget; for tests.
@@ -760,6 +732,6 @@ func (m *Model) noteClick() {
 	gtk4rt.Emit(m.note, "clicked")
 }
 -- run/go/fyne --
-pass sha256:6a5fa39bb163335c4740cb45218ec1c6
+pass sha256:5b2ecc5232ef1c21e4137c42b4729b7e
 -- run/go/gtk4 --
-pass sha256:bc64a55f32dc7feffca941a955ed8d67
+pass sha256:afdf0a9694b07c7034c7c6d79cd35bb7

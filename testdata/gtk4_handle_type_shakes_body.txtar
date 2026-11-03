@@ -149,7 +149,7 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -210,4 +210,4 @@ func (m *Model) dChange(v *time.Time) {
 	gtk4rt.Emit(m.d, "day-selected")
 }
 -- run/go/gtk4 --
-pass sha256:7704804fa36c37dca856f01c770c74f6
+pass sha256:faa7715cfc5adbdb804b606b637829ae

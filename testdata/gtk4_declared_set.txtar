@@ -165,7 +165,7 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -298,4 +298,4 @@ func (m *Model) entryChange(v string) {
 	gtk4rt.Emit(m.entry, "activate")
 }
 -- run/go/gtk4 --
-pass sha256:880584a7174c0456b94e7870bf9cab2f
+pass sha256:9033040f04f9d40ee2e0c68c6dff4867

@@ -184,9 +184,9 @@ type RowInstance struct {
 	__root         *fyne.Container
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
-	__n0           *widget.Check
-	__n1           *widget.Check
-	__n2           *widget.Entry
+	__n0           *fynelayout.Check
+	__n1           *fynelayout.Check
+	__n2           *fynelayout.Entry
 	__n3           *widget.Label
 }
 
@@ -202,7 +202,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	__n6 := fynelayout.NewHBox()
-	c.__n0 = widget.NewCheck("", nil)
+	c.__n0 = fynelayout.NewCheck("", nil)
 	c.__n0.SetText("")
 	c.__n0.SetChecked(c.checked__inst0)
 	c.__n0.OnChanged = func(on__p0 bool) {
@@ -214,7 +214,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		}
 	}
 	__n6.Add(c.__n0)
-	c.__n1 = widget.NewCheck("", nil)
+	c.__n1 = fynelayout.NewCheck("", nil)
 	c.__n1.SetText("")
 	c.__n1.SetChecked(c.checked__inst1)
 	c.__n1.OnChanged = func(on bool) {
@@ -224,7 +224,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		}
 	}
 	__n6.Add(c.__n1)
-	c.__n2 = widget.NewEntry()
+	c.__n2 = fynelayout.NewEntry()
 	c.__n2.SetText(c.value__inst0)
 	c.__n2.SetPlaceHolder("")
 	c.__n2.OnChanged = func(v string) {
@@ -601,6 +601,6 @@ func (m *Model) entryChange(v string) {
 	gtk4rt.Emit(m.__named_entry, "activate")
 }
 -- run/go/fyne --
-pass sha256:8e35a601d5d3e7ad9e9dc94be6c1df97
+pass sha256:e6c59406604ae7a0d07bcff2c4e7b444
 -- run/go/gtk4 --
 pass sha256:a9799eee084e65178da826f19d8efde7

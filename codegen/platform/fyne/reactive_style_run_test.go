@@ -43,7 +43,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
+	"duckfam.us/sngl/pkg/go/fynelayout"
 )
 
 func walk(o fyne.CanvasObject, visit func(fyne.CanvasObject)) {
@@ -76,9 +76,9 @@ func drawn(t *testing.T, root fyne.CanvasObject, s string) *canvas.Text {
 
 func tap(t *testing.T, root fyne.CanvasObject, label string) {
 	t.Helper()
-	var b *widget.Button
+	var b *fynelayout.Button
 	walk(root, func(o fyne.CanvasObject) {
-		if x, ok := o.(*widget.Button); ok && x.Text == label {
+		if x, ok := o.(*fynelayout.Button); ok && x.Text == label {
 			b = x
 		}
 	})

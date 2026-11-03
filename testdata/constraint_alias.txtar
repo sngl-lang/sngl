@@ -78,6 +78,7 @@ window {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -103,7 +104,7 @@ type Model struct {
 	int__r0 *widget.Label
 	point   *widget.Label
 	key     *widget.Label
-	grow    *widget.Button
+	grow    *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -166,7 +167,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.point.SetText(Show__Point(m.p))
 	m.key = widget.NewLabel("")
 	m.key.SetText(fmt.Sprint(KeyOf__int_Slot(Slot{Key: (m.n + 6)})))
-	m.grow = widget.NewButton("", nil)
+	m.grow = fynelayout.NewButton("", nil)
 	m.grow.SetText("grow")
 	m.grow.OnTapped = m.grow_click_handler
 	var parts []fyne.CanvasObject
@@ -409,7 +410,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:e2ed65221305cafa3a99af1abb671403
+pass sha256:d2328b0691a68099d518a002f2da90c5
 -- run/kotlin/android --
 pass sha256:37b5629c6cb10c5298bbd3fa5e351eb4
 -- run/none/html --

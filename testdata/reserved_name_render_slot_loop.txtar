@@ -657,7 +657,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -673,7 +672,7 @@ type Model struct {
 
 	__n1    *fynelayout.Toplevel
 	__n3    *fyne.Container
-	__n4    *widget.Button
+	__n4    *fynelayout.Button
 	__built bool
 }
 
@@ -750,9 +749,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
-}
-
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n1.SetVisible(m.visible__inst0)
@@ -789,11 +785,10 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetTitle("loop")
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
-	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__n3 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n3)
-	m.__n4 = widget.NewButton("", nil)
+	m.__n4 = fynelayout.NewButton("", nil)
 	m.__n4.SetText("more")
 	m.__n4.OnTapped = m.__n4_click_handler
 	m.__n3.Add(m.__n4)
@@ -811,7 +806,7 @@ type RowInstance struct {
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
-	__n0         *widget.Button
+	__n0         *fynelayout.Button
 }
 
 func newRowInstance(__model *Model, __a_label int) *RowInstance {
@@ -821,7 +816,7 @@ func newRowInstance(__model *Model, __a_label int) *RowInstance {
 	c.hits = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	c.__n0 = widget.NewButton("", nil)
+	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((fmt.Sprint(c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 	c.__n0.OnTapped = func() {
 		c.hits += 1
@@ -959,7 +954,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
@@ -1066,6 +1061,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/bubbletea --
 pass sha256:3ac048abfd95d9af52163b96e81455aa
 -- run/go/fyne --
-pass sha256:689476c21bc506f37dbd19b4744aca9e
+pass sha256:89e8ca9c305fe663f6c92fbf863ee464
 -- run/go/gtk4 --
-pass sha256:78ad4f7dde17b449168b4ab73fb7be92
+pass sha256:80428fa3e8f18bd3bd540b4cd6c64c38

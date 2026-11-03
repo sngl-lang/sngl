@@ -1401,14 +1401,14 @@ type Model struct {
 	__n2          *widget.Label
 	__n3          *widget.Label
 	__n4          *widget.Label
-	turn          *widget.Button
+	turn          *fynelayout.Button
 	__n5          *widget.Label
-	spin          *widget.Button
+	spin          *fynelayout.Button
 	__built       bool
 	north         *widget.Label
-	back          *widget.Button
-	pick          *widget.Button
-	__copies_pick map[string]*widget.Button
+	back          *fynelayout.Button
+	pick          *fynelayout.Button
+	__copies_pick map[string]*fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -1521,7 +1521,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 					m.__slot0 = append(m.__slot0, m.north)
 				} else {
 					if (m.d__inst1 == "down") || (m.d__inst1 == "left") {
-						m.back = widget.NewButton("", nil)
+						m.back = fynelayout.NewButton("", nil)
 						m.back.SetText("Back")
 						m.back.OnTapped = func() {
 							m.taps__inst0 += 1
@@ -1560,7 +1560,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				m.__copies_pick = nil
 				for __copy0, p := range m.picks__inst0 {
 					if p == "up" {
-						m.pick = widget.NewButton("", nil)
+						m.pick = fynelayout.NewButton("", nil)
 						m.pick.SetText("Up")
 						m.__list_pick(fmt.Sprint(__copy0), m.pick)
 						m.pick.OnTapped = func() {
@@ -1581,9 +1581,6 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -1667,14 +1664,14 @@ func (m *Model) pickClickAt(key string) {
 	}
 }
 
-func (m *Model) __list_pick(key string, w *widget.Button) {
+func (m *Model) __list_pick(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_pick {
 		if c == w {
 			delete(m.__copies_pick, k)
 		}
 	}
 	if m.__copies_pick == nil {
-		m.__copies_pick = map[string]*widget.Button{}
+		m.__copies_pick = map[string]*fynelayout.Button{}
 	}
 	m.__copies_pick[key] = w
 }
@@ -1776,7 +1773,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n8 = widget.NewLabel("")
 	m.__n8.SetText("left-handed")
@@ -1805,7 +1801,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n4 = widget.NewLabel("")
 	m.__n4.SetText(Grade((FirstDown(m.flips__inst0) * 60)))
 	m.__n0.Add(m.__n4)
-	m.turn = widget.NewButton("", nil)
+	m.turn = fynelayout.NewButton("", nil)
 	m.turn.SetText("Turn")
 	m.turn.OnTapped = m.turn_click_handler
 	m.__n0.Add(m.turn)
@@ -1820,7 +1816,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n5 = widget.NewLabel("")
 	m.__n5.SetText(__lt14)
 	m.__n0.Add(m.__n5)
-	m.spin = widget.NewButton("", nil)
+	m.spin = fynelayout.NewButton("", nil)
 	m.spin.SetText("Spin")
 	m.spin.OnTapped = m.spin_click_handler
 	m.__n0.Add(m.spin)
@@ -2148,7 +2144,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -2979,9 +2975,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:3fc5ca61ca869f2aad555b02f7a9b5b6
 -- run/go/fyne --
-pass sha256:7f1385afa47e8c5d6126bc0e68f1bbda
+pass sha256:a45ebfa2e9794b188c666402f2acd1e6
 -- run/go/gtk4 --
-pass sha256:35a82785204632b4c083a712d6f9afcc
+pass sha256:8def835382e2700e9717226112e18024
 -- run/kotlin/android --
 pass sha256:f2415fccc77df2cac7f561b3bbbf3eba
 -- run/none/html --

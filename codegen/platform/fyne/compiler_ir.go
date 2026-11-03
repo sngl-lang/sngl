@@ -389,7 +389,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitIRCanvasDraw(&funcBuf, &all[i], gc, canvasByNode, nodeSpecs, addWidgetImport, failProp)
 	}
 
-	emitFyneEventInvokers(&funcBuf, eventInvokers)
+	emitFyneEventInvokers(&funcBuf, eventInvokers, codegen.TriggeredEvents(ctx.Pkg))
 	emitCopyRegistries(&funcBuf, widgetFields)
 	if keyedInstances(ctx.Pkg) {
 		emitUnlistInstance(&funcBuf, widgetFields, len(gc.Ctx.InstanceRootIDs()) > 0)
@@ -1152,6 +1152,11 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	// One parse, shared with the Spec decode that validated it -- two
 	// readings of one signature is how a parameter got dropped from a
 	// signature the decoder had just accepted.
+	if binding.Set.Name != "" && len(fn.Block) == 0 {
+		// Attached nowhere (OnAttachHandler), and naming a type nothing
+		// declares.
+		return
+	}
 	params := fn.Params
 	if binding.Signature != "" {
 		parsed, err := signatureParams("", fn.Lowered.Event, binding.Signature)

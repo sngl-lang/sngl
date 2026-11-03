@@ -757,8 +757,8 @@ type Model struct {
 	outcome   *widget.Label
 	facts     *widget.Label
 	radius    *widget.Label
-	grow      *widget.Button
-	odd       *widget.Button
+	grow      *fynelayout.Button
+	odd       *fynelayout.Button
 	__built   bool
 }
 
@@ -863,9 +863,6 @@ func (m *Model) __snglTeardown() {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -975,7 +972,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.shownArea = widget.NewLabel("")
 	m.shownArea.SetText(fmt.Sprint(Area(m.shape__inst0)))
@@ -1008,11 +1004,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.radius.SetText(__lt12)
 	m.__n0.Add(m.radius)
 	m.__renderSlot0(m.__n0.Container)
-	m.grow = widget.NewButton("", nil)
+	m.grow = fynelayout.NewButton("", nil)
 	m.grow.SetText("Grow")
 	m.grow.OnTapped = m.grow_click_handler
 	m.__n0.Add(m.grow)
-	m.odd = widget.NewButton("", nil)
+	m.odd = fynelayout.NewButton("", nil)
 	m.odd.SetText("Odd")
 	m.odd.OnTapped = m.odd_click_handler
 	m.__n0.Add(m.odd)
@@ -1229,7 +1225,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -1754,9 +1750,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:f689476c28553ac28080b3a988e2ed18
 -- run/go/fyne --
-pass sha256:f048679f7a9c0354684f2f58d3374a2c
+pass sha256:fc8eec43fa93d75dd83dfa2889b3ba22
 -- run/go/gtk4 --
-pass sha256:5afd6a9ecc45bc7189c799cbe1997f77
+pass sha256:c22fceb5e7605cc6cc11abfa35e23efd
 -- run/kotlin/android --
 pass sha256:ca61db144d85b2ab45d50f4f92b85c5e
 -- run/none/html --

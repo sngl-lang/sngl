@@ -972,7 +972,7 @@ type Model struct {
 	__renderAgain3 bool
 
 	__n7 *fyne.Container
-	add  *widget.Button
+	add  *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -1147,7 +1147,7 @@ func (m *Model) SetMounted(v string) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n7 = fynelayout.NewVBox()
-	m.add = widget.NewButton("", nil)
+	m.add = fynelayout.NewButton("", nil)
 	m.add.SetText("add")
 	m.add.OnTapped = m.add_click_handler
 	m.__n7.Add(m.add)
@@ -1190,7 +1190,7 @@ func newCardInstance(__model *Model, __a_start int) *CardInstance {
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__n2 = fynelayout.NewVBox()
-	__n8 := widget.NewButton("", nil)
+	__n8 := fynelayout.NewButton("", nil)
 	__n8.SetText("more")
 	__n8.OnTapped = func() {
 		c.rows = append(c.rows, (c.__prop_start + 100))
@@ -1289,7 +1289,7 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___o
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__n4 = fynelayout.NewVBox()
-	__n9 := widget.NewButton("", nil)
+	__n9 := fynelayout.NewButton("", nil)
 	__n9.SetText("more")
 	__n9.OnTapped = func() {
 		c.rows = append(c.rows, (c.__prop_start + 100))
@@ -2944,7 +2944,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:3ff442cdc6c65bdee9bf60771910efab
 -- run/go/fyne --
-pass sha256:592583d6b0959d3fceccee9cd77d828f
+pass sha256:b1605dfcad8e90cb2a232a3d03bd18c6
 -- run/go/gtk4 --
 pass sha256:afcbc8b85aac0e8d9d8623d06bb9ebb1
 -- run/kotlin/android --

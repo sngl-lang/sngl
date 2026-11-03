@@ -77,7 +77,7 @@ type Model struct {
 	__n2     *fyne.Container
 	__n3     *fynelayout.ReachScroll
 	__n3_box *fyne.Container
-	flip     *widget.Button
+	flip     *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -191,7 +191,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.Content = m.__n3_box
 	m.__renderSlot1(m.__n3_box)
 	m.__n4.Add(m.__n3)
-	m.flip = widget.NewButton("", nil)
+	m.flip = fynelayout.NewButton("", nil)
 	m.flip.SetText("flip")
 	m.flip.OnTapped = m.flip_click_handler
 	m.__n4.Add(m.flip)
@@ -416,6 +416,6 @@ func (m *Model) flipClick() {
 	gtk4rt.Emit(m.flip, "clicked")
 }
 -- run/go/fyne --
-pass sha256:f65812f5003493ffadaca7411f0315d5
+pass sha256:55d5ecb53b74e68bcd50c7a01a5e6385
 -- run/go/gtk4 --
 pass sha256:e6ac0a841ed35d00a3047b10dba49b85

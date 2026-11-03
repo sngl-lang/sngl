@@ -6,7 +6,7 @@
 # html runs each component a test takes as a page of its own, so an example
 # whose window is served in route mode is tested as a static page there too.
 #
-# 87 is every example's tests together, so one dropping out of the walk fails.
+# 90 is every example's tests together, so one dropping out of the walk fails.
 #
 # A test that sets no locale reads the process's, and the examples' tests that
 # set none read English.
@@ -15,34 +15,38 @@ env LC_ALL=en_US.UTF-8
 exec cp -r $SNGL_ROOT/examples .
 
 sngl test --platform=none ./examples/...
-stdout '^ok +89 tests, 0 failures$'
+stdout '^ok +90 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=html ./examples/...
-stdout '^ok +89 tests, 0 failures$'
+stdout '^ok +90 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=fyne --language=go ./examples/...
-stdout '^ok +89 tests, 0 failures$'
+stdout '^ok +90 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=gtk4 --language=go ./examples/...
-stdout '^ok +89 tests, 0 failures$'
+stdout '^ok +90 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=bubbletea --language=go ./examples/...
-stdout '^ok +89 tests, 0 failures$'
+stdout '^ok +90 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=android --language=kotlin ./examples/...
-stdout '^ok +89 tests, 0 failures$'
+stdout '^ok +90 tests, 0 failures$'
 ! stdout SKIP
 -- testrun/android/kotlin/app.sngl/Calculator/1 --
-sha256:fcebffe143f5bd3b33e3e310ea6e9fef
+sha256:6a85be9c92a26f0e9db147b6936de859
 {
   "results": [
     {
       "Desc": "KeyboardShortcutsPressTheKeys",
+      "Passed": true
+    },
+    {
+      "Desc": "OtherKeysGoOn",
       "Passed": true
     },
     {
@@ -66,7 +70,7 @@ sha256:4aab061950a2afddbeeeed8ac17bc26c
   ]
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:34f1f3daf4753ed076bc15caaad6b0c2
+sha256:b86d92c62f2a3e916dabcf692c264638
 {
   "results": [
     {
@@ -544,11 +548,15 @@ sha256:632916be5ffec8d4445a92254d33140e
   ]
 }
 -- testrun/bubbletea/go/app.sngl/Calculator/1 --
-sha256:d1032faea06201c60ab962d5789bae39
+sha256:11dcd069ddfea9a783a1885221be2cab
 {
   "results": [
     {
       "Desc": "KeyboardShortcutsPressTheKeys",
+      "Passed": true
+    },
+    {
+      "Desc": "OtherKeysGoOn",
       "Passed": true
     },
     {
@@ -572,7 +580,7 @@ sha256:bac16c3da320fa97d69f60cf809f1acf
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:28a8f779d9cb89e0cad3648a42748672
+sha256:9c74c6a5111502502af3d2733a09de25
 {
   "results": [
     {
@@ -1050,11 +1058,15 @@ sha256:3e6bb5b633b6947a019fcde2c6d15774
   ]
 }
 -- testrun/fyne/go/app.sngl/Calculator/1 --
-sha256:c9a09697371a50463a86f1a52ff9ca15
+sha256:29329de12a2aa15e6437d54651da1155
 {
   "results": [
     {
       "Desc": "KeyboardShortcutsPressTheKeys",
+      "Passed": true
+    },
+    {
+      "Desc": "OtherKeysGoOn",
       "Passed": true
     },
     {
@@ -1064,7 +1076,7 @@ sha256:c9a09697371a50463a86f1a52ff9ca15
   ]
 }
 -- testrun/fyne/go/app.sngl/Tour/1 --
-sha256:220953ca21727f3ed3946ab6915d776c
+sha256:bca2ff1b3b31fe65cd997060076e545b
 {
   "results": [
     {
@@ -1078,7 +1090,7 @@ sha256:220953ca21727f3ed3946ab6915d776c
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:c05a82f521080085844fffa567377816
+sha256:82fe47b2ba0b93e550e84b240ea6737b
 {
   "results": [
     {
@@ -1172,7 +1184,7 @@ sha256:c05a82f521080085844fffa567377816
   ]
 }
 -- testrun/fyne/go/app.sngl/_/2 --
-sha256:777a99ec9821ae095690ae75ace29928
+sha256:45ddae1c53d7c89c050cd7f77e631222
 {
   "results": [
     {
@@ -1182,7 +1194,7 @@ sha256:777a99ec9821ae095690ae75ace29928
   ]
 }
 -- testrun/fyne/go/app.sngl/alolan/1 --
-sha256:2fcc5b346e713680dd6c9e17b2b00efc
+sha256:2e07cdff78c7324860fcccd6b4bb0246
 {
   "results": [
     {
@@ -1196,7 +1208,7 @@ sha256:2fcc5b346e713680dd6c9e17b2b00efc
   ]
 }
 -- testrun/fyne/go/app.sngl/back/1 --
-sha256:d3cfa30c73aa991668a28f89f19ece93
+sha256:819165dd92909b9aa898916396fdecb3
 {
   "results": [
     {
@@ -1206,7 +1218,7 @@ sha256:d3cfa30c73aa991668a28f89f19ece93
   ]
 }
 -- testrun/fyne/go/app.sngl/bud/1 --
-sha256:19dde5af586b9267e6592f91c6252d79
+sha256:ff02a283b1854b0d564e8817b2a46a32
 {
   "results": [
     {
@@ -1236,7 +1248,7 @@ sha256:6104013c92a1cc1559c007531ea55b59
   ]
 }
 -- testrun/fyne/go/app.sngl/flame/1 --
-sha256:5e2be87da1a9ffdf19c792d2d11bda0a
+sha256:b3179fff358f9961004806b67ebe2808
 {
   "results": [
     {
@@ -1246,7 +1258,7 @@ sha256:5e2be87da1a9ffdf19c792d2d11bda0a
   ]
 }
 -- testrun/fyne/go/app.sngl/fluff/1 --
-sha256:f8ce9868915aa7de6468fd36fac1325f
+sha256:ff209013d4aa1f63c22dc35cba1907a8
 {
   "results": [
     {
@@ -1256,7 +1268,7 @@ sha256:f8ce9868915aa7de6468fd36fac1325f
   ]
 }
 -- testrun/fyne/go/app.sngl/fox/1 --
-sha256:7716076793bea3d6b077e860be14b571
+sha256:58d2707fec0309384f980212750e6a95
 {
   "results": [
     {
@@ -1270,7 +1282,7 @@ sha256:7716076793bea3d6b077e860be14b571
   ]
 }
 -- testrun/fyne/go/app.sngl/home/1 --
-sha256:9bc99eb49e144000adb22f9b0847e580
+sha256:cd90130d7152983e07339547887d8b7c
 {
   "results": [
     {
@@ -1322,7 +1334,7 @@ sha256:b68fd7d28ff14f647eaaa111a5d1d9ad
   ]
 }
 -- testrun/fyne/go/app.sngl/mouse/1 --
-sha256:e09da9179b8a96e47af1628665e2d7ba
+sha256:36dbb1dfee21fb037d1ab3e7cb291db0
 {
   "results": [
     {
@@ -1358,7 +1370,7 @@ sha256:2c598a6aeb0d3b26c995982c18443a49
   ]
 }
 -- testrun/fyne/go/app.sngl/roam/1 --
-sha256:12a4ff68515006fbc224ab5fc9edda78
+sha256:ad7858fa74fd5fb3aac8af9f011c5517
 {
   "results": [
     {
@@ -1368,7 +1380,7 @@ sha256:12a4ff68515006fbc224ab5fc9edda78
   ]
 }
 -- testrun/fyne/go/app.sngl/seed/1 --
-sha256:4e7049062b1f2e0044be968e851d9efc
+sha256:50a7997ff3adce157388cd53119ac88e
 {
   "results": [
     {
@@ -1484,7 +1496,7 @@ sha256:ff49a6fcccc37017ff68491d9b700df2
   ]
 }
 -- testrun/fyne/go/app.sngl/shell/1 --
-sha256:3256d980dc300ec33b9db14a1ddd700c
+sha256:f92fa3f9cf624d510fcc0576725f0c2e
 {
   "results": [
     {
@@ -1506,7 +1518,7 @@ sha256:3256d980dc300ec33b9db14a1ddd700c
   ]
 }
 -- testrun/fyne/go/app.sngl/spark/1 --
-sha256:cb2475ed5b37eb1d20c69d0514468629
+sha256:abb696aab7724bb981065d960a9db83c
 {
   "results": [
     {
@@ -1536,7 +1548,7 @@ sha256:2a9121caa563401d713fa55f97bc24aa
   ]
 }
 -- testrun/fyne/go/app.sngl/trip/1 --
-sha256:84faeccfd62b4e5c66e223558aef1523
+sha256:8d7a3c00fbda0994259a185865951b17
 {
   "results": [
     {
@@ -1546,7 +1558,7 @@ sha256:84faeccfd62b4e5c66e223558aef1523
   ]
 }
 -- testrun/fyne/go/app.sngl/walk/1 --
-sha256:e0fd5f07899aa89d288cabab3d98d4f4
+sha256:c3678df08533ea975a7154b1788ef9de
 {
   "results": [
     {
@@ -1556,11 +1568,15 @@ sha256:e0fd5f07899aa89d288cabab3d98d4f4
   ]
 }
 -- testrun/gtk4/go/app.sngl/Calculator/1 --
-sha256:1b7054fdcebd5787b906e8647f723fc5
+sha256:2f1a65f55988b23d4c7f8033458c7c67
 {
   "results": [
     {
       "Desc": "KeyboardShortcutsPressTheKeys",
+      "Passed": true
+    },
+    {
+      "Desc": "OtherKeysGoOn",
       "Passed": true
     },
     {
@@ -1584,7 +1600,7 @@ sha256:a28a96ee2312f3fc4c15879318327082
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:0bb4c5d77f2e990f4223e9881d7a675f
+sha256:dc73932bf437a34d8f1a3a186895d784
 {
   "results": [
     {
@@ -1678,7 +1694,7 @@ sha256:0bb4c5d77f2e990f4223e9881d7a675f
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/2 --
-sha256:030318ea85c6ad26495c62b49e57277f
+sha256:8a837e0e2dca6230c48c62d10e97ad6c
 {
   "results": [
     {
@@ -1990,7 +2006,7 @@ sha256:ae4c115efaff1267f8948cdc053aa720
   ]
 }
 -- testrun/gtk4/go/app.sngl/shell/1 --
-sha256:c6dea3f012d79a58a4e6280c82d5a95d
+sha256:b32ecfbb395b0ca7ad5ba63faaa6f2d1
 {
   "results": [
     {
@@ -2062,11 +2078,15 @@ sha256:6d65b3ce73bc5922c323037542478691
   ]
 }
 -- testrun/html/none/app.sngl/Calculator/1 --
-sha256:f8a7a91594e11bee2f4970e8df7890cd
+sha256:4d3e0c70e42681f8c521e48ddb03f461
 {
   "results": [
     {
       "Desc": "KeyboardShortcutsPressTheKeys",
+      "Passed": true
+    },
+    {
+      "Desc": "OtherKeysGoOn",
       "Passed": true
     },
     {
@@ -2090,7 +2110,7 @@ sha256:19a4a2123d0edaa802d6aa750481ff14
   ]
 }
 -- testrun/html/none/app.sngl/_/1 --
-sha256:e0ff4690ae86c677fbcc91115d125704
+sha256:d9fcc9d03dca27af68db1b95b131d40f
 {
   "results": [
     {

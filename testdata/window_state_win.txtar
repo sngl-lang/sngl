@@ -488,7 +488,7 @@ type Model struct {
 	home    *fynelayout.Toplevel
 	__n1    *fyne.Container
 	__n0    *widget.Label
-	inc     *widget.Button
+	inc     *fynelayout.Button
 	__built bool
 }
 
@@ -501,9 +501,6 @@ func New() *Model {
 }
 
 func (m *Model) home_closed_handler() {
-}
-
-func (m *Model) home_key_handler(k string) {
 }
 
 func (m *Model) home_visible_handler(__visible bool) {
@@ -521,11 +518,6 @@ func (m *Model) homeClosed() {
 	if m.home.OnClosed != nil {
 		m.home.OnClosed()
 	}
-}
-
-// homeKey calls PressKey on the #home widget; for tests.
-func (m *Model) homeKey(key string) {
-	m.home.PressKey(key)
 }
 
 // homeVisible invokes the OnVisible callback on the #home widget; for tests.
@@ -570,13 +562,12 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetTitle("Home")
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
-	m.home.OnKey = m.home_key_handler
 	m.home.OnVisible = m.home_visible_handler
 	m.__n1 = fynelayout.NewVBox()
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(fmt.Sprint(m.n))
 	m.__n1.Add(m.__n0)
-	m.inc = widget.NewButton("", nil)
+	m.inc = fynelayout.NewButton("", nil)
 	m.inc.SetText("+")
 	m.inc.OnTapped = m.inc_click_handler
 	m.__n1.Add(m.inc)
@@ -638,7 +629,7 @@ func New() *Model {
 func (m *Model) home_closed_handler() {
 }
 
-func (m *Model) home_key_handler(k string) {
+func (m *Model) home_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) home_visible_handler(__visible bool) {
@@ -699,11 +690,6 @@ func (m *Model) buildWidgetTree() {
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.home)
-}
-
-// homeKey fires "key" on the #home widget; for tests.
-func (m *Model) homeKey(v string) {
-	gtk4rt.ToplevelKey(m.home, v)
 }
 
 // incClick fires the "clicked" signal on the #inc widget; for tests.
@@ -929,9 +915,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:fb6f42ca2fae59a4154554c63868994a
 -- run/go/fyne --
-pass sha256:4da19a435695442b24092c5d6058cb41
+pass sha256:24fc0dcbaeefe885c7f15047a927d30b
 -- run/go/gtk4 --
-pass sha256:46e396ffe5b1e0bab725076d3279a11e
+pass sha256:dec41508258a71edc388c2b82cd7a745
 -- run/kotlin/android --
 pass sha256:a6ad615b09083b9035377c180210acdc
 -- run/none/html --

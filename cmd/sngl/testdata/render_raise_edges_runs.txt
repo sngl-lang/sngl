@@ -330,7 +330,7 @@ sha256:e5cc07a13739afbb11c2eb559a5c813f
   ]
 }
 -- testrun/fyne/go/app.sngl/again/1 --
-sha256:35d1c9072737c4e8fa85bbbe26440a11
+sha256:2f87baa3f2382cb347152fd58ba1744f
 {
   "results": [
     {
@@ -340,7 +340,7 @@ sha256:35d1c9072737c4e8fa85bbbe26440a11
   ]
 }
 -- testrun/fyne/go/app.sngl/kinds/1 --
-sha256:434db6164afefa3a3581d2475cfdd6f8
+sha256:bab6d37cb2e9d6dd1b09cc5ebff88c5f
 {
   "results": [
     {
@@ -360,7 +360,7 @@ sha256:646c02d21b71d2b9c1784f3e6cfb0e7f
   ]
 }
 -- testrun/fyne/go/app.sngl/slotted/1 --
-sha256:cc68bf64b72075a9b390d7c54d5523d3
+sha256:541ed7f31f3b441286c11cb22b51624d
 {
   "results": [
     {

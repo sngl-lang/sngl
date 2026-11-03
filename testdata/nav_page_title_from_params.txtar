@@ -707,9 +707,9 @@ type Model struct {
 
 	main     *fynelayout.Toplevel
 	heading  *widget.Label
-	toFirst  *widget.Button
-	toSecond *widget.Button
-	back     *widget.Button
+	toFirst  *fynelayout.Button
+	toSecond *fynelayout.Button
+	back     *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -795,9 +795,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) main_closed_handler() {
 }
 
-func (m *Model) main_key_handler(k string) {
-}
-
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.main.SetVisible(m.visible__inst0)
@@ -845,11 +842,6 @@ func (m *Model) mainClosed() {
 	if m.main.OnClosed != nil {
 		m.main.OnClosed()
 	}
-}
-
-// mainKey calls PressKey on the #main widget; for tests.
-func (m *Model) mainKey(key string) {
-	m.main.PressKey(key)
 }
 
 // mainVisible invokes the OnVisible callback on the #main widget; for tests.
@@ -920,21 +912,20 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.main.SetTitle("Titles")
 	m.main.SetVisible(m.visible__inst0)
 	m.main.OnClosed = m.main_closed_handler
-	m.main.OnKey = m.main_key_handler
 	m.main.OnVisible = m.main_visible_handler
 	m.__renderSlot0(m.main.Container)
 	m.heading = widget.NewLabel("")
 	m.heading.SetText(m.pages__current.Title)
 	m.main.Add(m.heading)
-	m.toFirst = widget.NewButton("", nil)
+	m.toFirst = fynelayout.NewButton("", nil)
 	m.toFirst.SetText("First")
 	m.toFirst.OnTapped = m.toFirst_click_handler
 	m.main.Add(m.toFirst)
-	m.toSecond = widget.NewButton("", nil)
+	m.toSecond = fynelayout.NewButton("", nil)
 	m.toSecond.SetText("Second")
 	m.toSecond.OnTapped = m.toSecond_click_handler
 	m.main.Add(m.toSecond)
-	m.back = widget.NewButton("", nil)
+	m.back = fynelayout.NewButton("", nil)
 	m.back.SetText("Back")
 	m.back.OnTapped = m.back_click_handler
 	m.main.Add(m.back)
@@ -1171,7 +1162,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) main_closed_handler() {
 }
 
-func (m *Model) main_key_handler(k string) {
+func (m *Model) main_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) main_visible_handler(__visible bool) {
@@ -1324,11 +1315,6 @@ func (m *Model) buildWidgetTree() {
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.main)
-}
-
-// mainKey fires "key" on the #main widget; for tests.
-func (m *Model) mainKey(v string) {
-	gtk4rt.ToplevelKey(m.main, v)
 }
 
 // toFirstClick fires the "clicked" signal on the #toFirst widget; for tests.
@@ -1547,8 +1533,8 @@ class MainScreenTest {
 -- run/go/bubbletea --
 pass sha256:c048ccdbd2883fdf6cb35c4d36a35f8b
 -- run/go/fyne --
-pass sha256:715839777a5565f79e38396541e2d750
+pass sha256:1b6be7530ef91ef4da8638aaff8da678
 -- run/go/gtk4 --
-pass sha256:2850dacef82fac95ea36eb3883a28d95
+pass sha256:ae6d45332fb3fe4f78cbdc1911fc26ad
 -- run/kotlin/android --
 pass sha256:676ddc9879d9eff0c2bf08de5aca64f0

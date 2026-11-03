@@ -481,9 +481,9 @@ func newTestComponent() Model { m := New(); _ = m.View(); return m }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 	"time"
 )
@@ -512,7 +512,7 @@ type Model struct {
 	d            time.Time
 	value__inst0 *time.Time
 
-	__n0 *widget.DateEntry
+	__n0 *fynelayout.DateEntry
 }
 
 // New creates a Model with default values.
@@ -548,7 +548,7 @@ func (m *Model) SetValue__inst0(v *time.Time) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = widget.NewDateEntry()
+	m.__n0 = fynelayout.NewDateEntry()
 	m.__n0.SetDate(m.value__inst0)
 	m.__n0.SetPlaceHolder("Pick a date")
 	m.__n0.OnChanged = m.__n0_pick_handler
@@ -975,7 +975,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:33c7411ed889fab34224b077c1edc0b0
 -- run/go/fyne --
-pass sha256:9b0b0209bcaa2bf94f6fcb762ad6d5ca
+pass sha256:04425781697e45d6c6ef5c821059c609
 -- run/go/gtk4 --
 pass sha256:929fdfda8b156b75e6ed4092caec3de6
 -- run/kotlin/android --

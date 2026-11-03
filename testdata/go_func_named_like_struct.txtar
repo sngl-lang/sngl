@@ -487,7 +487,7 @@ type Model struct {
 	visible__inst0 bool
 
 	__n0    *fynelayout.Toplevel
-	__n2    *widget.Button
+	__n2    *fynelayout.Button
 	__n1    *widget.Label
 	__built bool
 }
@@ -509,9 +509,6 @@ func BookRowFunc(name string) BookRow {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -549,9 +546,8 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n2 = widget.NewButton("", nil)
+	m.__n2 = fynelayout.NewButton("", nil)
 	m.__n2.SetText("Emma")
 	m.__n2.OnTapped = m.__n2_click_handler
 	m.__n0.Add(m.__n2)
@@ -572,4 +568,4 @@ func main() {
 -- run/go/bubbletea --
 pass sha256:80a75773424e634a853189d295ec0a29
 -- run/go/fyne --
-pass sha256:d58d850da400e6a91ca5e00bfbdd0206
+pass sha256:d28dd326fdc2996de1e377a9df474f1d

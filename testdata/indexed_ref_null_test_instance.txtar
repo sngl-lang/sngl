@@ -843,7 +843,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -862,9 +861,9 @@ type Model struct {
 	__slot1_at     fyne.CanvasObject
 
 	__n1        *fyne.Container
-	move        *widget.Button
-	shut        *widget.Button
-	__named_hit *widget.Button
+	move        *fynelayout.Button
+	shut        *fynelayout.Button
+	__named_hit *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -1002,11 +1001,11 @@ func (m *Model) SetOpen(v bool) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = fynelayout.NewVBox()
-	m.move = widget.NewButton("", nil)
+	m.move = fynelayout.NewButton("", nil)
 	m.move.SetText("m")
 	m.move.OnTapped = m.move_click_handler
 	m.__n1.Add(m.move)
-	m.shut = widget.NewButton("", nil)
+	m.shut = fynelayout.NewButton("", nil)
 	m.shut.SetText("c")
 	m.shut.OnTapped = m.shut_click_handler
 	m.__n1.Add(m.shut)
@@ -1026,7 +1025,7 @@ type BadgeInstance struct {
 	__slot0_at   fyne.CanvasObject
 	__slot1      []fyne.CanvasObject
 	__slot1_at   fyne.CanvasObject
-	hit          *widget.Button
+	hit          *fynelayout.Button
 }
 
 func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
@@ -1037,7 +1036,7 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.hit = widget.NewButton("", nil)
+	c.hit = fynelayout.NewButton("", nil)
 	c.hit.SetText(((("hit " + c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 	c.hit.OnTapped = func() {
 		c.hits = (c.hits + 1)
@@ -2126,7 +2125,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:803a77b2829b30117493ca2668da85b8
 -- run/go/fyne --
-pass sha256:e1191f21b9877abba0014bf6185aa40e
+pass sha256:81a2a61629ecddc9787afd30302e5b7e
 -- run/go/gtk4 --
 pass sha256:89ff818b2eca453ca4f835d614b6171b
 -- run/kotlin/android --

@@ -951,6 +951,7 @@ func newTestComponent() Model { m := New(); _ = m.View(); return m }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -991,8 +992,8 @@ type Model struct {
 
 	__n2 *widget.Label
 	__n3 *widget.Label
-	tap  *widget.Button
-	wrap *widget.Button
+	tap  *fynelayout.Button
+	wrap *fynelayout.Button
 	__n0 *widget.Label
 	__n1 *widget.Label
 }
@@ -1254,10 +1255,10 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.SetText("d9")
 	m.__n3 = widget.NewLabel("")
 	m.__n3.SetText("d5")
-	m.tap = widget.NewButton("", nil)
+	m.tap = fynelayout.NewButton("", nil)
 	m.tap.SetText("tap")
 	m.tap.OnTapped = m.tap_click_handler
-	m.wrap = widget.NewButton("", nil)
+	m.wrap = fynelayout.NewButton("", nil)
 	m.wrap.SetText("wrap")
 	m.wrap.OnTapped = m.wrap_click_handler
 	m.__n0 = widget.NewLabel("")
@@ -2049,7 +2050,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:e09c11e359796de682dbef7883075030
 -- run/go/fyne --
-pass sha256:a0b7c7704ea0dae53f165f5bedb124f3
+pass sha256:8ddd3016626b2b513a35390b6aba8473
 -- run/go/gtk4 --
 pass sha256:e26adc6b07c4e4a7e800c81283250bf3
 -- run/go/html --

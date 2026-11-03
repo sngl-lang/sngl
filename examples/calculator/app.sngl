@@ -48,11 +48,18 @@ component Calculator root {
     }
 
     // A key on the keyboard presses the key on the keypad it is a shortcut
-    // of, and the rest do nothing.
-    ui.window #calculator(title="Calculator", @key(name) {
-        var k = keypad.keyFor(name)
+    // of, and goes no further: the Enter that means `=` presses no button
+    // focus was left on. A key held with Control, Alt or Meta is a shortcut
+    // of the system's, and the window leaves it alone, as it does every key
+    // no keypad key answers.
+    ui.window #calculator(title="Calculator", @key(e, stop) {
+        if e.ctrl || e.alt || e.meta {
+            return
+        }
+        var k = keypad.keyFor(e.key)
         if k != null {
             press(k)
+            stop()
         }
     }) {
         ui.vbox(style={flex=1, background=#15171c}) {

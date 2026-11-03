@@ -94,9 +94,13 @@ struct Model {
 // `tab` is whether Tab reaches a stop that is one: a component written
 // `focusable=false` is still pressed by a click, which focuses it for the
 // press and gives focus back after, and Tab passes over it.
+//
+// `typing` says the stop takes what is typed, a text field, which is what a
+// window's `@key` hears as `editing` while focus is on it.
 struct Focus {
     enabled bool
     tab     bool = true
+    typing  bool = false
 }
 
 struct Bind {
@@ -209,9 +213,8 @@ component Overlay(
 // none -- the literal `false` a window's default is -- draws no line. A
 // terminal has no place for a window's menu, so a screen draws none.
 //
-// `@key` is a key Update's own cases leave: not ctrl+c, Tab, or the key that
-// presses the stop focus is on, nor any key while a field or another widget
-// holds focus, since the widget takes them.
+// `@key` is each key Update is sent but ctrl+c, before any case or widget
+// sees it; a handler that calls `stop` leaves the key to none of them.
 #[intrinsic("bubbletea:Screen")]
 component Screen(
     visible   bool = true,
@@ -219,14 +222,14 @@ component Screen(
     canGoBack bool = false,
     @closed(),
     @back(),
-    @key(key string),
+    @key(e ui.KeyPress, stop func()),
     content   ...component ui.node,
 ) root
 
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
 const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content) {
-    Screen(visible=visible, title=title, canGoBack=canGoBack, @back { back() }, @key(k) { key(k) }, @closed {
+    Screen(visible=visible, title=title, canGoBack=canGoBack, @back { back() }, @key(e, stop) { key(e, stop) }, @closed {
         visible = false
         closed()
     }) {
@@ -360,7 +363,7 @@ const component ui.input[platform](placeholder, focusable, style) {
             pkg = "charm.land/bubbles/v2/textinput",
             resize = ".SetWidth($\{w\})",
         },
-        focus = Focus{enabled=style.display != ui.Display.none, tab=focusable},
+        focus = Focus{enabled=style.display != ui.Display.none, tab=focusable, typing=true},
         binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         placeholder = placeholder,
         look = lookOf(style),
@@ -438,7 +441,7 @@ const component ui.textarea[platform](focusable, style) {
             pkg = "charm.land/bubbles/v2/textarea",
             resize = ".SetWidth($\{w\})",
         },
-        focus = Focus{enabled=style.display != ui.Display.none, tab=focusable},
+        focus = Focus{enabled=style.display != ui.Display.none, tab=focusable, typing=true},
         binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         look = lookOf(style),
         fit = fitOf(style.whiteSpace, style.display),

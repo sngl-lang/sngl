@@ -558,8 +558,8 @@ type Model struct {
 	visible__inst0 bool
 
 	__n0    *fynelayout.Toplevel
-	call    *widget.Button
-	direct  *widget.Button
+	call    *fynelayout.Button
+	direct  *fynelayout.Button
 	__n1    *widget.Label
 	__built bool
 }
@@ -580,9 +580,6 @@ func Risky(n int) int {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -667,13 +664,12 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.call = widget.NewButton("", nil)
+	m.call = fynelayout.NewButton("", nil)
 	m.call.SetText("Call")
 	m.call.OnTapped = m.call_click_handler
 	m.__n0.Add(m.call)
-	m.direct = widget.NewButton("", nil)
+	m.direct = fynelayout.NewButton("", nil)
 	m.direct.SetText("Raise")
 	m.direct.OnTapped = m.direct_click_handler
 	m.__n0.Add(m.direct)
@@ -746,7 +742,7 @@ func Risky(n int) int {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -1043,9 +1039,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:1bc3be35fd46f9487404b013443955ed
 -- run/go/fyne --
-pass sha256:63294ab294cc2780b4638d9a8b15ad1a
+pass sha256:1898a8e01282344aa884703489028594
 -- run/go/gtk4 --
-pass sha256:afe125257f654dabd093efe9b37b8729
+pass sha256:dab4d9e853af493fa96bae5d47ea564f
 -- run/go/html --
 pass sha256:c97dcdc7f518111192194d2ed80d3c7e
 -- run/kotlin/android --

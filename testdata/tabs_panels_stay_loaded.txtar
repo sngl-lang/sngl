@@ -1239,8 +1239,8 @@ type Model struct {
 	__slot1_at     fyne.CanvasObject
 
 	strip                  *fynelayout.Tabs
-	__named_press          *widget.Button
-	__named_tap            *widget.Button
+	__named_press          *fynelayout.Button
+	__named_tap            *fynelayout.Button
 	__named_strip__change  *fynelayout.TabPage
 	__copies_strip__change map[string]*fynelayout.TabPage
 	__present_c__r0        fyne.CanvasObject
@@ -1457,7 +1457,7 @@ type CounterInstance struct {
 	__slot0_at fyne.CanvasObject
 	__slot1    []fyne.CanvasObject
 	__slot1_at fyne.CanvasObject
-	press      *widget.Button
+	press      *fynelayout.Button
 }
 
 func newCounterInstance(__model *Model) *CounterInstance {
@@ -1467,7 +1467,7 @@ func newCounterInstance(__model *Model) *CounterInstance {
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.press = widget.NewButton("", nil)
+	c.press = fynelayout.NewButton("", nil)
 	c.press.SetText(fmt.Sprint(c.hits))
 	c.press.OnTapped = func() {
 		c.hits += 1
@@ -1578,7 +1578,7 @@ type __block_state0Instance struct {
 	__slot0_at       fyne.CanvasObject
 	__slot1          []fyne.CanvasObject
 	__slot1_at       fyne.CanvasObject
-	tap              *widget.Button
+	tap              *fynelayout.Button
 }
 
 func new__block_state0Instance(__model *Model, __a_seen int, __a___on_seen func(int)) *__block_state0Instance {
@@ -1590,7 +1590,7 @@ func new__block_state0Instance(__model *Model, __a_seen int, __a___on_seen func(
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.tap = widget.NewButton("", nil)
+	c.tap = fynelayout.NewButton("", nil)
 	c.tap.SetText(fmt.Sprint(c.taps))
 	c.tap.OnTapped = func() {
 		c.taps += 1
@@ -3765,7 +3765,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:dabbf8b0e403f6699a687bef1fdb8d9f
 -- run/go/fyne --
-pass sha256:5116fccf2cc931ca4c61cee0db2a136d
+pass sha256:eb46519a37fbd159a94c914cd2a6cc1b
 -- run/go/gtk4 --
 pass sha256:6e10b9318a529447797412491cb81295
 -- run/kotlin/android --

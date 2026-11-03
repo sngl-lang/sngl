@@ -505,7 +505,7 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -616,6 +616,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:19f59060de50b80a25dc4c66bb252ef3
 -- run/go/gtk4 --
-pass sha256:9bc117faafd567bed07f81fd16724598
+pass sha256:da828e365b0f120447fb40fb845da029
 -- run/none/html --
 pass sha256:fb9ced09058f325718fe74dea9408b47

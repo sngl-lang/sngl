@@ -1093,13 +1093,13 @@ type Model struct {
 	__renderAgain2 bool
 
 	__n7          *fyne.Container
-	swap          *widget.Button
+	swap          *fynelayout.Button
 	__n1          *widget.Label
-	__named_cell  *widget.Button
-	__copies_cell map[string]*widget.Button
-	__named_mark  *widget.Button
-	__copies_mark map[string]*widget.Button
-	__named_tag   *widget.Button
+	__named_cell  *fynelayout.Button
+	__copies_cell map[string]*fynelayout.Button
+	__named_mark  *fynelayout.Button
+	__copies_mark map[string]*fynelayout.Button
+	__named_tag   *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -1340,26 +1340,26 @@ func (m *Model) tagClick() {
 	}
 }
 
-func (m *Model) __list_cell(key string, w *widget.Button) {
+func (m *Model) __list_cell(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_cell {
 		if c == w {
 			delete(m.__copies_cell, k)
 		}
 	}
 	if m.__copies_cell == nil {
-		m.__copies_cell = map[string]*widget.Button{}
+		m.__copies_cell = map[string]*fynelayout.Button{}
 	}
 	m.__copies_cell[key] = w
 }
 
-func (m *Model) __list_mark(key string, w *widget.Button) {
+func (m *Model) __list_mark(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_mark {
 		if c == w {
 			delete(m.__copies_mark, k)
 		}
 	}
 	if m.__copies_mark == nil {
-		m.__copies_mark = map[string]*widget.Button{}
+		m.__copies_mark = map[string]*fynelayout.Button{}
 	}
 	m.__copies_mark[key] = w
 }
@@ -1396,7 +1396,7 @@ func (m *Model) SetShown(v bool) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n7 = fynelayout.NewVBox()
-	m.swap = widget.NewButton("", nil)
+	m.swap = fynelayout.NewButton("", nil)
 	m.swap.SetText("swap")
 	m.swap.OnTapped = m.swap_click_handler
 	m.__n7.Add(m.swap)
@@ -1430,7 +1430,7 @@ type Card__slot0Instance struct {
 	__slot2        []fyne.CanvasObject
 	__slot2_at     fyne.CanvasObject
 	__n4           *fyne.Container
-	__n0           *widget.Button
+	__n0           *fynelayout.Button
 }
 
 func newCard__slot0Instance(__model *Model, __a___p0 []string, __a___copy string, __a___on0 func(int, string), __a___on1 func(string)) *Card__slot0Instance {
@@ -1450,7 +1450,7 @@ func newCard__slot0Instance(__model *Model, __a___p0 []string, __a___copy string
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__n4 = fynelayout.NewVBox()
-	c.__n0 = widget.NewButton("", nil)
+	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(("t " + fmt.Sprint(c.open)))
 	c.__n0.OnTapped = func() {
 		c.open = (c.open + 1)
@@ -1601,7 +1601,7 @@ type __child0Instance struct {
 	__slot1_at   fyne.CanvasObject
 	__slot2      []fyne.CanvasObject
 	__slot2_at   fyne.CanvasObject
-	cell         *widget.Button
+	cell         *fynelayout.Button
 }
 
 func new__child0Instance(__model *Model, __a___p0 string, __a___p1 string, __a___p2 int, __a___on0 func()) *__child0Instance {
@@ -1621,7 +1621,7 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	} else {
 		__lt12 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
-	c.cell = widget.NewButton("", nil)
+	c.cell = fynelayout.NewButton("", nil)
 	c.cell.SetText(c.__prop___p0)
 	c.__model.__list_cell(__lt12, c.cell)
 	c.cell.OnTapped = func() {
@@ -1690,7 +1690,7 @@ type __child1Instance struct {
 	__slot1_at   fyne.CanvasObject
 	__slot2      []fyne.CanvasObject
 	__slot2_at   fyne.CanvasObject
-	mark         *widget.Button
+	mark         *fynelayout.Button
 }
 
 func new__child1Instance(__model *Model, __a___p0 string, __a___p1 string, __a___p2 int, __a___on0 func()) *__child1Instance {
@@ -1710,7 +1710,7 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	} else {
 		__lt15 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
-	c.mark = widget.NewButton("", nil)
+	c.mark = fynelayout.NewButton("", nil)
 	c.mark.SetText(c.__prop___p0)
 	c.__model.__list_mark(__lt15, c.mark)
 	c.mark.OnTapped = func() {
@@ -1777,7 +1777,7 @@ type __child2Instance struct {
 	__slot1_at   fyne.CanvasObject
 	__slot2      []fyne.CanvasObject
 	__slot2_at   fyne.CanvasObject
-	tag          *widget.Button
+	tag          *fynelayout.Button
 }
 
 func new__child2Instance(__model *Model, __a___p0 string, __a___on0 func()) *__child2Instance {
@@ -1789,7 +1789,7 @@ func new__child2Instance(__model *Model, __a___p0 string, __a___on0 func()) *__c
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.tag = widget.NewButton("", nil)
+	c.tag = fynelayout.NewButton("", nil)
 	c.tag.SetText(("x" + c.__prop___p0))
 	c.tag.OnTapped = func() {
 		c.__prop___on0()
@@ -3605,7 +3605,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:5c2de62d78884fb271b3b45b95a401b7
 -- run/go/fyne --
-pass sha256:220509a7b10ce072eb72e0c394c4c518
+pass sha256:fdf7f4c416bb137eabf197c3053c92e1
 -- run/go/gtk4 --
 pass sha256:8b536a61fbc2cfce0d66a2fb7bcb2b3e
 -- run/kotlin/android --

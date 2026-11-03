@@ -650,7 +650,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
@@ -898,6 +898,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ae8bf98168439614de2f623bcc7480d4
 -- run/go/gtk4 --
-pass sha256:ed4ff22ff037a8b15ed4b33d9f2a0df2
+pass sha256:a04c9f739d6f4dfce08b3901d0e202fd
 -- run/none/html --
 pass sha256:037983dabb123bee04016eedcdfe1c3d

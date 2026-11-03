@@ -331,9 +331,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -404,7 +401,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetTitle("drawing")
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1Ctx = snglcanvas.New(40, 40)
 	m._canvasDraw0(m.__n1Ctx)
@@ -608,6 +604,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:270dfd2e9f1861cf96a58c720973e659
+pass sha256:719a4f42ea1e9313902a5bfd4cf17e72
 -- run/none/html --
 pass sha256:e7adf0ea6452b395784dbaed407169d8

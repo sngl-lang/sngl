@@ -95,7 +95,7 @@ type Model struct {
 
 	details *fynelayout.Toplevel
 	__n0    *widget.Label
-	__n1    *widget.Button
+	__n1    *fynelayout.Button
 	__built bool
 }
 
@@ -261,9 +261,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) details_closed_handler() {
 }
 
-func (m *Model) details_key_handler(k string) {
-}
-
 func (m *Model) details_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.details.SetVisible(m.visible__inst0)
@@ -279,11 +276,6 @@ func (m *Model) detailsClosed() {
 	if m.details.OnClosed != nil {
 		m.details.OnClosed()
 	}
-}
-
-// detailsKey calls PressKey on the #details widget; for tests.
-func (m *Model) detailsKey(key string) {
-	m.details.PressKey(key)
 }
 
 // detailsVisible invokes the OnVisible callback on the #details widget; for tests.
@@ -361,12 +353,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.details.SetTitle("Details")
 	m.details.SetVisible(m.visible__inst0)
 	m.details.OnClosed = m.details_closed_handler
-	m.details.OnKey = m.details_key_handler
 	m.details.OnVisible = m.details_visible_handler
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(fmt.Sprint(m.ticks))
 	m.details.Add(m.__n0)
-	m.__n1 = widget.NewButton("", nil)
+	m.__n1 = fynelayout.NewButton("", nil)
 	m.__n1.SetText("Close")
 	m.__n1.OnTapped = m.__n1_click_handler
 	m.details.Add(m.__n1)
@@ -568,7 +559,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) details_closed_handler() {
 }
 
-func (m *Model) details_key_handler(k string) {
+func (m *Model) details_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) details_visible_handler(__visible bool) {
@@ -643,12 +634,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.details)
 }
-
-// detailsKey fires "key" on the #details widget; for tests.
-func (m *Model) detailsKey(v string) {
-	gtk4rt.ToplevelKey(m.details, v)
-}
 -- run/go/fyne --
-pass sha256:a3f7a8d71b0d162cc92367fa1e3d6d06
+pass sha256:5d55e10c624dc678dd284e4a5077ee8e
 -- run/go/gtk4 --
-pass sha256:589fe5b504a82ca5018e4f13e7757262
+pass sha256:16abda843a00d2d3a0431c033a69fc32

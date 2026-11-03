@@ -798,8 +798,8 @@ type Model struct {
 
 	__n3        *fyne.Container
 	__n1        *widget.Label
-	bump        *widget.Button
-	__named_inc *widget.Button
+	bump        *fynelayout.Button
+	__named_inc *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -914,7 +914,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText(("page " + fmt.Sprint(m.m__r3)))
 	m.__n3.Add(m.__n1)
-	m.bump = widget.NewButton("", nil)
+	m.bump = fynelayout.NewButton("", nil)
 	m.bump.SetText("bump")
 	m.bump.OnTapped = m.bump_click_handler
 	m.__n3.Add(m.bump)
@@ -934,7 +934,7 @@ type CounterInstance struct {
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
 	__n0         *widget.Label
-	inc          *widget.Button
+	inc          *fynelayout.Button
 }
 
 func newCounterInstance(__model *Model, __a_start int) *CounterInstance {
@@ -949,7 +949,7 @@ func newCounterInstance(__model *Model, __a_start int) *CounterInstance {
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(((("m " + fmt.Sprint(c.m__r2)) + " c ") + fmt.Sprint(c.c__r1)))
 	__n4.Add(c.__n0)
-	c.inc = widget.NewButton("", nil)
+	c.inc = fynelayout.NewButton("", nil)
 	c.inc.SetText("inc")
 	c.inc.OnTapped = func() {
 		c.m__r2 += 1
@@ -1237,6 +1237,6 @@ func (m *Model) incClick() {
 -- run/go/bubbletea --
 pass sha256:42a1b0e3419b150b40dca8b02c42a9ce
 -- run/go/fyne --
-pass sha256:8c546caf280cc3a8982209900d1735b9
+pass sha256:343e446a10f747ce60bf4d3996ede0c2
 -- run/go/gtk4 --
 pass sha256:afeb7862d7bf49110d5d15bc4ed968e0

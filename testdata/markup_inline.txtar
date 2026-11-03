@@ -697,9 +697,6 @@ func New() *Model {
 func (m *Model) home_closed_handler() {
 }
 
-func (m *Model) home_key_handler(k string) {
-}
-
 func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.home.SetVisible(m.visible__inst0)
@@ -710,11 +707,6 @@ func (m *Model) homeClosed() {
 	if m.home.OnClosed != nil {
 		m.home.OnClosed()
 	}
-}
-
-// homeKey calls PressKey on the #home widget; for tests.
-func (m *Model) homeKey(key string) {
-	m.home.PressKey(key)
 }
 
 // homeVisible invokes the OnVisible callback on the #home widget; for tests.
@@ -744,7 +736,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetTitle("doc")
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
-	m.home.OnKey = m.home_key_handler
 	m.home.OnVisible = m.home_visible_handler
 	m.__n0 = fynelayout.NewVBox()
 	m.__n1 = fynetext.NewFlow()
@@ -905,7 +896,7 @@ func New() *Model {
 func (m *Model) home_closed_handler() {
 }
 
-func (m *Model) home_key_handler(k string) {
+func (m *Model) home_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) home_visible_handler(__visible bool) {
@@ -975,11 +966,6 @@ func (m *Model) buildWidgetTree() {
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.home)
-}
-
-// homeKey fires "key" on the #home widget; for tests.
-func (m *Model) homeKey(v string) {
-	gtk4rt.ToplevelKey(m.home, v)
 }
 -- out/go/html/server.go --
 package main
@@ -1562,9 +1548,9 @@ and a newline</span></p>
 -- run/go/bubbletea --
 pass sha256:d458201c37a55ff98e028ff3c546256d
 -- run/go/fyne --
-pass sha256:fc8b010574558b0c5adc795955064578
+pass sha256:df897aaadae788893c50d9ac94ca8e8a
 -- run/go/gtk4 --
-pass sha256:cb06fdd2b4e5c18b10bd0a4077c553d3
+pass sha256:d0039fcf8bd1a4411c62d75f8416be12
 -- run/go/html --
 pass sha256:53ed55b98b2e38eca4b42793a849bc0a
 -- run/kotlin/android --

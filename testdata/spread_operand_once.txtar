@@ -625,6 +625,7 @@ func newTestComponent() Model { m := New(); _ = m.View(); return m }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -644,9 +645,9 @@ type Model struct {
 	got int
 	p   Pair
 
-	once   *widget.Button
-	path   *widget.Button
-	nested *widget.Button
+	once   *fynelayout.Button
+	path   *fynelayout.Button
+	nested *fynelayout.Button
 	__n0   *widget.Label
 }
 
@@ -737,13 +738,13 @@ func (m *Model) SetP(v Pair) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.once = widget.NewButton("", nil)
+	m.once = fynelayout.NewButton("", nil)
 	m.once.SetText("once")
 	m.once.OnTapped = m.once_click_handler
-	m.path = widget.NewButton("", nil)
+	m.path = fynelayout.NewButton("", nil)
 	m.path.SetText("path")
 	m.path.OnTapped = m.path_click_handler
-	m.nested = widget.NewButton("", nil)
+	m.nested = fynelayout.NewButton("", nil)
 	m.nested.SetText("nested")
 	m.nested.OnTapped = m.nested_click_handler
 	m.__n0 = widget.NewLabel("")
@@ -1022,7 +1023,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:9035d9e9a61f9434d0fe0680f4ca93bc
 -- run/go/fyne --
-pass sha256:3fde783984f22b8cde5f10b6d288701e
+pass sha256:dc12977cac230956c8afa565aa6c2824
 -- run/kotlin/android --
 pass sha256:c0b9ca7cc4cc88689d0b13ca3746e426
 -- run/none/html --

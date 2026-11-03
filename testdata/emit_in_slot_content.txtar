@@ -601,10 +601,10 @@ type Model struct {
 	__n0    *fynelayout.Toplevel
 	__n2    *fyne.Container
 	__n3    *fyne.Container
-	__n4    *widget.Button
+	__n4    *fynelayout.Button
 	__n1    *widget.Label
 	__n5    *fyne.Container
-	__n6    *widget.Button
+	__n6    *fynelayout.Button
 	__built bool
 }
 
@@ -617,9 +617,6 @@ func New() *Model {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -657,12 +654,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n2 = fynelayout.NewVBox()
 	m.__n3 = fynelayout.NewHBox()
 	for _, i := range []int{1, 2, 3} {
-		m.__n4 = widget.NewButton("", nil)
+		m.__n4 = fynelayout.NewButton("", nil)
 		m.__n4.SetText(("p" + fmt.Sprint(i)))
 		m.__n4.OnTapped = func() {
 			m.got = i
@@ -675,7 +671,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetText(("got=" + fmt.Sprint(m.got)))
 	m.__n2.Add(m.__n1)
 	m.__n5 = fynelayout.NewHBox()
-	m.__n6 = widget.NewButton("", nil)
+	m.__n6 = fynelayout.NewButton("", nil)
 	m.__n6.SetText("inc")
 	m.__n6.OnTapped = m.__n6_click_handler
 	m.__n5.Add(m.__n6)
@@ -949,7 +945,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:86a44ab5fe04c67c64f4aa2353537b14
 -- run/go/fyne --
-pass sha256:8936a93c2a2a70f2beecfe72116d121d
+pass sha256:68b6bf7ed4b2109bed85bce85d935dc6
 -- run/kotlin/android --
 pass sha256:82d3c67b58449fc1c589e93f5d46ab72
 -- run/none/html --

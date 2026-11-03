@@ -71,7 +71,7 @@ type Model struct {
 
 	home    *fynelayout.Toplevel
 	__n2    *fyne.Container
-	__n3    *widget.Button
+	__n3    *fynelayout.Button
 	__n0    *widget.Label
 	__n1    *widget.Label
 	__built bool
@@ -107,9 +107,6 @@ func Load(s string) string {
 }
 
 func (m *Model) home_closed_handler() {
-}
-
-func (m *Model) home_key_handler(k string) {
 }
 
 func (m *Model) home_visible_handler(__visible bool) {
@@ -149,11 +146,6 @@ func (m *Model) homeClosed() {
 	if m.home.OnClosed != nil {
 		m.home.OnClosed()
 	}
-}
-
-// homeKey calls PressKey on the #home widget; for tests.
-func (m *Model) homeKey(key string) {
-	m.home.PressKey(key)
 }
 
 // homeVisible invokes the OnVisible callback on the #home widget; for tests.
@@ -199,10 +191,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetTitle("raise")
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
-	m.home.OnKey = m.home_key_handler
 	m.home.OnVisible = m.home_visible_handler
 	m.__n2 = fynelayout.NewVBox()
-	m.__n3 = widget.NewButton("", nil)
+	m.__n3 = fynelayout.NewButton("", nil)
 	m.__n3.SetText("go")
 	m.__n3.OnTapped = m.__n3_click_handler
 	m.__n2.Add(m.__n3)
@@ -286,7 +277,7 @@ func Load(s string) string {
 func (m *Model) home_closed_handler() {
 }
 
-func (m *Model) home_key_handler(k string) {
+func (m *Model) home_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) home_visible_handler(__visible bool) {
@@ -382,12 +373,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.home)
 }
-
-// homeKey fires "key" on the #home widget; for tests.
-func (m *Model) homeKey(v string) {
-	gtk4rt.ToplevelKey(m.home, v)
-}
 -- run/go/fyne --
-pass sha256:b4dea07a3949936fdb20065c0b8ecceb
+pass sha256:927f347cae6e6da5857c30e0e4d921ce
 -- run/go/gtk4 --
-pass sha256:058c8ebbdcfd37d5a6cde74dbac52e48
+pass sha256:ff47bce352f938fc75c2fa23996df930

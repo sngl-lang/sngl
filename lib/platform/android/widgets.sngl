@@ -14,12 +14,12 @@ import . "sngl:internal/marks"
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one. Its menu's entries are
 // drawn two deep: an action and its DropdownMenu. Its `@key` is a hardware
-// keyboard's key that nothing focused took, which reaches the activity once
-// Compose has passed it up from the focused composable; a test presses one
-// through the window's `#id` as the keyboard would, so a focused field takes
-// what is typed there too.
+// keyboard's key, heard in front of the activity's window callback before
+// any view; a test's through the window's `#id` is heard as the test gives
+// it, and one the handler leaves is pressed on as the keyboard would press
+// it, so a focused field types it.
 const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content, favicon, menu) {
-    Screen(visible=visible, title=title, canGoBack=canGoBack, onUp=func() { back() }, onKey=func(k string) { key(k) }, onBack=func() {
+    Screen(visible=visible, title=title, canGoBack=canGoBack, onUp=func() { back() }, onKey=func(e ui.KeyPress, stop func()) { key(e, stop) }, onBack=func() {
         visible = false
         closed()
     }) {

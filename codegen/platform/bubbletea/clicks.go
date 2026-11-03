@@ -122,13 +122,21 @@ func emitPress(b *strings.Builder, info *irAnalysis) {
 	emitIRFocusSync(&sync, info.widgets)
 	b.WriteString(dedent(sync.String(), 2))
 	b.WriteString("\tvar cmd tea.Cmd\n")
-	b.WriteString("\tif s.press {\n")
+	// The key is the press's and no key the window hears.
+	flags := []string{}
 	if info.settles {
-		fmt.Fprintf(b, "\t\tm.%s = true\n", pressingField)
+		flags = append(flags, pressingField)
+	}
+	if screenKeyHandler(info) != nil {
+		flags = append(flags, unheardField)
+	}
+	b.WriteString("\tif s.press {\n")
+	for _, f := range flags {
+		fmt.Fprintf(b, "\t\tm.%s = true\n", f)
 	}
 	b.WriteString("\t\t_, cmd = m.Update(s.key)\n")
-	if info.settles {
-		fmt.Fprintf(b, "\t\tm.%s = false\n", pressingField)
+	for _, f := range flags {
+		fmt.Fprintf(b, "\t\tm.%s = false\n", f)
 	}
 	b.WriteString("\t}\n")
 	if info.settles {

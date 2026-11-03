@@ -61,8 +61,8 @@ type Model struct {
 
 	__n0         *widget.Label
 	__n1         *widget.Label
-	off          *widget.Button
-	__copies_off map[string]*widget.Button
+	off          *fynelayout.Button
+	__copies_off map[string]*fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -97,7 +97,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 				m.__copies_off = nil
 				for __copy0, r := range m.rows {
-					m.off = widget.NewButton("", nil)
+					m.off = fynelayout.NewButton("", nil)
 					m.off.SetText(("Off " + fmt.Sprint(r)))
 					m.__list_off(fmt.Sprint(__copy0), m.off)
 					m.off.OnTapped = func() {
@@ -136,14 +136,14 @@ func (m *Model) offClickAt(key string) {
 	}
 }
 
-func (m *Model) __list_off(key string, w *widget.Button) {
+func (m *Model) __list_off(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_off {
 		if c == w {
 			delete(m.__copies_off, k)
 		}
 	}
 	if m.__copies_off == nil {
-		m.__copies_off = map[string]*widget.Button{}
+		m.__copies_off = map[string]*fynelayout.Button{}
 	}
 	m.__copies_off[key] = w
 }
@@ -381,6 +381,6 @@ func (m *Model) __list_off(key string, w gtk4rt.Handle) {
 	m.__copies_off[key] = w
 }
 -- run/go/fyne --
-pass sha256:7b07a161161b319b7c4c25b451d9c119
+pass sha256:04f3db861f15932a0b419a5b2682db0a
 -- run/go/gtk4 --
 pass sha256:e9a2bf45abfec84e76a653b146a5faca

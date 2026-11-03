@@ -50,11 +50,13 @@ turn out to be, and `Calculator` switches on the action.
 **The keyboard presses the keys.** Each `Key` lists the keys on a keyboard
 that press it, named as a window's `@key` names them: the digit or operator it
 shows, `*` beside `x` for times, Enter beside `=`, Escape and `c` for clear,
-Backspace for `<`, `_` for `+/-`. The window's `@key` hands a name to
-`keypad.keyFor`, and presses what comes back. The keys are
-`focusable=false`, as no calculator's keys take focus: one left focused by the
-last click would take the Enter that means `=`. On a terminal they are pressed
-with the mouse as well.
+Backspace for `<`, `_` for `+/-`. The window's `@key` hears each key before anything
+in the window does, hands its name to `keypad.keyFor`, presses what comes back
+and stops the key there, so the Enter that means `=` never also presses a
+button focus was left on. A key held with Control, Alt or Meta is left alone,
+as is every key no keypad key answers. The keys are `focusable=false`, as no
+calculator's keys take focus, and Tab passes over them. On a terminal they are
+pressed with the mouse as well.
 
 **The keys fill the window.** Each row is an `hbox(style={flex=1})` and each
 key a `button(style={flex=1})`, so the grid takes whatever room the window

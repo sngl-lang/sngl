@@ -46,6 +46,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
+	"duckfam.us/sngl/pkg/go/fynelayout"
 )
 
 func texts(o fyne.CanvasObject, out *[]string) {
@@ -55,7 +56,7 @@ func texts(o fyne.CanvasObject, out *[]string) {
 	switch w := o.(type) {
 	case *widget.Label:
 		*out = append(*out, w.Text)
-	case *widget.Button:
+	case *fynelayout.Button:
 		*out = append(*out, w.Text)
 	case *fyne.Container:
 		for _, c := range w.Objects {

@@ -67,10 +67,8 @@ type toplevel struct {
 	win       *C.GtkWindow
 	onVisible func(bool)
 	onClosed  func()
-	// onKey is the window's `@key`, and keys the controller on its window
-	// that hears what the content leaves (keys.go).
-	onKey func(string)
-	keys  *C.GtkEventController
+	// onKey is the window's `@key` (keys.go).
+	onKey func(key string, ctrl, alt, shift, meta, editing bool, stop func())
 	gone  int
 	// icon is the image source a `ui.window`'s favicon is.
 	icon *source
@@ -202,7 +200,7 @@ func AppDetach(h Handle) {
 	attachedTops = slices.DeleteFunc(attachedTops, func(x *toplevel) bool { return x == t })
 	if t.win != nil {
 		win := t.win
-		t.win, t.keys = nil, nil
+		t.win = nil
 		// A reference across the unparent, so the box is freed by its last
 		// holder rather than mid-call.
 		C.g_object_ref(C.gpointer(p(t.box)))
@@ -236,7 +234,7 @@ func ToplevelWindow(app, h Handle) Handle {
 		if t.win != (*C.GtkWindow)(unsafe.Pointer(win)) {
 			return
 		}
-		t.win, t.keys = nil, nil
+		t.win = nil
 		if t.bar != nil {
 			t.backButton = nil
 		}

@@ -58,6 +58,7 @@ window {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -93,10 +94,10 @@ type Model struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 
-	same      *widget.Button
-	set       *widget.Button
-	again     *widget.Button
-	clear__r0 *widget.Button
+	same      *fynelayout.Button
+	set       *fynelayout.Button
+	again     *fynelayout.Button
+	clear__r0 *fynelayout.Button
 	__n0      *widget.Label
 }
 
@@ -268,16 +269,16 @@ func (m *Model) SetLog(v []string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.same = widget.NewButton("", nil)
+	m.same = fynelayout.NewButton("", nil)
 	m.same.SetText("same")
 	m.same.OnTapped = m.same_click_handler
-	m.set = widget.NewButton("", nil)
+	m.set = fynelayout.NewButton("", nil)
 	m.set.SetText("set")
 	m.set.OnTapped = m.set_click_handler
-	m.again = widget.NewButton("", nil)
+	m.again = fynelayout.NewButton("", nil)
 	m.again.SetText("again")
 	m.again.OnTapped = m.again_click_handler
-	m.clear__r0 = widget.NewButton("", nil)
+	m.clear__r0 = fynelayout.NewButton("", nil)
 	m.clear__r0.SetText("clear")
 	m.clear__r0.OnTapped = m.clear__r0_click_handler
 	m.__n0 = widget.NewLabel("")
@@ -629,7 +630,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:e388d021dac665dbadf2151bf1569944
+pass sha256:664eafac8300bc4d3e6658df6b9205bb
 -- run/kotlin/android --
 pass sha256:a095b398559f187b4b1b6fe2ac51b3e5
 -- run/none/html --

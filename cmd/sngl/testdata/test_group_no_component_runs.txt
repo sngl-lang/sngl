@@ -166,7 +166,7 @@ sha256:cf3c625a547959cc89ecdc47e09f98d5
   ]
 }
 -- testrun/fyne/go/focus.sngl/panel/1 --
-sha256:8f4ca648cee269d7d3d288327550d1c1
+sha256:1e6a4d99b08044705db689f87edaffcd
 {
   "results": [
     {

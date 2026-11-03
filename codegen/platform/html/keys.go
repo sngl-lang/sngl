@@ -13,41 +13,78 @@ import (
 // the page defines with keysHelper. The window it is in is the `<dialog>` it
 // is in, or the document where it is in none, and it listens for a keydown
 // there while it is connected, so a test's remount, which takes the page's
-// elements away, takes its listener with them. A key nothing in the window
-// took is dispatched as `key`, which html.element declares as an event.
+// elements away, takes its listener with them. Each key pressed in the window
+// is dispatched as `key`, which html.element declares as an event.
 const keysTag = "sngl-keys"
 
-// keysHelper defines keysTag. What a window does not hear is what lib/ui's
-// window says something in it takes: a key a handler prevented, one with
-// Control, Alt or Meta held, a Tab, one typed into a field, an Enter or a
-// space pressing a focused button or link, and an Escape while the window
-// can go back, which is while it holds a `sngl-back`. The document does not
-// hear a key pressed in a `<dialog>`, which is a window of its own. A key is
-// reported as KeyboardEvent.key names it, where that is one character or one
-// of the names lib/ui lists: a Shift alone, a function key or a dead key is
-// not.
+// keysHelper defines keysTag. It listens in the capture phase, so the window
+// hears a key before the element with the focus does: before a field types
+// it, a button's Enter or space presses it, or a Tab moves the focus. A
+// `key` the window's handler prevented -- its `stop` -- is a keydown
+// prevented and stopped, which is all of those, and the keyup after it is
+// too, since a button pressed by the space bar is clicked as the key comes
+// up. A key pressed in a `<dialog>` is that dialog's window's, and the
+// document's does not hear it: the dialogs are shown without a backdrop, as
+// desktop windows, so the window with the focus is the one that hears the
+// keyboard, and none of them is modal. A key composing text in an input
+// method passes untouched, as do a modifier alone and a key lib/ui has no name
+// for. With Control, Alt or Meta held the key is its own character, which is
+// what KeyboardEvent.key says but where Alt on a Mac types another: there the
+// key's position names it, `KeyS` "s". `report` is what a test's
+// `c.<id>.key(press, stop)` calls, handing the press it wrote, and `pass`
+// presses on one the window did not stop, as a keydown and a keyup the
+// window's element lets by.
 const keysHelper = `if (!customElements.get("sngl-keys")) customElements.define("sngl-keys", class extends HTMLElement {
+  static named = new Set(["Enter", "Tab", "Escape", "Backspace", "Delete", "Insert", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown", ...Array.from({ length: 12 }, (_, i) => "F" + (i + 1))]);
+  static legacy = { Esc: "Escape", Spacebar: " ", Left: "ArrowLeft", Right: "ArrowRight", Up: "ArrowUp", Down: "ArrowDown", Del: "Delete" };
+  static untyped = ["button", "checkbox", "radio", "range", "color", "file", "submit", "reset", "image", "hidden"];
+  static press(e) {
+    let key = this.legacy[e.key] || e.key;
+    if ((e.ctrlKey || e.altKey || e.metaKey) && /^(Key[A-Z]|Digit[0-9])$/.test(e.code) && !/^[ -~]$/.test(key)) {
+      key = e.shiftKey ? e.code.slice(-1) : e.code.slice(-1).toLowerCase();
+    }
+    if ([...key].length !== 1 && !this.named.has(key)) return null;
+    const t = e.target instanceof Element ? e.target : null;
+    const editing = !!t && (t.isContentEditable || ((t instanceof HTMLTextAreaElement || (t instanceof HTMLInputElement && !this.untyped.includes(t.type))) && !t.readOnly));
+    return { key, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey, meta: e.metaKey, editing };
+  }
   connectedCallback() {
     this.style.display = "none";
     const dialog = this.closest("dialog");
-    const named = ["Enter", "Escape", "Backspace", "Delete", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown"];
+    const held = new Set();
+    const swallow = (e) => { e.preventDefault(); e.stopImmediatePropagation(); };
     this._on = dialog || document;
-    this._key = (e) => {
-      if (e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey || e.isComposing) return;
-      if ([...e.key].length !== 1 && !named.includes(e.key)) return;
-      const t = e.target instanceof Element ? e.target : null;
-      if (t) {
-        if (t.closest("dialog") !== dialog) return;
-        if (t.isContentEditable || t.closest("input, textarea, select")) return;
-        if ((e.key === "Enter" || e.key === " ") && t.closest("button, a[href], summary, [role=button], [role=link], [role=tab]")) return;
+    this._down = (e) => {
+      if (e.isComposing || e.keyCode === 229 || this.constructor.passing.has(e)) return;
+      if (e.target instanceof Element && e.target.closest("dialog") !== dialog) return;
+      const press = this.constructor.press(e);
+      if (press && !this.report(press)) {
+        swallow(e);
+        held.add(e.code || e.key);
       }
-      if (e.key === "Escape" && [...this._on.querySelectorAll("sngl-back")].some((b) => b.closest("dialog") === dialog)) return;
-      this.dispatchEvent(new KeyboardEvent("key", { key: e.key }));
     };
-    this._on.addEventListener("keydown", this._key);
+    this._up = (e) => {
+      if (held.delete(e.code || e.key)) swallow(e);
+    };
+    this._on.addEventListener("keydown", this._down, true);
+    this._on.addEventListener("keyup", this._up, true);
   }
   disconnectedCallback() {
-    this._on.removeEventListener("keydown", this._key);
+    this._on.removeEventListener("keydown", this._down, true);
+    this._on.removeEventListener("keyup", this._up, true);
+  }
+  static passing = new WeakSet();
+  static pass(target, press) {
+    for (const type of ["keydown", "keyup"]) {
+      const e = new KeyboardEvent(type, { key: press.key, ctrlKey: press.ctrl, altKey: press.alt, shiftKey: press.shift, metaKey: press.meta, bubbles: true, cancelable: true });
+      this.passing.add(e);
+      target.dispatchEvent(e);
+    }
+  }
+  report(press) {
+    const e = new Event("key", { cancelable: true });
+    for (const f of ["key", "ctrl", "alt", "shift", "meta", "editing"]) e[f] = press[f];
+    return this.dispatchEvent(e);
   }
 });
 `
@@ -173,12 +210,16 @@ func unheardKeys(s ir.Stmt) bool {
 const keyEvent = "key"
 
 // emitWindowKeyInvokers attaches `<id>Key` to the state a test holds for each
-// window a test fires `key` through: `c.main.key("7")` dispatches a keydown
-// for "7" where the focus is, if it is in the window, and on the window
-// itself where it is not, so the key goes through what the user's would --
-// the field it is typed into, the button it presses, and the window's
-// `sngl-keys`. The document's window is its body, and a dialog is found by
-// the element it was written as or, built at run time, by its mark.
+// window a test fires `key` through: `c.main.key(press, stop)` hands the
+// press, as the test wrote it, to the `report` of the window's `sngl-keys`,
+// which dispatches it as it would a keydown it heard, and calls `stop` where
+// the window's handler stopped it. A key it did not stop is pressed where the
+// focus is, if it is in the window, and on the window itself where it is not,
+// as a keydown and a keyup the window's own element lets by, so it goes on
+// to what the user's would without the window hearing it twice. The
+// document's window is its body, and a dialog is found by the element it was
+// written as or, built at run time, by its mark; the window's own element is
+// the one there in no other dialog.
 func (g *htmlGen) emitWindowKeyInvokers(b *strings.Builder, seen map[string]bool) {
 	if g.triggered == nil {
 		g.triggered = codegen.TriggeredEvents(g.pkg)
@@ -204,7 +245,7 @@ func (g *htmlGen) emitWindowKeyInvokers(b *strings.Builder, seen map[string]bool
 			continue
 		}
 		seen[name] = true
-		fmt.Fprintf(b, "state.%s = (p) => { const w = %s; const a = document.activeElement; (a && w.contains(a) ? a : w).dispatchEvent(new KeyboardEvent(\"keydown\", { key: p.key, bubbles: true, cancelable: true })); };\n", name, root)
+		fmt.Fprintf(b, "state.%s = (p) => { const w = %s; const d = w.tagName === \"DIALOG\" ? w : null; const k = [...w.querySelectorAll(%q)].find((k) => k.closest(\"dialog\") === d); if (k && !k.report(p.e)) { p.stop(); return; } const a = document.activeElement; customElements.get(%q)?.pass(a && w.contains(a) ? a : w, p.e); };\n", name, root, keysTag, keysTag)
 	}
 }
 

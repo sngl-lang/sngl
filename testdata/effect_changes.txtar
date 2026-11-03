@@ -971,14 +971,14 @@ type Model struct {
 	__effects0_steps    int
 
 	__n0    *fynelayout.Toplevel
-	__n3    *widget.Button
-	__n4    *widget.Button
-	__n5    *widget.Button
-	__n6    *widget.Button
+	__n3    *fynelayout.Button
+	__n4    *fynelayout.Button
+	__n5    *fynelayout.Button
+	__n6    *fynelayout.Button
 	__n1    *widget.Label
-	__n7    *widget.Button
-	__n8    *widget.Button
-	__n9    *widget.Button
+	__n7    *fynelayout.Button
+	__n8    *fynelayout.Button
+	__n9    *fynelayout.Button
 	__n2    *widget.Label
 	__built bool
 }
@@ -1160,9 +1160,6 @@ func (m *Model) __effect1_note_append() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -1251,36 +1248,35 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetTitle("Changes")
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n3 = widget.NewButton("", nil)
+	m.__n3 = fynelayout.NewButton("", nil)
 	m.__n3.SetText("add")
 	m.__n3.OnTapped = m.__n3_click_handler
 	m.__n0.Add(m.__n3)
-	m.__n4 = widget.NewButton("", nil)
+	m.__n4 = fynelayout.NewButton("", nil)
 	m.__n4.SetText("toggle")
 	m.__n4.OnTapped = m.__n4_click_handler
 	m.__n0.Add(m.__n4)
-	m.__n5 = widget.NewButton("", nil)
+	m.__n5 = fynelayout.NewButton("", nil)
 	m.__n5.SetText("drop")
 	m.__n5.OnTapped = m.__n5_click_handler
 	m.__n0.Add(m.__n5)
-	m.__n6 = widget.NewButton("", nil)
+	m.__n6 = fynelayout.NewButton("", nil)
 	m.__n6.SetText("reset")
 	m.__n6.OnTapped = m.__n6_click_handler
 	m.__n0.Add(m.__n6)
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText(strings.Join(m.saved__inst0, ","))
 	m.__n0.Add(m.__n1)
-	m.__n7 = widget.NewButton("", nil)
+	m.__n7 = fynelayout.NewButton("", nil)
 	m.__n7.SetText("push")
 	m.__n7.OnTapped = m.__n7_click_handler
 	m.__n0.Add(m.__n7)
-	m.__n8 = widget.NewButton("", nil)
+	m.__n8 = fynelayout.NewButton("", nil)
 	m.__n8.SetText("sibling")
 	m.__n8.OnTapped = m.__n8_click_handler
 	m.__n0.Add(m.__n8)
-	m.__n9 = widget.NewButton("", nil)
+	m.__n9 = fynelayout.NewButton("", nil)
 	m.__n9.SetText("swap")
 	m.__n9.OnTapped = m.__n9_click_handler
 	m.__n0.Add(m.__n9)
@@ -1553,7 +1549,7 @@ func (m *Model) __effect1_note_append() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -2221,9 +2217,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:8441099a6cf697f13bf33b1b705e8b03
 -- run/go/fyne --
-pass sha256:1e3dc859f4792fabed8f9b61ae983b2b
+pass sha256:27e095f35fefbb610b95f04a565f7dac
 -- run/go/gtk4 --
-pass sha256:3374822f1d51a1be703797d1d8bb1c63
+pass sha256:66a8236779cea30839b18419a381e437
 -- run/kotlin/android --
 pass sha256:4f142e88c0281d5e06532d73a21d336c
 -- run/none/html --

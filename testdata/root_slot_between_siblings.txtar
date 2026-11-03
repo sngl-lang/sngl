@@ -103,7 +103,7 @@ type Model struct {
 	__n10   *widget.Label
 	__n11   *widget.Label
 	__n12   *widget.Label
-	more    *widget.Button
+	more    *fynelayout.Button
 	__built bool
 }
 
@@ -239,9 +239,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
-}
-
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n1.SetVisible(m.visible__inst0)
@@ -285,7 +282,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = fynelayout.NewToplevel()
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
-	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__n10 = widget.NewLabel("")
 	m.__n10.SetText("header")
@@ -298,7 +294,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n12 = widget.NewLabel("")
 	m.__n12.SetText("footer")
 	m.__n1.Add(m.__n12)
-	m.more = widget.NewButton("", nil)
+	m.more = fynelayout.NewButton("", nil)
 	m.more.SetText("more")
 	m.more.OnTapped = m.more_click_handler
 	m.__n1.Add(m.more)
@@ -321,7 +317,7 @@ type RowInstance struct {
 	__slot2_at   fyne.CanvasObject
 	__slot3      []fyne.CanvasObject
 	__slot3_at   fyne.CanvasObject
-	__n0         *widget.Button
+	__n0         *fynelayout.Button
 }
 
 func newRowInstance(__model *Model, __a_label string) *RowInstance {
@@ -334,7 +330,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n0 = widget.NewButton("", nil)
+	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((c.__prop_label + " ") + fmt.Sprint(c.n)))
 	c.__n0.OnTapped = func() {
 		c.n += 1
@@ -396,7 +392,7 @@ func newCardInstance(__model *Model, __a_xs []string) *CardInstance {
 	c.__renderSlot1(c.__root)
 	__n8 := widget.NewLabel("")
 	__n8.SetText("]")
-	__n9 := widget.NewButton("", nil)
+	__n9 := fynelayout.NewButton("", nil)
 	__n9.SetText("flip")
 	__n9.OnTapped = func() {
 		c.open = !c.open
@@ -658,7 +654,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
@@ -939,6 +935,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:a698ca5c43a6f86c8d6dc08b8b4e6550
+pass sha256:836ba216a2bbc105a6ac59d20cf19fa1
 -- run/go/gtk4 --
-pass sha256:45a277f92cb2028cb5fd40dcd7675fc0
+pass sha256:8adf7185565fa31d86b7d193ca6753cc

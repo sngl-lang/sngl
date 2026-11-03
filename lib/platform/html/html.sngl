@@ -139,6 +139,23 @@ struct KeyEvent {
     eventPhase int
 }
 
+// A key pressed in a window, as its `sngl-keys` dispatches it: the fields of
+// the ui.KeyPress the window's `@key` is handed, written on the event itself.
+#[js.native("Event")]
+struct KeyPressEvent {
+    key     string
+    ctrl    bool
+    alt     bool
+    shift   bool
+    meta    bool
+    editing bool
+}
+
+// Keeps the key from going further: `sngl-keys` reads the event it dispatched
+// as prevented, and prevents and stops the keydown it was dispatched for.
+#[js.native("preventDefault", "", method)]
+func KeyPressEvent.preventDefault()
+
 // A click as `@click` hands it, and a press as `@mousedown` does: the element
 // it landed on, and the one the handler hearing it was attached to.
 #[js.native("MouseEvent")]
@@ -275,9 +292,9 @@ component element(
     // history entry it keeps.
     @back(),
     // Dispatched by `sngl-keys`, an element the page defines
-    // (codegen/platform/html/keys.go), for a key pressed in the window it is
-    // in that nothing there takes.
-    @key(e KeyEvent),
+    // (codegen/platform/html/keys.go), for each key pressed in the window it is
+    // in, before anything there hears it.
+    @key(e KeyPressEvent),
     // Dispatched by `sngl-reach-end`, an element the page defines rather than
     // the DOM (codegen/platform/html/reachend.go). Declared because it is
     // camelCase, which the wildcard below refuses, and it is camelCase so a
@@ -362,7 +379,7 @@ const component ui.text[platform](value, style) {
 // A control whose `focusable` is false -- this and every other here -- is out
 // of the order Tab moves the focus in, by `tabindex="-1"`, and its
 // `@mousedown` prevents the focus a press gives, so a key typed after pressing
-// it goes to what had the focus, or to the window's `@key`. A control writing
+// it goes to what had the focus rather than pressing it again. A control writing
 // attributes the wildcard collects -- an input's `type` -- writes them in the
 // same map, since the wildcard takes the map or the names it matches.
 // Neither is written where `focusable` is the literal `true`.
@@ -722,13 +739,13 @@ component Window(
 //
 // Its `@key` is heard by a `sngl-keys`, an element the page defines
 // (codegen/platform/html/keys.go), which listens for a keydown on the
-// window's `<dialog>`, or on the document for the window that is the page,
-// and dispatches `key` for one nothing in the window took: not one with
-// Control, Alt or Meta held, a Tab, one typed into a field, an Enter or a
-// space pressing a focused button or link, an Escape while the window can go
-// back, or one a handler prevented. A window whose call site does not handle
-// `@key` has no such element; a test's `c.main.key("7")` dispatches a keydown
-// where the focus is in the window, or on the window itself.
+// window's `<dialog>`, or on the document for the window that is the page, in
+// the capture phase, so it hears each key pressed in the window before the
+// element with the focus does, and dispatches `key` for it. `stop` prevents
+// that event, and the element then prevents and stops the keydown, and the
+// keyup after it. A window whose call site does not handle `@key` has no such
+// element; a test's `c.main.key(press, stop)` dispatches `key` on the window's
+// element, as the keydown it reads would have.
 const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content, favicon, menu) {
     Window(title=title, :visible=visible, @closed { closed() }) {
         if canGoBack || menu.length() > 0 {
@@ -752,7 +769,9 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
         boundary(@error(e) { error(e) }) {
             content
         }
-        html.element(tag="sngl-keys", @key(e) { key(e.key) })
+        html.element(tag="sngl-keys", @key(e) {
+            key(ui.KeyPress{key=e.key, ctrl=e.ctrl, alt=e.alt, shift=e.shift, meta=e.meta, editing=e.editing}, func() { e.preventDefault() })
+        })
         #[family.crosses]
         favicon
     }

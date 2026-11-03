@@ -150,7 +150,8 @@ func (t *Toplevel) applyBack() {
 		if back == nil {
 			return
 		}
-		t.back = widget.NewButtonWithIcon("", theme.NavigateBackIcon(), nil)
+		t.back = NewButton("", nil)
+		t.back.Icon = theme.NavigateBackIcon()
 		t.back.Importance = widget.LowImportance
 		t.Container.Objects = append([]fyne.CanvasObject{container.NewHBox(t.back)}, t.Container.Objects...)
 		t.Container.Refresh()

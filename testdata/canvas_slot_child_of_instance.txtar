@@ -102,7 +102,7 @@ type Model struct {
 	__renderAgain0 bool
 
 	__n2 *fyne.Container
-	add  *widget.Button
+	add  *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -207,7 +207,7 @@ func (m *Model) SetRs(v []float64) {
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n2)
-	m.add = widget.NewButton("", nil)
+	m.add = fynelayout.NewButton("", nil)
 	m.add.SetText("add")
 	m.add.OnTapped = m.add_click_handler
 	m.__n2.Add(m.add)
@@ -246,7 +246,7 @@ func newFrame__slot0Instance(__model *Model, __a___p0 float64) *Frame__slot0Inst
 	c.__n4.FillMode = canvas.ImageFillOriginal
 	c.__n4.SetMinSize(fyne.NewSize(40, 40))
 	__n3.Add(c.__n4)
-	__n5 := widget.NewButton("", nil)
+	__n5 := fynelayout.NewButton("", nil)
 	__n5.SetText("hit")
 	__n5.OnTapped = func() {
 		c.hits += 1
@@ -1050,7 +1050,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:b8c89789109d7c29b3d5b0f4ec0fe43c
+pass sha256:cb31bb99eaa508d89f4e3f905c48e044
 -- run/go/gtk4 --
 pass sha256:db4dd666ea11d2c9f6f42f3f4f0c613c
 -- run/none/html --

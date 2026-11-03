@@ -2,9 +2,10 @@ package bubbletea
 
 import "testing"
 
-// keyRunSrc holds a window that hears keys, a button that takes the Enter
-// pressed on it, and a field that takes what is typed. Its handler declares a
-// local named as the override's own parameter is, which the splice renames.
+// keyRunSrc holds a window that hears keys and stops Control's and the x, a
+// button that takes the Enter pressed on it, and a field that takes what is
+// typed. Its handler declares a local named as the override's own parameter
+// is, which the splice renames.
 const keyRunSrc = `
 import ui "sngl:ui"
 
@@ -13,9 +14,18 @@ var pressed = 0
 var text = ""
 var typing = false
 
-ui.window(@key(name) {
-    var k = "[" + name + "]"
+ui.window(@key(e, stop) {
+    var k = "[" + e.key + "]"
+    if e.ctrl {
+        k = "[^" + e.key + "]"
+    }
+    if e.editing {
+        k = "<" + e.key + ">"
+    }
     heard = heard + k
+    if e.ctrl || e.key == "x" {
+        stop()
+    }
 }) {
     ui.vbox {
         ui.button(text="go", @click { pressed += 1 })
@@ -40,14 +50,13 @@ func send(m Model, msg tea.Msg) Model {
 	return next.(Model)
 }
 
-// The window hears what nothing in it takes: what is typed, the named keys,
-// and not the Enter that presses the focused button, the Tab that moves
-// focus, or a key with Control held.
-func TestTheWindowHearsKeysNothingTakes(t *testing.T) {
+// The window hears every key before anything in it, and a key it leaves goes
+// on: the Enter it heard still presses the focused button. ctrl+c is the
+// close, and no key the window hears.
+func TestTheWindowHearsEveryKeyFirst(t *testing.T) {
 	m := New()
 	for _, k := range []tea.KeyPressMsg{
 		{Code: '7', Text: "7"},
-		{Code: '+', Text: "+"},
 		{Code: tea.KeyBackspace},
 		{Code: tea.KeyEnter},
 		{Code: tea.KeyTab},
@@ -56,7 +65,7 @@ func TestTheWindowHearsKeysNothingTakes(t *testing.T) {
 	} {
 		m = send(m, k)
 	}
-	if want := "[7][+][Backspace][Escape]"; m.heard != want {
+	if want := "[7][Backspace][Enter][Tab][^s][Escape]"; m.heard != want {
 		t.Fatalf("heard %q, want %q", m.heard, want)
 	}
 	if m.pressed != 1 {
@@ -64,16 +73,37 @@ func TestTheWindowHearsKeysNothingTakes(t *testing.T) {
 	}
 }
 
-// What is typed into a focused field is the field's.
-func TestAFocusedFieldTakesTheKeys(t *testing.T) {
+// A key the handler stops reaches nothing else: the Enter a Control holds
+// presses no button.
+func TestAStoppedKeyGoesNoFurther(t *testing.T) {
+	m := send(New(), tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModCtrl})
+	if m.pressed != 0 {
+		t.Fatalf("a stopped enter pressed the button %d times", m.pressed)
+	}
+}
+
+// While a field holds focus the window hears its keys as editing, and the
+// field takes those the window leaves.
+func TestAFocusedFieldIsEditing(t *testing.T) {
 	m := New()
 	m.typing = true
 	m = send(m, tea.KeyPressMsg{Code: tea.KeyTab})
-	for _, r := range "hi" {
+	m.heard = ""
+	for _, r := range "hix" {
 		m = send(m, tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	if m.text != "hi" || m.heard != "" {
+	if m.text != "hi" || m.heard != "<h><i><x>" {
 		t.Fatalf("typed into the field: text %q, the window heard %q", m.text, m.heard)
+	}
+}
+
+// A click pressing a button presses no key the window hears.
+func TestAClickIsNoKey(t *testing.T) {
+	m := send(New(), tea.WindowSizeMsg{Width: 40, Height: 10})
+	_ = m.View()
+	m = send(m, tea.MouseClickMsg{X: 2, Y: 0, Button: tea.MouseLeft})
+	if m.pressed != 1 || m.heard != "" {
+		t.Fatalf("a click pressed %d times, the window heard %q", m.pressed, m.heard)
 	}
 }
 `

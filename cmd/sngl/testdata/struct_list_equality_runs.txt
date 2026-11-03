@@ -158,7 +158,7 @@ sha256:752ae600e7193d3aa8611a7e56fc3360
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:93a71c1f193b06adcfd4c75df2573d5a
+sha256:329942ea530e086b922ecc92456e067d
 {
   "results": [
     {

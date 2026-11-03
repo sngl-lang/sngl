@@ -1158,9 +1158,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n11_closed_handler() {
 }
 
-func (m *Model) __n11_key_handler(k string) {
-}
-
 func (m *Model) __n11_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n11.SetVisible(m.visible__inst0)
@@ -1199,7 +1196,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n11 = fynelayout.NewToplevel()
 	m.__n11.SetVisible(m.visible__inst0)
 	m.__n11.OnClosed = m.__n11_closed_handler
-	m.__n11.OnKey = m.__n11_key_handler
 	m.__n11.OnVisible = m.__n11_visible_handler
 	m.__n12 = newTree__slot0Instance(m, m.n__inst0, 0)
 	m.__n12__el = m.__n12.Root
@@ -1904,7 +1900,7 @@ type InnerInstance struct {
 	__slot7                []fyne.CanvasObject
 	__slot7_at             fyne.CanvasObject
 	__n5                   *widget.Label
-	__n6                   *widget.Button
+	__n6                   *fynelayout.Button
 }
 
 func newInnerInstance(__model *Model, __a___empty_content bool) *InnerInstance {
@@ -1929,7 +1925,7 @@ func newInnerInstance(__model *Model, __a___empty_content bool) *InnerInstance {
 	}
 	c.__n5 = widget.NewLabel("")
 	c.__n5.SetText(__lt22)
-	c.__n6 = widget.NewButton("", nil)
+	c.__n6 = fynelayout.NewButton("", nil)
 	c.__n6.SetText(fmt.Sprint(c.n))
 	c.__n6.OnTapped = func() {
 		c.n = (c.n + 1)
@@ -1975,7 +1971,7 @@ type Inner__slot4Instance struct {
 	__slot6_at  fyne.CanvasObject
 	__slot7     []fyne.CanvasObject
 	__slot7_at  fyne.CanvasObject
-	__n7        *widget.Button
+	__n7        *fynelayout.Button
 	__n8        *widget.Label
 }
 
@@ -1996,7 +1992,7 @@ func newInner__slot4Instance(__model *Model, __a___p0 int) *Inner__slot4Instance
 	__lt23 := "has"
 	__n23 := widget.NewLabel("")
 	__n23.SetText(__lt23)
-	c.__n7 = widget.NewButton("", nil)
+	c.__n7 = fynelayout.NewButton("", nil)
 	c.__n7.SetText(fmt.Sprint(c.n))
 	c.__n7.OnTapped = func() {
 		c.n = (c.n + 1)
@@ -2040,7 +2036,7 @@ type OuterInstance struct {
 	__slot6_at     fyne.CanvasObject
 	__slot7        []fyne.CanvasObject
 	__slot7_at     fyne.CanvasObject
-	__n9           *widget.Button
+	__n9           *fynelayout.Button
 }
 
 func newOuterInstance(__model *Model) *OuterInstance {
@@ -2059,7 +2055,7 @@ func newOuterInstance(__model *Model) *OuterInstance {
 	c.__renderAgain5 = false
 	c.__slot6 = nil
 	c.__slot7 = nil
-	c.__n9 = widget.NewButton("", nil)
+	c.__n9 = fynelayout.NewButton("", nil)
 	c.__n9.SetText(fmt.Sprint(c.m__r2))
 	c.__n9.OnTapped = func() {
 		c.m__r2 = (c.m__r2 + 1)
@@ -2154,7 +2150,7 @@ type Outer__slot1Instance struct {
 	__renderAgain6 bool
 	__slot7        []fyne.CanvasObject
 	__slot7_at     fyne.CanvasObject
-	__n10          *widget.Button
+	__n10          *fynelayout.Button
 }
 
 func newOuter__slot1Instance(__model *Model, __a___p0 int) *Outer__slot1Instance {
@@ -2174,7 +2170,7 @@ func newOuter__slot1Instance(__model *Model, __a___p0 int) *Outer__slot1Instance
 	c.__rendering6 = false
 	c.__renderAgain6 = false
 	c.__slot7 = nil
-	c.__n10 = widget.NewButton("", nil)
+	c.__n10 = fynelayout.NewButton("", nil)
 	c.__n10.SetText(fmt.Sprint(c.m__r3))
 	c.__n10.OnTapped = func() {
 		c.m__r3 = (c.m__r3 + 1)
@@ -3383,7 +3379,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:f9576d11ff8871b05ae4e25b768bc7dc
 -- run/go/fyne --
-pass sha256:0fae053f3bec266f671206cb6dcf699e
+pass sha256:b817cd51a7c3ab4afa6e050a5bc160ed
 -- run/kotlin/android --
 pass sha256:708d7f693612b1518a418d37f4da1c88
 -- run/none/html --

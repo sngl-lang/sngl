@@ -64,7 +64,7 @@ sha256:72a4476428f431b532e5fda1199ebf79
   ]
 }
 -- testrun/fyne/go/app.sngl/counter/1 --
-sha256:5ae941fd232b1bd69bdb01285b8e9f5b
+sha256:8350aaa21c93d9f07c52331b5c483251
 {
   "results": [
     {

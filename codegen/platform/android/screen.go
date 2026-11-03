@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/kotlin"
 	"duckfam.us/sngl/ir"
 )
 
@@ -96,8 +97,9 @@ func parenthesized(args string) string {
 // the activity finishes when the window is off screen after it. A hidden
 // window is not drawn, so its BackHandler is gone and the back finishes the
 // activity as it would with nothing to close. A window with a `@key` handler
-// hears, while it is drawn, the keys nothing focused took (keys.kt's
-// SnglWindowKeys), its Escape left to the system's back while it can go back.
+// hears, while it is drawn, each key before anything in it does (keys.kt's
+// SnglWindowKeys), an Escape it leaves going to the system's back while it
+// can go back.
 func (cc *irComposeContext) renderScreen(n *ir.NodeInst) {
 	var body []string
 	if lam, ok := codegen.NodeProp(n, "onBack").(*ir.Lambda); ok && lam.Func != nil {
@@ -130,7 +132,7 @@ func (cc *irComposeContext) renderScreen(n *ir.NodeInst) {
 		if c := screenCanGoBack(n); c != nil {
 			escapes = cc.kc.EvalExpr(c)
 		}
-		cc.line("SnglWindowKeys(passEscape = %s, %s)", escapes, cc.lambdaArg("onKey", lam, 1))
+		cc.line("SnglWindowKeys(passEscape = %s, press = %s, %s)", escapes, screenKeyPress(lam), cc.lambdaArg("onKey", lam, 2))
 	}
 	if !screenDrawsBar(n) {
 		cc.renderContent(n.Children)
@@ -212,6 +214,16 @@ func (cc *irComposeContext) screenIcon(n *ir.NodeInst) string {
 			cc.kc.Name(ktModifier), cc.kc.Name("androidx.compose.foundation.layout.size"), dp(cc.kc, "24"))
 	}
 	return "null"
+}
+
+// screenKeyPress is the lambda SnglWindowKeys builds the program's KeyPress
+// with from the SnglKeyPress it heard, field by field.
+func screenKeyPress(lam *ir.Lambda) string {
+	var parts []string
+	for _, f := range []string{"key", "ctrl", "alt", "shift", "meta", "editing"} {
+		parts = append(parts, f+" = it."+f)
+	}
+	return "{ " + kotlin.IRTypeToKt(lam.Func.Params[0].Type) + "(" + strings.Join(parts, ", ") + ") }"
 }
 
 // screenHearsKeys reports whether a Screen's `onKey` does anything: the

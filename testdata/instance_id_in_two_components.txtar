@@ -869,7 +869,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -892,10 +891,10 @@ type Model struct {
 	__renderAgain2 bool
 
 	__n2         *fyne.Container
-	ts           *widget.Button
-	to           *widget.Button
-	__named_hit  *widget.Button
-	__named_flip *widget.Button
+	ts           *fynelayout.Button
+	to           *fynelayout.Button
+	__named_hit  *fynelayout.Button
+	__named_flip *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -1086,11 +1085,11 @@ func (m *Model) SetOther(v bool) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2 = fynelayout.NewVBox()
-	m.ts = widget.NewButton("", nil)
+	m.ts = fynelayout.NewButton("", nil)
 	m.ts.SetText("s")
 	m.ts.OnTapped = m.ts_click_handler
 	m.__n2.Add(m.ts)
-	m.to = widget.NewButton("", nil)
+	m.to = fynelayout.NewButton("", nil)
 	m.to.SetText("o")
 	m.to.OnTapped = m.to_click_handler
 	m.__n2.Add(m.to)
@@ -1113,7 +1112,7 @@ type BadgeInstance struct {
 	__slot1_at   fyne.CanvasObject
 	__slot2      []fyne.CanvasObject
 	__slot2_at   fyne.CanvasObject
-	hit          *widget.Button
+	hit          *fynelayout.Button
 }
 
 func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
@@ -1125,7 +1124,7 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.hit = widget.NewButton("", nil)
+	c.hit = fynelayout.NewButton("", nil)
 	c.hit.SetText((c.__prop_label + fmt.Sprint(c.hits)))
 	c.hit.OnTapped = func() {
 		c.hits = (c.hits + 1)
@@ -1159,7 +1158,7 @@ type PanelInstance struct {
 	__slot2        []fyne.CanvasObject
 	__slot2_at     fyne.CanvasObject
 	__n0           *fyne.Container
-	flip           *widget.Button
+	flip           *fynelayout.Button
 }
 
 func newPanelInstance(__model *Model) *PanelInstance {
@@ -1174,7 +1173,7 @@ func newPanelInstance(__model *Model) *PanelInstance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__n0 = fynelayout.NewVBox()
-	c.flip = widget.NewButton("", nil)
+	c.flip = fynelayout.NewButton("", nil)
 	c.flip.SetText("f")
 	c.flip.OnTapped = func() {
 		c.on = !c.on
@@ -2353,7 +2352,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:4e07f4508e2eda19d64fc118b13eeb28
 -- run/go/fyne --
-pass sha256:ce883e62743f57f27cd42e4ad857235e
+pass sha256:15a286b438929c3f930ef64e2b938421
 -- run/go/gtk4 --
 pass sha256:779bece036ac17ced531595b0e4babc8
 -- run/kotlin/android --

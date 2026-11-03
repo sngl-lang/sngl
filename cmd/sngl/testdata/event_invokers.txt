@@ -119,7 +119,7 @@ sha256:17818b2df7a79a40386ed27f0d834dbc
   ]
 }
 -- testrun/fyne/go/click.sngl/counter/1 --
-sha256:c81d9b67dd16ad806bb9ff42c11d57f5
+sha256:fe8ad8a9c948117b059b33d597bcade6
 {
   "results": [
     {

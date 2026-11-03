@@ -336,7 +336,7 @@ func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -413,4 +413,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:cf4a3e0fcc23a91c17f805857f20712c
+pass sha256:61414d7faafdf0c7bb765cbc015502e3

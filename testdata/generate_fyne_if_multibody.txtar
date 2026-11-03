@@ -108,9 +108,6 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 func (m *Model) app__r0_closed_handler() {
 }
 
-func (m *Model) app__r0_key_handler(k string) {
-}
-
 func (m *Model) app__r0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.app__r0.SetVisible(m.visible__inst0)
@@ -121,11 +118,6 @@ func (m *Model) app__r0Closed() {
 	if m.app__r0.OnClosed != nil {
 		m.app__r0.OnClosed()
 	}
-}
-
-// app__r0Key calls PressKey on the #app__r0 widget; for tests.
-func (m *Model) app__r0Key(key string) {
-	m.app__r0.PressKey(key)
 }
 
 // app__r0Visible invokes the OnVisible callback on the #app__r0 widget; for tests.
@@ -163,7 +155,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.app__r0.SetTitle("t")
 	m.app__r0.SetVisible(m.visible__inst0)
 	m.app__r0.OnClosed = m.app__r0_closed_handler
-	m.app__r0.OnKey = m.app__r0_key_handler
 	m.app__r0.OnVisible = m.app__r0_visible_handler
 	m.__n3 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n3)
@@ -180,4 +171,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:911b7bb725328833aeab4e29a83ea22d
+pass sha256:709c3c6295279735ea64b3b6e374f422

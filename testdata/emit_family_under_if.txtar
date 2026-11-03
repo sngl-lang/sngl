@@ -112,7 +112,6 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 	"strings"
 )
@@ -149,10 +148,10 @@ type Model struct {
 	__effects0_steps    int
 
 	__n0    *fynelayout.Toplevel
-	__n2    *widget.Button
+	__n2    *fynelayout.Button
 	__n1    *fynelayout.Toplevel
-	__n3    *widget.Button
-	__n4    *widget.Button
+	__n3    *fynelayout.Button
+	__n4    *fynelayout.Button
 	__built bool
 }
 
@@ -328,9 +327,6 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst1 = __visible
 	m.__n0.SetVisible(m.visible__inst1)
@@ -342,9 +338,6 @@ func (m *Model) __n2_click_handler() {
 }
 
 func (m *Model) __n1_closed_handler() {
-}
-
-func (m *Model) __n1_key_handler(k string) {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
@@ -412,9 +405,8 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetTitle("Status")
 	m.__n0.SetVisible(m.visible__inst1)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n2 = widget.NewButton("", nil)
+	m.__n2 = fynelayout.NewButton("", nil)
 	m.__n2.SetText("tick")
 	m.__n2.OnTapped = m.__n2_click_handler
 	m.__n0.Add(m.__n2)
@@ -423,13 +415,12 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetTitle("Main")
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
-	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
-	m.__n3 = widget.NewButton("", nil)
+	m.__n3 = fynelayout.NewButton("", nil)
 	m.__n3.SetText("toggle")
 	m.__n3.OnTapped = m.__n3_click_handler
 	m.__n1.Add(m.__n3)
-	m.__n4 = widget.NewButton("", nil)
+	m.__n4 = fynelayout.NewButton("", nil)
 	m.__n4.SetText("+")
 	m.__n4.OnTapped = m.__n4_click_handler
 	m.__n1.Add(m.__n4)
@@ -680,7 +671,7 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -696,7 +687,7 @@ func (m *Model) __n2_clicked_handler() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
@@ -798,6 +789,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:1f910c7fb6c7524db7d1854fa42f646c
+pass sha256:7559e966046a03694b3ffc43424c8aa7
 -- run/go/gtk4 --
-pass sha256:03337a73371f550f82a850887b5d3cfb
+pass sha256:4ff99c1f7110530914de60924327af16

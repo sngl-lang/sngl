@@ -493,6 +493,7 @@ func newTestComponent() Model { m := New(); _ = m.View(); return m }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -506,8 +507,8 @@ type Model struct {
 	counts map[string]int
 
 	__n0 *widget.Label
-	put  *widget.Button
-	bump *widget.Button
+	put  *fynelayout.Button
+	bump *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -568,10 +569,10 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 		}
 		return 0
 	}())))
-	m.put = widget.NewButton("", nil)
+	m.put = fynelayout.NewButton("", nil)
 	m.put.SetText("put")
 	m.put.OnTapped = m.put_click_handler
-	m.bump = widget.NewButton("", nil)
+	m.bump = fynelayout.NewButton("", nil)
 	m.bump.SetText("bump")
 	m.bump.OnTapped = m.bump_click_handler
 	var parts []fyne.CanvasObject
@@ -884,7 +885,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:17e26645e4834fc4cd2d39de2380775d
 -- run/go/fyne --
-pass sha256:cf36bd9aa53b32d770ef87feaf4386fc
+pass sha256:fd0e9a8a314021ac465c41a6547a48a1
 -- run/go/gtk4 --
 pass sha256:25983f6998934adf363944e7cc990d8f
 -- run/kotlin/android --

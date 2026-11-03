@@ -270,18 +270,12 @@ func (m *Model) __snglTeardown() {
 func (m *Model) details_closed_handler() {
 }
 
-func (m *Model) details_key_handler(k string) {
-}
-
 func (m *Model) details_visible_handler(__visible bool) {
 	m.shown = __visible
 	m.details.SetVisible(m.shown)
 }
 
 func (m *Model) other_closed_handler() {
-}
-
-func (m *Model) other_key_handler(k string) {
 }
 
 func (m *Model) other_visible_handler(__visible bool) {
@@ -294,11 +288,6 @@ func (m *Model) detailsClosed() {
 	if m.details.OnClosed != nil {
 		m.details.OnClosed()
 	}
-}
-
-// detailsKey calls PressKey on the #details widget; for tests.
-func (m *Model) detailsKey(key string) {
-	m.details.PressKey(key)
 }
 
 // detailsVisible invokes the OnVisible callback on the #details widget; for tests.
@@ -315,11 +304,6 @@ func (m *Model) otherClosed() {
 	if m.other.OnClosed != nil {
 		m.other.OnClosed()
 	}
-}
-
-// otherKey calls PressKey on the #other widget; for tests.
-func (m *Model) otherKey(key string) {
-	m.other.PressKey(key)
 }
 
 // otherVisible invokes the OnVisible callback on the #other widget; for tests.
@@ -397,7 +381,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.details.SetTitle("Details")
 	m.details.SetVisible(m.shown)
 	m.details.OnClosed = m.details_closed_handler
-	m.details.OnKey = m.details_key_handler
 	m.details.OnVisible = m.details_visible_handler
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(fmt.Sprint(m.ticks))
@@ -407,7 +390,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.other.SetTitle("Other")
 	m.other.SetVisible(m.visible__inst0)
 	m.other.OnClosed = m.other_closed_handler
-	m.other.OnKey = m.other_key_handler
 	m.other.OnVisible = m.other_visible_handler
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText("other")
@@ -591,7 +573,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) details_closed_handler() {
 }
 
-func (m *Model) details_key_handler(k string) {
+func (m *Model) details_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) details_visible_handler(__visible bool) {
@@ -602,7 +584,7 @@ func (m *Model) details_visible_handler(__visible bool) {
 func (m *Model) other_closed_handler() {
 }
 
-func (m *Model) other_key_handler(k string) {
+func (m *Model) other_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) other_visible_handler(__visible bool) {
@@ -678,17 +660,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.details)
 }
-
-// detailsKey fires "key" on the #details widget; for tests.
-func (m *Model) detailsKey(v string) {
-	gtk4rt.ToplevelKey(m.details, v)
-}
-
-// otherKey fires "key" on the #other widget; for tests.
-func (m *Model) otherKey(v string) {
-	gtk4rt.ToplevelKey(m.other, v)
-}
 -- run/go/fyne --
-pass sha256:a2a6b8ba6bb89d88fdfff820437a45ac
+pass sha256:d44075c56225cb87ce0c52cf4221e8d9
 -- run/go/gtk4 --
-pass sha256:f3bc592cebca2a26ba7fe62f985eef2f
+pass sha256:374065b1587f4614ae1efeb6ec60bb4e

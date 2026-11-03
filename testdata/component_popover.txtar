@@ -446,7 +446,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -455,7 +454,7 @@ type Model struct {
 	visible bool
 
 	__n0 *fyne.Container
-	__n1 *widget.Button
+	__n1 *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -479,7 +478,7 @@ func (m *Model) SetVisible(v bool) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewVBox()
-	m.__n1 = widget.NewButton("", nil)
+	m.__n1 = fynelayout.NewButton("", nil)
 	m.__n1.SetText("toggle")
 	m.__n1.OnTapped = m.__n1_click_handler
 	m.__n0.Add(m.__n1)
@@ -750,7 +749,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:c1955973f4a3c1f4c046fb794f73e56f
 -- run/go/fyne --
-pass sha256:8548311c87cca07750338296280074a1
+pass sha256:290996efe9c1ffd12732c5f35e685388
 -- run/go/gtk4 --
 pass sha256:f00fd1c489c7b00b55c1b18b529186c0
 -- run/kotlin/android --

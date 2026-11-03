@@ -640,7 +640,7 @@ type Model struct {
 	periods              []time.Duration
 
 	__n0    *fynelayout.Toplevel
-	__n4    *widget.Button
+	__n4    *fynelayout.Button
 	__n1    *widget.Label
 	__built bool
 }
@@ -813,9 +813,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -860,11 +857,10 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetTitle("t")
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__renderSlot0(m.__n0.Container)
 	m.__renderSlot1(m.__n0.Container)
-	m.__n4 = widget.NewButton("", nil)
+	m.__n4 = fynelayout.NewButton("", nil)
 	m.__n4.SetText("hide")
 	m.__n4.OnTapped = m.__n4_click_handler
 	m.__n0.Add(m.__n4)
@@ -1272,7 +1268,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -1799,8 +1795,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:7f2bc1a5e4e9164b58e99991d29c2e9d
 -- run/go/fyne --
-pass sha256:ac22dd91727b70bbf1ab925392865c51
+pass sha256:1d3962ee7ae9da9c035e0291c8aa3ed5
 -- run/go/gtk4 --
-pass sha256:34883b6d026f440c3013c40c07d29b92
+pass sha256:6381618ddcfb4b70ea2b5fcb651d2ee0
 -- run/none/html --
 pass sha256:08cae15ade4e76db18bdb1eb20d04465

@@ -46,7 +46,7 @@ window {
     other
 }
 -- testrun/fyne/go/app.sngl/a/1 --
-sha256:2caeae384d4a4964266f5880bdd9b996
+sha256:85fee277529b0ee2b55acc99595958e0
 {
   "results": [
     {

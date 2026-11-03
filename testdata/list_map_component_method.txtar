@@ -491,6 +491,7 @@ func newTestComponent() Model { m := New(); _ = m.View(); return m }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -505,7 +506,7 @@ type Model struct {
 	shown      bool
 	got__inst0 string
 
-	run  *widget.Button
+	run  *fynelayout.Button
 	__n0 *widget.Label
 }
 
@@ -555,7 +556,7 @@ func (m *Model) SetGot__inst0(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.run = widget.NewButton("", nil)
+	m.run = fynelayout.NewButton("", nil)
 	m.run.SetText("run")
 	m.run.OnTapped = m.run_click_handler
 	m.__n0 = widget.NewLabel("")
@@ -741,7 +742,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:a449665e29822b8403d329b7515a3a71
 -- run/go/fyne --
-pass sha256:c626544d0949868116ee1b956f1e1a7f
+pass sha256:741ecfe700f040b9cbf05d966502b1ce
 -- run/kotlin/android --
 pass sha256:e827f7d94c0fc7bd5c33d90f14a49bf9
 -- run/none/html --

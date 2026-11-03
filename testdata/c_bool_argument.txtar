@@ -481,7 +481,6 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -492,7 +491,7 @@ type Model struct {
 	visible__inst0 bool
 
 	__n0    *fynelayout.Toplevel
-	__n1    *widget.Button
+	__n1    *fynelayout.Button
 	__built bool
 }
 
@@ -506,9 +505,6 @@ func New() *Model {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -562,9 +558,8 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetTitle("t")
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n1 = widget.NewButton("", nil)
+	m.__n1 = fynelayout.NewButton("", nil)
 	m.__n1.SetText(fmt.Sprint(m.v))
 	m.__n1.OnTapped = m.__n1_click_handler
 	m.__n0.Add(m.__n1)
@@ -772,7 +767,7 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -847,6 +842,6 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 -- run/go/bubbletea --
 pass sha256:927f5f0d08e048c1376c11eab6abe31d
 -- run/go/fyne --
-pass sha256:495bff7cf1291b98696e6ec461553ce4
+pass sha256:c07e299dfd96987889d4b637e082ced9
 -- run/go/gtk4 --
-pass sha256:6a7563cde1cb721607ed7c82c9c65233
+pass sha256:b3a3ce970ff0367584b110e3f21b711c

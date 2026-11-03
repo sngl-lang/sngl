@@ -540,6 +540,7 @@ func newTestComponent() Model { m := New(); _ = m.View(); return m }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -558,8 +559,8 @@ type Model struct {
 	caught string
 	after  string
 
-	bad  *widget.Button
-	good *widget.Button
+	bad  *fynelayout.Button
+	good *fynelayout.Button
 	__n0 *widget.Label
 }
 
@@ -625,10 +626,10 @@ func (m *Model) SetAfter(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.bad = widget.NewButton("", nil)
+	m.bad = fynelayout.NewButton("", nil)
 	m.bad.SetText("Bad")
 	m.bad.OnTapped = m.bad_click_handler
-	m.good = widget.NewButton("", nil)
+	m.good = fynelayout.NewButton("", nil)
 	m.good.SetText("Good")
 	m.good.OnTapped = m.good_click_handler
 	m.__n0 = widget.NewLabel("")
@@ -807,6 +808,6 @@ func (m *Model) goodClick() {
 -- run/go/bubbletea --
 pass sha256:6f359db1779277cbb0bcdb013e326e98
 -- run/go/fyne --
-pass sha256:fcab6d3387f571e63ded96227a7f36d3
+pass sha256:c36383d993fc336118b08ae5e978c181
 -- run/go/gtk4 --
 pass sha256:a4687e5c40f745dfebfe52571c140051

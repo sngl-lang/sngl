@@ -427,9 +427,6 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -452,7 +449,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = fynelayout.NewVBox()
 	for _, row := range m.rows {
@@ -669,7 +665,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:bc499f20b32368a6b197293ff9cce917
 -- run/go/fyne --
-pass sha256:9bda65a06c3f5d1ebbc72ab30d02c30f
+pass sha256:6dc0b2c30864cf599b79014d4cc98121
 -- run/kotlin/android --
 pass sha256:4ee1c22ab49082d80ed7bb92320a9dfa
 -- run/none/html --

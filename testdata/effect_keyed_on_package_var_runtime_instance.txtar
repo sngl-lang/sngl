@@ -880,7 +880,7 @@ type Model struct {
 	__renderAgain1 bool
 
 	__n0         *fyne.Container
-	raise        *widget.Button
+	raise        *fynelayout.Button
 	__copies_row map[string]fyne.CanvasObject
 	__inst_g     *GaugeInstance
 	__insts_row  map[string]*GaugeInstance
@@ -1124,7 +1124,7 @@ func (m *Model) SetCopies(v []int) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewVBox()
-	m.raise = widget.NewButton("", nil)
+	m.raise = fynelayout.NewButton("", nil)
 	m.raise.SetText("raise")
 	m.raise.OnTapped = m.raise_click_handler
 	m.__n0.Add(m.raise)
@@ -2407,7 +2407,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:f03cdb7fdb3e392b7b1aa75435553c3b
 -- run/go/fyne --
-pass sha256:eeab93621087b499b94533cd2296cd6d
+pass sha256:14356fb8246ccb8b37f8cafcbbaddcd3
 -- run/go/gtk4 --
 pass sha256:5d970054bfded29c0404241ceaba84dd
 -- run/kotlin/android --

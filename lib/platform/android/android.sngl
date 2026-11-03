@@ -483,11 +483,14 @@ const alignJustify TextAlign
 // of a NavHost's own pop and of the close. A screen given neither -- its
 // `canGoBack` the literal `false`, its actions empty -- draws no bar.
 //
-// `onKey` is handed each hardware keyboard key pressed while it is drawn that
-// nothing focused took (keys.kt's SnglWindowKeys): what a field is typed, the
-// Enter and space a focused button presses with, and the Tab and arrows that
-// move focus are theirs. An Escape is the system's back while `canGoBack`
-// holds, and the window hears it only while it does not.
+// `onKey` is handed each hardware keyboard key pressed while it is drawn,
+// before anything focused hears it (keys.kt's SnglWindowKeys), and a key it
+// stops reaches nothing else: no field types it, no focused button presses on
+// its Enter, and its Tab moves no focus. An Escape it leaves that
+// nothing took is the system's back while `canGoBack` holds, and ends there
+// while it does not. The system back key is `onBack`'s, never `onKey`'s, and
+// the on-screen keyboard types into a field through its input connection,
+// pressing no key `onKey` could hear.
 #[intrinsic("android:Screen")]
 component Screen(
     visible   bool = true,
@@ -495,7 +498,7 @@ component Screen(
     canGoBack bool = false,
     onBack    func(),
     onUp      func(),
-    onKey     func(key string),
+    onKey     func(e ui.KeyPress, stop func()),
     children  ...component ui.node,
     icon      option[component ui.node],
     actions   component ui.node,

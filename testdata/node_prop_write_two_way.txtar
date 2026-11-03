@@ -572,10 +572,10 @@ type Model struct {
 
 	__n0    *fynelayout.Toplevel
 	__n1    *fyne.Container
-	bound   *widget.Check
-	free    *widget.Check
+	bound   *fynelayout.Check
+	free    *fynelayout.Check
 	seen    *widget.Label
-	flip    *widget.Button
+	flip    *fynelayout.Button
 	__built bool
 }
 
@@ -589,9 +589,6 @@ func New() *Model {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -692,15 +689,14 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = fynelayout.NewVBox()
-	m.bound = widget.NewCheck("", nil)
+	m.bound = fynelayout.NewCheck("", nil)
 	m.bound.SetText("bound")
 	m.bound.SetChecked(m.shown__inst0)
 	m.bound.OnChanged = m.bound_toggle_handler
 	m.__n1.Add(m.bound)
-	m.free = widget.NewCheck("", nil)
+	m.free = fynelayout.NewCheck("", nil)
 	m.free.SetText("free")
 	m.free.SetChecked(m.checked__inst0)
 	m.free.OnChanged = m.free_toggle_handler
@@ -714,7 +710,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.seen = widget.NewLabel("")
 	m.seen.SetText(__lt11)
 	m.__n1.Add(m.seen)
-	m.flip = widget.NewButton("", nil)
+	m.flip = fynelayout.NewButton("", nil)
 	m.flip.SetText("flip")
 	m.flip.OnTapped = m.flip_click_handler
 	m.__n1.Add(m.flip)
@@ -777,7 +773,7 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -1173,9 +1169,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:5a218ffa80bce9d564e7a9ee37449265
 -- run/go/fyne --
-pass sha256:7747feb9776bdb8b9bc743d8b6911c29
+pass sha256:5bb07b8ea50d2deff00180019545355a
 -- run/go/gtk4 --
-pass sha256:e9e97b8b56286b75e572d5248e499f98
+pass sha256:21cc5b4bfc12f48708c345d0a9f36a33
 -- run/kotlin/android --
 pass sha256:c5fb6e94f29ba19355caa333b18a0bad
 -- run/none/html --

@@ -496,7 +496,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -683,6 +683,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:5a2e656f7942d66f4301eaa323f2bdb1
 -- run/go/gtk4 --
-pass sha256:09d861b4f3e63ccecaa2068b0ed9fd6c
+pass sha256:1318a9cc33799d5cd26dc9add8698528
 -- run/none/html --
 pass sha256:db50fbd2d5885b9ea0c5b75674f37ec3

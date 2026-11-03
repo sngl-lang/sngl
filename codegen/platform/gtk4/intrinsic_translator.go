@@ -1390,7 +1390,7 @@ func (t *gtk4Translator) attachHandler(node ir.Expr, event string, handler, call
 	if t.isToplevel(bare) {
 		t.refuseCgoClosed(event, handler)
 		if event == "key" {
-			t.recordRtInvoker(node, event, handler, "GtkBox", "ToplevelKey")
+			t.recordKeyInvoker(node, event, handler)
 		}
 		return t.connectThrough(bare, event, handler, call)
 	}

@@ -860,9 +860,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
-}
-
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n1.SetVisible(m.visible__inst0)
@@ -909,7 +906,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = fynelayout.NewToplevel()
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
-	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__n5 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n5)
@@ -940,7 +936,7 @@ type RowInstance struct {
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
 	__slot0_at          fyne.CanvasObject
-	__n0                *widget.Button
+	__n0                *fynelayout.Button
 }
 
 func newRowInstance(__model *Model, __a_name string) *RowInstance {
@@ -957,7 +953,7 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	c.__n0 = widget.NewButton("", nil)
+	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((c.label + " ") + fmt.Sprint(c.__model.total)))
 	c.__n0.OnTapped = func() {
 		c.__model.total = (c.__model.total + 10)
@@ -1194,7 +1190,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
@@ -1868,9 +1864,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:44ce6b4f59d9b6d067935571859a94e8
 -- run/go/fyne --
-pass sha256:2b1cbe2a8601230209a8e516db439514
+pass sha256:07e0aa8ec1cc55790b82088c0265eeea
 -- run/go/gtk4 --
-pass sha256:fc541ad62c8166dfb58a9063fd5338ee
+pass sha256:4ee06d4be78bff8939d7294ad9b91297
 -- run/kotlin/android --
 pass sha256:f56931aef80d524e480e8dc937b879bf
 -- run/none/html --

@@ -101,7 +101,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 				for _, it := range m.items__inst0 {
-					__n2 := widget.NewButton("", nil)
+					__n2 := fynelayout.NewButton("", nil)
 					__n2.SetText(it)
 					__n2.OnTapped = func() {
 						m.picked__inst0 = it
@@ -116,9 +116,6 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -159,7 +156,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n3 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n3)
@@ -263,7 +259,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -324,6 +320,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:318ac535582e0009011420e7593ae762
+pass sha256:29138a31aa80c16c3260c2e193ce6c90
 -- run/go/gtk4 --
-pass sha256:8bd7bec9daadcfad4793293e4e8c0742
+pass sha256:a83f9c4cc3ee0e297aefd4fc86bc104d

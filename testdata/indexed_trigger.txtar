@@ -1280,14 +1280,14 @@ type Model struct {
 	__renderAgain0 bool
 
 	__n3           *fyne.Container
-	swap           *widget.Button
+	swap           *fynelayout.Button
 	__n0           *widget.Label
-	__named_box    *widget.Check
-	__copies_box   map[string]*widget.Check
-	__named_field  *widget.Entry
-	__copies_field map[string]*widget.Entry
-	tap            *widget.Button
-	__copies_tap   map[string]*widget.Button
+	__named_box    *fynelayout.Check
+	__copies_box   map[string]*fynelayout.Check
+	__named_field  *fynelayout.Entry
+	__copies_field map[string]*fynelayout.Entry
+	tap            *fynelayout.Button
+	__copies_tap   map[string]*fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -1328,7 +1328,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				__inst1_next := []*__input_state1Instance{}
 				var __inst1_i int = 0
 				for __copy0, it := range m.items {
-					m.tap = widget.NewButton("", nil)
+					m.tap = fynelayout.NewButton("", nil)
 					m.tap.SetText(it)
 					m.__list_tap(fmt.Sprint(__copy0), m.tap)
 					m.tap.OnTapped = func() {
@@ -1520,38 +1520,38 @@ func (m *Model) tapClickAt(key string) {
 	}
 }
 
-func (m *Model) __list_box(key string, w *widget.Check) {
+func (m *Model) __list_box(key string, w *fynelayout.Check) {
 	for k, c := range m.__copies_box {
 		if c == w {
 			delete(m.__copies_box, k)
 		}
 	}
 	if m.__copies_box == nil {
-		m.__copies_box = map[string]*widget.Check{}
+		m.__copies_box = map[string]*fynelayout.Check{}
 	}
 	m.__copies_box[key] = w
 }
 
-func (m *Model) __list_field(key string, w *widget.Entry) {
+func (m *Model) __list_field(key string, w *fynelayout.Entry) {
 	for k, c := range m.__copies_field {
 		if c == w {
 			delete(m.__copies_field, k)
 		}
 	}
 	if m.__copies_field == nil {
-		m.__copies_field = map[string]*widget.Entry{}
+		m.__copies_field = map[string]*fynelayout.Entry{}
 	}
 	m.__copies_field[key] = w
 }
 
-func (m *Model) __list_tap(key string, w *widget.Button) {
+func (m *Model) __list_tap(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_tap {
 		if c == w {
 			delete(m.__copies_tap, k)
 		}
 	}
 	if m.__copies_tap == nil {
-		m.__copies_tap = map[string]*widget.Button{}
+		m.__copies_tap = map[string]*fynelayout.Button{}
 	}
 	m.__copies_tap[key] = w
 }
@@ -1575,7 +1575,7 @@ func (m *Model) SetLog(v string) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3 = fynelayout.NewVBox()
-	m.swap = widget.NewButton("", nil)
+	m.swap = fynelayout.NewButton("", nil)
 	m.swap.SetText("swap")
 	m.swap.OnTapped = m.swap_click_handler
 	m.__n3.Add(m.swap)
@@ -1599,7 +1599,7 @@ type __checkbox_state0Instance struct {
 	__root                 *fyne.Container
 	__slot0                []fyne.CanvasObject
 	__slot0_at             fyne.CanvasObject
-	box                    *widget.Check
+	box                    *fynelayout.Check
 }
 
 func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_label string, __a___copy string, __a_change func(bool)) *__checkbox_state0Instance {
@@ -1612,7 +1612,7 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.checked = c.__prop___start_checked
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	c.box = widget.NewCheck("", nil)
+	c.box = fynelayout.NewCheck("", nil)
 	c.box.SetText(c.__prop_label)
 	c.box.SetChecked(c.checked)
 	c.__model.__list_box(c.__prop___copy, c.box)
@@ -1669,7 +1669,7 @@ type __input_state1Instance struct {
 	__root               *fyne.Container
 	__slot0              []fyne.CanvasObject
 	__slot0_at           fyne.CanvasObject
-	field                *widget.Entry
+	field                *fynelayout.Entry
 }
 
 func new__input_state1Instance(__model *Model, __a___start_value string, __a___copy string, __a_change func(string)) *__input_state1Instance {
@@ -1681,7 +1681,7 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a___c
 	c.value = c.__prop___start_value
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	c.field = widget.NewEntry()
+	c.field = fynelayout.NewEntry()
 	c.field.SetText(c.value)
 	c.field.SetPlaceHolder("")
 	c.__model.__list_field(c.__prop___copy, c.field)
@@ -3048,7 +3048,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:2793ff82bf0d3f6109fcde2930020811
 -- run/go/fyne --
-pass sha256:90cc85fe8d9506b857db91e2ed23d3f6
+pass sha256:d05b280d638007fbca3ca37253d22c0b
 -- run/go/gtk4 --
 pass sha256:856d4b99f886e387d0732775f30a4152
 -- run/kotlin/android --

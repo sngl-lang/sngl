@@ -191,7 +191,7 @@ sha256:6493fcfba605cea3dff8d0e924e90077
   ]
 }
 -- testrun/fyne/go/entry.sngl/main/1 --
-sha256:fe3d599fc7a6ab924160256c934d8f26
+sha256:0f8fa47b490d92d5338f59afed98f31c
 {
   "results": [
     {
@@ -201,7 +201,7 @@ sha256:fe3d599fc7a6ab924160256c934d8f26
   ]
 }
 -- testrun/fyne/go/fallback.sngl/main/1 --
-sha256:3f73697a851ac1a8a2cdd1f52f2afcbc
+sha256:f206507bb04223b489623b1f9eedfcee
 {
   "results": [
     {

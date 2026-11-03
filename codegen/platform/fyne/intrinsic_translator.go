@@ -204,9 +204,12 @@ type fyneEventInvoker struct {
 	IDLabel   string // the #id a program wrote
 	SnglEvent string // the event a test writes, e.g. "click"
 	Field     string // the Go callback field, e.g. "OnTapped"
-	// Press is the widget's method the invoker calls in place of Field
+	// Press is the function the invoker calls in place of Field, qualified
 	// (fyneHandler.Press).
 	Press string
+	// Unheard is an event no handler hears, whose invoker is emitted only
+	// where a test fires it: its parameters' types are declared only then.
+	Unheard bool
 	// Params are the callback's, from its Spec signature: what a test hands
 	// the invoker, which are the event's own arguments.
 	Params []*ir.Param
@@ -777,12 +780,23 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		return nil
 	}
 	fieldName := h.Field
-	t.recordInvoker(bareID, codegen.TriggerEventName(handler, event), h)
+	// A window whose call site hears no key has a handler that hears
+	// nothing, naming a KeyPress the program declares only where a test
+	// presses one.
+	unheard := h.Set.Name != "" && emptyHandler(handler)
+	t.recordInvoker(bareID, codegen.TriggerEventName(handler, event), h, unheard)
+	if unheard {
+		return nil
+	}
 	// Qualify node + handler to Model references when synthesized/promoted.
 	nodeRef := t.qualifyHandlerNode(node, bareID)
 	handlerRef := t.qualifyHandlerFunc(handler)
 	if lam, ok := handlerRef.(*ir.Lambda); ok {
 		handlerRef = fyneCallbackLambda(lam, h, event)
+	}
+	if h.Set.Name != "" {
+		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt(h.Set.qualify(t.gc), h.Set.Path,
+			[]ir.Expr{nodeRef, handlerRef}, ir.TypVoid)}}
 	}
 	return []ir.Stmt{&ir.Assign{
 		Target: &ir.Select{
@@ -793,6 +807,19 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		Op:    ast.AssignSet,
 		Value: handlerRef,
 	}}
+}
+
+// emptyHandler reports whether handler, a promoted handler's func or a
+// lambda, has no body.
+func emptyHandler(handler ir.Expr) bool {
+	switch h := handler.(type) {
+	case *ir.Lambda:
+		return h.Func != nil && len(h.Func.Block) == 0
+	case *ir.Ident:
+		fn, ok := h.Sym.(*ir.Func)
+		return ok && len(fn.Block) == 0
+	}
+	return false
 }
 
 // fyneCallbackLambda gives a handler written in place -- in an instance
@@ -1114,7 +1141,7 @@ func localSlotRenderCall(cs *ir.CallStmt, isLocal func(string) bool) *ir.CallStm
 // recordInvoker notes one (id, event) pair for the test-invoker methods emitted
 // after the walk. A synthesized id is skipped: `c.__n0.click()` is not
 // something a test can write.
-func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler) {
+func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler, unheard bool) {
 	if t.invokerSink == nil || id == "" || strings.HasPrefix(id, "__n") {
 		return
 	}
@@ -1126,7 +1153,8 @@ func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler) {
 		IDLabel:   id,
 		SnglEvent: event,
 		Field:     h.Field,
-		Press:     h.Press,
+		Press:     h.Press.qualify(t.gc),
+		Unheard:   unheard,
 		Params:    params,
 	}
 	inv.List = t.indexed[id]
@@ -1136,7 +1164,7 @@ func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler) {
 // emitFyneEventInvokers writes one Model method per (id, event) pair, invoking
 // the widget's declared callback field, and for a widget whose copies are
 // kept by key an `At` method driving the copy with a key.
-func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
+func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker, triggered map[string]bool) {
 	seen := map[string]bool{}
 	keyed := map[string]bool{}
 	for _, inv := range invokers {
@@ -1144,6 +1172,9 @@ func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 	}
 	for _, inv := range invokers {
 		name := inv.IDLabel + golang.ExportName(inv.SnglEvent)
+		if inv.Unheard && !triggered[inv.IDLabel+"."+inv.SnglEvent] {
+			continue
+		}
 		if seen[name] {
 			continue // duplicate id+event -- keep the first
 		}
@@ -1153,7 +1184,7 @@ func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 			target = inv.Target
 		}
 		if inv.Press != "" {
-			fmt.Fprintf(b, "// %s calls %s on the #%s widget; for tests.\n",
+			fmt.Fprintf(b, "// %s calls %s with the #%s widget; for tests.\n",
 				name, inv.Press, inv.IDLabel)
 		} else {
 			fmt.Fprintf(b, "// %s invokes the %s callback on the #%s widget; for tests.\n",
@@ -1182,7 +1213,7 @@ func emitFyneInvoker(b *strings.Builder, inv fyneEventInvoker, name string, lead
 		fmt.Fprintf(b, "\tif %s == nil {\n\t\treturn\n\t}\n", w)
 	}
 	if inv.Press != "" {
-		fmt.Fprintf(b, "\t%s.%s(%s)\n}\n\n", w, inv.Press, strings.Join(call, ", "))
+		fmt.Fprintf(b, "\t%s(%s)\n}\n\n", inv.Press, strings.Join(append([]string{w}, call...), ", "))
 		return
 	}
 	if len(inv.Params) == 0 {

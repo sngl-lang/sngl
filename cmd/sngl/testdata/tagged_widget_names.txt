@@ -31,8 +31,8 @@ stdout 'ok'
 # The same, as an ordinary build: the emitted field and every reference to it
 # agree on one name.
 sngl generate --platform=fyne --lang=go --out=fy tagged.sngl
-grep 'inc  *\*widget.Button' fy/model.go
-grep 'm\.inc = widget\.NewButton' fy/model.go
+grep 'inc  *\*fynelayout.Button' fy/model.go
+grep 'm\.inc = fynelayout\.NewButton' fy/model.go
 grep 'm\.inc\.OnTapped = m\.inc_click_handler' fy/model.go
 ! grep 'm\.Inc' fy/model.go
 
@@ -66,7 +66,7 @@ sha256:2ea5fd904dd3e7ff30b9ba85b121899b
   ]
 }
 -- testrun/fyne/go/tagged.sngl/counter/1 --
-sha256:54c662015283ef7a1cb0a602185b7f60
+sha256:4c89ae259451815877381d2eb787a78a
 {
   "results": [
     {

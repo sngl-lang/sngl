@@ -643,9 +643,6 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -693,7 +690,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetTitle("import")
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText(fmt.Sprint(len(m.boxes__inst0)))
@@ -716,4 +712,4 @@ func main() {
 -- run/go/bubbletea --
 pass sha256:de60f18baa8c1087e4cb206e2cf3983b
 -- run/go/fyne --
-pass sha256:c9e101fe8cbd7142f3f13bda7b503c77
+pass sha256:dac8a2518aff0f664538917f1cc6883f

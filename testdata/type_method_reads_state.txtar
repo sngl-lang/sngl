@@ -592,7 +592,7 @@ type Model struct {
 	visible__inst0 bool
 
 	__n0    *fynelayout.Toplevel
-	__n2    *widget.Button
+	__n2    *fynelayout.Button
 	__n1    *widget.Label
 	__built bool
 }
@@ -629,9 +629,6 @@ func CalcPlain(k Calc, n int) int {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -693,9 +690,8 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n2 = widget.NewButton("", nil)
+	m.__n2 = fynelayout.NewButton("", nil)
 	m.__n2.SetText("go")
 	m.__n2.OnTapped = m.__n2_click_handler
 	m.__n0.Add(m.__n2)
@@ -788,7 +784,7 @@ func CalcPlain(k Calc, n int) int {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -872,6 +868,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/bubbletea --
 pass sha256:9b4e2ddf2a72fb086e84deafd49a5655
 -- run/go/fyne --
-pass sha256:4720e06b5bbca532000f2dea00351dd6
+pass sha256:f5d994ef9207adb1c764fff0caea2824
 -- run/go/gtk4 --
-pass sha256:014bf53eacc9221d85b31286127ac458
+pass sha256:3c0b38f8c3e7c0f9bae84e393e963138

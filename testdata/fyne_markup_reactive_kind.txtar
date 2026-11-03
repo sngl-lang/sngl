@@ -51,7 +51,6 @@ import (
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -93,7 +92,7 @@ type Model struct {
 
 	home    *fynelayout.Toplevel
 	__n2    *fyne.Container
-	__n3    *widget.Button
+	__n3    *fynelayout.Button
 	__n4    *fynetext.Flow
 	__n0    *fynetext.Span
 	__n5    *fynetext.Span
@@ -150,9 +149,6 @@ func TokenColor(p Palette, kind string) snglcolor.Color {
 func (m *Model) home_closed_handler() {
 }
 
-func (m *Model) home_key_handler(k string) {
-}
-
 func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.home.SetVisible(m.visible__inst0)
@@ -171,11 +167,6 @@ func (m *Model) homeClosed() {
 	if m.home.OnClosed != nil {
 		m.home.OnClosed()
 	}
-}
-
-// homeKey calls PressKey on the #home widget; for tests.
-func (m *Model) homeKey(key string) {
-	m.home.PressKey(key)
 }
 
 // homeVisible invokes the OnVisible callback on the #home widget; for tests.
@@ -221,10 +212,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetTitle("t")
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
-	m.home.OnKey = m.home_key_handler
 	m.home.OnVisible = m.home_visible_handler
 	m.__n2 = fynelayout.NewVBox()
-	m.__n3 = widget.NewButton("", nil)
+	m.__n3 = fynelayout.NewButton("", nil)
 	m.__n3.SetText("change")
 	m.__n3.OnTapped = m.__n3_click_handler
 	m.__n2.Add(m.__n3)
@@ -261,4 +251,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:cd0d476d9811d547192339be999d7f6b
+pass sha256:a3ed9aac4ec52698715e1a69ac29deb6

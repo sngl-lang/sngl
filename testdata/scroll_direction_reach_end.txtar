@@ -656,9 +656,6 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -725,7 +722,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.list = fynelayout.NewReachScroll()
 	m.list__box = fynelayout.NewBox(m.list)
@@ -915,7 +911,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -1914,9 +1910,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:a1476a43aaaed4e93a21c3b14d7044d1
 -- run/go/fyne --
-pass sha256:7fb2d6ddd6c1a2cb78e6da6ebcc7010a
+pass sha256:a6533055b6ae9e2a3a1ce0b4f6bc9f80
 -- run/go/gtk4 --
-pass sha256:74fbca34fd089c0c44a28a35ccdc9fa6
+pass sha256:85e44764bbea0d2ab272c16cf47b6240
 -- run/kotlin/android --
 pass sha256:dd3880b9abe03929bb3f37d36b2634b6
 -- run/none/html --

@@ -594,7 +594,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -688,9 +687,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
-}
-
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n1.SetVisible(m.visible__inst0)
@@ -713,7 +709,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = fynelayout.NewToplevel()
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
-	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__n3 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n3)
@@ -731,7 +726,7 @@ type CounterInstance struct {
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
-	__n0         *widget.Button
+	__n0         *fynelayout.Button
 }
 
 func newCounterInstance(__model *Model, __a_label string) *CounterInstance {
@@ -741,7 +736,7 @@ func newCounterInstance(__model *Model, __a_label string) *CounterInstance {
 	c.hits = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	c.__n0 = widget.NewButton("", nil)
+	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((c.__prop_label + " ") + fmt.Sprint(c.hits)))
 	c.__n0.OnTapped = func() {
 		c.hits = (c.hits + 1)
@@ -882,7 +877,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
@@ -1311,9 +1306,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:e31c427e628256cae4607d70373b89e4
 -- run/go/fyne --
-pass sha256:7ceebc534173cf8eda2b6ab98e82a6ea
+pass sha256:65e1048bdd3e31a4f5c8fd2bdc042242
 -- run/go/gtk4 --
-pass sha256:9f41d62a018d05bf17984fab4b480093
+pass sha256:52bc313b91927fd1292f56c5feb88844
 -- run/kotlin/android --
 pass sha256:3999594e72713b4140589b7c5348d467
 -- run/none/html --

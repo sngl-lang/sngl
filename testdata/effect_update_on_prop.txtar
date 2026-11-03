@@ -79,7 +79,7 @@ type Model struct {
 	__renderAgain0 bool
 
 	__n1    *fynelayout.Toplevel
-	__n3    *widget.Button
+	__n3    *fynelayout.Button
 	__built bool
 }
 
@@ -157,9 +157,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
-}
-
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n1.SetVisible(m.visible__inst0)
@@ -206,10 +203,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetTitle("t")
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
-	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__renderSlot0(m.__n1.Container)
-	m.__n3 = widget.NewButton("", nil)
+	m.__n3 = fynelayout.NewButton("", nil)
 	m.__n3.SetText("+")
 	m.__n3.OnTapped = m.__n3_click_handler
 	m.__n1.Add(m.__n3)
@@ -587,7 +583,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:1a49ea8f14fdbbc50f1f9e6ce06c4045
+pass sha256:ba3539e7912298d75c37c2a75df3b753
 -- run/kotlin/android --
 pass sha256:6c137ad117451b122036e0347ac0c934
 -- run/none/html --

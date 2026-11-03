@@ -91,7 +91,7 @@ type Model struct {
 	__n5      *fynelayout.ImageSource
 	__n6      *widget.Label
 	__n6__box *fynelayout.Box
-	__n7      *widget.Button
+	__n7      *fynelayout.Button
 	__built   bool
 }
 
@@ -168,9 +168,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -215,7 +212,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n2 = fynelayout.NewVBox()
 	m.__n3 = fynelayout.NewHBox()
@@ -237,7 +233,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.Add(m.__n6__box)
 	m.__n2.Add(m.__n3)
 	m.__renderSlot0(m.__n2)
-	m.__n7 = widget.NewButton("", nil)
+	m.__n7 = fynelayout.NewButton("", nil)
 	m.__n7.SetText("More")
 	m.__n7.OnTapped = m.__n7_click_handler
 	m.__n2.Add(m.__n7)
@@ -548,7 +544,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -742,6 +738,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:15edf785260597a6fc5c14e5c803922f
+pass sha256:71e4052f46f65e791d5c6531b1eed5ec
 -- run/go/gtk4 --
-pass sha256:fd6f06f06f551920d7f768fe9c25873b
+pass sha256:0acc03f262957dc61267696d833523cc

@@ -1,5 +1,5 @@
-// A window's `@key` is a key pressed in it that nothing in it takes, named as
-// a browser names it: the character typed, or a name such as "Enter".
+// A window's `@key` hears each key pressed in it before anything in it does,
+// and a handler that calls `stop` keeps the key from going further.
 
 import . "sngl:test"
 import ui "sngl:ui"
@@ -7,7 +7,12 @@ import ui "sngl:ui"
 component app root {
     var typed = ""
 
-    ui.window #main(title="Keys", @key(k) { typed = typed + "[" + k + "]" }) {
+    ui.window #main(title="Keys", @key(e, stop) {
+        typed = typed + "[" + e.key + "]"
+        if e.ctrl {
+            stop()
+        }
+    }) {
         ui.text(value=typed)
     }
 }
@@ -15,7 +20,16 @@ component app root {
 app()
 
 func testAKeyReachesTheWindow(t Test, c app) {
-    c.main.key("7")
-    c.main.key("Enter")
+    var stopped = false
+    c.main.key(ui.KeyPress{key="7"}, func() { stopped = true })
+    c.main.key(ui.KeyPress{key="Enter"}, func() { stopped = true })
     t.assert(c.typed == "[7][Enter]")
+    t.assert(!stopped)
+}
+
+func testAHandlerStopsAKey(t Test, c app) {
+    var stopped = false
+    c.main.key(ui.KeyPress{key="s", ctrl=true}, func() { stopped = true })
+    t.assert(c.typed == "[s]")
+    t.assert(stopped)
 }

@@ -82,9 +82,6 @@ func New() *Model {
 func (m *Model) app__r0_closed_handler() {
 }
 
-func (m *Model) app__r0_key_handler(k string) {
-}
-
 func (m *Model) app__r0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.app__r0.SetVisible(m.visible__inst0)
@@ -95,11 +92,6 @@ func (m *Model) app__r0Closed() {
 	if m.app__r0.OnClosed != nil {
 		m.app__r0.OnClosed()
 	}
-}
-
-// app__r0Key calls PressKey on the #app__r0 widget; for tests.
-func (m *Model) app__r0Key(key string) {
-	m.app__r0.PressKey(key)
 }
 
 // app__r0Visible invokes the OnVisible callback on the #app__r0 widget; for tests.
@@ -137,7 +129,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.app__r0.SetTitle("t")
 	m.app__r0.SetVisible(m.visible__inst0)
 	m.app__r0.OnClosed = m.app__r0_closed_handler
-	m.app__r0.OnKey = m.app__r0_key_handler
 	m.app__r0.OnVisible = m.app__r0_visible_handler
 	m.__n4 = fynelayout.NewVBox()
 	m.__n5 = widget.NewLabel("")
@@ -170,4 +161,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:a45ab973d60eacbca285285187e65235
+pass sha256:60a7aefabf12afefc4ee2cfe46049362

@@ -902,11 +902,11 @@ type Model struct {
 	checked__inst0 bool
 
 	__n1  *fyne.Container
-	box   *widget.Check
-	sw    *widget.Check
-	field *widget.Entry
-	day   *widget.DateEntry
-	press *widget.Button
+	box   *fynelayout.Check
+	sw    *fynelayout.Check
+	field *fynelayout.Entry
+	day   *fynelayout.DateEntry
+	press *fynelayout.Button
 	__n0  *widget.Label
 }
 
@@ -1091,28 +1091,28 @@ func (m *Model) SetChecked__inst0(v bool) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = fynelayout.NewVBox()
-	m.box = widget.NewCheck("", nil)
+	m.box = fynelayout.NewCheck("", nil)
 	m.box.SetText("a")
 	m.box.SetChecked(m.on)
 	m.box.OnChanged = m.box_toggle_handler
 	m.__n1.Add(m.box)
-	m.sw = widget.NewCheck("", nil)
+	m.sw = fynelayout.NewCheck("", nil)
 	m.sw.SetText("b")
 	m.sw.SetChecked(m.checked__inst0)
 	m.sw.OnChanged = m.sw_toggle_handler
 	m.__n1.Add(m.sw)
-	m.field = widget.NewEntry()
+	m.field = fynelayout.NewEntry()
 	m.field.SetText(m.name)
 	m.field.SetPlaceHolder("")
 	m.field.OnChanged = m.field_input_handler
 	m.field.OnSubmitted = m.field_change_handler
 	m.__n1.Add(m.field)
-	m.day = widget.NewDateEntry()
+	m.day = fynelayout.NewDateEntry()
 	m.day.SetDate(m.picked)
 	m.day.SetPlaceHolder("")
 	m.day.OnChanged = m.day_pick_handler
 	m.__n1.Add(m.day)
-	m.press = widget.NewButton("", nil)
+	m.press = fynelayout.NewButton("", nil)
 	m.press.SetText("go")
 	m.press.OnTapped = m.press_click_handler
 	m.__n1.Add(m.press)
@@ -2091,7 +2091,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:beeb7bdb44443215040961e61dc38b74
 -- run/go/fyne --
-pass sha256:d12cce3a465bea898ab754b56346e1d3
+pass sha256:a383535bc3e69b5522503c95f0ffc8dd
 -- run/go/gtk4 --
 pass sha256:a886d5947c2132b7ca7d6968285e19c9
 -- run/kotlin/android --

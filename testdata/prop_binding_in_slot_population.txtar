@@ -498,7 +498,7 @@ type Model struct {
 
 	__n0    *fynelayout.Toplevel
 	__n3    *fyne.Container
-	__n1    *widget.Entry
+	__n1    *fynelayout.Entry
 	__n2    *widget.Label
 	__built bool
 }
@@ -512,9 +512,6 @@ func New() *Model {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -562,10 +559,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetTitle("t")
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n3 = fynelayout.NewVBox()
-	m.__n1 = widget.NewEntry()
+	m.__n1 = fynelayout.NewEntry()
 	m.__n1.SetText(m.name)
 	m.__n1.SetPlaceHolder("")
 	m.__n1.OnChanged = m.__n1_input_handler
@@ -696,7 +692,7 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -827,8 +823,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:acea703562e6fc08a4fb413091da77e8
 -- run/go/fyne --
-pass sha256:53a4efd889d6c7567ce254fce94a3ace
+pass sha256:23ae43cba8f25a2f213cc1a58690ba82
 -- run/go/gtk4 --
-pass sha256:d339b163553a3afc2006df17634cd632
+pass sha256:1bc0ddb50e0346b999cd0ca487024d57
 -- run/none/html --
 pass sha256:d27513d14a1cd0d441c12cc6039a7cdf

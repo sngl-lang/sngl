@@ -156,9 +156,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
-}
-
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n1.SetVisible(m.visible__inst0)
@@ -189,7 +186,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = fynelayout.NewToplevel()
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
-	m.__n1.OnKey = m.__n1_key_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__renderSlot0(m.__n1.Container)
 	fynelayout.AppAttach(m.__n1)
@@ -205,7 +201,7 @@ type __child0Instance struct {
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
-	__n0         *widget.Select
+	__n0         *fynelayout.Select
 }
 
 func new__child0Instance(__model *Model, __a___p0 string, __a___on0 func(string)) *__child0Instance {
@@ -216,7 +212,7 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___on0 func(string)
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	__n3 := fynelayout.NewVBox()
-	c.__n0 = widget.NewSelect(nil, nil)
+	c.__n0 = fynelayout.NewSelect(nil, nil)
 	c.__n0.SetOptions(func() []string {
 		__out := make([]string, len([]Choice__record{Choice__record{Label: "a"}}))
 		for __i, __item := range []Choice__record{Choice__record{Label: "a"}} {
@@ -266,4 +262,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:99873b93878a4b9a2b47a3bb5d3d20f7
+pass sha256:43b463776cbda3b5401c6e0fc59f7078

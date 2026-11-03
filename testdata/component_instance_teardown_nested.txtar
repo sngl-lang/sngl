@@ -83,7 +83,7 @@ type Model struct {
 	__rendering1   bool
 	__renderAgain1 bool
 
-	drop *widget.Button
+	drop *fynelayout.Button
 	__n1 *widget.Label
 }
 
@@ -199,7 +199,7 @@ func (m *Model) SetLog(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.drop = widget.NewButton("", nil)
+	m.drop = fynelayout.NewButton("", nil)
 	m.drop.SetText("drop")
 	m.drop.OnTapped = m.drop_click_handler
 	m.__n1 = widget.NewLabel("")
@@ -1308,7 +1308,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:ad43060835daf52eb6528e1823cdfcb7
+pass sha256:b17bfc82b674e35f0370e0d88685eff5
 -- run/go/gtk4 --
 pass sha256:f3e2843e035df04e3369fd926c10e4b0
 -- run/kotlin/android --

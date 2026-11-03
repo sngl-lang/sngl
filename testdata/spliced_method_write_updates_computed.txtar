@@ -271,9 +271,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n2_closed_handler() {
 }
 
-func (m *Model) __n2_key_handler(k string) {
-}
-
 func (m *Model) __n2_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n2.SetVisible(m.visible__inst0)
@@ -312,7 +309,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2 = fynelayout.NewToplevel()
 	m.__n2.SetVisible(m.visible__inst0)
 	m.__n2.OnClosed = m.__n2_closed_handler
-	m.__n2.OnKey = m.__n2_key_handler
 	m.__n2.OnVisible = m.__n2_visible_handler
 	m.__n5 = fynelayout.NewVBox()
 	m.__n7 = fynelayout.NewVBox()
@@ -637,7 +633,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n2_closed_handler() {
 }
 
-func (m *Model) __n2_key_handler(k string) {
+func (m *Model) __n2_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n2_visible_handler(__visible bool) {
@@ -1082,8 +1078,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:e576edc91d25de166ae1e98df420fc07
+pass sha256:de4137ade04fdf599b2ba753f4f9298c
 -- run/go/gtk4 --
-pass sha256:78e9d37496af40d94df5201d24d9c5e3
+pass sha256:ca13e6411df7fc1139751f6919f66ddb
 -- run/none/html --
 pass sha256:4b08857b0f0976aa1bf34ec86d1c2cb0

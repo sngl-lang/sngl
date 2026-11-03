@@ -1,12 +1,14 @@
-# On android a window's `@key` is a hardware keyboard's key that nothing
-# focused took: the activity's window callback hears what Compose passed up
-# from the focused composable, and a test presses one into the decor view as
-# the system would. A key pressed with nothing focused reaches the window,
-# named as a browser names it, and one typed into a focused field is the
-# field's. Before, a test's `c.main.key(…)` lowered to no action at all.
+# On android a window's `@key` is a hardware keyboard's key, heard before
+# anything in the window hears it: SnglWindowKeys sits in front of the
+# activity's window callback, which the decor view hands a key to before any
+# view. A test's key is heard as the test gives it, and one the handler leaves
+# is pressed into the decor view as the system would, where the focused field
+# types it, the focused button presses on its Enter and Tab moves the focus;
+# one it stops goes nowhere, and the test's stop is told. Before, the window
+# heard only the keys nothing focused took, and only by name.
 
 sngl test --platform=android --language=kotlin keys.sngl
-stdout 'ok   2 tests, 0 failures'
+stdout 'ok   5 tests, 0 failures'
 
 -- keys.sngl --
 import test "sngl:test"
@@ -16,10 +18,25 @@ component app root {
     var heard = ""
     var text = ""
     var pressed = 0
+    var stopping = false
 
-    ui.window #main(title="Keys", @key(k) { heard = heard + "[" + k + "]" }) {
+    ui.window #main(title="Keys", @key(e, stop) {
+        var mods = ""
+        if e.ctrl {
+            mods = mods + "ctrl+"
+        }
+        if e.editing {
+            mods = mods + "editing+"
+        }
+        heard = heard + "[" + mods + e.key + "]"
+        if !stopping {
+            return
+        }
+        stop()
+    }) {
         ui.vbox {
-            ui.button #go(text="go", focusable=false, @click { pressed += 1 })
+            ui.input #shown(value="shown", readonly=true)
+            ui.button #go(text="go", @click { pressed += 1 })
             ui.input #field(:value=text)
             ui.text(value=heard)
         }
@@ -28,31 +45,74 @@ component app root {
 
 app()
 
-func testKeysNothingTakesReachTheWindow(t test.Test, c app) {
-    for var k = ["7", "+", "A", " ", "Backspace", "ArrowLeft", "Enter", "Escape"] {
-        c.main.key(k)
-    }
-    t.assert(c.heard == "[7][+][A][ ][Backspace][ArrowLeft][Enter][Escape]")
+func testAKeyIsHeardAndGoesOn(t test.Test, c app) {
+    var stopped = false
+    c.field.focus()
+    c.main.key(ui.KeyPress{key="h", editing=true}, func() { stopped = true })
+    c.main.key(ui.KeyPress{key="i", editing=true}, func() { stopped = true })
+    t.assert(c.heard == "[editing+h][editing+i]")
+    t.assert(c.text == "hi")
+    t.assert(!stopped)
+}
+
+func testAStoppedKeyTypesNothing(t test.Test, c app) {
+    var stopped = 0
+    c.field.focus()
+    c.stopping = true
+    c.main.key(ui.KeyPress{key="h", editing=true}, func() { stopped += 1 })
+    c.main.key(ui.KeyPress{key="s", ctrl=true, editing=true}, func() { stopped += 1 })
+    t.assert(c.heard == "[editing+h][ctrl+editing+s]")
+    t.assert(c.text == "")
+    t.assert(stopped == 2)
+}
+
+func testEnterGoesOnToTheFocusedButton(t test.Test, c app) {
+    c.shown.focus()
+    c.main.key(ui.KeyPress{key="Tab"}, func() {})
+    c.main.key(ui.KeyPress{key="Enter"}, func() {})
+    t.assert(c.heard == "[Tab][Enter]")
+    t.assert(c.pressed == 1)
+}
+
+func testAStoppedEnterPressesNothing(t test.Test, c app) {
+    c.shown.focus()
+    c.main.key(ui.KeyPress{key="Tab"}, func() {})
+    c.stopping = true
+    c.main.key(ui.KeyPress{key="Enter"}, func() {})
     t.assert(c.pressed == 0)
 }
 
-func testAFocusedFieldTakesWhatIsTyped(t test.Test, c app) {
+func testAStoppedTabMovesNoFocus(t test.Test, c app) {
     c.field.focus()
-    c.main.key("h")
-    c.main.key("i")
-    t.assert(c.text == "hi")
-    t.assert(c.heard == "")
+    c.stopping = true
+    c.main.key(ui.KeyPress{key="Tab", editing=true}, func() {})
+    c.stopping = false
+    c.main.key(ui.KeyPress{key="a", editing=true}, func() {})
+    t.assert(c.text == "a")
+    t.assert(c.heard == "[editing+Tab][editing+a]")
 }
 -- testrun/android/kotlin/keys.sngl/app/1 --
-sha256:e8666bde0c24fecb0bb7e6987de1aaa7
+sha256:d1e0a0b9557b55f360abb8f11bd0dbbd
 {
   "results": [
     {
-      "Desc": "AFocusedFieldTakesWhatIsTyped",
+      "Desc": "AKeyIsHeardAndGoesOn",
       "Passed": true
     },
     {
-      "Desc": "KeysNothingTakesReachTheWindow",
+      "Desc": "AStoppedEnterPressesNothing",
+      "Passed": true
+    },
+    {
+      "Desc": "AStoppedKeyTypesNothing",
+      "Passed": true
+    },
+    {
+      "Desc": "AStoppedTabMovesNoFocus",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterGoesOnToTheFocusedButton",
       "Passed": true
     }
   ]

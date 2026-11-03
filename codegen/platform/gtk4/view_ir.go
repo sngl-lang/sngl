@@ -49,16 +49,20 @@ type gtkEventInvoker struct {
 	// RtFire is the gtk4rt function firing the event, for a primitive of
 	// gtk4rt's whose event no GTK signal carries; GTKSignal is then empty.
 	RtFire string
+	// KeyType is the Go type a window's `@key` press is, which a test hands
+	// the window's key invoker.
+	KeyType string
 }
 
-// rtFireValue is the Go type of the value a test hands an RtFire invoker,
-// which passes it on to the gtk4rt function, or "" for one taking none: a
-// window's key is pressed by its name.
-func (inv gtkEventInvoker) rtFireValue() string {
-	if inv.RtFire == "ToplevelKey" {
-		return "string"
+// rtFireValue is the parameters a test hands an RtFire invoker and the
+// arguments it passes on from them to the gtk4rt function, or "" for one
+// taking none: a window's key is the press, spelled out field by field since
+// gtk4rt cannot name the program's struct, and the stop its handler calls.
+func (inv gtkEventInvoker) rtFireValue() (params, args string) {
+	if inv.RtFire == "ToplevelKey" && inv.KeyType != "" {
+		return "e " + inv.KeyType + ", stop func()", ", e.Key, e.Ctrl, e.Alt, e.Shift, e.Meta, e.Editing, stop"
 	}
-	return ""
+	return "", ""
 }
 
 // --- Lookup tables (consumed by gtk4Translator) ---

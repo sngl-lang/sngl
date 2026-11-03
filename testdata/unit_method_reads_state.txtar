@@ -664,9 +664,6 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
-}
-
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
@@ -721,7 +718,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText((snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
@@ -868,7 +864,7 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -943,6 +939,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/bubbletea --
 pass sha256:7f5549e6c10a7eb68bc7e246fb7f38d2
 -- run/go/fyne --
-pass sha256:6bc5ec44b5051120fb62342a59747ae3
+pass sha256:ff418aeaa8afb0e960949253f0383ae7
 -- run/go/gtk4 --
-pass sha256:b9ae9c70e04ff754efb9bb920747ff15
+pass sha256:2f6c51f5c7e7eb45a244d25652966e1e

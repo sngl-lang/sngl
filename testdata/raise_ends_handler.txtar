@@ -744,10 +744,10 @@ func newTestComponent() Model { m := New(); _ = m.View(); return m }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -767,8 +767,8 @@ type Model struct {
 	back       int
 	callAfter  int
 
-	direct *widget.Button
-	called *widget.Button
+	direct *fynelayout.Button
+	called *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -920,10 +920,10 @@ func (m *Model) SetCallAfter(v int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.direct = widget.NewButton("", nil)
+	m.direct = fynelayout.NewButton("", nil)
 	m.direct.SetText("Direct")
 	m.direct.OnTapped = m.direct_click_handler
-	m.called = widget.NewButton("", nil)
+	m.called = fynelayout.NewButton("", nil)
 	m.called.SetText("Called")
 	m.called.OnTapped = m.called_click_handler
 	var parts []fyne.CanvasObject
@@ -1454,7 +1454,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:3be93b1740e883e96d5e176928ab2ead
 -- run/go/fyne --
-pass sha256:7cf6ae210c084f9c66b3062cdb71cc7f
+pass sha256:96598750686afab76099f14a8b92820c
 -- run/go/gtk4 --
 pass sha256:9d663cb26b3fa1ce73a7f07204abc9fc
 -- run/go/html --

@@ -670,7 +670,6 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -684,9 +683,9 @@ type Model struct {
 	checked__inst1 bool
 
 	__n0  *fyne.Container
-	box   *widget.Check
-	field *widget.Entry
-	sw    *widget.Check
+	box   *fynelayout.Check
+	field *fynelayout.Entry
+	sw    *fynelayout.Check
 }
 
 // New creates a Model with default values.
@@ -822,18 +821,18 @@ func (m *Model) SetChecked__inst1(v bool) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewVBox()
-	m.box = widget.NewCheck("", nil)
+	m.box = fynelayout.NewCheck("", nil)
 	m.box.SetText("")
 	m.box.SetChecked(m.checked__inst0)
 	m.box.OnChanged = m.box_toggle_handler
 	m.__n0.Add(m.box)
-	m.field = widget.NewEntry()
+	m.field = fynelayout.NewEntry()
 	m.field.SetText(m.value__inst0)
 	m.field.SetPlaceHolder("")
 	m.field.OnChanged = m.field_input_handler
 	m.field.OnSubmitted = m.field_change_handler
 	m.__n0.Add(m.field)
-	m.sw = widget.NewCheck("", nil)
+	m.sw = fynelayout.NewCheck("", nil)
 	m.sw.SetText("")
 	m.sw.SetChecked(m.checked__inst1)
 	m.sw.OnChanged = m.sw_toggle_handler
@@ -1480,7 +1479,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:8f7c1b943a45c34eb825b2c54814ad6a
 -- run/go/fyne --
-pass sha256:52e20ad15b1d36644071414add1bee26
+pass sha256:000059486a6eb1b56573142b69886fa1
 -- run/go/gtk4 --
 pass sha256:61db05f18cb6bee288d5b0238d312e2c
 -- run/kotlin/android --

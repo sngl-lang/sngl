@@ -757,7 +757,7 @@ type Model struct {
 	__renderAgain0 bool
 
 	__n3 *fyne.Container
-	add  *widget.Button
+	add  *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -882,7 +882,7 @@ func (m *Model) SetContents(v string) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3 = fynelayout.NewVBox()
-	m.add = widget.NewButton("", nil)
+	m.add = fynelayout.NewButton("", nil)
 	m.add.SetText("add")
 	m.add.OnTapped = m.add_click_handler
 	m.__n3.Add(m.add)
@@ -1980,7 +1980,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:8d8300d2ccec822f7bbd4e76e5181497
 -- run/go/fyne --
-pass sha256:cd7b7cc5f048e2e11ac25ac7aa720b75
+pass sha256:ba34de6af2e4bb8008cdc07e7a8fb246
 -- run/go/gtk4 --
 pass sha256:66e3cafb52593f152631c73f70da4f49
 -- run/kotlin/android --

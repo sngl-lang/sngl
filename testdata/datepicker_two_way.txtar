@@ -547,7 +547,7 @@ type Model struct {
 
 	__n0    *fynelayout.Toplevel
 	__n2    *fyne.Container
-	d       *widget.DateEntry
+	d       *fynelayout.DateEntry
 	__n1    *widget.Label
 	__built bool
 }
@@ -562,9 +562,6 @@ func New() *Model {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -629,10 +626,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n2 = fynelayout.NewVBox()
-	m.d = widget.NewDateEntry()
+	m.d = fynelayout.NewDateEntry()
 	m.d.SetDate(m.picked__inst0)
 	m.d.SetPlaceHolder("")
 	m.d.OnChanged = m.d_pick_handler
@@ -791,7 +787,7 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -1183,9 +1179,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ab508f1cddc30035897ba38884f4c133
 -- run/go/fyne --
-pass sha256:62b5e621c859a9aac138594e5939cc3b
+pass sha256:7822854c3fe655308a27c97bc8cdc2f8
 -- run/go/gtk4 --
-pass sha256:d5e784b16166074ab13b991d3b03c95b
+pass sha256:4476de1dc554b847a42313efb225e3a2
 -- run/kotlin/android --
 pass sha256:c2c429cadd1446bb0ba7006f34a32530
 -- run/none/html --

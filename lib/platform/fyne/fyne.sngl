@@ -76,18 +76,18 @@ component platform(
 // it. `visible` shows and hides it without destroying it, and the window
 // manager's close is reported as `visible = false` followed by `@closed`.
 //
-// `@key` is a key the window's canvas is handed, which fyne's driver hands it
-// only while nothing on it is focused: a character typed, as the character,
-// or one of the keys `ui.window` names. Tab moves focus and arrives at no
-// canvas, nor does what a focused entry or button takes. A key with Control,
-// Alt or Super held is a shortcut and is not reported, and nor is an Escape
-// while an overlay is up.
+// `@key` is each key pressed in the window, before anything in it hears it.
+// fyne's driver hands a key to the focused widget alone, so each widget this
+// platform builds that takes focus is a fynelayout wrapper that hands the key
+// to the window first, and drops one the window stops (fynelayout/focus.go);
+// with nothing focused, the canvas's handlers hear it. A widget written in
+// Go that takes focus hands the window nothing.
 #[intrinsic("fyne:Toplevel")]
 component Toplevel(
     title    string,
     :visible bool = true,
     @closed(),
-    @key(key string),
+    @key(e ui.KeyPress, stop func()),
     content  ...component ui.node,
 ) root
 
@@ -134,9 +134,10 @@ component TabPage(
 // drawn two deep: a top-level entry and its submenu. A window whose call site
 // gives it no `canGoBack` writes no Back, the `if` folding away, and nor does
 // one with no menu write an entry. Its `@key` is the Toplevel's, which a test
-// fires through the window's `#id` as a key pressed in it.
+// fires through the window's `#id`: the handler hears the test's key as
+// written, and one it does not stop is then pressed in the window.
 const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content, favicon, menu) {
-    Toplevel(title=title, :visible=visible, @closed { closed() }, @key(k) { key(k) }) {
+    Toplevel(title=title, :visible=visible, @closed { closed() }, @key(e, stop) { key(e, stop) }) {
         boundary(@error(e) { error(e) }) {
             content
         }
@@ -346,15 +347,15 @@ const component Label(text string = "", style ui.Style = ui.Style{}) ui.node {
     ) {}
 }
 
-// A button that is not `focusable` is fynelayout's NoTabButton, which Tab
-// passes over; see that type.
+// A button is fynelayout's Button, whose keys its window hears first; one that
+// is not `focusable` is its NoTabButton, which Tab passes over.
 const component Button(text string = "", focusable bool = true, style ui.Style = ui.Style{}, @click()) ui.node {
     if focusable {
         Widget(
             spec = Spec{
-                new = Native{path="fyne.io/fyne/v2/widget", name="NewButton"},
+                new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewButton"},
                 args = [Arg{raw=`""`}, Arg{raw="nil"}],
-                goType = Native{path="fyne.io/fyne/v2/widget", name="*Button"},
+                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Button"},
                 setters = [Setter{prop="text", call="SetText"}],
                 handlers = [Handler{on="click", field="OnTapped", signature="func()"}],
             },
@@ -367,7 +368,7 @@ const component Button(text string = "", focusable bool = true, style ui.Style =
             spec = Spec{
                 new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewNoTabButton"},
                 args = [Arg{raw=`""`}, Arg{raw="nil"}],
-                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*NoTabButton"},
+                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Button"},
                 setters = [Setter{prop="text", call="SetText"}],
                 handlers = [Handler{on="click", field="OnTapped", signature="func()"}],
             },
@@ -381,8 +382,8 @@ const component Button(text string = "", focusable bool = true, style ui.Style =
 const component Entry(text string = "", placeholder string = "", style ui.Style = ui.Style{}, @input(text string), @change(text string)) ui.node {
     Widget(
         spec = Spec{
-            new = Native{path="fyne.io/fyne/v2/widget", name="NewEntry"},
-            goType = Native{path="fyne.io/fyne/v2/widget", name="*Entry"},
+            new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewEntry"},
+            goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Entry"},
             setters = [
                 Setter{prop="text", call="SetText"},
                 Setter{prop="placeholder", call="SetPlaceHolder"},
@@ -410,8 +411,8 @@ const component MultiLineEntry(
 ) ui.node {
     Widget(
         spec = Spec{
-            new = Native{path="fyne.io/fyne/v2/widget", name="NewMultiLineEntry"},
-            goType = Native{path="fyne.io/fyne/v2/widget", name="*Entry"},
+            new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewMultiLineEntry"},
+            goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Entry"},
             setters = [
                 Setter{prop="text", call="SetText"},
                 Setter{prop="placeholder", call="SetPlaceHolder"},
@@ -431,8 +432,9 @@ const component MultiLineEntry(
     ) {}
 }
 
-// A check that is not `focusable` is fynelayout's NoTabCheck, which Tab
-// passes over and a tap does not focus.
+// A check is fynelayout's Check, whose keys its window hears first; one that
+// is not `focusable` is its NoTabCheck, which Tab passes over and a tap does
+// not focus.
 const component Check(
     text      string = "",
     checked   bool = false,
@@ -443,9 +445,9 @@ const component Check(
     if focusable {
         Widget(
             spec = Spec{
-                new = Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},
+                new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewCheck"},
                 args = [Arg{raw=`""`}, Arg{raw="nil"}],
-                goType = Native{path="fyne.io/fyne/v2/widget", name="*Check"},
+                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Check"},
                 setters = [
                     Setter{prop="text", call="SetText"},
                     Setter{prop="flag", call="SetChecked"},
@@ -462,7 +464,7 @@ const component Check(
             spec = Spec{
                 new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewNoTabCheck"},
                 args = [Arg{raw=`""`}, Arg{raw="nil"}],
-                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*NoTabCheck"},
+                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Check"},
                 setters = [
                     Setter{prop="text", call="SetText"},
                     Setter{prop="flag", call="SetChecked"},
@@ -492,9 +494,9 @@ const component Select(
     if focusable {
         Widget(
             spec = Spec{
-                new = Native{path="fyne.io/fyne/v2/widget", name="NewSelect"},
+                new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewSelect"},
                 args = [Arg{raw="nil"}, Arg{raw="nil"}],
-                goType = Native{path="fyne.io/fyne/v2/widget", name="*Select"},
+                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Select"},
                 setters = [
                     Setter{prop="text", call="SetSelected", current="Selected"},
                     Setter{prop="options", call="SetOptions"},
@@ -511,7 +513,7 @@ const component Select(
             spec = Spec{
                 new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewNoTabSelect"},
                 args = [Arg{raw="nil"}, Arg{raw="nil"}],
-                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*NoTabSelect"},
+                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Select"},
                 setters = [
                     Setter{prop="text", call="SetSelected", current="Selected"},
                     Setter{prop="options", call="SetOptions"},
@@ -532,9 +534,9 @@ const component Select(
 const component Hyperlink(style ui.Style = ui.Style{}) ui.node {
     Widget(
         spec = Spec{
-            new = Native{path="fyne.io/fyne/v2/widget", name="NewHyperlink"},
-            args = [Arg{raw=`""`}, Arg{raw="nil"}],
-            goType = Native{path="fyne.io/fyne/v2/widget", name="*Hyperlink"},
+            new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewHyperlink"},
+            args = [Arg{raw=`""`}],
+            goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Hyperlink"},
         },
         look = lookOf(style),
     ) {}
@@ -853,8 +855,8 @@ const component DateEntry(
 ) ui.node {
     Widget(
         spec = Spec{
-            new = Native{path="fyne.io/fyne/v2/widget", name="NewDateEntry"},
-            goType = Native{path="fyne.io/fyne/v2/widget", name="*DateEntry"},
+            new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewDateEntry"},
+            goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*DateEntry"},
             setters = [
                 Setter{prop="date", call="SetDate"},
                 Setter{prop="placeholder", call="SetPlaceHolder"},

@@ -672,8 +672,8 @@ type Model struct {
 	__renderAgain0 bool
 
 	__n0        *fyne.Container
-	toggle      *widget.Button
-	__named_hit *widget.Button
+	toggle      *fynelayout.Button
+	__named_hit *fynelayout.Button
 	label       *widget.Label
 }
 
@@ -787,7 +787,7 @@ func (m *Model) SetShown(v bool) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewVBox()
-	m.toggle = widget.NewButton("", nil)
+	m.toggle = fynelayout.NewButton("", nil)
 	m.toggle.SetText("t")
 	m.toggle.OnTapped = m.toggle_click_handler
 	m.__n0.Add(m.toggle)
@@ -805,7 +805,7 @@ type BadgeInstance struct {
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
-	hit          *widget.Button
+	hit          *fynelayout.Button
 }
 
 func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
@@ -815,7 +815,7 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.hits = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	c.hit = widget.NewButton("", nil)
+	c.hit = fynelayout.NewButton("", nil)
 	c.hit.SetText(((("hit " + c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 	c.hit.OnTapped = func() {
 		c.hits = (c.hits + 1)
@@ -1529,7 +1529,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:ab9ace5350c4b80845c4a43e351a7863
 -- run/go/fyne --
-pass sha256:c01b594d6d68cba6c02b8dafdec8c289
+pass sha256:96534418c696ebb0e7d04a338b5145f3
 -- run/go/gtk4 --
 pass sha256:ea265a346120d3af2cc22ca98e47b5c0
 -- run/kotlin/android --

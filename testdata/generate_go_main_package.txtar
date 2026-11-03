@@ -382,9 +382,6 @@ func New() *Model {
 func (m *Model) app__r0_closed_handler() {
 }
 
-func (m *Model) app__r0_key_handler(k string) {
-}
-
 func (m *Model) app__r0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.app__r0.SetVisible(m.visible__inst0)
@@ -395,11 +392,6 @@ func (m *Model) app__r0Closed() {
 	if m.app__r0.OnClosed != nil {
 		m.app__r0.OnClosed()
 	}
-}
-
-// app__r0Key calls PressKey on the #app__r0 widget; for tests.
-func (m *Model) app__r0Key(key string) {
-	m.app__r0.PressKey(key)
 }
 
 // app__r0Visible invokes the OnVisible callback on the #app__r0 widget; for tests.
@@ -429,7 +421,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.app__r0.SetTitle("Hi")
 	m.app__r0.SetVisible(m.visible__inst0)
 	m.app__r0.OnClosed = m.app__r0_closed_handler
-	m.app__r0.OnKey = m.app__r0_key_handler
 	m.app__r0.OnVisible = m.app__r0_visible_handler
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText("hi")
@@ -484,7 +475,7 @@ func New() *Model {
 func (m *Model) app__r0_closed_handler() {
 }
 
-func (m *Model) app__r0_key_handler(k string) {
+func (m *Model) app__r0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) app__r0_visible_handler(__visible bool) {
@@ -524,14 +515,9 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.app__r0)
 }
-
-// app__r0Key fires "key" on the #app__r0 widget; for tests.
-func (m *Model) app__r0Key(v string) {
-	gtk4rt.ToplevelKey(m.app__r0, v)
-}
 -- run/go/bubbletea --
 pass sha256:2fa64b50f195a277a3bccbfad38d718f
 -- run/go/fyne --
-pass sha256:88fcb278f4297139d02ff49f888b4e81
+pass sha256:93a135f15567bc56961806b5463a3202
 -- run/go/gtk4 --
-pass sha256:9f4a8fea6b2c8d19a85a1a7bb1962320
+pass sha256:2565e1ef075c50ae42081507fe94671a

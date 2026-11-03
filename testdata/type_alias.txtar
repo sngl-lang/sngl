@@ -75,6 +75,7 @@ window {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -103,7 +104,7 @@ type Model struct {
 	box   *widget.Label
 	dir   *widget.Label
 	twice *widget.Label
-	turn  *widget.Button
+	turn  *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -186,7 +187,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.dir.SetText(__lt12)
 	m.twice = widget.NewLabel("")
 	m.twice.SetText(fmt.Sprint((m.c__r1 * 2)))
-	m.turn = widget.NewButton("", nil)
+	m.turn = fynelayout.NewButton("", nil)
 	m.turn.SetText("turn")
 	m.turn.OnTapped = m.turn_click_handler
 	var parts []fyne.CanvasObject
@@ -429,7 +430,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:02ef9bac2838ffec0aaffa3691eed4be
+pass sha256:4c3d9acedef22dc1c623e26120eb1445
 -- run/kotlin/android --
 pass sha256:f3774561ce1850785df35cd7093e2801
 -- run/none/html --

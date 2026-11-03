@@ -736,10 +736,10 @@ type Model struct {
 	__renderAgain0 bool
 
 	__n1      *fyne.Container
-	ts        *widget.Button
+	ts        *fynelayout.Button
 	label     *widget.Label
-	hit       *widget.Button
-	__named_k *widget.Button
+	hit       *fynelayout.Button
+	__named_k *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -890,14 +890,14 @@ func (m *Model) SetHits__inst0(v int) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = fynelayout.NewVBox()
-	m.ts = widget.NewButton("", nil)
+	m.ts = fynelayout.NewButton("", nil)
 	m.ts.SetText("s")
 	m.ts.OnTapped = m.ts_click_handler
 	m.__n1.Add(m.ts)
 	m.label = widget.NewLabel("")
 	m.label.SetText(("n" + fmt.Sprint(m.hits)))
 	m.__n1.Add(m.label)
-	m.hit = widget.NewButton("", nil)
+	m.hit = fynelayout.NewButton("", nil)
 	m.hit.SetText(("b" + fmt.Sprint(m.hits__inst0)))
 	m.hit.OnTapped = m.hit_click_handler
 	m.__n1.Add(m.hit)
@@ -915,7 +915,7 @@ type __child0Instance struct {
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
-	k            *widget.Button
+	k            *fynelayout.Button
 }
 
 func new__child0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__child0Instance {
@@ -925,7 +925,7 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	c.k = widget.NewButton("", nil)
+	c.k = fynelayout.NewButton("", nil)
 	c.k.SetText(("k" + fmt.Sprint(c.__prop___p0)))
 	c.k.OnTapped = func() {
 		c.__prop___on0()
@@ -1787,7 +1787,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:72d72ae274b781a249dac27d235a0a32
 -- run/go/fyne --
-pass sha256:4a721f5e37fe9ff00ad6103d389e232f
+pass sha256:0694e867d34aa82088a82408078cf696
 -- run/go/gtk4 --
 pass sha256:f35a00cd93e1647c9d1677bfee60d6f2
 -- run/kotlin/android --

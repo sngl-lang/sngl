@@ -763,7 +763,7 @@ type Model struct {
 	__n13    *fynetext.Flow
 	__n14    *fynetext.Span
 	__n15    *fynetext.Span
-	__n16    *widget.Button
+	__n16    *fynelayout.Button
 	__n17    *fynelayout.ImageSource
 	__n17Ctx *snglcanvas.Context
 	__built  bool
@@ -866,9 +866,6 @@ func (m *Model) __snglTeardown() {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -991,7 +988,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetTitle("Images")
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n6 = fynelayout.NewVBox()
 	m.__n7 = fynelayout.NewImage()
@@ -1038,7 +1034,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n15.SetText("[logo]")
 	m.__n13.Add(m.__n15)
 	m.__n6.Add(m.__n13)
-	m.__n16 = widget.NewButton("", nil)
+	m.__n16 = fynelayout.NewButton("", nil)
 	m.__n16.SetText("grow")
 	m.__n16.OnTapped = m.__n16_click_handler
 	m.__n6.Add(m.__n16)
@@ -1737,7 +1733,7 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_key_handler(k string) {
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
@@ -3248,9 +3244,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:90e83063ffa8768195474e917c45778d
 -- run/go/fyne --
-pass sha256:27613ffb52f941a3adc6d17f23e6afd2
+pass sha256:3bd8e839520413f4799ee82f561f740e
 -- run/go/gtk4 --
-pass sha256:ea7c01e17773fdbd1cc75755bd3a9733
+pass sha256:363b77e3818e95d5f26f09d95929b041
 -- run/kotlin/android --
 pass sha256:9164c4affdd04c825ec35937d1b533d2
 -- run/none/html --

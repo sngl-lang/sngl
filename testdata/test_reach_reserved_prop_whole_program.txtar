@@ -515,7 +515,7 @@ type Model struct {
 	__n0      *fynelayout.Toplevel
 	__n1      *fyne.Container
 	t         *widget.Label
-	close__r0 *widget.Button
+	close__r0 *fynelayout.Button
 	__built   bool
 }
 
@@ -528,9 +528,6 @@ func New() *Model {
 }
 
 func (m *Model) __n0_closed_handler() {
-}
-
-func (m *Model) __n0_key_handler(k string) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -575,13 +572,12 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnKey = m.__n0_key_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = fynelayout.NewVBox()
 	m.t = widget.NewLabel("")
 	m.t.SetText("p")
 	m.__n1.Add(m.t)
-	m.close__r0 = widget.NewButton("", nil)
+	m.close__r0 = fynelayout.NewButton("", nil)
 	m.close__r0.SetText(("x" + fmt.Sprint(m.n__inst0)))
 	m.close__r0.OnTapped = m.close__r0_click_handler
 	m.__n1.Add(m.close__r0)
@@ -673,7 +669,7 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n0_key_handler(k string) {
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -1020,9 +1016,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:093c3b597836e5a4d22e6c87bd1514d3
 -- run/go/fyne --
-pass sha256:4b7c364ab7d3e1e4c8c79bb27b7e7f86
+pass sha256:609731ef1df2519798486995385c33d0
 -- run/go/gtk4 --
-pass sha256:baecafc0aabf359414cb43e2f8122616
+pass sha256:6d0764f95ec4d622bddc05c9221b977b
 -- run/kotlin/android --
 pass sha256:110f4a8e52acf9d6d4a5e791458db813
 -- run/none/html --

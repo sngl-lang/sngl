@@ -88,7 +88,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -349,9 +348,6 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n3_closed_handler() {
 }
 
-func (m *Model) __n3_key_handler(k string) {
-}
-
 func (m *Model) __n3_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n3.SetVisible(m.visible__inst0)
@@ -423,7 +419,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.SetTitle("x")
 	m.__n3.SetVisible(m.visible__inst0)
 	m.__n3.OnClosed = m.__n3_closed_handler
-	m.__n3.OnKey = m.__n3_key_handler
 	m.__n3.OnVisible = m.__n3_visible_handler
 	m.__renderSlot0(m.__n3.Container)
 	m.__renderSlot1(m.__n3.Container)
@@ -448,7 +443,7 @@ type Show__intInstance struct {
 	__slot1_at   fyne.CanvasObject
 	__slot2      []fyne.CanvasObject
 	__slot2_at   fyne.CanvasObject
-	__n0         *widget.Button
+	__n0         *fynelayout.Button
 }
 
 func newShow__intInstance(__model *Model, __a_xs []int, __a_w __anon_v_853006, __a_chose func(__anon_v_853006)) *Show__intInstance {
@@ -463,7 +458,7 @@ func newShow__intInstance(__model *Model, __a_xs []int, __a_w __anon_v_853006, _
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__n0 = widget.NewButton("", nil)
+	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((fmt.Sprint(c.hits) + " ") + fmt.Sprint(len(c.__prop_xs))))
 	c.__n0.OnTapped = func() {
 		c.hits = (c.hits + 1)
@@ -510,7 +505,7 @@ type Show__stringInstance struct {
 	__slot1_at   fyne.CanvasObject
 	__slot2      []fyne.CanvasObject
 	__slot2_at   fyne.CanvasObject
-	__n1         *widget.Button
+	__n1         *fynelayout.Button
 }
 
 func newShow__stringInstance(__model *Model, __a_xs []string, __a_w __anon_v_ba918a, __a_chose func(__anon_v_ba918a)) *Show__stringInstance {
@@ -525,7 +520,7 @@ func newShow__stringInstance(__model *Model, __a_xs []string, __a_w __anon_v_ba9
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__n1 = widget.NewButton("", nil)
+	c.__n1 = fynelayout.NewButton("", nil)
 	c.__n1.SetText(((fmt.Sprint(c.hits) + " ") + fmt.Sprint(len(c.__prop_xs))))
 	c.__n1.OnTapped = func() {
 		c.hits = (c.hits + 1)
@@ -571,7 +566,7 @@ type Held__intInstance struct {
 	__slot1_at        fyne.CanvasObject
 	__slot2           []fyne.CanvasObject
 	__slot2_at        fyne.CanvasObject
-	__n2              *widget.Button
+	__n2              *fynelayout.Button
 }
 
 func newHeld__intInstance(__model *Model, __a_value int, __a_next int, __a___on_value func(int)) *Held__intInstance {
@@ -585,7 +580,7 @@ func newHeld__intInstance(__model *Model, __a_value int, __a_next int, __a___on_
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__n2 = widget.NewButton("", nil)
+	c.__n2 = fynelayout.NewButton("", nil)
 	c.__n2.SetText(fmt.Sprint(c.hits))
 	c.__n2.OnTapped = func() {
 		c.hits += 1
@@ -899,7 +894,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n3_closed_handler() {
 }
 
-func (m *Model) __n3_key_handler(k string) {
+func (m *Model) __n3_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n3_visible_handler(__visible bool) {
@@ -1695,9 +1690,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:4ad83335acfd14b9010fb2382e64b543
+pass sha256:2c324017fd80558138d36d1870cc5ee1
 -- run/go/gtk4 --
-pass sha256:4ba669d04c80af2779d88dd8b306ce17
+pass sha256:7342682205576db0fe0336bc605a43bb
 -- run/kotlin/android --
 pass sha256:f100d63f3d531af54bc76c268a29fa01
 -- run/none/html --

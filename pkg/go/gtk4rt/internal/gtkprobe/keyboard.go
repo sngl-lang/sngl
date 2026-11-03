@@ -22,12 +22,19 @@ import (
 
 // Evdev codes of the keys a test presses, which the keymap below names.
 const (
-	KeyEsc   = 1
-	Key7     = 8
-	KeyTab   = 15
-	KeyA     = 30
-	KeyEnter = 28
-	KeySpace = 57
+	KeyEsc       = 1
+	Key7         = 8
+	Key9         = 10
+	KeyTab       = 15
+	KeyE         = 18
+	KeyU         = 22
+	KeyEnter     = 28
+	KeyLeftCtrl  = 29
+	KeyA         = 30
+	KeyS         = 31
+	KeyLeftShift = 42
+	KeySpace     = 57
+	KeyCapsLock  = 58
 )
 
 // The keymap the keyboard announces: the evdev codes, laid out as a US
@@ -46,6 +53,8 @@ type Keyboard struct {
 	nextID uint32
 	kbd    uint32
 	start  time.Time
+	// locked is the locks on, which outlast a chord.
+	locked uint32
 }
 
 const (
@@ -109,11 +118,47 @@ func NewKeyboard() (*Keyboard, error) {
 
 // Press presses and releases the key with evdev code key.
 func (k *Keyboard) Press(key uint32) error {
-	for _, state := range []uint32{1, 0} {
+	return k.Chord(key)
+}
+
+// modMasks are the modifiers the keymap's modifier keys hold, as xkb's
+// "complete" types number them, and lockMasks the ones a lock key toggles.
+var (
+	modMasks  = map[uint32]uint32{KeyLeftShift: 1 << 0, KeyLeftCtrl: 1 << 2}
+	lockMasks = map[uint32]uint32{KeyCapsLock: 1 << 1}
+)
+
+// Chord presses the keys with evdev codes keys in order, holding each, and
+// releases them in the reverse: a modifier first, then the key it changes. A
+// virtual keyboard says which modifiers it holds itself, as a modifier key
+// goes down and comes up, and which locks are on.
+func (k *Keyboard) Chord(keys ...uint32) error {
+	var mods uint32
+	for i := range 2 * len(keys) {
+		var key, state uint32
+		if i < len(keys) {
+			key, state = keys[i], 1
+		} else {
+			key, state = keys[2*len(keys)-1-i], 0
+		}
 		t := uint32(time.Since(k.start).Milliseconds())
 		// zwp_virtual_keyboard_v1.key(time, key, state)
 		if err := k.send(k.kbd, 1, nil, u32(t), u32(key), u32(state)); err != nil {
 			return err
+		}
+		mask, isMod := modMasks[key]
+		lock, isLock := lockMasks[key]
+		if isMod {
+			mods ^= mask
+		}
+		if isLock && state == 1 {
+			k.locked ^= lock
+		}
+		if isMod || isLock {
+			// zwp_virtual_keyboard_v1.modifiers(depressed, latched, locked, group)
+			if err := k.send(k.kbd, 2, nil, u32(mods), u32(0), u32(k.locked), u32(0)); err != nil {
+				return err
+			}
 		}
 	}
 	_, err := k.roundtrip()

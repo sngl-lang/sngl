@@ -602,7 +602,6 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -626,7 +625,7 @@ type Model struct {
 	__effects0_steps    int
 
 	__n0 *fyne.Container
-	t    *widget.Button
+	t    *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -748,7 +747,7 @@ func (m *Model) SetK__inst0(v int) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewVBox()
-	m.t = widget.NewButton("", nil)
+	m.t = fynelayout.NewButton("", nil)
 	m.t.SetText("t")
 	m.t.OnTapped = m.t_click_handler
 	m.__n0.Add(m.t)
@@ -1345,7 +1344,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:200ae7e51e3274792f1d2d5437c7cffb
 -- run/go/fyne --
-pass sha256:448a5561cee9f8aa008403e100fbc5a3
+pass sha256:2fc0a67894d790bf3d43379b39397b99
 -- run/go/gtk4 --
 pass sha256:09490cf7a9537e48c0973f7ad1a9869d
 -- run/kotlin/android --
