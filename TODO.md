@@ -1,18 +1,33 @@
 # TODO
 
-## A win32 platform
+## C interop, a C language, and a win32 platform
 
-`sngl:platform/win32` is a target for classic Windows GUI programs: windows,
-controls and drawing through user32, gdi32 and comctl32, the API Windows
-programs have been written against since Windows 95. It mirrors gtk4 in shape.
-The platform's SNGL declares the C functions it calls and wraps them in the
-stdlib's components, each widget's create, append, remove, set and event are
-`#[gen.protocol]` functions, and a Go runtime package (`pkg/go/win32rt`, as
-`gtk4rt` is) holds what no declaration can say: the window procedure, the
-message loop and the calls that take a struct.
+The goal is `sngl:platform/win32`: classic Windows GUI programs over user32,
+gdi32 and comctl32. Win32 is a C API, and so are GTK and cairo. A platform
+built on a C library should name C and nothing else, and leave it to each
+language to call C: Go through cgo, C directly, Python through cffi or
+ctypes. Today that is not so. `sngl:x/c` and the declarations gtk4 writes
+spell cgo (`C.CString`, `*C.cairo_t`, `unsafe.Pointer`), and gtk4's protocol
+leans on a Go runtime package. `lib/platform/gtk4/gtk4.sngl` has 54
+`#[go.native]` declarations next to 34 `#[cnative]` ones. So gtk4 builds only
+in Go, and win32 written the same way would too.
 
-Programs are Go cross-compiled with cgo against MinGW, and run under Wine
-for tests and `sngl run`.
+So the work comes in three parts, in order:
+
+1. **C interop belongs to the language translator.** The IR describes C (types,
+   conversions, links, callbacks, structs) as C spells it. Each translator
+   renders the interop for its language. Go is the first and only one to
+   begin with, and the refactor changes no Go golden.
+2. **A C language target**, the second translator to render it. Its ownership
+   rules were already decided in `design/ownership.md` (*A C language
+   target*).
+3. **The win32 platform**, written against Part 1 only. Its runtime glue is C
+   shipped with the platform, so it builds with either language.
+
+Python is the third language the abstraction should admit. It is not part of
+this plan, but each decision in Part 1 is checked against it: Python loads
+a library at run time rather than linking one, and has no compiler step of
+its own.
 
 ### What was verified on this host
 
@@ -21,6 +36,9 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
 - `mingw-w64-gcc` and `wine` (11.19) are Arch packages in `extra`, and
   `[multilib]` is not needed: Arch's `wine` is a WoW64 build and runs a 32-bit
   `.exe` without it.
+- `i686-w64-mingw32-gcc -static -mwindows` and the `x86_64` compiler build a
+  plain C Win32 program (a window, a menu bar, a button, an edit control,
+  a message box, GDI drawing) that runs under Wine.
 - `CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -ldflags=-H=windowsgui` builds a GUI `.exe`, and `GOARCH=386 CC=i686-w64-mingw32-gcc` a 32-bit one. Both ran under Wine. In both, a
   `WNDPROC` that is a static C function calling an `//export`ed Go function
   received the messages, and the Go-side `GetMessage` loop ran and exited.
@@ -28,7 +46,7 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
 - cgo spells Win32's typedefs as aliases of the type they name:
   `(*C.wchar_t)(p)`, `(*C.WCHAR)(p)` and `C.LPCWSTR(p)` are all accepted by
   `SetWindowTextW`. A `UINT`, `WPARAM` or `LPARAM` parameter refuses a
-  `C.int`, which is what `CMarshal` writes for an `int` today (see step 1).
+  `C.int`, which is what `CMarshal` writes for an `int` today.
   `int` parameters (`ShowWindow`'s `nCmdShow`) take one.
 - Under `cage`, Wine draws through its **X11** driver on the Xwayland cage
   starts (cage sets `DISPLAY=:0` for its child). The **Wayland** driver
@@ -42,6 +60,246 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
   Killing a Wine process mid-setup left a prefix that failed with `could not load kernel32.dll` until it was recreated.
 - cage needs `XDG_RUNTIME_DIR` short enough for a 108-byte socket path.
   `headless.RuntimeDir` already makes one under the system temp directory.
+
+## Part 1: C interop belongs to the language translator
+
+### Where Go leaks today
+
+- **`#[cnative]` names are cgo spellings.** The mark's own doc says the name is
+  "spelled as the emitting language reaches it" (`lib/macro/foreign.sngl`).
+  Of the 43 names in `lib/`, `codegen/` and `internal/`:
+  - 26 are bare C functions, which are neutral already.
+  - 13 are `C.X` types or casts.
+  - 2 are `*C.X` pointers.
+  - 2 are `unsafe.Pointer`.
+
+  gtk4's `declgen` writes more of them for every GIR class (`_c_`/`_to_`
+  casts, `_as_` pointer casts written as `(*C.GtkButton)`, `_ptr_` as
+  `unsafe.Pointer`; `codegen/platform/gtk4/declgen.go:165-316`).
+- **`sngl:x/c` is cgo.** `str` is `*C.char`, `cstring` is `C.CString`,
+  `integer` and `double` are `C.int` and `C.double`, `pointer` is
+  `unsafe.Pointer` (`lib/x/c/c.sngl`).
+- **The Go renderer guesses from the spelling.** It prefixes a bare name with
+  `C.` and imports `unsafe` for an `unsafe.` one (`nativeCall`,
+  `codegen/lang/golang/ircontext.go:1152`). A C function's `int` or `float`
+  return is wrapped `int(…)` or `float64(…)` there too.
+- **Callbacks exist only as Go.** gtk4 connects a signal through gtk4rt's
+  `Connect`. That is a `#[go.native]`, whose C trampoline calls an `//export`ed
+  Go dispatcher over `pkg/go/cbind`'s registry. No `#[cnative]` function can
+  take a `func`.
+- **Structs and out-parameters cannot cross at all.** `CMarshal` converts
+  `string`, `int`, `float`, `bool` and `option[string]`, and hands anything
+  else over as it is (`internal/lower/c_marshal.go:179`).
+- **gtk4's runtime is Go.** gtk4rt holds the trampolines, the layout manager
+  (`sngl_flex_measure`/`sngl_flex_allocate`, which is C in a cgo preamble),
+  the toplevel and image handling. gtk4's inline-cgo mode writes Go with `C.`
+  calls in `codegen/platform/gtk4`, and `SupportedLangs` is `{"go"}`.
+
+### The design
+
+1. **`#[cnative]` names C as C spells it.**
+   - A function is its C name (`cairo_arc`), as today.
+   - A type is a C type: `#[cnative("cairo_t *")] struct CairoContext {}`,
+     `#[cnative("cairo_line_cap_t")]`, `#[cnative("const char *")]`.
+   - The checker parses the name once into an `ir.CType` (a name, a pointer
+     depth, `const`) on the declaration's `Foreign`, and refuses anything
+     beyond that small declarator grammar: no arrays and no function-pointer
+     types, which item 5 answers instead.
+   - No language prefix is written anywhere: `C.` and `unsafe.` are the Go
+     translator's to add.
+2. **A conversion is an IR operation, not a function named after a Go
+   identifier.**
+   - `CMarshal` writes an `ir.CConvert{Kind, To *ir.CType}`:
+     - a string to `char *` or to UTF-16
+     - a number to a C typedef
+     - a bool to `int`
+     - a pointer to another pointer type (gtk4's `_as_` casts and its `void *` widget handle)
+   - The `sngl:x/c` conversions keep their `#[builtin]` marks, which say which
+     operation they stand for. They lose their `#[cnative]` spellings.
+   - The translator renders the operation:
+
+     | Operation          | Go                                    | C                                          | Python (cffi)             |
+     |--------------------|---------------------------------------|--------------------------------------------|---------------------------|
+     | string to `char *` | `C.CString(s)`                        | the arena's NUL-terminated string, no copy | `s.encode()`              |
+     | string to UTF-16   | `cbind.UTF16(s)` cast to `*C.wchar_t` | a converter in the C runtime               | `ffi.new("wchar_t[]", s)` |
+     | pointer cast       | `(*C.T)(unsafe.Pointer(p))`           | `(T *)p`                                   | `ffi.cast`                |
+
+   - gtk4's hand-written casts (`toLineCap`) and declgen's `_to_` and `_as_`
+     functions become this operation.
+3. **Typed scalars and wide strings are part of the IR's C.**
+   - **Typed scalars:** `#[cnative("UINT")] struct UINT = int` names a C
+     typedef SNGL spells as an `int`. A caller passes an `int`, since an
+     alias is what it names (spec, *Aliases*). A C function's parameter
+     written with the alias crosses through a cast to it, not as a C `int`.
+   - **Wide strings:** `sngl:x/c` declares `struct utf16 = string` as the
+     spelling of a parameter that crosses as UTF-16, and `option[c.utf16]`
+     as one that may be NULL.
+   - The checker expands an alias where it is written (`expandAlias`), so the
+     parameter has to remember it. `buildParams`
+     (`internal/checker/resolve.go:800`) records a new
+     `ir.Param.CAlias *ir.Alias`. It records the alias, not its C name, because
+     marks run at the end of pass 1 (`afterMarks`), possibly after the
+     parameter is built.
+   - `markCNative` (`internal/checker/marks_impl.go:296`) accepts an alias of
+     `int`, `float`, `bool` or `string`, and refuses any other.
+   - Check that `ir.ClonePackage` shares the alias, and that the dump writes
+     it as a reference.
+   - The string's memory differs by language. In Go it is Go memory, valid
+     for the call, which cgo permits since it holds no Go pointers, so it is
+     not `#[owned]`. In C it is the arena's. Each string a call hands Win32
+     or GTK is copied by the callee, which is what the plain conversion
+     assumes. A `#[retains]` parameter is the existing mechanism for one that
+     is not.
+4. **`c.link` describes the library, and each language builds against it.**
+   - Go writes the cgo preamble from it, as `golang.CPreambleLines` does. C
+     writes the `#include` lines and passes the flags to its compiler.
+   - Python links nothing: it opens a shared library at run time. So
+     `c.link` gains the library's name (`library="user32"`, `"gtk-4"`), which
+     pkg-config's `--libs` gives for the `c:pkg:` scheme. A Python translator
+     would also need the declarations as cffi `cdef` text, which the IR's
+     `#[cnative]` declarations are enough to write.
+   - `c.link` also gains `sources`: C files the platform ships, compiled into
+     the program (item 7).
+5. **A callback is a C function type the language implements.**
+   - A `#[cnative]` function may take a SNGL `func(…)` where C takes a
+     function pointer and a `void *` context, the shape GLib's signals,
+     `qsort_r` and most C APIs offer. The declaration names which parameter
+     is the context (a mark on the parameter, or a flag on `cnative`).
+   - The translator writes the trampoline. Go writes a static C function in the
+     preamble calling an `//export`ed dispatcher over `cbind`'s registry, which
+     is gtk4rt's `Connect` made generic. C writes a function taking the
+     closure's environment as the context. Python writes `ffi.callback`, kept
+     alive while it is connected.
+   - A callback with no context parameter, as `WNDPROC` is, is not declared
+     this way. The platform's C runtime (item 7) receives it and finds the
+     context itself (`GWLP_USERDATA`).
+   - Releasing a callback is the connection's lifetime, as `cbind.Release`
+     is today. Tie it to the node that connected it through
+     `design/ownership.md`'s node lifetime.
+6. **A C struct is a SNGL struct with a C layout, and an out-parameter is a
+   `ref`.**
+   - `#[cnative("RECT")] struct RECT { left int; top int; right int; bottom int }`, whose fields are typed with item 3's aliases where C's are typedefs.
+   - The translator converts it field by field at the call: Go through `C.RECT`,
+     C as the struct itself, Python through `ffi.new("RECT *")`.
+   - A `ref[RECT]` parameter (spec, *References*) is a pointer the callee
+     fills: `GetClientRect(hwnd, &r)` writes `r` when the call returns, which
+     is what `ref` already means.
+   - An array, a union or a struct that holds pointers to C memory is not
+     covered. Such calls stay in a platform's C runtime.
+7. **A platform's runtime is C, not a language's.** A platform may ship C
+   sources beside its SNGL (`lib/platform/<name>/rt/*.c` and a header),
+   named by its `c.link`'s `sources`.
+   - Each language compiles them into the program: cgo compiles `.c` files in
+     the generated package's directory, the C target compiles them with the
+     program, and cffi compiles them through `set_source` or a prebuilt shared
+     library.
+   - What gtk4rt and `cbind` do in C today belongs there: trampolines,
+     layout managers and a window procedure.
+   - What stays a language's own is only what needs the language's runtime:
+     posting work to the UI thread from a goroutine, and snapshots for the
+     test agent.
+8. **The interface.** `LangTranslator` gains a `CInterop` face
+   (`codegen/codegen.go`):
+   - spell a `CType`
+   - render a `CConvert`
+   - render a C call and a C struct value
+   - write a callback's trampoline
+   - build against a `c.link`
+
+   golang implements it first. `nativeCall`'s `C.` and `unsafe.` cases and
+   its `int(…)` wrap move behind it.
+
+### The steps
+
+1. **Neutral spellings, Go rendering, no golden changes.**
+   - Add `ir.CType` and the declarator parse in `markCNative`.
+   - Add `ir.CConvert`, and have `CMarshal` write it.
+   - Add golang's `CInterop`.
+   - Rewrite `sngl:x/c`, gtk4's hand-written `#[cnative]` declarations and
+     `declgen`'s output in C spellings.
+   - The goldens that hold C calls must not change: `testdata/c_link.txtar`,
+     `c_bool_argument.txtar`, `gir_transfer_full.txtar` and gtk4's
+     `cgo=true` goldens. They are the refactor's proof. Deny `C.` and
+     `unsafe.` in `lib/` source with a test over every `#[cnative]` name.
+2. **Typed scalars and UTF-16** (design item 3).
+   - Fixtures first: `testdata/c_alias_argument.txtar` (a `UINT` argument is
+     a cast to it; deny a C `int`), `testdata/c_utf16_argument.txtar`, and
+     `testdata/error_cnative_alias.sngl` (an alias of a struct or a list is
+     refused).
+   - Revert the change and confirm each golden fails.
+3. **`c.link` gains `library` and `sources`** (design items 4 and 7). The
+   `c:` scheme fills `library` from pkg-config. A fixture's program ships a
+   `.c` file and calls it from Go.
+4. **Callbacks** (design item 5). A fixture over a C function taking a
+   callback and a context, its source shipped through `sources`, run on Go.
+   Then move gtk4's `Connect` onto it, and gtk4rt's trampolines out of Go.
+5. **Structs and `ref` out-parameters** (design item 6). A fixture over
+   a shipped C function filling a struct.
+6. **Docs.**
+   - `lib/macro/foreign.sngl`'s `cnative` doc: C spellings, aliases.
+   - `lib/x/c/doc.sngl`.
+   - The `#[cnative]` bullet in `design/nodes.md` and the `c:` scheme in
+     `design/import-schemes.md`.
+   - `design/ownership.md`'s C target section, where it names cgo.
+   - A new design note on `CInterop`, in `design/architecture.md` beside the
+     codegen registry.
+
+### Open questions
+
+- Where the callback's context parameter is named: a parameter mark, or an
+  argument to `cnative`.
+- Whether a struct crossing by value is converted at every call or kept in
+  C's layout in the program. Go can hold a `C.RECT` directly, which saves a
+  copy per call and ties a SNGL struct to cgo's type.
+- How much of gtk4rt moves to C in this part. The trampolines must, since
+  item 5 replaces them, and so must the layout manager, which is C already.
+  The rest (toplevels, images, menus, tabs) is ordinary GTK calls a SNGL
+  protocol could make itself once callbacks and structs cross. Decide whether
+  that is Part 1's work or gtk4's own migration.
+
+## Part 2: A C language target
+
+`lib/language/c` and `codegen/lang/c`, the second translator to implement
+`CInterop`, where it is mostly the identity.
+
+- **Ownership as decided.** `string`, `list` and `map` are owned, with no
+  destructor. Statement temporaries live in a per-turn arena the event loop
+  resets. A value stored is copied to the heap (`__snglHeap`), and freed on
+  overwrite by `OwnedState`'s effects. The target writes `CMarshal` in
+  `#[gen.can]`, which turns the pass off, since its conversions are identities or casts
+  (`design/ownership.md`, *A C language target*).
+- **What C needs that no target has needed:**
+  - closures as an environment struct and a function pointer
+  - generics, monomorphized (`design/types.md`)
+  - a runtime for lists, maps, string formatting and interpolation,
+    `option`, payload enums, and `async` continuations
+
+  The runtime is C shipped in `pkg/c/`, as `pkg/go/` is Go's.
+- **The first program is one with no UI**: `sngl test` functions on a
+  platform that renders nothing, so the language stands on its own before
+  any platform depends on it. The test agent's JSON-RPC (`pkg/go/testagent`)
+  needs a C implementation.
+- **Then a platform.** win32 is the first one written for it (Part 3). gtk4
+  follows once Part 1 has moved its runtime out of Go.
+- Recorded runs and goldens follow the Go ones: `run/c/<platform>` and
+  `testrun/<platform>/c/…`.
+
+### Open questions
+
+- Which C: C11 or C17, and which compilers CI holds it to (gcc, clang, MinGW
+  for win32).
+- Whether the arena resets per turn on every platform's loop, or only where
+  the platform's runtime says a turn ended. Win32's message loop and GTK's
+  main loop both have a natural point.
+
+## Part 3: The win32 platform
+
+`sngl:platform/win32` mirrors gtk4 in shape. Its SNGL declares the C functions
+it calls and wraps them in the stdlib's components, and each widget's create,
+append, remove, set and event are `#[gen.protocol]` functions. Its runtime is
+C shipped with the platform (Part 1, item 7). It holds the window procedure,
+the message loop and the layout engine. It builds with Go (cgo against MinGW)
+and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
 
 ### Decisions
 
@@ -57,80 +315,16 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
   metadata has no widget model: a control is a class name (`"BUTTON"`), style
   bits and messages (`BM_SETCHECK`). So the widget wrappers are written by
   hand, over generated declarations.
-- **The C boundary moves into the IR first** (step 1). A `#[cnative]` call
-  today takes a `string`, `int`, `float`, `bool` or an opaque handle, so most
-  Win32 calls cannot be declared. `CMarshal` learns typed C scalars and UTF-16
-  strings. Structs, out-parameters and callbacks stay in win32rt, as GTK's
-  trampolines do in gtk4rt.
 - **Both architectures; amd64 is the default.** An `arch` option on the
   platform node takes `amd64` or `386`.
-- **The first milestone is a vertical slice** (steps 1–9): `ui.window`,
-  `ui.text`, `ui.button`, `ui.input`, `ui.checkbox`, `ui.vbox`, `ui.hbox` and
+- **The first milestone is a vertical slice:** `ui.window`, `ui.text`,
+  `ui.button`, `ui.input`, `ui.checkbox`, `ui.vbox`, `ui.hbox` and
   `ui.spacer`, events, style basics, goldens, and a Wine-under-cage test
-  launcher with snapshots. The rest of gtk4's overrides come after (step 10).
+  launcher with snapshots. The rest of gtk4's overrides come after.
 
 ### The steps
 
-1. **Typed C scalars: a `#[cnative]` alias.**
-   `#[cnative("C.UINT")] struct UINT = int` names a C typedef SNGL spells as
-   an `int`. A caller passes an `int`, since an alias is what it names (spec,
-   *Aliases*). A C function's parameter written with the alias crosses as
-   `C.UINT(x)` instead of `C.int(x)`.
-   - `markCNative` (`internal/checker/marks_impl.go:296`) accepts an
-     `*ir.Alias` of `int`, `float`, `bool` or `string`, and records the C type
-     on a new `ir.Alias.Foreign`. It refuses an alias of anything else, with
-     a fixture.
-   - The checker expands an alias where it is written
-     (`internal/checker/aliases.go`, `expandAlias`), so nothing after the
-     check meets one. The parameter has to remember it: `buildParams`
-     (`internal/checker/resolve.go:800`) sets a new `ir.Param.CAlias *ir.Alias`
-     where the written type is a `NamedType` naming an alias. It records a
-     pointer, not the C name: marks run at the end of pass 1 (`afterMarks`),
-     possibly after the parameter is built, and `CMarshal` reads
-     `CAlias.Foreign` at lowering, when every mark has run. Check that
-     `ir.ClonePackage` shares the alias rather than copying it, and that the
-     dump writes it as a reference (`cmd/sngl/dumpomit.go`).
-   - `CMarshal` (`internal/lower/c_marshal.go`): where a parameter's
-     `CAlias` names a C type, a number converts through a cast to it. The cast is
-     a `Foreign{Scheme:"c", Path:"C", Name:<the type>}` call, as gtk4's
-     `toLineCap` is, which the Go renderer writes as `C.UINT(x)`
-     (`codegen/lang/golang/ircontext.go`, `nativeCall`). A bool converts as
-     `C.BOOL(b ? 1 : 0)`, which `NoTernary` lowers as it lowers `cbool`. A
-     return typed with the alias is an `int` already, and the renderer's `int(…)`
-     wrap covers it.
-   - Fixtures first: `testdata/c_alias_argument.txtar` (a `UINT` argument is
-     `C.UINT(…)`; deny `C.int(`), `testdata/error_cnative_alias.sngl` (an alias
-     of a struct or a list is refused). Revert the `CMarshal` change and confirm
-     the golden fails.
-   - Document the alias form in `lib/macro/foreign.sngl`'s `cnative` doc, and
-     the rule beside the `#[cnative]` bullet in `design/nodes.md`.
-2. **UTF-16 strings in `sngl:x/c`.** A `W` function wants UTF-16, and its `A`
-   twin reads the system code page, not UTF-8, so a `char *` is wrong for
-   any non-ASCII text.
-   - `sngl:x/c` declares `#[cnative("*C.wchar_t")] struct wstr {}`, an alias
-     `#[cnative("*C.wchar_t")] struct utf16 = string` for a parameter to be
-     written with, and the conversion
-     `#[marks.builtin("cWString")] const func cwstring(s string) wstr => _wide(_utf16(s))`. Here `_utf16` is a `#[go.native]` of a new
-     `cbind.UTF16(s string) unsafe.Pointer` (`pkg/go/cbind`, which has no
-     cgo), and `_wide` is `#[cnative("(*C.wchar_t)")]`. That makes `sngl:x/c`
-     import `sngl:language/go`. It already spells cgo's `C.CString` and
-     `unsafe.Pointer`, so this adds no new dependency in kind; the C target
-     (`design/ownership.md`, *A C language target*) would answer it
-     differently.
-   - The string lives in Go memory, so it is not `#[owned]` and `ReleaseTemps`
-     frees nothing. cgo permits a pointer to Go memory holding no Go pointers
-     as an argument for the length of the call. Win32 copies every string
-     the slice hands it (window text, class names, control text).
-   - `CMarshal`: a `string` parameter whose `CAlias` names a C type crosses
-     through the `sngl:x/c` conversion whose result is that C type:
-     `cstring` for `*C.char`, `cwstring` for `*C.wchar_t`. One that no
-     conversion makes is a lowering error naming the type.
-   - `option[c.utf16]` crosses as the string or NULL, as `optionString` does
-     for `option[string]`. `CreateWindowExW`'s window name and many `W`
-     parameters are optional.
-   - Fixture: `testdata/c_utf16_argument.txtar`. Add a CLI script that builds
-     and runs a `GOOS=windows` program once step 7 exists.
-3. **The generator: `internal/cmd/win32gen` → committed SNGL.**
+1. **The generator: `internal/cmd/win32gen` → committed SNGL.**
    - Run as `go tool win32gen`, it fetches win32json at a pinned commit (in a
      const) into a temp directory. The partitions are
      `UI.WindowsAndMessaging`, `Graphics.Gdi`, `UI.Controls`, `Foundation`
@@ -141,124 +335,121 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
    - It writes what a wanted-list (a Go slice in the tool) names, plus what
      those declarations reach. It does not write all of user32, which is
      thousands of declarations, most of them never called.
-   - What it writes:
-     - **Handle types** as opaque `#[cnative("C.HWND")] struct HWND {}`
-       (`HWND`, `HMENU`, `HINSTANCE`, `HFONT`, `HBRUSH`, `HDC`, `HICON`,
+   - What it writes, all in Part 1's C spellings:
+     - **Handle types** as opaque structs (`#[cnative("HWND")] struct HWND {}`, and `HMENU`, `HINSTANCE`, `HFONT`, `HBRUSH`, `HDC`, `HICON`,
        `HCURSOR`).
-     - **Scalar typedefs** as step 1's aliases (`UINT`, `DWORD`, `WPARAM`,
-       `LPARAM`, `LRESULT`, `BOOL`, `COLORREF`, `ATOM`).
+     - **Scalar typedefs** as aliases (`UINT`, `DWORD`, `WPARAM`, `LPARAM`,
+       `LRESULT`, `BOOL`, `COLORREF`, `ATOM`).
+     - **Structs** the slice needs (`RECT`, `SIZE`, `POINT`,
+       `NONCLIENTMETRICSW`), with Part 1's struct crossing.
      - **Constants** as SNGL `const`s (`WS_*`, `WS_EX_*`, `WM_*`, `BS_*`,
        `BM_*`, `BST_*`, `ES_*`, `EN_*`, `SS_*`, `SW_*`, `SWP_*`, `COLOR_*`,
        `IDC_*`, `GWLP_*`).
-     - **Functions** whose every parameter is a scalar, a handle or a `W`
-       string (`c.utf16`), with each optional pointer as an `option`.
-   - It skips a function taking a struct, an out-pointer or a callback, and
-     reports each in a comment block at the end of the file. win32rt
-     wraps the ones the platform needs.
+     - **Functions** whose parameters Part 1 can cross: scalars, handles,
+       `c.utf16` strings, structs, and `ref` out-parameters.
+   - It skips the rest (callbacks with no context, arrays, unions) and
+     reports each in a comment block at the end of the file.
    - Always the `W` entry point, never the `A`, and the name without the
      suffix where the metadata gives both.
    - Find out how win32json spells a 32-bit/64-bit difference
      (`GetWindowLongPtrW` is a macro over `GetWindowLongW` on 386). Generate
      the declarations both architectures can call, or keep that call in
-     win32rt.
-4. **`pkg/go/win32rt`.** cgo over `windows.h`, linked with `-luser32 -lgdi32 -lcomctl32`, and the half of the platform no declaration can
-   say.
-   - One registered window class whose `WNDPROC` is a static C function
-     calling an `//export`ed Go dispatcher. Events reach handlers through
-     `cbind.Register`, indexed by the control's `HWND` (`GWLP_USERDATA`, or a
-     Go map) and the notification (`WM_COMMAND` with `BN_CLICKED`,
-     `EN_CHANGE`).
-   - The message loop as `Run`, `Quit`, and a posted-work queue for
-     `asyncPost`: `PostMessageW` of a private `WM_APP` message, as gtk4 posts
-     an idle callback.
+     the C runtime.
+2. **The C runtime: `lib/platform/win32/rt/`.** C sources and a header,
+   reached by the platform's `c.link(include="windows.h", system=true, library=…, sources=…)` with `-luser32 -lgdi32 -lcomctl32`.
+   - One registered window class whose `WNDPROC` finds the control's
+     handlers through `GWLP_USERDATA` and calls them through Part 1's
+     callbacks: `WM_COMMAND` with `BN_CLICKED`, and `EN_CHANGE`.
+   - The message loop as `run` and `quit`, and posting work to the loop for
+     `asyncPost` (`PostMessageW` of a private `WM_APP` message, as gtk4 posts
+     an idle callback). Go's half of the post, from a goroutine, is the Go
+     language's own (Part 1, item 7).
    - **Layout.** Win32 has no layout manager. A child control sits at
      the pixel position it is given, and nothing moves it when its parent is
-     resized. win32rt keeps a box tree beside the controls: a vbox or hbox is
-     a container window or a record. It measures each child
+     resized. The runtime keeps a box tree beside the controls: a vbox or
+     hbox is a container window or a record. It measures each child
      (`GetTextExtentPoint32W` for text and buttons, fixed metrics for an
      entry and a checkbox), lays out by `flex` on `WM_SIZE`, and moves
-     children with `DeferWindowPos`. This is the largest piece of win32rt,
-     and the measure → allocate shape of gtk4rt's `sngl_flex_measure` and
-     `sngl_flex_allocate` (`pkg/go/gtk4rt/look.go`) is the model.
+     children with `DeferWindowPos`. This is the largest piece of the
+     runtime, and the measure → allocate shape of gtk4rt's
+     `sngl_flex_measure` and `sngl_flex_allocate` (`pkg/go/gtk4rt/look.go`,
+     C already) is the model, possibly shared.
    - **Fonts.** A control created bare draws in the System font. Every
      control gets `WM_SETFONT` with the message font from
      `SystemParametersInfoW(SPI_GETNONCLIENTMETRICS)`.
    - **Common Controls v6 and DPI.** Themed controls need an activation
-     context from a manifest. Link a `.syso` resource (made by
-     `x86_64-w64-mingw32-windres` or `i686-w64-mingw32-windres` from a
-     committed `.rc`) into the program, or call `CreateActCtxW` at start-up
-     with an embedded manifest. Decide which keeps `go build` to a
-     single command. Declare per-monitor DPI awareness there too. Check
-     what Wine draws with and without it.
-   - Snapshot: `PrintWindow` into a DIB section, encoded with `image/png`.
-     Wine's X11 driver under cage supports it, as verified above.
-   - Tests in the package run under cage through
-     `testutil.MaybeReexecUnderCage`, as gtk4rt's do. They are cross-built
-     and run under Wine, so the package's `go test` needs a launcher of its
-     own (see step 8). Its runs are recorded like gtk4rt's
-     (`internal/cmd/verify/testrun.go`).
-5. **`lib/platform/win32`.**
+     context from a manifest. Either link a resource compiled with `windres`
+     from a committed `.rc`, or call `CreateActCtxW` at start-up with the
+     manifest embedded as a C string. The second needs no resource step in
+     any language's build. Declare per-monitor DPI awareness there too, and
+     check what Wine draws with and without it.
+   - Snapshot: `PrintWindow` into a DIB section. The PNG encoding is the
+     language's: Go's `image/png` for the Go agent, and whatever the C test
+     agent uses for C.
+3. **`lib/platform/win32`.**
    - `win32.sngl`: the platform node.
      - It takes `#[gen.can(asyncPost, instanceState)]` and
        `#[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]`, as gtk4 and fyne do, since Win32 also owns its controls
        and diffs nothing.
      - Options: `package`, `main`, `@run`, `arch` (`"amd64"` default,
        `"386"`), and `reservedNames`.
-     - It imports `sngl:x/c` and declares one `c.link(include="windows.h", system=true, ldflags=["-luser32", "-lgdi32", "-lcomctl32"])`.
    - The primitives (`#[marks.intrinsic("win32:Toplevel")]`, `Button`,
-     `Static`, `Edit`, `CheckBox`, `Box`) and their protocol functions. Each
-     create calls `CreateWindowExW` with the class name and style bits from
-     `api.sngl`, through a win32rt call that parents and registers it. Each
-     set is a `SetWindowTextW` or `SendMessageW` from `api.sngl`, and each
-     event an `on` through win32rt.
+     `Static`, `Edit`, `CheckBox`, `Box`) and their protocol functions,
+     calling `api.sngl` and the runtime only, with no `#[go.native]`:
+     - Each create calls `CreateWindowExW` with the class name and style bits
+       from `api.sngl`, then the runtime to parent and register the control.
+     - Each set is a `SetWindowTextW` or `SendMessageW`.
+     - Each event is an `on` through the runtime's handler table.
    - The overrides for the slice: `ui.window`, `ui.text`, `ui.button`,
      `ui.input`, `ui.checkbox`, `ui.vbox`, `ui.hbox`, `ui.spacer`.
    - `style.sngl`: `lookOf` and `const unstyled`. `flex`, `gap`,
-     `padding` and `minWidth`/`minHeight` reach win32rt's layout, and
+     `padding` and `minWidth`/`minHeight` reach the runtime's layout, and
      `color`, `background` and `fontSize` reach `WM_CTLCOLOR*` and a created
      font. Everything else goes in `unstyled` with a reason.
      `lib/style_coverage_test.go` holds it to every field.
    - `doc.sngl`, the package doc.
-6. **`codegen/platform/win32`.**
+4. **`codegen/platform/win32`.**
    - Registered with `codegen.RegisterNative("win32", …)` and blank-imported
      in `codegen/platform/platforms.go`.
-   - It is gtk4's wrapped mode with GIR, declgen, the cgo mode, canvas and
-     markup taken out. It builds a MutationModel. Every op is a declared
-     protocol, so the translator only places nodes: model fields,
-     the application's attach (`toplevel.go`), render slots and instances
-     (`instance.go`). Start from fyne's file layout, which carries no cgo
-     mode, and gtk4's `toplevel.go`, `instance.go` and `wrapped.go` for the
-     node handling.
+   - `SupportedLangs` is `{"go", "c"}` once Part 2 exists, `{"go"}` until
+     then.
+   - It builds a MutationModel. Every op is a declared protocol, so the
+     translator only places nodes: model fields, the application's attach,
+     render slots and instances. Neither gtk4's nor fyne's generator is
+     language-neutral (both write Go text in Go), so the placement logic
+     either goes to `codegen` for both languages or is written over the IR
+     and handed to the language's renderer. Decide this before copying
+     either; it is the same question Part 2 asks of every platform.
    - `FirstUnimplementedNode` refuses what the slice does not cover yet,
-     so `sngl test` reports a skip rather than a Go compile error.
-   - Everything cgo- or snapshot-specific is behind `//go:build !js` with a
-     `_js.go` stub, so the playground's wasm builds.
+     so `sngl test` reports a skip rather than a compile error.
+   - Everything snapshot-specific is behind `//go:build !js` with a `_js.go`
+     stub, so the playground's wasm builds.
    - Edit the hard-coded platform switches: `internal/snapshot/snapshot.go:467`
      (`LangForPlatform`), `docs/docs.go:439` and
      `cmd/sngl/consteval_output_test.go:64`.
-7. **Cross-compiling generated programs.** Nothing sets GOOS for a
-   generated program today. `go.buildModule`
-   (`codegen/lang/golang/build.go`) runs the host's `go build`, and
-   `cmd/sngl/build.go:168` (`isWindowsTarget`) reads a `goos` option no
-   platform sets.
-   - The platform says what it builds for. Either the win32 node's options
-     reach `go.buildModule` as `GOOS=windows`, `GOARCH` from `arch`,
-     `CGO_ENABLED=1` and `CC` (the MinGW compiler for the arch), or the node
-     writes its own `gen.build`/`gen.run` over a new intrinsic. Decide which
-     after reading `lib/x/gen/command.sngl` and how `sngl:language/go` writes
-     its own.
-   - `-ldflags=-H=windowsgui` for a program; not for a test agent, which
-     talks over stdin and stdout (step 8).
+5. **Cross-compiling.** Nothing sets a target OS for a generated program
+   today. `go.buildModule` (`codegen/lang/golang/build.go`) runs the host's
+   `go build`, and `cmd/sngl/build.go:168` (`isWindowsTarget`) reads a `goos`
+   option no platform sets.
+   - The platform says what it builds for (Windows, `arch`), and each
+     language turns that into its own build:
+     - **Go:** `GOOS=windows`, `GOARCH`, `CGO_ENABLED=1` and `CC=<arch>-w64-mingw32-gcc`.
+     - **C:** the MinGW compiler directly.
+   - Either the node's options reach the language's build intrinsic, or the
+     node writes its own `gen.build`/`gen.run`. Decide which after reading
+     `lib/x/gen/command.sngl` and how `sngl:language/go` writes its own.
+   - A program links as a GUI program (`-H=windowsgui` for Go, `-mwindows`
+     for C); a test agent does not, since it talks over stdin and stdout.
    - The binary is `<name>.exe` (`binaryName`).
    - `sngl run` runs it under `wine`.
-   - `internal/gencache/inputs.go:533` already keys on `GOOS`, `GOARCH`,
+   - `internal/gencache/inputs.go:533` keys on `GOOS`, `GOARCH`,
      `CGO_ENABLED` and `CC` from the environment. Make sure the values
      set for the build, not only the ambient ones, are in the key.
-8. **Tests: a launcher, records and goldens.**
+6. **Tests: a launcher, records and goldens.**
    - `codegen.TestLauncher` on the generator (see
      `codegen/platform/android/launcher.go` and `html/launcher.go`). It
      cross-builds the agent and starts `wine agent.exe` with stdin and
-     stdout piped as the `RPCChannel` `pkg/go/testagent` speaks. It reports
+     stdout piped as the `RPCChannel` the test agent speaks. It reports
      `codegen.SkipError` where `wine`, the MinGW compiler or cage is
      missing.
    - **Open question:** whether a console-subsystem `.exe` under Wine passes
@@ -273,63 +464,62 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
        leaves the developer's `DISPLAY` in place today, so an X11 client in
        cage could reach the real desktop. Clear it, or check that cage always
        overrides it.
-   - The snapshot is win32rt's `PrintWindow` capture at a fixed client size.
-     cage maximizes the window, so pick the size with `SetWindowPos` after
-     the window is mapped, or run Wine's virtual desktop
-     (`explorer /desktop=sngl,800x600`).
+   - The snapshot is at a fixed client size. cage maximizes the window, so pick
+     the size with `SetWindowPos` after the window is mapped, or run Wine's
+     virtual desktop (`explorer /desktop=sngl,800x600`).
    - `internal/toolchain/toolchain.go`:
-     - a `win32` case in `Unavailable` (go, `x86_64-w64-mingw32-gcc` or
-       `i686-…`, `wine`)
+     - a `win32` case in `Unavailable` (the MinGW compiler for the arch,
+       `wine`, and `go` for Go)
      - `PresentsWindows` true for win32
-     - win32 in `Build`'s Go group and in `Exec`
+     - win32 in `Build` and `Exec`
      - Wine's failure strings in `SkipReason`
    - The `Dockerfile` installs `wine`, `mingw-w64` and `xwayland` beside
      cage. Check that Debian's cage starts Xwayland.
-   - Goldens `testdata/win32_*.txtar`: the generated Go for each slice
-     component, with a recorded run under `run/go/win32` and
-     `testrun/win32/go/…`.
+   - Goldens `testdata/win32_*.txtar`: the generated code for each slice
+     component, per language, with recorded runs under `run/<lang>/win32` and
+     `testrun/win32/<lang>/…`.
    - CLI scripts `cmd/sngl/testdata/win32_*.txt`, behind a `[win32]`
      condition in `cmd/sngl/script_test.go`: build, run, and a click that
      writes state, read back from a snapshot.
    - Confirm each new fixture fails with its behavior reverted.
-9. **Docs.**
+7. **Docs.**
    - `design/architecture.md`: a win32 bullet under *Platform Details*, with
-     its runtime package and cross-compilation.
+     its C runtime and cross-compilation.
    - `design/win32.md` (or a section in `design/architecture.md`):
      the generator, the metadata pin, and the layout engine.
    - CLAUDE.md's `codegen/platform/{…}` list.
    - The platform's page in the docs site (`go tool docsgen`).
-10. **After the slice.**
-    - The rest of gtk4's override set:
-      - `ui.image` (GDI+ or WIC through win32rt)
-      - `ui.scroll` (a scrolling container window)
-      - `ui.tabs` (`WC_TABCONTROL`)
-      - `ui.progress` (`PROGRESS_CLASS`)
-      - `ui.select` (`COMBOBOX`)
-      - `ui.textarea` (`ES_MULTILINE`)
-      - `ui.menubar` and `ui.menu` (`CreateMenu` on the window, which is
-        what `ui.window`'s menu slot wants)
-      - `ui.table` and `ui.tree` (`WC_LISTVIEW`, `WC_TREEVIEW`)
-      - `ui.modal` (a modal owned window)
-      - `ui.datepicker` (`DATETIMEPICK_CLASS`)
-      - `ui.tooltip` (`TOOLTIPS_CLASS`)
-      - `time.timer` (`SetTimer`)
-    - Shapes and the canvas over GDI: `#[cnative]` calls from `api.sngl`, as
-      gtk4 draws them over cairo, or `#[gen.wants(canvas)]` as fyne does.
-    - A second window, `@closed`, `visible` and `@run`, per
-      `design/windows.md`.
-    - Interpreter simulation (`--simulate win32`), if the protocol functions
-      run there as gtk4's do.
-    - A `winmd:` import scheme, if a program wants to declare a Win32 call the
-      committed file does not hold. It is not needed for the platform itself.
+8. **After the slice.**
+   - The rest of gtk4's override set:
+     - `ui.image` (GDI+ or WIC through the runtime)
+     - `ui.scroll` (a scrolling container window)
+     - `ui.tabs` (`WC_TABCONTROL`)
+     - `ui.progress` (`PROGRESS_CLASS`)
+     - `ui.select` (`COMBOBOX`)
+     - `ui.textarea` (`ES_MULTILINE`)
+     - `ui.menubar` and `ui.menu` (`CreateMenu` on the window, which is
+       what `ui.window`'s menu slot wants)
+     - `ui.table` and `ui.tree` (`WC_LISTVIEW`, `WC_TREEVIEW`)
+     - `ui.modal` (a modal owned window)
+     - `ui.datepicker` (`DATETIMEPICK_CLASS`)
+     - `ui.tooltip` (`TOOLTIPS_CLASS`)
+     - `time.timer` (`SetTimer`)
+   - Shapes and the canvas over GDI, as `api.sngl` calls the way gtk4 draws
+     them over cairo.
+   - A second window, `@closed`, `visible` and `@run`, per
+     `design/windows.md`.
+   - Interpreter simulation (`--simulate win32`), if the protocol functions
+     run there as gtk4's do.
+   - A `winmd:` import scheme, if a program wants to declare a Win32 call the
+     committed file does not hold. It is not needed for the platform itself.
 
 ### Open questions
 
 - Should `GOARCH=386` stay a supported default-off option once `amd64` works,
   or be tested in CI too? Wine runs both on this host, and CI's Debian image
   needs `wine32` for 386.
-- The common-controls manifest: a linked resource or an activation context
-  at start-up (step 4).
-- The cross-compile hook: platform options read by `go.buildModule` or a
-  platform-written `gen.build` (step 7).
-- Pipes or TCP for the test agent under Wine (step 8).
+- Where a platform generator's node placement lives once more than one
+  language renders it (step 4).
+- The cross-compile hook: platform options read by the language's build or a
+  platform-written `gen.build` (step 5).
+- Pipes or TCP for the test agent under Wine (step 6).
