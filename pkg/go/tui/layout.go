@@ -212,3 +212,63 @@ func Sized(look lipgloss.Style, horizontal bool, cells int) lipgloss.Style {
 	}
 	return look.Height(max(1, cells-look.GetVerticalMargins()))
 }
+
+// Grid lays parts out a row at a time, gap cells apart within a row and
+// rowGap rows apart between two. With columns above zero, a row holds that
+// many, each padded to an equal share of avail cells less the gaps, which a
+// growing part fills, or to the widest part's width where avail is zero, a
+// box whose extent nothing knows. With none, parts flow at their own widths
+// and a row ends where the next would pass avail; at zero they are a single
+// row. align places a part within its row's height, as a horizontal Join's
+// does. A part that draws nothing takes no cell.
+func Grid(columns int, align lipgloss.Position, gap, rowGap, avail int, parts []Part) string {
+	column := 0
+	if columns > 0 && avail > 0 {
+		column = max((avail-gap*(columns-1))/columns, 1)
+	}
+	texts := make([]string, 0, len(parts))
+	for _, p := range parts {
+		text := p.text
+		if p.render != nil {
+			text = p.render(column)
+		}
+		if text != "" {
+			texts = append(texts, text)
+		}
+	}
+	var rows []string
+	if columns > 0 {
+		if column == 0 {
+			for _, t := range texts {
+				column = max(column, lipgloss.Width(t))
+			}
+		}
+		cell := lipgloss.NewStyle().Width(column)
+		for start := 0; start < len(texts); start += columns {
+			var row []string
+			for _, t := range texts[start:min(start+columns, len(texts))] {
+				row = append(row, cell.Render(t))
+			}
+			rows = append(rows, joinSpaced(true, align, gap, row))
+		}
+	} else {
+		var row []string
+		run := 0
+		for _, t := range texts {
+			w := lipgloss.Width(t)
+			if len(row) > 0 && avail > 0 && run+gap+w > avail {
+				rows = append(rows, joinSpaced(true, align, gap, row))
+				row, run = nil, 0
+			}
+			if len(row) > 0 {
+				run += gap
+			}
+			row = append(row, t)
+			run += w
+		}
+		if len(row) > 0 {
+			rows = append(rows, joinSpaced(true, align, gap, row))
+		}
+	}
+	return joinSpaced(false, lipgloss.Left, rowGap, rows)
+}

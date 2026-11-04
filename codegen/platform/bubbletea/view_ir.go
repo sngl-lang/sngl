@@ -50,6 +50,10 @@ type irViewContext struct {
 	// puts its children across it, as Go: what a loop's copies and a branch's
 	// nodes among its children are joined with, being its parts too.
 	joinGap, joinAt string
+	// cells is whether the Layout being rendered is a grid, whose every node
+	// a loop's copy or a branch renders is a cell of its own, as each is a
+	// child of the grid in CSS.
+	cells bool
 	// pictureLook names the look of the box a picture is shown in, whose size
 	// the picture is fitted to; "" where it is in no box.
 	pictureLook string
@@ -925,10 +929,23 @@ func grows(n *ir.NodeInst) bool {
 	return true
 }
 
+// gridded reports whether n is a grid, a Layout given a count of columns or
+// told to flow.
+func gridded(n *ir.NodeInst) bool {
+	c := codegen.NodeProp(n, "columns")
+	if c == nil || btIntrinsic(n) != "Layout" {
+		return false
+	}
+	v, ok := codegen.IRLiteralNumber(c)
+	return !ok || v >= 0
+}
+
+// growsWithin reports whether s holds a node that sizes itself to the box
+// it is in: one that grows, or a grid, whose rows are the box's width.
 func growsWithin(s ir.Stmt) bool {
 	found := false
 	_ = ir.Walk([]ir.Stmt{s}, func(nd ir.Node) error {
-		if n, ok := nd.(*ir.NodeInst); ok && (grows(n) || componentGrows(n.Component, nil)) {
+		if n, ok := nd.(*ir.NodeInst); ok && (grows(n) || gridded(n) || componentGrows(n.Component, nil)) {
 			found = true
 			return ir.SkipAll
 		}
@@ -1041,9 +1058,16 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 			justify = vc.gc.EvalExpr(v)
 		}
 	}
+	// A grid's children are a row at a time, `columns` to one or flowing
+	// where that is zero; a Layout given none joins them along its axis.
+	columns := ""
+	if gridded(n) {
+		columns = vc.gc.EvalExpr(codegen.NodeProp(n, "columns"))
+	}
 	// A box placing its children along it needs its extent, as one whose
-	// child grows does: what they leave of it is what it places them in.
-	if justify != "0" || slices.ContainsFunc(n.Children, growsWithin) {
+	// child grows does: what they leave of it is what it places them in. A
+	// grid fits its rows to it.
+	if columns != "" || justify != "0" || slices.ContainsFunc(n.Children, growsWithin) {
 		vc.requireImport(tuiImportPath)
 		look := resultVar + "Look"
 		vc.line("%s := %s", look, style)
@@ -1085,7 +1109,11 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	}
 	prevGap, prevAt := vc.joinGap, vc.joinAt
 	vc.joinGap, vc.joinAt = spacing, pos
-	parts := justify != "0" || slices.ContainsFunc(n.Children, vc.growsAsPart)
+	// A grid's children are parts, each node in a loop or a branch one of
+	// its own, and one that grows is its column's width.
+	parts := columns != "" || justify != "0" || slices.ContainsFunc(n.Children, vc.growsAsPart)
+	prevCells := vc.cells
+	vc.cells = columns != ""
 	childrenVar := resultVar + "Children"
 	if parts {
 		vc.line("var %s []tui.Part", childrenVar)
@@ -1104,6 +1132,7 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	}
 	vc.vertical, vc.horizontal = prevVertical, prevHorizontal
 	vc.joinGap, vc.joinAt = prevGap, prevAt
+	vc.cells = prevCells
 	vc.pictureLook = prevPicture
 	// tooltip: reveal the body text (dim) below the trigger while the wrapped
 	// focusable descendant is focused. The `tooltip` prop carries the text;
@@ -1134,6 +1163,12 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 		}
 	}
 	switch {
+	case columns != "":
+		rowSpacing := "0"
+		if v := codegen.NodeProp(n, "rowSpacing"); v != nil {
+			rowSpacing = vc.gc.EvalExpr(v)
+		}
+		vc.line(`%s = tui.Grid(%s, %s, %s, %s, %s, %s)`, resultVar, columns, pos, spacing, rowSpacing, extent(main), childrenVar)
 	case parts:
 		vc.line(`%s = tui.Join(%t, %s, %s, %s, %s, %s)`, resultVar, horizontal, pos, justify, spacing, extent(main), childrenVar)
 	case spacing != "0":
@@ -1186,7 +1221,8 @@ func isPicture(s ir.Stmt) bool {
 const availParam = "__availW"
 
 // componentGrows reports whether c's body has a child growing into its
-// Layout's free space, which needs the width c is placed in. seen holds the
+// Layout's free space, or a grid, either of which needs the width c is
+// placed in. seen holds the
 // components already asked, for a recursive one.
 func componentGrows(c *ir.Component, seen map[*ir.Component]bool) bool {
 	if c == nil || seen[c] {
@@ -1198,7 +1234,7 @@ func componentGrows(c *ir.Component, seen map[*ir.Component]bool) bool {
 	seen[c] = true
 	found := false
 	_ = ir.Walk(c.Body.Stmts, func(nd ir.Node) error {
-		if n, ok := nd.(*ir.NodeInst); ok && (grows(n) || componentGrows(n.Component, seen)) {
+		if n, ok := nd.(*ir.NodeInst); ok && (grows(n) || gridded(n) || componentGrows(n.Component, seen)) {
 			found = true
 			return ir.SkipAll
 		}
@@ -1232,12 +1268,12 @@ func isIdentByte(c byte) bool {
 func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, horizontal bool) {
 	switch x := child.(type) {
 	case *ir.If:
-		if vc.growsAsPart(x) {
+		if vc.cells && !ir.ComputesValue(x) || vc.growsAsPart(x) {
 			vc.renderIfParts(x, childVar, partsVar, horizontal)
 			return
 		}
 	case *ir.For:
-		if vc.growsAsPart(x) {
+		if vc.cells && !computesOnly(x) || vc.growsAsPart(x) {
 			vc.renderForParts(x, childVar, partsVar, horizontal)
 			return
 		}

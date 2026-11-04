@@ -97,6 +97,8 @@ const component ui.vbox[platform] {}
 
 const component ui.hbox[platform] {}
 
+const component ui.grid[platform] {}
+
 const component ui.stack[platform] {}
 
 const component ui.scroll[platform] {}

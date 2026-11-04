@@ -1413,7 +1413,11 @@ their codes: `"apple" < "fig"`, and `"pear" < "pears"`.
 The ternary operator `c ? a : b` evaluates `a` when `c` is true and `b`
 otherwise; `c` must be `bool`. Where one arm is an `option[T]` and the other a
 `T`, the ternary is the `option[T]`: `o == null ? 1.0 : o` handed to an
-`option[float]` parameter is that option. The unary operators are `!` (logical negation,
+`option[float]` parameter is that option. Otherwise one arm's type is
+assignable to the other's, or an arm is `null`: a bare name in an arm is
+whatever the scope binds under it, so where a component is named `grid`,
+`ok ? flex : grid` is an error rather than two members of an enum, and the
+member is written `Display.grid`. The unary operators are `!` (logical negation,
 on `bool`), `-` (numeric or unit negation), `&` (reference), `*`
 (dereference), and `const` (constant assertion).
 

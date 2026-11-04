@@ -440,6 +440,16 @@ const component ui.hbox[platform](style, children) {
     }
 }
 
+// A grid is a GtkBox gtk4rt lays out a row at a time, so its children come
+// and go as a box's do. GtkFlowBox wraps each child in one of its own, which
+// a render slot's anchor is no sibling of, and GtkGrid places each by a
+// position a child append cannot give it.
+const component ui.grid[platform](columns, style, children) {
+    gtk.GtkBox(orientation="horizontal", look=gridLookOf(style, columns)) {
+        children
+    }
+}
+
 const component ui.scroll[platform](style, direction, @reachEnd, content) {
     Scroll(direction=string(direction), look=lookOf(style), @reachEnd { reachEnd() }) {
         content

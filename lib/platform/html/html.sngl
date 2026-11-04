@@ -335,6 +335,17 @@ const component ui.hbox[platform](style, children) {
     }
 }
 
+// A grid of columns is a CSS grid of that many equal tracks, `minmax(0, 1fr)`
+// so a wide child takes no more than its column; one without is a row that
+// wraps. `grid` here is this override, so the member is written in full.
+const component ui.grid[platform](columns, style, children) {
+    html.div(style=[...css({...style, display=columns == null ? ui.Display.flex : ui.Display.grid}), gridTracks(columns)]) {
+        children
+    }
+}
+
+const func gridTracks(columns option[int]) => columns == null ? Declaration{property="flex-wrap", value="wrap"} : Declaration{property="grid-template-columns", value="repeat({columns}, minmax(0, 1fr))"}
+
 const component ui.stack[platform](style, layers) {
     html.div(style=css({...style, position=relative})) {
         layers

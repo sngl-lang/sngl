@@ -140,6 +140,11 @@ component Layout(
     // Where they sit along it in the free space, as tui.Join's justify.
     justify    int,
     spacing    int,
+    // A grid's: its children `columns` to a row (tui.Grid), or flowing where
+    // it is zero, `rowSpacing` rows apart. A negative count joins them along
+    // `join`, as every other Layout does.
+    columns    int = -1,
+    rowSpacing int = 0,
     // Body text revealed, dim, under the focused trigger this Layout wraps.
     tooltip    string,
     children   ...component,
@@ -254,6 +259,12 @@ const component ui.vbox[platform](style, children) {
 
 const component ui.hbox[platform](style, children) {
     Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
+        children
+    }
+}
+
+const component ui.grid[platform](columns, style, children) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), spacing=cellsOf(style.gap), columns=columns == null ? 0 : columns, rowSpacing=rowsOf(style.gap)) {
         children
     }
 }

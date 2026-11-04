@@ -723,6 +723,20 @@ component SnglScroll(
     children   ...component,
 ) ui.node
 
+// SnglGrid is a grid: its children `columns` to a row, or flowing where that
+// is zero, `gap` apart. Kotlin the platform ships with the app
+// (codegen/platform/android/grid.kt), since Compose's FlowRow makes equal
+// columns of weights, which a short last row stretches across.
+#[gen.renders(identity)]
+#[intrinsic("android:SnglGrid")]
+component SnglGrid(
+    modifier          Modifier,
+    columns           int,
+    gap               Dp,
+    verticalAlignment VerticalAlignment = alignTop,
+    children          ...component,
+) ui.node
+
 // SnglPager is a tabs' panels: a page per tab, swiped between, every one kept
 // composed. Kotlin the platform ships with the app (codegen/platform/android/
 // pager.kt), since which page shows and how far a swipe has gone are state its

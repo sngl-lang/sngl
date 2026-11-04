@@ -1102,8 +1102,30 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 		if tt2, et2 := exprType(thenExpr), exprType(elseExpr); !tt2.Equal(et2) {
 			c.error(x.Pos, "ternary branches have mismatched types %s and %s (add an explicit conversion)", tt2, et2)
 		}
+	} else if armsDisagree(tt, et) {
+		// A bare name an arm meant as a member of the enum the other arm is
+		// reads whatever the scope binds under it, a component of the same
+		// name, and the ternary took the first arm's type whatever the
+		// second's was.
+		w, g := ir.Contrast(tt, et)
+		c.error(x.Pos, "ternary branches have mismatched types %s and %s", w, g)
 	}
 	return &ir.Ternary{AST: x, Type: typ, Cond: condExpr, Then: thenExpr, Else: elseExpr}
+}
+
+// armsDisagree reports whether a ternary's arms are of two types neither of
+// which the other is assignable to. A `null` arm is the absence the ternary's
+// slot holds, as a `null` written there would be.
+func armsDisagree(then, els *ir.Type) bool {
+	if then == nil || els == nil {
+		return false
+	}
+	for _, t := range []*ir.Type{then, els} {
+		if t.Kind == ir.TypeInvalid || t.Kind == ir.TypeNull {
+			return false
+		}
+	}
+	return !els.IsAssignableTo(then) && !then.IsAssignableTo(els)
 }
 
 // optionArms promotes the bare arm of a ternary whose other arm is an option

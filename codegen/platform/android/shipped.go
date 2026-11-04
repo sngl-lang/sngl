@@ -10,7 +10,7 @@ import (
 )
 
 // dateFieldKt is SnglDateField's source, scrollKt SnglScroll's, pagerKt
-// SnglPager's, choosesKt snglChooses's, flexShareKt snglFlexShare's,
+// SnglPager's, gridKt SnglGrid's, choosesKt snglChooses's, flexShareKt snglFlexShare's,
 // flexibleKt snglFlexible's and snglFlexed's, and appbarKt SnglAppBar's with
 // the menu's composables.
 //
@@ -22,6 +22,9 @@ var scrollKt string
 
 //go:embed pager.kt
 var pagerKt string
+
+//go:embed grid.kt
+var gridKt string
 
 //go:embed chooses.kt
 var choosesKt string
@@ -56,6 +59,7 @@ var shippedComposables = []struct {
 	{intrinsic: intrinsicNS + "SnglDateField", name: "SnglDateField", src: dateFieldKt},
 	{intrinsic: intrinsicNS + "SnglScroll", name: "SnglScroll", src: scrollKt},
 	{intrinsic: intrinsicNS + "SnglPager", name: "SnglPager", src: pagerKt},
+	{intrinsic: intrinsicNS + "SnglGrid", name: "SnglGrid", src: gridKt},
 	{call: "snglChooses", name: "SnglChooses", src: choosesKt},
 	{intrinsic: intrinsicNS + "Screen", name: "SnglAppBar", src: appbarKt},
 	{call: flexShareName, name: "SnglFlexShare", src: flexShareKt},

@@ -36,6 +36,36 @@ component _example_hbox node {
     }
 }
 
+// Grid layout container. Given `columns`, its children are laid out that many
+// to a row, in columns of equal width that share the grid's; a last row that
+// is short leaves its columns empty. Given none, they flow as an `hbox`'s do,
+// each its own width, and wrap onto a new line where the next would not fit.
+// `style.gap` spaces both the rows and the children within one. A grid does
+// not scroll: put it in a `scroll` for that.
+component grid(
+    columns  option[int] = null,
+    style    Style = Style{},
+    children ...component,
+) node
+
+component _example_grid node {
+    vbox(style={gap=16px, padding=16px}) {
+        grid(columns=3, style={gap=8px}) {
+            text(value="One")
+            text(value="Two")
+            text(value="Three")
+            text(value="Four")
+            text(value="Five")
+        }
+        grid(style={gap=8px, width=160px}) {
+            button(text="Fire")
+            button(text="Water")
+            button(text="Grass")
+            button(text="Electric")
+        }
+    }
+}
+
 // Layered container where children overlap in the order they are declared.
 // Later children paint over earlier ones. Useful for overlays, badges
 // pinned to a corner, or background/foreground composition. Children

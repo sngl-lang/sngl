@@ -48,6 +48,21 @@ translation folds to what it sets. `flex` is read by the parent: a context
 on android, the Layout on bubbletea, the Box on fyne, the box the widget lands
 in on gtk4, CSS on html.
 
+**A grid is a box each target lays out a row at a time**, its children the
+box's own, so a loop's copies and a render slot's come and go as in an
+`hbox`: CSS's grid of `minmax(0, 1fr)` tracks, or a wrapping flex row, on
+html; a GtkBox under gtk4rt's custom layout (`sngl_grid_measure`), since
+GtkFlowBox wraps each child in one of its own that a slot's anchor is no
+sibling of; `fynelayout.Grid`; `SnglGrid` on android (`grid.kt`), since
+FlowRow's equal columns are weights a short last row stretches across; and
+`tui.Grid` on bubbletea, where a grid's Layout makes each node of a loop or
+a branch a cell (`irViewContext.cells`) and the box it is in learns its
+width as it does for a growing child (`gridded`). A flow's height is its
+width's to say; GTK and Compose measure height for width, and fyne, which
+asks a minimum before it gives one, takes the rows of the width it last laid
+out at and refreshes where that changes. `cmd/sngl/testdata/grid_runs.txt`
+pins every target.
+
 **A literal Style is translated at run time on bubbletea and android**
 (`BoxLook(Style{…}, true)`, `styleModifier(Style(…), true)`), and stays so.
 fyne's and gtk4's `lookOf` build a host record or CSS text in plain SNGL,

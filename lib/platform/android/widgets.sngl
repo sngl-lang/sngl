@@ -71,6 +71,20 @@ const component ui.hbox[platform](style, children) {
     }
 }
 
+// A grid's child takes no share of a row, so its flex is no weight.
+const component ui.grid[platform](columns, style, children) {
+    SnglGrid(
+        modifier = modifierOf(style, flexShare),
+        columns = columns == null ? 0 : columns,
+        gap = style.gap == null ? dpOf(0.0) : length(style.gap),
+        verticalAlignment = rowAlignment(style.alignItems),
+    ) {
+        flexShare(func(w float32) => modifier) {
+            children
+        }
+    }
+}
+
 const component ui.stack[platform](style, layers) {
     Box(modifier=modifierOf(style, flexShare)) {
         flexShare(func(w float32) => modifier.fillMaxSize()) {
