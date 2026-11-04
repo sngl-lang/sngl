@@ -179,6 +179,7 @@ type modelState struct {
 	visible__inst0      bool
 	attempt__inst0      int
 	refreshes__inst0    int
+	asked__inst0        int
 	__effect0_key       __anon_key_n_a1dba7
 	__effect0_live      []__anon_key_n_a1dba7
 	__effect0_desired   []__anon_key_n_a1dba7
@@ -202,6 +203,7 @@ func New() Model {
 	m.visible__inst0 = true
 	m.attempt__inst0 = 0
 	m.refreshes__inst0 = 0
+	m.asked__inst0 = -1
 	m.__effect0_key = __anon_key_n_a1dba7{}
 	m.__effect0_live = []__anon_key_n_a1dba7{}
 	m.__effect0_desired = []__anon_key_n_a1dba7{}
@@ -398,6 +400,10 @@ func LineCap(height__r0 int, lines int) int {
 func (m *Model) __effect0_mount() {
 	m.attempt__inst0 += 1
 	var mine int = m.attempt__inst0
+	if m.__effect0_key.N == m.asked__inst0 {
+		m.failure__inst0 = nil
+	}
+	m.asked__inst0 = m.__effect0_key.N
 	m.loading__inst0 = true
 	__async_arg0 := m.__effect0_key.Key
 	_ = __async_arg0
@@ -630,6 +636,21 @@ func SetRefreshes__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setRefreshes__inst0Msg{value: v} }
 }
 
+func (m Model) Asked__inst0() int {
+	return m.asked__inst0
+}
+
+func (m Model) SetAsked__inst0(v int) Model {
+	m.asked__inst0 = v
+	return m
+}
+
+type setAsked__inst0Msg struct{ value int }
+
+func SetAsked__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setAsked__inst0Msg{value: v} }
+}
+
 // __snglPosts holds the closures work off the event loop posted back to
 // it (async.do), each carrying the Model it writes.
 var __snglPosts = make(chan func(), 64)
@@ -737,6 +758,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetAttempt__inst0(msg.value)
 	case setRefreshes__inst0Msg:
 		m = m.SetRefreshes__inst0(msg.value)
+	case setAsked__inst0Msg:
+		m = m.SetAsked__inst0(msg.value)
 	case __snglPostMsg:
 		msg()
 		__snglDrainPosts()
@@ -875,4 +898,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:d57c5819dd41b33df0bdfb42f26ec14a
+pass sha256:d6f429ad572929cb8ebd9cfb7f7ec6a8

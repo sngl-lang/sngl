@@ -173,6 +173,10 @@ type modelState struct {
 	checked__inst0      map[string]bool
 	__effect0_live      []string
 	__effect0_desired   []string
+	__effect0_paths     []string
+	__effect0_livePaths []string
+	__effect0_pathAt    map[string]int
+	__effect0_liveAt    map[string]int
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -194,6 +198,10 @@ func New() Model {
 	m.checked__inst0 = map[string]bool{}
 	m.__effect0_live = []string{}
 	m.__effect0_desired = []string{}
+	m.__effect0_paths = []string{}
+	m.__effect0_livePaths = []string{}
+	m.__effect0_pathAt = map[string]int{}
+	m.__effect0_liveAt = map[string]int{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_torn = false
@@ -375,12 +383,22 @@ func LineCap(height__r0 int, lines int) int {
 
 func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
+	m.__effect0_paths = []string{}
+	m.__effect0_pathAt = map[string]int{}
 	for __copy0, it := range m.items {
 		if it != m.skip {
 			__effect0_fresh := true
-			if len(m.__effect0_desired) < len(m.__effect0_live) {
-				__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+			var __effect0_at int = func() int {
+				if __v, __ok := m.__effect0_liveAt[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return -1
+			}()
+			if __effect0_at >= 0 {
+				__effect0_fresh = (m.__effect0_live[__effect0_at] != fmt.Sprint(__copy0))
 			}
+			m.__effect0_pathAt[fmt.Sprint(__copy0)] = len(m.__effect0_paths)
+			m.__effect0_paths = append(m.__effect0_paths, fmt.Sprint(__copy0))
 			if __effect0_fresh {
 				__cell1_checked__inst0 := func() bool {
 					if __v, __ok := m.checked__inst0[fmt.Sprint(__copy0)]; __ok {
@@ -395,6 +413,8 @@ func (m *Model) __effect0_enter() {
 		}
 	}
 	m.__effect0_live = m.__effect0_desired
+	m.__effect0_livePaths = m.__effect0_paths
+	m.__effect0_liveAt = m.__effect0_pathAt
 }
 
 func (m *Model) __effects0_settle() {
@@ -2233,7 +2253,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:81dfc51943746809c1c6eea2bff91c39
+pass sha256:b6ccd89712f3bff465c95045ce489aa9
 -- run/go/fyne --
 pass sha256:e1f1b19e4f9ed9c250f08eebcd14edc3
 -- run/go/gtk4 --

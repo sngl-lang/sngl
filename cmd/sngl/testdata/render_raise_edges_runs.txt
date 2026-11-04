@@ -310,7 +310,7 @@ sha256:6e97d8fedbc5e9dcf7f060478bb9558d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/slotted/1 --
-sha256:d48813d94440eacf41c1c4a388759d20
+sha256:43cf234d218f03d2ebcbcaaefb2e18f7
 {
   "results": [
     {

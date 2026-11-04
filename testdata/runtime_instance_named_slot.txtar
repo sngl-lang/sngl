@@ -196,11 +196,23 @@ type modelState struct {
 	rows__inst1         map[string][]int
 	__effect0_live      []string
 	__effect0_desired   []string
+	__effect0_paths     []string
+	__effect0_livePaths []string
+	__effect0_pathAt    map[string]int
+	__effect0_liveAt    map[string]int
 	__effect1_key       string
 	__effect1_live      []string
 	__effect1_desired   []string
+	__effect1_paths     []string
+	__effect1_livePaths []string
+	__effect1_pathAt    map[string]int
+	__effect1_liveAt    map[string]int
 	__effect2_live      []string
 	__effect2_desired   []string
+	__effect2_paths     []string
+	__effect2_livePaths []string
+	__effect2_pathAt    map[string]int
+	__effect2_liveAt    map[string]int
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -223,11 +235,23 @@ func New() Model {
 	m.rows__inst1 = map[string][]int{}
 	m.__effect0_live = []string{}
 	m.__effect0_desired = []string{}
+	m.__effect0_paths = []string{}
+	m.__effect0_livePaths = []string{}
+	m.__effect0_pathAt = map[string]int{}
+	m.__effect0_liveAt = map[string]int{}
 	m.__effect1_key = ""
 	m.__effect1_live = []string{}
 	m.__effect1_desired = []string{}
+	m.__effect1_paths = []string{}
+	m.__effect1_livePaths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	m.__effect1_liveAt = map[string]int{}
 	m.__effect2_live = []string{}
 	m.__effect2_desired = []string{}
+	m.__effect2_paths = []string{}
+	m.__effect2_livePaths = []string{}
+	m.__effect2_pathAt = map[string]int{}
+	m.__effect2_liveAt = map[string]int{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_torn = false
@@ -410,11 +434,21 @@ func LineCap(height__r0 int, lines int) int {
 
 func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
+	m.__effect0_paths = []string{}
+	m.__effect0_pathAt = map[string]int{}
 	for __copy0, i := range m.items {
 		__effect0_fresh := true
-		if len(m.__effect0_desired) < len(m.__effect0_live) {
-			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		var __effect0_at int = func() int {
+			if __v, __ok := m.__effect0_liveAt[fmt.Sprint(__copy0)]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect0_at >= 0 {
+			__effect0_fresh = (m.__effect0_live[__effect0_at] != fmt.Sprint(__copy0))
 		}
+		m.__effect0_pathAt[fmt.Sprint(__copy0)] = len(m.__effect0_paths)
+		m.__effect0_paths = append(m.__effect0_paths, fmt.Sprint(__copy0))
 		if __effect0_fresh {
 			__cell1_rows__inst0 := func() []int {
 				if __v, __ok := m.rows__inst0[fmt.Sprint(__copy0)]; __ok {
@@ -428,6 +462,8 @@ func (m *Model) __effect0_enter() {
 		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
 	}
 	m.__effect0_live = m.__effect0_desired
+	m.__effect0_livePaths = m.__effect0_paths
+	m.__effect0_liveAt = m.__effect0_pathAt
 }
 
 func (m *Model) __effect1_mount() {
@@ -436,40 +472,62 @@ func (m *Model) __effect1_mount() {
 
 func (m *Model) __effect1_down() {
 	m.__effect1_desired = []string{}
+	m.__effect1_paths = []string{}
+	m.__effect1_pathAt = map[string]int{}
 	for __copy0, i := range m.items {
-		for _, r := range func() []int {
+		for __copy1, r := range func() []int {
 			if __v, __ok := m.rows__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
 			return []int{}
 		}() {
 			m.__effect1_desired = append(m.__effect1_desired, ((fmt.Sprint(i) + ":") + fmt.Sprint(r)))
+			m.__effect1_pathAt[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = len(m.__effect1_paths)
+			m.__effect1_paths = append(m.__effect1_paths, ((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)))
 		}
 	}
 }
 
 func (m *Model) __effect1_up() {
 	for __effect1_i, __effect1_k := range m.__effect1_desired {
-		if __effect1_i >= len(m.__effect1_live) {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_liveAt[m.__effect1_paths[__effect1_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
 			m.__effect1_key = __effect1_k
 			m.__effect1_mount()
 		} else {
-			if m.__effect1_live[__effect1_i] != __effect1_k {
+			if m.__effect1_live[__effect1_at] != __effect1_k {
 				m.__effect1_key = __effect1_k
 				m.__effect1_mount()
 			}
 		}
 	}
 	m.__effect1_live = m.__effect1_desired
+	m.__effect1_livePaths = m.__effect1_paths
+	m.__effect1_liveAt = m.__effect1_pathAt
 }
 
 func (m *Model) __effect2_enter() {
 	m.__effect2_desired = []string{}
+	m.__effect2_paths = []string{}
+	m.__effect2_pathAt = map[string]int{}
 	for __copy0, i := range m.items {
 		__effect2_fresh := true
-		if len(m.__effect2_desired) < len(m.__effect2_live) {
-			__effect2_fresh = (m.__effect2_live[len(m.__effect2_desired)] != fmt.Sprint(__copy0))
+		var __effect2_at int = func() int {
+			if __v, __ok := m.__effect2_liveAt[fmt.Sprint(__copy0)]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect2_at >= 0 {
+			__effect2_fresh = (m.__effect2_live[__effect2_at] != fmt.Sprint(__copy0))
 		}
+		m.__effect2_pathAt[fmt.Sprint(__copy0)] = len(m.__effect2_paths)
+		m.__effect2_paths = append(m.__effect2_paths, fmt.Sprint(__copy0))
 		if __effect2_fresh {
 			__cell1_rows__inst1 := func() []int {
 				if __v, __ok := m.rows__inst1[fmt.Sprint(__copy0)]; __ok {
@@ -483,6 +541,8 @@ func (m *Model) __effect2_enter() {
 		m.__effect2_desired = append(m.__effect2_desired, fmt.Sprint(__copy0))
 	}
 	m.__effect2_live = m.__effect2_desired
+	m.__effect2_livePaths = m.__effect2_paths
+	m.__effect2_liveAt = m.__effect2_pathAt
 }
 
 func (m *Model) __effects0_settle() {
@@ -1247,6 +1307,10 @@ type Card__slot0Instance struct {
 	__effect0_key       string
 	__effect0_live      []string
 	__effect0_desired   []string
+	__effect0_paths     []string
+	__effect0_livePaths []string
+	__effect0_pathAt    map[string]int
+	__effect0_liveAt    map[string]int
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -1276,6 +1340,10 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___o
 	c.__effect0_key = ""
 	c.__effect0_live = []string{}
 	c.__effect0_desired = []string{}
+	c.__effect0_paths = []string{}
+	c.__effect0_livePaths = []string{}
+	c.__effect0_pathAt = map[string]int{}
+	c.__effect0_liveAt = map[string]int{}
 	c.__effects0_settling = false
 	c.__effects0_pending = false
 	c.__effects0_torn = false
@@ -1309,24 +1377,36 @@ func (c *Card__slot0Instance) __effect0_mount() {
 
 func (c *Card__slot0Instance) __effect0_down() {
 	c.__effect0_desired = []string{}
-	for _, r := range c.rows {
+	c.__effect0_paths = []string{}
+	c.__effect0_pathAt = map[string]int{}
+	for __copy0, r := range c.rows {
 		c.__effect0_desired = append(c.__effect0_desired, ((fmt.Sprint(c.__prop___p0) + ":") + fmt.Sprint(r)))
+		c.__effect0_pathAt[fmt.Sprint(__copy0)] = len(c.__effect0_paths)
+		c.__effect0_paths = append(c.__effect0_paths, fmt.Sprint(__copy0))
 	}
 }
 
 func (c *Card__slot0Instance) __effect0_up() {
 	for __effect0_i, __effect0_k := range c.__effect0_desired {
-		if __effect0_i >= len(c.__effect0_live) {
+		var __effect0_at int = func() int {
+			if __v, __ok := c.__effect0_liveAt[c.__effect0_paths[__effect0_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect0_at < 0 {
 			c.__effect0_key = __effect0_k
 			c.__effect0_mount()
 		} else {
-			if c.__effect0_live[__effect0_i] != __effect0_k {
+			if c.__effect0_live[__effect0_at] != __effect0_k {
 				c.__effect0_key = __effect0_k
 				c.__effect0_mount()
 			}
 		}
 	}
 	c.__effect0_live = c.__effect0_desired
+	c.__effect0_livePaths = c.__effect0_paths
+	c.__effect0_liveAt = c.__effect0_pathAt
 }
 
 func (c *Card__slot0Instance) __effects0_settle() {
@@ -1819,6 +1899,10 @@ type Card__slot0Instance struct {
 	__effect0_key       string
 	__effect0_live      []string
 	__effect0_desired   []string
+	__effect0_paths     []string
+	__effect0_livePaths []string
+	__effect0_pathAt    map[string]int
+	__effect0_liveAt    map[string]int
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -1848,6 +1932,10 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___o
 	c.__effect0_key = ""
 	c.__effect0_live = []string{}
 	c.__effect0_desired = []string{}
+	c.__effect0_paths = []string{}
+	c.__effect0_livePaths = []string{}
+	c.__effect0_pathAt = map[string]int{}
+	c.__effect0_liveAt = map[string]int{}
 	c.__effects0_settling = false
 	c.__effects0_pending = false
 	c.__effects0_torn = false
@@ -1884,24 +1972,36 @@ func (c *Card__slot0Instance) __effect0_mount() {
 
 func (c *Card__slot0Instance) __effect0_down() {
 	c.__effect0_desired = []string{}
-	for _, r := range c.rows {
+	c.__effect0_paths = []string{}
+	c.__effect0_pathAt = map[string]int{}
+	for __copy0, r := range c.rows {
 		c.__effect0_desired = append(c.__effect0_desired, ((fmt.Sprint(c.__prop___p0) + ":") + fmt.Sprint(r)))
+		c.__effect0_pathAt[fmt.Sprint(__copy0)] = len(c.__effect0_paths)
+		c.__effect0_paths = append(c.__effect0_paths, fmt.Sprint(__copy0))
 	}
 }
 
 func (c *Card__slot0Instance) __effect0_up() {
 	for __effect0_i, __effect0_k := range c.__effect0_desired {
-		if __effect0_i >= len(c.__effect0_live) {
+		var __effect0_at int = func() int {
+			if __v, __ok := c.__effect0_liveAt[c.__effect0_paths[__effect0_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect0_at < 0 {
 			c.__effect0_key = __effect0_k
 			c.__effect0_mount()
 		} else {
-			if c.__effect0_live[__effect0_i] != __effect0_k {
+			if c.__effect0_live[__effect0_at] != __effect0_k {
 				c.__effect0_key = __effect0_k
 				c.__effect0_mount()
 			}
 		}
 	}
 	c.__effect0_live = c.__effect0_desired
+	c.__effect0_livePaths = c.__effect0_paths
+	c.__effect0_liveAt = c.__effect0_pathAt
 }
 
 func (c *Card__slot0Instance) __effects0_settle() {
@@ -2578,6 +2678,10 @@ window.__sngl_boot = () => {
     let __effect0_key = "";
     let __effect0_live = [];
     let __effect0_desired = [];
+    let __effect0_paths = [];
+    let __effect0_livePaths = [];
+    let __effect0_pathAt = /* @__PURE__ */ new Map([]);
+    let __effect0_liveAt = /* @__PURE__ */ new Map([]);
     let __effects0_settling = false;
     let __effects0_pending = false;
     let __effects0_torn = false;
@@ -2594,23 +2698,30 @@ window.__sngl_boot = () => {
     }
     function __effect0_down() {
       __effect0_desired = [];
-      for (const r of rows) {
+      __effect0_paths = [];
+      __effect0_pathAt = /* @__PURE__ */ new Map([]);
+      for (const [__copy0, r] of rows.entries()) {
         __effect0_desired.push(String(__prop___p0) + ":" + String(r));
+        __effect0_pathAt.set(String(__copy0), __effect0_paths.length);
+        __effect0_paths.push(String(__copy0));
       }
     }
     function __effect0_up() {
       for (const [__effect0_i, __effect0_k] of __effect0_desired.entries()) {
-        if (__effect0_i >= __effect0_live.length) {
+        let __effect0_at = __effect0_liveAt.has(__effect0_paths[__effect0_i]) ? __effect0_liveAt.get(__effect0_paths[__effect0_i]) : -1;
+        if (__effect0_at < 0) {
           __effect0_key = __effect0_k;
           __effect0_mount();
         } else {
-          if (__effect0_live[__effect0_i] !== __effect0_k) {
+          if (__effect0_live[__effect0_at] !== __effect0_k) {
             __effect0_key = __effect0_k;
             __effect0_mount();
           }
         }
       }
       __effect0_live = __effect0_desired;
+      __effect0_livePaths = __effect0_paths;
+      __effect0_liveAt = __effect0_pathAt;
     }
     function __effects0_settle() {
       if (!__effects0_torn) {
@@ -2661,7 +2772,7 @@ window.__sngl_boot = () => {
             __slot12 = [];
             let __inst3_next = [];
             let __inst3_i = 0;
-            for (const r of rows) {
+            for (const [__copy0, r] of rows.entries()) {
               let __n3 = null;
               if (__inst3_live.length > __inst3_i) {
                 __n3 = __inst3_live[__inst3_i];
@@ -2942,12 +3053,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3ff442cdc6c65bdee9bf60771910efab
+pass sha256:27eb51d881b283e84b2b2c7fbd4b3b64
 -- run/go/fyne --
-pass sha256:b1605dfcad8e90cb2a232a3d03bd18c6
+pass sha256:d49ec9524cd67995438939f939b55ff1
 -- run/go/gtk4 --
-pass sha256:afcbc8b85aac0e8d9d8623d06bb9ebb1
+pass sha256:fa62d5fb5eeb3e758d0eb2b487e76b77
 -- run/kotlin/android --
 pass sha256:f6ff038a817b8b1273acedf920fb9e29
 -- run/none/html --
-pass sha256:b4c0e1c9953c1a92179ec2745b39be82
+pass sha256:938ac66219caf14b51c023a78c8ef55a

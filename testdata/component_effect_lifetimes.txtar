@@ -272,6 +272,10 @@ type modelState struct {
 	__effect1_key       string
 	__effect1_live      []string
 	__effect1_desired   []string
+	__effect1_paths     []string
+	__effect1_livePaths []string
+	__effect1_pathAt    map[string]int
+	__effect1_liveAt    map[string]int
 	__effect2_key       int
 	__effect2_live      []int
 	__effect2_desired   []int
@@ -317,6 +321,10 @@ func New() Model {
 	m.__effect1_key = ""
 	m.__effect1_live = []string{}
 	m.__effect1_desired = []string{}
+	m.__effect1_paths = []string{}
+	m.__effect1_livePaths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	m.__effect1_liveAt = map[string]int{}
 	m.__effect2_key = 0
 	m.__effect2_live = []int{}
 	m.__effect2_desired = []int{}
@@ -568,16 +576,26 @@ func (m *Model) __effect1_unmount() {
 
 func (m *Model) __effect1_down() {
 	m.__effect1_desired = []string{}
-	for _, it := range m.items__inst0 {
+	m.__effect1_paths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	for __copy0, it := range m.items__inst0 {
 		m.__effect1_desired = append(m.__effect1_desired, it)
+		m.__effect1_pathAt[fmt.Sprint(__copy0)] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, fmt.Sprint(__copy0))
 	}
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
-		if __effect1_j >= len(m.__effect1_desired) {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_pathAt[m.__effect1_livePaths[__effect1_j]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
 			m.__effect1_key = m.__effect1_live[__effect1_j]
 			m.__effect1_unmount()
 		} else {
-			if m.__effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
+			if m.__effect1_desired[__effect1_at] != m.__effect1_live[__effect1_j] {
 				m.__effect1_key = m.__effect1_live[__effect1_j]
 				m.__effect1_unmount()
 			}
@@ -587,17 +605,25 @@ func (m *Model) __effect1_down() {
 
 func (m *Model) __effect1_up() {
 	for __effect1_i, __effect1_k := range m.__effect1_desired {
-		if __effect1_i >= len(m.__effect1_live) {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_liveAt[m.__effect1_paths[__effect1_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
 			m.__effect1_key = __effect1_k
 			m.__effect1_mount()
 		} else {
-			if m.__effect1_live[__effect1_i] != __effect1_k {
+			if m.__effect1_live[__effect1_at] != __effect1_k {
 				m.__effect1_key = __effect1_k
 				m.__effect1_mount()
 			}
 		}
 	}
 	m.__effect1_live = m.__effect1_desired
+	m.__effect1_livePaths = m.__effect1_paths
+	m.__effect1_liveAt = m.__effect1_pathAt
 }
 
 func (m *Model) __effect1_teardown() {
@@ -606,6 +632,8 @@ func (m *Model) __effect1_teardown() {
 		m.__effect1_unmount()
 	}
 	m.__effect1_live = []string{}
+	m.__effect1_livePaths = []string{}
+	m.__effect1_liveAt = map[string]int{}
 }
 
 func (m *Model) __effect2_mount() {
@@ -1516,6 +1544,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
@@ -1556,6 +1585,10 @@ type Model struct {
 	__effect1_key       string
 	__effect1_live      []string
 	__effect1_desired   []string
+	__effect1_paths     []string
+	__effect1_livePaths []string
+	__effect1_pathAt    map[string]int
+	__effect1_liveAt    map[string]int
 	__effect2_key       int
 	__effect2_live      []int
 	__effect2_desired   []int
@@ -1613,6 +1646,10 @@ func New() *Model {
 	m.__effect1_key = ""
 	m.__effect1_live = []string{}
 	m.__effect1_desired = []string{}
+	m.__effect1_paths = []string{}
+	m.__effect1_livePaths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	m.__effect1_liveAt = map[string]int{}
 	m.__effect2_key = 0
 	m.__effect2_live = []int{}
 	m.__effect2_desired = []int{}
@@ -1698,16 +1735,26 @@ func (m *Model) __effect1_unmount() {
 
 func (m *Model) __effect1_down() {
 	m.__effect1_desired = []string{}
-	for _, it := range m.items__inst0 {
+	m.__effect1_paths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	for __copy0, it := range m.items__inst0 {
 		m.__effect1_desired = append(m.__effect1_desired, it)
+		m.__effect1_pathAt[fmt.Sprint(__copy0)] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, fmt.Sprint(__copy0))
 	}
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
-		if __effect1_j >= len(m.__effect1_desired) {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_pathAt[m.__effect1_livePaths[__effect1_j]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
 			m.__effect1_key = m.__effect1_live[__effect1_j]
 			m.__effect1_unmount()
 		} else {
-			if m.__effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
+			if m.__effect1_desired[__effect1_at] != m.__effect1_live[__effect1_j] {
 				m.__effect1_key = m.__effect1_live[__effect1_j]
 				m.__effect1_unmount()
 			}
@@ -1717,17 +1764,25 @@ func (m *Model) __effect1_down() {
 
 func (m *Model) __effect1_up() {
 	for __effect1_i, __effect1_k := range m.__effect1_desired {
-		if __effect1_i >= len(m.__effect1_live) {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_liveAt[m.__effect1_paths[__effect1_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
 			m.__effect1_key = __effect1_k
 			m.__effect1_mount()
 		} else {
-			if m.__effect1_live[__effect1_i] != __effect1_k {
+			if m.__effect1_live[__effect1_at] != __effect1_k {
 				m.__effect1_key = __effect1_k
 				m.__effect1_mount()
 			}
 		}
 	}
 	m.__effect1_live = m.__effect1_desired
+	m.__effect1_livePaths = m.__effect1_paths
+	m.__effect1_liveAt = m.__effect1_pathAt
 }
 
 func (m *Model) __effect1_teardown() {
@@ -1736,6 +1791,8 @@ func (m *Model) __effect1_teardown() {
 		m.__effect1_unmount()
 	}
 	m.__effect1_live = []string{}
+	m.__effect1_livePaths = []string{}
+	m.__effect1_liveAt = map[string]int{}
 }
 
 func (m *Model) __effect2_mount() {
@@ -2401,6 +2458,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"fmt"
 	"strings"
 )
 
@@ -2437,6 +2495,10 @@ type Model struct {
 	__effect1_key       string
 	__effect1_live      []string
 	__effect1_desired   []string
+	__effect1_paths     []string
+	__effect1_livePaths []string
+	__effect1_pathAt    map[string]int
+	__effect1_liveAt    map[string]int
 	__effect2_key       int
 	__effect2_live      []int
 	__effect2_desired   []int
@@ -2494,6 +2556,10 @@ func New() *Model {
 	m.__effect1_key = ""
 	m.__effect1_live = []string{}
 	m.__effect1_desired = []string{}
+	m.__effect1_paths = []string{}
+	m.__effect1_livePaths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	m.__effect1_liveAt = map[string]int{}
 	m.__effect2_key = 0
 	m.__effect2_live = []int{}
 	m.__effect2_desired = []int{}
@@ -2579,16 +2645,26 @@ func (m *Model) __effect1_unmount() {
 
 func (m *Model) __effect1_down() {
 	m.__effect1_desired = []string{}
-	for _, it := range m.items__inst0 {
+	m.__effect1_paths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	for __copy0, it := range m.items__inst0 {
 		m.__effect1_desired = append(m.__effect1_desired, it)
+		m.__effect1_pathAt[fmt.Sprint(__copy0)] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, fmt.Sprint(__copy0))
 	}
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
-		if __effect1_j >= len(m.__effect1_desired) {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_pathAt[m.__effect1_livePaths[__effect1_j]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
 			m.__effect1_key = m.__effect1_live[__effect1_j]
 			m.__effect1_unmount()
 		} else {
-			if m.__effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
+			if m.__effect1_desired[__effect1_at] != m.__effect1_live[__effect1_j] {
 				m.__effect1_key = m.__effect1_live[__effect1_j]
 				m.__effect1_unmount()
 			}
@@ -2598,17 +2674,25 @@ func (m *Model) __effect1_down() {
 
 func (m *Model) __effect1_up() {
 	for __effect1_i, __effect1_k := range m.__effect1_desired {
-		if __effect1_i >= len(m.__effect1_live) {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_liveAt[m.__effect1_paths[__effect1_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
 			m.__effect1_key = __effect1_k
 			m.__effect1_mount()
 		} else {
-			if m.__effect1_live[__effect1_i] != __effect1_k {
+			if m.__effect1_live[__effect1_at] != __effect1_k {
 				m.__effect1_key = __effect1_k
 				m.__effect1_mount()
 			}
 		}
 	}
 	m.__effect1_live = m.__effect1_desired
+	m.__effect1_livePaths = m.__effect1_paths
+	m.__effect1_liveAt = m.__effect1_pathAt
 }
 
 func (m *Model) __effect1_teardown() {
@@ -2617,6 +2701,8 @@ func (m *Model) __effect1_teardown() {
 		m.__effect1_unmount()
 	}
 	m.__effect1_live = []string{}
+	m.__effect1_livePaths = []string{}
+	m.__effect1_liveAt = map[string]int{}
 }
 
 func (m *Model) __effect2_mount() {
@@ -3598,6 +3684,10 @@ window.__sngl_boot = () => {
   var __effect1_key = "";
   var __effect1_live = [];
   var __effect1_desired = [];
+  var __effect1_paths = [];
+  var __effect1_livePaths = [];
+  var __effect1_pathAt = /* @__PURE__ */ new Map([]);
+  var __effect1_liveAt = /* @__PURE__ */ new Map([]);
   var __effect2_key = 0;
   var __effect2_live = [];
   var __effect2_desired = [];
@@ -3653,16 +3743,21 @@ window.__sngl_boot = () => {
   }
   function __effect1_down() {
     __effect1_desired = [];
-    for (const it of state.items__inst0) {
+    __effect1_paths = [];
+    __effect1_pathAt = /* @__PURE__ */ new Map([]);
+    for (const [__copy0, it] of state.items__inst0.entries()) {
       __effect1_desired.push(it);
+      __effect1_pathAt.set(String(__copy0), __effect1_paths.length);
+      __effect1_paths.push(String(__copy0));
     }
     for (const [__effect1_i, _] of __effect1_live.entries()) {
       let __effect1_j = __effect1_live.length - 1 - __effect1_i;
-      if (__effect1_j >= __effect1_desired.length) {
+      let __effect1_at = __effect1_pathAt.has(__effect1_livePaths[__effect1_j]) ? __effect1_pathAt.get(__effect1_livePaths[__effect1_j]) : -1;
+      if (__effect1_at < 0) {
         __effect1_key = __effect1_live[__effect1_j];
         __effect1_unmount();
       } else {
-        if (__effect1_desired[__effect1_j] !== __effect1_live[__effect1_j]) {
+        if (__effect1_desired[__effect1_at] !== __effect1_live[__effect1_j]) {
           __effect1_key = __effect1_live[__effect1_j];
           __effect1_unmount();
         }
@@ -3671,17 +3766,20 @@ window.__sngl_boot = () => {
   }
   function __effect1_up() {
     for (const [__effect1_i, __effect1_k] of __effect1_desired.entries()) {
-      if (__effect1_i >= __effect1_live.length) {
+      let __effect1_at = __effect1_liveAt.has(__effect1_paths[__effect1_i]) ? __effect1_liveAt.get(__effect1_paths[__effect1_i]) : -1;
+      if (__effect1_at < 0) {
         __effect1_key = __effect1_k;
         __effect1_mount();
       } else {
-        if (__effect1_live[__effect1_i] !== __effect1_k) {
+        if (__effect1_live[__effect1_at] !== __effect1_k) {
           __effect1_key = __effect1_k;
           __effect1_mount();
         }
       }
     }
     __effect1_live = __effect1_desired;
+    __effect1_livePaths = __effect1_paths;
+    __effect1_liveAt = __effect1_pathAt;
   }
   function __effect1_teardown() {
     for (const [__effect1_ti, _] of __effect1_live.entries()) {
@@ -3689,6 +3787,8 @@ window.__sngl_boot = () => {
       __effect1_unmount();
     }
     __effect1_live = [];
+    __effect1_livePaths = [];
+    __effect1_liveAt = /* @__PURE__ */ new Map([]);
   }
   function __effect2_down() {
     __effect2_desired = [];
@@ -3908,6 +4008,9 @@ window.__sngl_boot = () => {
       }
     }
   }
+  function String(v) {
+    return "" + v;
+  }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
@@ -3969,15 +4072,15 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:77ed1053c698078234d1cd0b38d783f1
+pass sha256:c260db8402d59b5d60850a9af38e264a
 -- run/go/fyne --
-pass sha256:3e81a0968d49634b71ef82002dc60bce
+pass sha256:d0205faa42423ec23194778781fb626c
 -- run/go/gtk4 --
-pass sha256:5c1201ba93e19c73c27fc380fedfa2c1
+pass sha256:33a051ffb789e8d50fb0756ae3f956b8
 -- run/kotlin/android --
 pass sha256:be70f06dfe6cb3666e3f9db9fc32cbc5
 -- run/none/html --
-pass sha256:52911bf3128f3df890ef86621ac1935f
+pass sha256:9f2ffcb77baa33acbf579a621633d719
 -- testrun/html/none/component_effect_lifetimes.sngl/branch/1 --
 sha256:32702d7b0dd1528e1f7c3adce82d133d
 {
@@ -4003,7 +4106,7 @@ sha256:b3718384287be60bbeeeb4faebc8e155
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/perElement/1 --
-sha256:395b5c3314a20c1a9b085c8c0b287fc4
+sha256:c9cff51d7f4fb8cb001864ed353fdfdd
 {
   "results": [
     {

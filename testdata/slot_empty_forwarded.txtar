@@ -181,12 +181,28 @@ type modelState struct {
 	n__inst2            map[string]int
 	__effect0_live      []string
 	__effect0_desired   []string
+	__effect0_paths     []string
+	__effect0_livePaths []string
+	__effect0_pathAt    map[string]int
+	__effect0_liveAt    map[string]int
 	__effect1_live      []string
 	__effect1_desired   []string
+	__effect1_paths     []string
+	__effect1_livePaths []string
+	__effect1_pathAt    map[string]int
+	__effect1_liveAt    map[string]int
 	__effect2_live      []string
 	__effect2_desired   []string
+	__effect2_paths     []string
+	__effect2_livePaths []string
+	__effect2_pathAt    map[string]int
+	__effect2_liveAt    map[string]int
 	__effect3_live      []string
 	__effect3_desired   []string
+	__effect3_paths     []string
+	__effect3_livePaths []string
+	__effect3_pathAt    map[string]int
+	__effect3_liveAt    map[string]int
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -211,12 +227,28 @@ func New() Model {
 	m.n__inst2 = map[string]int{}
 	m.__effect0_live = []string{}
 	m.__effect0_desired = []string{}
+	m.__effect0_paths = []string{}
+	m.__effect0_livePaths = []string{}
+	m.__effect0_pathAt = map[string]int{}
+	m.__effect0_liveAt = map[string]int{}
 	m.__effect1_live = []string{}
 	m.__effect1_desired = []string{}
+	m.__effect1_paths = []string{}
+	m.__effect1_livePaths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	m.__effect1_liveAt = map[string]int{}
 	m.__effect2_live = []string{}
 	m.__effect2_desired = []string{}
+	m.__effect2_paths = []string{}
+	m.__effect2_livePaths = []string{}
+	m.__effect2_pathAt = map[string]int{}
+	m.__effect2_liveAt = map[string]int{}
 	m.__effect3_live = []string{}
 	m.__effect3_desired = []string{}
+	m.__effect3_paths = []string{}
+	m.__effect3_livePaths = []string{}
+	m.__effect3_pathAt = map[string]int{}
+	m.__effect3_liveAt = map[string]int{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_torn = false
@@ -398,11 +430,21 @@ func LineCap(height__r0 int, lines int) int {
 
 func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
+	m.__effect0_paths = []string{}
+	m.__effect0_pathAt = map[string]int{}
 	for __copy0, _ := range m.xs__inst0 {
 		__effect0_fresh := true
-		if len(m.__effect0_desired) < len(m.__effect0_live) {
-			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		var __effect0_at int = func() int {
+			if __v, __ok := m.__effect0_liveAt[fmt.Sprint(__copy0)]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect0_at >= 0 {
+			__effect0_fresh = (m.__effect0_live[__effect0_at] != fmt.Sprint(__copy0))
 		}
+		m.__effect0_pathAt[fmt.Sprint(__copy0)] = len(m.__effect0_paths)
+		m.__effect0_paths = append(m.__effect0_paths, fmt.Sprint(__copy0))
 		if __effect0_fresh {
 			var __cell1_m__inst0 int = func() int {
 				if __v, __ok := m.m__inst0[fmt.Sprint(__copy0)]; __ok {
@@ -416,16 +458,28 @@ func (m *Model) __effect0_enter() {
 		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
 	}
 	m.__effect0_live = m.__effect0_desired
+	m.__effect0_livePaths = m.__effect0_paths
+	m.__effect0_liveAt = m.__effect0_pathAt
 }
 
 func (m *Model) __effect1_enter() {
 	m.__effect1_desired = []string{}
+	m.__effect1_paths = []string{}
+	m.__effect1_pathAt = map[string]int{}
 	for __copy0, _ := range m.xs__inst0 {
 		for __copy1, _ := range []int{1} {
 			__effect1_fresh := true
-			if len(m.__effect1_desired) < len(m.__effect1_live) {
-				__effect1_fresh = (m.__effect1_live[len(m.__effect1_desired)] != ((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)))
+			var __effect1_at int = func() int {
+				if __v, __ok := m.__effect1_liveAt[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
+					return __v
+				}
+				return -1
+			}()
+			if __effect1_at >= 0 {
+				__effect1_fresh = (m.__effect1_live[__effect1_at] != ((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)))
 			}
+			m.__effect1_pathAt[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = len(m.__effect1_paths)
+			m.__effect1_paths = append(m.__effect1_paths, ((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)))
 			if __effect1_fresh {
 				var __cell1_n__inst1 int = func() int {
 					if __v, __ok := m.n__inst1[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
@@ -440,15 +494,27 @@ func (m *Model) __effect1_enter() {
 		}
 	}
 	m.__effect1_live = m.__effect1_desired
+	m.__effect1_livePaths = m.__effect1_paths
+	m.__effect1_liveAt = m.__effect1_pathAt
 }
 
 func (m *Model) __effect2_enter() {
 	m.__effect2_desired = []string{}
+	m.__effect2_paths = []string{}
+	m.__effect2_pathAt = map[string]int{}
 	for __copy0, _ := range m.xs__inst0 {
 		__effect2_fresh := true
-		if len(m.__effect2_desired) < len(m.__effect2_live) {
-			__effect2_fresh = (m.__effect2_live[len(m.__effect2_desired)] != fmt.Sprint(__copy0))
+		var __effect2_at int = func() int {
+			if __v, __ok := m.__effect2_liveAt[fmt.Sprint(__copy0)]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect2_at >= 0 {
+			__effect2_fresh = (m.__effect2_live[__effect2_at] != fmt.Sprint(__copy0))
 		}
+		m.__effect2_pathAt[fmt.Sprint(__copy0)] = len(m.__effect2_paths)
+		m.__effect2_paths = append(m.__effect2_paths, fmt.Sprint(__copy0))
 		if __effect2_fresh {
 			var __cell1_m__inst1 int = func() int {
 				if __v, __ok := m.m__inst1[fmt.Sprint(__copy0)]; __ok {
@@ -462,16 +528,28 @@ func (m *Model) __effect2_enter() {
 		m.__effect2_desired = append(m.__effect2_desired, fmt.Sprint(__copy0))
 	}
 	m.__effect2_live = m.__effect2_desired
+	m.__effect2_livePaths = m.__effect2_paths
+	m.__effect2_liveAt = m.__effect2_pathAt
 }
 
 func (m *Model) __effect3_enter() {
 	m.__effect3_desired = []string{}
+	m.__effect3_paths = []string{}
+	m.__effect3_pathAt = map[string]int{}
 	for __copy0, _ := range m.xs__inst0 {
 		for __copy1, _ := range []int{1} {
 			__effect3_fresh := true
-			if len(m.__effect3_desired) < len(m.__effect3_live) {
-				__effect3_fresh = (m.__effect3_live[len(m.__effect3_desired)] != ((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)))
+			var __effect3_at int = func() int {
+				if __v, __ok := m.__effect3_liveAt[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
+					return __v
+				}
+				return -1
+			}()
+			if __effect3_at >= 0 {
+				__effect3_fresh = (m.__effect3_live[__effect3_at] != ((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)))
 			}
+			m.__effect3_pathAt[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = len(m.__effect3_paths)
+			m.__effect3_paths = append(m.__effect3_paths, ((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)))
 			if __effect3_fresh {
 				var __cell1_n__inst2 int = func() int {
 					if __v, __ok := m.n__inst2[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
@@ -486,6 +564,8 @@ func (m *Model) __effect3_enter() {
 		}
 	}
 	m.__effect3_live = m.__effect3_desired
+	m.__effect3_livePaths = m.__effect3_paths
+	m.__effect3_liveAt = m.__effect3_pathAt
 }
 
 func (m *Model) __effects0_settle() {
@@ -3377,7 +3457,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f9576d11ff8871b05ae4e25b768bc7dc
+pass sha256:ee87165c315067ed2de46d635ac78ed6
 -- run/go/fyne --
 pass sha256:b817cd51a7c3ab4afa6e050a5bc160ed
 -- run/kotlin/android --

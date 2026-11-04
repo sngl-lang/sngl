@@ -197,6 +197,10 @@ type modelState struct {
 	__effect2_key       string
 	__effect2_live      []string
 	__effect2_desired   []string
+	__effect2_paths     []string
+	__effect2_livePaths []string
+	__effect2_pathAt    map[string]int
+	__effect2_liveAt    map[string]int
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -227,6 +231,10 @@ func New() Model {
 	m.__effect2_key = ""
 	m.__effect2_live = []string{}
 	m.__effect2_desired = []string{}
+	m.__effect2_paths = []string{}
+	m.__effect2_livePaths = []string{}
+	m.__effect2_pathAt = map[string]int{}
+	m.__effect2_liveAt = map[string]int{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_torn = false
@@ -506,24 +514,36 @@ func (m *Model) __effect2_mount() {
 
 func (m *Model) __effect2_down() {
 	m.__effect2_desired = []string{}
-	for _, it := range m.items__inst0 {
+	m.__effect2_paths = []string{}
+	m.__effect2_pathAt = map[string]int{}
+	for __copy0, it := range m.items__inst0 {
 		m.__effect2_desired = append(m.__effect2_desired, it)
+		m.__effect2_pathAt[fmt.Sprint(__copy0)] = len(m.__effect2_paths)
+		m.__effect2_paths = append(m.__effect2_paths, fmt.Sprint(__copy0))
 	}
 }
 
 func (m *Model) __effect2_up() {
 	for __effect2_i, __effect2_k := range m.__effect2_desired {
-		if __effect2_i >= len(m.__effect2_live) {
+		var __effect2_at int = func() int {
+			if __v, __ok := m.__effect2_liveAt[m.__effect2_paths[__effect2_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect2_at < 0 {
 			m.__effect2_key = __effect2_k
 			m.__effect2_mount()
 		} else {
-			if m.__effect2_live[__effect2_i] != __effect2_k {
+			if m.__effect2_live[__effect2_at] != __effect2_k {
 				m.__effect2_key = __effect2_k
 				m.__effect2_mount()
 			}
 		}
 	}
 	m.__effect2_live = m.__effect2_desired
+	m.__effect2_livePaths = m.__effect2_paths
+	m.__effect2_liveAt = m.__effect2_pathAt
 }
 
 func (m *Model) __effects0_settle() {
@@ -761,4 +781,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:7aca0adffa08a9b0640f539e007a4970
+pass sha256:5356460b032cc861a584c0450f1fecbc

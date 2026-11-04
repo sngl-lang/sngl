@@ -144,7 +144,7 @@ window.__sngl_boot = () => {
   }
 
   // sngl-entry.js
-  var state = { answered: 0, name__inst0: "slow", length__inst0: null, loading__inst0: false, loads__inst0: 0, shown__inst0: true, loads__inst1: 0, visible__inst0: true, failure__inst0: null, attempt__inst1: 0, refreshes__inst1: 0, value__inst0: null, pending__inst0: false, failure__inst1: null, attempt__inst0__inst0: 0, refreshes__inst0__inst0: 0 };
+  var state = { answered: 0, name__inst0: "slow", length__inst0: null, loading__inst0: false, loads__inst0: 0, shown__inst0: true, loads__inst1: 0, visible__inst0: true, failure__inst0: null, attempt__inst1: 0, refreshes__inst1: 0, asked__inst1: -1, value__inst0: null, pending__inst0: false, failure__inst1: null, attempt__inst0__inst0: 0, refreshes__inst0__inst0: 0, asked__inst0__inst0: 0 };
   state.fastClick = () => $2.click();
   state.againClick = () => $3.click();
   state.hideClick = () => $4.click();
@@ -163,6 +163,12 @@ window.__sngl_boot = () => {
   async function __effect0_mount() {
     state.attempt__inst1 += 1;
     let mine = state.attempt__inst1;
+    if (__effect0_key.n === state.asked__inst1) {
+      ;
+      state.failure__inst0 = null;
+    }
+    ;
+    state.asked__inst1 = __effect0_key.n;
     state.loading__inst0 = true;
     $1.textContent = String(state.loading__inst0);
     let r = await lookup(__effect0_key.key);
@@ -193,6 +199,12 @@ window.__sngl_boot = () => {
   async function __effect2_mount() {
     state.attempt__inst0__inst0 += 1;
     let mine = state.attempt__inst0__inst0;
+    if (__effect2_key.n === state.asked__inst0__inst0) {
+      ;
+      state.failure__inst1 = null;
+    }
+    ;
+    state.asked__inst0__inst0 = __effect2_key.n;
     state.pending__inst0 = true;
     let r = await lookup(__effect2_key.key);
     if (mine !== state.attempt__inst0__inst0) {
@@ -287,6 +299,7 @@ window.__sngl_boot = () => {
         state.failure__inst1 = null;
         state.attempt__inst0__inst0 = 0;
         state.refreshes__inst0__inst0 = 0;
+        state.asked__inst0__inst0 = -1;
       }
       __effect1_desired.push(true);
     }
@@ -387,9 +400,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:7eb1a61dc1dfb98f2104ff6f7d846112
+pass sha256:5effb30ec92b4acad459c67f6cb90429
 -- testrun/html/none/component_async_query.sngl/dropped/1 --
-sha256:d5ca2199c0086092cb5e453eb0268360
+sha256:add3634062cbf8ba12c48f5deca19bde
 {
   "results": [
     {
@@ -399,7 +412,7 @@ sha256:d5ca2199c0086092cb5e453eb0268360
   ]
 }
 -- testrun/html/none/component_async_query.sngl/latest/1 --
-sha256:105011cb1e26991836543b74bb316755
+sha256:c0e5747e9e5426253261be10d3d8af55
 {
   "results": [
     {

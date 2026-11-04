@@ -465,8 +465,10 @@ type Model struct {
 	failure__inst1      *Failure
 	attempt__inst0      int
 	refreshes__inst0    int
+	asked__inst0        int
 	attempt__inst1      int
 	refreshes__inst1    int
+	asked__inst1        int
 	__effect0_key       __anon_key_n_92242e
 	__effect0_live      []__anon_key_n_92242e
 	__effect0_desired   []__anon_key_n_92242e
@@ -517,8 +519,10 @@ func New() *Model {
 	m.failure__inst1 = nil
 	m.attempt__inst0 = 0
 	m.refreshes__inst0 = 0
+	m.asked__inst0 = -1
 	m.attempt__inst1 = 0
 	m.refreshes__inst1 = 0
+	m.asked__inst1 = -1
 	m.__effect0_key = __anon_key_n_92242e{Key: __anon_limit_offset_7e7555{}}
 	m.__effect0_live = []__anon_key_n_92242e{}
 	m.__effect0_desired = []__anon_key_n_92242e{}
@@ -712,6 +716,10 @@ func ResponseChecked(r Response) Result__Response {
 func (m *Model) __effect0_mount() {
 	m.attempt__inst1 += 1
 	var mine int = m.attempt__inst1
+	if m.__effect0_key.N == m.asked__inst1 {
+		m.failure__inst1 = nil
+	}
+	m.asked__inst1 = m.__effect0_key.N
 	m.pending__inst0 = true
 	__async_arg0 := m.__effect0_key.Key
 	_ = __async_arg0
@@ -789,6 +797,11 @@ func (m *Model) __effect0_teardown() {
 func (m *Model) __effect1_mount() {
 	m.attempt__inst0 += 1
 	var mine int = m.attempt__inst0
+	if m.__effect1_key.N == m.asked__inst0 {
+		m.failure__inst0 = nil
+		m.__renderSlot2(m.__n2.Container)
+	}
+	m.asked__inst0 = m.__effect1_key.N
 	m.loading__inst0 = true
 	m.__renderSlot1(m.__n2.Container)
 	__async_arg1 := m.__effect1_key.Key
@@ -1196,6 +1209,14 @@ func (m *Model) SetRefreshes__inst0(v int) {
 	m.refreshes__inst0 = v
 }
 
+func (m *Model) Asked__inst0() int {
+	return m.asked__inst0
+}
+
+func (m *Model) SetAsked__inst0(v int) {
+	m.asked__inst0 = v
+}
+
 func (m *Model) Attempt__inst1() int {
 	return m.attempt__inst1
 }
@@ -1210,6 +1231,14 @@ func (m *Model) Refreshes__inst1() int {
 
 func (m *Model) SetRefreshes__inst1(v int) {
 	m.refreshes__inst1 = v
+}
+
+func (m *Model) Asked__inst1() int {
+	return m.asked__inst1
+}
+
+func (m *Model) SetAsked__inst1(v int) {
+	m.asked__inst1 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -1488,8 +1517,10 @@ type Model struct {
 	failure__inst1      *Failure
 	attempt__inst0      int
 	refreshes__inst0    int
+	asked__inst0        int
 	attempt__inst1      int
 	refreshes__inst1    int
+	asked__inst1        int
 	__effect0_key       __anon_key_n_92242e
 	__effect0_live      []__anon_key_n_92242e
 	__effect0_desired   []__anon_key_n_92242e
@@ -1540,8 +1571,10 @@ func New() *Model {
 	m.failure__inst1 = nil
 	m.attempt__inst0 = 0
 	m.refreshes__inst0 = 0
+	m.asked__inst0 = -1
 	m.attempt__inst1 = 0
 	m.refreshes__inst1 = 0
+	m.asked__inst1 = -1
 	m.__effect0_key = __anon_key_n_92242e{Key: __anon_limit_offset_7e7555{}}
 	m.__effect0_live = []__anon_key_n_92242e{}
 	m.__effect0_desired = []__anon_key_n_92242e{}
@@ -1723,6 +1756,10 @@ func ResponseChecked(r Response) Result__Response {
 func (m *Model) __effect0_mount() {
 	m.attempt__inst1 += 1
 	var mine int = m.attempt__inst1
+	if m.__effect0_key.N == m.asked__inst1 {
+		m.failure__inst1 = nil
+	}
+	m.asked__inst1 = m.__effect0_key.N
 	m.pending__inst0 = true
 	__async_arg0 := m.__effect0_key.Key
 	_ = __async_arg0
@@ -1800,6 +1837,11 @@ func (m *Model) __effect0_teardown() {
 func (m *Model) __effect1_mount() {
 	m.attempt__inst0 += 1
 	var mine int = m.attempt__inst0
+	if m.__effect1_key.N == m.asked__inst0 {
+		m.failure__inst0 = nil
+		m.__renderSlot2(m.__n2)
+	}
+	m.asked__inst0 = m.__effect1_key.N
 	m.loading__inst0 = true
 	m.__renderSlot1(m.__n2)
 	__async_arg1 := m.__effect1_key.Key
@@ -2326,6 +2368,14 @@ func (m *Model) SetRefreshes__inst0(v int) {
 	m.refreshes__inst0 = v
 }
 
+func (m *Model) Asked__inst0() int {
+	return m.asked__inst0
+}
+
+func (m *Model) SetAsked__inst0(v int) {
+	m.asked__inst0 = v
+}
+
 func (m *Model) Attempt__inst1() int {
 	return m.attempt__inst1
 }
@@ -2340,6 +2390,14 @@ func (m *Model) Refreshes__inst1() int {
 
 func (m *Model) SetRefreshes__inst1(v int) {
 	m.refreshes__inst1 = v
+}
+
+func (m *Model) Asked__inst1() int {
+	return m.asked__inst1
+}
+
+func (m *Model) SetAsked__inst1(v int) {
+	m.asked__inst1 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -2548,8 +2606,10 @@ fun MainScreen() {
     var failure__inst1 by remember { mutableStateOf<Failure?>(null) }
     var attempt__inst0 by remember { mutableStateOf(0) }
     var refreshes__inst0 by remember { mutableStateOf(0) }
+    var asked__inst0 by remember { mutableStateOf(-1) }
     var attempt__inst1 by remember { mutableStateOf(0) }
     var refreshes__inst1 by remember { mutableStateOf(0) }
+    var asked__inst1 by remember { mutableStateOf(-1) }
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -2567,6 +2627,10 @@ fun MainScreen() {
                     SnglCodec.start {
                     	attempt__inst1 += 1
                     	var mine = attempt__inst1
+                    	if ((k.n == asked__inst1)) {
+                    		failure__inst1 = null
+                    	}
+                    	asked__inst1 = k.n
                     	pending__inst0 = true
                     	var r: SnglResult__PaginatedPetSummaryList = petListCall(k.key.limit, k.key.offset, "https://petstore.example")
                     	if ((mine != attempt__inst1)) {
@@ -2607,6 +2671,10 @@ fun MainScreen() {
                     SnglCodec.start {
                     	attempt__inst0 += 1
                     	var mine = attempt__inst0
+                    	if ((k.n == asked__inst0)) {
+                    		failure__inst0 = null
+                    	}
+                    	asked__inst0 = k.n
                     	loading__inst0 = true
                     	var r: SnglResult__PetDetail = petRetrieveCall(k.key, "https://mirror.example")
                     	if ((mine != attempt__inst0)) {
@@ -3154,7 +3222,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { offset__inst0: 0, page__inst0: null, pet__inst0: null, loading__inst0: false, failure__inst0: null, from__inst0: "-", visible__inst0: true, pending__inst0: false, failure__inst1: null, attempt__inst0: 0, refreshes__inst0: 0, attempt__inst1: 0, refreshes__inst1: 0 };
+  var state = { offset__inst0: 0, page__inst0: null, pet__inst0: null, loading__inst0: false, failure__inst0: null, from__inst0: "-", visible__inst0: true, pending__inst0: false, failure__inst1: null, attempt__inst0: 0, refreshes__inst0: 0, asked__inst0: -1, attempt__inst1: 0, refreshes__inst1: 0, asked__inst1: -1 };
   async function petBreedRetrieveCall(id, __ctx_server) {
     let __match2 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", __ctx_server + "/api/v1/pet-breeds/" + encodeURIComponent(id).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()) + "/", null, null)));
     if (__match2.tag === "failed") {
@@ -3273,6 +3341,12 @@ body { font-family: system-ui, sans-serif; }
   async function __effect0_mount() {
     state.attempt__inst1 += 1;
     let mine = state.attempt__inst1;
+    if (__effect0_key.n === state.asked__inst1) {
+      ;
+      state.failure__inst1 = null;
+    }
+    ;
+    state.asked__inst1 = __effect0_key.n;
     state.pending__inst0 = true;
     let r = await petListCall(__effect0_key.key.limit, __effect0_key.key.offset, "https://petstore.example");
     if (mine !== state.attempt__inst1) {
@@ -3300,6 +3374,13 @@ body { font-family: system-ui, sans-serif; }
   async function __effect1_mount() {
     state.attempt__inst0 += 1;
     let mine = state.attempt__inst0;
+    if (__effect1_key.n === state.asked__inst0) {
+      ;
+      state.failure__inst0 = null;
+      __renderSlot2(__slotAnchor_2);
+    }
+    ;
+    state.asked__inst0 = __effect1_key.n;
     state.loading__inst0 = true;
     __renderSlot1(__slotAnchor_1);
     let r = await petRetrieveCall(__effect1_key.key, "https://mirror.example");
@@ -4261,10 +4342,10 @@ component petBreedRetrieve[F any](
     )
 }
 -- run/go/fyne --
-pass sha256:8fee4653702647fa3ba2782047822884
+pass sha256:b072d34cb77b8f7975860d5a0fa7af0a
 -- run/go/gtk4 --
-pass sha256:b1be864c9f9cdc7fd04a8505a2913cbe
+pass sha256:336db5ac66b5074bdcadf3814489091f
 -- run/kotlin/android --
-pass sha256:7b2e3e045f304e8751ba24e87abce915
+pass sha256:cfd499b44090110f8ffc4a534ef90a85
 -- run/none/html --
-pass sha256:c6da311f018f1d8306dc1ca7f526b4aa
+pass sha256:1507db21555723e538e775e918e9a190

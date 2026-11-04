@@ -138,7 +138,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/handed.sngl/page/1 --
-sha256:237e0b4a003abfd941cbf1dd48dc5ae0
+sha256:065839d0edc7a81ab1d6d7a884f20548
 {
   "results": [
     {
@@ -158,7 +158,7 @@ sha256:f26c154dee3be115385a2cb376264926
   ]
 }
 -- testrun/android/kotlin/returned.sngl/page/1 --
-sha256:112042504caff496ebcfb1c22fc53e07
+sha256:6cbd331949d636918f70bb6995f36e37
 {
   "results": [
     {
@@ -168,7 +168,7 @@ sha256:112042504caff496ebcfb1c22fc53e07
   ]
 }
 -- testrun/bubbletea/go/handed.sngl/page/1 --
-sha256:b7392ed95aafffb894300b72f2dbad14
+sha256:90381cf9f7cedfb48034710f62dfdf74
 {
   "results": [
     {
@@ -188,7 +188,7 @@ sha256:870b1010ebfc225195afe12640cb7c22
   ]
 }
 -- testrun/bubbletea/go/returned.sngl/page/1 --
-sha256:3b501d22952ddbb37878d895a28b1aa4
+sha256:f41d01ec731f0b25d07740145059038c
 {
   "results": [
     {
@@ -198,7 +198,7 @@ sha256:3b501d22952ddbb37878d895a28b1aa4
   ]
 }
 -- testrun/fyne/go/handed.sngl/page/1 --
-sha256:39c58aee3a1d14097e85b762e2163acf
+sha256:34d0e4a83efc8e3cc33648aa9cf4ae53
 {
   "results": [
     {
@@ -218,7 +218,7 @@ sha256:16dc67bd6f21e6921cd46db3dc3737fc
   ]
 }
 -- testrun/fyne/go/returned.sngl/page/1 --
-sha256:e1e2eb6707f5e88b35867e2bea2628d8
+sha256:a9ec57ccffbc6184ee8dd3448b73a674
 {
   "results": [
     {
@@ -228,7 +228,7 @@ sha256:e1e2eb6707f5e88b35867e2bea2628d8
   ]
 }
 -- testrun/gtk4/go/handed.sngl/page/1 --
-sha256:71fd7972205e826f87db680e88bd27c0
+sha256:fa6babed3410298d04c767c4b9bfccf0
 {
   "results": [
     {
@@ -248,7 +248,7 @@ sha256:ec818582bb76daca3fad5cdddea4ce68
   ]
 }
 -- testrun/gtk4/go/returned.sngl/page/1 --
-sha256:f5ff4a1981f6aedfc89ffdf810db7f69
+sha256:b113cfdccdaa7637f5304c7ad8baf02d
 {
   "results": [
     {
@@ -258,7 +258,7 @@ sha256:f5ff4a1981f6aedfc89ffdf810db7f69
   ]
 }
 -- testrun/html/none/handed.sngl/page/1 --
-sha256:3e0c48cb92cd9eac537d4ba23387503b
+sha256:f476526839358c55fa95a212e05229ba
 {
   "results": [
     {
@@ -278,7 +278,7 @@ sha256:1c58489ef9f626368cd8fff76066e1c8
   ]
 }
 -- testrun/html/none/returned.sngl/page/1 --
-sha256:5263287cd72326026ea7b2a7add099ec
+sha256:4812176411dfe05a704db28dd83631a4
 {
   "results": [
     {

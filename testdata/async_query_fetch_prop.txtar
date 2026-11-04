@@ -282,6 +282,7 @@ type __query_state1Instance struct {
 	failure                *Failure
 	attempt__inst0         int
 	refreshes__inst0       int
+	asked__inst0           int
 	__effect0_key          __anon_key_n_a1dba7
 	__effect0_live         []__anon_key_n_a1dba7
 	__effect0_desired      []__anon_key_n_a1dba7
@@ -308,6 +309,7 @@ func new__query_state1Instance(__model *Model, __a___start_value *int, __a___sta
 	c.failure = c.__prop___start_failure
 	c.attempt__inst0 = 0
 	c.refreshes__inst0 = 0
+	c.asked__inst0 = -1
 	c.__effect0_key = __anon_key_n_a1dba7{}
 	c.__effect0_live = []__anon_key_n_a1dba7{}
 	c.__effect0_desired = []__anon_key_n_a1dba7{}
@@ -330,6 +332,10 @@ func (c *__query_state1Instance) refresh__inst0() {
 func (c *__query_state1Instance) __effect0_mount() {
 	c.attempt__inst0 += 1
 	var mine int = c.attempt__inst0
+	if c.__effect0_key.N == c.asked__inst0 {
+		c.failure = nil
+	}
+	c.asked__inst0 = c.__effect0_key.N
 	c.pending = true
 	__async_arg0 := c.__prop_fetch
 	__async_arg1 := c.__effect0_key.Key
@@ -655,6 +661,7 @@ type __query_state1Instance struct {
 	failure                *Failure
 	attempt__inst0         int
 	refreshes__inst0       int
+	asked__inst0           int
 	__effect0_key          __anon_key_n_a1dba7
 	__effect0_live         []__anon_key_n_a1dba7
 	__effect0_desired      []__anon_key_n_a1dba7
@@ -681,6 +688,7 @@ func new__query_state1Instance(__model *Model, __a___start_value *int, __a___sta
 	c.failure = c.__prop___start_failure
 	c.attempt__inst0 = 0
 	c.refreshes__inst0 = 0
+	c.asked__inst0 = -1
 	c.__effect0_key = __anon_key_n_a1dba7{}
 	c.__effect0_live = []__anon_key_n_a1dba7{}
 	c.__effect0_desired = []__anon_key_n_a1dba7{}
@@ -703,6 +711,10 @@ func (c *__query_state1Instance) refresh__inst0() {
 func (c *__query_state1Instance) __effect0_mount() {
 	c.attempt__inst0 += 1
 	var mine int = c.attempt__inst0
+	if c.__effect0_key.N == c.asked__inst0 {
+		c.failure = nil
+	}
+	c.asked__inst0 = c.__effect0_key.N
 	c.pending = true
 	__async_arg0 := c.__prop_fetch
 	__async_arg1 := c.__effect0_key.Key
@@ -901,6 +913,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:f61c4f408a9a8287611a3be0ce5fa4f6
+pass sha256:6cb500430d4397ee57703e0357540c6a
 -- run/go/gtk4 --
-pass sha256:d5ae1a917627b939acf139998f742f7a
+pass sha256:5513713c3433c00298dc42c19a5a4d06

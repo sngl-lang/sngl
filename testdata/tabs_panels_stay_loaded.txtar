@@ -227,6 +227,10 @@ type modelState struct {
 	taps__inst0         int
 	__effect0_live      []bool
 	__effect0_desired   []bool
+	__effect0_paths     []string
+	__effect0_livePaths []string
+	__effect0_pathAt    map[string]int
+	__effect0_liveAt    map[string]int
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -251,6 +255,10 @@ func New() Model {
 	m.taps__inst0 = 0
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
+	m.__effect0_paths = []string{}
+	m.__effect0_livePaths = []string{}
+	m.__effect0_pathAt = map[string]int{}
+	m.__effect0_liveAt = map[string]int{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_torn = false
@@ -437,11 +445,15 @@ func (m *Model) __effect0_mount() {
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []bool{}
-	for _, t__r0 := range []Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Two", __id: 1}, Tab__record{Label: "Three", __id: 2}} {
+	m.__effect0_paths = []string{}
+	m.__effect0_pathAt = map[string]int{}
+	for k, t__r0 := range []Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Two", __id: 1}, Tab__record{Label: "Three", __id: 2}} {
 		if !(t__r0.__id == 0) {
 			if !(t__r0.__id == 1) {
 				if t__r0.__id == 2 {
 					m.__effect0_desired = append(m.__effect0_desired, true)
+					m.__effect0_pathAt[fmt.Sprint(k)] = len(m.__effect0_paths)
+					m.__effect0_paths = append(m.__effect0_paths, fmt.Sprint(k))
 				}
 			}
 		}
@@ -450,15 +462,23 @@ func (m *Model) __effect0_down() {
 
 func (m *Model) __effect0_up() {
 	for __effect0_i, __effect0_k := range m.__effect0_desired {
-		if __effect0_i >= len(m.__effect0_live) {
+		var __effect0_at int = func() int {
+			if __v, __ok := m.__effect0_liveAt[m.__effect0_paths[__effect0_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect0_at < 0 {
 			m.__effect0_mount()
 		} else {
-			if m.__effect0_live[__effect0_i] != __effect0_k {
+			if m.__effect0_live[__effect0_at] != __effect0_k {
 				m.__effect0_mount()
 			}
 		}
 	}
 	m.__effect0_live = m.__effect0_desired
+	m.__effect0_livePaths = m.__effect0_paths
+	m.__effect0_liveAt = m.__effect0_pathAt
 }
 
 func (m *Model) __effects0_settle() {
@@ -3763,7 +3783,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:dabbf8b0e403f6699a687bef1fdb8d9f
+pass sha256:a806f20fa402a8ee057bbe23dd0c573b
 -- run/go/fyne --
 pass sha256:eb46519a37fbd159a94c914cd2a6cc1b
 -- run/go/gtk4 --
