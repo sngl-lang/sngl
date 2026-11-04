@@ -2451,6 +2451,46 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 		if _, ok := recv.([]any); ok && len(rest) == 0 {
 			return env.writeBackList(recvExpr, []any{}, writeClear, 0, nil)
 		}
+	case "sort":
+		if list, ok := recv.([]any); ok && len(rest) == 0 {
+			sorted := slices.Clone(list)
+			slices.SortStableFunc(sorted, compareOrdered)
+			return env.writeBackList(recvExpr, sorted, writeReplace, 0, nil)
+		}
+	case "sortBy":
+		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			lv, ok := rest[0].(*LambdaValue)
+			if !ok {
+				return nil, fmt.Errorf("sortBy requires a lambda, got %T", rest[0])
+			}
+			sorted := slices.Clone(list)
+			var failed error
+			before := func(a, b any) bool {
+				if failed != nil {
+					return false
+				}
+				v, err := lv.Call([]any{a, b})
+				if err != nil {
+					failed = err
+					return false
+				}
+				yes, _ := v.(bool)
+				return yes
+			}
+			slices.SortStableFunc(sorted, func(a, b any) int {
+				if before(a, b) {
+					return -1
+				}
+				if before(b, a) {
+					return 1
+				}
+				return 0
+			})
+			if failed != nil {
+				return nil, failed
+			}
+			return env.writeBackList(recvExpr, sorted, writeReplace, 0, nil)
+		}
 	case "contains":
 		if s, ok := recv.(string); ok && len(rest) == 1 {
 			return strings.Contains(s, fmt.Sprintf("%v", rest[0])), nil
@@ -2467,7 +2507,7 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 // write their receiver back rather than returning a new list.
 func isListMutation(method string) bool {
 	switch method {
-	case "push", "remove", "insert", "clear":
+	case "push", "remove", "insert", "clear", "sort", "sortBy":
 		return true
 	}
 	return false
@@ -2495,90 +2535,14 @@ func methodNameFromCall(call *ir.Call) string {
 	return ""
 }
 
+// evalBuiltinMethod is evalBuiltinMethodFromRecv on call's receiver, the
+// first of evalArgs.
 func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) (any, error) {
-	recv := evalArgs[0]
-	rest := evalArgs[1:]
-	var recvType *ir.Type
-	if len(call.Args) > 0 && call.Args[0].Value != nil {
-		recvType = call.Args[0].Value.ExprType()
+	var recvExpr ir.Expr
+	if len(call.Args) > 0 {
+		recvExpr = call.Args[0].Value
 	}
-	switch method {
-	case "filter":
-		if list, ok := recv.([]any); ok && len(rest) == 1 {
-			lv, ok := rest[0].(*LambdaValue)
-			if !ok {
-				return nil, fmt.Errorf("filter requires a lambda, got %T", rest[0])
-			}
-			var out []any
-			for _, item := range list {
-				v, err := lv.Call([]any{item})
-				if err != nil {
-					return nil, err
-				}
-				if b, ok := v.(bool); ok && b {
-					out = append(out, item)
-				}
-			}
-			if out == nil {
-				out = []any{}
-			}
-			return out, nil
-		}
-	case "map":
-		if list, ok := recv.([]any); ok && len(rest) == 1 {
-			lv, ok := rest[0].(*LambdaValue)
-			if !ok {
-				return nil, fmt.Errorf("map requires a lambda, got %T", rest[0])
-			}
-			out := make([]any, len(list))
-			for i, item := range list {
-				v, err := lv.Call([]any{item})
-				if err != nil {
-					return nil, err
-				}
-				out[i] = v
-			}
-			return out, nil
-		}
-	case "push":
-		if list, ok := recv.([]any); ok && len(rest) == 1 {
-			rest[0] = copyOf(rest[0], elemType(recvType))
-			newList := append(list, rest[0])
-			return env.writeBackList(call.Args[0].Value, newList, writeInsert, len(list), rest[0])
-		}
-	case "remove":
-		if list, ok := recv.([]any); ok && len(rest) == 1 {
-			idx := ToInt(rest[0])
-			if idx < 0 || idx >= len(list) {
-				return list, nil // documented: out of range leaves the list unchanged
-			}
-			removed := list[idx]
-			newList := append(list[:idx], list[idx+1:]...)
-			return env.writeBackList(call.Args[0].Value, newList, writeRemove, idx, removed)
-		}
-	case "insert":
-		if list, ok := recv.([]any); ok && len(rest) == 2 {
-			rest[1] = copyOf(rest[1], elemType(recvType))
-			idx := ToInt(rest[0])
-			if idx < 0 || idx > len(list) {
-				return list, nil // documented: out of range leaves the list unchanged
-			}
-			return env.writeBackList(call.Args[0].Value, slices.Insert(slices.Clone(list), idx, rest[1]), writeInsert, idx, rest[1])
-		}
-	case "clear":
-		if _, ok := recv.([]any); ok && len(rest) == 0 {
-			return env.writeBackList(call.Args[0].Value, []any{}, writeClear, 0, nil)
-		}
-	case "contains":
-		if s, ok := recv.(string); ok && len(rest) == 1 {
-			return strings.Contains(s, fmt.Sprintf("%v", rest[0])), nil
-		}
-	}
-	// --- Map methods ---
-	if m, ok := recv.(map[string]any); ok {
-		return mapMethodResult(method, m, rest)
-	}
-	return nil, fmt.Errorf("unsupported method %q on %T", method, recv)
+	return env.evalBuiltinMethodFromRecv(recvExpr, method, evalArgs[0], evalArgs[1:])
 }
 
 // writeBackList applies a mutated list back to its originating variable.

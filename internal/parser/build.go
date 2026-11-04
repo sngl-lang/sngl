@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -1202,13 +1203,23 @@ func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
 		switch {
 		case l.after < len(names):
 			// Before the last dot: a receiver's names, and only the
-			// receiver's -- the list right before the method's name.
-			if l.params != nil || l.target != nil {
-				b.errorf(l.pos, "a receiver's type parameters are names alone; constraints are the receiver's declaration's")
+			// receiver's -- the list right before the method's name. A
+			// constraint there narrows the declaration's: the method is
+			// the receiver's only where the type bound satisfies it.
+			if l.target != nil {
+				b.errorf(l.pos, "a receiver's list names its type parameters, not a target")
 				continue
 			}
 			if l.after != len(names)-1 {
 				b.errorf(l.pos, "only the receiver type takes type parameters, the list before the method's name")
+				continue
+			}
+			if l.params != nil {
+				if i := slices.IndexFunc(l.params, func(p ast.TypeParam) bool { return p.Default != nil }); i >= 0 {
+					b.errorf(l.params[i].Pos, "a receiver's type parameter has no default: the receiver binds it")
+					continue
+				}
+				f.RecvTypeParams = l.params
 				continue
 			}
 			f.RecvTypeParams = l.names

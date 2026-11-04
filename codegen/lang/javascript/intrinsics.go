@@ -219,6 +219,15 @@ func init() {
 			a[0] + ", " + a[1] + ", " + a[2] + ")"
 	})
 	reg("list.clear", func(a []string) string { return a[0] + ".length = 0" })
+	// Array.prototype.sort is stable since ES2019; with no comparator it
+	// would order numbers as their strings.
+	reg("list.sort", func(a []string) string {
+		return a[0] + ".sort((__a, __b) => __a < __b ? -1 : __b < __a ? 1 : 0)"
+	})
+	reg("list.sortBy", func(a []string) string {
+		return "((__l, __before) => { __l.sort((__a, __b) => __before(__a, __b) ? -1 : __before(__b, __a) ? 1 : 0) })(" +
+			a[0] + ", " + a[1] + ")"
+	})
 
 	// --- html placement directives (GitLab #27) ---
 	// html.frontend(v)/html.backend(v) are identity directives consumed by the

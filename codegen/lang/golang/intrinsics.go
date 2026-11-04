@@ -108,6 +108,16 @@ func init() {
 			a[0] + " = slices.Insert(" + a[0] + ", __i, " + a[2] + ") }"
 	})
 	reg("list.clear", func(a []string) string { return a[0] + " = " + a[0] + "[:0]" })
+	// Stable for both, as the declarations promise; sort.Slice is not.
+	regImp("list.sort", []string{"cmp", "slices"}, func(a []string) string {
+		return "slices.SortStableFunc(" + a[0] + ", cmp.Compare)"
+	})
+	// before is bound once, being an arbitrary expression the comparison
+	// reads twice.
+	regTyped("list.sortBy", []string{"slices"}, func(a []string, ts []*ir.Type) string {
+		return "{ __before := " + a[1] + "; slices.SortStableFunc(" + a[0] + ", func(__a, __b " + goElem(ts[0]) + ") int { " +
+			"if __before(__a, __b) { return -1 }; if __before(__b, __a) { return 1 }; return 0 }) }"
+	})
 
 	// --- int/float min, max, abs, clamp ---
 	// Their SNGL bodies are correct but spell the answer as a ternary, which

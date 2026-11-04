@@ -64,6 +64,21 @@ func list[T].insert(index int, item T)
 #[_intrinsic("list.clear", mutates, mutatesReceiver)]
 func list[T].clear()
 
+// Puts the receiver list's items in increasing order, in place: a's ahead of
+// b's where `a < b`. Only a list of a type `<` orders has one; sortBy orders
+// any other. The sort is stable, which only a list of floats can tell, with
+// its 0 and -0.
+#[_intrinsic("list.sort", mutates, mutatesReceiver)]
+func list[T ordered].sort()
+
+// Puts the receiver list's items in the order before says, in place:
+// `before(a, b)` is true where a goes ahead of b. The sort is stable, so two
+// items before puts neither ahead of the other keep the order they had:
+// `moves.sortBy(func(a, b) => a.level < b.level)` keeps the moves
+// of one level in the order they came.
+#[_intrinsic("list.sortBy", mutates, mutatesReceiver)]
+func list[T].sortBy(before func(T, T) bool)
+
 // Index of the first occurrence of item in l (by equality), or -1 if
 // absent.
 #[_intrinsic("list.indexOf")]

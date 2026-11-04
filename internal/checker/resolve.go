@@ -445,8 +445,10 @@ func (c *checker) typeParamConstraint(sd *ir.StructDef, i int) *ir.Type {
 
 // inheritReceiverConstraints gives a method's receiver parameters the
 // constraints of the declaration they restate, `func Holder[T].label()` or
-// `func stack[M].current()`: a receiver's list writes names only, and in the
-// body a T is what the declaration says it is.
+// `func stack[M].current()`: in the body a T is what the declaration says it
+// is. A constraint the list writes, `func list[T ordered].sort()`, narrows
+// one that says nothing: the method is the receiver's only where its T
+// satisfies it, and resolveTypeParams gives it.
 // It runs before the signature is resolved, which may hand a T on to the
 // declaration's own type, `_page[M]`.
 func (c *checker) inheritReceiverConstraints(recv *ir.Type, written []ast.TypeParam) {
@@ -475,7 +477,17 @@ func (c *checker) inheritReceiverConstraints(recv *ir.Type, written []ast.TypePa
 		renamed[declared[i].Name] = c.typeParamSym(p.Name, p.Pos).SymType()
 	}
 	for i, p := range written {
-		if con := constraint(i).Substitute(renamed); con != nil {
+		con := constraint(i).Substitute(renamed)
+		if p.Constraint != nil {
+			// A constraint written narrows one that says nothing, and
+			// resolveTypeParams gives it; narrowing one that says something
+			// would ask for both, which no constraint spells.
+			if con == nil || con.Kind == ir.TypeAny {
+				continue
+			}
+			c.error(p.Pos, "%s's %s is already constrained by its declaration, to %s; a method narrows only a parameter constrained to any", recv.Decl.SymName(), p.Name, con)
+		}
+		if con != nil {
 			if sym := c.typeParamSym(p.Name, p.Pos); sym.Constraint == nil {
 				sym.Constraint = con
 			}

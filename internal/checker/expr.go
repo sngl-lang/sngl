@@ -864,6 +864,8 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 				// string comparisons OK
 			case left.SameUnitType(right) && left.IsSingleBaseUnit():
 				// single-base unit comparisons OK (e.g. duration)
+			case left.Kind == ir.TypeTypeParam && left.Equal(right) && ordered(left):
+				// a parameter `ordered` constrains, bound to one of the above
 			default:
 				c.error(x.Pos, "operator %s not defined for %s and %s", x.Op, left, right)
 			}
@@ -1588,6 +1590,7 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 					ir.BindTypeParams(sig.Params[0].Type, receiver, bindings)
 				}
 			}
+			c.checkNarrowedReceiver(call, fn, sig.RecvTypeParams, bindings)
 			if len(bindings) > 0 {
 				// Substitute the recv bindings and clear RecvTypeParams so the
 				// shifted-sig path below doesn't re-examine them.

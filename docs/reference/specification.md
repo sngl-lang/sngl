@@ -429,7 +429,7 @@ user-defined types.
 | `float`  | 64-bit IEEE-754 floating point.                        |
 | `string` | Immutable UTF-8 text.                                  |
 
-`any`, `anyStruct`, `anyFields`, `fieldsOf` and `methodsOf` are predeclared
+`any`, `anyStruct`, `anyFields`, `fieldsOf`, `methodsOf` and `ordered` are predeclared
 beside them and are no type a value may have: they are the constraints a type
 parameter names (see [Generic type parameters](#generic-type-parameters)).
 
@@ -761,13 +761,14 @@ component. Every type parameter names a **constraint** after its name: what a
 type bound to it must be. A constraint is one `sngl:builtin` declares, or an
 alias of one, and every file has them without an import:
 
-| Constraint     | A type bound to the parameter must                  |
-|----------------|-----------------------------------------------------|
-| `any`          | be anything                                         |
-| `anyStruct`    | be a struct, whatever its fields                    |
-| `anyFields`    | have fields: a struct, or a data component's record |
-| `fieldsOf[S]`  | have each of S's fields, at an equal type           |
-| `methodsOf[S]` | have a method fitting each function S declares      |
+| Constraint     | A type bound to the parameter must                          |
+|----------------|-------------------------------------------------------------|
+| `any`          | be anything                                                 |
+| `anyStruct`    | be a struct, whatever its fields                            |
+| `anyFields`    | have fields: a struct, or a data component's record         |
+| `fieldsOf[S]`  | have each of S's fields, at an equal type                   |
+| `methodsOf[S]` | have a method fitting each function S declares              |
+| `ordered`      | be ordered by `<`: a number, a single-base unit or a string |
 
 S is an anonymous struct, of fields for `fieldsOf` and of functions for
 `methodsOf`. A struct is no constraint by itself: `[T struct { name string }]`
@@ -826,6 +827,10 @@ func hex[T methodsOf[struct {
 var a = hex(255) // "ff": int.format also takes width and pad, which have defaults
 ```
 
+Two values of a `T ordered` compare with `<`, `<=`, `>` and `>=` as two values
+of the type bound to it do: `func larger[T ordered](a T, b T) => a < b ? b : a`. A list of one sorts with `sort()`. A type parameter is `ordered` only
+where its own constraint is.
+
 In a generic body a value of a constrained `T` has the fields `fieldsOf`
 names, typed from the constraint, and the functions `methodsOf` names, and
 nothing else: `v.name` reads a field, `v.format(16)` calls the bound type's
@@ -882,11 +887,20 @@ first name is followed by `]` or `.` is a target and one whose first name is
 followed by a type is a type-parameter list. `func first[T]` is therefore an
 override of a target named `T`, not a generic function.
 
-A method on a generic type restates its receiver's parameters by name alone,
-since the type's declaration already constrains them, and in its body each is
-what that declaration says it is:
+A method on a generic type restates its receiver's parameters by name, since
+the type's declaration already constrains them, and in its body each is what
+that declaration says it is:
 `func list[T].map[U any](f func(T) U) list[U]`. The `.` after the bracket is
-what makes it a receiver's.
+what makes it a receiver's. A receiver's list may instead write a constraint
+for a parameter its declaration constrains to `any`, which narrows it: the
+method belongs to a receiver only where the type bound to that parameter
+satisfies the constraint, and in its body the parameter is what the
+constraint says. `func list[T ordered].sort()` is a method of a `list[int]`
+and no method of a `list[bool]`, and a call of it on one is an error. Written
+for one parameter, the list writes one for each, `any` for those it leaves
+alone (`func pair[K any, V ordered].least()`), and none takes a default.
+Narrowing a parameter its declaration constrains to anything but `any` is an
+error.
 
 In a type position the arguments are written in brackets (`Box[int]`,
 `map[string, int]`). At a call site they may be written the same way, after

@@ -1253,7 +1253,7 @@ ui.button(text="Toggle", @click { active!! })
 
 ### List mutations
 
-`push` and `remove` change a list in place, and so does assigning through an index; observers are notified as they would be for any assignment. `filter`, `map`, `reverse` and `slice` return a new list and leave the receiver alone:
+`push`, `insert`, `remove`, `clear`, `sort` and `sortBy` change a list in place, and so does assigning through an index; observers are notified as they would be for any assignment. `filter`, `map`, `reverse` and `slice` return a new list and leave the receiver alone:
 
 <!-- SNGL-component -->
 
@@ -1262,9 +1262,13 @@ var items = [1, 2, 3]
 ui.button(text="Add", @click { items.push(4) })
 ui.button(text="Remove first", @click { items.remove(0) })
 ui.button(text="Evens", @click { items = items.filter(func(x) => x % 2 == 0) })
+ui.button(text="Sort", @click { items.sort() })
+ui.button(text="Largest first", @click { items.sortBy(func(a, b) => a > b) })
 ```
 
 `push` returns nothing, so `items = items.push(4)` is an error rather than a second way to say the same thing.
+
+`sort()` orders by `<`, so only a list of numbers, strings or a single-base unit has it; any other list, a list of structs, says how with `sortBy`, whose function is true where its first argument goes ahead of its second: `moves.sortBy(func(a, b) => a.level < b.level)`. Both are stable, so moves of one level keep the order they came in.
 
 ### Component events
 

@@ -144,7 +144,7 @@ func testChoosingRebuildsThePanel(t test.Test, c main) {
     t.assert(c.p.rows().length() == 0 && c.p.none != null)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:e9538053e631e369f955dfb525fa0d5f
+sha256:e07eb8e5b355516388e6f38ceb7536d6
 {
   "results": [
     {

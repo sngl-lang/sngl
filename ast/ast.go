@@ -373,7 +373,7 @@ type FuncDef struct {
 	Pos            Pos
 	Name           string
 	TypeParams     []TypeParam // method-level generic parameters, e.g. ["T", "U"]
-	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list[T].length()
+	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list[T].length(), a constraint where one narrows the declaration's
 	Params         ParamList
 	// Target is the `[expr]` index on the declaration name: the build target
 	// this declaration implements, written by whoever overrides one. nil on an

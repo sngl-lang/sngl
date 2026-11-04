@@ -127,6 +127,22 @@ literal at the running bindings (`ir.FormatArgsLit`)
 `error_generic_constraint_method.sngl`, `generic_constraint_method.txtar`,
 `internal/lower/testdata/builtin_methods_constraint.txtar`).
 
+**A receiver's list may narrow a parameter its declaration leaves `any`**
+(`func list[T ordered].sort()`). The parser keeps the constraint on
+`FuncDef.RecvTypeParams`; `inheritReceiverConstraints` skips a parameter with
+one, so `resolveTypeParams` gives the method's T the narrower constraint, and
+a body reads it as that. Narrowing a parameter the declaration already
+constrains would ask for both, which no constraint spells, so it is an error
+and the declaration's stands. A call measures the receiver's binding against
+the narrowed constraint (`checkNarrowedReceiver`) where it binds the
+receiver's parameters; the declaration's own were measured where the
+receiver's type was written. `ordered` is a constraint the checker answers
+(`ordered` in constraints.go): a number, a single-base unit, a string, or a
+type parameter constrained to `ordered`; Go and Kotlin copy a generic body per
+type, so `<` on a `T ordered` needs nothing of them
+(`testdata/list_sort.sngl`, `error_list_sort.sngl`,
+`cmd/sngl/testdata/list_sort_runs.txt`).
+
 **An alias is an `ir.Alias`, not a declaration of what it names**
 (`internal/checker/aliases.go`): `struct Name = Type` parses as an
 `ast.StructDef` whose `Alias` holds the type -- `enum` and `unit` as their own

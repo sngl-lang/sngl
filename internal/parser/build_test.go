@@ -225,6 +225,8 @@ func TestParseFuncNameChain(t *testing.T) {
 		{src: `func pair[K, V].swap[U any](u U) {}`, name: "pair.swap", recv: "K,V", own: "U"},
 		{src: `func f[T any][none.platform](x T) {}`, name: "f", own: "T", target: "none.platform"},
 		{src: `func a.b.c.d() {}`, name: "a.b.c.d"},
+		{src: `func list[T ordered].sort() {}`, name: "list.sort", recv: "T"},
+		{src: `func pair[K any, V ordered].least() {}`, name: "pair.least", recv: "K,V"},
 	} {
 		fd := mustParse(t, tc.src).Stmts[0].(*ast.FuncDef)
 		names := func(ps []ast.TypeParam) string {
@@ -248,11 +250,12 @@ func TestParseFuncNameChain(t *testing.T) {
 }
 
 // TestParseFuncNameListOutOfPlace refuses a list a name gives no meaning: one
-// on a qualifier rather than the receiver, and a constraint on a receiver's.
+// on a qualifier rather than the receiver, and a default on a receiver's.
 func TestParseFuncNameListOutOfPlace(t *testing.T) {
 	for _, src := range []string{
 		`func ui[T].select.change() {}`,
-		`func list[T any].second() {}`,
+		`func list[T any = int].second() {}`,
+		`func list[html.platform].second() {}`,
 	} {
 		if _, err := Parse("test.sngl", []byte(src)); err == nil {
 			t.Errorf("%s: parsed, want an error", src)
