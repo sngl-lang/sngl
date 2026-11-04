@@ -90,8 +90,17 @@ struct Model {
 // Whether a primitive is a focus stop: one its Style displays none is not, as
 // CSS focuses no element displayed none. An override writes the condition
 // here rather than `true`, and Tab passes over the stop while it holds.
+//
+// `tab` is whether Tab reaches a stop that is one: a component written
+// `focusable=false` is still pressed by a click, which focuses it for the
+// press and gives focus back after, and Tab passes over it.
+//
+// `typing` says the stop takes what is typed, a text field, which is what a
+// window's `@key` hears as `editing` while focus is on it.
 struct Focus {
     enabled bool
+    tab     bool = true
+    typing  bool = false
 }
 
 struct Bind {
@@ -120,6 +129,10 @@ struct Event {
 component Layout(
     const join JoinDir,
     look       Look,
+    // Whether look draws anything (drawsBox): a Layout whose Style asks for
+    // only a gap, a flex or where its children sit hands on the block it
+    // joined as it stands, which every box around it measures again.
+    boxed      bool = true,
     fit        Fit,
     grow       float,
     // Where the children sit across the axis, as a lipgloss.Position.
@@ -199,6 +212,9 @@ component Overlay(
 // `‹` before it while it can go back, and esc runs `@back` then. One given
 // none -- the literal `false` a window's default is -- draws no line. A
 // terminal has no place for a window's menu, so a screen draws none.
+//
+// `@key` is each key Update is sent but ctrl+c, before any case or widget
+// sees it; a handler that calls `stop` leaves the key to none of them.
 #[intrinsic("bubbletea:Screen")]
 component Screen(
     visible   bool = true,
@@ -206,13 +222,14 @@ component Screen(
     canGoBack bool = false,
     @closed(),
     @back(),
+    @key(e ui.KeyPress, stop func()),
     content   ...component ui.node,
 ) root
 
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
-const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, content) {
-    Screen(visible=visible, title=title, canGoBack=canGoBack, @back { back() }, @closed {
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content) {
+    Screen(visible=visible, title=title, canGoBack=canGoBack, @back { back() }, @key(e, stop) { key(e, stop) }, @closed {
         visible = false
         closed()
     }) {
@@ -225,19 +242,19 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
 // --- Core Layout ---
 
 const component ui.vbox[platform](style, children) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
         children
     }
 }
 
 const component ui.hbox[platform](style, children) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
         children
     }
 }
 
 const component ui.stack[platform](style, layers) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
         layers
     }
 }
@@ -247,7 +264,7 @@ const component ui.spacer[platform](style) {
 }
 
 const component ui.scroll[platform](style, content) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
         content
     }
 }
@@ -258,10 +275,10 @@ const component ui.text[platform](value, style) {
     Styled(content=value, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display)) {}
 }
 
-const component ui.button[platform](text, style) {
+const component ui.button[platform](text, focusable, style) {
     Styled(
         content = text,
-        focus = Focus{enabled=style.display != ui.Display.none},
+        focus = Focus{enabled=style.display != ui.Display.none, tab=focusable},
         events = [Event{on="click", key="enter"}],
         look = lookOf(style),
         fit = fitOf(style.whiteSpace, style.display),
@@ -274,8 +291,8 @@ const component ui.button[platform](text, style) {
 // right edge: both grow across a row, a Layout having no stretch. Every panel
 // is drawn in the box and all but the selected one hidden.
 const component ui.tabs[platform](selected, variant, style, @change, items) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display)) {
-        Layout(join=JoinDir.horizontal, look=newStyle()) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display)) {
+        Layout(join=JoinDir.horizontal, look=newStyle(), boxed=false) {
             for var k, t = items {
                 Styled(
                     content = t.label,
@@ -292,10 +309,10 @@ const component ui.tabs[platform](selected, variant, style, @change, items) {
                 Styled(content="\n", look=tabGap(), grow=1.0) {}
             }
         }
-        Layout(join=JoinDir.horizontal, look=newStyle()) {
+        Layout(join=JoinDir.horizontal, look=newStyle(), boxed=false) {
             Layout(join=JoinDir.vertical, look=tabPanel(string(variant)), grow=1.0) {
                 for var k, t = items {
-                    Layout(join=JoinDir.vertical, look=newStyle(), fit=Fit{hidden=k != selected}) {
+                    Layout(join=JoinDir.vertical, look=newStyle(), boxed=false, fit=Fit{hidden=k != selected}) {
                         t.content
                     }
                 }
@@ -309,7 +326,7 @@ const component ui.tabs[platform](selected, variant, style, @change, items) {
 // picture a URL names is drawn in half-block cells fitted into a box of
 // `Picture`'s choosing, since a terminal has no size a pixel has.
 const component ui.image[platform](style, src) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
         #[family.crosses]
         src
     }
@@ -335,7 +352,7 @@ const component shapes.image[platform](width, height, shapes) {
     }
 }
 
-const component ui.input[platform](placeholder, style) {
+const component ui.input[platform](placeholder, focusable, style) {
     Widget(
         model = Model{
             type = "textinput.Model",
@@ -346,7 +363,7 @@ const component ui.input[platform](placeholder, style) {
             pkg = "charm.land/bubbles/v2/textinput",
             resize = ".SetWidth($\{w\})",
         },
-        focus = Focus{enabled=style.display != ui.Display.none},
+        focus = Focus{enabled=style.display != ui.Display.none, tab=focusable, typing=true},
         binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         placeholder = placeholder,
         look = lookOf(style),
@@ -355,10 +372,10 @@ const component ui.input[platform](placeholder, style) {
     ) {}
 }
 
-const component ui.checkbox[platform](label, checked, style, @change) {
+const component ui.checkbox[platform](label, checked, focusable, style, @change) {
     Styled(
         content = label,
-        focus = Focus{enabled=style.display != ui.Display.none},
+        focus = Focus{enabled=style.display != ui.Display.none, tab=focusable},
         events = [Event{on="change", key="space"}],
         look = lookOf(style),
         fit = fitOf(style.whiteSpace, style.display),
@@ -373,14 +390,14 @@ const component ui.checkbox[platform](label, checked, style, @change) {
 // --- Tier 1: Core Input ---
 
 const component ui.radio[platform](style) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
     }
 }
 
-const component ui.toggle[platform](label, checked, style, @change) {
+const component ui.toggle[platform](label, checked, focusable, style, @change) {
     Styled(
         content = label,
-        focus = Focus{enabled=style.display != ui.Display.none},
+        focus = Focus{enabled=style.display != ui.Display.none, tab=focusable},
         events = [Event{on="change", key="space"}],
         look = lookOf(style),
         fit = fitOf(style.whiteSpace, style.display),
@@ -396,7 +413,7 @@ const component ui.toggle[platform](label, checked, style, @change) {
 // value even before a choice carries it. Its choices are handed to every
 // view and update, since they are the program's and may arrive after it
 // starts.
-const component ui.select[platform](style, options) {
+const component ui.select[platform](focusable, style, options) {
     Widget(
         model = Model{
             type = "tui.Select",
@@ -405,7 +422,7 @@ const component ui.select[platform](style, options) {
             update = ".Update(msg, $\{options\})",
             resize = ".SetSize($\{w\}, $\{h\})",
         },
-        focus = Focus{enabled=style.display != ui.Display.none},
+        focus = Focus{enabled=style.display != ui.Display.none, tab=focusable},
         binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         options = options.map(func(o) => o.label),
         look = lookOf(style),
@@ -414,7 +431,7 @@ const component ui.select[platform](style, options) {
     ) {}
 }
 
-const component ui.textarea[platform](style) {
+const component ui.textarea[platform](focusable, style) {
     Widget(
         model = Model{
             type = "textarea.Model",
@@ -424,7 +441,7 @@ const component ui.textarea[platform](style) {
             pkg = "charm.land/bubbles/v2/textarea",
             resize = ".SetWidth($\{w\})",
         },
-        focus = Focus{enabled=style.display != ui.Display.none},
+        focus = Focus{enabled=style.display != ui.Display.none, tab=focusable, typing=true},
         binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         look = lookOf(style),
         fit = fitOf(style.whiteSpace, style.display),
@@ -520,7 +537,7 @@ const component ui.divider[platform](style) {
 // content beside a `›` that takes the focus and fires `@click` on enter, as a
 // button's label does.
 const component ui.card[platform](style, clickable, @click, content) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display)) {
         if clickable {
             Styled(
                 content = "› ",
@@ -571,19 +588,19 @@ const component ui.tooltip[platform](style, text, trigger) {
     // the wrapped trigger is focused. The `tooltip` prop carries the body
     // text to the Layout renderer, which appends it gated on the focusable
     // descendant's focus expression (see renderBlueprint in view_ir.go).
-    Layout(join=JoinDir.vertical, tooltip=text, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, tooltip=text, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
         trigger
     }
 }
 
 const component ui.popover[platform](style, content) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
         content
     }
 }
 
 const component ui.splitview[platform](style, panes) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
         panes
     }
 }
@@ -663,12 +680,12 @@ const component ui.menu[platform](style, open, items) {
 }
 
 const component ui.menubar[platform](style) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
     }
 }
 
 const component ui.toolbar[platform](style, controls) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
         controls
     }
 }

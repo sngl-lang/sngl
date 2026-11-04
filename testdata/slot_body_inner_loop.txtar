@@ -66,7 +66,7 @@ type Model struct {
 
 	__n0    *fynelayout.Toplevel
 	__n4    *fyne.Container
-	bump    *widget.Button
+	bump    *fynelayout.Button
 	__built bool
 }
 
@@ -199,7 +199,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n4 = fynelayout.NewVBox()
-	m.bump = widget.NewButton("", nil)
+	m.bump = fynelayout.NewButton("", nil)
 	m.bump.SetText("bump")
 	m.bump.OnTapped = m.bump_click_handler
 	m.__n4.Add(m.bump)
@@ -405,6 +405,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -535,12 +538,14 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n4, 1)
 	gtk4rt.SetLook(m.__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.bump = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.bump, "bump")
+	gtk4rt.SetBool(m.bump, "can-focus", true)
 	gtk4rt.Connect(m.bump, "clicked", m.bump_clicked_handler)
 	gtk4rt.BoxAppend(m.__n4, m.bump)
 	m.__renderSlot1(m.__n4)
@@ -745,8 +750,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:f72547735f4874faa52e10ec51f96072
+pass sha256:fdcadaa6af7600ac8a26ecc6bac3ebe3
 -- run/go/gtk4 --
-pass sha256:1ba16e1466526d55b37e60ec356cc3de
+pass sha256:3852493ad70e65e9a3b7e05f080d0a35
 -- run/none/html --
 pass sha256:ba732a6b4c34f18e1a9acc75c933fae6

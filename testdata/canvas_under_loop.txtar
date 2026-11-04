@@ -70,7 +70,6 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -107,7 +106,7 @@ type Model struct {
 	__renderAgain1 bool
 
 	__n2 *fyne.Container
-	add  *widget.Button
+	add  *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -297,7 +296,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n2)
 	m.__renderSlot1(m.__n2)
-	m.add = widget.NewButton("", nil)
+	m.add = fynelayout.NewButton("", nil)
 	m.add.SetText("add")
 	m.add.OnTapped = m.add_click_handler
 	m.__n2.Add(m.add)
@@ -1111,6 +1110,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot1(m.__n2)
 	m.add = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
 	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.add)), "add")
+	gtk4rt.SetBool(gtk4rt.Handle(unsafe.Pointer(m.add)), "can-focus", true)
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.add)), "clicked", m.add_clicked_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.add)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
@@ -1475,8 +1475,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:b1e6d2666c25cafe94a06303ddaa4515
+pass sha256:ec9beb47152b071108169944055ea60a
 -- run/go/gtk4 --
-pass sha256:8ac72ca6f83383a2cbda4356cf174327
+pass sha256:9da0395314811595ddb4523c0eba219b
 -- run/none/html --
 pass sha256:fd78b10547c6da64a5fde910316361f8

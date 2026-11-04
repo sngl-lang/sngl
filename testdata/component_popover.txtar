@@ -121,6 +121,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -131,6 +139,7 @@ type modelState struct {
 	visible   bool
 	__focusID int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -351,6 +360,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -364,7 +379,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	var contentChildren []string
 	var content_0 string
@@ -374,11 +402,13 @@ func (m Model) View() tea.View {
 		content_0Prefix = ">"
 	}
 	content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("toggle"))
+	content_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0)
 	contentChildren = append(contentChildren, content_0)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -416,7 +446,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -425,7 +454,7 @@ type Model struct {
 	visible bool
 
 	__n0 *fyne.Container
-	__n1 *widget.Button
+	__n1 *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -449,7 +478,7 @@ func (m *Model) SetVisible(v bool) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewVBox()
-	m.__n1 = widget.NewButton("", nil)
+	m.__n1 = fynelayout.NewButton("", nil)
 	m.__n1.SetText("toggle")
 	m.__n1.OnTapped = m.__n1_click_handler
 	m.__n0.Add(m.__n1)
@@ -555,6 +584,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n0, "closed", m.__n0_closed_handler)
 	__n1 := gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(__n1, "toggle")
+	gtk4rt.SetBool(__n1, "can-focus", true)
 	gtk4rt.Connect(__n1, "clicked", m.__n1_clicked_handler)
 	gtk4rt.ChildCall("gtk_popover_set_child", m.__n0, __n1)
 	gtk4rt.BoxAppend(m.__root, m.__n0)
@@ -717,11 +747,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:59f8fcbce63b5ab4477db6b8d640f7fd
+pass sha256:c1955973f4a3c1f4c046fb794f73e56f
 -- run/go/fyne --
-pass sha256:8548311c87cca07750338296280074a1
+pass sha256:290996efe9c1ffd12732c5f35e685388
 -- run/go/gtk4 --
-pass sha256:ff678437bb8a3cf187a87bc4d8e09ec0
+pass sha256:f00fd1c489c7b00b55c1b18b529186c0
 -- run/kotlin/android --
 pass sha256:4f4ebdfff4656998e51b886e32c12a7f
 -- run/none/html --

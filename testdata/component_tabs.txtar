@@ -139,6 +139,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -151,6 +159,8 @@ type modelState struct {
 	__focusID           int
 	__focusLoop0_cursor int
 
+	__clicks      tui.Clicks[snglStop]
+	__pressing    bool
 	width, height int
 }
 
@@ -436,6 +446,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -444,7 +460,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
-		case msg.Code == tea.KeyEnter && m.__focusID == 0:
+		case msg.Code == tea.KeyEnter && m.__focusID == 0 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos0 := 0
 				for k, t__r0 := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
@@ -466,9 +482,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	prev := [...]int{m.__focusID, m.__focusLoop0_cursor}
+	m.__focusID = s.slot
+	switch s.slot {
+	case 0:
+		m.__focusLoop0_cursor = s.pos
+	}
+	tabbed := m.__focusShown()
+	var cmd tea.Cmd
+	if s.press {
+		m.__pressing = true
+		_, cmd = m.Update(s.key)
+		m.__pressing = false
+	}
+	if !tabbed {
+		m.__focusID = prev[0]
+		m.__focusLoop0_cursor = prev[1]
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
-	contentLook := BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
+	contentLook := lipgloss.NewStyle()
 	contentW, _ := tui.Inner(contentLook, tui.Avail(m.width), m.height)
 	var contentChildren []string
 	var content_0 string
@@ -483,12 +524,13 @@ func (m Model) View() tea.View {
 		_ = k
 		_ = t__r0
 		var content_0_0Item string
-		content_0_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+		content_0_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0)) && m.__focusShown()
 		content_0_0ItemPrefix := " "
 		if content_0_0ItemFocused {
 			content_0_0ItemPrefix = ">"
 		}
 		content_0_0Item = tui.TabLook((k == m.idx), (k == 0), t__r0.Disabled, "underline").Render(content_0_0ItemPrefix + " " + fmt.Sprint(t__r0.Label))
+		content_0_0Item = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0_0Item)
 		if !t__r0.Disabled {
 			__focusPos0++
 		}
@@ -554,8 +596,10 @@ func (m Model) View() tea.View {
 	contentChildren = append(contentChildren, content_1)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	content = contentLook.Render(content)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -1594,7 +1638,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:00aec65b232fbefba40229e3c66fb756
+pass sha256:4064f08b932be6d16e9528f9c4b3a216
 -- run/go/fyne --
 pass sha256:5c30b8ad07227dfc898a06bbe9a983b7
 -- run/go/gtk4 --

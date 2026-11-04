@@ -166,6 +166,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -179,6 +187,7 @@ type modelState struct {
 	checked__inst0 bool
 	__focusID      int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -461,6 +470,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -479,6 +494,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, tea.Batch(cmds...)
+}
+
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
 }
 
 // boxChange activates the #box widget the way a keypress does; for tests.
@@ -504,6 +531,7 @@ func (m *Model) swChange(_ bool) {
 }
 
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	var contentChildren []string
 	var content_0 string
@@ -513,6 +541,7 @@ func (m Model) View() tea.View {
 		content_0Prefix = ">"
 	}
 	content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("a"))
+	content_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_0)
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	content_1Focused := (m.__focusID == 1)
@@ -521,14 +550,16 @@ func (m Model) View() tea.View {
 		content_1Prefix = ">"
 	}
 	content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_1Prefix + " " + fmt.Sprint("b"))
+	content_1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_1)
 	contentChildren = append(contentChildren, content_1)
 	var content_2 string
 	content_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.seen))
 	contentChildren = append(contentChildren, content_2)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -591,8 +622,8 @@ type Model struct {
 	checked__inst0 bool
 
 	__n1 *fyne.Container
-	box  *widget.Check
-	sw   *widget.Check
+	box  *fynelayout.Check
+	sw   *fynelayout.Check
 	__n0 *widget.Label
 }
 
@@ -678,12 +709,12 @@ func (m *Model) SetChecked__inst0(v bool) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = fynelayout.NewVBox()
-	m.box = widget.NewCheck("", nil)
+	m.box = fynelayout.NewCheck("", nil)
 	m.box.SetText("a")
 	m.box.SetChecked(m.on)
 	m.box.OnChanged = m.box_toggle_handler
 	m.__n1.Add(m.box)
-	m.sw = widget.NewCheck("", nil)
+	m.sw = fynelayout.NewCheck("", nil)
 	m.sw.SetText("b")
 	m.sw.SetChecked(m.checked__inst0)
 	m.sw.OnChanged = m.sw_toggle_handler
@@ -849,11 +880,13 @@ func (m *Model) buildWidgetTree() {
 	m.box = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(m.box, "a")
 	gtk4rt.CheckButtonSetActive(m.box, m.on)
+	gtk4rt.SetBool(m.box, "can-focus", true)
 	gtk4rt.Connect(m.box, "toggled", m.box_toggled_handler)
 	gtk4rt.BoxAppend(__n1, m.box)
 	m.sw = gtk4rt.New("GtkSwitch")
 	gtk4rt.SetBool(m.sw, "active", m.checked__inst0)
 	gtk4rt.SetBool(m.sw, "sensitive", true)
+	gtk4rt.SetBool(m.sw, "can-focus", true)
 	gtk4rt.Connect(m.sw, "notify::active", m.sw_notifyActive_handler)
 	gtk4rt.BoxAppend(__n1, m.sw)
 	m.__n0 = gtk4rt.New("GtkLabel")
@@ -1261,11 +1294,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7192fefe05e8e07b4cd4162df9c909c1
+pass sha256:84486bea5bf54283f5caebd55da873c1
 -- run/go/fyne --
-pass sha256:68c5a4ee52f531df05154c28f8b36143
+pass sha256:808d918eb2bce935e892113946e32247
 -- run/go/gtk4 --
-pass sha256:f4c8a4268033df1d93c55091cfc77890
+pass sha256:fac78a024640ffda2abd17393c29e1de
 -- run/go/html --
 pass sha256:985d323fd081af1276daf73983df5c47
 -- run/kotlin/android --

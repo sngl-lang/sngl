@@ -763,6 +763,9 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -800,6 +803,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, ("page=" + fmt.Sprint(m.page__inst0)))
@@ -964,7 +968,7 @@ pass sha256:30e380e4cb521bf1c704716b8de0f498
 -- run/go/fyne --
 pass sha256:c0e2d7f92c14b89f911322f530b273ca
 -- run/go/gtk4 --
-pass sha256:3bf7c9442fcb9de62682b48dc6d1afd3
+pass sha256:9e2580fa733b721639f429bbd03a1113
 -- run/kotlin/android --
 pass sha256:ffcd454c8e617cd9e6fc30af1f367735
 -- run/none/html --

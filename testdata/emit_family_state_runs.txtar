@@ -609,6 +609,9 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -646,6 +649,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
@@ -662,6 +666,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:85425280ef93aaf3525413464ccf2990
+pass sha256:e9539bce372f39935a2d65a5393b794a
 -- run/go/gtk4 --
-pass sha256:bf6d3472185f666300e728bdb8042538
+pass sha256:29632f4d562b58bec6eec4c7a456b12a

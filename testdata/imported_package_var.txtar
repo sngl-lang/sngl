@@ -128,6 +128,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -139,6 +147,7 @@ type modelState struct {
 	calls          int
 	__focusID      int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -382,6 +391,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -403,7 +418,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentChildren []string
@@ -414,15 +442,17 @@ func (m Model) View() tea.View {
 			content_0Prefix = ">"
 		}
 		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("b"))
+		content_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("calls " + fmt.Sprint(m.calls))))
 		contentChildren = append(contentChildren, content_1)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -455,7 +485,7 @@ type Model struct {
 
 	home    *fynelayout.Toplevel
 	__n1    *fyne.Container
-	__n2    *widget.Button
+	__n2    *fynelayout.Button
 	__n0    *widget.Label
 	__built bool
 }
@@ -530,7 +560,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.OnClosed = m.home_closed_handler
 	m.home.OnVisible = m.home_visible_handler
 	m.__n1 = fynelayout.NewVBox()
-	m.__n2 = widget.NewButton("", nil)
+	m.__n2 = fynelayout.NewButton("", nil)
 	m.__n2.SetText("b")
 	m.__n2.OnTapped = m.__n2_click_handler
 	m.__n1.Add(m.__n2)
@@ -596,8 +626,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1847fe31dfe51da3b8d32aaaebd79886
+pass sha256:e1f492faff776991ede7c9a89fe735e9
 -- run/go/fyne --
-pass sha256:073bd7248c3f1093c84cc820cff8275e
+pass sha256:ca348c07f4b7350759ec947060fe625f
 -- run/none/html --
 pass sha256:e4f86a287f62e506de8dd926c3803c68

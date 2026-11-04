@@ -532,7 +532,6 @@ func (m Model) View() tea.View {
 		})
 		part0Children = append(part0Children, part0_0)
 		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
-		part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0)
 	}
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
@@ -1352,6 +1351,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
@@ -1398,6 +1400,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(gtk4rt.Handle(unsafe.Pointer(m.__n0)), "drawing")
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_visible_handler)
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
 	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n1)), 1)
@@ -2007,11 +2010,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c50be8dd50c78a69edfdfc09edaea54b
+pass sha256:141c08dfd49badb428653c7da58a1ba8
 -- run/go/fyne --
 pass sha256:4a19961ae5f2c22c86eb5adb5bdb5ae8
 -- run/go/gtk4 --
-pass sha256:32ef83a9482e3b2953efa623dbb54999
+pass sha256:87855f5a4fe3ee6b32536707b87fadaa
 -- run/kotlin/android --
 pass sha256:82b9eaaea22806d0fd821929fc92067a
 -- run/none/html --

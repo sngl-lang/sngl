@@ -83,7 +83,7 @@ type Model struct {
 	__rendering1   bool
 	__renderAgain1 bool
 
-	drop *widget.Button
+	drop *fynelayout.Button
 	__n1 *widget.Label
 }
 
@@ -199,7 +199,7 @@ func (m *Model) SetLog(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.drop = widget.NewButton("", nil)
+	m.drop = fynelayout.NewButton("", nil)
 	m.drop.SetText("drop")
 	m.drop.OnTapped = m.drop_click_handler
 	m.__n1 = widget.NewLabel("")
@@ -841,6 +841,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.drop = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.drop, "drop")
+	gtk4rt.SetBool(m.drop, "can-focus", true)
 	gtk4rt.Connect(m.drop, "clicked", m.drop_clicked_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, ("log=" + m.log))
@@ -1307,9 +1308,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:ad43060835daf52eb6528e1823cdfcb7
+pass sha256:b17bfc82b674e35f0370e0d88685eff5
 -- run/go/gtk4 --
-pass sha256:49f6a19e9afe182310c0b795ee33fdd5
+pass sha256:f3e2843e035df04e3369fd926c10e4b0
 -- run/kotlin/android --
 pass sha256:b7b519e8140cb3a0efeacf45f9156a09
 -- run/none/html --

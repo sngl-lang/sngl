@@ -103,7 +103,7 @@ type Model struct {
 	__n10   *widget.Label
 	__n11   *widget.Label
 	__n12   *widget.Label
-	more    *widget.Button
+	more    *fynelayout.Button
 	__built bool
 }
 
@@ -294,7 +294,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n12 = widget.NewLabel("")
 	m.__n12.SetText("footer")
 	m.__n1.Add(m.__n12)
-	m.more = widget.NewButton("", nil)
+	m.more = fynelayout.NewButton("", nil)
 	m.more.SetText("more")
 	m.more.OnTapped = m.more_click_handler
 	m.__n1.Add(m.more)
@@ -317,7 +317,7 @@ type RowInstance struct {
 	__slot2_at   fyne.CanvasObject
 	__slot3      []fyne.CanvasObject
 	__slot3_at   fyne.CanvasObject
-	__n0         *widget.Button
+	__n0         *fynelayout.Button
 }
 
 func newRowInstance(__model *Model, __a_label string) *RowInstance {
@@ -330,7 +330,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n0 = widget.NewButton("", nil)
+	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((c.__prop_label + " ") + fmt.Sprint(c.n)))
 	c.__n0.OnTapped = func() {
 		c.n += 1
@@ -392,7 +392,7 @@ func newCardInstance(__model *Model, __a_xs []string) *CardInstance {
 	c.__renderSlot1(c.__root)
 	__n8 := widget.NewLabel("")
 	__n8.SetText("]")
-	__n9 := widget.NewButton("", nil)
+	__n9 := fynelayout.NewButton("", nil)
 	__n9.SetText("flip")
 	__n9.OnTapped = func() {
 		c.open = !c.open
@@ -654,6 +654,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
@@ -694,6 +697,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__slot3 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.n)))
+	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.n += 1
 		gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.n)))
@@ -777,6 +781,7 @@ func newCardInstance(__model *Model, __a_xs []string) *CardInstance {
 	gtk4rt.LabelSetXAlign(__n8, 0.0)
 	__n9 := gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(__n9, "flip")
+	gtk4rt.SetBool(__n9, "can-focus", true)
 	gtk4rt.Connect(__n9, "clicked", func() {
 		c.open = !c.open
 		c.__renderSlot1(c.__root)
@@ -894,6 +899,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n1, m.__n1_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__n10 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n10, "header")
@@ -911,6 +917,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n1, m.__n12)
 	m.more = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.more, "more")
+	gtk4rt.SetBool(m.more, "can-focus", true)
 	gtk4rt.Connect(m.more, "clicked", m.more_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.more)
 	gtk4rt.AppAttach(m.__n1)
@@ -928,6 +935,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:861426bc4124fb44698446297144567f
+pass sha256:836ba216a2bbc105a6ac59d20cf19fa1
 -- run/go/gtk4 --
-pass sha256:88a8afaefc7e73018c5d33c1631ccbed
+pass sha256:8adf7185565fa31d86b7d193ca6753cc

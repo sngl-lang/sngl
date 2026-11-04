@@ -136,11 +136,11 @@ func NewBox(content fyne.CanvasObject) *Box {
 	switch w := content.(type) {
 	case *widget.Label:
 		b.own.style, b.own.align, b.own.wrap = w.TextStyle, w.Alignment, w.Wrapping
-	case *widget.Button:
+	case *Button:
 		b.own.buttonAlign = w.Alignment
-	case *widget.Entry:
+	case *Entry:
 		b.own.wrap = w.Wrapping
-	case *widget.Hyperlink:
+	case *Hyperlink:
 		b.own.align, b.own.wrap = w.Alignment, w.Wrapping
 	}
 	b.ExtendBaseWidget(b)
@@ -204,11 +204,11 @@ func (b *Box) setText(l Look) {
 		style := b.own.style
 		style.Bold, style.Italic, style.Monospace = style.Bold || l.Bold, style.Italic || l.Italic, style.Monospace || l.Monospace
 		w.Alignment, w.Wrapping, w.TextStyle = align, wrap, style
-	case *widget.Button:
+	case *Button:
 		w.Alignment = buttonAlign
-	case *widget.Entry:
+	case *Entry:
 		w.Wrapping = wrap
-	case *widget.Hyperlink:
+	case *Hyperlink:
 		w.Alignment, w.Wrapping = align, wrap
 	}
 }

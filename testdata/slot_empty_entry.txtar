@@ -149,6 +149,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -160,6 +168,7 @@ type modelState struct {
 	visible__inst0 bool
 	__focusID      int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -398,6 +407,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -419,6 +434,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 // showClick activates the #show widget the way a keypress does; for tests.
 func (m *Model) showClick() {
 	prev := m.__focusID
@@ -431,6 +458,7 @@ func (m *Model) showClick() {
 }
 
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
@@ -464,11 +492,14 @@ func (m Model) View() tea.View {
 			contentPart_7Prefix = ">"
 		}
 		contentPart_7 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_7Prefix + " " + fmt.Sprint("show"))
+		contentPart_7 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_7)
 		contentParts = append(contentParts, contentPart_7)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -506,7 +537,7 @@ type Model struct {
 	__n3    *widget.Label
 	__n4    *widget.Label
 	__n1    *widget.Label
-	show    *widget.Button
+	show    *fynelayout.Button
 	__built bool
 }
 
@@ -620,7 +651,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetText(__lt11)
 	m.__n0.Add(m.__n1)
 	m.__renderSlot0(m.__n0.Container)
-	m.show = widget.NewButton("", nil)
+	m.show = fynelayout.NewButton("", nil)
 	m.show.SetText("show")
 	m.show.OnTapped = m.show_click_handler
 	m.__n0.Add(m.show)
@@ -716,6 +747,9 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -757,6 +791,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	__lt17 := "boxed full"
 	m.__n3 = gtk4rt.New("GtkLabel")
@@ -780,6 +815,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n0)
 	m.show = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.show, "show")
+	gtk4rt.SetBool(m.show, "can-focus", true)
 	gtk4rt.Connect(m.show, "clicked", m.show_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.show)
 	gtk4rt.AppAttach(m.__n0)
@@ -939,11 +975,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c5fd0db28c7c94f6a7f1ff164907d1dd
+pass sha256:2c20ac46e7f4ae1f4c30c362237756eb
 -- run/go/fyne --
-pass sha256:c04a8d988f9625bff05ce03543b89d55
+pass sha256:9870d70a99e268b6e5ffd5df24c2a02e
 -- run/go/gtk4 --
-pass sha256:d58f2dbe68f7668d64b94ece1893590e
+pass sha256:cc9203da5d4d3b0cb2e34355c031f897
 -- run/kotlin/android --
 pass sha256:b02cf01fcd90b2811d415051aa9acc81
 -- run/none/html --

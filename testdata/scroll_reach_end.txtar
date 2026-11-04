@@ -403,10 +403,8 @@ func (m Model) View() tea.View {
 		content_0Children = append(content_0Children, content_0_0)
 	}
 	content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
-	content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0)
 	contentChildren = append(contentChildren, content_0)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = BoxLook(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -1444,7 +1442,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:818db2543683a8920241798a06b283c9
+pass sha256:e21f7b35b0ca5112c45b7c647aa9f8a7
 -- run/go/fyne --
 pass sha256:52ee0924f584320b8c8c03cee986a4a1
 -- run/go/gtk4 --

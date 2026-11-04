@@ -201,7 +201,7 @@ type __child0Instance struct {
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
-	__n0         *widget.Select
+	__n0         *fynelayout.Select
 }
 
 func new__child0Instance(__model *Model, __a___p0 string, __a___on0 func(string)) *__child0Instance {
@@ -212,7 +212,7 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___on0 func(string)
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	__n3 := fynelayout.NewVBox()
-	c.__n0 = widget.NewSelect(nil, nil)
+	c.__n0 = fynelayout.NewSelect(nil, nil)
 	c.__n0.SetOptions(func() []string {
 		__out := make([]string, len([]Choice__record{Choice__record{Label: "a"}}))
 		for __i, __item := range []Choice__record{Choice__record{Label: "a"}} {
@@ -262,4 +262,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:af0560327d6c0c55cf6970837f54f1b8
+pass sha256:43b463776cbda3b5401c6e0fc59f7078

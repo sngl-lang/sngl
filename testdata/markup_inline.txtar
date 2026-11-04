@@ -606,7 +606,6 @@ func (m Model) View() tea.View {
 		content_8 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 102, G: 102, B: 102, A: 255}), FontSize: snglSome(Measurement{Px: 13}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, false).Render(content_8)
 		contentChildren = append(contentChildren, content_8)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -897,6 +896,9 @@ func New() *Model {
 func (m *Model) home_closed_handler() {
 }
 
+func (m *Model) home_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
@@ -919,6 +921,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.home, "doc")
 	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
+	gtk4rt.ToplevelOnKey(m.home, m.home_key_handler)
 	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
 	m.__n0 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n0, 1)
@@ -1543,11 +1546,11 @@ and a newline</span></p>
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:cdd61c5f70973626ea85b43af6706a45
+pass sha256:d458201c37a55ff98e028ff3c546256d
 -- run/go/fyne --
 pass sha256:df897aaadae788893c50d9ac94ca8e8a
 -- run/go/gtk4 --
-pass sha256:1fa5bd1760c1b57b0ca76d9db3cd43d6
+pass sha256:d0039fcf8bd1a4411c62d75f8416be12
 -- run/go/html --
 pass sha256:53ed55b98b2e38eca4b42793a849bc0a
 -- run/kotlin/android --

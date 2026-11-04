@@ -847,6 +847,9 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 func (m *Model) main_closed_handler() {
 }
 
+func (m *Model) main_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
@@ -1001,6 +1004,8 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 	gtk4rt.ToplevelOnClosed(c.__n1, func() {
 		c.__prop_closed()
 	})
+	gtk4rt.ToplevelOnKey(c.__n1, func(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+	})
 	gtk4rt.ToplevelOnVisible(c.__n1, func(__visible bool) {
 		c.visible = __visible
 		gtk4rt.ToplevelSetVisible(c.__n1, c.visible)
@@ -1086,6 +1091,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.main, "Main")
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
+	gtk4rt.ToplevelOnKey(m.main, m.main_key_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__n2 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n2, fmt.Sprint(m.ticks))
@@ -1103,6 +1109,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/fyne --
-pass sha256:46698beb9c6365ced7efa957bef408e6
+pass sha256:be38aedd4b7d19efac7a6f78fd19441b
 -- run/go/gtk4 --
-pass sha256:861c25f65a3b1af0a429a8bb37897cac
+pass sha256:734b747d4fe61ca25d8f02430b2d33c6

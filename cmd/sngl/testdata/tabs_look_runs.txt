@@ -148,7 +148,7 @@ output {
     }
 }
 -- testrun/bubbletea/go/app.sngl/grows/1 --
-sha256:1b5504922c3b31359af5710cd8cb7130
+sha256:2d71ddbe9d1e6f38c19bda4e6b160d82
 {
   "results": [
     {
@@ -163,7 +163,7 @@ sha256:1b5504922c3b31359af5710cd8cb7130
   }
 }
 -- testrun/bubbletea/go/app.sngl/pills/1 --
-sha256:1d2ef08885ada9f0e06a1b2618804c65
+sha256:17447e568bd271118c9185da50495674
 {
   "results": [
     {
@@ -176,7 +176,7 @@ sha256:1d2ef08885ada9f0e06a1b2618804c65
   }
 }
 -- testrun/bubbletea/go/app.sngl/strip/1 --
-sha256:e5099dcae3209e775c4d30dbb2d2eea1
+sha256:2789843411c36c3bdd22759922d67356
 {
   "results": [
     {

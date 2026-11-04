@@ -749,6 +749,9 @@ func PointPolar(center Point, radius float64, angle float64) Point {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
@@ -806,6 +809,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_visible_handler)
 	m.__n1 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n1, C.int(60))
@@ -1316,7 +1320,7 @@ pass sha256:b0d4105cb0fd961cfb7d8918d6f09f33
 -- run/go/fyne --
 pass sha256:b68b6114bf84643957dbfc33b02c6f19
 -- run/go/gtk4 --
-pass sha256:6dd10bfec7a610a798126c0ec683c947
+pass sha256:733ba811a96facb9bf850e92a7c543f1
 -- run/kotlin/android --
 pass sha256:b5484176887e5d7fbeccad03d59bfe29
 -- run/none/html --

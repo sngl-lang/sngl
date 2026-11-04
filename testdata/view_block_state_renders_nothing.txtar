@@ -854,13 +854,11 @@ func (m Model) View() tea.View {
 		var part0_0 string
 		var part0_0Children []string
 		part0_0 = lipgloss.JoinVertical(lipgloss.Left, part0_0Children...)
-		part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0)
 		part0Children = append(part0Children, part0_0)
 		var part0_1 string
 		part0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(m.total)))
 		part0Children = append(part0Children, part0_1)
 		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
-		part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0)
 	}
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
@@ -1876,6 +1874,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -2233,6 +2234,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.__n0, "mounts")
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n5 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n5, 1)
@@ -2768,10 +2770,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:735b15dab4116c18314a21e1dc2e1b04
+pass sha256:3c4401dc2a5d5527d6ec081bc41a6247
 -- run/go/fyne --
 pass sha256:ffb66fdf4d3490d79284b06625b4a96a
 -- run/go/gtk4 --
-pass sha256:b2658491446164b31397807ae7ca0ecb
+pass sha256:639fdc0910c2c3e309674906febf8a8a
 -- run/none/html --
 pass sha256:09403f942127fe0415b3825f928d07a7

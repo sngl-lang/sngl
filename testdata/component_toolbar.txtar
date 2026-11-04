@@ -111,6 +111,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -121,6 +129,7 @@ type modelState struct {
 	visible__inst0 bool
 	__focusID      int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -357,6 +366,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -376,7 +391,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentChildren []string
@@ -387,6 +415,7 @@ func (m Model) View() tea.View {
 			content_0Prefix = ">"
 		}
 		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("New"))
+		content_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		content_1Focused := (m.__focusID == 1)
@@ -395,6 +424,7 @@ func (m Model) View() tea.View {
 			content_1Prefix = ">"
 		}
 		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_1Prefix + " " + fmt.Sprint("Open"))
+		content_1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_1)
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
 		content_2Focused := (m.__focusID == 2)
@@ -403,12 +433,14 @@ func (m Model) View() tea.View {
 			content_2Prefix = ">"
 		}
 		content_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_2Prefix + " " + fmt.Sprint("Save"))
+		content_2 = m.__clicks.Mark(snglStop{slot: 2, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_2)
 		contentChildren = append(contentChildren, content_2)
 		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -429,7 +461,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -439,9 +470,9 @@ type Model struct {
 
 	__n0    *fynelayout.Toplevel
 	__n1    *fyne.Container
-	__n2    *widget.Button
-	__n3    *widget.Button
-	__n4    *widget.Button
+	__n2    *fynelayout.Button
+	__n3    *fynelayout.Button
+	__n4    *fynelayout.Button
 	__built bool
 }
 
@@ -488,15 +519,15 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = fynelayout.NewHBox()
-	m.__n2 = widget.NewButton("", nil)
+	m.__n2 = fynelayout.NewButton("", nil)
 	m.__n2.SetText("New")
 	m.__n2.OnTapped = m.__n2_click_handler
 	m.__n1.Add(m.__n2)
-	m.__n3 = widget.NewButton("", nil)
+	m.__n3 = fynelayout.NewButton("", nil)
 	m.__n3.SetText("Open")
 	m.__n3.OnTapped = m.__n3_click_handler
 	m.__n1.Add(m.__n3)
-	m.__n4 = widget.NewButton("", nil)
+	m.__n4 = fynelayout.NewButton("", nil)
 	m.__n4.SetText("Save")
 	m.__n4.OnTapped = m.__n4_click_handler
 	m.__n1.Add(m.__n4)
@@ -599,9 +630,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:39394093ef0c465a5fd510820cb84ff5
+pass sha256:8c516f162cd120cb410bd909893a9a2f
 -- run/go/fyne --
-pass sha256:f72113213c51ad4d7802eb29e075cf75
+pass sha256:fc9eb38d4893eea30cf5fcad2c1bd965
 -- run/kotlin/android --
 pass sha256:8bf49db0400792ab28370987f00642eb
 -- run/none/html --

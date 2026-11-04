@@ -193,6 +193,14 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -210,6 +218,7 @@ type modelState struct {
 	inner__inst1   string
 	__focusID      int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -564,6 +573,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -631,6 +646,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 // allClick activates the #all widget the way a keypress does; for tests.
 func (m *Model) allClick() {
 	prev := m.__focusID
@@ -654,6 +681,7 @@ func (m *Model) all__1Click() {
 }
 
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
@@ -668,18 +696,17 @@ func (m Model) View() tea.View {
 			contentPart_0_0_0Prefix = ">"
 		}
 		contentPart_0_0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_0_0_0Prefix + " " + fmt.Sprint("all"))
+		contentPart_0_0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_0_0_0)
 		contentPart_0_0Children = append(contentPart_0_0Children, contentPart_0_0_0)
 		var contentPart_0_0_1 string
 		contentPart_0_0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.inner__inst0))
 		contentPart_0_0Children = append(contentPart_0_0Children, contentPart_0_0_1)
 		contentPart_0_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0_0Children...)
-		contentPart_0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_0_0)
 		contentPart_0Children = append(contentPart_0Children, contentPart_0_0)
 		var contentPart_0_1 string
 		contentPart_0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((fmt.Sprint(m.count__inst0) + " ") + fmt.Sprint(m.picked__inst0))))
 		contentPart_0Children = append(contentPart_0Children, contentPart_0_1)
 		contentPart_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0Children...)
-		contentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_0)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		var contentPart_1Children []string
@@ -692,20 +719,21 @@ func (m Model) View() tea.View {
 			contentPart_1_0_0Prefix = ">"
 		}
 		contentPart_1_0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1_0_0Prefix + " " + fmt.Sprint("all"))
+		contentPart_1_0_0 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_1_0_0)
 		contentPart_1_0Children = append(contentPart_1_0Children, contentPart_1_0_0)
 		var contentPart_1_0_1 string
 		contentPart_1_0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.inner__inst1))
 		contentPart_1_0Children = append(contentPart_1_0Children, contentPart_1_0_1)
 		contentPart_1_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1_0Children...)
-		contentPart_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1_0)
 		contentPart_1Children = append(contentPart_1Children, contentPart_1_0)
 		contentPart_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1Children...)
-		contentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1)
 		contentParts = append(contentParts, contentPart_1)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -757,12 +785,12 @@ type Model struct {
 	__n0    *fynelayout.Toplevel
 	__n4    *fyne.Container
 	__n5    *fyne.Container
-	all     *widget.Button
+	all     *fynelayout.Button
 	__n1    *widget.Label
 	__n2    *widget.Label
 	__n6    *fyne.Container
 	__n7    *fyne.Container
-	all__1  *widget.Button
+	all__1  *fynelayout.Button
 	__n3    *widget.Label
 	__built bool
 }
@@ -933,7 +961,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n4 = fynelayout.NewVBox()
 	m.__n5 = fynelayout.NewVBox()
-	m.all = widget.NewButton("", nil)
+	m.all = fynelayout.NewButton("", nil)
 	m.all.SetText("all")
 	m.all.OnTapped = m.all_click_handler
 	m.__n5.Add(m.all)
@@ -947,7 +975,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.Add(m.__n4)
 	m.__n6 = fynelayout.NewVBox()
 	m.__n7 = fynelayout.NewVBox()
-	m.all__1 = widget.NewButton("", nil)
+	m.all__1 = fynelayout.NewButton("", nil)
 	m.all__1.SetText("all")
 	m.all__1.OnTapped = m.all__1_click_handler
 	m.__n7.Add(m.all__1)
@@ -1041,6 +1069,9 @@ func New() *Model {
 }
 
 func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -1174,6 +1205,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n4, 1)
@@ -1183,6 +1215,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.SetLook(m.__n5, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.all = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.all, "all")
+	gtk4rt.SetBool(m.all, "can-focus", true)
 	gtk4rt.Connect(m.all, "clicked", m.all_clicked_handler)
 	gtk4rt.BoxAppend(m.__n5, m.all)
 	m.__n1 = gtk4rt.New("GtkLabel")
@@ -1203,6 +1236,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.SetLook(m.__n7, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.all__1 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.all__1, "all")
+	gtk4rt.SetBool(m.all__1, "can-focus", true)
 	gtk4rt.Connect(m.all__1, "clicked", m.all__1_clicked_handler)
 	gtk4rt.BoxAppend(m.__n7, m.all__1)
 	m.__n3 = gtk4rt.New("GtkLabel")
@@ -1560,11 +1594,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:fd5803a36e88990736dc546c2bf4e5a5
+pass sha256:4c46d3d919824d9a280ac69b6432adca
 -- run/go/fyne --
-pass sha256:6716287377f63868d535f9d05859d48c
+pass sha256:82433ed73fec82617bd6c096b7788861
 -- run/go/gtk4 --
-pass sha256:17f4426e03cd2efea47b5c141ed218a6
+pass sha256:7302b9efb3954ca0daeed8f7c602586f
 -- run/kotlin/android --
 pass sha256:a4d2fd211cc9f0d8fe3e2b50f47faa45
 -- run/none/html --

@@ -85,11 +85,11 @@ type Model struct {
 	one     *fynelayout.Toplevel
 	__n3    *widget.Label
 	__n4    *widget.Label
-	more    *widget.Button
+	more    *fynelayout.Button
 	two     *fynelayout.Toplevel
 	__n5    *widget.Label
 	__n6    *widget.Label
-	note    *widget.Button
+	note    *fynelayout.Button
 	__built bool
 }
 
@@ -321,7 +321,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n4 = widget.NewLabel("")
 	m.__n4.SetText("one foot")
 	m.one.Add(m.__n4)
-	m.more = widget.NewButton("", nil)
+	m.more = fynelayout.NewButton("", nil)
 	m.more.SetText("more")
 	m.more.OnTapped = m.more_click_handler
 	m.one.Add(m.more)
@@ -338,7 +338,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n6 = widget.NewLabel("")
 	m.__n6.SetText("two foot")
 	m.two.Add(m.__n6)
-	m.note = widget.NewButton("", nil)
+	m.note = fynelayout.NewButton("", nil)
 	m.note.SetText("note")
 	m.note.OnTapped = m.note_click_handler
 	m.two.Add(m.note)
@@ -357,7 +357,7 @@ type RowInstance struct {
 	__slot0_at   fyne.CanvasObject
 	__slot1      []fyne.CanvasObject
 	__slot1_at   fyne.CanvasObject
-	__n0         *widget.Button
+	__n0         *fynelayout.Button
 }
 
 func newRowInstance(__model *Model, __a_label string) *RowInstance {
@@ -368,7 +368,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__n0 = widget.NewButton("", nil)
+	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((c.__prop_label + " ") + fmt.Sprint(c.n)))
 	c.__n0.OnTapped = func() {
 		c.n += 1
@@ -552,6 +552,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) one_closed_handler() {
 }
 
+func (m *Model) one_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) one_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.one, m.visible__inst0)
@@ -565,6 +568,9 @@ func (m *Model) more_clicked_handler() {
 }
 
 func (m *Model) two_closed_handler() {
+}
+
+func (m *Model) two_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) two_visible_handler(__visible bool) {
@@ -600,6 +606,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__slot1 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.n)))
+	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.n += 1
 		gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.n)))
@@ -668,6 +675,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.one, "One")
 	gtk4rt.ToplevelSetVisible(m.one, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.one, m.one_closed_handler)
+	gtk4rt.ToplevelOnKey(m.one, m.one_key_handler)
 	gtk4rt.ToplevelOnVisible(m.one, m.one_visible_handler)
 	m.__n3 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n3, "one head")
@@ -680,6 +688,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.one, m.__n4)
 	m.more = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.more, "more")
+	gtk4rt.SetBool(m.more, "can-focus", true)
 	gtk4rt.Connect(m.more, "clicked", m.more_clicked_handler)
 	gtk4rt.BoxAppend(m.one, m.more)
 	gtk4rt.AppAttach(m.one)
@@ -687,6 +696,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.two, "Two")
 	gtk4rt.ToplevelSetVisible(m.two, m.visible__inst1)
 	gtk4rt.ToplevelOnClosed(m.two, m.two_closed_handler)
+	gtk4rt.ToplevelOnKey(m.two, m.two_key_handler)
 	gtk4rt.ToplevelOnVisible(m.two, m.two_visible_handler)
 	m.__n5 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n5, "two head")
@@ -699,6 +709,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.two, m.__n6)
 	m.note = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.note, "note")
+	gtk4rt.SetBool(m.note, "can-focus", true)
 	gtk4rt.Connect(m.note, "clicked", m.note_clicked_handler)
 	gtk4rt.BoxAppend(m.two, m.note)
 	gtk4rt.AppAttach(m.two)
@@ -721,6 +732,6 @@ func (m *Model) noteClick() {
 	gtk4rt.Emit(m.note, "clicked")
 }
 -- run/go/fyne --
-pass sha256:fbf8f3778ddaaec857ad3bde91edd2ac
+pass sha256:5b2ecc5232ef1c21e4137c42b4729b7e
 -- run/go/gtk4 --
-pass sha256:150a00fd362defe68a08f1c1b00e9bd7
+pass sha256:afdf0a9694b07c7034c7c6d79cd35bb7

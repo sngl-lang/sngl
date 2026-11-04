@@ -483,6 +483,9 @@ func LineJoinFunc(join string) C.cairo_line_join_t {
 func (m *Model) w_closed_handler() {
 }
 
+func (m *Model) w_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) w_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.w)), m.visible__inst0)
@@ -511,6 +514,7 @@ func (m *Model) buildWidgetTree() {
 	m.w = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.w)), m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.w)), m.w_closed_handler)
+	gtk4rt.ToplevelOnKey(gtk4rt.Handle(unsafe.Pointer(m.w)), m.w_key_handler)
 	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.w)), m.w_visible_handler)
 	m.__n0 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n0, C.int(200))
@@ -867,7 +871,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:270cf44ca04ebd31cd73a28f04b2dac1
 -- run/go/gtk4 --
-pass sha256:9ad8f6c8d05667c276662af8085f0b69
+pass sha256:d6b3aece28a059d5eb105ccb5c1879b8
 -- run/kotlin/android --
 pass sha256:ec0a55771ac523739433aa6069e1cb13
 -- run/none/html --

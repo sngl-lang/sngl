@@ -533,6 +533,9 @@ func New() *Model {
 func (m *Model) home_closed_handler() {
 }
 
+func (m *Model) home_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
@@ -555,6 +558,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.home, "t")
 	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
+	gtk4rt.ToplevelOnKey(m.home, m.home_key_handler)
 	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
 	m.__n0 = gtk4rt.FlowNew()
 	gtk4rt.LabelSetMarkup(m.__n0, "<tt><span foreground=\"#FF7B72\">func</span> <span foreground=\"#D2A8FF\">main</span></tt>")
@@ -660,7 +664,7 @@ pass sha256:ab47dfe2b31cdec6df34217c15f5dadf
 -- run/go/fyne --
 pass sha256:4cb40b2485d7b46ef74a968719b557cc
 -- run/go/gtk4 --
-pass sha256:018b39ac4157e1c4abc60d49cc5d0fb0
+pass sha256:0070317f4de7e48dcd4e89ec1b7dfac2
 -- run/kotlin/android --
 pass sha256:87c510780598cdd0670e5695b4a347df
 -- run/none/html --

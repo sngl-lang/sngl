@@ -388,7 +388,6 @@ func (m Model) View() tea.View {
 			contentChildren = append(contentChildren, content_1)
 		}
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -430,6 +429,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ed215d80155a7152b182b093be10ecb5
+pass sha256:b29784e5c54033040c786e74d7a324d5
 -- run/none/html --
 pass sha256:3a006014a174cf6a0dc9a0dcbcfdedc5

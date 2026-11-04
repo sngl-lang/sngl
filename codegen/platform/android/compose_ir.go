@@ -580,7 +580,14 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 		switch {
 		case p.Name == "then":
 		case p.Name == "modifier":
-			args = append(args, "modifier = "+cc.intrinsicModifier(n))
+			// A modifier the declaration defaults is left to Compose where
+			// it is the empty chain, as a control rendered beside its label
+			// mostly is.
+			m := cc.intrinsicModifier(n)
+			if p.Default != nil && m == cc.kc.Name(ktModifier) {
+				continue
+			}
+			args = append(args, "modifier = "+m)
 		default:
 			v := codegen.NodeProp(n, p.Name)
 			// An argument that is the declaration's default -- Compose's own,

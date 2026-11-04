@@ -62,7 +62,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -91,7 +90,7 @@ type Model struct {
 	__n1    *fyne.Container
 	__n2    *canvas.Image
 	__n2Ctx *snglcanvas.Context
-	__n3    *widget.Button
+	__n3    *fynelayout.Button
 	__built bool
 }
 
@@ -175,7 +174,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.FillMode = canvas.ImageFillOriginal
 	m.__n2.SetMinSize(fyne.NewSize(40, 40))
 	m.__n1.Add(m.__n2)
-	m.__n3 = widget.NewButton("", nil)
+	m.__n3 = fynelayout.NewButton("", nil)
 	m.__n3.SetText("go")
 	m.__n3.OnTapped = m.__n3_click_handler
 	m.__n1.Add(m.__n3)
@@ -192,4 +191,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:4d63d561c27ae11b26a3fff1353b5527
+pass sha256:f3ade52e5a09eacdc473d6be8caf8677

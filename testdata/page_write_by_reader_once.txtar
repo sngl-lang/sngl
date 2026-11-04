@@ -68,7 +68,7 @@ type Model struct {
 	__n6           *fyne.Container
 	__n2           *widget.Label
 	__built        bool
-	__named_go__r0 *widget.Button
+	__named_go__r0 *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -213,7 +213,7 @@ type FlipInstance struct {
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__n4           *fyne.Container
-	go__r0         *widget.Button
+	go__r0         *fynelayout.Button
 	line           *widget.Label
 }
 
@@ -229,7 +229,7 @@ func newFlipInstance(__model *Model, __a_n int) *FlipInstance {
 	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__n4 = fynelayout.NewVBox()
-	c.go__r0 = widget.NewButton("", nil)
+	c.go__r0 = fynelayout.NewButton("", nil)
 	c.go__r0.SetText("flip")
 	c.go__r0.OnTapped = func() {
 		c.flips = (c.flips + 1)
@@ -478,6 +478,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
@@ -517,6 +520,7 @@ func newFlipInstance(__model *Model, __a_n int) *FlipInstance {
 	gtk4rt.SetLook(c.__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
 	c.go__r0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.go__r0, "flip")
+	gtk4rt.SetBool(c.go__r0, "can-focus", true)
 	gtk4rt.Connect(c.go__r0, "clicked", func() {
 		c.flips = (c.flips + 1)
 		c.__model.shown = !c.__model.shown
@@ -688,6 +692,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n1, m.__n1_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__n6 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n6, 1)
@@ -969,8 +974,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:5224c56c6b1b03022697f8f78db9f760
+pass sha256:4e5d8f3b3e18fd5d7d9c8900b94df048
 -- run/go/gtk4 --
-pass sha256:55fc6ddef4dd39f3d38e169e4178e4a3
+pass sha256:83377dbd56e4c074ea08dccf32274bd0
 -- run/none/html --
 pass sha256:f235757220114d4cf1386a00f57d4314

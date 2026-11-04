@@ -75,7 +75,7 @@ type Model struct {
 
 	__n0    *fynelayout.Toplevel
 	out     *widget.Label
-	load    *widget.Button
+	load    *fynelayout.Button
 	__built bool
 }
 
@@ -180,7 +180,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.out = widget.NewLabel("")
 	m.out.SetText(m.greeting__inst0)
 	m.__n0.Add(m.out)
-	m.load = widget.NewButton("", nil)
+	m.load = fynelayout.NewButton("", nil)
 	m.load.SetText("load")
 	m.load.OnTapped = m.load_click_handler
 	m.__n0.Add(m.load)
@@ -196,4 +196,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:fe88e159b4fe7951a8eca0f82e7e642b
+pass sha256:d88ca116dbf6e2f42f85179534b1c33b

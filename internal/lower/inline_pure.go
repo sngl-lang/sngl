@@ -1708,7 +1708,8 @@ func deepCloneSlots(slots map[string]*ir.SlotContent) map[string]*ir.SlotContent
 // it: its handlers' bodies and the content it hands the component's slots,
 // which are spliced into the component's body where its own names are in
 // scope. A name the code declares for itself -- a handler's parameter, a
-// lambda's, a population's, a local -- is its own and shadows nothing.
+// lambda's, a population's, a local -- is its own and shadows nothing, but
+// for a handler's locals, which an emit's arguments are substituted beside.
 func callsiteNames(callsite *ir.NodeInst) map[string]bool {
 	var roots []any
 	own := map[ir.Symbol]bool{}
@@ -1764,6 +1765,22 @@ func callsiteNames(callsite *ir.NodeInst) map[string]bool {
 		_ = ir.WalkExprs(root, func(e ir.Expr) error {
 			if id, ok := e.(*ir.Ident); ok && !own[id.Sym] {
 				names[id.Name] = true
+			}
+			return nil
+		})
+	}
+	// A local a handler declares is its own, but the handler's block is
+	// spliced where the body's emit stood, and the emit's arguments -- a
+	// body's parameter among them -- are substituted into it: a window's
+	// `@key(k) { key(k) }` given `@key(name) { var k = keyFor(name) }` read
+	// `var k = keyFor(k)`.
+	for _, h := range callsite.Handlers {
+		if h.Func == nil {
+			continue
+		}
+		_ = ir.Walk(h.Func.Block, func(n ir.Node) error {
+			if v, ok := n.(*ir.LocalVar); ok {
+				names[v.Name] = true
 			}
 			return nil
 		})

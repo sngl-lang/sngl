@@ -372,6 +372,9 @@ func LineOf(s Style) string {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -421,6 +424,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.__n0, "Style")
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n4, 1)
@@ -447,6 +451,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n4, m.__n3)
 	m.__n6 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n6, "recolor")
+	gtk4rt.SetBool(m.__n6, "can-focus", true)
 	gtk4rt.SetLook(m.__n6, gtk4rt.Look{Css: "min-width: 200px; border-radius: 4px; border-color: #ff0000; border-width: 2px; border-style: dashed; ", Height: 32.0})
 	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(m.__n4, m.__n6)
@@ -460,11 +465,13 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.SetLook(m.__n8, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n9 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n9, "one")
+	gtk4rt.SetBool(m.__n9, "can-focus", true)
 	gtk4rt.SetLook(m.__n9, gtk4rt.Look{Css: "margin-top: 4px; margin-right: 4px; margin-bottom: 4px; margin-left: 4px; ", Grow: 1.0})
 	gtk4rt.Connect(m.__n9, "clicked", m.__n9_clicked_handler)
 	gtk4rt.BoxAppend(m.__n8, m.__n9)
 	m.__n10 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n10, "two")
+	gtk4rt.SetBool(m.__n10, "can-focus", true)
 	gtk4rt.SetLook(m.__n10, gtk4rt.Look{Css: "margin-left: 16px; ", Grow: 2.0})
 	gtk4rt.Connect(m.__n10, "clicked", m.__n10_clicked_handler)
 	gtk4rt.BoxAppend(m.__n8, m.__n10)
@@ -494,4 +501,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/gtk4 --
-pass sha256:156ecb81161e9478d08406e17a9be037
+pass sha256:a6ce094ff4b28dae7263bd42579457ce

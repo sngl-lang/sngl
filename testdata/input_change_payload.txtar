@@ -79,7 +79,7 @@ type Model struct {
 	__renderAgain0 bool
 
 	__n6 *fyne.Container
-	__n3 *widget.Entry
+	__n3 *fynelayout.Entry
 	__n4 *widget.Label
 }
 
@@ -196,7 +196,7 @@ func (m *Model) SetValue__inst0(v string) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n6 = fynelayout.NewVBox()
-	m.__n3 = widget.NewEntry()
+	m.__n3 = fynelayout.NewEntry()
 	m.__n3.SetText(m.value__inst0)
 	m.__n3.SetPlaceHolder("")
 	m.__n3.OnChanged = m.__n3_input_handler
@@ -221,8 +221,8 @@ type RowInstance struct {
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
-	__n0         *widget.Entry
-	__n1         *widget.Entry
+	__n0         *fynelayout.Entry
+	__n1         *fynelayout.Entry
 	__n2         *widget.Label
 }
 
@@ -236,7 +236,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	__n7 := fynelayout.NewVBox()
-	c.__n0 = widget.NewEntry()
+	c.__n0 = fynelayout.NewEntry()
 	c.__n0.SetText(c.value__inst1)
 	c.__n0.SetPlaceHolder("")
 	c.__n0.OnChanged = func(v string) {
@@ -252,7 +252,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		c.__n2.SetText(c.committed)
 	}
 	__n7.Add(c.__n0)
-	c.__n1 = widget.NewMultiLineEntry()
+	c.__n1 = fynelayout.NewMultiLineEntry()
 	c.__n1.SetText(c.value__inst2)
 	c.__n1.SetPlaceHolder("")
 	c.__n1.SetMinRowsVisible(0)
@@ -557,6 +557,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.OrientableSetOrientation(__n4, 1)
 	gtk4rt.SetLook(__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
 	c.entry = gtk4rt.New("GtkEntry")
+	gtk4rt.SetBool(c.entry, "can-focus", true)
 	gtk4rt.Connect(c.entry, "changed", func() {
 		if gtk4rt.EditableGetText(c.entry) != c.value__inst1 {
 			c.value__inst1 = gtk4rt.EditableGetText(c.entry)
@@ -571,6 +572,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	})
 	gtk4rt.BoxAppend(__n4, c.entry)
 	c.entry__1 = gtk4rt.New("GtkEntry")
+	gtk4rt.SetBool(c.entry__1, "can-focus", true)
 	gtk4rt.Connect(c.entry__1, "changed", func() {
 		if gtk4rt.EditableGetText(c.entry__1) != c.value__inst2 {
 			c.value__inst2 = gtk4rt.EditableGetText(c.entry__1)
@@ -719,6 +721,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.OrientableSetOrientation(__n3, 1)
 	gtk4rt.SetLook(__n3, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.entry = gtk4rt.New("GtkEntry")
+	gtk4rt.SetBool(m.entry, "can-focus", true)
 	gtk4rt.Connect(m.entry, "changed", m.entry_changed_handler)
 	gtk4rt.Connect(m.entry, "activate", m.entry_activate_handler)
 	gtk4rt.BoxAppend(__n3, m.entry)
@@ -764,6 +767,6 @@ func (m *Model) entry__1Change(v string) {
 	gtk4rt.Emit(m.__named_entry__1, "activate")
 }
 -- run/go/fyne --
-pass sha256:86ff63a6776e1f9424cfdfca99827b46
+pass sha256:795533de48e8ad8b70dee975d2ba1273
 -- run/go/gtk4 --
-pass sha256:74c12d7189da6e3b5abb7ee9e3cc449b
+pass sha256:f708097d90ca3ea685f2a695c4ba3beb

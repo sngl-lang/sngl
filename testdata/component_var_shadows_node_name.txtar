@@ -390,7 +390,6 @@ func (m Model) View() tea.View {
 		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(m.progress__inst0)))
 		contentChildren = append(contentChildren, content_1)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -697,6 +696,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
@@ -766,6 +768,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n1, m.__n1_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__n5 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n5, 1)
@@ -1082,11 +1085,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7b75e7b0f6a139a4e60518716e4aea17
+pass sha256:75bd974c09dbffd027512dd8119a64bf
 -- run/go/fyne --
 pass sha256:3bfd7e0333ae1ffa5153dbc8de575cb8
 -- run/go/gtk4 --
-pass sha256:eeeee90f2868c79479978b243ce13610
+pass sha256:cd0148ac94e4886a6a114b297b79dd71
 -- run/kotlin/android --
 pass sha256:07cb1ed97f4a9c906c0f5ba671658cb9
 -- run/none/html --

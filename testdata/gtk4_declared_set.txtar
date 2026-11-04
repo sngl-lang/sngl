@@ -165,6 +165,9 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -241,6 +244,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.__n0, "t")
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n5 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n5, 1)
@@ -262,6 +266,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.SetString(m.__n6, "placeholder-text", "name")
 	gtk4rt.BoxAppend(m.__n5, m.__n6)
 	m.entry = gtk4rt.New("GtkEntry")
+	gtk4rt.SetBool(m.entry, "can-focus", true)
 	gtk4rt.Connect(m.entry, "changed", m.entry_changed_handler)
 	gtk4rt.Connect(m.entry, "activate", m.entry_activate_handler)
 	gtk4rt.BoxAppend(m.__n5, m.entry)
@@ -293,4 +298,4 @@ func (m *Model) entryChange(v string) {
 	gtk4rt.Emit(m.entry, "activate")
 }
 -- run/go/gtk4 --
-pass sha256:4de1a5f5674409d4afef28dc12f0dc5f
+pass sha256:9033040f04f9d40ee2e0c68c6dff4867

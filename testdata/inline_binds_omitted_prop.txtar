@@ -374,10 +374,8 @@ func (m Model) View() tea.View {
 		contentPart_0_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("one"))
 		contentPart_0_1Children = append(contentPart_0_1Children, contentPart_0_1_0)
 		contentPart_0_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0_1Children...)
-		contentPart_0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_0_1)
 		contentPart_0Children = append(contentPart_0Children, contentPart_0_1)
 		contentPart_0 = tui.Spaced(true, lipgloss.Top, 1, contentPart_0Children...)
-		contentPart_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "start", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_0)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		var contentPart_1Children []string
@@ -390,10 +388,8 @@ func (m Model) View() tea.View {
 		contentPart_1_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("two"))
 		contentPart_1_1Children = append(contentPart_1_1Children, contentPart_1_1_0)
 		contentPart_1_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1_1Children...)
-		contentPart_1_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1_1)
 		contentPart_1Children = append(contentPart_1Children, contentPart_1_1)
 		contentPart_1 = tui.Spaced(true, lipgloss.Top, 1, contentPart_1Children...)
-		contentPart_1 = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "start", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1)
 		contentParts = append(contentParts, contentPart_1)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
@@ -439,6 +435,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3c70e97839fa63a76a19beae72a775a2
+pass sha256:26c3fb0b3afed85bf93b66cf0975592b
 -- run/none/html --
 pass sha256:01e654195fd41434281bfddf24dc3e04

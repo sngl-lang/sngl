@@ -73,10 +73,7 @@ func OverlayCenter(base, box string, w, h int, dim bool) string {
 	if dim {
 		bg = dimBase(base)
 	}
-	bw := lipgloss.Width(box)
-	bh := lipgloss.Height(box)
-	x := (cw - bw) / 2
-	y := (ch - bh) / 2
+	x, y := OverlayAt(base, box, "center", w, h)
 	return composite(bg, box, x, y, cw, ch)
 }
 
@@ -89,21 +86,26 @@ func OverlaySide(base, box, side string, w, h int) string {
 		return base
 	}
 	cw, ch := overlayDims(base, w, h)
+	x, y := OverlayAt(base, box, side, w, h)
+	return composite(base, box, x, y, cw, ch)
+}
+
+// OverlayAt is the column and row of the top left corner of box, composited
+// over base at placement: "center" as OverlayCenter puts a modal, or the edge
+// OverlaySide anchors a drawer to.
+func OverlayAt(base, box, placement string, w, h int) (x, y int) {
+	cw, ch := overlayDims(base, w, h)
 	bw := lipgloss.Width(box)
 	bh := lipgloss.Height(box)
-
-	var x, y int
-	switch side {
-	case "left":
-		x, y = 0, 0
-	case "top":
+	switch placement {
+	case "center":
+		x, y = (cw-bw)/2, (ch-bh)/2
+	case "left", "top":
 		x, y = 0, 0
 	case "bottom":
 		x, y = 0, ch-bh
-	case "right":
-		x, y = cw-bw, 0
 	default:
 		x, y = cw-bw, 0
 	}
-	return composite(base, box, x, y, cw, ch)
+	return max(x, 0), max(y, 0)
 }

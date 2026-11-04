@@ -81,9 +81,9 @@ type Model struct {
 	got__inst1     string
 
 	__n0        *fynelayout.Toplevel
-	ask__reach0 *widget.Button
+	ask__reach0 *fynelayout.Button
 	__n1        *widget.Label
-	ask__reach1 *widget.Button
+	ask__reach1 *fynelayout.Button
 	__n2        *widget.Label
 	__built     bool
 }
@@ -165,14 +165,14 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.ask__reach0 = widget.NewButton("", nil)
+	m.ask__reach0 = fynelayout.NewButton("", nil)
 	m.ask__reach0.SetText("ask")
 	m.ask__reach0.OnTapped = m.ask__reach0_click_handler
 	m.__n0.Add(m.ask__reach0)
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText(m.got__inst0)
 	m.__n0.Add(m.__n1)
-	m.ask__reach1 = widget.NewButton("", nil)
+	m.ask__reach1 = fynelayout.NewButton("", nil)
 	m.ask__reach1.SetText("ask")
 	m.ask__reach1.OnTapped = m.ask__reach1_click_handler
 	m.__n0.Add(m.ask__reach1)
@@ -402,7 +402,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:36ccbd2886fd27685f4f59c2d10fd456
+pass sha256:9c42ee4f7dfa400f09ba1ef469e2fc4c
 -- run/kotlin/android --
 pass sha256:b69ce611fb1051fedbb642ff9e99846e
 -- run/none/html --

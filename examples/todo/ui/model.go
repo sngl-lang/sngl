@@ -92,6 +92,14 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -114,6 +122,8 @@ type modelState struct {
 
 	widget0 textinput.Model
 
+	__clicks      tui.Clicks[snglStop]
+	__pressing    bool
 	width, height int
 }
 
@@ -546,6 +556,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.resizeWidgets()
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -570,11 +586,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.widget0.Blur()
 			}
-		case msg.Code == tea.KeyEnter && m.__focusID == 1:
+		case msg.Code == tea.KeyEnter && m.__focusID == 1 && (m.__pressing || m.__focusShown()):
 			m.todos = append(m.todos, Todo{Text: m.newTodo})
 			m.newTodo = ""
 			m.__effects0_settle()
-		case msg.Code == tea.KeySpace && m.__focusID == 2:
+		case msg.Code == tea.KeySpace && m.__focusID == 2 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos2 := 0
 				for index, item := range m.todos {
@@ -601,7 +617,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					__focusPos2++
 				}
 			}()
-		case msg.Code == tea.KeyEnter && m.__focusID == 3:
+		case msg.Code == tea.KeyEnter && m.__focusID == 3 && (m.__pressing || m.__focusShown()):
 			if __i := (len(m.todos) - 1); __i >= 0 && __i < len(m.todos) {
 				m.todos = append(m.todos[:__i], m.todos[__i+1:]...)
 			}
@@ -623,7 +639,42 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	prev := [...]int{m.__focusID, m.__focusLoop2_cursor}
+	m.__focusID = s.slot
+	switch s.slot {
+	case 2:
+		m.__focusLoop2_cursor = s.pos
+	}
+	tabbed := m.__focusShown()
+	if m.__focusID == 0 {
+		m.widget0.Focus()
+	} else {
+		m.widget0.Blur()
+	}
+	var cmd tea.Cmd
+	if s.press {
+		m.__pressing = true
+		_, cmd = m.Update(s.key)
+		m.__pressing = false
+	}
+	if !tabbed {
+		m.__focusID = prev[0]
+		m.__focusLoop2_cursor = prev[1]
+		if m.__focusID == 0 {
+			m.widget0.Focus()
+		} else {
+			m.widget0.Blur()
+		}
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var parts []string
 	var part0 string
 	if m.visible__inst0 {
@@ -635,14 +686,16 @@ func (m Model) View() tea.View {
 		var part0_1Children []string
 		var part0_1_0 string
 		part0_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(m.widget0.View())
+		part0_1_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: false, key: tea.KeyPressMsg{}}, part0_1_0)
 		part0_1Children = append(part0_1Children, part0_1_0)
 		var part0_1_1 string
-		part0_1_1Focused := (m.__focusID == 1)
+		part0_1_1Focused := (m.__focusID == 1) && m.__focusShown()
 		part0_1_1Prefix := " "
 		if part0_1_1Focused {
 			part0_1_1Prefix = ">"
 		}
 		part0_1_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1_1Prefix + " " + fmt.Sprint("Add"))
+		part0_1_1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_1_1)
 		part0_1Children = append(part0_1Children, part0_1_1)
 		part0_1 = tui.Spaced(true, lipgloss.Center, 1, part0_1Children...)
 		part0_1 = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).AlignVertical(lipgloss.Center).Render(part0_1)
@@ -657,12 +710,13 @@ func (m Model) View() tea.View {
 			_ = index
 			_ = item
 			var part0_2_0Item string
-			part0_2_0ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
+			part0_2_0ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2)) && m.__focusShown()
 			part0_2_0ItemPrefix := " "
 			if part0_2_0ItemFocused {
 				part0_2_0ItemPrefix = ">"
 			}
 			part0_2_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2_0ItemPrefix + " " + fmt.Sprint(item.Text))
+			part0_2_0Item = m.__clicks.Mark(snglStop{slot: 2, pos: __focusPos2, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, part0_2_0Item)
 			__focusPos2++
 			part0_2_0Items = append(part0_2_0Items, part0_2_0Item)
 		}
@@ -671,22 +725,24 @@ func (m Model) View() tea.View {
 			part0_2Children = append(part0_2Children, part0_2_0)
 		}
 		part0_2 = tui.Spaced(false, lipgloss.Left, 1, part0_2Children...)
-		part0_2 = BoxLook(Style{Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2)
 		part0Children = append(part0Children, part0_2)
 		var part0_3 string
-		part0_3Focused := (m.__focusID == 3)
+		part0_3Focused := (m.__focusID == 3) && m.__focusShown()
 		part0_3Prefix := " "
 		if part0_3Focused {
 			part0_3Prefix = ">"
 		}
 		part0_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "center", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_3Prefix + " " + fmt.Sprint("Remove"))
+		part0_3 = m.__clicks.Mark(snglStop{slot: 3, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_3)
 		part0Children = append(part0Children, part0_3)
 		part0 = tui.Spaced(false, lipgloss.Left, 1, part0Children...)
 		part0 = BoxLook(Style{Padding: snglSome(Measurement{Px: 16}), Gap: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0)
 	}
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }

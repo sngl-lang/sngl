@@ -402,6 +402,9 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
@@ -456,6 +459,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(gtk4rt.Handle(unsafe.Pointer(m.__n0)), "t")
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_visible_handler)
 	m.__n3 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n3, C.int(20))
@@ -493,4 +497,4 @@ func (m *Model) listReachEnd() {
 	gtk4rt.ScrollReachEnd(gtk4rt.Handle(unsafe.Pointer(m.list)))
 }
 -- run/go/gtk4 --
-pass sha256:6b92e1f8103d3b1210875777a158edfc
+pass sha256:52ceacf03db3dd0bf25a4744dec39b8a

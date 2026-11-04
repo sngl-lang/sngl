@@ -131,6 +131,12 @@ const func lookOf(s ui.Style) => boxLook(s, true)
 // apply to a string its runs have already reset partway along.
 const func flowLookOf(s ui.Style) => boxLook(s, false)
 
+// Whether boxLook draws anything for s: a color, a weight or a slant, an
+// alignment, a border, a margin or a padding, or a size. A Style asking for
+// none -- a gap, a flex, where a box's children sit -- leaves a box's block
+// as it was joined.
+const func drawsBox(s ui.Style) => s.color != null || s.background != null || s.fontWeight != ui.FontWeight.unset || s.opacity != null || s.fontStyle != ui.FontStyle.unset || s.textAlign != ui.TextAlign.unset || s.borderWidth != null || s.borderStyle != ui.BorderStyle.unset || s.margin != null || s.marginX != null || s.marginY != null || s.marginTop != null || s.marginRight != null || s.marginBottom != null || s.marginLeft != null || s.padding != null || s.paddingX != null || s.paddingY != null || s.paddingTop != null || s.paddingRight != null || s.paddingBottom != null || s.paddingLeft != null || s.width != null || s.height != null || s.maxWidth != null || s.maxHeight != null || s.maxLines != null
+
 const func boxLook(s ui.Style, words bool) Look {
     if s == blank {
         return newStyle()

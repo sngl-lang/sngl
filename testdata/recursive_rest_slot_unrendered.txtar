@@ -60,7 +60,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -69,7 +68,7 @@ type Model struct {
 	depth int
 
 	__n0   *fyne.Container
-	deeper *widget.Button
+	deeper *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -101,7 +100,7 @@ func (m *Model) SetDepth(v int) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewVBox()
-	m.deeper = widget.NewButton("", nil)
+	m.deeper = fynelayout.NewButton("", nil)
 	m.deeper.SetText("deeper")
 	m.deeper.OnTapped = m.deeper_click_handler
 	m.__n0.Add(m.deeper)
@@ -197,6 +196,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.SetLook(__n0, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.deeper = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.deeper, "deeper")
+	gtk4rt.SetBool(m.deeper, "can-focus", true)
 	gtk4rt.Connect(m.deeper, "clicked", m.deeper_clicked_handler)
 	gtk4rt.BoxAppend(__n0, m.deeper)
 	gtk4rt.BoxAppend(m.__root, __n0)
@@ -266,8 +266,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:8b8098e891318e0ae3958306702ed173
+pass sha256:045b5139667f914afc3b6f40ba4e993a
 -- run/go/gtk4 --
-pass sha256:cf0fe521ff23b42fadffdb6ecfe0a79d
+pass sha256:86d232300ee58d551aa97d9038a52ba9
 -- run/none/html --
 pass sha256:03c97ac12720adf0393c81f84f747afa

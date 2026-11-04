@@ -341,6 +341,9 @@ func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
@@ -388,6 +391,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(gtk4rt.Handle(unsafe.Pointer(m.__n0)), "t")
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_visible_handler)
 	m.__n2 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n2, C.int(20))
@@ -403,6 +407,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
 	m.__n6 = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
 	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n6)), "rename")
+	gtk4rt.SetBool(gtk4rt.Handle(unsafe.Pointer(m.__n6)), "can-focus", true)
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n6)), "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n6)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
@@ -418,4 +423,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:18d7bdcf3f89edbdb27c673e5df3380c
+pass sha256:04961a62608dea48fcabd1255fb9f2f2

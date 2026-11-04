@@ -693,6 +693,32 @@ surface and a kitty image ID per copy, and the transmit reaches each copy
 through the same walk (`bubbletea/viewwalk.go`,
 `testdata/bubbletea_canvas_in_loop.txtar`).
 
+**A stop Tab passes over is still a stop.** A `Focus` record's `tab` is the
+control's `focusable`; `enabled` says whether the node is a stop at all, and
+`tab` only whether Tab reaches it, since a click presses a stop either way
+(`bubbletea/clicks.go`). passFocusOrder folds `tab` into the stop's shown
+condition -- a literal `false` makes the stop never shown, and a loop slot
+never shown where every stop it renders reads so; a `tab` naming a loop's
+variable is left out, as `enabled` is, and that copy is reached -- so Tab and
+settle pass over it, and the view draws a stop focused only while
+`__focusShown` holds. Each key's activation case takes its key only while the
+stop is shown, or while a click or a test's invoker is pressing it
+(`__pressing`): a calculator whose keys are all `focusable=false` left focus
+on its first key, unshown, and Enter there pressed `C`
+(`bubbletea/click_run_test.go`).
+
+**A click presses the stop under it.** Each stop's rendered block is wrapped
+in a mark (`tui.Clicks`): two escape sequences no measure counts, carrying the
+stop's slot, its ordinal in a loop slot and the key that presses it. The view
+scans the marks out once it is whole, keeping each block's box, before an
+overlay is composited -- compositing draws cells and drops what a terminal is
+not sent -- and then each open overlay's box where it lands, which covers what
+was found under it. Update answers a left click by moving focus to the stop
+and sending that key through itself (`__press`), the route a key pressed on
+the stop takes, so the copy a loop renders reads its own variables and an
+overlay's freeze holds a click as it holds a key; a stop Tab passes over gives
+focus back after. A text field has no key, and a click only focuses it.
+
 **A gtk4 record's `__root` is made only where a render names it.** It is the
 box a slot at the top of the body renders into (`instanceRootVar`); a body
 whose top is one node binds that node as the record's Root instead, and the

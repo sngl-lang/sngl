@@ -576,12 +576,18 @@ func (m *Model) __snglTeardown() {
 func (m *Model) main_closed_handler() {
 }
 
+func (m *Model) main_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 }
 
 func (m *Model) log_closed_handler() {
+}
+
+func (m *Model) log_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) log_visible_handler(__visible bool) {
@@ -630,6 +636,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.main, "Main")
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
+	gtk4rt.ToplevelOnKey(m.main, m.main_key_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.ticks))
@@ -640,6 +647,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.log, "Log")
 	gtk4rt.ToplevelSetVisible(m.log, m.visible__inst1)
 	gtk4rt.ToplevelOnClosed(m.log, m.log_closed_handler)
+	gtk4rt.ToplevelOnKey(m.log, m.log_key_handler)
 	gtk4rt.ToplevelOnVisible(m.log, m.log_visible_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, "log")
@@ -656,6 +664,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/fyne --
-pass sha256:9e888574920267514f38cf4326cec67b
+pass sha256:26f3f2c35632d78977fe1c4dd97f62cc
 -- run/go/gtk4 --
-pass sha256:1341150325ff56d0edad7f351962f3a2
+pass sha256:8c63895c6990d82c75767e720c6054d0

@@ -1389,6 +1389,9 @@ func (t *gtk4Translator) attachHandler(node ir.Expr, event string, handler, call
 	bare := codegen.IdentBareName(node)
 	if t.isToplevel(bare) {
 		t.refuseCgoClosed(event, handler)
+		if event == "key" {
+			t.recordKeyInvoker(node, event, handler)
+		}
 		return t.connectThrough(bare, event, handler, call)
 	}
 	if t.shared != nil && t.shared.menuEntries[bare] {

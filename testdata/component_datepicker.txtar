@@ -132,6 +132,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -145,6 +153,7 @@ type modelState struct {
 
 	widget0 tui.DateInput
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -395,6 +404,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.resizeWidgets()
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -413,11 +428,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(m.widget0.View())
+	content = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: false, key: tea.KeyPressMsg{}}, content)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -450,9 +481,9 @@ func newTestComponent() Model { m := New(); _ = m.View(); return m }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 	"time"
 )
@@ -481,7 +512,7 @@ type Model struct {
 	d            time.Time
 	value__inst0 *time.Time
 
-	__n0 *widget.DateEntry
+	__n0 *fynelayout.DateEntry
 }
 
 // New creates a Model with default values.
@@ -517,7 +548,7 @@ func (m *Model) SetValue__inst0(v *time.Time) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = widget.NewDateEntry()
+	m.__n0 = fynelayout.NewDateEntry()
 	m.__n0.SetDate(m.value__inst0)
 	m.__n0.SetPlaceHolder("Pick a date")
 	m.__n0.OnChanged = m.__n0_pick_handler
@@ -942,9 +973,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c1366c6be949e4fd72b282be82564bd9
+pass sha256:33c7411ed889fab34224b077c1edc0b0
 -- run/go/fyne --
-pass sha256:9b0b0209bcaa2bf94f6fcb762ad6d5ca
+pass sha256:04425781697e45d6c6ef5c821059c609
 -- run/go/gtk4 --
 pass sha256:929fdfda8b156b75e6ed4092caec3de6
 -- run/kotlin/android --

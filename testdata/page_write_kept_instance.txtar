@@ -70,7 +70,7 @@ type Model struct {
 	__renderAgain1 bool
 
 	__n3    *fynelayout.Toplevel
-	__n6    *widget.Button
+	__n6    *fynelayout.Button
 	__built bool
 }
 
@@ -198,7 +198,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.SetVisible(m.visible__inst0)
 	m.__n3.OnClosed = m.__n3_closed_handler
 	m.__n3.OnVisible = m.__n3_visible_handler
-	m.__n6 = widget.NewButton("", nil)
+	m.__n6 = fynelayout.NewButton("", nil)
 	m.__n6.SetText("toggle")
 	m.__n6.OnTapped = m.__n6_click_handler
 	m.__n3.Add(m.__n6)
@@ -221,7 +221,7 @@ type RowInstance struct {
 	__renderAgain0 bool
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
-	__n0           *widget.Button
+	__n0           *fynelayout.Button
 	__n1           *widget.Label
 }
 
@@ -236,7 +236,7 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	c.__n0 = widget.NewButton("", nil)
+	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(c.__prop_name)
 	c.__n0.OnTapped = func() {
 		c.taps += 1
@@ -493,6 +493,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n3_closed_handler() {
 }
 
+func (m *Model) __n3_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n3_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n3, m.visible__inst0)
@@ -534,6 +537,7 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 	c.__slot1 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, c.__prop_name)
+	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.taps += 1
 		for __inst0_live_ui, _ := range c.__inst0_live {
@@ -721,9 +725,11 @@ func (m *Model) buildWidgetTree() {
 	m.__n3 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n3, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n3, m.__n3_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n3, m.__n3_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n3, m.__n3_visible_handler)
 	m.__n6 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n6, "toggle")
+	gtk4rt.SetBool(m.__n6, "can-focus", true)
 	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(m.__n3, m.__n6)
 	m.__renderSlot1(m.__n3)
@@ -737,6 +743,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n3)
 }
 -- run/go/fyne --
-pass sha256:e7ada5f69f865a5c2ef51a40ba142e2a
+pass sha256:8d43129e100c6415a59581d4b8c977d2
 -- run/go/gtk4 --
-pass sha256:7da690de8728bad53b01410d7b4fd7a2
+pass sha256:e2995137868a281ab6f015a028637450

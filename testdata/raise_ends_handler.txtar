@@ -188,6 +188,14 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -205,6 +213,7 @@ type modelState struct {
 	callAfter  int
 	__focusID  int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -574,6 +583,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -623,6 +638,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 // directClick activates the #direct widget the way a keypress does; for tests.
 func (m *Model) directClick() {
 	prev := m.__focusID
@@ -646,6 +673,7 @@ func (m *Model) calledClick() {
 }
 
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var parts []string
 	var part0 string
 	part0Focused := (m.__focusID == 0)
@@ -654,6 +682,7 @@ func (m Model) View() tea.View {
 		part0Prefix = ">"
 	}
 	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Prefix + " " + fmt.Sprint("Direct"))
+	part0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0)
 	parts = append(parts, part0)
 	var part1 string
 	part1Focused := (m.__focusID == 1)
@@ -662,10 +691,13 @@ func (m Model) View() tea.View {
 		part1Prefix = ">"
 	}
 	part1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part1Prefix + " " + fmt.Sprint("Called"))
+	part1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part1)
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -712,10 +744,10 @@ func newTestComponent() Model { m := New(); _ = m.View(); return m }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -735,8 +767,8 @@ type Model struct {
 	back       int
 	callAfter  int
 
-	direct *widget.Button
-	called *widget.Button
+	direct *fynelayout.Button
+	called *fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -888,10 +920,10 @@ func (m *Model) SetCallAfter(v int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.direct = widget.NewButton("", nil)
+	m.direct = fynelayout.NewButton("", nil)
 	m.direct.SetText("Direct")
 	m.direct.OnTapped = m.direct_click_handler
-	m.called = widget.NewButton("", nil)
+	m.called = fynelayout.NewButton("", nil)
 	m.called.SetText("Called")
 	m.called.OnTapped = m.called_click_handler
 	var parts []fyne.CanvasObject
@@ -1127,9 +1159,11 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.direct = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.direct, "Direct")
+	gtk4rt.SetBool(m.direct, "can-focus", true)
 	gtk4rt.Connect(m.direct, "clicked", m.direct_clicked_handler)
 	m.called = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.called, "Called")
+	gtk4rt.SetBool(m.called, "can-focus", true)
 	gtk4rt.Connect(m.called, "clicked", m.called_clicked_handler)
 	gtk4rt.BoxAppend(m.__root, m.direct)
 	gtk4rt.BoxAppend(m.__root, m.called)
@@ -1418,11 +1452,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b7eaa579f2a10bd038c39b492763b0f4
+pass sha256:3be93b1740e883e96d5e176928ab2ead
 -- run/go/fyne --
-pass sha256:7cf6ae210c084f9c66b3062cdb71cc7f
+pass sha256:96598750686afab76099f14a8b92820c
 -- run/go/gtk4 --
-pass sha256:6ed2ba26d63bc3c3e04d200379f519ea
+pass sha256:9d663cb26b3fa1ce73a7f07204abc9fc
 -- run/go/html --
 pass sha256:b73c01e0c378af2b6157e75efe8d24f4
 -- run/kotlin/android --

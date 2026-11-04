@@ -394,7 +394,6 @@ func (m Model) View() tea.View {
 			content_0_0Children = append(content_0_0Children, content_0_0_0)
 		}
 		content_0_0 = lipgloss.JoinVertical(lipgloss.Left, content_0_0Children...)
-		content_0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0_0)
 		content_0Children = append(content_0Children, content_0_0)
 		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
 		content_0 = BoxLook(Style{Height: snglSome(Measurement{Px: 120}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0)
@@ -416,10 +415,8 @@ func (m Model) View() tea.View {
 			content_1_0Children = append(content_1_0Children, content_1_0_0)
 		}
 		content_1_0 = tui.Spaced(true, lipgloss.Top, 1, content_1_0Children...)
-		content_1_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_1_0)
 		content_1Children = append(content_1Children, content_1_0)
 		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
-		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_1)
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
 		var content_2Children []string
@@ -438,13 +435,11 @@ func (m Model) View() tea.View {
 			content_2_0Children = append(content_2_0Children, content_2_0_0)
 		}
 		content_2_0 = lipgloss.JoinVertical(lipgloss.Left, content_2_0Children...)
-		content_2_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_2_0)
 		content_2Children = append(content_2Children, content_2_0)
 		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
 		content_2 = BoxLook(Style{Height: snglSome(Measurement{Px: 120}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_2)
 		contentChildren = append(contentChildren, content_2)
 		content = tui.Spaced(false, lipgloss.Left, 1, contentChildren...)
-		content = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -669,6 +664,9 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -699,6 +697,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n1, 1)
@@ -1452,11 +1451,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:347ddf692ed7031c1168c3fba0ddae5e
+pass sha256:6de189ab929bc1bcc9f221401a49298f
 -- run/go/fyne --
 pass sha256:ed3ec962c6d353842ac95da6cf4f617e
 -- run/go/gtk4 --
-pass sha256:50c35c65d49891718de119420e535a2d
+pass sha256:0233779682de768180d89f8c0d65d8e3
 -- run/kotlin/android --
 pass sha256:e647373e1fe5a270aab190c39466a4fe
 -- run/none/html --

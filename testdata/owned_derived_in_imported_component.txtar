@@ -558,7 +558,6 @@ func (m Model) View() tea.View {
 	part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(m.picture__inst0.N)))
 	part0Children = append(part0Children, part0_0)
 	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
-	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0)
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -1209,7 +1208,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2781a59ef0258134249af92f3b7b444e
+pass sha256:c20a9577a95c1b600d3b6b77927e89d2
 -- run/go/fyne --
 pass sha256:ed3ed9e278321bb677d724a7b20e054d
 -- run/go/gtk4 --

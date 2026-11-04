@@ -95,7 +95,7 @@ func testADialogUnderAnIfComesAndGoes(t Test, c app) {
     t.assert(c.mounts == 2)
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:16051ac6351acb72464585d1c63f26aa
+sha256:b70c5ac8ce5a9771b433931f17ea362d
 {
   "results": [
     {
@@ -113,7 +113,7 @@ sha256:16051ac6351acb72464585d1c63f26aa
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:e655ebc8d36351785bbc8edfe41a6d0d
+sha256:87c4cbd10d1572ea4e09f492437a4bf7
 {
   "results": [
     {

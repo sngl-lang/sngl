@@ -75,11 +75,19 @@ component platform(
 // removing one, as an `if` turning false does, destroys it and everything in
 // it. `visible` shows and hides it without destroying it, and the window
 // manager's close is reported as `visible = false` followed by `@closed`.
+//
+// `@key` is each key pressed in the window, before anything in it hears it.
+// fyne's driver hands a key to the focused widget alone, so each widget this
+// platform builds that takes focus is a fynelayout wrapper that hands the key
+// to the window first, and drops one the window stops (fynelayout/focus.go);
+// with nothing focused, the canvas's handlers hear it. A widget written in
+// Go that takes focus hands the window nothing.
 #[intrinsic("fyne:Toplevel")]
 component Toplevel(
     title    string,
     :visible bool = true,
     @closed(),
+    @key(e ui.KeyPress, stop func()),
     content  ...component ui.node,
 ) root
 
@@ -125,9 +133,11 @@ component TabPage(
 // catches whether or not the call site handles one. Its menu's entries are
 // drawn two deep: a top-level entry and its submenu. A window whose call site
 // gives it no `canGoBack` writes no Back, the `if` folding away, and nor does
-// one with no menu write an entry.
-const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, content, favicon, menu) {
-    Toplevel(title=title, :visible=visible, @closed { closed() }) {
+// one with no menu write an entry. Its `@key` is the Toplevel's, which a test
+// fires through the window's `#id`: the handler hears the test's key as
+// written, and one it does not stop is then pressed in the window.
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content, favicon, menu) {
+    Toplevel(title=title, :visible=visible, @closed { closed() }, @key(e, stop) { key(e, stop) }) {
         boundary(@error(e) { error(e) }) {
             content
         }
@@ -337,26 +347,43 @@ const component Label(text string = "", style ui.Style = ui.Style{}) ui.node {
     ) {}
 }
 
-const component Button(text string = "", style ui.Style = ui.Style{}, @click()) ui.node {
-    Widget(
-        spec = Spec{
-            new = Native{path="fyne.io/fyne/v2/widget", name="NewButton"},
-            args = [Arg{raw=`""`}, Arg{raw="nil"}],
-            goType = Native{path="fyne.io/fyne/v2/widget", name="*Button"},
-            setters = [Setter{prop="text", call="SetText"}],
-            handlers = [Handler{on="click", field="OnTapped", signature="func()"}],
-        },
-        text = text,
-        look = lookOf(style),
-        @click { click() },
-    ) {}
+// A button is fynelayout's Button, whose keys its window hears first; one that
+// is not `focusable` is its NoTabButton, which Tab passes over.
+const component Button(text string = "", focusable bool = true, style ui.Style = ui.Style{}, @click()) ui.node {
+    if focusable {
+        Widget(
+            spec = Spec{
+                new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewButton"},
+                args = [Arg{raw=`""`}, Arg{raw="nil"}],
+                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Button"},
+                setters = [Setter{prop="text", call="SetText"}],
+                handlers = [Handler{on="click", field="OnTapped", signature="func()"}],
+            },
+            text = text,
+            look = lookOf(style),
+            @click { click() },
+        ) {}
+    } else {
+        Widget(
+            spec = Spec{
+                new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewNoTabButton"},
+                args = [Arg{raw=`""`}, Arg{raw="nil"}],
+                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Button"},
+                setters = [Setter{prop="text", call="SetText"}],
+                handlers = [Handler{on="click", field="OnTapped", signature="func()"}],
+            },
+            text = text,
+            look = lookOf(style),
+            @click { click() },
+        ) {}
+    }
 }
 
 const component Entry(text string = "", placeholder string = "", style ui.Style = ui.Style{}, @input(text string), @change(text string)) ui.node {
     Widget(
         spec = Spec{
-            new = Native{path="fyne.io/fyne/v2/widget", name="NewEntry"},
-            goType = Native{path="fyne.io/fyne/v2/widget", name="*Entry"},
+            new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewEntry"},
+            goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Entry"},
             setters = [
                 Setter{prop="text", call="SetText"},
                 Setter{prop="placeholder", call="SetPlaceHolder"},
@@ -384,8 +411,8 @@ const component MultiLineEntry(
 ) ui.node {
     Widget(
         spec = Spec{
-            new = Native{path="fyne.io/fyne/v2/widget", name="NewMultiLineEntry"},
-            goType = Native{path="fyne.io/fyne/v2/widget", name="*Entry"},
+            new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewMultiLineEntry"},
+            goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Entry"},
             setters = [
                 Setter{prop="text", call="SetText"},
                 Setter{prop="placeholder", call="SetPlaceHolder"},
@@ -405,51 +432,100 @@ const component MultiLineEntry(
     ) {}
 }
 
-const component Check(text string = "", checked bool = false, style ui.Style = ui.Style{}, @change(checked bool)) ui.node {
-    Widget(
-        spec = Spec{
-            new = Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},
-            args = [Arg{raw=`""`}, Arg{raw="nil"}],
-            goType = Native{path="fyne.io/fyne/v2/widget", name="*Check"},
-            setters = [
-                Setter{prop="text", call="SetText"},
-                Setter{prop="flag", call="SetChecked"},
-            ],
-            handlers = [Handler{on="toggle", field="OnChanged", signature="func(b bool)"}],
-        },
-        text = text,
-        flag = checked,
-        look = lookOf(style),
-        @toggle { change() },
-    ) {}
+// A check is fynelayout's Check, whose keys its window hears first; one that
+// is not `focusable` is its NoTabCheck, which Tab passes over and a tap does
+// not focus.
+const component Check(
+    text      string = "",
+    checked   bool = false,
+    focusable bool = true,
+    style     ui.Style = ui.Style{},
+    @change(checked bool),
+) ui.node {
+    if focusable {
+        Widget(
+            spec = Spec{
+                new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewCheck"},
+                args = [Arg{raw=`""`}, Arg{raw="nil"}],
+                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Check"},
+                setters = [
+                    Setter{prop="text", call="SetText"},
+                    Setter{prop="flag", call="SetChecked"},
+                ],
+                handlers = [Handler{on="toggle", field="OnChanged", signature="func(b bool)"}],
+            },
+            text = text,
+            flag = checked,
+            look = lookOf(style),
+            @toggle { change() },
+        ) {}
+    } else {
+        Widget(
+            spec = Spec{
+                new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewNoTabCheck"},
+                args = [Arg{raw=`""`}, Arg{raw="nil"}],
+                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Check"},
+                setters = [
+                    Setter{prop="text", call="SetText"},
+                    Setter{prop="flag", call="SetChecked"},
+                ],
+                handlers = [Handler{on="toggle", field="OnChanged", signature="func(b bool)"}],
+            },
+            text = text,
+            flag = checked,
+            look = lookOf(style),
+            @toggle { change() },
+        ) {}
+    }
 }
 
 // `options` must be assigned before `selected`: `SetSelected` ignores a value
 // that is not already among `Options`, and the props are assigned in the order
 // this call writes them. Reordering them is why the constructor can take `nil`
-// choices.
+// choices. A select that is not `focusable` is fynelayout's NoTabSelect,
+// which Tab passes over and a tap does not focus.
 const component Select(
-    selected string = "",
-    options  list[string] = [],
-    style    ui.Style = ui.Style{},
+    selected  string = "",
+    options   list[string] = [],
+    focusable bool = true,
+    style     ui.Style = ui.Style{},
     @change(value string),
 ) ui.node {
-    Widget(
-        spec = Spec{
-            new = Native{path="fyne.io/fyne/v2/widget", name="NewSelect"},
-            args = [Arg{raw="nil"}, Arg{raw="nil"}],
-            goType = Native{path="fyne.io/fyne/v2/widget", name="*Select"},
-            setters = [
-                Setter{prop="text", call="SetSelected", current="Selected"},
-                Setter{prop="options", call="SetOptions"},
-            ],
-            handlers = [Handler{on="change", field="OnChanged", signature="func(s string)"}],
-        },
-        options = options,
-        text = selected,
-        look = lookOf(style),
-        @change { change() },
-    ) {}
+    if focusable {
+        Widget(
+            spec = Spec{
+                new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewSelect"},
+                args = [Arg{raw="nil"}, Arg{raw="nil"}],
+                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Select"},
+                setters = [
+                    Setter{prop="text", call="SetSelected", current="Selected"},
+                    Setter{prop="options", call="SetOptions"},
+                ],
+                handlers = [Handler{on="change", field="OnChanged", signature="func(s string)"}],
+            },
+            options = options,
+            text = selected,
+            look = lookOf(style),
+            @change { change() },
+        ) {}
+    } else {
+        Widget(
+            spec = Spec{
+                new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewNoTabSelect"},
+                args = [Arg{raw="nil"}, Arg{raw="nil"}],
+                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Select"},
+                setters = [
+                    Setter{prop="text", call="SetSelected", current="Selected"},
+                    Setter{prop="options", call="SetOptions"},
+                ],
+                handlers = [Handler{on="change", field="OnChanged", signature="func(s string)"}],
+            },
+            options = options,
+            text = selected,
+            look = lookOf(style),
+            @change { change() },
+        ) {}
+    }
 }
 
 // `widget.Hyperlink` exposes its text and its URL as struct fields rather than
@@ -458,9 +534,9 @@ const component Select(
 const component Hyperlink(style ui.Style = ui.Style{}) ui.node {
     Widget(
         spec = Spec{
-            new = Native{path="fyne.io/fyne/v2/widget", name="NewHyperlink"},
-            args = [Arg{raw=`""`}, Arg{raw="nil"}],
-            goType = Native{path="fyne.io/fyne/v2/widget", name="*Hyperlink"},
+            new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewHyperlink"},
+            args = [Arg{raw=`""`}],
+            goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Hyperlink"},
         },
         look = lookOf(style),
     ) {}
@@ -779,8 +855,8 @@ const component DateEntry(
 ) ui.node {
     Widget(
         spec = Spec{
-            new = Native{path="fyne.io/fyne/v2/widget", name="NewDateEntry"},
-            goType = Native{path="fyne.io/fyne/v2/widget", name="*DateEntry"},
+            new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewDateEntry"},
+            goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*DateEntry"},
             setters = [
                 Setter{prop="date", call="SetDate"},
                 Setter{prop="placeholder", call="SetPlaceHolder"},
@@ -805,8 +881,11 @@ const component ui.datepicker[platform](placeholder, value, style, @change) {
 
 // --- Controls ---
 
-const component ui.button[platform](text, style, @click) {
-    Button(text=text, style=style, @click { click() }) {}
+// A button written `focusable=false` is one Tab passes over. No button takes
+// focus when clicked on this platform, so a click leaves the keys to the
+// window's `@key` either way.
+const component ui.button[platform](text, focusable, style, @click) {
+    Button(text=text, focusable=focusable, style=style, @click { click() }) {}
 }
 
 // `href` and `text` are not forwarded — see the Hyperlink declaration.
@@ -869,8 +948,8 @@ const component shapes.image[platform](width, height, shapes) {
     }
 }
 
-const component ui.checkbox[platform](label, checked, style, @change) {
-    Check(text=label, checked=checked, style=style, @change(on) {
+const component ui.checkbox[platform](label, checked, focusable, style, @change) {
+    Check(text=label, checked=checked, focusable=focusable, style=style, @change(on) {
         if on != checked {
             checked = on
             change(on)
@@ -880,8 +959,8 @@ const component ui.checkbox[platform](label, checked, style, @change) {
 
 // Fyne's Check is the switch affordance too: `widget.Switch` is not in the
 // widget set this platform builds from.
-const component ui.toggle[platform](label, checked, style, @change) {
-    Check(text=label, checked=checked, style=style, @change(on) {
+const component ui.toggle[platform](label, checked, focusable, style, @change) {
+    Check(text=label, checked=checked, focusable=focusable, style=style, @change(on) {
         if on != checked {
             checked = on
             change(on)
@@ -889,8 +968,8 @@ const component ui.toggle[platform](label, checked, style, @change) {
     }) {}
 }
 
-const component ui.select[platform](value, style, @change, options) {
-    Select(selected=value, options=options.map(func(o) => o.label), style=style, @change(v) {
+const component ui.select[platform](value, focusable, style, @change, options) {
+    Select(selected=value, options=options.map(func(o) => o.label), focusable=focusable, style=style, @change(v) {
         if v != value {
             value = v
             change(v)

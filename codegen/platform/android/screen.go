@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/kotlin"
 	"duckfam.us/sngl/ir"
 )
 
@@ -95,7 +96,10 @@ func parenthesized(args string) string {
 // override reports `visible = false` before the window's own `@closed` -- and
 // the activity finishes when the window is off screen after it. A hidden
 // window is not drawn, so its BackHandler is gone and the back finishes the
-// activity as it would with nothing to close.
+// activity as it would with nothing to close. A window with a `@key` handler
+// hears, while it is drawn, each key before anything in it does (keys.kt's
+// SnglWindowKeys), an Escape it leaves going to the system's back while it
+// can go back.
 func (cc *irComposeContext) renderScreen(n *ir.NodeInst) {
 	var body []string
 	if lam, ok := codegen.NodeProp(n, "onBack").(*ir.Lambda); ok && lam.Func != nil {
@@ -122,6 +126,14 @@ func (cc *irComposeContext) renderScreen(n *ir.NodeInst) {
 		cc.line("    __activity?.finish()")
 	}
 	cc.line("}")
+	if screenHearsKeys(n) {
+		lam := codegen.NodeProp(n, "onKey").(*ir.Lambda)
+		escapes := "false"
+		if c := screenCanGoBack(n); c != nil {
+			escapes = cc.kc.EvalExpr(c)
+		}
+		cc.line("SnglWindowKeys(passEscape = %s, press = %s, %s)", escapes, screenKeyPress(lam), cc.lambdaArg("onKey", lam, 2))
+	}
 	if !screenDrawsBar(n) {
 		cc.renderContent(n.Children)
 		if gated {
@@ -202,6 +214,24 @@ func (cc *irComposeContext) screenIcon(n *ir.NodeInst) string {
 			cc.kc.Name(ktModifier), cc.kc.Name("androidx.compose.foundation.layout.size"), dp(cc.kc, "24"))
 	}
 	return "null"
+}
+
+// screenKeyPress is the lambda SnglWindowKeys builds the program's KeyPress
+// with from the SnglKeyPress it heard, field by field.
+func screenKeyPress(lam *ir.Lambda) string {
+	var parts []string
+	for _, f := range []string{"key", "ctrl", "alt", "shift", "meta", "editing"} {
+		parts = append(parts, f+" = it."+f)
+	}
+	return "{ " + kotlin.IRTypeToKt(lam.Func.Params[0].Type) + "(" + strings.Join(parts, ", ") + ") }"
+}
+
+// screenHearsKeys reports whether a Screen's `onKey` does anything: the
+// window's `@key` has a handler. One with none puts nothing in front of the
+// activity's keys.
+func screenHearsKeys(n *ir.NodeInst) bool {
+	lam, ok := codegen.NodeProp(n, "onKey").(*ir.Lambda)
+	return ok && lam.Func != nil && len(lam.Func.Block) > 0
 }
 
 // screenDrawsBar reports whether a Screen draws its app bar: given a way back

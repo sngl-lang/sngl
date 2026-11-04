@@ -243,6 +243,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n0, m.cal__own0)
 	m.t = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.t, "t")
+	gtk4rt.SetBool(m.t, "can-focus", true)
 	gtk4rt.Connect(m.t, "clicked", m.t_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.t)
 	m.__renderSlot0(m.__n0)
@@ -275,4 +276,4 @@ func (m *Model) calPresent() bool {
 	return m.cal != nil
 }
 -- run/go/gtk4 --
-pass sha256:392bded94d30954d5e4b450531c8e410
+pass sha256:4a55bf698e56540cf315a47f692fb0ed

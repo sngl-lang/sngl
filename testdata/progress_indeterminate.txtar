@@ -518,6 +518,9 @@ func New() *Model {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -540,6 +543,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.__n0, "t")
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.New("GtkProgressBar")
 	gtk4rt.SetFloat(m.__n1, "fraction", 0.2)
@@ -637,7 +641,7 @@ pass sha256:5506bbcefa8edb91ad45f8ce6a47daf4
 -- run/go/fyne --
 pass sha256:59abfe38f664f8b16684ba4fce7475e2
 -- run/go/gtk4 --
-pass sha256:0df56b6bcf7967b48afd49f51d422efb
+pass sha256:5e4d3f25d56c43d2c674accba24abd7c
 -- run/kotlin/android --
 pass sha256:609436404954e795a73f48af8665a3df
 -- run/none/html --

@@ -602,6 +602,9 @@ func Countdown(a int) int {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -639,6 +642,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, ((fmt.Sprint(m.viaBump(m.n)) + fmt.Sprint(Countdown(m.n))) + m.log))
@@ -658,4 +662,4 @@ pass sha256:5ef60eeffb27ed7727699f194626546e
 -- run/go/fyne --
 pass sha256:2c988456caf0e1ee9299f41db00f6fe9
 -- run/go/gtk4 --
-pass sha256:a6bf967d819f2f56965fbec104d03d1d
+pass sha256:13b58866538c6df19aacdae483c6c5b4

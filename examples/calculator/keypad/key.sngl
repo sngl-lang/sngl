@@ -21,6 +21,10 @@ struct Key {
     // calculator ever made.
     span float = 1
 
+    // The keys on a keyboard that press it, named as a window's `@key` names
+    // them: what they type, or "Enter", "Escape", "Backspace".
+    shortcuts list[string] = []
+
     // Which of the three families it belongs to, so the styling has something
     // to read that is not the label.
     func tone() string {
@@ -34,6 +38,15 @@ struct Key {
     }
 }
 
-func digitKey(d string) => Key{label=d, action=Action.digit, digit=d}
+func digitKey(d string) => Key{label=d, action=Action.digit, digit=d, shortcuts=[d]}
 
-func opKey(o calc.Op) => Key{label=o.symbol(), action=Action.operate, op=o}
+func opKey(o calc.Op) => Key{label=o.symbol(), action=Action.operate, op=o, shortcuts=opShortcuts(o)}
+
+// A keyboard has no `x`, and `*` is what a keyboard multiplies with, so the
+// times key answers both.
+func opShortcuts(o calc.Op) list[string] {
+    if o == calc.Op.mul {
+        return ["*", "x"]
+    }
+    return [o.symbol()]
+}

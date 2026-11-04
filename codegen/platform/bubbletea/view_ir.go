@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/codegen/lang/golang"
 	"duckfam.us/sngl/internal/htmlutil"
@@ -19,6 +20,11 @@ type irViewContext struct {
 	ctx         *codegen.CodegenCtx
 	widgetCount int
 	widgets     []widgetInfo
+	// shows is whether the model declares __focusShown: a stop focus is on
+	// is drawn focused only while it is shown.
+	shows bool
+	// unread is each local the view declares that nothing reads.
+	unread      map[ir.Symbol]bool
 	buf         *strings.Builder
 	indent      int
 	vertical    bool
@@ -86,6 +92,43 @@ func (vc *irViewContext) emitIRStmt(s ir.Stmt) {
 	for _, l := range vc.gc.EvalStmt(s) {
 		vc.line("%s", l)
 	}
+	if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil && vc.unread[lv.Sym] {
+		vc.line("_ = %s", lv.Name)
+	}
+}
+
+// unreadLocals is each local declared under stmts that nothing reads: a
+// ternary's temp hoisted out of a prop that then folded away -- a Layout's
+// `boxed`, computed from a copy of its Style whose other fields it never
+// read -- which Go refuses to declare.
+func unreadLocals(stmts []ir.Stmt) map[ir.Symbol]bool {
+	declared := map[ir.Symbol]bool{}
+	read := map[ir.Symbol]bool{}
+	written := map[ir.Expr]bool{}
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.LocalVar:
+			if x.Sym != nil {
+				declared[x.Sym] = true
+			}
+		case *ir.Assign:
+			if x.Op == ast.AssignSet {
+				written[x.Target] = true
+			}
+		case *ir.Ident:
+			if !written[x] && x.Sym != nil {
+				read[x.Sym] = true
+			}
+		}
+		return nil
+	})
+	unread := map[ir.Symbol]bool{}
+	for sym := range declared {
+		if !read[sym] {
+			unread[sym] = true
+		}
+	}
+	return unread
 }
 
 // requireImport registers a Go import on the context's gc; nil-safe.
@@ -110,6 +153,8 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 	vc := &irViewContext{
 		gc:      gc,
 		ctx:     ctx,
+		shows:   info.settles,
+		unread:  unreadLocals(bodyStmts),
 		widgets: info.widgets,
 		availW:  "tui.Avail(m.width)",
 		availH:  "m.height",
@@ -117,6 +162,12 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 		indent:  1,
 	}
 
+	if info.hasFocus {
+		vc.line("m.%s.Reset()", clicksField)
+	}
+	if info.sleepers > 0 {
+		vc.line("m.%s = [%d]bool{}", drawnField, info.sleepers)
+	}
 	vc.renderBody(bodyStmts, "content")
 
 	// Overlay (modal/drawer) box vars are assigned inside their `if open { ... }`
@@ -149,6 +200,9 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 	// the background); any other placement names a drawer side. The tui helpers
 	// no-op when the box var is "" (overlay closed), so this stays correct
 	// without threading the `open` expr — the `if open` gate leaves boxVar "".
+	if info.hasFocus {
+		emitClickScan(b, vc.overlays)
+	}
 	for _, ov := range vc.overlays {
 		gc.RequireImport(tuiImportPath)
 		dim := "false"
@@ -174,11 +228,15 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 
 	b.WriteString("\tv := tea.NewView(content)\n")
 	b.WriteString("\tv.AltScreen = true\n")
+	if info.hasFocus {
+		b.WriteString("\tv.MouseMode = tea.MouseModeCellMotion\n")
+	}
 	b.WriteString("\treturn v\n")
 	b.WriteString("}\n\n")
 }
 
-func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, gc *golang.GoIRContext, cfg Config) {
+// shows is whether the model declares __focusShown (irViewContext.shows).
+func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, gc *golang.GoIRContext, cfg Config, shows bool) {
 	methodName := golang.ComponentRenderMethod(cc.Component.Name)
 
 	var params []string
@@ -207,6 +265,8 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 		indent:      1,
 		inComponent: true,
 		availW:      availW,
+		shows:       shows,
+		unread:      unreadLocals(cc.Body),
 	}
 
 	vc.renderBody(cc.Body, "result")
@@ -749,10 +809,11 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		}
 		vc.requireImport("fmt")
 		if fp := codegen.NodeProp(n, "__focused"); fp != nil {
-			vc.line(`%sFocused := %s`, resultVar, vc.gc.EvalExpr(fp))
+			vc.line(`%sFocused := %s`, resultVar, vc.focusedExpr(fp))
 			vc.line(`%sPrefix := " "`, resultVar)
 			vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
 			vc.line(`%s = %s`, resultVar, vc.render(n, style, resultVar+`Prefix + " " + fmt.Sprint(`+content+`)`))
+			vc.markStop(n, resultVar)
 		} else {
 			vc.line(`%s = %s`, resultVar, vc.render(n, style, "fmt.Sprint("+content+")"))
 		}
@@ -772,6 +833,9 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 			panic(fmt.Sprintf("bubbletea: widget index %d out of range (%d widgets analyzed); view/analyze walk desync", idx, len(vc.widgets)))
 		}
 		w := vc.widgets[idx]
+		if w.sleeper >= 0 {
+			vc.line("m.%s()", drawnMethod(w))
+		}
 		view := "m." + w.fieldName + w.model.View
 		if w.loop != nil {
 			view = copyCall(w, vc.gc) + w.model.View
@@ -780,6 +844,9 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 			view = vc.render(n, style, view)
 		}
 		vc.line(`%s = %s`, resultVar, view)
+		if codegen.NodeProp(n, "__focused") != nil {
+			vc.markStop(n, resultVar)
+		}
 	}
 }
 
@@ -822,6 +889,14 @@ func (vc *irViewContext) look(n *ir.NodeInst) string {
 	look := plainLook
 	if v := codegen.NodeProp(n, "look"); v != nil {
 		look = vc.gc.EvalExpr(v)
+		// A Layout whose look the build reads as drawing nothing renders the
+		// block it joined as it stands.
+		if b := codegen.NodeProp(n, "boxed"); b != nil {
+			if on, ok := codegen.IRLiteralBool(b); ok && !on {
+				vc.discard(v)
+				look = plainLook
+			}
+		}
 	}
 	if s := vc.sizeTo; s != nil {
 		vc.sizeTo = nil
@@ -1087,8 +1162,8 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	vc.availW, vc.availH = savedW, savedH
 	// A box wider or taller than its children puts them where it joins them
 	// across it: a card's names centered in its width, where they sat at its
-	// left edge.
-	if !strings.HasSuffix(pos, ".Left") && !strings.HasSuffix(pos, ".Top") {
+	// left edge. A box with no look of its own is the size of what it joined.
+	if style != plainLook && !strings.HasSuffix(pos, ".Left") && !strings.HasSuffix(pos, ".Top") {
 		if horizontal {
 			style += ".AlignVertical(" + pos + ")"
 		} else {
@@ -1364,10 +1439,11 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 
 	vc.requireImport("fmt")
 	if fp := codegen.NodeProp(n, "__focused"); fp != nil {
-		vc.line(`%sFocused := %s`, resultVar, vc.gc.EvalExpr(fp))
+		vc.line(`%sFocused := %s`, resultVar, vc.focusedExpr(fp))
 		vc.line(`%sPrefix := " "`, resultVar)
 		vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
 		vc.line(`%s = %s.Render(%sPrefix + " " + fmt.Sprint(%s))`, resultVar, style, resultVar, content)
+		vc.markStop(n, resultVar)
 	} else {
 		vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
 	}

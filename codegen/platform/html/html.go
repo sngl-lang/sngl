@@ -70,6 +70,8 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		if err := firstUnrenderedNode(req.Pkg); err != nil {
 			return err
 		}
+		dropUnheardKeys(req.Pkg)
+		dropUnpreventedPresses(req.Pkg)
 	}
 
 	placement := scanPlacement(req.Pkg)
@@ -723,6 +725,9 @@ type htmlGen struct {
 	quiet []eventHandler
 	// triggered is codegen.TriggeredEvents, in a test build.
 	triggered map[string]bool
+	// dialogElems is the element each `<dialog>` the markup writes is, by the
+	// `#id` of the Window it is.
+	dialogElems map[string]string
 
 	title string
 
@@ -2474,6 +2479,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	if g.pkg != nil && rendersBack(g.pkg) {
 		b.WriteString(backHelper + "\n")
 	}
+	if g.pkg != nil && rendersKeys(g.pkg) {
+		b.WriteString(keysHelper + "\n")
+	}
 	if g.ctx.Helpers[cssTextHelper] {
 		b.WriteString(cssTextHelperJS + "\n")
 	}
@@ -3817,6 +3825,7 @@ func (g *htmlGen) noteSnglID(elemVar string, n *ir.NodeInst) {
 // onto the event, which is where the DOM puts what the event itself carries.
 func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	seen := map[string]bool{}
+	g.emitWindowKeyInvokers(b, seen)
 	// Every element written under one id, in render order: an id a constant
 	// loop unrolled is one per copy, and the `At` variant names a copy by its
 	// index there as it does among elements built at run time.
@@ -3851,6 +3860,9 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	// Only an id a test indexes needs the variant, as on fyne and gtk4.
 	indexed := ir.IndexedRefIDs(g.pkg)
 	for _, name := range order {
+		if seen[name] {
+			continue
+		}
 		seen[name] = true
 		els := copies[name]
 		id := strings.TrimSuffix(name, capitalizeFirst(event[name]))
@@ -4076,6 +4088,12 @@ const windowIntrinsic = "html:window"
 func (g *htmlGen) renderDialog(b *strings.Builder, n *ir.NodeInst, depth int) {
 	indent := strings.Repeat("  ", depth)
 	id := g.nodeID(n)
+	if isProgramID(n.ID) {
+		if g.dialogElems == nil {
+			g.dialogElems = map[string]string{}
+		}
+		g.dialogElems[n.ID] = id
+	}
 	title, _ := codegen.IRLiteralString(n.Prop(windowTitle))
 	fmt.Fprintf(b, "%s<dialog id=%q", indent, id)
 	if strings.HasPrefix(id, "__n") {

@@ -91,7 +91,7 @@ type Model struct {
 	__n5      *fynelayout.ImageSource
 	__n6      *widget.Label
 	__n6__box *fynelayout.Box
-	__n7      *widget.Button
+	__n7      *fynelayout.Button
 	__built   bool
 }
 
@@ -233,7 +233,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.Add(m.__n6__box)
 	m.__n2.Add(m.__n3)
 	m.__renderSlot0(m.__n2)
-	m.__n7 = widget.NewButton("", nil)
+	m.__n7 = fynelayout.NewButton("", nil)
 	m.__n7.SetText("More")
 	m.__n7.OnTapped = m.__n7_click_handler
 	m.__n2.Add(m.__n7)
@@ -544,6 +544,9 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -693,6 +696,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n3 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n3, 1)
@@ -719,6 +723,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n3)
 	m.__n7 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n7, "More")
+	gtk4rt.SetBool(m.__n7, "can-focus", true)
 	gtk4rt.Connect(m.__n7, "clicked", m.__n7_clicked_handler)
 	gtk4rt.BoxAppend(m.__n3, m.__n7)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
@@ -733,6 +738,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:172e496e7ab63b7d692b03c4a24e16e4
+pass sha256:71e4052f46f65e791d5c6531b1eed5ec
 -- run/go/gtk4 --
-pass sha256:616accbd75c3adbf2f0176a8be2632d6
+pass sha256:0acc03f262957dc61267696d833523cc

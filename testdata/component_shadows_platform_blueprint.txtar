@@ -124,6 +124,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -138,6 +146,7 @@ type modelState struct {
 
 	widget0 textinput.Model
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -406,6 +415,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.resizeWidgets()
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -440,7 +455,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	if m.__focusID == 0 {
+		m.widget0.Focus()
+	} else {
+		m.widget0.Blur()
+	}
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
@@ -449,11 +482,14 @@ func (m Model) View() tea.View {
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(m.widget0.View())
+		contentPart_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: false, key: tea.KeyPressMsg{}}, contentPart_1)
 		contentParts = append(contentParts, contentPart_1)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -486,7 +522,7 @@ type Model struct {
 
 	__n0    *fynelayout.Toplevel
 	__n2    *widget.Label
-	__n1    *widget.Entry
+	__n1    *fynelayout.Entry
 	__built bool
 }
 
@@ -556,7 +592,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2 = widget.NewLabel("")
 	m.__n2.SetText("user widget")
 	m.__n0.Add(m.__n2)
-	m.__n1 = widget.NewEntry()
+	m.__n1 = fynelayout.NewEntry()
 	m.__n1.SetText(m.value__inst0)
 	m.__n1.SetPlaceHolder("")
 	m.__n1.OnChanged = m.__n1_input_handler
@@ -684,6 +720,9 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -733,12 +772,14 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, "user widget")
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.entry = gtk4rt.New("GtkEntry")
+	gtk4rt.SetBool(m.entry, "can-focus", true)
 	gtk4rt.Connect(m.entry, "changed", m.entry_changed_handler)
 	gtk4rt.Connect(m.entry, "activate", m.entry_activate_handler)
 	gtk4rt.BoxAppend(m.__n0, m.entry)
@@ -853,11 +894,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1cf53a7412863de2b6041dec3442ede0
+pass sha256:063e66b46e60af8befbea9d24402e4d2
 -- run/go/fyne --
-pass sha256:967d42aa92a874c4539336652f51cd2b
+pass sha256:51de69565226a4106da04843359ade6c
 -- run/go/gtk4 --
-pass sha256:547f48bceb715765c26919a45b9ad7e3
+pass sha256:71c8ade9efd94d8938681e4f339d451e
 -- run/kotlin/android --
 pass sha256:2552ab02c3a6e1c9a6fe867d11dec8e6
 -- run/none/html --

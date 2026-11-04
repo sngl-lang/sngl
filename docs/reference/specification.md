@@ -2770,6 +2770,16 @@ has `{name}` placeholders is handed their values as one struct value in its
 `content` slot, `component content(p) { … }`, and every field of that struct is
 one of the href's placeholders.
 
+A window's `@key(e, stop)` hears each key pressed in it before anything in
+it does -- before a focused field types it, a focused button's Enter presses
+it, Tab moves focus or Escape goes back -- and a handler that calls `stop`
+keeps the key from going further; one that does not leaves it to go where it
+would have. `e` is a `sngl:ui` `KeyPress`: the key named as a browser names
+it, the character typed or `"Enter"`, `"Tab"`, `"Escape"` and the rest the
+type lists, whether Control, Alt, Shift and Meta were held, and whether focus
+is in a field that takes typing (`editing`). A key the system or the target
+keeps for itself is not reported.
+
 A window's body is its content; state it declares belongs to what holds the
 window (see [State and derivation](#state-and-derivation)). A node's `#id` at
 the root of a file is the package's: every root statement, function and

@@ -200,6 +200,14 @@ type ErrorEvent struct {
 
 var grid [][]string = [][]string{[]string{"p", "q"}, []string{"r"}}
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -226,6 +234,8 @@ type modelState struct {
 	__focusLoop4_cursor int
 	__focusLoop5_cursor int
 
+	__clicks      tui.Clicks[snglStop]
+	__pressing    bool
 	width, height int
 }
 
@@ -791,6 +801,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -799,10 +815,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
-		case msg.Code == tea.KeyEnter && m.__focusID == 0:
+		case msg.Code == tea.KeyEnter && m.__focusID == 0 && (m.__pressing || m.__focusShown()):
 			m.rows = [][]string{[]string{"d"}, []string{"e", "f", "g"}}
 			m.__effects0_settle()
-		case msg.Code == tea.KeyEnter && m.__focusID == 1:
+		case msg.Code == tea.KeyEnter && m.__focusID == 1 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos1 := 0
 				for __copy0, row := range m.rows {
@@ -820,7 +836,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}()
-		case msg.Code == tea.KeySpace && m.__focusID == 1:
+		case msg.Code == tea.KeySpace && m.__focusID == 1 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos1 := 0
 				for __copy0, row := range m.rows {
@@ -856,7 +872,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}()
-		case msg.Code == tea.KeyEnter && m.__focusID == 2:
+		case msg.Code == tea.KeyEnter && m.__focusID == 2 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos2 := 0
 				for __copy0, row := range m.grid {
@@ -873,7 +889,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}()
-		case msg.Code == tea.KeyEnter && m.__focusID == 3:
+		case msg.Code == tea.KeyEnter && m.__focusID == 3 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos3 := 0
 				for __copy0, r := range []int{0, 1} {
@@ -890,7 +906,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}()
-		case msg.Code == tea.KeyEnter && m.__focusID == 4:
+		case msg.Code == tea.KeyEnter && m.__focusID == 4 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos4 := 0
 				var __iterIdx1 int = -1
@@ -905,7 +921,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					__focusPos4++
 				}
 			}()
-		case msg.Code == tea.KeyEnter && m.__focusID == 5:
+		case msg.Code == tea.KeyEnter && m.__focusID == 5 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos5 := 0
 				for __copy0, __copyElem0, __end := 0, 0, m.dots; __copyElem0 < __end; __copy0, __copyElem0 = __copy0+1, __copyElem0+1 {
@@ -924,12 +940,50 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	prev := [...]int{m.__focusID, m.__focusLoop1_cursor, m.__focusLoop2_cursor, m.__focusLoop3_cursor, m.__focusLoop4_cursor, m.__focusLoop5_cursor}
+	m.__focusID = s.slot
+	switch s.slot {
+	case 1:
+		m.__focusLoop1_cursor = s.pos
+	case 2:
+		m.__focusLoop2_cursor = s.pos
+	case 3:
+		m.__focusLoop3_cursor = s.pos
+	case 4:
+		m.__focusLoop4_cursor = s.pos
+	case 5:
+		m.__focusLoop5_cursor = s.pos
+	}
+	tabbed := m.__focusShown()
+	var cmd tea.Cmd
+	if s.press {
+		m.__pressing = true
+		_, cmd = m.Update(s.key)
+		m.__pressing = false
+	}
+	if !tabbed {
+		m.__focusID = prev[0]
+		m.__focusLoop1_cursor = prev[1]
+		m.__focusLoop2_cursor = prev[2]
+		m.__focusLoop3_cursor = prev[3]
+		m.__focusLoop4_cursor = prev[4]
+		m.__focusLoop5_cursor = prev[5]
+	}
+	return cmd
+}
+
 // swapClick activates the #swap widget the way a keypress does; for tests.
 func (m *Model) swapClick() {
 	prev := m.__focusID
 	m.__focusID = 0
+	m.__pressing = true
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
+	m.__pressing = false
 	m.__focusID = prev
 	_ = m.View()
 	_ = cmd
@@ -971,8 +1025,10 @@ func (m *Model) cellClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
+	m.__pressing = true
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
+	m.__pressing = false
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
 	_ = m.View()
 	_ = cmd
@@ -1016,8 +1072,10 @@ func (m *Model) cellClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
+	m.__pressing = true
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
+	m.__pressing = false
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
 	_ = m.View()
 	_ = cmd
@@ -1059,8 +1117,10 @@ func (m *Model) markChange(_ bool) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
+	m.__pressing = true
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	*m = nm.(Model)
+	m.__pressing = false
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
 	_ = m.View()
 	_ = cmd
@@ -1104,8 +1164,10 @@ func (m *Model) markChangeAt(key string, _ bool) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
+	m.__pressing = true
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	*m = nm.(Model)
+	m.__pressing = false
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
 	_ = m.View()
 	_ = cmd
@@ -1146,8 +1208,10 @@ func (m *Model) pinClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop2_cursor
 	m.__focusID, m.__focusLoop2_cursor = 2, pos
+	m.__pressing = true
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
+	m.__pressing = false
 	m.__focusID, m.__focusLoop2_cursor = prev, prevAt
 	_ = m.View()
 	_ = cmd
@@ -1190,8 +1254,10 @@ func (m *Model) pinClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop2_cursor
 	m.__focusID, m.__focusLoop2_cursor = 2, pos
+	m.__pressing = true
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
+	m.__pressing = false
 	m.__focusID, m.__focusLoop2_cursor = prev, prevAt
 	_ = m.View()
 	_ = cmd
@@ -1232,8 +1298,10 @@ func (m *Model) tickClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop3_cursor
 	m.__focusID, m.__focusLoop3_cursor = 3, pos
+	m.__pressing = true
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
+	m.__pressing = false
 	m.__focusID, m.__focusLoop3_cursor = prev, prevAt
 	_ = m.View()
 	_ = cmd
@@ -1276,8 +1344,10 @@ func (m *Model) tickClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop3_cursor
 	m.__focusID, m.__focusLoop3_cursor = 3, pos
+	m.__pressing = true
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
+	m.__pressing = false
 	m.__focusID, m.__focusLoop3_cursor = prev, prevAt
 	_ = m.View()
 	_ = cmd
@@ -1316,8 +1386,10 @@ func (m *Model) evenClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop4_cursor
 	m.__focusID, m.__focusLoop4_cursor = 4, pos
+	m.__pressing = true
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
+	m.__pressing = false
 	m.__focusID, m.__focusLoop4_cursor = prev, prevAt
 	_ = m.View()
 	_ = cmd
@@ -1358,8 +1430,10 @@ func (m *Model) evenClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop4_cursor
 	m.__focusID, m.__focusLoop4_cursor = 4, pos
+	m.__pressing = true
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
+	m.__pressing = false
 	m.__focusID, m.__focusLoop4_cursor = prev, prevAt
 	_ = m.View()
 	_ = cmd
@@ -1396,8 +1470,10 @@ func (m *Model) dotClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop5_cursor
 	m.__focusID, m.__focusLoop5_cursor = 5, pos
+	m.__pressing = true
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
+	m.__pressing = false
 	m.__focusID, m.__focusLoop5_cursor = prev, prevAt
 	_ = m.View()
 	_ = cmd
@@ -1436,24 +1512,28 @@ func (m *Model) dotClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop5_cursor
 	m.__focusID, m.__focusLoop5_cursor = 5, pos
+	m.__pressing = true
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
+	m.__pressing = false
 	m.__focusID, m.__focusLoop5_cursor = prev, prevAt
 	_ = m.View()
 	_ = cmd
 }
 
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var parts []string
 	var part0 string
 	var part0Children []string
 	var part0_0 string
-	part0_0Focused := (m.__focusID == 0)
+	part0_0Focused := (m.__focusID == 0) && m.__focusShown()
 	part0_0Prefix := " "
 	if part0_0Focused {
 		part0_0Prefix = ">"
 	}
 	part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint("swap"))
+	part0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_0)
 	part0Children = append(part0Children, part0_0)
 	var part0_1 string
 	__focusPos1 := 0
@@ -1470,21 +1550,23 @@ func (m Model) View() tea.View {
 			_ = __copy1
 			_ = it
 			var part0_1Item_0Item_0 string
-			part0_1Item_0Item_0Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
+			part0_1Item_0Item_0Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1)) && m.__focusShown()
 			part0_1Item_0Item_0Prefix := " "
 			if part0_1Item_0Item_0Focused {
 				part0_1Item_0Item_0Prefix = ">"
 			}
 			part0_1Item_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1Item_0Item_0Prefix + " " + fmt.Sprint(it))
+			part0_1Item_0Item_0 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_1Item_0Item_0)
 			__focusPos1++
 			part0_1Item_0Items = append(part0_1Item_0Items, part0_1Item_0Item_0)
 			var part0_1Item_0Item_1 string
-			part0_1Item_0Item_1Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
+			part0_1Item_0Item_1Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1)) && m.__focusShown()
 			part0_1Item_0Item_1Prefix := " "
 			if part0_1Item_0Item_1Focused {
 				part0_1Item_0Item_1Prefix = ">"
 			}
 			part0_1Item_0Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1Item_0Item_1Prefix + " " + fmt.Sprint(it))
+			part0_1Item_0Item_1 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, part0_1Item_0Item_1)
 			__focusPos1++
 			part0_1Item_0Items = append(part0_1Item_0Items, part0_1Item_0Item_1)
 		}
@@ -1493,7 +1575,6 @@ func (m Model) View() tea.View {
 			part0_1ItemChildren = append(part0_1ItemChildren, part0_1Item_0)
 		}
 		part0_1Item = lipgloss.JoinHorizontal(lipgloss.Top, part0_1ItemChildren...)
-		part0_1Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1Item)
 		part0_1Items = append(part0_1Items, part0_1Item)
 	}
 	part0_1 = tui.Spaced(false, lipgloss.Left, 0, part0_1Items...)
@@ -1515,12 +1596,13 @@ func (m Model) View() tea.View {
 			_ = __copy1
 			_ = it
 			var part0_2Item_0Item string
-			part0_2Item_0ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
+			part0_2Item_0ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2)) && m.__focusShown()
 			part0_2Item_0ItemPrefix := " "
 			if part0_2Item_0ItemFocused {
 				part0_2Item_0ItemPrefix = ">"
 			}
 			part0_2Item_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2Item_0ItemPrefix + " " + fmt.Sprint(it))
+			part0_2Item_0Item = m.__clicks.Mark(snglStop{slot: 2, pos: __focusPos2, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_2Item_0Item)
 			__focusPos2++
 			part0_2Item_0Items = append(part0_2Item_0Items, part0_2Item_0Item)
 		}
@@ -1529,7 +1611,6 @@ func (m Model) View() tea.View {
 			part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_0)
 		}
 		part0_2Item = lipgloss.JoinHorizontal(lipgloss.Top, part0_2ItemChildren...)
-		part0_2Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2Item)
 		part0_2Items = append(part0_2Items, part0_2Item)
 	}
 	part0_2 = tui.Spaced(false, lipgloss.Left, 0, part0_2Items...)
@@ -1551,12 +1632,13 @@ func (m Model) View() tea.View {
 			_ = __copy1
 			_ = k
 			var part0_3Item_0Item string
-			part0_3Item_0ItemFocused := ((m.__focusID == 3) && (m.__focusLoop3_cursor == __focusPos3))
+			part0_3Item_0ItemFocused := ((m.__focusID == 3) && (m.__focusLoop3_cursor == __focusPos3)) && m.__focusShown()
 			part0_3Item_0ItemPrefix := " "
 			if part0_3Item_0ItemFocused {
 				part0_3Item_0ItemPrefix = ">"
 			}
 			part0_3Item_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_3Item_0ItemPrefix + " " + fmt.Sprint((fmt.Sprint(r) + fmt.Sprint(k))))
+			part0_3Item_0Item = m.__clicks.Mark(snglStop{slot: 3, pos: __focusPos3, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_3Item_0Item)
 			__focusPos3++
 			part0_3Item_0Items = append(part0_3Item_0Items, part0_3Item_0Item)
 		}
@@ -1565,7 +1647,6 @@ func (m Model) View() tea.View {
 			part0_3ItemChildren = append(part0_3ItemChildren, part0_3Item_0)
 		}
 		part0_3Item = lipgloss.JoinHorizontal(lipgloss.Top, part0_3ItemChildren...)
-		part0_3Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_3Item)
 		part0_3Items = append(part0_3Items, part0_3Item)
 	}
 	part0_3 = tui.Spaced(false, lipgloss.Left, 0, part0_3Items...)
@@ -1583,12 +1664,13 @@ func (m Model) View() tea.View {
 		_ = e
 		var part0_4_1Item string
 		__iterIdx1 += 1
-		part0_4_1ItemFocused := ((m.__focusID == 4) && (m.__focusLoop4_cursor == __focusPos4))
+		part0_4_1ItemFocused := ((m.__focusID == 4) && (m.__focusLoop4_cursor == __focusPos4)) && m.__focusShown()
 		part0_4_1ItemPrefix := " "
 		if part0_4_1ItemFocused {
 			part0_4_1ItemPrefix = ">"
 		}
 		part0_4_1Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_4_1ItemPrefix + " " + fmt.Sprint(fmt.Sprint(e)))
+		part0_4_1Item = m.__clicks.Mark(snglStop{slot: 4, pos: __focusPos4, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_4_1Item)
 		__focusPos4++
 		part0_4_1Items = append(part0_4_1Items, part0_4_1Item)
 	}
@@ -1604,12 +1686,13 @@ func (m Model) View() tea.View {
 		_ = __copy0
 		_ = __copyElem0
 		var part0_4_2Item string
-		part0_4_2ItemFocused := ((m.__focusID == 5) && (m.__focusLoop5_cursor == __focusPos5))
+		part0_4_2ItemFocused := ((m.__focusID == 5) && (m.__focusLoop5_cursor == __focusPos5)) && m.__focusShown()
 		part0_4_2ItemPrefix := " "
 		if part0_4_2ItemFocused {
 			part0_4_2ItemPrefix = ">"
 		}
 		part0_4_2Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_4_2ItemPrefix + " " + fmt.Sprint("."))
+		part0_4_2Item = m.__clicks.Mark(snglStop{slot: 5, pos: __focusPos5, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_4_2Item)
 		__focusPos5++
 		part0_4_2Items = append(part0_4_2Items, part0_4_2Item)
 	}
@@ -1618,17 +1701,17 @@ func (m Model) View() tea.View {
 		part0_4Children = append(part0_4Children, part0_4_2)
 	}
 	part0_4 = lipgloss.JoinHorizontal(lipgloss.Top, part0_4Children...)
-	part0_4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_4)
 	part0Children = append(part0Children, part0_4)
 	var part0_5 string
 	part0_5 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.log))
 	part0Children = append(part0Children, part0_5)
 	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
-	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0)
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -1719,23 +1802,23 @@ type Model struct {
 	__renderAgain2 bool
 
 	__n3          *fyne.Container
-	swap          *widget.Button
+	swap          *fynelayout.Button
 	__n5          *fyne.Container
-	pin           *widget.Button
-	__copies_pin  map[string]*widget.Button
+	pin           *fynelayout.Button
+	__copies_pin  map[string]*fynelayout.Button
 	__n6          *fyne.Container
-	tick          *widget.Button
-	__copies_tick map[string]*widget.Button
+	tick          *fynelayout.Button
+	__copies_tick map[string]*fynelayout.Button
 	__n4          *fyne.Container
 	__n0          *widget.Label
-	__named_mark  *widget.Check
-	__copies_mark map[string]*widget.Check
-	cell          *widget.Button
-	__copies_cell map[string]*widget.Button
-	even          *widget.Button
-	__copies_even map[string]*widget.Button
-	dot           *widget.Button
-	__copies_dot  map[string]*widget.Button
+	__named_mark  *fynelayout.Check
+	__copies_mark map[string]*fynelayout.Check
+	cell          *fynelayout.Button
+	__copies_cell map[string]*fynelayout.Button
+	even          *fynelayout.Button
+	__copies_even map[string]*fynelayout.Button
+	dot           *fynelayout.Button
+	__copies_dot  map[string]*fynelayout.Button
 }
 
 // New creates a Model with default values.
@@ -1786,7 +1869,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				for __copy0, row := range m.rows {
 					__n1 := fynelayout.NewHBox()
 					for __copy1, it := range row {
-						m.cell = widget.NewButton("", nil)
+						m.cell = fynelayout.NewButton("", nil)
 						m.cell.SetText(it)
 						m.__list_cell(((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), m.cell)
 						m.cell.OnTapped = func() {
@@ -1854,7 +1937,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				var __iterIdx0 int = -1
 				for e := range m.evens {
 					__iterIdx0 += 1
-					m.even = widget.NewButton("", nil)
+					m.even = fynelayout.NewButton("", nil)
 					m.even.SetText(fmt.Sprint(e))
 					m.__list_even(fmt.Sprint(__iterIdx0), m.even)
 					m.even.OnTapped = func() {
@@ -1888,7 +1971,7 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 				m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
 				m.__copies_dot = nil
 				for __copy0, __copyElem0, __end := 0, 0, m.dots; __copyElem0 < __end; __copy0, __copyElem0 = __copy0+1, __copyElem0+1 {
-					m.dot = widget.NewButton("", nil)
+					m.dot = fynelayout.NewButton("", nil)
 					m.dot.SetText(".")
 					m.__list_dot(fmt.Sprint(__copy0), m.dot)
 					m.dot.OnTapped = func() {
@@ -2029,74 +2112,74 @@ func (m *Model) dotClickAt(key string) {
 	}
 }
 
-func (m *Model) __list_pin(key string, w *widget.Button) {
+func (m *Model) __list_pin(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_pin {
 		if c == w {
 			delete(m.__copies_pin, k)
 		}
 	}
 	if m.__copies_pin == nil {
-		m.__copies_pin = map[string]*widget.Button{}
+		m.__copies_pin = map[string]*fynelayout.Button{}
 	}
 	m.__copies_pin[key] = w
 }
 
-func (m *Model) __list_tick(key string, w *widget.Button) {
+func (m *Model) __list_tick(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_tick {
 		if c == w {
 			delete(m.__copies_tick, k)
 		}
 	}
 	if m.__copies_tick == nil {
-		m.__copies_tick = map[string]*widget.Button{}
+		m.__copies_tick = map[string]*fynelayout.Button{}
 	}
 	m.__copies_tick[key] = w
 }
 
-func (m *Model) __list_mark(key string, w *widget.Check) {
+func (m *Model) __list_mark(key string, w *fynelayout.Check) {
 	for k, c := range m.__copies_mark {
 		if c == w {
 			delete(m.__copies_mark, k)
 		}
 	}
 	if m.__copies_mark == nil {
-		m.__copies_mark = map[string]*widget.Check{}
+		m.__copies_mark = map[string]*fynelayout.Check{}
 	}
 	m.__copies_mark[key] = w
 }
 
-func (m *Model) __list_cell(key string, w *widget.Button) {
+func (m *Model) __list_cell(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_cell {
 		if c == w {
 			delete(m.__copies_cell, k)
 		}
 	}
 	if m.__copies_cell == nil {
-		m.__copies_cell = map[string]*widget.Button{}
+		m.__copies_cell = map[string]*fynelayout.Button{}
 	}
 	m.__copies_cell[key] = w
 }
 
-func (m *Model) __list_even(key string, w *widget.Button) {
+func (m *Model) __list_even(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_even {
 		if c == w {
 			delete(m.__copies_even, k)
 		}
 	}
 	if m.__copies_even == nil {
-		m.__copies_even = map[string]*widget.Button{}
+		m.__copies_even = map[string]*fynelayout.Button{}
 	}
 	m.__copies_even[key] = w
 }
 
-func (m *Model) __list_dot(key string, w *widget.Button) {
+func (m *Model) __list_dot(key string, w *fynelayout.Button) {
 	for k, c := range m.__copies_dot {
 		if c == w {
 			delete(m.__copies_dot, k)
 		}
 	}
 	if m.__copies_dot == nil {
-		m.__copies_dot = map[string]*widget.Button{}
+		m.__copies_dot = map[string]*fynelayout.Button{}
 	}
 	m.__copies_dot[key] = w
 }
@@ -2136,7 +2219,7 @@ func (m *Model) SetLog(v string) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3 = fynelayout.NewVBox()
-	m.swap = widget.NewButton("", nil)
+	m.swap = fynelayout.NewButton("", nil)
 	m.swap.SetText("swap")
 	m.swap.OnTapped = m.swap_click_handler
 	m.__n3.Add(m.swap)
@@ -2144,7 +2227,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	for __copy0, row := range m.grid {
 		m.__n5 = fynelayout.NewHBox()
 		for __copy1, it := range row {
-			m.pin = widget.NewButton("", nil)
+			m.pin = fynelayout.NewButton("", nil)
 			m.pin.SetText(it)
 			m.__list_pin(((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), m.pin)
 			m.pin.OnTapped = func() {
@@ -2158,7 +2241,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	for __copy0, r := range []int{0, 1} {
 		m.__n6 = fynelayout.NewHBox()
 		for __copy1, k := range []int{0, 1} {
-			m.tick = widget.NewButton("", nil)
+			m.tick = fynelayout.NewButton("", nil)
 			m.tick.SetText((fmt.Sprint(r) + fmt.Sprint(k)))
 			m.__list_tick(((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), m.tick)
 			m.tick.OnTapped = func() {
@@ -2196,7 +2279,7 @@ type __checkbox_state0Instance struct {
 	__slot1_at             fyne.CanvasObject
 	__slot2                []fyne.CanvasObject
 	__slot2_at             fyne.CanvasObject
-	mark                   *widget.Check
+	mark                   *fynelayout.Check
 }
 
 func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_label string, __a___copy string, __a_change func(bool)) *__checkbox_state0Instance {
@@ -2211,7 +2294,7 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.mark = widget.NewCheck("", nil)
+	c.mark = fynelayout.NewCheck("", nil)
 	c.mark.SetText(c.__prop_label)
 	c.mark.SetChecked(c.checked)
 	c.__model.__list_mark(c.__prop___copy, c.mark)
@@ -2435,6 +2518,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 					for __copy1, it := range row {
 						m.cell = gtk4rt.New("GtkButton")
 						gtk4rt.ButtonSetLabel(m.cell, it)
+						gtk4rt.SetBool(m.cell, "can-focus", true)
 						m.__list_cell(((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), m.cell)
 						gtk4rt.Connect(m.cell, "clicked", func() {
 							m.log = it
@@ -2503,6 +2587,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					__iterIdx0 += 1
 					m.even = gtk4rt.New("GtkButton")
 					gtk4rt.ButtonSetLabel(m.even, fmt.Sprint(e))
+					gtk4rt.SetBool(m.even, "can-focus", true)
 					m.__list_even(fmt.Sprint(__iterIdx0), m.even)
 					gtk4rt.Connect(m.even, "clicked", func() {
 						m.log = fmt.Sprint(e)
@@ -2537,6 +2622,7 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 				for __copy0, __copyElem0, __end := 0, 0, m.dots; __copyElem0 < __end; __copy0, __copyElem0 = __copy0+1, __copyElem0+1 {
 					m.dot = gtk4rt.New("GtkButton")
 					gtk4rt.ButtonSetLabel(m.dot, ".")
+					gtk4rt.SetBool(m.dot, "can-focus", true)
 					m.__list_dot(fmt.Sprint(__copy0), m.dot)
 					gtk4rt.Connect(m.dot, "clicked", func() {
 						m.log = (m.log + ".")
@@ -2596,6 +2682,7 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.mark = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(c.mark, c.__prop_label)
 	gtk4rt.CheckButtonSetActive(c.mark, c.checked)
+	gtk4rt.SetBool(c.mark, "can-focus", true)
 	c.__model.__list_mark(c.__prop___copy, c.mark)
 	gtk4rt.Connect(c.mark, "toggled", func() {
 		if gtk4rt.CheckButtonGetActive(c.mark) != c.checked {
@@ -2691,6 +2778,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.SetLook(m.__n3, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.swap = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.swap, "swap")
+	gtk4rt.SetBool(m.swap, "can-focus", true)
 	gtk4rt.Connect(m.swap, "clicked", m.swap_clicked_handler)
 	gtk4rt.BoxAppend(m.__n3, m.swap)
 	m.__renderSlot0(m.__n3)
@@ -2701,6 +2789,7 @@ func (m *Model) buildWidgetTree() {
 		for __copy1, it := range row {
 			m.pin = gtk4rt.New("GtkButton")
 			gtk4rt.ButtonSetLabel(m.pin, it)
+			gtk4rt.SetBool(m.pin, "can-focus", true)
 			m.__list_pin(((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), m.pin)
 			gtk4rt.Connect(m.pin, "clicked", func() {
 				m.log = it
@@ -2717,6 +2806,7 @@ func (m *Model) buildWidgetTree() {
 		for __copy1, k := range []int{0, 1} {
 			m.tick = gtk4rt.New("GtkButton")
 			gtk4rt.ButtonSetLabel(m.tick, (fmt.Sprint(r) + fmt.Sprint(k)))
+			gtk4rt.SetBool(m.tick, "can-focus", true)
 			m.__list_tick(((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), m.tick)
 			gtk4rt.Connect(m.tick, "clicked", func() {
 				m.log = (fmt.Sprint(r) + fmt.Sprint(k))
@@ -3827,11 +3917,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e255aea02bbc399ebe6211b5700ff670
+pass sha256:4258854a8e5ea279e67a4fd33d688338
 -- run/go/fyne --
-pass sha256:564d62318b92a75fd51bb95f914fdb9f
+pass sha256:fe65c3c4abe25842573d8eedbbb96a30
 -- run/go/gtk4 --
-pass sha256:9a9121a90eb43877b6ef50c78d489182
+pass sha256:df0f4239dd9f08c2676234b4ae868133
 -- run/kotlin/android --
 pass sha256:249daec634406568d31b103ef257b349
 -- run/none/html --

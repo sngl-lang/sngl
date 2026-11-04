@@ -424,7 +424,6 @@ func (m Model) View() tea.View {
 		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(len(m.pair))))
 		contentChildren = append(contentChildren, content_1)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -614,6 +613,6 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:45cf18588de20ac2fb5c29fcab38934c
+pass sha256:682d7d61d6ff5ca07bc5ac930addcfad
 -- run/kotlin/android --
 pass sha256:ed524e65112804f2c7d6451682e9f035

@@ -71,7 +71,7 @@ sha256:b635f5e1dbda87255d9326a74fd72eae
   ]
 }
 -- testrun/bubbletea/go/app.sngl/cardWithButton/1 --
-sha256:f86ad21c3c61d51ae1037b22fe9685b1
+sha256:f0a3975f7946dbf1eb79e3dc4ea13ef7
 {
   "results": [
     {
@@ -85,7 +85,7 @@ sha256:f86ad21c3c61d51ae1037b22fe9685b1
   ]
 }
 -- testrun/fyne/go/app.sngl/cardWithButton/1 --
-sha256:1d32c9e8c7b8c19bbf87b54f224b8037
+sha256:a832d0b0a49227507e4b6ce8c2dc6a5a
 {
   "results": [
     {
@@ -99,7 +99,7 @@ sha256:1d32c9e8c7b8c19bbf87b54f224b8037
   ]
 }
 -- testrun/gtk4/go/app.sngl/cardWithButton/1 --
-sha256:6163ce770dd15bbe735373560a5ccfc4
+sha256:17df95d985a3e6def741da366dbfd0d9
 {
   "results": [
     {

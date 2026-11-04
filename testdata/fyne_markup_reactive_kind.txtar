@@ -51,7 +51,6 @@ import (
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
 
@@ -93,7 +92,7 @@ type Model struct {
 
 	home    *fynelayout.Toplevel
 	__n2    *fyne.Container
-	__n3    *widget.Button
+	__n3    *fynelayout.Button
 	__n4    *fynetext.Flow
 	__n0    *fynetext.Span
 	__n5    *fynetext.Span
@@ -215,7 +214,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.OnClosed = m.home_closed_handler
 	m.home.OnVisible = m.home_visible_handler
 	m.__n2 = fynelayout.NewVBox()
-	m.__n3 = widget.NewButton("", nil)
+	m.__n3 = fynelayout.NewButton("", nil)
 	m.__n3.SetText("change")
 	m.__n3.OnTapped = m.__n3_click_handler
 	m.__n2.Add(m.__n3)
@@ -252,4 +251,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:6b175c6416cfc806c6ac74f6095cf571
+pass sha256:a3ed9aac4ec52698715e1a69ac29deb6

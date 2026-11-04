@@ -549,6 +549,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) main_closed_handler() {
 }
 
+func (m *Model) main_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
@@ -587,6 +590,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.main, "poll")
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
+	gtk4rt.ToplevelOnKey(m.main, m.main_key_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, m.name__inst0)
@@ -605,4 +609,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:123cb637cc9927759f753223625f8b06
 -- run/go/gtk4 --
-pass sha256:f420f5708060c8fc8e5c3dd51f7bfd5c
+pass sha256:e55ce9bf852ac9fa891b260b835207ac

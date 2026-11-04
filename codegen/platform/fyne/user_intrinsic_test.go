@@ -39,7 +39,7 @@ window {
 	for _, want := range []string{
 		"widget.NewLabel(",
 		`SetText("direct label")`,
-		"widget.NewButton(",
+		"fynelayout.NewButton(",
 		`SetText("direct button")`,
 	} {
 		if !strings.Contains(out, want) {

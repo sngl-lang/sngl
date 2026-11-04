@@ -85,6 +85,7 @@ func testBuilds(t Test, c main) {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -101,7 +102,7 @@ type Page struct {
 type Model struct {
 	shown string
 
-	go__r0 *widget.Button
+	go__r0 *fynelayout.Button
 	__n0   *widget.Label
 }
 
@@ -169,7 +170,7 @@ func (m *Model) SetShown(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.go__r0 = widget.NewButton("", nil)
+	m.go__r0 = fynelayout.NewButton("", nil)
 	m.go__r0.SetText("Go")
 	m.go__r0.OnTapped = m.go__r0_click_handler
 	m.__n0 = widget.NewLabel("")
@@ -421,7 +422,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:15813eb7acac030295a4c83b412b6ef3
+pass sha256:47d22369e93ddb8adbcd9532b728e70b
 -- run/kotlin/android --
 pass sha256:5cc0b38fba263b2c9ee71cb2ad6e0a7f
 -- run/none/html --

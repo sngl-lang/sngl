@@ -358,10 +358,12 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.OrientableSetOrientation(__n0, 1)
 	gtk4rt.SetLook(__n0, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.first = gtk4rt.New("GtkEntry")
+	gtk4rt.SetBool(m.first, "can-focus", true)
 	gtk4rt.Connect(m.first, "changed", m.first_changed_handler)
 	gtk4rt.Connect(m.first, "activate", m.first_activate_handler)
 	gtk4rt.BoxAppend(__n0, m.first)
 	m.second = gtk4rt.New("GtkEntry")
+	gtk4rt.SetBool(m.second, "can-focus", true)
 	gtk4rt.Connect(m.second, "changed", m.second_changed_handler)
 	gtk4rt.Connect(m.second, "activate", m.second_activate_handler)
 	gtk4rt.BoxAppend(__n0, m.second)
@@ -422,4 +424,4 @@ func (m *Model) cal__1Change(v *time.Time) {
 	gtk4rt.Emit(m.cal__1, "day-selected")
 }
 -- run/go/gtk4 --
-pass sha256:934df17bcbadc9e7896b3c5cdbab046b
+pass sha256:758090ceb57f68bb6c865c906fd406f8

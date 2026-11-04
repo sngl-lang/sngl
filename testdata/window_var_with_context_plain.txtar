@@ -372,7 +372,6 @@ func (m Model) View() tea.View {
 		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.name))
 		contentChildren = append(contentChildren, content_0)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -528,6 +527,9 @@ func New() *Model {
 func (m *Model) home_closed_handler() {
 }
 
+func (m *Model) home_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
@@ -558,6 +560,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.home, "Home")
 	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
+	gtk4rt.ToplevelOnKey(m.home, m.home_key_handler)
 	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
 	m.__n1 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n1, 1)
@@ -742,10 +745,10 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:d9e49b84f8390faa94b9be61f5a876bd
+pass sha256:54325e80cc453cb40f0ff0e955004e4e
 -- run/go/fyne --
 pass sha256:82436a286d876a6c95409af598ff5310
 -- run/go/gtk4 --
-pass sha256:60654eb4092ef7bf0e74c056fa51a447
+pass sha256:3a78b0c1df20b9b74ca15f7614d23d2e
 -- run/kotlin/android --
 pass sha256:92c752bb1ad46a819da25a3d0ee55aa2

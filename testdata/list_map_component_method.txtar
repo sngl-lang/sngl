@@ -131,6 +131,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -142,6 +150,7 @@ type modelState struct {
 	got__inst0 string
 	__focusID  int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -384,6 +393,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -403,6 +418,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 // runClick activates the #run widget the way a keypress does; for tests.
 func (m *Model) runClick() {
 	prev := m.__focusID
@@ -415,6 +442,7 @@ func (m *Model) runClick() {
 }
 
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var parts []string
 	var part0 string
 	part0Focused := (m.__focusID == 0)
@@ -423,13 +451,16 @@ func (m Model) View() tea.View {
 		part0Prefix = ">"
 	}
 	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Prefix + " " + fmt.Sprint("run"))
+	part0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0)
 	parts = append(parts, part0)
 	var part1 string
 	part1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.got__inst0))
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -460,6 +491,7 @@ func newTestComponent() Model { m := New(); _ = m.View(); return m }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -474,7 +506,7 @@ type Model struct {
 	shown      bool
 	got__inst0 string
 
-	run  *widget.Button
+	run  *fynelayout.Button
 	__n0 *widget.Label
 }
 
@@ -524,7 +556,7 @@ func (m *Model) SetGot__inst0(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.run = widget.NewButton("", nil)
+	m.run = fynelayout.NewButton("", nil)
 	m.run.SetText("run")
 	m.run.OnTapped = m.run_click_handler
 	m.__n0 = widget.NewLabel("")
@@ -708,9 +740,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1b5a9d9f173c31a0ff40441a0d071168
+pass sha256:a449665e29822b8403d329b7515a3a71
 -- run/go/fyne --
-pass sha256:c626544d0949868116ee1b956f1e1a7f
+pass sha256:741ecfe700f040b9cbf05d966502b1ce
 -- run/kotlin/android --
 pass sha256:e827f7d94c0fc7bd5c33d90f14a49bf9
 -- run/none/html --

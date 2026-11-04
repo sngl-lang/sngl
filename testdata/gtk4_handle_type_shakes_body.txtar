@@ -149,6 +149,9 @@ func (m *Model) __effects0_settle() {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -184,6 +187,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.__n0, "t")
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.d = gtk4rt.New("GtkCalendar")
 	gtk4rt.SetBool(m.d, "sensitive", true)
@@ -206,4 +210,4 @@ func (m *Model) dChange(v *time.Time) {
 	gtk4rt.Emit(m.d, "day-selected")
 }
 -- run/go/gtk4 --
-pass sha256:43e6107d1e70b563a0eeb7df1cf9a3c4
+pass sha256:faa7715cfc5adbdb804b606b637829ae

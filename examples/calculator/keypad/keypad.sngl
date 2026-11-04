@@ -28,9 +28,9 @@ func bgOf(tone string) color {
 func rows() list[list[Key]] {
     return [
         [
-            Key{label="C", action=Action.clear},
-            Key{label="+/-", action=Action.negate},
-            Key{label="%", action=Action.percent},
+            Key{label="C", action=Action.clear, shortcuts=["Escape", "c", "C"]},
+            Key{label="+/-", action=Action.negate, shortcuts=["_"]},
+            Key{label="%", action=Action.percent, shortcuts=["%"]},
             opKey(calc.Op.div),
         ],
         [digitKey("7"), digitKey("8"), digitKey("9"), opKey(calc.Op.mul)],
@@ -38,18 +38,35 @@ func rows() list[list[Key]] {
         [digitKey("1"), digitKey("2"), digitKey("3"), opKey(calc.Op.add)],
         [
             digitKey("0"),
-            Key{label=".", action=Action.point},
-            Key{label="<", action=Action.backspace},
-            Key{label="=", action=Action.equals},
+            Key{label=".", action=Action.point, shortcuts=[".", ","]},
+            Key{label="<", action=Action.backspace, shortcuts=["Backspace"]},
+            Key{label="=", action=Action.equals, shortcuts=["=", "Enter"]},
         ],
     ]
 }
 
+// The key a keyboard's key named `name` presses, null where it presses none.
+func keyFor(name string) option[Key] {
+    for var row = rows() {
+        for var k = row {
+            if k.shortcuts.contains(name) {
+                return k
+            }
+        }
+    }
+    return null
+}
+
 // One key. `flex` is what makes the grid fill the window: every key claims its
 // span of its row, and every row claims an equal share of the keypad.
+//
+// A key takes no focus, as no calculator's key does: the keyboard reaches it
+// by its shortcut, and a key left focused by the last click would take the
+// Enter that means `=`.
 component KeyCap(entry Key, @press(v Key)) ui.node {
     ui.button(
         text = entry.label,
+        focusable = false,
         style = {
             flex = entry.span,
             background = bgOf(entry.tone()),

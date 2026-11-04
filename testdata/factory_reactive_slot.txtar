@@ -206,7 +206,7 @@ type CardInstance struct {
 	__renderAgain0 bool
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
-	__n0           *widget.Button
+	__n0           *fynelayout.Button
 }
 
 func newCardInstance(__model *Model, __a_name string) *CardInstance {
@@ -220,7 +220,7 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	c.__n0 = widget.NewButton("", nil)
+	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(c.__prop_name)
 	c.__n0.OnTapped = func() {
 		c.open = !c.open
@@ -446,6 +446,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n2_closed_handler() {
 }
 
+func (m *Model) __n2_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n2_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
@@ -481,6 +484,7 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c.__slot1 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, c.__prop_name)
+	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.open = !c.open
 		c.__renderSlot0(c.__root)
@@ -640,6 +644,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n2 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n2, m.__n2_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n2, m.__n2_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n2, m.__n2_visible_handler)
 	m.__renderSlot1(m.__n2)
 	gtk4rt.AppAttach(m.__n2)
@@ -652,6 +657,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n2)
 }
 -- run/go/fyne --
-pass sha256:85cce9bb6b20a61ea5d4d69a0fdfa3fb
+pass sha256:4f9c112c3dd9468c4d4c7db137876edc
 -- run/go/gtk4 --
-pass sha256:f82ad547d915e59e8748f0c8929facc1
+pass sha256:2e0e9599c4edaf574bf78b841b16b073

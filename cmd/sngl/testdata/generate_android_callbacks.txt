@@ -45,7 +45,7 @@ grep 'Surface\(shape = MaterialTheme\.shapes\.medium\) \{' out/MainScreen.kt
 
 # A program can pass its own lambda to an intrinsic directly; the parameter
 # names in the emitted Kotlin are the ones it wrote.
-grep 'Switch\(checked = flag, onCheckedChange = \{ v ->' out/MainScreen.kt
+grep 'Switch\(checked = flag, modifier = Modifier\.safeDrawingPadding\(\), onCheckedChange = \{ v ->' out/MainScreen.kt
 grep 'flag = v' out/MainScreen.kt
 
 # A func-typed prop on a component of the program's own takes a lambda the same

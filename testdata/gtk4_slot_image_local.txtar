@@ -154,6 +154,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n1_closed_handler() {
 }
 
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
@@ -328,6 +331,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.__n1, "t")
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n1, m.__n1_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n4, 1)
@@ -335,6 +339,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n4)
 	m.__n5 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n5, "toggle")
+	gtk4rt.SetBool(m.__n5, "can-focus", true)
 	gtk4rt.Connect(m.__n5, "clicked", m.__n5_clicked_handler)
 	gtk4rt.BoxAppend(m.__n4, m.__n5)
 	gtk4rt.BoxAppend(m.__n1, m.__n4)
@@ -348,4 +353,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/gtk4 --
-pass sha256:1185a7a1ac3bdc58d966e83c52eba588
+pass sha256:9d8b003db15ae66601e95de1785e6554

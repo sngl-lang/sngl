@@ -446,7 +446,6 @@ func (m Model) renderTreeView(node *Node, __depth int) string {
 			resultChildren = append(resultChildren, result_2)
 		}
 		result = lipgloss.JoinVertical(lipgloss.Left, resultChildren...)
-		result = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(result)
 	}
 	return result
 }
@@ -678,6 +677,6 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:2281c2bbeeacf4ae102d612c7b189950
+pass sha256:af9c2c46cb67dcca4c307b53e7b973e4
 -- run/kotlin/android --
 pass sha256:2204f1f33ef89741ecb8e5c4012ceadf

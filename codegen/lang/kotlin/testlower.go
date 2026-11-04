@@ -166,17 +166,15 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 		// to reassign a val. The case exists at all so the initializer goes
 		// through lowerTestExpr, which is what lets it read `c.<id>.<prop>`.
 		// Initializer is the IR-provided Init when present (ir.Normalize
-		// injects the zero value otherwise).
-		var init string
+		// injects the zero value otherwise). The declaration is the ordinary
+		// translator's, which is what makes a list local one a push adds to.
 		if n.Init != nil {
-			init = lowerTestExpr(n.Init, surf, compRecvs)
-		} else {
-			init = "null"
+			return []string{surf.translator().LocalVarText(n, lowerTestExpr(n.Init, surf, compRecvs))}
 		}
 		if ir.PayloadEnum(n.Type) != nil {
-			return []string{fmt.Sprintf("var %s: %s = %s", n.Name, IRTypeToKt(n.Type), init)}
+			return []string{fmt.Sprintf("var %s: %s = null", n.Name, IRTypeToKt(n.Type))}
 		}
-		return []string{fmt.Sprintf("var %s = %s", n.Name, init)}
+		return []string{fmt.Sprintf("var %s = null", n.Name)}
 	case *ir.Assign, *ir.Toggle:
 		// A write to state -- `c.<var>…`, or a package var -- runs on the UI
 		// thread so Compose recomposes before the next assertion. The write
@@ -313,6 +311,16 @@ func lowerEventTrigger(call *ir.CallStmt, surf TestSurface, compRecvs map[string
 	if event == "back" && tt.Key() == nil && len(c.Args) == 0 {
 		return fmt.Sprintf("composeTestRule.onNodeWithTag(%q)%s; composeTestRule.waitForIdle()", id+"__back", clickAction), true
 	}
+	// A window's key is heard by the window's `@key` as the test gives it,
+	// and pressed on, unless the handler stopped it, as a hardware keyboard
+	// presses it, handed to the activity's decor view (keys.kt's
+	// snglPressKey), so it goes where it would have gone. The test's stop is
+	// told of a stopped key once the UI thread is done with it.
+	if event == "key" && tt.Key() == nil && len(c.Args) == 2 && windowHandle(c.Receiver) {
+		press := lowerTestExpr(c.Args[0].Value, surf, compRecvs)
+		stop := lowerTestExpr(c.Args[1].Value, surf, compRecvs)
+		return fmt.Sprintf("run { val __press = %s; val __stop: () -> Unit = %s; var __stopped = false; composeTestRule.runOnUiThread { __stopped = snglPressKey(%s, __press, __press.key, __press.ctrl, __press.alt, __press.shift, __press.meta) }; composeTestRule.waitForIdle(); if (__stopped) __stop() }", press, stop, testActivity), true
+	}
 	tag := copyMatcher(id, tt.Key())
 	if carriesState(c.Args) {
 		// The tag sits on the override's root, the Row around the control and
@@ -329,6 +337,25 @@ func lowerEventTrigger(call *ir.CallStmt, surf TestSurface, compRecvs map[string
 		return fmt.Sprintf("// TODO: no Compose-test action mapped for @%s on #%s", event, id), true
 	}
 	return fmt.Sprintf("%s.%s; composeTestRule.waitForIdle()", finder, action), true
+}
+
+// testActivity is the activity a test's composition is shown in, read on the
+// UI thread: the one resumed. The rule a test is handed is not always the
+// AndroidComposeTestRule that knows it -- a program with work in flight is
+// handed one waiting for that work too, which delegates to it.
+const testActivity = "androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED).first()"
+
+// windowHandle reports whether e is a `ui.window`'s `#id`.
+func windowHandle(e ir.Expr) bool {
+	for cv, ok := e.(*ir.Conversion); ok; cv, ok = e.(*ir.Conversion) {
+		e = cv.Operand
+	}
+	t := e.ExprType()
+	if t == nil || t.Kind != ir.TypeComponent {
+		return false
+	}
+	comp, ok := t.Decl.(*ir.Component)
+	return ok && comp.Name == "window" && comp.Family != nil && comp.Family.Name == "root"
 }
 
 // clickAction clicks the node a trigger found by running its click action, as
@@ -356,6 +383,10 @@ func composeAction(event string, args []ir.CallArg, lower func(ir.Expr) string) 
 	switch event {
 	case "click":
 		return strings.TrimPrefix(clickAction, ".")
+	case "focus":
+		// A field is focused as a tap or a Tab focuses it: what a hardware
+		// keyboard types then goes to it.
+		return "performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.RequestFocus)"
 	case "input", "change", "changed":
 		text := extractEventValue(args, lower)
 		return fmt.Sprintf("performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString(%s)) }", text)
@@ -376,10 +407,9 @@ func composeAction(event string, args []ir.CallArg, lower func(ir.Expr) string) 
 // strip as well.
 func lowerMobileCall(c *ir.Call) (string, bool) {
 	// The system back is the activity's: its dispatcher asks the handlers a
-	// composition registered, the last added first, as the back key does. The
-	// rule a test is handed as a ComposeContentTestRule is the activity's.
+	// composition registered, the last added first, as the back key does.
 	if c != nil && c.Func != nil && c.Func.Intrinsic == "mobile.back" {
-		return "(composeTestRule as androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, *>).let { __rule -> __rule.runOnUiThread { __rule.activity.onBackPressedDispatcher.onBackPressed() } }; composeTestRule.waitForIdle()", true
+		return "composeTestRule.runOnUiThread { (" + testActivity + " as androidx.activity.ComponentActivity).onBackPressedDispatcher.onBackPressed() }; composeTestRule.waitForIdle()", true
 	}
 	if c == nil || c.Func == nil || c.Func.Intrinsic != "mobile.swipe" || len(c.Args) != 2 {
 		return "", false

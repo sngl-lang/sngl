@@ -85,8 +85,8 @@ type Model struct {
 	__renderAgain0 bool
 
 	main    *fynelayout.Toplevel
-	__n4    *widget.Button
-	__n5    *widget.Button
+	__n4    *fynelayout.Button
+	__n5    *fynelayout.Button
 	__n2    *widget.Label
 	__built bool
 }
@@ -257,11 +257,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.main.SetVisible(m.visible__inst0)
 	m.main.OnClosed = m.main_closed_handler
 	m.main.OnVisible = m.main_visible_handler
-	m.__n4 = widget.NewButton("", nil)
+	m.__n4 = fynelayout.NewButton("", nil)
 	m.__n4.SetText("Details")
 	m.__n4.OnTapped = m.__n4_click_handler
 	m.main.Add(m.__n4)
-	m.__n5 = widget.NewButton("", nil)
+	m.__n5 = fynelayout.NewButton("", nil)
 	m.__n5.SetText("+")
 	m.__n5.OnTapped = m.__n5_click_handler
 	m.main.Add(m.__n5)
@@ -546,6 +546,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) main_closed_handler() {
 }
 
+func (m *Model) main_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
@@ -607,6 +610,8 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 	gtk4rt.ToplevelSetVisible(c.__n0, c.visible)
 	gtk4rt.ToplevelOnClosed(c.__n0, func() {
 		c.__prop_closed()
+	})
+	gtk4rt.ToplevelOnKey(c.__n0, func(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 	})
 	gtk4rt.ToplevelOnVisible(c.__n0, func(__visible bool) {
 		c.visible = __visible
@@ -740,13 +745,16 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.main, "Main")
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
+	gtk4rt.ToplevelOnKey(m.main, m.main_key_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__n4 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n4, "Details")
+	gtk4rt.SetBool(m.__n4, "can-focus", true)
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
 	gtk4rt.BoxAppend(m.main, m.__n4)
 	m.__n5 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n5, "+")
+	gtk4rt.SetBool(m.__n5, "can-focus", true)
 	gtk4rt.Connect(m.__n5, "clicked", m.__n5_clicked_handler)
 	gtk4rt.BoxAppend(m.main, m.__n5)
 	m.__n2 = gtk4rt.New("GtkLabel")
@@ -1034,8 +1042,8 @@ dialog { margin: auto; padding: 1em; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:beeed9eeefc825b4d464cc24c7225fcc
+pass sha256:176ae782e88d7b45f8cdfc49ea979e1a
 -- run/go/gtk4 --
-pass sha256:83544ae2c34f47b2b3a856428b7da308
+pass sha256:1a3d294aa4f32bb184ed03c8535150c6
 -- run/none/html --
 pass sha256:cf4a6029b8b089cf84d513cf7e1ad48e

@@ -87,7 +87,7 @@ type Model struct {
 	__n8     *fyne.Container
 	__n2     *Frame__slot0Instance
 	__n2__el fyne.CanvasObject
-	__n9     *widget.Button
+	__n9     *fynelayout.Button
 	__built  bool
 }
 
@@ -142,7 +142,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2 = newFrame__slot0Instance(m, m.depth, 0)
 	m.__n2__el = m.__n2.Root
 	m.__n8.Add(m.__n2__el)
-	m.__n9 = widget.NewButton("", nil)
+	m.__n9 = fynelayout.NewButton("", nil)
 	m.__n9.SetText("deeper")
 	m.__n9.OnTapped = m.__n9_click_handler
 	m.__n8.Add(m.__n9)
@@ -440,6 +440,9 @@ func New() *Model {
 }
 
 func (m *Model) __n1_closed_handler() {
+}
+
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
@@ -742,6 +745,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n1, m.__n1_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__n8 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n8, 1)
@@ -751,6 +755,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n8, m.__n2__el)
 	m.__n9 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n9, "deeper")
+	gtk4rt.SetBool(m.__n9, "can-focus", true)
 	gtk4rt.Connect(m.__n9, "clicked", m.__n9_clicked_handler)
 	gtk4rt.BoxAppend(m.__n8, m.__n9)
 	gtk4rt.BoxAppend(m.__n1, m.__n8)
@@ -1031,8 +1036,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:3c48c3a31314bd11a2d9c100524d776a
+pass sha256:5364a723d93ac715f3e746d7cca57e51
 -- run/go/gtk4 --
-pass sha256:2c574125e4d5e8bc13d5eb60f0a02d5b
+pass sha256:3969c6bdae4b717d836419eb79c8359f
 -- run/none/html --
 pass sha256:3e9f3b84c058deb7247c7ed31b22f3a8

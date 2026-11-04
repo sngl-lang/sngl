@@ -139,8 +139,25 @@ struct KeyEvent {
     eventPhase int
 }
 
-// A click as `@click` hands it: the element it landed on, and the one the
-// handler hearing it was attached to.
+// A key pressed in a window, as its `sngl-keys` dispatches it: the fields of
+// the ui.KeyPress the window's `@key` is handed, written on the event itself.
+#[js.native("Event")]
+struct KeyPressEvent {
+    key     string
+    ctrl    bool
+    alt     bool
+    shift   bool
+    meta    bool
+    editing bool
+}
+
+// Keeps the key from going further: `sngl-keys` reads the event it dispatched
+// as prevented, and prevents and stops the keydown it was dispatched for.
+#[js.native("preventDefault", "", method)]
+func KeyPressEvent.preventDefault()
+
+// A click as `@click` hands it, and a press as `@mousedown` does: the element
+// it landed on, and the one the handler hearing it was attached to.
 #[js.native("MouseEvent")]
 struct ClickEvent {
     target        Element
@@ -167,6 +184,11 @@ func Element.closest(selector string) Element
 // scrolling the page.
 #[js.native("preventDefault", "", method)]
 func KeyEvent.preventDefault()
+
+// Keeps the browser from doing what a press does by default: giving the focus
+// to the element pressed.
+#[js.native("preventDefault", "", method)]
+func ClickEvent.preventDefault()
 
 // The element an event was dispatched to, as far as a control reports its
 // state through it: the text of an input, a textarea or a select, and whether
@@ -250,6 +272,7 @@ component element(
     attrs map[string, string],
 
     @click(e ClickEvent),
+    @mousedown(e ClickEvent),
     @input(e Event),
     @change(e Event),
     @focus(),
@@ -268,6 +291,10 @@ component element(
     // (codegen/platform/html/back.go), as the browser goes back through the
     // history entry it keeps.
     @back(),
+    // Dispatched by `sngl-keys`, an element the page defines
+    // (codegen/platform/html/keys.go), for each key pressed in the window it is
+    // in, before anything there hears it.
+    @key(e KeyPressEvent),
     // Dispatched by `sngl-reach-end`, an element the page defines rather than
     // the DOM (codegen/platform/html/reachend.go). Declared because it is
     // camelCase, which the wildcard below refuses, and it is camelCase so a
@@ -348,8 +375,27 @@ const component ui.text[platform](value, style) {
 // fires -- and a right-click, which is not the same gesture. It stands in until
 // html synthesizes the real one from pointerdown and a timer; the alternative
 // was a declared event that reached nothing.
-const component ui.button[platform](text, disabled, style, @click, @longPress) {
-    html.button(disabled=disabled, style=css(style), @click { click() }, @contextmenu { longPress() }) {
+//
+// A control whose `focusable` is false -- this and every other here -- is out
+// of the order Tab moves the focus in, by `tabindex="-1"`, and its
+// `@mousedown` prevents the focus a press gives, so a key typed after pressing
+// it goes to what had the focus rather than pressing it again. A control writing
+// attributes the wildcard collects -- an input's `type` -- writes them in the
+// same map, since the wildcard takes the map or the names it matches.
+// Neither is written where `focusable` is the literal `true`.
+const component ui.button[platform](text, disabled, focusable, style, @click, @longPress) {
+    html.button(
+        disabled = disabled,
+        attrs = focusable ? {} : {"tabindex"="-1"},
+        style = css(style),
+        @click { click() },
+        @mousedown(e) {
+            if !focusable {
+                e.preventDefault()
+            }
+        },
+        @contextmenu { longPress() },
+    ) {
         html.span(textContent=text) {}
     }
 }
@@ -394,14 +440,18 @@ const component shapes.image[platform](width, height, shapes) {
     }
 }
 
-const component ui.input[platform](placeholder, readonly, value, disabled, type, style, @input, @change) {
+const component ui.input[platform](placeholder, readonly, value, disabled, type, focusable, style, @input, @change) {
     html.input(
-        type = string(type),
-        placeholder = placeholder,
         value = value,
         disabled = disabled,
         readonly = readonly,
+        attrs = focusable ? {"type"=string(type), "placeholder"=placeholder} : {"type"=string(type), "placeholder"=placeholder, "tabindex"="-1"},
         style = css(style),
+        @mousedown(e) {
+            if !focusable {
+                e.preventDefault()
+            }
+        },
         @input(e) {
             value = e.currentTarget.value
             input(value)
@@ -413,9 +463,13 @@ const component ui.input[platform](placeholder, readonly, value, disabled, type,
     ) {}
 }
 
-const component ui.checkbox[platform](label, checked, disabled, style, @change) {
-    html.label(style=css({display=inlineFlex, alignItems=center, gap=4px, ...style})) {
-        html.input(type="checkbox", checked=checked, disabled=disabled, @change(e) {
+const component ui.checkbox[platform](label, checked, disabled, focusable, style, @change) {
+    html.label(style=css({display=inlineFlex, alignItems=center, gap=4px, ...style}), @mousedown(e) {
+        if !focusable {
+            e.preventDefault()
+        }
+    }) {
+        html.input(checked=checked, disabled=disabled, attrs=focusable ? {"type"="checkbox"} : {"type"="checkbox", "tabindex"="-1"}, @change(e) {
             checked = e.currentTarget.checked
             change(checked)
         }) {}
@@ -439,9 +493,13 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
     }
 }
 
-const component ui.toggle[platform](label, checked, disabled, style, @change) {
-    html.label(style=css({display=inlineFlex, alignItems=center, gap=8px, ...style})) {
-        html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change(e) {
+const component ui.toggle[platform](label, checked, disabled, focusable, style, @change) {
+    html.label(style=css({display=inlineFlex, alignItems=center, gap=8px, ...style}), @mousedown(e) {
+        if !focusable {
+            e.preventDefault()
+        }
+    }) {
+        html.input(checked=checked, disabled=disabled, attrs=focusable ? {"type"="checkbox", "role"="switch"} : {"type"="checkbox", "role"="switch", "tabindex"="-1"}, @change(e) {
             checked = e.currentTarget.checked
             change(checked)
         }) {}
@@ -449,11 +507,21 @@ const component ui.toggle[platform](label, checked, disabled, style, @change) {
     }
 }
 
-const component ui.select[platform](placeholder, value, disabled, style, @change, options) {
-    html.select(disabled=disabled, style=css(style), @change(e) {
-        value = e.currentTarget.value
-        change(value)
-    }) {
+const component ui.select[platform](placeholder, value, disabled, focusable, style, @change, options) {
+    html.select(
+        disabled = disabled,
+        attrs = focusable ? {} : {"tabindex"="-1"},
+        style = css(style),
+        @mousedown(e) {
+            if !focusable {
+                e.preventDefault()
+            }
+        },
+        @change(e) {
+            value = e.currentTarget.value
+            change(value)
+        },
+    ) {
         if placeholder != "" {
             html.option(value="", disabled=true, selected=true, textContent=placeholder)
         }
@@ -463,13 +531,18 @@ const component ui.select[platform](placeholder, value, disabled, style, @change
     }
 }
 
-const component ui.textarea[platform](placeholder, readonly, value, disabled, rows, style, @input, @change) {
+const component ui.textarea[platform](placeholder, readonly, value, disabled, rows, focusable, style, @input, @change) {
     html.textarea(
-        placeholder = placeholder,
         disabled = disabled,
         readonly = readonly,
         rows = string(rows),
+        attrs = focusable ? {"placeholder"=placeholder} : {"placeholder"=placeholder, "tabindex"="-1"},
         style = css(style),
+        @mousedown(e) {
+            if !focusable {
+                e.preventDefault()
+            }
+        },
         @input(e) {
             value = e.currentTarget.value
             input(value)
@@ -515,7 +588,7 @@ const component ui.badge[platform](value, variant, style) {
     ) {}
 }
 
-const component ui.chip[platform](label, variant, removable, selected, disabled, style, @click, @remove) {
+const component ui.chip[platform](label, variant, removable, selected, disabled, focusable, style, @click, @remove) {
     html.span(
         class = "sngl-chip" + (variant != "" ? " sngl-chip-" + variant : "") + (selected ? " sngl-chip-selected" : ""),
         style = css({
@@ -533,7 +606,18 @@ const component ui.chip[platform](label, variant, removable, selected, disabled,
     ) {
         html.span(textContent=label, @click { click() }) {}
         if removable {
-            html.button(class="sngl-chip-remove", textContent="×", disabled=disabled, @click { remove() }) {}
+            html.button(
+                class = "sngl-chip-remove",
+                textContent = "×",
+                disabled = disabled,
+                attrs = focusable ? {} : {"tabindex"="-1"},
+                @click { remove() },
+                @mousedown(e) {
+                    if !focusable {
+                        e.preventDefault()
+                    }
+                },
+            ) {}
         }
     }
 }
@@ -601,8 +685,12 @@ const func swipedTo(disabled list[bool], from int, by int) int {
     return k >= 0 && k < disabled.length() ? k : from
 }
 
-const component ui.link[platform](text, href, style, @click) {
-    html.a(href=href, style=css(style), @click { click() }) {
+const component ui.link[platform](text, href, focusable, style, @click) {
+    html.a(attrs=focusable ? {"href"=href} : {"href"=href, "tabindex"="-1"}, style=css(style), @click { click() }, @mousedown(e) {
+        if !focusable {
+            e.preventDefault()
+        }
+    }) {
         html.span(textContent=text) {}
     }
 }
@@ -648,7 +736,17 @@ component Window(
 // back through the history too, so neither runs `@back` twice. A window given
 // neither -- its `canGoBack` the literal `false`, its menu empty -- draws no
 // header, the `if` folding away.
-const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, content, favicon, menu) {
+//
+// Its `@key` is heard by a `sngl-keys`, an element the page defines
+// (codegen/platform/html/keys.go), which listens for a keydown on the
+// window's `<dialog>`, or on the document for the window that is the page, in
+// the capture phase, so it hears each key pressed in the window before the
+// element with the focus does, and dispatches `key` for it. `stop` prevents
+// that event, and the element then prevents and stops the keydown, and the
+// keyup after it. A window whose call site does not handle `@key` has no such
+// element; a test's `c.main.key(press, stop)` dispatches `key` on the window's
+// element, as the keydown it reads would have.
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content, favicon, menu) {
     Window(title=title, :visible=visible, @closed { closed() }) {
         if canGoBack || menu.length() > 0 {
             html.header(class="sngl-bar", style=css({display=flex, alignItems=center, gap=8px, paddingY=8px, paddingX=12px, borderBottom="1px solid #ddd"})) {
@@ -671,6 +769,9 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
         boundary(@error(e) { error(e) }) {
             content
         }
+        html.element(tag="sngl-keys", @key(e) {
+            key(ui.KeyPress{key=e.key, ctrl=e.ctrl, alt=e.alt, shift=e.shift, meta=e.meta, editing=e.editing}, func() { e.preventDefault() })
+        })
         #[family.crosses]
         favicon
     }

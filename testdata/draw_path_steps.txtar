@@ -156,6 +156,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -168,6 +176,7 @@ type modelState struct {
 	visible__inst0 bool
 	__focusID      int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -483,6 +492,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -505,7 +520,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
@@ -523,11 +551,14 @@ func (m Model) View() tea.View {
 			contentPart_1Prefix = ">"
 		}
 		contentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("close"))
+		contentPart_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_1)
 		contentParts = append(contentParts, contentPart_1)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -551,7 +582,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/widget"
 	"os"
 	"slices"
 )
@@ -597,7 +627,7 @@ type Model struct {
 	__n0    *fynelayout.Toplevel
 	__n1    *canvas.Image
 	__n1Ctx *snglcanvas.Context
-	__n2    *widget.Button
+	__n2    *fynelayout.Button
 	__built bool
 }
 
@@ -710,7 +740,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.FillMode = canvas.ImageFillOriginal
 	m.__n1.SetMinSize(fyne.NewSize(60, 40))
 	m.__n0.Add(m.__n1)
-	m.__n2 = widget.NewButton("", nil)
+	m.__n2 = fynelayout.NewButton("", nil)
 	m.__n2.SetText("close")
 	m.__n2.OnTapped = m.__n2_click_handler
 	m.__n0.Add(m.__n2)
@@ -1119,6 +1149,9 @@ func PointPolar(center Point, radius float64, angle float64) Point {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
@@ -1200,6 +1233,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_visible_handler)
 	m.__n1 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n1, C.int(60))
@@ -1212,6 +1246,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
 	m.__n2 = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
 	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "close")
+	gtk4rt.SetBool(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "can-focus", true)
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "clicked", m.__n2_clicked_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
@@ -1735,11 +1770,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f848ec1c274022a633f566b53546a85b
+pass sha256:0221b1305bf607a01d9477f24f13bbdd
 -- run/go/fyne --
-pass sha256:65d65bd43bd516f33398d5c3b584ee27
+pass sha256:5646c6196dc7557d5e9ae98cf2867b16
 -- run/go/gtk4 --
-pass sha256:cb33a1be299458348a55170db942e76e
+pass sha256:52cb4883f76f60b7e0b06c6f389e9b7b
 -- run/kotlin/android --
 pass sha256:1d5b8036d1323fef3d2d11019b0482af
 -- run/none/html --

@@ -148,6 +148,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -164,6 +172,7 @@ type modelState struct {
 	started__inst3 bool
 	__focusID      int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -492,6 +501,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -513,7 +528,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
@@ -552,7 +580,6 @@ func (m Model) View() tea.View {
 		contentPart_11_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("a"))
 		contentPart_11Children = append(contentPart_11Children, contentPart_11_0)
 		contentPart_11 = lipgloss.JoinVertical(lipgloss.Left, contentPart_11Children...)
-		contentPart_11 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_11)
 		contentParts = append(contentParts, contentPart_11)
 		var __lt20 string
 		if !m.shown__inst0 {
@@ -585,7 +612,6 @@ func (m Model) View() tea.View {
 				contentPart_18Children = append(contentPart_18Children, contentPart_18_0)
 			}
 			contentPart_18 = lipgloss.JoinVertical(lipgloss.Left, contentPart_18Children...)
-			contentPart_18 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_18)
 		}
 		if contentPart_18 != "" {
 			contentParts = append(contentParts, contentPart_18)
@@ -621,7 +647,6 @@ func (m Model) View() tea.View {
 				contentPart_25Children = append(contentPart_25Children, contentPart_25_0)
 			}
 			contentPart_25 = lipgloss.JoinVertical(lipgloss.Left, contentPart_25Children...)
-			contentPart_25 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_25)
 		}
 		if contentPart_25 != "" {
 			contentParts = append(contentParts, contentPart_25)
@@ -633,11 +658,14 @@ func (m Model) View() tea.View {
 			contentPart_26Prefix = ">"
 		}
 		contentPart_26 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_26Prefix + " " + fmt.Sprint("show"))
+		contentPart_26 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_26)
 		contentParts = append(contentParts, contentPart_26)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -695,7 +723,7 @@ type Model struct {
 	__n4    *widget.Label
 	__n5    *widget.Label
 	__n6    *widget.Label
-	__n22   *widget.Button
+	__n22   *fynelayout.Button
 	__built bool
 }
 
@@ -1001,7 +1029,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n6.SetText(__lt17)
 	m.__n0.Add(m.__n6)
 	m.__renderSlot3(m.__n0.Container)
-	m.__n22 = widget.NewButton("", nil)
+	m.__n22 = fynelayout.NewButton("", nil)
 	m.__n22.SetText("show")
 	m.__n22.OnTapped = m.__n22_click_handler
 	m.__n0.Add(m.__n22)
@@ -1738,9 +1766,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:346a1e8828ff779e8ebefc4fdd2a9131
+pass sha256:e153776bc498b51b0f07ee2ba7df5f8f
 -- run/go/fyne --
-pass sha256:33039f3e7f3b3ff7e30bf0c28a6bd6d5
+pass sha256:82efce39819c8790dc5124c0d9b9b904
 -- run/kotlin/android --
 pass sha256:721fa1c7a8bae88d91f4c0e2f53716ec
 -- run/none/html --

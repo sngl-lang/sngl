@@ -545,6 +545,9 @@ func Dbl(x int) int {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -574,6 +577,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, ((fmt.Sprint(func() []int {
@@ -607,4 +611,4 @@ pass sha256:91a0728dcf4dc143b797ed44939f9a46
 -- run/go/fyne --
 pass sha256:b3552dde39ae8b48fcad2d101d1f8797
 -- run/go/gtk4 --
-pass sha256:9966c6e826a54f4ec312bb443140bbc1
+pass sha256:3507a66a079bb856c40a34dcfcd841c1
