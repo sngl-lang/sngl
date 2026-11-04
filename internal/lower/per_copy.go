@@ -811,11 +811,19 @@ func loopBoundValue(id *ir.Ident, fn *ir.Func, arity int, lvs []*ir.LoopVar, arg
 // cells are keyed by the same copy, and a call of it is handed the key as a
 // call of a keyed func is; one whose copy keys nothing drops it there. Without
 // the key, an openapi adapter's `refresh` under a `for` called its query's
-// with an argument short on bubbletea.
+// with an argument short on bubbletea. A wrapper passImplicitState put in a
+// node's place renders the node, so its methods are the node's.
 func nodeMethods(body []ir.Stmt) map[*ir.Func]*ir.Param {
 	out := map[*ir.Func]*ir.Param{}
 	_ = ir.Walk(body, func(nd ir.Node) error {
-		if n, ok := nd.(*ir.NodeInst); ok && n.Handle != nil && n.Component != nil {
+		n, ok := nd.(*ir.NodeInst)
+		if !ok || n.Component == nil {
+			return nil
+		}
+		if inner := wrappedNode(n); inner != nil {
+			n = inner
+		}
+		if n.Handle != nil && n.Component != nil {
 			for _, f := range n.Component.Funcs {
 				out[f] = &ir.Param{Name: "__copy", Type: ir.TypString}
 			}

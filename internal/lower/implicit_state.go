@@ -381,9 +381,21 @@ func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component, inLoop, inBr
 		Handlers:  n.Handlers,
 		Children:  n.Children,
 		Slots:     n.Slots,
+		Wraps:     n.Handle,
 		Key:       n.Key,
 		Ref:       n.Ref,
 	}, nil
+}
+
+// wrappedNode is the node the wrapper n instantiates renders, nil where n is no
+// wrapper's: the one statement of the wrapper's body, which carries the handle
+// the call site wrote (Wraps).
+func wrappedNode(n *ir.NodeInst) *ir.NodeInst {
+	if n.Wraps == nil || n.Component == nil || len(n.Component.Stmts) != 1 {
+		return nil
+	}
+	inner, _ := n.Component.Stmts[0].(*ir.NodeInst)
+	return inner
 }
 
 // cellStartProp is the wrapper's prop carrying where the cell for prop starts.

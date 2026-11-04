@@ -1364,17 +1364,26 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		}
 	}
 
+	// The node a wrapper renders takes the handle the call site's splice gave
+	// the wrapper (Wraps): the wrapper is written per call site, and its node
+	// is the one the call site's component calls through the handle.
+	if inner := wrappedNode(n); inner != nil && inner.Handle != nil && inner.Handle != n.Wraps {
+		symRenames[inner.Handle] = n.Wraps
+	}
 	// A handle the body declares and calls a method through, and nothing
 	// outside it reads, is the copy's own, as its state is: the checker
 	// declares one per body, so every copy shared it, and a method of the
 	// copy's calling through it -- an openapi adapter's `refresh` calling its
-	// query's -- could not say which copy's node it meant. One a component
-	// outside reads -- a node passImplicitState moved into a wrapper of its
-	// own, which the body around the wrapper calls -- stays shared, since the
+	// query's -- could not say which copy's node it meant. A node
+	// passImplicitState moved into a wrapper is the body's still, through the
+	// wrapper's Wraps. One a component outside reads stays shared, since the
 	// reads of it are not in this splice, and so does one only a test
 	// reaches, which the test's reach is pointed through as it was.
 	called := handlesCalledIn(comp)
 	for _, h := range ownNodeHandles(comp) {
+		if _, ok := symRenames[h]; ok {
+			continue
+		}
 		if called[h] && !st.readAbroad[h] {
 			clone := *h
 			symRenames[h] = &clone
@@ -1562,9 +1571,15 @@ func ownNodeHandles(comp *ir.Component) []*ir.Var {
 	var out []*ir.Var
 	seen := map[*ir.Var]bool{}
 	_ = ir.Walk(comp.Stmts, func(node ir.Node) error {
-		if n, ok := node.(*ir.NodeInst); ok && n.Handle != nil && !seen[n.Handle] {
-			seen[n.Handle] = true
-			out = append(out, n.Handle)
+		n, ok := node.(*ir.NodeInst)
+		if !ok {
+			return nil
+		}
+		for _, h := range []*ir.Var{n.Handle, n.Wraps} {
+			if h != nil && !seen[h] {
+				seen[h] = true
+				out = append(out, h)
+			}
 		}
 		return nil
 	})
@@ -1626,9 +1641,12 @@ func handlesReadAbroad(pkg *ir.Package) map[*ir.Var]bool {
 // handle symRenames made, as renameIdents points the reads of it.
 func repointNodeHandles(body []ir.Stmt, symRenames map[ir.Symbol]ir.Symbol) {
 	_ = ir.Walk(body, func(node ir.Node) error {
-		if n, ok := node.(*ir.NodeInst); ok && n.Handle != nil {
-			if h, ok := symRenames[n.Handle].(*ir.Var); ok {
+		if n, ok := node.(*ir.NodeInst); ok {
+			if h, ok := symRenames[n.Handle].(*ir.Var); ok && n.Handle != nil {
 				n.Handle = h
+			}
+			if h, ok := symRenames[n.Wraps].(*ir.Var); ok && n.Wraps != nil {
+				n.Wraps = h
 			}
 		}
 		return nil

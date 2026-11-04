@@ -82,7 +82,14 @@ type NodeInst struct {
 	// Not serialized: it points back into the symbol graph, and a reparse of a
 	// printed tree re-declares the handle from the `#id` it prints.
 	Handle *Var `json:"-"`
-	Key    Expr // key expression for list diffing (nil → implicit index)
+	// Wraps is, on the node lower's passImplicitState puts in a node's place,
+	// the handle of the node its wrapper renders: the call site's handle,
+	// which moved into the wrapper's body with the node. It says the handle is
+	// the call site's component's still, so a splice of that component gives
+	// its copy a handle of its own here, and the wrapper's splice gives the
+	// node the same one.
+	Wraps *Var `json:"-"`
+	Key   Expr // key expression for list diffing (nil → implicit index)
 	// TypeArgs is what the call site bound the component's type parameters
 	// to, in declaration order, where it is generic: a handle to the node
 	// carries them, a generic family's slot reads them off its children, and
