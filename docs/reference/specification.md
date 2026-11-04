@@ -1742,6 +1742,14 @@ Iterating a list, an iterator, or a map:
   iteration requires the two-variable form;
 - `for xs` binds nothing, for a loop whose body never names the element.
 
+The name of an enum is iterable too. `for var m = Method` walks the members of
+`Method` in the order the type declares them, as though the head were the list
+of them, so `for var i, m = Method` binds each member's position as well. A
+member another package keeps to itself is left out. An enum with a member that
+carries a payload has no such list, since that member is no value without
+one, and neither has a generic enum named without its type arguments; naming
+either is an error.
+
 A counting loop iterates a `sngl:seq` sequence:
 
 <!-- SNGL-component -->

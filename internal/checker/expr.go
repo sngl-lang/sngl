@@ -3917,6 +3917,12 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if iter.Kind == ir.TypeBool {
 			return c.checkHeadlessFor(x, iterExpr)
 		}
+		// An enum's name walks its members, in the order the type declares
+		// them: the loop is over the list of them.
+		if ed, ok := iter.Decl.(*ir.EnumDef); ok && iter.Kind == ir.TypeEnum && namesEnumType(iterExpr, ed) {
+			iterExpr = c.enumMembers(*x.Iter.ExprPos(), iter, ed)
+			iter = exprType(iterExpr)
+		}
 		// A zero-arg computed is called where its result is what is wanted, so
 		// `for var x = items` iterates what `func items() list[T]` returns. There
 		// is no single expected type to hand implicitCall here: any of the
