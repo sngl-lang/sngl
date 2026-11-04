@@ -30,7 +30,9 @@ import (
 // (contentSlot), whose population lower.DataFamilies writes at each call site.
 func (c *checker) bindDataFamily(comp *ir.Component) {
 	if comp.Data {
-		comp.Record = &ir.StructDef{Name: comp.Name + "__record", Pkg: c.declPkg(), RecordOf: comp}
+		// A generic data component's record is generic over the same
+		// parameters, so a field typed by one is the type it is bound to.
+		comp.Record = &ir.StructDef{Name: comp.Name + "__record", Pkg: c.declPkg(), RecordOf: comp, TypeParams: comp.TypeParams}
 	}
 	var shows []*ir.SlotDecl
 	for _, slot := range comp.Slots {
@@ -42,7 +44,7 @@ func (c *checker) bindDataFamily(comp *ir.Component) {
 			c.error(comp.AST.Pos, "component %s: slot %q is read as a list of %s by its name, which a prop already declares", comp.Name, slot.Name, f.Name)
 			continue
 		}
-		list := c.listOf(&ir.Type{Kind: ir.TypeStruct, Decl: f.Record})
+		list := c.listOf(&ir.Type{Kind: ir.TypeStruct, Decl: f.Record, Elems: slot.Content.Elems})
 		slot.Values = &ir.Prop{
 			Name:           slot.Name,
 			Type:           list,

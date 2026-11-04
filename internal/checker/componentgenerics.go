@@ -493,10 +493,12 @@ func argPropNames(args ast.ArgList, comp *ir.Component) []string {
 func specializeComponent(comp *ir.Component, bindings map[string]*ir.Type, origin map[*ir.SlotDecl]*ir.SlotDecl) *ir.Component {
 	out := *comp
 	out.Props = make([]*ir.Prop, len(comp.Props))
+	copied := make(map[*ir.Prop]*ir.Prop, len(comp.Props))
 	for i, p := range comp.Props {
 		q := *p
 		q.Type = p.Type.Substitute(bindings)
 		out.Props[i] = &q
+		copied[p] = &q
 	}
 	out.Events = make([]*ir.EventDecl, len(comp.Events))
 	for i, e := range comp.Events {
@@ -505,6 +507,13 @@ func specializeComponent(comp *ir.Component, bindings map[string]*ir.Type, origi
 		out.Events[i] = &f
 	}
 	out.Slots = specializeSlots(comp.Slots, bindings)
+	// A data slot's list is one of the props: the copy's, or it reads as a
+	// prop of its own and is given its default beside the population.
+	for _, s := range out.Slots {
+		if q := copied[s.Values]; q != nil {
+			s.Values = q
+		}
+	}
 	for i, s := range comp.Slots {
 		for j, e := range s.Slots {
 			recordEntryOrigin(out.Slots[i].Slots[j], e, origin)

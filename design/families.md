@@ -61,6 +61,18 @@ of records is a field of the record, so a record may be a tree --
 before the signature resolves, where the name finds nothing else: a
 `component node(…) node` in a body that sees `ui.node` returns that.
 
+**A generic data component's record is generic over its parameters**:
+`component pick[T any](label string, value T) pick[T]` declares
+`pick__record[T]`, a slot `...component pick[T]` is read as
+`list[pick__record[T]]`, and `lower.DataFamilies` builds each record at the
+type the container's call site binds (`NodeInst.TypeArgs`), which
+`monomorphizeStructs` then copies -- with no parameters the record's `value`
+was `any` in Go, and the container's write of it did not compile. A
+specialized component's slot points its `Values` at the specialized copy of
+the prop (`specializeComponent`); left on the declaration's, the copy's prop
+read as one of its own and was given its default beside the population
+(`testdata/data_family_generic.sngl`, `data_family_generic.txtar`).
+
 **A component with a body that names a data family composes its records**,
 and is no record itself: `component moveTo(x float, y float) _step { _step(op=PathOp.moveTo, x=x, y=y) }`. A library declaration has to say so,
 since it is never inferred; a program's may leave it to the body, which
