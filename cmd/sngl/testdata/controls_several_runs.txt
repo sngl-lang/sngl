@@ -40,17 +40,17 @@ component form ui.node {
     var until option[time.date] = null
 
     ui.select #sizes(:value=size) {
-        ui.choice(label="S")
-        ui.choice(label="M")
+        ui.choice(label="S", value="S")
+        ui.choice(label="M", value="M")
     }
     ui.select #colors(:value=color) {
-        ui.choice(label="Red")
-        ui.choice(label="Blue")
+        ui.choice(label="Red", value="Red")
+        ui.choice(label="Blue", value="Blue")
     }
     if shown {
         ui.select #extras(:value=extra) {
-            ui.choice(label="No")
-            ui.choice(label="Yes")
+            ui.choice(label="No", value="No")
+            ui.choice(label="Yes", value="Yes")
         }
     }
     ui.datepicker(:value=from)
@@ -71,7 +71,7 @@ func testASelectInASlotChooses(t test.Test, c form) {
     t.assert(c.extra == "Yes")
 }
 -- testrun/android/kotlin/app.sngl/form/1 --
-sha256:1afe4628dfa2855089220d0ba43ad254
+sha256:45dd5b167f4debff08a0860ba701db22
 {
   "results": [
     {
@@ -85,7 +85,7 @@ sha256:1afe4628dfa2855089220d0ba43ad254
   ]
 }
 -- testrun/bubbletea/go/app.sngl/form/1 --
-sha256:8cbb3f28b2cdf4295e45ff9560af63dd
+sha256:482cc6fe95302cbbedf8c4fa5cf684a9
 {
   "results": [
     {
@@ -99,7 +99,7 @@ sha256:8cbb3f28b2cdf4295e45ff9560af63dd
   ]
 }
 -- testrun/fyne/go/app.sngl/form/1 --
-sha256:cbd657ab6dcc02386845fe7cbbcc7d09
+sha256:6e9a19c8535b6e83a887c5ff592e61bd
 {
   "results": [
     {
@@ -113,7 +113,7 @@ sha256:cbd657ab6dcc02386845fe7cbbcc7d09
   ]
 }
 -- testrun/gtk4/go/app.sngl/form/1 --
-sha256:c2a7cdee6730bc337491d6ebd938480c
+sha256:93015727c38dfb86847f5f8e82f36e16
 {
   "results": [
     {
@@ -127,7 +127,7 @@ sha256:c2a7cdee6730bc337491d6ebd938480c
   ]
 }
 -- testrun/html/none/app.sngl/form/1 --
-sha256:f223c47754411d8dbd64d2c3962b13c1
+sha256:f87c1177b66556f2b0957dd9cfbb0265
 {
   "results": [
     {

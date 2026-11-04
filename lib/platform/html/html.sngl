@@ -483,9 +483,12 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
     html.fieldset(style=css({display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0px, ...style})) {
         for var opt = options {
             html.label(style=css({display=inlineFlex, alignItems=center, gap=4px})) {
-                html.input(type="radio", value=opt.label, checked=(opt.label == value), disabled=disabled, @change {
-                    value = opt.label
-                    change(opt.label)
+                html.input(type="radio", value=opt.label, checked=(opt.value == value), disabled=disabled, @change(e) {
+                    var at = ui.choiceLabeled(options, e.currentTarget.value)
+                    if at >= 0 && options[at].value != value {
+                        value = options[at].value
+                        change(options[at].value)
+                    }
                 })
                 html.span(textContent=opt.label)
             }
@@ -518,15 +521,18 @@ const component ui.select[platform](placeholder, value, disabled, focusable, sty
             }
         },
         @change(e) {
-            value = e.currentTarget.value
-            change(value)
+            var at = ui.choiceLabeled(options, e.currentTarget.value)
+            if at >= 0 && options[at].value != value {
+                value = options[at].value
+                change(options[at].value)
+            }
         },
     ) {
         if placeholder != "" {
             html.option(value="", disabled=true, selected=true, textContent=placeholder)
         }
         for var opt = options {
-            html.option(value=opt.label, selected=(opt.label == value), textContent=opt.label)
+            html.option(value=opt.label, selected=(opt.value == value), textContent=opt.label)
         }
     }
 }

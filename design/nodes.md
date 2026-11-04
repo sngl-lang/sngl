@@ -517,10 +517,25 @@ key reaches -- runs the handler directly (`emitBtDirectInvokers`)
 (`testdata/card_click.txtar`, `testdata/scroll_reach_end.txtar`).
 
 **A select is one control on every target**, so its `#id` names the widget a
-test's `c.pick.change("Banana")` chooses through, as a user does: html's
+test's `c.pick.change(Fruit.banana)` chooses through, as a user does: html's
 `<select>`, fyne's Select, gtk4's GtkDropDown, bubbletea's `tui.Select`,
 android's read-only field and the interpreter's own
-(`cmd/sngl/testdata/select_change_runs.txt`). A select laid out as one widget
+(`cmd/sngl/testdata/select_change_runs.txt`).
+
+**Each control knows its choices by label**, and the value a `choice[T]`
+holds is the override's to convert: it shows `ui.choiceLabel(options, value)`
+and writes the value of the choice `ui.choiceLabeled(options, label)` finds.
+A test hands a value, which `lower.passChoiceTriggers` writes as the label of
+the choice holding it -- `#[builtin("choiceKey")]` marks `choiceLabel` for
+that, and `ir.ReachedFrom` reaches the key with its record, since only the
+rewrite names it and a target's copy of `sngl:ui` otherwise kept the checked
+key beside its own record. Handed the value, the invoker gave fyne's
+`OnChanged` an enum's name where it knew a label, and an int did not compile.
+bubbletea's binds write the call site's var from Go, so its override holds
+the label as state the widget binds (`Widget`'s `:choice`) and converts in its
+`@change` (`testdata/select_typed_choices.sngl`).
+
+A select laid out as one widget
 per choice leaves the id on the box around them, which no trigger reaches,
 and a menu the trigger cannot type into is no input path a test has. Each
 holds the bound value even before a choice carries it, since choices may

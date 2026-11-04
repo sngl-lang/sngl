@@ -37,12 +37,12 @@ values. `testdata/family_props.sngl`, `family_generic.sngl`,
 `error_family_decl.sngl`.
 
 **A component that names itself as its family is data**
-(`component choice(label string) choice`, `ir.Component.Data`): its own
+(`component choice[T any](label string, value T) choice[T]`, `ir.Component.Data`): its own
 family and the only member of it. Written in a slot of its type it is a record
 of its props, never rendered, and the slot is never inserted: in the
-container's body its name is the list of those records, `options list[choice]` for `options ...component choice`. It is how a widget that takes
+container's body its name is the list of those records, `options list[choice[T]]` for `options ...component choice[T]`. It is how a widget that takes
 its choices as a list is written with them as children --
-`ui.select { ui.choice(label="Apple") … }`, `ui.radio` likewise, a
+`ui.select { ui.choice(label="Apple", value="Apple") … }`, `ui.radio` likewise, a
 `ui.table`'s `ui.tableRow`s, a `ui.tree`'s `ui.treeItem`s and a `ui.tabs`'s
 `ui.tab`s -- and the
 caller's population may

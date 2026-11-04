@@ -55,7 +55,7 @@ component page ui.node {
                 }
                 ui.select #pick(:value=kind) {
                     for var k = kinds() {
-                        ui.choice(label=k)
+                        ui.choice(label=k, value=k)
                     }
                 }
                 for var w = words() {
@@ -85,7 +85,7 @@ func testEachChoiceTakes(t test.Test, c page) {
     t.assert(c.words().format(",") == "Yellow-a!,Yellow-b!")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:9fcffdb48a11d78ded7da8c63fa25fb2
+sha256:36def823c9c8411e10fe553144930763
 {
   "results": [
     {
@@ -95,7 +95,7 @@ sha256:9fcffdb48a11d78ded7da8c63fa25fb2
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:0eb5dee51e00c48d279447f88b8ac371
+sha256:bd3ede92ebf20dc99ecf5ebdfb90cec6
 {
   "results": [
     {
@@ -105,7 +105,7 @@ sha256:0eb5dee51e00c48d279447f88b8ac371
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:eb4bbf5e73d17ab453f23c986e35ad6c
+sha256:b2432ca9cf443d351b6fdb565b45f6b3
 {
   "results": [
     {
@@ -115,7 +115,7 @@ sha256:eb4bbf5e73d17ab453f23c986e35ad6c
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:e0b7415a8af212e290f69123c2b4aad6
+sha256:e99323f0321c568e714f11a2e4562ee2
 {
   "results": [
     {
@@ -125,7 +125,7 @@ sha256:e0b7415a8af212e290f69123c2b4aad6
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:952e6fd5b3f867ef45c355a612e37b6b
+sha256:c6ba3a50bea6360de85a9e1e2306a1d6
 {
   "results": [
     {

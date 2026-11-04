@@ -180,7 +180,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 			}
 			if typ.Kind == ir.TypeComponent {
 				if comp, ok := typ.Decl.(*ir.Component); ok && len(comp.TypeParams) > 0 {
-					return c.applyComponentTypeArgs(t.Pos, typ, comp, t.TypeArgs)
+					return c.dataRecord(c.applyComponentTypeArgs(t.Pos, typ, comp, t.TypeArgs))
 				}
 			}
 			if typ.Kind == ir.TypeEnum {
@@ -1052,7 +1052,9 @@ func (c *checker) dataRecord(typ *ir.Type) *ir.Type {
 		return typ
 	}
 	if f, ok := typ.Decl.(*ir.Component); ok && f.Data && f.Record != nil {
-		return &ir.Type{Kind: ir.TypeStruct, Decl: f.Record}
+		// A generic data component's record takes its arguments:
+		// `choice[T]` is `choice__record[T]`.
+		return &ir.Type{Kind: ir.TypeStruct, Decl: f.Record, Elems: typ.Elems}
 	}
 	return typ
 }

@@ -45,8 +45,8 @@ component site ui.node {
     var picked = "plain"
 
     ui.select #pick(:value=picked) {
-        ui.choice(label="plain")
-        ui.choice(label="loud")
+        ui.choice(label="plain", value="plain")
+        ui.choice(label="loud", value="loud")
     }
     tone(picked) {
         nav.stack #pages {
@@ -97,8 +97,8 @@ component site ui.node {
     var picked = "plain"
 
     ui.select #pick(:value=picked) {
-        ui.choice(label="plain")
-        ui.choice(label="loud")
+        ui.choice(label="plain", value="plain")
+        ui.choice(label="loud", value="loud")
     }
     tone(picked) {
         nav.stack #pages {
@@ -124,7 +124,7 @@ ui.window {
     site()
 }
 -- testrun/html/none/app.sngl/site/1 --
-sha256:24d2eb64a10cb7d556e429b5bff2923b
+sha256:02972fc5cbeaa6b7b81687d564f6f43b
 {
   "results": [
     {
@@ -134,7 +134,7 @@ sha256:24d2eb64a10cb7d556e429b5bff2923b
   ]
 }
 -- testrun/html/none/last.sngl/site/1 --
-sha256:63b1255d5c81d550b1909cb4fcb8b12f
+sha256:ddc53355f116cd5add8380d1e9c44997
 {
   "results": [
     {

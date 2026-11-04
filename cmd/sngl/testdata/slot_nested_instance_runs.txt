@@ -50,8 +50,8 @@ component main ui.node {
             }
             ui.tab(label="Kinds") {
                 ui.select(:value=kind) {
-                    ui.choice(label="Red")
-                    ui.choice(label="Green")
+                    ui.choice(label="Red", value="Red")
+                    ui.choice(label="Green", value="Green")
                 }
             }
         }
@@ -65,7 +65,7 @@ func testDroppingATabDropsItsPanel(t test.Test, c main) {
     t.assert(c.flavor == null)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:4f0714d45d58cb591692be502fafc3a0
+sha256:c9e07dceb59d7721df013dacceff587d
 {
   "results": [
     {
@@ -75,7 +75,7 @@ sha256:4f0714d45d58cb591692be502fafc3a0
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:cc37065fe17b4a1156418f73cbbb5ced
+sha256:28c3955c8d3c411725b8ceb93ee11b1e
 {
   "results": [
     {
@@ -85,7 +85,7 @@ sha256:cc37065fe17b4a1156418f73cbbb5ced
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:3339f3daa4f58e4643bcc18cb7198d27
+sha256:e05617b4f2f9cf7b6821d89b06daf3ed
 {
   "results": [
     {
@@ -95,7 +95,7 @@ sha256:3339f3daa4f58e4643bcc18cb7198d27
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:d6a684b6ba39392a6a629b6da4b3aed8
+sha256:13fab1391705cfbe21fb04d646f6ad97
 {
   "results": [
     {
@@ -105,7 +105,7 @@ sha256:d6a684b6ba39392a6a629b6da4b3aed8
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:7149e0dabe275813d700e6895fc3cd14
+sha256:e32bb3e3cf4c90a5785cee4788951065
 {
   "results": [
     {

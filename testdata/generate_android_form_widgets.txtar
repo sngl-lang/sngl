@@ -39,8 +39,8 @@ window {
     input(placeholder="Name", value=name, @input(e) { name = e })
     input(value=plain)
     select(placeholder="Pick", value=fruit) {
-        choice(label="Apple")
-        choice(label="Banana")
+        choice(label="Apple", value="Apple")
+        choice(label="Banana", value="Banana")
     }
     progress(value=2.0, max=10.0)
     datepicker(placeholder="Birthday")
@@ -71,8 +71,9 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LinearProgressIndicator
 
-data class Choice__record(
-    var label: String = ""
+data class Choice__record__string(
+    var label: String = "",
+    var value: String = ""
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -97,10 +98,11 @@ fun MainScreen() {
     var open__inst0 by remember { mutableStateOf(false) }
 
 
-    fun choose__inst0(v: String) {
+    fun choose__inst0(label: String) {
         open__inst0 = false
-        if (((v != value__inst2) && (listOf(Choice__record(label = "Apple"), Choice__record(label = "Banana")).map({ o: Choice__record -> o.label }).indexOf(v) >= 0))) {
-        	value__inst2 = v
+        var at = choiceLabeled__string(listOf(Choice__record__string(label = "Apple", value = "Apple"), Choice__record__string(label = "Banana", value = "Banana")), label)
+        if (((at >= 0) && (listOf(Choice__record__string(label = "Apple", value = "Apple"), Choice__record__string(label = "Banana", value = "Banana"))[at].value != value__inst2))) {
+        	value__inst2 = listOf(Choice__record__string(label = "Apple", value = "Apple"), Choice__record__string(label = "Banana", value = "Banana"))[at].value
         }
     }
 
@@ -125,7 +127,7 @@ fun MainScreen() {
             Box(modifier = Modifier.snglChooses({ v: String ->
     choose__inst0(v)
 }).safeDrawingPadding()) {
-                OutlinedTextField(value = value__inst2, readOnly = true, enabled = true, singleLine = true, modifier = Modifier, onValueChange = {}, label = {
+                OutlinedTextField(value = choiceLabel__string(listOf(Choice__record__string(label = "Apple", value = "Apple"), Choice__record__string(label = "Banana", value = "Banana")), value__inst2), readOnly = true, enabled = true, singleLine = true, modifier = Modifier, onValueChange = {}, label = {
                     Text(text = "Pick", modifier = Modifier)
                 }, trailingIcon = {
                     Text(text = "▾", modifier = Modifier)
@@ -137,7 +139,7 @@ fun MainScreen() {
                 DropdownMenu(expanded = open__inst0, onDismissRequest = {
                     open__inst0 = false
                 }) {
-                    for (opt in listOf(Choice__record(label = "Apple"), Choice__record(label = "Banana"))) {
+                    for (opt in listOf(Choice__record__string(label = "Apple", value = "Apple"), Choice__record__string(label = "Banana", value = "Banana"))) {
                         DropdownMenuItem(onClick = {
                             choose__inst0(opt.label)
                         }, text = {
@@ -157,6 +159,24 @@ fun MainScreen() {
             })
         }
     }
+}
+
+fun choiceLabeled__string(options: List<Choice__record__string>, label: String): Int {
+    for ((i, o) in options.withIndex()) {
+    	if ((o.label == label)) {
+    		return i
+    	}
+    }
+    return -1
+}
+
+fun choiceLabel__string(options: List<Choice__record__string>, value: String): String {
+    for (o in options) {
+    	if ((o.value == value)) {
+    		return o.label
+    	}
+    }
+    return ""
 }
 -- out/kotlin/android/SnglChooses.kt --
 package test.sngl.app
@@ -265,4 +285,4 @@ private fun parseDate(s: String): String? =
         null
     }
 -- run/kotlin/android --
-pass sha256:af73f54b4b16314df0b58df8d23c588f
+pass sha256:860e7d9127db6485b6c54a2cd875d2a1

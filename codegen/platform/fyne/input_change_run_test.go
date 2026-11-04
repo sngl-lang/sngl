@@ -11,8 +11,8 @@ window {
     vbox {
         input #box(@change(e) { last = "got " + e })
         select #pick(@change(e) { last = "sel " + e }) {
-            choice(label="x")
-            choice(label="y")
+            choice(label="x", value="x")
+            choice(label="y", value="y")
         }
     }
 }

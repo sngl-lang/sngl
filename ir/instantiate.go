@@ -1,6 +1,9 @@
 package ir
 
-import "reflect"
+import (
+	"reflect"
+	"slices"
+)
 
 // InstantiateFunc copies fn with its type parameters bound: every type in the
 // copy naming one of them names its binding instead. What fn declares -- its
@@ -96,6 +99,15 @@ func InstantiateComponent(c *Component, bindings map[string]*Type) *Component {
 		return nil
 	})
 	out.TypeParams = nil
+	// A method's copy is generic in only what the bindings left: one still
+	// naming the component's parameters was a generic nothing called at bound
+	// types, and kept its generic callees erased.
+	for _, f := range out.Funcs {
+		f.RecvTypeParams = slices.DeleteFunc(slices.Clone(f.RecvTypeParams), func(tp TypeParam) bool {
+			_, bound := bindings[tp.Name]
+			return bound
+		})
+	}
 	out.PlatformOverrides, out.LanguageOverrides = nil, nil
 	return out
 }
@@ -259,6 +271,11 @@ func BindTypeParams(pattern, arg *Type, bindings map[string]*Type) {
 	}
 	if pattern.Kind != arg.Kind {
 		return
+	}
+	// A struct copied at its arguments (monomorphizeStructs) binds as the
+	// instantiation it is a copy of.
+	if sd, ok := arg.Decl.(*StructDef); ok && sd.InstanceOf != nil && Symbol(sd.InstanceOf) == pattern.Decl {
+		arg = &Type{Kind: TypeStruct, Decl: sd.InstanceOf, Elems: sd.InstanceArgs}
 	}
 	if pattern.Kind == TypeFunc {
 		if pattern.Sig != nil && arg.Sig != nil {

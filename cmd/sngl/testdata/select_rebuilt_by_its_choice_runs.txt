@@ -105,7 +105,7 @@ component page(name string, form = "", @back(), @open(name string, form string))
                     ui.vbox(style={gap=8px, padding=8px}) {
                         ui.select #pick(:value=kind) {
                             for var k = kinds() {
-                                ui.choice(label=k.label)
+                                ui.choice(label=k.label, value=k.label)
                             }
                         }
                         ui.table #grid(columns=[$"Title", $"Kind"]) {
@@ -144,7 +144,7 @@ func testChoosingRebuildsThePanel(t test.Test, c main) {
     t.assert(c.p.rows().length() == 0 && c.p.none != null)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:230a672c13972c18e9334a1cea6ec450
+sha256:35223f9363347afe01021bcf4143efd0
 {
   "results": [
     {
@@ -154,7 +154,7 @@ sha256:230a672c13972c18e9334a1cea6ec450
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:73734e7d8b9166bc093b293595eebd4e
+sha256:f93792e84d08ae8a0f4bfb868df953fa
 {
   "results": [
     {
@@ -164,7 +164,7 @@ sha256:73734e7d8b9166bc093b293595eebd4e
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:cba2569c7c8ac0f0335272e115f47a5c
+sha256:b5474d3cd9ac76db1c3134a83aec08af
 {
   "results": [
     {
@@ -174,7 +174,7 @@ sha256:cba2569c7c8ac0f0335272e115f47a5c
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:54251df53dcf0a3a2f87c71b18207c8e
+sha256:ea0454e26412a02e785c802e6c1d282f
 {
   "results": [
     {
@@ -184,7 +184,7 @@ sha256:54251df53dcf0a3a2f87c71b18207c8e
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:bd09a1801318824c48519299baaf3669
+sha256:9cb99baa4688e4f6a0ea7252816d66a6
 {
   "results": [
     {

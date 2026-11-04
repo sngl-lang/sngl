@@ -224,9 +224,9 @@ const component ui.radio[platform](value, direction, style, @change, options) {
         ) {
             for var opt = options {
                 Row(verticalAlignment=alignCenterVertically) {
-                    RadioButton(selected=(value == opt.label), onClick=func() {
-                        value = opt.label
-                        change(opt.label)
+                    RadioButton(selected=(value == opt.value), onClick=func() {
+                        value = opt.value
+                        change(opt.value)
                     }) {}
                     Text(text=opt.label) {}
                 }
@@ -240,9 +240,9 @@ const component ui.radio[platform](value, direction, style, @change, options) {
         ) {
             for var opt = options {
                 Row(verticalAlignment=alignCenterVertically) {
-                    RadioButton(selected=(value == opt.label), onClick=func() {
-                        value = opt.label
-                        change(opt.label)
+                    RadioButton(selected=(value == opt.value), onClick=func() {
+                        value = opt.value
+                        change(opt.value)
                     }) {}
                     Text(text=opt.label) {}
                 }
@@ -271,21 +271,22 @@ const component ui.toggle[platform](label, checked, focusable, style, @change) {
 // state of each select, and why this override is not const. The field is
 // read-only, since a select chooses among its choices, and still takes a tap
 // as its own to place a cursor, so the tap that opens the menu is a layer over
-// it. Setting the box's text chooses as picking does, which is how a test
-// chooses; a label that names no choice, or is the value already, reports
-// nothing.
+// it. Setting the box's text to a choice's label chooses as picking does,
+// which is how a test chooses; a label that names no choice, or the choice
+// already selected, reports nothing.
 component ui.select[platform](placeholder, value, disabled, focusable, style, @change, options) {
     var open = false
-    func choose(v string) {
+    func choose(label string) {
         open = false
-        if v != value && options.map(func(o) => o.label).contains(v) {
-            value = v
-            change(v)
+        var at = ui.choiceLabeled(options, label)
+        if at >= 0 && options[at].value != value {
+            value = options[at].value
+            change(options[at].value)
         }
     }
     Box(modifier=modifierOf(style, flexShare).snglChooses(func(v string) { choose(v) })) {
         OutlinedTextField(
-            value = value,
+            value = ui.choiceLabel(options, value),
             readOnly = true,
             enabled = disabled == false,
             singleLine = true,

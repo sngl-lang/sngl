@@ -27,7 +27,7 @@ ui.window(title="t") {
     }
     ui.select(:value=pick) {
         for var f = fruits {
-            ui.choice(label=f)
+            ui.choice(label=f, value=f)
         }
     }
 }
@@ -295,8 +295,9 @@ type Measurement struct {
 	Rem float64
 }
 
-type Choice__record struct {
+type Choice__record__string struct {
 	Label string
+	Value string
 }
 
 type __anon_drop_labels_ffa5ce struct {
@@ -345,6 +346,24 @@ func New() *Model {
 	return m
 }
 
+func ChoiceLabeled__string(options []Choice__record__string, label string) int {
+	for i, o := range options {
+		if o.Label == label {
+			return i
+		}
+	}
+	return -1
+}
+
+func ChoiceLabel__string(options []Choice__record__string, value string) string {
+	for _, o := range options {
+		if o.Value == value {
+			return o.Label
+		}
+	}
+	return ""
+}
+
 func LineCapFunc(cap__r0 string) C.cairo_line_cap_t {
 	if cap__r0 == "round" {
 		return C.cairo_line_cap_t(C.int(1))
@@ -370,27 +389,33 @@ func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
 }
 
 func (m *Model) __effect0_mount() {
-	gtk4rt.DropDownOffer(gtk4rt.Handle(unsafe.Pointer(m.drop)), m.__effect0_key.Labels, m.pick)
+	gtk4rt.DropDownOffer(gtk4rt.Handle(unsafe.Pointer(m.drop)), m.__effect0_key.Labels, ChoiceLabel__string(slices.Concat(func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}()), m.pick))
 }
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []__anon_drop_labels_ffa5ce{}
 	m.__effect0_desired = append(m.__effect0_desired, __anon_drop_labels_ffa5ce{Drop: m.drop, Labels: strings.Join(func() []string {
-		__out := make([]string, len(slices.Concat(func() []Choice__record {
-			__out := make([]Choice__record, len(m.fruits))
+		__out := make([]string, len(slices.Concat(func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
 			for __i, __item := range m.fruits {
-				__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 			}
 			return __out
 		}())))
-		for __i, __item := range slices.Concat(func() []Choice__record {
-			__out := make([]Choice__record, len(m.fruits))
+		for __i, __item := range slices.Concat(func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
 			for __i, __item := range m.fruits {
-				__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 			}
 			return __out
 		}()) {
-			__out[__i] = func(o Choice__record) string { return o.Label }(__item)
+			__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
 		}
 		return __out
 	}(), "\n")})
@@ -413,24 +438,30 @@ func (m *Model) __effect0_up() {
 
 func (m *Model) __effect1_mount() {
 	gtk4rt.DropDownOffer(gtk4rt.Handle(unsafe.Pointer(m.drop)), strings.Join(func() []string {
-		__out := make([]string, len(slices.Concat(func() []Choice__record {
-			__out := make([]Choice__record, len(m.fruits))
+		__out := make([]string, len(slices.Concat(func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
 			for __i, __item := range m.fruits {
-				__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 			}
 			return __out
 		}())))
-		for __i, __item := range slices.Concat(func() []Choice__record {
-			__out := make([]Choice__record, len(m.fruits))
+		for __i, __item := range slices.Concat(func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
 			for __i, __item := range m.fruits {
-				__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 			}
 			return __out
 		}()) {
-			__out[__i] = func(o Choice__record) string { return o.Label }(__item)
+			__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
 		}
 		return __out
-	}(), "\n"), m.__effect1_key)
+	}(), "\n"), ChoiceLabel__string(slices.Concat(func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}()), m.__effect1_key))
 }
 
 func (m *Model) __effect1_down() {
@@ -494,9 +525,27 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) drop_notifySelected_handler() {
-	v := gtk4rt.DropDownLabel(gtk4rt.Handle(unsafe.Pointer(m.drop)))
-	if (v != "") && (v != m.pick) {
-		m.pick = v
+	var at int = ChoiceLabeled__string(slices.Concat(func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}()), gtk4rt.DropDownLabel(gtk4rt.Handle(unsafe.Pointer(m.drop))))
+	if (at >= 0) && (slices.Concat(func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}())[at].Value != m.pick) {
+		m.pick = slices.Concat(func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
+			for __i, __item := range m.fruits {
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+			}
+			return __out
+		}())[at].Value
 	}
 	m.__effects0_settle()
 }
@@ -582,4 +631,4 @@ func (m *Model) dropChange(v string) {
 	gtk4rt.DropDownSelect(gtk4rt.Handle(unsafe.Pointer(m.drop)), v)
 }
 -- run/go/gtk4 --
-pass sha256:7b5b5a5c1e5de45972ffc1cd254a56b5
+pass sha256:d978f6b499d49a348e0e409a179b4c90

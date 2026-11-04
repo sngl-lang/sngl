@@ -36,9 +36,9 @@ component page ui.node {
             ui.vbox {
                 ui.text(value="{count}")
                 ui.select #pick(:value=kind) {
-                    ui.choice(label="Red")
-                    ui.choice(label="Green")
-                    ui.choice(label="Blue")
+                    ui.choice(label="Red", value="Red")
+                    ui.choice(label="Green", value="Green")
+                    ui.choice(label="Blue", value="Blue")
                 }
             }
         }
@@ -62,7 +62,7 @@ func testAChoiceAfterTheSelectIsBuiltAgain(t test.Test, c page) {
     t.assert(c.kind == "Blue")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:320e735dff2068f901dfb5bce7776281
+sha256:31f885b52721ee7f182924eec8b7c5d8
 {
   "results": [
     {
@@ -72,7 +72,7 @@ sha256:320e735dff2068f901dfb5bce7776281
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:c38068f698f68ccdc0509b3144db8cf0
+sha256:6ab8d67487da2c6fdaf259d587a84eba
 {
   "results": [
     {
@@ -82,7 +82,7 @@ sha256:c38068f698f68ccdc0509b3144db8cf0
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:ed0b43894060d0ee483dc57a20e22d16
+sha256:611f48000cc7fdb879e44744a6dcf9da
 {
   "results": [
     {
@@ -92,7 +92,7 @@ sha256:ed0b43894060d0ee483dc57a20e22d16
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:a93a419e810e1ed780002c2960f01d9d
+sha256:a3194214a7e083578921153a580a402e
 {
   "results": [
     {
@@ -102,7 +102,7 @@ sha256:a93a419e810e1ed780002c2960f01d9d
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:efaaec014e9120288c32390bb99181c0
+sha256:cc8e12df713e629729582e1c4ce9a0af
 {
   "results": [
     {

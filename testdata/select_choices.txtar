@@ -17,9 +17,9 @@ var pick = "Apple"
 ui.window {
     ui.vbox {
         ui.select(:value=pick, placeholder="Pick") {
-            ui.choice(label="None")
+            ui.choice(label="None", value="None")
             for var f = fruits {
-                ui.choice(label=f)
+                ui.choice(label=f, value=f)
             }
         }
         ui.button(text="more", @click {
@@ -54,6 +54,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -69,8 +70,14 @@ type Measurement struct {
 	Rem float64
 }
 
-type Choice__record struct {
+type Choice__record__string struct {
 	Label string
+	Value string
+}
+
+type __anon_labels_v_b1f799 struct {
+	Labels string
+	V      string
 }
 
 type Style struct {
@@ -127,6 +134,11 @@ type Style struct {
 	ListStyleType  string
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // snglStop is a focus stop a click presses: the slot and copy focus moves to,
 // and the key that presses it there, where press says it has one.
 type snglStop struct {
@@ -142,10 +154,18 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
-	fruits         []string
-	pick           string
-	visible__inst0 bool
-	__focusID      int
+	fruits              []string
+	pick                string
+	label__inst0        string
+	visible__inst0      bool
+	__effect0_key       __anon_labels_v_b1f799
+	__effect0_live      []__anon_labels_v_b1f799
+	__effect0_desired   []__anon_labels_v_b1f799
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
+	__focusID           int
 
 	widget0 tui.Select
 
@@ -158,11 +178,26 @@ func New() Model {
 	m := Model{&modelState{}}
 	m.fruits = []string{"Apple", "Banana"}
 	m.pick = "Apple"
+	m.label__inst0 = ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}()), m.pick)
 	m.visible__inst0 = true
+	m.__effect0_key = __anon_labels_v_b1f799{}
+	m.__effect0_live = []__anon_labels_v_b1f799{}
+	m.__effect0_desired = []__anon_labels_v_b1f799{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.widget0 = tui.NewSelect(40, 10)
-	m.widget0.SetValue(m.pick)
+	m.widget0.SetValue(m.label__inst0)
 	m.resizeWidgets()
+	m.__effects0_settle()
 	return m
 }
 
@@ -176,6 +211,24 @@ func (m *Model) SetTerminalSize(w, h int) {
 // resizeWidgets sizes each bubbles widget to the current terminal extent.
 func (m *Model) resizeWidgets() {
 	m.widget0.SetSize(tui.WidgetWidth(m.width), tui.WidgetHeight(m.height))
+}
+
+func ChoiceLabel__string(options []Choice__record__string, value string) string {
+	for _, o := range options {
+		if o.Value == value {
+			return o.Label
+		}
+	}
+	return ""
+}
+
+func ChoiceLabeled__string(options []Choice__record__string, label string) int {
+	for i, o := range options {
+		if o.Label == label {
+			return i
+		}
+	}
+	return -1
 }
 
 func RowsOf(m__r0 *Measurement) int {
@@ -340,6 +393,76 @@ func LineCap(height__r0 int, lines int) int {
 	return __lt15
 }
 
+func (m *Model) __effect0_mount() {
+	m.label__inst0 = ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}()), m.pick)
+}
+
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []__anon_labels_v_b1f799{}
+	m.__effect0_desired = append(m.__effect0_desired, __anon_labels_v_b1f799{Labels: strings.Join(func() []string {
+		__out := make([]string, len(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
+			for __i, __item := range m.fruits {
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+			}
+			return __out
+		}())))
+		for __i, __item := range slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
+			for __i, __item := range m.fruits {
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+			}
+			return __out
+		}()) {
+			__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
+		}
+		return __out
+	}(), "\n"), V: m.pick})
+}
+
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_key = __effect0_k
+			m.__effect0_mount()
+		} else {
+			if (m.__effect0_live[__effect0_i].Labels != __effect0_k.Labels) || (m.__effect0_live[__effect0_i].V != __effect0_k.V) {
+				m.__effect0_key = __effect0_k
+				m.__effect0_mount()
+			}
+		}
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
+}
+
 func (m *Model) __focusNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
@@ -381,7 +504,6 @@ func (m Model) Pick() string {
 
 func (m Model) SetPick(v string) Model {
 	m.pick = v
-	m.widget0.SetValue(m.pick)
 	return m
 }
 
@@ -389,6 +511,22 @@ type setPickMsg struct{ value string }
 
 func SetPickCmd(v string) tea.Cmd {
 	return func() tea.Msg { return setPickMsg{value: v} }
+}
+
+func (m Model) Label__inst0() string {
+	return m.label__inst0
+}
+
+func (m Model) SetLabel__inst0(v string) Model {
+	m.label__inst0 = v
+	m.widget0.SetValue(m.label__inst0)
+	return m
+}
+
+type setLabel__inst0Msg struct{ value string }
+
+func SetLabel__inst0Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setLabel__inst0Msg{value: v} }
 }
 
 func (m Model) Visible__inst0() bool {
@@ -419,6 +557,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetFruits(msg.value)
 	case setPickMsg:
 		m = m.SetPick(msg.value)
+	case setLabel__inst0Msg:
+		m = m.SetLabel__inst0(msg.value)
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
@@ -447,30 +587,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.fruits = []string{"Apple", "Banana", "Cherry"}
+			m.__effects0_settle()
 		}
 	}
 	if m.__focusID == 0 {
+		__prev := m.widget0.Value()
 		m.widget0, cmd = m.widget0.Update(msg, func() []string {
-			__out := make([]string, len(slices.Concat([]Choice__record{Choice__record{Label: "None"}}, func() []Choice__record {
-				__out := make([]Choice__record, len(m.fruits))
+			__out := make([]string, len(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+				__out := make([]Choice__record__string, len(m.fruits))
 				for __i, __item := range m.fruits {
-					__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+					__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 				}
 				return __out
 			}())))
-			for __i, __item := range slices.Concat([]Choice__record{Choice__record{Label: "None"}}, func() []Choice__record {
-				__out := make([]Choice__record, len(m.fruits))
+			for __i, __item := range slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+				__out := make([]Choice__record__string, len(m.fruits))
 				for __i, __item := range m.fruits {
-					__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+					__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 				}
 				return __out
 			}()) {
-				__out[__i] = func(o Choice__record) string { return o.Label }(__item)
+				__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
 			}
 			return __out
 		}())
 		cmds = append(cmds, cmd)
-		m.pick = m.widget0.Value()
+		m.label__inst0 = m.widget0.Value()
+		if __v := m.widget0.Value(); __v != __prev {
+			m.__widget0_change(__v)
+		}
 	}
 	return m, tea.Batch(cmds...)
 }
@@ -487,44 +632,76 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
+func (m *Model) __widget0_change(__v string) {
+	l := __v
+	_ = l
+	var at int = ChoiceLabeled__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}()), l)
+	if (at >= 0) && (slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}())[at].Value != m.pick) {
+		m.pick = slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
+			for __i, __item := range m.fruits {
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+			}
+			return __out
+		}())[at].Value
+	}
+	m.__effects0_settle()
+	_ = m.View()
+}
+
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
-	var content string
+	var parts []string
+	var part0 string
 	if m.visible__inst0 {
-		var contentChildren []string
-		var content_0 string
-		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(m.widget0.View(func() []string {
-			__out := make([]string, len(slices.Concat([]Choice__record{Choice__record{Label: "None"}}, func() []Choice__record {
-				__out := make([]Choice__record, len(m.fruits))
+		var part0Children []string
+		var part0_0 string
+		part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(m.widget0.View(func() []string {
+			__out := make([]string, len(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+				__out := make([]Choice__record__string, len(m.fruits))
 				for __i, __item := range m.fruits {
-					__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+					__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 				}
 				return __out
 			}())))
-			for __i, __item := range slices.Concat([]Choice__record{Choice__record{Label: "None"}}, func() []Choice__record {
-				__out := make([]Choice__record, len(m.fruits))
+			for __i, __item := range slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+				__out := make([]Choice__record__string, len(m.fruits))
 				for __i, __item := range m.fruits {
-					__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+					__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 				}
 				return __out
 			}()) {
-				__out[__i] = func(o Choice__record) string { return o.Label }(__item)
+				__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
 			}
 			return __out
 		}()))
-		content_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: false, key: tea.KeyPressMsg{}}, content_0)
-		contentChildren = append(contentChildren, content_0)
-		var content_1 string
-		content_1Focused := (m.__focusID == 1)
-		content_1Prefix := " "
-		if content_1Focused {
-			content_1Prefix = ">"
+		part0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: false, key: tea.KeyPressMsg{}}, part0_0)
+		part0Children = append(part0Children, part0_0)
+		var part0_1 string
+		part0_1Focused := (m.__focusID == 1)
+		part0_1Prefix := " "
+		if part0_1Focused {
+			part0_1Prefix = ">"
 		}
-		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_1Prefix + " " + fmt.Sprint("more"))
-		content_1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_1)
-		contentChildren = append(contentChildren, content_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		part0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1Prefix + " " + fmt.Sprint("more"))
+		part0_1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_1)
+		part0Children = append(part0Children, part0_1)
+		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
 	}
+	parts = append(parts, part0)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -553,8 +730,9 @@ import (
 	"slices"
 )
 
-type Choice__record struct {
+type Choice__record__string struct {
 	Label string
+	Value string
 }
 
 // Model holds the state for this SNGL UI.
@@ -579,6 +757,24 @@ func New() *Model {
 	return m
 }
 
+func ChoiceLabel__string(options []Choice__record__string, value string) string {
+	for _, o := range options {
+		if o.Value == value {
+			return o.Label
+		}
+	}
+	return ""
+}
+
+func ChoiceLabeled__string(options []Choice__record__string, label string) int {
+	for i, o := range options {
+		if o.Label == label {
+			return i
+		}
+	}
+	return -1
+}
+
 func (m *Model) __n0_closed_handler() {
 }
 
@@ -588,10 +784,41 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n1_change_handler(v string) {
-	if v != m.pick {
-		m.pick = v
-		if m.__n1.Selected != m.pick {
-			m.__n1.SetSelected(m.pick)
+	var at int = ChoiceLabeled__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}()), v)
+	if (at >= 0) && (slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}())[at].Value != m.pick) {
+		m.pick = slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
+			for __i, __item := range m.fruits {
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+			}
+			return __out
+		}())[at].Value
+		if (m.__n1.Selected != ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
+			for __i, __item := range m.fruits {
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+			}
+			return __out
+		}()), m.pick)) {
+			m.__n1.SetSelected(ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+				__out := make([]Choice__record__string, len(m.fruits))
+				for __i, __item := range m.fruits {
+					__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+				}
+				return __out
+			}()), m.pick))
 		}
 	}
 }
@@ -599,24 +826,39 @@ func (m *Model) __n1_change_handler(v string) {
 func (m *Model) __n3_click_handler() {
 	m.fruits = []string{"Apple", "Banana", "Cherry"}
 	m.__n1.SetOptions(func() []string {
-		__out := make([]string, len(slices.Concat([]Choice__record{Choice__record{Label: "None"}}, func() []Choice__record {
-			__out := make([]Choice__record, len(m.fruits))
+		__out := make([]string, len(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
 			for __i, __item := range m.fruits {
-				__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 			}
 			return __out
 		}())))
-		for __i, __item := range slices.Concat([]Choice__record{Choice__record{Label: "None"}}, func() []Choice__record {
-			__out := make([]Choice__record, len(m.fruits))
+		for __i, __item := range slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
 			for __i, __item := range m.fruits {
-				__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 			}
 			return __out
 		}()) {
-			__out[__i] = func(o Choice__record) string { return o.Label }(__item)
+			__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
 		}
 		return __out
 	}())
+	if (m.__n1.Selected != ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}()), m.pick)) {
+		m.__n1.SetSelected(ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
+			for __i, __item := range m.fruits {
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+			}
+			return __out
+		}()), m.pick))
+	}
 }
 
 func (m *Model) Fruits() []string {
@@ -656,26 +898,38 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2 = fynelayout.NewVBox()
 	m.__n1 = fynelayout.NewSelect(nil, nil)
 	m.__n1.SetOptions(func() []string {
-		__out := make([]string, len(slices.Concat([]Choice__record{Choice__record{Label: "None"}}, func() []Choice__record {
-			__out := make([]Choice__record, len(m.fruits))
+		__out := make([]string, len(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
 			for __i, __item := range m.fruits {
-				__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 			}
 			return __out
 		}())))
-		for __i, __item := range slices.Concat([]Choice__record{Choice__record{Label: "None"}}, func() []Choice__record {
-			__out := make([]Choice__record, len(m.fruits))
+		for __i, __item := range slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
 			for __i, __item := range m.fruits {
-				__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 			}
 			return __out
 		}()) {
-			__out[__i] = func(o Choice__record) string { return o.Label }(__item)
+			__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
 		}
 		return __out
 	}())
-	if m.__n1.Selected != m.pick {
-		m.__n1.SetSelected(m.pick)
+	if (m.__n1.Selected != ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}()), m.pick)) {
+		m.__n1.SetSelected(ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
+			for __i, __item := range m.fruits {
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+			}
+			return __out
+		}()), m.pick))
 	}
 	m.__n1.OnChanged = m.__n1_change_handler
 	m.__n2.Add(m.__n1)
@@ -724,8 +978,9 @@ type ErrorEvent struct {
 	Kind    string
 }
 
-type Choice__record struct {
+type Choice__record__string struct {
 	Label string
+	Value string
 }
 
 type __anon_drop_labels_ffa5ce struct {
@@ -775,28 +1030,52 @@ func New() *Model {
 	return m
 }
 
+func ChoiceLabeled__string(options []Choice__record__string, label string) int {
+	for i, o := range options {
+		if o.Label == label {
+			return i
+		}
+	}
+	return -1
+}
+
+func ChoiceLabel__string(options []Choice__record__string, value string) string {
+	for _, o := range options {
+		if o.Value == value {
+			return o.Label
+		}
+	}
+	return ""
+}
+
 func (m *Model) __effect0_mount() {
-	gtk4rt.DropDownOffer(m.drop, m.__effect0_key.Labels, m.pick)
+	gtk4rt.DropDownOffer(m.drop, m.__effect0_key.Labels, ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}()), m.pick))
 }
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []__anon_drop_labels_ffa5ce{}
 	m.__effect0_desired = append(m.__effect0_desired, __anon_drop_labels_ffa5ce{Drop: m.drop, Labels: strings.Join(func() []string {
-		__out := make([]string, len(slices.Concat([]Choice__record{Choice__record{Label: "None"}}, func() []Choice__record {
-			__out := make([]Choice__record, len(m.fruits))
+		__out := make([]string, len(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
 			for __i, __item := range m.fruits {
-				__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 			}
 			return __out
 		}())))
-		for __i, __item := range slices.Concat([]Choice__record{Choice__record{Label: "None"}}, func() []Choice__record {
-			__out := make([]Choice__record, len(m.fruits))
+		for __i, __item := range slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
 			for __i, __item := range m.fruits {
-				__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 			}
 			return __out
 		}()) {
-			__out[__i] = func(o Choice__record) string { return o.Label }(__item)
+			__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
 		}
 		return __out
 	}(), "\n")})
@@ -819,24 +1098,30 @@ func (m *Model) __effect0_up() {
 
 func (m *Model) __effect1_mount() {
 	gtk4rt.DropDownOffer(m.drop, strings.Join(func() []string {
-		__out := make([]string, len(slices.Concat([]Choice__record{Choice__record{Label: "None"}}, func() []Choice__record {
-			__out := make([]Choice__record, len(m.fruits))
+		__out := make([]string, len(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
 			for __i, __item := range m.fruits {
-				__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 			}
 			return __out
 		}())))
-		for __i, __item := range slices.Concat([]Choice__record{Choice__record{Label: "None"}}, func() []Choice__record {
-			__out := make([]Choice__record, len(m.fruits))
+		for __i, __item := range slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
 			for __i, __item := range m.fruits {
-				__out[__i] = func(f string) Choice__record { return Choice__record{Label: f} }(__item)
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 			}
 			return __out
 		}()) {
-			__out[__i] = func(o Choice__record) string { return o.Label }(__item)
+			__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
 		}
 		return __out
-	}(), "\n"), m.__effect1_key)
+	}(), "\n"), ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}()), m.__effect1_key))
 }
 
 func (m *Model) __effect1_down() {
@@ -900,9 +1185,27 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) drop_notifySelected_handler() {
-	v := gtk4rt.DropDownLabel(m.drop)
-	if (v != "") && (v != m.pick) {
-		m.pick = v
+	var at int = ChoiceLabeled__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}()), gtk4rt.DropDownLabel(m.drop))
+	if (at >= 0) && (slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}())[at].Value != m.pick) {
+		m.pick = slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
+			for __i, __item := range m.fruits {
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+			}
+			return __out
+		}())[at].Value
 	}
 	m.__effects0_settle()
 }
@@ -1004,8 +1307,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 
-data class Choice__record(
-    var label: String = ""
+data class Choice__record__string(
+    var label: String = "",
+    var value: String = ""
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -1023,10 +1327,11 @@ fun MainScreen() {
     var visible__inst0 by remember { mutableStateOf(true) }
 
 
-    fun choose__inst0(v: String) {
+    fun choose__inst0(label: String) {
         open__inst0 = false
-        if (((v != pick) && (listOf(Choice__record(label = "None"), *fruits.map({ f: String -> Choice__record(label = f) }).toTypedArray()).map({ o: Choice__record -> o.label }).indexOf(v) >= 0))) {
-        	pick = v
+        var at = choiceLabeled__string(listOf(Choice__record__string(label = "None", value = "None"), *fruits.map({ f: String -> Choice__record__string(label = f, value = f) }).toTypedArray()), label)
+        if (((at >= 0) && (listOf(Choice__record__string(label = "None", value = "None"), *fruits.map({ f: String -> Choice__record__string(label = f, value = f) }).toTypedArray())[at].value != pick))) {
+        	pick = listOf(Choice__record__string(label = "None", value = "None"), *fruits.map({ f: String -> Choice__record__string(label = f, value = f) }).toTypedArray())[at].value
         }
     }
 
@@ -1042,7 +1347,7 @@ fun MainScreen() {
             Box(modifier = Modifier.snglChooses({ v: String ->
     choose__inst0(v)
 })) {
-                OutlinedTextField(value = pick, readOnly = true, enabled = true, singleLine = true, modifier = Modifier, onValueChange = {}, label = {
+                OutlinedTextField(value = choiceLabel__string(listOf(Choice__record__string(label = "None", value = "None"), *fruits.map({ f: String -> Choice__record__string(label = f, value = f) }).toTypedArray()), pick), readOnly = true, enabled = true, singleLine = true, modifier = Modifier, onValueChange = {}, label = {
                     Text(text = "Pick", modifier = Modifier)
                 }, trailingIcon = {
                     Text(text = "▾", modifier = Modifier)
@@ -1054,7 +1359,7 @@ fun MainScreen() {
                 DropdownMenu(expanded = open__inst0, onDismissRequest = {
                     open__inst0 = false
                 }) {
-                    for (opt in listOf(Choice__record(label = "None"), *fruits.map({ f: String -> Choice__record(label = f) }).toTypedArray())) {
+                    for (opt in listOf(Choice__record__string(label = "None", value = "None"), *fruits.map({ f: String -> Choice__record__string(label = f, value = f) }).toTypedArray())) {
                         DropdownMenuItem(onClick = {
                             choose__inst0(opt.label)
                         }, text = {
@@ -1070,6 +1375,24 @@ fun MainScreen() {
             }
         }
     }
+}
+
+fun choiceLabeled__string(options: List<Choice__record__string>, label: String): Int {
+    for ((i, o) in options.withIndex()) {
+    	if ((o.label == label)) {
+    		return i
+    	}
+    }
+    return -1
+}
+
+fun choiceLabel__string(options: List<Choice__record__string>, value: String): String {
+    for (o in options) {
+    	if ((o.value == value)) {
+    		return o.label
+    	}
+    }
+    return ""
 }
 -- out/kotlin/android/SnglChooses.kt --
 package test.sngl.app
@@ -1236,6 +1559,18 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { fruits: ["Apple", "Banana"], pick: "Apple", visible__inst0: true };
+  function choiceLabeled(options, label) {
+    for (const [i, o] of options.entries()) {
+      ;
+      if (o.label === label) {
+        ;
+        return i;
+      }
+      ;
+    }
+    ;
+    return -1;
+  }
   function __snglTeardown() {
     for (const [__inst1_live_di, _] of __inst1_live.entries()) {
       ;
@@ -1256,16 +1591,16 @@ body { font-family: system-ui, sans-serif; }
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.value = __prop___p0.label;
-      __n0.selected = __prop___p0.label === __prop___p1;
+      __n0.selected = __prop___p0.value === __prop___p1;
       __n0.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n0.selected = __prop___p0.label === __prop___p1;
+      __n0.selected = __prop___p0.value === __prop___p1;
     }
     let __n0 = document.createElement("option");
     __n0.value = __prop___p0.label;
-    __n0.selected = __prop___p0.label === __prop___p1;
+    __n0.selected = __prop___p0.value === __prop___p1;
     __n0.textContent = __prop___p0.label;
     __root.appendChild(__n0);
     return {
@@ -1294,7 +1629,7 @@ body { font-family: system-ui, sans-serif; }
           __slot0 = [];
           let __inst1_next = [];
           let __inst1_i = 0;
-          for (const opt of [{ label: "None" }, ...state.fruits.map((f) => ({ label: f }))]) {
+          for (const opt of [{ label: "None", value: "None" }, ...state.fruits.map((f) => ({ label: f, value: f }))]) {
             let __n2 = null;
             if (__inst1_live.length > __inst1_i) {
               __n2 = __inst1_live[__inst1_i];
@@ -1344,10 +1679,15 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   __n3.addEventListener("change", function(e) {
-    state.pick = e.currentTarget.value;
-    for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+    let at = choiceLabeled([{ label: "None", value: "None" }, ...state.fruits.map((f) => ({ label: f, value: f }))], e.currentTarget.value);
+    if (at >= 0 && [{ label: "None", value: "None" }, ...state.fruits.map((f) => ({ label: f, value: f }))][at].value !== state.pick) {
       ;
-      __inst1_live[__inst1_live_ui].__set___p1(state.pick);
+      state.pick = [{ label: "None", value: "None" }, ...state.fruits.map((f) => ({ label: f, value: f }))][at].value;
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        ;
+        __inst1_live[__inst1_live_ui].__set___p1(state.pick);
+      }
+      ;
     }
     ;
   });
@@ -1360,12 +1700,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a76712dd246a632d10e264c4e9c8724e
+pass sha256:4b613c1c805581841866f224ae0045b8
 -- run/go/fyne --
-pass sha256:35e92a217fc706f78e615daa60674aa7
+pass sha256:505d89fe887c5b823d10f7b7eec869d4
 -- run/go/gtk4 --
-pass sha256:ca7ad99885bfa81f38be33e9ac457e9e
+pass sha256:45abf2131efd19445b0eb0c4a423761d
 -- run/kotlin/android --
-pass sha256:e01e36c51f315e90400b68dcd34694b9
+pass sha256:49151d55d6e58910fe9ab9a96d85c918
 -- run/none/html --
-pass sha256:c32d0491d0354c8065ddcb0f522ed0f2
+pass sha256:0faec732c57e11cf2430fb7759904adc

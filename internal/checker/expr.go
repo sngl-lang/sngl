@@ -1753,7 +1753,15 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 	event := ""
 	if evt := c.elementEvent(receiverExpr, sel.Field); evt != nil {
 		event = evt.Name
-		argSig = &ir.FuncSig{Params: evt.Params}
+		// A generic component's event takes what its handle's type
+		// arguments bind: `c.pick.change(Method.egg)` for a select of Methods.
+		params := evt.Params
+		if t := exprType(receiverExpr); t != nil {
+			if comp, ok := t.Decl.(*ir.Component); ok && len(comp.TypeParams) > 0 {
+				params = substituteParams(params, componentArgBindings(t, comp))
+			}
+		}
+		argSig = &ir.FuncSig{Params: params}
 	}
 	args := c.checkCallArgs(call.Args, argSig)
 	// A trigger fires the event and yields nothing. Anything else names no
@@ -2982,7 +2990,7 @@ func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList,
 			continue
 		}
 		if pos < len(sig.Params) && !settled(sig.Params[pos]) {
-			bind(sig.Params[pos], exprType(c.inferArgExpr(arg.Value, sig.Params[pos].Type, bindings)))
+			bind(sig.Params[pos], exprType(c.inferArgExpr(arg.Value, sig.Params[pos].Type, slices.Concat(sig.TypeParams, sig.RecvTypeParams), bindings)))
 		}
 		pos++
 	}
@@ -3023,19 +3031,33 @@ func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList,
 // is bound so far substituted -- `ps.map(func(p) => p.name)` has its p from the
 // receiver -- and its return type from its body wherever the parameter's
 // still names a type parameter, which is what the body is binding.
-func (c *checker) inferArgExpr(e ast.Expr, want *ir.Type, bindings map[string]*ir.Type) ir.Expr {
+//
+// What is still to bind is a parameter of the callee, params, that nothing has
+// bound yet. A type parameter of the body the call is written in is a type
+// like any other there: a select's override maps `options`, a
+// `list[choice[T]]`, with its own T in hand.
+func (c *checker) inferArgExpr(e ast.Expr, want *ir.Type, params []ir.TypeParam, bindings map[string]*ir.Type) ir.Expr {
 	lam, ok := e.(*ast.LambdaExpr)
 	if !ok || want == nil || want.Kind != ir.TypeFunc || want.Sig == nil {
 		return c.checkExpr(e)
 	}
+	unbound := func(t *ir.Type) bool {
+		return t.Any(func(t *ir.Type) bool {
+			if t.Kind != ir.TypeTypeParam {
+				return false
+			}
+			_, bound := bindings[t.ParamName]
+			return !bound && slices.ContainsFunc(params, func(tp ir.TypeParam) bool { return tp.Name == t.ParamName })
+		})
+	}
 	sig := want.Sig.Substitute(bindings)
 	for _, p := range sig.Params {
-		if p.Type.HasTypeParam() {
+		if unbound(p.Type) {
 			return c.checkExpr(e)
 		}
 	}
 	exp := &ir.FuncSig{Params: sig.Params}
-	if lam.ReturnType == nil && sig.Return != nil && !sig.Return.HasTypeParam() {
+	if lam.ReturnType == nil && sig.Return != nil && !unbound(sig.Return) {
 		exp.Return = sig.Return
 	}
 	return c.checkExprExpecting(e, &ir.Type{Kind: ir.TypeFunc, Sig: exp})

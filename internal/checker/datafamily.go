@@ -8,8 +8,8 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// A component that names itself as its family -- `component choice(label
-// string) choice` -- is data (Component.Data). Written in a slot of its type it
+// A component that names itself as its family -- `component fruit(name
+// string) fruit` -- is data (Component.Data). Written in a slot of its type it
 // is a record of its props, never rendered; the slot is never inserted, and its
 // name in the container's body is the list of records the population renders
 // (SlotDecl.Values). lower.DataFamilies builds that list at each call site once
@@ -32,7 +32,7 @@ func (c *checker) bindDataFamily(comp *ir.Component) {
 	if comp.Data {
 		// A generic data component's record is generic over the same
 		// parameters, so a field typed by one is the type it is bound to.
-		comp.Record = &ir.StructDef{Name: comp.Name + "__record", Pkg: c.declPkg(), RecordOf: comp, TypeParams: comp.TypeParams}
+		comp.Record = &ir.StructDef{Name: comp.Name + "__record", Pkg: c.declPkg(), RecordOf: comp, TypeParams: slices.Clone(comp.TypeParams)}
 	}
 	var shows []*ir.SlotDecl
 	for _, slot := range comp.Slots {

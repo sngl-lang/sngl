@@ -658,10 +658,10 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
     if direction == ui.Orientation.horizontal {
         gtk.GtkBox(orientation="horizontal", sensitive=(disabled == false), look=boxLookOf(style, 6)) {
             for var opt = options {
-                gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
-                    if checkActive(b) && value != opt.label {
-                        value = opt.label
-                        change(opt.label)
+                gtk.GtkCheckButton(label=opt.label, active=(opt.value == value), @toggled(b) {
+                    if checkActive(b) && value != opt.value {
+                        value = opt.value
+                        change(opt.value)
                     }
                 }) {}
             }
@@ -669,10 +669,10 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
     } else {
         gtk.GtkBox(orientation="vertical", sensitive=(disabled == false), look=boxLookOf(style, 6)) {
             for var opt = options {
-                gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
-                    if checkActive(b) && value != opt.label {
-                        value = opt.label
-                        change(opt.label)
+                gtk.GtkCheckButton(label=opt.label, active=(opt.value == value), @toggled(b) {
+                    if checkActive(b) && value != opt.value {
+                        value = opt.value
+                        change(opt.value)
                     }
                 }) {}
             }
@@ -693,24 +693,24 @@ func offerChoices(d gtk.GtkDropDown, labels string, chosen string)
 func dropDownLabel(d gtk.GtkDropDown) string
 
 // One drop-down, offered the choices' labels whenever they change and
-// selecting the bound value whenever it does. `placeholder`, `multiple` and
+// selecting the label of the bound value whenever it does. `placeholder` and
 // the focus events have nothing to reach.
 const component ui.select[platform](value, disabled, focusable, style, @change, options) {
     gtk.GtkDropDown #drop(sensitive=(disabled == false), canFocus=focusable, look=lookOf(style), @notifySelected(d) {
-        var v = dropDownLabel(d)
-        if v != "" && v != value {
-            value = v
-            change(v)
+        var at = ui.choiceLabeled(options, dropDownLabel(d))
+        if at >= 0 && options[at].value != value {
+            value = options[at].value
+            change(options[at].value)
         }
     }) {}
     // Keyed on the drop-down as well as its labels, so a render that builds
     // the drop-down afresh offers the new one its choices: an effect whose
     // key reads a node mounts again wherever the node is built.
     effect(on={labels=options.map(func(o) => o.label).format("\n"), drop=drop}, @mount(k) {
-        offerChoices(drop, k.labels, value)
+        offerChoices(drop, k.labels, ui.choiceLabel(options, value))
     })
     effect(on=value, @mount(v) {
-        offerChoices(drop, options.map(func(o) => o.label).format("\n"), v)
+        offerChoices(drop, options.map(func(o) => o.label).format("\n"), ui.choiceLabel(options, v))
     })
 }
 

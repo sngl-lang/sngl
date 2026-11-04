@@ -524,8 +524,8 @@ component reporting(@change(value string)) node {
     select(value="a", @change(v) {
         change(v)
     }) {
-        choice(label="a")
-        choice(label="b")
+        choice(label="a", value="a")
+        choice(label="b", value="b")
     }
     for var k, l = ["a", "b"] {
         button(text=l, @click {

@@ -183,6 +183,11 @@ component Widget(
     rows    list[list[string]],
     value   float,
     max     float,
+    // The label a tui.Select holds, which a select's override converts to
+    // and from its value: the widget knows its choices by label.
+    :choice string = "",
+    // A choice made, by its label.
+    @change(value string),
 ) ui.node
 
 #[gen.renders(identity)]
@@ -410,10 +415,13 @@ const component ui.toggle[platform](label, checked, focusable, style, @change) {
 }
 
 // A select is tui.Select: a list whose cursor is the choice, holding the
-// value even before a choice carries it. Its choices are handed to every
-// view and update, since they are the program's and may arrive after it
-// starts.
-const component ui.select[platform](focusable, style, options) {
+// label of the value even before a choice carries it. Its choices are handed
+// to every view and update, since they are the program's and may arrive after
+// it starts. The widget knows its choices by label, so the override holds the
+// label it shows: the program's value is written to it, and a choice of a
+// label writes the value of the choice labeled so.
+component ui.select[platform](value, focusable, style, @change, options) {
+    var label = ui.choiceLabel(options, value)
     Widget(
         model = Model{
             type = "tui.Select",
@@ -423,12 +431,24 @@ const component ui.select[platform](focusable, style, options) {
             resize = ".SetSize($\{w\}, $\{h\})",
         },
         focus = Focus{enabled=style.display != ui.Display.none, tab=focusable},
-        binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
+        binds = [Bind{prop="choice", get=".Value()", set=".SetValue"}],
         options = options.map(func(o) => o.label),
+        :choice = label,
         look = lookOf(style),
         fit = fitOf(style.whiteSpace, style.display),
         grow = growOf(style.flex, style.display),
+        @change(l) {
+            var at = ui.choiceLabeled(options, l)
+            if at >= 0 && options[at].value != value {
+                value = options[at].value
+                change(options[at].value)
+            }
+        },
     ) {}
+    // After the widget, which the call site's `#id` names.
+    effect(on={v=value, labels=options.map(func(o) => o.label).format("\n")}, @mount {
+        label = ui.choiceLabel(options, value)
+    })
 }
 
 const component ui.textarea[platform](focusable, style) {

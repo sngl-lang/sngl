@@ -22,7 +22,7 @@ output {
 component Pick(:pick string) ui.node {
     ui.vbox {
         ui.select(:value=pick) {
-            ui.choice(label="a")
+            ui.choice(label="a", value="a")
         }
         ui.text(value=string([1, 2].map(func(n int) => n * 2).length()))
     }
@@ -50,8 +50,9 @@ import (
 	"os"
 )
 
-type Choice__record struct {
+type Choice__record__string struct {
 	Label string
+	Value string
 }
 
 // Model holds the state for this SNGL UI.
@@ -81,6 +82,24 @@ func New() *Model {
 	return m
 }
 
+func ChoiceLabel__string(options []Choice__record__string, value string) string {
+	for _, o := range options {
+		if o.Value == value {
+			return o.Label
+		}
+	}
+	return ""
+}
+
+func ChoiceLabeled__string(options []Choice__record__string, label string) int {
+	for i, o := range options {
+		if o.Label == label {
+			return i
+		}
+	}
+	return -1
+}
+
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -105,8 +124,9 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 					if len(m.__inst0_live) > __inst0_i {
 						__n2 = m.__inst0_live[__inst0_i]
 						__n2.Set__on0(func(v string) {
-							if v != m.pick {
-								m.pick = v
+							var at int = ChoiceLabeled__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, v)
+							if (at >= 0) && ([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}[at].Value != m.pick) {
+								m.pick = []Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}[at].Value
 								for __inst0_live_ui, _ := range m.__inst0_live {
 									m.__inst0_live[__inst0_live_ui].Set__p0(m.pick)
 								}
@@ -118,8 +138,9 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
 						__n2__new := new__child0Instance(m, m.pick, func(v string) {
-							if v != m.pick {
-								m.pick = v
+							var at int = ChoiceLabeled__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, v)
+							if (at >= 0) && ([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}[at].Value != m.pick) {
+								m.pick = []Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}[at].Value
 								for __inst0_live_ui, _ := range m.__inst0_live {
 									m.__inst0_live[__inst0_live_ui].Set__p0(m.pick)
 								}
@@ -214,14 +235,14 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___on0 func(string)
 	__n3 := fynelayout.NewVBox()
 	c.__n0 = fynelayout.NewSelect(nil, nil)
 	c.__n0.SetOptions(func() []string {
-		__out := make([]string, len([]Choice__record{Choice__record{Label: "a"}}))
-		for __i, __item := range []Choice__record{Choice__record{Label: "a"}} {
-			__out[__i] = func(o Choice__record) string { return o.Label }(__item)
+		__out := make([]string, len([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}))
+		for __i, __item := range []Choice__record__string{Choice__record__string{Label: "a", Value: "a"}} {
+			__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
 		}
 		return __out
 	}())
-	if c.__n0.Selected != c.__prop___p0 {
-		c.__n0.SetSelected(c.__prop___p0)
+	if c.__n0.Selected != ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, c.__prop___p0) {
+		c.__n0.SetSelected(ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, c.__prop___p0))
 	}
 	c.__n0.OnChanged = func(__on0_0 string) {
 		c.__prop___on0(__on0_0)
@@ -242,8 +263,8 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___on0 func(string)
 
 func (c *__child0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	if c.__n0.Selected != c.__prop___p0 {
-		c.__n0.SetSelected(c.__prop___p0)
+	if c.__n0.Selected != ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, c.__prop___p0) {
+		c.__n0.SetSelected(ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, c.__prop___p0))
 	}
 }
 
@@ -262,4 +283,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:43b463776cbda3b5401c6e0fc59f7078
+pass sha256:87b1f49aedd670b0b460b7b67c87f332

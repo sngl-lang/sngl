@@ -331,7 +331,7 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                                 effect(on=i18n.locale, @mount(l) { methodLabel = methodLabeled(method) })
                                 ui.select #methodPick(:value=methodLabel, @change(v) { method = methodNamed(v) }) {
                                     for var m = learnMethods() {
-                                        ui.choice(label=m.label)
+                                        ui.choice(label=m.label, value=m.label)
                                     }
                                 }
                                 ui.scroll(direction=horizontal) {

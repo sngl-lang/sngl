@@ -72,6 +72,16 @@ points first, then the bugs and the generated code.
    function reached only from a lambda in a test survives DCE.
 6. **Race on gtk4 and fyne**: fetch goroutines read `__prop___ctx_server`
    while renders rewrite it.
+7. **A two-way prop read after its write is stale in a run-time instance.**
+   `value = x; change(value)` in an override hands `change` the old value
+   where the component is built at run time (android's `Select__string`):
+   `rewritePropMutationsToEmit` turns the write into an emit, and the read
+   that follows still reads the parameter. The overrides now pass the
+   picked value; the lowering still reads stale.
+8. **Tests should trigger through declared overrides of the event.**
+   `func ui.select[T].change[fyne.platform](value) { … }` says how a test
+   raises `@change` on a target, so `lower.passChoiceTriggers`, the
+   `choiceKey` builtin and the per-target invokers can go.
 
 ## Generated code
 

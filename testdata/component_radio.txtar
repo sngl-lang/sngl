@@ -11,9 +11,9 @@ import . "sngl:test"
 component main node {
     var sel = "medium"
     radio(:value=sel, direction=horizontal) {
-        choice(label="small")
-        choice(label="medium")
-        choice(label="large")
+        choice(label="small", value="small")
+        choice(label="medium", value="medium")
+        choice(label="large", value="large")
     }
 }
 
@@ -479,8 +479,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 
-data class Choice__record(
-    var label: String = ""
+data class Choice__record__string(
+    var label: String = "",
+    var value: String = ""
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -498,10 +499,10 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Row(modifier = Modifier.safeDrawingPadding()) {
-        for (opt in listOf(Choice__record(label = "small"), Choice__record(label = "medium"), Choice__record(label = "large"))) {
+        for (opt in listOf(Choice__record__string(label = "small", value = "small"), Choice__record__string(label = "medium", value = "medium"), Choice__record__string(label = "large", value = "large"))) {
             Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = (state.sel == opt.label), onClick = {
-                    state.sel = opt.label
+                RadioButton(selected = (state.sel == opt.value), onClick = {
+                    state.sel = opt.value
                 })
                 Text(text = opt.label, modifier = Modifier)
             }
@@ -585,6 +586,18 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
+  function choiceLabeled(options, label) {
+    for (const [i, o] of options.entries()) {
+      ;
+      if (o.label === label) {
+        ;
+        return i;
+      }
+      ;
+    }
+    ;
+    return -1;
+  }
   function __snglTeardown() {
     for (const [__inst1_live_di, _] of __inst1_live.entries()) {
       ;
@@ -595,14 +608,14 @@ window.__sngl_boot = () => {
     __inst1_live = [];
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { __snglTeardown });
+    Object.assign(window, { choiceLabeled, __snglTeardown });
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __p1 = props.__p1;
-    let __on0 = props.__on0 ?? (() => {
+    let __on0 = props.__on0 ?? ((__e0) => {
     });
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
@@ -611,12 +624,12 @@ window.__sngl_boot = () => {
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.value = __prop___p0.label;
-      __n0.checked = __prop___p0.label === __prop___p1;
+      __n0.checked = __prop___p0.value === __prop___p1;
       __n1.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n0.checked = __prop___p0.label === __prop___p1;
+      __n0.checked = __prop___p0.value === __prop___p1;
     }
     function __set___on0(__v) {
       __prop___on0 = __v;
@@ -625,11 +638,11 @@ window.__sngl_boot = () => {
     __n4.setAttribute("style", "gap:4px;display:inline-flex;align-items:center");
     let __n0 = document.createElement("input");
     __n0.value = __prop___p0.label;
-    __n0.checked = __prop___p0.label === __prop___p1;
+    __n0.checked = __prop___p0.value === __prop___p1;
     __n0.disabled = false;
     __n0.setAttribute("type", "radio");
-    __n0.addEventListener("change", () => {
-      __prop___on0();
+    __n0.addEventListener("change", (__on0_0) => {
+      __prop___on0(__on0_0);
     });
     __n4.appendChild(__n0);
     let __n1 = document.createElement("span");
@@ -663,15 +676,20 @@ window.__sngl_boot = () => {
           __slot0 = [];
           let __inst1_next = [];
           let __inst1_i = 0;
-          for (const opt of [{ label: "small" }, { label: "medium" }, { label: "large" }]) {
+          for (const opt of [{ label: "small", value: "small" }, { label: "medium", value: "medium" }, { label: "large", value: "large" }]) {
             let __n2 = null;
             if (__inst1_live.length > __inst1_i) {
               __n2 = __inst1_live[__inst1_i];
-              __n2.__set___on0(() => {
-                state.sel = opt.label;
-                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+              __n2.__set___on0((e) => {
+                let at = choiceLabeled([{ label: "small", value: "small" }, { label: "medium", value: "medium" }, { label: "large", value: "large" }], e.currentTarget.value);
+                if (at >= 0 && [{ label: "small", value: "small" }, { label: "medium", value: "medium" }, { label: "large", value: "large" }][at].value !== state.sel) {
                   ;
-                  __inst1_live[__inst1_live_ui].__set___p1(state.sel);
+                  state.sel = [{ label: "small", value: "small" }, { label: "medium", value: "medium" }, { label: "large", value: "large" }][at].value;
+                  for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                    ;
+                    __inst1_live[__inst1_live_ui].__set___p1(state.sel);
+                  }
+                  ;
                 }
                 ;
               });
@@ -681,11 +699,16 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n2__new = __cf___child0({ __p0: opt, __p1: state.sel, __on0: () => {
-                state.sel = opt.label;
-                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+              let __n2__new = __cf___child0({ __p0: opt, __p1: state.sel, __on0: (e) => {
+                let at = choiceLabeled([{ label: "small", value: "small" }, { label: "medium", value: "medium" }, { label: "large", value: "large" }], e.currentTarget.value);
+                if (at >= 0 && [{ label: "small", value: "small" }, { label: "medium", value: "medium" }, { label: "large", value: "large" }][at].value !== state.sel) {
                   ;
-                  __inst1_live[__inst1_live_ui].__set___p1(state.sel);
+                  state.sel = [{ label: "small", value: "small" }, { label: "medium", value: "medium" }, { label: "large", value: "large" }][at].value;
+                  for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                    ;
+                    __inst1_live[__inst1_live_ui].__set___p1(state.sel);
+                  }
+                  ;
                 }
                 ;
               } });
@@ -744,11 +767,11 @@ pass sha256:a732594e036aa70e67b7c62f860befdc
 -- run/go/fyne --
 pass sha256:c8ba70cad659e21eb7c1e2a3b8dfdb34
 -- run/kotlin/android --
-pass sha256:c16a2b0ca8f3569c02c1708367d67b79
+pass sha256:42430cd06fe0e696f1e19c38171c9192
 -- run/none/html --
-pass sha256:ab7b23a9868a571189a8be2b2393d118
+pass sha256:b6a82c65c9e05193348b9be6af789e55
 -- testrun/html/none/component_radio.sngl/main/1 --
-sha256:f313f89a2a2431f77c739a2a51a8eb1b
+sha256:fd8c09c8b8352f2a1cdd44b6260578e6
 {
   "results": [
     {

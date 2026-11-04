@@ -30,8 +30,8 @@ output {
 component main node {
     var pick string = "a"
     radio(:value=pick) {
-        choice(label="a")
-        choice(label="b")
+        choice(label="a", value="a")
+        choice(label="b", value="b")
     }
     text(value=pick)
 }
@@ -63,8 +63,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 
-data class Choice__record(
-    var label: String = ""
+data class Choice__record__string(
+    var label: String = "",
+    var value: String = ""
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -89,10 +90,10 @@ fun MainScreen() {
         }
         Column {
             Column(modifier = Modifier.safeDrawingPadding()) {
-                for (opt in listOf(Choice__record(label = "a"), Choice__record(label = "b"))) {
+                for (opt in listOf(Choice__record__string(label = "a", value = "a"), Choice__record__string(label = "b", value = "b"))) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = (pick__inst0 == opt.label), onClick = {
-                            pick__inst0 = opt.label
+                        RadioButton(selected = (pick__inst0 == opt.value), onClick = {
+                            pick__inst0 = opt.value
                         })
                         Text(text = opt.label, modifier = Modifier)
                     }
@@ -103,4 +104,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:38b39a1f99291282b8c4e7999c9527f3
+pass sha256:0d57f55f4df6143d88706a534d872f58

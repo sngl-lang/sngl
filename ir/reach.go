@@ -131,6 +131,18 @@ func (r *Reached) decl(sym Symbol) {
 		}
 		if d.RecordOf != nil {
 			r.add(d.RecordOf)
+			// A test choosing among records is lowered to a call of the key
+			// its package declares for them (lower.passChoiceTriggers),
+			// which nothing written names: unreached, a target's copy of the
+			// package kept the checked key, naming the checked record beside
+			// the copy's.
+			if d.Pkg != nil {
+				for _, f := range d.Pkg.Funcs {
+					if f.Builtin == BuiltinChoiceKey {
+						r.add(f)
+					}
+				}
+			}
 		}
 	case *EnumDef:
 		for _, m := range d.Members {

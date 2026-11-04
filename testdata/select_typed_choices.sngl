@@ -1,0 +1,42 @@
+import test "sngl:test"
+import ui "sngl:ui"
+
+// A select's and a radio's choices hold a value of any type, which is what
+// the two-way `value` holds: an enum's members, walked by a `for` over its
+// name, and ints labeled otherwise. A test chooses a value, and the choice
+// holding it is made.
+enum Method { levelUp, machine, egg }
+
+component chooser ui.node {
+    var method = Method.levelUp
+    var heard list[Method] = []
+    var size = 2
+
+    ui.select #pick(:value=method, @change(m) { heard.push(m) }) {
+        for var m = Method {
+            ui.choice(label="By {m}", value=m)
+        }
+    }
+    ui.radio #sizes(:value=size) {
+        ui.choice(label="Small", value=1)
+        ui.choice(label="Medium", value=2)
+        ui.choice(label="Large", value=3)
+    }
+}
+
+func testASelectHoldsTheValue(t test.Test, c chooser) {
+    t.assert(ui.choiceLabel(c.pick.options, c.method) == "By levelUp")
+    c.pick.change(Method.egg)
+    t.assert(c.method == Method.egg)
+    t.assert(c.heard.length() == 1 && c.heard[0] == Method.egg)
+}
+
+func testARadioHoldsTheValue(t test.Test, c chooser) {
+    c.sizes.change(3)
+    t.assert(c.size == 3)
+    t.assert(ui.choiceLabeled(c.sizes.options, "Medium") == 1)
+}
+
+ui.window {
+    chooser
+}

@@ -969,10 +969,11 @@ const component ui.toggle[platform](label, checked, focusable, style, @change) {
 }
 
 const component ui.select[platform](value, focusable, style, @change, options) {
-    Select(selected=value, options=options.map(func(o) => o.label), focusable=focusable, style=style, @change(v) {
-        if v != value {
-            value = v
-            change(v)
+    Select(selected=ui.choiceLabel(options, value), options=options.map(func(o) => o.label), focusable=focusable, style=style, @change(v) {
+        var at = ui.choiceLabeled(options, v)
+        if at >= 0 && options[at].value != value {
+            value = options[at].value
+            change(options[at].value)
         }
     }) {}
 }

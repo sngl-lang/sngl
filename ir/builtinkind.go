@@ -180,6 +180,11 @@ const (
 	// for its arguments, which is that call once T is bound (FormatCall).
 	BuiltinFormatWith       BuiltinKind = "formatWith"
 	BuiltinAppendFormatWith BuiltinKind = "appendFormatWith"
+	// ChoiceKey is the function a data family's package declares as what a
+	// native control knows one of its records by, given the records and a
+	// value they hold -- sngl:ui's `choiceLabel`: a test's trigger handing a
+	// select a value hands its control the key (lower.passChoiceTriggers).
+	BuiltinChoiceKey BuiltinKind = "choiceKey"
 
 	// Predeclared constants. These annotate a const declaration whose written
 	// value is a placeholder: the real one is not known until a build picks a
@@ -327,7 +332,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink, BuiltinApplication,
 		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode, BuiltinGenRun, BuiltinGenBuild,
 		BuiltinCString, BuiltinCInt, BuiltinCDouble, BuiltinCBool, BuiltinText,
-		BuiltinFormatArgs, BuiltinFormatWith, BuiltinAppendFormatWith,
+		BuiltinFormatArgs, BuiltinFormatWith, BuiltinAppendFormatWith, BuiltinChoiceKey,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
 }
@@ -337,5 +342,5 @@ func AllBuiltinKinds() []BuiltinKind {
 func (b BuiltinKind) Valid() bool {
 	return b == BuiltinAny || b.IsConstraint() || b == BuiltinApplication || b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
 		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsCMarshal() || b.IsConst() || b == BuiltinText ||
-		b == BuiltinFormatArgs || b == BuiltinFormatWith || b == BuiltinAppendFormatWith
+		b == BuiltinFormatArgs || b == BuiltinFormatWith || b == BuiltinAppendFormatWith || b == BuiltinChoiceKey
 }

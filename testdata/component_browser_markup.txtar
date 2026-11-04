@@ -35,13 +35,13 @@ component widgets node {
     }
     link #link(text="Home", href="/")
     select #select(:value=fruit, placeholder="pick") {
-        choice(label="a")
-        choice(label="b")
-        choice(label="c")
+        choice(label="a", value="a")
+        choice(label="b", value="b")
+        choice(label="c", value="c")
     }
     radio #radio(:value=pick) {
-        choice(label="x")
-        choice(label="y")
+        choice(label="x", value="x")
+        choice(label="y", value="y")
     }
     textarea #area(:value=note, rows=3)
     tabs #tabs(:selected=sel) {
@@ -269,6 +269,18 @@ window.__sngl_boot = () => {
     }
     ;
   }
+  function choiceLabeled(options, label) {
+    for (const [i, o] of options.entries()) {
+      ;
+      if (o.label === label) {
+        ;
+        return i;
+      }
+      ;
+    }
+    ;
+    return -1;
+  }
   function swipedTo(disabled, from, by) {
     let k = from + by;
     while (k >= 0 && k < disabled.length && disabled[k]) {
@@ -312,7 +324,7 @@ window.__sngl_boot = () => {
     __inst1_live = [];
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { has, swipedTo, plus, __snglTeardown });
+    Object.assign(window, { has, choiceLabeled, swipedTo, plus, __snglTeardown });
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
@@ -329,16 +341,16 @@ window.__sngl_boot = () => {
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.value = __prop___p0.label;
-      __n1.selected = __prop___p0.label === __prop___p1;
+      __n1.selected = __prop___p0.value === __prop___p1;
       __n1.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n1.selected = __prop___p0.label === __prop___p1;
+      __n1.selected = __prop___p0.value === __prop___p1;
     }
     let __n1 = document.createElement("option");
     __n1.value = __prop___p0.label;
-    __n1.selected = __prop___p0.label === __prop___p1;
+    __n1.selected = __prop___p0.value === __prop___p1;
     __n1.textContent = __prop___p0.label;
     __root.appendChild(__n1);
     return {
@@ -354,7 +366,7 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __p1 = props.__p1;
-    let __on0 = props.__on0 ?? (() => {
+    let __on0 = props.__on0 ?? ((__e0) => {
     });
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
@@ -367,12 +379,12 @@ window.__sngl_boot = () => {
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n2.value = __prop___p0.label;
-      __n2.checked = __prop___p0.label === __prop___p1;
+      __n2.checked = __prop___p0.value === __prop___p1;
       __n3.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n2.checked = __prop___p0.label === __prop___p1;
+      __n2.checked = __prop___p0.value === __prop___p1;
     }
     function __set___on0(__v) {
       __prop___on0 = __v;
@@ -381,11 +393,11 @@ window.__sngl_boot = () => {
     __n14.setAttribute("style", "gap:4px;display:inline-flex;align-items:center");
     let __n2 = document.createElement("input");
     __n2.value = __prop___p0.label;
-    __n2.checked = __prop___p0.label === __prop___p1;
+    __n2.checked = __prop___p0.value === __prop___p1;
     __n2.disabled = false;
     __n2.setAttribute("type", "radio");
-    __n2.addEventListener("change", () => {
-      __prop___on0();
+    __n2.addEventListener("change", (__on0_0) => {
+      __prop___on0(__on0_0);
     });
     __n14.appendChild(__n2);
     let __n3 = document.createElement("span");
@@ -587,7 +599,7 @@ window.__sngl_boot = () => {
           __slot0 = [];
           let __inst1_next = [];
           let __inst1_i = 0;
-          for (const opt of [{ label: "a" }, { label: "b" }, { label: "c" }]) {
+          for (const opt of [{ label: "a", value: "a" }, { label: "b", value: "b" }, { label: "c", value: "c" }]) {
             let __n6 = null;
             if (__inst1_live.length > __inst1_i) {
               __n6 = __inst1_live[__inst1_i];
@@ -646,15 +658,20 @@ window.__sngl_boot = () => {
           __slot1 = [];
           let __inst3_next = [];
           let __inst3_i = 0;
-          for (const opt of [{ label: "x" }, { label: "y" }]) {
+          for (const opt of [{ label: "x", value: "x" }, { label: "y", value: "y" }]) {
             let __n7 = null;
             if (__inst3_live.length > __inst3_i) {
               __n7 = __inst3_live[__inst3_i];
-              __n7.__set___on0(() => {
-                state.pick = opt.label;
-                for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
+              __n7.__set___on0((e) => {
+                let at = choiceLabeled([{ label: "x", value: "x" }, { label: "y", value: "y" }], e.currentTarget.value);
+                if (at >= 0 && [{ label: "x", value: "x" }, { label: "y", value: "y" }][at].value !== state.pick) {
                   ;
-                  __inst3_live[__inst3_live_ui].__set___p1(state.pick);
+                  state.pick = [{ label: "x", value: "x" }, { label: "y", value: "y" }][at].value;
+                  for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
+                    ;
+                    __inst3_live[__inst3_live_ui].__set___p1(state.pick);
+                  }
+                  ;
                 }
                 ;
               });
@@ -664,11 +681,16 @@ window.__sngl_boot = () => {
               if (__inst3_live.length > __inst3_i) {
                 __inst3_live[__inst3_i].__destroy();
               }
-              let __n7__new = __cf___child1({ __p0: opt, __p1: state.pick, __on0: () => {
-                state.pick = opt.label;
-                for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
+              let __n7__new = __cf___child1({ __p0: opt, __p1: state.pick, __on0: (e) => {
+                let at = choiceLabeled([{ label: "x", value: "x" }, { label: "y", value: "y" }], e.currentTarget.value);
+                if (at >= 0 && [{ label: "x", value: "x" }, { label: "y", value: "y" }][at].value !== state.pick) {
                   ;
-                  __inst3_live[__inst3_live_ui].__set___p1(state.pick);
+                  state.pick = [{ label: "x", value: "x" }, { label: "y", value: "y" }][at].value;
+                  for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
+                    ;
+                    __inst3_live[__inst3_live_ui].__set___p1(state.pick);
+                  }
+                  ;
                 }
                 ;
               } });
@@ -920,10 +942,15 @@ window.__sngl_boot = () => {
     __n0.checked = state.checked__inst0;
   });
   $10.addEventListener("change", function(e) {
-    state.fruit = e.currentTarget.value;
-    for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+    let at = choiceLabeled([{ label: "a", value: "a" }, { label: "b", value: "b" }, { label: "c", value: "c" }], e.currentTarget.value);
+    if (at >= 0 && [{ label: "a", value: "a" }, { label: "b", value: "b" }, { label: "c", value: "c" }][at].value !== state.fruit) {
       ;
-      __inst1_live[__inst1_live_ui].__set___p1(state.fruit);
+      state.fruit = [{ label: "a", value: "a" }, { label: "b", value: "b" }, { label: "c", value: "c" }][at].value;
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        ;
+        __inst1_live[__inst1_live_ui].__set___p1(state.fruit);
+      }
+      ;
     }
     ;
   });
@@ -970,9 +997,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:3f259fdad85b28c873b4b320e59603ee
+pass sha256:4ea3f5cb55569f9871ca85c32e13b305
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:9b16d32f087b021247e78437d3c523eb
+sha256:0ec8c3d08ee9bcb61b22c652353eec77
 {
   "results": [
     {

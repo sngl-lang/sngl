@@ -361,17 +361,17 @@ component Tour ui.node {
                 )
                 ui.toggle(:checked=toggleOn, label="Notifications")
                 ui.radio(direction=horizontal, value=selectedRadio) {
-                    ui.choice(label="small")
-                    ui.choice(label="medium")
-                    ui.choice(label="large")
+                    ui.choice(label="small", value="small")
+                    ui.choice(label="medium", value="medium")
+                    ui.choice(label="large", value="large")
                 }
             }
             ui.text(value="Select", style={fontSize=20px, fontWeight=bold})
             ui.select(placeholder="Pick a fruit", value=selectedOption) {
-                ui.choice(label="Apple")
-                ui.choice(label="Banana")
-                ui.choice(label="Cherry")
-                ui.choice(label="Date")
+                ui.choice(label="Apple", value="Apple")
+                ui.choice(label="Banana", value="Banana")
+                ui.choice(label="Cherry", value="Cherry")
+                ui.choice(label="Date", value="Date")
             }
             ui.divider
 

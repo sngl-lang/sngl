@@ -1343,7 +1343,15 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		clone.Block = deepCloneStmts(f.Block)
 		if typeArgs != nil {
 			clone = ir.InstantiateFunc(f, typeArgs)
-			clone.TypeParams, clone.RecvTypeParams = f.TypeParams, f.RecvTypeParams
+			// The method's own parameters stay; the component's the call
+			// bound are bound, and left on the copy the monomorphizer took it
+			// for a generic nothing called at bound types and kept its
+			// generic callees erased.
+			clone.TypeParams = f.TypeParams
+			clone.RecvTypeParams = slices.DeleteFunc(slices.Clone(f.RecvTypeParams), func(tp ir.TypeParam) bool {
+				_, bound := typeArgs[tp.Name]
+				return bound
+			})
 		}
 		clone.Name = st.names.next(f.Name, "inst")
 		// A clone of a node's method this component's body already spliced

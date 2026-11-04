@@ -34,17 +34,17 @@ component main node {
 
     vbox {
         radio(style={padding=4px}, direction=horizontal, value=pick, @change(e) { chosen = e }) {
-            choice(label="small")
-            choice(label="medium")
-            choice(label="large")
+            choice(label="small", value="small")
+            choice(label="medium", value="medium")
+            choice(label="large", value="large")
         }
         radio(style={padding=5px}, value=pick) {
-            choice(label="one")
-            choice(label="two")
+            choice(label="one", value="one")
+            choice(label="two", value="two")
         }
         radio(value=pick) {
             for var m = more {
-                choice(label=m)
+                choice(label=m, value=m)
             }
         }
     }
@@ -96,8 +96,9 @@ data class Measurement(
     val rem: Double = 0.0
 )
 
-data class Choice__record(
-    var label: String = ""
+data class Choice__record__string(
+    var label: String = "",
+    var value: String = ""
 )
 
 data class Style(
@@ -310,31 +311,31 @@ fun MainScreen() {
         }
         Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
             Row(modifier = flexed(styleModifier(Style(padding = Measurement(px = 4.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() })) {
-                for (opt in listOf(Choice__record(label = "small"), Choice__record(label = "medium"), Choice__record(label = "large"))) {
+                for (opt in listOf(Choice__record__string(label = "small", value = "small"), Choice__record__string(label = "medium", value = "medium"), Choice__record__string(label = "large", value = "large"))) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = (value__inst0 == opt.label), onClick = {
-                            value__inst0 = opt.label
-                            chosen__inst0 = opt.label
+                        RadioButton(selected = (value__inst0 == opt.value), onClick = {
+                            value__inst0 = opt.value
+                            chosen__inst0 = opt.value
                         })
                         Text(text = opt.label, modifier = Modifier)
                     }
                 }
             }
             Column(modifier = flexed(styleModifier(Style(padding = Measurement(px = 5.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() })) {
-                for (opt in listOf(Choice__record(label = "one"), Choice__record(label = "two"))) {
+                for (opt in listOf(Choice__record__string(label = "one", value = "one"), Choice__record__string(label = "two", value = "two"))) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = (value__inst1 == opt.label), onClick = {
-                            value__inst1 = opt.label
+                        RadioButton(selected = (value__inst1 == opt.value), onClick = {
+                            value__inst1 = opt.value
                         })
                         Text(text = opt.label, modifier = Modifier)
                     }
                 }
             }
             Column(modifier = Modifier) {
-                for (opt in listOf(*more__inst0.map({ m: String -> Choice__record(label = m) }).toTypedArray())) {
+                for (opt in listOf(*more__inst0.map({ m: String -> Choice__record__string(label = m, value = m) }).toTypedArray())) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = (value__inst2 == opt.label), onClick = {
-                            value__inst2 = opt.label
+                        RadioButton(selected = (value__inst2 == opt.value), onClick = {
+                            value__inst2 = opt.value
                         })
                         Text(text = opt.label, modifier = Modifier)
                     }
@@ -518,4 +519,4 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/kotlin/android --
-pass sha256:b6fb7a19df06b25f7acb7f4661e11f1f
+pass sha256:f6535fae309b705cf1c5d5822f9de0a2

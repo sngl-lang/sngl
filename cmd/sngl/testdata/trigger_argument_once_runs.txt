@@ -34,8 +34,8 @@ component page ui.node {
     var picked = "a"
 
     ui.select #pick(:value=picked) {
-        ui.choice(label="a")
-        ui.choice(label="b")
+        ui.choice(label="a", value="a")
+        ui.choice(label="b", value="b")
     }
 }
 
@@ -49,7 +49,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:211a901606178de9a68feb2b51ae09a4
+sha256:41114cb988d92617d820e840b77a9e55
 {
   "results": [
     {
@@ -59,7 +59,7 @@ sha256:211a901606178de9a68feb2b51ae09a4
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:f13d1448fb7cf80562d7a21fca4ed995
+sha256:52f3e2bace3a7e3c043f688199f9f1b7
 {
   "results": [
     {
@@ -69,7 +69,7 @@ sha256:f13d1448fb7cf80562d7a21fca4ed995
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:7f5ca41494b4579cf5b4275318402f64
+sha256:fef8961fe533c960d298b6d97af97a2b
 {
   "results": [
     {
@@ -79,7 +79,7 @@ sha256:7f5ca41494b4579cf5b4275318402f64
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:9277f720633ae64d8698f1bcdae68c87
+sha256:04d1fa9a0a5c6d74c3590dca4ca50d38
 {
   "results": [
     {
@@ -89,7 +89,7 @@ sha256:9277f720633ae64d8698f1bcdae68c87
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:0160ee0bed3471585c1b1996f5ceaf54
+sha256:03f168a66df79aa59b0795257503fc4b
 {
   "results": [
     {

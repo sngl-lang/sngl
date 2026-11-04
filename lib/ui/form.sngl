@@ -1,3 +1,4 @@
+import marks "sngl:internal/marks"
 import time "sngl:time"
 
 // Clickable button that triggers an action, labeled with `text`. Set
@@ -115,27 +116,27 @@ component _example_checkbox node {
 enum Orientation { vertical, horizontal }
 
 // Group of mutually exclusive options. Its choices are written as its
-// children, each a `choice`, as a select's are. `value` is the currently
-// selected choice's label (matched by string equality). `direction` is the
-// axis the choices are laid out along. `@change` fires with the newly selected
-// value on user selection.
-component radio(
-    :value    string,
+// children, each a `choice`, as a select's are. `value` is the value of the
+// selected choice, of whatever type the choices hold, and selects the first
+// choice holding it. `direction` is the axis the choices are laid out along.
+// `@change` fires with the newly selected value on user selection.
+component radio[T any](
+    :value    T,
     disabled  bool = false,
     direction Orientation = Orientation.vertical,
     style     Style = Style{},
-    @change(value string),
+    @change(value T),
     // The choices, in the order they are laid out.
-    options   ...component choice,
+    options   ...component choice[T],
 ) node
 
 component _example_radio node {
     var size = "medium"
     vbox(style={gap=8px, padding=16px}) {
         radio(:value=size, direction=horizontal) {
-            choice(label="small")
-            choice(label="medium")
-            choice(label="large")
+            choice(label="small", value="small")
+            choice(label="medium", value="medium")
+            choice(label="large", value="large")
         }
         text(value="Selected: " + size)
     }
@@ -163,35 +164,60 @@ component _example_toggle node {
 
 // One of a select's choices: data, since it names itself as its family, so a
 // select reads its choices as a list rather than rendering them. `label` is
-// what it shows and what the select's `value` holds while it is selected.
-component choice(label string) choice
+// what it shows, and `value` what the select's `value` holds while it is
+// selected.
+component choice[T any](label string, value T) choice[T]
 
 // Dropdown selection control. Its choices are written as its children, each a
-// `choice`, under an `if` or a `for` where the list depends on something.
-// `value` is the current selection's label, two-way bound. Set
-// `multiple=true` to allow multi-select (value becomes a newline-joined string
-// of selected labels). `placeholder` shows when nothing is selected.
-component select(
+// `choice`, under an `if` or a `for` where the list depends on something --
+// `for var m = Method { choice(label="{m}", value=m) }` offers every member
+// of an enum. `value` is the selected choice's value, two-way bound, of
+// whatever type the choices hold, and selects the first choice holding it.
+// `placeholder` shows when no choice holds it.
+component select[T any](
     placeholder string = "",
-    :value      string,
+    :value      T,
     disabled    bool = false,
-    multiple    bool = false,
     focusable   bool = true,
     style       Style = Style{},
-    @change(value string),
+    @change(value T),
     @focus(),
     @blur(),
     // The choices, in the order they are offered.
-    options     ...component choice,
+    options     ...component choice[T],
 ) node
+
+// The label of the first of `options` holding `value`, or "" where none
+// does: what a platform's control, which knows its choices by label, shows
+// selected, and what a test choosing `value` hands it.
+#[marks.builtin("choiceKey")]
+const func choiceLabel[T any](options list[choice[T]], value T) string {
+    for var o = options {
+        if o.value == value {
+            return o.label
+        }
+    }
+    return ""
+}
+
+// The position of the first of `options` labeled `label`, or -1 where none
+// is: a platform's control reports a choice by its label.
+const func choiceLabeled[T any](options list[choice[T]], label string) int {
+    for var i, o = options {
+        if o.label == label {
+            return i
+        }
+    }
+    return -1
+}
 
 component _example_select node {
     var fruit = ""
     vbox(style={gap=8px, padding=16px}) {
         select(placeholder="Pick a fruit", :value=fruit) {
-            choice(label="Apple")
-            choice(label="Banana")
-            choice(label="Cherry")
+            choice(label="Apple", value="apple")
+            choice(label="Banana", value="banana")
+            choice(label="Cherry", value="cherry")
         }
         text(value="Selected: " + fruit)
     }

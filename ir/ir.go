@@ -1529,6 +1529,12 @@ type StructDef struct {
 	// type nothing counts: a value stored from another holder is passed
 	// through it, and each holder then releases its own.
 	Retain *Func `json:"-"`
+	// InstanceOf and InstanceArgs are the generic struct this one is a copy
+	// of and the type arguments it was copied at, as EnumDef's are: what lets
+	// a later copying, after a body is spliced at bound types, find this one
+	// rather than declaring the same instantiation twice.
+	InstanceOf   *StructDef `json:"-"`
+	InstanceArgs []*Type    `json:"-"`
 }
 
 func (s *StructDef) SymName() string { return s.Name }

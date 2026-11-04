@@ -2681,6 +2681,9 @@ The rules:
 - **Its name is its record type in a value position.** `list[fruit]` is a list
   of records. In a family position (a return position, a slot's content) the
   name is the component.
+- **A generic data component's record is generic too.** `component choice[T any](label string, value T) choice[T]` records a `value` of whatever type its
+  container binds: a slot `options ...component choice[T]` is read as a
+  `list[choice[T]]`, and a record's `value` is a `T` there.
 
 A component **with a body** may compose records: it names the data family in
 its return position, or leaves its family to be inferred from a body that

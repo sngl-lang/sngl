@@ -14,9 +14,9 @@ component picker node {
     var fruit = "apple"
     text #shown(value="picked: {fruit}")
     select #s(:value=fruit) {
-        choice(label="apple")
-        choice(label="banana")
-        choice(label="cherry")
+        choice(label="apple", value="apple")
+        choice(label="banana", value="banana")
+        choice(label="cherry", value="cherry")
     }
 }
 
@@ -325,6 +325,18 @@ window.__sngl_boot = () => {
     let x = state.base + 1;
     return x * 3;
   }
+  function choiceLabeled(options, label) {
+    for (const [i, o] of options.entries()) {
+      ;
+      if (o.label === label) {
+        ;
+        return i;
+      }
+      ;
+    }
+    ;
+    return -1;
+  }
   function __snglTeardown() {
     for (const [__inst8_live_di, _] of __inst8_live.entries()) {
       ;
@@ -356,7 +368,7 @@ window.__sngl_boot = () => {
     __inst1_live = [];
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { run, doubled, blocky, __snglTeardown });
+    Object.assign(window, { run, doubled, blocky, choiceLabeled, __snglTeardown });
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
@@ -376,16 +388,16 @@ window.__sngl_boot = () => {
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.value = __prop___p0.label;
-      __n0.selected = __prop___p0.label === __prop___p1;
+      __n0.selected = __prop___p0.value === __prop___p1;
       __n0.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n0.selected = __prop___p0.label === __prop___p1;
+      __n0.selected = __prop___p0.value === __prop___p1;
     }
     let __n0 = document.createElement("option");
     __n0.value = __prop___p0.label;
-    __n0.selected = __prop___p0.label === __prop___p1;
+    __n0.selected = __prop___p0.value === __prop___p1;
     __n0.textContent = __prop___p0.label;
     __root.appendChild(__n0);
     return {
@@ -519,7 +531,7 @@ window.__sngl_boot = () => {
           __slot0 = [];
           let __inst1_next = [];
           let __inst1_i = 0;
-          for (const opt of [{ label: "apple" }, { label: "banana" }, { label: "cherry" }]) {
+          for (const opt of [{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }]) {
             let __n6 = null;
             if (__inst1_live.length > __inst1_i) {
               __n6 = __inst1_live[__inst1_i];
@@ -934,11 +946,16 @@ window.__sngl_boot = () => {
   var __slotAnchor_7 = document.querySelector('[data-sngl-slot="7"]');
   __renderSlot7(__slotAnchor_7);
   $1.addEventListener("change", function(e) {
-    state.fruit__inst0 = e.currentTarget.value;
-    $0.textContent = "picked: " + state.fruit__inst0;
-    for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+    let at = choiceLabeled([{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }], e.currentTarget.value);
+    if (at >= 0 && [{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }][at].value !== state.fruit__inst0) {
       ;
-      __inst1_live[__inst1_live_ui].__set___p1(state.fruit__inst0);
+      state.fruit__inst0 = [{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }][at].value;
+      $0.textContent = "picked: " + state.fruit__inst0;
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        ;
+        __inst1_live[__inst1_live_ui].__set___p1(state.fruit__inst0);
+      }
+      ;
     }
     ;
   });
@@ -994,7 +1011,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:35b579ed0cabd32107cd257fa334264d
+pass sha256:1e6cac7dc4f1a4083d214a5fafccc469
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
 sha256:d0361f3ceb5732edd48b4c0a983cbaf4
 {
@@ -1046,7 +1063,7 @@ sha256:c5590a0169d81d5f4d1e670d512478c7
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/picker/1 --
-sha256:d1daf6907eb9b5f2016ec382f119278b
+sha256:ef1d9ec371ddb38eb163dbba8b8d6113
 {
   "results": [
     {

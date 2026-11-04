@@ -1,7 +1,11 @@
-# A test drives a select on every target: `c.pick.change("Banana")` chooses
-# the choice labeled Banana, which the `:value` binding writes back and the
-# program's @change hears, once -- including where the choices are state that
-# arrives after the select is built, and through an instance.
+# A test drives a select on every target: `c.pick.change(Fruit.banana)`
+# chooses the choice holding banana, whose value the `:value` binding writes
+# back and the program's @change hears, once -- including where the choices are
+# state that arrives after the select is built, and through an instance. The
+# choices hold an enum and an int, labeled otherwise, so a value is never taken
+# for a label: each control knows its choices by label, and the test's choice
+# is handed it as the label of the choice holding the value
+# (lower.passChoiceTriggers).
 #
 # Each target's select is a control a test chooses through, as a user does:
 # html's <select>, fyne's Select, gtk4's GtkDropDown (the invoker selects the
@@ -10,75 +14,92 @@
 # text a test sets to a label) and the interpreter's own.
 
 sngl test --platform=none app.sngl
-stdout '2 tests, 0 failures'
+stdout '3 tests, 0 failures'
 
 sngl test --platform=html app.sngl
-stdout '2 tests, 0 failures'
+stdout '3 tests, 0 failures'
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout '2 tests, 0 failures'
+stdout '3 tests, 0 failures'
 
 sngl test --platform=fyne --language=go app.sngl
-stdout '2 tests, 0 failures'
+stdout '3 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
-stdout '2 tests, 0 failures'
+stdout '3 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
-stdout '2 tests, 0 failures'
+stdout '3 tests, 0 failures'
 
 -- app.sngl --
 import test "sngl:test"
 import ui "sngl:ui"
 
-component chooser ui.node {
-    var fruits list[string] = []
-    var chosen = "Apple"
-    var picked = ""
-    var changes = 0
+enum Fruit { apple, banana, cherry }
 
-    ui.button #fill(text="Fill", @click { fruits = ["Apple", "Banana", "Cherry"] })
-    ui.select #pick(:value=chosen, @change(v) {
-        picked = v
-        changes += 1
-    }) {
+func named(f Fruit) => match f {
+    apple => "Apple"
+    banana => "Banana"
+    cherry => "Cherry"
+}
+
+component chooser ui.node {
+    var fruits list[Fruit] = []
+    var chosen = Fruit.apple
+    var picked list[Fruit] = []
+    var size = 2
+
+    ui.button #fill(text="Fill", @click { fruits = [Fruit.apple, Fruit.banana, Fruit.cherry] })
+    ui.select #pick(:value=chosen, @change(v) { picked.push(v) }) {
         for var f = fruits {
-            ui.choice(label=f)
+            ui.choice(label=named(f), value=f)
         }
     }
-    ui.text(value=chosen)
+    ui.select #sizes(:value=size) {
+        ui.choice(label="Small", value=1)
+        ui.choice(label="Medium", value=2)
+        ui.choice(label="Large", value=3)
+    }
+    ui.text(value="{chosen} {size}")
 }
 
 component wrapped ui.node {
     chooser #inner()
 }
 
-func testChangePicksTheChoiceNamed(t test.Test, c chooser) {
+func testChangePicksTheChoiceHolding(t test.Test, c chooser) {
     c.fill.click()
-    c.pick.change("Banana")
-    t.assert(c.picked == "Banana")
-    t.assert(c.chosen == "Banana")
-    t.assert(c.changes == 1)
+    c.pick.change(Fruit.banana)
+    t.assert(c.chosen == Fruit.banana)
+    t.assert(c.picked.length() == 1 && c.picked[0] == Fruit.banana)
+}
+
+func testChangePicksAnInt(t test.Test, c chooser) {
+    c.sizes.change(3)
+    t.assert(c.size == 3)
 }
 
 func testChangeReachesThroughAnInstance(t test.Test, c wrapped) {
     c.inner.fill.click()
-    c.inner.pick.change("Cherry")
-    t.assert(c.inner.picked == "Cherry")
-    t.assert(c.inner.chosen == "Cherry")
+    c.inner.pick.change(Fruit.cherry)
+    t.assert(c.inner.chosen == Fruit.cherry)
 }
 -- testrun/android/kotlin/app.sngl/chooser/1 --
-sha256:e68cf48c15e1515fe55bf8e412bce9cc
+sha256:0cd5f519b3a9efbb9d1fbebf9da4d52d
 {
   "results": [
     {
-      "Desc": "ChangePicksTheChoiceNamed",
+      "Desc": "ChangePicksAnInt",
+      "Passed": true
+    },
+    {
+      "Desc": "ChangePicksTheChoiceHolding",
       "Passed": true
     }
   ]
 }
 -- testrun/android/kotlin/app.sngl/wrapped/1 --
-sha256:c7e97949a912187d67f798db1249362d
+sha256:10acb4143766e76f3a1f548c5cee22d9
 {
   "results": [
     {
@@ -88,17 +109,21 @@ sha256:c7e97949a912187d67f798db1249362d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/chooser/1 --
-sha256:13945f876e2ffd262cfcf623e43c38c0
+sha256:5227b166e424db2de5d04b96bc11205a
 {
   "results": [
     {
-      "Desc": "ChangePicksTheChoiceNamed",
+      "Desc": "ChangePicksAnInt",
+      "Passed": true
+    },
+    {
+      "Desc": "ChangePicksTheChoiceHolding",
       "Passed": true
     }
   ]
 }
 -- testrun/bubbletea/go/app.sngl/wrapped/1 --
-sha256:a9dfff30aae5657fefa9b4681f6acd9e
+sha256:6ee46e9b88eb287895ffc3cbf207c22f
 {
   "results": [
     {
@@ -108,17 +133,21 @@ sha256:a9dfff30aae5657fefa9b4681f6acd9e
   ]
 }
 -- testrun/fyne/go/app.sngl/chooser/1 --
-sha256:d35055f2749695b609e8725534456714
+sha256:b07b752dad9012b2124c2f45d0799694
 {
   "results": [
     {
-      "Desc": "ChangePicksTheChoiceNamed",
+      "Desc": "ChangePicksAnInt",
+      "Passed": true
+    },
+    {
+      "Desc": "ChangePicksTheChoiceHolding",
       "Passed": true
     }
   ]
 }
 -- testrun/fyne/go/app.sngl/wrapped/1 --
-sha256:d4b090e804922fbaa07953b82a9cd6c7
+sha256:d1f640721297d86c9ce4e8d54aa6b323
 {
   "results": [
     {
@@ -128,17 +157,21 @@ sha256:d4b090e804922fbaa07953b82a9cd6c7
   ]
 }
 -- testrun/gtk4/go/app.sngl/chooser/1 --
-sha256:c6ed802ea571e8d4921b265c911d4865
+sha256:aed705ff3a955eef9e91b3ac92f97c77
 {
   "results": [
     {
-      "Desc": "ChangePicksTheChoiceNamed",
+      "Desc": "ChangePicksAnInt",
+      "Passed": true
+    },
+    {
+      "Desc": "ChangePicksTheChoiceHolding",
       "Passed": true
     }
   ]
 }
 -- testrun/gtk4/go/app.sngl/wrapped/1 --
-sha256:71cc72a3bfbe91d91841506afde547f7
+sha256:78ae39143b3a85a625bb7fddb9cc16aa
 {
   "results": [
     {
@@ -148,17 +181,21 @@ sha256:71cc72a3bfbe91d91841506afde547f7
   ]
 }
 -- testrun/html/none/app.sngl/chooser/1 --
-sha256:86adaee04ef2bdbf5f21d6b2df4028ea
+sha256:fcfe2f3e32bcce40f8a36091364fb30b
 {
   "results": [
     {
-      "Desc": "ChangePicksTheChoiceNamed",
+      "Desc": "ChangePicksAnInt",
+      "Passed": true
+    },
+    {
+      "Desc": "ChangePicksTheChoiceHolding",
       "Passed": true
     }
   ]
 }
 -- testrun/html/none/app.sngl/wrapped/1 --
-sha256:8eb9b0c6c8dca8a3d2800b90049737c2
+sha256:45122594913183da3dd4095abca81d50
 {
   "results": [
     {

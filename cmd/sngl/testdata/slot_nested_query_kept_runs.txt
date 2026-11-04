@@ -61,8 +61,8 @@ component page ui.node {
                     async.query(on=title, fetch=func(t string) => fetchBook(t), @load(got) { loads += 1 })
                 }
                 ui.select #pick(:value=kind) {
-                    ui.choice(label="Red")
-                    ui.choice(label="Green")
+                    ui.choice(label="Red", value="Red")
+                    ui.choice(label="Green", value="Green")
                 }
                 ui.text #count(value="{loads}")
             }
@@ -82,7 +82,7 @@ func testEachBookIsAskedForOnce(t test.Test, c page) {
     t.assert(c.count != null && c.count.value == "2")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:e5d44243e300d89c1a8fa31031953581
+sha256:6930349bd531ef82e9a28b376e5e718d
 {
   "results": [
     {
@@ -92,7 +92,7 @@ sha256:e5d44243e300d89c1a8fa31031953581
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:e4b7b4e5c92a82cfb4766890f2b0e8ec
+sha256:1b0f8508482145e5d88187965a09c78c
 {
   "results": [
     {
@@ -102,7 +102,7 @@ sha256:e4b7b4e5c92a82cfb4766890f2b0e8ec
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:da9972c5032dcaadd9a7917dd19089a1
+sha256:49825713f7c565217ab1a24b706602e7
 {
   "results": [
     {
@@ -112,7 +112,7 @@ sha256:da9972c5032dcaadd9a7917dd19089a1
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:eac2131b11c920a333214d5686f64815
+sha256:810b629c2d46ded5dd5fec6bae10b524
 {
   "results": [
     {
@@ -122,7 +122,7 @@ sha256:eac2131b11c920a333214d5686f64815
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:889d91ae9c537f3c81221a37418adaa3
+sha256:4714ad81a7079597826d79fc32a397a5
 {
   "results": [
     {
