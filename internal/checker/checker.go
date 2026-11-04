@@ -317,6 +317,7 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	// which pass2 has finished resolving, and may name anything the program
 	// declares.
 	c.checkPendingFuncOverrides()
+	c.reportUntakenTriggers("")
 	c.verifyRefCoercions(c.pkg)
 	c.analyzeErrors()
 	c.analyzeAsync()
@@ -746,6 +747,9 @@ type checker struct {
 	userOverrides        []*ast.ComponentDecl
 	userFuncOverrides    []*ast.FuncDef
 	pendingFuncOverrides []pendingFuncOverride
+	// pendingTriggers are the overrides of an event collected so far, each
+	// taken by the override of its component it is a method of.
+	pendingTriggers []*pendingTrigger
 	// overrideAt is the override whose body checkComponentBody is reading, or
 	// the zero Pos while it reads a declaration's own.
 	overrideAt ast.Pos
@@ -2240,7 +2244,14 @@ func (c *checker) registerBodyDecl(stmt ast.Stmt, owner string) ir.Symbol {
 		// A component's flat-namespace collision is narrower -- only a
 		// recursion cycle survives inlining under its declared name -- and is
 		// reportBodyComponentCollisions' after pass2.
-		return c.registerComponentDecl(s, true)
+		//
+		// An override written here is reported and registers nothing, and
+		// a nil *Component handed back as a Symbol is no nil: the body's
+		// next declare of it dereferenced it.
+		if comp := c.registerComponentDecl(s, true); comp != nil {
+			return comp
+		}
+		return nil
 	case *ast.StructDef:
 		sd := c.buildStructDef(s)
 		sd.Builtin = c.stampBuiltinKind(s.Attrs)

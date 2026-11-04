@@ -402,10 +402,11 @@ func (d *Document) TestFuncs() []*FuncDef {
 	return out
 }
 
-// SplitMethodName splits "int.sqrt" into ("int", "sqrt", true).
+// SplitMethodName splits "int.sqrt" into ("int", "sqrt", true), and a
+// method on a qualified receiver, "ui.select.change", at its last dot.
 func SplitMethodName(name string) (typeName, method string, ok bool) {
-	if before, after, ok0 := strings.Cut(name, "."); ok0 {
-		return before, after, true
+	if i := strings.LastIndexByte(name, '.'); i >= 0 {
+		return name[:i], name[i+1:], true
 	}
 	return "", name, false
 }

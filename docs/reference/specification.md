@@ -1188,7 +1188,7 @@ FuncBodyTail =
     "=>" Expr
     | [ Type ] [ StmtBlock ]
 
-FuncName = IDENT [ "[" IDENT FuncNameBracket | "." IDENT [ NameBracket ] ]
+FuncName = IDENT { "." IDENT | "[" IDENT FuncNameBracket }
 
 TypeParamList = "[" TypeParam { "," TypeParam } "]"
 
@@ -1235,7 +1235,7 @@ struct keeps its meaning, naming parameters by its fields. A variadic parameter
 given no arguments is the empty list, so it takes no default.
 
 A **method** is a function whose name is qualified by a receiver type,
-`func Type.method(…)`. Type parameters may appear after the receiver type
+`func Type.method(…)`, which may be another package's, `func ui.select.m(…)`. Type parameters may appear after the receiver type
 (receiver-level, names only) and after the method name (method-level, each
 naming its constraint); see
 [Generic type parameters](#generic-type-parameters). A method is dispatched on
@@ -2958,6 +2958,42 @@ the index after the method's name, `func list[T].second[html.platform]()`, and a
 declaration with type parameters of its own writes its list first,
 `func f[T any][html.platform]()`.
 
+**An override of an event** says how a test raises the event on that target.
+It is written as a method of the component named for the event, with the
+target's index after it, and its parameter list selects the event's
+parameters by name as any override's does. A receiver is written as its
+declaration names it, qualified by its package and with its type parameters,
+which are never implied:
+
+```sngl
+import none "sngl:platform/none"
+import ui "sngl:ui"
+
+component dial(:value int, @change(to int)) ui.node
+
+component dial[none.platform](value, @change) {
+    ui.button #up(text="{value}", @click {
+        value += 1
+        change(value)
+    })
+}
+
+func dial.change[none.platform](to) {
+    value = to
+    change(to)
+}
+
+ui.window {
+    dial(value=0)
+}
+```
+
+The body is a method of that target's override of the component, so it reads
+the props and the nodes the override named, and an override of an event for a
+target with no override of its component is an error. A test's
+`c.d.change(3)` runs it in place of reaching the control the override
+renders; an event a target does not override is raised there as before.
+
 ## Platform and language plugins
 
 A compilation targets a **platform** (what is rendered — HTML, a Bubble Tea
@@ -3089,7 +3125,7 @@ FuncBodyTail =
     "=>" Expr
     | [ Type ] [ StmtBlock ]
 
-FuncName = IDENT [ "[" IDENT FuncNameBracket | "." IDENT [ NameBracket ] ]
+FuncName = IDENT { "." IDENT | "[" IDENT FuncNameBracket }
 
 TypeParamList = "[" TypeParam { "," TypeParam } "]"
 

@@ -370,8 +370,14 @@ FuncBodyTail =
 #   func name[html.platform](...)         → ident lbracket ident dot ident rbracket
 #   func name[platform](...)              → ident lbracket ident rbracket
 #   func recv.method(...)                 → ident dot ident
-#   func recv.method[T any](...)          → ident dot ident NameBracket
-#   func recv[T].method[U any](...)       → ident lbracket ident rbracket dot ident NameBracket
+#   func recv.method[T any](...)          → ident dot ident lbracket ident TypeParamRest
+#   func recv[T].method[U any](...)       → ident lbracket ident rbracket dot ident …
+#   func ui.select[T].change[platform]()  → any number of `dot ident` and brackets
+#
+# A name is any number of `dot ident` and bracketed lists after its first
+# ident, and the builder reads each list by where it stands: one before the
+# last `dot` is the receiver's parameters, one after the last name is the
+# function's own parameters and then the target it overrides.
 #
 # A receiver's list restates the receiver's names and no constraints, as Go's
 # does, while a function's own list names one for each. A target is a name or
@@ -380,13 +386,13 @@ FuncBodyTail =
 # own, `dot` is a qualified target, and `rbracket` is a bare target or a
 # receiver's single name -- a `dot` after the bracket says which. Neither
 # `comma`, `dot` nor `rbracket` begins a Type.
-FuncName = ident [ lbracket ident FuncNameBracket | dot ident [ NameBracket ] ] .
+FuncName = ident { dot ident | lbracket ident FuncNameBracket } .
 
 FuncNameBracket =
-      rbracket [ dot ident [ NameBracket ] ]
-    | comma ident { comma ident } rbracket dot ident [ NameBracket ]
+      rbracket
+    | comma ident { comma ident } rbracket
     | dot ident rbracket
-    | TypeParamRest [ TargetIndex ]
+    | TypeParamRest
     .
 
 # The rest of a function's own list, its first parameter's name already read.

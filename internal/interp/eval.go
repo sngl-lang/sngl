@@ -3436,6 +3436,9 @@ func (env *Env) underHandler(vals map[*ir.Context]any, fn func() (any, error)) (
 // with the test's arguments, as every compiled target does.
 func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() ([]any, error)) (any, bool, error) {
 	n, _ := m["__node"].(*Node)
+	if fn := triggerOf(n, event); fn != nil {
+		return env.runTrigger(m, n, fn, args)
+	}
 	_, handled := m["@"+event].(*ir.Func)
 	if programComponent(n) && handled {
 		return env.runElementHandler(m, event, args)
@@ -3455,6 +3458,64 @@ func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() (
 		return env.InvokeElementEvent(d.Map(), event, args)
 	}
 	return env.runElementHandler(m, event, args)
+}
+
+// triggerOf is the target's override of event on the component n
+// instantiates -- how a test raises it there -- or nil.
+func triggerOf(n *Node, event string) *ir.Func {
+	if n == nil || n.Component == nil {
+		return nil
+	}
+	for _, fn := range n.Component.Funcs {
+		if fn.Trigger == event {
+			return fn
+		}
+	}
+	return nil
+}
+
+// runTrigger runs fn, the override of an event, as a method of the instance
+// m is: in the component's own scope, so its body reads the props and nodes
+// the override has, and what it writes lands where the instance's writes do.
+func (env *Env) runTrigger(m map[string]any, n *Node, fn *ir.Func, args func() ([]any, error)) (any, bool, error) {
+	ce, _ := m["__compEnv"].(*Env)
+	if ce == nil {
+		ce = n.CompEnv
+	}
+	if ce == nil {
+		return nil, true, fmt.Errorf("@%s: the instance's scope is gone", fn.Trigger)
+	}
+	vals, err := args()
+	if err != nil {
+		return nil, true, err
+	}
+	params := fn.Params
+	run := ce.Snapshot()
+	if len(params) > 0 && params[0].Receiver {
+		params = params[1:]
+		run.SetReceiver(m)
+	}
+	// The test hands the event's arguments, by position; the override
+	// selected some of the event's parameters, by name.
+	at := map[string]int{}
+	for _, e := range n.Component.Events {
+		if e.Name == fn.Trigger {
+			for i, p := range e.Params {
+				at[p.Name] = i
+			}
+		}
+	}
+	in := make([]any, len(params))
+	for i, p := range params {
+		if j, ok := at[p.Name]; ok && j < len(vals) {
+			in[i] = vals[j]
+		}
+	}
+	CopyDepth(env, run)
+	res, err := run.EvalUserFuncWithValues(fn, in)
+	CopyDepth(run, env)
+	ce.RebindFrom(run)
+	return res, true, err
 }
 
 // programComponent reports whether n is an instance of a component the

@@ -350,6 +350,9 @@ func (c *checker) collectFuncOverrides() {
 	defer c.saveFile()()
 	for _, decl := range c.userFuncOverrides {
 		c.enterFileOf(decl.Pos)
+		if c.collectTrigger(decl, nil, "") {
+			continue
+		}
 		c.mergeFuncOverride(decl, nil, "")
 	}
 }

@@ -1,0 +1,24 @@
+// SKIP(codegen) "names sngl:platform/none, which a per-platform harness does not register"
+
+// An override merges into a declaration registered at a package's root, so
+// one written in a body is refused -- and refused only: the body declares
+// nothing for it, where it once handed back a nil it then declared.
+
+import "sngl:platform/none"
+import ui "sngl:ui"
+
+component main ui.node {
+    component dial(:value int) ui.node {
+        ui.text(value="{value}")
+    }
+
+    component dial[none.platform](value) { // ERROR(check) "an override may only be written at the root of a file"
+        ui.text(value="{value}")
+    }
+
+    dial(value=0)
+}
+
+ui.window {
+    main
+}

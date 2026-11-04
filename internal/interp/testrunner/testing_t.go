@@ -470,6 +470,14 @@ func (cv *componentValue) declaresEvent(name string) bool {
 // other dispatch paths in that case.
 func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir.CallArg) (any, bool, error) {
 	if len(method) > 0 && method[0] == '@' {
+		// The target's override of the event says how a test raises it.
+		if cv.comp != nil {
+			for _, fn := range cv.comp.Funcs {
+				if fn.Trigger == method[1:] {
+					return cv.InvokeMethod(env, fn.Name, args)
+				}
+			}
+		}
 		evalArgs := func() ([]any, error) {
 			vals := make([]any, 0, len(args))
 			for _, a := range args {

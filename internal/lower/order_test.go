@@ -99,6 +99,9 @@ var alwaysOn = []string{
 	"ErrorCatch",
 	// Where a raise lands is the render tree's answer, not a target's.
 	"ErrorScope",
+	// A test raises an event the target overrides through that override,
+	// on every target.
+	"EventTriggers",
 	"ForElse",
 	"ForeignPrimitive",
 	// A function writing a prop through the handle it is handed is inlined

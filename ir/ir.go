@@ -736,9 +736,14 @@ type Func struct {
 	// the optimizer. Const is what the declaration says: `const func`, a
 	// contract the checker holds the body to and callers may rely on. Only
 	// Const makes a call a compile-time value (IsConst).
-	Purity         Purity
-	Const          bool `json:",omitempty"`
-	IsTest         bool
+	Purity Purity
+	Const  bool `json:",omitempty"`
+	IsTest bool
+	// Trigger is the event of its component a target's override says how a
+	// test raises, for a method written as that override
+	// (`func ui.select[T].change[platform](value)`); empty for every other
+	// function. A test's trigger of the event calls it.
+	Trigger        string `json:",omitempty"`
 	Reads          []*Var // vars the body reads itself; what it calls reads is the callee's
 	Writes         []*Var // vars the body mutates itself, likewise
 	HasContextArg  bool

@@ -457,13 +457,37 @@ moves a node out of the body that wrote it:
   slot's function for a test that calls it (`exportTestCalled`); the
   function alone was `__slotAnchor_2 is not defined`.
 - **A trigger is an event of the receiver's type**, so the checker tags one
-  through a nested instance (`nestedElementEvent`), and `c.row[1]` types as
+  through a nested instance (`elementEvent`), and `c.row[1]` types as
   the node's component. html's `At` invoker indexes a constant loop's unrolled
   copies as it does the copies built at run time, and the interpreter takes
   `[0]` of a loop that rendered one copy as that copy.
 
 `cmd/sngl/testdata/test_reach_nested_runs.txt` and
 `test_reach_runtime_instance_runs.txt` run it on all six.
+
+**A target says how a test raises an event by overriding it**,
+`func ui.select[T].change[platform](value) { … }`, and a trigger of an event
+a target overrides runs that override instead of an invoker the target's
+generator wrote. What a trigger does is then SNGL the checker reads -- its
+parameters are the event's, selected by name (`collectTrigger`), and its body
+is checked as a method of the target's override of the component, so it reads
+the props and nodes that override has -- rather than a per-target generator
+the first test to reach it finds wrong.
+
+The override is a method of the component override for its target:
+`checkOverride` registers it among that override's funcs under
+`<event>__trigger` (never the event's own name, which the body calls to
+emit) with `ir.Func.Trigger` naming the event, so `ir.SpecializeForTarget`
+hands it to every phase after the check with the rest of the body. An
+override of an event for a target with no override of its component is
+refused (`reportUntakenTriggers`): its body would read nothing that exists.
+`lower.passEventTriggers` rewrites `c.d.change(3)` into a call of the method
+on the instance, which the test-reach passes then point at the instance's
+splice as for any method a test calls; the interpreter runs it in the
+instance's scope (`runTrigger`). An event no target overrides keeps its
+invoker. `testdata/trigger_override.sngl` and `error_trigger_override.sngl`
+are the check, `cmd/sngl/testdata/trigger_override_runs.txt` runs it on all
+six.
 
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 

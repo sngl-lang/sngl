@@ -212,6 +212,54 @@ func TestParseFuncMethod(t *testing.T) {
 	}
 }
 
+// TestParseFuncNameChain covers a name of any number of dots and bracketed
+// lists, each read by where it stands: the list before the last dot is the
+// receiver's, one after the last name the function's own and then its target.
+func TestParseFuncNameChain(t *testing.T) {
+	for _, tc := range []struct {
+		src, name, recv, own, target string
+	}{
+		{src: `func ui.select[T].change[platform](value) {}`, name: "ui.select.change", recv: "T", target: "platform"},
+		{src: `func ui.select.change[html.platform](value) {}`, name: "ui.select.change", target: "html.platform"},
+		{src: `func list[T].second[html.platform]() {}`, name: "list.second", recv: "T", target: "html.platform"},
+		{src: `func pair[K, V].swap[U any](u U) {}`, name: "pair.swap", recv: "K,V", own: "U"},
+		{src: `func f[T any][none.platform](x T) {}`, name: "f", own: "T", target: "none.platform"},
+		{src: `func a.b.c.d() {}`, name: "a.b.c.d"},
+	} {
+		fd := mustParse(t, tc.src).Stmts[0].(*ast.FuncDef)
+		names := func(ps []ast.TypeParam) string {
+			var out []string
+			for _, p := range ps {
+				out = append(out, p.Name)
+			}
+			return strings.Join(out, ",")
+		}
+		target := ""
+		switch x := fd.Target.(type) {
+		case *ast.IdentExpr:
+			target = x.Name
+		case *ast.SelectExpr:
+			target = x.Operand.(*ast.IdentExpr).Name + "." + x.Field
+		}
+		if fd.Name != tc.name || names(fd.RecvTypeParams) != tc.recv || names(fd.TypeParams) != tc.own || target != tc.target {
+			t.Errorf("%s: got name %q recv [%s] own [%s] target %q", tc.src, fd.Name, names(fd.RecvTypeParams), names(fd.TypeParams), target)
+		}
+	}
+}
+
+// TestParseFuncNameListOutOfPlace refuses a list a name gives no meaning: one
+// on a qualifier rather than the receiver, and a constraint on a receiver's.
+func TestParseFuncNameListOutOfPlace(t *testing.T) {
+	for _, src := range []string{
+		`func ui[T].select.change() {}`,
+		`func list[T any].second() {}`,
+	} {
+		if _, err := Parse("test.sngl", []byte(src)); err == nil {
+			t.Errorf("%s: parsed, want an error", src)
+		}
+	}
+}
+
 func TestParseFuncGeneric(t *testing.T) {
 	doc := mustParse(t, `func identity[T any](x T) => x`)
 	fd := doc.Stmts[0].(*ast.FuncDef)

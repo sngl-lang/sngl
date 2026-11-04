@@ -829,8 +829,9 @@ func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
 	}
 	f.write("func ")
 	if len(fn.RecvTypeParams) > 0 {
-		// recv[T].method form: Name is "recv.method", split and insert type params.
-		dot := strings.IndexByte(fn.Name, '.')
+		// recv[T].method form: Name is "recv.method", split at the method's
+		// dot and insert type params; a receiver may be qualified, ui.select.
+		dot := strings.LastIndexByte(fn.Name, '.')
 		f.write(fn.Name[:dot])
 		f.writeTypeParams(fn.RecvTypeParams)
 		f.write(fn.Name[dot:]) // ".method"
