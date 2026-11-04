@@ -287,9 +287,10 @@ func (c *checker) clearNarrowings() func() {
 // moment a call's transitive Writes set is complete. A narrowing that a write
 // could survive is reported where the write is, rather than silently letting a
 // T-typed read reach a backend that would dereference a null.
-func (c *checker) validateNarrowings(reactive map[*ir.Var]struct{}) {
+func (c *checker) validateNarrowings(pkg *ir.Package, reactive map[*ir.Var]struct{}) {
+	reach := newComponentReach(pkg)
 	for _, chk := range c.narrowChecks {
-		v := &narrowValidator{c: c, chk: chk, reactive: reactive}
+		v := &narrowValidator{c: c, chk: chk, reactive: reactive, reach: reach}
 		if chk.expr != nil {
 			ir.Walk(chk.expr, v.visit)
 		}
@@ -306,6 +307,7 @@ type narrowValidator struct {
 	c        *checker
 	chk      narrowCheck
 	reactive map[*ir.Var]struct{}
+	reach    *componentReach
 	done     bool
 }
 
@@ -404,9 +406,89 @@ func (v *narrowValidator) visitCall(x *ir.Call) {
 	if _, isReactive := v.reactive[root]; !isReactive {
 		return
 	}
-	if x.Func.Purity >= ir.PurityMutates {
-		v.report(callPos(x, v.chk.fact.pos), "reachable by a mutating call in this branch")
+	// A func handed to the callee runs as the callee says, so it reaches what
+	// the call does: `later(forget)` calls a method as surely as `forget()`.
+	for _, a := range x.Args {
+		id, ok := a.Value.(*ir.Ident)
+		if !ok {
+			continue
+		}
+		if f, ok := id.Sym.(*ir.Func); ok && f.Purity >= ir.PurityMutates && (!v.reach.owned[root] || v.reach.reaches(f)) {
+			v.report(callPos(x, v.chk.fact.pos), "reachable by a mutating call in this branch")
+			return
+		}
 	}
+	if x.Func.Purity < ir.PurityMutates {
+		return
+	}
+	// A component's var is named by that component's own code alone, so a
+	// call reaching none -- `lookupFailed(...)`, a package func writing a
+	// package var -- leaves a test of one standing.
+	if v.reach.owned[root] && x.Event == "" && !v.reach.reaches(x.Func) {
+		return
+	}
+	v.report(callPos(x, v.chk.fact.pos), "reachable by a mutating call in this branch")
+}
+
+// componentReach answers whether a call can run a component's code, and so
+// write a var of one: a component's method, an event, or a call through a
+// func value, directly or through what the callee calls.
+type componentReach struct {
+	// owned is every var a component declares.
+	owned   map[*ir.Var]bool
+	methods map[*ir.Func]bool
+	memo    map[*ir.Func]bool // reaches, asked of a func at the top
+}
+
+func newComponentReach(pkg *ir.Package) *componentReach {
+	r := &componentReach{owned: map[*ir.Var]bool{}, methods: map[*ir.Func]bool{}, memo: map[*ir.Func]bool{}}
+	for _, comp := range pkg.Components {
+		for _, v := range comp.Vars {
+			r.owned[v] = true
+		}
+		for _, f := range comp.Funcs {
+			r.methods[f] = true
+		}
+	}
+	return r
+}
+
+func (r *componentReach) reaches(fn *ir.Func) bool {
+	if got, ok := r.memo[fn]; ok {
+		return got
+	}
+	got := r.walk(fn, map[*ir.Func]bool{})
+	r.memo[fn] = got
+	return got
+}
+
+// walk is reaches without the memo, seen holding the funcs this question has
+// already asked of, so a cycle answers no rather than recursing, and no answer
+// found inside one is kept.
+func (r *componentReach) walk(fn *ir.Func, seen map[*ir.Func]bool) bool {
+	if fn == nil || r.methods[fn] {
+		return true
+	}
+	if seen[fn] {
+		return false
+	}
+	seen[fn] = true
+	found := false
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		if found {
+			return ir.SkipDir
+		}
+		switch x := n.(type) {
+		case *ir.Call:
+			if x.Event != "" || r.walk(x.Func, seen) {
+				found = true
+			}
+		case *ir.Emit:
+			found = true
+		}
+		return nil
+	})
+	return found
 }
 
 func callPos(x *ir.Call, fallback ast.Pos) ast.Pos {

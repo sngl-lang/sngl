@@ -4094,7 +4094,7 @@ func (c *checker) finishDeclarations(pkg *ir.Package) {
 	// Same moment, same reason: a narrowing is only sound if nothing in the
 	// branch could have written the value, and what a call writes is not
 	// settled until the fixed point above has run.
-	c.validateNarrowings(narrowVarSet)
+	c.validateNarrowings(pkg, narrowVarSet)
 
 	// Validate deferred const(expr) assertions now that function purities
 	// are known.

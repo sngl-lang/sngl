@@ -1,0 +1,42 @@
+import ui "sngl:ui"
+
+// A call reaching the component's own code can write its var: a method of
+// it directly, or a package func handed one to call.
+func later(f func()) {
+    f()
+}
+
+component page ui.node {
+    var about option[string] = "bulbasaur"
+
+    func forget() {
+        about = null
+    }
+
+    if about != null {
+        ui.button(text="Forget", @click {
+            forget() // ERROR(check) "about is reachable by a mutating call in this branch"
+        })
+        ui.text(value=about)
+    }
+}
+
+component other ui.node {
+    var about option[string] = "ivysaur"
+
+    func forget() {
+        about = null
+    }
+
+    if about != null {
+        ui.button(text="Forget", @click {
+            later(forget) // ERROR(check) "about is reachable by a mutating call in this branch"
+        })
+        ui.text(value=about)
+    }
+}
+
+ui.window {
+    page
+    other
+}
