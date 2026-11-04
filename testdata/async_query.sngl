@@ -41,6 +41,33 @@ component detail node {
     button #retry(text="Retry", @click { q.refresh() })
 }
 
+// A failure is about the key it was asked of: asking about another clears
+// it before the request goes out, and a refresh keeps it until it answers.
+var standing option[async.Failure] = null
+var stoodAtAsk list[bool] = []
+
+func lookupNoting(name string) async.Result[int] {
+    stoodAtAsk.push(standing != null)
+    return lookup(name)
+}
+
+component noting node {
+    var name = ""
+
+    async.query #q(on=name, fetch=lookupNoting, :failure=standing)
+    button #retry(text="Retry", @click { q.refresh() })
+    button #next(text="Next", @click { name = "kiwi" })
+}
+
+func testAnotherKeyClearsTheFailure(t Test, c noting) {
+    t.assert(standing != null)
+    c.retry.click()
+    t.assert(stoodAtAsk.format(",") == "false,true")
+    c.next.click()
+    t.assert(stoodAtAsk.format(",") == "false,true,false")
+    t.assert(standing == null)
+}
+
 func testAsksAtMount(t Test, c detail) {
     t.assert(c.len.value == "7")
     t.assert(c.pending.value == "false")

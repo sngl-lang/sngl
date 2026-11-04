@@ -1,0 +1,110 @@
+# A bracket under a `for` is its copy's, as its mounted path is the
+# interpreter's: a copy whose `if` turns false ends its own lifetime and no
+# other. The lowered settle matched brackets by their place in the list of
+# those the position described, so one dropping out of the middle moved every
+# copy after it, and each was ended and begun again -- on the Pokédex, every
+# species request after one that answered asked again.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+var mounts list[string] = []
+var unmounts list[string] = []
+var done list[string] = []
+
+component page ui.node {
+    var names = ["a", "b", "c"]
+
+    for var n = names {
+        if !done.contains(n) {
+            effect(on=n, @mount(k) { mounts.push(k) }, @unmount(k) { unmounts.push(k) })
+        }
+    }
+    ui.text(value="{mounts.length()}")
+}
+
+func testADroppedCopyLeavesTheRest(t test.Test, c page) {
+    t.wait(func() => mounts.length() == 3, 5000)
+    done.push("a")
+    t.wait(func() => unmounts.length() > 0, 5000)
+    t.wait(func() => mounts.length() > 3, 300)
+    t.assert(unmounts.format(",") == "a")
+    t.assert(mounts.format(",") == "a,b,c")
+    done.push("c")
+    t.wait(func() => unmounts.length() > 1, 5000)
+    t.assert(unmounts.format(",") == "a,c")
+    t.assert(mounts.format(",") == "a,b,c")
+}
+
+ui.window {
+    page
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:b6bdfae5029a053ea08ecbcfd0b01aa5
+{
+  "results": [
+    {
+      "Desc": "ADroppedCopyLeavesTheRest",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:37d4ccec1dac06d14b70b2ce57ea7399
+{
+  "results": [
+    {
+      "Desc": "ADroppedCopyLeavesTheRest",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:807127e4629ba01a75aa8a898d9c1093
+{
+  "results": [
+    {
+      "Desc": "ADroppedCopyLeavesTheRest",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:1af84b3d5cfd6fdb1047fb2b904dc3b5
+{
+  "results": [
+    {
+      "Desc": "ADroppedCopyLeavesTheRest",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:d6e4265ad68cd259b095f41ec5b80115
+{
+  "results": [
+    {
+      "Desc": "ADroppedCopyLeavesTheRest",
+      "Passed": true
+    }
+  ]
+}

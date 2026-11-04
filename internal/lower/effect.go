@@ -169,8 +169,20 @@ type loweredEffect struct {
 	// functions: down computes it and ends every lifetime it no longer names,
 	// up begins every one it newly names.
 	desired *ir.Var
-	mount   *ir.Func
-	unmount *ir.Func
+	// paths and livePaths are desired's and live's copies, under a loop: the
+	// loops' indices of the copy each key is the bracket of
+	// (copyPaths). The copy is a bracket's identity, as its mounted path is
+	// the interpreter's, so one dropping out under an `if` leaves the copies
+	// after it running; matched by place in the list, each was ended and
+	// begun again.
+	paths, livePaths *ir.Var
+	// pathAt and liveAt are where each path is in paths and livePaths, so a
+	// settle finds a copy's bracket in one step rather than a walk of the
+	// list per copy.
+	pathAt, liveAt *ir.Var
+	pathLoops      []*ir.For
+	mount          *ir.Func
+	unmount        *ir.Func
 	// update is the `@update` handler, and dirty the flag every write to what
 	// `on` reads sets and the settle clears as it runs the handler: a report
 	// of writes, so one of the value the key already held counts, and any
@@ -460,6 +472,7 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 		Synthesized: true,
 	}
 	st.addVar(o, fx.desired)
+	st.copyPaths(o, fx, frames)
 
 	fx.on = key
 	fx.down = st.downFunc(prefix, fx, key, frames)
@@ -517,6 +530,7 @@ func (st *effectState) lowerEnter(n *ir.NodeInst, o *ir.Owner, frames []effectFr
 	fx.desired = &ir.Var{Name: prefix + "_desired", Type: listT, Init: &ir.ListLit{Type: listT}, Synthesized: true}
 	st.addVar(o, fx.live)
 	st.addVar(o, fx.desired)
+	paths := st.copyPaths(o, fx, frames)
 
 	at := func() ir.Expr { return callListLength(st.varIdent(fx.desired)) }
 	push := func() ir.Expr {
@@ -531,20 +545,42 @@ func (st *effectState) lowerEnter(n *ir.NodeInst, o *ir.Owner, frames []effectFr
 	}
 	leaf := []ir.Stmt{
 		&ir.LocalVar{Name: freshSym.Name, Type: ir.TypBool, Sym: freshSym, Init: &ir.Literal{Type: ir.TypBool, Value: "true"}},
-		&ir.If{
+	}
+	if paths != nil {
+		// The copy's own, wherever the last pass held it.
+		atSym := &ir.Var{Name: prefix + "_at", Type: ir.TypInt, Synthesized: true}
+		atRef := func() *ir.Ident { return &ir.Ident{Name: atSym.Name, Type: ir.TypInt, Sym: atSym, Synthesized: true} }
+		leaf = append(leaf,
+			&ir.LocalVar{Name: atSym.Name, Type: ir.TypInt, Sym: atSym, Init: st.pathIndex(fx.liveAt, paths())},
+			&ir.If{
+				Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinGte, Left: atRef(), Right: intLiteralLit(0)},
+				Body: []ir.Stmt{&ir.Assign{Target: fresh(), Op: ast.AssignSet, Value: rebuildDiffers(
+					&ir.Index{Type: fx.elem, Operand: st.varIdent(fx.live), Idx: atRef()},
+					push(),
+					fx.elem,
+				)}},
+			},
+		)
+		leaf = append(leaf, st.pushPath(fx, paths())...)
+	} else {
+		leaf = append(leaf, &ir.If{
 			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinLt, Left: at(), Right: callListLength(st.varIdent(fx.live))},
 			Body: []ir.Stmt{&ir.Assign{Target: fresh(), Op: ast.AssignSet, Value: rebuildDiffers(
 				&ir.Index{Type: fx.elem, Operand: st.varIdent(fx.live), Idx: at()},
 				push(),
 				fx.elem,
 			)}},
-		},
+		})
+	}
+	leaf = append(leaf,
 		&ir.If{Cond: fresh(), Body: mount},
 		callListPush(st.varIdent(fx.desired), push(), fx.elem),
-	}
+	)
 	block := []ir.Stmt{&ir.Assign{Target: st.varIdent(fx.desired), Op: ast.AssignSet, Value: &ir.ListLit{Type: listT}}}
+	block = append(block, st.resetPaths(fx)...)
 	block = append(block, st.positionBlock(prefix, frames, leaf)...)
 	block = append(block, &ir.Assign{Target: st.varIdent(fx.live), Op: ast.AssignSet, Value: st.varIdent(fx.desired)})
+	block = append(block, st.keepPaths(fx)...)
 	fx.enter = &ir.Func{
 		Name:        prefix + "_enter",
 		Return:      ir.TypVoid,
@@ -615,9 +651,12 @@ func (st *effectState) downFunc(prefix string, fx *loweredEffect, key ir.Expr, f
 	block := []ir.Stmt{
 		&ir.Assign{Target: desired(), Op: ast.AssignSet, Value: &ir.ListLit{Type: listT}},
 	}
-	block = append(block, st.positionBlock(prefix, frames, []ir.Stmt{
-		callListPush(desired(), push, fx.elem),
-	})...)
+	block = append(block, st.resetPaths(fx)...)
+	leaf := []ir.Stmt{callListPush(desired(), push, fx.elem)}
+	if fx.paths != nil {
+		leaf = append(leaf, st.pushPath(fx, CopyKey(fx.pathLoops))...)
+	}
+	block = append(block, st.positionBlock(prefix, frames, leaf)...)
 
 	if fx.unmount != nil {
 		idx := &ir.LoopVar{Name: prefix + "_i", Type: ir.TypInt}
@@ -644,6 +683,29 @@ func (st *effectState) downFunc(prefix string, fx *loweredEffect, key ir.Expr, f
 				Body: cloneStmts(run),
 			}},
 		}}
+		if fx.paths != nil {
+			// The copy the live key is the bracket of, wherever it is now.
+			atSym := &ir.Var{Name: prefix + "_at", Type: ir.TypInt, Synthesized: true}
+			atRef := func() *ir.Ident { return &ir.Ident{Name: atSym.Name, Type: ir.TypInt, Sym: atSym, Synthesized: true} }
+			decide = []ir.Stmt{
+				&ir.LocalVar{Name: atSym.Name, Type: ir.TypInt, Sym: atSym, Init: st.pathIndex(
+					fx.pathAt,
+					&ir.Index{Type: ir.TypString, Operand: st.varIdent(fx.livePaths), Idx: j()},
+				)},
+				&ir.If{
+					Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinLt, Left: atRef(), Right: intLiteralLit(0)},
+					Body: run,
+					Else: []ir.Stmt{&ir.If{
+						Cond: rebuildDiffers(
+							&ir.Index{Type: fx.elem, Operand: desired(), Idx: atRef()},
+							&ir.Index{Type: fx.elem, Operand: st.varIdent(fx.live), Idx: j()},
+							fx.elem,
+						),
+						Body: cloneStmts(run),
+					}},
+				},
+			}
+		}
 		block = append(block, &ir.For{
 			Key:      idx.Name,
 			KeySym:   idx,
@@ -716,6 +778,29 @@ func (st *effectState) upFunc(prefix string, fx *loweredEffect) *ir.Func {
 				Body: cloneStmts(run),
 			}},
 		}}
+		if fx.paths != nil {
+			// Where the last pass held this key's copy, if it held it.
+			atSym := &ir.Var{Name: prefix + "_at", Type: ir.TypInt, Synthesized: true}
+			atRef := func() *ir.Ident { return &ir.Ident{Name: atSym.Name, Type: ir.TypInt, Sym: atSym, Synthesized: true} }
+			decide = []ir.Stmt{
+				&ir.LocalVar{Name: atSym.Name, Type: ir.TypInt, Sym: atSym, Init: st.pathIndex(
+					fx.liveAt,
+					&ir.Index{Type: ir.TypString, Operand: st.varIdent(fx.paths), Idx: idxRef()},
+				)},
+				&ir.If{
+					Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinLt, Left: atRef(), Right: intLiteralLit(0)},
+					Body: run,
+					Else: []ir.Stmt{&ir.If{
+						Cond: rebuildDiffers(
+							&ir.Index{Type: fx.elem, Operand: st.varIdent(fx.live), Idx: atRef()},
+							elemRef(),
+							fx.elem,
+						),
+						Body: cloneStmts(run),
+					}},
+				},
+			}
+		}
 		block = append(block, &ir.For{
 			Key:      idx.Name,
 			KeySym:   idx,
@@ -727,6 +812,7 @@ func (st *effectState) upFunc(prefix string, fx *loweredEffect) *ir.Func {
 		})
 	}
 	block = append(block, &ir.Assign{Target: st.varIdent(fx.live), Op: ast.AssignSet, Value: st.varIdent(fx.desired)})
+	block = append(block, st.keepPaths(fx)...)
 	return &ir.Func{
 		Name:        prefix + "_up",
 		Return:      ir.TypVoid,
@@ -771,10 +857,85 @@ func (st *effectState) tearFunc(prefix string, fx *loweredEffect) *ir.Func {
 		Return:      ir.TypVoid,
 		Purity:      ir.PurityMutates,
 		Synthesized: true,
-		Block: []ir.Stmt{
+		Block: append([]ir.Stmt{
 			loop,
 			&ir.Assign{Target: st.varIdent(fx.live), Op: ast.AssignSet, Value: &ir.ListLit{Type: ir.ListOf(fx.elem)}},
+		}, st.forgetPaths(fx)...),
+	}
+}
+
+// copyPaths gives fx the copies its keys are the brackets of, where frames hold
+// a loop, and answers the path of the copy the position is on as a fresh
+// expression each call; nil where they hold none, and the bracket is the one
+// place, matched by its place in the list.
+func (st *effectState) copyPaths(o *ir.Owner, fx *loweredEffect, frames []effectFrame) func() ir.Expr {
+	loops := positionLoops(frames)
+	if len(loops) == 0 {
+		return nil
+	}
+	fx.pathLoops = loops
+	listT := ir.ListOf(ir.TypString)
+	fx.paths = &ir.Var{Name: fx.prefix + "_paths", Type: listT, Init: &ir.ListLit{Type: listT}, Synthesized: true}
+	fx.livePaths = &ir.Var{Name: fx.prefix + "_livePaths", Type: listT, Init: &ir.ListLit{Type: listT}, Synthesized: true}
+	mapT := ir.MapOf(ir.TypString, ir.TypInt)
+	fx.pathAt = &ir.Var{Name: fx.prefix + "_pathAt", Type: mapT, Init: &ir.MapLitIR{Type: mapT}, Synthesized: true}
+	fx.liveAt = &ir.Var{Name: fx.prefix + "_liveAt", Type: mapT, Init: &ir.MapLitIR{Type: mapT}, Synthesized: true}
+	for _, v := range []*ir.Var{fx.paths, fx.livePaths, fx.pathAt, fx.liveAt} {
+		st.addVar(o, v)
+	}
+	// Bound now, so the loops positionBlock rebuilds bind the indices the
+	// path reads.
+	_ = CopyKey(loops)
+	return func() ir.Expr { return CopyKey(loops) }
+}
+
+// resetPaths starts the paths a pass describes, beside desired.
+func (st *effectState) resetPaths(fx *loweredEffect) []ir.Stmt {
+	if fx.paths == nil {
+		return nil
+	}
+	return []ir.Stmt{
+		&ir.Assign{Target: st.varIdent(fx.paths), Op: ast.AssignSet, Value: &ir.ListLit{Type: ir.ListOf(ir.TypString)}},
+		&ir.Assign{Target: st.varIdent(fx.pathAt), Op: ast.AssignSet, Value: &ir.MapLitIR{Type: fx.pathAt.Type}},
+	}
+}
+
+// pushPath records path as the copy of the key a pass just described.
+func (st *effectState) pushPath(fx *loweredEffect, path ir.Expr) []ir.Stmt {
+	return []ir.Stmt{
+		&ir.Assign{
+			Target: &ir.Index{Type: ir.TypInt, Operand: st.varIdent(fx.pathAt), Idx: deepCloneExpr(path)},
+			Op:     ast.AssignSet,
+			Value:  callListLength(st.varIdent(fx.paths)),
 		},
+		callListPush(st.varIdent(fx.paths), path, ir.TypString),
+	}
+}
+
+// pathIndex is where path is in the list at indexes, -1 where it is not.
+func (st *effectState) pathIndex(at *ir.Var, path ir.Expr) ir.Expr {
+	return callMapGet(st.varIdent(at), path, intLiteralLit(-1), ir.TypInt)
+}
+
+// keepPaths records the paths a pass described as live, beside live.
+func (st *effectState) keepPaths(fx *loweredEffect) []ir.Stmt {
+	if fx.paths == nil {
+		return nil
+	}
+	return []ir.Stmt{
+		&ir.Assign{Target: st.varIdent(fx.livePaths), Op: ast.AssignSet, Value: st.varIdent(fx.paths)},
+		&ir.Assign{Target: st.varIdent(fx.liveAt), Op: ast.AssignSet, Value: st.varIdent(fx.pathAt)},
+	}
+}
+
+// forgetPaths empties livePaths, beside live.
+func (st *effectState) forgetPaths(fx *loweredEffect) []ir.Stmt {
+	if fx.livePaths == nil {
+		return nil
+	}
+	return []ir.Stmt{
+		&ir.Assign{Target: st.varIdent(fx.livePaths), Op: ast.AssignSet, Value: &ir.ListLit{Type: ir.ListOf(ir.TypString)}},
+		&ir.Assign{Target: st.varIdent(fx.liveAt), Op: ast.AssignSet, Value: &ir.MapLitIR{Type: fx.liveAt.Type}},
 	}
 }
 
@@ -1287,7 +1448,7 @@ func (st *effectState) remountOnBuild(o *ir.Owner, fxs []*loweredEffect) {
 		if len(handles) == 0 && len(ids) == 0 {
 			continue
 		}
-		body := []ir.Stmt{&ir.Assign{Target: st.varIdent(fx.live), Op: ast.AssignSet, Value: &ir.ListLit{Type: ir.ListOf(fx.elem)}}}
+		body := append([]ir.Stmt{&ir.Assign{Target: st.varIdent(fx.live), Op: ast.AssignSet, Value: &ir.ListLit{Type: ir.ListOf(fx.elem)}}}, st.forgetPaths(fx)...)
 		if fx.tear != nil {
 			body = []ir.Stmt{callOf(fx.tear)}
 		}

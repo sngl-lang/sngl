@@ -46,7 +46,9 @@ enum FailureKind { transport, timeout, auth, request, server, decode }
 //
 //   - `value` -- the last answer, kept through a refresh and through a failure
 //   - `pending` -- an attempt is in flight
-//   - `failure` -- how the last attempt failed, cleared by a success
+//   - `failure` -- how the last attempt failed, cleared by a success and by
+//     asking about another key, so a failure never stands beside a request
+//     for something it was not about; a `refresh` keeps it until it answers
 //
 // **The latest attempt wins.** An answer to a key asked before the current one
 // writes nothing, and nor does one arriving after the node unmounts, so a
@@ -71,6 +73,9 @@ component query[K any, T any, F any](
 ) F {
     var attempt = 0
     var refreshes = 0
+    // The refreshes the last mount was begun with: a mount with as many is
+    // one of another key.
+    var asked = -1
 
     // Asks again without a change of key: a retry button, a poll from a
     // timer. The value stays, and `pending` says an attempt is in flight.
@@ -83,6 +88,10 @@ component query[K any, T any, F any](
         @mount(k) {
             attempt += 1
             var mine = attempt
+            if k.n == asked {
+                failure = null
+            }
+            asked = k.n
             pending = true
             var r = fetch(k.key)
             if mine != attempt {

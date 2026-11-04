@@ -659,6 +659,11 @@ value, never a raise, and `Failure` is `kind` (`async.FailureKind`), `message`
 and the adapter's own `code`. **The latest attempt wins**: each mount numbers
 its attempt, an unmount bumps the number, and an answer whose number is stale
 writes nothing.
+A mount of another key clears `failure` before it asks, and a `refresh`
+keeps it until its answer: a page showed the last key's failure beside the
+spinner of the next, so the Pokédex kept, per request, the key that failed
+and mounted the request only while it was not that one
+(`testdata/async_query.sngl`'s `testAnotherKeyClearsTheFailure`).
 
 The general things it needed, each of its own:
 
@@ -710,6 +715,15 @@ The general things it needed, each of its own:
   the brackets the teardown had let go of wanted and mounted them again: a
   second request, and a render into the box the destroy had freed, which
   crashed gtk4 (`cmd/sngl/testdata/async_query_destroyed_instance_runs.txt`).
+- **A bracket under a `for` is its copy's** (`copyPaths`): beside the keys a
+  settle describes, the lowering keeps the loops' indices of the copy each is
+  the bracket of, and matches the last pass's to this one's by that, as the
+  interpreter's mounted path does. By place in the list, a copy whose `if`
+  turned false moved every copy after it, and each was ended and begun again:
+  the Pokédex asked again for every species after one that answered, a test
+  of choosing another dex took seconds on bubbletea, and the example wrote
+  its requests out under no `if` to get around it
+  (`cmd/sngl/testdata/effect_copy_dropped_by_if_runs.txt`).
 
 On bubbletea the mount's tail is posted back through Update like any other
 `async.do` (see the bubbletea platform), so a fetch that waits runs there too
