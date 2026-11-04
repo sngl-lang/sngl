@@ -525,12 +525,15 @@ android's read-only field and the interpreter's own
 **Each control knows its choices by label**, and the value a `choice[T]`
 holds is the override's to convert: it shows `ui.choiceLabel(options, value)`
 and writes the value of the choice `ui.choiceLabeled(options, label)` finds.
-A test hands a value, which `lower.passChoiceTriggers` writes as the label of
-the choice holding it -- `#[builtin("choiceKey")]` marks `choiceLabel` for
-that, and `ir.ReachedFrom` reaches the key with its record, since only the
-rewrite names it and a target's copy of `sngl:ui` otherwise kept the checked
-key beside its own record. Handed the value, the invoker gave fyne's
-`OnChanged` an enum's name where it knew a label, and an int did not compile.
+A test hands a value, and each target's override of the event says how its
+control takes it (`func ui.select[T].change[platform](value)`, see
+design/testing.md): gtk4 selects the label through `gtk4rt.DropDownSelect`
+and fyne through `Select.SetSelected`, each of which reports the change as a
+pick does; html, bubbletea and android call the method their control's own
+handler calls with a label (`pickLabel`, `choose`), and a radio's the one its
+buttons call (`pickValue`). Handed to the generated invokers, the value gave
+fyne's `OnChanged` an enum's name where it knew a label, and an int did not
+compile.
 bubbletea's binds write the call site's var from Go, so its override holds
 the label as state the widget binds (`Widget`'s `:choice`) and converts in its
 `@change` (`testdata/select_typed_choices.sngl`).

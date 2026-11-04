@@ -3,15 +3,14 @@
 # back and the program's @change hears, once -- including where the choices are
 # state that arrives after the select is built, and through an instance. The
 # choices hold an enum and an int, labeled otherwise, so a value is never taken
-# for a label: each control knows its choices by label, and the test's choice
-# is handed it as the label of the choice holding the value
-# (lower.passChoiceTriggers).
+# for a label: each control knows its choices by label, and each target's
+# override of the select's @change says how it takes the label of the choice
+# holding the value.
 #
-# Each target's select is a control a test chooses through, as a user does:
-# html's <select>, fyne's Select, gtk4's GtkDropDown (the invoker selects the
-# label, which notifies), bubbletea's tui.Select (a list whose cursor is the
-# choice), android's SnglSelect (a field a label is typed into, with a menu of
-# text a test sets to a label) and the interpreter's own.
+# gtk4 selects the label on its GtkDropDown and fyne on its Select, each of
+# which reports the change as a pick does; html, bubbletea and android call
+# what their control's own handler calls with a label; the interpreter's
+# control holds the value itself.
 
 sngl test --platform=none app.sngl
 stdout '3 tests, 0 failures'
@@ -85,7 +84,7 @@ func testChangeReachesThroughAnInstance(t test.Test, c wrapped) {
     t.assert(c.inner.chosen == Fruit.cherry)
 }
 -- testrun/android/kotlin/app.sngl/chooser/1 --
-sha256:0cd5f519b3a9efbb9d1fbebf9da4d52d
+sha256:1a832184d2d8bccd4b940820a6a5d59b
 {
   "results": [
     {
@@ -99,7 +98,7 @@ sha256:0cd5f519b3a9efbb9d1fbebf9da4d52d
   ]
 }
 -- testrun/android/kotlin/app.sngl/wrapped/1 --
-sha256:10acb4143766e76f3a1f548c5cee22d9
+sha256:23e2bead1d72cf68b1c65fd187451b84
 {
   "results": [
     {
@@ -109,7 +108,7 @@ sha256:10acb4143766e76f3a1f548c5cee22d9
   ]
 }
 -- testrun/bubbletea/go/app.sngl/chooser/1 --
-sha256:5227b166e424db2de5d04b96bc11205a
+sha256:695ab00c2502d7b5e244c0bb2afd7207
 {
   "results": [
     {
@@ -123,7 +122,7 @@ sha256:5227b166e424db2de5d04b96bc11205a
   ]
 }
 -- testrun/bubbletea/go/app.sngl/wrapped/1 --
-sha256:6ee46e9b88eb287895ffc3cbf207c22f
+sha256:9bceca8db200548715b8e651bf03f6ff
 {
   "results": [
     {
@@ -133,7 +132,7 @@ sha256:6ee46e9b88eb287895ffc3cbf207c22f
   ]
 }
 -- testrun/fyne/go/app.sngl/chooser/1 --
-sha256:b07b752dad9012b2124c2f45d0799694
+sha256:b3c00bbd8cd87b406dc28e4e0846975f
 {
   "results": [
     {
@@ -147,7 +146,7 @@ sha256:b07b752dad9012b2124c2f45d0799694
   ]
 }
 -- testrun/fyne/go/app.sngl/wrapped/1 --
-sha256:d1f640721297d86c9ce4e8d54aa6b323
+sha256:06c2650b6f46379dc76f77deb27fda47
 {
   "results": [
     {
@@ -157,7 +156,7 @@ sha256:d1f640721297d86c9ce4e8d54aa6b323
   ]
 }
 -- testrun/gtk4/go/app.sngl/chooser/1 --
-sha256:aed705ff3a955eef9e91b3ac92f97c77
+sha256:bb5ac3b7d797b98ee8bdcb21f830c741
 {
   "results": [
     {
@@ -171,7 +170,7 @@ sha256:aed705ff3a955eef9e91b3ac92f97c77
   ]
 }
 -- testrun/gtk4/go/app.sngl/wrapped/1 --
-sha256:78ae39143b3a85a625bb7fddb9cc16aa
+sha256:23ddf06f5e1b95070040bb0c23f13cef
 {
   "results": [
     {
@@ -181,7 +180,7 @@ sha256:78ae39143b3a85a625bb7fddb9cc16aa
   ]
 }
 -- testrun/html/none/app.sngl/chooser/1 --
-sha256:fcfe2f3e32bcce40f8a36091364fb30b
+sha256:be5160a8f71bb06b75f96993fb189cb3
 {
   "results": [
     {
@@ -195,7 +194,7 @@ sha256:fcfe2f3e32bcce40f8a36091364fb30b
   ]
 }
 -- testrun/html/none/app.sngl/wrapped/1 --
-sha256:45122594913183da3dd4095abca81d50
+sha256:43cd118f0e9e7f9c72fd71b5c5c1b91b
 {
   "results": [
     {

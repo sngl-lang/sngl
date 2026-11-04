@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 
@@ -75,7 +76,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	if opts.splices != nil {
 		spliced = *opts.splices
 	}
-	return repointTestReaches(pkg, st.reach, append(spliced, st.insts...))
+	return repointTestReaches(pkg, st.reach, append(spliced, st.insts...), opts.triggers)
 }
 
 // unreachedCycles is every recursive component nothing the program renders
@@ -349,6 +350,13 @@ func identPos(id *ir.Ident) string {
 type inlineCompState struct {
 	pkg  *ir.Package
 	main *ir.Component
+	// carried is each node a splice's body renders with the splice's own
+	// handle, the call site's id an override's root took: a splice of it is
+	// the same instance's, and recorded once.
+	carried map[*ir.NodeInst]bool
+	// readHandles is every node handle an identifier in the package reads,
+	// gathered the first time handleRead asks.
+	readHandles map[*ir.Var]bool
 	// readAbroad is every handle read outside the component that declares it,
 	// which a splice leaves shared (handlesReadAbroad).
 	readAbroad map[*ir.Var]bool
@@ -1452,6 +1460,16 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		fn := (*hoist.funcs)[i]
+		// A prop is substituted by name, and a method's parameter of the
+		// prop's name is the method's: select's trigger takes the `value`
+		// it is to choose, and read as the prop it chose the bound one.
+		bindings := bindings
+		if shadowsAProp(fn, bindings) {
+			bindings = maps.Clone(bindings)
+			for _, p := range fn.Params {
+				delete(bindings, p.Name)
+			}
+		}
 		fn.Block = substituteParams(fn.Block, bindings)
 		fn.Reads = withSubstitutedReads(fn.Reads, fn.Block, bindings)
 		fn.Block = substituteVars(fn.Block, provided)
@@ -1482,10 +1500,21 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		ir.AttachNodeSite(body, n)
 	}
 	// An override's body renders the node the id names, as passInlinePure
-	// splices one; an override reading a context is spliced here instead.
+	// splices one; an override reading a context is spliced here instead. So
+	// does a library component's whose handle something reads: fyne's own
+	// Select, rendered by a select override this pass splices, is the widget
+	// a trigger's `sel.setSelected(…)` names, and left on the Select the id
+	// named a field nothing built. One nothing reads stays where it was, and
+	// so does one with methods of its own: its handle is the instance a call
+	// of one is made on (an openapi adapter's `query.refresh()`).
 	override := comp.PkgPath() != "" && comp.SpecializedFor != ""
-	if override && n.ID != "" {
-		if was, ok := ir.AttachNodeIDFrom(body, n.ID, n.Handle); ok && was != "" && was != n.ID {
+	carry := override || (comp.PkgPath() != "" && len(comp.Funcs) == 0 && st.handleRead(n.Handle))
+	if carry && n.ID != "" {
+		var methods []any
+		for _, fn := range (*hoist.funcs)[funcStart:] {
+			methods = append(methods, fn)
+		}
+		if was, ok := ir.AttachNodeIDFrom(body, n.ID, n.Handle, methods...); ok && was != "" && was != n.ID {
 			followTestNodeID(st.pkg, was, n.ID)
 		}
 	}
@@ -1500,8 +1529,22 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 			}
 		}
 	}
-	if n.ID != "" || st.reach.takes(comp) {
+	// A node an enclosing splice handed its id to -- an override's root,
+	// carrying the call site's `#pick` -- is that instance's, and a second
+	// record of the handle read as the program rendering it twice.
+	if (n.ID != "" || st.reach.takes(comp)) && !st.carried[n] {
 		st.recordInstance(n, symRenames, body)
+		if n.Handle != nil {
+			_ = ir.Walk(body, func(x ir.Node) error {
+				if ni, ok := x.(*ir.NodeInst); ok && ni.Handle == n.Handle {
+					if st.carried == nil {
+						st.carried = map[*ir.NodeInst]bool{}
+					}
+					st.carried[ni] = true
+				}
+				return nil
+			})
+		}
 	}
 
 	return body, nil
@@ -1922,4 +1965,34 @@ func rendersFocusStop(c *ir.Component, seen map[*ir.Component]bool) bool {
 		return !found
 	})
 	return found
+}
+
+// shadowsAProp reports whether one of fn's parameters has the name of a prop
+// bindings substitutes.
+func shadowsAProp(fn *ir.Func, bindings map[string]ir.Expr) bool {
+	for _, p := range fn.Params {
+		if _, ok := bindings[p.Name]; ok && !p.Receiver {
+			return true
+		}
+	}
+	return false
+}
+
+// handleRead reports whether an identifier in the package reads h.
+func (st *inlineCompState) handleRead(h *ir.Var) bool {
+	if h == nil {
+		return false
+	}
+	if st.readHandles == nil {
+		st.readHandles = map[*ir.Var]bool{}
+		_ = ir.Walk(st.pkg, func(n ir.Node) error {
+			if id, ok := n.(*ir.Ident); ok {
+				if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle {
+					st.readHandles[v] = true
+				}
+			}
+			return nil
+		})
+	}
+	return st.readHandles[h]
 }

@@ -216,6 +216,13 @@ const component ui.checkbox[platform](label, checked, focusable, style, @change)
 // beside its label. onClick is passed nothing, so the override reports the
 // option it looped over.
 const component ui.radio[platform](value, direction, style, @change, options) {
+    // A choice of the option holding `v`, a button's or a test's.
+    func pickValue(v T) {
+        if v != value {
+            value = v
+            change(v)
+        }
+    }
     if direction == ui.Orientation.horizontal {
         Row(
             modifier = modifierOf(style, flexShare),
@@ -224,10 +231,7 @@ const component ui.radio[platform](value, direction, style, @change, options) {
         ) {
             for var opt = options {
                 Row(verticalAlignment=alignCenterVertically) {
-                    RadioButton(selected=(value == opt.value), onClick=func() {
-                        value = opt.value
-                        change(opt.value)
-                    }) {}
+                    RadioButton(selected=(value == opt.value), onClick=func() { pickValue(opt.value) }) {}
                     Text(text=opt.label) {}
                 }
             }
@@ -240,15 +244,17 @@ const component ui.radio[platform](value, direction, style, @change, options) {
         ) {
             for var opt = options {
                 Row(verticalAlignment=alignCenterVertically) {
-                    RadioButton(selected=(value == opt.value), onClick=func() {
-                        value = opt.value
-                        change(opt.value)
-                    }) {}
+                    RadioButton(selected=(value == opt.value), onClick=func() { pickValue(opt.value) }) {}
                     Text(text=opt.label) {}
                 }
             }
         }
     }
+}
+
+// A test picks the option holding `value` as pressing its button does.
+func ui.radio[T].change[platform](value) {
+    pickValue(value)
 }
 
 const component ui.toggle[platform](label, checked, focusable, style, @change) {
@@ -313,6 +319,12 @@ component ui.select[platform](placeholder, value, disabled, focusable, style, @c
             }
         }
     }
+}
+
+// A test picks the choice holding `value` as setting the field's text does:
+// through choose, which the field's setText reaches.
+func ui.select[T].change[platform](value) {
+    choose(ui.choiceLabel(options, value))
 }
 
 const component ui.textarea[platform](value, style, @input, @change) {

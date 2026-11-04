@@ -1,6 +1,9 @@
 package ir
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // SpecializeForTarget swaps every declaration's body for platform into the
 // slot the rest of the compiler reads -- a component's Body and Vars, a
@@ -291,4 +294,129 @@ func specializeComp(comp *Component, t target, bodiedOnly bool) {
 	// Const is the declaration's or the override's. Read off the declaration's
 	// AST rather than the field, which a previous target's swap has written.
 	comp.Const = body.Const || (comp.AST != nil && comp.AST.Const)
+}
+
+// FuncsFor is what comp's funcs are on the target: its override's for the
+// target, where SpecializeForTarget has yet to swap that in, and its own
+// otherwise. A pass that runs ahead of the swap -- one reading what a test
+// calls, which the library body for the target declares -- asks this.
+func (comp *Component) FuncsFor(platform, language string) []*Func {
+	t := target{platform, language}
+	if comp == nil || covers(comp.SpecializedFor, t) {
+		return comp.Funcs
+	}
+	if body, ok := pick(t, comp.PlatformOverrides, comp.LanguageOverrides); ok && (body.Funcs != nil || body.Methods != nil) {
+		return body.Funcs
+	}
+	return comp.Funcs
+}
+
+// DropUncalledTriggers removes from each component pkg reaches the
+// overrides of its events (Func.Trigger) no call in pkg makes. A test's
+// trigger is a call of one by now, and one no test calls is not the
+// program's: left among the component's funcs it is a method of every
+// instance, and a method keeps a const override from splicing, so an app
+// build rendered differently for having a test half. Only a component
+// SpecializeForTarget swapped a body into is written: that is where a
+// target's trigger is, and the build's own copy.
+func DropUncalledTriggers(pkg *Package) {
+	if pkg == nil {
+		return
+	}
+	called := map[*Func]bool{}
+	_ = Walk(pkg, func(n Node) error {
+		if c, ok := n.(*Call); ok && c.Func != nil && c.Func.Trigger != "" {
+			called[c.Func] = true
+		}
+		return nil
+	})
+	uncalled := func(fn *Func) bool { return fn.Trigger != "" && !called[fn] }
+	drop := func(comp *Component) {
+		if comp == nil || comp.SpecializedFor == "" || !slices.ContainsFunc(comp.Funcs, uncalled) {
+			return
+		}
+		var dropped []*Func
+		for _, fn := range comp.Funcs {
+			if uncalled(fn) {
+				dropped = append(dropped, fn)
+			}
+		}
+		comp.Funcs = slices.DeleteFunc(slices.Clone(comp.Funcs), uncalled)
+		// A node the override named for its triggers alone -- fyne's
+		// `Select #sel` -- is named for nothing once they are gone, and an
+		// id costs a build a field of its own.
+		reads := func(roots ...any) map[*Var]bool {
+			out := map[*Var]bool{}
+			for _, r := range roots {
+				_ = Walk(r, func(n Node) error {
+					if id, ok := n.(*Ident); ok {
+						if v, ok := id.Sym.(*Var); ok && v.NodeHandle {
+							out[v] = true
+						}
+					}
+					return nil
+				})
+			}
+			return out
+		}
+		var droppedRoots, keptRoots []any
+		for _, fn := range dropped {
+			droppedRoots = append(droppedRoots, fn)
+		}
+		keptRoots = append(keptRoots, comp.Stmts)
+		for _, fn := range comp.Funcs {
+			keptRoots = append(keptRoots, fn)
+		}
+		for _, v := range comp.Vars {
+			if v.Init != nil {
+				keptRoots = append(keptRoots, v.Init)
+			}
+		}
+		byTriggers := reads(droppedRoots...)
+		kept := reads(keptRoots...)
+		_ = Walk(comp.Stmts, func(n Node) error {
+			if ni, ok := n.(*NodeInst); ok && ni.Handle != nil && byTriggers[ni.Handle] && !kept[ni.Handle] {
+				ni.ID, ni.Handle = "", nil
+			}
+			return nil
+		})
+	}
+	seen := map[*Package]bool{}
+	var visit func(p *Package)
+	visit = func(p *Package) {
+		if p == nil || seen[p] {
+			return
+		}
+		seen[p] = true
+		for _, sym := range p.Overridden {
+			if comp, ok := sym.(*Component); ok {
+				drop(comp)
+			}
+		}
+		if p.Symbols != nil {
+			p.Symbols.EachSymbol(func(sym Symbol) bool {
+				if comp, ok := sym.(*Component); ok {
+					drop(comp)
+				}
+				return true
+			})
+		}
+		for _, comp := range p.Components {
+			drop(comp)
+		}
+		for _, imp := range p.Imports {
+			if imp != nil {
+				visit(imp.Pkg)
+			}
+		}
+	}
+	visit(pkg)
+	// A component only a node in the tree names, as specializePkgBodies
+	// finds one.
+	_ = Walk(pkg, func(n Node) error {
+		if ni, ok := n.(*NodeInst); ok {
+			drop(ni.Component)
+		}
+		return nil
+	})
 }

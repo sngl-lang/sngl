@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 
@@ -95,6 +96,11 @@ func (st *inlineCompState) recordInstance(n *ir.NodeInst, symRenames map[ir.Symb
 func pureSplice(comp *ir.Component, handle *ir.Var, symRenames map[ir.Symbol]ir.Symbol, before map[string]*ir.Var, body []ir.Stmt) splice {
 	si := &splicedInstance{comp: comp, vars: map[string]*ir.Var{}, funcs: map[*ir.Func]*ir.Func{}, nodes: before, self: handle}
 	for from, to := range symRenames {
+		if f, ok := from.(*ir.Func); ok {
+			if t, ok := to.(*ir.Func); ok {
+				si.funcs[f] = t
+			}
+		}
 		if f, ok := from.(*ir.Var); ok {
 			if t, ok := to.(*ir.Var); ok {
 				si.vars[f.Name] = t
@@ -185,6 +191,8 @@ type resolver struct {
 	// splice of a component a test takes in a build that renders it.
 	byHandle map[*ir.Var][]*splicedInstance
 	rendered map[*ir.Component][]*splicedInstance
+	// funcCopies is what copies() gathers, once.
+	funcCopies map[*ir.Func][]*ir.Func
 }
 
 // testParam is the test's instance e is, or nil.
@@ -266,7 +274,7 @@ func (r *resolver) instance(e ir.Expr) *ir.Ident {
 	}
 }
 
-func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) error {
+func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice, triggers map[*ir.Call]ir.Call) error {
 	if len(reach.params) == 0 {
 		return nil
 	}
@@ -286,6 +294,14 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 	fail := func(e ir.Expr, format string, args ...any) {
 		if bad == nil && reach.root != nil {
 			bad = fmt.Errorf("%s: %s", exprPos(e), fmt.Sprintf(format, args...))
+		}
+	}
+	// Each trigger call's receiver as the test's earlier passes left it,
+	// which is what an event restored to it is raised on.
+	receivers := map[*ir.Call]ir.Expr{}
+	for call := range triggers {
+		if call.Func != nil && call.Func.Trigger != "" && len(call.Args) > 0 {
+			receivers[call] = call.Args[0].Value
 		}
 	}
 	for _, fn := range pkg.Funcs {
@@ -331,12 +347,50 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 			return n, nil
 		})
 	}
+	restoreUnreachedTriggers(pkg, reach.root, triggers, receivers)
 	return bad
 }
 
 // repointCall points a method called through a spliced instance at the
-// method's clone, called as the instance's own.
+// method's clone, called as the instance's own -- and again where that
+// instance was itself spliced: a select's trigger copied onto the chooser
+// that renders it, and onto what renders the chooser, `c.inner.pick.change`.
 func (r *resolver) repointCall(c *ir.Call, fail func(ir.Expr, string, ...any)) {
+	for range 16 {
+		was := c.Func
+		r.repointCallOnce(c, fail)
+		if c.Func == was {
+			// A copy a later splice copied again -- the trigger a select's
+			// splice copied onto chooser, and chooser's splice onto what
+			// renders it -- where the test names the node itself, as one
+			// flattened onto the root: the one copy of the copy.
+			if next := r.copies()[c.Func]; len(next) == 1 && c.Func != nil {
+				c.Func = next[0]
+				continue
+			}
+			return
+		}
+	}
+}
+
+// copies is every func a splice copied, and the copies each splice made.
+func (r *resolver) copies() map[*ir.Func][]*ir.Func {
+	if r.funcCopies == nil {
+		r.funcCopies = map[*ir.Func][]*ir.Func{}
+		for _, sis := range slices.Concat(slices.Collect(maps.Values(r.byHandle)), slices.Collect(maps.Values(r.rendered))) {
+			for _, si := range sis {
+				for from, to := range si.funcs {
+					if !slices.Contains(r.funcCopies[from], to) {
+						r.funcCopies[from] = append(r.funcCopies[from], to)
+					}
+				}
+			}
+		}
+	}
+	return r.funcCopies
+}
+
+func (r *resolver) repointCallOnce(c *ir.Call, fail func(ir.Expr, string, ...any)) {
 	if c.Func == nil || c.Event != "" {
 		return
 	}
@@ -375,7 +429,13 @@ func (r *resolver) repointCall(c *ir.Call, fail func(ir.Expr, string, ...any)) {
 		}
 		return
 	}
-	inst := r.instance(recv)
+	var inst ir.Expr = r.instance(recv)
+	// A node an instance that was itself spliced renders, `c.inner.pick`:
+	// the clone is that instance's method, which its own splice copied
+	// again, so the call is the instance's for repointCall's next step.
+	if sel, ok := unnarrowed(recv).(*ir.Select); ok && r.instOf(sel.Operand) != nil {
+		inst = sel.Operand
+	}
 	if asArg {
 		c.Args[0].Value = inst
 	} else {
@@ -525,4 +585,23 @@ func (r *resolver) droppedNullTest(b *ir.Binary) *ir.Literal {
 func isNullLit(e ir.Expr) bool {
 	lit, ok := unnarrowed(e).(*ir.Literal)
 	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
+}
+
+// restoreUnreachedTriggers gives back the event a test wrote for each
+// trigger call whose copy is no method of the component the test is rooted
+// at, nor a function of the package: a select gtk4 holds in a block's state
+// instance has its trigger there, which a test has no route to. The event is
+// then raised as every event a target does not override is, through the
+// target's invoker.
+func restoreUnreachedTriggers(pkg *ir.Package, root *ir.Component, triggers map[*ir.Call]ir.Call, receivers map[*ir.Call]ir.Expr) {
+	for call, was := range triggers {
+		fn := call.Func
+		if fn == nil || fn.Trigger == "" || slices.Contains(pkg.Funcs, fn) || root != nil && slices.Contains(root.Funcs, fn) {
+			continue
+		}
+		*call = was
+		if r, ok := receivers[call]; ok {
+			call.Receiver = r
+		}
+	}
 }

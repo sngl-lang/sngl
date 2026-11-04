@@ -422,6 +422,16 @@ const component ui.toggle[platform](label, checked, focusable, style, @change) {
 // label writes the value of the choice labeled so.
 component ui.select[platform](value, focusable, style, @change, options) {
     var label = ui.choiceLabel(options, value)
+    // A choice of the label `l`, the widget's or a test's: the widget shows
+    // it, and the value of the choice labeled so is the program's.
+    func choose(l string) {
+        label = l
+        var at = ui.choiceLabeled(options, l)
+        if at >= 0 && options[at].value != value {
+            value = options[at].value
+            change(options[at].value)
+        }
+    }
     Widget(
         model = Model{
             type = "tui.Select",
@@ -437,18 +447,18 @@ component ui.select[platform](value, focusable, style, @change, options) {
         look = lookOf(style),
         fit = fitOf(style.whiteSpace, style.display),
         grow = growOf(style.flex, style.display),
-        @change(l) {
-            var at = ui.choiceLabeled(options, l)
-            if at >= 0 && options[at].value != value {
-                value = options[at].value
-                change(options[at].value)
-            }
-        },
+        @change(l) { choose(l) },
     ) {}
     // After the widget, which the call site's `#id` names.
     effect(on={v=value, labels=options.map(func(o) => o.label).format("\n")}, @mount {
         label = ui.choiceLabel(options, value)
     })
+}
+
+// A test picks the choice holding `value` as the widget's choice of its
+// label does.
+func ui.select[T].change[platform](value) {
+    choose(ui.choiceLabel(options, value))
 }
 
 const component ui.textarea[platform](focusable, style) {

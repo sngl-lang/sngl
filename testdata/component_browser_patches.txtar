@@ -325,6 +325,23 @@ window.__sngl_boot = () => {
     let x = state.base + 1;
     return x * 3;
   }
+  function pickLabel__inst0(l) {
+    let at = choiceLabeled([{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }], l);
+    if (at >= 0 && [{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }][at].value !== state.fruit__inst0) {
+      ;
+      state.fruit__inst0 = [{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }][at].value;
+      $0.textContent = "picked: " + state.fruit__inst0;
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        ;
+        __inst1_live[__inst1_live_ui].__set___p1(state.fruit__inst0);
+      }
+      ;
+    }
+    ;
+  }
+  function change__trigger__inst0(value) {
+    pickLabel__inst0(choiceLabel([{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }], value));
+  }
   function choiceLabeled(options, label) {
     for (const [i, o] of options.entries()) {
       ;
@@ -336,6 +353,18 @@ window.__sngl_boot = () => {
     }
     ;
     return -1;
+  }
+  function choiceLabel(options, value) {
+    for (const o of options) {
+      ;
+      if (o.value === value) {
+        ;
+        return o.label;
+      }
+      ;
+    }
+    ;
+    return "";
   }
   function __snglTeardown() {
     for (const [__inst8_live_di, _] of __inst8_live.entries()) {
@@ -368,7 +397,7 @@ window.__sngl_boot = () => {
     __inst1_live = [];
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { run, doubled, blocky, choiceLabeled, __snglTeardown });
+    Object.assign(window, { run, doubled, blocky, pickLabel__inst0, change__trigger__inst0, choiceLabeled, choiceLabel, __snglTeardown });
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
@@ -946,18 +975,7 @@ window.__sngl_boot = () => {
   var __slotAnchor_7 = document.querySelector('[data-sngl-slot="7"]');
   __renderSlot7(__slotAnchor_7);
   $1.addEventListener("change", function(e) {
-    let at = choiceLabeled([{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }], e.currentTarget.value);
-    if (at >= 0 && [{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }][at].value !== state.fruit__inst0) {
-      ;
-      state.fruit__inst0 = [{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }][at].value;
-      $0.textContent = "picked: " + state.fruit__inst0;
-      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
-        ;
-        __inst1_live[__inst1_live_ui].__set___p1(state.fruit__inst0);
-      }
-      ;
-    }
-    ;
+    pickLabel__inst0(e.currentTarget.value);
   });
   $2.addEventListener("click", function() {
     state.handle__inst0 = run(() => {
@@ -1011,7 +1029,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:1e6cac7dc4f1a4083d214a5fafccc469
+pass sha256:27ad04118939c576386662e3ab4fe864
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
 sha256:d0361f3ceb5732edd48b4c0a983cbaf4
 {
@@ -1063,7 +1081,7 @@ sha256:c5590a0169d81d5f4d1e670d512478c7
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/picker/1 --
-sha256:ef1d9ec371ddb38eb163dbba8b8d6113
+sha256:a5152a9bb501e666695902f4f6ce21cd
 {
   "results": [
     {

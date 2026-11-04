@@ -71,6 +71,20 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { picked__inst0: "plain", visible__inst0: true };
+  function pickLabel__inst0(l) {
+    let at = choiceLabeled([{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }], l);
+    if (at >= 0 && [{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }][at].value !== state.picked__inst0) {
+      ;
+      state.picked__inst0 = [{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }][at].value;
+      $1.textContent = state.picked__inst0 === "loud" ? "items!" : "items";
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        ;
+        __inst1_live[__inst1_live_ui].__set___p1(state.picked__inst0);
+      }
+      ;
+    }
+    ;
+  }
   function choiceLabeled(options, label) {
     for (const [i, o] of options.entries()) {
       ;
@@ -192,18 +206,7 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   $0.addEventListener("change", function(e) {
-    let at = choiceLabeled([{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }], e.currentTarget.value);
-    if (at >= 0 && [{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }][at].value !== state.picked__inst0) {
-      ;
-      state.picked__inst0 = [{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }][at].value;
-      $1.textContent = state.picked__inst0 === "loud" ? "items!" : "items";
-      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
-        ;
-        __inst1_live[__inst1_live_ui].__set___p1(state.picked__inst0);
-      }
-      ;
-    }
-    ;
+    pickLabel__inst0(e.currentTarget.value);
   });
   $2.addEventListener("click", function() {
     location.assign("/item");
@@ -239,6 +242,20 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { picked__inst0: "plain", visible__inst0: true };
+  function pickLabel__inst0(l) {
+    let at = choiceLabeled([{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }], l);
+    if (at >= 0 && [{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }][at].value !== state.picked__inst0) {
+      ;
+      state.picked__inst0 = [{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }][at].value;
+      $1.textContent = state.picked__inst0 === "loud" ? "first!" : "first";
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        ;
+        __inst1_live[__inst1_live_ui].__set___p1(state.picked__inst0);
+      }
+      ;
+    }
+    ;
+  }
   function choiceLabeled(options, label) {
     for (const [i, o] of options.entries()) {
       ;
@@ -359,18 +376,7 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   $0.addEventListener("change", function(e) {
-    let at = choiceLabeled([{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }], e.currentTarget.value);
-    if (at >= 0 && [{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }][at].value !== state.picked__inst0) {
-      ;
-      state.picked__inst0 = [{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }][at].value;
-      $1.textContent = state.picked__inst0 === "loud" ? "first!" : "first";
-      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
-        ;
-        __inst1_live[__inst1_live_ui].__set___p1(state.picked__inst0);
-      }
-      ;
-    }
-    ;
+    pickLabel__inst0(e.currentTarget.value);
   });
   function __sngl_init() {
     $1.textContent = state.picked__inst0 === "loud" ? "first!" : "first";
@@ -381,4 +387,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:2768fd489a832e81f8c52bdf1d09ecd9
+pass sha256:d4546d4febd114e14785b7669916197b

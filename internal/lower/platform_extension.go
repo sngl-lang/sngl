@@ -23,6 +23,7 @@ var passPlatformExtensionBody = pass{
 
 func lowerPlatformExtensionBody(pkg *ir.Package, _ Features, opts Options) error {
 	ir.SpecializeForTarget(pkg, opts.Platform, opts.Language)
+	ir.DropUncalledTriggers(pkg)
 	if opts.Platform == "" {
 		return nil
 	}

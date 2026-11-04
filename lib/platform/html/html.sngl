@@ -480,20 +480,31 @@ const component ui.checkbox[platform](label, checked, disabled, focusable, style
 // --- Tier 1: Core Input ---
 
 const component ui.radio[platform](value, disabled, direction, style, @change, options) {
+    // A choice of the option holding `v`, a button's or a test's.
+    func pickValue(v T) {
+        if v != value {
+            value = v
+            change(v)
+        }
+    }
     html.fieldset(style=css({display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0px, ...style})) {
         for var opt = options {
             html.label(style=css({display=inlineFlex, alignItems=center, gap=4px})) {
                 html.input(type="radio", value=opt.label, checked=(opt.value == value), disabled=disabled, @change(e) {
                     var at = ui.choiceLabeled(options, e.currentTarget.value)
-                    if at >= 0 && options[at].value != value {
-                        value = options[at].value
-                        change(options[at].value)
+                    if at >= 0 {
+                        pickValue(options[at].value)
                     }
                 })
                 html.span(textContent=opt.label)
             }
         }
     }
+}
+
+// A test picks the option holding `value` as pressing its button does.
+func ui.radio[T].change[platform](value) {
+    pickValue(value)
 }
 
 const component ui.toggle[platform](label, checked, disabled, focusable, style, @change) {
@@ -511,6 +522,14 @@ const component ui.toggle[platform](label, checked, disabled, focusable, style, 
 }
 
 const component ui.select[platform](placeholder, value, disabled, focusable, style, @change, options) {
+    // A choice of the label `l`, the element's or a test's.
+    func pickLabel(l string) {
+        var at = ui.choiceLabeled(options, l)
+        if at >= 0 && options[at].value != value {
+            value = options[at].value
+            change(options[at].value)
+        }
+    }
     html.select(
         disabled = disabled,
         attrs = focusable ? {} : {"tabindex"="-1"},
@@ -520,13 +539,7 @@ const component ui.select[platform](placeholder, value, disabled, focusable, sty
                 e.preventDefault()
             }
         },
-        @change(e) {
-            var at = ui.choiceLabeled(options, e.currentTarget.value)
-            if at >= 0 && options[at].value != value {
-                value = options[at].value
-                change(options[at].value)
-            }
-        },
+        @change(e) { pickLabel(e.currentTarget.value) },
     ) {
         if placeholder != "" {
             html.option(value="", disabled=true, selected=true, textContent=placeholder)
@@ -535,6 +548,12 @@ const component ui.select[platform](placeholder, value, disabled, focusable, sty
             html.option(value=opt.label, selected=(opt.value == value), textContent=opt.label)
         }
     }
+}
+
+// A test picks the choice holding `value` as the element's change to its
+// label does.
+func ui.select[T].change[platform](value) {
+    pickLabel(ui.choiceLabel(options, value))
 }
 
 const component ui.textarea[platform](placeholder, readonly, value, disabled, rows, focusable, style, @input, @change) {

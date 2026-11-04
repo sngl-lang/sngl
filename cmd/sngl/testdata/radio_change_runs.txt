@@ -1,0 +1,72 @@
+# A test picks a radio's option by the value it holds, through the target's
+# override of the radio's @change, which calls what pressing the option's
+# button calls. The options hold an int labeled otherwise, so a value is never
+# taken for a label. fyne and bubbletea render no radio yet, so there is no
+# option of one to pick.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component fitting ui.node {
+    var fit = 1
+    var heard list[int] = []
+
+    ui.radio #fits(:value=fit, @change(v) { heard.push(v) }) {
+        ui.choice(label="Snug", value=1)
+        ui.choice(label="Loose", value=2)
+    }
+    ui.text(value="{fit}")
+}
+
+func testARadioChangePicksTheOptionHolding(t test.Test, c fitting) {
+    c.fits.change(2)
+    t.assert(c.fit == 2)
+    t.assert(c.heard.length() == 1 && c.heard[0] == 2)
+}
+
+ui.window {
+    fitting
+}
+-- testrun/android/kotlin/app.sngl/fitting/1 --
+sha256:8d54654a3601759c4d471a858b9a4e33
+{
+  "results": [
+    {
+      "Desc": "ARadioChangePicksTheOptionHolding",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/fitting/1 --
+sha256:df753d3ec70a2ee8a7b9969deb0e55f1
+{
+  "results": [
+    {
+      "Desc": "ARadioChangePicksTheOptionHolding",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/fitting/1 --
+sha256:1d27207e60e467c04ad3582b353d6be6
+{
+  "results": [
+    {
+      "Desc": "ARadioChangePicksTheOptionHolding",
+      "Passed": true
+    }
+  ]
+}

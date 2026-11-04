@@ -489,6 +489,30 @@ invoker. `testdata/trigger_override.sngl` and `error_trigger_override.sngl`
 are the check, `cmd/sngl/testdata/trigger_override_runs.txt` runs it on all
 six.
 
+A library component's override is swapped in only by
+`passPlatformExtensionBody`, after the test passes, so `passEventTriggers`
+finds the trigger through `Component.FuncsFor`, the funcs the swap will
+install. The swap then drops every trigger no call reaches
+(`ir.DropUncalledTriggers`), and with it a node id only a dropped trigger
+read: a method keeps a const override from splicing, and an id costs a
+field, so an app build rendered every select differently for having a test
+half. In a test build the override is a runtime splice (`expandCall`), which
+carries the call site's `#id` onto a library component's root wherever a
+handle is read (`handleRead`), as `passInlinePure` does for every one; a
+component method generic in its component's parameters alone is bound by
+each splice rather than copied per call (`boundByItsComponent`); and a
+method's parameter of a prop's name is the method's, never the prop
+substituted for it (`shadowsAProp`). `select_change_runs.txt` and
+`radio_change_runs.txt` are the selects and radios.
+
+A trigger is copied onto the owner of each splice, by `passInlinePure`
+(`copyTriggers`) as by `expandCall`, and a component whose only methods are
+triggers splices as it would without them (`ownMethods`), so a test build
+renders what the app does. A test's call follows the copies through every
+splice, `c.inner.pick.change` included (`repointCall`, `copies`). A copy left
+in an instance a test has no route to -- gtk4's state instance of a block --
+is restored to the event the test wrote (`restoreUnreachedTriggers`).
+
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 
 **A Go type crossing into SNGL is tested with `sngltest/`.** A `go:` value

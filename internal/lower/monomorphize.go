@@ -203,7 +203,17 @@ func (m *monomorph) keepCallees() {
 
 func isGenericBody(fn *ir.Func) bool {
 	return fn != nil && len(fn.TypeParams)+len(fn.RecvTypeParams) > 0 &&
-		fn.Intrinsic == "" && fn.Foreign.Name == "" && len(fn.Block) > 0
+		fn.Intrinsic == "" && fn.Foreign.Name == "" && len(fn.Block) > 0 &&
+		!boundByItsComponent(fn)
+}
+
+// boundByItsComponent reports whether fn is a method of a component generic
+// in the component's parameters alone: the splice of each instance binds
+// them (InstantiateFunc in expandCall), as InstantiateComponent does for a
+// copy, so a copy per call here was one per type every splice then cloned --
+// a select's trigger at the Fruit a test chose, in the int select's splice.
+func boundByItsComponent(fn *ir.Func) bool {
+	return fn.OnComponent() && len(fn.TypeParams) == 0
 }
 
 func (m *monomorph) visit(n ir.Node) {

@@ -80,6 +80,13 @@ fun MainScreen() {
     var pick__inst0 by remember { mutableStateOf("a") }
     var visible__inst0 by remember { mutableStateOf(true) }
 
+
+    fun pickValue__inst0(v: String) {
+        if ((v != pick__inst0)) {
+        	pick__inst0 = v
+        }
+    }
+
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
@@ -93,7 +100,7 @@ fun MainScreen() {
                 for (opt in listOf(Choice__record__string(label = "a", value = "a"), Choice__record__string(label = "b", value = "b"))) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = (pick__inst0 == opt.value), onClick = {
-                            pick__inst0 = opt.value
+                            pickValue__inst0(opt.value)
                         })
                         Text(text = opt.label, modifier = Modifier)
                     }
@@ -104,4 +111,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:2cd902c7713d66d2cdb6182fb85892d9
+pass sha256:ba5d32987df6c0da3e9c8fdd0b710af5

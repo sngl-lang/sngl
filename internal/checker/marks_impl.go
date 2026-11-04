@@ -406,7 +406,7 @@ func markBuiltin(m *mark) error {
 	case *ir.UnitDef:
 		d.Builtin = kind
 	case *ir.Func:
-		if !kind.IsCMarshal() && kind != ir.BuiltinText && kind != ir.BuiltinFormatWith && kind != ir.BuiltinAppendFormatWith && kind != ir.BuiltinChoiceKey {
+		if !kind.IsCMarshal() && kind != ir.BuiltinText && kind != ir.BuiltinFormatWith && kind != ir.BuiltinAppendFormatWith {
 			return fmt.Errorf("#[builtin(%q)] cannot mark %s", raw, ast.DeclFormName(m.decl))
 		}
 		d.Builtin = kind

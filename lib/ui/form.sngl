@@ -1,4 +1,3 @@
-import marks "sngl:internal/marks"
 import time "sngl:time"
 
 // Clickable button that triggers an action, labeled with `text`. Set
@@ -190,7 +189,6 @@ component select[T any](
 // The label of the first of `options` holding `value`, or "" where none
 // does: what a platform's control, which knows its choices by label, shows
 // selected, and what a test choosing `value` hands it.
-#[marks.builtin("choiceKey")]
 const func choiceLabel[T any](options list[choice[T]], value T) string {
     for var o = options {
         if o.value == value {

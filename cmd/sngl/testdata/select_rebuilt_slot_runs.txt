@@ -62,7 +62,7 @@ func testAChoiceAfterTheSelectIsBuiltAgain(t test.Test, c page) {
     t.assert(c.kind == "Blue")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:31f885b52721ee7f182924eec8b7c5d8
+sha256:56dafc6c357d527b60932cde9d0f8a65
 {
   "results": [
     {
@@ -72,7 +72,7 @@ sha256:31f885b52721ee7f182924eec8b7c5d8
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:6ab8d67487da2c6fdaf259d587a84eba
+sha256:85937a03f910985a52a3bf4e6a52989e
 {
   "results": [
     {
@@ -82,7 +82,7 @@ sha256:6ab8d67487da2c6fdaf259d587a84eba
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:611f48000cc7fdb879e44744a6dcf9da
+sha256:c62addfa059a713f70e45b0013235467
 {
   "results": [
     {
@@ -92,7 +92,7 @@ sha256:611f48000cc7fdb879e44744a6dcf9da
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:a3194214a7e083578921153a580a402e
+sha256:27f0843d572d6c5615c4d6c3bce66b0e
 {
   "results": [
     {
@@ -102,7 +102,7 @@ sha256:a3194214a7e083578921153a580a402e
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:cc8e12df713e629729582e1c4ce9a0af
+sha256:a4248849b3a963d2102d9cfa8fe76020
 {
   "results": [
     {

@@ -37,7 +37,6 @@ type pass struct {
 // stated, state it there rather than leaving it to position.
 var passes = []pass{
 	passEventTriggers,
-	passChoiceTriggers,
 	passEnumReads,
 	passMatch,
 	passTestInstanceReach,
@@ -223,6 +222,11 @@ type Options struct {
 	// an id. Set by Lower.
 	splices *[]splice
 
+	// triggers is each test call passEventTriggers made a call of a trigger,
+	// as the test wrote it, for repointTestReaches to restore where the
+	// trigger's copy is no method the test can call. Set by Lower.
+	triggers map[*ir.Call]ir.Call
+
 	// blockReads is each read of a view block's var passTestReach answered a
 	// test's prop read with, for passHoistState to say where the var lives.
 	// Set by Lower.
@@ -267,6 +271,7 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 	}
 	opts.names = renamer{}
 	opts.splices = &[]splice{}
+	opts.triggers = map[*ir.Call]ir.Call{}
 	opts.blockReads = blockReads{}
 	if opts.StopAfter != "" {
 		known := false

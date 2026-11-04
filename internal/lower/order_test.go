@@ -75,9 +75,6 @@ var alwaysOn = []string{
 	"CSE",
 	// Every emitted function takes every parameter it declares.
 	"CallDefaults",
-	// Every target's select knows its choices by label, so a test's choice
-	// of a value is its label on every target.
-	"ChoiceTriggers",
 	// An owned value a statement may not make is a statement of its own on
 	// every target, since ReleaseTemps releases what a statement borrows.
 	"ConditionalTemps",

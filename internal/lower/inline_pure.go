@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -48,7 +49,7 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 		tested:     testedComponentSet(pkg, opts),
 	}
 	for _, comp := range pkg.Components {
-		st.hoist = &comp.Vars
+		st.hoist, st.hoistFuncs, st.hoistMethods = &comp.Vars, &comp.Funcs, true
 		body, err := st.inlineStmts(comp.Stmts)
 		if err != nil {
 			return err
@@ -70,7 +71,7 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 	}
 	// The package's own body, and then the windows: both hoist into the
 	// package, a window being a rendering root that owns nothing.
-	st.hoist = &pkg.Vars
+	st.hoist, st.hoistFuncs, st.hoistMethods = &pkg.Vars, &pkg.Funcs, false
 	body, err := st.inlineStmts(pkg.Body)
 	if err != nil {
 		return err
@@ -94,6 +95,11 @@ type inlinePureState struct {
 	// instance becomes a local of that instance's factory, which is what makes
 	// one per instance.
 	hoist *[]*ir.Var
+	// hoistFuncs is where a substituted callee's triggers land, the copy of
+	// each this call site makes (Func.Trigger): the owner's methods, or the
+	// package's functions for a root, which hoistMethods says.
+	hoistFuncs   *[]*ir.Func
+	hoistMethods bool
 	// names names each substitution's copy of the callee's state, and a
 	// spliced body's renamed parameters. Shared with passNoInlineComponents
 	// through Options: the two substitute into one emitted namespace and a
@@ -283,7 +289,7 @@ func (st *inlinePureState) isPure(c *ir.Component) bool {
 	if c == nil {
 		return false
 	}
-	if len(c.Funcs) > 0 {
+	if ownMethods(c) > 0 {
 		return false
 	}
 	// A lifetime is state as a var is: spliced under a `for`, every copy's
@@ -335,7 +341,7 @@ func (st *inlinePureState) isPure(c *ir.Component) bool {
 // every copy -- so there the component stays a runtime instance, which gives
 // each copy its own.
 func (st *inlinePureState) constSubstitutable(c *ir.Component) bool {
-	if c == nil || !c.Const || len(c.Funcs) > 0 {
+	if c == nil || !c.Const || ownMethods(c) > 0 {
 		return false
 	}
 	return len(c.Vars) == 0 || st.loopDepth == 0
@@ -732,6 +738,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		freshNodeHandles(own, symRenames)
 	}
 	body := own
+	triggers := st.copyTriggers(comp, typeArgs, symRenames)
 
 	// Hoist the callee's own vars onto the owner being walked, one copy per
 	// call site. isPure let them through because nothing rendered reads them,
@@ -767,6 +774,15 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 			(*st.hoist)[i].Init = renameInExpr((*st.hoist)[i].Init, renames, symRenames)
 		}
 		body = renameIdents(body, renames, nil)
+		for _, fn := range triggers {
+			fn.Block = renameIdents(fn.Block, renames, nil)
+		}
+	}
+	for _, fn := range triggers {
+		fn.Block = renameIdents(fn.Block, nil, symRenames)
+		fn.Block = substituteParams(fn.Block, unshadowed(fn, bindings))
+		fn.Block = substituteVars(fn.Block, provided)
+		fn.Block = substituteEvents(fn.Block, callsite.Handlers)
 	}
 	body = renameIdents(body, nil, symRenames)
 
@@ -809,11 +825,17 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// copy it meant never fired for one, and a rename had nothing to repoint
 	// the reads through.
 	var before map[string]*ir.Var
-	if callsite.ID != "" && st.splices != nil && comp.PkgPath() == "" {
+	// A library component's splice is recorded where it brings a trigger a
+	// test calls, which the test's call is pointed at.
+	if callsite.ID != "" && st.splices != nil && (comp.PkgPath() == "" || len(triggers) > 0) {
 		before = bodyNodes(body)
 	}
 	if callsite.ID != "" {
-		if was, ok := ir.AttachNodeIDFrom(body, callsite.ID, callsite.Handle); ok && was != "" && was != callsite.ID {
+		also := make([]any, len(triggers))
+		for i, fn := range triggers {
+			also[i] = fn
+		}
+		if was, ok := ir.AttachNodeIDFrom(body, callsite.ID, callsite.Handle, also...); ok && was != "" && was != callsite.ID {
 			followTestNodeID(st.pkg, was, callsite.ID)
 		}
 	}
@@ -2000,4 +2022,63 @@ func literalInt(e ir.Expr) (int, bool) {
 	}
 	n, err := strconv.Atoi(lit.Value)
 	return n, err == nil
+}
+
+// ownMethods is how many of c's funcs are its own methods rather than
+// overrides of its events (Func.Trigger), which a splice copies onto its
+// owner (copyTriggers) and so leave c as substitutable as it was.
+func ownMethods(c *ir.Component) int {
+	n := 0
+	for _, fn := range c.Funcs {
+		if fn.Trigger == "" {
+			n++
+		}
+	}
+	return n
+}
+
+// copyTriggers copies each trigger of comp onto the owner being walked, one
+// per call site as its vars are, and records the copy in symRenames so a
+// test's call of the trigger is pointed at it. The splice substitutes into
+// the copies as it does into the body.
+func (st *inlinePureState) copyTriggers(comp *ir.Component, typeArgs map[string]*ir.Type, symRenames map[ir.Symbol]ir.Symbol) []*ir.Func {
+	if st.hoistFuncs == nil {
+		return nil
+	}
+	var out []*ir.Func
+	for _, f := range comp.Funcs {
+		if f.Trigger == "" {
+			continue
+		}
+		clone := cloneFuncShallow(f)
+		clone.Block = deepCloneStmts(f.Block)
+		if typeArgs != nil {
+			clone = ir.InstantiateFunc(f, typeArgs)
+			clone.TypeParams = f.TypeParams
+			clone.RecvTypeParams = slices.DeleteFunc(slices.Clone(f.RecvTypeParams), func(tp ir.TypeParam) bool {
+				_, bound := typeArgs[tp.Name]
+				return bound
+			})
+		}
+		clone.Name = st.names.next(f.Name, "inst")
+		if !st.hoistMethods {
+			dropReceiver(clone)
+		}
+		symRenames[f] = clone
+		*st.hoistFuncs = append(*st.hoistFuncs, clone)
+		out = append(out, clone)
+	}
+	return out
+}
+
+// unshadowed is bindings without the props fn's parameters shadow.
+func unshadowed(fn *ir.Func, bindings map[string]ir.Expr) map[string]ir.Expr {
+	if !shadowsAProp(fn, bindings) {
+		return bindings
+	}
+	out := maps.Clone(bindings)
+	for _, p := range fn.Params {
+		delete(out, p.Name)
+	}
+	return out
 }

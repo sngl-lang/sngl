@@ -61,7 +61,7 @@ func testTypingRunsTheUpdate(t test.Test, c app) {
     t.assert(c.renames == 1)
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:36b5d046d17d7a91ba4fb541f164eae8
+sha256:3dc4211a4cb143067fba1a2912f4817a
 {
   "results": [
     {
@@ -75,7 +75,7 @@ sha256:36b5d046d17d7a91ba4fb541f164eae8
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:d5c648ab3ab935a261a6114b866d76fc
+sha256:c6bbb518c30e07ba59e679fbe60ecf23
 {
   "results": [
     {
@@ -89,7 +89,7 @@ sha256:d5c648ab3ab935a261a6114b866d76fc
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:c0c71b758d215eb087f94b8b8e2082ca
+sha256:a2bfd71d4a84b1c38cbc46dafc10db90
 {
   "results": [
     {
@@ -103,7 +103,7 @@ sha256:c0c71b758d215eb087f94b8b8e2082ca
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:f8f9e7f7c0d2900b6ea2fbce11cf95e4
+sha256:53dd5d1490694fd06eb905e3471f80dc
 {
   "results": [
     {
@@ -117,7 +117,7 @@ sha256:f8f9e7f7c0d2900b6ea2fbce11cf95e4
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:985b118d6698aa6fac746b9f0b4766b8
+sha256:55883e0cfbf7140335326cf4f1486918
 {
   "results": [
     {

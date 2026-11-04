@@ -213,6 +213,33 @@ func (m *Model) resizeWidgets() {
 	m.widget0.SetSize(tui.WidgetWidth(m.width), tui.WidgetHeight(m.height))
 }
 
+func (m *Model) choose__inst0(l string) {
+	m.label__inst0 = l
+	var at int = ChoiceLabeled__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}()), l)
+	if (at >= 0) && (slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+		__out := make([]Choice__record__string, len(m.fruits))
+		for __i, __item := range m.fruits {
+			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+		}
+		return __out
+	}())[at].Value != m.pick) {
+		m.pick = slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+			__out := make([]Choice__record__string, len(m.fruits))
+			for __i, __item := range m.fruits {
+				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
+			}
+			return __out
+		}())[at].Value
+	}
+	m.__effects0_settle()
+}
+
 func ChoiceLabel__string(options []Choice__record__string, value string) string {
 	for _, o := range options {
 		if o.Value == value {
@@ -635,29 +662,7 @@ func (m Model) __press(s snglStop) tea.Cmd {
 func (m *Model) __widget0_change(__v string) {
 	l := __v
 	_ = l
-	var at int = ChoiceLabeled__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
-		__out := make([]Choice__record__string, len(m.fruits))
-		for __i, __item := range m.fruits {
-			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
-		}
-		return __out
-	}()), l)
-	if (at >= 0) && (slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
-		__out := make([]Choice__record__string, len(m.fruits))
-		for __i, __item := range m.fruits {
-			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
-		}
-		return __out
-	}())[at].Value != m.pick) {
-		m.pick = slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
-			__out := make([]Choice__record__string, len(m.fruits))
-			for __i, __item := range m.fruits {
-				__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
-			}
-			return __out
-		}())[at].Value
-	}
-	m.__effects0_settle()
+	m.choose__inst0(l)
 	_ = m.View()
 }
 
@@ -1559,6 +1564,19 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { fruits: ["Apple", "Banana"], pick: "Apple", visible__inst0: true };
+  function pickLabel__inst0(l) {
+    let at = choiceLabeled([{ label: "None", value: "None" }, ...state.fruits.map((f) => ({ label: f, value: f }))], l);
+    if (at >= 0 && [{ label: "None", value: "None" }, ...state.fruits.map((f) => ({ label: f, value: f }))][at].value !== state.pick) {
+      ;
+      state.pick = [{ label: "None", value: "None" }, ...state.fruits.map((f) => ({ label: f, value: f }))][at].value;
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        ;
+        __inst1_live[__inst1_live_ui].__set___p1(state.pick);
+      }
+      ;
+    }
+    ;
+  }
   function choiceLabeled(options, label) {
     for (const [i, o] of options.entries()) {
       ;
@@ -1679,17 +1697,7 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   __n3.addEventListener("change", function(e) {
-    let at = choiceLabeled([{ label: "None", value: "None" }, ...state.fruits.map((f) => ({ label: f, value: f }))], e.currentTarget.value);
-    if (at >= 0 && [{ label: "None", value: "None" }, ...state.fruits.map((f) => ({ label: f, value: f }))][at].value !== state.pick) {
-      ;
-      state.pick = [{ label: "None", value: "None" }, ...state.fruits.map((f) => ({ label: f, value: f }))][at].value;
-      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
-        ;
-        __inst1_live[__inst1_live_ui].__set___p1(state.pick);
-      }
-      ;
-    }
-    ;
+    pickLabel__inst0(e.currentTarget.value);
   });
   $1.addEventListener("click", function() {
     state.fruits = ["Apple", "Banana", "Cherry"];
@@ -1700,7 +1708,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4b613c1c805581841866f224ae0045b8
+pass sha256:020bedee85713adae85f6caf669e894e
 -- run/go/fyne --
 pass sha256:505d89fe887c5b823d10f7b7eec869d4
 -- run/go/gtk4 --
@@ -1708,4 +1716,4 @@ pass sha256:45abf2131efd19445b0eb0c4a423761d
 -- run/kotlin/android --
 pass sha256:49151d55d6e58910fe9ab9a96d85c918
 -- run/none/html --
-pass sha256:0faec732c57e11cf2430fb7759904adc
+pass sha256:649655763126adf8a75b36b8565a5432

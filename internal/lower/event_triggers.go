@@ -17,10 +17,10 @@ import (
 var passEventTriggers = pass{
 	name:    "EventTriggers",
 	enabled: func(Features) bool { return true },
-	apply: func(pkg *ir.Package, _ Features, _ Options) error {
+	apply: func(pkg *ir.Package, _ Features, opts Options) error {
 		_ = ir.Walk(pkg, func(n ir.Node) error {
 			if call, ok := n.(*ir.Call); ok && call.Event != "" && call.Receiver != nil {
-				rewriteEventTrigger(call)
+				rewriteEventTrigger(call, opts)
 			}
 			return nil
 		})
@@ -28,7 +28,7 @@ var passEventTriggers = pass{
 	},
 }
 
-func rewriteEventTrigger(call *ir.Call) {
+func rewriteEventTrigger(call *ir.Call, opts Options) {
 	t := call.Receiver.ExprType()
 	if t == nil || t.Kind != ir.TypeComponent {
 		return
@@ -37,8 +37,10 @@ func rewriteEventTrigger(call *ir.Call) {
 	if !ok {
 		return
 	}
+	// A library component's override is swapped in only later
+	// (passPlatformExtensionBody), and is what declares the trigger.
 	var trig *ir.Func
-	for _, fn := range comp.Funcs {
+	for _, fn := range comp.FuncsFor(opts.Platform, opts.Language) {
 		if fn.Trigger == call.Event {
 			trig = fn
 		}
@@ -57,6 +59,9 @@ func rewriteEventTrigger(call *ir.Call) {
 	at := map[string]int{}
 	for i, p := range event.Params {
 		at[p.Name] = i
+	}
+	if opts.triggers != nil {
+		opts.triggers[call] = *call
 	}
 	args := []ir.CallArg{{Value: call.Receiver}}
 	for _, p := range trig.Params {

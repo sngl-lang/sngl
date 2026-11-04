@@ -301,6 +301,28 @@ fun MainScreen() {
     var value__inst1 by remember { mutableStateOf(pick__inst0) }
     var value__inst2 by remember { mutableStateOf(pick__inst0) }
 
+
+    fun pickValue__inst0(v: String) {
+        if ((v != value__inst0)) {
+        	value__inst0 = v
+        	chosen__inst0 = v
+        }
+    }
+
+
+    fun pickValue__inst1(v: String) {
+        if ((v != value__inst1)) {
+        	value__inst1 = v
+        }
+    }
+
+
+    fun pickValue__inst2(v: String) {
+        if ((v != value__inst2)) {
+        	value__inst2 = v
+        }
+    }
+
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
@@ -314,8 +336,7 @@ fun MainScreen() {
                 for (opt in listOf(Choice__record__string(label = "small", value = "small"), Choice__record__string(label = "medium", value = "medium"), Choice__record__string(label = "large", value = "large"))) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = (value__inst0 == opt.value), onClick = {
-                            value__inst0 = opt.value
-                            chosen__inst0 = opt.value
+                            pickValue__inst0(opt.value)
                         })
                         Text(text = opt.label, modifier = Modifier)
                     }
@@ -325,7 +346,7 @@ fun MainScreen() {
                 for (opt in listOf(Choice__record__string(label = "one", value = "one"), Choice__record__string(label = "two", value = "two"))) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = (value__inst1 == opt.value), onClick = {
-                            value__inst1 = opt.value
+                            pickValue__inst1(opt.value)
                         })
                         Text(text = opt.label, modifier = Modifier)
                     }
@@ -335,7 +356,7 @@ fun MainScreen() {
                 for (opt in listOf(*more__inst0.map({ m: String -> Choice__record__string(label = m, value = m) }).toTypedArray())) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = (value__inst2 == opt.value), onClick = {
-                            value__inst2 = opt.value
+                            pickValue__inst2(opt.value)
                         })
                         Text(text = opt.label, modifier = Modifier)
                     }
@@ -519,4 +540,4 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/kotlin/android --
-pass sha256:f6535fae309b705cf1c5d5822f9de0a2
+pass sha256:bd32bd9c7641a084ca3362c2efbdebc7
