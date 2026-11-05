@@ -39,7 +39,7 @@ component row(label string) node {
 component App() node {
     var rows list[string] = ["a", "b"]
     for var r = rows {
-        row(label=r, key=r)
+        row(label=r)
     }
     button(text="add", @click { rows = ["a", "b", "c"] })
 }

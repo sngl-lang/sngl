@@ -1927,7 +1927,7 @@ func (st *inlineCompState) restartOnEntry(vars []*ir.Var, loops []*ir.For) *ir.N
 		{Name: ir.EffectMount, Func: &ir.Func{Pkg: st.pkg, Block: block}},
 	}}
 	if len(loops) > 0 {
-		n.Props = []ir.Arg{{Name: ir.EffectOn, Value: CopyKey(loops)}}
+		n.Props = []ir.Arg{{Name: ir.EffectOn, Value: CopyIdentity(loops)}}
 	}
 	return n
 }

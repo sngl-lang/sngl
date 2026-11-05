@@ -521,6 +521,12 @@ type For struct {
 	// final post-RefLoop shape). Zero value (IterElement) holds until lowering
 	// runs; the headless interpreter ignores it.
 	IterKind IterKind
+	// Identity is what tells one copy of a view loop from another, over the
+	// loop's variables, as the string a target keeps it by: the element's
+	// `key()`, or the element itself where it is a scalar or an enum carrying
+	// no payload. Nil where the copy is its position. A copy keeps its state and lifetimes while a copy
+	// of its identity is rendered, wherever in the list it is.
+	Identity Expr `json:",omitempty"`
 }
 
 func (*For) stmtNode() {}

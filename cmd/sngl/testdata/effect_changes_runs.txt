@@ -383,7 +383,7 @@ ui.window(title = "Changes") {
     rows
 }
 -- testrun/android/kotlin/app.sngl/changes/1 --
-sha256:e23a3f997c99a1eae6646fc1e293bec6
+sha256:c4e368d873db77134d70325a5c8883d0
 {
   "results": [
     {
@@ -447,7 +447,7 @@ sha256:e384c4877f461a434e3372f2bc087d54
   ]
 }
 -- testrun/android/kotlin/app.sngl/rows/1 --
-sha256:664eb0bbb9714ab64a4a80120b1cd465
+sha256:679d638eafa76642cae93e38975d8156
 {
   "results": [
     {

@@ -2636,7 +2636,17 @@ func loopReadNames(n *ir.For) map[string]bool {
 func WithUnreadVarsDropped(n *ir.For) *ir.For {
 	read := loopReadNames(n)
 	if n.KeyRead {
-		read[n.Key] = true
+		// The copy key, written as text, reads the loop's identity where it
+		// has one, and its index where it has none.
+		if n.Identity == nil {
+			read[n.Key] = true
+		}
+		_ = ir.Walk(n.Identity, func(nd ir.Node) error {
+			if id, ok := nd.(*ir.Ident); ok {
+				read[id.Name] = true
+			}
+			return nil
+		})
 	}
 	// A counted loop's variable is read by its own condition, which ForHead
 	// names __i when the body does not name one.

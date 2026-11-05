@@ -471,11 +471,31 @@ func (r *resolver) cellRead(x *ir.Select) (ir.Expr, error) {
 	if owner == nil {
 		return nil, nil
 	}
-	start := rebaseOnInstanceUnder(ir.CloneExprSharingDecls(init), owner, inst, loopBindings(si.loops, idxs))
+	env := loopBindings(si.loops, idxs)
+	start := rebaseOnInstanceUnder(ir.CloneExprSharingDecls(init), owner, inst, env)
 	if start == nil {
 		return nil, fmt.Errorf("`%s` starts from what the copy was handed, which a test cannot name; read it once the copy has written it", x.Field)
 	}
-	return cellGet(v, start, ir.CopyKey(idxs)), nil
+	key := ir.CopyKey(idxs)
+	if Keyed(si.loops) {
+		key = nil
+		for i, fs := range si.loops {
+			var part ir.Expr = &ir.Conversion{Type: ir.TypString, Operand: idxs[i]}
+			if fs.Identity != nil {
+				// The copy at the test's index, known by its identity: what
+				// the loop's identity reads of the element there.
+				if part = rebaseOnInstanceUnder(ir.CloneExprSharingDecls(fs.Identity), owner, inst, env); part == nil {
+					return nil, fmt.Errorf("`%s` is kept by the identity of its copy, which a test cannot name here", x.Field)
+				}
+			}
+			if key == nil {
+				key = part
+				continue
+			}
+			key = &ir.Binary{Type: ir.TypString, Op: ast.BinAdd, Left: &ir.Binary{Type: ir.TypString, Op: ast.BinAdd, Left: key, Right: stringLit(IdentitySep)}, Right: part}
+		}
+	}
+	return cellGet(v, start, key), nil
 }
 
 // refuseUnspliced reports a test reaching through x for a member of a

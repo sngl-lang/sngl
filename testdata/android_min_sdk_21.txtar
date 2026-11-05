@@ -60,6 +60,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.key
+
+data class __anon_id_elem_cdfd47(
+    var id: String = "",
+    var elem: Int = 0
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -90,11 +96,28 @@ fun MainScreen() {
             }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Press", modifier = Modifier)
             }
-            for (n in seen__inst0) {
-                Text(text = n.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+            for (n in __identified0(seen__inst0)) {
+                key(n.id) {
+                    Text(text = n.elem.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                }
             }
         }
     }
+}
+
+fun __identified0(__xs: List<Int>): List<__anon_id_elem_cdfd47> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_cdfd47>()
+    for (__x in __xs) {
+    	var __id = __x.toString()
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_cdfd47(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/SnglFlexible.kt --
 package test.sngl.app
@@ -216,4 +239,4 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/kotlin/android --
-pass sha256:9562687629cd0eb8c7802d956a74b974
+pass sha256:3ee0d77cbf8d9e169144caff20c5674a

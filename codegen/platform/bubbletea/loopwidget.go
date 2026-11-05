@@ -118,7 +118,7 @@ func copyTakesValue(w widgetInfo) bool {
 
 // copyCall is the copy of w the loop variables in gc name.
 func copyCall(w widgetInfo, gc *golang.GoIRContext) string {
-	key := gc.EvalExpr(lower.CopyKey(w.loop.loops))
+	key := gc.EvalExpr(lower.CopyIdentity(w.loop.loops))
 	if !copyTakesValue(w) {
 		return fmt.Sprintf("m.%s(%s)", loopCopyMethod(w), key)
 	}
@@ -161,7 +161,7 @@ func emitLoopWidgetMethods(b *strings.Builder, w widgetInfo, gc *golang.GoIRCont
 		fmt.Fprintf(b, "\tif m.__focusID == %d {\n\t\tfunc() {\n", w.loop.lf.slot)
 		walkSlot(b, w, gc, 3, func(vw *viewWalk, gc *golang.GoIRContext) {
 			vw.line("if m.%s == %s {", w.loop.lf.cursor, w.loop.lf.pos)
-			vw.line("\tfocused = %s", gc.EvalExpr(lower.CopyKey(w.loop.loops)))
+			vw.line("\tfocused = %s", gc.EvalExpr(lower.CopyIdentity(w.loop.loops)))
 			vw.line("\treturn")
 			vw.line("}")
 		})
@@ -237,7 +237,7 @@ func emitLoopWidgetForward(b *strings.Builder, w widgetInfo, info *irAnalysis, g
 	walkSlot(b, w, gc, depth+2, func(vw *viewWalk, gc *golang.GoIRContext) {
 		vw.line("if m.%s == %s {", w.loop.lf.cursor, w.loop.lf.pos)
 		vw.indent++
-		key := gc.EvalExpr(lower.CopyKey(w.loop.loops))
+		key := gc.EvalExpr(lower.CopyIdentity(w.loop.loops))
 		vw.line("__key := %s", key)
 		vw.line("w := %s", copyCall(w, gc))
 		if modelHasFocusMethods(w.model.Type) {
@@ -309,7 +309,7 @@ func emitLoopWidgetInvokers(b *strings.Builder, w widgetInfo, info *irAnalysis, 
 				}
 				vw.line("if %s {", cond)
 				vw.indent++
-				vw.line("__key := %s", gc.EvalExpr(lower.CopyKey(w.loop.loops)))
+				vw.line("__key := %s", gc.EvalExpr(lower.CopyIdentity(w.loop.loops)))
 				vw.line("w := %s", copyCall(w, gc))
 				vw.line("w%s(v)", val.set)
 				vw.line("m.%s[__key] = w", w.fieldName)

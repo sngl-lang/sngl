@@ -84,7 +84,7 @@ func testAnUpdateReadsARenamedCopysNewName(t test.Test, c rows) {
     t.assert(log.format(",") == "z=7")
 }
 -- testrun/android/kotlin/app.sngl/names/1 --
-sha256:1b3fdc30f451b9201d0cb3cce904e5bd
+sha256:8029a43af5c1e6823c529535459eaa74
 {
   "results": [
     {
@@ -112,7 +112,7 @@ sha256:5ceba8b00ff022277f6f0c0493d8fc07
   ]
 }
 -- testrun/bubbletea/go/app.sngl/names/1 --
-sha256:a99927a81a182514dbe04fb4201cc166
+sha256:8efca2f3ba5459f4611e2e5a6edf94e8
 {
   "results": [
     {
@@ -140,7 +140,7 @@ sha256:131c6f8e27a7103b3e439ecf1755d663
   ]
 }
 -- testrun/fyne/go/app.sngl/names/1 --
-sha256:4ee61e271e9a6c53a99934fbc610c6dd
+sha256:78619dc00659b5d2221c6ede4e47b021
 {
   "results": [
     {
@@ -168,7 +168,7 @@ sha256:118dc5130ccc06b3eb44b3e6ca3aa568
   ]
 }
 -- testrun/gtk4/go/app.sngl/names/1 --
-sha256:0aeb02dff4f01b3351977ffbf979e511
+sha256:6b393624c1663bb6656b65e22a098d88
 {
   "results": [
     {
@@ -196,7 +196,7 @@ sha256:2bd49b82308321c500ce3be3b29a4edd
   ]
 }
 -- testrun/html/none/app.sngl/names/1 --
-sha256:9cae8087c3c2b0b91abbb9aea23218c0
+sha256:13a060c1c69f8da5c12bbc8b9ce1cbb2
 {
   "results": [
     {

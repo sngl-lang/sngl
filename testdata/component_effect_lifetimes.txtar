@@ -181,6 +181,11 @@ type Pair struct {
 	B string
 }
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -353,6 +358,26 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) scaled__inst0(m__r0 int) int {
@@ -578,10 +603,10 @@ func (m *Model) __effect1_down() {
 	m.__effect1_desired = []string{}
 	m.__effect1_paths = []string{}
 	m.__effect1_pathAt = map[string]int{}
-	for __copy0, it := range m.items__inst0 {
-		m.__effect1_desired = append(m.__effect1_desired, it)
-		m.__effect1_pathAt[fmt.Sprint(__copy0)] = len(m.__effect1_paths)
-		m.__effect1_paths = append(m.__effect1_paths, fmt.Sprint(__copy0))
+	for _, it := range __identified0(m.items__inst0) {
+		m.__effect1_desired = append(m.__effect1_desired, it.Elem)
+		m.__effect1_pathAt[it.Id] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, it.Id)
 	}
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
@@ -1566,6 +1591,11 @@ type Pair struct {
 	B string
 }
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	shown__inst0        bool
@@ -1672,6 +1702,26 @@ func New() *Model {
 	return m
 }
 
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
 func (m *Model) scaled__inst0(m__r0 int) int {
 	return (m__r0 * m.n__inst0)
 }
@@ -1737,10 +1787,10 @@ func (m *Model) __effect1_down() {
 	m.__effect1_desired = []string{}
 	m.__effect1_paths = []string{}
 	m.__effect1_pathAt = map[string]int{}
-	for __copy0, it := range m.items__inst0 {
-		m.__effect1_desired = append(m.__effect1_desired, it)
-		m.__effect1_pathAt[fmt.Sprint(__copy0)] = len(m.__effect1_paths)
-		m.__effect1_paths = append(m.__effect1_paths, fmt.Sprint(__copy0))
+	for _, it := range __identified0(m.items__inst0) {
+		m.__effect1_desired = append(m.__effect1_desired, it.Elem)
+		m.__effect1_pathAt[it.Id] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, it.Id)
 	}
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
@@ -2476,6 +2526,11 @@ type Pair struct {
 	B string
 }
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	shown__inst0        bool
@@ -2582,6 +2637,26 @@ func New() *Model {
 	return m
 }
 
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
 func (m *Model) scaled__inst0(m__r0 int) int {
 	return (m__r0 * m.n__inst0)
 }
@@ -2647,10 +2722,10 @@ func (m *Model) __effect1_down() {
 	m.__effect1_desired = []string{}
 	m.__effect1_paths = []string{}
 	m.__effect1_pathAt = map[string]int{}
-	for __copy0, it := range m.items__inst0 {
-		m.__effect1_desired = append(m.__effect1_desired, it)
-		m.__effect1_pathAt[fmt.Sprint(__copy0)] = len(m.__effect1_paths)
-		m.__effect1_paths = append(m.__effect1_paths, fmt.Sprint(__copy0))
+	for _, it := range __identified0(m.items__inst0) {
+		m.__effect1_desired = append(m.__effect1_desired, it.Elem)
+		m.__effect1_pathAt[it.Id] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, it.Id)
 	}
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
@@ -3293,6 +3368,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.runtime.key
 
 data class Counter(
     var n: Int = 0
@@ -3301,6 +3377,11 @@ data class Counter(
 data class Pair(
     var a: Int = 0,
     var b: String = ""
+)
+
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -3362,17 +3443,19 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             }, modifier = Modifier.testTag("add").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "add", modifier = Modifier)
             }
-            for (it in state.items__inst0) {
-                DisposableEffect(it) {
-                    val __snglEffectKey = it
-                    run {
-                        val v = __snglEffectKey
-                        state.log__inst1.add(("+" + v))
-                    }
-                    onDispose {
+            for (it in __identified0(state.items__inst0)) {
+                key(it.id) {
+                    DisposableEffect(it.elem) {
+                        val __snglEffectKey = it.elem
                         run {
                             val v = __snglEffectKey
-                            state.log__inst1.add(("-" + v))
+                            state.log__inst1.add(("+" + v))
+                        }
+                        onDispose {
+                            run {
+                                val v = __snglEffectKey
+                                state.log__inst1.add(("-" + v))
+                            }
                         }
                     }
                 }
@@ -3438,6 +3521,21 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             Text(text = state.log__inst4.joinToString(","), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
+}
+
+fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_c6a818>()
+    for (__x in __xs) {
+    	var __id = __x
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_c6a818(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
 // Code generated by sngl (android) from component_effect_lifetimes.sngl; DO NOT EDIT.
@@ -3607,6 +3705,24 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
+      ;
+      let __id = __x;
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
+  }
   function scaled__inst0(m) {
     return m * state.n__inst0;
   }
@@ -3677,7 +3793,7 @@ window.__sngl_boot = () => {
     __effect0_teardown();
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { scaled__inst0, __effect0_mount, __effect0_unmount, __effect1_mount, __effect1_unmount, __effect2_mount, __effect2_unmount, __effect3_mount, __effect3_unmount, __effect4_mount, __effect4_unmount, __effect5_mount, __effect5_unmount, __effect6_mount, __effect6_unmount, __snglTeardown });
+    Object.assign(window, { __identified0, scaled__inst0, __effect0_mount, __effect0_unmount, __effect1_mount, __effect1_unmount, __effect2_mount, __effect2_unmount, __effect3_mount, __effect3_unmount, __effect4_mount, __effect4_unmount, __effect5_mount, __effect5_unmount, __effect6_mount, __effect6_unmount, __snglTeardown });
   }
   var __effect0_live = [];
   var __effect0_desired = [];
@@ -3745,10 +3861,10 @@ window.__sngl_boot = () => {
     __effect1_desired = [];
     __effect1_paths = [];
     __effect1_pathAt = /* @__PURE__ */ new Map([]);
-    for (const [__copy0, it] of state.items__inst0.entries()) {
-      __effect1_desired.push(it);
-      __effect1_pathAt.set(String(__copy0), __effect1_paths.length);
-      __effect1_paths.push(String(__copy0));
+    for (const it of __identified0(state.items__inst0)) {
+      __effect1_desired.push(it.elem);
+      __effect1_pathAt.set(it.id, __effect1_paths.length);
+      __effect1_paths.push(it.id);
     }
     for (const [__effect1_i, _] of __effect1_live.entries()) {
       let __effect1_j = __effect1_live.length - 1 - __effect1_i;
@@ -4072,15 +4188,15 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c260db8402d59b5d60850a9af38e264a
+pass sha256:e826347e4869f461907a51a22f672bb9
 -- run/go/fyne --
-pass sha256:d0205faa42423ec23194778781fb626c
+pass sha256:ae723c7af39f7a9e29187ebe8185e0a5
 -- run/go/gtk4 --
-pass sha256:33a051ffb789e8d50fb0756ae3f956b8
+pass sha256:5d4653f3c2685946d8fa7f088083dd5f
 -- run/kotlin/android --
-pass sha256:be70f06dfe6cb3666e3f9db9fc32cbc5
+pass sha256:ecf882f1197503b1373b7f23a4ef96b1
 -- run/none/html --
-pass sha256:9f2ffcb77baa33acbf579a621633d719
+pass sha256:b77e2442af2862e31c914ef16ec59907
 -- testrun/html/none/component_effect_lifetimes.sngl/branch/1 --
 sha256:32702d7b0dd1528e1f7c3adce82d133d
 {
@@ -4106,7 +4222,7 @@ sha256:b3718384287be60bbeeeb4faebc8e155
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/perElement/1 --
-sha256:c9cff51d7f4fb8cb001864ed353fdfdd
+sha256:507d3cfb4e8e1455e961900610cd38dc
 {
   "results": [
     {

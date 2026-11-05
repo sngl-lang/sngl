@@ -130,6 +130,11 @@ type Measurement struct {
 	Rem float64
 }
 
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -272,6 +277,26 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := fmt.Sprint(__x)
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func RowsOf(m__r0 *Measurement) int {
@@ -440,30 +465,30 @@ func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
 	m.__effect0_paths = []string{}
 	m.__effect0_pathAt = map[string]int{}
-	for __copy0, _ := range m.xs {
+	for _, x := range __identified0(m.xs) {
 		__effect0_fresh := true
 		var __effect0_at int = func() int {
-			if __v, __ok := m.__effect0_liveAt[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.__effect0_liveAt[x.Id]; __ok {
 				return __v
 			}
 			return -1
 		}()
 		if __effect0_at >= 0 {
-			__effect0_fresh = (m.__effect0_live[__effect0_at] != fmt.Sprint(__copy0))
+			__effect0_fresh = (m.__effect0_live[__effect0_at] != x.Id)
 		}
-		m.__effect0_pathAt[fmt.Sprint(__copy0)] = len(m.__effect0_paths)
-		m.__effect0_paths = append(m.__effect0_paths, fmt.Sprint(__copy0))
+		m.__effect0_pathAt[x.Id] = len(m.__effect0_paths)
+		m.__effect0_paths = append(m.__effect0_paths, x.Id)
 		if __effect0_fresh {
 			var __cell1_taps__inst0 int = func() int {
-				if __v, __ok := m.taps__inst0[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.taps__inst0[x.Id]; __ok {
 					return __v
 				}
 				return 0
 			}()
 			__cell1_taps__inst0 = 0
-			m.taps__inst0[fmt.Sprint(__copy0)] = __cell1_taps__inst0
+			m.taps__inst0[x.Id] = __cell1_taps__inst0
 		}
-		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+		m.__effect0_desired = append(m.__effect0_desired, x.Id)
 	}
 	m.__effect0_live = m.__effect0_desired
 	m.__effect0_livePaths = m.__effect0_paths
@@ -474,30 +499,30 @@ func (m *Model) __effect1_enter() {
 	m.__effect1_desired = []string{}
 	m.__effect1_paths = []string{}
 	m.__effect1_pathAt = map[string]int{}
-	for __copy0, _ := range m.xs {
+	for _, x := range __identified0(m.xs) {
 		__effect1_fresh := true
 		var __effect1_at int = func() int {
-			if __v, __ok := m.__effect1_liveAt[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.__effect1_liveAt[x.Id]; __ok {
 				return __v
 			}
 			return -1
 		}()
 		if __effect1_at >= 0 {
-			__effect1_fresh = (m.__effect1_live[__effect1_at] != fmt.Sprint(__copy0))
+			__effect1_fresh = (m.__effect1_live[__effect1_at] != x.Id)
 		}
-		m.__effect1_pathAt[fmt.Sprint(__copy0)] = len(m.__effect1_paths)
-		m.__effect1_paths = append(m.__effect1_paths, fmt.Sprint(__copy0))
+		m.__effect1_pathAt[x.Id] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, x.Id)
 		if __effect1_fresh {
 			var __cell1_width__inst0 int = func() int {
-				if __v, __ok := m.width__inst0[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.width__inst0[x.Id]; __ok {
 					return __v
 				}
 				return 0
 			}()
 			__cell1_width__inst0 = 1
-			m.width__inst0[fmt.Sprint(__copy0)] = __cell1_width__inst0
+			m.width__inst0[x.Id] = __cell1_width__inst0
 		}
-		m.__effect1_desired = append(m.__effect1_desired, fmt.Sprint(__copy0))
+		m.__effect1_desired = append(m.__effect1_desired, x.Id)
 	}
 	m.__effect1_live = m.__effect1_desired
 	m.__effect1_livePaths = m.__effect1_paths
@@ -528,7 +553,7 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) __focusLoop0_len() int {
 	var __focusCount int = 0
-	for range m.xs {
+	for range __identified0(m.xs) {
 		__focusCount = (__focusCount + 1)
 	}
 	return __focusCount
@@ -763,24 +788,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 0 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos0 := 0
-				for __copy0, x := range m.xs {
-					_ = __copy0
+				for _, x := range __identified0(m.xs) {
 					_ = x
 					if m.__focusLoop0_cursor == __focusPos0 {
 						var __cell2_taps__inst0 int = func() int {
-							if __v, __ok := m.taps__inst0[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.taps__inst0[x.Id]; __ok {
 								return __v
 							}
 							return 0
 						}()
 						__cell2_taps__inst0 = (func() int {
-							if __v, __ok := m.taps__inst0[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.taps__inst0[x.Id]; __ok {
 								return __v
 							}
 							return 0
 						}() + 1)
-						m.taps__inst0[fmt.Sprint(__copy0)] = __cell2_taps__inst0
-						m.got = (7 + x)
+						m.taps__inst0[x.Id] = __cell2_taps__inst0
+						m.got = (7 + x.Elem)
 						return
 					}
 					__focusPos0++
@@ -830,14 +854,13 @@ func (m Model) View() tea.View {
 		__focusPos0 := 0
 		_ = __focusPos0
 		var part0_0Items []string
-		for __copy0, x := range m.xs {
-			_ = __copy0
+		for _, x := range __identified0(m.xs) {
 			_ = x
 			var part0_0Item string
 			var part0_0ItemChildren []string
 			var part0_0Item_0 string
 			part0_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("w" + fmt.Sprint(func() int {
-				if __v, __ok := m.width__inst0[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.width__inst0[x.Id]; __ok {
 					return __v
 				}
 				return 0
@@ -850,7 +873,7 @@ func (m Model) View() tea.View {
 				part0_0Item_1Prefix = ">"
 			}
 			part0_0Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Item_1Prefix + " " + fmt.Sprint(("tap " + fmt.Sprint(func() int {
-				if __v, __ok := m.taps__inst0[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.taps__inst0[x.Id]; __ok {
 					return __v
 				}
 				return 0
@@ -931,6 +954,11 @@ import (
 	"os"
 )
 
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	got            int
@@ -940,7 +968,7 @@ type Model struct {
 	opened__inst0  int
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
-	__inst0_live   []*PickerInstance
+	__inst0_live   map[string]*PickerInstance
 	__rendering0   bool
 	__renderAgain0 bool
 
@@ -965,10 +993,30 @@ func New() *Model {
 	m.opened__inst0 = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*PickerInstance{}
+	m.__inst0_live = map[string]*PickerInstance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
+}
+
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := fmt.Sprint(__x)
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -988,36 +1036,55 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-				__inst0_next := []*PickerInstance{}
-				var __inst0_i int = 0
-				for _, x := range m.xs {
+				__inst0_next := map[string]*PickerInstance{}
+				__inst0_seen := map[string]int{}
+				for _, x := range __identified0(m.xs) {
 					var __n6 *PickerInstance
-					if len(m.__inst0_live) > __inst0_i {
-						__n6 = m.__inst0_live[__inst0_i]
+					__key1 := fmt.Sprint(x.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n6 = func() *PickerInstance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
 						__n6.SetPicked(func(v int) {
-							m.got = (v + x)
+							m.got = (v + x.Elem)
 							m.__n5.SetText(("got=" + fmt.Sprint(m.got)))
 						})
 					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *PickerInstance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n6__new := newPickerInstance(m, func(v int) {
-							m.got = (v + x)
+							m.got = (v + x.Elem)
 							m.__n5.SetText(("got=" + fmt.Sprint(m.got)))
 						})
 						__n6 = __n6__new
 					}
-					__inst0_next = append(__inst0_next, __n6)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n6
 					__n6__el := __n6.Root
 					fynelayout.InsertBefore(__parent, m.__slot0_at, __n6__el)
 					m.__slot0 = append(m.__slot0, __n6__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -1027,11 +1094,10 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*PickerInstance{}
+	m.__inst0_live = map[string]*PickerInstance{}
 }
 
 func (m *Model) __n2_closed_handler() {
@@ -1207,6 +1273,11 @@ import (
 	"fmt"
 )
 
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	got            int
@@ -1216,7 +1287,7 @@ type Model struct {
 	opened__inst0  int
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
-	__inst0_live   []*PickerInstance
+	__inst0_live   map[string]*PickerInstance
 	__rendering0   bool
 	__renderAgain0 bool
 	__n2           gtk4rt.Handle
@@ -1241,10 +1312,30 @@ func New() *Model {
 	m.opened__inst0 = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*PickerInstance{}
+	m.__inst0_live = map[string]*PickerInstance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
+}
+
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := fmt.Sprint(__x)
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1264,36 +1355,55 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-				__inst0_next := []*PickerInstance{}
-				var __inst0_i int = 0
-				for _, x := range m.xs {
+				__inst0_next := map[string]*PickerInstance{}
+				__inst0_seen := map[string]int{}
+				for _, x := range __identified0(m.xs) {
 					var __n6 *PickerInstance
-					if len(m.__inst0_live) > __inst0_i {
-						__n6 = m.__inst0_live[__inst0_i]
+					__key1 := fmt.Sprint(x.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n6 = func() *PickerInstance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
 						__n6.SetPicked(func(v int) {
-							m.got = (v + x)
+							m.got = (v + x.Elem)
 							gtk4rt.LabelSetLabel(m.__n5, ("got=" + fmt.Sprint(m.got)))
 						})
 					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *PickerInstance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n6__new := newPickerInstance(m, func(v int) {
-							m.got = (v + x)
+							m.got = (v + x.Elem)
 							gtk4rt.LabelSetLabel(m.__n5, ("got=" + fmt.Sprint(m.got)))
 						})
 						__n6 = __n6__new
 					}
-					__inst0_next = append(__inst0_next, __n6)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n6
 					__n6__el := __n6.Root
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n6__el)
 					m.__slot0 = append(m.__slot0, __n6__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -1303,11 +1413,10 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*PickerInstance{}
+	m.__inst0_live = map[string]*PickerInstance{}
 }
 
 func (m *Model) __n2_closed_handler() {
@@ -1499,6 +1608,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Button
@@ -1507,6 +1617,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
+
+data class __anon_id_elem_cdfd47(
+    var id: String = "",
+    var elem: Int = 0
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1532,10 +1647,12 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
-            for (x in xs) {
-                Picker(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, onPicked = { v ->
-                    got = (v + x)
-                })
+            for (x in __identified0(xs)) {
+                key(x.id) {
+                    Picker(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, onPicked = { v ->
+                        got = (v + x.elem)
+                    })
+                }
             }
             Row(modifier = Modifier.snglFlexible(true)) {
                 Button(onClick = {
@@ -1571,6 +1688,21 @@ fun Picker(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexSh
             Text(text = ("tap " + taps.toString()), modifier = Modifier)
         }
     }
+}
+
+fun __identified0(__xs: List<Int>): List<__anon_id_elem_cdfd47> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_cdfd47>()
+    for (__x in __xs) {
+    	var __id = __x.toString()
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_cdfd47(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/SnglFlexShare.kt --
 package test.sngl.app
@@ -1751,14 +1883,31 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { got: 0, xs: [1], hits__inst0: 0, visible__inst0: true, opened__inst0: 0 };
-  function __snglTeardown() {
-    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
       ;
-      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
-      __inst1_live[__inst1_live_dj].__destroy();
+      let __id = String(__x);
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
     }
     ;
-    __inst1_live = [];
+    return __out;
+  }
+  function __snglTeardown() {
+    for (const [__inst1_live_dk, __inst1_live_dv] of __inst1_live.entries()) {
+      ;
+      __inst1_live_dv.__destroy();
+    }
+    ;
+    __inst1_live = /* @__PURE__ */ new Map([]);
   }
   function __cf_Picker(props) {
     const __root = document.createElement("div");
@@ -1799,7 +1948,7 @@ body { font-family: system-ui, sans-serif; }
     };
   }
   var __slot0 = [];
-  var __inst1_live = [];
+  var __inst1_live = /* @__PURE__ */ new Map([]);
   var __rendering0 = false;
   var __renderAgain0 = false;
   function __renderSlot0(parent) {
@@ -1814,28 +1963,33 @@ body { font-family: system-ui, sans-serif; }
           let __place0_prev = __slot0;
           let __place0_i = 0;
           __slot0 = [];
-          let __inst1_next = [];
-          let __inst1_i = 0;
-          for (const x of state.xs) {
+          let __inst1_next = /* @__PURE__ */ new Map([]);
+          let __inst1_seen = /* @__PURE__ */ new Map([]);
+          for (const x of __identified0(state.xs)) {
             let __n6 = null;
-            if (__inst1_live.length > __inst1_i) {
-              __n6 = __inst1_live[__inst1_i];
+            let __key2 = String(x.id);
+            let __key2_n = __inst1_seen.has(__key2) ? __inst1_seen.get(__key2) : 0;
+            __inst1_seen.set(__key2, __key2_n + 1);
+            if (__key2_n > 0) {
+              __key2 = __key2 + "#" + String(__key2_n);
+            }
+            if (__inst1_live.has(__key2)) {
+              __n6 = __inst1_live.has(__key2) ? __inst1_live.get(__key2) : null;
               __n6.__set_picked((v) => {
-                state.got = v + x;
+                state.got = v + x.elem;
                 __n5.textContent = "got=" + String(state.got);
               });
             } else {
-              if (__inst1_live.length > __inst1_i) {
-                __inst1_live[__inst1_i].__destroy();
+              if (__inst1_live.has(__key2)) {
+                (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
               let __n6__new = __cf_Picker({ picked: (v) => {
-                state.got = v + x;
+                state.got = v + x.elem;
                 __n5.textContent = "got=" + String(state.got);
               } });
               __n6 = __n6__new;
             }
-            __inst1_next.push(__n6);
-            __inst1_i = __inst1_i + 1;
+            __inst1_next.set(__key2, __n6);
             let __n6__el = __n6.__root;
             let __place0_i_ref0 = null;
             if (__place0_i < __place0_prev.length) {
@@ -1848,10 +2002,9 @@ body { font-family: system-ui, sans-serif; }
             }
             __slot0.push(__n6__el);
           }
-          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-            if (__inst1_i_j >= __inst1_i) {
-              __inst1_live[__inst1_i_j].__destroy();
+          for (const [__inst1_live_k, __inst1_live_v] of __inst1_live.entries()) {
+            if (!__inst1_next.has(__inst1_live_k)) {
+              __inst1_live_v.__destroy();
             }
           }
           __inst1_live = __inst1_next;
@@ -1900,12 +2053,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c7c9da0bf71064ad7c81709899e5f59e
+pass sha256:6844953c5575a18f02b85ae8cdc3c29f
 -- run/go/fyne --
-pass sha256:99afef075ddbd68da2b475a9bf87a313
+pass sha256:234885d468468153172cadaf3cc4e040
 -- run/go/gtk4 --
-pass sha256:b1aeaaee625ac83042bc2fb3cc0c8d72
+pass sha256:f74fcd40b3556aec7f9ddf1421c6d7a1
 -- run/kotlin/android --
-pass sha256:2e9b7010c2a58bfa7b6406fce901060b
+pass sha256:3640f86926a533228c5726acbd936cad
 -- run/none/html --
-pass sha256:2c586ad814124360370169391b2f950d
+pass sha256:628a584b5a6fc795cc153fe5bde05031

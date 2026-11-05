@@ -2728,10 +2728,11 @@ fun Counter(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexS
     var hits by remember { mutableStateOf(0) }
 
     DisposableEffect(__sngl) {
-        SnglInstances[__sngl] = mapOf<String, (List<Any?>) -> Any?>(
+        val __entry = mapOf<String, (List<Any?>) -> Any?>(
             "hits" to { _ -> hits },
         )
-        onDispose { SnglInstances.remove(__sngl) }
+        SnglInstances[__sngl] = __entry
+        onDispose { if (SnglInstances[__sngl] === __entry) SnglInstances.remove(__sngl) }
     }
 
     Button(onClick = {
@@ -3789,6 +3790,6 @@ pass sha256:eb46519a37fbd159a94c914cd2a6cc1b
 -- run/go/gtk4 --
 pass sha256:6e10b9318a529447797412491cb81295
 -- run/kotlin/android --
-pass sha256:576ffebf011f79940a343b5742dd3822
+pass sha256:bfc8124ae97d257d4edd2f44d1e97af1
 -- run/none/html --
 pass sha256:caab378bfb2bfd70fd029f035ce5bb1d

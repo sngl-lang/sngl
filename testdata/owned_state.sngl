@@ -132,11 +132,11 @@ component rows ui.node {
     }
 }
 
-// Rows are keyed by position, so removing the second of three rekeys the
-// second row onto the third's value and unmounts the third.
+// A number is its own row's identity, so removing the second of three
+// releases its value alone, and the third row keeps its own.
 func testRemovingARowReleasesIt(t test.Test, c rows) {
     c.ns = [1, 3]
-    t.assert(closed == [20, 30])
+    t.assert(closed == [20])
 }
 
 component block ui.node {

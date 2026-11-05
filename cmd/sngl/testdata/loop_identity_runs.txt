@@ -1,0 +1,285 @@
+# A view loop's copy keeps its state and its lifetimes with its element's
+# identity, wherever the list moves it, on every target: the interpreter's
+# mounted path, the instance slots of html, fyne and gtk4, bubbletea's cells
+# per copy and its settle, and Compose's key. A copy matched by position kept
+# the state of whatever element had been at its place, and every copy after a
+# dropped one mounted again. Two copies of one identity are two: on bubbletea
+# they shared their cells, and an effect under the loop mounted once for both.
+
+sngl test --platform=none app.sngl
+stdout '^ok +6 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +6 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +6 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +6 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +6 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +6 tests, 0 failures$'
+
+-- app.sngl --
+// A copy of a view loop's body is told from the others by its element's
+// identity, and keeps its state while the list holds it, wherever it moves:
+// a string, a number or an enum is its own identity, and a struct's is its
+// `key()`. A struct with no `key`, and an element bound by `&`, are matched by
+// position, and copies sharing one identity by their order among themselves.
+
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct todo {
+    id    int
+    title string
+
+    const func key() => id
+}
+
+struct point {
+    x int
+}
+
+enum shade { light, dark }
+
+var mounts list[string] = []
+
+component counter(label string) ui.node {
+    var taps = 0
+
+    effect(@mount { mounts.push(label) })
+
+    ui.button #b(text="{label} {taps}", @click { taps += 1 })
+}
+
+component page ui.node {
+    var names = ["a", "b", "c"]
+    var todos = [todo{id=1, title="x"}, todo{id=2, title="y"}]
+    var points = [point{x=1}, point{x=2}]
+    var shades = [shade.light, shade.dark]
+    var words = ["p", "q"]
+    var twins = ["a", "a", "b"]
+
+    ui.vbox {
+        for var n = names {
+            counter #row(label=n)
+        }
+        for var t = todos {
+            counter #item(label=t.title)
+        }
+        for var p = points {
+            counter #spot(label="{p.x}")
+        }
+        for var s = shades {
+            counter #tint(label="{s}")
+        }
+        for var &w = words {
+            counter #word(label=w)
+        }
+        for var n = twins {
+            counter #twin(label=n)
+        }
+    }
+}
+
+func testACopyFollowsItsString(t test.Test, c page) {
+    c.row[1].b.click()
+    var before = mounts.length()
+    c.names.remove(0)
+    t.assert(c.row[0].taps == 1)
+    t.assert(c.row[1].taps == 0)
+    t.assert(mounts.length() == before)
+}
+
+func testACopyFollowsItsKey(t test.Test, c page) {
+    c.item[0].b.click()
+    c.todos.insert(0, todo{id=3, title="z"})
+    t.assert(c.item[0].taps == 0)
+    t.assert(c.item[1].taps == 1)
+}
+
+func testAKeylessStructIsItsPosition(t test.Test, c page) {
+    c.spot[0].b.click()
+    c.points.insert(0, point{x=3})
+    t.assert(c.spot[0].taps == 1)
+    t.assert(c.spot[1].taps == 0)
+}
+
+func testACopyFollowsItsMember(t test.Test, c page) {
+    c.tint[1].b.click()
+    c.shades.remove(0)
+    t.assert(c.tint[0].taps == 1)
+}
+
+func testTwoCopiesOfOneIdentityAreTwo(t test.Test, c page) {
+    c.twin[1].b.click()
+    t.assert(c.twin[0].taps == 0)
+    t.assert(c.twin[1].taps == 1)
+    c.twins.push("a")
+    t.assert(c.twin[3].taps == 0)
+}
+
+func testARefElementIsItsPosition(t test.Test, c page) {
+    c.word[0].b.click()
+    c.words.insert(0, "o")
+    t.assert(c.word[0].taps == 1)
+}
+
+ui.window {
+    page
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:07849b5e5762f651f88ae1483d66cbae
+{
+  "results": [
+    {
+      "Desc": "ACopyFollowsItsKey",
+      "Passed": true
+    },
+    {
+      "Desc": "ACopyFollowsItsMember",
+      "Passed": true
+    },
+    {
+      "Desc": "ACopyFollowsItsString",
+      "Passed": true
+    },
+    {
+      "Desc": "AKeylessStructIsItsPosition",
+      "Passed": true
+    },
+    {
+      "Desc": "ARefElementIsItsPosition",
+      "Passed": true
+    },
+    {
+      "Desc": "TwoCopiesOfOneIdentityAreTwo",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:a6bb3e0e2226c123343256cd851972cb
+{
+  "results": [
+    {
+      "Desc": "ACopyFollowsItsKey",
+      "Passed": true
+    },
+    {
+      "Desc": "ACopyFollowsItsMember",
+      "Passed": true
+    },
+    {
+      "Desc": "ACopyFollowsItsString",
+      "Passed": true
+    },
+    {
+      "Desc": "AKeylessStructIsItsPosition",
+      "Passed": true
+    },
+    {
+      "Desc": "ARefElementIsItsPosition",
+      "Passed": true
+    },
+    {
+      "Desc": "TwoCopiesOfOneIdentityAreTwo",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:9c75dd4037176a35c8cad53764025e32
+{
+  "results": [
+    {
+      "Desc": "ACopyFollowsItsKey",
+      "Passed": true
+    },
+    {
+      "Desc": "ACopyFollowsItsMember",
+      "Passed": true
+    },
+    {
+      "Desc": "ACopyFollowsItsString",
+      "Passed": true
+    },
+    {
+      "Desc": "AKeylessStructIsItsPosition",
+      "Passed": true
+    },
+    {
+      "Desc": "ARefElementIsItsPosition",
+      "Passed": true
+    },
+    {
+      "Desc": "TwoCopiesOfOneIdentityAreTwo",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:905a94358d362ea2102eea7f637b6c59
+{
+  "results": [
+    {
+      "Desc": "ACopyFollowsItsKey",
+      "Passed": true
+    },
+    {
+      "Desc": "ACopyFollowsItsMember",
+      "Passed": true
+    },
+    {
+      "Desc": "ACopyFollowsItsString",
+      "Passed": true
+    },
+    {
+      "Desc": "AKeylessStructIsItsPosition",
+      "Passed": true
+    },
+    {
+      "Desc": "ARefElementIsItsPosition",
+      "Passed": true
+    },
+    {
+      "Desc": "TwoCopiesOfOneIdentityAreTwo",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:6058308b09dcf1c4f39746d3cfe88708
+{
+  "results": [
+    {
+      "Desc": "ACopyFollowsItsKey",
+      "Passed": true
+    },
+    {
+      "Desc": "ACopyFollowsItsMember",
+      "Passed": true
+    },
+    {
+      "Desc": "ACopyFollowsItsString",
+      "Passed": true
+    },
+    {
+      "Desc": "AKeylessStructIsItsPosition",
+      "Passed": true
+    },
+    {
+      "Desc": "ARefElementIsItsPosition",
+      "Passed": true
+    },
+    {
+      "Desc": "TwoCopiesOfOneIdentityAreTwo",
+      "Passed": true
+    }
+  ]
+}

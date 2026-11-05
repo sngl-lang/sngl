@@ -134,7 +134,7 @@ ui.window {
     pair
 }
 -- testrun/bubbletea/go/app.sngl/pair/1 --
-sha256:4c0d1bfea0e68eef8e0fedff70ca3c86
+sha256:8e3663b2e40dcb77634ab078ec31b409
 {
   "results": [
     {
@@ -144,7 +144,7 @@ sha256:4c0d1bfea0e68eef8e0fedff70ca3c86
   ]
 }
 -- testrun/bubbletea/go/unbound.sngl/pair/1 --
-sha256:2eb3f4b9d645546c514886d69abe03b8
+sha256:c12479ad4b6f766664b0ce6b26a2fb5d
 {
   "results": [
     {
@@ -154,7 +154,7 @@ sha256:2eb3f4b9d645546c514886d69abe03b8
   ]
 }
 -- testrun/fyne/go/app.sngl/pair/1 --
-sha256:5ba55312618ecae7063d320e7daa068a
+sha256:0b19792bd5ae18aed1c77101535888e9
 {
   "results": [
     {
@@ -164,7 +164,7 @@ sha256:5ba55312618ecae7063d320e7daa068a
   ]
 }
 -- testrun/fyne/go/unbound.sngl/pair/1 --
-sha256:dc7db1b1535531a34d8a9615d6a07163
+sha256:46b65ee53a7d9e07d7c6982d7198ff1b
 {
   "results": [
     {
@@ -174,7 +174,7 @@ sha256:dc7db1b1535531a34d8a9615d6a07163
   ]
 }
 -- testrun/gtk4/go/app.sngl/pair/1 --
-sha256:579608c7ec3964c5682c007ee7e58308
+sha256:1f1da33f4448d34aa7d0687298f83e69
 {
   "results": [
     {
@@ -184,7 +184,7 @@ sha256:579608c7ec3964c5682c007ee7e58308
   ]
 }
 -- testrun/gtk4/go/unbound.sngl/pair/1 --
-sha256:a8303663514018652448c560de19623c
+sha256:291cc7fda7d9ba5c0b2c128dfecd2f47
 {
   "results": [
     {
@@ -194,7 +194,7 @@ sha256:a8303663514018652448c560de19623c
   ]
 }
 -- testrun/html/none/app.sngl/pair/1 --
-sha256:a2692e40d9e4e45fd50194a3f81935ea
+sha256:d217a196cd0899078443c32e9fcbbddb
 {
   "results": [
     {
@@ -204,7 +204,7 @@ sha256:a2692e40d9e4e45fd50194a3f81935ea
   ]
 }
 -- testrun/html/none/unbound.sngl/pair/1 --
-sha256:d38b9368b1690ed21f8537883185f2dc
+sha256:13f13ea0daf6db9077c0cb9456405621
 {
   "results": [
     {

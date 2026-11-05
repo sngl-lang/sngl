@@ -115,6 +115,9 @@ var alwaysOn = []string{
 	// in pkg.Funcs for any target, because that is what every backend emits
 	// from.
 	"LibFuncs",
+	// Every target keeps a copy's state under its identity, so two copies of
+	// one are told apart on every target.
+	"LoopIdentity",
 	// A match a target cannot emit as one is the if chain on every target;
 	// which matches those are is what Matches and ViewMatches decide.
 	"Match",

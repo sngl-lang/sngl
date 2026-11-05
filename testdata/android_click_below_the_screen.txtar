@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.runtime.key
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
@@ -77,10 +78,12 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
         Text(text = state.log, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         for ((__copy0, i) in listOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29).withIndex()) {
-            Button(onClick = {
-                state.log = i.toString()
-            }, modifier = Modifier.testTag("b").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
-                Text(text = i.toString(), modifier = Modifier)
+            key(i.toString()) {
+                Button(onClick = {
+                    state.log = i.toString()
+                }, modifier = Modifier.testTag("b").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                    Text(text = i.toString(), modifier = Modifier)
+                }
             }
         }
     }
@@ -261,4 +264,4 @@ class MainScreenTest {
 
 }
 -- run/kotlin/android --
-pass sha256:e9a371755a609790a609dfcd716e489f
+pass sha256:a91e1078446053dfd16f083268cd8655

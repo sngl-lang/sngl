@@ -40,7 +40,7 @@ component main node {
 
     vbox {
         for var i, item = items {
-            text(value=string(item), key=string(i))
+            text(value=string(item))
         }
         if flag {
             text(value=string(total), style={color=#ff0000, padding=8px})

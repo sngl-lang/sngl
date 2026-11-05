@@ -62,6 +62,11 @@ type Measurement struct {
 	Rem float64
 }
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -156,6 +161,26 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func RowsOf(m__r0 *Measurement) int {
@@ -322,7 +347,7 @@ func LineCap(height__r0 int, lines int) int {
 
 func (m *Model) __focusLoop0_len() int {
 	var __focusCount int = 0
-	for range m.xs {
+	for range __identified0(m.xs) {
 		__focusCount = (__focusCount + 1)
 	}
 	return __focusCount
@@ -438,10 +463,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 0 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos0 := 0
-				for _, x := range m.xs {
+				for _, x := range __identified0(m.xs) {
 					_ = x
 					if m.__focusLoop0_cursor == __focusPos0 {
-						m.last = x
+						m.last = x.Elem
 						return
 					}
 					__focusPos0++
@@ -488,7 +513,7 @@ func (m *Model) hitClick() {
 			pos int
 		}
 		__focusPos0 := 0
-		for _, x := range m.xs {
+		for _, x := range __identified0(m.xs) {
 			_ = x
 			__at = append(__at, struct {
 				key string
@@ -527,7 +552,7 @@ func (m Model) View() tea.View {
 	__focusPos0 := 0
 	_ = __focusPos0
 	var content_1Items []string
-	for _, x := range m.xs {
+	for _, x := range __identified0(m.xs) {
 		_ = x
 		var content_1Item string
 		content_1ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0)) && m.__focusShown()
@@ -535,7 +560,7 @@ func (m Model) View() tea.View {
 		if content_1ItemFocused {
 			content_1ItemPrefix = ">"
 		}
-		content_1Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_1ItemPrefix + " " + fmt.Sprint(x))
+		content_1Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_1ItemPrefix + " " + fmt.Sprint(x.Elem))
 		content_1Item = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_1Item)
 		__focusPos0++
 		content_1Items = append(content_1Items, content_1Item)
@@ -574,4 +599,4 @@ func TestNothingPicked(t *testing.T) {
 
 func newTestComponent() Model { m := New(); _ = m.View(); return m }
 -- run/go/bubbletea --
-pass sha256:5bd43d82d4f6c6f1be68f8ffd69a5fe9
+pass sha256:289bc7ccf795639be44f7d9e65f16870

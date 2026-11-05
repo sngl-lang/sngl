@@ -119,6 +119,17 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 				}
 			}
 		}
+		// A method mutating the component's state through what it is called
+		// on, `c.names.remove(0)`, writes as an assignment does: on the UI
+		// thread, and waited for, so what renders from it has recomposed --
+		// a keyed loop's copies have moved -- before the next assertion.
+		if writesState(s, surf, compRecvs) {
+			lines := []string{"composeTestRule.runOnUiThread {"}
+			for _, l := range surf.translator().EvalStmt(s) {
+				lines = append(lines, "    "+l)
+			}
+			return append(lines, "}", testIdleLine)
+		}
 		// A package func writing state is a write as a test's own is: run
 		// where Compose recomposes, and waited for, so the effects keyed on
 		// what it wrote have run before the next assertion.
@@ -231,6 +242,15 @@ func writesState(s ir.Stmt, surf TestSurface, compRecvs map[string]bool) bool {
 		target = n.Target
 	case *ir.Toggle:
 		target = n.Target
+	case *ir.CallStmt:
+		c := n.Call
+		if c == nil || c.Func == nil || c.Func.Purity != ir.PurityMutates {
+			return false
+		}
+		target = c.Receiver
+		if target == nil && len(c.Args) > 0 {
+			target = c.Args[0].Value
+		}
 	}
 	for {
 		switch n := target.(type) {

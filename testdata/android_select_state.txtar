@@ -65,6 +65,7 @@ import androidx.compose.material3.Text
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -93,6 +94,11 @@ data class Measurement(
 data class Choice__record__string(
     var label: String = "",
     var value: String = ""
+)
+
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
 )
 
 data class Style(
@@ -334,10 +340,12 @@ fun MainScreen() {
                     }
                 }
             }
-            for ((i, r) in rows.withIndex()) {
-                __select_state0(placeholder = r, options = listOf(Choice__record__string(label = "x", value = "x"), Choice__record__string(label = "y", value = "y")), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, onChange = { v ->
-                    picks[i] = v
-                })
+            for ((i, r) in __identified0(rows).withIndex()) {
+                key(r.id) {
+                    __select_state0(placeholder = r.elem, options = listOf(Choice__record__string(label = "x", value = "x"), Choice__record__string(label = "y", value = "y")), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, onChange = { v ->
+                        picks[i] = v
+                    })
+                }
             }
             if (shown) {
                 Select__string(value = one, options = listOf(Choice__record__string(label = "z", value = "z")), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, onValue = { __value ->
@@ -434,6 +442,21 @@ fun __select_state0(__start_value: String = "", placeholder: String, options: Li
             }
         }
     }
+}
+
+fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_c6a818>()
+    for (__x in __xs) {
+    	var __id = __x
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_c6a818(id = __id, elem = __x))
+    }
+    return __out
 }
 
 fun choiceLabeled__string(options: List<Choice__record__string>, label: String): Int {
@@ -684,4 +707,4 @@ import androidx.compose.ui.focus.focusProperties
 // lambda with a receiver, which SNGL has no way to write.
 fun Modifier.snglUnfocusable(): Modifier = focusProperties { canFocus = false }
 -- run/kotlin/android --
-pass sha256:afde6a818830cd2bcd5466bebbe6f693
+pass sha256:3892ae13c99c8f35d63885e2e4007beb

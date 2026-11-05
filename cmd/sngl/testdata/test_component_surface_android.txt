@@ -188,7 +188,7 @@ sha256:4b6a2621da01206dbfba071073422f13
   ]
 }
 -- testrun/android/kotlin/app.sngl/comp/1 --
-sha256:e257829e9adddd7ee74f77940f111d76
+sha256:4c69aff55a4fc77df12b5a2f631d997c
 {
   "results": [
     {

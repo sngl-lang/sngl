@@ -70,6 +70,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.zIndex
 import androidx.compose.foundation.layout.widthIn
@@ -140,6 +141,11 @@ data class Style(
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.UNSET,
     var listStyleType: SnglListStyle = SnglListStyle.UNSET
+)
+
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
 )
 
 data class Color(
@@ -299,8 +305,10 @@ fun MainScreen() {
             Text(text = "prop", modifier = flexed(styleModifier(Style(margin = Measurement(px = 3.0), borderRadius = Measurement(px = 5.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
             Row(modifier = Modifier.snglFlexible(true)) {
                 Text(text = "row", modifier = styleModifier(Style(flex = 2.0), true).then({ w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }(2.0f)), style = LocalTextStyle.current.merge(TextStyle.Default))
-                for (l in listOf("a", "b")) {
-                    Tally(label = l, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() })
+                for (l in listOf(__anon_id_elem_c6a818(id = "a", elem = "a"), __anon_id_elem_c6a818(id = "b", elem = "b"))) {
+                    key(l.id) {
+                        Tally(label = l.elem, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() })
+                    }
                 }
             }
         }
@@ -516,4 +524,4 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/kotlin/android --
-pass sha256:402fa7f5ba3e5994f8343ee4ef0841f5
+pass sha256:9a87c93c7d6e02647020e61be8fb26ac

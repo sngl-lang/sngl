@@ -307,6 +307,9 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		}
 	case *For:
 		n.Iter = w.expr(n.Iter)
+		if n.Identity != nil {
+			n.Identity = w.expr(n.Identity)
+		}
 		n.Body = w.stmts(n.Body)
 		n.Else = w.stmts(n.Else)
 	case *SlotInst:

@@ -214,8 +214,19 @@ func (cc *irComposeContext) renderFor(s *ir.For) {
 
 	cc.line("%s", cc.kc.ForHead(s, iterExpr))
 	cc.indent++
+	// A loop that tells its copies apart by identity keys each in the
+	// composition, whose state is otherwise its position's.
+	if s.Identity != nil {
+		cc.kc.RequireImport("androidx.compose.runtime.key")
+		cc.line("key(%s) {", cc.kc.EvalExpr(s.Identity))
+		cc.indent++
+	}
 	for _, child := range s.Body {
 		cc.renderStmt(child)
+	}
+	if s.Identity != nil {
+		cc.indent--
+		cc.line("}")
 	}
 	cc.indent--
 	cc.line("%s", cc.kc.BlockEnd())

@@ -72,13 +72,18 @@ import (
 	"os"
 )
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	items          []string
 	__root         *fyne.Container
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
-	__inst0_live   []*RowInstance
+	__inst0_live   map[string]*RowInstance
 	__rendering0   bool
 	__renderAgain0 bool
 
@@ -92,10 +97,30 @@ func New() *Model {
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*RowInstance{}
+	m.__inst0_live = map[string]*RowInstance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -115,30 +140,49 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-				__inst0_next := []*RowInstance{}
-				var __inst0_i int = 0
-				for _, it := range m.items {
+				__inst0_next := map[string]*RowInstance{}
+				__inst0_seen := map[string]int{}
+				for _, it := range __identified0(m.items) {
 					var __n4 *RowInstance
-					if len(m.__inst0_live) > __inst0_i {
-						__n4 = m.__inst0_live[__inst0_i]
-						__n4.SetLabel(it)
-					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+					__key1 := fmt.Sprint(it.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
 						}
-						__n4__new := newRowInstance(m, it)
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n4 = func() *RowInstance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
+						__n4.SetLabel(it.Elem)
+					} else {
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *RowInstance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
+						}
+						__n4__new := newRowInstance(m, it.Elem)
 						__n4 = __n4__new
 					}
-					__inst0_next = append(__inst0_next, __n4)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
 					fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
 					m.__slot0 = append(m.__slot0, __n4__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -148,11 +192,10 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*RowInstance{}
+	m.__inst0_live = map[string]*RowInstance{}
 }
 
 func (m *Model) Items() []string {
@@ -318,13 +361,18 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	items          []string
 	__root         gtk4rt.Handle
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
-	__inst0_live   []*RowInstance
+	__inst0_live   map[string]*RowInstance
 	__rendering0   bool
 	__renderAgain0 bool
 	__named_entry  gtk4rt.Handle
@@ -338,10 +386,30 @@ func New() *Model {
 	m.__root = nil
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*RowInstance{}
+	m.__inst0_live = map[string]*RowInstance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -361,30 +429,49 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-				__inst0_next := []*RowInstance{}
-				var __inst0_i int = 0
-				for _, it := range m.items {
+				__inst0_next := map[string]*RowInstance{}
+				__inst0_seen := map[string]int{}
+				for _, it := range __identified0(m.items) {
 					var __n3 *RowInstance
-					if len(m.__inst0_live) > __inst0_i {
-						__n3 = m.__inst0_live[__inst0_i]
-						__n3.SetLabel(it)
-					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+					__key1 := fmt.Sprint(it.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
 						}
-						__n3__new := newRowInstance(m, it)
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n3 = func() *RowInstance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
+						__n3.SetLabel(it.Elem)
+					} else {
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *RowInstance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
+						}
+						__n3__new := newRowInstance(m, it.Elem)
 						__n3 = __n3__new
 					}
-					__inst0_next = append(__inst0_next, __n3)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n3
 					__n3__el := __n3.Root
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
 					m.__slot0 = append(m.__slot0, __n3__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -394,11 +481,10 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*RowInstance{}
+	m.__inst0_live = map[string]*RowInstance{}
 }
 
 // RowInstance is one live instance of the Row component.
@@ -601,6 +687,6 @@ func (m *Model) entryChange(v string) {
 	gtk4rt.Emit(m.__named_entry, "activate")
 }
 -- run/go/fyne --
-pass sha256:e6c59406604ae7a0d07bcff2c4e7b444
+pass sha256:9c06d579cccfc61f5920b29c15ce8b76
 -- run/go/gtk4 --
-pass sha256:a9799eee084e65178da826f19d8efde7
+pass sha256:87460e9e98073156b1ca3de0527bca2b

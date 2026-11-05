@@ -79,6 +79,11 @@ type Measurement struct {
 	Rem float64
 }
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -133,8 +138,6 @@ type Style struct {
 	ListStyleType  string
 }
 
-var two []string = []string{"a", "b"}
-
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -143,7 +146,6 @@ type Model struct {
 // modelState is what every copy of a Model shares.
 type modelState struct {
 	visible__inst0 bool
-	two            []string
 
 	width, height int
 }
@@ -152,7 +154,6 @@ type modelState struct {
 func New() Model {
 	m := Model{&modelState{}}
 	m.visible__inst0 = true
-	m.two = []string{"a", "b"}
 	return m
 }
 
@@ -377,10 +378,10 @@ func (m Model) View() tea.View {
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		var content_1Items []string
-		for _, y := range m.two {
+		for _, y := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "a", Elem: "a"}, __anon_id_elem_c6a818{Id: "b", Elem: "b"}} {
 			_ = y
 			var content_1Item string
-			content_1Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(y))
+			content_1Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(y.Elem))
 			content_1Items = append(content_1Items, content_1Item)
 		}
 		content_1 = tui.Spaced(false, lipgloss.Left, 0, content_1Items...)
@@ -429,6 +430,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b29784e5c54033040c786e74d7a324d5
+pass sha256:32a5d725e19eef9f5fc08ba087c312ff
 -- run/none/html --
 pass sha256:3a006014a174cf6a0dc9a0dcbcfdedc5

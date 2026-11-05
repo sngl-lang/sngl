@@ -60,6 +60,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.key
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import kotlinx.coroutines.delay
@@ -70,6 +71,11 @@ data class Tab__record(
     var label: String = "",
     var disabled: Boolean = false,
     var __id: Int = 0
+)
+
+data class __anon_id_elem_cdfd47(
+    var id: String = "",
+    var elem: Int = 0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -110,11 +116,13 @@ fun MainScreen() {
                     for ((k, t) in listOf(Tab__record(label = "One")).withIndex()) {
                         if ((k == p)) {
                             if ((t.__id == 0)) {
-                                for ((i, n) in ticks__inst0.withIndex()) {
-                                    __timer_state1(interval = 20L, enabled = true, onTick = {
-                                        ticks__inst0[i] = (ticks__inst0[i] + 1)
-                                    })
-                                    Text(text = n.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                                for ((i, n) in __identified0(ticks__inst0).withIndex()) {
+                                    key(n.id) {
+                                        __timer_state1(interval = 20L, enabled = true, onTick = {
+                                            ticks__inst0[i] = (ticks__inst0[i] + 1)
+                                        })
+                                        Text(text = n.elem.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                                    }
                                 }
                             }
                         }
@@ -136,6 +144,21 @@ fun __timer_state1(interval: Long, enabled: Boolean, onTick: (() -> Unit)? = nul
             __tick1.value()
         }
     }
+}
+
+fun __identified0(__xs: List<Int>): List<__anon_id_elem_cdfd47> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_cdfd47>()
+    for (__x in __xs) {
+    	var __id = __x.toString()
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_cdfd47(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/SnglFlexible.kt --
 package test.sngl.app
@@ -313,4 +336,4 @@ fun SnglPager(
     ) { p -> page(p) }
 }
 -- run/kotlin/android --
-pass sha256:f2435cc48cce25844b5bc17fe03a8580
+pass sha256:8b99659ab348422a493e0e50dcdc0752

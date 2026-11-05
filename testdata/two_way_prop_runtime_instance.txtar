@@ -59,6 +59,11 @@ import (
 	"os"
 )
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	items          []string
@@ -66,7 +71,7 @@ type Model struct {
 	visible__inst0 bool
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
-	__inst0_live   []*CounterInstance
+	__inst0_live   map[string]*CounterInstance
 	__rendering0   bool
 	__renderAgain0 bool
 
@@ -85,10 +90,30 @@ func New() *Model {
 	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*CounterInstance{}
+	m.__inst0_live = map[string]*CounterInstance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -108,44 +133,63 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-				__inst0_next := []*CounterInstance{}
-				var __inst0_i int = 0
-				for _, it := range m.items {
+				__inst0_next := map[string]*CounterInstance{}
+				__inst0_seen := map[string]int{}
+				for _, it := range __identified0(m.items) {
 					var __n3 *CounterInstance
-					if len(m.__inst0_live) > __inst0_i {
-						__n3 = m.__inst0_live[__inst0_i]
+					__key1 := fmt.Sprint(it.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n3 = func() *CounterInstance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
 						__n3.Set__on_n(func(__n int) {
 							m.total = __n
 							m.__n2.SetText(("total " + fmt.Sprint(m.total)))
-							for __inst0_live_ui, _ := range m.__inst0_live {
-								m.__inst0_live[__inst0_live_ui].SetN(m.total)
+							for _, __inst0_live_uv := range m.__inst0_live {
+								__inst0_live_uv.SetN(m.total)
 							}
 						})
 						__n3.SetN(m.total)
-						__n3.SetLabel(it)
+						__n3.SetLabel(it.Elem)
 					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *CounterInstance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
-						__n3__new := newCounterInstance(m, m.total, it, func(__n int) {
+						__n3__new := newCounterInstance(m, m.total, it.Elem, func(__n int) {
 							m.total = __n
 							m.__n2.SetText(("total " + fmt.Sprint(m.total)))
-							for __inst0_live_ui, _ := range m.__inst0_live {
-								m.__inst0_live[__inst0_live_ui].SetN(m.total)
+							for _, __inst0_live_uv := range m.__inst0_live {
+								__inst0_live_uv.SetN(m.total)
 							}
 						})
 						__n3 = __n3__new
 					}
-					__inst0_next = append(__inst0_next, __n3)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n3
 					__n3__el := __n3.Root
 					fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
 					m.__slot0 = append(m.__slot0, __n3__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -155,11 +199,10 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*CounterInstance{}
+	m.__inst0_live = map[string]*CounterInstance{}
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -305,6 +348,11 @@ import (
 	"fmt"
 )
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	items          []string
@@ -312,7 +360,7 @@ type Model struct {
 	visible__inst0 bool
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
-	__inst0_live   []*CounterInstance
+	__inst0_live   map[string]*CounterInstance
 	__rendering0   bool
 	__renderAgain0 bool
 	__n1           gtk4rt.Handle
@@ -331,10 +379,30 @@ func New() *Model {
 	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*CounterInstance{}
+	m.__inst0_live = map[string]*CounterInstance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -354,44 +422,63 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-				__inst0_next := []*CounterInstance{}
-				var __inst0_i int = 0
-				for _, it := range m.items {
+				__inst0_next := map[string]*CounterInstance{}
+				__inst0_seen := map[string]int{}
+				for _, it := range __identified0(m.items) {
 					var __n3 *CounterInstance
-					if len(m.__inst0_live) > __inst0_i {
-						__n3 = m.__inst0_live[__inst0_i]
+					__key1 := fmt.Sprint(it.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n3 = func() *CounterInstance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
 						__n3.Set__on_n(func(__n int) {
 							m.total = __n
 							gtk4rt.LabelSetLabel(m.__n2, ("total " + fmt.Sprint(m.total)))
-							for __inst0_live_ui, _ := range m.__inst0_live {
-								m.__inst0_live[__inst0_live_ui].SetN(m.total)
+							for _, __inst0_live_uv := range m.__inst0_live {
+								__inst0_live_uv.SetN(m.total)
 							}
 						})
 						__n3.SetN(m.total)
-						__n3.SetLabel(it)
+						__n3.SetLabel(it.Elem)
 					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *CounterInstance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
-						__n3__new := newCounterInstance(m, m.total, it, func(__n int) {
+						__n3__new := newCounterInstance(m, m.total, it.Elem, func(__n int) {
 							m.total = __n
 							gtk4rt.LabelSetLabel(m.__n2, ("total " + fmt.Sprint(m.total)))
-							for __inst0_live_ui, _ := range m.__inst0_live {
-								m.__inst0_live[__inst0_live_ui].SetN(m.total)
+							for _, __inst0_live_uv := range m.__inst0_live {
+								__inst0_live_uv.SetN(m.total)
 							}
 						})
 						__n3 = __n3__new
 					}
-					__inst0_next = append(__inst0_next, __n3)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n3
 					__n3__el := __n3.Root
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
 					m.__slot0 = append(m.__slot0, __n3__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -401,11 +488,10 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*CounterInstance{}
+	m.__inst0_live = map[string]*CounterInstance{}
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -567,14 +653,31 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { items: ["a"], total: 0, visible__inst0: true };
-  function __snglTeardown() {
-    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
       ;
-      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
-      __inst1_live[__inst1_live_dj].__destroy();
+      let __id = __x;
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
     }
     ;
-    __inst1_live = [];
+    return __out;
+  }
+  function __snglTeardown() {
+    for (const [__inst1_live_dk, __inst1_live_dv] of __inst1_live.entries()) {
+      ;
+      __inst1_live_dv.__destroy();
+    }
+    ;
+    __inst1_live = /* @__PURE__ */ new Map([]);
   }
   function __cf_Counter(props) {
     const __root = document.createElement("div");
@@ -621,7 +724,7 @@ body { font-family: system-ui, sans-serif; }
     };
   }
   var __slot0 = [];
-  var __inst1_live = [];
+  var __inst1_live = /* @__PURE__ */ new Map([]);
   var __rendering0 = false;
   var __renderAgain0 = false;
   function __renderSlot0(parent) {
@@ -636,40 +739,45 @@ body { font-family: system-ui, sans-serif; }
           let __place0_prev = __slot0;
           let __place0_i = 0;
           __slot0 = [];
-          let __inst1_next = [];
-          let __inst1_i = 0;
-          for (const it of state.items) {
+          let __inst1_next = /* @__PURE__ */ new Map([]);
+          let __inst1_seen = /* @__PURE__ */ new Map([]);
+          for (const it of __identified0(state.items)) {
             let __n3 = null;
-            if (__inst1_live.length > __inst1_i) {
-              __n3 = __inst1_live[__inst1_i];
+            let __key2 = String(it.id);
+            let __key2_n = __inst1_seen.has(__key2) ? __inst1_seen.get(__key2) : 0;
+            __inst1_seen.set(__key2, __key2_n + 1);
+            if (__key2_n > 0) {
+              __key2 = __key2 + "#" + String(__key2_n);
+            }
+            if (__inst1_live.has(__key2)) {
+              __n3 = __inst1_live.has(__key2) ? __inst1_live.get(__key2) : null;
               __n3.__set___on_n((__n) => {
                 state.total = __n;
                 __n2.textContent = "total " + String(state.total);
-                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                for (const [__inst1_live_uk, __inst1_live_uv] of __inst1_live.entries()) {
                   ;
-                  __inst1_live[__inst1_live_ui].__set_n(state.total);
+                  __inst1_live_uv.__set_n(state.total);
                 }
                 ;
               });
               __n3.__set_n(state.total);
-              __n3.__set_label(it);
+              __n3.__set_label(it.elem);
             } else {
-              if (__inst1_live.length > __inst1_i) {
-                __inst1_live[__inst1_i].__destroy();
+              if (__inst1_live.has(__key2)) {
+                (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n3__new = __cf_Counter({ n: state.total, label: it, __on_n: (__n) => {
+              let __n3__new = __cf_Counter({ n: state.total, label: it.elem, __on_n: (__n) => {
                 state.total = __n;
                 __n2.textContent = "total " + String(state.total);
-                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                for (const [__inst1_live_uk, __inst1_live_uv] of __inst1_live.entries()) {
                   ;
-                  __inst1_live[__inst1_live_ui].__set_n(state.total);
+                  __inst1_live_uv.__set_n(state.total);
                 }
                 ;
               } });
               __n3 = __n3__new;
             }
-            __inst1_next.push(__n3);
-            __inst1_i = __inst1_i + 1;
+            __inst1_next.set(__key2, __n3);
             let __n3__el = __n3.__root;
             let __place0_i_ref0 = null;
             if (__place0_i < __place0_prev.length) {
@@ -682,10 +790,9 @@ body { font-family: system-ui, sans-serif; }
             }
             __slot0.push(__n3__el);
           }
-          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-            if (__inst1_i_j >= __inst1_i) {
-              __inst1_live[__inst1_i_j].__destroy();
+          for (const [__inst1_live_k, __inst1_live_v] of __inst1_live.entries()) {
+            if (!__inst1_next.has(__inst1_live_k)) {
+              __inst1_live_v.__destroy();
             }
           }
           __inst1_live = __inst1_next;
@@ -720,8 +827,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:f1a9b588cd7f884ae529d6c40057a934
+pass sha256:361b14f50e259d1a68ad106b23d6d16d
 -- run/go/gtk4 --
-pass sha256:74aa55cf2ae0c2f20b34d0325d0d0647
+pass sha256:0105714a15b9ed07e642ab1ab29b17ab
 -- run/none/html --
-pass sha256:490b4b5c0cf84d38d229745a0cb4f478
+pass sha256:2739eae3274ecffcbc9b58348b280fba

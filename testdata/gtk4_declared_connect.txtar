@@ -301,6 +301,11 @@ type Measurement struct {
 	Rem float64
 }
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	count          int
@@ -443,11 +448,11 @@ func (m *Model) buildWidgetTree() {
 	m.__n4 = (*C.GtkSwitch)(unsafe.Pointer(gtk4rt.New("GtkSwitch")))
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n4)), "notify::active", m.__n4_notifyActive_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n4)))
-	for _, name := range []string{"a", "b"} {
+	for _, name := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "a", Elem: "a"}, __anon_id_elem_c6a818{Id: "b", Elem: "b"}} {
 		m.__n5 = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
-		gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n5)), name)
+		gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n5)), name.Elem)
 		gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n5)), "clicked", func() {
-			m.picked = name
+			m.picked = name.Elem
 		})
 		gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n5)))
 	}
@@ -465,4 +470,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:8c32252dfbf069df13bd41ccc89d8162
+pass sha256:918bd752652fd981099a8c0529000404

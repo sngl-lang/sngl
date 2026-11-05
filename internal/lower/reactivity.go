@@ -236,6 +236,10 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
 	}
+	for _, comp := range pkg.Components {
+		keyLoopInstances(comp.Stmts, nil)
+	}
+	keyLoopInstances(pkg.Body, nil)
 	if !caps.InlineSlots {
 		for _, comp := range pkg.Components {
 			comp.Stmts = st.slotFlows(comp.Stmts)
@@ -887,6 +891,28 @@ func (st *reactivityState) addLiveDep(v *ir.Var, p liveProp) {
 		}
 	}
 	st.reverseLive[v] = append(st.reverseLive[v], p)
+}
+
+// keyLoopInstances keys each component built at run time under a loop that
+// tells its copies apart by identity (ir.For.Identity) by the copy it is in,
+// so the slot holding the instances keeps each with its copy rather than its
+// position: a list that drops its first element hands every later row its own
+// instance, not the one before it.
+func keyLoopInstances(stmts []ir.Stmt, loops []*ir.For) {
+	for _, s := range stmts {
+		if fs, ok := s.(*ir.For); ok {
+			keyLoopInstances(fs.Body, append(slices.Clip(loops), fs))
+			keyLoopInstances(fs.Else, loops)
+			continue
+		}
+		if n, ok := s.(*ir.NodeInst); ok && n.Key == nil && Keyed(loops) &&
+			n.Component != nil && n.Component.RuntimeInstance && hasRealComponentBody(n.Component) {
+			n.Key = CopyIdentity(loops)
+		}
+		for _, b := range ir.ViewBlocks(s) {
+			keyLoopInstances(*b, loops)
+		}
+	}
 }
 
 // siteInstance is the registry an instantiation in a slot body keeps, made
@@ -2201,6 +2227,7 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 					KeySym:   sx.KeySym,
 					ValueSym: sx.ValueSym,
 					Iter:     sx.Iter,
+					Identity: sx.Identity,
 					ElemType: sx.ElemType,
 					AST:      sx.AST,
 					Body:     emitStmts(sx.Body),
@@ -2231,6 +2258,7 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 			KeySym:   loop.KeySym,
 			ValueSym: loop.ValueSym,
 			Iter:     loop.Iter,
+			Identity: loop.Identity,
 			ElemType: loop.ElemType,
 			AST:      loop.AST,
 			Body:     emitStmts(origBody),

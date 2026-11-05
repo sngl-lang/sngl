@@ -135,7 +135,7 @@ sha256:c43c0be9742994c34460ac3bf60ff4bf
   ]
 }
 -- testrun/android/kotlin/app.sngl/first/1 --
-sha256:17851067ffc43b802c22f745a41973df
+sha256:ebd91dceab73aeab86d23b088aa957ca
 {
   "results": [
     {
@@ -145,7 +145,7 @@ sha256:17851067ffc43b802c22f745a41973df
   ]
 }
 -- testrun/android/kotlin/app.sngl/split/1 --
-sha256:3727bd7423dfa39677d8b5594a0cd9d3
+sha256:5757fe73bd49039f843f96b99c6bee8c
 {
   "results": [
     {
@@ -173,7 +173,7 @@ sha256:05a9a879ae5bf2d011255afd3f75d096
   ]
 }
 -- testrun/bubbletea/go/app.sngl/first/1 --
-sha256:cd94d7f217ea4a41a08ca6d69e56f7d1
+sha256:82f218d7c84a69b6ae87b2cf0927cc31
 {
   "results": [
     {
@@ -183,7 +183,7 @@ sha256:cd94d7f217ea4a41a08ca6d69e56f7d1
   ]
 }
 -- testrun/bubbletea/go/app.sngl/split/1 --
-sha256:facb0f7a0de7d78149f490b68067db8d
+sha256:dfd4c6f47d3b1fd54d203832ee182116
 {
   "results": [
     {
@@ -211,7 +211,7 @@ sha256:f816762757a4f710dfa1d0cabb59d976
   ]
 }
 -- testrun/fyne/go/app.sngl/first/1 --
-sha256:6e80cc61cd745f18c6cfbff4c234afd3
+sha256:9b67e6c622c31dcffc52b50cfbec459d
 {
   "results": [
     {
@@ -221,7 +221,7 @@ sha256:6e80cc61cd745f18c6cfbff4c234afd3
   ]
 }
 -- testrun/fyne/go/app.sngl/split/1 --
-sha256:00f9b4a5ff214ecf7dde5697fd2ec63a
+sha256:518f035f8dfe9a07990d5038a9825fb1
 {
   "results": [
     {
@@ -249,7 +249,7 @@ sha256:699d994338ad95e30a177419bcd83b86
   ]
 }
 -- testrun/gtk4/go/app.sngl/first/1 --
-sha256:687ddfefa5318a197dca4ac7e6c3eb9e
+sha256:35bad4e3ecd14f4c029f04622b4f4766
 {
   "results": [
     {
@@ -259,7 +259,7 @@ sha256:687ddfefa5318a197dca4ac7e6c3eb9e
   ]
 }
 -- testrun/gtk4/go/app.sngl/split/1 --
-sha256:329f4f334cb1d40288211a2de3090ae2
+sha256:5318afdbc092b111b15e344ee6e680f4
 {
   "results": [
     {
@@ -287,7 +287,7 @@ sha256:1aaa38fd83236f64527b248a1bbee3c5
   ]
 }
 -- testrun/html/none/app.sngl/first/1 --
-sha256:f41c1b0aef023ba38a0cba53dbbc95e2
+sha256:6caf9251360049d749aa25fa8161280a
 {
   "results": [
     {
@@ -297,7 +297,7 @@ sha256:f41c1b0aef023ba38a0cba53dbbc95e2
   ]
 }
 -- testrun/html/none/app.sngl/split/1 --
-sha256:89f31a85892786e5af8ff4abf170619a
+sha256:73044264b99d95e53b3c2ab73044e924
 {
   "results": [
     {

@@ -53,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
@@ -62,6 +63,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
+
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -82,13 +88,15 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
-        for ((__copy0, it) in state.items.withIndex()) {
-            __checkbox_state0(label = it, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __copy = __copy0.toString(), onChange = { _ ->
-                state.log = it
-            })
-            __checkbox_state1(label = it, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __copy = __copy0.toString(), onChange = { _ ->
-                state.log = (it + "!")
-            })
+        for ((__copy0, it) in __identified0(state.items).withIndex()) {
+            key(it.id) {
+                __checkbox_state0(label = it.elem, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __copy = __copy0.toString(), onChange = { _ ->
+                    state.log = it.elem
+                })
+                __checkbox_state1(label = it.elem, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __copy = __copy0.toString(), onChange = { _ ->
+                    state.log = (it.elem + "!")
+                })
+            }
         }
         Text(text = state.log, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     }
@@ -122,6 +130,21 @@ fun __checkbox_state1(__start_checked: Boolean = false, label: String, __ctx_fle
             Text(text = label, modifier = Modifier)
         }
     }
+}
+
+fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_c6a818>()
+    for (__x in __xs) {
+    	var __id = __x
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_c6a818(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
 package test.sngl.app
@@ -301,4 +324,4 @@ class MainScreenTest {
 
 }
 -- run/kotlin/android --
-pass sha256:42e30d3486ec49a4c1afe38c9511fc36
+pass sha256:39060d735438747ac86c0d39c0f7b9ae

@@ -4119,6 +4119,10 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			// its body.
 			elseBody = c.checkScopeBlockIR(&x.Else, x.Key, x.Value)
 		}
+		var identity ir.Expr
+		if c.funcDepth == 0 {
+			identity = c.loopIdentity(x, iter, elemType, keySym, valueSym, elemRef)
+		}
 		c.popScope()
 		// readonly[T] is the checker's: every read and write of the variables
 		// has been checked, so nothing after the check meets one.
@@ -4127,7 +4131,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				lv.Type = lv.Type.Elems[0]
 			}
 		}
-		loop := &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, RefElem: elemRef}
+		loop := &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, RefElem: elemRef, Identity: identity}
 		c.checkViewForElse(x.Pos, loop, iter)
 		return loop
 	case *ast.VisualNode:
@@ -4766,7 +4770,6 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	}
 	c.ownArgsID = vn.ID
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, spec)
-	key := c.keyArgExpr(vn.Args)
 	c.ownArgsID = outerArgsID
 
 	emitName := name
@@ -4785,7 +4788,6 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 		Slots:     slotContent,
 		ID:        vn.ID,
 		Handle:    c.nodeHandleSym(vn.ID),
-		Key:       key,
 	}
 	node.TypeArgs = c.specArgs[spec]
 	node.WrittenTypeArgs = writtenTypes
@@ -4978,8 +4980,8 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 	for _, a := range vn.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
-			if arg.Name == "" || arg.Name == "key" {
-				continue // positional args and key (handled by loop diffing)
+			if arg.Name == "" {
+				continue
 			}
 			// Strip : prefix for bidirectional binding lookup.
 			name := arg.Name
@@ -4999,19 +5001,6 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 			}
 		}
 	}
-}
-
-// keyArgExpr returns the checked `key=` argument, the list-diffing key for a
-// node in a loop. Every ir.NodeInst constructor calls this: the key is written
-// the same way whichever form the node takes, so reading it in only some of
-// them drops it silently.
-func (c *checker) keyArgExpr(args ast.ArgList) ir.Expr {
-	for _, a := range args.Args {
-		if arg, ok := a.(ast.Arg); ok && arg.Name == "key" && arg.Value != nil {
-			return c.checkExpr(arg.Value)
-		}
-	}
-	return nil
 }
 
 // checkAndSplitArgs checks values and splits a checked ArgList into IR property
@@ -5069,9 +5058,6 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	seenNamed := false
 	for _, a := range args.Args {
 		if arg, ok := a.(ast.Arg); ok {
-			if arg.Name == "key" {
-				continue
-			}
 			if arg.Name != "" && !strings.HasPrefix(arg.Name, ":") {
 				seenNamed = true
 			} else if arg.Name == "" && seenNamed && arg.Value != nil {
@@ -5087,9 +5073,6 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	for i, a := range args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
-			if arg.Name == "key" {
-				continue // handled separately by checkVisualNodeIR
-			}
 			if arg.Value != nil {
 				if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 					seenNamed = true
@@ -5312,7 +5295,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 	seenNamed := false
 	for _, a := range call.Args.Args {
 		if arg, ok := a.(ast.Arg); ok {
-			if arg.Name != "" && arg.Name != "key" {
+			if arg.Name != "" {
 				seenNamed = true
 			} else if arg.Name == "" && seenNamed && arg.Value != nil {
 				if _, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
@@ -5329,9 +5312,6 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 	for _, a := range call.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
-			if arg.Name == "key" {
-				continue // handled by loop diffing
-			}
 			if arg.Value != nil {
 				if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 					seenNamed = true
@@ -5434,7 +5414,7 @@ func (c *checker) validateCallStmtComponentArgs(call *ast.CallExpr, comp *ir.Com
 	for _, a := range call.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
-			if arg.Name == "" || arg.Name == "key" {
+			if arg.Name == "" {
 				continue
 			}
 			propName := arg.Name
@@ -5695,6 +5675,82 @@ func (c *checker) checkViewMapFor(pos ast.Pos, iter *ir.Type) {
 //     range has bounds; a pull sequence answers only by consuming the element
 //     that would have been the answer.
 //   - It must survive a second evaluation, being written once and read twice.
+//
+// loopIdentity is what tells one copy of a view loop from another: the
+// element's `key()` where its type declares one, the element itself where it
+// is a scalar or an enum carrying no payload, and otherwise nil, the copy's
+// position. An element bound by `&` is not its own identity, since
+// a write through it would make the copy another; its `key()` still is.
+func (c *checker) loopIdentity(x *ast.ForStmt, iter, elemType *ir.Type, keySym, valueSym *ir.LoopVar, elemRef bool) ir.Expr {
+	if iter == nil || keySym == nil {
+		return nil
+	}
+	read := func(lv *ir.LoopVar, t *ir.Type) *ir.Ident {
+		return &ir.Ident{Name: lv.Name, Type: t, Sym: lv}
+	}
+	// A map is no view loop's (checkViewMapFor), so its copies need none.
+	if iter.Kind == ir.TypeMap {
+		return nil
+	}
+	elem := keySym
+	if valueSym != nil {
+		elem = valueSym
+	}
+	if elemType == nil || elemType.Kind == ir.TypeInvalid {
+		return nil
+	}
+	if fn, _, ok := c.resolveMethod(elemType, "key"); ok && fn != nil && !ir.IsConstraintMethod(fn) {
+		var recv ir.Expr = read(elem, elemType)
+		if elemRef {
+			recv = read(elem, ir.RefOf(elemType))
+		}
+		sel := &ast.SelectExpr{Pos: x.Pos, Operand: &ast.IdentExpr{Pos: x.Pos, Name: elem.Name}, Field: "key"}
+		call := c.inferMethodCallOn(sel, &ast.CallExpr{Pos: x.Pos, Func: sel}, recv, false)
+		t := exprType(call)
+		if t == nil || t.Kind == ir.TypeInvalid {
+			return nil
+		}
+		if bad := ir.RebuildIncomparable(t); bad != "" {
+			c.error(x.Pos, "%s.key() is what tells one copy of this loop from another, so it must compare alike on every target; %s does not", elemType, bad)
+			return nil
+		}
+		if _, _, ok := c.resolveMethod(t, "format"); !ok {
+			c.error(x.Pos, "%s.key() is what tells one copy of this loop from another, which a target keeps as a string; %s has no format method", elemType, t)
+			return nil
+		}
+		return c.identityString(x, elem.Name+".key()", call)
+	}
+	if elemRef || !implicitIdentity(elemType) {
+		return nil
+	}
+	return c.identityString(x, elem.Name, read(elem, elemType))
+}
+
+// identityString is a loop's identity as the string each target keeps it
+// under: what its format writes, as `"{v}"` would.
+func (c *checker) identityString(x *ast.ForStmt, spelled string, v ir.Expr) ir.Expr {
+	if t := exprType(v); t != nil && t.Kind == ir.TypeString {
+		return v
+	}
+	sel := &ast.SelectExpr{Pos: x.Pos, Operand: &ast.IdentExpr{Pos: x.Pos, Name: spelled}, Field: "format"}
+	return c.inferMethodCallOn(sel, &ast.CallExpr{Pos: x.Pos, Func: sel}, v, false)
+}
+
+// implicitIdentity reports whether a value of t is its own identity in a loop:
+// a scalar or an enum carrying no payload, which compares alike everywhere and
+// formats as itself. A struct is not, though it compares: two values of one
+// are equal or not by every field, and a row whose `done` flipped would be
+// another row.
+func implicitIdentity(t *ir.Type) bool {
+	switch t.Kind {
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString, ir.TypeUnit:
+		return true
+	case ir.TypeEnum:
+		return ir.PayloadEnum(t) == nil
+	}
+	return false
+}
+
 func (c *checker) checkViewForElse(pos ast.Pos, loop *ir.For, iter *ir.Type) {
 	if c.funcDepth > 0 || len(loop.Else) == 0 || iter == nil {
 		return

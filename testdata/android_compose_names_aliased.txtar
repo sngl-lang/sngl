@@ -101,6 +101,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle as TextStyle_2
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.window.Dialog as Dialog_2
 import androidx.compose.material3.Surface
@@ -134,6 +135,11 @@ data class Alignment(
 
 data class TextStyle(
     var size: Int = 0
+)
+
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
 )
 
 data class Style(
@@ -352,10 +358,12 @@ fun MainScreen() {
                 }
                 Text(text = "docs", modifier = Modifier_2, style = LocalTextStyle.current.merge(TextStyle_2.Default), color = MaterialTheme.colorScheme.primary)
                 Text(text = ((a.x.toString() + " ") + t.size.toString()), modifier = Modifier_2, style = LocalTextStyle.current.merge(TextStyle_2.Default))
-                for (l in listOf("a", "b")) {
-                    Dialog(__ctx_flexShare = { w: Float -> Modifier_2.weight(w).fillMaxWidth().snglFlexed() }, content = {
-                        Modifier(label = l, __ctx_flexShare = { w: Float -> Modifier_2.fillMaxSize() })
-                    })
+                for (l in listOf(__anon_id_elem_c6a818(id = "a", elem = "a"), __anon_id_elem_c6a818(id = "b", elem = "b"))) {
+                    key(l.id) {
+                        Dialog(__ctx_flexShare = { w: Float -> Modifier_2.weight(w).fillMaxWidth().snglFlexed() }, content = {
+                            Modifier(label = l.elem, __ctx_flexShare = { w: Float -> Modifier_2.fillMaxSize() })
+                        })
+                    }
                 }
                 if (shown) {
                     Dialog_2(onDismissRequest = {}) {
@@ -641,4 +649,4 @@ fun SnglScroll(
     Column(scrolled.onSizeChanged { extent = if (sideways) it.width else it.height }.snglFlexible(false), content = content)
 }
 -- run/kotlin/android --
-pass sha256:cdb91fb267c0ebb37cc18639859cb034
+pass sha256:6523d966bdacbd7dd4bfd1a5ba877946

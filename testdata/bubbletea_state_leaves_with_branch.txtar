@@ -123,6 +123,16 @@ type File struct {
 	Fd int
 }
 
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
+}
+
+type __anon_copy_v0_2d5b73 struct {
+	Copy string
+	V0   string
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -197,55 +207,71 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
-	log                 string
-	on                  bool
-	at                  int
-	xs                  []int
-	n                   int
-	k__inst0            int
-	f__inst0            File
-	k__inst1            int
-	f__inst1            File
-	k__inst2            map[string]int
-	f__inst2            map[string]File
-	__effect0_live      []bool
-	__effect0_desired   []bool
-	__effect1_live      []bool
-	__effect1_desired   []bool
-	__effect2_live      []bool
-	__effect2_desired   []bool
-	__effect3_live      []bool
-	__effect3_desired   []bool
-	__effect4_live      []bool
-	__effect4_desired   []bool
-	__effect5_live      []bool
-	__effect5_desired   []bool
-	__effect6_live      []string
-	__effect6_desired   []string
-	__effect6_paths     []string
-	__effect6_livePaths []string
-	__effect6_pathAt    map[string]int
-	__effect6_liveAt    map[string]int
-	__effect7_key       string
-	__effect7_live      []string
-	__effect7_desired   []string
-	__effect7_paths     []string
-	__effect7_livePaths []string
-	__effect7_pathAt    map[string]int
-	__effect7_liveAt    map[string]int
-	__effect8_key       string
-	__effect8_live      []string
-	__effect8_desired   []string
-	__effect8_paths     []string
-	__effect8_livePaths []string
-	__effect8_pathAt    map[string]int
-	__effect8_liveAt    map[string]int
-	__effects0_settling bool
-	__effects0_pending  bool
-	__effects0_torn     bool
-	__effects0_steps    int
-	__focusID           int
-	__focusLoop2_cursor int
+	log                  string
+	on                   bool
+	at                   int
+	xs                   []int
+	n                    int
+	k__inst0             int
+	f__inst0             File
+	k__inst1             int
+	f__inst1             File
+	k__inst2             map[string]int
+	f__inst2             map[string]File
+	__copied__inst0      map[string]__anon_copy_v0_2d5b73
+	__copied__inst1      map[string]__anon_copy_v0_2d5b73
+	__effect0_live       []bool
+	__effect0_desired    []bool
+	__effect1_live       []bool
+	__effect1_desired    []bool
+	__effect2_live       []bool
+	__effect2_desired    []bool
+	__effect3_live       []bool
+	__effect3_desired    []bool
+	__effect4_live       []bool
+	__effect4_desired    []bool
+	__effect5_live       []bool
+	__effect5_desired    []bool
+	__effect6_live       []string
+	__effect6_desired    []string
+	__effect6_paths      []string
+	__effect6_livePaths  []string
+	__effect6_pathAt     map[string]int
+	__effect6_liveAt     map[string]int
+	__effect7_key        __anon_copy_v0_2d5b73
+	__effect7_live       []__anon_copy_v0_2d5b73
+	__effect7_desired    []__anon_copy_v0_2d5b73
+	__effect7_paths      []string
+	__effect7_livePaths  []string
+	__effect7_pathAt     map[string]int
+	__effect7_liveAt     map[string]int
+	__effect8_key        string
+	__effect8_live       []string
+	__effect8_desired    []string
+	__effect8_paths      []string
+	__effect8_livePaths  []string
+	__effect8_pathAt     map[string]int
+	__effect8_liveAt     map[string]int
+	__effect9_key        __anon_copy_v0_2d5b73
+	__effect9_live       []__anon_copy_v0_2d5b73
+	__effect9_desired    []__anon_copy_v0_2d5b73
+	__effect9_paths      []string
+	__effect9_livePaths  []string
+	__effect9_pathAt     map[string]int
+	__effect9_liveAt     map[string]int
+	__effect10_key       string
+	__effect10_live      []string
+	__effect10_desired   []string
+	__effect10_paths     []string
+	__effect10_livePaths []string
+	__effect10_pathAt    map[string]int
+	__effect10_liveAt    map[string]int
+	__effects0_settling  bool
+	__effects0_pending   bool
+	__effects0_torn      bool
+	__effects0_steps     int
+	__focusID            int
+	__focusLoop2_cursor  int
 
 	__clicks      tui.Clicks[snglStop]
 	__pressing    bool
@@ -266,6 +292,8 @@ func New() Model {
 	m.f__inst1 = File{}
 	m.k__inst2 = map[string]int{}
 	m.f__inst2 = map[string]File{}
+	m.__copied__inst0 = map[string]__anon_copy_v0_2d5b73{}
+	m.__copied__inst1 = map[string]__anon_copy_v0_2d5b73{}
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_live = []bool{}
@@ -284,9 +312,9 @@ func New() Model {
 	m.__effect6_livePaths = []string{}
 	m.__effect6_pathAt = map[string]int{}
 	m.__effect6_liveAt = map[string]int{}
-	m.__effect7_key = ""
-	m.__effect7_live = []string{}
-	m.__effect7_desired = []string{}
+	m.__effect7_key = __anon_copy_v0_2d5b73{}
+	m.__effect7_live = []__anon_copy_v0_2d5b73{}
+	m.__effect7_desired = []__anon_copy_v0_2d5b73{}
 	m.__effect7_paths = []string{}
 	m.__effect7_livePaths = []string{}
 	m.__effect7_pathAt = map[string]int{}
@@ -298,6 +326,20 @@ func New() Model {
 	m.__effect8_livePaths = []string{}
 	m.__effect8_pathAt = map[string]int{}
 	m.__effect8_liveAt = map[string]int{}
+	m.__effect9_key = __anon_copy_v0_2d5b73{}
+	m.__effect9_live = []__anon_copy_v0_2d5b73{}
+	m.__effect9_desired = []__anon_copy_v0_2d5b73{}
+	m.__effect9_paths = []string{}
+	m.__effect9_livePaths = []string{}
+	m.__effect9_pathAt = map[string]int{}
+	m.__effect9_liveAt = map[string]int{}
+	m.__effect10_key = ""
+	m.__effect10_live = []string{}
+	m.__effect10_desired = []string{}
+	m.__effect10_paths = []string{}
+	m.__effect10_livePaths = []string{}
+	m.__effect10_pathAt = map[string]int{}
+	m.__effect10_liveAt = map[string]int{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_torn = false
@@ -317,6 +359,26 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func (m *Model) close__r0(f File) {
 	m.log += (("close " + fmt.Sprint(f.Fd)) + "; ")
+}
+
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := fmt.Sprint(__x)
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func RowsOf(m__r0 *Measurement) int {
@@ -645,117 +707,106 @@ func (m *Model) __effect6_enter() {
 	m.__effect6_desired = []string{}
 	m.__effect6_paths = []string{}
 	m.__effect6_pathAt = map[string]int{}
-	for __copy0, x := range m.xs {
+	for _, x := range __identified0(m.xs) {
 		__effect6_fresh := true
 		var __effect6_at int = func() int {
-			if __v, __ok := m.__effect6_liveAt[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.__effect6_liveAt[x.Id]; __ok {
 				return __v
 			}
 			return -1
 		}()
 		if __effect6_at >= 0 {
-			__effect6_fresh = (m.__effect6_live[__effect6_at] != fmt.Sprint(__copy0))
+			__effect6_fresh = (m.__effect6_live[__effect6_at] != x.Id)
 		}
-		m.__effect6_pathAt[fmt.Sprint(__copy0)] = len(m.__effect6_paths)
-		m.__effect6_paths = append(m.__effect6_paths, fmt.Sprint(__copy0))
+		m.__effect6_pathAt[x.Id] = len(m.__effect6_paths)
+		m.__effect6_paths = append(m.__effect6_paths, x.Id)
 		if __effect6_fresh {
 			var __cell1_k__inst2 int = func() int {
-				if __v, __ok := m.k__inst2[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.k__inst2[x.Id]; __ok {
 					return __v
 				}
 				return 0
 			}()
 			__cell1_k__inst2 = 0
-			m.k__inst2[fmt.Sprint(__copy0)] = __cell1_k__inst2
+			m.k__inst2[x.Id] = __cell1_k__inst2
 			__cell2_f__inst2 := func() File {
-				if __v, __ok := m.f__inst2[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.f__inst2[x.Id]; __ok {
 					return __v
 				}
 				return File{}
 			}()
-			__cell2_f__inst2 = File{Fd: x}
-			m.f__inst2[fmt.Sprint(__copy0)] = __cell2_f__inst2
+			__cell2_f__inst2 = File{Fd: x.Elem}
+			m.f__inst2[x.Id] = __cell2_f__inst2
 		}
-		m.__effect6_desired = append(m.__effect6_desired, fmt.Sprint(__copy0))
+		m.__effect6_desired = append(m.__effect6_desired, x.Id)
 	}
 	m.__effect6_live = m.__effect6_desired
 	m.__effect6_livePaths = m.__effect6_paths
 	m.__effect6_liveAt = m.__effect6_pathAt
 }
 
-func (m *Model) __effect7_unmount() {
-	__copyKey := m.__effect7_key
+func (m *Model) __effect7_mount() {
+	m.__copied__inst0[m.__effect7_key.Copy] = m.__effect7_key
+}
+
+func (m *Model) __effect7_down() {
+	m.__effect7_desired = []__anon_copy_v0_2d5b73{}
+	m.__effect7_paths = []string{}
+	m.__effect7_pathAt = map[string]int{}
+	for _, x := range __identified0(m.xs) {
+		m.__effect7_desired = append(m.__effect7_desired, __anon_copy_v0_2d5b73{Copy: x.Id, V0: x.Id})
+		m.__effect7_pathAt[x.Id] = len(m.__effect7_paths)
+		m.__effect7_paths = append(m.__effect7_paths, x.Id)
+	}
+}
+
+func (m *Model) __effect7_up() {
+	for __effect7_i, __effect7_k := range m.__effect7_desired {
+		var __effect7_at int = func() int {
+			if __v, __ok := m.__effect7_liveAt[m.__effect7_paths[__effect7_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect7_at < 0 {
+			m.__effect7_key = __effect7_k
+			m.__effect7_mount()
+		} else {
+			if (m.__effect7_live[__effect7_at].Copy != __effect7_k.Copy) || (m.__effect7_live[__effect7_at].V0 != __effect7_k.V0) {
+				m.__effect7_key = __effect7_k
+				m.__effect7_mount()
+			}
+		}
+	}
+	m.__effect7_live = m.__effect7_desired
+	m.__effect7_livePaths = m.__effect7_paths
+	m.__effect7_liveAt = m.__effect7_pathAt
+}
+
+func (m *Model) __effect8_unmount() {
+	__copyKey := m.__effect8_key
+	__copied0 := func() __anon_copy_v0_2d5b73 {
+		if __v, __ok := m.__copied__inst0[__copyKey]; __ok {
+			return __v
+		}
+		return __anon_copy_v0_2d5b73{}
+	}().V0
 	m.close__r0(func() File {
-		if __v, __ok := m.f__inst2[__copyKey]; __ok {
+		if __v, __ok := m.f__inst2[__copied0]; __ok {
 			return __v
 		}
 		return File{}
 	}())
 }
 
-func (m *Model) __effect7_down() {
-	m.__effect7_desired = []string{}
-	m.__effect7_paths = []string{}
-	m.__effect7_pathAt = map[string]int{}
-	for __copy0, _ := range m.xs {
-		m.__effect7_desired = append(m.__effect7_desired, fmt.Sprint(__copy0))
-		m.__effect7_pathAt[fmt.Sprint(__copy0)] = len(m.__effect7_paths)
-		m.__effect7_paths = append(m.__effect7_paths, fmt.Sprint(__copy0))
-	}
-	for __effect7_i, _ := range m.__effect7_live {
-		var __effect7_j int = ((len(m.__effect7_live) - 1) - __effect7_i)
-		var __effect7_at int = func() int {
-			if __v, __ok := m.__effect7_pathAt[m.__effect7_livePaths[__effect7_j]]; __ok {
-				return __v
-			}
-			return -1
-		}()
-		if __effect7_at < 0 {
-			m.__effect7_key = m.__effect7_live[__effect7_j]
-			m.__effect7_unmount()
-		} else {
-			if m.__effect7_desired[__effect7_at] != m.__effect7_live[__effect7_j] {
-				m.__effect7_key = m.__effect7_live[__effect7_j]
-				m.__effect7_unmount()
-			}
-		}
-	}
-}
-
-func (m *Model) __effect7_up() {
-	m.__effect7_live = m.__effect7_desired
-	m.__effect7_livePaths = m.__effect7_paths
-	m.__effect7_liveAt = m.__effect7_pathAt
-}
-
-func (m *Model) __effect7_teardown() {
-	for __effect7_ti, _ := range m.__effect7_live {
-		m.__effect7_key = m.__effect7_live[((len(m.__effect7_live) - 1) - __effect7_ti)]
-		m.__effect7_unmount()
-	}
-	m.__effect7_live = []string{}
-	m.__effect7_livePaths = []string{}
-	m.__effect7_liveAt = map[string]int{}
-}
-
-func (m *Model) __effect8_unmount() {
-	__copyKey := m.__effect8_key
-	m.log += (("left at " + fmt.Sprint(func() int {
-		if __v, __ok := m.k__inst2[__copyKey]; __ok {
-			return __v
-		}
-		return 0
-	}())) + "; ")
-}
-
 func (m *Model) __effect8_down() {
 	m.__effect8_desired = []string{}
 	m.__effect8_paths = []string{}
 	m.__effect8_pathAt = map[string]int{}
-	for __copy0, _ := range m.xs {
-		m.__effect8_desired = append(m.__effect8_desired, fmt.Sprint(__copy0))
-		m.__effect8_pathAt[fmt.Sprint(__copy0)] = len(m.__effect8_paths)
-		m.__effect8_paths = append(m.__effect8_paths, fmt.Sprint(__copy0))
+	for _, x := range __identified0(m.xs) {
+		m.__effect8_desired = append(m.__effect8_desired, x.Id)
+		m.__effect8_pathAt[x.Id] = len(m.__effect8_paths)
+		m.__effect8_paths = append(m.__effect8_paths, x.Id)
 	}
 	for __effect8_i, _ := range m.__effect8_live {
 		var __effect8_j int = ((len(m.__effect8_live) - 1) - __effect8_i)
@@ -793,6 +844,105 @@ func (m *Model) __effect8_teardown() {
 	m.__effect8_liveAt = map[string]int{}
 }
 
+func (m *Model) __effect9_mount() {
+	m.__copied__inst1[m.__effect9_key.Copy] = m.__effect9_key
+}
+
+func (m *Model) __effect9_down() {
+	m.__effect9_desired = []__anon_copy_v0_2d5b73{}
+	m.__effect9_paths = []string{}
+	m.__effect9_pathAt = map[string]int{}
+	for _, x := range __identified0(m.xs) {
+		m.__effect9_desired = append(m.__effect9_desired, __anon_copy_v0_2d5b73{Copy: x.Id, V0: x.Id})
+		m.__effect9_pathAt[x.Id] = len(m.__effect9_paths)
+		m.__effect9_paths = append(m.__effect9_paths, x.Id)
+	}
+}
+
+func (m *Model) __effect9_up() {
+	for __effect9_i, __effect9_k := range m.__effect9_desired {
+		var __effect9_at int = func() int {
+			if __v, __ok := m.__effect9_liveAt[m.__effect9_paths[__effect9_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect9_at < 0 {
+			m.__effect9_key = __effect9_k
+			m.__effect9_mount()
+		} else {
+			if (m.__effect9_live[__effect9_at].Copy != __effect9_k.Copy) || (m.__effect9_live[__effect9_at].V0 != __effect9_k.V0) {
+				m.__effect9_key = __effect9_k
+				m.__effect9_mount()
+			}
+		}
+	}
+	m.__effect9_live = m.__effect9_desired
+	m.__effect9_livePaths = m.__effect9_paths
+	m.__effect9_liveAt = m.__effect9_pathAt
+}
+
+func (m *Model) __effect10_unmount() {
+	__copyKey := m.__effect10_key
+	__copied0 := func() __anon_copy_v0_2d5b73 {
+		if __v, __ok := m.__copied__inst1[__copyKey]; __ok {
+			return __v
+		}
+		return __anon_copy_v0_2d5b73{}
+	}().V0
+	m.log += (("left at " + fmt.Sprint(func() int {
+		if __v, __ok := m.k__inst2[__copied0]; __ok {
+			return __v
+		}
+		return 0
+	}())) + "; ")
+}
+
+func (m *Model) __effect10_down() {
+	m.__effect10_desired = []string{}
+	m.__effect10_paths = []string{}
+	m.__effect10_pathAt = map[string]int{}
+	for _, x := range __identified0(m.xs) {
+		m.__effect10_desired = append(m.__effect10_desired, x.Id)
+		m.__effect10_pathAt[x.Id] = len(m.__effect10_paths)
+		m.__effect10_paths = append(m.__effect10_paths, x.Id)
+	}
+	for __effect10_i, _ := range m.__effect10_live {
+		var __effect10_j int = ((len(m.__effect10_live) - 1) - __effect10_i)
+		var __effect10_at int = func() int {
+			if __v, __ok := m.__effect10_pathAt[m.__effect10_livePaths[__effect10_j]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect10_at < 0 {
+			m.__effect10_key = m.__effect10_live[__effect10_j]
+			m.__effect10_unmount()
+		} else {
+			if m.__effect10_desired[__effect10_at] != m.__effect10_live[__effect10_j] {
+				m.__effect10_key = m.__effect10_live[__effect10_j]
+				m.__effect10_unmount()
+			}
+		}
+	}
+}
+
+func (m *Model) __effect10_up() {
+	m.__effect10_live = m.__effect10_desired
+	m.__effect10_livePaths = m.__effect10_paths
+	m.__effect10_liveAt = m.__effect10_pathAt
+}
+
+func (m *Model) __effect10_teardown() {
+	for __effect10_ti, _ := range m.__effect10_live {
+		m.__effect10_key = m.__effect10_live[((len(m.__effect10_live) - 1) - __effect10_ti)]
+		m.__effect10_unmount()
+	}
+	m.__effect10_live = []string{}
+	m.__effect10_livePaths = []string{}
+	m.__effect10_liveAt = map[string]int{}
+}
+
 func (m *Model) __effects0_settle() {
 	if !m.__effects0_torn {
 		if m.__effects0_settling {
@@ -807,6 +957,8 @@ func (m *Model) __effects0_settle() {
 				m.__effect0_enter()
 				m.__effect3_enter()
 				m.__effect6_enter()
+				m.__effect10_down()
+				m.__effect9_down()
 				m.__effect8_down()
 				m.__effect7_down()
 				m.__effect5_down()
@@ -819,6 +971,8 @@ func (m *Model) __effects0_settle() {
 				m.__effect5_up()
 				m.__effect7_up()
 				m.__effect8_up()
+				m.__effect9_up()
+				m.__effect10_up()
 			}
 			m.__effects0_settling = false
 			if m.__effects0_pending {
@@ -830,8 +984,8 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) __snglTeardown() {
 	m.__effects0_torn = true
+	m.__effect10_teardown()
 	m.__effect8_teardown()
-	m.__effect7_teardown()
 	m.__effect5_teardown()
 	m.__effect4_teardown()
 	m.__effect2_teardown()
@@ -840,7 +994,7 @@ func (m *Model) __snglTeardown() {
 
 func (m *Model) __focusLoop2_len() int {
 	var __focusCount int = 0
-	for range m.xs {
+	for range __identified0(m.xs) {
 		__focusCount = (__focusCount + 1)
 	}
 	return __focusCount
@@ -1144,17 +1298,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 2 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos2 := 0
-				for __copy0, _ := range m.xs {
+				for __copy0, x := range __identified0(m.xs) {
 					_ = __copy0
+					_ = x
 					if m.__focusLoop2_cursor == __focusPos2 {
 						var __cell3_k__inst2 int = func() int {
-							if __v, __ok := m.k__inst2[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.k__inst2[x.Id]; __ok {
 								return __v
 							}
 							return 0
 						}()
 						__cell3_k__inst2 += 1
-						m.k__inst2[fmt.Sprint(__copy0)] = __cell3_k__inst2
+						m.k__inst2[x.Id] = __cell3_k__inst2
 						return
 					}
 					__focusPos2++
@@ -1227,8 +1382,9 @@ func (m *Model) b__reach2Click() {
 			pos int
 		}
 		__focusPos2 := 0
-		for __copy0, _ := range m.xs {
+		for __copy0, x := range __identified0(m.xs) {
 			_ = __copy0
+			_ = x
 			__at = append(__at, struct {
 				key string
 				pos int
@@ -1266,8 +1422,9 @@ func (m *Model) b__reach2ClickAt(key string) {
 			pos int
 		}
 		__focusPos2 := 0
-		for __copy0, _ := range m.xs {
+		for __copy0, x := range __identified0(m.xs) {
 			_ = __copy0
+			_ = x
 			__at = append(__at, struct {
 				key string
 				pos int
@@ -1333,8 +1490,9 @@ func (m Model) View() tea.View {
 	__focusPos2 := 0
 	_ = __focusPos2
 	var part0_2Items []string
-	for __copy0, _ := range m.xs {
+	for __copy0, x := range __identified0(m.xs) {
 		_ = __copy0
+		_ = x
 		var part0_2Item string
 		part0_2ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2)) && m.__focusShown()
 		part0_2ItemPrefix := " "
@@ -1342,12 +1500,12 @@ func (m Model) View() tea.View {
 			part0_2ItemPrefix = ">"
 		}
 		part0_2Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2ItemPrefix + " " + fmt.Sprint(((fmt.Sprint(func() int {
-			if __v, __ok := m.k__inst2[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.k__inst2[x.Id]; __ok {
 				return __v
 			}
 			return 0
 		}()) + " ") + fmt.Sprint(func() File {
-			if __v, __ok := m.f__inst2[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.f__inst2[x.Id]; __ok {
 				return __v
 			}
 			return File{}
@@ -1434,4 +1592,4 @@ func TestFor(t *testing.T) {
 
 func newTestComponent() Model { m := New(); _ = m.View(); return m }
 -- run/go/bubbletea --
-pass sha256:31b69a6810e96df64771812f67509845
+pass sha256:dbc9d0aa8eb79a13dd9dd2eb6ed6970e

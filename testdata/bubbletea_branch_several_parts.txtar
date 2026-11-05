@@ -67,6 +67,11 @@ type Measurement struct {
 	Rem float64
 }
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -610,10 +615,10 @@ func (m Model) View() tea.View {
 		var contentPart_3Children []string
 		var contentPart_3_0 string
 		var contentPart_3_0Items []string
-		for _, n := range []string{"x", "y"} {
+		for _, n := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "x", Elem: "x"}, __anon_id_elem_c6a818{Id: "y", Elem: "y"}} {
 			_ = n
 			var contentPart_3_0Item_0 string
-			contentPart_3_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(n))
+			contentPart_3_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(n.Elem))
 			contentPart_3_0Items = append(contentPart_3_0Items, contentPart_3_0Item_0)
 			var contentPart_3_0Item_1 string
 			contentPart_3_0Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("|"))
@@ -643,4 +648,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:e448a320413470b0c300532250592bc6
+pass sha256:8040b521a0d180d3e7f5d87e5615a17d

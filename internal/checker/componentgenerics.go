@@ -463,7 +463,7 @@ func argPropNames(args ast.ArgList, comp *ir.Component) []string {
 	pos := 0
 	for i, a := range args.Args {
 		arg, isArg := a.(ast.Arg)
-		if !isArg || arg.Name == "key" {
+		if !isArg {
 			continue
 		}
 		if arg.Name != "" {

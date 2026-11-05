@@ -15,8 +15,8 @@ import (
 // (Features.InstanceState). Hoisted as it is, a var is one cell every copy
 // writes: two rows of a list share one counter.
 //
-// The var becomes a map from the copy's key to its value -- the loops' indices,
-// joined -- and every use in the body goes through it: a read is
+// The var becomes a map from the copy's key to its value -- the loops'
+// identities or indices, joined -- and every use in the body goes through it: a read is
 // `cell.get(key, init)`, so a copy nothing has written yet reads the value the
 // var was declared with, and a write goes through a temporary it is stored back
 // from, which covers an assignment, a toggle and a mutating method alike. The
@@ -24,8 +24,8 @@ import (
 // argument. A func of the component's that touches a cell is handed the key as
 // a trailing parameter.
 //
-// Keyed by position, as a composable's state is by default: a list the program
-// reorders keeps each cell with the position rather than the element.
+// Keyed by the copy's identity (CopyIdentity), so a list the program reorders
+// keeps each cell with its element; by position where the loop has none.
 func perCopyCells(at string, body []ir.Stmt, vars []*ir.Var, funcs []*ir.Func, loops []*ir.For, rec *loopRecorders) ([]ir.Stmt, error) {
 	cells := map[*ir.Var]ir.Expr{}
 	for _, v := range vars {
@@ -55,7 +55,7 @@ func perCopyCells(at string, body []ir.Stmt, vars []*ir.Var, funcs []*ir.Func, l
 		return nil, err
 	}
 	body = rec.insert(body)
-	body = rewriteCells(body, cells, keyed, temps, func() ir.Expr { return CopyKey(loops) })
+	body = rewriteCells(body, cells, keyed, temps, func() ir.Expr { return CopyIdentity(loops) })
 	restore()
 	passLoopVars(body, funcs, loops)
 	seen := map[string]bool{}
@@ -144,7 +144,7 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 					continue
 				}
 				local := copyKeyLocal(fn)
-				block := rewriteCells(fn.Block, cells, keyed, temps, func() ir.Expr { return CopyKey(loops) })
+				block := rewriteCells(fn.Block, cells, keyed, temps, func() ir.Expr { return CopyIdentity(loops) })
 				keyOf := func() ir.Expr {
 					return &ir.Ident{Name: local.Name, Type: local.Type, Sym: local, Synthesized: true}
 				}
@@ -165,7 +165,7 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 			}
 		}
 		keyType := ir.TypString
-		key := ir.Expr(CopyKey(loops))
+		key := ir.Expr(CopyIdentity(loops))
 		if on != nil {
 			pair := &ir.StructDef{Anon: true, Fields: []*ir.StructField{
 				{Name: "copy", Type: ir.TypString},
@@ -213,7 +213,7 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 				}
 			}
 			h.Func.Params = []*ir.Param{param}
-			block := rewriteCells(h.Func.Block, cells, keyed, temps, func() ir.Expr { return CopyKey(loops) })
+			block := rewriteCells(h.Func.Block, cells, keyed, temps, func() ir.Expr { return CopyIdentity(loops) })
 			block = keyPartsFrom(block, loops, copyOf)
 			block = rec.bind(n, h.Name, block, loops, copyOf)
 			if was != nil {
@@ -392,7 +392,7 @@ func (rec *loopRecorders) record(n *ir.NodeInst, loops []*ir.For) *loopRecord {
 		return r
 	}
 	def := &ir.StructDef{Anon: true, Fields: []*ir.StructField{{Name: "copy", Type: ir.TypString}}}
-	inits := []ir.FieldInit{{Name: "copy", Value: CopyKey(loops)}}
+	inits := []ir.FieldInit{{Name: "copy", Value: CopyIdentity(loops)}}
 	r := &loopRecord{}
 	for _, h := range n.Handlers {
 		if h.Func == nil || h.Name != ir.EffectUnmount {
@@ -595,6 +595,10 @@ func loopVarsFrom(block []ir.Stmt, loops []*ir.For, key func() ir.Expr) []ir.Stm
 	renames := map[ir.Symbol]string{}
 	symRenames := map[ir.Symbol]ir.Symbol{}
 	var binds []ir.Stmt
+	sep := "/"
+	if Keyed(loops) {
+		sep = IdentitySep
+	}
 	for k, fs := range loops[:deepest+1] {
 		var part ir.Expr = key()
 		if len(loops) > 1 {
@@ -602,7 +606,7 @@ func loopVarsFrom(block []ir.Stmt, loops []*ir.For, key func() ir.Expr) []ir.Stm
 			part = &ir.Index{Type: ir.TypString, Operand: &ir.Call{
 				Type: parts,
 				Func: ir.IntrinsicMethod("split", "string.split", ir.TypString, parts),
-				Args: []ir.CallArg{{Value: key()}, {Value: stringLit("/")}},
+				Args: []ir.CallArg{{Value: key()}, {Value: stringLit(sep)}},
 			}, Idx: intLiteralLit(k)}
 		}
 		scan := &ir.For{
@@ -624,15 +628,26 @@ func loopVarsFrom(block []ir.Stmt, loops []*ir.For, key func() ir.Expr) []ir.Stm
 			bind(fs.KeySym, scan.KeySym)
 		}
 		scan.Value = "_"
-		if fs.ValueSym != nil && read[fs.ValueSym] {
+		if fs.ValueSym != nil && (read[fs.ValueSym] || fs.Identity != nil) {
 			scan.Value = fmt.Sprintf("__copyElemAt%d", k)
 			scan.ValueSym = &ir.LoopVar{Name: scan.Value, Type: fs.ValueSym.Type}
-			bind(fs.ValueSym, scan.ValueSym)
+			if read[fs.ValueSym] {
+				bind(fs.ValueSym, scan.ValueSym)
+			}
+		}
+		// The copy is found by what it is known by: its identity, read off the
+		// scan's own variables, or its index.
+		var at ir.Expr = &ir.Conversion{Type: ir.TypString, Operand: &ir.Ident{Name: scan.Key, Type: scan.KeySym.Type, Sym: scan.KeySym, Synthesized: true}}
+		if fs.Identity != nil {
+			own := map[ir.Symbol]string{fs.KeySym: scan.KeySym.Name}
+			ownSyms := map[ir.Symbol]ir.Symbol{fs.KeySym: scan.KeySym}
+			if fs.ValueSym != nil {
+				own[fs.ValueSym], ownSyms[fs.ValueSym] = scan.ValueSym.Name, scan.ValueSym
+			}
+			at = renameInExpr(renameInExpr(deepCloneExpr(fs.Identity), own, ownSyms), renames, symRenames)
 		}
 		scan.Body = []ir.Stmt{&ir.If{
-			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq,
-				Left:  &ir.Conversion{Type: ir.TypString, Operand: &ir.Ident{Name: scan.Key, Type: scan.KeySym.Type, Sym: scan.KeySym, Synthesized: true}},
-				Right: part},
+			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: at, Right: part},
 			Body: found,
 		}}
 		scan.IterKind = ir.DeriveIterKind(scan)
@@ -883,6 +898,46 @@ func CopyKey(loops []*ir.For) ir.Expr {
 		indices[i] = &ir.Ident{Name: idx.Name, Type: idx.Type, Sym: idx, Synthesized: true}
 	}
 	return ir.CopyKey(indices)
+}
+
+// IdentitySep joins the parts of a CopyIdentity: a loop's identity is a
+// string the program wrote, which may hold the "/" a CopyKey is joined by.
+const IdentitySep = "\x1f"
+
+// CopyIdentity is the key of the copy the enclosing loops are on as its state
+// and its lifetimes know it: each loop's Identity, or its index where it has
+// none, joined by IdentitySep. It is CopyKey where no loop has an identity. A
+// test's path is CopyKey's, the copy's position, whatever the loops say.
+func CopyIdentity(loops []*ir.For) ir.Expr {
+	if !Keyed(loops) {
+		return CopyKey(loops)
+	}
+	var key ir.Expr
+	for i, fs := range loops {
+		part := identityPart(fs, i)
+		if key == nil {
+			key = part
+			continue
+		}
+		key = &ir.Binary{Type: ir.TypString, Op: ast.BinAdd, Left: &ir.Binary{Type: ir.TypString, Op: ast.BinAdd, Left: key, Right: stringLit(IdentitySep)}, Right: part}
+	}
+	return key
+}
+
+// Keyed reports whether any of loops tells its copies apart by an identity
+// rather than by position.
+func Keyed(loops []*ir.For) bool {
+	return slices.ContainsFunc(loops, func(fs *ir.For) bool { return fs.Identity != nil })
+}
+
+// identityPart is one loop's part of a CopyIdentity: its identity, or its
+// index as a string.
+func identityPart(fs *ir.For, depth int) ir.Expr {
+	if fs.Identity != nil {
+		return deepCloneExpr(fs.Identity)
+	}
+	idx := loopIndex(fs, depth)
+	return &ir.Conversion{Type: ir.TypString, Operand: &ir.Ident{Name: idx.Name, Type: idx.Type, Sym: idx, Synthesized: true}}
 }
 
 // loopIndex is the loop's index variable, rewriting a single-variable loop

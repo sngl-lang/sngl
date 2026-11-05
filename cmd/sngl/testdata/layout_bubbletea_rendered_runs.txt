@@ -90,7 +90,7 @@ ui.window {
     table
 }
 -- testrun/bubbletea/go/app.sngl/table/1 --
-sha256:6e596db1ceb7680e72c8ade1bce6d23e
+sha256:7af7109bdaf16de2983a4558eb931154
 {
   "results": [
     {

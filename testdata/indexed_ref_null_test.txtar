@@ -93,6 +93,11 @@ type Measurement struct {
 	Rem float64
 }
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -217,6 +222,26 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func RowsOf(m__r0 *Measurement) int {
@@ -385,31 +410,31 @@ func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
 	m.__effect0_paths = []string{}
 	m.__effect0_pathAt = map[string]int{}
-	for __copy0, it := range m.items {
-		if it != m.skip {
+	for _, it := range __identified0(m.items) {
+		if it.Elem != m.skip {
 			__effect0_fresh := true
 			var __effect0_at int = func() int {
-				if __v, __ok := m.__effect0_liveAt[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.__effect0_liveAt[it.Id]; __ok {
 					return __v
 				}
 				return -1
 			}()
 			if __effect0_at >= 0 {
-				__effect0_fresh = (m.__effect0_live[__effect0_at] != fmt.Sprint(__copy0))
+				__effect0_fresh = (m.__effect0_live[__effect0_at] != it.Id)
 			}
-			m.__effect0_pathAt[fmt.Sprint(__copy0)] = len(m.__effect0_paths)
-			m.__effect0_paths = append(m.__effect0_paths, fmt.Sprint(__copy0))
+			m.__effect0_pathAt[it.Id] = len(m.__effect0_paths)
+			m.__effect0_paths = append(m.__effect0_paths, it.Id)
 			if __effect0_fresh {
 				__cell1_checked__inst0 := func() bool {
-					if __v, __ok := m.checked__inst0[fmt.Sprint(__copy0)]; __ok {
+					if __v, __ok := m.checked__inst0[it.Id]; __ok {
 						return __v
 					}
 					return false
 				}()
 				__cell1_checked__inst0 = false
-				m.checked__inst0[fmt.Sprint(__copy0)] = __cell1_checked__inst0
+				m.checked__inst0[it.Id] = __cell1_checked__inst0
 			}
-			m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+			m.__effect0_desired = append(m.__effect0_desired, it.Id)
 		}
 	}
 	m.__effect0_live = m.__effect0_desired
@@ -440,8 +465,8 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) __focusLoop1_len() int {
 	var __focusCount int = 0
-	for _, it := range m.items {
-		if it != m.skip {
+	for _, it := range __identified0(m.items) {
+		if it.Elem != m.skip {
 			__focusCount = (__focusCount + 1)
 			__focusCount = (__focusCount + 1)
 		}
@@ -610,12 +635,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 1 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos1 := 0
-				for __copy0, it := range m.items {
+				for __copy0, it := range __identified0(m.items) {
 					_ = __copy0
 					_ = it
-					if it != m.skip {
+					if it.Elem != m.skip {
 						if m.__focusLoop1_cursor == __focusPos1 {
-							m.log = it
+							m.log = it.Elem
 							return
 						}
 						__focusPos1++
@@ -626,27 +651,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeySpace && m.__focusID == 1 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos1 := 0
-				for __copy0, it := range m.items {
+				for __copy0, it := range __identified0(m.items) {
 					_ = __copy0
 					_ = it
-					if it != m.skip {
+					if it.Elem != m.skip {
 						__focusPos1++
 						if m.__focusLoop1_cursor == __focusPos1 {
 							__cell2_checked__inst0 := func() bool {
-								if __v, __ok := m.checked__inst0[fmt.Sprint(__copy0)]; __ok {
+								if __v, __ok := m.checked__inst0[it.Id]; __ok {
 									return __v
 								}
 								return false
 							}()
 							__cell2_checked__inst0 = !func() bool {
-								if __v, __ok := m.checked__inst0[fmt.Sprint(__copy0)]; __ok {
+								if __v, __ok := m.checked__inst0[it.Id]; __ok {
 									return __v
 								}
 								return false
 							}()
-							m.checked__inst0[fmt.Sprint(__copy0)] = __cell2_checked__inst0
-							m.log = ((it + " ") + fmt.Sprint(func() bool {
-								if __v, __ok := m.checked__inst0[fmt.Sprint(__copy0)]; __ok {
+							m.checked__inst0[it.Id] = __cell2_checked__inst0
+							m.log = ((it.Elem + " ") + fmt.Sprint(func() bool {
+								if __v, __ok := m.checked__inst0[it.Id]; __ok {
 									return __v
 								}
 								return false
@@ -711,10 +736,10 @@ func (m *Model) onlyClick() {
 			pos int
 		}
 		__focusPos1 := 0
-		for __copy0, it := range m.items {
+		for __copy0, it := range __identified0(m.items) {
 			_ = __copy0
 			_ = it
-			if it != m.skip {
+			if it.Elem != m.skip {
 				__at = append(__at, struct {
 					key string
 					pos int
@@ -754,10 +779,10 @@ func (m *Model) onlyClickAt(key string) {
 			pos int
 		}
 		__focusPos1 := 0
-		for __copy0, it := range m.items {
+		for __copy0, it := range __identified0(m.items) {
 			_ = __copy0
 			_ = it
-			if it != m.skip {
+			if it.Elem != m.skip {
 				__at = append(__at, struct {
 					key string
 					pos int
@@ -799,10 +824,10 @@ func (m *Model) tickChange() {
 			pos int
 		}
 		__focusPos1 := 0
-		for __copy0, it := range m.items {
+		for __copy0, it := range __identified0(m.items) {
 			_ = __copy0
 			_ = it
-			if it != m.skip {
+			if it.Elem != m.skip {
 				__focusPos1++
 				__at = append(__at, struct {
 					key string
@@ -842,10 +867,10 @@ func (m *Model) tickChangeAt(key string) {
 			pos int
 		}
 		__focusPos1 := 0
-		for __copy0, it := range m.items {
+		for __copy0, it := range __identified0(m.items) {
 			_ = __copy0
 			_ = it
-			if it != m.skip {
+			if it.Elem != m.skip {
 				__focusPos1++
 				__at = append(__at, struct {
 					key string
@@ -877,8 +902,8 @@ func (m *Model) tickChangeAt(key string) {
 }
 
 func (m *Model) onlyPresentAt(key string) bool {
-	for __copy0, it := range m.items {
-		if it != m.skip {
+	for __copy0, it := range __identified0(m.items) {
+		if it.Elem != m.skip {
 			if key == fmt.Sprint(__copy0) {
 				return true
 			}
@@ -889,8 +914,8 @@ func (m *Model) onlyPresentAt(key string) bool {
 }
 
 func (m *Model) tickPresentAt(key string) bool {
-	for __copy0, it := range m.items {
-		if it != m.skip {
+	for __copy0, it := range __identified0(m.items) {
+		if it.Elem != m.skip {
 			if key == fmt.Sprint(__copy0) {
 				return true
 			}
@@ -918,11 +943,11 @@ func (m Model) View() tea.View {
 	__focusPos1 := 0
 	_ = __focusPos1
 	var part0_1Items []string
-	for __copy0, it := range m.items {
+	for __copy0, it := range __identified0(m.items) {
 		_ = __copy0
 		_ = it
 		var part0_1Item string
-		if it != m.skip {
+		if it.Elem != m.skip {
 			var part0_1ItemParts []string
 			var part0_1ItemPart_0 string
 			part0_1ItemPart_0Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1)) && m.__focusShown()
@@ -930,7 +955,7 @@ func (m Model) View() tea.View {
 			if part0_1ItemPart_0Focused {
 				part0_1ItemPart_0Prefix = ">"
 			}
-			part0_1ItemPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1ItemPart_0Prefix + " " + fmt.Sprint(it))
+			part0_1ItemPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1ItemPart_0Prefix + " " + fmt.Sprint(it.Elem))
 			part0_1ItemPart_0 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_1ItemPart_0)
 			__focusPos1++
 			part0_1ItemParts = append(part0_1ItemParts, part0_1ItemPart_0)
@@ -940,7 +965,7 @@ func (m Model) View() tea.View {
 			if part0_1ItemPart_1Focused {
 				part0_1ItemPart_1Prefix = ">"
 			}
-			part0_1ItemPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1ItemPart_1Prefix + " " + fmt.Sprint(it))
+			part0_1ItemPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1ItemPart_1Prefix + " " + fmt.Sprint(it.Elem))
 			part0_1ItemPart_1 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, part0_1ItemPart_1)
 			__focusPos1++
 			part0_1ItemParts = append(part0_1ItemParts, part0_1ItemPart_1)
@@ -1019,6 +1044,11 @@ import (
 	"os"
 )
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	items          []string
@@ -1027,7 +1057,7 @@ type Model struct {
 	__root         *fyne.Container
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
-	__inst0_live   []*__checkbox_state0Instance
+	__inst0_live   map[string]*__checkbox_state0Instance
 	__rendering0   bool
 	__renderAgain0 bool
 
@@ -1049,10 +1079,30 @@ func New() *Model {
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*__checkbox_state0Instance{}
+	m.__inst0_live = map[string]*__checkbox_state0Instance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -1073,49 +1123,68 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 				m.__copies_only = nil
-				__inst0_next := []*__checkbox_state0Instance{}
-				var __inst0_i int = 0
-				for __copy0, it := range m.items {
-					if it != m.skip {
+				__inst0_next := map[string]*__checkbox_state0Instance{}
+				__inst0_seen := map[string]int{}
+				for __copy0, it := range __identified0(m.items) {
+					if it.Elem != m.skip {
 						m.only = fynelayout.NewButton("", nil)
-						m.only.SetText(it)
+						m.only.SetText(it.Elem)
 						m.__list_only(fmt.Sprint(__copy0), m.only)
 						m.only.OnTapped = func() {
-							m.log = it
+							m.log = it.Elem
 							m.__n0.SetText(m.log)
 						}
 						fynelayout.InsertBefore(__parent, m.__slot0_at, m.only)
 						m.__slot0 = append(m.__slot0, m.only)
 						var __n1 *__checkbox_state0Instance
-						if len(m.__inst0_live) > __inst0_i {
-							__n1 = m.__inst0_live[__inst0_i]
+						__key1 := fmt.Sprint(it.Id)
+						var __key1_n int = func() int {
+							if __v, __ok := __inst0_seen[__key1]; __ok {
+								return __v
+							}
+							return 0
+						}()
+						__inst0_seen[__key1] = (__key1_n + 1)
+						if __key1_n > 0 {
+							__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+						}
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							__n1 = func() *__checkbox_state0Instance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}()
 							__n1.SetChange(func(on bool) {
-								m.log = ((it + " ") + fmt.Sprint(on))
+								m.log = ((it.Elem + " ") + fmt.Sprint(on))
 								m.__n0.SetText(m.log)
 							})
-							__n1.SetLabel(it)
+							__n1.SetLabel(it.Elem)
 							__n1.Set__copy(fmt.Sprint(__copy0))
 						} else {
-							if len(m.__inst0_live) > __inst0_i {
-								m.__inst0_live[__inst0_i].Destroy()
+							if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+								func() *__checkbox_state0Instance {
+									if __v, __ok := m.__inst0_live[__key1]; __ok {
+										return __v
+									}
+									return nil
+								}().Destroy()
 							}
-							__n1__new := new__checkbox_state0Instance(m, false, it, fmt.Sprint(__copy0), func(on bool) {
-								m.log = ((it + " ") + fmt.Sprint(on))
+							__n1__new := new__checkbox_state0Instance(m, false, it.Elem, fmt.Sprint(__copy0), func(on bool) {
+								m.log = ((it.Elem + " ") + fmt.Sprint(on))
 								m.__n0.SetText(m.log)
 							})
 							__n1 = __n1__new
 						}
-						__inst0_next = append(__inst0_next, __n1)
-						__inst0_i = (__inst0_i + 1)
+						__inst0_next[__key1] = __n1
 						__n1__el := __n1.Root
 						fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__el)
 						m.__slot0 = append(m.__slot0, __n1__el)
 					}
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -1125,11 +1194,10 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*__checkbox_state0Instance{}
+	m.__inst0_live = map[string]*__checkbox_state0Instance{}
 }
 
 func (m *Model) change_click_handler() {
@@ -1403,6 +1471,11 @@ import (
 	"fmt"
 )
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	items          []string
@@ -1411,7 +1484,7 @@ type Model struct {
 	__root         gtk4rt.Handle
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
-	__inst0_live   []*__checkbox_state0Instance
+	__inst0_live   map[string]*__checkbox_state0Instance
 	__rendering0   bool
 	__renderAgain0 bool
 	__n2           gtk4rt.Handle
@@ -1433,10 +1506,30 @@ func New() *Model {
 	m.__root = nil
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*__checkbox_state0Instance{}
+	m.__inst0_live = map[string]*__checkbox_state0Instance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1457,50 +1550,69 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 				m.__copies_only = nil
-				__inst0_next := []*__checkbox_state0Instance{}
-				var __inst0_i int = 0
-				for __copy0, it := range m.items {
-					if it != m.skip {
+				__inst0_next := map[string]*__checkbox_state0Instance{}
+				__inst0_seen := map[string]int{}
+				for __copy0, it := range __identified0(m.items) {
+					if it.Elem != m.skip {
 						m.only = gtk4rt.New("GtkButton")
-						gtk4rt.ButtonSetLabel(m.only, it)
+						gtk4rt.ButtonSetLabel(m.only, it.Elem)
 						gtk4rt.SetBool(m.only, "can-focus", true)
 						m.__list_only(fmt.Sprint(__copy0), m.only)
 						gtk4rt.Connect(m.only, "clicked", func() {
-							m.log = it
+							m.log = it.Elem
 							gtk4rt.LabelSetLabel(m.__n0, m.log)
 						})
 						gtk4rt.InsertBefore(parent, m.__slot0_at, m.only)
 						m.__slot0 = append(m.__slot0, m.only)
 						var __n1 *__checkbox_state0Instance
-						if len(m.__inst0_live) > __inst0_i {
-							__n1 = m.__inst0_live[__inst0_i]
+						__key1 := fmt.Sprint(it.Id)
+						var __key1_n int = func() int {
+							if __v, __ok := __inst0_seen[__key1]; __ok {
+								return __v
+							}
+							return 0
+						}()
+						__inst0_seen[__key1] = (__key1_n + 1)
+						if __key1_n > 0 {
+							__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+						}
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							__n1 = func() *__checkbox_state0Instance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}()
 							__n1.SetChange(func(on bool) {
-								m.log = ((it + " ") + fmt.Sprint(on))
+								m.log = ((it.Elem + " ") + fmt.Sprint(on))
 								gtk4rt.LabelSetLabel(m.__n0, m.log)
 							})
-							__n1.SetLabel(it)
+							__n1.SetLabel(it.Elem)
 							__n1.Set__copy(fmt.Sprint(__copy0))
 						} else {
-							if len(m.__inst0_live) > __inst0_i {
-								m.__inst0_live[__inst0_i].Destroy()
+							if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+								func() *__checkbox_state0Instance {
+									if __v, __ok := m.__inst0_live[__key1]; __ok {
+										return __v
+									}
+									return nil
+								}().Destroy()
 							}
-							__n1__new := new__checkbox_state0Instance(m, false, it, fmt.Sprint(__copy0), func(on bool) {
-								m.log = ((it + " ") + fmt.Sprint(on))
+							__n1__new := new__checkbox_state0Instance(m, false, it.Elem, fmt.Sprint(__copy0), func(on bool) {
+								m.log = ((it.Elem + " ") + fmt.Sprint(on))
 								gtk4rt.LabelSetLabel(m.__n0, m.log)
 							})
 							__n1 = __n1__new
 						}
-						__inst0_next = append(__inst0_next, __n1)
-						__inst0_i = (__inst0_i + 1)
+						__inst0_next[__key1] = __n1
 						__n1__el := __n1.Root
 						gtk4rt.InsertBefore(parent, m.__slot0_at, __n1__el)
 						m.__slot0 = append(m.__slot0, __n1__el)
 					}
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -1510,11 +1622,10 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*__checkbox_state0Instance{}
+	m.__inst0_live = map[string]*__checkbox_state0Instance{}
 }
 
 func (m *Model) change_clicked_handler() {
@@ -1746,6 +1857,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.runtime.key
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.LocalTextStyle
@@ -1753,6 +1865,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
+
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1779,16 +1896,18 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
         }, modifier = Modifier.testTag("change"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "skip b", modifier = Modifier)
         }
-        for ((__copy0, it) in state.items.withIndex()) {
-            if ((it != state.skip)) {
-                Button(onClick = {
-                    state.log = it
-                }, modifier = Modifier.testTag("only").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
-                    Text(text = it, modifier = Modifier)
+        for ((__copy0, it) in __identified0(state.items).withIndex()) {
+            key(it.id) {
+                if ((it.elem != state.skip)) {
+                    Button(onClick = {
+                        state.log = it.elem
+                    }, modifier = Modifier.testTag("only").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                        Text(text = it.elem, modifier = Modifier)
+                    }
+                    __checkbox_state0(label = it.elem, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __copy = __copy0.toString(), onChange = { on ->
+                        state.log = ((it.elem + " ") + on.toString())
+                    })
                 }
-                __checkbox_state0(label = it, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __copy = __copy0.toString(), onChange = { on ->
-                    state.log = ((it + " ") + on.toString())
-                })
             }
         }
         Text(text = state.log, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
@@ -1808,6 +1927,21 @@ fun __checkbox_state0(__start_checked: Boolean = false, label: String, __ctx_fle
             Text(text = label, modifier = Modifier)
         }
     }
+}
+
+fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_c6a818>()
+    for (__x in __xs) {
+    	var __id = __x
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_c6a818(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
 package test.sngl.app
@@ -2068,17 +2202,34 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function __snglTeardown() {
-    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
       ;
-      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
-      __inst1_live[__inst1_live_dj].__destroy();
+      let __id = __x;
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
     }
     ;
-    __inst1_live = [];
+    return __out;
+  }
+  function __snglTeardown() {
+    for (const [__inst1_live_dk, __inst1_live_dv] of __inst1_live.entries()) {
+      ;
+      __inst1_live_dv.__destroy();
+    }
+    ;
+    __inst1_live = /* @__PURE__ */ new Map([]);
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { __snglTeardown });
+    Object.assign(window, { __identified0, __snglTeardown });
   }
   function __cf___checkbox_state0(props) {
     const __root = document.createElement("div");
@@ -2137,7 +2288,7 @@ window.__sngl_boot = () => {
     };
   }
   var __slot0 = [];
-  var __inst1_live = [];
+  var __inst1_live = /* @__PURE__ */ new Map([]);
   var __rendering0 = false;
   var __renderAgain0 = false;
   function __renderSlot0(parent) {
@@ -2152,22 +2303,22 @@ window.__sngl_boot = () => {
           let __place0_prev = __slot0;
           let __place0_i = 0;
           __slot0 = [];
-          let __inst1_next = [];
-          let __inst1_i = 0;
-          for (const [__copy0, it] of state.items.entries()) {
-            if (it !== state.skip) {
+          let __inst1_next = /* @__PURE__ */ new Map([]);
+          let __inst1_seen = /* @__PURE__ */ new Map([]);
+          for (const [__copy0, it] of __identified0(state.items).entries()) {
+            if (it.elem !== state.skip) {
               let only = document.createElement("button");
               only.setAttribute("data-sngl-id", "only");
               only.disabled = false;
               only.setAttribute("data-sngl-copy", String(__copy0));
               only.addEventListener("click", () => {
-                state.log = it;
+                state.log = it.elem;
                 __n0.textContent = state.log;
               });
               only.addEventListener("contextmenu", () => {
               });
               let __n3 = document.createElement("span");
-              __n3.textContent = it;
+              __n3.textContent = it.elem;
               only.appendChild(__n3);
               let __place0_i_ref0 = null;
               if (__place0_i < __place0_prev.length) {
@@ -2180,26 +2331,31 @@ window.__sngl_boot = () => {
               }
               __slot0.push(only);
               let __n4 = null;
-              if (__inst1_live.length > __inst1_i) {
-                __n4 = __inst1_live[__inst1_i];
+              let __key2 = String(it.id);
+              let __key2_n = __inst1_seen.has(__key2) ? __inst1_seen.get(__key2) : 0;
+              __inst1_seen.set(__key2, __key2_n + 1);
+              if (__key2_n > 0) {
+                __key2 = __key2 + "#" + String(__key2_n);
+              }
+              if (__inst1_live.has(__key2)) {
+                __n4 = __inst1_live.has(__key2) ? __inst1_live.get(__key2) : null;
                 __n4.__set_change((on) => {
-                  state.log = it + " " + String(on);
+                  state.log = it.elem + " " + String(on);
                   __n0.textContent = state.log;
                 });
-                __n4.__set_label(it);
+                __n4.__set_label(it.elem);
                 __n4.__set___copy(String(__copy0));
               } else {
-                if (__inst1_live.length > __inst1_i) {
-                  __inst1_live[__inst1_i].__destroy();
+                if (__inst1_live.has(__key2)) {
+                  (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
                 }
-                let __n4__new = __cf___checkbox_state0({ label: it, __copy: String(__copy0), change: (on) => {
-                  state.log = it + " " + String(on);
+                let __n4__new = __cf___checkbox_state0({ label: it.elem, __copy: String(__copy0), change: (on) => {
+                  state.log = it.elem + " " + String(on);
                   __n0.textContent = state.log;
                 } });
                 __n4 = __n4__new;
               }
-              __inst1_next.push(__n4);
-              __inst1_i = __inst1_i + 1;
+              __inst1_next.set(__key2, __n4);
               let __n4__el = __n4.__root;
               let __place0_i_ref1 = null;
               if (__place0_i < __place0_prev.length) {
@@ -2213,10 +2369,9 @@ window.__sngl_boot = () => {
               __slot0.push(__n4__el);
             }
           }
-          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-            if (__inst1_i_j >= __inst1_i) {
-              __inst1_live[__inst1_i_j].__destroy();
+          for (const [__inst1_live_k, __inst1_live_v] of __inst1_live.entries()) {
+            if (!__inst1_next.has(__inst1_live_k)) {
+              __inst1_live_v.__destroy();
             }
           }
           __inst1_live = __inst1_next;
@@ -2253,12 +2408,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b6ccd89712f3bff465c95045ce489aa9
+pass sha256:02da6b8af28a28c812445e330b9f3644
 -- run/go/fyne --
-pass sha256:e1f1b19e4f9ed9c250f08eebcd14edc3
+pass sha256:9df16bff6b6874082f7b06a9955e6f2f
 -- run/go/gtk4 --
-pass sha256:38c9e87ea99643794c3419f148d067d3
+pass sha256:b4f1afa58cc39905402009d7a4755eb0
 -- run/kotlin/android --
-pass sha256:a0e6a18588646d6cb14ae275e6c3fd80
+pass sha256:8f4b2d44e2a1f79409fa44a53b883bcb
 -- run/none/html --
-pass sha256:533a637e104002239fcb582664d1d474
+pass sha256:83be958ee078ba71d7f5554d87a3066c

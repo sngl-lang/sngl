@@ -1828,6 +1828,38 @@ A head expression may not begin with `{`: that brace is the body's. A map or
 anonymous-struct literal in the head of a `for` — or of an `if` — is written
 parenthesized.
 
+#### A copy's identity
+
+Each copy of a view loop's body keeps its state and its lifetimes — the vars
+of a component it renders, an effect's mount — while a render holds a copy of
+the same **identity**, wherever in the list that copy is. An element's identity
+is, in order:
+
+- what its type's `key` method answers, where the type declares one taking
+  nothing but the element;
+- the element itself, where it is a `bool`, a number, a `string`, a unit or an
+  enum carrying no payload;
+- otherwise its index, which is the identity of every copy of a loop over a
+  struct with no `key`.
+
+```sngl
+struct Todo {
+    id   int
+    text string
+
+    const func key() => id
+}
+```
+
+A copy whose identity a render no longer holds ends its lifetimes, and one
+whose identity is new begins them. A `key` answers a value that compares alike
+on every target (as an effect's `on` does) and that formats: anything else is
+an error at the loop. A struct is no identity of its own, though it compares,
+since a field written would make the copy another; nor is an element bound
+with `&`, for the same reason, though its type's `key` still is. Copies sharing
+one identity are told apart by their order among themselves. A test's path into
+a loop's copies, `c.row[1]`, counts by position whatever the identities are.
+
 #### The else block
 
 A loop's `else` block runs when **the body never ran**:

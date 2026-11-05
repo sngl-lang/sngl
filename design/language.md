@@ -471,6 +471,70 @@ JavaScript it spread `async` from the arrow up through the settle. The closure's
 own `ir.Func` is colored in its own right, which is what makes the descent
 redundant as well as wrong.
 
+### A copy's identity
+
+A view loop matched its copies by position, so a list that dropped an element
+from its middle handed every later copy the state and the lifetimes of the one
+before it: the Pokédex kept its list of species to ask for append-only, since
+each request after one that left was ended and asked again. A `key=` prop on
+the body's node was the old answer, and named the identity at every node
+rather than once for the element's type.
+
+`ir.For.Identity` is the identity now: the checker sets it on a view loop
+(`loopIdentity`) to the element's `key()`, or to the element where it is a
+scalar or an enum carrying no payload, in either case as the string its format
+writes, since every target keeps a copy's state in a map keyed by string. An
+expression on the loop rather than a decl pointer, so every walk, clone and
+rename the loop's variables go through reaches it, and the reach analyses keep
+a `key` method nothing else calls. A pass that rebuilds a loop around new
+statements carries it over (`positionBlock`, `shape_draw`, the slot render).
+
+`lower.CopyIdentity(loops)` is the copy's key as its state and lifetimes know
+it: each loop's identity, or its index where it has none, joined by
+`IdentitySep` (`\x1f`, since an identity is a string the program wrote and
+may hold the `/` a test's path is joined by). `lower.CopyKey` stays the
+position, which is what a test's `c.row[1]` and the copy props a test finds a
+node by count. What each target keys by identity:
+
+- the interpreter's mounted path (`iterations` in `view.go`), whose duplicate
+  identities are suffixed `~n`;
+- a component built at run time under a keyed loop: `keyLoopInstances` gives
+  its site the loops' identity as its `NodeInst.Key`, which puts the slot's
+  registry in its keyed mode, whose duplicate identities `claimKey` suffixes;
+- bubbletea's cells per copy (`perCopyCells`), its loop widgets and timers, and
+  the copy key a handler is handed, found again by scanning the loop for the
+  element whose identity it is (`loopVarsFrom`) -- and a test's read of a cell
+  computes the identity of the copy at its index (`cellRead`);
+- an effect's paths and keys under a loop (`copyPaths`, `keysReportBlock`);
+- Compose's `key(…)` around each copy's body.
+
+Copies sharing one identity are told apart by their order among themselves.
+The interpreter and an instance slot count them as they render, but bubbletea's
+cells and an effect's paths key by the identity alone, and two copies of `"a"`
+were one: the Pokédex asks again for a species by pushing its slug a second
+time, and the second copy never asked. `passLoopIdentity` has a keyed loop over
+a list walk records instead, `{id, elem}`, which a function it declares
+(`__identifiedN`) builds in one pass, suffixing the second and later of one
+identity `#1`, `#2`; the element is `rec.elem` and the identity `rec.id`. Built
+from the iterable, every walk that evaluates the head -- a settle's rebuilt
+loops, a handler's scan, a test's read -- sees the identities the render did.
+The function is an ordinary one, not synthesized, since fyne and gtk4 emit a
+synthesized package func as a render slot's.
+
+An instance a slot keeps under a node of its body (`nestedInstance`) is kept
+whether or not it is keyed: the keep skipped a keyed one, which nothing wrote
+before a loop keyed its copies, and the Pokédex's move requests under its table
+were built afresh on every render, each asking again and each answer rendering
+again, until the test agent held gigabytes.
+
+`testdata/loop_identity.sngl` is the language,
+`testdata/error_loop_identity.sngl` the key a target cannot keep, and
+`cmd/sngl/testdata/loop_identity_runs.txt` every target. A Kotlin test's
+mutating call on state, `c.names.remove(0)`, now waits for the composition as
+an assignment does, and an instance's test registration is removed only while
+it is the copy's own: a copy a keyed loop moved registers under the name the
+leaving copy disposes.
+
 ## Match
 
 `match [subject] { arms }` is a statement and an expression, and an arm takes

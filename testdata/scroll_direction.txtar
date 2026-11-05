@@ -792,6 +792,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.key
 import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -1024,21 +1025,27 @@ fun MainScreen() {
             SnglScroll(modifier = Modifier.testTag("down").then(flexed(styleModifier(Style(height = Measurement(px = 120.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() })), direction = "vertical", onReachEnd = {}) {
                 Column(modifier = Modifier.snglFlexible(false)) {
                     for (i in listOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)) {
-                        Text(text = ("row " + i.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                        key(i.toString()) {
+                            Text(text = ("row " + i.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                        }
                     }
                 }
             }
             SnglScroll(modifier = Modifier.testTag("across"), direction = "horizontal", onReachEnd = {}) {
                 Row(modifier = flexed(styleModifier(Style(gap = Measurement(px = 8.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }).snglFlexible(true), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(8.0f))) {
                     for (i in listOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)) {
-                        Text(text = ("column " + i.toString()), modifier = flexed(styleModifier(Style(width = Measurement(px = 120.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+                        key(i.toString()) {
+                            Text(text = ("column " + i.toString()), modifier = flexed(styleModifier(Style(width = Measurement(px = 120.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+                        }
                     }
                 }
             }
             SnglScroll(modifier = Modifier.testTag("either").then(flexed(styleModifier(Style(height = Measurement(px = 120.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() })), direction = "both", onReachEnd = {}) {
                 Column(modifier = Modifier.snglFlexible(false)) {
                     for (i in listOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)) {
-                        Text(text = (("a long line " + i.toString()) + " that runs on past the right edge of a phone's screen"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                        key(i.toString()) {
+                            Text(text = (("a long line " + i.toString()) + " that runs on past the right edge of a phone's screen"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                        }
                     }
                 }
             }
@@ -1457,6 +1464,6 @@ pass sha256:ed3ec962c6d353842ac95da6cf4f617e
 -- run/go/gtk4 --
 pass sha256:0233779682de768180d89f8c0d65d8e3
 -- run/kotlin/android --
-pass sha256:e647373e1fe5a270aab190c39466a4fe
+pass sha256:97e558d298093de726189480c09eadfa
 -- run/none/html --
 pass sha256:e71b4f322e027e92f12b43db08828de7

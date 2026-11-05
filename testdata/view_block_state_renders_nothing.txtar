@@ -103,6 +103,11 @@ type Measurement struct {
 	Rem float64
 }
 
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -296,6 +301,66 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := fmt.Sprint(__x)
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
+func __identified1(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := fmt.Sprint(__x)
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
+func __identified2(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := fmt.Sprint(__x)
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
 	var __lt3 int
@@ -462,30 +527,30 @@ func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
 	m.__effect0_paths = []string{}
 	m.__effect0_pathAt = map[string]int{}
-	for __copy0, _ := range m.items {
+	for _, i := range __identified1(m.items) {
 		__effect0_fresh := true
 		var __effect0_at int = func() int {
-			if __v, __ok := m.__effect0_liveAt[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.__effect0_liveAt[i.Id]; __ok {
 				return __v
 			}
 			return -1
 		}()
 		if __effect0_at >= 0 {
-			__effect0_fresh = (m.__effect0_live[__effect0_at] != fmt.Sprint(__copy0))
+			__effect0_fresh = (m.__effect0_live[__effect0_at] != i.Id)
 		}
-		m.__effect0_pathAt[fmt.Sprint(__copy0)] = len(m.__effect0_paths)
-		m.__effect0_paths = append(m.__effect0_paths, fmt.Sprint(__copy0))
+		m.__effect0_pathAt[i.Id] = len(m.__effect0_paths)
+		m.__effect0_paths = append(m.__effect0_paths, i.Id)
 		if __effect0_fresh {
 			var __cell2_seen__inst0 int = func() int {
-				if __v, __ok := m.seen__inst0[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.seen__inst0[i.Id]; __ok {
 					return __v
 				}
 				return 0
 			}()
 			__cell2_seen__inst0 = 0
-			m.seen__inst0[fmt.Sprint(__copy0)] = __cell2_seen__inst0
+			m.seen__inst0[i.Id] = __cell2_seen__inst0
 		}
-		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+		m.__effect0_desired = append(m.__effect0_desired, i.Id)
 	}
 	m.__effect0_live = m.__effect0_desired
 	m.__effect0_livePaths = m.__effect0_paths
@@ -494,19 +559,25 @@ func (m *Model) __effect0_enter() {
 
 func (m *Model) __effect1_mount() {
 	__copyKey := m.__effect1_key
+	i__at0 := __anon_id_elem_cdfd47{}
+	for _, __copyElemAt0 := range __identified1(m.items) {
+		if __copyElemAt0.Id == __copyKey {
+			i__at0 = __copyElemAt0
+		}
+	}
 	var __cell1_seen__inst0 int = func() int {
-		if __v, __ok := m.seen__inst0[__copyKey]; __ok {
+		if __v, __ok := m.seen__inst0[i__at0.Id]; __ok {
 			return __v
 		}
 		return 0
 	}()
 	__cell1_seen__inst0 = (func() int {
-		if __v, __ok := m.seen__inst0[__copyKey]; __ok {
+		if __v, __ok := m.seen__inst0[i__at0.Id]; __ok {
 			return __v
 		}
 		return 0
 	}() + 1)
-	m.seen__inst0[__copyKey] = __cell1_seen__inst0
+	m.seen__inst0[i__at0.Id] = __cell1_seen__inst0
 	m.total = (m.total + 1)
 }
 
@@ -514,10 +585,10 @@ func (m *Model) __effect1_down() {
 	m.__effect1_desired = []string{}
 	m.__effect1_paths = []string{}
 	m.__effect1_pathAt = map[string]int{}
-	for __copy0, _ := range m.items {
-		m.__effect1_desired = append(m.__effect1_desired, fmt.Sprint(__copy0))
-		m.__effect1_pathAt[fmt.Sprint(__copy0)] = len(m.__effect1_paths)
-		m.__effect1_paths = append(m.__effect1_paths, fmt.Sprint(__copy0))
+	for _, i := range __identified1(m.items) {
+		m.__effect1_desired = append(m.__effect1_desired, i.Id)
+		m.__effect1_pathAt[i.Id] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, i.Id)
 	}
 }
 
@@ -570,30 +641,30 @@ func (m *Model) __effect3_enter() {
 	m.__effect3_desired = []string{}
 	m.__effect3_paths = []string{}
 	m.__effect3_pathAt = map[string]int{}
-	for __copy0, _ := range m.items {
+	for _, j := range __identified2(m.items) {
 		__effect3_fresh := true
 		var __effect3_at int = func() int {
-			if __v, __ok := m.__effect3_liveAt[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.__effect3_liveAt[j.Id]; __ok {
 				return __v
 			}
 			return -1
 		}()
 		if __effect3_at >= 0 {
-			__effect3_fresh = (m.__effect3_live[__effect3_at] != fmt.Sprint(__copy0))
+			__effect3_fresh = (m.__effect3_live[__effect3_at] != j.Id)
 		}
-		m.__effect3_pathAt[fmt.Sprint(__copy0)] = len(m.__effect3_paths)
-		m.__effect3_paths = append(m.__effect3_paths, fmt.Sprint(__copy0))
+		m.__effect3_pathAt[j.Id] = len(m.__effect3_paths)
+		m.__effect3_paths = append(m.__effect3_paths, j.Id)
 		if __effect3_fresh {
 			var __cell2_held__inst0 int = func() int {
-				if __v, __ok := m.held__inst0[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.held__inst0[j.Id]; __ok {
 					return __v
 				}
 				return 0
 			}()
 			__cell2_held__inst0 = 0
-			m.held__inst0[fmt.Sprint(__copy0)] = __cell2_held__inst0
+			m.held__inst0[j.Id] = __cell2_held__inst0
 		}
-		m.__effect3_desired = append(m.__effect3_desired, fmt.Sprint(__copy0))
+		m.__effect3_desired = append(m.__effect3_desired, j.Id)
 	}
 	m.__effect3_live = m.__effect3_desired
 	m.__effect3_livePaths = m.__effect3_paths
@@ -602,21 +673,27 @@ func (m *Model) __effect3_enter() {
 
 func (m *Model) __effect4_mount() {
 	__copyKey := m.__effect4_key
+	j__at0 := __anon_id_elem_cdfd47{}
+	for _, __copyElemAt0 := range __identified2(m.items) {
+		if __copyElemAt0.Id == __copyKey {
+			j__at0 = __copyElemAt0
+		}
+	}
 	var __cell1_held__inst0 int = func() int {
-		if __v, __ok := m.held__inst0[__copyKey]; __ok {
+		if __v, __ok := m.held__inst0[j__at0.Id]; __ok {
 			return __v
 		}
 		return 0
 	}()
 	__cell1_held__inst0 = (func() int {
-		if __v, __ok := m.held__inst0[__copyKey]; __ok {
+		if __v, __ok := m.held__inst0[j__at0.Id]; __ok {
 			return __v
 		}
 		return 0
 	}() + 1)
-	m.held__inst0[__copyKey] = __cell1_held__inst0
+	m.held__inst0[j__at0.Id] = __cell1_held__inst0
 	m.total = (m.total + func() int {
-		if __v, __ok := m.held__inst0[__copyKey]; __ok {
+		if __v, __ok := m.held__inst0[j__at0.Id]; __ok {
 			return __v
 		}
 		return 0
@@ -627,10 +704,10 @@ func (m *Model) __effect4_down() {
 	m.__effect4_desired = []string{}
 	m.__effect4_paths = []string{}
 	m.__effect4_pathAt = map[string]int{}
-	for __copy0, _ := range m.items {
-		m.__effect4_desired = append(m.__effect4_desired, fmt.Sprint(__copy0))
-		m.__effect4_pathAt[fmt.Sprint(__copy0)] = len(m.__effect4_paths)
-		m.__effect4_paths = append(m.__effect4_paths, fmt.Sprint(__copy0))
+	for _, j := range __identified2(m.items) {
+		m.__effect4_desired = append(m.__effect4_desired, j.Id)
+		m.__effect4_pathAt[j.Id] = len(m.__effect4_paths)
+		m.__effect4_paths = append(m.__effect4_paths, j.Id)
 	}
 }
 
@@ -683,30 +760,30 @@ func (m *Model) __effect6_enter() {
 	m.__effect6_desired = []string{}
 	m.__effect6_paths = []string{}
 	m.__effect6_pathAt = map[string]int{}
-	for __copy0, _ := range m.items {
+	for _, q := range __identified0(m.items) {
 		__effect6_fresh := true
 		var __effect6_at int = func() int {
-			if __v, __ok := m.__effect6_liveAt[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.__effect6_liveAt[q.Id]; __ok {
 				return __v
 			}
 			return -1
 		}()
 		if __effect6_at >= 0 {
-			__effect6_fresh = (m.__effect6_live[__effect6_at] != fmt.Sprint(__copy0))
+			__effect6_fresh = (m.__effect6_live[__effect6_at] != q.Id)
 		}
-		m.__effect6_pathAt[fmt.Sprint(__copy0)] = len(m.__effect6_paths)
-		m.__effect6_paths = append(m.__effect6_paths, fmt.Sprint(__copy0))
+		m.__effect6_pathAt[q.Id] = len(m.__effect6_paths)
+		m.__effect6_paths = append(m.__effect6_paths, q.Id)
 		if __effect6_fresh {
 			var __cell2_kept__inst0 int = func() int {
-				if __v, __ok := m.kept__inst0[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.kept__inst0[q.Id]; __ok {
 					return __v
 				}
 				return 0
 			}()
 			__cell2_kept__inst0 = 0
-			m.kept__inst0[fmt.Sprint(__copy0)] = __cell2_kept__inst0
+			m.kept__inst0[q.Id] = __cell2_kept__inst0
 		}
-		m.__effect6_desired = append(m.__effect6_desired, fmt.Sprint(__copy0))
+		m.__effect6_desired = append(m.__effect6_desired, q.Id)
 	}
 	m.__effect6_live = m.__effect6_desired
 	m.__effect6_livePaths = m.__effect6_paths
@@ -715,21 +792,27 @@ func (m *Model) __effect6_enter() {
 
 func (m *Model) __effect7_mount() {
 	__copyKey := m.__effect7_key
+	q__at0 := __anon_id_elem_cdfd47{}
+	for _, __copyElemAt0 := range __identified0(m.items) {
+		if __copyElemAt0.Id == __copyKey {
+			q__at0 = __copyElemAt0
+		}
+	}
 	var __cell1_kept__inst0 int = func() int {
-		if __v, __ok := m.kept__inst0[__copyKey]; __ok {
+		if __v, __ok := m.kept__inst0[q__at0.Id]; __ok {
 			return __v
 		}
 		return 0
 	}()
 	__cell1_kept__inst0 = (func() int {
-		if __v, __ok := m.kept__inst0[__copyKey]; __ok {
+		if __v, __ok := m.kept__inst0[q__at0.Id]; __ok {
 			return __v
 		}
 		return 0
 	}() + 1)
-	m.kept__inst0[__copyKey] = __cell1_kept__inst0
+	m.kept__inst0[q__at0.Id] = __cell1_kept__inst0
 	m.total = (m.total + func() int {
-		if __v, __ok := m.kept__inst0[__copyKey]; __ok {
+		if __v, __ok := m.kept__inst0[q__at0.Id]; __ok {
 			return __v
 		}
 		return 0
@@ -740,10 +823,10 @@ func (m *Model) __effect7_down() {
 	m.__effect7_desired = []string{}
 	m.__effect7_paths = []string{}
 	m.__effect7_pathAt = map[string]int{}
-	for __copy0, _ := range m.items {
-		m.__effect7_desired = append(m.__effect7_desired, fmt.Sprint(__copy0))
-		m.__effect7_pathAt[fmt.Sprint(__copy0)] = len(m.__effect7_paths)
-		m.__effect7_paths = append(m.__effect7_paths, fmt.Sprint(__copy0))
+	for _, q := range __identified0(m.items) {
+		m.__effect7_desired = append(m.__effect7_desired, q.Id)
+		m.__effect7_pathAt[q.Id] = len(m.__effect7_paths)
+		m.__effect7_paths = append(m.__effect7_paths, q.Id)
 	}
 }
 
@@ -1015,6 +1098,11 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	items               []int
@@ -1032,17 +1120,17 @@ type Model struct {
 	__effects0_steps    int
 	__slot0             []fyne.CanvasObject
 	__slot0_at          fyne.CanvasObject
-	__inst0_live        []*__block_state0Instance
+	__inst0_live        map[string]*__block_state0Instance
 	__rendering0        bool
 	__renderAgain0      bool
 	__slot1             []fyne.CanvasObject
 	__slot1_at          fyne.CanvasObject
-	__inst1_live        []*__block_state1Instance
+	__inst1_live        map[string]*__block_state1Instance
 	__rendering1        bool
 	__renderAgain1      bool
 	__slot2             []fyne.CanvasObject
 	__slot2_at          fyne.CanvasObject
-	__inst2_live        []*__block_state2Instance
+	__inst2_live        map[string]*__block_state2Instance
 	__rendering2        bool
 	__renderAgain2      bool
 
@@ -1071,20 +1159,80 @@ func New() *Model {
 	m.__effects0_steps = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*__block_state0Instance{}
+	m.__inst0_live = map[string]*__block_state0Instance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	m.__slot1 = nil
 	m.__slot1_at = nil
-	m.__inst1_live = []*__block_state1Instance{}
+	m.__inst1_live = map[string]*__block_state1Instance{}
 	m.__rendering1 = false
 	m.__renderAgain1 = false
 	m.__slot2 = nil
 	m.__slot2_at = nil
-	m.__inst2_live = []*__block_state2Instance{}
+	m.__inst2_live = map[string]*__block_state2Instance{}
 	m.__rendering2 = false
 	m.__renderAgain2 = false
 	return m
+}
+
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := fmt.Sprint(__x)
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
+func __identified1(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := fmt.Sprint(__x)
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
+func __identified2(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := fmt.Sprint(__x)
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __effect0_mount() {
@@ -1172,29 +1320,48 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-				__inst0_next := []*__block_state0Instance{}
-				var __inst0_i int = 0
-				for range m.items {
+				__inst0_next := map[string]*__block_state0Instance{}
+				__inst0_seen := map[string]int{}
+				for _, i := range __identified1(m.items) {
 					var __n2 *__block_state0Instance
-					if len(m.__inst0_live) > __inst0_i {
-						__n2 = m.__inst0_live[__inst0_i]
+					__key1 := fmt.Sprint(i.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n2 = func() *__block_state0Instance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
 					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *__block_state0Instance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n2__new := new__block_state0Instance(m)
 						__n2 = __n2__new
 					}
-					__inst0_next = append(__inst0_next, __n2)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
 					fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
 					m.__slot0 = append(m.__slot0, __n2__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -1220,29 +1387,48 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				}
 				m.__slot1 = nil
 				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-				__inst1_next := []*__block_state1Instance{}
-				var __inst1_i int = 0
-				for range m.items {
+				__inst1_next := map[string]*__block_state1Instance{}
+				__inst1_seen := map[string]int{}
+				for _, j := range __identified2(m.items) {
 					var __n3 *__block_state1Instance
-					if len(m.__inst1_live) > __inst1_i {
-						__n3 = m.__inst1_live[__inst1_i]
+					__key2 := fmt.Sprint(j.Id)
+					var __key2_n int = func() int {
+						if __v, __ok := __inst1_seen[__key2]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst1_seen[__key2] = (__key2_n + 1)
+					if __key2_n > 0 {
+						__key2 = ((__key2 + "#") + fmt.Sprint(__key2_n))
+					}
+					if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+						__n3 = func() *__block_state1Instance {
+							if __v, __ok := m.__inst1_live[__key2]; __ok {
+								return __v
+							}
+							return nil
+						}()
 					} else {
-						if len(m.__inst1_live) > __inst1_i {
-							m.__inst1_live[__inst1_i].Destroy()
+						if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+							func() *__block_state1Instance {
+								if __v, __ok := m.__inst1_live[__key2]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n3__new := new__block_state1Instance(m)
 						__n3 = __n3__new
 					}
-					__inst1_next = append(__inst1_next, __n3)
-					__inst1_i = (__inst1_i + 1)
+					__inst1_next[__key2] = __n3
 					__n3__el := __n3.Root
 					fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__el)
 					m.__slot1 = append(m.__slot1, __n3__el)
 				}
-				for __inst1_i_d, _ := range m.__inst1_live {
-					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-					if __inst1_i_j >= __inst1_i {
-						m.__inst1_live[__inst1_i_j].Destroy()
+				for __inst1_live_k, __inst1_live_v := range m.__inst1_live {
+					if !func() bool { _, __ok := __inst1_next[__inst1_live_k]; return __ok }() {
+						__inst1_live_v.Destroy()
 					}
 				}
 				m.__inst1_live = __inst1_next
@@ -1268,29 +1454,48 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 				}
 				m.__slot2 = nil
 				m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
-				__inst2_next := []*__block_state2Instance{}
-				var __inst2_i int = 0
-				for range m.items {
+				__inst2_next := map[string]*__block_state2Instance{}
+				__inst2_seen := map[string]int{}
+				for _, q := range __identified0(m.items) {
 					var __n4 *__block_state2Instance
-					if len(m.__inst2_live) > __inst2_i {
-						__n4 = m.__inst2_live[__inst2_i]
+					__key3 := fmt.Sprint(q.Id)
+					var __key3_n int = func() int {
+						if __v, __ok := __inst2_seen[__key3]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst2_seen[__key3] = (__key3_n + 1)
+					if __key3_n > 0 {
+						__key3 = ((__key3 + "#") + fmt.Sprint(__key3_n))
+					}
+					if func() bool { _, __ok := m.__inst2_live[__key3]; return __ok }() {
+						__n4 = func() *__block_state2Instance {
+							if __v, __ok := m.__inst2_live[__key3]; __ok {
+								return __v
+							}
+							return nil
+						}()
 					} else {
-						if len(m.__inst2_live) > __inst2_i {
-							m.__inst2_live[__inst2_i].Destroy()
+						if func() bool { _, __ok := m.__inst2_live[__key3]; return __ok }() {
+							func() *__block_state2Instance {
+								if __v, __ok := m.__inst2_live[__key3]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n4__new := new__block_state2Instance(m)
 						__n4 = __n4__new
 					}
-					__inst2_next = append(__inst2_next, __n4)
-					__inst2_i = (__inst2_i + 1)
+					__inst2_next[__key3] = __n4
 					__n4__el := __n4.Root
 					fynelayout.InsertBefore(__parent, m.__slot2_at, __n4__el)
 					m.__slot2 = append(m.__slot2, __n4__el)
 				}
-				for __inst2_i_d, _ := range m.__inst2_live {
-					var __inst2_i_j int = ((len(m.__inst2_live) - 1) - __inst2_i_d)
-					if __inst2_i_j >= __inst2_i {
-						m.__inst2_live[__inst2_i_j].Destroy()
+				for __inst2_live_k, __inst2_live_v := range m.__inst2_live {
+					if !func() bool { _, __ok := __inst2_next[__inst2_live_k]; return __ok }() {
+						__inst2_live_v.Destroy()
 					}
 				}
 				m.__inst2_live = __inst2_next
@@ -1300,21 +1505,18 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst2_live_di, _ := range m.__inst2_live {
-		var __inst2_live_dj int = ((len(m.__inst2_live) - 1) - __inst2_live_di)
-		m.__inst2_live[__inst2_live_dj].Destroy()
+	for _, __inst2_live_dv := range m.__inst2_live {
+		__inst2_live_dv.Destroy()
 	}
-	m.__inst2_live = []*__block_state2Instance{}
-	for __inst1_live_di, _ := range m.__inst1_live {
-		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
-		m.__inst1_live[__inst1_live_dj].Destroy()
+	m.__inst2_live = map[string]*__block_state2Instance{}
+	for _, __inst1_live_dv := range m.__inst1_live {
+		__inst1_live_dv.Destroy()
 	}
-	m.__inst1_live = []*__block_state1Instance{}
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	m.__inst1_live = map[string]*__block_state1Instance{}
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*__block_state0Instance{}
+	m.__inst0_live = map[string]*__block_state0Instance{}
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -1689,6 +1891,11 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	items               []int
@@ -1706,17 +1913,17 @@ type Model struct {
 	__effects0_steps    int
 	__slot0             []gtk4rt.Handle
 	__slot0_at          gtk4rt.Handle
-	__inst0_live        []*__block_state0Instance
+	__inst0_live        map[string]*__block_state0Instance
 	__rendering0        bool
 	__renderAgain0      bool
 	__slot1             []gtk4rt.Handle
 	__slot1_at          gtk4rt.Handle
-	__inst1_live        []*__block_state1Instance
+	__inst1_live        map[string]*__block_state1Instance
 	__rendering1        bool
 	__renderAgain1      bool
 	__slot2             []gtk4rt.Handle
 	__slot2_at          gtk4rt.Handle
-	__inst2_live        []*__block_state2Instance
+	__inst2_live        map[string]*__block_state2Instance
 	__rendering2        bool
 	__renderAgain2      bool
 	__n0                gtk4rt.Handle
@@ -1745,20 +1952,80 @@ func New() *Model {
 	m.__effects0_steps = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*__block_state0Instance{}
+	m.__inst0_live = map[string]*__block_state0Instance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	m.__slot1 = nil
 	m.__slot1_at = nil
-	m.__inst1_live = []*__block_state1Instance{}
+	m.__inst1_live = map[string]*__block_state1Instance{}
 	m.__rendering1 = false
 	m.__renderAgain1 = false
 	m.__slot2 = nil
 	m.__slot2_at = nil
-	m.__inst2_live = []*__block_state2Instance{}
+	m.__inst2_live = map[string]*__block_state2Instance{}
 	m.__rendering2 = false
 	m.__renderAgain2 = false
 	return m
+}
+
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := fmt.Sprint(__x)
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
+func __identified1(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := fmt.Sprint(__x)
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
+func __identified2(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := fmt.Sprint(__x)
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __effect0_mount() {
@@ -1846,29 +2113,48 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-				__inst0_next := []*__block_state0Instance{}
-				var __inst0_i int = 0
-				for range m.items {
+				__inst0_next := map[string]*__block_state0Instance{}
+				__inst0_seen := map[string]int{}
+				for _, i := range __identified1(m.items) {
 					var __n2 *__block_state0Instance
-					if len(m.__inst0_live) > __inst0_i {
-						__n2 = m.__inst0_live[__inst0_i]
+					__key1 := fmt.Sprint(i.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n2 = func() *__block_state0Instance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
 					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *__block_state0Instance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n2__new := new__block_state0Instance(m)
 						__n2 = __n2__new
 					}
-					__inst0_next = append(__inst0_next, __n2)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
 					m.__slot0 = append(m.__slot0, __n2__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -1894,29 +2180,48 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				}
 				m.__slot1 = nil
 				m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-				__inst1_next := []*__block_state1Instance{}
-				var __inst1_i int = 0
-				for range m.items {
+				__inst1_next := map[string]*__block_state1Instance{}
+				__inst1_seen := map[string]int{}
+				for _, j := range __identified2(m.items) {
 					var __n3 *__block_state1Instance
-					if len(m.__inst1_live) > __inst1_i {
-						__n3 = m.__inst1_live[__inst1_i]
+					__key2 := fmt.Sprint(j.Id)
+					var __key2_n int = func() int {
+						if __v, __ok := __inst1_seen[__key2]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst1_seen[__key2] = (__key2_n + 1)
+					if __key2_n > 0 {
+						__key2 = ((__key2 + "#") + fmt.Sprint(__key2_n))
+					}
+					if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+						__n3 = func() *__block_state1Instance {
+							if __v, __ok := m.__inst1_live[__key2]; __ok {
+								return __v
+							}
+							return nil
+						}()
 					} else {
-						if len(m.__inst1_live) > __inst1_i {
-							m.__inst1_live[__inst1_i].Destroy()
+						if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+							func() *__block_state1Instance {
+								if __v, __ok := m.__inst1_live[__key2]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n3__new := new__block_state1Instance(m)
 						__n3 = __n3__new
 					}
-					__inst1_next = append(__inst1_next, __n3)
-					__inst1_i = (__inst1_i + 1)
+					__inst1_next[__key2] = __n3
 					__n3__el := __n3.Root
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n3__el)
 					m.__slot1 = append(m.__slot1, __n3__el)
 				}
-				for __inst1_i_d, _ := range m.__inst1_live {
-					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-					if __inst1_i_j >= __inst1_i {
-						m.__inst1_live[__inst1_i_j].Destroy()
+				for __inst1_live_k, __inst1_live_v := range m.__inst1_live {
+					if !func() bool { _, __ok := __inst1_next[__inst1_live_k]; return __ok }() {
+						__inst1_live_v.Destroy()
 					}
 				}
 				m.__inst1_live = __inst1_next
@@ -1942,29 +2247,48 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 				}
 				m.__slot2 = nil
 				m.__slot2_at = gtk4rt.SlotAnchor(parent, m.__slot2_at)
-				__inst2_next := []*__block_state2Instance{}
-				var __inst2_i int = 0
-				for range m.items {
+				__inst2_next := map[string]*__block_state2Instance{}
+				__inst2_seen := map[string]int{}
+				for _, q := range __identified0(m.items) {
 					var __n4 *__block_state2Instance
-					if len(m.__inst2_live) > __inst2_i {
-						__n4 = m.__inst2_live[__inst2_i]
+					__key3 := fmt.Sprint(q.Id)
+					var __key3_n int = func() int {
+						if __v, __ok := __inst2_seen[__key3]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst2_seen[__key3] = (__key3_n + 1)
+					if __key3_n > 0 {
+						__key3 = ((__key3 + "#") + fmt.Sprint(__key3_n))
+					}
+					if func() bool { _, __ok := m.__inst2_live[__key3]; return __ok }() {
+						__n4 = func() *__block_state2Instance {
+							if __v, __ok := m.__inst2_live[__key3]; __ok {
+								return __v
+							}
+							return nil
+						}()
 					} else {
-						if len(m.__inst2_live) > __inst2_i {
-							m.__inst2_live[__inst2_i].Destroy()
+						if func() bool { _, __ok := m.__inst2_live[__key3]; return __ok }() {
+							func() *__block_state2Instance {
+								if __v, __ok := m.__inst2_live[__key3]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n4__new := new__block_state2Instance(m)
 						__n4 = __n4__new
 					}
-					__inst2_next = append(__inst2_next, __n4)
-					__inst2_i = (__inst2_i + 1)
+					__inst2_next[__key3] = __n4
 					__n4__el := __n4.Root
 					gtk4rt.InsertBefore(parent, m.__slot2_at, __n4__el)
 					m.__slot2 = append(m.__slot2, __n4__el)
 				}
-				for __inst2_i_d, _ := range m.__inst2_live {
-					var __inst2_i_j int = ((len(m.__inst2_live) - 1) - __inst2_i_d)
-					if __inst2_i_j >= __inst2_i {
-						m.__inst2_live[__inst2_i_j].Destroy()
+				for __inst2_live_k, __inst2_live_v := range m.__inst2_live {
+					if !func() bool { _, __ok := __inst2_next[__inst2_live_k]; return __ok }() {
+						__inst2_live_v.Destroy()
 					}
 				}
 				m.__inst2_live = __inst2_next
@@ -1974,21 +2298,18 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst2_live_di, _ := range m.__inst2_live {
-		var __inst2_live_dj int = ((len(m.__inst2_live) - 1) - __inst2_live_di)
-		m.__inst2_live[__inst2_live_dj].Destroy()
+	for _, __inst2_live_dv := range m.__inst2_live {
+		__inst2_live_dv.Destroy()
 	}
-	m.__inst2_live = []*__block_state2Instance{}
-	for __inst1_live_di, _ := range m.__inst1_live {
-		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
-		m.__inst1_live[__inst1_live_dj].Destroy()
+	m.__inst2_live = map[string]*__block_state2Instance{}
+	for _, __inst1_live_dv := range m.__inst1_live {
+		__inst1_live_dv.Destroy()
 	}
-	m.__inst1_live = []*__block_state1Instance{}
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	m.__inst1_live = map[string]*__block_state1Instance{}
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*__block_state0Instance{}
+	m.__inst0_live = map[string]*__block_state0Instance{}
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -2409,6 +2730,60 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { items: [1, 2, 3], total: 0, k__inst0: 0, k__inst1: 0, visible__inst0: true };
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
+      ;
+      let __id = String(__x);
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
+  }
+  function __identified1(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
+      ;
+      let __id = String(__x);
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
+  }
+  function __identified2(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
+      ;
+      let __id = String(__x);
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
+  }
   function __effect0_mount() {
     state.k__inst0 = state.k__inst0 + 1;
   }
@@ -2416,27 +2791,24 @@ body { font-family: system-ui, sans-serif; }
     state.k__inst1 = state.k__inst1 + 1;
   }
   function __snglTeardown() {
-    for (const [__inst5_live_di, _] of __inst5_live.entries()) {
+    for (const [__inst5_live_dk, __inst5_live_dv] of __inst5_live.entries()) {
       ;
-      let __inst5_live_dj = __inst5_live.length - 1 - __inst5_live_di;
-      __inst5_live[__inst5_live_dj].__destroy();
+      __inst5_live_dv.__destroy();
     }
     ;
-    __inst5_live = [];
-    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+    __inst5_live = /* @__PURE__ */ new Map([]);
+    for (const [__inst3_live_dk, __inst3_live_dv] of __inst3_live.entries()) {
       ;
-      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
-      __inst3_live[__inst3_live_dj].__destroy();
+      __inst3_live_dv.__destroy();
     }
     ;
-    __inst3_live = [];
-    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+    __inst3_live = /* @__PURE__ */ new Map([]);
+    for (const [__inst1_live_dk, __inst1_live_dv] of __inst1_live.entries()) {
       ;
-      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
-      __inst1_live[__inst1_live_dj].__destroy();
+      __inst1_live_dv.__destroy();
     }
     ;
-    __inst1_live = [];
+    __inst1_live = /* @__PURE__ */ new Map([]);
   }
   function __cf___block_state0(props) {
     const __root = document.createElement("div");
@@ -2633,15 +3005,15 @@ body { font-family: system-ui, sans-serif; }
   var __effects0_torn = false;
   var __effects0_steps = 0;
   var __slot0 = [];
-  var __inst1_live = [];
+  var __inst1_live = /* @__PURE__ */ new Map([]);
   var __rendering0 = false;
   var __renderAgain0 = false;
   var __slot1 = [];
-  var __inst3_live = [];
+  var __inst3_live = /* @__PURE__ */ new Map([]);
   var __rendering1 = false;
   var __renderAgain1 = false;
   var __slot2 = [];
-  var __inst5_live = [];
+  var __inst5_live = /* @__PURE__ */ new Map([]);
   var __rendering2 = false;
   var __renderAgain2 = false;
   function __effect0_down() {
@@ -2711,21 +3083,26 @@ body { font-family: system-ui, sans-serif; }
           let __place0_prev = __slot0;
           let __place0_i = 0;
           __slot0 = [];
-          let __inst1_next = [];
-          let __inst1_i = 0;
-          for (const i of state.items) {
+          let __inst1_next = /* @__PURE__ */ new Map([]);
+          let __inst1_seen = /* @__PURE__ */ new Map([]);
+          for (const i of __identified1(state.items)) {
             let __n2 = null;
-            if (__inst1_live.length > __inst1_i) {
-              __n2 = __inst1_live[__inst1_i];
+            let __key2 = String(i.id);
+            let __key2_n = __inst1_seen.has(__key2) ? __inst1_seen.get(__key2) : 0;
+            __inst1_seen.set(__key2, __key2_n + 1);
+            if (__key2_n > 0) {
+              __key2 = __key2 + "#" + String(__key2_n);
+            }
+            if (__inst1_live.has(__key2)) {
+              __n2 = __inst1_live.has(__key2) ? __inst1_live.get(__key2) : null;
             } else {
-              if (__inst1_live.length > __inst1_i) {
-                __inst1_live[__inst1_i].__destroy();
+              if (__inst1_live.has(__key2)) {
+                (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
               let __n2__new = __cf___block_state0({});
               __n2 = __n2__new;
             }
-            __inst1_next.push(__n2);
-            __inst1_i = __inst1_i + 1;
+            __inst1_next.set(__key2, __n2);
             let __n2__el = __n2.__root;
             let __place0_i_ref0 = null;
             if (__place0_i < __place0_prev.length) {
@@ -2738,10 +3115,9 @@ body { font-family: system-ui, sans-serif; }
             }
             __slot0.push(__n2__el);
           }
-          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-            if (__inst1_i_j >= __inst1_i) {
-              __inst1_live[__inst1_i_j].__destroy();
+          for (const [__inst1_live_k, __inst1_live_v] of __inst1_live.entries()) {
+            if (!__inst1_next.has(__inst1_live_k)) {
+              __inst1_live_v.__destroy();
             }
           }
           __inst1_live = __inst1_next;
@@ -2768,21 +3144,26 @@ body { font-family: system-ui, sans-serif; }
           let __place2_prev = __slot1;
           let __place2_i = 0;
           __slot1 = [];
-          let __inst3_next = [];
-          let __inst3_i = 0;
-          for (const j of state.items) {
+          let __inst3_next = /* @__PURE__ */ new Map([]);
+          let __inst3_seen = /* @__PURE__ */ new Map([]);
+          for (const j of __identified2(state.items)) {
             let __n3 = null;
-            if (__inst3_live.length > __inst3_i) {
-              __n3 = __inst3_live[__inst3_i];
+            let __key4 = String(j.id);
+            let __key4_n = __inst3_seen.has(__key4) ? __inst3_seen.get(__key4) : 0;
+            __inst3_seen.set(__key4, __key4_n + 1);
+            if (__key4_n > 0) {
+              __key4 = __key4 + "#" + String(__key4_n);
+            }
+            if (__inst3_live.has(__key4)) {
+              __n3 = __inst3_live.has(__key4) ? __inst3_live.get(__key4) : null;
             } else {
-              if (__inst3_live.length > __inst3_i) {
-                __inst3_live[__inst3_i].__destroy();
+              if (__inst3_live.has(__key4)) {
+                (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
               let __n3__new = __cf___block_state1({});
               __n3 = __n3__new;
             }
-            __inst3_next.push(__n3);
-            __inst3_i = __inst3_i + 1;
+            __inst3_next.set(__key4, __n3);
             let __n3__el = __n3.__root;
             let __place2_i_ref0 = null;
             if (__place2_i < __place2_prev.length) {
@@ -2795,10 +3176,9 @@ body { font-family: system-ui, sans-serif; }
             }
             __slot1.push(__n3__el);
           }
-          for (const [__inst3_i_d, _] of __inst3_live.entries()) {
-            let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
-            if (__inst3_i_j >= __inst3_i) {
-              __inst3_live[__inst3_i_j].__destroy();
+          for (const [__inst3_live_k, __inst3_live_v] of __inst3_live.entries()) {
+            if (!__inst3_next.has(__inst3_live_k)) {
+              __inst3_live_v.__destroy();
             }
           }
           __inst3_live = __inst3_next;
@@ -2825,21 +3205,26 @@ body { font-family: system-ui, sans-serif; }
           let __place4_prev = __slot2;
           let __place4_i = 0;
           __slot2 = [];
-          let __inst5_next = [];
-          let __inst5_i = 0;
-          for (const q of state.items) {
+          let __inst5_next = /* @__PURE__ */ new Map([]);
+          let __inst5_seen = /* @__PURE__ */ new Map([]);
+          for (const q of __identified0(state.items)) {
             let __n4 = null;
-            if (__inst5_live.length > __inst5_i) {
-              __n4 = __inst5_live[__inst5_i];
+            let __key6 = String(q.id);
+            let __key6_n = __inst5_seen.has(__key6) ? __inst5_seen.get(__key6) : 0;
+            __inst5_seen.set(__key6, __key6_n + 1);
+            if (__key6_n > 0) {
+              __key6 = __key6 + "#" + String(__key6_n);
+            }
+            if (__inst5_live.has(__key6)) {
+              __n4 = __inst5_live.has(__key6) ? __inst5_live.get(__key6) : null;
             } else {
-              if (__inst5_live.length > __inst5_i) {
-                __inst5_live[__inst5_i].__destroy();
+              if (__inst5_live.has(__key6)) {
+                (__inst5_live.has(__key6) ? __inst5_live.get(__key6) : null).__destroy();
               }
               let __n4__new = __cf___block_state2({});
               __n4 = __n4__new;
             }
-            __inst5_next.push(__n4);
-            __inst5_i = __inst5_i + 1;
+            __inst5_next.set(__key6, __n4);
             let __n4__el = __n4.__root;
             let __place4_i_ref0 = null;
             if (__place4_i < __place4_prev.length) {
@@ -2852,10 +3237,9 @@ body { font-family: system-ui, sans-serif; }
             }
             __slot2.push(__n4__el);
           }
-          for (const [__inst5_i_d, _] of __inst5_live.entries()) {
-            let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
-            if (__inst5_i_j >= __inst5_i) {
-              __inst5_live[__inst5_i_j].__destroy();
+          for (const [__inst5_live_k, __inst5_live_v] of __inst5_live.entries()) {
+            if (!__inst5_next.has(__inst5_live_k)) {
+              __inst5_live_v.__destroy();
             }
           }
           __inst5_live = __inst5_next;
@@ -2890,10 +3274,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2ce8251a1589164e998f72a1d6b51931
+pass sha256:12e2ac253cdd31f577844dcfbad58ef8
 -- run/go/fyne --
-pass sha256:ffb66fdf4d3490d79284b06625b4a96a
+pass sha256:3d882b9cdab11453edc691ae9fbffb5e
 -- run/go/gtk4 --
-pass sha256:639fdc0910c2c3e309674906febf8a8a
+pass sha256:63d0d2b2d0e3834261c9f886617dc989
 -- run/none/html --
-pass sha256:09403f942127fe0415b3825f928d07a7
+pass sha256:abcd9cd69d855764d585bab3a771dad8

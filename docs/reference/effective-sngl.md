@@ -1091,11 +1091,28 @@ for var item = items {
     ui.text(value=item)
 }
 for var idx, todo = todos {
-    ui.text(value="{idx}: {todo.text}", key=todo.id)
+    ui.text(value="{idx}: {todo.text}")
 }
 ```
 
-Use `key` for stable identity across re-renders when the list changes. Key by something that belongs to the element, like an id; the index changes whenever an element is inserted or removed ahead of it, which is exactly when a key has to hold still.
+Each copy of a loop's body keeps its state and its effects for as long as the
+list holds its element. A string, a number or an enum is its own element;
+a struct says what makes it the same element by declaring `key`, which a loop
+over it then reads:
+
+```sngl
+struct Todo {
+    id   int
+    text string
+
+    const func key() => id
+}
+```
+
+Key by something that belongs to the element, like an id. A struct with no
+`key` is matched by position, as is an element bound with `&`, whose copy a
+write would otherwise make another: a row inserted ahead of the others hands
+each of them the state of the row before it.
 
 `var` is what makes the head a declaration. Without it the loop binds nothing
 and what follows `for` is the iterable itself, which is the form to reach for
@@ -1773,6 +1790,8 @@ struct Todo {
     id   int = 0
     text string = ""
     done bool = false
+
+    const func key() => id
 }
 
 ui.window(title="Todos") {
@@ -1791,7 +1810,7 @@ ui.window(title="Todos") {
             })
         }
         for var idx, todo = todos {
-            ui.hbox(key=todo.id, style={gap=8px}) {
+            ui.hbox(style={gap=8px}) {
                 ui.checkbox(checked=todo.done, @change { todos[idx].done!! })
                 ui.text(value=todo.text)
                 ui.button(text="x", @click { todos.remove(idx) })
@@ -1878,6 +1897,8 @@ struct Todo {
     id   int = 0
     text string = ""
     done bool = false
+
+    const func key() => id
 }
 
 ui.window {
@@ -1887,7 +1908,7 @@ ui.window {
     ui.vbox(style={padding=16px, gap=8px}) {
         ui.text(value="{activeCount} remaining")
         for var idx, todo = todos {
-            ui.checkbox(key=todo.id, checked=todo.done, label=todo.text, @change { todos[idx].done!! })
+            ui.checkbox(checked=todo.done, label=todo.text, @change { todos[idx].done!! })
         }
     }
 }

@@ -247,6 +247,11 @@ type Measurement struct {
 	Rem float64
 }
 
+type __anon_id_elem_9cfdc8 struct {
+	Id   string
+	Elem string
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -418,6 +423,26 @@ func Count(n *int) string {
 	return ""
 }
 
+func __identified0(__xs []string) []__anon_id_elem_9cfdc8 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_9cfdc8{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_9cfdc8{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
 func BoxLook(s Style, words bool) lipgloss.Style {
 	if func(_a1, _b2 Style) bool {
 		return snglOptEqual(_a1.Padding, _b2.Padding) && snglOptEqual(_a1.PaddingTop, _b2.PaddingTop) && snglOptEqual(_a1.PaddingRight, _b2.PaddingRight) && snglOptEqual(_a1.PaddingBottom, _b2.PaddingBottom) && snglOptEqual(_a1.PaddingLeft, _b2.PaddingLeft) && snglOptEqual(_a1.PaddingX, _b2.PaddingX) && snglOptEqual(_a1.PaddingY, _b2.PaddingY) && snglOptEqual(_a1.Margin, _b2.Margin) && snglOptEqual(_a1.MarginTop, _b2.MarginTop) && snglOptEqual(_a1.MarginRight, _b2.MarginRight) && snglOptEqual(_a1.MarginBottom, _b2.MarginBottom) && snglOptEqual(_a1.MarginLeft, _b2.MarginLeft) && snglOptEqual(_a1.MarginX, _b2.MarginX) && snglOptEqual(_a1.MarginY, _b2.MarginY) && snglOptEqual(_a1.Gap, _b2.Gap) && snglOptEqual(_a1.Width, _b2.Width) && snglOptEqual(_a1.MinWidth, _b2.MinWidth) && snglOptEqual(_a1.Height, _b2.Height) && snglOptEqual(_a1.MaxWidth, _b2.MaxWidth) && snglOptEqual(_a1.MaxHeight, _b2.MaxHeight) && snglOptEqual(_a1.Flex, _b2.Flex) && (_a1.FlexDirection == _b2.FlexDirection) && (_a1.AlignItems == _b2.AlignItems) && (_a1.JustifyContent == _b2.JustifyContent) && (_a1.Position == _b2.Position) && snglOptEqual(_a1.Top, _b2.Top) && snglOptEqual(_a1.Bottom, _b2.Bottom) && snglOptEqual(_a1.Left, _b2.Left) && snglOptEqual(_a1.Right, _b2.Right) && snglOptEqual(_a1.ZIndex, _b2.ZIndex) && snglOptEqual(_a1.Color, _b2.Color) && snglOptEqual(_a1.FontSize, _b2.FontSize) && (_a1.FontFamily == _b2.FontFamily) && (_a1.FontWeight == _b2.FontWeight) && (_a1.FontStyle == _b2.FontStyle) && (_a1.TextAlign == _b2.TextAlign) && snglOptEqual(_a1.MaxLines, _b2.MaxLines) && (_a1.WhiteSpace == _b2.WhiteSpace) && snglOptEqual(_a1.Background, _b2.Background) && snglOptEqual(_a1.BorderRadius, _b2.BorderRadius) && snglOptEqual(_a1.BorderColor, _b2.BorderColor) && snglOptEqual(_a1.BorderWidth, _b2.BorderWidth) && (_a1.Border == _b2.Border) && (_a1.BorderBottom == _b2.BorderBottom) && (_a1.BorderLeft == _b2.BorderLeft) && (_a1.BorderCollapse == _b2.BorderCollapse) && (_a1.BorderStyle == _b2.BorderStyle) && snglOptEqual(_a1.Opacity, _b2.Opacity) && (_a1.Cursor == _b2.Cursor) && (_a1.Display == _b2.Display) && (_a1.ListStyleType == _b2.ListStyleType)
@@ -582,8 +607,8 @@ func LineCap(height__r0 int, lines int) int {
 
 func (m *Model) __focusLoop2_len() int {
 	var __focusCount int = 0
-	for _, p := range m.picks__inst0 {
-		switch p {
+	for _, p := range __identified0(m.picks__inst0) {
+		switch p.Elem {
 		case "up":
 			__focusCount = (__focusCount + 1)
 		default:
@@ -884,10 +909,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 2 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos2 := 0
-				for __copy0, p := range m.picks__inst0 {
+				for __copy0, p := range __identified0(m.picks__inst0) {
 					_ = __copy0
 					_ = p
-					switch p {
+					switch p.Elem {
 					case "up":
 						if m.__focusLoop2_cursor == __focusPos2 {
 							m.taps__inst0 += 1
@@ -978,10 +1003,10 @@ func (m *Model) pickClick() {
 			pos int
 		}
 		__focusPos2 := 0
-		for __copy0, p := range m.picks__inst0 {
+		for __copy0, p := range __identified0(m.picks__inst0) {
 			_ = __copy0
 			_ = p
-			switch p {
+			switch p.Elem {
 			case "up":
 				__at = append(__at, struct {
 					key string
@@ -1022,10 +1047,10 @@ func (m *Model) pickClickAt(key string) {
 			pos int
 		}
 		__focusPos2 := 0
-		for __copy0, p := range m.picks__inst0 {
+		for __copy0, p := range __identified0(m.picks__inst0) {
 			_ = __copy0
 			_ = p
-			switch p {
+			switch p.Elem {
 			case "up":
 				__at = append(__at, struct {
 					key string
@@ -1149,8 +1174,8 @@ func (m *Model) pickPresentAt(key string) bool {
 		}
 		__lt16 = __lt15
 	}
-	for __copy0, p := range m.picks__inst0 {
-		switch p {
+	for __copy0, p := range __identified0(m.picks__inst0) {
+		switch p.Elem {
 		case "up":
 			if key == fmt.Sprint(__copy0) {
 				return true
@@ -1232,11 +1257,11 @@ func (m Model) View() tea.View {
 		__focusPos2 := 0
 		_ = __focusPos2
 		var contentPart_9Items []string
-		for __copy0, p := range m.picks__inst0 {
+		for __copy0, p := range __identified0(m.picks__inst0) {
 			_ = __copy0
 			_ = p
 			var contentPart_9Item string
-			switch p {
+			switch p.Elem {
 			case "up":
 				contentPart_9ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2)) && m.__focusShown()
 				contentPart_9ItemPrefix := " "
@@ -1375,6 +1400,11 @@ func snglOptEq[T comparable](p *T, v T) bool {
 	return p != nil && *p == v
 }
 
+type __anon_id_elem_9cfdc8 struct {
+	Id   string
+	Elem string
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	d__inst0       string
@@ -1495,6 +1525,26 @@ func Count(n *int) string {
 	return ""
 }
 
+func __identified0(__xs []string) []__anon_id_elem_9cfdc8 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_9cfdc8{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_9cfdc8{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -1558,8 +1608,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				m.__slot1 = nil
 				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
 				m.__copies_pick = nil
-				for __copy0, p := range m.picks__inst0 {
-					if p == "up" {
+				for __copy0, p := range __identified0(m.picks__inst0) {
+					if p.Elem == "up" {
 						m.pick = fynelayout.NewButton("", nil)
 						m.pick.SetText("Up")
 						m.__list_pick(fmt.Sprint(__copy0), m.pick)
@@ -1931,6 +1981,11 @@ func snglOptEq[T comparable](p *T, v T) bool {
 	return p != nil && *p == v
 }
 
+type __anon_id_elem_9cfdc8 struct {
+	Id   string
+	Elem string
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	d__inst0       string
@@ -2051,6 +2106,26 @@ func Count(n *int) string {
 	return ""
 }
 
+func __identified0(__xs []string) []__anon_id_elem_9cfdc8 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_9cfdc8{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_9cfdc8{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -2117,8 +2192,8 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				m.__slot1 = nil
 				m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 				m.__copies_pick = nil
-				for __copy0, p := range m.picks__inst0 {
-					if p == "up" {
+				for __copy0, p := range __identified0(m.picks__inst0) {
+					if p.Elem == "up" {
 						m.pick = gtk4rt.New("GtkButton")
 						gtk4rt.ButtonSetLabel(m.pick, "Up")
 						gtk4rt.SetBool(m.pick, "can-focus", true)
@@ -2418,7 +2493,13 @@ import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.key
 import androidx.compose.ui.semantics.semantics
+
+data class __anon_id_elem_9cfdc8(
+    var id: String = "",
+    var elem: Dir = Dir.UP
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -2490,17 +2571,19 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
                     Text(text = "east", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
-            for ((__copy0, p) in state.picks__inst0.withIndex()) {
-                when (p) {
-                    Dir.UP -> {
-                        Button(onClick = {
-                            state.taps__inst0 += 1
-                        }, modifier = Modifier.testTag("pick").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } }).safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
-                            Text(text = "Up", modifier = Modifier)
+            for ((__copy0, p) in __identified0(state.picks__inst0).withIndex()) {
+                key(p.id) {
+                    when (p.elem) {
+                        Dir.UP -> {
+                            Button(onClick = {
+                                state.taps__inst0 += 1
+                            }, modifier = Modifier.testTag("pick").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } }).safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                                Text(text = "Up", modifier = Modifier)
+                            }
                         }
-                    }
-                    else -> {
-                        Text(text = "other", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+                        else -> {
+                            Text(text = "other", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+                        }
                     }
                 }
             }
@@ -2557,6 +2640,21 @@ fun count(n: Int?): String {
     	}
     }
     return ""
+}
+
+fun __identified0(__xs: List<Dir>): List<__anon_id_elem_9cfdc8> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_9cfdc8>()
+    for (__x in __xs) {
+    	var __id = __x.toString()
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_9cfdc8(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
 // Code generated by sngl (android) from app.sngl; DO NOT EDIT.
@@ -2791,8 +2889,26 @@ window.__sngl_boot = () => {
     ;
     return "";
   }
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
+      ;
+      let __id = String(__x);
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
+  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { grade, firstDown, count });
+    Object.assign(window, { grade, firstDown, count, __identified0 });
   }
   var __slot0 = [];
   var __rendering0 = false;
@@ -2887,8 +3003,8 @@ window.__sngl_boot = () => {
           let __place1_prev = __slot1;
           let __place1_i = 0;
           __slot1 = [];
-          for (const [__copy0, p] of state.picks__inst0.entries()) {
-            if (p === "up") {
+          for (const [__copy0, p] of __identified0(state.picks__inst0).entries()) {
+            if (p.elem === "up") {
               let pick = document.createElement("button");
               pick.setAttribute("data-sngl-id", "pick");
               pick.disabled = false;
@@ -2973,12 +3089,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3fc5ca61ca869f2aad555b02f7a9b5b6
+pass sha256:226c813ea3da610e4d17a0cdad804efb
 -- run/go/fyne --
-pass sha256:a45ebfa2e9794b188c666402f2acd1e6
+pass sha256:7c0b9d2597109bd1e1b5827b9c71eef0
 -- run/go/gtk4 --
-pass sha256:8def835382e2700e9717226112e18024
+pass sha256:54552f3b6e840a1757f33336fdd9187b
 -- run/kotlin/android --
-pass sha256:f2415fccc77df2cac7f561b3bbbf3eba
+pass sha256:942025a227f3422c4dd3ae159d2e3a24
 -- run/none/html --
-pass sha256:9b3ae1af9c503f725124605e3bb7a899
+pass sha256:17ec72f08d54aee4fd0668255b50b48b

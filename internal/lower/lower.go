@@ -69,6 +69,9 @@ var passes = []pass{
 	// whose props the read is answered from.
 	passNodePropReads,
 	passPropBindings,
+	// Before passRefLoop, which makes an `&` loop's element a place this
+	// leaves alone, and before anything copies a loop out of its body.
+	passLoopIdentity,
 	passRefLoop,
 	// After passRefLoop, so an element bound with `&` is a place by now.
 	passRefParams,

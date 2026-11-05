@@ -93,6 +93,11 @@ type Measurement struct {
 	Rem float64
 }
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -351,7 +356,7 @@ func LineCap(height__r0 int, lines int) int {
 
 func (m *Model) __focusLoop0_len() int {
 	var __focusCount int = 0
-	for range []string{"one", "two"} {
+	for range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "one", Elem: "one"}, __anon_id_elem_c6a818{Id: "two", Elem: "two"}} {
 		__focusCount = (__focusCount + 1)
 	}
 	return __focusCount
@@ -450,11 +455,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 0 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos0 := 0
-				for __copy0, name := range []string{"one", "two"} {
+				for __copy0, name := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "one", Elem: "one"}, __anon_id_elem_c6a818{Id: "two", Elem: "two"}} {
 					_ = __copy0
 					_ = name
 					if m.__focusLoop0_cursor == __focusPos0 {
-						m.opened = name
+						m.opened = name.Elem
 						return
 					}
 					__focusPos0++
@@ -501,7 +506,7 @@ func (m *Model) rowClick() {
 			pos int
 		}
 		__focusPos0 := 0
-		for __copy0, name := range []string{"one", "two"} {
+		for __copy0, name := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "one", Elem: "one"}, __anon_id_elem_c6a818{Id: "two", Elem: "two"}} {
 			_ = __copy0
 			_ = name
 			__at = append(__at, struct {
@@ -541,7 +546,7 @@ func (m *Model) rowClickAt(key string) {
 			pos int
 		}
 		__focusPos0 := 0
-		for __copy0, name := range []string{"one", "two"} {
+		for __copy0, name := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "one", Elem: "one"}, __anon_id_elem_c6a818{Id: "two", Elem: "two"}} {
 			_ = __copy0
 			_ = name
 			__at = append(__at, struct {
@@ -580,7 +585,7 @@ func (m Model) View() tea.View {
 	__focusPos0 := 0
 	_ = __focusPos0
 	var content_0Items []string
-	for __copy0, name := range []string{"one", "two"} {
+	for __copy0, name := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "one", Elem: "one"}, __anon_id_elem_c6a818{Id: "two", Elem: "two"}} {
 		_ = __copy0
 		_ = name
 		var content_0Item string
@@ -598,7 +603,7 @@ func (m Model) View() tea.View {
 		var content_0Item_1 string
 		var content_0Item_1Children []string
 		var content_0Item_1_0 string
-		content_0Item_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(name))
+		content_0Item_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(name.Elem))
 		content_0Item_1Children = append(content_0Item_1Children, content_0Item_1_0)
 		content_0Item_1 = lipgloss.JoinVertical(lipgloss.Left, content_0Item_1Children...)
 		content_0ItemChildren = append(content_0ItemChildren, content_0Item_1)
@@ -670,6 +675,11 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -799,16 +809,16 @@ func (m *Model) SetOpened(v string) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3 = fynelayout.NewVBox()
-	for __copy0, name := range []string{"one", "two"} {
+	for __copy0, name := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "one", Elem: "one"}, __anon_id_elem_c6a818{Id: "two", Elem: "two"}} {
 		m.row = fynelayout.NewTap(nil)
 		m.__list_row(fmt.Sprint(__copy0), m.row)
 		m.row.OnTapped = func() {
-			m.opened = name
+			m.opened = name.Elem
 			m.__renderSlot0(m.__n2)
 		}
 		m.__n4 = fynelayout.NewVBox()
 		m.__n5 = widget.NewLabel("")
-		m.__n5.SetText(name)
+		m.__n5.SetText(name.Elem)
 		m.__n4.Add(m.__n5)
 		m.row.Content = m.__n4
 		m.__n3.Add(m.row)
@@ -911,6 +921,11 @@ import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 )
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -1053,12 +1068,12 @@ func (m *Model) buildWidgetTree() {
 	__n3 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n3, 1)
 	gtk4rt.SetLook(__n3, gtk4rt.Look{Spaced: true, Spacing: 6})
-	for __copy0, name := range []string{"one", "two"} {
+	for __copy0, name := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "one", Elem: "one"}, __anon_id_elem_c6a818{Id: "two", Elem: "two"}} {
 		m.row = gtk4rt.New("GtkButton")
 		gtk4rt.SetBool(m.row, "has-frame", false)
 		m.__list_row(fmt.Sprint(__copy0), m.row)
 		gtk4rt.Connect(m.row, "clicked", func() {
-			m.opened = name
+			m.opened = name.Elem
 			m.__n2_box = gtk4rt.SlotBox(m.__n2_box)
 			if gtk4rt.ParentOf(m.__n2_box) != m.__n2 {
 				gtk4rt.FrameSetChild(m.__n2, m.__n2_box)
@@ -1067,7 +1082,7 @@ func (m *Model) buildWidgetTree() {
 		})
 		__n4 := gtk4rt.New("GtkFrame")
 		__n5 := gtk4rt.New("GtkLabel")
-		gtk4rt.LabelSetLabel(__n5, name)
+		gtk4rt.LabelSetLabel(__n5, name.Elem)
 		gtk4rt.LabelSetXAlign(__n5, 0.0)
 		gtk4rt.FrameSetChild(__n4, __n5)
 		gtk4rt.ChildCall("gtk_button_set_child", m.row, __n4)
@@ -1131,12 +1146,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.key
 import androidx.compose.material3.Card
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
+
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1156,11 +1177,13 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
-        for ((__copy0, name) in listOf("one", "two").withIndex()) {
-            Card(onClick = {
-                state.opened = name
-            }, modifier = Modifier.testTag("row").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
-                Text(text = name, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+        for ((__copy0, name) in listOf(__anon_id_elem_c6a818(id = "one", elem = "one"), __anon_id_elem_c6a818(id = "two", elem = "two")).withIndex()) {
+            key(name.id) {
+                Card(onClick = {
+                    state.opened = name.elem
+                }, modifier = Modifier.testTag("row").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
+                    Text(text = name.elem, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                }
             }
         }
         Card(modifier = Modifier) {
@@ -1543,12 +1566,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b06d11c9cad31dae9dca055c0bda39d6
+pass sha256:73e0589cf309d22dda50915620c19715
 -- run/go/fyne --
-pass sha256:20cb846f7e5dbcfedaafb23b1c223728
+pass sha256:af224253557a6f3894dc742fbb79bd2a
 -- run/go/gtk4 --
-pass sha256:ae9a75fcdda51fb08b52434a9c046695
+pass sha256:09b25b7fdba78adc4bc56daaedcafae0
 -- run/kotlin/android --
-pass sha256:ffaef08544fb05490bea4d7412960b6c
+pass sha256:80edb5a15055c128a6604b5c079e918e
 -- run/none/html --
 pass sha256:36c1a01dd500c6d225c048343c356bd0

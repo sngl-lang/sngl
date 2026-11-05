@@ -48,7 +48,7 @@ func testEachCopyStartsFromItsDefault(t test.Test, c app) {
     t.assert(log.format(",") == "a=none,b=none")
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:a26e46877b7ebdd6a3f70698ae9020cb
+sha256:847b3420ce636f0f53d09ab904542c00
 {
   "results": [
     {
@@ -58,7 +58,7 @@ sha256:a26e46877b7ebdd6a3f70698ae9020cb
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:af284a4412a6458aaa78b87478d460d6
+sha256:abb04987d3628256fe1c648e33a1b33e
 {
   "results": [
     {
@@ -68,7 +68,7 @@ sha256:af284a4412a6458aaa78b87478d460d6
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:f9cfd87cf0ce93f3b8f1da2129a49ac4
+sha256:2585d2867c2fcfdbd792817127bb07e3
 {
   "results": [
     {
@@ -78,7 +78,7 @@ sha256:f9cfd87cf0ce93f3b8f1da2129a49ac4
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:d40f27f9e79060c55c9215e0f4eff1ae
+sha256:399b58ddf62b3d17d26584144599b8a0
 {
   "results": [
     {
@@ -88,7 +88,7 @@ sha256:d40f27f9e79060c55c9215e0f4eff1ae
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:94305c7bf131d050ced652b844eec38f
+sha256:aa023c23b5bbfd1ffe8a4c2dc0db6c71
 {
   "results": [
     {

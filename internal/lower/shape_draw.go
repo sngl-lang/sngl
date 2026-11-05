@@ -139,6 +139,7 @@ func emitShapes(children []ir.Stmt, body *[]ir.Stmt, env drawEnv) {
 				Key:      v.Key,
 				Value:    v.Value,
 				Iter:     v.Iter,
+				Identity: v.Identity,
 				ElemType: v.ElemType,
 				Body:     loop,
 				Else:     empty,

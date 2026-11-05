@@ -48,11 +48,17 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -83,6 +89,26 @@ func New() *Model {
 	return m
 }
 
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -100,11 +126,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-				for _, it := range m.items__inst0 {
+				for _, it := range __identified0(m.items__inst0) {
 					__n2 := fynelayout.NewButton("", nil)
-					__n2.SetText(it)
+					__n2.SetText(it.Elem)
 					__n2.OnTapped = func() {
-						m.picked__inst0 = it
+						m.picked__inst0 = it.Elem
 						m.__n1.SetText(m.picked__inst0)
 					}
 					fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
@@ -192,7 +218,15 @@ func main() {
 
 package main
 
-import "duckfam.us/sngl/pkg/go/gtk4rt"
+import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"fmt"
+)
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -223,6 +257,26 @@ func New() *Model {
 	return m
 }
 
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := __x
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -240,12 +294,12 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-				for _, it := range m.items__inst0 {
+				for _, it := range __identified0(m.items__inst0) {
 					__n2 := gtk4rt.New("GtkButton")
-					gtk4rt.ButtonSetLabel(__n2, it)
+					gtk4rt.ButtonSetLabel(__n2, it.Elem)
 					gtk4rt.SetBool(__n2, "can-focus", true)
 					gtk4rt.Connect(__n2, "clicked", func() {
-						m.picked__inst0 = it
+						m.picked__inst0 = it.Elem
 						gtk4rt.LabelSetLabel(m.__n1, m.picked__inst0)
 					})
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
@@ -320,6 +374,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:29138a31aa80c16c3260c2e193ce6c90
+pass sha256:455c7345159c5e14ec24beb3d034ea87
 -- run/go/gtk4 --
-pass sha256:a83f9c4cc3ee0e297aefd4fc86bc104d
+pass sha256:dbe128fa4baca42a45421e0c8e2564bd

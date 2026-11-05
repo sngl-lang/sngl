@@ -1170,8 +1170,11 @@ func emitInstanceRegistration(b *strings.Builder, reads []codegen.InstanceRead, 
 		return
 	}
 	key := kotlin.InstanceKeyParam
+	// The entry is removed only while it is this composition's: a copy a
+	// keyed loop moved registers under the name another copy is leaving,
+	// whose dispose may run after it.
 	fmt.Fprintf(b, "    %s(%s) {\n", kc.Name(ktDisposableEffect), key)
-	fmt.Fprintf(b, "        %s[%s] = mapOf<String, (List<Any?>) -> Any?>(\n", kotlin.InstanceRegistry, key)
+	fmt.Fprintf(b, "        val __entry = mapOf<String, (List<Any?>) -> Any?>(\n")
 	for _, r := range reads {
 		// A computed is a derived value the composable remembers, read by
 		// name rather than called.
@@ -1199,7 +1202,8 @@ func emitInstanceRegistration(b *strings.Builder, reads []codegen.InstanceRead, 
 		fmt.Fprintf(b, "            %q to { _ -> %s },\n", r.Member, name)
 	}
 	b.WriteString("        )\n")
-	fmt.Fprintf(b, "        onDispose { %s.remove(%s) }\n    }\n\n", kotlin.InstanceRegistry, key)
+	fmt.Fprintf(b, "        %s[%s] = __entry\n", kotlin.InstanceRegistry, key)
+	fmt.Fprintf(b, "        onDispose { if (%s[%s] === __entry) %s.remove(%s) }\n    }\n\n", kotlin.InstanceRegistry, key, kotlin.InstanceRegistry, key)
 }
 
 // emitIRKtMemberFunc emits a user func as a method inside a class

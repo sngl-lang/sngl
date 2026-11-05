@@ -654,7 +654,7 @@ func (st *effectState) downFunc(prefix string, fx *loweredEffect, key ir.Expr, f
 	block = append(block, st.resetPaths(fx)...)
 	leaf := []ir.Stmt{callListPush(desired(), push, fx.elem)}
 	if fx.paths != nil {
-		leaf = append(leaf, st.pushPath(fx, CopyKey(fx.pathLoops))...)
+		leaf = append(leaf, st.pushPath(fx, CopyIdentity(fx.pathLoops))...)
 	}
 	block = append(block, st.positionBlock(prefix, frames, leaf)...)
 
@@ -885,8 +885,8 @@ func (st *effectState) copyPaths(o *ir.Owner, fx *loweredEffect, frames []effect
 	}
 	// Bound now, so the loops positionBlock rebuilds bind the indices the
 	// path reads.
-	_ = CopyKey(loops)
-	return func() ir.Expr { return CopyKey(loops) }
+	_ = CopyIdentity(loops)
+	return func() ir.Expr { return CopyIdentity(loops) }
 }
 
 // resetPaths starts the paths a pass describes, beside desired.
@@ -959,6 +959,7 @@ func (st *effectState) positionBlock(prefix string, frames []effectFrame, leaf [
 				KeySym:   f.loop.KeySym,
 				ValueSym: f.loop.ValueSym,
 				Iter:     deepCloneExpr(f.loop.Iter),
+				Identity: deepCloneExpr(f.loop.Identity),
 				ElemType: f.loop.ElemType,
 				AST:      f.loop.AST,
 				Body:     leaf,
@@ -1107,7 +1108,7 @@ func (st *effectState) keysReportBlock(prefix string, fx *loweredEffect) []ir.St
 	owed := or(st.varIdent(fx.dirty), and(st.varIdent(fx.rekey), rebuildDiffers(st.varIdent(prev), st.varIdent(fx.keyVar), keyT)))
 	leaf := []ir.Stmt{
 		&ir.Assign{Target: st.varIdent(fx.keyVar), Op: ast.AssignSet, Value: deepCloneExpr(fx.key)},
-		&ir.LocalVar{Name: copyVar.Name, Type: copyVar.Type, Sym: copyVar, Init: CopyKey(fx.loops)},
+		&ir.LocalVar{Name: copyVar.Name, Type: copyVar.Type, Sym: copyVar, Init: CopyIdentity(fx.loops)},
 		&ir.If{
 			Cond: callMapContains(st.varIdent(fx.keys), st.varIdent(copyVar), keyT),
 			Body: []ir.Stmt{

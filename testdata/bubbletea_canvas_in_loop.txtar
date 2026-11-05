@@ -76,6 +76,11 @@ type Measurement struct {
 	Rem float64
 }
 
+type __anon_id_elem_4ccb28 struct {
+	Id   string
+	Elem float64
+}
+
 type Style__draw struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
@@ -224,8 +229,7 @@ func _canvasSurface0At(copy int) *snglcanvas.Surface {
 func (m Model) __canvasTransmit() tea.Cmd {
 	var __ctb strings.Builder
 	__canvasSeq0 := 0
-	for __copy0, s := range m.sizes {
-		_ = __copy0
+	for _, s := range __identified0(m.sizes) {
 		_ = s
 		__canvasAt0 := __canvasSeq0
 		__canvasSeq0++
@@ -235,14 +239,14 @@ func (m Model) __canvasTransmit() tea.Cmd {
 			ApplyStyle(ctx, Style__draw{Fill: snglcolor.Color{R: 255, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 			var __lt16 float64
 			if func() bool {
-				if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.big__inst0[s.Id]; __ok {
 					return __v
 				}
 				return false
 			}() {
-				__lt16 = (s * 2.0)
+				__lt16 = (s.Elem * 2.0)
 			} else {
-				__lt16 = s
+				__lt16 = s.Elem
 			}
 			ctx.Circle(8.0, 8.0, __lt16)
 			ctx.Restore()
@@ -252,20 +256,40 @@ func (m Model) __canvasTransmit() tea.Cmd {
 		var __lt16 float64
 		_ = __lt16
 		if func() bool {
-			if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.big__inst0[s.Id]; __ok {
 				return __v
 			}
 			return false
 		}() {
-			__lt16 = (s * 2.0)
+			__lt16 = (s.Elem * 2.0)
 		} else {
-			__lt16 = s
+			__lt16 = s.Elem
 		}
 	}
 	if __ctb.Len() == 0 {
 		return nil
 	}
 	return tea.Raw(__ctb.String())
+}
+
+func __identified0(__xs []float64) []__anon_id_elem_4ccb28 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_4ccb28{}
+	for _, __x := range __xs {
+		__id := fmt.Sprint(__x)
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_4ccb28{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func RowsOf(m__r0 *Measurement) int {
@@ -442,30 +466,30 @@ func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
 	m.__effect0_paths = []string{}
 	m.__effect0_pathAt = map[string]int{}
-	for __copy0, _ := range m.sizes {
+	for _, s := range __identified0(m.sizes) {
 		__effect0_fresh := true
 		var __effect0_at int = func() int {
-			if __v, __ok := m.__effect0_liveAt[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.__effect0_liveAt[s.Id]; __ok {
 				return __v
 			}
 			return -1
 		}()
 		if __effect0_at >= 0 {
-			__effect0_fresh = (m.__effect0_live[__effect0_at] != fmt.Sprint(__copy0))
+			__effect0_fresh = (m.__effect0_live[__effect0_at] != s.Id)
 		}
-		m.__effect0_pathAt[fmt.Sprint(__copy0)] = len(m.__effect0_paths)
-		m.__effect0_paths = append(m.__effect0_paths, fmt.Sprint(__copy0))
+		m.__effect0_pathAt[s.Id] = len(m.__effect0_paths)
+		m.__effect0_paths = append(m.__effect0_paths, s.Id)
 		if __effect0_fresh {
 			__cell1_big__inst0 := func() bool {
-				if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.big__inst0[s.Id]; __ok {
 					return __v
 				}
 				return false
 			}()
 			__cell1_big__inst0 = false
-			m.big__inst0[fmt.Sprint(__copy0)] = __cell1_big__inst0
+			m.big__inst0[s.Id] = __cell1_big__inst0
 		}
-		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+		m.__effect0_desired = append(m.__effect0_desired, s.Id)
 	}
 	m.__effect0_live = m.__effect0_desired
 	m.__effect0_livePaths = m.__effect0_paths
@@ -495,7 +519,7 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) __focusLoop0_len() int {
 	var __focusCount int = 0
-	for range m.sizes {
+	for range __identified0(m.sizes) {
 		__focusCount = (__focusCount + 1)
 	}
 	return __focusCount
@@ -634,23 +658,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 0 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos0 := 0
-				for __copy0, s := range m.sizes {
-					_ = __copy0
+				for _, s := range __identified0(m.sizes) {
 					_ = s
 					if m.__focusLoop0_cursor == __focusPos0 {
 						__cell2_big__inst0 := func() bool {
-							if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.big__inst0[s.Id]; __ok {
 								return __v
 							}
 							return false
 						}()
 						__cell2_big__inst0 = !func() bool {
-							if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.big__inst0[s.Id]; __ok {
 								return __v
 							}
 							return false
 						}()
-						m.big__inst0[fmt.Sprint(__copy0)] = __cell2_big__inst0
+						m.big__inst0[s.Id] = __cell2_big__inst0
 						return
 					}
 					__focusPos0++
@@ -699,8 +722,7 @@ func (m Model) View() tea.View {
 		__canvasSeq0 := 0
 		_ = __canvasSeq0
 		var part0_0Items []string
-		for __copy0, s := range m.sizes {
-			_ = __copy0
+		for _, s := range __identified0(m.sizes) {
 			_ = s
 			var part0_0Item string
 			var part0_0ItemChildren []string
@@ -713,14 +735,14 @@ func (m Model) View() tea.View {
 				ApplyStyle(ctx, Style__draw{Fill: snglcolor.Color{R: 255, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 				var __lt16 float64
 				if func() bool {
-					if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
+					if __v, __ok := m.big__inst0[s.Id]; __ok {
 						return __v
 					}
 					return false
 				}() {
-					__lt16 = (s * 2.0)
+					__lt16 = (s.Elem * 2.0)
 				} else {
-					__lt16 = s
+					__lt16 = s.Elem
 				}
 				ctx.Circle(8.0, 8.0, __lt16)
 				ctx.Restore()
@@ -785,19 +807,36 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { sizes: [1, 6], visible__inst0: true };
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
+      ;
+      let __id = String(__x);
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
+  }
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
     ctx.lineWidth = style.strokeWidth;
   }
   function __snglTeardown() {
-    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+    for (const [__inst1_live_dk, __inst1_live_dv] of __inst1_live.entries()) {
       ;
-      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
-      __inst1_live[__inst1_live_dj].__destroy();
+      __inst1_live_dv.__destroy();
     }
     ;
-    __inst1_live = [];
+    __inst1_live = /* @__PURE__ */ new Map([]);
   }
   function __cf_Dot(props) {
     const __root = document.createElement("div");
@@ -846,7 +885,7 @@ body { font-family: system-ui, sans-serif; }
     };
   }
   var __slot0 = [];
-  var __inst1_live = [];
+  var __inst1_live = /* @__PURE__ */ new Map([]);
   var __rendering0 = false;
   var __renderAgain0 = false;
   function __renderSlot0(parent) {
@@ -861,22 +900,27 @@ body { font-family: system-ui, sans-serif; }
           let __place0_prev = __slot0;
           let __place0_i = 0;
           __slot0 = [];
-          let __inst1_next = [];
-          let __inst1_i = 0;
-          for (const s of state.sizes) {
+          let __inst1_next = /* @__PURE__ */ new Map([]);
+          let __inst1_seen = /* @__PURE__ */ new Map([]);
+          for (const s of __identified0(state.sizes)) {
             let __n1 = null;
-            if (__inst1_live.length > __inst1_i) {
-              __n1 = __inst1_live[__inst1_i];
-              __n1.__set_r(s);
+            let __key2 = String(s.id);
+            let __key2_n = __inst1_seen.has(__key2) ? __inst1_seen.get(__key2) : 0;
+            __inst1_seen.set(__key2, __key2_n + 1);
+            if (__key2_n > 0) {
+              __key2 = __key2 + "#" + String(__key2_n);
+            }
+            if (__inst1_live.has(__key2)) {
+              __n1 = __inst1_live.has(__key2) ? __inst1_live.get(__key2) : null;
+              __n1.__set_r(s.elem);
             } else {
-              if (__inst1_live.length > __inst1_i) {
-                __inst1_live[__inst1_i].__destroy();
+              if (__inst1_live.has(__key2)) {
+                (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n1__new = __cf_Dot({ r: s });
+              let __n1__new = __cf_Dot({ r: s.elem });
               __n1 = __n1__new;
             }
-            __inst1_next.push(__n1);
-            __inst1_i = __inst1_i + 1;
+            __inst1_next.set(__key2, __n1);
             let __n1__el = __n1.__root;
             let __place0_i_ref0 = null;
             if (__place0_i < __place0_prev.length) {
@@ -889,10 +933,9 @@ body { font-family: system-ui, sans-serif; }
             }
             __slot0.push(__n1__el);
           }
-          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-            if (__inst1_i_j >= __inst1_i) {
-              __inst1_live[__inst1_i_j].__destroy();
+          for (const [__inst1_live_k, __inst1_live_v] of __inst1_live.entries()) {
+            if (!__inst1_next.has(__inst1_live_k)) {
+              __inst1_live_v.__destroy();
             }
           }
           __inst1_live = __inst1_next;
@@ -952,6 +995,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:061b81f73ed6030f76a05997031973eb
+pass sha256:d09a0be6fdd1307e5db2ce3c089764c6
 -- run/none/html --
-pass sha256:afde9768c28358bbc2db5d06bacbbc00
+pass sha256:2172fb3d855fb6d7a8c6940f8954bb7f
