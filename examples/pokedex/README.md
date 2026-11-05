@@ -101,16 +101,14 @@ are the package's (`names` in `names.sngl`), which a Pokémon's page fills
 too, so nothing named once is asked for again, and a species that fails
 keeps its slug until the sign of the failed lookups asks again.
 
-What home has asked for is `asking`, a list it only ever adds to: an effect
-adds each species coming into view that no page has named, and the requests
-are a `for` over it. A `for` matches its copies by position, so a request
-dropping out of the middle of the list, as one would once answered, moved
-every one after it, and each started again:
+The requests are a `for` over the species to name, each a `lookup`, which
+asks through `cached` only where the cache wants the key. A loop over
+strings keeps each copy by its string, so a species dropping out of the list
+as its name arrives leaves every other request where it is:
 
 ```sngl
-effect(on="{chosenDex != null ? chosenDex.name : ""}/{namingAll}/{shown}", @mount { ask() })
-for var slug = asking {
-    poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{got.name}"] = localNames(got.names) }, @fail(f) { lookupFailed(`species`, slug, f) })
+for var slug = naming() {
+    lookup(kind=`species`, slug=slug)
 }
 ```
 
@@ -122,8 +120,9 @@ is, and each is mounted unless what it would ask for is what last failed, so
 asking for something else asks at once and the sign asks again by forgetting
 the failure. A name is shown by its slug until its own arrives, so the
 lookups that fail are counted on one sign per page (`lookupsError`), which
-starts the next round of asking (`round`, `failures` in `names.sngl`): a
-lookup that failed in the last round is mounted again, and asks.
+starts the cache's next round of asking (`Cache.retry`): a key that failed
+in the last round is wanted again, so its `cached` mounts its query, and
+asks.
 
 **The search matches what the cards say.** It matches the slug or the name
 in the reader's language, so the first search of a dex asks for the species
@@ -400,16 +399,21 @@ no Japanese name.
 **A name that lives on a resource of its own is a request for it.** A type,
 an ability, a stat, an egg group, a habitat, the items, types, moves and
 triggers an evolution names, and a move are asked for by name where the page
-shows them, each a query keyed on it under a `for` over the names shown:
+shows them, each a `lookup` under a `for` over the names shown:
 
 ```sngl
 for var a = mon.abilities {
-    poke.abilityRetrieve(id=a.ability.name, @load(got) { names["ability/{got.name}"] = localNames(got.names) })
+    lookup(kind=`ability`, slug=a.ability.name)
 }
 ```
 
-`names` is the page's: a map from `kind/slug` to the resource's names in every
-language. The lines' functions -- `abilitiesOf`, `effortOf`, `triggerOf`,
+**What every page asks for is kept in one cache.** `cached` is a generic
+component over `async.query`, as a React hook composes another: handed a
+key, a function asking for it, what to keep of the answer and a `Cache`, it
+asks only where the cache has neither the answer nor a failure this round,
+and writes what it gets back into the cache. `names` is the app's cache, a
+`Cache[list[Named]]` from `kind/slug` to the resource's names in every
+language, so a name one page asked for is not asked for again by any. The lines' functions -- `abilitiesOf`, `effortOf`, `triggerOf`,
 `movesOf` -- take it and still answer strings, through `called`, which reads
 the name in the reader's language and the slug made readable until the answer
 arrives. So the lines and the select keep their strings, and choosing
@@ -429,12 +433,10 @@ Eevee's Evolution asks for six: five stones and the Fairy type. Every panel
 mounts as the page opens, so every tab's requests but Moves' go out then;
 Moves' go out the first time its tab is shown.
 
-**A resource is asked for once per place it is shown.** A tab asks for each
-name it shows once, however many times it shows it -- a move learned at two
-levels, a stone two stages reach. Nothing is kept between places: the
-header's Fairy type and a Fairy move in Evolution are two requests. A tab
-shown again asks for nothing, since its panel stayed mounted, and a page
-opened again starts with no names.
+**A resource is asked for once.** A name in the cache is not asked for again,
+wherever it is shown next -- a move learned at two levels, the header's Fairy
+type and a Fairy move in Evolution, a page opened again. Two places asking at
+once, before either answers, are two requests.
 
 **The app's own words are `$"..."`**, and `i18n.manifest.json` translates
 each into the four other languages: the tab labels, About's and Stats'

@@ -346,9 +346,9 @@ func testTheSearchCoversTheWholeDex(t test.Test, c home) {
 // Spray's is null: read as the document says, every page learning it showed
 // its move failed, however often it was asked again.
 func testAMoveWithNoContestTypeIsNamed(t test.Test, c spray) {
-    t.wait(func() => known(`move`, "acid-spray") || failedNow(`move`, "acid-spray"), 5000)
-    t.assert(!failedNow(`move`, "acid-spray"))
-    t.assert(called(names, `move`, "acid-spray") == "Acid Spray")
+    t.wait(func() => names.known("move/acid-spray") || names.failedNow("move/acid-spray"), 5000)
+    t.assert(!names.failedNow("move/acid-spray"))
+    t.assert(called(names.answers, `move`, "acid-spray") == "Acid Spray")
 }
 
 func testACardNamesItsSpeciesInTheReadersLanguage(t test.Test, c home) {
@@ -360,21 +360,21 @@ func testACardNamesItsSpeciesInTheReadersLanguage(t test.Test, c home) {
     t.assert(c.page.label(c.page.visible()[3]) == "Salamèche")
     // A species the server has no answer for keeps its slug's name, and the
     // sign of the failed lookups counts it.
-    t.wait(func() => failedNow(`species`, "squirtle"), 5000)
-    t.assert(!known(`species`, "squirtle"))
+    t.wait(func() => names.failedNow("species/squirtle"), 5000)
+    t.assert(!names.known("species/squirtle"))
     t.assert(c.page.label(c.page.visible()[6]) == "Squirtle")
-    t.assert(failing().length() > 0)
+    t.assert(names.failing().length() > 0)
     // The sign asks every one again, in a round of its own, and the server
     // has no answer again.
-    var before = round
+    var before = names.round
     var sign = c.page.namesFailed.lookupsSign
     t.assert(sign != null && string.contains(sign.why, "404"))
     if sign != null {
         sign.sign.click()
     }
-    t.assert(round == before + 1)
-    t.wait(func() => failedNow(`species`, "squirtle"), 5000)
-    t.assert(failures["species/squirtle"].round == before + 1)
+    t.assert(names.round == before + 1)
+    t.wait(func() => names.failedNow("species/squirtle"), 5000)
+    t.assert(names.failures["species/squirtle"].round == before + 1)
 }
 
 // A dex the server has no answer for says so beside a sign whose tooltip

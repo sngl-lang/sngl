@@ -344,74 +344,94 @@ struct Named {
 // `names` as a page keeps them.
 func localNames[T LocalName](names list[T]) => names.map(func(n T) => Named{language=n.language, name=n.name})
 
-// Every name asked for, keyed "kind/slug" and shared by every page, so a name
-// one page asked for is not asked for again.
-var names map[string, list[Named]] = {}
-
-// Whether the names of `slug` of `kind` have been answered.
-func known(kind string, slug string) => names.contains("{kind}/{slug}")
-
-// A lookup that failed: why, and in which round of asking.
+// A key a cache asked for that failed: why, and in which round of asking.
 struct Failed {
     why   string
     round int
 }
 
-// Every lookup that failed, keyed as `names` is. A failure holds for the
-// round it failed in, so the lookup is not asked again in a loop; `retry`
-// starts the next round, and every lookup that failed asks again.
-var failures map[string, Failed] = {}
-
-// The round of asking.
-var round = 0
-
-// Records that the lookup of `slug` of `kind` failed this round.
-func lookupFailed(kind string, slug string, f async.Failure) {
-    failures["{kind}/{slug}"] = Failed{why=f.message, round=round}
+// Answers kept by key and shared by everything that holds the cache, so what
+// one page asked for is not asked for again, and the keys that failed. A
+// failure holds for the round it failed in, so a key is not asked again in a
+// loop; `retry` starts the next round, and every key that failed asks again.
+struct Cache[V any] {
+    answers  map[string, V]
+    failures map[string, Failed]
+    round    int
 }
 
-// Whether the lookup of `slug` of `kind` failed this round.
-func failedNow(kind string, slug string) => failures.get("{kind}/{slug}", Failed{why="", round=-1}).round == round
+// Whether `key` has been answered.
+func Cache[V].known(key string) => this.answers.contains(key)
 
-// Whether to ask for the names of `slug` of `kind`: not answered, and not
-// failed this round.
-func wanted(kind string, slug string) => !known(kind, slug) && !failedNow(kind, slug)
+// Whether `key` failed this round.
+func Cache[V].failedNow(key string) => this.failures.get(key, Failed{why="", round=-1}).round == this.round
 
-// Why the lookup of `slug` of `kind` failed this round, "" where it did not.
-func whyFailed(kind string, slug string) => failedNow(kind, slug) ? failures["{kind}/{slug}"].why : ""
+// Whether to ask for `key`: not answered, and not failed this round.
+func Cache[V].wanted(key string) => !this.known(key) && !this.failedNow(key)
 
-// The lookups that failed this round.
-func failing() => failures.values().filter(func(f Failed) => f.round == round)
+// Why `key` failed this round, "" where it did not.
+func Cache[V].whyFailed(key string) => this.failedNow(key) ? this.failures[key].why : ""
 
-// Asks again for every lookup that failed.
-func retry() {
-    round += 1
+// The keys that failed this round.
+func Cache[V].failing() => this.failures.values().filter(func(f Failed) => f.round == this.round)
+
+// Asks again for every key that failed.
+func Cache[V].retry() {
+    this.round += 1
 }
+
+// Keeps `answer` as what `key` answered.
+func Cache[V].keep(key string, answer V) {
+    this.answers[key] = answer
+}
+
+// Records that `key` failed this round, and why.
+func Cache[V].fail(key string, f async.Failure) {
+    this.failures[key] = Failed{why=f.message, round=this.round}
+}
+
+// Asks for `key` where `cache` wants it, keeping what `keep` makes of the
+// answer or why it failed. It renders nothing, so it goes wherever the answer
+// is shown, as many times as it is: once answered, none asks again. `load`
+// hands on the whole answer, for a caller that keeps more of it.
+component cached[T any, V any, F any](key string, fetch func() async.Result[T], keep func(T) V, :cache Cache[V], @load(got T)) F {
+    if cache.wanted(key) {
+        async.query(
+            on = key,
+            fetch = func(k string) => fetch(),
+            @load(got) {
+                cache.keep(key, keep(got))
+                load(got)
+            },
+            @fail(f) { cache.fail(key, f) },
+        )
+    }
+}
+
+// Every name asked for, keyed "kind/slug" and shared by every page.
+var names = Cache[list[Named]]{answers={}, failures={}, round=0}
 
 // Asks for the names of `slug` of `kind` where no page has, keeping them in
-// `names`, or that the lookup failed in `failures`. It renders nothing, so it
-// goes wherever the name is shown.
+// `names`.
 component lookup(kind string, slug string) ui.node {
-    if wanted(kind, slug) {
-        if kind == `species` {
-            poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `type` {
-            poke.typeRetrieve(id=slug, @load(got) { names["type/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `ability` {
-            poke.abilityRetrieve(id=slug, @load(got) { names["ability/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `stat` {
-            poke.statRetrieve(id=slug, @load(got) { names["stat/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `egg-group` {
-            poke.eggGroupRetrieve(id=slug, @load(got) { names["egg-group/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `habitat` {
-            poke.pokemonHabitatRetrieve(id=slug, @load(got) { names["habitat/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `item` {
-            poke.itemRetrieve(id=slug, @load(got) { names["item/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `trigger` {
-            poke.evolutionTriggerRetrieve(id=slug, @load(got) { names["trigger/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `move` {
-            poke.moveRetrieve(id=slug, @load(got) { names["move/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        }
+    if kind == `species` {
+        cached(key="{kind}/{slug}", fetch=func() => poke.pokemonSpeciesRetrieveCall(id=slug), keep=func(got poke.PokemonSpeciesDetail) => localNames(got.names), :cache=names)
+    } else if kind == `type` {
+        cached(key="{kind}/{slug}", fetch=func() => poke.typeRetrieveCall(id=slug), keep=func(got poke.TypeDetail) => localNames(got.names), :cache=names)
+    } else if kind == `ability` {
+        cached(key="{kind}/{slug}", fetch=func() => poke.abilityRetrieveCall(id=slug), keep=func(got poke.AbilityDetail) => localNames(got.names), :cache=names)
+    } else if kind == `stat` {
+        cached(key="{kind}/{slug}", fetch=func() => poke.statRetrieveCall(id=slug), keep=func(got poke.StatDetail) => localNames(got.names), :cache=names)
+    } else if kind == `egg-group` {
+        cached(key="{kind}/{slug}", fetch=func() => poke.eggGroupRetrieveCall(id=slug), keep=func(got poke.EggGroupDetail) => localNames(got.names), :cache=names)
+    } else if kind == `habitat` {
+        cached(key="{kind}/{slug}", fetch=func() => poke.pokemonHabitatRetrieveCall(id=slug), keep=func(got poke.PokemonHabitatDetail) => localNames(got.names), :cache=names)
+    } else if kind == `item` {
+        cached(key="{kind}/{slug}", fetch=func() => poke.itemRetrieveCall(id=slug), keep=func(got poke.ItemDetail) => localNames(got.names), :cache=names)
+    } else if kind == `trigger` {
+        cached(key="{kind}/{slug}", fetch=func() => poke.evolutionTriggerRetrieveCall(id=slug), keep=func(got poke.EvolutionTriggerDetail) => localNames(got.names), :cache=names)
+    } else if kind == `move` {
+        cached(key="{kind}/{slug}", fetch=func() => poke.moveRetrieveCall(id=slug), keep=func(got poke.MoveDetail) => localNames(got.names), :cache=names)
     }
 }
 
@@ -425,14 +445,10 @@ component loadError(why string, @retry()) ui.node {
 
 // The lookups that failed this round, as one sign that asks for every one
 // again: a name is shown by its slug until its own arrives, so a failed one
-// is no hole on the page, only a word in the wrong language. `again` fires
-// once the next round has started, for a page that asks in a way of its own.
-component lookupsError(@again()) ui.node {
-    if failing().length() > 0 {
-        loadError #lookupsSign(why=lookupsFailed(failing().length(), failing()[0].why), @retry {
-            retry()
-            again()
-        })
+// is no hole on the page, only a word in the wrong language.
+component lookupsError ui.node {
+    if names.failing().length() > 0 {
+        loadError #lookupsSign(why=lookupsFailed(names.failing().length(), names.failing()[0].why), @retry { names.retry() })
     }
 }
 
