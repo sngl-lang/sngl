@@ -665,7 +665,7 @@ func new__remote_state1Instance(__model *Model, __a_url string) *__remote_state1
 	c.__slot0 = nil
 	c.__n0 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.picture__inst2)
-	c.__effects1_settle()
+	__snglMountAfterBuild(c.__effects1_settle)
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
 	return c
@@ -808,11 +808,39 @@ func (m *Model) SetPicture__inst3__inst0(v map[string]*gtk4rt.Picture) {
 	m.picture__inst3__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	__snglBuilding++
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
 	gtk4rt.ToplevelSetTitle(gtk4rt.Handle(unsafe.Pointer(m.__n1)), "t")
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.visible__inst0)
@@ -848,6 +876,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n5)), gtk4rt.Handle(unsafe.Pointer(m.__n8)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n5)))
 	m.__effects0_settle()
+	__snglEndBuild()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 }
 
@@ -861,4 +890,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:7a12a9bcd472fc171efab39a8a8b870f
+pass sha256:91835b588aed295906c71cbf39d4a87a

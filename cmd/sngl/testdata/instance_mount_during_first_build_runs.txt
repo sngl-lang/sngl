@@ -1,0 +1,103 @@
+# A query under a `for` whose fetch answers at once, so the query's instance,
+# built at run time inside the page's first build, settles as it is made and
+# its `@load` patches the page's label after the loop -- which the build has
+# not made yet. fyne dereferenced the nil label, and gtk4 handed GTK a null
+# widget. An instance's first settle is held until the page's build ends,
+# as a component's own runs after its body.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func lookup(name string) async.Result[int] {
+    return {ok=name.length()}
+}
+
+component many ui.node {
+    var total = 0
+
+    ui.vbox {
+        for var w = ["one", "three"] {
+            async.query(on=w, fetch=lookup, @load(got) { total += got })
+        }
+        ui.text(value="{total}")
+    }
+}
+
+func testEachAnswerCounts(t test.Test, c many) {
+    t.wait(func() => c.total == 8, 5000)
+    t.assert(c.total == 8)
+}
+
+ui.window {
+    many()
+}
+-- testrun/android/kotlin/app.sngl/many/1 --
+sha256:81afdd51c1c5c410cae3ac6e64532b57
+{
+  "results": [
+    {
+      "Desc": "EachAnswerCounts",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/many/1 --
+sha256:a499fdbb3830ed0a6e1f9cb3d6b370f0
+{
+  "results": [
+    {
+      "Desc": "EachAnswerCounts",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/many/1 --
+sha256:45b601710774986bcdc2034b6110dc49
+{
+  "results": [
+    {
+      "Desc": "EachAnswerCounts",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/many/1 --
+sha256:545f13a322077e4c21c97d00f935a906
+{
+  "results": [
+    {
+      "Desc": "EachAnswerCounts",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/many/1 --
+sha256:1ba2d0ff13a9e4ce51e4ce6550bca74d
+{
+  "results": [
+    {
+      "Desc": "EachAnswerCounts",
+      "Passed": true
+    }
+  ]
+}

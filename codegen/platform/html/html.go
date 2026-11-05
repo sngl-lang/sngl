@@ -1000,6 +1000,18 @@ func (g *htmlGen) prewalkShared() {
 	for _, n := range g.shared.prewalked.funcs {
 		g.prewalkNode(n)
 	}
+	// A page whose every node is in a reactive slot meets none above: the
+	// slot's render holds them flattened, and every prop of them fell
+	// through to setAttribute, which disables a button handed
+	// `disabled=false` (cmd/sngl/testdata/handle_local_trigger_runs.txt).
+	for _, c := range g.pageComponents() {
+		g.adoptElemDecl(c)
+	}
+	for _, fn := range g.pkg.Funcs {
+		if fn != nil && g.elemDecl == nil {
+			g.adoptElemDeclIn(fn.Block)
+		}
+	}
 }
 
 type prewalkedNodes struct {

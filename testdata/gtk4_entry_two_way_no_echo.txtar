@@ -546,7 +546,7 @@ func newSearchInstance(__model *Model) *SearchInstance {
 	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.search)
 	gtk4rt.LabelSetXAlign(gtk4rt.Handle(unsafe.Pointer(c.__n0)), 0.0)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n4)), gtk4rt.Handle(unsafe.Pointer(c.__n0)))
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(__n4))
 	c.__model.__named_box = c.box
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
@@ -619,11 +619,39 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	__snglBuilding++
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.__n1_closed_handler)
@@ -643,6 +671,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n3)), gtk4rt.Handle(unsafe.Pointer(m.__n5)))
 	m.__renderSlot0(m.__n3)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
+	__snglEndBuild()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 }
 
@@ -676,4 +705,4 @@ func (m *Model) boxChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__named_box)), sig)
 }
 -- run/go/gtk4 --
-pass sha256:b0fa40f3be37aa6cf8d97f96b42491e6
+pass sha256:91b609406b54eb79990a886526c8959d

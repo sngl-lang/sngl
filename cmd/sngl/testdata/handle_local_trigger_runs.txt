@@ -1,0 +1,104 @@
+# A test firing an event through a local holding a node's handle, narrowed
+# by a null test: `var b = c.b`, then `b.click()` under `if b != null`. The
+# checker took a trigger only off a read of the `#id` itself, so the call
+# was "no method click on type button"; it fires through the read that
+# initialized the local, which is the path every target's invoker finds the
+# node by.
+#
+# The page's only node is under an `if`, which html's prewalk then never
+# met: every prop of the button fell through to setAttribute, and
+# `setAttribute("disabled", false)` disabled it, so no click landed.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component page ui.node {
+    var shown = true
+    var clicks = 0
+
+    if shown {
+        ui.button #b(text="again", @click { clicks += 1 })
+    }
+}
+
+func testAButtonUnderAnIfIsClicked(t test.Test, c page) {
+    var b = c.b
+    t.assert(b != null)
+    if b != null {
+        b.click()
+    }
+    t.assert(c.clicks == 1)
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:fdb736dcd4708bd78253a295efa212b0
+{
+  "results": [
+    {
+      "Desc": "AButtonUnderAnIfIsClicked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:9c4ef4381e5e0e372c82b607ee245a0d
+{
+  "results": [
+    {
+      "Desc": "AButtonUnderAnIfIsClicked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:cb95263816bfa99c91843907a6344d6f
+{
+  "results": [
+    {
+      "Desc": "AButtonUnderAnIfIsClicked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:397e6702815ed4afc71eed40993ae7d5
+{
+  "results": [
+    {
+      "Desc": "AButtonUnderAnIfIsClicked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:2bc5260250f6cbabc0d9676ad257674a
+{
+  "results": [
+    {
+      "Desc": "AButtonUnderAnIfIsClicked",
+      "Passed": true
+    }
+  ]
+}

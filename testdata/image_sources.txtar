@@ -1846,7 +1846,7 @@ func new__remote_state1Instance(__model *Model, __a_url string) *__remote_state1
 	c.__slot1 = nil
 	c.__n0 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.picture__inst4)
-	c.__effects1_settle()
+	__snglMountAfterBuild(c.__effects1_settle)
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
 	return c
@@ -2140,11 +2140,39 @@ func (m *Model) SetFailed__inst0(v bool) {
 	m.failed__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	__snglBuilding++
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
 	gtk4rt.ToplevelSetTitle(gtk4rt.Handle(unsafe.Pointer(m.__n1)), "Images")
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.visible__inst0)
@@ -2207,6 +2235,7 @@ func (m *Model) buildWidgetTree() {
 		m._canvasDraw2((*C.cairo_t)(unsafe.Pointer(cr)))
 	})
 	m.__effects0_settle()
+	__snglEndBuild()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n18)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 }
@@ -3246,7 +3275,7 @@ pass sha256:90e83063ffa8768195474e917c45778d
 -- run/go/fyne --
 pass sha256:3bd8e839520413f4799ee82f561f740e
 -- run/go/gtk4 --
-pass sha256:363b77e3818e95d5f26f09d95929b041
+pass sha256:5b106e3f075ece94bead98d9b6c66d64
 -- run/kotlin/android --
 pass sha256:9164c4affdd04c825ec35937d1b533d2
 -- run/none/html --

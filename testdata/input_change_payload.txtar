@@ -680,7 +680,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.LabelSetLabel(c.__n0, c.committed)
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.BoxAppend(__n4, c.__n0)
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = __n4
 	c.__model.__named_entry = c.entry
 	c.__model.__named_entry__1 = c.entry__1
@@ -802,11 +802,39 @@ func (m *Model) SetValue__inst0(v string) {
 	m.value__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	__snglBuilding++
 	__n3 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n3, 1)
 	gtk4rt.SetLook(__n3, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -821,6 +849,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(__n3, m.__n1)
 	m.__renderSlot0(__n3)
 	m.__effects1_settle()
+	__snglEndBuild()
 	gtk4rt.BoxAppend(m.__root, __n3)
 }
 
@@ -859,4 +888,4 @@ func (m *Model) entry__1Change(v string) {
 -- run/go/fyne --
 pass sha256:b8e653d4efd6ad006768bbb7f22bb174
 -- run/go/gtk4 --
-pass sha256:6262e81cdd41852a9104953163f8b088
+pass sha256:8392e003a3f2d9d5151b4f4609a09549

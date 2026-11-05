@@ -353,6 +353,9 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// handleLocals is the read of a node by `#id` each local holding one was
+	// initialized with (readsHandleLocal).
+	handleLocals map[*ir.Var]ir.Expr
 	// formatBuilders is the function buildInterpolation declared for each
 	// string it writes with a builder, and formatBuilderCount how many it has
 	// named.

@@ -892,11 +892,41 @@ func (m *Model) SetFoots(v string) {
 	m.foots = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	__snglBuilding++
 	m.__n4 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n4)
 	content := fyne.CanvasObject(m.__n4)
+	__snglEndBuild()
 	return content
 }
 
@@ -939,7 +969,7 @@ func newCounterInstance(__model *Model, __a_tag string, __a_seen func(string)) *
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(((("counter " + c.__prop_tag) + " ") + fmt.Sprint(c.n)))
 	__n5.Add(c.__n0)
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = __n5
 	return c
 }
@@ -1294,7 +1324,7 @@ func newCounterInstance(__model *Model, __a_tag string, __a_seen func(string)) *
 	gtk4rt.LabelSetLabel(c.__n0, ((("counter " + c.__prop_tag) + " ") + fmt.Sprint(c.n)))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.BoxAppend(__n5, c.__n0)
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = __n5
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1450,15 +1480,44 @@ func (m *Model) SetFoots(v string) {
 	m.foots = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	__snglBuilding++
 	__n4 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n4, 1)
 	gtk4rt.SetLook(__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__renderSlot0(__n4)
+	__snglEndBuild()
 	gtk4rt.BoxAppend(m.__root, __n4)
 }
 
@@ -2019,9 +2078,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:58ff0833794e95756bb822b4cb1bb263
 -- run/go/fyne --
-pass sha256:27906138a60cf70919917db970816198
+pass sha256:fe4214f078c5573eb16906dab80092d0
 -- run/go/gtk4 --
-pass sha256:55148a6d54e12cd98aeb12654a9c3ad8
+pass sha256:17e2fdadc0d136e1dfde7297344338ce
 -- run/kotlin/android --
 pass sha256:88858699dede308338d2ab5003e5fd94
 -- run/none/html --

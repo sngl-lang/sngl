@@ -1,0 +1,9 @@
+// A method declared outside its type with no parameter of the type is
+// static, so its body has no `this`: the error says how to name the receiver.
+
+struct Tally {
+    failures int
+    round    int
+}
+
+func Tally.failing() => this.failures > this.round // ERROR(check) "undefined: this — Tally.failing takes no Tally, so it is static; to call it on a value, name the receiver as its first parameter: func Tally.failing(this Tally, …)"

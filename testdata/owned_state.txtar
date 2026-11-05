@@ -465,7 +465,6 @@ func (m *Model) __effects0_settle() {
 			for m.__effects0_pending && (m.__effects0_steps < 512) {
 				m.__effects0_pending = false
 				m.__effects0_steps = (m.__effects0_steps + 1)
-				m.__effect0_enter()
 				__effect2_seen := false
 				if m.shown {
 					if m.__effect2_dirty {
@@ -481,6 +480,7 @@ func (m *Model) __effects0_settle() {
 				if m.__effect2_absent {
 					m.__effect2_dirty = false
 				}
+				m.__effect0_enter()
 				m.__effect1_down()
 				m.__effect1_up()
 			}
@@ -939,12 +939,41 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
+
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
 		return m.__n1.Container
 	}
 	m.__built = true
+	__snglBuilding++
 	m.__n1 = fynelayout.NewToplevel()
 	m.__n1.SetTitle("t")
 	m.__n1.SetVisible(m.visible__inst0)
@@ -956,6 +985,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.OnTapped = m.__n2_click_handler
 	m.__n1.Add(m.__n2)
 	fynelayout.AppAttach(m.__n1)
+	__snglEndBuild()
 	return m.__n1.Container
 }
 
@@ -1010,7 +1040,7 @@ func newHolderInstance(__model *Model, __a_n int) *HolderInstance {
 		c.__effect1_dirty = true
 		c.__effects0_settle()
 	}
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = c.__n0
 	return c
 }
@@ -1305,7 +1335,7 @@ func newHolderInstance(__model *Model, __a_n int) *HolderInstance {
 		c.__effect1_dirty = true
 		c.__effects0_settle()
 	})
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1433,11 +1463,39 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__built {
 		return
 	}
 	m.__built = true
+	__snglBuilding++
 	m.__n1 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(m.__n1, "t")
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
@@ -1451,6 +1509,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
 	gtk4rt.AppAttach(m.__n1)
+	__snglEndBuild()
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
@@ -1848,11 +1907,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:595c67a3c9006a40b701d91197897c93
+pass sha256:bec1fa7acc799b59bc41449ca23d230b
 -- run/go/fyne --
-pass sha256:7f7649b4a2b01c20a35572234dda949e
+pass sha256:6fbc7381f5da69cb34f63aeebd5f16a6
 -- run/go/gtk4 --
-pass sha256:be9f3aeaf0c07d696d396d214b169de9
+pass sha256:45db975c87370a0a2da1fb4f37f8dd21
 -- run/kotlin/android --
 pass sha256:fdc9cbd75242eda716648a1ee8facf56
 -- run/none/html --

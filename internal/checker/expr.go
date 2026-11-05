@@ -521,7 +521,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 			c.error(x.Pos, "#%s names the node this argument list declares, so its arguments cannot read it (recursive declaration)", x.Name)
 			return &ir.Ident{AST: x, Type: TypInvalid, Name: x.Name}
 		}
-		c.error(x.Pos, "undefined: %s%s%s", x.Name, c.captureHint(x.Name), c.stdlibHint(x.Name))
+		c.error(x.Pos, "undefined: %s%s%s%s", x.Name, c.captureHint(x.Name), c.stdlibHint(x.Name), c.staticThisHint(x.Name))
 		return &ir.Ident{AST: x, Type: TypInvalid, Name: x.Name}
 	}
 	// The export rule only governs cross-package access: an unexported
@@ -1799,6 +1799,12 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 		}
 		typ = TypInvalid
 	}
+	// Fired through a local holding the node, the trigger reads the node
+	// where the local's initializer did: every target's invoker finds the
+	// node by the path the read takes, and a local is no path.
+	if event != "" {
+		receiverExpr = c.throughHandleLocal(receiverExpr)
+	}
 	return &ir.Call{
 		AST:      call,
 		Type:     typ,
@@ -1826,7 +1832,7 @@ func (c *checker) resolveMethod(receiver *ir.Type, field string) (*ir.Func, *ir.
 // node -- or nil. This is how a sigil-free `c.inc.click()` is recognized as an
 // event trigger rather than an ordinary method call.
 func (c *checker) elementEvent(recv ir.Expr, event string) *ir.EventDecl {
-	if !isElementRefRead(recv) {
+	if !isElementRefRead(recv) && !c.readsHandleLocal(recv) {
 		return nil
 	}
 	t := exprType(recv)
@@ -1843,6 +1849,48 @@ func (c *checker) elementEvent(recv ir.Expr, event string) *ir.EventDecl {
 		}
 	}
 	return nil
+}
+
+// noteHandleLocal records that the local sym holds a node read by `#id`,
+// where its initializer is one.
+func (c *checker) noteHandleLocal(sym *ir.Var, init ir.Expr) {
+	if init == nil || !isElementRefRead(init) {
+		return
+	}
+	if c.handleLocals == nil {
+		c.handleLocals = map[*ir.Var]ir.Expr{}
+	}
+	c.handleLocals[sym] = init
+}
+
+// throughHandleLocal is e with a read of a handle local replaced by a copy of
+// the read that initialized it, narrowed as e was.
+func (c *checker) throughHandleLocal(e ir.Expr) ir.Expr {
+	if !c.readsHandleLocal(e) {
+		return e
+	}
+	if conv, ok := e.(*ir.Conversion); ok {
+		id := conv.Operand.(*ir.Ident)
+		out := *conv
+		out.Operand = ir.CloneExprSharingDecls(c.handleLocals[id.Sym.(*ir.Var)])
+		return &out
+	}
+	return ir.CloneExprSharingDecls(c.handleLocals[e.(*ir.Ident).Sym.(*ir.Var)])
+}
+
+// readsHandleLocal reports whether e reads a local holding a node read by
+// `#id` -- `var b = c.b`, narrowed by `if b != null` -- whose events a test
+// fires as it fires the node's: `b.click()` as `c.b.click()`.
+func (c *checker) readsHandleLocal(e ir.Expr) bool {
+	if conv, ok := e.(*ir.Conversion); ok {
+		e = conv.Operand
+	}
+	id, ok := e.(*ir.Ident)
+	if !ok {
+		return false
+	}
+	v, ok := id.Sym.(*ir.Var)
+	return ok && c.handleLocals[v] != nil
 }
 
 // findNodeAST is the node in stmts whose `#id` is id, through `if`s, `for`s
@@ -3636,6 +3684,7 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 			}
 			c.refuseVarHandlers(spec, name)
 			c.declare(decl.Pos, sym)
+			c.noteHandleLocal(sym, initExpr)
 			out = append(out, &ir.LocalVar{
 				Name: name,
 				Type: typ,
@@ -3753,6 +3802,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			Type: typ,
 		}
 		c.declare(x.Pos, sym)
+		c.noteHandleLocal(sym, initExpr)
 		return &ir.LocalVar{AST: x, Name: x.Name, Type: typ, Init: initExpr, Sym: sym}
 	case *ast.ReturnStmt:
 		var valExpr ir.Expr

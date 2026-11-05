@@ -75,7 +75,7 @@ sha256:9174302621927912188bee5866d01299
   ]
 }
 -- testrun/fyne/go/app.sngl/nest/1 --
-sha256:c7f43887abef893ac0cecf019ddf06d0
+sha256:8dbad1df5725e55de3482df7b190416f
 {
   "results": [
     {

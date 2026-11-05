@@ -109,6 +109,9 @@ func emitComponentInstance(
 	}
 	for _, stmt := range bodyStmts {
 		for _, line := range cgc.EvalStmt(stmt) {
+			if golang.IsFirstSettle(pkg, stmt) {
+				line = golang.DeferredMountLine(line)
+			}
 			fmt.Fprintf(&ctorBody, "\t%s\n", line)
 		}
 	}

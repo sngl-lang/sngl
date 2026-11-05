@@ -1,0 +1,132 @@
+# A loop of queries whose list a search empties until the search's `@update`
+# fills it again. Each copy's query keeps its cells per copy, begun by an
+# enter bracket the settle ran ahead of the reports: the enter saw the empty
+# list, the report then wrote what the list reads, and the downs and ups saw
+# every copy stay. The next pass began the cells of every copy afresh under
+# queries still running, so each answer was stale and nothing asked again --
+# bubbletea's Pokédex never named the species a search covers. Reports now
+# run before the enters.
+#
+# The fetch waits on the script harness's server.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+// The length of `key`, asked of the script harness's server.
+func lookup(key string) async.Result[int] {
+    match var r = http.get(url="http://127.0.0.1:47819/status/200") {
+        failed { return {failed=r} }
+        ok { return {ok=key.length()} }
+    }
+}
+
+var answers map[string, int] = {}
+
+component page ui.node {
+    var search = ""
+    var all = false
+
+    // The keys asked for: two until a search, every one once a search has
+    // asked for all. Between the search and its `@update` there are none.
+    func keys() list[string] {
+        if all {
+            return ["one", "two", "three"]
+        }
+        return search == "" ? ["one", "two"] : []
+    }
+
+    effect(on=search, @update {
+        if search != "" {
+            all = true
+        }
+    })
+    ui.vbox {
+        ui.button #find(text="find", @click { search = "t" })
+        for var k = keys() {
+            if !answers.contains(k) {
+                async.query(on=k, fetch=lookup, @load(got) { answers[k] = got })
+            }
+        }
+    }
+}
+
+func testASearchAsksForEveryKey(t test.Test, c page) {
+    c.find.click()
+    t.wait(func() => answers.length() == 3, 5000)
+    t.assert(answers["one"] == 3 && answers["two"] == 3 && answers["three"] == 5)
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:7547724e1732d7834d58d594dcd1c434
+{
+  "results": [
+    {
+      "Desc": "ASearchAsksForEveryKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:c612b353683e392722c00819253b4876
+{
+  "results": [
+    {
+      "Desc": "ASearchAsksForEveryKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:8b66c04faf591c9d70854dad418702d0
+{
+  "results": [
+    {
+      "Desc": "ASearchAsksForEveryKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:fc8a99d85d5513125396aa27c8bd8820
+{
+  "results": [
+    {
+      "Desc": "ASearchAsksForEveryKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:5f3ac3a3f27bac6a1e8aa696c176c6e2
+{
+  "results": [
+    {
+      "Desc": "ASearchAsksForEveryKey",
+      "Passed": true
+    }
+  ]
+}

@@ -2276,7 +2276,7 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a___c
 		c.__prop_change(c.value)
 		c.__effects0_settle()
 	})
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = c.field
 	c.__model.__named_field = c.field
 	gtk4rt.Retain(c.Root)
@@ -2375,11 +2375,39 @@ func (m *Model) SetLog(v string) {
 	m.log = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	__snglBuilding++
 	m.__n3 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.SetLook(m.__n3, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -2393,6 +2421,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetLabel(m.__n0, m.log)
 	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	gtk4rt.BoxAppend(m.__n3, m.__n0)
+	__snglEndBuild()
 	gtk4rt.BoxAppend(m.__root, m.__n3)
 }
 
@@ -3287,7 +3316,7 @@ pass sha256:543f2c9e63fd3518da8a71b83d1f28bc
 -- run/go/fyne --
 pass sha256:0eed587be68d76bf904421ee764bee10
 -- run/go/gtk4 --
-pass sha256:e46e5e7b024b9be1232e7542c5fe0caf
+pass sha256:0b0a286fa5cf41b74d5f8102627fa37f
 -- run/kotlin/android --
 pass sha256:95e5169a22ee0986a1c5c5cc1bc40213
 -- run/none/html --

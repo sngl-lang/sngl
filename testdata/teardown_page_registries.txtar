@@ -912,7 +912,7 @@ func newPageInstance(__model *Model) *PageInstance {
 	gtk4rt.ImageSourceSetPicture(c.__n0, c.picture__inst0)
 	gtk4rt.BoxAppend(__n5, c.__n0)
 	gtk4rt.BoxAppend(__n4, __n5)
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = __n4
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1015,11 +1015,39 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__built {
 		return
 	}
 	m.__built = true
+	__snglBuilding++
 	m.__n1 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(m.__n1, "t")
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
@@ -1037,6 +1065,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n3, m.__n6)
 	gtk4rt.BoxAppend(m.__n1, m.__n3)
 	gtk4rt.AppAttach(m.__n1)
+	__snglEndBuild()
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
@@ -1050,4 +1079,4 @@ pass sha256:4f35ae3eccd96fdb9b8ae61db7ddc2f1
 -- run/go/fyne --
 pass sha256:405def3de789f5c4feeefb94cca02231
 -- run/go/gtk4 --
-pass sha256:5fbbc9bbaeecd0e747b7f809d69b943b
+pass sha256:fb330b57d1fc000b06d2d170e8514c45

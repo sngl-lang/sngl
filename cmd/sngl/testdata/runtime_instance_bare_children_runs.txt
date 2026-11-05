@@ -414,7 +414,7 @@ sha256:cbeda8f9fb83d85ac447202977be43c0
   ]
 }
 -- testrun/fyne/go/nosnap.sngl/main/1 --
-sha256:c0a33c8bf81dcc63d2355a75ac4fda6e
+sha256:5d6b52d9e7317c861e935c6d0abdea0c
 {
   "results": [
     {
@@ -444,7 +444,7 @@ sha256:0772261cf409d635e150f985278f6e26
   ]
 }
 -- testrun/gtk4/go/nosnap.sngl/main/1 --
-sha256:4e2e9b61b7182e6f6e3e1daa96dea537
+sha256:4aaba865d0ee311e514991cbe2ca9838
 {
   "results": [
     {

@@ -467,7 +467,6 @@ func (m *Model) __effects0_settle() {
 			for m.__effects0_pending && (m.__effects0_steps < 512) {
 				m.__effects0_pending = false
 				m.__effects0_steps = (m.__effects0_steps + 1)
-				m.__effect0_enter()
 				__effect3_next := map[string]__anon_copy_on_5fc366{}
 				for _, k := range __identified0(m.ws) {
 					m.__effect3_key = __anon_copy_on_5fc366{Copy: k.Id, On: k.Elem}
@@ -488,6 +487,7 @@ func (m *Model) __effects0_settle() {
 				m.__effect3_keys = __effect3_next
 				m.__effect3_dirty = false
 				m.__effect3_rekey = false
+				m.__effect0_enter()
 				m.__effect2_down()
 				m.__effect1_down()
 				m.__effect1_up()
@@ -1005,7 +1005,6 @@ func (m *Model) __effects0_settle() {
 			for m.__effects0_pending && (m.__effects0_steps < 512) {
 				m.__effects0_pending = false
 				m.__effects0_steps = (m.__effects0_steps + 1)
-				m.__effect0_enter()
 				__effect3_next := map[string]__anon_copy_on_5fc366{}
 				for _, k := range __identified0(m.ws) {
 					m.__effect3_key = __anon_copy_on_5fc366{Copy: k.Id, On: k.Elem}
@@ -1026,6 +1025,7 @@ func (m *Model) __effects0_settle() {
 				m.__effect3_keys = __effect3_next
 				m.__effect3_dirty = false
 				m.__effect3_rekey = false
+				m.__effect0_enter()
 				m.__effect2_down()
 				m.__effect1_down()
 				m.__effect1_up()
@@ -1778,7 +1778,6 @@ func (m *Model) __effects0_settle() {
 			for m.__effects0_pending && (m.__effects0_steps < 512) {
 				m.__effects0_pending = false
 				m.__effects0_steps = (m.__effects0_steps + 1)
-				m.__effect0_enter()
 				__effect3_next := map[string]__anon_copy_on_5fc366{}
 				for _, k := range __identified0(m.ws) {
 					m.__effect3_key = __anon_copy_on_5fc366{Copy: k.Id, On: k.Elem}
@@ -1799,6 +1798,7 @@ func (m *Model) __effects0_settle() {
 				m.__effect3_keys = __effect3_next
 				m.__effect3_dirty = false
 				m.__effect3_rekey = false
+				m.__effect0_enter()
 				m.__effect2_down()
 				m.__effect1_down()
 				m.__effect1_up()
@@ -2135,7 +2135,6 @@ window.__sngl_boot = () => {
         while (__effects0_pending && __effects0_steps < 512) {
           __effects0_pending = false;
           __effects0_steps = __effects0_steps + 1;
-          __effect0_enter();
           let __effect3_next = /* @__PURE__ */ new Map([]);
           for (const [__copy0, k] of __identified0(state.ws).entries()) {
             __effect3_key = { copy: k.id, on: k.elem };
@@ -2151,6 +2150,7 @@ window.__sngl_boot = () => {
           __effect3_keys = __effect3_next;
           __effect3_dirty = false;
           __effect3_rekey = false;
+          __effect0_enter();
           __effect2_down();
           __effect1_down();
           __effect1_up();
@@ -2220,10 +2220,10 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:20159025c30227125b990deec195b028
+pass sha256:05d4df171f56635e1275e27ce1d72105
 -- run/go/fyne --
-pass sha256:c1ff203dfe2e69365dbff34ce588ce51
+pass sha256:2026ebafe4322316fc4f4527f448a59f
 -- run/go/gtk4 --
-pass sha256:3b1208db78a01345e9181b710ce5b7b7
+pass sha256:bbc0d53b917043ba758f541f569eebe8
 -- run/none/html --
-pass sha256:0d304e69af59acec483519184f27f6ba
+pass sha256:571c0f4ef1d9377742c5c4c50608550b

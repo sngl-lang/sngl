@@ -417,8 +417,6 @@ func (m *Model) __effects0_settle() {
 			for m.__effects0_pending && (m.__effects0_steps < 512) {
 				m.__effects0_pending = false
 				m.__effects0_steps = (m.__effects0_steps + 1)
-				m.__effect0_enter()
-				m.__effect3_enter()
 				__effect2_seen := false
 				if m.shown {
 					if m.__effect2_dirty {
@@ -449,6 +447,8 @@ func (m *Model) __effects0_settle() {
 				if m.__effect5_absent {
 					m.__effect5_dirty = false
 				}
+				m.__effect0_enter()
+				m.__effect3_enter()
 				m.__effect4_down()
 				m.__effect1_down()
 				m.__effect1_up()
@@ -991,7 +991,6 @@ func (m *Model) __effects1_settle() {
 			for m.__effects1_pending && (m.__effects1_steps < 512) {
 				m.__effects1_pending = false
 				m.__effects1_steps = (m.__effects1_steps + 1)
-				m.__effect4_enter()
 				__effect6_seen := false
 				if m.shown {
 					if m.__effect6_dirty {
@@ -1022,6 +1021,7 @@ func (m *Model) __effects1_settle() {
 				if m.__effect8_absent {
 					m.__effect8_dirty = false
 				}
+				m.__effect4_enter()
 				m.__effect7_down()
 				m.__effect5_down()
 				m.__effect5_up()
@@ -1087,10 +1087,40 @@ func (m *Model) SetHeld__inst1__inst0(v *int) {
 	m.held__inst1__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	__snglBuilding++
 	m.__effects1_settle()
 	content := fyne.CanvasObject(widget.NewLabel(""))
+	__snglEndBuild()
 	return content
 }
 
@@ -1137,7 +1167,7 @@ func newPrefsInstance(__model *Model, __a___ctx_store Store, __a___on_language *
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = fynelayout.Nothing()
 	return c
 }
@@ -1695,7 +1725,6 @@ func (m *Model) __effects1_settle() {
 			for m.__effects1_pending && (m.__effects1_steps < 512) {
 				m.__effects1_pending = false
 				m.__effects1_steps = (m.__effects1_steps + 1)
-				m.__effect4_enter()
 				__effect6_seen := false
 				if m.shown {
 					if m.__effect6_dirty {
@@ -1726,6 +1755,7 @@ func (m *Model) __effects1_settle() {
 				if m.__effect8_absent {
 					m.__effect8_dirty = false
 				}
+				m.__effect4_enter()
 				m.__effect7_down()
 				m.__effect5_down()
 				m.__effect5_up()
@@ -1786,7 +1816,7 @@ func newPrefsInstance(__model *Model, __a___ctx_store Store, __a___on_language *
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = gtk4rt.Nothing()
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1980,12 +2010,41 @@ func (m *Model) SetHeld__inst1__inst0(v *int) {
 	m.held__inst1__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	__snglBuilding++
 	m.__effects1_settle()
+	__snglEndBuild()
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -3065,7 +3124,6 @@ window.__sngl_boot = () => {
         while (__effects1_pending && __effects1_steps < 512) {
           __effects1_pending = false;
           __effects1_steps = __effects1_steps + 1;
-          __effect4_enter();
           let __effect6_seen = false;
           if (state.shown) {
             if (__effect6_dirty) {
@@ -3096,6 +3154,7 @@ window.__sngl_boot = () => {
           if (__effect8_absent) {
             __effect8_dirty = false;
           }
+          __effect4_enter();
           __effect7_down();
           __effect5_down();
           __effect5_up();
@@ -3306,12 +3365,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:bc48fca57343b96e7a09d76af238d532
+pass sha256:66ba56ad9dd45cf05e4a1f3f9e2da31b
 -- run/go/fyne --
-pass sha256:86ece75c49b6c1357f4dc600a4fe5a4c
+pass sha256:37ead79d7aac83b1501b246c0925ea25
 -- run/go/gtk4 --
-pass sha256:768251c6bca1dfa8103cb6b7e6b8951e
+pass sha256:9aee290e0d28f9a29da23de09f1a79f1
 -- run/kotlin/android --
 pass sha256:4fc2414b51efd15f25c1e953f51b5b06
 -- run/none/html --
-pass sha256:f6a154e4bbf1260a0a9b2c8eebab2463
+pass sha256:68632f7ca09dda9280b973ee2d0eed7b

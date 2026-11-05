@@ -428,6 +428,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	var b strings.Builder
 	emitFyneModel(&b, &td, gc)
 
+	golang.HoldMountsDuring(ctx.Pkg, &b, &buildBuf)
 	if appRoot {
 		first := ""
 		if len(appChildren) > 0 {

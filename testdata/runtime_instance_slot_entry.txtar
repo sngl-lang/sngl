@@ -1006,8 +1006,37 @@ func (m *Model) SetContents(v string) {
 	m.contents = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	__snglBuilding++
 	m.__n3 = fynelayout.NewVBox()
 	m.add = fynelayout.NewButton("", nil)
 	m.add.SetText("add")
@@ -1015,6 +1044,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.Add(m.add)
 	m.__renderSlot0(m.__n3)
 	content := fyne.CanvasObject(m.__n3)
+	__snglEndBuild()
 	return content
 }
 
@@ -1072,7 +1102,7 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 __anon_id_el
 	__n1.SetText(("content " + fmt.Sprint(c.k)))
 	__n5.Add(__n1)
 	__n4.Add(__n5)
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = __n4
 	return c
 }
@@ -1445,7 +1475,7 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 __anon_id_el
 	gtk4rt.LabelSetXAlign(__n1, 0.0)
 	gtk4rt.BoxAppend(__n5, __n1)
 	gtk4rt.BoxAppend(__n4, __n5)
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = __n4
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1577,11 +1607,39 @@ func (m *Model) SetContents(v string) {
 	m.contents = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	__snglBuilding++
 	m.__n3 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.SetLook(m.__n3, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1591,6 +1649,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.add, "clicked", m.add_clicked_handler)
 	gtk4rt.BoxAppend(m.__n3, m.add)
 	m.__renderSlot0(m.__n3)
+	__snglEndBuild()
 	gtk4rt.BoxAppend(m.__root, m.__n3)
 }
 
@@ -2194,9 +2253,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:37805e4bad02bce4d518354ffb850cd3
 -- run/go/fyne --
-pass sha256:203e4a7dad88e754c36ff0ae6a3bd429
+pass sha256:f518f7263e870b20cb4060870be89606
 -- run/go/gtk4 --
-pass sha256:7a8a24661715a0fcd488f7562625bbba
+pass sha256:6610524d4df08358e37727e5850e57df
 -- run/kotlin/android --
 pass sha256:e36f94469f3e6fd98c3349ee7d6c155d
 -- run/none/html --

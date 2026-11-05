@@ -1631,16 +1631,24 @@ func (st *effectState) buildGroups() {
 			Target: st.varIdent(g.steps), Op: ast.AssignSet,
 			Value: &ir.Binary{Type: ir.TypInt, Op: ast.BinAdd, Left: st.varIdent(g.steps), Right: intLiteralLit(1)},
 		})
-		for _, fx := range g.fxs {
-			if fx.enter != nil {
-				pass = append(pass, callOf(fx.enter))
-			}
-		}
 		// Reports before any lifetime moves, in the order the scope wrote
 		// them: a write was made while the bracket it reaches was running.
+		// And before the enters, which read the state the downs and ups do:
+		// a report writing what a position reads, run between them, had an
+		// enter see a copy leave that the downs saw stay, and the next pass
+		// begin its cells afresh under a query still running -- a search's
+		// `@update` naming the whole dex left bubbletea's requests all stale
+		// (cmd/sngl/testdata/effect_report_between_enter_and_down_runs.txt).
+		// A report is owed only to a bracket already live, never to a copy
+		// an enter begins.
 		for j, fx := range g.fxs {
 			if fx.update != nil {
 				pass = append(pass, st.reportBlock(prefix+"_"+strconv.Itoa(j), fx)...)
+			}
+		}
+		for _, fx := range g.fxs {
+			if fx.enter != nil {
+				pass = append(pass, callOf(fx.enter))
 			}
 		}
 		for _, fx := range slices.Backward(g.fxs) {

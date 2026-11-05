@@ -1,6 +1,8 @@
 package checker
 
 import (
+	"fmt"
+
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/names"
 	"duckfam.us/sngl/ir"
@@ -89,6 +91,17 @@ func (c *checker) captureHint(name string) string {
 		return ""
 	}
 	return " — a nested func is hoisted rather than closed over, so it cannot read the enclosing function's params or locals; pass it as a parameter"
+}
+
+// staticThisHint says why `this` is undefined in a method declared outside
+// its type with no parameter of the type: that is a static method, called on
+// the type, and the receiver is a parameter it names.
+func (c *checker) staticThisHint(name string) string {
+	fn := c.currentFunc
+	if name != "this" || fn == nil || fn.RecvName() == "" || fn.RecvParam != nil || len(fn.RecvTypeParams) > 0 {
+		return ""
+	}
+	return fmt.Sprintf(" — %s.%s takes no %s, so it is static; to call it on a value, name the receiver as its first parameter: func %s.%s(this %s, …)", fn.RecvName(), fn.Name, fn.RecvName(), fn.RecvName(), fn.Name, fn.RecvName())
 }
 
 // renameNestedFuncs gives every func hoisted out of a function body an emitted

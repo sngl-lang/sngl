@@ -44,6 +44,11 @@ func (t *Translator) LaunchTest(ctx context.Context, dir string, _ codegen.LangT
 	// survives the wipe, letting go see an up-to-date binary and skip
 	// the link — about 0.4s per `sngl test` invocation.
 	binPath := dir + ".testagent"
+	if hook := os.Getenv("SNGL_DEBUG_AGENT_PATCH"); hook != "" {
+		h := exec.Command(hook, dir)
+		h.Stderr = os.Stderr
+		_ = h.Run()
+	}
 	out, buildErr := goBuild(ctx, goPath, dir, binPath)
 	if buildErr != nil {
 		if reason, ok := detectMissingPlatformLib(out); ok {

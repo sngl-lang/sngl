@@ -95,14 +95,6 @@ points first, then the bugs and the generated code.
     trigger is restored to the event (`restoreUnreachedTriggers`) and the
     invoker is handed the value: right for a string select, wrong for a
     typed one.
-13. **fyne panics where an instance built in the first build answers at
-    once.** An `async.query` under a `for` whose fetch does not wait settles
-    in its instance's constructor, inside the owner's `BuildUI`; its `@load`
-    patches the owner's label after the loop, not yet made, and
-    `m.__n1.SetText` is a nil dereference. gtk4 makes the same call on a zero
-    handle and survives. The first settle wants deferring to the end of the
-    owner's build, as a component's own already runs after its body. A fetch
-    over `http` waits, so the Pokédex does not reach it.
 
 ## Generated code
 

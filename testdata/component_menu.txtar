@@ -747,7 +747,7 @@ window.__sngl_boot = () => {
             } }, { label: "Paste", disabled: true, checked: false, children: [], select: () => {
             } }]) {
               let __n1 = document.createElement("button");
-              __n1.setAttribute("disabled", it.disabled);
+              __n1.disabled = it.disabled;
               __n1.textContent = it.label;
               __n1.setAttribute("role", "menuitem");
               __n1.addEventListener("click", () => {
@@ -797,9 +797,9 @@ pass sha256:528678124fa3dca5f88bc002825cca96
 -- run/kotlin/android --
 pass sha256:1ffd3f2eed0b4f0691e123c7c079b2f4
 -- run/none/html --
-pass sha256:a5dee3007eccb309b208ce5898caf590
+pass sha256:202b6d4396b61e1bfe75426e7f70f2f2
 -- testrun/html/none/component_menu.sngl/main/1 --
-sha256:66d16afa26af53d777a5f6c85fbc1184
+sha256:0dcf4fc44d282c20061032c248b0ef84
 {
   "results": [
     {

@@ -460,7 +460,11 @@ moves a node out of the body that wrote it:
   through a nested instance (`elementEvent`), and `c.row[1]` types as
   the node's component. html's `At` invoker indexes a constant loop's unrolled
   copies as it does the copies built at run time, and the interpreter takes
-  `[0]` of a loop that rendered one copy as that copy.
+  `[0]` of a loop that rendered one copy as that copy. Fired through a local
+  holding the handle, `var b = c.b` and `b.click()`, the trigger's receiver
+  is a copy of the read that initialized the local (`throughHandleLocal`),
+  since every invoker finds the node by the path the read takes and a local
+  is none (`cmd/sngl/testdata/handle_local_trigger_runs.txt`).
 
 `cmd/sngl/testdata/test_reach_nested_runs.txt` and
 `test_reach_runtime_instance_runs.txt` run it on all six.

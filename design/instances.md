@@ -437,7 +437,12 @@ key differs runs: a prop reports only a new value, and after the per-copy
 splice the loop variable is the prop
 (`testdata/canvas_for_shape_state.txtar`, where replacing the list rekeys
 one copy and releases one value). Before this a write to the list reached no
-copy at all, and a dirty flag ran every copy.
+copy at all, and a dirty flag ran every copy. A pass runs its reports before
+its enter functions, so the enters read the state the downs and ups do: run
+between them, a report writing what a loop reads had an enter see a copy
+leave that the downs saw stay, and the next pass began the copy's cells
+afresh under its query still running, which then answered stale
+(`cmd/sngl/testdata/effect_report_between_enter_and_down_runs.txt`).
 
 **A two-way prop the caller leaves unbound is state of the instance**
 (`ir.UnboundProps`): a cell that starts from what the call site gave the prop,
@@ -754,7 +759,12 @@ at their anchors, from a factory too (`rewriteSlotCallsToAnchors`), and
 Kotlin writes a map entry in a field of a state struct by copying the path
 back to the state, as a field write is (`AssignText`), since an entry
 assigned in place recomposed nothing
-(`cmd/sngl/testdata/instance_writes_page_state_runs.txt`). On android a composable other than MainScreen
+(`cmd/sngl/testdata/instance_writes_page_state_runs.txt`). On fyne and gtk4
+an instance built inside the page's first build holds its first settle until
+the build ends (`golang.HoldMountsDuring`), as a component's own first settle
+runs after its body: a mount answering at once patched a node the build had
+not made yet
+(`cmd/sngl/testdata/instance_mount_during_first_build_runs.txt`). On android a composable other than MainScreen
 cannot see MainScreen's `remember`ed locals, so page state such a composable
 reads is declared at file level (`sharedPageState`). So is a package function
 it calls, with every function that one calls and the state they reach
