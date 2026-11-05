@@ -216,12 +216,28 @@ func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component, inLoop, inBr
 		return nil, fmt.Errorf("%s: %s is given content and leaves :%s unbound, which is not supported yet; bind :%s", nodePos(n), comp.DisplayName(), unbound[0].Name, unbound[0].Name)
 	}
 
-	// The wrapper is no generic: what it declares is at the types the call
-	// site bound.
-	bound := ir.ComponentBindings(n)
+	// What the wrapper declares is at the types the call site bound. Where
+	// the call site is in a generic component and bound one of comp's
+	// parameters to one of its owner's -- `async.query(fetch=fetch)` in a
+	// component over T -- the wrapper is generic in the owner's parameters,
+	// and its instantiation binds each to itself, so a splice of the owner at
+	// its types binds the wrapper's too.
+	bound := st.siteBindings(n)
 	w := &ir.Component{
 		Name:   "__" + identSafe(comp.Name) + "_state" + strconv.Itoa(len(st.made)),
 		Family: wrapperFamily(comp, bound, hosted),
+	}
+	var typeArgs []*ir.Type
+	if st.owner != nil && len(st.owner.TypeParams) > 0 && slices.ContainsFunc(n.TypeArgs, func(t *ir.Type) bool { return t != nil && t.HasTypeParam() }) {
+		w.TypeParams = st.owner.TypeParams
+		for _, tp := range st.owner.TypeParams {
+			typeArgs = append(typeArgs, &ir.Type{Kind: ir.TypeTypeParam, ParamName: tp.Name})
+		}
+		if w.Family == nil && comp.FamilyParam != nil {
+			if f := comp.FamilyParam.Substitute(bound); f != nil && f.Kind == ir.TypeTypeParam {
+				w.FamilyParam = f
+			}
+		}
 	}
 	st.made = append(st.made, w)
 
@@ -376,6 +392,7 @@ func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component, inLoop, inBr
 		AST:       n.AST,
 		Name:      w.Name,
 		Component: w,
+		TypeArgs:  typeArgs,
 		Props:     site,
 		Bindings:  n.Bindings,
 		Handlers:  n.Handlers,
@@ -385,6 +402,23 @@ func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component, inLoop, inBr
 		Key:       n.Key,
 		Ref:       n.Ref,
 	}, nil
+}
+
+// siteBindings is what n's call site bound each of its component's type
+// parameters to, a parameter of the owner included, which
+// ir.ComponentBindings leaves out: bound to the owner's T, the query's own T
+// stood in the cell's type, a parameter no splice binds.
+func (st *implicitState) siteBindings(n *ir.NodeInst) map[string]*ir.Type {
+	if st.owner == nil || len(st.owner.TypeParams) == 0 || len(n.TypeArgs) != len(n.Component.TypeParams) {
+		return ir.ComponentBindings(n)
+	}
+	b := map[string]*ir.Type{}
+	for i, tp := range n.Component.TypeParams {
+		if t := n.TypeArgs[i]; t != nil {
+			b[tp.Name] = t
+		}
+	}
+	return b
 }
 
 // wrappedNode is the node the wrapper n instantiates renders, nil where n is no

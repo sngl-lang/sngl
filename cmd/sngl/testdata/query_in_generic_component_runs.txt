@@ -1,0 +1,202 @@
+# An async.query in a generic component, its answer's type the component's
+# own parameter: a hook-like wrapper a program composes a cache from. The
+# query leaves :pending and :failure unbound, so ImplicitState wraps it in a
+# component of its own, which declared the cells at the types the call site
+# bound -- here `asked`'s T and F, which no splice of `asked` then reached.
+# bubbletea's cell was `*any`, and html's wrapper had no family. The wrapper
+# is generic in its owner's parameters, and the owner's call binds them.
+#
+# The fetch waits on the script harness's server.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+// The length of `name`, asked of the script harness's server, which fails
+// "bad" with a 500.
+func lookup(name string) async.Result[int] {
+    match var r = http.get(url="http://127.0.0.1:47819/status/{name == "bad" ? 500 : 200}") {
+        failed { return {failed=r} }
+        ok {
+            if r.status != 200 {
+                return {failed={kind=async.FailureKind.server, message="no", code="{r.status}"}}
+            }
+            return {ok=name.length()}
+        }
+    }
+}
+
+// A query its caller hands the fetch, keeping the answer in `got`.
+component asked[T any, F any](key string, fetch func(string) async.Result[T], :got option[T]) F {
+    async.query(on=key, fetch=fetch, @load(v) { got = v })
+}
+
+component one ui.node {
+    var length option[int] = null
+
+    ui.vbox {
+        asked(key="fig", fetch=lookup, :got=length)
+        ui.text(value="{length}")
+    }
+}
+
+func testAQueryInAGenericComponentAnswers(t test.Test, c one) {
+    t.wait(func() => c.length != null, 5000)
+    t.assert(c.length == 3)
+}
+
+// Answers kept by key, and why each that failed did.
+struct Store[V any] {
+    answers  map[string, V]
+    failures map[string, string]
+}
+
+// Asks for `key` once the store has no answer for it, keeping what `keep`
+// makes of the answer.
+component cached[T any, V any, F any](key string, fetch func(string) async.Result[T], keep func(T) V, :store Store[V]) F {
+    if !store.answers.contains(key) {
+        async.query(on=key, fetch=fetch, @load(got) { store.answers[key] = keep(got) }, @fail(f) { store.failures[key] = f.message })
+    }
+}
+
+component many ui.node {
+    var lengths = Store[int]{answers={}, failures={}}
+
+    ui.vbox {
+        for var w = ["one", "three", "bad", "one"] {
+            cached(key=w, fetch=lookup, keep=func(n int) => n * 10, :store=lengths)
+        }
+        ui.text(value="{lengths.answers.length()}")
+    }
+}
+
+func testACacheOfQueriesKeepsEachAnswer(t test.Test, c many) {
+    t.wait(func() => c.lengths.answers.length() == 2 && c.lengths.failures.length() == 1, 5000)
+    t.assert(c.lengths.answers["three"] == 50 && c.lengths.answers["one"] == 30)
+    t.assert(c.lengths.failures["bad"] == "no")
+}
+
+ui.window {
+    one()
+    many()
+}
+-- testrun/android/kotlin/app.sngl/many/1 --
+sha256:720c1d9422b4f48a66de962711fdc172
+{
+  "results": [
+    {
+      "Desc": "ACacheOfQueriesKeepsEachAnswer",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/one/1 --
+sha256:da09118b3d582405668b53ac401bb089
+{
+  "results": [
+    {
+      "Desc": "AQueryInAGenericComponentAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/many/1 --
+sha256:250b3f9f49a4ba910a67c3feb5035975
+{
+  "results": [
+    {
+      "Desc": "ACacheOfQueriesKeepsEachAnswer",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/one/1 --
+sha256:3b7e3853358bfca4cb2a66783f0adbd0
+{
+  "results": [
+    {
+      "Desc": "AQueryInAGenericComponentAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/many/1 --
+sha256:dfed71317d5d950c66f21d1d3775764f
+{
+  "results": [
+    {
+      "Desc": "ACacheOfQueriesKeepsEachAnswer",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/one/1 --
+sha256:4b9be6733cb4e5312c2ce5a2986c3d23
+{
+  "results": [
+    {
+      "Desc": "AQueryInAGenericComponentAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/many/1 --
+sha256:e13183300835ab09b09342270117dfb7
+{
+  "results": [
+    {
+      "Desc": "ACacheOfQueriesKeepsEachAnswer",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/one/1 --
+sha256:69d0bc8a29316e988e05eabbe9c2daa4
+{
+  "results": [
+    {
+      "Desc": "AQueryInAGenericComponentAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/many/1 --
+sha256:5b39479e910c16fb222fab038908ccc2
+{
+  "results": [
+    {
+      "Desc": "ACacheOfQueriesKeepsEachAnswer",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/one/1 --
+sha256:e6d2299fa0a1eff16119537560449ae4
+{
+  "results": [
+    {
+      "Desc": "AQueryInAGenericComponentAnswers",
+      "Passed": true
+    }
+  ]
+}

@@ -474,7 +474,15 @@ bound, or, for a node whose family is a type parameter the call site leaves
 to the position -- `async.query`'s `F` -- of the family that position takes
 (`wrapperFamily`): with none, a wrapper built at run time holding the query's
 effect was a root no pass could type
-(`cmd/sngl/testdata/async_query_under_if_in_built_instance_runs.txt`). One shape is refused, which no `sngl:ui`
+(`cmd/sngl/testdata/async_query_under_if_in_built_instance_runs.txt`). A
+call site in a generic component may bind the node's parameters to its
+owner's -- `async.query(fetch=fetch)` in a component over T -- and then the
+wrapper is generic in the owner's parameters, instantiated at each of them
+(`siteBindings`), so a splice of the owner at its types binds the wrapper's:
+declared at the call site's types alone, the query's cell kept its own T,
+which no splice reached, and bubbletea declared it `*any`, while html's
+wrapper took no family from an F the owner had not bound
+(`cmd/sngl/testdata/query_in_generic_component_runs.txt`). One shape is refused, which no `sngl:ui`
 component reaches: a call site populating a named slot the node does not
 declare.
 
