@@ -305,14 +305,25 @@ func pokeLanguages(locale string) list[string] {
     }
 }
 
+// An entry PokéAPI gives in one language, whatever it holds: a name, a genus,
+// a game's description.
+struct Localized = fieldsOf[struct {
+    language poke.LanguageSummary
+}]
+
+// A name PokéAPI gives in one language, whichever resource it names.
+struct LocalName = fieldsOf[struct {
+    language poke.LanguageSummary
+    name     string
+}]
+
 // What PokéAPI gives in the reader's language out of `entries`, one per
-// language or more -- a name, a genus, a game's description -- `text` of the
-// last entry `language` says is in the first of the reader's languages that
-// has one, then in English, or `otherwise` where neither has. Every name or
-// text the app shows from PokéAPI is picked here.
-func inLanguage[T any](entries list[T], language func(T) string, text func(T) string, otherwise string) string {
+// language or more, `text` of the last entry in the first of the reader's
+// languages that has one, then in English, or `otherwise` where neither has.
+// Every name or text the app shows from PokéAPI is picked here.
+func inLanguage[T Localized](entries list[T], text func(T) string, otherwise string) string {
     for var want = pokeLanguages(i18n.locale) {
-        var found = entries.filter(func(e T) => language(e) == want)
+        var found = entries.filter(func(e T) => e.language.name == want)
         if found.length() > 0 {
             return text(found[found.length() - 1])
         }
@@ -320,12 +331,18 @@ func inLanguage[T any](entries list[T], language func(T) string, text func(T) st
     return otherwise
 }
 
+// The name in the reader's language out of `names`, or `otherwise`.
+func nameIn[T LocalName](names list[T], otherwise string) => inLanguage(names, func(n T) => n.name, otherwise)
+
 // One name of a resource in one language, whichever resource it names: what
 // a page keeps of a type, an ability or a move it asked for.
 struct Named {
-    language string
+    language poke.LanguageSummary
     name     string
 }
+
+// `names` as a page keeps them.
+func localNames[T LocalName](names list[T]) => names.map(func(n T) => Named{language=n.language, name=n.name})
 
 // Every name asked for, keyed "kind/slug" and shared by every page, so a name
 // one page asked for is not asked for again.
@@ -377,23 +394,23 @@ func retry() {
 component lookup(kind string, slug string) ui.node {
     if wanted(kind, slug) {
         if kind == `species` {
-            poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{slug}"] = speciesNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+            poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
         } else if kind == `type` {
-            poke.typeRetrieve(id=slug, @load(got) { names["type/{slug}"] = typeNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+            poke.typeRetrieve(id=slug, @load(got) { names["type/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
         } else if kind == `ability` {
-            poke.abilityRetrieve(id=slug, @load(got) { names["ability/{slug}"] = abilityNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+            poke.abilityRetrieve(id=slug, @load(got) { names["ability/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
         } else if kind == `stat` {
-            poke.statRetrieve(id=slug, @load(got) { names["stat/{slug}"] = statNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+            poke.statRetrieve(id=slug, @load(got) { names["stat/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
         } else if kind == `egg-group` {
-            poke.eggGroupRetrieve(id=slug, @load(got) { names["egg-group/{slug}"] = eggGroupNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+            poke.eggGroupRetrieve(id=slug, @load(got) { names["egg-group/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
         } else if kind == `habitat` {
-            poke.pokemonHabitatRetrieve(id=slug, @load(got) { names["habitat/{slug}"] = habitatNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+            poke.pokemonHabitatRetrieve(id=slug, @load(got) { names["habitat/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
         } else if kind == `item` {
-            poke.itemRetrieve(id=slug, @load(got) { names["item/{slug}"] = itemNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+            poke.itemRetrieve(id=slug, @load(got) { names["item/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
         } else if kind == `trigger` {
-            poke.evolutionTriggerRetrieve(id=slug, @load(got) { names["trigger/{slug}"] = triggerNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+            poke.evolutionTriggerRetrieve(id=slug, @load(got) { names["trigger/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
         } else if kind == `move` {
-            poke.moveRetrieve(id=slug, @load(got) { names["move/{slug}"] = moveNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
+            poke.moveRetrieve(id=slug, @load(got) { names["move/{slug}"] = localNames(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
         }
     }
 }
@@ -419,16 +436,11 @@ component lookupsError(@again()) ui.node {
     }
 }
 
-// `entries` as a page keeps them.
-func namedIn[T any](entries list[T], language func(T) string, name func(T) string) list[Named] {
-    return entries.map(func(e T) => Named{language=language(e), name=name(e)})
-}
-
 // The name of the resource `slug` of `kind` in the reader's language, out of
 // what a page has asked for, keyed "kind/slug"; `slug` made readable until
 // its answer arrives, or where it gives none.
 func called(store map[string, list[Named]], kind string, slug string) string {
-    return inLanguage(store.get("{kind}/{slug}", []), func(n Named) => n.language, func(n Named) => n.name, display(slug))
+    return nameIn(store.get("{kind}/{slug}", []), display(slug))
 }
 
 // The slugs of `kind` among `keys`, each once, in the order they come.
@@ -447,7 +459,7 @@ func slugsOf(keys list[string], kind string) list[string] {
 }
 
 // A dex's name, or its own name made readable where it has none.
-func dexTitle(names list[poke.PokedexName], name string) => inLanguage(names, func(n poke.PokedexName) => n.language.name, func(n poke.PokedexName) => n.name, display(name))
+func dexTitle(names list[poke.PokedexName], name string) => nameIn(names, display(name))
 
 // `items` in rows of `width`, the last holding what is left: a grid, since a
 // `Style` neither wraps a row nor lays out columns.
@@ -472,7 +484,7 @@ func defaultVariety(varieties list[poke.PokemonSpeciesVariety], species string) 
 
 // A form's name -- "Alolan Vulpix" -- or `otherwise` where PokéAPI gives it
 // none, as for a species' default form.
-func formName(names list[poke.PokemonFormName], otherwise string) => inLanguage(names, func(n poke.PokemonFormName) => n.language.name, func(n poke.PokemonFormName) => n.name, otherwise)
+func formName(names list[poke.PokemonFormName], otherwise string) => nameIn(names, otherwise)
 
 // The varieties of a species other than `shown`, the one a page shows: the
 // forms its Sprites tab lists.
@@ -527,15 +539,15 @@ func gallery(s poke.PokemonSprites) list[Sprite] {
 func orNone(url option[string]) => url != null ? url : ""
 
 // A species' name, or its own name made readable where it has none.
-func speciesName(names list[poke.PokemonSpeciesName], name string) => inLanguage(names, func(n poke.PokemonSpeciesName) => n.language.name, func(n poke.PokemonSpeciesName) => n.name, display(name))
+func speciesName(names list[poke.PokemonSpeciesName], name string) => nameIn(names, display(name))
 
 // What kind of Pokémon a species is: "Seed Pokémon".
-func genusOf(genera list[poke.PokemonSpeciesGenus]) => inLanguage(genera, func(g poke.PokemonSpeciesGenus) => g.language.name, func(g poke.PokemonSpeciesGenus) => g.genus, "")
+func genusOf(genera list[poke.PokemonSpeciesGenus]) => inLanguage(genera, func(g poke.PokemonSpeciesGenus) => g.genus, "")
 
 // A species' last description, the newest game's, on one line: the games
 // break a description where their text box did, with newlines and form
 // feeds.
-func latestFlavor(entries list[poke.PokemonSpeciesFlavorText]) => oneLine(inLanguage(entries, func(e poke.PokemonSpeciesFlavorText) => e.language.name, func(e poke.PokemonSpeciesFlavorText) => e.flavorText, ""))
+func latestFlavor(entries list[poke.PokemonSpeciesFlavorText]) => oneLine(inLanguage(entries, func(e poke.PokemonSpeciesFlavorText) => e.flavorText, ""))
 
 // `s` with every run of whitespace a single space, and none at either end.
 func oneLine(s string) string {
@@ -866,25 +878,6 @@ func movesNote(count int) => $"{count, plural, =0{It learns no moves this way.} 
 
 // How many Pokémon a dex holds: "1 Pokémon", "40 Pokémon".
 func dexCount(count int) => $"{count, plural, one{# Pokémon} other{# Pokémon}}"
-
-// What a page keeps of each kind of resource it asks a name of.
-func speciesNamed(names list[poke.PokemonSpeciesName]) => namedIn(names, func(n poke.PokemonSpeciesName) => n.language.name, func(n poke.PokemonSpeciesName) => n.name)
-
-func typeNamed(names list[poke.TypeName]) => namedIn(names, func(n poke.TypeName) => n.language.name, func(n poke.TypeName) => n.name)
-
-func abilityNamed(names list[poke.AbilityName]) => namedIn(names, func(n poke.AbilityName) => n.language.name, func(n poke.AbilityName) => n.name)
-
-func statNamed(names list[poke.StatName]) => namedIn(names, func(n poke.StatName) => n.language.name, func(n poke.StatName) => n.name)
-
-func eggGroupNamed(names list[poke.EggGroupName]) => namedIn(names, func(n poke.EggGroupName) => n.language.name, func(n poke.EggGroupName) => n.name)
-
-func habitatNamed(names list[poke.PokemonHabitatName]) => namedIn(names, func(n poke.PokemonHabitatName) => n.language.name, func(n poke.PokemonHabitatName) => n.name)
-
-func itemNamed(names list[poke.ItemName]) => namedIn(names, func(n poke.ItemName) => n.language.name, func(n poke.ItemName) => n.name)
-
-func triggerNamed(names list[poke.EvolutionTriggerName]) => namedIn(names, func(n poke.EvolutionTriggerName) => n.language.name, func(n poke.EvolutionTriggerName) => n.name)
-
-func moveNamed(names list[poke.MoveName]) => namedIn(names, func(n poke.MoveName) => n.language.name, func(n poke.MoveName) => n.name)
 
 // What a page says while it waits for `name`.
 func loadingName(name string) => $"Loading {name}"

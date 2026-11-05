@@ -101,7 +101,7 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
         return evolution != null ? evolutionRows(evolution.chain, names) : []
     }
 
-    poke.pokemonSpeciesRetrieve #aboutAsk(id=name, :value=about, :pending=loading, :failure=failure, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) })
+    poke.pokemonSpeciesRetrieve #aboutAsk(id=name, :value=about, :pending=loading, :failure=failure, @load(got) { names["species/{got.name}"] = localNames(got.names) })
 
     if about != null && shown() != monFailedFor {
         poke.pokemonRetrieve(id=shown(), :value=mon, :failure=monFailure, @fail { monFailedFor = shown() })
@@ -314,7 +314,7 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                                             poke.moveRetrieve(
                                                 id = slug,
                                                 @load(got) {
-                                                    names["move/{got.name}"] = moveNamed(got.names)
+                                                    names["move/{got.name}"] = localNames(got.names)
                                                     moveFacts[got.name] = moveFactOf(got)
                                                 },
                                                 @fail(f) { failures["move/{slug}"] = Failed{why=f.message, round=round} },

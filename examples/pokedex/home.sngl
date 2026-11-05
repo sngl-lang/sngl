@@ -143,7 +143,7 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
     // rather than through `lookup`, under no `if`: a request under one in
     // this loop kept bubbletea from asking for another dex.
     for var slug = asking {
-        poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) }, @fail(f) { lookupFailed(`species`, slug, f) })
+        poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{got.name}"] = localNames(got.names) }, @fail(f) { lookupFailed(`species`, slug, f) })
     }
 
     ui.vbox(style={gap=8px, padding=8px, flex=1}) {

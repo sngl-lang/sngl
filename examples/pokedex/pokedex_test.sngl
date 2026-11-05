@@ -1024,13 +1024,13 @@ func testNames(t test.Test, c home) {
 
 func testEveryNameDecodes(t test.Test, c named) {
     t.wait(func() => c.grass != null && c.overgrow != null && c.attack != null && c.plant != null && c.grassland != null && c.stone != null && c.doubleEdge != null, 5000)
-    t.assert(c.grass != null && typeNamed(c.grass.names).length() == 6)
-    t.assert(c.overgrow != null && abilityNamed(c.overgrow.names).length() == 6)
+    t.assert(c.grass != null && localNames(c.grass.names).length() == 6)
+    t.assert(c.overgrow != null && localNames(c.overgrow.names).length() == 6)
     // A stat and an egg group are named in kana alone of the two Japanese,
     // and a habitat in English, French and Spanish alone.
-    t.assert(c.attack != null && statNamed(c.attack.names).length() == 5)
-    t.assert(c.plant != null && eggGroupNamed(c.plant.names).length() == 5)
-    t.assert(c.grassland != null && habitatNamed(c.grassland.names).length() == 3)
-    t.assert(c.stone != null && itemNamed(c.stone.names).length() == 6)
-    t.assert(c.doubleEdge != null && moveNamed(c.doubleEdge.names).length() == 6)
+    t.assert(c.attack != null && localNames(c.attack.names).length() == 5)
+    t.assert(c.plant != null && localNames(c.plant.names).length() == 5)
+    t.assert(c.grassland != null && localNames(c.grassland.names).length() == 3)
+    t.assert(c.stone != null && localNames(c.stone.names).length() == 6)
+    t.assert(c.doubleEdge != null && localNames(c.doubleEdge.names).length() == 6)
 }

@@ -110,7 +110,7 @@ every one after it, and each started again:
 ```sngl
 effect(on="{chosenDex != null ? chosenDex.name : ""}/{namingAll}/{shown}", @mount { ask() })
 for var slug = asking {
-    poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) }, @fail(f) { lookupFailed(`species`, slug, f) })
+    poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{got.name}"] = localNames(got.names) }, @fail(f) { lookupFailed(`species`, slug, f) })
 }
 ```
 
@@ -385,8 +385,9 @@ locale into PokéAPI's names for its language, in the order to look for them,
 English last: `fr`, `de` and `es` alone, and Japanese as `ja`, then `ja-hrkt`.
 PokéAPI writes Japanese twice, `ja` in kanji as the newer games print it and
 `ja-hrkt` in kana, and some resources only in kana, a stat or an egg group
-among them. `inLanguage` takes any list of per-language entries and gives the
-last entry in the first of those languages that has one -- the newest
+among them. `inLanguage` takes a list of any type with PokéAPI's `language`
+field, which a constraint alias says once (`struct Localized = fieldsOf[…]`),
+and gives the last entry in the first of those languages that has one -- the newest
 description, since PokéAPI lists them game by game -- and the resource's own
 name made readable where none has. A species' name and genus, its newest
 description, a dex's name and a form's name all go through it.
@@ -403,7 +404,7 @@ shows them, each a query keyed on it under a `for` over the names shown:
 
 ```sngl
 for var a = mon.abilities {
-    poke.abilityRetrieve(id=a.ability.name, @load(got) { names["ability/{got.name}"] = abilityNamed(got.names) })
+    poke.abilityRetrieve(id=a.ability.name, @load(got) { names["ability/{got.name}"] = localNames(got.names) })
 }
 ```
 
