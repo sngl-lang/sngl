@@ -4196,15 +4196,16 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	c.returnType = fn.Return
 	defer func() { c.returnType = prevReturn }()
 
-	// A method on a generic receiver may carry no receiver parameter -- saying
-	// `this` instead -- so bind it for a body that names it,
-	// `func list[T].push(item T) => stdlib.ListPush(this, item)` or a block.
-	// A concrete receiver names itself a parameter and needs none, and so does
-	// a nested method, whose `this` is synthesized into its parameter list.
-	// Only a written body: the bodyless generic stubs never say `this`, and
-	// resolving the receiver here would trip the map-key comparability check
-	// on an abstract key type.
-	if fn.AST != nil && (fn.AST.Body != nil || fn.AST.Block.IsDefined()) && fn.IsMethod() && len(fn.RecvTypeParams) > 0 &&
+	// A method declared outside its type names its receiver as its first
+	// parameter, `func Box[T].get(b Box[T])`, the brackets naming the type's
+	// parameters for the body as an event override's do; one with no such
+	// parameter is static. A component's event override is a method of the
+	// component, and its body reads the instance as the component's does, so
+	// bind `this` for one that names it. Only a written body: resolving the
+	// receiver here would trip the map-key comparability check on an abstract
+	// key type.
+	_, onComponent := fn.RecvDecl().(*ir.Component)
+	if onComponent && fn.AST != nil && (fn.AST.Body != nil || fn.AST.Block.IsDefined()) && fn.IsMethod() && len(fn.RecvTypeParams) > 0 &&
 		!slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.Name == ir.ReceiverParam }) {
 		// Kept on the declaration as well as in the scope: the body names it,
 		// so whoever replaces the body's parameters has to know which symbol

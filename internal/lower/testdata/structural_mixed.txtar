@@ -37,7 +37,7 @@ component main node {
                         var __n1 text = lower.CreateNode("text")
                         __n1.value = "bye"
                         lower.AppendChild(parent, __n1)
-                        list.push(__slot0, __n1)
+                        __slot0.push(__n1)
                     }
                 }
                 __rendering0 = false

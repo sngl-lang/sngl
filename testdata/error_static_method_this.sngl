@@ -1,5 +1,7 @@
 // A method declared outside its type with no parameter of the type is
 // static, so its body has no `this`: the error says how to name the receiver.
+// A generic type's method names its receiver's parameters in brackets, for
+// its parameters and body to use, and is static on the same terms.
 
 struct Tally {
     failures int
@@ -7,3 +9,16 @@ struct Tally {
 }
 
 func Tally.failing() => this.failures > this.round // ERROR(check) "undefined: this — Tally.failing takes no Tally, so it is static; to call it on a value, name the receiver as its first parameter: func Tally.failing(this Tally, …)"
+
+struct Box[T any] {
+    value T
+}
+
+func Box[T].get() => this.value // ERROR(check) "undefined: this — Box[T].get takes no Box[T], so it is static; to call it on a value, name the receiver as its first parameter: func Box[T].get(this Box[T], …)"
+
+func Box[T].make(v T) => Box[T]{value=v}
+
+func use() {
+    var b = Box.make(1)
+    var c = b.make(2) // ERROR(check) "Box.make is static: its first parameter is not Box, so call it as Box.make(…)"
+}

@@ -133,6 +133,23 @@ literal at the running bindings (`ir.FormatArgsLit`)
 `error_generic_constraint_method.sngl`, `generic_constraint_method.txtar`,
 `internal/lower/testdata/builtin_methods_constraint.txtar`).
 
+**A method declared outside its type names its receiver**, generic or not:
+`func Box[T].get(this Box[T])`, the brackets restating the type's parameters
+for the parameters and body, as an event override's restate a component's.
+One with no parameter of the receiver's type is static on a generic type as
+on a concrete one, and its body has no `this` (`staticThisHint`). Such a
+method once took an ambient `this` the checker declared for it, which made
+`func Box[T].make(v T)` an instance method while `func Money.zero()` was
+static, and a body's receiver a name no parameter declared. Only a
+component's method -- an event override, `nav.stack`'s `current` -- still
+binds one, and is called on an instance whether or not it has a body.
+The receiver is then an ordinary first parameter everywhere after the check,
+so a call's arguments line up with a library method's parameters: points-to
+leaves a frozen function's parameters uncolored, which the off-by-one of the
+implicit receiver had done by accident, and passBuiltinMethods finds the
+receiver in either place (`genericBuiltinReceiver`)
+(`testdata/error_static_method_this.sngl`).
+
 **A receiver's list may narrow a parameter its declaration leaves `any`**
 (`func list[T ordered].sort()`). The parser keeps the constraint on
 `FuncDef.RecvTypeParams`; `inheritReceiverConstraints` skips a parameter with

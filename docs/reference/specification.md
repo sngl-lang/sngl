@@ -493,9 +493,9 @@ entry of a literal -- stores a copy, as deep as the value holds structs, lists
 and maps, so a later write to either place leaves the other as it was. A
 named parameter is passed by value the same way: a function that writes it
 writes its own copy and not the caller's. Two parameters are passed by
-reference instead -- a method's ambient `this`, so a method declared in a
-struct's body that writes `this` writes the value it was called on, and a
-parameter declared `ref[T]` (see [References](#references)). A struct may be
+reference instead -- a method's receiver named `this`, so a method that
+writes `this` writes the value it was called on, and a parameter declared
+`ref[T]` (see [References](#references)). A struct may be
 generic over type parameters:
 
 ```
@@ -888,17 +888,19 @@ followed by a type is a type-parameter list. `func first[T]` is therefore an
 override of a target named `T`, not a generic function.
 
 A method on a generic type restates its receiver's parameters by name, since
-the type's declaration already constrains them, and in its body each is what
-that declaration says it is:
-`func list[T].map[U any](f func(T) U) list[U]`. The `.` after the bracket is
-what makes it a receiver's. A receiver's list may instead write a constraint
+the type's declaration already constrains them, and in its parameters and
+body each is what that declaration says it is:
+`func list[T].map[U any](this list[T], f func(T) U) list[U]`. The `.` after
+the bracket is what makes it a receiver's. The method names its receiver as
+its first parameter, as one on a concrete type does, and one with no such
+parameter is static (see [Functions and methods](#functions-and-methods)). A receiver's list may instead write a constraint
 for a parameter its declaration constrains to `any`, which narrows it: the
 method belongs to a receiver only where the type bound to that parameter
 satisfies the constraint, and in its body the parameter is what the
-constraint says. `func list[T ordered].sort()` is a method of a `list[int]`
+constraint says. `func list[T ordered].sort(this list[T])` is a method of a `list[int]`
 and no method of a `list[bool]`, and a call of it on one is an error. Written
 for one parameter, the list writes one for each, `any` for those it leaves
-alone (`func pair[K any, V ordered].least()`), and none takes a default.
+alone (`func pair[K any, V ordered].least(this pair[K, V])`), and none takes a default.
 Narrowing a parameter its declaration constrains to anything but `any` is an
 error.
 
@@ -919,11 +921,11 @@ wherever an expression goes; a value that is a type is an error.
 Where nothing is written, a type parameter is bound by inference:
 
 - A **receiver type parameter** of a method on a generic type is bound from the
-  receiver's concrete type. For `func list[T].first() T`, a call on a
+  receiver's concrete type. For `func list[T].first(this list[T]) T`, a call on a
   `list[int]` binds `T = int`, so the result type is `int`.
 - A **method type parameter** is bound from the call's argument types,
   typically through a function argument's result type. For
-  `func list[T].map[U any](f func(T) U) list[U]`, calling `xs.map(g)` on a
+  `func list[T].map[U any](this list[T], f func(T) U) list[U]`, calling `xs.map(g)` on a
   `list[int]` with `g : func(int) string` binds `T = int` and `U = string`,
   yielding a `list[string]`.
 
@@ -1253,7 +1255,13 @@ A **method** is a function whose name is qualified by a receiver type,
 (receiver-level, names only) and after the method name (method-level, each
 naming its constraint); see
 [Generic type parameters](#generic-type-parameters). A method is dispatched on
-the type of the receiver expression. A `func` written inside a `struct` or
+the type of the receiver expression. Declared outside its type, a method
+names its receiver as its first parameter, of the receiver's type:
+`func Money.plus(m Money, cents int)` is called as `m.plus(5)` and as
+`Money.plus(m, 5)`. Named `this`, the receiver is passed by reference, so a
+write to it is a write to the value the method was called on; named
+otherwise it is a copy. A method with no such parameter is static, called on
+the type, `Money.zero()`, and its body has no `this`. A `func` written inside a `struct` or
 `enum` body is a method of that type, and its body reads the receiver's fields
 by bare name. A `func` written in a component body is a method of the
 component.
@@ -3004,7 +3012,7 @@ import of its package like any other name.
 The index shares its bracket with a type-parameter list, and is told from one
 by its shape: a target is a name or a qualified name alone, while every type
 parameter names a constraint. An override of a method on a generic type writes
-the index after the method's name, `func list[T].second[html.platform]()`, and a
+the index after the method's name, `func list[T].second[html.platform](this list[T])`, and a
 declaration with type parameters of its own writes its list first,
 `func f[T any][html.platform]()`.
 

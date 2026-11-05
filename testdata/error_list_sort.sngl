@@ -10,7 +10,7 @@ struct Box[T anyStruct] {
     v T
 }
 
-func Box[T ordered].least() {} // ERROR(check) "already constrained by its declaration"
+func Box[T ordered].least(this Box[T]) {} // ERROR(check) "already constrained by its declaration"
 
 func sortMoves(moves list[Move]) {
     moves.sort() // ERROR(check) "sort needs its receiver's T to satisfy ordered, and Move does not"

@@ -109,7 +109,7 @@ func MethodParams(scope *Scope, x *Type, method string) (fn *Func, params []*Par
 			b[tp.Name] = recv.Elems[i]
 		}
 	}
-	if fn.RecvParam == nil && len(fn.RecvTypeParams) == 0 && takesReceiver(fn) {
+	if fn.RecvParam == nil && takesReceiver(fn) {
 		BindTypeParams(params[0].Type, recv, b)
 		params = params[1:]
 	}
@@ -247,7 +247,7 @@ func formatCall(scope *Scope, call *Call, method string, x, out, pack Expr) (Exp
 		args = append(args, CallArg{Name: p.Name, Value: v})
 	}
 	e := &Call{AST: call.AST, Type: call.Type, Func: fn, Args: args}
-	if fn.RecvParam != nil || len(fn.RecvTypeParams) > 0 {
+	if fn.RecvParam != nil {
 		e.ReceiverArg = true
 	}
 	return e, true

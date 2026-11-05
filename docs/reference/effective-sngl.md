@@ -623,11 +623,11 @@ element type binds from the value they are called on:
 <!-- SNGL-nocheck -->
 
 ```sngl
-func list[T].push(item T)
-func list[T].reverse() list[T]
-func list[T].indexOf(item T) int
-func list[T].filter(pred func(T) bool) list[T]
-func list[T].map[U any](fn func(T) U) list[U]
+func list[T].push(this list[T], item T)
+func list[T].reverse(this list[T]) list[T]
+func list[T].indexOf(this list[T], item T) int
+func list[T].filter(this list[T], pred func(T) bool) list[T]
+func list[T].map[U any](this list[T], fn func(T) U) list[U]
 ```
 
 Type parameters are inferred at call sites, so you rarely write `[T]` when
@@ -655,7 +655,7 @@ struct Pair[A any, B any] {
     second B
 }
 
-func Pair[A, B].left() => this.first
+func Pair[A, B].left(this Pair[A, B]) => this.first
 
 func firstOr[T any](xs list[T], fallback T) T {
     if xs.length == 0 {

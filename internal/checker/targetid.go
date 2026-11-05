@@ -258,6 +258,9 @@ func (c *checker) selectFuncParams(decl *ast.FuncDef, base *ir.Func) []*ir.Param
 		byName[p.Name] = p
 	}
 	seen := map[string]bool{}
+	// A written parameter's type may name the receiver's parameters, as
+	// `func list[T].second[html.platform](this list[T])` does.
+	defer pushTypeParams(c, decl.RecvTypeParams, decl.TypeParams)()
 	for _, p := range decl.Params.Params {
 		bp := byName[p.Name]
 		var want *ir.Type

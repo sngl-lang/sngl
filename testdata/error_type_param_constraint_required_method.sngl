@@ -3,6 +3,6 @@
 // says it is the receiver's, and a method's bracket of one bare name is a
 // target.
 
-func list[T].pairWith[U](u U) list[U] { // ERROR(check) "undefined: U (a type parameter names its constraint: write `U any`)"
+func list[T].pairWith[U](this list[T], u U) list[U] { // ERROR(check) "undefined: U (a type parameter names its constraint: write `U any`)"
     return [u]
 }

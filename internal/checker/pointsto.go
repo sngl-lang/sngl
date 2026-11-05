@@ -214,7 +214,11 @@ func (w *pointsToWalker) walkExpr(e ir.Expr) {
 
 // walkCall emits pts(param-slot) ⊇ candidates(arg) for each funcvar parameter.
 func (w *pointsToWalker) walkCall(c *ir.Call) {
-	if c.Func != nil {
+	// A library's function is shared by every program checked against it, and
+	// coloring its parameter would write the library: a call handing one an
+	// async function is refused where it matters (checkAsyncRules), and its
+	// body is never the program's to emit.
+	if c.Func != nil && !c.Func.Frozen {
 		for i, a := range c.Args {
 			if i >= len(c.Func.Params) {
 				break

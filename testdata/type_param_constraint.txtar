@@ -76,7 +76,7 @@ struct Holder[T fieldsOf[struct {
     item T
 }
 
-func Holder[T].label() string {
+func Holder[T].label(this Holder[T]) string {
     if n < 0 {
         return ""
     }

@@ -22,12 +22,12 @@ func __identified0(__xs list[int]) list[struct {
     }] = []
     for var __x = __xs {
         var __id string = __x.format(base=10, width=0, pad=" ")
-        var __n int = map.get(__seen, __id, 0)
+        var __n int = __seen.get(__id, 0)
         __seen[__id] = __n + 1
         if __n > 0 {
             __id = __id + "#" + string(__n)
         }
-        list.push(__out, {
+        __out.push({
             id = __id,
             elem = __x,
         })
@@ -59,7 +59,7 @@ component main node {
                         var __n0 text = lower.CreateNode("text")
                         __n0.value = item.elem.format(base=10, width=0, pad=" ")
                         lower.AppendChild(parent, __n0)
-                        list.push(__slot0, __n0)
+                        __slot0.push(__n0)
                     }
                 }
                 __rendering0 = false

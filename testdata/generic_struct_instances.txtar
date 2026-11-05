@@ -30,7 +30,7 @@ struct Box[T any] {
 
 var n = 1
 
-func Box[T].get() T {
+func Box[T].get(this Box[T]) T {
     if n < 0 {
         return this.value
     }

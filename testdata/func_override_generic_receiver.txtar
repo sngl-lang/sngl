@@ -1,5 +1,6 @@
-A method on a generic receiver names its receiver `this` without declaring
-it, and an override of one for a target reads the same `this`: the override
+A method on a generic receiver names its receiver `this` as its first
+parameter, and an override of one for a target selects the same parameter,
+its type naming the receiver's parameters the brackets restate: the override
 is checked on a copy of the declaration, and the receiver it binds has to be
 the one the declaration's body is substituted with when the override is
 installed.
@@ -15,9 +16,9 @@ output {
     }
 }
 
-func list[T].second() => this[1]
+func list[T].second(this list[T]) => this[1]
 
-func list[T].second[html.platform]() => this[0]
+func list[T].second[html.platform](this list[T]) => this[0]
 
 var xs = [1, 2, 3]
 

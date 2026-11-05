@@ -1706,8 +1706,11 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 			if comp, ok := fn.RecvDecl().(*ir.Component); ok && isOwnReceiver(receiverExpr, comp) {
 				args = rest
 			}
-		} else if !recvParamStyle {
-			// New-style RecvTypeParams method: receiver is NOT a param.
+		} else if !recvParamStyle && (ir.ReceiverOutsideParams(fn) || fn.OnComponent()) {
+			// A receiver outside the parameters -- a component's method, a
+			// constraint's function: the receiver is NOT a param. A method
+			// declared with its receiver's parameters in brackets and no
+			// receiver parameter is static, as one on a concrete type is.
 			// Check all call args against the full (substituted) sig.
 			// Prepend receiver so IR shape is consistent with static call convention.
 			rest := c.checkCallArgs(call.Args, sig)

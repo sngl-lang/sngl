@@ -2,6 +2,7 @@ package checker
 
 import (
 	"fmt"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/names"
@@ -98,10 +99,19 @@ func (c *checker) captureHint(name string) string {
 // the type, and the receiver is a parameter it names.
 func (c *checker) staticThisHint(name string) string {
 	fn := c.currentFunc
-	if name != "this" || fn == nil || fn.RecvName() == "" || fn.RecvParam != nil || len(fn.RecvTypeParams) > 0 {
+	if name != "this" || fn == nil || fn.RecvName() == "" || fn.RecvParam != nil {
 		return ""
 	}
-	return fmt.Sprintf(" — %s.%s takes no %s, so it is static; to call it on a value, name the receiver as its first parameter: func %s.%s(this %s, …)", fn.RecvName(), fn.Name, fn.RecvName(), fn.RecvName(), fn.Name, fn.RecvName())
+	recv, decl := fn.RecvName(), fn.RecvName()
+	if len(fn.RecvTypeParams) > 0 {
+		names := make([]string, len(fn.RecvTypeParams))
+		for i, tp := range fn.RecvTypeParams {
+			names[i] = tp.Name
+		}
+		recv = fn.RecvName() + "[" + strings.Join(names, ", ") + "]"
+		decl = recv
+	}
+	return fmt.Sprintf(" — %s.%s takes no %s, so it is static; to call it on a value, name the receiver as its first parameter: func %s.%s(this %s, …)", decl, fn.Name, recv, decl, fn.Name, recv)
 }
 
 // renameNestedFuncs gives every func hoisted out of a function body an emitted

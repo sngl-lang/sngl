@@ -7,10 +7,10 @@ struct option[T any] {}
 // named argument the option does not declare is the value's:
 // `"{x, none="-", places=2}"`. Only an option of a type that declares a format
 // has one.
-const func option[T].format(none string = "", _item _formatArgs[T]) => this == null ? none : _format(this, _item)
+const func option[T].format(this option[T], none string = "", _item _formatArgs[T]) => this == null ? none : _format(this, _item)
 
 // Puts the option's format on the end of out.
-func option[T].appendFormat(out ref[builder], none string = "", _item _formatArgs[T]) {
+func option[T].appendFormat(this option[T], out ref[builder], none string = "", _item _formatArgs[T]) {
     if this == null {
         out.add(none)
     } else {

@@ -59,7 +59,7 @@ struct Box[T any] {
     }]
 }
 
-func Box[T].get() T {
+func Box[T].get(this Box[T]) T {
     if n < 0 {
         return this.inner.v
     }

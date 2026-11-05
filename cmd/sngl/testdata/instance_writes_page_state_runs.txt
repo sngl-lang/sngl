@@ -121,15 +121,15 @@ struct Cache[V any] {
     round    int
 }
 
-func Cache[V].known(key string) => this.answers.contains(key)
+func Cache[V].known(this Cache[V], key string) => this.answers.contains(key)
 
-func Cache[V].failedNow(key string) => this.failures.get(key, Failed{why="", round=-1}).round == this.round
+func Cache[V].failedNow(this Cache[V], key string) => this.failures.get(key, Failed{why="", round=-1}).round == this.round
 
-func Cache[V].wanted(key string) => !this.known(key) && !this.failedNow(key)
+func Cache[V].wanted(this Cache[V], key string) => !this.known(key) && !this.failedNow(key)
 
-func Cache[V].failing() => this.failures.values().filter(func(f Failed) => f.round == this.round)
+func Cache[V].failing(this Cache[V]) => this.failures.values().filter(func(f Failed) => f.round == this.round)
 
-func Cache[V].retry() {
+func Cache[V].retry(this Cache[V]) {
     this.round += 1
 }
 
