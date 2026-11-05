@@ -752,7 +752,12 @@ The general things it needed, each of its own:
   prop as a call made by the render. Points-to binds no library component's
   prop, so `fetch`'s signature is never colored: it is every check's
   declaration, and the call through it is a direct or a literal call by the
-  time it is emitted.
+  time it is emitted. A literal the checker saw only as a prop's argument
+  carries no flag, so one called where it stands waits as its body does too:
+  `fetch=func(k) => fetch()` in a component given `fetch=func() => lookup(w)`
+  typed the query's fetch as one that does not wait, and Kotlin called a
+  suspend function from a lambda that is not one
+  (`cmd/sngl/testdata/fetch_lambda_through_prop_runs.txt`).
 - **A query built at run time waits as its fetch does** (`passAsyncProps`): a
   query written straight under a `for` is the instance itself, so `fetch`
   stays its prop, which nothing colored. A func-typed prop of a component

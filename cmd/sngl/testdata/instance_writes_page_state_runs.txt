@@ -1,0 +1,301 @@
+# A component built at run time -- state of its own under a `for` -- whose
+# click writes a page var that a reactive `if` of the page reads. Every body's
+# updates were injected as it was walked, components before the package body,
+# so the handler's re-fire of the page's slot was dropped for want of the
+# slot's function: the click wrote the var and the sign never showed on fyne,
+# gtk4 and html. In a test build the root component is the page, whose slot
+# the writer took for another component's, and gtk4 kept the page's box a
+# local of its build, which the handler then had no name for.
+#
+# cache.sngl writes from a query's answer in such a copy instead, a cache the
+# page's sign reads. html renders the page's slot at its anchor, and the
+# factory's re-fire handed it the node the page named, a name the factory's
+# own node also bore: the page raised that the node to remove was not a
+# child. Android wrote the map in a field of the state struct in place,
+# `names.failures = names.failures + (…)`, and never recomposed. Its fetch
+# waits on the script harness's server.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=none cache.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go cache.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go cache.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go cache.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html cache.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin cache.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+var failures = 0
+var round = 0
+
+// A component with state of its own, so a copy under a `for` is built at
+// run time, writing a package var from its click.
+component writer(key string) ui.node {
+    var clicks = 0
+
+    ui.button #w(text=key, @click {
+        clicks += 1
+        failures += 1
+    })
+}
+
+component sign(@retry()) ui.node {
+    ui.button #b(text="again", @click { retry() })
+}
+
+component errs ui.node {
+    if failures > 0 {
+        sign #s(@retry { round += 1 })
+    }
+}
+
+component page ui.node {
+    var keys = ["a", "b"]
+
+    ui.vbox {
+        for var k = keys {
+            writer #writer(key=k)
+        }
+        errs #errs()
+    }
+}
+
+func testAWriteInABuiltInstanceShowsTheSign(t test.Test, c page) {
+    c.writer[0].w.click()
+    t.assert(failures == 1)
+    var s = c.errs.s
+    t.assert(s != null)
+    if s != null {
+        s.b.click()
+    }
+    t.assert(round == 1)
+}
+
+ui.window {
+    page()
+}
+-- cache.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct Failed {
+    why   string
+    round int
+}
+
+struct Cache[V any] {
+    answers  map[string, V]
+    failures map[string, Failed]
+    round    int
+}
+
+func Cache[V].known(key string) => this.answers.contains(key)
+
+func Cache[V].failedNow(key string) => this.failures.get(key, Failed{why="", round=-1}).round == this.round
+
+func Cache[V].wanted(key string) => !this.known(key) && !this.failedNow(key)
+
+func Cache[V].failing() => this.failures.values().filter(func(f Failed) => f.round == this.round)
+
+func Cache[V].retry() {
+    this.round += 1
+}
+
+component cached[T any, V any, F any](key string, fetch func() async.Result[T], keep func(T) V, :cache Cache[V]) F {
+    if cache.wanted(key) {
+        async.query(
+            on = key,
+            fetch = func(k string) => fetch(),
+            @load(got) { cache.answers[key] = keep(got) },
+            @fail(f) { cache.failures[key] = Failed{why=f.message, round=cache.round} },
+        )
+    }
+}
+
+// Fails "bad" with a 500, and answers anything else with its length.
+func lookupCall(key string) async.Result[int] {
+    match var r = http.get(url="http://127.0.0.1:47819/status/{key == "bad" ? 500 : 200}") {
+        failed { return {failed=r} }
+        ok {
+            if r.status != 200 {
+                return {failed={kind=async.FailureKind.server, message="no", code="{r.status}"}}
+            }
+            return {ok=key.length()}
+        }
+    }
+}
+
+var names = Cache[int]{answers={}, failures={}, round=0}
+
+component lookup(kind string, slug string) ui.node {
+    var key = "{kind}/{slug}"
+
+    cached(key=key, fetch=func() => lookupCall(slug), keep=func(got int) => got, :cache=names)
+}
+
+component sign(@retry()) ui.node {
+    ui.button #b(text="again", @click { retry() })
+}
+
+component errs ui.node {
+    if names.failing().length() > 0 {
+        sign #s(@retry { names.retry() })
+    }
+}
+
+component page ui.node {
+    var keys = ["one", "bad"]
+
+    ui.vbox {
+        for var k = keys {
+            lookup(kind=`word`, slug=k)
+        }
+        errs #errs()
+    }
+}
+
+func testAFailureShowsTheSign(t test.Test, c page) {
+    t.wait(func() => names.failing().length() == 1, 5000)
+    var s = c.errs.s
+    t.assert(s != null)
+    if s != null {
+        s.b.click()
+    }
+    t.assert(names.round == 1)
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:e39c23d9415140cfe031189977766870
+{
+  "results": [
+    {
+      "Desc": "AWriteInABuiltInstanceShowsTheSign",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/cache.sngl/page/1 --
+sha256:89360e7207814efffdb4001ad0858c42
+{
+  "results": [
+    {
+      "Desc": "AFailureShowsTheSign",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:c25604f835ce956d827c7f4716cd77ff
+{
+  "results": [
+    {
+      "Desc": "AWriteInABuiltInstanceShowsTheSign",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/cache.sngl/page/1 --
+sha256:650e4a7f3d7db4e43de088c6ec4a2b4a
+{
+  "results": [
+    {
+      "Desc": "AFailureShowsTheSign",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:dd0e84611e90806b49058c0420e989ab
+{
+  "results": [
+    {
+      "Desc": "AWriteInABuiltInstanceShowsTheSign",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/cache.sngl/page/1 --
+sha256:5b84eb3cc2ec83b53db14b6262b670c4
+{
+  "results": [
+    {
+      "Desc": "AFailureShowsTheSign",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:7035d25b0be8e3f13bbf3690bc363ac5
+{
+  "results": [
+    {
+      "Desc": "AWriteInABuiltInstanceShowsTheSign",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/cache.sngl/page/1 --
+sha256:9b32fe104bc73f5c2f8a4f96c4768ae7
+{
+  "results": [
+    {
+      "Desc": "AFailureShowsTheSign",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:00fd2dd4f3b3fbb25af43776d5614c34
+{
+  "results": [
+    {
+      "Desc": "AWriteInABuiltInstanceShowsTheSign",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/cache.sngl/page/1 --
+sha256:04f5bacc61cda5af4014efbfa02baccf
+{
+  "results": [
+    {
+      "Desc": "AFailureShowsTheSign",
+      "Passed": true
+    }
+  ]
+}

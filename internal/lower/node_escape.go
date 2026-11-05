@@ -115,12 +115,28 @@ func lowerNodeEscape(pkg *ir.Package, _ Features, _ Options) error {
 		group *ir.Component
 		id    string
 	}
+	// A synthesized node an instance uses and creates nowhere in its record
+	// is the page's, which it reaches through what holds it
+	// (golang.PageNodes): a handler's re-fire of the page's slot names the
+	// page's box. An id the program wrote is a handle, which an instance
+	// names for its own reasons, and the page's reconcile keeps its local.
+	createdIn := map[groupID]bool{}
+	for _, s := range scopes {
+		for id := range s.created {
+			createdIn[groupID{groupOf[s], id}] = true
+		}
+	}
 	escaped := map[groupID]bool{}
 	for _, s := range scopes {
 		for id := range s.used {
-			if !s.created[id] {
-				escaped[groupID{groupOf[s], id}] = true
+			if s.created[id] {
+				continue
 			}
+			g := groupOf[s]
+			if g != nil && isSynthNodeID(id) && !createdIn[groupID{g, id}] {
+				g = nil
+			}
+			escaped[groupID{g, id}] = true
 		}
 	}
 

@@ -740,7 +740,21 @@ constructor skips it where `RootSlotRenders` finds no render into it
 holds its Model (`__model`), and a name its component does not declare -- the
 page's state, widgets and funcs -- is spelled through it
 (`ExprCtx.OuterReceiver`, `golang.PageNodes`); spelled through the record, it
-named a field no record has. On android a composable other than MainScreen
+named a field no record has. A call of a page method is spelled so too
+(`recvFor`), and a page node an instance names is a field of the Model, not a
+local of its build (`lowerNodeEscape` files a use of a node the record never
+creates under the page). So a write of page state in an instance's handler
+re-fires the page's slots reading it: passReactivity builds every body's
+render slots, and rewrites its reactive structures into calls of them, before
+it injects any update, since a component's body is walked before the package
+body's and the handler's re-fire was dropped for want of the slot's function
+or its parent; and a test build's root is the page there, not another
+component whose slots the writer cannot name. html renders the page's slots
+at their anchors, from a factory too (`rewriteSlotCallsToAnchors`), and
+Kotlin writes a map entry in a field of a state struct by copying the path
+back to the state, as a field write is (`AssignText`), since an entry
+assigned in place recomposed nothing
+(`cmd/sngl/testdata/instance_writes_page_state_runs.txt`). On android a composable other than MainScreen
 cannot see MainScreen's `remember`ed locals, so page state such a composable
 reads is declared at file level (`sharedPageState`). So is a package function
 it calls, with every function that one calls and the state they reach

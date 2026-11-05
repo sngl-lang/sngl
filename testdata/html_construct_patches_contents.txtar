@@ -92,27 +92,27 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = { big: false, name: "", numbered: false, label: "a", k: 0, visible__inst0: true };
   function __snglTeardown() {
-    for (const [__inst6_live_di, _] of __inst6_live.entries()) {
+    for (const [__inst5_live_di, _] of __inst5_live.entries()) {
       ;
-      let __inst6_live_dj = __inst6_live.length - 1 - __inst6_live_di;
-      __inst6_live[__inst6_live_dj].__destroy();
+      let __inst5_live_dj = __inst5_live.length - 1 - __inst5_live_di;
+      __inst5_live[__inst5_live_dj].__destroy();
     }
     ;
-    __inst6_live = [];
-    for (const [__inst4_live_di, _] of __inst4_live.entries()) {
+    __inst5_live = [];
+    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
       ;
-      let __inst4_live_dj = __inst4_live.length - 1 - __inst4_live_di;
-      __inst4_live[__inst4_live_dj].__destroy();
+      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
+      __inst3_live[__inst3_live_dj].__destroy();
     }
     ;
-    __inst4_live = [];
-    for (const [__inst2_live_di, _] of __inst2_live.entries()) {
+    __inst3_live = [];
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
       ;
-      let __inst2_live_dj = __inst2_live.length - 1 - __inst2_live_di;
-      __inst2_live[__inst2_live_dj].__destroy();
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
     }
     ;
-    __inst2_live = [];
+    __inst1_live = [];
   }
   function __cf_seeded(props) {
     const __root = document.createElement("div");
@@ -252,13 +252,13 @@ body { font-family: system-ui, sans-serif; }
     let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
-      let __n6__re0 = __cf_seeded({ start: __prop___p0 });
-      let __n6__re0__el = __n6__re0.__root;
-      let __n6__prev0__el = __n6.__root;
-      __n6__pos.insertBefore(__n6__re0__el, __n6__prev0__el);
-      __n6__pos.removeChild(__n6__prev0__el);
+      let __n6__re6 = __cf_seeded({ start: __prop___p0 });
+      let __n6__re6__el = __n6__re6.__root;
+      let __n6__prev6__el = __n6.__root;
+      __n6__pos.insertBefore(__n6__re6__el, __n6__prev6__el);
+      __n6__pos.removeChild(__n6__prev6__el);
       __n6.__destroy();
-      __n6 = __n6__re0;
+      __n6 = __n6__re6;
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
@@ -300,17 +300,17 @@ body { font-family: system-ui, sans-serif; }
     };
   }
   var __slot0 = [];
-  var __inst2_live = [];
-  var __inst2_was___p0 = [];
+  var __inst1_live = [];
+  var __inst1_was___p0 = [];
   var __rendering0 = false;
   var __renderAgain0 = false;
   var __slot1 = [];
-  var __inst4_live = [];
-  var __inst4_was___p0 = [];
+  var __inst3_live = [];
+  var __inst3_was___p0 = [];
   var __rendering1 = false;
   var __renderAgain1 = false;
   var __slot2 = [];
-  var __inst6_live = [];
+  var __inst5_live = [];
   var __rendering2 = false;
   var __renderAgain2 = false;
   function __renderSlot0(parent) {
@@ -322,100 +322,100 @@ body { font-family: system-ui, sans-serif; }
       try {
         while (__renderAgain0) {
           __renderAgain0 = false;
-          let __place1_prev = __slot0;
-          let __place1_i = 0;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
           __slot0 = [];
-          let __inst2_next = [];
-          let __inst2_i = 0;
-          let __inst2_now___p0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          let __inst1_now___p0 = [];
           for (const __x of [0]) {
             let __n9 = null;
-            if (__inst2_live.length > __inst2_i && __inst2_was___p0[__inst2_i] === (state.big ? "section" : "div")) {
-              __n9 = __inst2_live[__inst2_i];
+            if (__inst1_live.length > __inst1_i && __inst1_was___p0[__inst1_i] === (state.big ? "section" : "div")) {
+              __n9 = __inst1_live[__inst1_i];
               __n9.__set___on0((e) => {
                 state.name = e.currentTarget.value;
-                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
-                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                  __inst1_live[__inst1_live_ui].__set___p1(state.name);
                 }
                 ;
-                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
                   ;
-                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                  __inst5_live[__inst5_live_ui].__set___p1(state.name);
                 }
                 ;
               });
               __n9.__set___on1((e) => {
                 state.name = e.currentTarget.value;
-                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
-                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                  __inst1_live[__inst1_live_ui].__set___p1(state.name);
                 }
                 ;
-                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
                   ;
-                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                  __inst5_live[__inst5_live_ui].__set___p1(state.name);
                 }
                 ;
               });
               __n9.__set___p1(state.name);
             } else {
-              if (__inst2_live.length > __inst2_i) {
-                __inst2_live[__inst2_i].__destroy();
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
               }
               let __n9__new = __cf___child0({ __p0: state.big ? "section" : "div", __p1: state.name, __on0: (e) => {
                 state.name = e.currentTarget.value;
-                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
-                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                  __inst1_live[__inst1_live_ui].__set___p1(state.name);
                 }
                 ;
-                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
                   ;
-                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                  __inst5_live[__inst5_live_ui].__set___p1(state.name);
                 }
                 ;
               }, __on1: (e) => {
                 state.name = e.currentTarget.value;
-                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
-                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                  __inst1_live[__inst1_live_ui].__set___p1(state.name);
                 }
                 ;
-                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
                   ;
-                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                  __inst5_live[__inst5_live_ui].__set___p1(state.name);
                 }
                 ;
               } });
               __n9 = __n9__new;
             }
-            __inst2_next.push(__n9);
-            __inst2_now___p0.push(state.big ? "section" : "div");
-            __inst2_i = __inst2_i + 1;
+            __inst1_next.push(__n9);
+            __inst1_now___p0.push(state.big ? "section" : "div");
+            __inst1_i = __inst1_i + 1;
             let __n9__el = __n9.__root;
-            let __place1_i_ref0 = null;
-            if (__place1_i < __place1_prev.length) {
-              __place1_i_ref0 = __place1_prev[__place1_i];
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
             }
-            if (__place1_i_ref0 === __n9__el) {
-              __place1_i = __place1_i + 1;
+            if (__place0_i_ref0 === __n9__el) {
+              __place0_i = __place0_i + 1;
             } else {
-              parent.insertBefore(__n9__el, __place1_i_ref0);
+              parent.insertBefore(__n9__el, __place0_i_ref0);
             }
             __slot0.push(__n9__el);
           }
-          for (const [__inst2_i_d, _] of __inst2_live.entries()) {
-            let __inst2_i_j = __inst2_live.length - 1 - __inst2_i_d;
-            if (__inst2_i_j >= __inst2_i) {
-              __inst2_live[__inst2_i_j].__destroy();
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
             }
           }
-          __inst2_live = __inst2_next;
-          __inst2_was___p0 = __inst2_now___p0;
-          for (const __place1_prev_e of __place1_prev) {
-            if (__slot0.indexOf(__place1_prev_e) < 0) {
-              parent.removeChild(__place1_prev_e);
+          __inst1_live = __inst1_next;
+          __inst1_was___p0 = __inst1_now___p0;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
             }
           }
         }
@@ -433,51 +433,51 @@ body { font-family: system-ui, sans-serif; }
       try {
         while (__renderAgain1) {
           __renderAgain1 = false;
-          let __place3_prev = __slot1;
-          let __place3_i = 0;
+          let __place2_prev = __slot1;
+          let __place2_i = 0;
           __slot1 = [];
-          let __inst4_next = [];
-          let __inst4_i = 0;
-          let __inst4_now___p0 = [];
+          let __inst3_next = [];
+          let __inst3_i = 0;
+          let __inst3_now___p0 = [];
           for (const __x of [0]) {
             let __n10 = null;
-            if (__inst4_live.length > __inst4_i && __inst4_was___p0[__inst4_i] === (state.numbered ? "ol" : "ul")) {
-              __n10 = __inst4_live[__inst4_i];
+            if (__inst3_live.length > __inst3_i && __inst3_was___p0[__inst3_i] === (state.numbered ? "ol" : "ul")) {
+              __n10 = __inst3_live[__inst3_i];
               __n10.__set___p1(state.numbered);
               __n10.__set___p2(state.label);
             } else {
-              if (__inst4_live.length > __inst4_i) {
-                __inst4_live[__inst4_i].__destroy();
+              if (__inst3_live.length > __inst3_i) {
+                __inst3_live[__inst3_i].__destroy();
               }
               let __n10__new = __cf___child1({ __p0: state.numbered ? "ol" : "ul", __p1: state.numbered, __p2: state.label });
               __n10 = __n10__new;
             }
-            __inst4_next.push(__n10);
-            __inst4_now___p0.push(state.numbered ? "ol" : "ul");
-            __inst4_i = __inst4_i + 1;
+            __inst3_next.push(__n10);
+            __inst3_now___p0.push(state.numbered ? "ol" : "ul");
+            __inst3_i = __inst3_i + 1;
             let __n10__el = __n10.__root;
-            let __place3_i_ref0 = null;
-            if (__place3_i < __place3_prev.length) {
-              __place3_i_ref0 = __place3_prev[__place3_i];
+            let __place2_i_ref0 = null;
+            if (__place2_i < __place2_prev.length) {
+              __place2_i_ref0 = __place2_prev[__place2_i];
             }
-            if (__place3_i_ref0 === __n10__el) {
-              __place3_i = __place3_i + 1;
+            if (__place2_i_ref0 === __n10__el) {
+              __place2_i = __place2_i + 1;
             } else {
-              parent.insertBefore(__n10__el, __place3_i_ref0);
+              parent.insertBefore(__n10__el, __place2_i_ref0);
             }
             __slot1.push(__n10__el);
           }
-          for (const [__inst4_i_d, _] of __inst4_live.entries()) {
-            let __inst4_i_j = __inst4_live.length - 1 - __inst4_i_d;
-            if (__inst4_i_j >= __inst4_i) {
-              __inst4_live[__inst4_i_j].__destroy();
+          for (const [__inst3_i_d, _] of __inst3_live.entries()) {
+            let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
+            if (__inst3_i_j >= __inst3_i) {
+              __inst3_live[__inst3_i_j].__destroy();
             }
           }
-          __inst4_live = __inst4_next;
-          __inst4_was___p0 = __inst4_now___p0;
-          for (const __place3_prev_e of __place3_prev) {
-            if (__slot1.indexOf(__place3_prev_e) < 0) {
-              parent.removeChild(__place3_prev_e);
+          __inst3_live = __inst3_next;
+          __inst3_was___p0 = __inst3_now___p0;
+          for (const __place2_prev_e of __place2_prev) {
+            if (__slot1.indexOf(__place2_prev_e) < 0) {
+              parent.removeChild(__place2_prev_e);
             }
           }
         }
@@ -495,98 +495,98 @@ body { font-family: system-ui, sans-serif; }
       try {
         while (__renderAgain2) {
           __renderAgain2 = false;
-          let __place5_prev = __slot2;
-          let __place5_i = 0;
+          let __place4_prev = __slot2;
+          let __place4_i = 0;
           __slot2 = [];
-          let __inst6_next = [];
-          let __inst6_i = 0;
+          let __inst5_next = [];
+          let __inst5_i = 0;
           if (state.big) {
             let __n11 = null;
-            if (__inst6_live.length > __inst6_i) {
-              __n11 = __inst6_live[__inst6_i];
+            if (__inst5_live.length > __inst5_i) {
+              __n11 = __inst5_live[__inst5_i];
               __n11.__set___on0((e) => {
                 state.name = e.currentTarget.value;
-                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
-                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                  __inst1_live[__inst1_live_ui].__set___p1(state.name);
                 }
                 ;
-                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
                   ;
-                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                  __inst5_live[__inst5_live_ui].__set___p1(state.name);
                 }
                 ;
               });
               __n11.__set___on1((e) => {
                 state.name = e.currentTarget.value;
-                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
-                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                  __inst1_live[__inst1_live_ui].__set___p1(state.name);
                 }
                 ;
-                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
                   ;
-                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                  __inst5_live[__inst5_live_ui].__set___p1(state.name);
                 }
                 ;
               });
               __n11.__set___p0(state.k);
               __n11.__set___p1(state.name);
             } else {
-              if (__inst6_live.length > __inst6_i) {
-                __inst6_live[__inst6_i].__destroy();
+              if (__inst5_live.length > __inst5_i) {
+                __inst5_live[__inst5_i].__destroy();
               }
               let __n11__new = __cf___child2({ __p0: state.k, __p1: state.name, __on0: (e) => {
                 state.name = e.currentTarget.value;
-                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
-                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                  __inst1_live[__inst1_live_ui].__set___p1(state.name);
                 }
                 ;
-                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
                   ;
-                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                  __inst5_live[__inst5_live_ui].__set___p1(state.name);
                 }
                 ;
               }, __on1: (e) => {
                 state.name = e.currentTarget.value;
-                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
-                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                  __inst1_live[__inst1_live_ui].__set___p1(state.name);
                 }
                 ;
-                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
                   ;
-                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                  __inst5_live[__inst5_live_ui].__set___p1(state.name);
                 }
                 ;
               } });
               __n11 = __n11__new;
             }
-            __inst6_next.push(__n11);
-            __inst6_i = __inst6_i + 1;
+            __inst5_next.push(__n11);
+            __inst5_i = __inst5_i + 1;
             let __n11__el = __n11.__root;
-            let __place5_i_ref0 = null;
-            if (__place5_i < __place5_prev.length) {
-              __place5_i_ref0 = __place5_prev[__place5_i];
+            let __place4_i_ref0 = null;
+            if (__place4_i < __place4_prev.length) {
+              __place4_i_ref0 = __place4_prev[__place4_i];
             }
-            if (__place5_i_ref0 === __n11__el) {
-              __place5_i = __place5_i + 1;
+            if (__place4_i_ref0 === __n11__el) {
+              __place4_i = __place4_i + 1;
             } else {
-              parent.insertBefore(__n11__el, __place5_i_ref0);
+              parent.insertBefore(__n11__el, __place4_i_ref0);
             }
             __slot2.push(__n11__el);
           }
-          for (const [__inst6_i_d, _] of __inst6_live.entries()) {
-            let __inst6_i_j = __inst6_live.length - 1 - __inst6_i_d;
-            if (__inst6_i_j >= __inst6_i) {
-              __inst6_live[__inst6_i_j].__destroy();
+          for (const [__inst5_i_d, _] of __inst5_live.entries()) {
+            let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
+            if (__inst5_i_j >= __inst5_i) {
+              __inst5_live[__inst5_i_j].__destroy();
             }
           }
-          __inst6_live = __inst6_next;
-          for (const __place5_prev_e of __place5_prev) {
-            if (__slot2.indexOf(__place5_prev_e) < 0) {
-              parent.removeChild(__place5_prev_e);
+          __inst5_live = __inst5_next;
+          for (const __place4_prev_e of __place4_prev) {
+            if (__slot2.indexOf(__place4_prev_e) < 0) {
+              parent.removeChild(__place4_prev_e);
             }
           }
         }
@@ -619,17 +619,17 @@ body { font-family: system-ui, sans-serif; }
   });
   $2.addEventListener("click", function() {
     state.label = state.label + "x";
-    for (const [__inst4_live_ui, _] of __inst4_live.entries()) {
+    for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
       ;
-      __inst4_live[__inst4_live_ui].__set___p2(state.label);
+      __inst3_live[__inst3_live_ui].__set___p2(state.label);
     }
     ;
   });
   $3.addEventListener("click", function() {
     state.k = state.k + 1;
-    for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+    for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
       ;
-      __inst6_live[__inst6_live_ui].__set___p0(state.k);
+      __inst5_live[__inst5_live_ui].__set___p0(state.k);
     }
     ;
   });
@@ -638,4 +638,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b56ce188cfd29d8f9c9df7a1ed45edf2
+pass sha256:d5a10eb72d185b146dc686da0ffd7f68

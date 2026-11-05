@@ -1376,7 +1376,10 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		if len(args) >= 1 && (args[0] == gc.RecvName() || gc.rawFieldAccess(n.Args[0].Value)) {
 			return args[0] + "." + name + "(" + strings.Join(args[1:], ", ") + ")"
 		}
-		return gc.RecvName() + "." + name + "(" + strings.Join(args, ", ") + ")"
+		// Inside a component instance record, a method the component does
+		// not declare is the Model's: a write there updating the page calls
+		// the root's functions through what holds the record.
+		return gc.recvFor(n.Func) + "." + name + "(" + strings.Join(args, ", ") + ")"
 	}
 
 	// In a test body the component instance is a local — `c := newTestComponent()`

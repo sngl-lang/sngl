@@ -1,0 +1,109 @@
+# A method of a generic struct that writes it, `Tally[V].keep`, called in a
+# generic component on the two-way prop that names the program's tally. The
+# call names the component's V until the splice binds it, so passMonomorphize
+# kept the method, and the copying after the splice left the program's own
+# generics alone: fyne and bubbletea called `TallyKeep(m.tally, …)`, taking
+# the uncopied `Tally` the spliced call no longer had.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+// Counts kept by key.
+struct Tally[V any] {
+    counts map[string, V]
+}
+
+// Keeps `v` under `key`.
+func Tally[V].keep(key string, v V) {
+    this.counts[key] = v
+}
+
+var tally = Tally[int]{counts={}}
+
+// Writes the tally it is handed through a method of the tally's own, at the
+// component's parameter.
+component keeper[V any](key string, value V, :into Tally[V]) ui.node {
+    ui.button #keep(text=key, @click { into.keep(key, value) })
+}
+
+component page ui.node {
+    keeper #keeper(key="a", value=1, :into=tally)
+}
+
+func testAMethodOfAGenericStructWritesThroughTheProp(t test.Test, c page) {
+    c.keeper.keep.click()
+    t.assert(tally.counts["a"] == 1)
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:85c9dae8ce1464f61a9dd1f7e9900a0d
+{
+  "results": [
+    {
+      "Desc": "AMethodOfAGenericStructWritesThroughTheProp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:a80c5604a2e4634d0da8df7844c02642
+{
+  "results": [
+    {
+      "Desc": "AMethodOfAGenericStructWritesThroughTheProp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:35874d8e7b30b3d5406e0d75775b4658
+{
+  "results": [
+    {
+      "Desc": "AMethodOfAGenericStructWritesThroughTheProp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:a80831948b70c5b0c08f4654880a4c52
+{
+  "results": [
+    {
+      "Desc": "AMethodOfAGenericStructWritesThroughTheProp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:27c71064f5705184cf236d0e1a638aea
+{
+  "results": [
+    {
+      "Desc": "AMethodOfAGenericStructWritesThroughTheProp",
+      "Passed": true
+    }
+  ]
+}

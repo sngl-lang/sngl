@@ -403,6 +403,13 @@ func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
 			op := strings.TrimSuffix(n.Op.String(), "=")
 			value = "(" + recv + "[" + key + "] ?: " + ktMapValZero(idx.Operand.ExprType()) + ") " + op + " " + value
 		}
+		// A map in a field of a struct held by state is rebuilt and copied
+		// back up the path, as a field write is below: assigned in place,
+		// `tally.failures = tally.failures + (…)`, the view never recomposed
+		// (cmd/sngl/testdata/instance_writes_page_state_runs.txt).
+		if sel, ok := idx.Operand.(*ir.Select); ok && kc.isStateStructField(sel) {
+			return kc.rebuildStructPath(sel, recv+" + ("+key+" to "+value+")")
+		}
 		return recv + " = " + recv + " + (" + key + " to " + value + ")"
 	}
 	// A list the program keeps as state is a `SnapshotStateList` held by a

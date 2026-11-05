@@ -58,16 +58,21 @@ type monomorph struct {
 // a select's, calling `ui.choiceLabel(options, value)` -- is spliced at its
 // call's types only here, after passMonomorphize has run. The copies, and the
 // spliced bodies, name struct and enum instantiations passMonomorphize never
-// saw, which are copied in turn. The program's own generics it leaves:
-// passMonomorphize copied them, and copying again one it kept grew a
-// polymorphic recursion past maxInstances a second time.
+// saw, which are copied in turn. So does a program generic a generic
+// component's body calls at the component's parameters -- a method of
+// `Cache[V]` writing the cache a `:cache Cache[V]` prop names -- which
+// passMonomorphize kept, the call naming V, and which Go then emitted taking
+// the uncopied struct the spliced call no longer hands it. One it kept past
+// maxInstances it leaves (PastInstances): copied again, a polymorphic
+// recursion grew past the bound a second time
+// (cmd/sngl/testdata/generic_method_in_generic_component_runs.txt).
 var passMonomorphizeCodecs = pass{
 	name:    "MonomorphizeCodecs",
 	enabled: func(Features) bool { return true },
 	apply: func(pkg *ir.Package, c Features, _ Options) error {
 		var reach ir.CodecReach
 		monomorphizeFuncs(pkg, func(fn *ir.Func) bool {
-			return (!c.GenericFuncs && fn.PkgPath() != "") || len(reach.GenericCodecs(fn)) > 0
+			return (!c.GenericFuncs && !fn.Lowered.PastInstances) || len(reach.GenericCodecs(fn)) > 0
 		}, false)
 		if !c.GenericFuncs && pkg != nil {
 			names := declNames(pkg)
@@ -291,6 +296,7 @@ func (m *monomorph) instance(fn *ir.Func, b map[string]*ir.Type) *ir.Func {
 	}
 	if len(m.instances[fn]) >= maxInstances {
 		m.kept[fn] = true
+		fn.Lowered.PastInstances = true
 		return nil
 	}
 	inst := ir.InstantiateFunc(fn, b)

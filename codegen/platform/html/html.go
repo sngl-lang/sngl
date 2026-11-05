@@ -1134,21 +1134,37 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 	if g.pkg == nil {
 		return
 	}
-	visit := retargetSlotCalls
-	// Not into a factory: a slot there renders into the instance's own root,
-	// which the lowering already named, and a page anchor would point every
-	// instance at one node.
+	visit := func(root any) { retargetSlotCalls(root, nil) }
+	page := map[*ir.Func]bool{}
 	for _, c := range g.pageComponents() {
 		visit(c.Stmts)
 		for _, fn := range c.Funcs {
 			if fn != nil {
 				visit(fn.Block)
+				page[fn] = true
 			}
 		}
 	}
 	for _, fn := range g.pkg.Funcs {
 		if fn != nil {
 			visit(fn.Block)
+			page[fn] = true
+		}
+	}
+	// In a factory only the page's slots: a slot of the instance's own
+	// renders into the instance's root, which the lowering already named, and
+	// a page anchor would point every instance at one node. A write there of
+	// page state re-fires the page's slot, which was handed the node the page
+	// named, and the instance's node of that name was removed from instead.
+	for _, c := range g.pkg.Components {
+		if c == nil || !g.isInstanceComponent(c) {
+			continue
+		}
+		retargetSlotCalls(c.Stmts, page)
+		for _, fn := range c.Funcs {
+			if fn != nil {
+				retargetSlotCalls(fn.Block, page)
+			}
 		}
 	}
 }
@@ -1157,11 +1173,11 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 // which is cloned from its Window and so is none of what the package-wide
 // rewrite reached.
 func (g *htmlGen) rewriteDocumentSlotCalls() {
-	retargetSlotCalls(g.irBodyStmts)
+	retargetSlotCalls(g.irBodyStmts, nil)
 }
 
 // retargetSlotCalls points every `__renderSlotN(parentRef)` under root at
-// the slot's anchor.
+// the slot's anchor, of a render function in only where it is non-nil.
 //
 // ir.Walk rather than a descent of the statements that can hold one,
 // because "which statement holds the re-fire" is a question this has been
@@ -1169,10 +1185,10 @@ func (g *htmlGen) rewriteDocumentSlotCalls() {
 // of a CallStmt, so a timer handler was covered while `h = setInterval(func
 // () { ... })` -- an ir.Assign -- was not, and the re-fire inside it kept
 // the parentRef it was threaded with and removeChild'd from the wrong node.
-func retargetSlotCalls(root any) {
+func retargetSlotCalls(root any, only map[*ir.Func]bool) {
 	_ = walkThroughCatch(root, func(node ir.Node) error {
 		call, ok := node.(*ir.Call)
-		if !ok || call.Func == nil {
+		if !ok || call.Func == nil || only != nil && !only[call.Func] {
 			return nil
 		}
 		n := slotIndexFromRenderFunc(call.Func.Name)

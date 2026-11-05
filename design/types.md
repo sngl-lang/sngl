@@ -119,6 +119,12 @@ through a generic it calls (`ir.BoundReach`), at each binding
 (`monomorphizeFuncs`), because a target keeping generic functions whole would
 have no type to call. `ir.GenericCallee` binds a receiver its parameters do
 not list for that, and `Monomorphize` binds through it too. A
+generic component's body is spliced at its bound types only after
+`Monomorphize`, so a program generic it calls at the component's parameters
+-- `cache.keep(k, v)` on a `:cache Cache[V]` -- is kept then and copied by
+`MonomorphizeCodecs` after the splice, which copies every generic but one
+kept past `maxInstances` (`FuncLowering.PastInstances`)
+(`cmd/sngl/testdata/generic_method_in_generic_component_runs.txt`). A
 `_formatArgs[T]` written for a T holds what the constraint's format takes, and
 the bound type's may take more: `ir.FormatCall` leaves a field the literal
 does not hold to the format's default, and the interpreter completes such a

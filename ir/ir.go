@@ -861,6 +861,10 @@ func (p *NodeProtocol) Op(op ProtocolOp) *Func {
 // either. A value rather than a pointer, so a Func copied to give it a
 // receiver carries its own.
 type FuncLowering struct {
+	// PastInstances says passMonomorphize made as many copies of this generic
+	// as it makes of one, a polymorphic recursion, and kept the original for
+	// every binding past them, which no later copying may grow again.
+	PastInstances bool
 	// SlotRender says this is a reactive slot's __renderSlot<N>: a body of
 	// node operations that renders into the `parent` its one parameter names.
 	// Synthesized does not answer that -- an effect's settle halves and the
