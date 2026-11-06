@@ -2942,6 +2942,9 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { radius__inst0: 4, url__inst0: "https://example.com/a.png", hasPhoto__inst0: false, visible__inst0: true, failed__inst0: false };
+  function error(message, kind) {
+    return { message, kind };
+  }
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -3257,4 +3260,4 @@ pass sha256:0d5645853c04ea32eeed6da054d0cb5f
 -- run/kotlin/android --
 pass sha256:9164c4affdd04c825ec35937d1b533d2
 -- run/none/html --
-pass sha256:a3ffac96acdc9b2a59d5dbcfd8a83b66
+pass sha256:fd9e756d36c2819f6f8fc6903b8f159c

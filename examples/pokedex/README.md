@@ -48,7 +48,24 @@ failure. The vendored copy says they may be null, as it already said of
 
 `poke.server` is a context holding the document's first server,
 `https://pokeapi.co`. Provide another around a subtree, or in a test, and
-every request under it goes there instead.
+every request under it goes there instead. A test reaches no network unless it
+says so, so each of the Pokédex's does, and points the server at the
+harness's, which answers from `testdata/http`:
+
+<!-- SNGL-nocheck -->
+
+```sngl
+func testSpritesLabelEveryPicture(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dot)
+    c.name = "pikachu"
+    …
+}
+```
+
+A test's component mounts where the test first needs it, so a page's requests
+go where the test said and ask for the Pokémon it named.
 
 **A request is a component.** A screen writes the component where it wants
 the answer:

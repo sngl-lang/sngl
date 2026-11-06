@@ -1147,6 +1147,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.derivedStateOf
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class __anon_id_elem_c6a818(
     var id: String = "",
     var elem: String = ""
@@ -1571,7 +1577,7 @@ pass sha256:c41b5ea0e3e04dc5c717bb544491bd3e
 -- run/go/gtk4 --
 pass sha256:6330bec4731874ce3baa0ab291d79088
 -- run/kotlin/android --
-pass sha256:06060b7ae56a5f97e0c97a7fd7f19c1b
+pass sha256:def9e3220d52cba240831df7c68cefb0
 -- run/none/html --
 pass sha256:b2dee9a0b0a570395500a6b042876e0a
 -- testrun/html/none/component_func_reads_loop_prop.sngl/main/1 --

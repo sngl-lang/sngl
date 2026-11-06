@@ -126,3 +126,7 @@ func readsPackageVar(root any, pkg *Package) bool {
 	})
 	return found
 }
+
+// HTTPNoAnswer begins the message a request fails with where sngl:http's
+// answer gave none, the url after it.
+const HTTPNoAnswer = "no answer for "

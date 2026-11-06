@@ -215,6 +215,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import us.duckfam.git.jonathan.sngl.i18n.I18n
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -1364,6 +1370,6 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:400297a3bf608a1a422620dabb58618f
 -- run/kotlin/android --
-pass sha256:83084ab89e2eb3ae04d178282636c511
+pass sha256:6360fcba184d7356b0cc97dc598c85ae
 -- run/none/html --
 pass sha256:299e783a6ed4cdaf184a66869efa4374

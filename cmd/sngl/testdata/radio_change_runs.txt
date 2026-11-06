@@ -41,7 +41,7 @@ ui.window {
     fitting
 }
 -- testrun/android/kotlin/app.sngl/fitting/1 --
-sha256:7ce468995824d62a9e61e7c2cd2a1a81
+sha256:6af3bf336217458dc518c77991519b3d
 {
   "results": [
     {

@@ -60,7 +60,7 @@ window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:e2220b36131ffea487531f95938ace96
+sha256:f048de293b80a49c21fefa6f31a985e2
 {
   "results": [
     {

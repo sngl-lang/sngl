@@ -60,6 +60,9 @@ var passes = []pass{
 	// declaration does.
 	passReceiverParam,
 	passCallDefaults,
+	// After passCallDefaults, whose reads of sngl:http's answer it finds the
+	// context by; before passUnprovidedContext and passContext.
+	passTestAnswer,
 	passMonomorphize,
 	passNavigation,
 	passHandleParams,
@@ -127,6 +130,10 @@ var passes = []pass{
 	passEffect,
 	passSlotChildInstances,
 	passInstanceEvents,
+	// After passInstanceEvents, which leaves only the root's raises, and
+	// before the temps passConditionalTemps and passTernary bind for what a
+	// raise is handed.
+	passTestRootEvents,
 	passComponentProps,
 	passReactivity,
 	passFocusOrder,

@@ -86,8 +86,10 @@ func (jc *JsIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string 
 }
 func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
 	// A MethodFields field is a zero-arg method, so `c.greeting` must invoke
-	// it rather than compare the function object.
-	if jc.Ctx != nil && jc.Ctx.MethodFields != nil && jc.Ctx.MethodFields[n.Field] {
+	// it rather than compare the function object. Only of the instance: a
+	// struct's field named like one of its methods -- `stage.forms` in a page
+	// declaring `func forms()` -- is the field.
+	if jc.Ctx != nil && jc.Ctx.MethodFields != nil && jc.Ctx.MethodFields[n.Field] && isInstance(n.Operand) {
 		return operand + "." + n.Field + "()"
 	}
 	if n.Field == "length" {
@@ -1361,4 +1363,11 @@ func endsInJump(stmts []ir.Stmt) bool {
 // writes these before they reach here.
 func (jc *JsIRContext) MatchExpr(n *ir.MatchExpr) string {
 	return irwalk.EvalExpr(jc, n.TernaryChain())
+}
+
+// isInstance reports whether e is a component's instance, whose zero-arg
+// methods a test reads as fields.
+func isInstance(e ir.Expr) bool {
+	t := e.ExprType()
+	return t == nil || t.Kind == ir.TypeComponent
 }

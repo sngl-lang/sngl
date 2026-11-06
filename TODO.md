@@ -11,10 +11,6 @@ queries (`asked` wraps the ones under a page's `if`), the grid is `ui.grid`,
 moves sort by `before`, the Moves select holds a `LearnMethod`, and the kept
 language is a locale. What is left:
 
-1. **Testing requests needs help.** 63 tests need 26 wrapper components, each
-   `poke.server(local){ artwork(dot){ … } }`, and `testdata/http` is trimmed
-   by hand. Ideas: a SNGL-level recorder of real requests, and a `TestMain`
-   kind of setup shared by a file's tests.
 2. **A first search of the National dex mounts about 1,025 requests at
    once.** Nothing caps the requests in flight (see `snglhttp` below).
 3. **A node's method is out of reach in a block built at run time.** On html,

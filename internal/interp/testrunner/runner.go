@@ -89,6 +89,14 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func, simulate string) *codegen.TestRes
 		env.Set(fn.Params[1], cVal)
 	}
 
+	// No test reaches the network unless it says so: sngl:http's answer
+	// starts as its closed one, as passTestAnswer has a compiled test start.
+	if ctx, closed := testAnswer(pkg); ctx != nil {
+		if v, err := env.Eval(&ir.Ident{Name: closed.Name, Type: closed.SymType(), Sym: closed}); err == nil {
+			env.SetContext(ctx, v)
+		}
+	}
+
 	tVal := &testingT{env: env, result: r, pkg: pkg, compName: compName, comp: cVal, clock: clock}
 	if len(fn.Params) >= 1 {
 		env.Set(fn.Params[0], tVal)
@@ -336,6 +344,36 @@ func (cv *componentValue) mount() {
 		interp.InitComponentState(cv.Env, cv.comp, cv.preset)
 	}
 	cv.settle()
+}
+
+// testAnswer is sngl:http's answer and the function a test starts it as,
+// where the program imports sngl:http, found by their marks.
+func testAnswer(pkg *ir.Package) (*ir.Context, *ir.Func) {
+	seen := map[*ir.Package]bool{}
+	var visit func(p *ir.Package) (*ir.Context, *ir.Func)
+	visit = func(p *ir.Package) (*ir.Context, *ir.Func) {
+		if p == nil || seen[p] {
+			return nil, nil
+		}
+		seen[p] = true
+		for _, c := range p.Contexts {
+			if c.Builtin != ir.BuiltinHTTPAnswer {
+				continue
+			}
+			for _, f := range p.Funcs {
+				if f.Builtin == ir.BuiltinHTTPClosed {
+					return c, f
+				}
+			}
+		}
+		for _, imp := range p.Imports {
+			if c, f := visit(imp.Pkg); c != nil {
+				return c, f
+			}
+		}
+		return nil, nil
+	}
+	return visit(pkg)
 }
 
 // readsPackageState reports whether s reads a var of the package's.

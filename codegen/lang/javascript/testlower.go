@@ -163,7 +163,7 @@ func lowerTestStmt(s ir.Stmt, jc *JsIRContext) []string {
 			return []string{fmt.Sprintf("// t.setContext(%s, ...)", name)}
 		}
 		_, val, _ := codegen.TestSetContext(s.(*ir.CallStmt).Call)
-		return []string{fmt.Sprintf("%s.%s = %s;", jc.Ctx.StateReceiver, field, jc.EvalExpr(val))}
+		return []string{fmt.Sprintf("%s.%s = %s;", jc.Ctx.StateReceiver, field, jc.EvalExpr(deferFuncRefs(val)))}
 	}
 	if n, ok := s.(*ir.If); ok {
 		out := []string{jc.IfHead(n, jc.EvalExpr(n.Cond))}
@@ -324,4 +324,34 @@ func mountLine(recv string) string {
 		return testInstanceVar + " = mountTestComponent(" + testInstanceVar + ");"
 	}
 	return testInstanceVar + " = " + recv + " = mountTestComponent(" + recv + ");"
+}
+
+// deferFuncRefs is e with each function it names as a value wrapped in a
+// lambda calling it. A test sets its page up before the page boots, and the
+// page's functions are on window only once it has: a lambda looks its
+// function up when the page calls it -- sngl:http's `_closed`, which a test
+// starts with as its answer.
+func deferFuncRefs(e ir.Expr) ir.Expr {
+	out, _ := ir.RewriteExpr(ir.CloneExprSharingDecls(e), func(n ir.Node) (ir.Node, error) {
+		switch x := n.(type) {
+		case *ir.Call:
+			return n, ir.SkipDir
+		case *ir.Ident:
+			fn, ok := x.Sym.(*ir.Func)
+			if !ok || fn.IsMethod() {
+				return n, nil
+			}
+			wrapper := &ir.Func{Return: fn.Return}
+			call := &ir.Call{Type: fn.Return, Func: fn}
+			for i, p := range fn.Params {
+				np := &ir.Param{Name: fmt.Sprintf("__a%d", i), Type: p.Type}
+				wrapper.Params = append(wrapper.Params, np)
+				call.Args = append(call.Args, ir.CallArg{Name: p.Name, Value: &ir.Ident{Name: np.Name, Type: np.Type, Sym: np}})
+			}
+			wrapper.Block = []ir.Stmt{&ir.Return{Value: call}}
+			return &ir.Lambda{Type: x.Type, Func: wrapper}, nil
+		}
+		return n, nil
+	})
+	return out
 }

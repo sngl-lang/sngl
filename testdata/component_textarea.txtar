@@ -774,6 +774,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -892,7 +898,7 @@ pass sha256:58733124142e4a7a4b9427d433be12a2
 -- run/go/gtk4 --
 pass sha256:65faeca581989719c07cfcf306b70dc2
 -- run/kotlin/android --
-pass sha256:d6635ad8bf015bc48ccf9c776dd3323e
+pass sha256:983e90438a8bf2381fa4d91ef1b985d0
 -- run/none/html --
 pass sha256:df5432f42bd8b109b957c1aca95738ad
 -- testrun/html/none/component_textarea.sngl/main/1 --

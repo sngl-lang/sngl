@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"slices"
+
 	"duckfam.us/sngl/ir"
 )
 
@@ -52,10 +54,14 @@ func mountWhereNeeded(block []ir.Stmt, comp *ir.Param, pkg *ir.Package) []ir.Stm
 	for i, s := range block {
 		if p, ok := ir.TestSetup(s, comp, pkg); ok {
 			out = append(out, s)
-			if p.Context != "" {
-				preset = append(preset, contextVarPrefix+p.Context)
-			} else {
-				preset = append(preset, p.Field.SymName())
+			name := contextVarPrefix + p.Context
+			if p.Context == "" {
+				name = p.Field.SymName()
+			}
+			// Set twice -- a test's own answer after the closed one it
+			// starts with -- it is one name.
+			if !slices.Contains(preset, name) {
+				preset = append(preset, name)
 			}
 			continue
 		}

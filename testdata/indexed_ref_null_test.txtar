@@ -1948,6 +1948,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class __anon_id_elem_c6a818(
     var id: String = "",
     var elem: String = ""
@@ -2502,6 +2508,6 @@ pass sha256:43f5590039010047fa7d1abf37b15c59
 -- run/go/gtk4 --
 pass sha256:b2ed61a2126c96f797f1a0de4d6f39a4
 -- run/kotlin/android --
-pass sha256:8b7324be6181e2a7fa03e96a438b9b23
+pass sha256:37ac7e62b10a73f3a050219e43161b01
 -- run/none/html --
 pass sha256:dd28a224ff3a9041fd9a7c5b2614da58

@@ -3223,6 +3223,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.semantics.semantics
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class __anon_id_elem_c6a818(
     var id: String = "",
     var elem: String = ""
@@ -4289,6 +4295,6 @@ pass sha256:4d44cd0d6ec59d501ef237adbb141e04
 -- run/go/gtk4 --
 pass sha256:356856a260938a5aada56bdd63e594af
 -- run/kotlin/android --
-pass sha256:a15df4cbec319fcc64a2d4889b174cf3
+pass sha256:8c0f1cc75b2cddb6fb35ac95717f4a16
 -- run/none/html --
 pass sha256:344c49762b0d47a082a9e45274346b98

@@ -72,6 +72,7 @@ component page ui.node {
 }
 
 func testASearchAsksForEveryKey(t test.Test, c page) {
+    t.setContext(http.answer, http.network)
     c.find.click()
     t.wait(func() => answers.length() == 3, 5000)
     t.assert(answers["one"] == 3 && answers["two"] == 3 && answers["three"] == 5)
@@ -81,7 +82,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:919af514fcda0d0133608ba941d48ba3
+sha256:c812ace6427d110bf70cc2a3043a5aeb
 {
   "results": [
     {
@@ -91,7 +92,7 @@ sha256:919af514fcda0d0133608ba941d48ba3
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:6e82aa882654e6b66dd968c6b9d97b2c
+sha256:22b9aac70a1e24512a42307e65a2ad8b
 {
   "results": [
     {
@@ -101,7 +102,7 @@ sha256:6e82aa882654e6b66dd968c6b9d97b2c
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:3b71b9bafe093b33407ca04a3d5d3de9
+sha256:daae7da733d0ba459aa6a525a6121b15
 {
   "results": [
     {
@@ -111,7 +112,7 @@ sha256:3b71b9bafe093b33407ca04a3d5d3de9
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:87c017e857d44172258d32c4b5369691
+sha256:05a518ab0f7127f7057bc8635dfa01ee
 {
   "results": [
     {
@@ -121,7 +122,7 @@ sha256:87c017e857d44172258d32c4b5369691
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:5e2583f5c6d45281dbec5bf7d796ad8d
+sha256:888cf382e8b213b68d36616fb259f19d
 {
   "results": [
     {

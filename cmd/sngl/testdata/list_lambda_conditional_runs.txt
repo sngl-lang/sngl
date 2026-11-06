@@ -71,7 +71,7 @@ func testBranchesRunWhereTaken(t test.Test, c main) {
     t.assert(row(c.at).length() == 2)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:a7f071ca44e134e07cc54dc4c344be3f
+sha256:945e818486a811920e58bf59c7465ab4
 {
   "results": [
     {

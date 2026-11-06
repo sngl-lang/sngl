@@ -296,6 +296,12 @@ data class Box__int(
     var value: Int = 0
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -455,6 +461,6 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:795af3403e6b2b92343e9e6a2f520ef1
 -- run/kotlin/android --
-pass sha256:a9581ccb4594d18a9aa15be9f03a5b29
+pass sha256:5568c65bb010d8802b8f1b8b3fc60c00
 -- run/none/html --
 pass sha256:30f1394055b63c75cdabe2d822936b6a

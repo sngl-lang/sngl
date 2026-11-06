@@ -251,6 +251,18 @@ data class Page(
     var body: StringBuilder = StringBuilder()
 )
 
+class Builder {
+    override fun equals(other: Any?) = other is Builder
+    override fun hashCode() = 0
+    override fun toString() = "Builder()"
+}
+
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -441,6 +453,6 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:02b6e5aacb9354387dc61f4ad1502ea7
 -- run/kotlin/android --
-pass sha256:53f124f58a2bd9756da0cd3b98da9d69
+pass sha256:04dea1d69c1526d7e358b46a177ba164
 -- run/none/html --
 pass sha256:f9e020a53870862ff5c0fbaa6ad918a2

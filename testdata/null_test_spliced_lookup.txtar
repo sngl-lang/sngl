@@ -338,6 +338,12 @@ data class About(
     var habitat: Place? = null
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -539,6 +545,6 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:ffb1e7e688c2eb8d8c9b738581f87dc1
 -- run/kotlin/android --
-pass sha256:5859e631d0f115c4c9bfccff7442ad4c
+pass sha256:82d8064a0443483e566e34a9fad6074f
 -- run/none/html --
 pass sha256:8a75f3004c1161fc018222578998149d

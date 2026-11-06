@@ -61,6 +61,7 @@ component page ui.node {
 }
 
 func testTheSecondQueryAnswers(t test.Test, c page) {
+    t.setContext(http.answer, http.network)
     c.show.click()
     t.assert(c.inner != null)
     if c.inner != null {
@@ -74,7 +75,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:6fa0a63756268752a76cd3feb36d51be
+sha256:d7370c0b8cd2861d89f0e6b175646b25
 {
   "results": [
     {
@@ -84,7 +85,7 @@ sha256:6fa0a63756268752a76cd3feb36d51be
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:55ac07c9d36b8c87c42314d43f7da219
+sha256:3b1d6259227f882af4622c7004a89917
 {
   "results": [
     {
@@ -94,7 +95,7 @@ sha256:55ac07c9d36b8c87c42314d43f7da219
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:48ac7dec78a86dfaccad40d8d7f2b877
+sha256:4e0c0894b0f40398a1dbb1062b1ab252
 {
   "results": [
     {
@@ -104,7 +105,7 @@ sha256:48ac7dec78a86dfaccad40d8d7f2b877
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:c5cef1d2deaa9189aa8bf1c8ee9b0969
+sha256:56b191413611519803e55d24c3a80f89
 {
   "results": [
     {
@@ -114,7 +115,7 @@ sha256:c5cef1d2deaa9189aa8bf1c8ee9b0969
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:43615e6d6ef4f25ebeb728486735300f
+sha256:d49bfd4935dcee46c8478c2031858eb1
 {
   "results": [
     {

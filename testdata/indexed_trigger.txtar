@@ -2655,6 +2655,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedTextField
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class __anon_id_elem_c6a818(
     var id: String = "",
     var elem: String = ""
@@ -3409,6 +3415,6 @@ pass sha256:9fa37328f0bf87edd565fb1112d80bbf
 -- run/go/gtk4 --
 pass sha256:3dd87671a258c601e6784081110731a9
 -- run/kotlin/android --
-pass sha256:351c04f030bdeb26ebe6a1205ca22c11
+pass sha256:34bc726441ecb5cc704d024318adbd0d
 -- run/none/html --
 pass sha256:9fb48ecd6dc8d5b7c6f2cce7125dc270

@@ -2745,6 +2745,12 @@ data class Tab__record(
     var __id: Int = 0
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -3874,6 +3880,6 @@ pass sha256:75ade5d6a9dc7ca87c7edb71bf5a3791
 -- run/go/gtk4 --
 pass sha256:00b0de6c63d50b362c57456c947311aa
 -- run/kotlin/android --
-pass sha256:b913f6f8c561454cb15dc09462229553
+pass sha256:26c9905308a1fc6b5bfeeedc49e9aab9
 -- run/none/html --
 pass sha256:f65adc8bf86b8cc6bdde94c2272c9ffc

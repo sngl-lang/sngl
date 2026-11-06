@@ -1241,6 +1241,12 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 class __anon_e3b0c4 {
     override fun equals(other: Any?) = other is __anon_e3b0c4
     override fun hashCode() = 0
@@ -1508,4 +1514,4 @@ pass sha256:4e0d5b7b4078ea451b15a946d3b137f6
 -- run/go/gtk4 --
 pass sha256:56e6d202813509e21998d2d0f57e2194
 -- run/kotlin/android --
-pass sha256:efce2ae3361ea70546841b2ca672d33d
+pass sha256:fa20068808c94c01b89e4fa11b4d6eeb

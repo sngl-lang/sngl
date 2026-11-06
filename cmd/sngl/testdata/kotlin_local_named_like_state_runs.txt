@@ -46,7 +46,7 @@ func testALocalIsNotThePagesVar(t test.Test, c page) {
     t.assert(c.count == 2)
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:90a1126e331adc12a0b3d63fe35ef32c
+sha256:b5ea10f7edd7757d24b77a6c512e43de
 {
   "results": [
     {

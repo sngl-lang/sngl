@@ -88,6 +88,10 @@ type Result__int struct {
 	Failed Failure
 }
 
+type Lifetime struct {
+	_id int
+}
+
 type Failure struct {
 	Kind    string
 	Message string
@@ -97,10 +101,6 @@ type Failure struct {
 type __anon_key_n_a1dba7 struct {
 	Key string
 	N   int
-}
-
-type Lifetime struct {
-	_id int
 }
 
 type Style struct {
@@ -931,4 +931,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:e1d8592699b70305ec29581a275f1e27
+pass sha256:507457b404fd8ef958c91ccbae963f7c

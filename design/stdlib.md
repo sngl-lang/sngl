@@ -490,6 +490,28 @@ SNGL wrapper over `send` because a generic wrapper hands the intrinsic a `Q`
 that names a type parameter on a target that emits generics, and the encoder
 needs the struct.
 
+**A test reaches no network unless it says so.** `send` and `get` take a
+last parameter, `hook`, defaulting to the context `answer`
+(`#[builtin("httpAnswer")]`), an `option[func(r Request) option[Response]]`:
+where it holds a function, each language's codec hands it the request, the
+url spelled with its query, and its answer is the response, a null failing
+the request as `transport` ("no answer for <url>"). passCallDefaults writes
+the default at each call, since a context is read where the call is, though
+an intrinsic with no body is otherwise left as written
+(`fillContextDefaults`). Nothing a program that ships does provides it, so it
+folds to `null` and every codec emits what it did before. A test build starts
+each test as if its first statement were `t.setContext(http.answer, _closed)`
+(`lower.passTestAnswer`, the interpreter's `testAnswer`), `_closed` being the
+`#[builtin("httpClosed")]` function answering null, and a test that means the
+network sets `http.network`, which is `null`. Getting there took a context's
+marks applied (`registerRootContextDecl`), a library function taken as a
+value promoted (passLibFuncs), and a library struct a function type or the
+program's own signature names declared, once per declaration
+(`promoteForeignStructs`). On html a test's setup runs before the page boots,
+and a function it names is a lambda calling it once the page has
+(`deferFuncRefs`). `cmd/sngl/testdata/http_answer_runs.txt` runs it on
+every target.
+
 **What has no wire form is refused at the call** (`checkCodecCall`,
 `ir.CodecProblem`): a function, a unit, a payload enum (not yet), a map keyed
 by anything but a string, two fields written under one name, a query field

@@ -2883,6 +2883,12 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.layout.ColumnScope
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class __anon_id_elem_c6a818(
     var id: String = "",
     var elem: String = ""
@@ -3822,6 +3828,6 @@ pass sha256:ce03b36b9e276a80db6e0f194d34d015
 -- run/go/gtk4 --
 pass sha256:1bd3d5958e57ae980947a32125edef42
 -- run/kotlin/android --
-pass sha256:723488b1651e2982e498d2532025e71e
+pass sha256:0530a8d4567effeda8beb6f0c49800dc
 -- run/none/html --
 pass sha256:1c3e266ba90176f3554a3100f609f9ba

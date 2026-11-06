@@ -48,7 +48,7 @@ func testEachCopyStartsFromItsDefault(t test.Test, c app) {
     t.assert(log.format(",") == "a=none,b=none")
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:dc77bee393c5c6a805adf9a8dcb0b5cc
+sha256:69b878a06b0970229da37dd0a90d114b
 {
   "results": [
     {

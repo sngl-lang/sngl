@@ -1134,6 +1134,12 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class MenuItem__record(
     var label: String = "",
     var disabled: Boolean = false,
@@ -1524,6 +1530,6 @@ pass sha256:09c235b5742a40db7802573ee185ed88
 -- run/go/gtk4 --
 pass sha256:c484bfd388812ddc5cd4b9dfe7e22214
 -- run/kotlin/android --
-pass sha256:59fcdadad9d3266dec40c3f0fbcc2e5f
+pass sha256:76edb851cd5031100304b9e3af558cfa
 -- run/none/html --
 pass sha256:44803f002c23b68c37eff8957328156e

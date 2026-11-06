@@ -1702,6 +1702,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -2206,6 +2212,6 @@ pass sha256:23de245d8daa4f00211ddbae6cf4c861
 -- run/go/gtk4 --
 pass sha256:5c05536e52656fc3f5bcb9eaa93f92f5
 -- run/kotlin/android --
-pass sha256:ecfae35985af73d9d8eda5b66be27771
+pass sha256:07c2198b57ea0611e25cc77908d6b4dd
 -- run/none/html --
 pass sha256:21905db21354d4e2500145799710d72a

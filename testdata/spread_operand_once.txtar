@@ -869,6 +869,12 @@ data class Pair(
     var y: Int = 0
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -1068,6 +1074,6 @@ pass sha256:2af4e64244706c2739a9140ef5b2f9b3
 -- run/go/fyne --
 pass sha256:132d3ced766c333e2275af21830ecfbc
 -- run/kotlin/android --
-pass sha256:ea47e2ab20b1f102cfb068ff797d9306
+pass sha256:fbe600fa875f5d96725c434d1e5e4f99
 -- run/none/html --
 pass sha256:a409334766150b717d962a7b82695dc5

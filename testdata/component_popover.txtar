@@ -648,6 +648,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -790,7 +796,7 @@ pass sha256:6f56c46799ce90738e2cdb543f563737
 -- run/go/gtk4 --
 pass sha256:d1c9e134c0b10c830a68fc1f1698ae2b
 -- run/kotlin/android --
-pass sha256:f3c3f53ef4363fd28bb96ed2db393770
+pass sha256:0ae3c0e43131e8d418649f2ee5b87c40
 -- run/none/html --
 pass sha256:6baa7c2934e5d4e1492dccafc236c59d
 -- testrun/html/none/component_popover.sngl/main/1 --

@@ -1245,6 +1245,12 @@ data class P(
     var a: Int = 0
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -1436,6 +1442,6 @@ pass sha256:08d327bc60b7661362f7e5467211e89f
 -- run/go/gtk4 --
 pass sha256:7fd7abd4f9efc14921844d6671e4a6d4
 -- run/kotlin/android --
-pass sha256:aa146e20926cd7891203029376e00a2e
+pass sha256:2832fa17f3995c64bba4add79053358a
 -- run/none/html --
 pass sha256:4ad673833903b0a529b3f73f43ec6c76

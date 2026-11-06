@@ -3337,6 +3337,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class __anon_id_elem_c6a818(
     var id: String = "",
     var elem: String = ""
@@ -4316,6 +4322,6 @@ pass sha256:a8ce8d4a3fb9642f3de3e39d45a775da
 -- run/go/gtk4 --
 pass sha256:1d3017c0dc622b57b95e7746f39ad710
 -- run/kotlin/android --
-pass sha256:58d9fa3ceae814bddbe9e550f4c740f3
+pass sha256:52efb6d557a647f3b64e6cf8179f9adf
 -- run/none/html --
 pass sha256:60307c78d3b8619cf3bdebc42d25237e

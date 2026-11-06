@@ -904,6 +904,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.HorizontalDivider
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class TableRow__record(
     var cells: List<String> = listOf()
 )
@@ -1075,7 +1081,7 @@ pass sha256:b576f7c52fc6649d5ebd5200963eb69f
 -- run/go/gtk4 --
 pass sha256:46f0176cd530fff49f387efc7ef71058
 -- run/kotlin/android --
-pass sha256:752d85b3fdf7a7016925ae60ad7121bf
+pass sha256:d8fd7921b1483f083a7d26888892be92
 -- run/none/html --
 pass sha256:73768087c6c6406002f0a763fec4f5bc
 -- testrun/html/none/component_table.sngl/main/1 --

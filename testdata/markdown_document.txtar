@@ -66,6 +66,20 @@ type Measurement struct {
 	Rem float64
 }
 
+type Palette struct {
+	Plain       snglcolor.Color
+	Keyword     snglcolor.Color
+	Type        snglcolor.Color
+	Function    snglcolor.Color
+	Variable    snglcolor.Color
+	Constant    snglcolor.Color
+	String      snglcolor.Color
+	Number      snglcolor.Color
+	Comment     snglcolor.Color
+	Operator    snglcolor.Color
+	Punctuation snglcolor.Color
+}
+
 type __anon_id_elem_c6a818 struct {
 	Id   string
 	Elem string
@@ -98,20 +112,6 @@ type _Item struct {
 	Marker string
 	Task   string
 	Blocks []_Block
-}
-
-type Palette struct {
-	Plain       snglcolor.Color
-	Keyword     snglcolor.Color
-	Type        snglcolor.Color
-	Function    snglcolor.Color
-	Variable    snglcolor.Color
-	Constant    snglcolor.Color
-	String      snglcolor.Color
-	Number      snglcolor.Color
-	Comment     snglcolor.Color
-	Operator    snglcolor.Color
-	Punctuation snglcolor.Color
 }
 
 type Style struct {
@@ -4314,6 +4314,20 @@ import (
 	"os"
 )
 
+type Palette struct {
+	Plain       snglcolor.Color
+	Keyword     snglcolor.Color
+	Type        snglcolor.Color
+	Function    snglcolor.Color
+	Variable    snglcolor.Color
+	Constant    snglcolor.Color
+	String      snglcolor.Color
+	Number      snglcolor.Color
+	Comment     snglcolor.Color
+	Operator    snglcolor.Color
+	Punctuation snglcolor.Color
+}
+
 type __anon_id_elem_c6a818 struct {
 	Id   string
 	Elem string
@@ -4346,20 +4360,6 @@ type _Item struct {
 	Marker string
 	Task   string
 	Blocks []_Block
-}
-
-type Palette struct {
-	Plain       snglcolor.Color
-	Keyword     snglcolor.Color
-	Type        snglcolor.Color
-	Function    snglcolor.Color
-	Variable    snglcolor.Color
-	Constant    snglcolor.Color
-	String      snglcolor.Color
-	Number      snglcolor.Color
-	Comment     snglcolor.Color
-	Operator    snglcolor.Color
-	Punctuation snglcolor.Color
 }
 
 // Model holds the state for this SNGL UI.
@@ -9774,8 +9774,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3de2af430febdd01952bf58cb395e481
+pass sha256:e8e34469757e38cc82d69005c65b55f0
 -- run/go/fyne --
-pass sha256:dcba68bbfa65f9cf7e9c174d1302c030
+pass sha256:443de4bdda278d414789f4dbae505482
 -- run/none/html --
 pass sha256:03996153110d51b9f07e126c7c2b2fd7

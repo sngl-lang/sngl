@@ -59,11 +59,11 @@ cmp stdout fyne.txt
 sngl dump --stage lowered --lang go --platform html --list main.sngl
 stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,InlineSlots,Navigation,GenericComponents,Match,UnreadLocals,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas,NavigationHrefs$'
 stdout ' → SlotChildInstances → '
-stdout ' → CallDefaults → Monomorphize → '
+stdout ' → CallDefaults → TestAnswer → Monomorphize → '
 
 sngl dump --stage lowered --lang none --platform html --list main.sngl
 stdout ' → SlotChildInstances → '
-stdout ' → CallDefaults → Navigation → '
+stdout ' → CallDefaults → TestAnswer → Navigation → '
 
 # android holds Effects: Compose brackets a keyed lifetime itself, so the
 # Effect pass, which runs on every target, lowers only an effect's reports

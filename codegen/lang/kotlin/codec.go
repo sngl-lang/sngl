@@ -82,13 +82,26 @@ func (kc *KtIRContext) codecCall(n *ir.Call) (string, bool) {
 	if id := codegen.LifetimeID(n); id != nil {
 		life = kc.EvalExpr(id)
 	}
+	// A test's answer, where one is set, answers in the network's place.
+	hook, req := codegen.HTTPHook(n, codegen.HostValue("__u", str))
+	sendURL := url
+	if hook != nil {
+		sendURL = "__u"
+	}
 	st, ht, bt := codegen.ResponseFieldTypes(n.Type)
 	msg := codegen.HostValue("__r.message", str)
 	resp := codegen.CodecResponse(n.Type, codegen.HostValue("__r.status", st), codegen.HostValue("__r.headers", ht), codegen.HostValue("__r.body", bt))
-	return fmt.Sprintf("run { val __r = SnglCodec.send(%s, %s, %s, %s, %s); if (__r.failed) (if (__r.cancelled) %s else if (__r.timeout) %s else %s) else %s }",
-		method, url, headers, arg("body"), life,
+	call := fmt.Sprintf("run { val __r = SnglCodec.send(%s, %s, %s, %s, %s); if (__r.failed) (if (__r.cancelled) %s else if (__r.timeout) %s else %s) else %s }",
+		method, sendURL, headers, arg("body"), life,
 		kc.EvalExpr(codegen.ResultFailed(n.Type, "cancelled", msg)), kc.EvalExpr(codegen.ResultFailed(n.Type, "timeout", msg)), kc.EvalExpr(codegen.ResultFailed(n.Type, "transport", msg)),
-		kc.EvalExpr(codegen.ResultOK(n.Type, resp))), true
+		kc.EvalExpr(codegen.ResultOK(n.Type, resp)))
+	if hook != nil {
+		none := codegen.HostValue(Quote(codegen.NoAnswer)+" + __u", str)
+		got := codegen.HostValue("__a", ir.MemberPayload(n.Type, "ok"))
+		call = fmt.Sprintf("run { val __u = %s; val __h = %s; if (__h != null) { val __a = __h(%s); if (__a == null) %s else %s } else %s }",
+			url, kc.EvalExpr(hook), kc.EvalExpr(req), kc.EvalExpr(codegen.ResultFailed(n.Type, "transport", none)), kc.EvalExpr(codegen.ResultOK(n.Type, got)), call)
+	}
+	return call, true
 }
 
 // ktCodec spells a codec plan as a SnglCodec: an expression, or a block

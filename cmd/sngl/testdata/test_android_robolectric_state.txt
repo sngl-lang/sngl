@@ -28,7 +28,7 @@ func testIncrement(t Test, c counter) {
 window {
 }
 -- testrun/android/kotlin/app.sngl/counter/1 --
-sha256:7f2b3cf6062c148dc04cfc9e6eceb7fe
+sha256:afee83e4e6f7126ebfa4c67e3dbfdbe1
 {
   "results": [
     {

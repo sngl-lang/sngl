@@ -51,7 +51,7 @@ ui.window {
     ui.text(value="{shareOr(held)}")
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:db71b11d6bbae6fabfa19cf8d7a62e32
+sha256:4952bc0e0004b7c3333946c1b170a78b
 {
   "results": [
     {

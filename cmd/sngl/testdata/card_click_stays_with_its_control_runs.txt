@@ -57,7 +57,7 @@ ui.window {
     cardWithButton
 }
 -- testrun/android/kotlin/app.sngl/cardWithButton/1 --
-sha256:5002d265c5103e64ca1ac7e5d6d92287
+sha256:4ff6cf08cad8253160969ab30e885772
 {
   "results": [
     {

@@ -1174,6 +1174,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -1598,6 +1604,6 @@ pass sha256:ff3d1fd16efa0239aceaddbebd8b9e48
 -- run/go/gtk4 --
 pass sha256:cade2a40c323e06fa5104b8d336a4e34
 -- run/kotlin/android --
-pass sha256:d15ce75cc8d5a8be06aff3a786c8dcf7
+pass sha256:23bb9626bbb474e20690327865d07549
 -- run/none/html --
 pass sha256:edf678b0d30fb7f3cd0a0bf9bff03932

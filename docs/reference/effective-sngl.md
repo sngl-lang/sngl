@@ -1708,6 +1708,24 @@ func testShowsTheNameItWasGiven(t test.Test, c Greeting) {
 }
 ```
 
+A test makes no request unless it says so: each fails, "no answer for" its url, until the test sets `http.answer`, to a function answering the requests it means to, or to `http.network` to reach the network:
+
+<!-- SNGL-nocheck -->
+
+```sngl
+func greet(r http.Request) option[http.Response] {
+    if r.url.endsWith("/hi") {
+        return http.Response{status=200, headers={}, body="hello"}
+    }
+    return null
+}
+
+func testGreets(t test.Test, c Greeter) {
+    t.setContext(http.answer, greet)
+    t.assert(c.reply.value == "hello")
+}
+```
+
 Nothing it renders, fetches or runs on mount has happened before that, so a page that asks for its data as it mounts asks once, with what the test set up. A test checking what a change does reads the starting state first, which mounts it, and then writes. A test that never needs the component still mounts it, at its end.
 
 ### Timers in tests

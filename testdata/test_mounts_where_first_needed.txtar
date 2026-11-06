@@ -1041,6 +1041,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -1240,6 +1246,6 @@ pass sha256:fc9e155b9891b3108bf413d80a35edf4
 -- run/go/gtk4 --
 pass sha256:8b67d18b7a79ea907d0f925a02abdc67
 -- run/kotlin/android --
-pass sha256:351965e0e50917ce319ac1b7adad5712
+pass sha256:0bbf7d1be5dff9dc17c69f8450d99894
 -- run/none/html --
 pass sha256:3af30dee55ea00d3ad6dd0da4584b1be

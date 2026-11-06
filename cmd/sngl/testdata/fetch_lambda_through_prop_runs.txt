@@ -55,6 +55,7 @@ component many ui.node {
 }
 
 func testEachAnswerIsKept(t test.Test, c many) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => lengths.length() == 2, 5000)
     t.assert(lengths["three"] == 5)
 }
@@ -63,7 +64,7 @@ ui.window {
     many()
 }
 -- testrun/android/kotlin/app.sngl/many/1 --
-sha256:cd91600263f21fd4b3beef2ae7bc9b40
+sha256:3f0c3ecb860b93fd5289bc01c390531e
 {
   "results": [
     {
@@ -73,7 +74,7 @@ sha256:cd91600263f21fd4b3beef2ae7bc9b40
   ]
 }
 -- testrun/bubbletea/go/app.sngl/many/1 --
-sha256:449543f83b33bd437a2cf354ef58ece5
+sha256:80073ee7cc4971bdb2b37f49afb10bfd
 {
   "results": [
     {
@@ -83,7 +84,7 @@ sha256:449543f83b33bd437a2cf354ef58ece5
   ]
 }
 -- testrun/fyne/go/app.sngl/many/1 --
-sha256:589aa091dc46f383d1d2551a7858e08a
+sha256:561caee4b9828d7a04378a2c7a149495
 {
   "results": [
     {
@@ -93,7 +94,7 @@ sha256:589aa091dc46f383d1d2551a7858e08a
   ]
 }
 -- testrun/gtk4/go/app.sngl/many/1 --
-sha256:ea22c8a5e43bd6e910420a8733332dbc
+sha256:424b42f9794b005947de137ee3f97fcc
 {
   "results": [
     {
@@ -103,7 +104,7 @@ sha256:ea22c8a5e43bd6e910420a8733332dbc
   ]
 }
 -- testrun/html/none/app.sngl/many/1 --
-sha256:1d012e9798177c2b5bb0cd54baf8d544
+sha256:b926e23bb03a3b6a2ab26774d33dd91d
 {
   "results": [
     {

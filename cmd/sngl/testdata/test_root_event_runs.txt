@@ -1,0 +1,94 @@
+# A test takes its component with no call site, so a raise of one of the
+# component's own events goes nowhere, on every target: the Go targets wrote
+# it as an `emit` none declares, and the test did not build
+# (passTestRootEvents).
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component card(@open(name string)) ui.node {
+    var hits = 0
+
+    ui.button #go(text="Go", @click {
+        hits += 1
+        open("a")
+    })
+}
+
+func testARootsEventGoesNowhere(t test.Test, c card) {
+    c.go.click()
+    t.assert(c.hits == 1)
+}
+
+ui.window {
+    card()
+}
+-- testrun/android/kotlin/app.sngl/card/1 --
+sha256:c775974059abf9ebc70bdfb28190bf2d
+{
+  "results": [
+    {
+      "Desc": "ARootsEventGoesNowhere",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/card/1 --
+sha256:49c79436b4da6c16a0706939deb9b0b4
+{
+  "results": [
+    {
+      "Desc": "ARootsEventGoesNowhere",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/card/1 --
+sha256:5aab75af06e9bd7e203220b62cb596ac
+{
+  "results": [
+    {
+      "Desc": "ARootsEventGoesNowhere",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/card/1 --
+sha256:f352fe221bf9b02a121c9ed60167b7c4
+{
+  "results": [
+    {
+      "Desc": "ARootsEventGoesNowhere",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/card/1 --
+sha256:e8c89a2352d2e5960b5986dbced61e05
+{
+  "results": [
+    {
+      "Desc": "ARootsEventGoesNowhere",
+      "Passed": true
+    }
+  ]
+}

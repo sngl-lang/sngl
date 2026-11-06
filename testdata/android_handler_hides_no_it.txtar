@@ -65,6 +65,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class __anon_id_elem_c6a818(
     var id: String = "",
     var elem: String = ""
@@ -329,4 +335,4 @@ class MainScreenTest {
 
 }
 -- run/kotlin/android --
-pass sha256:d643c730c1811327ef02e940b34bb449
+pass sha256:d1f7af941b11e8e89c804be94689b938

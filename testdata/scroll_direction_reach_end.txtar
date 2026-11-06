@@ -1129,6 +1129,12 @@ data class Measurement(
     val rem: Double = 0.0
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class Style(
     var padding: Measurement? = null,
     var paddingTop: Measurement? = null,
@@ -2002,6 +2008,6 @@ pass sha256:88e32311eba156e3fa948841bd82148e
 -- run/go/gtk4 --
 pass sha256:03b5276a36ece4cb0370da0ced5dd88c
 -- run/kotlin/android --
-pass sha256:8e32aa33e481e43002e1ea2098a3b925
+pass sha256:c62ce5786f3272e72b053f15a41f3ff0
 -- run/none/html --
 pass sha256:237cb02af5aa35aebb756e18092e5acb

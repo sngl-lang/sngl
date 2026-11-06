@@ -2244,6 +2244,12 @@ data class Store(
     var place: SnglPlace = SnglPlace.PLATFORM
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class Failure(
     var kind: SnglFailureKind = SnglFailureKind.TRANSPORT,
     var message: String = "",
@@ -2260,6 +2266,13 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
+enum class SnglPlace(private val sngl: String) {
+    PLATFORM("platform"),
+    MEMORY("memory");
+
+    override fun toString(): String = sngl
+}
+
 sealed class SnglResult__string {
     data class Ok(val value: String) : SnglResult__string()
     data class Failed(val value: Failure) : SnglResult__string()
@@ -2268,13 +2281,6 @@ sealed class SnglResult__string {
 sealed class SnglResult__int {
     data class Ok(val value: Int) : SnglResult__int()
     data class Failed(val value: Failure) : SnglResult__int()
-}
-
-enum class SnglPlace(private val sngl: String) {
-    PLATFORM("platform"),
-    MEMORY("memory");
-
-    override fun toString(): String = sngl
 }
 
 enum class SnglFailureKind(private val sngl: String) {
@@ -3594,6 +3600,6 @@ pass sha256:bf214178bce832f0aea4e260f3956496
 -- run/go/gtk4 --
 pass sha256:1a3f1d1780232f36414561202cedd0c4
 -- run/kotlin/android --
-pass sha256:1d048aa501663babd1dfec4006819f0f
+pass sha256:25ccdbd2cea2193524a6cfefaac6cb38
 -- run/none/html --
 pass sha256:001136c7223c91e42d334a391da5b1db

@@ -189,7 +189,7 @@ func testASwipeLeftChoosesTheNextTab(t test.Test, c pages) {
     t.assert(c.changed == 0)
 }
 -- testrun/android/kotlin/app.sngl/panels/1 --
-sha256:f6c61bc5e1fe5acf963eb9b4ebfd85d8
+sha256:fc2e2de896d3af1c7ec0a52d2d3b10c1
 {
   "results": [
     {
@@ -207,7 +207,7 @@ sha256:f6c61bc5e1fe5acf963eb9b4ebfd85d8
   ]
 }
 -- testrun/android/kotlin/swipe.sngl/pages/1 --
-sha256:a26e628ef6e4343d79d045f542d389b8
+sha256:32c303345e4dedf18e6a3e39f33a8bdc
 {
   "results": [
     {

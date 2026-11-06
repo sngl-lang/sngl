@@ -232,10 +232,12 @@ func lowerTestSetContext(c *ir.Call, gc *GoIRContext) ([]string, bool) {
 		// Fallback: no component-typed param. Record intent so the test still
 		// compiles; the override won't reach a Model field, but the value is
 		// referenced (via blank) to avoid unused-variable errors.
-		return []string{
-			fmt.Sprintf("// t.setContext(%q, ...): no Model field holds it; the calls after it are passed the value.", ctxName),
-			fmt.Sprintf("_ = %s", valExpr),
-		}, true
+		note := fmt.Sprintf("// t.setContext(%q, ...): no Model field holds it; the calls after it are passed the value.", ctxName)
+		// Go has no type for a bare nil to take.
+		if ir.IsNullLiteral(val) {
+			return []string{note}, true
+		}
+		return []string{note, fmt.Sprintf("_ = %s", valExpr)}, true
 	}
 	lines := make([]string, 0, len(receivers))
 	for _, r := range receivers {

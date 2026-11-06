@@ -49,7 +49,7 @@ ui.window {
     counter()
 }
 -- testrun/android/kotlin/app.sngl/counter/1 --
-sha256:af127856f5ac56fc144d0d3edc51bd2d
+sha256:38c316e75369277c08039a6d7a06ba96
 {
   "results": [
     {

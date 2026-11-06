@@ -1235,6 +1235,12 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -1567,6 +1573,6 @@ pass sha256:36ff24bbe9f4ace3f41016f4a5abd6bf
 -- run/go/gtk4 --
 pass sha256:8b03704fd3ed9123bcecbd84004f5689
 -- run/kotlin/android --
-pass sha256:c0c4a62384e221180901f805e0554095
+pass sha256:bac0fcb9f94ff275a4c4a943e3b4725d
 -- run/none/html --
 pass sha256:1435b427f5a6a2ec0e43f0d552b60d56

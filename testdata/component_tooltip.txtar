@@ -641,6 +641,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -789,7 +795,7 @@ pass sha256:1d435e978fce429ecb7ccc6af38b1807
 -- run/go/gtk4 --
 pass sha256:2ff736813739eedfe28315e521b4cee9
 -- run/kotlin/android --
-pass sha256:9acf21f50c6bac84148289655f037649
+pass sha256:5c05a01ccf93e3b5f677d06719bdb0f7
 -- run/none/html --
 pass sha256:ccccdc6833efaf3a6db7bca6a8efb7b0
 -- testrun/html/none/component_tooltip.sngl/main/1 --

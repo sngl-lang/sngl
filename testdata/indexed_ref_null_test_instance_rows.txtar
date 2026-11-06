@@ -1900,6 +1900,12 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.key
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class __anon_id_elem_c6a818(
     var id: String = "",
     var elem: String = ""
@@ -2533,6 +2539,6 @@ pass sha256:b1afdb5f7b2d333726a2d83044885134
 -- run/go/gtk4 --
 pass sha256:cec665004488dfc10a57df54b5fd7777
 -- run/kotlin/android --
-pass sha256:29dd693f2db0d74a603c9adcd2fb9aea
+pass sha256:e34615040fd7ab86a820130d8b01d437
 -- run/none/html --
 pass sha256:5a551d40e22aad92446337ef8087f0f1

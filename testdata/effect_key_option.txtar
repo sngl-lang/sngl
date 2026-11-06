@@ -401,6 +401,12 @@ data class __anon_limit_name_3fc192(
     var name: String? = null
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -669,6 +675,6 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:8167d25ac912f76bc00005aa658ec31f
 -- run/kotlin/android --
-pass sha256:9ffa5acff72ceaf1a9a8a5303977be87
+pass sha256:5fc060d9f9340832393e8d62833d3260
 -- run/none/html --
 pass sha256:1cb838f4b21fb95eeba447707a8d0f3c

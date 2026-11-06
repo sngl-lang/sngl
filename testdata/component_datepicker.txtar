@@ -829,6 +829,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -1036,7 +1042,7 @@ pass sha256:ccf52e5fce48b8c9da696a446091dda6
 -- run/go/gtk4 --
 pass sha256:e6240ef017bf0dd5a5f9a2b578e45ae0
 -- run/kotlin/android --
-pass sha256:fb78739156900c4bd113068852f1bdd2
+pass sha256:fd038e8df43a6057cfd3e504ac945be0
 -- run/none/html --
 pass sha256:4c54f315701fad58c9a52057649b4360
 -- testrun/html/none/component_datepicker.sngl/main/1 --

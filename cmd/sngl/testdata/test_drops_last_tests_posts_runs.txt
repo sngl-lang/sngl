@@ -61,12 +61,14 @@ component page ui.node {
 }
 
 func testAFirstAnswer(t test.Test, c page) {
+    t.setContext(http.answer, http.network)
     c.ask.click()
     t.wait(func() => c.answered > 0, 20000)
     t.assert(c.answered > 0 && c.answered < 20)
 }
 
 func testBTheNextTestWaitsForItsOwnAnswerAlone(t test.Test, c page) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.answer != null, 1000)
     t.assert(c.answer != null && c.answer == "one")
 }
@@ -75,7 +77,7 @@ ui.window {
     page()
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:4dfc25a135dab3f004e027f26147eb0c
+sha256:e274e9afe4251ea4fe9ebc4e3bbc62bc
 {
   "results": [
     {

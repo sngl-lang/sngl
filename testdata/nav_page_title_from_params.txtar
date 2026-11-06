@@ -1443,6 +1443,12 @@ data class Item(
     var name: String = ""
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 class __anon_e3b0c4 {
     override fun equals(other: Any?) = other is __anon_e3b0c4
     override fun hashCode() = 0
@@ -1609,4 +1615,4 @@ pass sha256:e9015feb96f375ee9bb85c3e88669bea
 -- run/go/gtk4 --
 pass sha256:faf706a47ebda9eb6558ae77bcd67cc5
 -- run/kotlin/android --
-pass sha256:7883bce168c1dd4ea03194ea3c00c02a
+pass sha256:652ad206fad10e2c9cef43e02b5a0014

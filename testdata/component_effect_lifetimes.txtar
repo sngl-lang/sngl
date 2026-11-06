@@ -3657,6 +3657,12 @@ data class Pair(
     var b: String = ""
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class __anon_id_elem_c6a818(
     var id: String = "",
     var elem: String = ""
@@ -4478,7 +4484,7 @@ pass sha256:88f53a3619ad0f5054425450d77227c4
 -- run/go/gtk4 --
 pass sha256:e2613250c2a54f665aae60f0713d7b0a
 -- run/kotlin/android --
-pass sha256:6eaac3c7bb4f238a204008bb642207f2
+pass sha256:cb291613531727abbee423358f3b8271
 -- run/none/html --
 pass sha256:9b99a877056da2516942c67a176bb575
 -- testrun/html/none/component_effect_lifetimes.sngl/branch/1 --

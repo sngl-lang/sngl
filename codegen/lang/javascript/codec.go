@@ -95,9 +95,21 @@ func (jc *JsIRContext) codecCall(n *ir.Call) (string, bool) {
 	st, ht, bt := codegen.ResponseFieldTypes(n.Type)
 	msg := codegen.HostValue("__r.m", str)
 	resp := codegen.CodecResponse(n.Type, codegen.HostValue("__r.s", st), codegen.HostValue("__r.h", ht), codegen.HostValue("__r.b", bt))
+	// A test's answer, where one is set, answers in the network's place.
+	hook, req := codegen.HTTPHook(n, codegen.HostValue("__u", str))
+	sendURL := url
+	if hook != nil {
+		sendURL = "__u"
+	}
 	call := fmt.Sprintf("((__r) => __r.f ? (__r.c ? %s : __r.t ? %s : %s) : %s)(await _snglHTTPSend(%s, %s, %s, %s, %s))",
 		jc.EvalExpr(codegen.ResultFailed(n.Type, "cancelled", msg)), jc.EvalExpr(codegen.ResultFailed(n.Type, "timeout", msg)), jc.EvalExpr(codegen.ResultFailed(n.Type, "transport", msg)),
-		jc.EvalExpr(codegen.ResultOK(n.Type, resp)), method, url, headers, body, life)
+		jc.EvalExpr(codegen.ResultOK(n.Type, resp)), method, sendURL, headers, body, life)
+	if hook != nil {
+		none := codegen.HostValue(strconv.Quote(codegen.NoAnswer)+" + __u", str)
+		got := codegen.HostValue("__a", ir.MemberPayload(n.Type, "ok"))
+		call = fmt.Sprintf("(await (async (__u) => { const __h = %s; if (__h != null) { const __a = __h(%s); return __a == null ? %s : %s; } return %s; })(%s))",
+			jc.EvalExpr(hook), jc.EvalExpr(req), jc.EvalExpr(codegen.ResultFailed(n.Type, "transport", none)), jc.EvalExpr(codegen.ResultOK(n.Type, got)), call, url)
+	}
 	if n.Detached {
 		// Started rather than awaited: the request runs, and nothing waits
 		// for what it answers.

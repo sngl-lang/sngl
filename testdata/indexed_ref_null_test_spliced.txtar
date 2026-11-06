@@ -3399,6 +3399,12 @@ import androidx.compose.ui.composed
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class __anon_id_elem_cdfd47(
     var id: String = "",
     var elem: Int = 0
@@ -4681,6 +4687,6 @@ pass sha256:2e0d53753157ebdf7d9219ba990121e3
 -- run/go/gtk4 --
 pass sha256:53c39b8dd967359bc0b3544776359a7a
 -- run/kotlin/android --
-pass sha256:15f2c366d9fbde7bf37ccdf66e3ae849
+pass sha256:4976f1cb4c9ef40666ee18c2a548d16f
 -- run/none/html --
 pass sha256:04d7849d287bcbf488ffe04196b3182c

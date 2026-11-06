@@ -170,12 +170,16 @@ var alwaysOn = []string{
 	"SlotEmptyProps",
 	"SpreadOnce",
 	"StampUsage",
+	// No test reaches the network unless it says so, on any target.
+	"TestAnswer",
 	"TestInstanceReach",
 	// Where a test mounts what it takes is the test's answer, not a
 	// target's.
 	"TestMount",
 	"TestReach",
 	"TestRefOwner",
+	// A test's root has no call site on any target, so nothing hears it.
+	"TestRootEvents",
 	// A context nothing provides is folded to its default on every target: the
 	// ones that lower contexts to state, and the ones that keep them.
 	"UnprovidedContext",

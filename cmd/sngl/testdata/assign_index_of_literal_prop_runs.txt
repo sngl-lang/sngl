@@ -50,7 +50,7 @@ ui.window {
     holder
 }
 -- testrun/android/kotlin/app.sngl/holder/1 --
-sha256:ed94abcf72775cb71f5114bfaf64f590
+sha256:110e07bb6d62d6cfbea1c9b7da4507d9
 {
   "results": [
     {

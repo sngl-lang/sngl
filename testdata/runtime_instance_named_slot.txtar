@@ -2647,6 +2647,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.foundation.layout.ColumnScope
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class __anon_id_elem_cdfd47(
     var id: String = "",
     var elem: Int = 0
@@ -3560,6 +3566,6 @@ pass sha256:fe7ca44eefd05b1d97f5dc697f3f6364
 -- run/go/gtk4 --
 pass sha256:13219ddb96733c89499c886cbb82d508
 -- run/kotlin/android --
-pass sha256:e67c1052b1c5fc0bc713a77fe3f0c0bb
+pass sha256:56661b871116dffd126ad1c35c9f811f
 -- run/none/html --
 pass sha256:f45f8adfd3b6dfc8a0b4f6b2b1c62720

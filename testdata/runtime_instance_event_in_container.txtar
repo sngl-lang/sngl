@@ -1412,6 +1412,12 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.DisposableEffect
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class __anon_id_elem_cdfd47(
     var id: String = "",
     var elem: Int = 0
@@ -1892,6 +1898,6 @@ pass sha256:2d55abf20a08341a6ac9792b884ac812
 -- run/go/gtk4 --
 pass sha256:47fe83d96d9dec05ddba7720d6530fc1
 -- run/kotlin/android --
-pass sha256:072e25f772513327b5722e8c233746a5
+pass sha256:b9f44ce45ba2c74e8aaebdbe6c53f0bf
 -- run/none/html --
 pass sha256:ac6fa9944f440be122d436a939da90c4

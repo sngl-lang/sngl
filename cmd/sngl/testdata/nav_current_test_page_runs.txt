@@ -58,7 +58,7 @@ func testTheCurrentPagesTitleIsRead(t test.Test, c site) {
     t.assert(c.heading.value == "Site - Home")
 }
 -- testrun/android/kotlin/app.sngl/site/1 --
-sha256:69a19ef9385359a9138e3eb0b7ebf7bb
+sha256:24f6f722dff6ad0191f810d73d93dbe2
 {
   "results": [
     {

@@ -94,7 +94,7 @@ func testClearLeavesACopyAlone(t test.Test) {
     t.assert(kept == [3, 1, 2])
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:1a6b5b8e7594010dc85fdeca37b563a7
+sha256:058404cb8bfb79d144927630871cf93c
 {
   "results": [
     {

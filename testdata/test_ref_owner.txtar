@@ -2285,6 +2285,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.fillMaxWidth
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -3101,6 +3107,6 @@ pass sha256:c0c6be1c9610be60990f0f9089fba08d
 -- run/go/gtk4 --
 pass sha256:39d2829dbc717b761ba6b4a797800f2f
 -- run/kotlin/android --
-pass sha256:c12a5f075a377694dadca4cf45e65b4d
+pass sha256:63425cdbfc34bf9fb90e62ac2e364a39
 -- run/none/html --
 pass sha256:5a533c951b435d24177f3e52b3d69d92

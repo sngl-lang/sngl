@@ -31,10 +31,12 @@ import async "sngl:async"
 import pets "openapi:./petstore.yml"
 import . "sngl:test"
 import . "sngl:ui"
+import http "sngl:http"
 
 const local = "http://127.0.0.1:47819"
 
 func testRetrieve(t Test) {
+    t.setContext(http.answer, http.network)
     t.setContext(pets.server, local)
     match var p = pets.petRetrieveCall(id="rex") {
         ok {
@@ -50,6 +52,7 @@ func testRetrieve(t Test) {
 }
 
 func testNotFound(t Test) {
+    t.setContext(http.answer, http.network)
     t.setContext(pets.server, local)
     match var f = pets.petRetrieveCall(id="nobody") {
         ok { t.assert(false) }
@@ -61,6 +64,7 @@ func testNotFound(t Test) {
 }
 
 func testListQuery(t Test) {
+    t.setContext(http.answer, http.network)
     t.setContext(pets.server, local)
     match var page = pets.petListCall(limit=2, offset=1) {
         ok {
@@ -85,6 +89,7 @@ component pager node {
 }
 
 func testAdapterAsksAgain(t Test, c pager) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.first.value == "rex", 5000)
     t.assert(c.first.value == "rex")
     c.more.click()
@@ -102,6 +107,7 @@ component retrier node {
 }
 
 func testAdapterRefreshes(t Test, c retrier) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.failed.value == "1", 5000)
     c.retry.click()
     t.wait(func() => c.failed.value == "2", 5000)
@@ -342,7 +348,7 @@ components:
       - name
       - parent_breed
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:f1e948efe6aa0831929e0a75ab6d4c8c
+sha256:62a3d39a9e1177e5433c93887ebccfc5
 {
   "results": [
     {
@@ -360,7 +366,7 @@ sha256:f1e948efe6aa0831929e0a75ab6d4c8c
   ]
 }
 -- testrun/android/kotlin/app.sngl/pager/1 --
-sha256:e19725184480bacb64dfd5c0c746383d
+sha256:b84efaee34ae3cf7715a4ae50e73d5e7
 {
   "results": [
     {
@@ -370,7 +376,7 @@ sha256:e19725184480bacb64dfd5c0c746383d
   ]
 }
 -- testrun/android/kotlin/app.sngl/retrier/1 --
-sha256:09543ae3796665bcadb4b22f20d9b70f
+sha256:c06607733e60193b9451b8a232592d0f
 {
   "results": [
     {
@@ -380,7 +386,7 @@ sha256:09543ae3796665bcadb4b22f20d9b70f
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:d992ba85c54fffdf413f18998de8811c
+sha256:a69ad02f2b93ad4400280eef4547c64e
 {
   "results": [
     {
@@ -398,7 +404,7 @@ sha256:d992ba85c54fffdf413f18998de8811c
   ]
 }
 -- testrun/bubbletea/go/app.sngl/pager/1 --
-sha256:a87950dc4e42f872c45fe1894954a696
+sha256:f6ba4f1bcf4473278e7070ddf62f8c8a
 {
   "results": [
     {
@@ -408,7 +414,7 @@ sha256:a87950dc4e42f872c45fe1894954a696
   ]
 }
 -- testrun/bubbletea/go/app.sngl/retrier/1 --
-sha256:05fbdd2ac9d61db3b9c98d6b2a26f3bd
+sha256:89c8b27ac571d757d54e944abf764ec4
 {
   "results": [
     {
@@ -418,7 +424,7 @@ sha256:05fbdd2ac9d61db3b9c98d6b2a26f3bd
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:3c7cf7c9cd023ead46a5298673641617
+sha256:79a71cad377bb6d4af4f66ea76426c5c
 {
   "results": [
     {
@@ -436,7 +442,7 @@ sha256:3c7cf7c9cd023ead46a5298673641617
   ]
 }
 -- testrun/fyne/go/app.sngl/pager/1 --
-sha256:f48f7082171773220cc69f0b81a74c8f
+sha256:5ac053658d9d597ef0f1dca5a4dcd063
 {
   "results": [
     {
@@ -446,7 +452,7 @@ sha256:f48f7082171773220cc69f0b81a74c8f
   ]
 }
 -- testrun/fyne/go/app.sngl/retrier/1 --
-sha256:fe43cf4824616c33895f550996b22857
+sha256:a4904e4b5c12e35509a9794f6639445a
 {
   "results": [
     {
@@ -456,7 +462,7 @@ sha256:fe43cf4824616c33895f550996b22857
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:33ad95c549794ed5b418693ac3767ab8
+sha256:48b073592a0aeebe52164fed26efa84c
 {
   "results": [
     {
@@ -474,7 +480,7 @@ sha256:33ad95c549794ed5b418693ac3767ab8
   ]
 }
 -- testrun/gtk4/go/app.sngl/pager/1 --
-sha256:e6264cb3d784072bfcc1e8689277a3ab
+sha256:a32c93ac5636b2280b75cfe9f8a639b0
 {
   "results": [
     {
@@ -484,7 +490,7 @@ sha256:e6264cb3d784072bfcc1e8689277a3ab
   ]
 }
 -- testrun/gtk4/go/app.sngl/retrier/1 --
-sha256:7733b62cb66ff4f685704853d9e99fda
+sha256:79bb594684d79b6cf70177d3e5d5bb96
 {
   "results": [
     {
@@ -494,7 +500,7 @@ sha256:7733b62cb66ff4f685704853d9e99fda
   ]
 }
 -- testrun/html/none/app.sngl/_/1 --
-sha256:8627685e78960b330aa40865123b1472
+sha256:05a1885ff510498f7344c3d9072bc7d8
 {
   "results": [
     {
@@ -512,7 +518,7 @@ sha256:8627685e78960b330aa40865123b1472
   ]
 }
 -- testrun/html/none/app.sngl/pager/1 --
-sha256:2f1349b3fc668ab263b243ea82068bf9
+sha256:d273d35a54907d6335b4da02a5212c35
 {
   "results": [
     {
@@ -522,7 +528,7 @@ sha256:2f1349b3fc668ab263b243ea82068bf9
   ]
 }
 -- testrun/html/none/app.sngl/retrier/1 --
-sha256:3d813c0662ea8bdf62ef9bfae8e061fb
+sha256:5d3448813f8ae3bcc1b154b706902951
 {
   "results": [
     {

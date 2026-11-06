@@ -648,6 +648,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -780,7 +786,7 @@ pass sha256:0ff93632abb72bbad915b29df1a1fbe4
 -- run/go/gtk4 --
 pass sha256:76c9bbf3053ca347381505980f086380
 -- run/kotlin/android --
-pass sha256:6b9137482a4372340953231e82e7bab5
+pass sha256:ac3d279199e71b4ea2a1d27cd5aff984
 -- run/none/html --
 pass sha256:a70a1e3e5136f6dfd84e55eea0c00d68
 -- testrun/html/none/component_checkbox.sngl/main/1 --

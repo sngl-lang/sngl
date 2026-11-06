@@ -65,7 +65,7 @@ window {
     pictures
 }
 -- testrun/android/kotlin/app.sngl/moved/1 --
-sha256:f128e2dff986df49a9b778be9bbf1d30
+sha256:b1cf52f317cd9121d1024381b659c9f2
 {
   "results": [
     {
@@ -75,7 +75,7 @@ sha256:f128e2dff986df49a9b778be9bbf1d30
   ]
 }
 -- testrun/android/kotlin/app.sngl/pictures/1 --
-sha256:91bf1c9b257bcac2081315adb0f30b7c
+sha256:f65676d100671a87c59433287ebed6ab
 {
   "results": [
     {

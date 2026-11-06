@@ -92,6 +92,10 @@ type Response struct {
 	Body    string
 }
 
+type Lifetime struct {
+	_id int
+}
+
 type Failure struct {
 	Kind    string
 	Message string
@@ -101,10 +105,6 @@ type Failure struct {
 type __anon_key_n_a1dba7 struct {
 	Key string
 	N   int
-}
-
-type Lifetime struct {
-	_id int
 }
 
 // Model holds the state for this SNGL UI.
@@ -526,4 +526,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:3a16820ac44d219c8f20fbf9cb249506
+pass sha256:547073ea8313b7291b513d81c0f3601b

@@ -95,6 +95,8 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	if name != "" {
 		c.declare(s.Pos, ctx)
 	}
+	// sngl:http's answer is found by its mark (ir.BuiltinHTTPAnswer).
+	c.applyMarks(s, ctx)
 	// Checked once every declaration is registered and marked, with the
 	// package's other initializers (checkPendingInits).
 	// `context[option[User]] #who(null)` states the type a default alone

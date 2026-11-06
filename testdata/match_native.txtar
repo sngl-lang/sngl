@@ -2618,6 +2618,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.key
 import androidx.compose.ui.semantics.semantics
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class __anon_id_elem_9cfdc8(
     var id: String = "",
     var elem: Dir = Dir.UP
@@ -3223,6 +3229,6 @@ pass sha256:ed4af46a93aa1ea5916c5bdcfcecf441
 -- run/go/gtk4 --
 pass sha256:2bc4e0eab3de368f36def233f7e5a72b
 -- run/kotlin/android --
-pass sha256:29efe63b1b3ce5ac94037d1adc2039dd
+pass sha256:6756acba917304c5006feb1c5b747a31
 -- run/none/html --
 pass sha256:669707a4338e54711f068fa6b4df1c1c

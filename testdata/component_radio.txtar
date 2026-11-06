@@ -502,6 +502,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class Choice__record__string(
     var label: String = "",
     var value: String = ""
@@ -814,7 +820,7 @@ pass sha256:c0001a2c61d5212dfc4a5a877fb4bf60
 -- run/go/fyne --
 pass sha256:25ad473e99bd3a718daf023261797fb4
 -- run/kotlin/android --
-pass sha256:cf3d5ff2f190f73d9b9f492995eee920
+pass sha256:c4024c3e85dfc9b32beb0251c0affb02
 -- run/none/html --
 pass sha256:be7d6b37a094b94dd47bc7141071e4ed
 -- testrun/html/none/component_radio.sngl/main/1 --

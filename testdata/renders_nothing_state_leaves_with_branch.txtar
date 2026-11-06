@@ -1090,6 +1090,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -1449,6 +1455,6 @@ pass sha256:8c9963f188d824a72b9e22cbd6255a44
 -- run/go/gtk4 --
 pass sha256:055ee8fe0043b662b74346f51a5fc599
 -- run/kotlin/android --
-pass sha256:6f90fda39747960f247f44bdadb89906
+pass sha256:5bf15c0b8d3271cf68ef9a82ee57838b
 -- run/none/html --
 pass sha256:e1b2ec8c3068b28057919feaf69f7843

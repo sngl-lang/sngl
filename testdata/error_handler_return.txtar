@@ -967,6 +967,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
 class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
@@ -1184,6 +1190,6 @@ pass sha256:3fa4d3f4523380410e6723c2d075d43d
 -- run/go/html --
 pass sha256:c5dc7c5bf823f210c65244759a7c377c
 -- run/kotlin/android --
-pass sha256:b328a34453b8c1f5db33138d1e4b2246
+pass sha256:a5f8c23fb3c44c433086dc5a195e5557
 -- run/none/html --
 pass sha256:9a0f3e700c9a1407f21a64e639ce156f

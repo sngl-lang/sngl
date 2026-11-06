@@ -1942,6 +1942,12 @@ data class File(
     var fd: Int = 0
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
 class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
@@ -2619,6 +2625,6 @@ pass sha256:ca0f792f9d6304de32f237e91a2fdc0b
 -- run/go/gtk4 --
 pass sha256:43ebec02f83272ca5a8dc52416ee10d9
 -- run/kotlin/android --
-pass sha256:61c8adf1b659091a1dddf929db197593
+pass sha256:145419692410bf09fddfab4cd516f26d
 -- run/none/html --
 pass sha256:27a5dc0ffaf5bb0958f10d8924c4a506

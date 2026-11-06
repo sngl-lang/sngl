@@ -2418,6 +2418,12 @@ data class Book(
     var kind: Kind = Kind.HARDCOVER
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class Failure(
     var kind: SnglFailureKind = SnglFailureKind.TRANSPORT,
     var message: String = "",
@@ -3696,6 +3702,6 @@ pass sha256:032aa9ce8f655ed8b068e9b334b5dd86
 -- run/go/gtk4 --
 pass sha256:7196f1db776a4b0ffa71869454640579
 -- run/kotlin/android --
-pass sha256:1399a0df8cd77fb2a1b5a1b4251fce06
+pass sha256:5be5e579ee40ad393adb3f46b5eec023
 -- run/none/html --
 pass sha256:167a2f6178944de043757d8d0b079e07

@@ -44,7 +44,7 @@ ui.window {
     counter(inc=3, start=1)
 }
 -- testrun/android/kotlin/app.sngl/counter/1 --
-sha256:e9503bb441f106eea27ad1ab34e2eee4
+sha256:d18dd6857e7058e816f042a06aba96ac
 {
   "results": [
     {

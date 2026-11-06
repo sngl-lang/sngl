@@ -2452,6 +2452,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
 class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
@@ -3546,6 +3552,6 @@ pass sha256:bb657ec5a1db106103fa67adff9d0ac1
 -- run/go/gtk4 --
 pass sha256:a70388ab7d6966bd3de2172ad5b042e3
 -- run/kotlin/android --
-pass sha256:5720ed2be060256329e26da678b83fc4
+pass sha256:67255b602693438bdaef79a5ddf7c0fe
 -- run/none/html --
 pass sha256:e03e16f1f6df223811edd61574725cf4

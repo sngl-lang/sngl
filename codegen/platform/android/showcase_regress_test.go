@@ -114,7 +114,7 @@ ui.window {
     vbox { text(value="x") }
 }`
 	out := compileSrc(t, src, false)
-	if !strings.Contains(out, "mutableStateOf<String?>(null)") {
+	if !strings.Contains(out, `mutableStateOf<String?>(__snglPre(__pre, "nick") { null })`) {
 		t.Errorf("expected typed null state for nickname:\n%s", out)
 	}
 	if !strings.Contains(out, "mutableStateOf<User?>(null)") {
@@ -186,7 +186,7 @@ ui.window {
 	if !strings.Contains(out, "state.doubled") {
 		t.Errorf("expected state.doubled at view site:\n%s", out)
 	}
-	if !strings.Contains(out, "mutableStateOf<String?>(null)") {
+	if !strings.Contains(out, `mutableStateOf<String?>(__snglPre(__pre, "nick") { null })`) {
 		t.Errorf("expected typed null state in class:\n%s", out)
 	}
 }

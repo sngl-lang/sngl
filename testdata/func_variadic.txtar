@@ -915,6 +915,12 @@ data class Point(
     var first: Int = 0
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -1227,6 +1233,6 @@ pass sha256:80713d7c86b62a4303b46204e1fe3730
 -- run/go/gtk4 --
 pass sha256:aa43be5f0459307c98d353aaf36880c7
 -- run/kotlin/android --
-pass sha256:7a30af564f870318b3686160f1792790
+pass sha256:6dbabfa4ab21ab75ad33ada86e7754e3
 -- run/none/html --
 pass sha256:55d1933076d47662881cc80921feb69e

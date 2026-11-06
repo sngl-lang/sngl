@@ -85,7 +85,7 @@ func testEachChoiceTakes(t test.Test, c page) {
     t.assert(c.words().format(",") == "Yellow-a!,Yellow-b!")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:f684e8a701ec28a9d3cfdb25c3350f58
+sha256:3665a7111640b2ad97a52dda5889b222
 {
   "results": [
     {
@@ -95,7 +95,7 @@ sha256:f684e8a701ec28a9d3cfdb25c3350f58
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:1ba4ee363cc176de97af0aa78d8ad9fd
+sha256:71ce5698fd1120b9f487223494c493da
 {
   "results": [
     {
@@ -105,7 +105,7 @@ sha256:1ba4ee363cc176de97af0aa78d8ad9fd
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:6bedb2d18bbe47d8c99492554e5d2fa7
+sha256:3b5f83fb629f632abcce993000d7bf0e
 {
   "results": [
     {
@@ -115,7 +115,7 @@ sha256:6bedb2d18bbe47d8c99492554e5d2fa7
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:c364dc15d45f2e190bda95b299d08512
+sha256:4f2abd31a70c3cbae11b45c0b5ae5bf3
 {
   "results": [
     {

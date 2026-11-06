@@ -133,6 +133,10 @@ type Response struct {
 	Body    string
 }
 
+type Lifetime struct {
+	_id int
+}
+
 type Failure struct {
 	Kind    string
 	Message string
@@ -142,10 +146,6 @@ type Failure struct {
 type __anon_key_n_a1dba7 struct {
 	Key string
 	N   int
-}
-
-type Lifetime struct {
-	_id int
 }
 
 type __anon_e3b0c4 struct {
@@ -619,6 +619,10 @@ data class Response(
     var body: String = ""
 )
 
+data class Lifetime(
+    var _id: Int = 0
+)
+
 data class Failure(
     var kind: SnglFailureKind = SnglFailureKind.TRANSPORT,
     var message: String = "",
@@ -628,10 +632,6 @@ data class Failure(
 data class __anon_key_n_a1dba7(
     var key: String = "",
     var n: Int = 0
-)
-
-data class Lifetime(
-    var _id: Int = 0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -647,17 +647,17 @@ enum class Kind(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
-enum class SnglFailureKind(private val sngl: String) {
-    TRANSPORT("transport"),
-    TIMEOUT("timeout"),
-    AUTH("auth"),
-    REQUEST("request"),
-    SERVER("server"),
-    DECODE("decode"),
-    CANCELLED("cancelled");
+enum class SnglMethod(private val sngl: String) {
+    GET("get"),
+    HEAD("head"),
+    POST("post"),
+    PUT("put"),
+    PATCH("patch"),
+    DELETE("delete");
 
     override fun toString(): String = sngl
 }
+
 
 sealed class SnglResult__Response {
     data class Ok(val value: Response) : SnglResult__Response()
@@ -669,13 +669,14 @@ sealed class SnglResult__Echo {
     data class Failed(val value: Failure) : SnglResult__Echo()
 }
 
-enum class SnglMethod(private val sngl: String) {
-    GET("get"),
-    HEAD("head"),
-    POST("post"),
-    PUT("put"),
-    PATCH("patch"),
-    DELETE("delete");
+enum class SnglFailureKind(private val sngl: String) {
+    TRANSPORT("transport"),
+    TIMEOUT("timeout"),
+    AUTH("auth"),
+    REQUEST("request"),
+    SERVER("server"),
+    DECODE("decode"),
+    CANCELLED("cancelled");
 
     override fun toString(): String = sngl
 }
@@ -1659,8 +1660,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:40fba3218e1fab725635d3f827286307
+pass sha256:4e647ae627ca47089e53b52582210ae2
 -- run/kotlin/android --
-pass sha256:a1e4f3b34f47f0c508e0c40348d1b295
+pass sha256:1067ae5093a1450d7db0c3d879263a3c
 -- run/none/html --
 pass sha256:facbee83df944c125f52097e4326b054

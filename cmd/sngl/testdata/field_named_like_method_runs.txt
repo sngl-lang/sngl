@@ -1,0 +1,48 @@
+# A struct's field named like a method of the component a test takes is the
+# field: html read `c.label[0][1]` through the loop's `stage.forms`, and
+# called it, since `forms` is one of the page's zero-argument methods, which
+# a test reads off the instance as a field (MethodFields).
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct Stage {
+    name  string
+    forms list[string]
+}
+
+component page ui.node {
+    var stages list[Stage] = [Stage{name="a", forms=["x", "y"]}]
+
+    func forms() list[string] {
+        return ["z"]
+    }
+
+    for var stage = stages {
+        for var f = stage.forms {
+            ui.text #label(value=f)
+        }
+    }
+    ui.text(value="{forms().length()}")
+}
+
+func testAFieldNamedLikeAMethod(t test.Test, c page) {
+    t.assert(c.label[0][1] != null && c.label[0][1].value == "y")
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:b421d521c5e242246566d8446224676b
+{
+  "results": [
+    {
+      "Desc": "AFieldNamedLikeAMethod",
+      "Passed": true
+    }
+  ]
+}

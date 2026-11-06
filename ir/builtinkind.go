@@ -183,6 +183,13 @@ const (
 	BuiltinFormatWith       BuiltinKind = "formatWith"
 	BuiltinAppendFormatWith BuiltinKind = "appendFormatWith"
 
+	// HTTPAnswer is sngl:http's `answer`, the context that answers a request
+	// in place of the network, and HTTPClosed its `closed`, what a test sets
+	// it to before its body runs, so no test reaches the network unless it
+	// says so (lower.passTestAnswer).
+	BuiltinHTTPAnswer BuiltinKind = "httpAnswer"
+	BuiltinHTTPClosed BuiltinKind = "httpClosed"
+
 	// Predeclared constants. These annotate a const declaration whose written
 	// value is a placeholder: the real one is not known until a build picks a
 	// target, so the compiler supplies it. The two target kinds are typed by
@@ -330,6 +337,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode, BuiltinGenRun, BuiltinGenBuild,
 		BuiltinCString, BuiltinCInt, BuiltinCDouble, BuiltinCBool, BuiltinText,
 		BuiltinFormatArgs, BuiltinFormatWith, BuiltinAppendFormatWith,
+		BuiltinHTTPAnswer, BuiltinHTTPClosed,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
 }
@@ -339,5 +347,5 @@ func AllBuiltinKinds() []BuiltinKind {
 func (b BuiltinKind) Valid() bool {
 	return b == BuiltinAny || b.IsConstraint() || b == BuiltinApplication || b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
 		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsCMarshal() || b.IsConst() || b == BuiltinText ||
-		b == BuiltinFormatArgs || b == BuiltinFormatWith || b == BuiltinAppendFormatWith
+		b == BuiltinFormatArgs || b == BuiltinFormatWith || b == BuiltinAppendFormatWith || b == BuiltinHTTPAnswer || b == BuiltinHTTPClosed
 }

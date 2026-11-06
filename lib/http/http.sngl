@@ -17,10 +17,38 @@ struct Response {
     body    string
 }
 
+// What a request asks, as an answer reads it: its url carries the query.
+struct Request {
+    method  Method
+    url     string
+    headers map[string, string]
+    body    option[string]
+}
+
+// Answers each request in place of the network: what it answers is the
+// response, and a null fails the request as `transport`. Unset, a request
+// goes to the network. A test starts with it answering nothing, so a test
+// that means to reach the network sets it to `network`:
+// `t.setContext(http.answer, http.network)`.
+#[marks.builtin("httpAnswer")]
+context[option[func(r Request) option[Response]]] #answer(null)
+
+// What a program answers outside a test: nothing, so each request goes to
+// the network.
+const network option[func(r Request) option[Response]] = null
+
+// What a test answers until it sets another: nothing, so each request fails.
+#[marks.builtin("httpClosed")]
+func _closed(r Request) option[Response] {
+    return null
+}
+
 // Sends one request to url, with query's fields added to it. Answers a
 // failure only where no response arrived -- `transport` or `timeout`, the
 // host's own message beside it, or `cancelled` where `life` ended first; a
-// 404 is a response, and its status is read off it.
+// 404 is a response, and its status is read off it. Where `hook` is set --
+// `answer`, unless the call says otherwise -- it answers in the network's
+// place.
 #[marks.intrinsic("http.send", async)]
 func send[Q anyStruct = struct {}](
     method  Method,
@@ -29,12 +57,18 @@ func send[Q anyStruct = struct {}](
     headers map[string, string] = {},
     body    option[string] = null,
     life    async.Lifetime = async.forever,
+    hook    option[func(r Request) option[Response]] = answer,
 ) async.Result[Response]
 
 // Sends a `get` to url, with query's fields added to it: `send` with the
 // method a read takes.
 #[marks.intrinsic("http.get", async)]
-func get[Q anyStruct = struct {}](url string, query Q = Q{}, life async.Lifetime = async.forever) async.Result[Response]
+func get[Q anyStruct = struct {}](
+    url   string,
+    query Q = Q{},
+    life  async.Lifetime = async.forever,
+    hook  option[func(r Request) option[Response]] = answer,
+) async.Result[Response]
 
 // The response, for a 2xx status; otherwise the failure the status says --
 // 401 and 403 `auth`, any other 4xx `request`, a 5xx `server` and anything

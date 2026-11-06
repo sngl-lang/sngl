@@ -261,6 +261,12 @@ data class Slot(
     var key: Int = 0
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -431,6 +437,6 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:7d94086b25ad6b1b45cad9811466b05b
 -- run/kotlin/android --
-pass sha256:b551a822d5607e5e81004a5e0a9625f0
+pass sha256:77412d9c4b4b8dbc1959413ed2fb08d1
 -- run/none/html --
 pass sha256:55ccb43b7bcbe84b798fdbf3e3af86a4

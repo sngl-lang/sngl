@@ -1701,6 +1701,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class __anon_id_elem_cdfd47(
     var id: String = "",
     var elem: Int = 0
@@ -2448,6 +2454,6 @@ pass sha256:df83fd5bfc81c91a60e248a7502d8983
 -- run/go/gtk4 --
 pass sha256:6b1e0fb5781c598d75a659ab034d41df
 -- run/kotlin/android --
-pass sha256:348f2ddf6444c9a5e20df57daef26c3c
+pass sha256:1b2a4b49f20df30e5b380807b008c325
 -- run/none/html --
 pass sha256:2b4856ec9146cddc619e66300246265c

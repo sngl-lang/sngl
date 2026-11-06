@@ -84,10 +84,19 @@ func (gc *GoIRContext) codecCall(n *ir.Call) (string, bool) {
 	} else {
 		gc.RequireImport("context")
 	}
+	// A test's answer, where one is set, answers in the network's place.
+	answer := ""
+	if hook, req := codegen.HTTPHook(n, codegen.HostValue("__snglURL", str)); hook != nil {
+		got := codegen.HostValue("(*__snglA)", ir.MemberPayload(n.Type, "ok"))
+		none := codegen.HostValue(strconv.Quote(codegen.NoAnswer)+" + __snglURL", str)
+		answer = fmt.Sprintf("__snglURL := %s; if __snglH := %s; __snglH != nil { __snglA := (*__snglH)(%s); if __snglA == nil { return %s }; return %s }; ",
+			url, gc.EvalExpr(hook), gc.EvalExpr(req), gc.EvalExpr(codegen.ResultFailed(n.Type, "transport", none)), gc.EvalExpr(codegen.ResultOK(n.Type, got)))
+		url = "__snglURL"
+	}
 	st, ht, bt := codegen.ResponseFieldTypes(n.Type)
 	msg := codegen.HostValue("__snglF.Message", str)
 	var b strings.Builder
-	fmt.Fprintf(&b, "func() %s { %s__snglR, __snglF := snglhttp.Send(%s, %s, %s, %s, %s); ", rt, keep, ctx, method, url, headers, body)
+	fmt.Fprintf(&b, "func() %s { %s%s__snglR, __snglF := snglhttp.Send(%s, %s, %s, %s, %s); ", rt, keep, answer, ctx, method, url, headers, body)
 	fmt.Fprintf(&b, "if __snglF != nil { if __snglF.Cancelled { return %s }; if __snglF.Timeout { return %s }; return %s }; ",
 		gc.EvalExpr(codegen.ResultFailed(n.Type, "cancelled", msg)), gc.EvalExpr(codegen.ResultFailed(n.Type, "timeout", msg)), gc.EvalExpr(codegen.ResultFailed(n.Type, "transport", msg)))
 	resp := codegen.CodecResponse(n.Type, codegen.HostValue("__snglR.Status", st), codegen.HostValue("__snglR.Headers", ht), codegen.HostValue("__snglR.Body", bt))

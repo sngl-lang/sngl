@@ -21,8 +21,14 @@ func send[Q anyStruct = struct {}](
     headers map[string, string] = {},
     body    option[string] = null,
     life    async.Lifetime = async.forever,
+    hook    option[func(r http.Request) option[http.Response]] = http.answer,
 ) async.Result[http.Response]
 
 #[permission("android.permission.INTERNET")]
 #[marks.intrinsic("http.get", async)]
-func get[Q anyStruct = struct {}](url string, query Q = Q{}, life async.Lifetime = async.forever) async.Result[http.Response]
+func get[Q anyStruct = struct {}](
+    url   string,
+    query Q = Q{},
+    life  async.Lifetime = async.forever,
+    hook  option[func(r http.Request) option[http.Response]] = http.answer,
+) async.Result[http.Response]

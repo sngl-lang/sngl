@@ -243,6 +243,18 @@ data class Tag(
     var name: String = ""
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
+class Builder {
+    override fun equals(other: Any?) = other is Builder
+    override fun hashCode() = 0
+    override fun toString() = "Builder()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -425,6 +437,6 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:b7b9126b13ba5216a26998867b81c4c8
 -- run/kotlin/android --
-pass sha256:d369ef7da9266815fcc8ddb17e8c67ee
+pass sha256:6dabd5622b896deca90f995eb7e96691
 -- run/none/html --
 pass sha256:08833b04b1fe3711a8359eb264630a19

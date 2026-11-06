@@ -178,7 +178,7 @@ func testHarnessPush(t test.Test, c saver) {
     t.assert(c.out.value == "1:1")
 }
 -- testrun/android/kotlin/app.sngl/gated/1 --
-sha256:ea0730f1d804baf7c3f5e8b2d7dbc11f
+sha256:1800fb00e8f7792e8c7744da48d23e64
 {
   "results": [
     {
@@ -188,7 +188,7 @@ sha256:ea0730f1d804baf7c3f5e8b2d7dbc11f
   ]
 }
 -- testrun/android/kotlin/app.sngl/saver/1 --
-sha256:d5392c752301c0831d21bb8dd6d69c33
+sha256:cc5457b0d55ab0ee10fcdb77cb1ff19e
 {
   "results": [
     {
@@ -218,7 +218,7 @@ sha256:d5392c752301c0831d21bb8dd6d69c33
   ]
 }
 -- testrun/android/kotlin/app.sngl/scalar/1 --
-sha256:d28116861d5597a19e5a7798ca67261e
+sha256:96741e06826b7cd52c96e6e64294a660
 {
   "results": [
     {

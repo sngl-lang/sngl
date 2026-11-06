@@ -88,7 +88,7 @@ func testATestsWriteReachesThePage(t test.Test, c back) {
     t.assert(resets == before + 1)
 }
 -- testrun/android/kotlin/app.sngl/back/1 --
-sha256:818dce1c3db72efe5d0b4a9ed72ca365
+sha256:f7578e003378424faab4b0387f42478f
 {
   "results": [
     {

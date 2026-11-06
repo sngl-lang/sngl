@@ -70,6 +70,7 @@ component ended ui.node {
 // A request handed a lifetime already ended answers `cancelled` without
 // asking, and `forever` never ends.
 func testAnEndedLifetimeAsksNothing(t test.Test, c ended) {
+    t.setContext(http.answer, http.network)
     c.ask.click()
     t.wait(func() => c.kind != "", 1500)
     t.assert(c.before && c.kind == "cancelled" && !async.forever.ended())
@@ -113,6 +114,7 @@ component manual ui.node {
 // Ending a lifetime stops the request handed it, which answers `cancelled`
 // at once rather than when the server would have.
 func testEndingALifetimeCancelsItsRequest(t test.Test, c manual) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.kind != "", 1500)
     t.assert(c.kind == "cancelled")
 }
@@ -139,6 +141,7 @@ component keyed ui.node {
 // The pattern async.query is: a lifetime per mount, ended by the unmount, so
 // the request for a key the effect has moved off stops.
 func testARekeyCancelsTheOldRequest(t test.Test, c keyed) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.kinds.length() == 2, 1500)
     t.assert(c.kinds.contains("a:cancelled") && c.kinds.contains("b:ok"))
 }
@@ -147,7 +150,7 @@ ui.window {
     manual()
 }
 -- testrun/android/kotlin/ended.sngl/ended/1 --
-sha256:f385852c3f213e84f130b3dcf3b4cb02
+sha256:70ef028ecefd00283b2187dab43df7e2
 {
   "results": [
     {
@@ -157,7 +160,7 @@ sha256:f385852c3f213e84f130b3dcf3b4cb02
   ]
 }
 -- testrun/android/kotlin/inflight.sngl/keyed/1 --
-sha256:6a73fb2bd8e3c612c267c7ae671048f8
+sha256:a33157d82762b13a378dd1e2e05c1a9e
 {
   "results": [
     {
@@ -167,7 +170,7 @@ sha256:6a73fb2bd8e3c612c267c7ae671048f8
   ]
 }
 -- testrun/android/kotlin/inflight.sngl/manual/1 --
-sha256:f23001770b4983b7377272156bf3594e
+sha256:ad66ea52765906ea6dfbaad7ff7c0842
 {
   "results": [
     {
@@ -177,7 +180,7 @@ sha256:f23001770b4983b7377272156bf3594e
   ]
 }
 -- testrun/bubbletea/go/ended.sngl/ended/1 --
-sha256:a30bb31059cca3f9f52cc11a3e3c2784
+sha256:634b9f1fb82a3c54566e7b1130010997
 {
   "results": [
     {
@@ -187,7 +190,7 @@ sha256:a30bb31059cca3f9f52cc11a3e3c2784
   ]
 }
 -- testrun/bubbletea/go/inflight.sngl/keyed/1 --
-sha256:e3d15b2a86cfa90e2fae0b3439675187
+sha256:967b21c91e52908f55f294f271523e84
 {
   "results": [
     {
@@ -197,7 +200,7 @@ sha256:e3d15b2a86cfa90e2fae0b3439675187
   ]
 }
 -- testrun/bubbletea/go/inflight.sngl/manual/1 --
-sha256:0a304b452914b77d706ff619cf64b9b9
+sha256:3ebfa4cc47652d46dabd48005a44d493
 {
   "results": [
     {
@@ -207,7 +210,7 @@ sha256:0a304b452914b77d706ff619cf64b9b9
   ]
 }
 -- testrun/fyne/go/ended.sngl/ended/1 --
-sha256:aceae74f871133065ee087815a68b4b3
+sha256:42f76d5fd70f625de6d05c0bb8022560
 {
   "results": [
     {
@@ -217,7 +220,7 @@ sha256:aceae74f871133065ee087815a68b4b3
   ]
 }
 -- testrun/fyne/go/inflight.sngl/keyed/1 --
-sha256:1d8d1f18822bb6da4675687dde3cbd3a
+sha256:5e5488d17e902b794627c17fd6d5b773
 {
   "results": [
     {
@@ -227,7 +230,7 @@ sha256:1d8d1f18822bb6da4675687dde3cbd3a
   ]
 }
 -- testrun/fyne/go/inflight.sngl/manual/1 --
-sha256:b1389878c7f889c56ad08608c4af017d
+sha256:ddf2343d03ae73f998ac45e08ea2829d
 {
   "results": [
     {
@@ -237,7 +240,7 @@ sha256:b1389878c7f889c56ad08608c4af017d
   ]
 }
 -- testrun/gtk4/go/ended.sngl/ended/1 --
-sha256:88429e370dbcb8c046824ce6a7605055
+sha256:7bd64ae8b4d21dc8e5af2456aa0253f0
 {
   "results": [
     {
@@ -247,7 +250,7 @@ sha256:88429e370dbcb8c046824ce6a7605055
   ]
 }
 -- testrun/gtk4/go/inflight.sngl/keyed/1 --
-sha256:19fdd26b4f256c0c10327b861e91a63a
+sha256:ee47ceae553f77654193187fdcf89cad
 {
   "results": [
     {
@@ -257,7 +260,7 @@ sha256:19fdd26b4f256c0c10327b861e91a63a
   ]
 }
 -- testrun/gtk4/go/inflight.sngl/manual/1 --
-sha256:3b6719a87b1e902ebbe88511b1b3cca2
+sha256:5c6f888a50f7ab191741d881de29290f
 {
   "results": [
     {
@@ -267,7 +270,7 @@ sha256:3b6719a87b1e902ebbe88511b1b3cca2
   ]
 }
 -- testrun/html/none/ended.sngl/ended/1 --
-sha256:5ac7f8b3b7f0459de7f62c3e9165aae2
+sha256:5dcd2095dab7ebc2730eec78a6e2d01c
 {
   "results": [
     {
@@ -277,7 +280,7 @@ sha256:5ac7f8b3b7f0459de7f62c3e9165aae2
   ]
 }
 -- testrun/html/none/inflight.sngl/keyed/1 --
-sha256:92ab3db49020967fdd2fd5320404fb1f
+sha256:e0e19b860fdca7b09fcb859a6eb360fc
 {
   "results": [
     {
@@ -287,7 +290,7 @@ sha256:92ab3db49020967fdd2fd5320404fb1f
   ]
 }
 -- testrun/html/none/inflight.sngl/manual/1 --
-sha256:8061b4fbf7fc06a97629678940c535fa
+sha256:9eb2842799344c1662265069fc092917
 {
   "results": [
     {

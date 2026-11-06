@@ -1,3 +1,4 @@
+import http "sngl:http"
 import i18n "sngl:i18n"
 import poke "openapi:./pokeapi.yml"
 import settings "sngl:settings"
@@ -21,55 +22,6 @@ component home ui.node {
     poke.server(local) {
         artwork(dot) {
             homePage #page(@open(n) { opened = n })
-        }
-    }
-}
-
-// A species' page, its artwork's URL naming the species.
-component seed ui.node {
-    poke.server(local) {
-        artwork(dotOf) {
-            detailPage #detail(name="bulbasaur")
-        }
-    }
-}
-
-component bud ui.node {
-    poke.server(local) {
-        artwork(dot) {
-            detailPage #detail(name="ivysaur")
-        }
-    }
-}
-
-component mouse ui.node {
-    poke.server(local) {
-        artwork(dot) {
-            detailPage #detail(name="pikachu")
-        }
-    }
-}
-
-component flame ui.node {
-    poke.server(local) {
-        artwork(dot) {
-            detailPage #detail(name="charmeleon")
-        }
-    }
-}
-
-component fox ui.node {
-    poke.server(local) {
-        artwork(dot) {
-            detailPage #detail(name="vulpix")
-        }
-    }
-}
-
-component fluff ui.node {
-    poke.server(local) {
-        artwork(dot) {
-            detailPage #detail(name="eevee")
         }
     }
 }
@@ -101,15 +53,6 @@ component roam ui.node {
                 name = n
                 form = f
             })
-        }
-    }
-}
-
-// A species' page showing one of its forms.
-component alolan ui.node {
-    poke.server(local) {
-        artwork(dotOf) {
-            detailPage #detail(name="vulpix", form="vulpix-alola")
         }
     }
 }
@@ -296,6 +239,7 @@ component named ui.node {
 }
 
 func testHomeStartsAtTheNationalDex(t test.Test, c home) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => chosenDex != null, 5000)
     t.assert(chosenDex != null && chosenDex.name == "national")
     t.assert(c.page.about != null && c.page.about.value == "National · every region · 40 Pokémon")
@@ -303,6 +247,7 @@ func testHomeStartsAtTheNationalDex(t test.Test, c home) {
 }
 
 func testChoosingADexStartsTheGridAgain(t test.Test, c home) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => chosenDex != null, 5000)
     c.page.cards.reachEnd()
     t.assert(c.page.visible().length() == 40)
@@ -316,12 +261,14 @@ func testChoosingADexStartsTheGridAgain(t test.Test, c home) {
 }
 
 func testTheGridIsInDexOrder(t test.Test, c home) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => chosenDex != null, 5000)
     t.assert(c.page.visible().slice(0, 3).map(func(e poke.PokemonDexNumber) => number(e.entryNumber)).format(",") == "#001,#002,#003")
     t.assert(c.page.visible().slice(27, 30).map(func(e poke.PokemonDexNumber) => e.pokemonSpecies.name).format(",") == "sandslash,nidoran-f,nidorina")
 }
 
 func testTheEndOfTheGridAddsTheRest(t test.Test, c home) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => chosenDex != null, 5000)
     c.page.cards.reachEnd()
     t.assert(c.page.visible().length() == 40)
@@ -331,6 +278,7 @@ func testTheEndOfTheGridAddsTheRest(t test.Test, c home) {
 }
 
 func testTheSearchCoversTheWholeDex(t test.Test, c home) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => chosenDex != null, 5000)
     c.page.searchBox.input("GGLY")
     t.assert(c.page.visible().map(func(e poke.PokemonDexNumber) => e.pokemonSpecies.name).format(",") == "jigglypuff,wigglytuff")
@@ -340,12 +288,14 @@ func testTheSearchCoversTheWholeDex(t test.Test, c home) {
 // Spray's is null: read as the document says, every page learning it showed
 // its move failed, however often it was asked again.
 func testAMoveWithNoContestTypeIsNamed(t test.Test, c spray) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => names.known("move/acid-spray") || names.failedNow("move/acid-spray"), 5000)
     t.assert(!names.failedNow("move/acid-spray"))
     t.assert(called(names.answers, `move`, "acid-spray") == "Acid Spray")
 }
 
 func testACardNamesItsSpeciesInTheReadersLanguage(t test.Test, c home) {
+    t.setContext(http.answer, http.network)
     t.setContext(i18n.locale, "fr")
     t.wait(func() => chosenDex != null, 5000)
     t.wait(func() => c.page.label(c.page.visible()[0]) == "Bulbizarre", 5000)
@@ -374,6 +324,7 @@ func testACardNamesItsSpeciesInTheReadersLanguage(t test.Test, c home) {
 // A dex the server has no answer for says so beside a sign whose tooltip
 // says why, and the sign asks again.
 func testADexThatFailsAsksAgain(t test.Test, c home) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => chosenDex != null, 5000)
     chooseDex("nowhere")
     t.wait(func() => c.page.dexAsk != null && c.page.dexAsk.problem != null, 5000)
@@ -388,6 +339,7 @@ func testADexThatFailsAsksAgain(t test.Test, c home) {
 }
 
 func testASearchAsksForEveryName(t test.Test, c home) {
+    t.setContext(http.answer, http.network)
     t.setContext(i18n.locale, "de")
     t.wait(func() => chosenDex != null, 5000)
     c.page.searchBox.input("bisa")
@@ -396,89 +348,129 @@ func testASearchAsksForEveryName(t test.Test, c home) {
     t.assert(c.page.visible().map(func(e poke.PokemonDexNumber) => e.pokemonSpecies.name).format(",") == "bulbasaur,ivysaur,venusaur")
 }
 
-func testTheHeaderNamesTheSpecies(t test.Test, c seed) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.title != null && c.detail.title.value == "Bulbasaur")
-    t.assert(c.detail.nationalNo != null && c.detail.nationalNo.value == "#001")
-    t.assert(c.detail.genus != null && c.detail.genus.value == "Seed Pokémon")
+func testTheHeaderNamesTheSpecies(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.title != null && c.title.value == "Bulbasaur")
+    t.assert(c.nationalNo != null && c.nationalNo.value == "#001")
+    t.assert(c.genus != null && c.genus.value == "Seed Pokémon")
     // A test is a root: what the page's func reads of `artwork` is what the
     // test provides, as it is what the page's render read.
     t.setContext(artwork, dotOf)
-    t.assert(c.detail.picture() == "http://127.0.0.1:47819/dot.png?id=1")
-    t.assert(c.detail.types[0].value == "Grass" && c.detail.types[1].value == "Poison")
-    t.assert(c.detail.types[2] == null)
+    t.assert(c.picture() == "http://127.0.0.1:47819/dot.png?id=1")
+    t.assert(c.types[0].value == "Grass" && c.types[1].value == "Poison")
+    t.assert(c.types[2] == null)
 }
 
-func testAboutTellsTheLatestDescription(t test.Test, c seed) {
-    t.wait(func() => c.detail.about != null, 5000)
-    t.assert(c.detail.flavor != null && c.detail.flavor.value == "While it is young, it uses the nutrients that are stored in the seed on its back in order to grow.")
+func testAboutTellsTheLatestDescription(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.about != null, 5000)
+    t.assert(c.flavor != null && c.flavor.value == "While it is young, it uses the nutrients that are stored in the seed on its back in order to grow.")
 }
 
-func testAboutGivesHeightAndWeight(t test.Test, c seed) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.height != null && c.detail.height.value == "0.7 m (2 ft 4 in)")
-    t.assert(c.detail.weight != null && c.detail.weight.value == "6.9 kg (15.2 lbs)")
+func testAboutGivesHeightAndWeight(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.height != null && c.height.value == "0.7 m (2 ft 4 in)")
+    t.assert(c.weight != null && c.weight.value == "6.9 kg (15.2 lbs)")
 }
 
-func testAboutMarksTheHiddenAbility(t test.Test, c seed) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.abilities != null && c.detail.abilities.value == "Overgrow, Chlorophyll (hidden)")
+func testAboutMarksTheHiddenAbility(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.abilities != null && c.abilities.value == "Overgrow, Chlorophyll (hidden)")
 }
 
-func testAboutGivesHabitatAndEggGroups(t test.Test, c seed) {
-    t.wait(func() => c.detail.about != null, 5000)
+func testAboutGivesHabitatAndEggGroups(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.about != null, 5000)
     // PokéAPI names a habitat in lower case, and the egg group plant "Grass".
-    t.wait(func() => c.detail.habitat != null && c.detail.habitat.value == "grassland", 5000)
-    t.assert(c.detail.habitat != null && c.detail.habitat.value == "grassland")
-    t.wait(func() => c.detail.eggGroups != null && c.detail.eggGroups.value == "Monster, Grass", 5000)
-    t.assert(c.detail.eggGroups != null && c.detail.eggGroups.value == "Monster, Grass")
+    t.wait(func() => c.habitat != null && c.habitat.value == "grassland", 5000)
+    t.assert(c.habitat != null && c.habitat.value == "grassland")
+    t.wait(func() => c.eggGroups != null && c.eggGroups.value == "Monster, Grass", 5000)
+    t.assert(c.eggGroups != null && c.eggGroups.value == "Monster, Grass")
 }
 
-func testAboutGivesGenderAndCaptureRate(t test.Test, c seed) {
-    t.wait(func() => c.detail.about != null, 5000)
-    t.assert(c.detail.gender != null && c.detail.gender.value == "87.5% male, 12.5% female")
-    t.assert(c.detail.capture != null && c.detail.capture.value == "45")
+func testAboutGivesGenderAndCaptureRate(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.about != null, 5000)
+    t.assert(c.gender != null && c.gender.value == "87.5% male, 12.5% female")
+    t.assert(c.capture != null && c.capture.value == "45")
 }
 
-func testAboutIsEachSpecies(t test.Test, c mouse) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.gender != null && c.detail.gender.value == "50% male, 50% female")
-    t.assert(c.detail.capture != null && c.detail.capture.value == "190")
-    t.wait(func() => c.detail.habitat != null && c.detail.habitat.value == "forest", 5000)
-    t.assert(c.detail.habitat != null && c.detail.habitat.value == "forest")
+func testAboutIsEachSpecies(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dot)
+    c.name = "pikachu"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.gender != null && c.gender.value == "50% male, 50% female")
+    t.assert(c.capture != null && c.capture.value == "190")
+    t.wait(func() => c.habitat != null && c.habitat.value == "forest", 5000)
+    t.assert(c.habitat != null && c.habitat.value == "forest")
 }
 
-func testTheTabsSwitchToStats(t test.Test, c seed) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.flavor != null && c.detail.total != null)
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(1)
+func testTheTabsSwitchToStats(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.flavor != null && c.total != null)
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(1)
     }
-    t.assert(c.detail.tab == 1)
-    t.assert(c.detail.flavor != null && c.detail.total != null)
+    t.assert(c.tab == 1)
+    t.assert(c.flavor != null && c.total != null)
 }
 
-func testStatsTotalAndEffort(t test.Test, c seed) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(1)
+func testStatsTotalAndEffort(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(1)
     }
-    t.assert(c.detail.base[0].value == "45" && c.detail.base[3].value == "65")
-    t.assert(c.detail.base[6] == null)
-    t.assert(c.detail.total != null && c.detail.total.value == "318")
-    t.assert(c.detail.effort != null && c.detail.effort.value == "1 Special Attack")
+    t.assert(c.base[0].value == "45" && c.base[3].value == "65")
+    t.assert(c.base[6] == null)
+    t.assert(c.total != null && c.total.value == "318")
+    t.assert(c.effort != null && c.effort.value == "1 Special Attack")
 }
 
-func testStatsGiveEveryEffort(t test.Test, c bud) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(1)
+func testStatsGiveEveryEffort(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dot)
+    c.name = "ivysaur"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(1)
     }
-    t.assert(c.detail.total != null && c.detail.total.value == "405")
-    t.assert(c.detail.effort != null && c.detail.effort.value == "1 Special Attack, 1 Special Defense")
+    t.assert(c.total != null && c.total.value == "405")
+    t.assert(c.effort != null && c.effort.value == "1 Special Attack, 1 Special Defense")
 }
 
 // A chain's rows, each its stages and how each is reached, a row a line:
@@ -494,47 +486,72 @@ func stageOf(s Stage) string {
     return text
 }
 
-func testEvolutionIsTheChainByLevel(t test.Test, c seed) {
-    t.wait(func() => c.detail.evolution != null, 5000)
-    t.assert(c.detail.chainRows().length() == 1)
-    t.assert(lineOf(c.detail.chainRows()[0]) == "bulbasaur, ivysaur Lv. 16, venusaur Lv. 32")
-    t.assert(c.detail.chainRows()[0][2].id == "3")
+func testEvolutionIsTheChainByLevel(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.evolution != null, 5000)
+    t.assert(c.chainRows().length() == 1)
+    t.assert(lineOf(c.chainRows()[0]) == "bulbasaur, ivysaur Lv. 16, venusaur Lv. 32")
+    t.assert(c.chainRows()[0][2].id == "3")
 }
 
-func testEvolutionIsEachSpeciesChain(t test.Test, c flame) {
-    t.wait(func() => c.detail.evolution != null, 5000)
-    t.assert(c.detail.chainRows().length() == 1)
-    t.assert(lineOf(c.detail.chainRows()[0]) == "charmander, charmeleon Lv. 16, charizard Lv. 36")
+func testEvolutionIsEachSpeciesChain(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dot)
+    c.name = "charmeleon"
+    t.wait(func() => c.evolution != null, 5000)
+    t.assert(c.chainRows().length() == 1)
+    t.assert(lineOf(c.chainRows()[0]) == "charmander, charmeleon Lv. 16, charizard Lv. 36")
 }
 
-func testEvolutionByFriendshipAndStone(t test.Test, c mouse) {
-    t.wait(func() => c.detail.evolution != null, 5000)
-    t.assert(c.detail.chainRows().length() == 1)
-    t.assert(lineOf(c.detail.chainRows()[0]) == "pichu, pikachu High Friendship, raichu Thunder Stone (raichu-alola Thunder Stone)")
+func testEvolutionByFriendshipAndStone(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dot)
+    c.name = "pikachu"
+    t.wait(func() => c.evolution != null, 5000)
+    t.assert(c.chainRows().length() == 1)
+    t.assert(lineOf(c.chainRows()[0]) == "pichu, pikachu High Friendship, raichu Thunder Stone (raichu-alola Thunder Stone)")
 }
 
-func testEvolutionShowsTheFirstDefaultDetail(t test.Test, c fox) {
-    t.wait(func() => c.detail.evolution != null, 5000)
-    t.assert(c.detail.chainRows().length() == 1)
-    t.assert(lineOf(c.detail.chainRows()[0]) == "vulpix, ninetales Fire Stone (ninetales-alola Ice Stone)")
+func testEvolutionShowsTheFirstDefaultDetail(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dot)
+    c.name = "vulpix"
+    t.wait(func() => c.evolution != null, 5000)
+    t.assert(c.chainRows().length() == 1)
+    t.assert(lineOf(c.chainRows()[0]) == "vulpix, ninetales Fire Stone (ninetales-alola Ice Stone)")
 }
 
-func testABranchingChainIsRows(t test.Test, c fluff) {
-    t.wait(func() => c.detail.evolution != null, 5000)
-    t.assert(c.detail.chainRows().map(func(r list[Stage]) => lineOf(r)).format("; ") == "eevee, vaporeon Water Stone; eevee, jolteon Thunder Stone; eevee, flareon Fire Stone; eevee, espeon High Friendship, day; eevee, umbreon High Friendship, night; eevee, leafeon Leaf Stone; eevee, glaceon Ice Stone; eevee, sylveon High Friendship, knowing a Fairy move")
+func testABranchingChainIsRows(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dot)
+    c.name = "eevee"
+    t.wait(func() => c.evolution != null, 5000)
+    t.assert(c.chainRows().map(func(r list[Stage]) => lineOf(r)).format("; ") == "eevee, vaporeon Water Stone; eevee, jolteon Thunder Stone; eevee, flareon Fire Stone; eevee, espeon High Friendship, day; eevee, umbreon High Friendship, night; eevee, leafeon Leaf Stone; eevee, glaceon Ice Stone; eevee, sylveon High Friendship, knowing a Fairy move")
 }
 
-func testEvolutionTabShowsTheTriggers(t test.Test, c seed) {
-    t.wait(func() => c.detail.evolution != null, 5000)
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(2)
+func testEvolutionTabShowsTheTriggers(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.evolution != null, 5000)
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(2)
     }
-    t.assert(c.detail.trigger[0][1] != null && c.detail.trigger[0][1].value == "Lv. 16")
-    t.assert(c.detail.trigger[0][2] != null && c.detail.trigger[0][2].value == "Lv. 32")
+    t.assert(c.trigger[0][1] != null && c.trigger[0][1].value == "Lv. 16")
+    t.assert(c.trigger[0][2] != null && c.trigger[0][2].value == "Lv. 32")
 }
 
 func testTappingAStageOpensIt(t test.Test, c walk) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.detail.evolution != null, 5000)
     t.assert(c.detail.tabs != null)
     if c.detail.tabs != null {
@@ -546,30 +563,39 @@ func testTappingAStageOpensIt(t test.Test, c walk) {
     t.assert(c.detail.title != null && c.detail.title.value == "Ivysaur")
 }
 
-func testEvolutionShowsTheAlolanForms(t test.Test, c mouse) {
-    t.wait(func() => c.detail.evolution != null, 5000)
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(2)
+func testEvolutionShowsTheAlolanForms(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dot)
+    c.name = "pikachu"
+    t.wait(func() => c.evolution != null, 5000)
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(2)
     }
-    t.assert(c.detail.formTrigger[0][2][0] != null && c.detail.formTrigger[0][2][0].value == "Thunder Stone")
-    t.assert(c.detail.formTrigger[0][1][0] == null)
-    t.wait(func() => c.detail.formStep[0][2][0].got != null, 5000)
-    t.assert(c.detail.formStep[0][2][0].formLabel.text == "Alolan Raichu")
+    t.assert(c.formTrigger[0][2][0] != null && c.formTrigger[0][2][0].value == "Thunder Stone")
+    t.assert(c.formTrigger[0][1][0] == null)
+    t.wait(func() => c.formStep[0][2][0].got != null, 5000)
+    t.assert(c.formStep[0][2][0].formLabel.text == "Alolan Raichu")
 }
 
-func testEvolutionShowsAFormFromAForm(t test.Test, c fox) {
-    t.wait(func() => c.detail.evolution != null, 5000)
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(2)
+func testEvolutionShowsAFormFromAForm(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dot)
+    c.name = "vulpix"
+    t.wait(func() => c.evolution != null, 5000)
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(2)
     }
-    t.assert(c.detail.formTrigger[0][1][0] != null && c.detail.formTrigger[0][1][0].value == "Ice Stone")
-    t.wait(func() => c.detail.formStep[0][1][0].got != null, 5000)
-    t.assert(c.detail.formStep[0][1][0].formLabel.text == "Alolan Ninetales")
+    t.assert(c.formTrigger[0][1][0] != null && c.formTrigger[0][1][0].value == "Ice Stone")
+    t.wait(func() => c.formStep[0][1][0].got != null, 5000)
+    t.assert(c.formStep[0][1][0].formLabel.text == "Alolan Ninetales")
 }
 
 func testTappingAnAlolanFormOpensIt(t test.Test, c spark) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.detail.evolution != null, 5000)
     t.assert(c.detail.tabs != null)
     if c.detail.tabs != null {
@@ -585,46 +611,59 @@ func testTappingAnAlolanFormOpensIt(t test.Test, c spark) {
     t.assert(c.detail.types[1] != null && c.detail.types[1].value == "Psychic")
 }
 
-func testSpritesLabelEveryPicture(t test.Test, c mouse) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.pictures().map(func(p Sprite) => p.label).format(", ") == "Front, Back, Shiny front, Shiny back, Female front, Female back, Shiny female front, Shiny female back, Official artwork, Shiny official artwork, Home, Shiny Home, Female Home, Shiny female Home")
-    t.assert(c.detail.pictures()[5].url == "http://127.0.0.1:47819/dot.png?sprite=back/female/25.png")
-    t.assert(c.detail.pictures()[9].url == "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/shiny/25.png")
-    t.assert(c.detail.pictures()[13].url == "http://127.0.0.1:47819/dot.png?sprite=other/home/shiny/female/25.png")
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(3)
+func testSpritesLabelEveryPicture(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dot)
+    c.name = "pikachu"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.pictures().map(func(p Sprite) => p.label).format(", ") == "Front, Back, Shiny front, Shiny back, Female front, Female back, Shiny female front, Shiny female back, Official artwork, Shiny official artwork, Home, Shiny Home, Female Home, Shiny female Home")
+    t.assert(c.pictures()[5].url == "http://127.0.0.1:47819/dot.png?sprite=back/female/25.png")
+    t.assert(c.pictures()[9].url == "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/shiny/25.png")
+    t.assert(c.pictures()[13].url == "http://127.0.0.1:47819/dot.png?sprite=other/home/shiny/female/25.png")
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(3)
     }
-    t.assert(c.detail.spriteLabel[4] != null && c.detail.spriteLabel[4].value == "Female front")
-    t.assert(c.detail.spriteLabel[13] != null && c.detail.spriteLabel[13].value == "Shiny female Home")
+    t.assert(c.spriteLabel[4] != null && c.spriteLabel[4].value == "Female front")
+    t.assert(c.spriteLabel[13] != null && c.spriteLabel[13].value == "Shiny female Home")
 }
 
-func testSpritesLeaveOutAFemaleTheyLack(t test.Test, c seed) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.pictures().map(func(p Sprite) => p.label).format(", ") == "Front, Back, Shiny front, Shiny back, Official artwork, Shiny official artwork, Home, Shiny Home")
-    t.assert(c.detail.pictures()[4].url == "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/1.png")
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(3)
+func testSpritesLeaveOutAFemaleTheyLack(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.pictures().map(func(p Sprite) => p.label).format(", ") == "Front, Back, Shiny front, Shiny back, Official artwork, Shiny official artwork, Home, Shiny Home")
+    t.assert(c.pictures()[4].url == "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/1.png")
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(3)
     }
-    t.assert(c.detail.spriteLabel[4] != null && c.detail.spriteLabel[4].value == "Official artwork")
-    t.assert(c.detail.spriteLabel[8] == null)
-    t.assert(c.detail.forms().length() == 0)
+    t.assert(c.spriteLabel[4] != null && c.spriteLabel[4].value == "Official artwork")
+    t.assert(c.spriteLabel[8] == null)
+    t.assert(c.forms().length() == 0)
 }
 
-func testSpritesListTheForms(t test.Test, c mouse) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.forms().format(",") == "pikachu-rock-star,pikachu-belle")
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(3)
+func testSpritesListTheForms(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dot)
+    c.name = "pikachu"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.forms().format(",") == "pikachu-rock-star,pikachu-belle")
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(3)
     }
-    t.wait(func() => c.detail.variety[0].got != null && c.detail.variety[1].got != null, 5000)
-    t.assert(c.detail.variety[0].formLabel.text == "Pikachu Rock Star")
-    t.assert(c.detail.variety[1].formLabel.text == "Pikachu Belle")
+    t.wait(func() => c.variety[0].got != null && c.variety[1].got != null, 5000)
+    t.assert(c.variety[0].formLabel.text == "Pikachu Rock Star")
+    t.assert(c.variety[1].formLabel.text == "Pikachu Belle")
 }
 
 func testTappingAFormOpensIt(t test.Test, c roam) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.detail.mon != null, 5000)
     t.assert(c.detail.tabs != null)
     if c.detail.tabs != null {
@@ -641,45 +680,58 @@ func testTappingAFormOpensIt(t test.Test, c roam) {
     t.assert(c.name == "vulpix" && c.form == "")
 }
 
-func testAFormsPageIsTheForm(t test.Test, c alolan) {
-    t.wait(func() => c.detail.shape != null, 5000)
-    t.assert(c.detail.title != null && c.detail.title.value == "Alolan Vulpix")
-    t.assert(c.detail.nationalNo != null && c.detail.nationalNo.value == "#037")
-    t.assert(c.detail.types[0] != null && c.detail.types[0].value == "Ice")
+func testAFormsPageIsTheForm(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
     t.setContext(artwork, dotOf)
-    t.assert(c.detail.picture() == "http://127.0.0.1:47819/dot.png?id=10103")
-    t.assert(c.detail.pictures()[0].url == "http://127.0.0.1:47819/dot.png?sprite=10103.png")
+    c.name = "vulpix"
+    c.form = "vulpix-alola"
+    t.wait(func() => c.shape != null, 5000)
+    t.assert(c.title != null && c.title.value == "Alolan Vulpix")
+    t.assert(c.nationalNo != null && c.nationalNo.value == "#037")
+    t.assert(c.types[0] != null && c.types[0].value == "Ice")
+    t.setContext(artwork, dotOf)
+    t.assert(c.picture() == "http://127.0.0.1:47819/dot.png?id=10103")
+    t.assert(c.pictures()[0].url == "http://127.0.0.1:47819/dot.png?sprite=10103.png")
 }
 
 // The Moves tab's rows, each its level and the move: "1 Tackle, 1 Growl", or
 // the move alone where the way has no level.
 func movesLine(rows list[MoveRow]) => rows.map(func(r MoveRow) => r.level == "" ? r.name : "{r.level} {r.name}").format(", ")
 
-func testMovesAreByLevel(t test.Test, c seed) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(movesLine(c.detail.moveRows()) == "1 Tackle, 1 Growl, 3 Vine Whip, 6 Growth, 9 Leech Seed, 12 Razor Leaf, 15 Poison Powder, 15 Sleep Powder, 18 Seed Bomb, 21 Take Down, 24 Sweet Scent, 27 Synthesis, 30 Worry Seed, 33 Power Whip, 36 Solar Beam")
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(4)
+func testMovesAreByLevel(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(movesLine(c.moveRows()) == "1 Tackle, 1 Growl, 3 Vine Whip, 6 Growth, 9 Leech Seed, 12 Razor Leaf, 15 Poison Powder, 15 Sleep Powder, 18 Seed Bomb, 21 Take Down, 24 Sweet Scent, 27 Synthesis, 30 Worry Seed, 33 Power Whip, 36 Solar Beam")
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(4)
     }
-    t.assert(c.detail.moveTable != null)
-    t.assert(c.detail.movesCount != null && c.detail.movesCount.value == "It learns 15 moves this way.")
+    t.assert(c.moveTable != null)
+    t.assert(c.movesCount != null && c.movesCount.value == "It learns 15 moves this way.")
 }
 
 // A move's row gives its type, power and accuracy once its answer arrives,
 // and a power the move has none of as a dash: Growl deals no damage.
-func testAMoveGivesItsTypePowerAndAccuracy(t test.Test, c seed) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(4)
+func testAMoveGivesItsTypePowerAndAccuracy(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(4)
     }
     // Tackle's and Growl's answers may be the last of the fifteen moves' to
     // arrive, and the table is drawn again for each.
-    t.wait(func() => tackleAndGrowl(c.detail.moveRows()), 5000)
-    t.assert(tackleAndGrowl(c.detail.moveRows()))
+    t.wait(func() => tackleAndGrowl(c.moveRows()), 5000)
+    t.assert(tackleAndGrowl(c.moveRows()))
     // Each move's type is a badge in its own color.
-    t.assert(c.detail.moveRows()[0].kindSlug == "normal" && typeColor(c.detail.moveRows()[0].kindSlug) == #a8a77a)
+    t.assert(c.moveRows()[0].kindSlug == "normal" && typeColor(c.moveRows()[0].kindSlug) == #a8a77a)
 }
 
 // Whether Bulbasaur's first two moves have arrived as the Moves tab gives
@@ -696,71 +748,93 @@ func tackleAndGrowl(rows list[MoveRow]) bool {
 // A type's badge carries PokéAPI's name for the type, which picks its
 // color: the type's own, its name dark over a light one and white over the
 // rest. No target hands a test the style a badge is drawn with.
-func testATypesBadgeTakesItsKindsColor(t test.Test, c seed) {
-    t.wait(func() => c.detail.types[0] != null && c.detail.types[1] != null, 5000)
-    t.assert(c.detail.types[0] != null && c.detail.types[0].kind == "grass")
-    t.assert(c.detail.types[1] != null && c.detail.types[1].kind == "poison")
+func testATypesBadgeTakesItsKindsColor(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.types[0] != null && c.types[1] != null, 5000)
+    t.assert(c.types[0] != null && c.types[0].kind == "grass")
+    t.assert(c.types[1] != null && c.types[1].kind == "poison")
     t.assert(typeColor("grass") == #7ac74c && typeInk("grass") == #ffffff)
     t.assert(typeColor("electric") == #f7d02c && typeInk("electric") == #222222)
     t.assert(typeColor("stellar") == #68a090)
 }
 
-func testTheSelectSwitchesTheMethod(t test.Test, c seed) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(4)
+func testTheSelectSwitchesTheMethod(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(4)
     }
-    t.assert(c.detail.methodPick != null)
-    if c.detail.methodPick != null {
-        c.detail.methodPick.change(machine)
+    t.assert(c.methodPick != null)
+    if c.methodPick != null {
+        c.methodPick.change(machine)
     }
-    t.assert(c.detail.method == machine)
-    t.wait(func() => movesLine(c.detail.moveRows()) == "Body Slam, Curse, Double-Edge, Rest, Seed Bomb, Solar Beam, Swords Dance, Take Down, Toxic", 5000)
-    t.assert(movesLine(c.detail.moveRows()) == "Body Slam, Curse, Double-Edge, Rest, Seed Bomb, Solar Beam, Swords Dance, Take Down, Toxic")
-    t.assert(c.detail.moveRows()[0].level == "")
-    if c.detail.methodPick != null {
-        c.detail.methodPick.change(egg)
+    t.assert(c.method == machine)
+    t.wait(func() => movesLine(c.moveRows()) == "Body Slam, Curse, Double-Edge, Rest, Seed Bomb, Solar Beam, Swords Dance, Take Down, Toxic", 5000)
+    t.assert(movesLine(c.moveRows()) == "Body Slam, Curse, Double-Edge, Rest, Seed Bomb, Solar Beam, Swords Dance, Take Down, Toxic")
+    t.assert(c.moveRows()[0].level == "")
+    if c.methodPick != null {
+        c.methodPick.change(egg)
     }
-    t.assert(movesLine(c.detail.moveRows()) == "Curse, Ingrain, Petal Dance, Toxic")
+    t.assert(movesLine(c.moveRows()) == "Curse, Ingrain, Petal Dance, Toxic")
 }
 
 // The way chosen is a member of an enum, so the moves stay the machine's in
 // another language, and only the choices' labels change.
-func testTheMethodOutlivesALanguage(t test.Test, c seed) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(4)
+func testTheMethodOutlivesALanguage(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(4)
     }
-    if c.detail.methodPick != null {
-        c.detail.methodPick.change(machine)
+    if c.methodPick != null {
+        c.methodPick.change(machine)
     }
     t.setContext(i18n.locale, "fr")
-    t.assert(c.detail.method == machine)
-    t.assert(c.detail.moveRows().length() == 9 && c.detail.moveRows()[0].level == "")
+    t.assert(c.method == machine)
+    t.assert(c.moveRows().length() == 9 && c.moveRows()[0].level == "")
     t.assert(methodLabel(machine) == "CT" && methodLabel(egg) == "Œuf")
 }
 
-func testAMethodWithNoMoves(t test.Test, c seed) {
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(4)
+func testAMethodWithNoMoves(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(4)
     }
-    if c.detail.methodPick != null {
-        c.detail.methodPick.change(tutor)
+    if c.methodPick != null {
+        c.methodPick.change(tutor)
     }
-    t.assert(c.detail.moveRows().length() == 0)
-    t.assert(c.detail.movesCount != null && c.detail.movesCount.value == "It learns no moves this way.")
+    t.assert(c.moveRows().length() == 0)
+    t.assert(c.movesCount != null && c.movesCount.value == "It learns no moves this way.")
 }
 
-func testAFormsMovesAreItsOwn(t test.Test, c alolan) {
-    t.wait(func() => c.detail.mon != null && c.detail.mon.name == "vulpix-alola", 5000)
-    t.assert(movesLine(c.detail.moveRows()) == "1 Tail Whip, 1 Powder Snow, 4 Disable, 8 Ice Shard, 12 Spite, 16 Icy Wind, 20 Confuse Ray, 24 Aurora Beam, 28 Extrasensory, 32 Ice Beam, 36 Imprison, 40 Mist, 44 Aurora Veil, 48 Freeze Dry, 52 Blizzard")
+func testAFormsMovesAreItsOwn(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "vulpix"
+    c.form = "vulpix-alola"
+    t.wait(func() => c.mon != null && c.mon.name == "vulpix-alola", 5000)
+    t.assert(movesLine(c.moveRows()) == "1 Tail Whip, 1 Powder Snow, 4 Disable, 8 Ice Shard, 12 Spite, 16 Icy Wind, 20 Confuse Ray, 24 Aurora Beam, 28 Extrasensory, 32 Ice Beam, 36 Imprison, 40 Mist, 44 Aurora Veil, 48 Freeze Dry, 52 Blizzard")
 }
 
 func testMovesFollowTheDexChosen(t test.Test, c trip) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => chosenDex != null && c.detail.mon != null, 5000)
     chooseDex("kanto")
     t.wait(func() => chosenDex != null && chosenDex.name == "kanto", 5000)
@@ -768,6 +842,7 @@ func testMovesFollowTheDexChosen(t test.Test, c trip) {
 }
 
 func testHomeStartsAtTheDexChosen(t test.Test, c back) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => chosenDex != null && c.page != null, 5000)
     chooseDex("kanto")
     t.wait(func() => chosenDex != null && chosenDex.name == "kanto", 5000)
@@ -781,6 +856,7 @@ func testHomeStartsAtTheDexChosen(t test.Test, c back) {
 }
 
 func testEveryDexDecodes(t test.Test, c dexes) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.list != null && c.national.got != null && c.kanto.got != null && c.johto.got != null, 5000)
     t.assert(c.list != null && c.list.results.map(func(d poke.PokedexSummary) => d.name).format(",") == "national,kanto,original-johto")
     t.assert(c.national.got != null && c.national.got.region == null)
@@ -790,6 +866,7 @@ func testEveryDexDecodes(t test.Test, c dexes) {
 }
 
 func testEveryMonDecodes(t test.Test, c mons) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.bulbasaur.got != null && c.ivysaur.got != null && c.venusaur.got != null && c.charmander.got != null && c.charmeleon.got != null && c.eevee.got != null && c.pikachu.got != null && c.vulpix.got != null && c.alola.got != null && c.raichu.got != null && c.raichuAlola.got != null && c.ninetales.got != null && c.ninetalesAlola.got != null, 5000)
     t.assert(c.pikachu.got != null && c.pikachu.got.sprites.frontFemale != null)
     t.assert(c.bulbasaur.got != null && c.bulbasaur.got.sprites.frontFemale == null)
@@ -802,6 +879,7 @@ func testEveryMonDecodes(t test.Test, c mons) {
 }
 
 func testEverySpeciesDecodes(t test.Test, c species) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.bulbasaur.got != null && c.ivysaur.got != null && c.venusaur.got != null && c.charmander.got != null && c.charmeleon.got != null && c.eevee.got != null && c.pikachu.got != null && c.vulpix.got != null && c.raichu.got != null && c.ninetales.got != null, 5000)
     t.assert(c.eevee.got != null && genusOf(c.eevee.got.genera) == "Evolution Pokémon")
     t.assert(c.pikachu.got != null && c.pikachu.got.genderRate == 4)
@@ -813,6 +891,7 @@ func testEverySpeciesDecodes(t test.Test, c species) {
 }
 
 func testEveryFormDecodes(t test.Test, c shapes) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.vulpix.got != null && c.vulpixAlola.got != null && c.raichu.got != null && c.raichuAlola.got != null && c.ninetales.got != null && c.ninetalesAlola.got != null && c.rockStar.got != null && c.belle.got != null, 5000)
     t.assert(c.vulpix.got != null && c.vulpix.got.names.length() == 0)
     t.assert(c.vulpixAlola.got != null && formName(c.vulpixAlola.got.names, "") == "Alolan Vulpix")
@@ -822,56 +901,78 @@ func testEveryFormDecodes(t test.Test, c shapes) {
 }
 
 func testEveryChainDecodes(t test.Test, c chains) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.bulbasaur.got != null && c.charmander.got != null && c.pikachu.got != null && c.vulpix.got != null && c.eevee.got != null, 5000)
     t.assert(c.pikachu.got != null && evolutionRows(c.pikachu.got.chain, {})[0].map(func(s Stage) => s.name).format(",") == "pichu,pikachu,raichu")
     t.assert(c.eevee.got != null && c.eevee.got.chain.evolvesTo.length() == 8)
     t.assert(c.vulpix.got != null && c.vulpix.got.chain.evolvesTo[0].evolutionDetails[0].item != null)
 }
 
-func testASpeciesInJapanese(t test.Test, c seed) {
+func testASpeciesInJapanese(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
     t.setContext(i18n.locale, "ja-JP")
-    t.wait(func() => c.detail.about != null, 5000)
-    t.assert(c.detail.title != null && c.detail.title.value == "フシギダネ")
-    t.assert(c.detail.genus != null && c.detail.genus.value == "たねポケモン")
+    t.wait(func() => c.about != null, 5000)
+    t.assert(c.title != null && c.title.value == "フシギダネ")
+    t.assert(c.genus != null && c.genus.value == "たねポケモン")
     // Shield's description in kanji: PokéAPI gives it in kana too.
-    t.assert(c.detail.flavor != null && c.detail.flavor.value == "生まれて　しばらくの　あいだ 背中の　タネに　つまった 栄養を　とって　育つ。")
+    t.assert(c.flavor != null && c.flavor.value == "生まれて　しばらくの　あいだ 背中の　タネに　つまった 栄養を　とって　育つ。")
 }
 
-func testASpeciesInFrench(t test.Test, c seed) {
+func testASpeciesInFrench(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
     t.setContext(i18n.locale, "fr")
-    t.wait(func() => c.detail.about != null, 5000)
-    t.assert(c.detail.title != null && c.detail.title.value == "Bulbizarre")
-    t.assert(c.detail.genus != null && c.detail.genus.value == "Pokémon Graine")
-    t.assert(c.detail.flavor != null && c.detail.flavor.value == "Quand il est jeune, il absorbe les nutriments conservés dans son dos pour grandir et se développer.")
+    t.wait(func() => c.about != null, 5000)
+    t.assert(c.title != null && c.title.value == "Bulbizarre")
+    t.assert(c.genus != null && c.genus.value == "Pokémon Graine")
+    t.assert(c.flavor != null && c.flavor.value == "Quand il est jeune, il absorbe les nutriments conservés dans son dos pour grandir et se développer.")
 }
 
-func testATypeAndAnAbilityInFrench(t test.Test, c seed) {
+func testATypeAndAnAbilityInFrench(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
     t.setContext(i18n.locale, "fr")
-    t.wait(func() => c.detail.types[0] != null && c.detail.types[0].value == "Plante", 5000)
-    t.assert(c.detail.types[0] != null && c.detail.types[0].value == "Plante")
-    t.wait(func() => c.detail.abilities != null && c.detail.abilities.value == "Engrais, Chlorophylle (caché)", 5000)
-    t.assert(c.detail.abilities != null && c.detail.abilities.value == "Engrais, Chlorophylle (caché)")
+    t.wait(func() => c.types[0] != null && c.types[0].value == "Plante", 5000)
+    t.assert(c.types[0] != null && c.types[0].value == "Plante")
+    t.wait(func() => c.abilities != null && c.abilities.value == "Engrais, Chlorophylle (caché)", 5000)
+    t.assert(c.abilities != null && c.abilities.value == "Engrais, Chlorophylle (caché)")
 }
 
-func testTheAppsOwnWordsInGerman(t test.Test, c seed) {
+func testTheAppsOwnWordsInGerman(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
     t.setContext(i18n.locale, "de")
-    t.wait(func() => c.detail.tabs != null, 5000)
-    t.assert(c.detail.tabs != null && c.detail.tabs.items[0].label == "Info")
+    t.wait(func() => c.tabs != null, 5000)
+    t.assert(c.tabs != null && c.tabs.items[0].label == "Info")
 }
 
-func testHowManyMovesIsAPlural(t test.Test, c seed) {
+func testHowManyMovesIsAPlural(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
     t.assert(movesNote(1) == "It learns 1 move this way.")
     t.setContext(i18n.locale, "fr")
     t.assert(movesNote(1) == "Il apprend 1 capacité de cette façon.")
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(4)
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(4)
     }
-    t.assert(c.detail.movesCount != null && c.detail.movesCount.value == "Il apprend 15 capacités de cette façon.")
+    t.assert(c.movesCount != null && c.movesCount.value == "Il apprend 15 capacités de cette façon.")
 }
 
 func testAStatsBarIsColoredByHowGoodItIs(t test.Test) {
+    t.setContext(http.answer, http.network)
     t.assert(statColor(20) == #f34444)
     t.assert(statColor(45) == #ff7f0f)
     t.assert(statColor(65) == #ffdd57)
@@ -880,42 +981,55 @@ func testAStatsBarIsColoredByHowGoodItIs(t test.Test) {
     t.assert(statColor(150) == #00c2b8)
 }
 
-func testADecimalCommaInFrench(t test.Test, c seed) {
+func testADecimalCommaInFrench(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
     t.setContext(i18n.locale, "fr")
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.height != null && c.detail.height.value == "0,7 m (2 ft 4 in)")
-    t.assert(c.detail.weight != null && c.detail.weight.value == "6,9 kg (15,2 lb)")
-    t.assert(c.detail.gender != null && c.detail.gender.value == "87,5 % mâles, 12,5 % femelles")
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.height != null && c.height.value == "0,7 m (2 ft 4 in)")
+    t.assert(c.weight != null && c.weight.value == "6,9 kg (15,2 lb)")
+    t.assert(c.gender != null && c.gender.value == "87,5 % mâles, 12,5 % femelles")
 }
 
 // PokéAPI names a habitat in English, French and Spanish alone, so German
 // reads it in English.
-func testALanguageTheAPILacksFallsBack(t test.Test, c seed) {
+func testALanguageTheAPILacksFallsBack(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
     t.setContext(i18n.locale, "de")
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.wait(func() => c.detail.habitat != null && c.detail.habitat.value == "grassland", 5000)
-    t.assert(c.detail.habitat != null && c.detail.habitat.value == "grassland")
-    t.wait(func() => c.detail.eggGroups != null && c.detail.eggGroups.value == "Monster, Pflanze", 5000)
-    t.assert(c.detail.eggGroups != null && c.detail.eggGroups.value == "Monster, Pflanze")
+    t.wait(func() => c.mon != null, 5000)
+    t.wait(func() => c.habitat != null && c.habitat.value == "grassland", 5000)
+    t.assert(c.habitat != null && c.habitat.value == "grassland")
+    t.wait(func() => c.eggGroups != null && c.eggGroups.value == "Monster, Pflanze", 5000)
+    t.assert(c.eggGroups != null && c.eggGroups.value == "Monster, Pflanze")
 }
 
 // PokéAPI names a stat in kana alone, so Japanese reads it in kana rather than
 // in English.
-func testJapaneseFallsBackToKana(t test.Test, c seed) {
+func testJapaneseFallsBackToKana(t test.Test, c detailPage) {
+    t.setContext(http.answer, http.network)
+    t.setContext(poke.server, local)
+    t.setContext(artwork, dotOf)
+    c.name = "bulbasaur"
     t.setContext(i18n.locale, "ja")
-    t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.tabs != null)
-    if c.detail.tabs != null {
-        c.detail.tabs.change(1)
+    t.wait(func() => c.mon != null, 5000)
+    t.assert(c.tabs != null)
+    if c.tabs != null {
+        c.tabs.change(1)
     }
-    t.wait(func() => c.detail.effort != null && c.detail.effort.value == "1 とくこう", 5000)
-    t.assert(c.detail.effort != null && c.detail.effort.value == "1 とくこう")
+    t.wait(func() => c.effort != null && c.effort.value == "1 とくこう", 5000)
+    t.assert(c.effort != null && c.effort.value == "1 とくこう")
 }
 
 // The window's choice of language is the locale of every page under it:
 // home's dex in Spanish, and its own words. The test opens the Language
 // submenu before picking from it, as a person does.
 func testTheLanguageChoiceTranslatesThePages(t test.Test, c shell) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.app.homeList != null && c.app.homeList.about != null, 5000)
     t.assert(c.app.language == "en")
     t.assert(c.app.homeList != null && c.app.homeList.searchBox.placeholder == "Search this Pokédex")
@@ -931,6 +1045,7 @@ func testTheLanguageChoiceTranslatesThePages(t test.Test, c shell) {
 // A test writing the language through the window's instance translates the
 // pages as the menu's pick does.
 func testWritingTheLanguageTranslatesThePages(t test.Test, c shell) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.app.homeList != null && c.app.homeList.about != null, 5000)
     c.app.language = "es"
     t.assert(c.app.language == "es")
@@ -941,6 +1056,7 @@ func testWritingTheLanguageTranslatesThePages(t test.Test, c shell) {
 // The window's Pokédex menu lists every dex, and picking one is the dex home
 // shows and the one kept.
 func testTheMenuChoosesTheDex(t test.Test, c shell) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.app.dexes.length() == 3 && c.app.homeList != null && c.app.homeList.about != null, 5000)
     c.app.pokedex.menu[1].select()
     c.app.pokedex.menu[1].children[1].select()
@@ -952,6 +1068,7 @@ func testTheMenuChoosesTheDex(t test.Test, c shell) {
 
 // The window is named for the page it shows.
 func testTheWindowIsTheHomePage(t test.Test, c shell) {
+    t.setContext(http.answer, http.network)
     t.assert(c.app.pokedex.title == "Pokédex")
 }
 
@@ -959,6 +1076,7 @@ func testTheWindowIsTheHomePage(t test.Test, c shell) {
 // take none builds the package with no root, and a component built at run
 // time in it has no setter for the prop a reactive `if` hands it.
 func testNames(t test.Test, c home) {
+    t.setContext(http.answer, http.network)
     t.assert(display("mr-mime") == "Mr Mime")
     t.assert(idOf("http://127.0.0.1:47819/examples/pokedex/api/v2/evolution-chain/2/") == "2")
     t.assert(number(7) == "#007" && number(151) == "#151" && number(1025) == "#1025")
@@ -1013,6 +1131,7 @@ func testNames(t test.Test, c home) {
 }
 
 func testEveryNameDecodes(t test.Test, c named) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.grass != null && c.overgrow != null && c.attack != null && c.plant != null && c.grassland != null && c.stone != null && c.doubleEdge != null, 5000)
     t.assert(c.grass != null && localNames(c.grass.names).length() == 6)
     t.assert(c.overgrow != null && localNames(c.overgrow.names).length() == 6)
