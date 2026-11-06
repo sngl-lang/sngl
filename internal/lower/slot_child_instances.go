@@ -460,9 +460,13 @@ func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 			// rebuilt unmarked html read it off `state`, where nothing is.
 			site := *x
 			p := l.prop("id("+identityOf(x.Sym)+")", x.Type, &site)
-			x.Name = p.Name
-			x.Sym = p
-			return node, nil
+			// A new read, not the one renamed: a two-way prop's binding and
+			// the write-back passPropBindings makes of it share the ident, and
+			// renamed in place the write the site keeps wrote the instance's
+			// `__p0` -- fyne's `__prop___p0 = __value`.
+			read := *x
+			read.Name, read.Sym = p.Name, p
+			return &read, nil
 		}
 		return node, nil
 	})
