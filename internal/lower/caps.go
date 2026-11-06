@@ -161,6 +161,10 @@ type Features struct {
 	// answers its intrinsics. Withheld, passStringBuilders writes a builder
 	// as the string it builds, and each add as a `+=`.
 	StringBuilders bool
+	// UnreadLocals says the language declares a local nothing reads, as
+	// JavaScript and Kotlin do. Withheld, passUnreadLocals makes such a
+	// local the call it was bound to, or drops it: Go refuses one.
+	UnreadLocals bool
 
 	// The six below are requests rather than capabilities, which is the split
 	// `sngl:x/gen` spells as `#[gen.wants]`: each asks for a pass the target
@@ -247,6 +251,7 @@ func NoLowering() Features {
 		ViewMatch:         true,
 		OptionMatch:       true,
 		StringBuilders:    true,
+		UnreadLocals:      true,
 	}
 }
 
@@ -307,6 +312,7 @@ func (f Features) String() string {
 		{"ViewMatch", f.ViewMatch},
 		{"OptionMatch", f.OptionMatch},
 		{"StringBuilders", f.StringBuilders},
+		{"UnreadLocals", f.UnreadLocals},
 		{"StructComponents", f.StructComponents},
 		{"StdlibContextParam", f.StdlibContextParam},
 		{"FocusOrder", f.FocusOrder},

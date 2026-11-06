@@ -220,9 +220,10 @@ func (m *Model) refresh__inst0() {
 }
 
 func (m *Model) __effect0_mount() {
+	__effect0_mount_key := m.__effect0_key
 	m.attempt__inst0 += 1
 	var mine int = m.attempt__inst0
-	if m.__effect0_key.N == m.asked__inst0 {
+	if __effect0_mount_key.N == m.asked__inst0 {
 		m.failure__inst0 = nil
 		var __lt10 string
 		if m.failure__inst0 != nil {
@@ -232,15 +233,15 @@ func (m *Model) __effect0_mount() {
 		}
 		m.__n4.SetText(__lt10)
 	}
-	m.asked__inst0 = m.__effect0_key.N
+	m.asked__inst0 = __effect0_mount_key.N
 	m.loading__inst0 = true
 	m.__n3.SetText(fmt.Sprint(m.loading__inst0))
-	__async_arg0 := m.__effect0_key.Key
+	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
 	go func() {
 		r := Lookup(__async_arg0)
 		__snglDo(func() {
-			if mine != m.attempt__inst0 {
+			if ((mine != m.attempt__inst0) || (__effect0_mount_key.Key != m.name__inst0)) || (__effect0_mount_key.N != m.refreshes__inst0) {
 				return
 			}
 			m.loading__inst0 = false
@@ -663,19 +664,20 @@ func (c *CardInstance) refresh__inst1() {
 }
 
 func (c *CardInstance) __effect1_mount() {
+	__effect1_mount_key := c.__effect1_key
 	c.attempt__inst1 += 1
 	var mine int = c.attempt__inst1
-	if c.__effect1_key.N == c.asked__inst1 {
+	if __effect1_mount_key.N == c.asked__inst1 {
 		c.failure__inst1 = nil
 	}
-	c.asked__inst1 = c.__effect1_key.N
+	c.asked__inst1 = __effect1_mount_key.N
 	c.pending__inst0 = true
-	__async_arg1 := c.__effect1_key.Key
+	__async_arg1 := __effect1_mount_key.Key
 	_ = __async_arg1
 	go func() {
 		r := Lookup(__async_arg1)
 		__snglDo(func() {
-			if mine != c.attempt__inst1 {
+			if ((mine != c.attempt__inst1) || (__effect1_mount_key.Key != c.__prop_name)) || (__effect1_mount_key.N != c.refreshes__inst1) {
 				return
 			}
 			c.pending__inst0 = false
@@ -948,9 +950,10 @@ func (m *Model) refresh__inst0() {
 }
 
 func (m *Model) __effect0_mount() {
+	__effect0_mount_key := m.__effect0_key
 	m.attempt__inst0 += 1
 	var mine int = m.attempt__inst0
-	if m.__effect0_key.N == m.asked__inst0 {
+	if __effect0_mount_key.N == m.asked__inst0 {
 		m.failure__inst0 = nil
 		var __lt17 string
 		if m.failure__inst0 != nil {
@@ -960,15 +963,15 @@ func (m *Model) __effect0_mount() {
 		}
 		gtk4rt.LabelSetLabel(m.__n4, __lt17)
 	}
-	m.asked__inst0 = m.__effect0_key.N
+	m.asked__inst0 = __effect0_mount_key.N
 	m.loading__inst0 = true
 	gtk4rt.LabelSetLabel(m.__n3, fmt.Sprint(m.loading__inst0))
-	__async_arg0 := m.__effect0_key.Key
+	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
 	go func() {
 		r := Lookup(__async_arg0)
 		gtk4rt.Post(func() {
-			if mine != m.attempt__inst0 {
+			if ((mine != m.attempt__inst0) || (__effect0_mount_key.Key != m.name__inst0)) || (__effect0_mount_key.N != m.refreshes__inst0) {
 				return
 			}
 			m.loading__inst0 = false
@@ -1244,19 +1247,20 @@ func (c *CardInstance) refresh__inst1() {
 }
 
 func (c *CardInstance) __effect1_mount() {
+	__effect1_mount_key := c.__effect1_key
 	c.attempt__inst1 += 1
 	var mine int = c.attempt__inst1
-	if c.__effect1_key.N == c.asked__inst1 {
+	if __effect1_mount_key.N == c.asked__inst1 {
 		c.failure__inst1 = nil
 	}
-	c.asked__inst1 = c.__effect1_key.N
+	c.asked__inst1 = __effect1_mount_key.N
 	c.pending__inst0 = true
-	__async_arg1 := c.__effect1_key.Key
+	__async_arg1 := __effect1_mount_key.Key
 	_ = __async_arg1
 	go func() {
 		r := Lookup(__async_arg1)
 		gtk4rt.Post(func() {
-			if mine != c.attempt__inst1 {
+			if ((mine != c.attempt__inst1) || (__effect1_mount_key.Key != c.__prop_name)) || (__effect1_mount_key.N != c.refreshes__inst1) {
 				return
 			}
 			c.pending__inst0 = false
@@ -1542,6 +1546,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/fyne --
-pass sha256:c3dafb66fdc38de49cc4d7bea9150f8a
+pass sha256:d5a754c2304c8ce249690d7bec4c6562
 -- run/go/gtk4 --
-pass sha256:7dcd0af69c94acd0592134a4406c0e4d
+pass sha256:1c6948ad799645434f32f88dfe4935fa

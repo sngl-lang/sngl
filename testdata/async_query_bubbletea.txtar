@@ -398,14 +398,15 @@ func LineCap(height__r0 int, lines int) int {
 }
 
 func (m *Model) __effect0_mount() {
+	__effect0_mount_key := m.__effect0_key
 	m.attempt__inst0 += 1
 	var mine int = m.attempt__inst0
-	if m.__effect0_key.N == m.asked__inst0 {
+	if __effect0_mount_key.N == m.asked__inst0 {
 		m.failure__inst0 = nil
 	}
-	m.asked__inst0 = m.__effect0_key.N
+	m.asked__inst0 = __effect0_mount_key.N
 	m.loading__inst0 = true
-	__async_arg0 := m.__effect0_key.Key
+	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
 	go func() func() {
 		__live := m
@@ -416,7 +417,7 @@ func (m *Model) __effect0_mount() {
 			__snglPost(func() {
 				m := __live
 				_ = m
-				if mine != m.attempt__inst0 {
+				if ((mine != m.attempt__inst0) || (__effect0_mount_key.Key != m.name__inst0)) || (__effect0_mount_key.N != m.refreshes__inst0) {
 					return
 				}
 				m.loading__inst0 = false
@@ -898,4 +899,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:d6f429ad572929cb8ebd9cfb7f7ec6a8
+pass sha256:f17a91d6376b7306cdd6369268e285aa

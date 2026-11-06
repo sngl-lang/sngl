@@ -161,18 +161,19 @@ window.__sngl_boot = () => {
     __effects0_settle();
   }
   async function __effect0_mount() {
+    let __effect0_mount_key = __effect0_key;
     state.attempt__inst1 += 1;
     let mine = state.attempt__inst1;
-    if (__effect0_key.n === state.asked__inst1) {
+    if (__effect0_mount_key.n === state.asked__inst1) {
       ;
       state.failure__inst0 = null;
     }
     ;
-    state.asked__inst1 = __effect0_key.n;
+    state.asked__inst1 = __effect0_mount_key.n;
     state.loading__inst0 = true;
     $1.textContent = String(state.loading__inst0);
-    let r = await lookup(__effect0_key.key);
-    if (mine !== state.attempt__inst1) {
+    let r = await lookup(__effect0_mount_key.key);
+    if (mine !== state.attempt__inst1 || __effect0_mount_key.key !== state.name__inst0 || __effect0_mount_key.n !== state.refreshes__inst1) {
       ;
       return;
     }
@@ -197,17 +198,18 @@ window.__sngl_boot = () => {
     state.attempt__inst1 += 1;
   }
   async function __effect2_mount() {
+    let __effect2_mount_key = __effect2_key;
     state.attempt__inst0__inst0 += 1;
     let mine = state.attempt__inst0__inst0;
-    if (__effect2_key.n === state.asked__inst0__inst0) {
+    if (__effect2_mount_key.n === state.asked__inst0__inst0) {
       ;
       state.failure__inst1 = null;
     }
     ;
-    state.asked__inst0__inst0 = __effect2_key.n;
+    state.asked__inst0__inst0 = __effect2_mount_key.n;
     state.pending__inst0 = true;
-    let r = await lookup(__effect2_key.key);
-    if (mine !== state.attempt__inst0__inst0) {
+    let r = await lookup(__effect2_mount_key.key);
+    if (mine !== state.attempt__inst0__inst0 || __effect2_mount_key.key !== "slow" || __effect2_mount_key.n !== state.refreshes__inst0__inst0) {
       ;
       return;
     }
@@ -400,9 +402,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:5effb30ec92b4acad459c67f6cb90429
+pass sha256:400863a85c519f0605152f0ce5b944c5
 -- testrun/html/none/component_async_query.sngl/dropped/1 --
-sha256:add3634062cbf8ba12c48f5deca19bde
+sha256:6d81a8baf79ca4b9a3fa2a213ada447c
 {
   "results": [
     {
@@ -412,7 +414,7 @@ sha256:add3634062cbf8ba12c48f5deca19bde
   ]
 }
 -- testrun/html/none/component_async_query.sngl/latest/1 --
-sha256:c0e5747e9e5426253261be10d3d8af55
+sha256:b4f48cce0654d9559642d1950321ff37
 {
   "results": [
     {

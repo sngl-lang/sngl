@@ -403,20 +403,21 @@ func (c *__query_state1Instance) refresh__inst0() {
 }
 
 func (c *__query_state1Instance) __effect0_mount() {
+	__effect0_mount_key := c.__effect0_key
 	c.attempt__inst0 += 1
 	var mine int = c.attempt__inst0
-	if c.__effect0_key.N == c.asked__inst0 {
+	if __effect0_mount_key.N == c.asked__inst0 {
 		c.failure = nil
 	}
-	c.asked__inst0 = c.__effect0_key.N
+	c.asked__inst0 = __effect0_mount_key.N
 	c.pending = true
 	__async_arg0 := c.__prop_fetch
-	__async_arg1 := c.__effect0_key.Key
+	__async_arg1 := __effect0_mount_key.Key
 	_ = __async_arg1
 	go func() {
 		r := __async_arg0(__async_arg1)
 		__snglDo(func() {
-			if mine != c.attempt__inst0 {
+			if ((mine != c.attempt__inst0) || (__effect0_mount_key.Key != c.__prop_on)) || (__effect0_mount_key.N != c.refreshes__inst0) {
 				return
 			}
 			c.pending = false
@@ -825,20 +826,21 @@ func (c *__query_state1Instance) refresh__inst0() {
 }
 
 func (c *__query_state1Instance) __effect0_mount() {
+	__effect0_mount_key := c.__effect0_key
 	c.attempt__inst0 += 1
 	var mine int = c.attempt__inst0
-	if c.__effect0_key.N == c.asked__inst0 {
+	if __effect0_mount_key.N == c.asked__inst0 {
 		c.failure = nil
 	}
-	c.asked__inst0 = c.__effect0_key.N
+	c.asked__inst0 = __effect0_mount_key.N
 	c.pending = true
 	__async_arg0 := c.__prop_fetch
-	__async_arg1 := c.__effect0_key.Key
+	__async_arg1 := __effect0_mount_key.Key
 	_ = __async_arg1
 	go func() {
 		r := __async_arg0(__async_arg1)
 		gtk4rt.Post(func() {
-			if mine != c.attempt__inst0 {
+			if ((mine != c.attempt__inst0) || (__effect0_mount_key.Key != c.__prop_on)) || (__effect0_mount_key.N != c.refreshes__inst0) {
 				return
 			}
 			c.pending = false
@@ -1058,6 +1060,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:0c13d566f625b5cfb73ace1977d2294b
+pass sha256:30cea3d55d6bb7d68f8fe556c349a526
 -- run/go/gtk4 --
-pass sha256:e599eb69758c7f5cee7c9d0951b8530c
+pass sha256:2f8869d7527eb4d290d7e02dece2f290

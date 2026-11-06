@@ -336,6 +336,13 @@ func snglSome[T any](v T) *T {
 	return &v
 }
 
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -714,19 +721,22 @@ func ResponseChecked(r Response) Result__Response {
 }
 
 func (m *Model) __effect0_mount() {
+	__effect0_mount_key := m.__effect0_key
 	m.attempt__inst1 += 1
 	var mine int = m.attempt__inst1
-	if m.__effect0_key.N == m.asked__inst1 {
+	if __effect0_mount_key.N == m.asked__inst1 {
 		m.failure__inst1 = nil
 	}
-	m.asked__inst1 = m.__effect0_key.N
+	m.asked__inst1 = __effect0_mount_key.N
 	m.pending__inst0 = true
-	__async_arg0 := m.__effect0_key.Key
+	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
 	go func() {
 		r := PetListCall(__async_arg0.Limit, __async_arg0.Offset, "https://petstore.example")
 		__snglDo(func() {
-			if mine != m.attempt__inst1 {
+			if ((mine != m.attempt__inst1) || !func(_a1, _b2 __anon_limit_offset_7e7555) bool {
+				return snglOptEqual(_a1.Limit, _b2.Limit) && snglOptEqual(_a1.Offset, _b2.Offset)
+			}(__effect0_mount_key.Key, __anon_limit_offset_7e7555{Limit: snglSome(20), Offset: snglSome(m.offset__inst0)})) || (__effect0_mount_key.N != m.refreshes__inst1) {
 				return
 			}
 			m.pending__inst0 = false
@@ -795,21 +805,22 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_mount() {
+	__effect1_mount_key := m.__effect1_key
 	m.attempt__inst0 += 1
 	var mine int = m.attempt__inst0
-	if m.__effect1_key.N == m.asked__inst0 {
+	if __effect1_mount_key.N == m.asked__inst0 {
 		m.failure__inst0 = nil
 		m.__renderSlot2(m.__n2.Container)
 	}
-	m.asked__inst0 = m.__effect1_key.N
+	m.asked__inst0 = __effect1_mount_key.N
 	m.loading__inst0 = true
 	m.__renderSlot1(m.__n2.Container)
-	__async_arg1 := m.__effect1_key.Key
+	__async_arg1 := __effect1_mount_key.Key
 	_ = __async_arg1
 	go func() {
 		r := PetRetrieveCall(__async_arg1, "https://mirror.example")
 		__snglDo(func() {
-			if mine != m.attempt__inst0 {
+			if ((mine != m.attempt__inst0) || (__effect1_mount_key.Key != "rex")) || (__effect1_mount_key.N != m.refreshes__inst0) {
 				return
 			}
 			m.loading__inst0 = false
@@ -1388,6 +1399,13 @@ func snglSome[T any](v T) *T {
 	return &v
 }
 
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -1754,19 +1772,22 @@ func ResponseChecked(r Response) Result__Response {
 }
 
 func (m *Model) __effect0_mount() {
+	__effect0_mount_key := m.__effect0_key
 	m.attempt__inst1 += 1
 	var mine int = m.attempt__inst1
-	if m.__effect0_key.N == m.asked__inst1 {
+	if __effect0_mount_key.N == m.asked__inst1 {
 		m.failure__inst1 = nil
 	}
-	m.asked__inst1 = m.__effect0_key.N
+	m.asked__inst1 = __effect0_mount_key.N
 	m.pending__inst0 = true
-	__async_arg0 := m.__effect0_key.Key
+	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
 	go func() {
 		r := PetListCall(__async_arg0.Limit, __async_arg0.Offset, "https://petstore.example")
 		gtk4rt.Post(func() {
-			if mine != m.attempt__inst1 {
+			if ((mine != m.attempt__inst1) || !func(_a1, _b2 __anon_limit_offset_7e7555) bool {
+				return snglOptEqual(_a1.Limit, _b2.Limit) && snglOptEqual(_a1.Offset, _b2.Offset)
+			}(__effect0_mount_key.Key, __anon_limit_offset_7e7555{Limit: snglSome(20), Offset: snglSome(m.offset__inst0)})) || (__effect0_mount_key.N != m.refreshes__inst1) {
 				return
 			}
 			m.pending__inst0 = false
@@ -1835,21 +1856,22 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_mount() {
+	__effect1_mount_key := m.__effect1_key
 	m.attempt__inst0 += 1
 	var mine int = m.attempt__inst0
-	if m.__effect1_key.N == m.asked__inst0 {
+	if __effect1_mount_key.N == m.asked__inst0 {
 		m.failure__inst0 = nil
 		m.__renderSlot2(m.__n2)
 	}
-	m.asked__inst0 = m.__effect1_key.N
+	m.asked__inst0 = __effect1_mount_key.N
 	m.loading__inst0 = true
 	m.__renderSlot1(m.__n2)
-	__async_arg1 := m.__effect1_key.Key
+	__async_arg1 := __effect1_mount_key.Key
 	_ = __async_arg1
 	go func() {
 		r := PetRetrieveCall(__async_arg1, "https://mirror.example")
 		gtk4rt.Post(func() {
-			if mine != m.attempt__inst0 {
+			if ((mine != m.attempt__inst0) || (__effect1_mount_key.Key != "rex")) || (__effect1_mount_key.N != m.refreshes__inst0) {
 				return
 			}
 			m.loading__inst0 = false
@@ -2633,7 +2655,7 @@ fun MainScreen() {
                     	asked__inst1 = k.n
                     	pending__inst0 = true
                     	var r: SnglResult__PaginatedPetSummaryList = petListCall(k.key.limit, k.key.offset, "https://petstore.example")
-                    	if ((mine != attempt__inst1)) {
+                    	if ((((mine != attempt__inst1) || (k.key != __anon_limit_offset_7e7555(limit = 20, offset = offset__inst0))) || (k.n != refreshes__inst1))) {
                     		return@start
                     	}
                     	pending__inst0 = false
@@ -2677,7 +2699,7 @@ fun MainScreen() {
                     	asked__inst0 = k.n
                     	loading__inst0 = true
                     	var r: SnglResult__PetDetail = petRetrieveCall(k.key, "https://mirror.example")
-                    	if ((mine != attempt__inst0)) {
+                    	if ((((mine != attempt__inst0) || (k.key != "rex")) || (k.n != refreshes__inst0))) {
                     		return@start
                     	}
                     	loading__inst0 = false
@@ -3339,17 +3361,18 @@ body { font-family: system-ui, sans-serif; }
     return { tag: "failed", value: { kind, message: "HTTP " + String(r.status), code: String(r.status) } };
   }
   async function __effect0_mount() {
+    let __effect0_mount_key = __effect0_key;
     state.attempt__inst1 += 1;
     let mine = state.attempt__inst1;
-    if (__effect0_key.n === state.asked__inst1) {
+    if (__effect0_mount_key.n === state.asked__inst1) {
       ;
       state.failure__inst1 = null;
     }
     ;
-    state.asked__inst1 = __effect0_key.n;
+    state.asked__inst1 = __effect0_mount_key.n;
     state.pending__inst0 = true;
-    let r = await petListCall(__effect0_key.key.limit, __effect0_key.key.offset, "https://petstore.example");
-    if (mine !== state.attempt__inst1) {
+    let r = await petListCall(__effect0_mount_key.key.limit, __effect0_mount_key.key.offset, "https://petstore.example");
+    if (mine !== state.attempt__inst1 || !((a, b) => a == null || b == null ? a === b : a.limit === b.limit && a.offset === b.offset)(__effect0_mount_key.key, { limit: 20, offset: state.offset__inst0 }) || __effect0_mount_key.n !== state.refreshes__inst1) {
       ;
       return;
     }
@@ -3372,19 +3395,20 @@ body { font-family: system-ui, sans-serif; }
     state.attempt__inst1 += 1;
   }
   async function __effect1_mount() {
+    let __effect1_mount_key = __effect1_key;
     state.attempt__inst0 += 1;
     let mine = state.attempt__inst0;
-    if (__effect1_key.n === state.asked__inst0) {
+    if (__effect1_mount_key.n === state.asked__inst0) {
       ;
       state.failure__inst0 = null;
       __renderSlot2(__slotAnchor_2);
     }
     ;
-    state.asked__inst0 = __effect1_key.n;
+    state.asked__inst0 = __effect1_mount_key.n;
     state.loading__inst0 = true;
     __renderSlot1(__slotAnchor_1);
-    let r = await petRetrieveCall(__effect1_key.key, "https://mirror.example");
-    if (mine !== state.attempt__inst0) {
+    let r = await petRetrieveCall(__effect1_mount_key.key, "https://mirror.example");
+    if (mine !== state.attempt__inst0 || __effect1_mount_key.key !== "rex" || __effect1_mount_key.n !== state.refreshes__inst0) {
       ;
       return;
     }
@@ -4342,10 +4366,10 @@ component petBreedRetrieve[F any](
     )
 }
 -- run/go/fyne --
-pass sha256:b072d34cb77b8f7975860d5a0fa7af0a
+pass sha256:eae85e30e711b9e207bb10f3ab883b88
 -- run/go/gtk4 --
-pass sha256:336db5ac66b5074bdcadf3814489091f
+pass sha256:8ebde9843548dc2057a98c67758c7dfd
 -- run/kotlin/android --
-pass sha256:cfd499b44090110f8ffc4a534ef90a85
+pass sha256:39d5b13d03a8e050c4aeabcb3c20752f
 -- run/none/html --
-pass sha256:1507db21555723e538e775e918e9a190
+pass sha256:64322a616d34d2cb18f2050f7afca173

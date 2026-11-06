@@ -95,6 +95,10 @@ points first, then the bugs and the generated code.
     trigger is restored to the event (`restoreUnreachedTriggers`) and the
     invoker is handed the value: right for a string select, wrong for a
     typed one.
+13. **bubbletea loses a write made in the waiting part of a call.** A
+    query's `fetch=func(k) { var r = get(k); mon = "b"; return r }` runs on
+    a goroutine against `m.snapshotRef()`, so `mon = "b"` lands on the copy
+    and nothing rekeys; every other target writes the page's `mon`.
 
 ## Generated code
 

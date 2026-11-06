@@ -33,7 +33,7 @@ func serve(dir string, listen string)
 // rather than rebuilding from the first change. A builder is the string it
 // builds in the page's script, whatever the language holds one as, since a
 // JavaScript engine joins `+=` as a rope.
-#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState, navigation, genericComponents, matches)]
+#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState, navigation, genericComponents, matches, unreadLocals)]
 #[gen.cannot(
     viewStatements,
     viewMatches,

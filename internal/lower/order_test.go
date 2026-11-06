@@ -263,6 +263,7 @@ var soleGate = map[string][]string{
 	"OptionMatch": nil,
 
 	"StringBuilders": {"StringBuilders"},
+	"UnreadLocals":   {"UnreadLocals"},
 
 	// The pass and the field are named for opposite sides of the same fact:
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the

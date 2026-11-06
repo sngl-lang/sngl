@@ -56,7 +56,7 @@ func testEachAnswerLandsUnderItsWord(t test.Test, c page) {
     t.assert(c.seen.get("Green-b", "") == "Green-b!")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:ebb38054b2aef9e6cb1934a428c97acf
+sha256:ba03090729811aabb401b6051dca2d57
 {
   "results": [
     {
@@ -66,7 +66,7 @@ sha256:ebb38054b2aef9e6cb1934a428c97acf
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:ffcbe8c09b1989f5a9c2d5c6260641b8
+sha256:f6747e0e79b2997b5a2739624bb0b94d
 {
   "results": [
     {
@@ -76,7 +76,7 @@ sha256:ffcbe8c09b1989f5a9c2d5c6260641b8
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:6a93c6af4edb8a980a0c16f379b6dc10
+sha256:ce7b0c701bd915ddf5b4bea1b0f34dcb
 {
   "results": [
     {
@@ -86,7 +86,7 @@ sha256:6a93c6af4edb8a980a0c16f379b6dc10
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:ac978b883051110edc7ce9c924d12317
+sha256:644eb0a2758d1bb6db95b6189a06a419
 {
   "results": [
     {
@@ -96,7 +96,7 @@ sha256:ac978b883051110edc7ce9c924d12317
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:57cccd4ff09ba20578a4b4867624ec50
+sha256:bf57087691943e422fc278d3ad5398c4
 {
   "results": [
     {

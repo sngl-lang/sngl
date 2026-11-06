@@ -269,19 +269,20 @@ func ResponseChecked(r Response) Result__Response {
 }
 
 func (m *Model) __effect0_mount() {
+	__effect0_mount_key := m.__effect0_key
 	m.attempt__inst0 += 1
 	var mine int = m.attempt__inst0
-	if m.__effect0_key.N == m.asked__inst0 {
+	if __effect0_mount_key.N == m.asked__inst0 {
 		m.failure__inst0 = nil
 	}
-	m.asked__inst0 = m.__effect0_key.N
+	m.asked__inst0 = __effect0_mount_key.N
 	m.pending__inst0 = true
-	__async_arg0 := m.__effect0_key.Key
+	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
 	go func() {
 		r := Lookup(__async_arg0)
 		__snglDo(func() {
-			if mine != m.attempt__inst0 {
+			if ((mine != m.attempt__inst0) || (__effect0_mount_key.Key != m.key__inst0)) || (__effect0_mount_key.N != m.refreshes__inst0) {
 				return
 			}
 			m.pending__inst0 = false
@@ -679,7 +680,7 @@ fun MainScreen() {
                     	asked__inst0 = k.n
                     	pending__inst0 = true
                     	var r: SnglResult__Echo = lookup(k.key)
-                    	if ((mine != attempt__inst0)) {
+                    	if ((((mine != attempt__inst0) || (k.key != key__inst0)) || (k.n != refreshes__inst0))) {
                     		return@start
                     	}
                     	pending__inst0 = false
@@ -1230,17 +1231,18 @@ body { font-family: system-ui, sans-serif; }
     return { tag: "failed", value: { kind, message: "HTTP " + String(r.status), code: String(r.status) } };
   }
   async function __effect0_mount() {
+    let __effect0_mount_key = __effect0_key;
     state.attempt__inst0 += 1;
     let mine = state.attempt__inst0;
-    if (__effect0_key.n === state.asked__inst0) {
+    if (__effect0_mount_key.n === state.asked__inst0) {
       ;
       state.failure__inst0 = null;
     }
     ;
-    state.asked__inst0 = __effect0_key.n;
+    state.asked__inst0 = __effect0_mount_key.n;
     state.pending__inst0 = true;
-    let r = await lookup(__effect0_key.key);
-    if (mine !== state.attempt__inst0) {
+    let r = await lookup(__effect0_mount_key.key);
+    if (mine !== state.attempt__inst0 || __effect0_mount_key.key !== state.key__inst0 || __effect0_mount_key.n !== state.refreshes__inst0) {
       ;
       return;
     }
@@ -1558,8 +1560,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:10e5e8822c6ed54ca534cf8711409193
+pass sha256:cab2725f537bf4b598980547e9aefaa8
 -- run/kotlin/android --
-pass sha256:24d3f85bf843828a4e04d7f6785cf571
+pass sha256:0ffcbd5e6c9c9c35347334cc93ac32b4
 -- run/none/html --
-pass sha256:01de40a9ded9fd7db9633d6514344cd3
+pass sha256:9e17e9bd2395b3e26f3866e051dc7829

@@ -1244,17 +1244,33 @@ func (st *effectState) handlerFunc(n *ir.NodeInst, event, name string, o *ir.Own
 			p := h.Func.Params[0]
 			// Without an `on` the parameter can only ever hold the default the
 			// declaration gives it, so the value is substituted rather than a
-			// cell read.
+			// cell read. With one it is the key var, the bracket's latest; a
+			// handler that waits binds it at entry instead, since a settle
+			// overwrites the var while it waits, and `k` read after the wait
+			// was the next lifetime's.
 			replacement := func() ir.Expr { return ir.ZeroExpr(p.Type) }
 			if fx.keyVar != nil {
 				replacement = func() ir.Expr { return st.varIdent(fx.keyVar) }
 			}
+			var bind *ir.LocalVar
+			if fx.keyVar != nil && (h.Func.IsAsync || ir.BlockHasAsyncCall(block)) {
+				sym := &ir.Var{Name: name + "_key", Type: p.Type, Synthesized: true}
+				bind = &ir.LocalVar{Name: sym.Name, Type: p.Type, Sym: sym, Init: st.varIdent(fx.keyVar)}
+				replacement = func() ir.Expr {
+					return &ir.Ident{Name: sym.Name, Type: p.Type, Sym: sym, Synthesized: true}
+				}
+			}
+			read := false
 			block = newExprWalker(func(e ir.Expr) ir.Expr {
 				if id, isIdent := e.(*ir.Ident); isIdent && id.Sym == ir.Symbol(p) {
+					read = true
 					return replacement()
 				}
 				return e
 			}).stmts(block)
+			if bind != nil && read {
+				block = append([]ir.Stmt{bind}, block...)
+			}
 		}
 		fn := &ir.Func{
 			Name:   name,

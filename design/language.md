@@ -721,8 +721,14 @@ re-keying the effect on a counter beside `on`. `fetch` answers
 `async.Result[T]`, the payload enum `{ ok T, failed Failure }`; a failure is a
 value, never a raise, and `Failure` is `kind` (`async.FailureKind`), `message`
 and the adapter's own `code`. **The latest attempt wins**: each mount numbers
-its attempt, an unmount bumps the number, and an answer whose number is stale
-writes nothing.
+its attempt, an unmount bumps the number, and an answer whose number is stale,
+or whose key is not the query's `on` and refresh count as the answer arrives,
+writes nothing. The number alone leaned on the unmount having run first,
+which nothing orders against an answer: android's comes at the next
+recomposition, so a request answering between an answer that moved `on` and
+that recomposition still counted as the latest. The Pokédex marked the form
+it had just asked for as the one that failed, and never asked for it
+(`cmd/sngl/testdata/async_query_stale_key_runs.txt`).
 A mount of another key clears `failure` before it asks, and a `refresh`
 keeps it until its answer: a page showed the last key's failure beside the
 spinner of the next, so the Pokédex kept, per request, the key that failed
@@ -740,6 +746,11 @@ The general things it needed, each of its own:
   landed first and an unmounted query's answer landed at all
   (`testdata/component_async_query.txtar`, run in Chromium, fails all three of
   its tests without it).
+- **A handler that waits binds its key at entry** (`handlerFunc`): the
+  parameter is otherwise read from the bracket's key var, which a settle
+  overwrites with the next lifetime's while the mount waits, and html read
+  that one after the wait
+  (`cmd/sngl/testdata/async_query_stale_key_runs.txt`).
 - **A blocking call's arguments are read on the drawing thread**
   (`offloadState.bindArgs`): passAsyncOffload binds each argument of the first
   waiting statement's waiting calls to an `__async_argN` ahead of the

@@ -50,9 +50,11 @@ enum FailureKind { transport, timeout, auth, request, server, decode }
 //     asking about another key, so a failure never stands beside a request
 //     for something it was not about; a `refresh` keeps it until it answers
 //
-// **The latest attempt wins.** An answer to a key asked before the current one
-// writes nothing, and nor does one arriving after the node unmounts, so a
-// screen never shows what it is no longer asking about.
+// **The latest attempt wins.** An answer to a key other than the query's
+// current one writes nothing, and nor does one arriving after the node
+// unmounts, so a screen never shows what it is no longer asking about. The
+// key is compared when the answer arrives: whether the bracket has rekeyed by
+// then is a settle's to say, and nothing orders a settle against an answer.
 //
 // It renders nothing, so it goes in any tree: a layout, a drawing or a menu.
 component query[K any, T any, F any](
@@ -94,7 +96,7 @@ component query[K any, T any, F any](
             asked = k.n
             pending = true
             var r = fetch(k.key)
-            if mine != attempt {
+            if mine != attempt || k.key != on || k.n != refreshes {
                 return
             }
             pending = false

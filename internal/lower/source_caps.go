@@ -51,6 +51,7 @@ var capabilityField = map[string]func(*Features) *bool{
 	"viewMatches":       func(f *Features) *bool { return &f.ViewMatch },
 	"optionMatches":     func(f *Features) *bool { return &f.OptionMatch },
 	"stringBuilders":    func(f *Features) *bool { return &f.StringBuilders },
+	"unreadLocals":      func(f *Features) *bool { return &f.UnreadLocals },
 }
 
 var passField = map[string]func(*Features) *bool{
