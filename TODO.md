@@ -50,19 +50,12 @@ language is a locale. What is left:
     placed under a reactive `if` with `:failure` bound, is refused on html,
     gtk4 and fyne as a node not spliced where it is written; with `:failure`
     left unbound (the query's cell moved to a wrapper) it builds.
-14. **fyne gives a page's node and one of a run-time instance under its `if`
-    one field.** A page writing `ui.text #failed` beside `if on { asked() }`,
-    where `asked`'s body holds `loadError #failed`, builds `c.failed` for
-    both: `c.failed.Add undefined (type *widget.Label …)`, or in the Pokédex
-    `*Container has no setter for "text"`. The block's state gathers both
-    after uniqueNodeIDs has held each owner's ids apart. `asked` names its
-    sign `#problem`, an id nothing else in the example takes.
-15. **fyne writes a two-way binding back under the name a child instance
+14. **fyne writes a two-way binding back under the name a child instance
     gave it.** A var a block's child instance reads as a prop (`shape`, as
     `__p4`) and an `asked(:value=shape)` inside that block binds is written
     back in the page as `__prop___p4 = __value`: `undefined: __prop___p4`.
     The Pokédex asks for the form beside the Pokémon, outside the header.
-16. **fyne's test agent cannot reach a node a window's menu calls.** A
+15. **fyne's test agent cannot reach a node a window's menu calls.** A
     `poke.pokedexList #dexesAsk(…)` in the window whose menu item's
     `@select` calls `dexesAsk.refresh()` builds a test agent reading
     `c.dexesAsk`, which the model does not hold. The window keeps asking

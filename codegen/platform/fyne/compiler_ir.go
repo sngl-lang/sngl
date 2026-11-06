@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -212,7 +213,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// included; appending them here again emitted each twice.
 	allFuncs := ctx.AllFuncs()
 	allFuncs = append(allFuncs, promotedHandlersInNonMainComponents(ctx, allFuncs)...)
-	nodeSpecs, err := collectNodes(ctx.Pkg, allFuncs)
+	nodeSpecs, instanceSpecs, err := collectNodes(ctx.Pkg, allFuncs)
 	if err != nil {
 		return "", nil, nil, "", err
 	}
@@ -288,7 +289,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		// is the whole point. See emitComponentInstance.
 		if isInstanceComponent(cc.Component) {
 			var ib strings.Builder
-			emitComponentInstance(&ib, cc, gc, nodeSpecs, addWidgetImport, canvasByID, canvasByNode, ctx.Canvases.All(), failProp,
+			emitComponentInstance(&ib, cc, gc, instanceSpecs[cc.Component], addWidgetImport, canvasByID, canvasByNode, ctx.Canvases.All(), failProp,
 				recordInvoker,
 				func(name, goType string) {
 					widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
@@ -973,73 +974,102 @@ func promotedHandlersInNonMainComponents(ctx *codegen.CodegenCtx, have []*ir.Fun
 
 // collectNodes walks pkg and every Func looking for
 // `LocalVar __nX = lower.CreateNode("tag")` and returns node-id → the widget
-// Spec that instantiation carried.
+// Spec that instantiation carried: the Model's, and each live instance's.
 //
 // The map is keyed by node id, not by tag, because a tag now names one of the
 // three primitives rather than a widget: every Label in the program lowers to
 // `CreateNode("Widget")`, and what makes one a Label is the Spec record its
 // own `spec` prop holds.
 //
-// It is built package-wide because a promoted node-attached handler, and the
-// reactivity splices inside it, reference nodes created in a sibling Func.
+// The Model's is built package-wide because a promoted node-attached handler,
+// and the reactivity splices inside it, reference nodes created in a sibling
+// Func. An instance's is its own nodes over the Model's: uniqueNodeIDs holds
+// ids apart per owner, so a page's `ui.text #failed` and an instance's
+// `ui.stack #failed` are two nodes of one name, and one map built the
+// instance's stack as the page's Label.
 //
 // A node whose component is not a fyne primitive is absent, and the translator
 // emits nothing for it. One that *is* a primitive but carries no decodable
 // Spec is an error rather than an absence: skipping it would drop the widget
 // and leave the AppendChild naming it behind — issue #120's shape, a
 // successful build emitting Go that does not compile.
-func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, error) {
+func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, map[*ir.Component]map[string]*fyneSpec, error) {
 	specs := map[string]*fyneSpec{}
 	var firstErr error
-	var walk func([]ir.Stmt)
-	walk = func(stmts []ir.Stmt) {
-		for i, s := range stmts {
-			switch n := s.(type) {
-			case *ir.LocalVar:
-				if call, ok := n.Init.(*ir.Call); ok && call.Func != nil && call.Func.Intrinsic == "CreateNode" && len(call.Args) >= 1 {
-					if lit, ok := call.Args[0].Value.(*ir.Literal); ok && lit.Type == ir.TypString {
-						if err := harvestSpec(specs, n, lit.Value, stmts[i+1:]); err != nil && firstErr == nil {
-							firstErr = err
-						}
-					}
-				}
-			case *ir.If, *ir.For, *ir.Match:
-				for _, b := range ir.TransparentBlocks(n) {
-					walk(*b)
-				}
-			case *ir.NodeInst:
-				walk(n.Children)
-			case *ir.CallStmt, *ir.SlotInst, *ir.Assign, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
-				*ir.Break, *ir.Continue:
-				// No CreateNode call to harvest.
-			default:
-				panic(fmt.Sprintf("fyne.collectNodes: unhandled ir.Stmt %T", n))
-			}
+	harvest := func(into map[string]*fyneSpec, stmts []ir.Stmt) {
+		if err := harvestNodes(into, stmts); err != nil && firstErr == nil {
+			firstErr = err
 		}
 	}
 	for _, fn := range funcs {
-		if fn == nil {
+		if fn == nil || instanceOwnsFunc(pkg, fn) {
 			continue
 		}
-		walk(fn.Block)
+		harvest(specs, fn.Block)
 	}
-	if pkg != nil {
-		for _, comp := range pkg.Components {
-			walk(comp.Stmts)
-			// And its funcs. `funcs` above is what the Model emits, which is
-			// not the same set: a component the build could not inline keeps
-			// its slot renderer on itself, and the widgets that renderer
-			// creates had no spec, so OnCreateNode emitted nothing and the
-			// renderer referenced a variable no statement declared.
-			for _, fn := range comp.Funcs {
-				if fn != nil {
-					walk(fn.Block)
-				}
+	if pkg == nil {
+		return specs, nil, firstErr
+	}
+	own := map[*ir.Component]map[string]*fyneSpec{}
+	for _, comp := range pkg.Components {
+		into := specs
+		if isInstanceComponent(comp) {
+			into = map[string]*fyneSpec{}
+			own[comp] = into
+		}
+		harvest(into, comp.Stmts)
+		// And its funcs. `funcs` above is what the Model emits, which is
+		// not the same set: a component the build could not inline keeps
+		// its slot renderer on itself, and the widgets that renderer
+		// creates had no spec, so OnCreateNode emitted nothing and the
+		// renderer referenced a variable no statement declared.
+		for _, fn := range comp.Funcs {
+			if fn != nil {
+				harvest(into, fn.Block)
 			}
 		}
-		walk(pkg.Body)
 	}
-	return specs, firstErr
+	harvest(specs, pkg.Body)
+	instances := make(map[*ir.Component]map[string]*fyneSpec, len(own))
+	for comp, nodes := range own {
+		merged := maps.Clone(specs)
+		maps.Copy(merged, nodes)
+		instances[comp] = merged
+	}
+	return specs, instances, firstErr
+}
+
+// harvestNodes adds the Spec of each node stmts create to specs.
+func harvestNodes(specs map[string]*fyneSpec, stmts []ir.Stmt) error {
+	var firstErr error
+	for i, s := range stmts {
+		var err error
+		switch n := s.(type) {
+		case *ir.LocalVar:
+			if call, ok := n.Init.(*ir.Call); ok && call.Func != nil && call.Func.Intrinsic == "CreateNode" && len(call.Args) >= 1 {
+				if lit, ok := call.Args[0].Value.(*ir.Literal); ok && lit.Type == ir.TypString {
+					err = harvestSpec(specs, n, lit.Value, stmts[i+1:])
+				}
+			}
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				if e := harvestNodes(specs, *b); e != nil && err == nil {
+					err = e
+				}
+			}
+		case *ir.NodeInst:
+			err = harvestNodes(specs, n.Children)
+		case *ir.CallStmt, *ir.SlotInst, *ir.Assign, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+			*ir.Break, *ir.Continue:
+			// No CreateNode call to harvest.
+		default:
+			panic(fmt.Sprintf("fyne.collectNodes: unhandled ir.Stmt %T", n))
+		}
+		if err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }
 
 // harvestSpec decodes the Spec for one created node. rest is what follows the
