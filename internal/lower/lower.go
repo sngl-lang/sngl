@@ -154,6 +154,8 @@ var passes = []pass{
 	// and all. Before the three always-on passes below, which reach a lambda
 	// body and so still see inside the two closures it leaves.
 	passAsyncOffload,
+	// After AsyncOffload, which starts the work whose writes it posts.
+	passOffLoopWrites,
 	passIndexedIter,
 	passForElse,
 	passRenderCatch,

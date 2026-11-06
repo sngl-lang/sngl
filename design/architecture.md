@@ -108,8 +108,14 @@ target with no way to say a field is meant for one.
   (`golang.OffLoopSnapshots`, `emitSnapshotMethods`). Only a literal written
   there: a named function or a func value handed instead runs on the shared
   state (#273), and so does a func value kept in state that such work calls
-  (#274). What such work writes reaches nothing the program shows; it
-  reaches the program by **posting back**: `async.do` is a closure sent on
+  (#274). What such work writes of the snapshot reaches nothing the program
+  shows, so each write of the program's state it makes in place -- in its
+  literal, or in a function literal it calls there, as a query's fetch is
+  once spliced -- is posted back with what lowering put after it
+  (`passOffLoopWrites`): a fetch's `mon = "b"` wrote the copy and nothing
+  rekeyed, and fyne and gtk4 wrote the Model off the thread that draws it
+  (`cmd/sngl/testdata/fetch_writes_the_page_runs.txt`). Work reaches the
+  program by **posting back**: `async.do` is a closure sent on
   `__snglPosts`, which Init and every Update after one listen on with a
   `tea.Cmd` and Update runs as a `__snglPostMsg` (`bubbletea/post.go`). The
   closure carries the Model it writes: inside an off-loop literal that is the

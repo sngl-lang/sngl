@@ -1,11 +1,13 @@
 Work a click hands to async.start runs off bubbletea's event loop, which owns
 the Model's state, so the literal closes over a snapshot of the Model taken
 where it is made: `m := m.snapshot()` ahead of the literal, and a snapshot
-method copying each list, map and struct holding one deeply. A closure kept in
-state and called inside a later Update stays on the shared state.
-codegen/platform/bubbletea/async_run_test.go runs it under -race.
+method copying each list, map and struct holding one deeply. What the work
+writes of the program's state is posted back to the Model it was made from
+(passOffLoopWrites), since a write of the snapshot reaches nothing shown. A
+closure kept in state and called inside a later Update stays on the shared
+state. codegen/platform/bubbletea/async_run_test.go runs it under -race.
 
-deny out/go/bubbletea/model.go `go func\(\) \{` -- the work closes over a snapshot, not the state the loop owns
+deny out/go/bubbletea/model.go `go func\(\) \{\s+if` -- the work closes over a snapshot, not the state the loop owns
 -- app.sngl --
 import async "sngl:async"
 import ui "sngl:ui"
@@ -59,6 +61,7 @@ import (
 	"maps"
 	"os"
 	"slices"
+	"time"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -442,8 +445,92 @@ func SetVisible__inst0Cmd(v bool) tea.Cmd {
 	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
+// __snglPosts holds the closures work off the event loop posted back to
+// it (async.do), each carrying the Model it writes.
+var __snglPosts = make(chan func(), 64)
+
+// __snglPost hands f to the event loop.
+func __snglPost(f func()) { __snglPosts <- f }
+
+// __snglPostMsg is a posted closure arriving at Update.
+type __snglPostMsg func()
+
+// __snglAwaitPost waits for the next posted closure.
+func __snglAwaitPost() tea.Msg { return __snglPostMsg(<-__snglPosts) }
+
+// __snglDrainPosts runs the closures already posted, as many as were waiting
+// when it began, so the answers that arrive together are drawn once.
+func __snglDrainPosts() {
+	for range len(__snglPosts) {
+		select {
+		case f := <-__snglPosts:
+			f()
+		default:
+			return
+		}
+	}
+}
+
+// __snglRunPosts runs what was posted within d, for a test, which
+// owns the Model as Update does.
+func __snglRunPosts(d time.Duration) {
+	select {
+	case f := <-__snglPosts:
+		f()
+	case <-time.After(d):
+	}
+}
+
+// __snglSettle runs, for a waiting test, what the Model it holds asks of
+// the event loop no program runs under a test.
+var __snglSettle = func() {}
+
+// __snglSettleModel is Update after whatever the test did, whose commands --
+// each schedule's tick, armed after every Update -- run off the test's
+// goroutine, each message they answer posted back to be delivered on it.
+func (m *Model) __snglSettleModel() {
+	__snglLive = m
+	m.__snglDeliver(struct{}{})
+}
+
+// __snglLive is the Model the running test settles. A message answering a
+// command another Model's Update returned -- a test that has ended, its tick
+// still on the way -- is dropped rather than delivered to it, so it neither
+// runs that test's handlers during this one nor arms its tick again.
+var __snglLive *Model
+
+// __snglDeliver is Update and the draw after it, as the program's loop runs
+// them: a picture a waiting test's view asks for is fetched while it waits.
+func (m *Model) __snglDeliver(msg tea.Msg) {
+	nm, cmd := m.Update(msg)
+	*m = nm.(Model)
+	_ = m.View()
+	__snglRunCmd(m, cmd)
+}
+
+func __snglRunCmd(m *Model, cmd tea.Cmd) {
+	if cmd == nil {
+		return
+	}
+	go func() {
+		msg := cmd()
+		if batch, ok := msg.(tea.BatchMsg); ok {
+			for _, c := range batch {
+				__snglRunCmd(m, c)
+			}
+			return
+		}
+		if msg != nil {
+			__snglPost(func() {
+				if __snglLive == m {
+					m.__snglDeliver(msg)
+				}
+			})
+		}
+	}()
+}
 func (m Model) Init() tea.Cmd {
-	return nil
+	return __snglAwaitPost
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -461,6 +548,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetLater(msg.value)
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
+	case __snglPostMsg:
+		msg()
+		__snglDrainPosts()
+		cmds = append(cmds, __snglAwaitPost)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -485,11 +576,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
+			var __async_read0 int = m.n
+			_ = __async_read0
 			go func() func() {
+				__live := m
 				m := m.snapshot()
+				_ = m
 				return func() {
-					if ((m.n + len(m.rows[0].Tags)) + len(m.counts)) < 0 {
-						m.n = 0
+					if ((__async_read0 + len(m.rows[0].Tags)) + len(m.counts)) < 0 {
+						var __offw0 int = 0
+						__snglPost(func() {
+							m := __live
+							_ = m
+							m.n = __offw0
+						})
 					}
 				}
 			}()()
@@ -589,4 +689,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:c3cd66b35d41a7d172532f00af1ed1ec
+pass sha256:8989a72492179edfdf4e6bca712e30f4

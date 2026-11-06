@@ -7,7 +7,8 @@ import (
 // passUnreadLocals removes a local nothing reads, for a target that does not
 // claim `unreadLocals`: Go refuses to declare one. A program may bind a value
 // only for what computing it does, `var r = fetch(k)`, so a local bound to a
-// call of a declared function becomes the call, and one bound to a value
+// call of a declared function, or of an intrinsic that waits -- a request --
+// becomes the call, and one bound to a value
 // whose evaluation changes nothing goes. Any other is left as written.
 //
 // Before ValueCopy, which wraps an initializer in the copy a store makes and
@@ -29,7 +30,9 @@ func lowerUnreadLocals(pkg *ir.Package, _ Features, _ Options) error {
 			}
 			switch call, isCall := lv.Init.(*ir.Call); {
 			case ir.Reevaluable(lv.Init):
-			case isCall && call.Func != nil && call.Func.Intrinsic == "":
+			// An intrinsic may be an operator no host writes as a
+			// statement, but not one that waits: a request is a call.
+			case isCall && call.Func != nil && (call.Func.Intrinsic == "" || call.Func.IsAsync):
 				out = append(out, &ir.CallStmt{Call: call})
 			default:
 				out = append(out, s)

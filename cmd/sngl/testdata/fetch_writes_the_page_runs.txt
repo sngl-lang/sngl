@@ -1,0 +1,123 @@
+# A write the waiting part of a fetch makes lands on the page, and rekeys
+# what the page keys on it, on every target. The fetch runs on a goroutine on
+# the Go targets: bubbletea's reads a snapshot of the Model, so `mon = "b"`
+# wrote the copy, which nothing showed and nothing rekeyed, and fyne and gtk4
+# wrote the Model off the thread that draws it. Each such write is now posted
+# back to the loop (passOffLoopWrites). The request is bound to a local
+# nothing reads, which Go refuses to declare until passUnreadLocals makes it
+# the call -- a request's intrinsic among the calls it does.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func answer(r http.Request) option[http.Response] {
+    return http.Response{status=200, headers={}, body=r.url}
+}
+
+component page ui.node {
+    var mon = "a"
+    var got option[string] = null
+    var shape option[string] = null
+
+    async.query(
+        on = "k",
+        fetch = func(k string, life async.Lifetime) async.Result[string] {
+            var r = http.get("http://dex/{k}")
+            mon = "b"
+            return {ok=k}
+        },
+        :value = got,
+    )
+    async.query(
+        on = mon,
+        fetch = func(m string, life async.Lifetime) async.Result[string] {
+            return {ok="form of {m}"}
+        },
+        :value = shape,
+    )
+    ui.text(mon)
+}
+
+// A write the waiting part of a fetch makes lands on the page, and moves
+// what the page keys on it.
+func testAWaitingWriteLands(t test.Test, c page) {
+    t.setContext(http.answer, answer)
+    t.wait(func() => c.got != null, 2000)
+    t.wait(func() => c.shape == "form of b", 2000)
+    t.assert(c.mon == "b")
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:ea42b521e6347d9ab2af5d90f188f3d2
+{
+  "results": [
+    {
+      "Desc": "AWaitingWriteLands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:a5a3df64865c9cb438a2a437ed7263da
+{
+  "results": [
+    {
+      "Desc": "AWaitingWriteLands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:02a5473ba6795fd739d97b1e116c0202
+{
+  "results": [
+    {
+      "Desc": "AWaitingWriteLands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:56136c187b1d23989cc8067f99870211
+{
+  "results": [
+    {
+      "Desc": "AWaitingWriteLands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:67925578a4c601e6da7594a753130455
+{
+  "results": [
+    {
+      "Desc": "AWaitingWriteLands",
+      "Passed": true
+    }
+  ]
+}

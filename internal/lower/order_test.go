@@ -231,7 +231,7 @@ var soleGate = map[string][]string{
 	"AsyncReactive": {"NoAsyncReactive"},
 	"Computed":      {"NoComputed"},
 	"ListLambdas":   {"NoListLambdas"},
-	"AsyncCalls":    {"NoAsyncCalls"},
+	"AsyncCalls":    {"NoAsyncCalls", "OffLoopWrites"},
 
 	// Both context flags request the one pass: a target asking for either a
 	// component receiver or a threaded stdlib param needs the context rewrite,
