@@ -25,18 +25,6 @@ language is a locale. What is left:
 
 ## Bugs
 
-3. **html crashes on a species with no habitat.** Inlining `lookup` hoisted
-   `wanted("habitat", state.about__inst0.habitat.name)` out of its
-   `if about.habitat != null`. Every recorded species has a habitat.
-4. **html keeps a reused card's old artwork**: an update writes
-   `setAttribute("url")` on the `<img>`, and only creation sets `.src`
-   (unconfirmed).
-5. **Test code ships.** `tackleAndGrowl` and `stageOf` from
-   `pokedex_test.sngl` are in every target's output, and bubbletea's ten
-   "for tests" click methods (about 200 lines each) have no callers. Likely a
-   function reached only from a lambda in a test survives DCE.
-6. **Race on gtk4 and fyne**: fetch goroutines read `__prop___ctx_server`
-   while renders rewrite it.
 7. **A two-way prop read after its write is stale in a run-time instance.**
    `value = x; change(value)` in an override hands `change` the old value
    where the component is built at run time (android's `Select__string`):

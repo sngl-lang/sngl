@@ -556,17 +556,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// t__r0Click activates the #t__r0 widget the way a keypress does; for tests.
-func (m *Model) t__r0Click() {
-	prev := m.__focusID
-	m.__focusID = 0
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var parts []string
@@ -963,7 +952,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:db750ecc888123f295e89038153896be
+pass sha256:1b42ece3cdd5dcee246d1c21cc6fa057
 -- run/kotlin/android --
 pass sha256:64a70b7088ce42c68ec2eccec3916bba
 -- run/none/html --

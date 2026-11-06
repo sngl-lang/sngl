@@ -757,83 +757,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// armClick activates the #arm widget the way a keypress does; for tests.
-func (m *Model) armClick() {
-	prev := m.__focusID
-	m.__focusID = 0
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
-// matchClick activates the #match widget the way a keypress does; for tests.
-func (m *Model) matchClick() {
-	prev := m.__focusID
-	m.__focusID = 1
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
-// andClick activates the #and widget the way a keypress does; for tests.
-func (m *Model) andClick() {
-	prev := m.__focusID
-	m.__focusID = 2
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
-// orClick activates the #or widget the way a keypress does; for tests.
-func (m *Model) orClick() {
-	prev := m.__focusID
-	m.__focusID = 3
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
-// headClick activates the #head widget the way a keypress does; for tests.
-func (m *Model) headClick() {
-	prev := m.__focusID
-	m.__focusID = 4
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
-// walkClick activates the #walk widget the way a keypress does; for tests.
-func (m *Model) walkClick() {
-	prev := m.__focusID
-	m.__focusID = 5
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
-// laterClick activates the #later widget the way a keypress does; for tests.
-func (m *Model) laterClick() {
-	prev := m.__focusID
-	m.__focusID = 6
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
@@ -1110,6 +1033,6 @@ fun MainScreen() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:d52ba72b307b165854f1a38b6c676147
+pass sha256:f6e9741f794a9e1f62b4149bbf0098b1
 -- run/kotlin/android --
 pass sha256:b2fd6b5bc3f8464653283d80693a2c7e

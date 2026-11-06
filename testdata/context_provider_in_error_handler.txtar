@@ -497,28 +497,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// failClick activates the #fail widget the way a keypress does; for tests.
-func (m *Model) failClick() {
-	prev := m.__focusID
-	m.__focusID = 0
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
-// go__r0Click activates the #go__r0 widget the way a keypress does; for tests.
-func (m *Model) go__r0Click() {
-	prev := m.__focusID
-	m.__focusID = 1
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
@@ -746,7 +724,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a2815bedd24a4c8baa7b7c5345781252
+pass sha256:e2b6ccda3deebd3f5c10a06e97411d09
 -- run/go/html --
 pass sha256:e8a3ccae03b6c4b494f6c073e5efa6ca
 -- run/kotlin/android --

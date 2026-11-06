@@ -469,17 +469,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// boxChange activates the #box widget the way a keypress does; for tests.
-func (m *Model) boxChange() {
-	prev := m.__focusID
-	m.__focusID = 0
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
@@ -521,4 +510,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:6cbf60f020090bf583bfc84a8be7db57
+pass sha256:875a7d6c5f6b1160d6947324fd5f87f3

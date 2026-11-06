@@ -599,28 +599,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// growClick activates the #grow widget the way a keypress does; for tests.
-func (m *Model) growClick() {
-	prev := m.__focusID
-	m.__focusID = 0
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
-// oddClick activates the #odd widget the way a keypress does; for tests.
-func (m *Model) oddClick() {
-	prev := m.__focusID
-	m.__focusID = 1
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
@@ -1748,7 +1726,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f689476c28553ac28080b3a988e2ed18
+pass sha256:fa04407671de6833fb4e47b71bdcdb5b
 -- run/go/fyne --
 pass sha256:fc8eec43fa93d75dd83dfa2889b3ba22
 -- run/go/gtk4 --

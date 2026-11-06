@@ -640,45 +640,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// bClick activates the last copy of #b the way a keypress does; for tests.
-func (m *Model) bClick() {
-	copies := func() []struct {
-		key string
-		pos int
-	} {
-		var __at []struct {
-			key string
-			pos int
-		}
-		__focusPos0 := 0
-		for _, it := range __identified0(m.items) {
-			_ = it
-			__at = append(__at, struct {
-				key string
-				pos int
-			}{"", __focusPos0})
-			__focusPos0++
-		}
-		return __at
-	}()
-	pos := -1
-	if len(copies) > 0 {
-		pos = copies[len(copies)-1].pos
-	}
-	if pos < 0 {
-		return
-	}
-	prev, prevAt := m.__focusID, m.__focusLoop0_cursor
-	m.__focusID, m.__focusLoop0_cursor = 0, pos
-	m.__pressing = true
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__pressing = false
-	m.__focusID, m.__focusLoop0_cursor = prev, prevAt
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var parts []string
@@ -881,6 +842,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4bd85edf543c3f3ad825179299b20c99
+pass sha256:f8801019d357595ddc5cfb9c517dc447
 -- run/none/html --
 pass sha256:79087e5841dfd9ff8dc377c66a4a9b01

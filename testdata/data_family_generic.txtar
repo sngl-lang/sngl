@@ -536,51 +536,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// chClick activates the last copy of #ch the way a keypress does; for tests.
-func (m *Model) chClick() {
-	copies := func() []struct {
-		key string
-		pos int
-	} {
-		var __at []struct {
-			key string
-			pos int
-		}
-		__focusPos0 := 0
-		for _, o := range slices.Concat(func() []Pick__record__Method {
-			__out := make([]Pick__record__Method, len([]string{"levelUp", "machine", "egg"}))
-			for __i, __item := range []string{"levelUp", "machine", "egg"} {
-				__out[__i] = func(x string) Pick__record__Method { return Pick__record__Method{Label: x, Value: x} }(__item)
-			}
-			return __out
-		}()) {
-			_ = o
-			__at = append(__at, struct {
-				key string
-				pos int
-			}{"", __focusPos0})
-			__focusPos0++
-		}
-		return __at
-	}()
-	pos := -1
-	if len(copies) > 0 {
-		pos = copies[len(copies)-1].pos
-	}
-	if pos < 0 {
-		return
-	}
-	prev, prevAt := m.__focusID, m.__focusLoop0_cursor
-	m.__focusID, m.__focusLoop0_cursor = 0, pos
-	m.__pressing = true
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__pressing = false
-	m.__focusID, m.__focusLoop0_cursor = prev, prevAt
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
@@ -738,7 +693,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f7e0c9259167a716ff87f1fdcd8df145
+pass sha256:33ec8142c25bc32ef7ba1c0c09ed9fdf
 -- run/kotlin/android --
 pass sha256:629a932a4a1dd4cb3aeb3a4d7a089e89
 -- run/none/html --

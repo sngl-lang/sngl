@@ -245,6 +245,9 @@ func emitSnapshotMethods(info *irAnalysis) (string, []string) {
 
 type irAnalysis struct {
 	*codegen.CommonAnalysis
+	// tests is whether the package holds a test, whose invokers are its own:
+	// a build to ship holds none, and writes none of them.
+	tests     bool
 	binds     []irBind
 	externs   []irExtern
 	computeds []irComputed
@@ -317,6 +320,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
 		gc:             gc,
+		tests:          slices.ContainsFunc(ctx.Pkg.Funcs, func(f *ir.Func) bool { return f != nil && f.IsTest }),
 	}
 	pkg := ctx.Pkg
 	screen, err := codegen.SoleScreen(viewStmts(ctx), "bubbletea:Screen", "bubbletea", screenPos)
@@ -808,7 +812,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	emitIRUpdate(&b, info, ctx, gc, cfg, func(inv btEventInvoker) {
 		eventInvokers = append(eventInvokers, inv)
 	})
-	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerArgs(ctx.Pkg), usesPosts(ctx.Pkg), info.settles)
+	// A test's own, so a package with no test to call them, as a build to
+	// ship has none, emits none: the Pokédex shipped twenty-six of them,
+	// some two hundred lines each.
+	if info.tests {
+		emitBtEventInvokers(&b, eventInvokers, codegen.TriggerArgs(ctx.Pkg), usesPosts(ctx.Pkg), info.settles)
+	}
 	emitBtDirectInvokers(&b, viewStmts(ctx), eventInvokers, info, gc, codegen.TriggeredEvents(ctx.Pkg))
 	presentIDs, keyedPresent := codegen.NullTestedRefs(ctx.Pkg)
 	emitPresenceChecks(&b, ctx.Pkg, viewStmts(ctx), presentIDs, gc)
@@ -1711,7 +1720,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			{"input", get != "" && !hasInput && val.goType == "string" && !choosesOnMove(w)},
 			{"change", get != "" && !hasChange && commits(w)},
 		} {
-			if !ev.want || !named {
+			if !ev.want || !named || !info.tests {
 				continue
 			}
 			fmt.Fprintf(b, "// %s%s puts v in the #%s widget; for tests.\n", w.node.ID, golang.ExportName(ev.name), w.node.ID)
@@ -1747,7 +1756,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
 			drawAfterUpdate(b)
 			b.WriteString("}\n\n")
-			if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") {
+			if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") || !info.tests {
 				continue
 			}
 			fmt.Fprintf(b, "// %s%s types v into the #%s widget and runs its @%s; for tests.\n", w.node.ID, golang.ExportName(ev.name), w.node.ID, ev.name)

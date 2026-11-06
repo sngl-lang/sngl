@@ -421,17 +421,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// incClick activates the #inc widget the way a keypress does; for tests.
-func (m *Model) incClick() {
-	prev := m.__focusID
-	m.__focusID = 0
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
@@ -913,7 +902,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:fb6f42ca2fae59a4154554c63868994a
+pass sha256:1d6da3b71ac5af6088fa51e3add4d441
 -- run/go/fyne --
 pass sha256:24fc0dcbaeefe885c7f15047a927d30b
 -- run/go/gtk4 --

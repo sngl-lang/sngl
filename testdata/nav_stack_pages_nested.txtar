@@ -670,85 +670,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// pickClick activates the last copy of #pick the way a keypress does; for tests.
-func (m *Model) pickClick() {
-	copies := func() []struct {
-		key string
-		pos int
-	} {
-		var __at []struct {
-			key string
-			pos int
-		}
-		__focusPos0 := 0
-		for __copy, r := range m.rows {
-			_ = __copy
-			_ = r
-			for __copy1, c := range __identified0(r.Cols) {
-				_ = __copy1
-				_ = c
-				if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-					var __lt17 string
-					_ = __lt17
-					if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-						__lt17 = "showing"
-					} else {
-						__lt17 = "hidden"
-					}
-					__at = append(__at, struct {
-						key string
-						pos int
-					}{"", __focusPos0})
-					__focusPos0++
-				}
-			}
-		}
-		return __at
-	}()
-	pos := -1
-	if len(copies) > 0 {
-		pos = copies[len(copies)-1].pos
-	}
-	if pos < 0 {
-		return
-	}
-	prev, prevAt := m.__focusID, m.__focusLoop0_cursor
-	m.__focusID, m.__focusLoop0_cursor = 0, pos
-	m.__pressing = true
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__pressing = false
-	m.__focusID, m.__focusLoop0_cursor = prev, prevAt
-	_ = m.View()
-	_ = cmd
-}
-
-// toAboutClick activates the #toAbout widget the way a keypress does; for tests.
-func (m *Model) toAboutClick() {
-	prev := m.__focusID
-	m.__focusID = 1
-	m.__pressing = true
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__pressing = false
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
-// backClick activates the #back widget the way a keypress does; for tests.
-func (m *Model) backClick() {
-	prev := m.__focusID
-	m.__focusID = 2
-	m.__pressing = true
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__pressing = false
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
@@ -2139,7 +2060,7 @@ fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
     return __out
 }
 -- run/go/bubbletea --
-pass sha256:57a68b5d27fc1feec38c0d94d9593abb
+pass sha256:f4400b6d3d24997a1c3e3c8a96a30702
 -- run/go/fyne --
 pass sha256:46b9053b2fd11442519faf135c1966bc
 -- run/go/gtk4 --

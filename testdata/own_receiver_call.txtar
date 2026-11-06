@@ -428,17 +428,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// bClick activates the #b widget the way a keypress does; for tests.
-func (m *Model) bClick() {
-	prev := m.__focusID
-	m.__focusID = 0
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
@@ -784,7 +773,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9399e73e3fc7782f17fc65ba2e5c628b
+pass sha256:5c11d76080965c1a1ec8a5c8a362ccc1
 -- run/go/fyne --
 pass sha256:b802b8dc0daebb77c27d59bc64c083cb
 -- run/go/gtk4 --

@@ -460,39 +460,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// boundChange activates the #bound widget the way a keypress does; for tests.
-func (m *Model) boundChange() {
-	prev := m.__focusID
-	m.__focusID = 0
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
-// freeChange activates the #free widget the way a keypress does; for tests.
-func (m *Model) freeChange() {
-	prev := m.__focusID
-	m.__focusID = 1
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
-// flipClick activates the #flip widget the way a keypress does; for tests.
-func (m *Model) flipClick() {
-	prev := m.__focusID
-	m.__focusID = 2
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
@@ -1167,7 +1134,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5a218ffa80bce9d564e7a9ee37449265
+pass sha256:0cd648126902ef6dcc4b5f0a0251dc21
 -- run/go/fyne --
 pass sha256:5bb07b8ea50d2deff00180019545355a
 -- run/go/gtk4 --

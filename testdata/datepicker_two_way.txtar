@@ -468,13 +468,6 @@ func (m *Model) __widget0_change(__v *time.Time) {
 	_ = m.View()
 }
 
-// dChange types v into the #d widget and runs its @change; for tests.
-func (m *Model) dChange(v *time.Time) {
-	m.widget0.SetDate(v)
-	m.picked__inst0 = m.widget0.Date()
-	m.__widget0_change(v)
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
@@ -1177,7 +1170,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ab508f1cddc30035897ba38884f4c133
+pass sha256:1885fd0693bdb348aa39aca04b86a844
 -- run/go/fyne --
 pass sha256:7822854c3fe655308a27c97bc8cdc2f8
 -- run/go/gtk4 --

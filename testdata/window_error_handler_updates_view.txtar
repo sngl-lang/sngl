@@ -469,28 +469,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// callClick activates the #call widget the way a keypress does; for tests.
-func (m *Model) callClick() {
-	prev := m.__focusID
-	m.__focusID = 0
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
-// directClick activates the #direct widget the way a keypress does; for tests.
-func (m *Model) directClick() {
-	prev := m.__focusID
-	m.__focusID = 1
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
@@ -1037,7 +1015,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1bc3be35fd46f9487404b013443955ed
+pass sha256:bd804076e741ecbfb660090713b923e7
 -- run/go/fyne --
 pass sha256:1898a8e01282344aa884703489028594
 -- run/go/gtk4 --

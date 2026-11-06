@@ -509,28 +509,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// tickClick activates the #tick widget the way a keypress does; for tests.
-func (m *Model) tickClick() {
-	prev := m.__focusID
-	m.__focusID = 0
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
-// flipClick activates the #flip widget the way a keypress does; for tests.
-func (m *Model) flipClick() {
-	prev := m.__focusID
-	m.__focusID = 1
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
@@ -1912,7 +1890,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:62ebb37c99d27f04759e536330d69595
+pass sha256:f090e48f14b432acb43a63abf9f48571
 -- run/go/fyne --
 pass sha256:52d8e74cc3fd23e137cd7bc53013bd89
 -- run/go/gtk4 --

@@ -658,28 +658,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// allClick activates the #all widget the way a keypress does; for tests.
-func (m *Model) allClick() {
-	prev := m.__focusID
-	m.__focusID = 0
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
-// all__1Click activates the #all__1 widget the way a keypress does; for tests.
-func (m *Model) all__1Click() {
-	prev := m.__focusID
-	m.__focusID = 1
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
@@ -1594,7 +1572,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4c46d3d919824d9a280ac69b6432adca
+pass sha256:8e01033a758be73766be72275fa141f4
 -- run/go/fyne --
 pass sha256:82433ed73fec82617bd6c096b7788861
 -- run/go/gtk4 --

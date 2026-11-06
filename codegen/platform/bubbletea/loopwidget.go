@@ -285,7 +285,7 @@ func emitLoopWidgetForward(b *strings.Builder, w widgetInfo, info *irAnalysis, g
 // handler, as Update does when the user types. The plain one drives the last
 // copy, and the `At` one, for an id a test indexes, the copy with a key.
 func emitLoopWidgetInvokers(b *strings.Builder, w widgetInfo, info *irAnalysis, gc *golang.GoIRContext) {
-	if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") {
+	if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") || !info.tests {
 		return
 	}
 	val, _, _ := widgetPayloadEvents(w)

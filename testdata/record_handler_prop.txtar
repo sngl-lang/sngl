@@ -535,55 +535,6 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// pickClick activates the last copy of #pick the way a keypress does; for tests.
-func (m *Model) pickClick() {
-	copies := func() []struct {
-		key string
-		pos int
-	} {
-		var __at []struct {
-			key string
-			pos int
-		}
-		__focusPos0 := 0
-		for _, it := range slices.Concat(func() []MenuItem__record {
-			__out := make([]MenuItem__record, len(m.languages))
-			for __i, __item := range m.languages {
-				__out[__i] = func(l string) MenuItem__record {
-					return MenuItem__record{Label: l, Checked: (l == m.language__inst0), Children: []MenuItem__record{}, Select: func() {
-						m.language__inst0 = l
-					}}
-				}(__item)
-			}
-			return __out
-		}()) {
-			_ = it
-			__at = append(__at, struct {
-				key string
-				pos int
-			}{"", __focusPos0})
-			__focusPos0++
-		}
-		return __at
-	}()
-	pos := -1
-	if len(copies) > 0 {
-		pos = copies[len(copies)-1].pos
-	}
-	if pos < 0 {
-		return
-	}
-	prev, prevAt := m.__focusID, m.__focusLoop0_cursor
-	m.__focusID, m.__focusLoop0_cursor = 0, pos
-	m.__pressing = true
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__pressing = false
-	m.__focusID, m.__focusLoop0_cursor = prev, prevAt
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
@@ -1484,7 +1435,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f4225e2fd625b85297b52abf82813e37
+pass sha256:d1485e58f72b1596d77fcaf1f758c880
 -- run/go/fyne --
 pass sha256:356307ab58c67c65161a5582dd0c6798
 -- run/go/gtk4 --
