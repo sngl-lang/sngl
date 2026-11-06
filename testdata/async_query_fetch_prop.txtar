@@ -18,7 +18,7 @@ import ui "sngl:ui"
 #[go.async]
 func sleep(ns int)
 
-func lookup(name string) async.Result[int] {
+func lookup(name string, life async.Lifetime) async.Result[int] {
     sleep(1000)
     return {ok=name.length()}
 }
@@ -53,6 +53,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglasync"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -92,6 +93,10 @@ type Failure struct {
 	Kind    string
 	Message string
 	Code    string
+}
+
+type Lifetime struct {
+	_id int
 }
 
 // Model holds the state for this SNGL UI.
@@ -138,7 +143,7 @@ func __snglDo(f func()) {
 	fyne.Do(f)
 }
 
-func Lookup(name string) Result__int {
+func Lookup(name string, life Lifetime) Result__int {
 	time.Sleep(1000)
 	return Result__int{tag: 0, Ok: utf8.RuneCountInString(name)}
 }
@@ -161,6 +166,10 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
 	}
 	return __out
+}
+
+func LifetimeEnd(life Lifetime) {
+	snglasync.End(life._id)
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -348,7 +357,7 @@ type __query_state1Instance struct {
 	__prop___start_pending bool
 	__prop___start_failure *Failure
 	__prop_on              string
-	__prop_fetch           func(string) Result__int
+	__prop_fetch           func(string, Lifetime) Result__int
 	__prop_load            func(int)
 	value                  *int
 	pending                bool
@@ -356,6 +365,7 @@ type __query_state1Instance struct {
 	attempt__inst0         int
 	refreshes__inst0       int
 	asked__inst0           int
+	life__inst0            Lifetime
 	__effect0_key          __anon_key_n_a1dba7
 	__effect0_live         []__anon_key_n_a1dba7
 	__effect0_desired      []__anon_key_n_a1dba7
@@ -368,7 +378,7 @@ type __query_state1Instance struct {
 	__slot0_at             fyne.CanvasObject
 }
 
-func new__query_state1Instance(__model *Model, __a___start_value *int, __a___start_pending bool, __a___start_failure *Failure, __a_on string, __a_fetch func(string) Result__int, __a_load func(int)) *__query_state1Instance {
+func new__query_state1Instance(__model *Model, __a___start_value *int, __a___start_pending bool, __a___start_failure *Failure, __a_on string, __a_fetch func(string, Lifetime) Result__int, __a_load func(int)) *__query_state1Instance {
 	c := &__query_state1Instance{}
 	c.__model = __model
 	c.__prop___start_value = __a___start_value
@@ -383,6 +393,7 @@ func new__query_state1Instance(__model *Model, __a___start_value *int, __a___sta
 	c.attempt__inst0 = 0
 	c.refreshes__inst0 = 0
 	c.asked__inst0 = -1
+	c.life__inst0 = Lifetime{}
 	c.__effect0_key = __anon_key_n_a1dba7{}
 	c.__effect0_live = []__anon_key_n_a1dba7{}
 	c.__effect0_desired = []__anon_key_n_a1dba7{}
@@ -411,11 +422,14 @@ func (c *__query_state1Instance) __effect0_mount() {
 	}
 	c.asked__inst0 = __effect0_mount_key.N
 	c.pending = true
+	c.life__inst0 = Lifetime{_id: snglasync.Begin()}
 	__async_arg0 := c.__prop_fetch
 	__async_arg1 := __effect0_mount_key.Key
 	_ = __async_arg1
+	__async_arg2 := c.life__inst0
+	_ = __async_arg2
 	go func() {
-		r := __async_arg0(__async_arg1)
+		r := __async_arg0(__async_arg1, __async_arg2)
 		__snglDo(func() {
 			if ((mine != c.attempt__inst0) || (__effect0_mount_key.Key != c.__prop_on)) || (__effect0_mount_key.N != c.refreshes__inst0) {
 				return
@@ -443,6 +457,7 @@ func (c *__query_state1Instance) __effect0_mount() {
 
 func (c *__query_state1Instance) __effect0_unmount() {
 	c.attempt__inst0 += 1
+	LifetimeEnd(c.life__inst0)
 }
 
 func (c *__query_state1Instance) __effect0_down() {
@@ -529,7 +544,7 @@ func (c *__query_state1Instance) SetOn(__v string) {
 	c.__effects0_settle()
 }
 
-func (c *__query_state1Instance) SetFetch(__v func(string) Result__int) {
+func (c *__query_state1Instance) SetFetch(__v func(string, Lifetime) Result__int) {
 	c.__prop_fetch = __v
 	c.__effects0_settle()
 }
@@ -568,6 +583,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/snglasync"
 	"fmt"
 	"time"
 	"unicode/utf8"
@@ -604,6 +620,10 @@ type Failure struct {
 	Code    string
 }
 
+type Lifetime struct {
+	_id int
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	names__inst0   []string
@@ -636,7 +656,7 @@ func New() *Model {
 	return m
 }
 
-func Lookup(name string) Result__int {
+func Lookup(name string, life Lifetime) Result__int {
 	time.Sleep(1000)
 	return Result__int{tag: 0, Ok: utf8.RuneCountInString(name)}
 }
@@ -659,6 +679,10 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
 	}
 	return __out
+}
+
+func LifetimeEnd(life Lifetime) {
+	snglasync.End(life._id)
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -771,7 +795,7 @@ type __query_state1Instance struct {
 	__prop___start_pending bool
 	__prop___start_failure *Failure
 	__prop_on              string
-	__prop_fetch           func(string) Result__int
+	__prop_fetch           func(string, Lifetime) Result__int
 	__prop_load            func(int)
 	value                  *int
 	pending                bool
@@ -779,6 +803,7 @@ type __query_state1Instance struct {
 	attempt__inst0         int
 	refreshes__inst0       int
 	asked__inst0           int
+	life__inst0            Lifetime
 	__effect0_key          __anon_key_n_a1dba7
 	__effect0_live         []__anon_key_n_a1dba7
 	__effect0_desired      []__anon_key_n_a1dba7
@@ -791,7 +816,7 @@ type __query_state1Instance struct {
 	__slot0_at             gtk4rt.Handle
 }
 
-func new__query_state1Instance(__model *Model, __a___start_value *int, __a___start_pending bool, __a___start_failure *Failure, __a_on string, __a_fetch func(string) Result__int, __a_load func(int)) *__query_state1Instance {
+func new__query_state1Instance(__model *Model, __a___start_value *int, __a___start_pending bool, __a___start_failure *Failure, __a_on string, __a_fetch func(string, Lifetime) Result__int, __a_load func(int)) *__query_state1Instance {
 	c := &__query_state1Instance{}
 	c.__model = __model
 	c.__prop___start_value = __a___start_value
@@ -806,6 +831,7 @@ func new__query_state1Instance(__model *Model, __a___start_value *int, __a___sta
 	c.attempt__inst0 = 0
 	c.refreshes__inst0 = 0
 	c.asked__inst0 = -1
+	c.life__inst0 = Lifetime{}
 	c.__effect0_key = __anon_key_n_a1dba7{}
 	c.__effect0_live = []__anon_key_n_a1dba7{}
 	c.__effect0_desired = []__anon_key_n_a1dba7{}
@@ -834,11 +860,14 @@ func (c *__query_state1Instance) __effect0_mount() {
 	}
 	c.asked__inst0 = __effect0_mount_key.N
 	c.pending = true
+	c.life__inst0 = Lifetime{_id: snglasync.Begin()}
 	__async_arg0 := c.__prop_fetch
 	__async_arg1 := __effect0_mount_key.Key
 	_ = __async_arg1
+	__async_arg2 := c.life__inst0
+	_ = __async_arg2
 	go func() {
-		r := __async_arg0(__async_arg1)
+		r := __async_arg0(__async_arg1, __async_arg2)
 		gtk4rt.Post(func() {
 			if ((mine != c.attempt__inst0) || (__effect0_mount_key.Key != c.__prop_on)) || (__effect0_mount_key.N != c.refreshes__inst0) {
 				return
@@ -866,6 +895,7 @@ func (c *__query_state1Instance) __effect0_mount() {
 
 func (c *__query_state1Instance) __effect0_unmount() {
 	c.attempt__inst0 += 1
+	LifetimeEnd(c.life__inst0)
 }
 
 func (c *__query_state1Instance) __effect0_down() {
@@ -952,7 +982,7 @@ func (c *__query_state1Instance) SetOn(__v string) {
 	c.__effects0_settle()
 }
 
-func (c *__query_state1Instance) SetFetch(__v func(string) Result__int) {
+func (c *__query_state1Instance) SetFetch(__v func(string, Lifetime) Result__int) {
 	c.__prop_fetch = __v
 	c.__effects0_settle()
 }
@@ -1060,6 +1090,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:30cea3d55d6bb7d68f8fe556c349a526
+pass sha256:c619a505abee2065bb1ad524f919cdac
 -- run/go/gtk4 --
-pass sha256:2f8869d7527eb4d290d7e02dece2f290
+pass sha256:59e46faa725487900b60203d7b19dd47

@@ -99,6 +99,11 @@ points first, then the bugs and the generated code.
     query's `fetch=func(k) { var r = get(k); mon = "b"; return r }` runs on
     a goroutine against `m.snapshotRef()`, so `mon = "b"` lands on the copy
     and nothing rekeys; every other target writes the page's `mon`.
+14. **A generic component's prop typed by its caller's type parameter goes
+    unchecked.** In `component asked[T any, F any](fetch func(string) async.Result[T])`,
+    `async.query(on=key, fetch=fetch)` is accepted although query's fetch is
+    `func(K, Lifetime) Result[T]`; the same body in a component over `int`
+    is refused.
 
 ## Generated code
 

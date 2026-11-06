@@ -15,7 +15,7 @@ import api "js:./api"
 // How many answers have arrived, read or not.
 var answered = 0
 
-func lookup(name string) async.Result[float] {
+func lookup(name string, life async.Lifetime) async.Result[float] {
     var n = api.lookupLength(name)
     answered += 1
     return {ok=n}
@@ -144,14 +144,16 @@ window.__sngl_boot = () => {
   }
 
   // sngl-entry.js
-  var state = { answered: 0, name__inst0: "slow", length__inst0: null, loading__inst0: false, loads__inst0: 0, shown__inst0: true, loads__inst1: 0, visible__inst0: true, failure__inst0: null, attempt__inst1: 0, refreshes__inst1: 0, asked__inst1: -1, value__inst0: null, pending__inst0: false, failure__inst1: null, attempt__inst0__inst0: 0, refreshes__inst0__inst0: 0, asked__inst0__inst0: 0 };
+  var state = { answered: 0, name__inst0: "slow", length__inst0: null, loading__inst0: false, loads__inst0: 0, shown__inst0: true, loads__inst1: 0, visible__inst0: true, failure__inst0: null, attempt__inst1: 0, refreshes__inst1: 0, asked__inst1: -1, life__inst1: null, value__inst0: null, pending__inst0: false, failure__inst1: null, attempt__inst0__inst0: 0, refreshes__inst0__inst0: 0, asked__inst0__inst0: 0, life__inst0__inst0: null };
+  state.life__inst1 = { _id: 0 };
+  state.life__inst0__inst0 = { _id: 0 };
   state.fastClick = () => $2.click();
   state.againClick = () => $3.click();
   state.hideClick = () => $4.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  async function lookup(name) {
+  async function lookup(name, life) {
     let n = await lookupLength(name);
     state.answered += 1;
     return { tag: "ok", value: n };
@@ -159,6 +161,9 @@ window.__sngl_boot = () => {
   function refresh__inst1() {
     state.refreshes__inst1 += 1;
     __effects0_settle();
+  }
+  function Lifetime_end(life) {
+    _snglEnd(life._id);
   }
   async function __effect0_mount() {
     let __effect0_mount_key = __effect0_key;
@@ -172,7 +177,8 @@ window.__sngl_boot = () => {
     state.asked__inst1 = __effect0_mount_key.n;
     state.loading__inst0 = true;
     $1.textContent = String(state.loading__inst0);
-    let r = await lookup(__effect0_mount_key.key);
+    state.life__inst1 = { _id: _snglBegin() };
+    let r = await lookup(__effect0_mount_key.key, state.life__inst1);
     if (mine !== state.attempt__inst1 || __effect0_mount_key.key !== state.name__inst0 || __effect0_mount_key.n !== state.refreshes__inst1) {
       ;
       return;
@@ -196,6 +202,7 @@ window.__sngl_boot = () => {
   }
   function __effect0_unmount() {
     state.attempt__inst1 += 1;
+    Lifetime_end(state.life__inst1);
   }
   async function __effect2_mount() {
     let __effect2_mount_key = __effect2_key;
@@ -208,7 +215,8 @@ window.__sngl_boot = () => {
     ;
     state.asked__inst0__inst0 = __effect2_mount_key.n;
     state.pending__inst0 = true;
-    let r = await lookup(__effect2_mount_key.key);
+    state.life__inst0__inst0 = { _id: _snglBegin() };
+    let r = await lookup(__effect2_mount_key.key, state.life__inst0__inst0);
     if (mine !== state.attempt__inst0__inst0 || __effect2_mount_key.key !== "slow" || __effect2_mount_key.n !== state.refreshes__inst0__inst0) {
       ;
       return;
@@ -230,6 +238,7 @@ window.__sngl_boot = () => {
   }
   function __effect2_unmount() {
     state.attempt__inst0__inst0 += 1;
+    Lifetime_end(state.life__inst0__inst0);
   }
   function __snglTeardown() {
     __effects0_torn = true;
@@ -237,7 +246,7 @@ window.__sngl_boot = () => {
     __effect0_teardown();
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { lookup, refresh__inst1, __effect0_mount, __effect0_unmount, __effect2_mount, __effect2_unmount, __snglTeardown });
+    Object.assign(window, { lookup, refresh__inst1, Lifetime_end, __effect0_mount, __effect0_unmount, __effect2_mount, __effect2_unmount, __snglTeardown });
   }
   var __effect0_key = { key: "", n: 0 };
   var __effect0_live = [];
@@ -302,6 +311,7 @@ window.__sngl_boot = () => {
         state.attempt__inst0__inst0 = 0;
         state.refreshes__inst0__inst0 = 0;
         state.asked__inst0__inst0 = -1;
+        state.life__inst0__inst0 = { _id: 0 };
       }
       __effect1_desired.push(true);
     }
@@ -373,6 +383,211 @@ window.__sngl_boot = () => {
   function String(v) {
     return "" + v;
   }
+  function _snglCodecFail(m) {
+    const e = new Error(m);
+    e._snglCodec = true;
+    return e;
+  }
+  function _snglDescribe(c) {
+    switch (c.k) {
+      case "b":
+        return "a boolean";
+      case "i":
+        return "an integer";
+      case "f":
+        return "a number";
+      case "str":
+        return "a string";
+      case "d":
+        return "a date";
+      case "dt":
+        return "a datetime";
+      case "o":
+        return _snglDescribe(c.e);
+      case "l":
+        return "an array";
+      case "e":
+        return "one of " + c.w.join(", ");
+    }
+    return "an object";
+  }
+  var _snglDateRE = /^\d{4}-\d{2}-\d{2}$/;
+  var _snglDatetimeRE = /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/;
+  function _snglValidDate(s) {
+    const y = +s.slice(0, 4), m = +s.slice(5, 7), d = +s.slice(8, 10);
+    const t = /* @__PURE__ */ new Date(0);
+    t.setUTCFullYear(y, m - 1, d);
+    return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+  }
+  function _snglValidDatetime(s) {
+    const h = +s.slice(11, 13), mi = +s.slice(14, 16), se = +s.slice(17, 19);
+    return _snglValidDate(s) && h < 24 && mi < 60 && se < 60;
+  }
+  function _snglIsObject(v) {
+    return v !== null && typeof v === "object" && !Array.isArray(v);
+  }
+  function _snglDec(v, c, path) {
+    const want = () => _snglCodecFail(path + ": want " + _snglDescribe(c));
+    switch (c.k) {
+      case "o":
+        return v === null ? null : _snglDec(v, c.e, path);
+      case "b":
+        if (typeof v !== "boolean") throw want();
+        return v;
+      case "i":
+        if (typeof v !== "number" || !Number.isInteger(v)) throw want();
+        return v;
+      case "f":
+        if (typeof v !== "number") throw want();
+        return v;
+      case "str":
+        if (typeof v !== "string") throw want();
+        return v;
+      case "d":
+        if (typeof v !== "string" || !_snglDateRE.test(v) || !_snglValidDate(v)) throw want();
+        return v;
+      case "dt":
+        if (typeof v !== "string" || !_snglDatetimeRE.test(v) || !_snglValidDatetime(v)) throw want();
+        return v;
+      case "e": {
+        const i = typeof v === "string" ? c.w.indexOf(v) : -1;
+        if (i < 0) throw want();
+        return c.n[i];
+      }
+      case "l":
+        if (!Array.isArray(v)) throw want();
+        return v.map((x, i) => _snglDec(x, c.e, path + "[" + i + "]"));
+      case "m": {
+        if (!_snglIsObject(v)) throw want();
+        const out = /* @__PURE__ */ new Map();
+        for (const k of Object.keys(v).sort()) out.set(k, _snglDec(v[k], c.e, path + "." + k));
+        return out;
+      }
+      case "s": {
+        if (!_snglIsObject(v)) throw want();
+        const out = {};
+        for (const [key, wire, fc] of c.f) {
+          const present = Object.prototype.hasOwnProperty.call(v, wire);
+          if (!present && fc.k !== "o") throw _snglCodecFail(path + "." + wire + ": missing");
+          out[key] = _snglDec(present ? v[wire] : null, fc, path + "." + wire);
+        }
+        return out;
+      }
+    }
+    throw want();
+  }
+  function _snglJSONDecode(text, c) {
+    let v;
+    try {
+      v = JSON.parse(text);
+    } catch (e) {
+      return { e: "not JSON" };
+    }
+    try {
+      return { v: _snglDec(v, c, "$") };
+    } catch (e) {
+      if (e && e._snglCodec) return { e: e.message };
+      throw e;
+    }
+  }
+  function _snglEnumWire(c, v) {
+    const i = c.n.indexOf(v);
+    return i < 0 ? v : c.w[i];
+  }
+  function _snglEnc(v, c) {
+    switch (c.k) {
+      case "o":
+        return v === null || v === void 0 ? "null" : _snglEnc(v, c.e);
+      case "b":
+        return v ? "true" : "false";
+      case "i":
+      case "f":
+        return JSON.stringify(v);
+      case "str":
+      case "d":
+      case "dt":
+        return JSON.stringify(v);
+      case "e":
+        return JSON.stringify(_snglEnumWire(c, v));
+      case "l":
+        return "[" + v.map((x) => _snglEnc(x, c.e)).join(",") + "]";
+      case "m":
+        return "{" + [...v.keys()].sort().map((k) => JSON.stringify(k) + ":" + _snglEnc(v.get(k), c.e)).join(",") + "}";
+      case "s": {
+        const parts = [];
+        for (const [key, wire, fc] of c.f) {
+          const x = v[key];
+          if (fc.k === "o" && (x === null || x === void 0)) continue;
+          parts.push(JSON.stringify(wire) + ":" + _snglEnc(x, fc));
+        }
+        return "{" + parts.join(",") + "}";
+      }
+    }
+    return "null";
+  }
+  function _snglJSONEncode(v, c) {
+    return _snglEnc(v, c);
+  }
+  function _snglEscape(s) {
+    return encodeURIComponent(s).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+  }
+  function _snglQueryValues(v, c) {
+    switch (c.k) {
+      case "o":
+        return v === null || v === void 0 ? [] : _snglQueryValues(v, c.e);
+      case "l":
+        return v.flatMap((x) => _snglQueryValues(x, c.e));
+      case "b":
+        return [v ? "true" : "false"];
+      case "i":
+      case "f":
+        return [JSON.stringify(v)];
+      case "e":
+        return [_snglEnumWire(c, v)];
+    }
+    return [String(v)];
+  }
+  function _snglWithQuery(url, q, c) {
+    const parts = [];
+    for (const [key, wire, fc] of c.f) for (const s of _snglQueryValues(q[key], fc)) parts.push(_snglEscape(wire) + "=" + _snglEscape(s));
+    if (parts.length === 0) return url;
+    return url + (url.includes("?") ? "&" : "?") + parts.join("&");
+  }
+  var _snglLives = { n: 0, m: /* @__PURE__ */ new Map() };
+  function _snglBegin() {
+    const id = ++_snglLives.n;
+    _snglLives.m.set(id, new AbortController());
+    return id;
+  }
+  function _snglEnd(id) {
+    const c = _snglLives.m.get(id);
+    if (c) {
+      _snglLives.m.delete(id);
+      c.abort();
+    }
+  }
+  function _snglEnded(id) {
+    return id !== 0 && !_snglLives.m.has(id);
+  }
+  async function _snglHTTPSend(method, url, headers, body, life) {
+    if (_snglEnded(life)) return { f: true, c: true, m: "cancelled" };
+    const init = { method: String(method).toUpperCase(), headers: {} };
+    if (headers) for (const [k, v] of headers) init.headers[k] = v;
+    if (body !== null && body !== void 0) init.body = body;
+    const c = _snglLives.m.get(life);
+    if (c) init.signal = c.signal;
+    let resp, text;
+    try {
+      resp = await fetch(url, init);
+      text = await resp.text();
+    } catch (e) {
+      if (_snglEnded(life)) return { f: true, c: true, m: "cancelled" };
+      return { f: true, t: !!e && e.name === "TimeoutError", m: String(e && e.message || e) };
+    }
+    const h = /* @__PURE__ */ new Map();
+    resp.headers.forEach((v, k) => h.set(k.toLowerCase(), v));
+    return { s: resp.status, h, b: text };
+  }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
@@ -402,9 +617,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:400863a85c519f0605152f0ce5b944c5
+pass sha256:ea3789f613f43a7c7d3f59b0624ba933
 -- testrun/html/none/component_async_query.sngl/dropped/1 --
-sha256:6d81a8baf79ca4b9a3fa2a213ada447c
+sha256:1e7721f2b808f3c97b6487136d506bf7
 {
   "results": [
     {
@@ -414,7 +629,7 @@ sha256:6d81a8baf79ca4b9a3fa2a213ada447c
   ]
 }
 -- testrun/html/none/component_async_query.sngl/latest/1 --
-sha256:b4f48cce0654d9559642d1950321ff37
+sha256:f99454e422361d5ee53b9b3bb4851383
 {
   "results": [
     {

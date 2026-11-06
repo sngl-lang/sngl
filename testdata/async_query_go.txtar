@@ -17,7 +17,7 @@ import go "sngl:language/go"
 #[go.async]
 func sleep(ns int)
 
-func lookup(name string) async.Result[int] {
+func lookup(name string, life async.Lifetime) async.Result[int] {
     sleep(1000)
     if name == "" {
         return {failed={kind=async.FailureKind.request, message="no name", code="400"}}
@@ -42,7 +42,7 @@ component detail node {
 
 component card(name string) node {
     var length option[int] = null
-    async.query(on=name, fetch=func(k string) => lookup(k), :value=length)
+    async.query(on=name, fetch=func(k string, life async.Lifetime) => lookup(k, life), :value=length)
     text(value=length != null ? "{name} {length}" : name)
 }
 
@@ -72,6 +72,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglasync"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -103,6 +104,10 @@ type Failure struct {
 	Code    string
 }
 
+type Lifetime struct {
+	_id int
+}
+
 type __anon_id_elem_c6a818 struct {
 	Id   string
 	Elem string
@@ -124,6 +129,7 @@ type Model struct {
 	attempt__inst0      int
 	refreshes__inst0    int
 	asked__inst0        int
+	life__inst0         Lifetime
 	__effect0_key       __anon_key_n_a1dba7
 	__effect0_live      []__anon_key_n_a1dba7
 	__effect0_desired   []__anon_key_n_a1dba7
@@ -159,6 +165,7 @@ func New() *Model {
 	m.attempt__inst0 = 0
 	m.refreshes__inst0 = 0
 	m.asked__inst0 = -1
+	m.life__inst0 = Lifetime{}
 	m.__effect0_key = __anon_key_n_a1dba7{}
 	m.__effect0_live = []__anon_key_n_a1dba7{}
 	m.__effect0_desired = []__anon_key_n_a1dba7{}
@@ -186,7 +193,7 @@ func __snglDo(f func()) {
 	fyne.Do(f)
 }
 
-func Lookup(name string) Result__int {
+func Lookup(name string, life Lifetime) Result__int {
 	time.Sleep(1000)
 	if name == "" {
 		return Result__int{tag: 1, Failed: Failure{Kind: "request", Message: "no name", Code: "400"}}
@@ -219,6 +226,10 @@ func (m *Model) refresh__inst0() {
 	m.__effects0_settle()
 }
 
+func LifetimeEnd(life Lifetime) {
+	snglasync.End(life._id)
+}
+
 func (m *Model) __effect0_mount() {
 	__effect0_mount_key := m.__effect0_key
 	m.attempt__inst0 += 1
@@ -236,10 +247,13 @@ func (m *Model) __effect0_mount() {
 	m.asked__inst0 = __effect0_mount_key.N
 	m.loading__inst0 = true
 	m.__n3.SetText(fmt.Sprint(m.loading__inst0))
+	m.life__inst0 = Lifetime{_id: snglasync.Begin()}
 	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
+	__async_arg1 := m.life__inst0
+	_ = __async_arg1
 	go func() {
-		r := Lookup(__async_arg0)
+		r := Lookup(__async_arg0, __async_arg1)
 		__snglDo(func() {
 			if ((mine != m.attempt__inst0) || (__effect0_mount_key.Key != m.name__inst0)) || (__effect0_mount_key.N != m.refreshes__inst0) {
 				return
@@ -288,6 +302,7 @@ func (m *Model) __effect0_mount() {
 
 func (m *Model) __effect0_unmount() {
 	m.attempt__inst0 += 1
+	LifetimeEnd(m.life__inst0)
 }
 
 func (m *Model) __effect0_down() {
@@ -523,6 +538,14 @@ func (m *Model) SetAsked__inst0(v int) {
 	m.asked__inst0 = v
 }
 
+func (m *Model) Life__inst0() Lifetime {
+	return m.life__inst0
+}
+
+func (m *Model) SetLife__inst0(v Lifetime) {
+	m.life__inst0 = v
+}
+
 // __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
 // mounts an instance built meanwhile handed over.
 var __snglBuilding int
@@ -613,6 +636,7 @@ type CardInstance struct {
 	attempt__inst1      int
 	refreshes__inst1    int
 	asked__inst1        int
+	life__inst1         Lifetime
 	__effect1_key       __anon_key_n_a1dba7
 	__effect1_live      []__anon_key_n_a1dba7
 	__effect1_desired   []__anon_key_n_a1dba7
@@ -636,6 +660,7 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c.attempt__inst1 = 0
 	c.refreshes__inst1 = 0
 	c.asked__inst1 = -1
+	c.life__inst1 = Lifetime{}
 	c.__effect1_key = __anon_key_n_a1dba7{}
 	c.__effect1_live = []__anon_key_n_a1dba7{}
 	c.__effect1_desired = []__anon_key_n_a1dba7{}
@@ -672,10 +697,13 @@ func (c *CardInstance) __effect1_mount() {
 	}
 	c.asked__inst1 = __effect1_mount_key.N
 	c.pending__inst0 = true
-	__async_arg1 := __effect1_mount_key.Key
-	_ = __async_arg1
+	c.life__inst1 = Lifetime{_id: snglasync.Begin()}
+	__async_arg2 := __effect1_mount_key.Key
+	_ = __async_arg2
+	__async_arg3 := c.life__inst1
+	_ = __async_arg3
 	go func() {
-		r := Lookup(__async_arg1)
+		r := Lookup(__async_arg2, __async_arg3)
 		__snglDo(func() {
 			if ((mine != c.attempt__inst1) || (__effect1_mount_key.Key != c.__prop_name)) || (__effect1_mount_key.N != c.refreshes__inst1) {
 				return
@@ -709,6 +737,7 @@ func (c *CardInstance) __effect1_mount() {
 
 func (c *CardInstance) __effect1_unmount() {
 	c.attempt__inst1 += 1
+	LifetimeEnd(c.life__inst1)
 }
 
 func (c *CardInstance) __effect1_down() {
@@ -819,6 +848,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/snglasync"
 	"fmt"
 	"time"
 	"unicode/utf8"
@@ -845,6 +875,10 @@ type Failure struct {
 	Code    string
 }
 
+type Lifetime struct {
+	_id int
+}
+
 type __anon_id_elem_c6a818 struct {
 	Id   string
 	Elem string
@@ -866,6 +900,7 @@ type Model struct {
 	attempt__inst0      int
 	refreshes__inst0    int
 	asked__inst0        int
+	life__inst0         Lifetime
 	__effect0_key       __anon_key_n_a1dba7
 	__effect0_live      []__anon_key_n_a1dba7
 	__effect0_desired   []__anon_key_n_a1dba7
@@ -901,6 +936,7 @@ func New() *Model {
 	m.attempt__inst0 = 0
 	m.refreshes__inst0 = 0
 	m.asked__inst0 = -1
+	m.life__inst0 = Lifetime{}
 	m.__effect0_key = __anon_key_n_a1dba7{}
 	m.__effect0_live = []__anon_key_n_a1dba7{}
 	m.__effect0_desired = []__anon_key_n_a1dba7{}
@@ -916,7 +952,7 @@ func New() *Model {
 	return m
 }
 
-func Lookup(name string) Result__int {
+func Lookup(name string, life Lifetime) Result__int {
 	time.Sleep(1000)
 	if name == "" {
 		return Result__int{tag: 1, Failed: Failure{Kind: "request", Message: "no name", Code: "400"}}
@@ -949,6 +985,10 @@ func (m *Model) refresh__inst0() {
 	m.__effects0_settle()
 }
 
+func LifetimeEnd(life Lifetime) {
+	snglasync.End(life._id)
+}
+
 func (m *Model) __effect0_mount() {
 	__effect0_mount_key := m.__effect0_key
 	m.attempt__inst0 += 1
@@ -966,10 +1006,13 @@ func (m *Model) __effect0_mount() {
 	m.asked__inst0 = __effect0_mount_key.N
 	m.loading__inst0 = true
 	gtk4rt.LabelSetLabel(m.__n3, fmt.Sprint(m.loading__inst0))
+	m.life__inst0 = Lifetime{_id: snglasync.Begin()}
 	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
+	__async_arg1 := m.life__inst0
+	_ = __async_arg1
 	go func() {
-		r := Lookup(__async_arg0)
+		r := Lookup(__async_arg0, __async_arg1)
 		gtk4rt.Post(func() {
 			if ((mine != m.attempt__inst0) || (__effect0_mount_key.Key != m.name__inst0)) || (__effect0_mount_key.N != m.refreshes__inst0) {
 				return
@@ -1018,6 +1061,7 @@ func (m *Model) __effect0_mount() {
 
 func (m *Model) __effect0_unmount() {
 	m.attempt__inst0 += 1
+	LifetimeEnd(m.life__inst0)
 }
 
 func (m *Model) __effect0_down() {
@@ -1195,6 +1239,7 @@ type CardInstance struct {
 	attempt__inst1      int
 	refreshes__inst1    int
 	asked__inst1        int
+	life__inst1         Lifetime
 	__effect1_key       __anon_key_n_a1dba7
 	__effect1_live      []__anon_key_n_a1dba7
 	__effect1_desired   []__anon_key_n_a1dba7
@@ -1218,6 +1263,7 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c.attempt__inst1 = 0
 	c.refreshes__inst1 = 0
 	c.asked__inst1 = -1
+	c.life__inst1 = Lifetime{}
 	c.__effect1_key = __anon_key_n_a1dba7{}
 	c.__effect1_live = []__anon_key_n_a1dba7{}
 	c.__effect1_desired = []__anon_key_n_a1dba7{}
@@ -1255,10 +1301,13 @@ func (c *CardInstance) __effect1_mount() {
 	}
 	c.asked__inst1 = __effect1_mount_key.N
 	c.pending__inst0 = true
-	__async_arg1 := __effect1_mount_key.Key
-	_ = __async_arg1
+	c.life__inst1 = Lifetime{_id: snglasync.Begin()}
+	__async_arg2 := __effect1_mount_key.Key
+	_ = __async_arg2
+	__async_arg3 := c.life__inst1
+	_ = __async_arg3
 	go func() {
-		r := Lookup(__async_arg1)
+		r := Lookup(__async_arg2, __async_arg3)
 		gtk4rt.Post(func() {
 			if ((mine != c.attempt__inst1) || (__effect1_mount_key.Key != c.__prop_name)) || (__effect1_mount_key.N != c.refreshes__inst1) {
 				return
@@ -1292,6 +1341,7 @@ func (c *CardInstance) __effect1_mount() {
 
 func (c *CardInstance) __effect1_unmount() {
 	c.attempt__inst1 += 1
+	LifetimeEnd(c.life__inst1)
 }
 
 func (c *CardInstance) __effect1_down() {
@@ -1456,6 +1506,14 @@ func (m *Model) SetAsked__inst0(v int) {
 	m.asked__inst0 = v
 }
 
+func (m *Model) Life__inst0() Lifetime {
+	return m.life__inst0
+}
+
+func (m *Model) SetLife__inst0(v Lifetime) {
+	m.life__inst0 = v
+}
+
 // __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
 // mounts an instance built meanwhile handed over.
 var __snglBuilding int
@@ -1546,6 +1604,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/fyne --
-pass sha256:d5a754c2304c8ce249690d7bec4c6562
+pass sha256:18ebd9288ddba92b966f811a93e47b21
 -- run/go/gtk4 --
-pass sha256:1c6948ad799645434f32f88dfe4935fa
+pass sha256:dd46f3474f595b9947f67fc927fcdf45

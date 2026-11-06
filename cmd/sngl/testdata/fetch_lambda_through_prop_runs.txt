@@ -43,7 +43,7 @@ var lengths map[string, int] = {}
 
 // Asks through the fetch its caller hands it.
 component asker(key string, fetch func() async.Result[int]) ui.node {
-    async.query(on=key, fetch=func(k string) => fetch(), @load(got) { lengths[key] = got })
+    async.query(on=key, fetch=func(k string, life async.Lifetime) => fetch(), @load(got) { lengths[key] = got })
 }
 
 component many ui.node {
@@ -63,7 +63,7 @@ ui.window {
     many()
 }
 -- testrun/android/kotlin/app.sngl/many/1 --
-sha256:e0c0acd7f4a62d423b38c477028a8ae0
+sha256:b84b9cc0215947bce9893ccfd2957972
 {
   "results": [
     {
@@ -73,7 +73,7 @@ sha256:e0c0acd7f4a62d423b38c477028a8ae0
   ]
 }
 -- testrun/bubbletea/go/app.sngl/many/1 --
-sha256:56c824923cee7c7f88755c240e468301
+sha256:ded057939e0c12845dbef9dae1a4ff82
 {
   "results": [
     {
@@ -83,7 +83,7 @@ sha256:56c824923cee7c7f88755c240e468301
   ]
 }
 -- testrun/fyne/go/app.sngl/many/1 --
-sha256:eb67d7bb327c8767dcca2a6f7416d755
+sha256:dc77203fa8d263c427ce347bbc5b09e2
 {
   "results": [
     {
@@ -93,7 +93,7 @@ sha256:eb67d7bb327c8767dcca2a6f7416d755
   ]
 }
 -- testrun/gtk4/go/app.sngl/many/1 --
-sha256:b5a132435262f9340d394912cc26a03c
+sha256:42ffb6a3c7710ac9bfabbe4285414655
 {
   "results": [
     {
@@ -103,7 +103,7 @@ sha256:b5a132435262f9340d394912cc26a03c
   ]
 }
 -- testrun/html/none/app.sngl/many/1 --
-sha256:78095b4059e7f23f9bc132f4ccab8269
+sha256:2f8e0a8c8086e40897c7e0dc4ddff23f
 {
   "results": [
     {

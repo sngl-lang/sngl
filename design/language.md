@@ -729,6 +729,20 @@ recomposition, so a request answering between an answer that moved `on` and
 that recomposition still counted as the latest. The Pokédex marked the form
 it had just asked for as the one that failed, and never asked for it
 (`cmd/sngl/testdata/async_query_stale_key_runs.txt`).
+**A request belongs to a `Lifetime`** (`lib/async/async.sngl`), which a
+program begins and ends itself, as JavaScript's `AbortController`: the
+query's mount begins one, hands it to `fetch` beside the key, and its unmount
+ends it, so a fetch that hands it on to `http.get` stops the request for a
+key the query no longer wants, which answers `cancelled` and is dropped as
+any stale answer is. It is a struct holding the number each runtime keeps
+the lifetime by, so a copy is the same lifetime: `pkg/go/snglasync` for Go
+and the interpreter (a `context` per lifetime, which `snglhttp.Send` takes),
+an `AbortController` per number in the JavaScript codec helper, and
+SnglCodec's table of each request's disconnect on android. It is explicit
+rather than threaded: a context binds a function value where it is taken,
+which for `fetch=lookup` is the component body and no mount. The interpreter
+makes a request where it is called, so it has none in flight to stop
+(`cmd/sngl/testdata/async_lifetime_cancels_runs.txt`).
 A mount of another key clears `failure` before it asks, and a `refresh`
 keeps it until its answer: a page showed the last key's failure beside the
 spinner of the next, so the Pokédex kept, per request, the key that failed

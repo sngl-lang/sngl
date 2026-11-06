@@ -19,8 +19,8 @@ struct Response {
 
 // Sends one request to url, with query's fields added to it. Answers a
 // failure only where no response arrived -- `transport` or `timeout`, the
-// host's own message beside it; a 404 is a response, and its status is read
-// off it.
+// host's own message beside it, or `cancelled` where `life` ended first; a
+// 404 is a response, and its status is read off it.
 #[marks.intrinsic("http.send", async)]
 func send[Q anyStruct = struct {}](
     method  Method,
@@ -28,12 +28,13 @@ func send[Q anyStruct = struct {}](
     query   Q = Q{},
     headers map[string, string] = {},
     body    option[string] = null,
+    life    async.Lifetime = async.forever,
 ) async.Result[Response]
 
 // Sends a `get` to url, with query's fields added to it: `send` with the
 // method a read takes.
 #[marks.intrinsic("http.get", async)]
-func get[Q anyStruct = struct {}](url string, query Q = Q{}) async.Result[Response]
+func get[Q anyStruct = struct {}](url string, query Q = Q{}, life async.Lifetime = async.forever) async.Result[Response]
 
 // The response, for a 2xx status; otherwise the failure the status says --
 // 401 and 403 `auth`, any other 4xx `request`, a 5xx `server` and anything

@@ -36,8 +36,8 @@ struct Book {
 }
 
 // A book, asked of the harness's server.
-func fetchBook(title string) async.Result[Book] {
-    match var r = http.get(url="{server}/books/{http.pathEscape(title)}") {
+func fetchBook(title string, life async.Lifetime) async.Result[Book] {
+    match var r = http.get(url="{server}/books/{http.pathEscape(title)}", life=life) {
         failed { return {failed=r} }
         ok {
             match var checked = r.checked() {
@@ -84,7 +84,7 @@ func testEachBookIsAskedForOnce(t test.Test, c page) {
     t.assert(c.count != null && c.count.value == "2")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:40f0725e4cb903b0645fd306cb75edb1
+sha256:4d136e04ab284ca92362136e24c0580c
 {
   "results": [
     {
@@ -94,7 +94,7 @@ sha256:40f0725e4cb903b0645fd306cb75edb1
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:31ee1798c6c891569dba8f9ef2d257ab
+sha256:fc8e2344d5706097c43d0522cb2782e2
 {
   "results": [
     {
@@ -104,7 +104,7 @@ sha256:31ee1798c6c891569dba8f9ef2d257ab
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:3a144541fa2351b85e05ce6e0605a610
+sha256:956e1b89002f89871861de636026d7a5
 {
   "results": [
     {
@@ -114,7 +114,7 @@ sha256:3a144541fa2351b85e05ce6e0605a610
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:2836d4d5a5250747e8ac64fe5bca52e5
+sha256:b34caa682b46c22d5892edfabdb520e6
 {
   "results": [
     {
@@ -124,7 +124,7 @@ sha256:2836d4d5a5250747e8ac64fe5bca52e5
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:94847e79b924892595cc91d51dee39ff
+sha256:bc795e8579282419c6400cba0181cd82
 {
   "results": [
     {

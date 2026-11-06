@@ -15,7 +15,7 @@ import go "sngl:language/go"
 #[go.async]
 func sleep(ns int)
 
-func lookup(name string) async.Result[int] {
+func lookup(name string, life async.Lifetime) async.Result[int] {
     sleep(1000)
     if name == "" {
         return {failed={kind=async.FailureKind.request, message="no name", code="400"}}
@@ -55,6 +55,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglasync"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
@@ -96,6 +97,10 @@ type Failure struct {
 type __anon_key_n_a1dba7 struct {
 	Key string
 	N   int
+}
+
+type Lifetime struct {
+	_id int
 }
 
 type Style struct {
@@ -180,6 +185,7 @@ type modelState struct {
 	attempt__inst0      int
 	refreshes__inst0    int
 	asked__inst0        int
+	life__inst0         Lifetime
 	__effect0_key       __anon_key_n_a1dba7
 	__effect0_live      []__anon_key_n_a1dba7
 	__effect0_desired   []__anon_key_n_a1dba7
@@ -204,6 +210,7 @@ func New() Model {
 	m.attempt__inst0 = 0
 	m.refreshes__inst0 = 0
 	m.asked__inst0 = -1
+	m.life__inst0 = Lifetime{}
 	m.__effect0_key = __anon_key_n_a1dba7{}
 	m.__effect0_live = []__anon_key_n_a1dba7{}
 	m.__effect0_desired = []__anon_key_n_a1dba7{}
@@ -222,7 +229,7 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func Lookup(name string) Result__int {
+func Lookup(name string, life Lifetime) Result__int {
 	time.Sleep(1000)
 	if name == "" {
 		return Result__int{tag: 1, Failed: Failure{Kind: "request", Message: "no name", Code: "400"}}
@@ -233,6 +240,10 @@ func Lookup(name string) Result__int {
 func (m *Model) refresh__inst0() {
 	m.refreshes__inst0 += 1
 	m.__effects0_settle()
+}
+
+func LifetimeEnd(life Lifetime) {
+	snglasync.End(life._id)
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -406,14 +417,17 @@ func (m *Model) __effect0_mount() {
 	}
 	m.asked__inst0 = __effect0_mount_key.N
 	m.loading__inst0 = true
+	m.life__inst0 = Lifetime{_id: snglasync.Begin()}
 	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
+	__async_arg1 := m.life__inst0
+	_ = __async_arg1
 	go func() func() {
 		__live := m
 		m := m.snapshotRef()
 		_ = m
 		return func() {
-			r := Lookup(__async_arg0)
+			r := Lookup(__async_arg0, __async_arg1)
 			__snglPost(func() {
 				m := __live
 				_ = m
@@ -443,6 +457,7 @@ func (m *Model) __effect0_mount() {
 
 func (m *Model) __effect0_unmount() {
 	m.attempt__inst0 += 1
+	LifetimeEnd(m.life__inst0)
 }
 
 func (m *Model) __effect0_down() {
@@ -652,6 +667,21 @@ func SetAsked__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setAsked__inst0Msg{value: v} }
 }
 
+func (m Model) Life__inst0() Lifetime {
+	return m.life__inst0
+}
+
+func (m Model) SetLife__inst0(v Lifetime) Model {
+	m.life__inst0 = v
+	return m
+}
+
+type setLife__inst0Msg struct{ value Lifetime }
+
+func SetLife__inst0Cmd(v Lifetime) tea.Cmd {
+	return func() tea.Msg { return setLife__inst0Msg{value: v} }
+}
+
 // __snglPosts holds the closures work off the event loop posted back to
 // it (async.do), each carrying the Model it writes.
 var __snglPosts = make(chan func(), 64)
@@ -761,6 +791,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetRefreshes__inst0(msg.value)
 	case setAsked__inst0Msg:
 		m = m.SetAsked__inst0(msg.value)
+	case setLife__inst0Msg:
+		m = m.SetLife__inst0(msg.value)
 	case __snglPostMsg:
 		msg()
 		__snglDrainPosts()
@@ -899,4 +931,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:f17a91d6376b7306cdd6369268e285aa
+pass sha256:e1d8592699b70305ec29581a275f1e27

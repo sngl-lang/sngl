@@ -2073,6 +2073,9 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 			if result, handled, err := env.runClockIntrinsic(call.Func, args); handled {
 				return result, err
 			}
+			if result, handled, err := runLifetimeIntrinsic(call.Func, args); handled {
+				return result, err
+			}
 			if _, ok := intrinsics[call.Func.Intrinsic]; ok {
 				result, _, err := runIntrinsic(call.Func.Intrinsic, args)
 				return result, err
@@ -2185,6 +2188,9 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	}
 
 	if result, handled, err := env.runClockIntrinsic(call.Func, evalArgs); handled {
+		return result, err
+	}
+	if result, handled, err := runLifetimeIntrinsic(call.Func, evalArgs); handled {
 		return result, err
 	}
 

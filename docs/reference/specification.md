@@ -1021,7 +1021,7 @@ under `lib/` is one package, `lib/<path>` being `sngl:<path>`:
 | `sngl:seq`          | `count`, `range`, `step`: the `iter[int]` sequences a counting loop walks                          |
 | `sngl:family`       | the `crosses` and `eventless` marks, and the `one[T]` slot count                                   |
 | `sngl:math`         | `pi`, `tau`                                                                                        |
-| `sngl:async`        | `start`, `do`                                                                                      |
+| `sngl:async`        | `start`, `do`, `query`, and `Lifetime`: what a request belongs to, ended to stop it                |
 | `sngl:dialog`       | `Alert`, `File`                                                                                    |
 | `sngl:settings`     | `kept`, `load`, `save` and the `store` context: values an app keeps from one run to the next       |
 | `sngl:test`         | `Test`                                                                                             |

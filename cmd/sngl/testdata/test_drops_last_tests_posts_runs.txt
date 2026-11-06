@@ -23,8 +23,8 @@ import seq "sngl:seq"
 import test "sngl:test"
 import ui "sngl:ui"
 
-func lookup(k string) async.Result[string] {
-    match var r = http.get(url="http://127.0.0.1:47819/status/200") {
+func lookup(k string, life async.Lifetime) async.Result[string] {
+    match var r = http.get(url="http://127.0.0.1:47819/status/200", life=life) {
         failed { return {failed=r} }
         ok { return {ok=k} }
     }
@@ -75,7 +75,7 @@ ui.window {
     page()
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:bb23cb620e412be041434fb0783064f1
+sha256:42c811ccb656c309285c0ea47dd595e6
 {
   "results": [
     {

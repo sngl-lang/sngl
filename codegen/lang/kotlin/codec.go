@@ -19,14 +19,24 @@ func init() {
 	codegen.RegisterIntrinsic(langKt, "http.pathEscape", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		return "SnglCodec.escape(" + tr(args[0]) + ")", nil
 	})
+	// A lifetime is the number SnglCodec holds it by.
+	codegen.RegisterIntrinsic(langKt, "async.begin", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		return "SnglCodec.begin()", nil
+	})
+	codegen.RegisterIntrinsic(langKt, "async.end", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		return "SnglCodec.end(" + tr(args[0]) + ")", nil
+	})
+	codegen.RegisterIntrinsic(langKt, "async.ended", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		return "SnglCodec.ended(" + tr(args[0]) + ")", nil
+	})
 }
 
 // UsesCodec reports whether pkg calls a codec intrinsic anywhere, tests
-// included, or pathEscape: what makes android write SnglCodec.
+// included, pathEscape or a lifetime id: what makes android write SnglCodec.
 func UsesCodec(pkg *ir.Package) bool {
 	found := false
 	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if c, ok := n.(*ir.Call); ok && (codegen.IsCodecCall(c) || c.Func != nil && c.Func.Intrinsic == "http.pathEscape") {
+		if c, ok := n.(*ir.Call); ok && (codegen.IsCodecCall(c) || codegen.IsLifetimeCall(c) || c.Func != nil && c.Func.Intrinsic == "http.pathEscape") {
 			found = true
 		}
 		return nil
@@ -68,12 +78,16 @@ func (kc *KtIRContext) codecCall(n *ir.Call) (string, bool) {
 	if n.ArgFor("headers") == nil {
 		headers = "emptyMap()"
 	}
+	life := "0"
+	if id := codegen.LifetimeID(n); id != nil {
+		life = kc.EvalExpr(id)
+	}
 	st, ht, bt := codegen.ResponseFieldTypes(n.Type)
 	msg := codegen.HostValue("__r.message", str)
 	resp := codegen.CodecResponse(n.Type, codegen.HostValue("__r.status", st), codegen.HostValue("__r.headers", ht), codegen.HostValue("__r.body", bt))
-	return fmt.Sprintf("run { val __r = SnglCodec.send(%s, %s, %s, %s); if (__r.failed) (if (__r.timeout) %s else %s) else %s }",
-		method, url, headers, arg("body"),
-		kc.EvalExpr(codegen.ResultFailed(n.Type, "timeout", msg)), kc.EvalExpr(codegen.ResultFailed(n.Type, "transport", msg)),
+	return fmt.Sprintf("run { val __r = SnglCodec.send(%s, %s, %s, %s, %s); if (__r.failed) (if (__r.cancelled) %s else if (__r.timeout) %s else %s) else %s }",
+		method, url, headers, arg("body"), life,
+		kc.EvalExpr(codegen.ResultFailed(n.Type, "cancelled", msg)), kc.EvalExpr(codegen.ResultFailed(n.Type, "timeout", msg)), kc.EvalExpr(codegen.ResultFailed(n.Type, "transport", msg)),
 		kc.EvalExpr(codegen.ResultOK(n.Type, resp))), true
 }
 

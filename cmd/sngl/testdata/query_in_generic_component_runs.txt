@@ -34,8 +34,8 @@ import ui "sngl:ui"
 
 // The length of `name`, asked of the script harness's server, which fails
 // "bad" with a 500.
-func lookup(name string) async.Result[int] {
-    match var r = http.get(url="http://127.0.0.1:47819/status/{name == "bad" ? 500 : 200}") {
+func lookup(name string, life async.Lifetime) async.Result[int] {
+    match var r = http.get(url="http://127.0.0.1:47819/status/{name == "bad" ? 500 : 200}", life=life) {
         failed { return {failed=r} }
         ok {
             if r.status != 200 {
@@ -47,7 +47,7 @@ func lookup(name string) async.Result[int] {
 }
 
 // A query its caller hands the fetch, keeping the answer in `got`.
-component asked[T any, F any](key string, fetch func(string) async.Result[T], :got option[T]) F {
+component asked[T any, F any](key string, fetch func(string, async.Lifetime) async.Result[T], :got option[T]) F {
     async.query(on=key, fetch=fetch, @load(v) { got = v })
 }
 
@@ -73,7 +73,7 @@ struct Store[V any] {
 
 // Asks for `key` once the store has no answer for it, keeping what `keep`
 // makes of the answer.
-component cached[T any, V any, F any](key string, fetch func(string) async.Result[T], keep func(T) V, :store Store[V]) F {
+component cached[T any, V any, F any](key string, fetch func(string, async.Lifetime) async.Result[T], keep func(T) V, :store Store[V]) F {
     if !store.answers.contains(key) {
         async.query(on=key, fetch=fetch, @load(got) { store.answers[key] = keep(got) }, @fail(f) { store.failures[key] = f.message })
     }
@@ -101,7 +101,7 @@ ui.window {
     many()
 }
 -- testrun/android/kotlin/app.sngl/many/1 --
-sha256:f5915f565b037befc12412f30b5b4489
+sha256:abdf35e4ea3d9e3a6cf64fc42f44ba06
 {
   "results": [
     {
@@ -111,7 +111,7 @@ sha256:f5915f565b037befc12412f30b5b4489
   ]
 }
 -- testrun/android/kotlin/app.sngl/one/1 --
-sha256:a82c20eb3edb330b2f0483171a28bff5
+sha256:dae8695b21ee64f61bf296973d67fcf0
 {
   "results": [
     {
@@ -121,7 +121,7 @@ sha256:a82c20eb3edb330b2f0483171a28bff5
   ]
 }
 -- testrun/bubbletea/go/app.sngl/many/1 --
-sha256:e33c519af632c605023b941e9c954ec8
+sha256:69682aa670f5ba6abcac1f8b70f79c4f
 {
   "results": [
     {
@@ -131,7 +131,7 @@ sha256:e33c519af632c605023b941e9c954ec8
   ]
 }
 -- testrun/bubbletea/go/app.sngl/one/1 --
-sha256:636631ba19c671c7d521f8d194bff741
+sha256:70f016d5a7dba1e2a48804ae7627f32e
 {
   "results": [
     {
@@ -141,7 +141,7 @@ sha256:636631ba19c671c7d521f8d194bff741
   ]
 }
 -- testrun/fyne/go/app.sngl/many/1 --
-sha256:f73fe21fba9c566629165024ac6eeef8
+sha256:6bf719a4f823f1e5f82ee076355f41a6
 {
   "results": [
     {
@@ -151,7 +151,7 @@ sha256:f73fe21fba9c566629165024ac6eeef8
   ]
 }
 -- testrun/fyne/go/app.sngl/one/1 --
-sha256:8bfd3adc27f0f2730905ab0892389b84
+sha256:02386d7078ee4f89ba16ea90feff83af
 {
   "results": [
     {
@@ -161,7 +161,7 @@ sha256:8bfd3adc27f0f2730905ab0892389b84
   ]
 }
 -- testrun/gtk4/go/app.sngl/many/1 --
-sha256:8916a35f7ae9389fe1a54a17b9d09137
+sha256:b77983a7924b55bcdbfa5b85d9ab70ce
 {
   "results": [
     {
@@ -171,7 +171,7 @@ sha256:8916a35f7ae9389fe1a54a17b9d09137
   ]
 }
 -- testrun/gtk4/go/app.sngl/one/1 --
-sha256:3a89d0d565abbd98046138024d13577b
+sha256:30f8184ad2569e30a0dfc19ac1f2d2cb
 {
   "results": [
     {
@@ -181,7 +181,7 @@ sha256:3a89d0d565abbd98046138024d13577b
   ]
 }
 -- testrun/html/none/app.sngl/many/1 --
-sha256:fd93955e4b94b9be9d7c699f6bbc0b27
+sha256:22665d4370e03f99f9d2d627bcdde56e
 {
   "results": [
     {
@@ -191,7 +191,7 @@ sha256:fd93955e4b94b9be9d7c699f6bbc0b27
   ]
 }
 -- testrun/html/none/app.sngl/one/1 --
-sha256:728324d2851d2571af2639569a5ea66e
+sha256:45c0244e1d40e388f82190d90891b962
 {
   "results": [
     {

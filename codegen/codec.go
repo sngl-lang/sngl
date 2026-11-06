@@ -23,6 +23,33 @@ func IsCodecCall(c *ir.Call) bool {
 	return false
 }
 
+// IsLifetimeCall reports whether c calls one of sngl:async's lifetime ids,
+// which each language answers from the runtime its codec calls use.
+func IsLifetimeCall(c *ir.Call) bool {
+	if c == nil || c.Func == nil {
+		return false
+	}
+	switch c.Func.Intrinsic {
+	case "async.begin", "async.end", "async.ended":
+		return true
+	}
+	return false
+}
+
+// LifetimeID is the number of the sngl:async Lifetime an http call is handed,
+// as IR, or nil for a call handed none: a language reads it with its own
+// spelling of the struct's `_id`.
+func LifetimeID(c *ir.Call) ir.Expr {
+	if c == nil || c.Func == nil || (c.Func.Intrinsic != ir.HTTPSendIntrinsic && c.Func.Intrinsic != ir.HTTPGetIntrinsic) {
+		return nil
+	}
+	life := c.ArgFor("life")
+	if life == nil {
+		return nil
+	}
+	return &ir.Select{Operand: life, Field: "_id", Type: ir.TypInt}
+}
+
 // HostValue is a name the emitted code binds itself, as IR: a language
 // renders it as written.
 func HostValue(name string, t *ir.Type) *ir.Ident {

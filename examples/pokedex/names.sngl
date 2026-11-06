@@ -394,11 +394,11 @@ func Cache[V].fail(this ref[Cache[V]], key string, f async.Failure) {
 // answer or why it failed. It renders nothing, so it goes wherever the answer
 // is shown, as many times as it is: once answered, none asks again. `load`
 // hands on the whole answer, for a caller that keeps more of it.
-component cached[T any, V any, F any](key string, fetch func() async.Result[T], keep func(T) V, :cache Cache[V], @load(got T)) F {
+component cached[T any, V any, F any](key string, fetch func(async.Lifetime) async.Result[T], keep func(T) V, :cache Cache[V], @load(got T)) F {
     if cache.wanted(key) {
         async.query(
             on = key,
-            fetch = func(k string) => fetch(),
+            fetch = func(k string, life async.Lifetime) => fetch(life),
             @load(got) {
                 cache.keep(key, keep(got))
                 load(got)
@@ -415,23 +415,23 @@ var names = Cache[list[Named]]{answers={}, failures={}, round=0}
 // `names`.
 component lookup(kind string, slug string) ui.node {
     if kind == `species` {
-        cached(key="{kind}/{slug}", fetch=func() => poke.pokemonSpeciesRetrieveCall(id=slug), keep=func(got poke.PokemonSpeciesDetail) => localNames(got.names), :cache=names)
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.pokemonSpeciesRetrieveCall(id=slug, life=life), keep=func(got poke.PokemonSpeciesDetail) => localNames(got.names), :cache=names)
     } else if kind == `type` {
-        cached(key="{kind}/{slug}", fetch=func() => poke.typeRetrieveCall(id=slug), keep=func(got poke.TypeDetail) => localNames(got.names), :cache=names)
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.typeRetrieveCall(id=slug, life=life), keep=func(got poke.TypeDetail) => localNames(got.names), :cache=names)
     } else if kind == `ability` {
-        cached(key="{kind}/{slug}", fetch=func() => poke.abilityRetrieveCall(id=slug), keep=func(got poke.AbilityDetail) => localNames(got.names), :cache=names)
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.abilityRetrieveCall(id=slug, life=life), keep=func(got poke.AbilityDetail) => localNames(got.names), :cache=names)
     } else if kind == `stat` {
-        cached(key="{kind}/{slug}", fetch=func() => poke.statRetrieveCall(id=slug), keep=func(got poke.StatDetail) => localNames(got.names), :cache=names)
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.statRetrieveCall(id=slug, life=life), keep=func(got poke.StatDetail) => localNames(got.names), :cache=names)
     } else if kind == `egg-group` {
-        cached(key="{kind}/{slug}", fetch=func() => poke.eggGroupRetrieveCall(id=slug), keep=func(got poke.EggGroupDetail) => localNames(got.names), :cache=names)
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.eggGroupRetrieveCall(id=slug, life=life), keep=func(got poke.EggGroupDetail) => localNames(got.names), :cache=names)
     } else if kind == `habitat` {
-        cached(key="{kind}/{slug}", fetch=func() => poke.pokemonHabitatRetrieveCall(id=slug), keep=func(got poke.PokemonHabitatDetail) => localNames(got.names), :cache=names)
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.pokemonHabitatRetrieveCall(id=slug, life=life), keep=func(got poke.PokemonHabitatDetail) => localNames(got.names), :cache=names)
     } else if kind == `item` {
-        cached(key="{kind}/{slug}", fetch=func() => poke.itemRetrieveCall(id=slug), keep=func(got poke.ItemDetail) => localNames(got.names), :cache=names)
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.itemRetrieveCall(id=slug, life=life), keep=func(got poke.ItemDetail) => localNames(got.names), :cache=names)
     } else if kind == `trigger` {
-        cached(key="{kind}/{slug}", fetch=func() => poke.evolutionTriggerRetrieveCall(id=slug), keep=func(got poke.EvolutionTriggerDetail) => localNames(got.names), :cache=names)
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.evolutionTriggerRetrieveCall(id=slug, life=life), keep=func(got poke.EvolutionTriggerDetail) => localNames(got.names), :cache=names)
     } else if kind == `move` {
-        cached(key="{kind}/{slug}", fetch=func() => poke.moveRetrieveCall(id=slug), keep=func(got poke.MoveDetail) => localNames(got.names), :cache=names)
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.moveRetrieveCall(id=slug, life=life), keep=func(got poke.MoveDetail) => localNames(got.names), :cache=names)
     }
 }
 

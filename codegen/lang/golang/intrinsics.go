@@ -46,6 +46,12 @@ func init() {
 	regImp("string.replace", []string{"strings"}, func(a []string) string { return "strings.ReplaceAll(" + a[0] + ", " + a[1] + ", " + a[2] + ")" })
 	regImp("string.split", []string{"strings"}, func(a []string) string { return "strings.Split(" + a[0] + ", " + a[1] + ")" })
 
+	// --- sngl:async ---
+	// A lifetime is the number pkg/go/snglasync holds it by.
+	regImp("async.begin", []string{asyncRuntime}, func(a []string) string { return "snglasync.Begin()" })
+	regImp("async.end", []string{asyncRuntime}, func(a []string) string { return "snglasync.End(" + a[0] + ")" })
+	regImp("async.ended", []string{asyncRuntime}, func(a []string) string { return "snglasync.Ended(" + a[0] + ")" })
+
 	// --- sngl:time ---
 	// datetime is time.Time here and duration is time.Duration, so the host
 	// operators line up and nothing is converted. .UTC() because every other

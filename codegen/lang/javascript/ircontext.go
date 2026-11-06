@@ -654,6 +654,9 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	if out, ok := jc.codecCall(n); ok {
 		return out
 	}
+	if out, ok := jc.lifetimeCall(n); ok {
+		return out
+	}
 	if out, _, ok := codegen.EmitIntrinsicCall(langJS, jc.Ctx.Platform, n, jc.EvalExpr); ok {
 		// The style intrinsic's expansion names a page helper. Recorded here
 		// because the expansion is a package-level registration with no access

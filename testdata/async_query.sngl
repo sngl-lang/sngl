@@ -11,7 +11,7 @@ import . "sngl:ui"
 
 var asked list[string] = []
 
-func lookup(name string) async.Result[int] {
+func lookup(name string, life async.Lifetime = async.forever) async.Result[int] {
     asked.push(name)
     if name == "" {
         return {failed={kind=async.FailureKind.request, message="no name", code="400"}}
@@ -46,7 +46,7 @@ component detail node {
 var standing option[async.Failure] = null
 var stoodAtAsk list[bool] = []
 
-func lookupNoting(name string) async.Result[int] {
+func lookupNoting(name string, life async.Lifetime) async.Result[int] {
     stoodAtAsk.push(standing != null)
     return lookup(name)
 }

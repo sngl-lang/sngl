@@ -42,11 +42,11 @@ func answer(k string, code int, ms int) async.Result[string] {
 }
 
 // The species arrives first and names the form to ask for.
-func species(k string) => answer("b", 200, 150)
+func species(k string, life async.Lifetime) => answer("b", 200, 150)
 
 // The form asked for before the species arrived is one the server lacks, and
 // its failure arrives just after the species does.
-func form(k string) => answer(k, k == "a" ? 404 : 200, k == "a" ? 160 : 0)
+func form(k string, life async.Lifetime) => answer(k, k == "a" ? 404 : 200, k == "a" ? 160 : 0)
 
 component page ui.node {
     var mon = ""
@@ -90,7 +90,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/app.sngl/keyed/1 --
-sha256:1f1f12de74809191cb506266f41e0bca
+sha256:ac8e40efb0b41354c6e0842bdfcee324
 {
   "results": [
     {
@@ -100,7 +100,7 @@ sha256:1f1f12de74809191cb506266f41e0bca
   ]
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:0a2a729b02c2962f1a7c211827663dcf
+sha256:2e51dcaefc40315a5400c6d2b0cd8b62
 {
   "results": [
     {
@@ -120,7 +120,7 @@ sha256:1e4fd9cb549c408fe323b8e743c8521f
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:490829523dbc6f66462020e95db1883a
+sha256:c95bb1d7d2ea183649e2993e760fe260
 {
   "results": [
     {
@@ -140,7 +140,7 @@ sha256:fc5e11db650475dff5a52d2b9dd31f66
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:590667346048c8784311cd797fd088ff
+sha256:c381dbf49b9bb33e2d1db8838d1c1f5a
 {
   "results": [
     {
@@ -160,7 +160,7 @@ sha256:b6c4a4c23428a9036095a625e1d242db
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:9ad4e5496e024a53b2f9ced4be1b3641
+sha256:1bbb1f257efa17fd0c5c59511f74c15d
 {
   "results": [
     {
@@ -170,7 +170,7 @@ sha256:9ad4e5496e024a53b2f9ced4be1b3641
   ]
 }
 -- testrun/html/none/app.sngl/keyed/1 --
-sha256:6f4d39bea4196304ad39595d317a3273
+sha256:53d318995f7181472a24ea9bafa973a8
 {
   "results": [
     {
@@ -180,7 +180,7 @@ sha256:6f4d39bea4196304ad39595d317a3273
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:68af4aa038e27183f9953efea94d1b06
+sha256:94dc0047233b9c3fcca6e5f86cbcbef3
 {
   "results": [
     {

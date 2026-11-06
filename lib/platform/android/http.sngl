@@ -20,8 +20,9 @@ func send[Q anyStruct = struct {}](
     query   Q = Q{},
     headers map[string, string] = {},
     body    option[string] = null,
+    life    async.Lifetime = async.forever,
 ) async.Result[http.Response]
 
 #[permission("android.permission.INTERNET")]
 #[marks.intrinsic("http.get", async)]
-func get[Q anyStruct = struct {}](url string, query Q = Q{}) async.Result[http.Response]
+func get[Q anyStruct = struct {}](url string, query Q = Q{}, life async.Lifetime = async.forever) async.Result[http.Response]

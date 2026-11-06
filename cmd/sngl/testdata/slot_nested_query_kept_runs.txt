@@ -58,7 +58,7 @@ component page ui.node {
         ui.tab(label="Second") {
             ui.vbox {
                 for var title = ["dune", "war and peace"] {
-                    async.query(on=title, fetch=func(t string) => fetchBook(t), @load(got) { loads += 1 })
+                    async.query(on=title, fetch=func(t string, life async.Lifetime) => fetchBook(t), @load(got) { loads += 1 })
                 }
                 ui.select #pick(:value=kind) {
                     ui.choice(label="Red", value="Red")
@@ -82,7 +82,7 @@ func testEachBookIsAskedForOnce(t test.Test, c page) {
     t.assert(c.count != null && c.count.value == "2")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:64b8f18a1e1fb876143d99d724d58b19
+sha256:03801ee915bb385c1eb7bc9fd6c906d5
 {
   "results": [
     {
@@ -92,7 +92,7 @@ sha256:64b8f18a1e1fb876143d99d724d58b19
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:869980daafa50d4869b610053360cb60
+sha256:43760bea8869835cfc3a0c35a2344097
 {
   "results": [
     {
@@ -102,7 +102,7 @@ sha256:869980daafa50d4869b610053360cb60
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:150af3a32dcc109dc4eb562a3773f64e
+sha256:78a184e5197c0e25c6bb92a5a9e4fe2a
 {
   "results": [
     {
@@ -112,7 +112,7 @@ sha256:150af3a32dcc109dc4eb562a3773f64e
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:40fe9961232ea3ec1914562d6361a5c8
+sha256:5c4782a6bcf821dbc35355b21dbba011
 {
   "results": [
     {
@@ -122,7 +122,7 @@ sha256:40fe9961232ea3ec1914562d6361a5c8
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:b59856cb7b8a6ef5c593dd26b92f86d4
+sha256:da4ad57c39f6dc4eedce4ed00d4cd128
 {
   "results": [
     {

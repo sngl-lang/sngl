@@ -31,7 +31,7 @@ import async "sngl:async"
 import test "sngl:test"
 import ui "sngl:ui"
 
-func lookup(name string) async.Result[int] {
+func lookup(name string, life async.Lifetime) async.Result[int] {
     return {ok=name.length()}
 }
 
@@ -102,7 +102,7 @@ ui.window {
     pickAgain()
 }
 -- testrun/android/kotlin/app.sngl/pick/1 --
-sha256:c3a857f844623109e30531fa2198f0f8
+sha256:01e9cd89cf8b546a76d40499154e2891
 {
   "results": [
     {
@@ -112,7 +112,7 @@ sha256:c3a857f844623109e30531fa2198f0f8
   ]
 }
 -- testrun/android/kotlin/app.sngl/pickAgain/1 --
-sha256:96a0cd1e99a2b4bb3573df40f23a3d89
+sha256:3d8e8f9c63296d9f5ef319f6aad8fb23
 {
   "results": [
     {
@@ -122,7 +122,7 @@ sha256:96a0cd1e99a2b4bb3573df40f23a3d89
   ]
 }
 -- testrun/bubbletea/go/app.sngl/pick/1 --
-sha256:64784ddbf6fccd931ddf2678e9227a92
+sha256:8ac6d5b36354a46d4dd33b32d24f9826
 {
   "results": [
     {
@@ -132,7 +132,7 @@ sha256:64784ddbf6fccd931ddf2678e9227a92
   ]
 }
 -- testrun/bubbletea/go/app.sngl/pickAgain/1 --
-sha256:2410a0c28825da4257ede89bfe46a6dc
+sha256:480e66d7830228a6e2357fc61f1a3a23
 {
   "results": [
     {
@@ -142,7 +142,7 @@ sha256:2410a0c28825da4257ede89bfe46a6dc
   ]
 }
 -- testrun/fyne/go/app.sngl/pick/1 --
-sha256:1edf99198fbfb6c11b2e5ab9141c2190
+sha256:477dccd21c2c37f836fee0b9e46fd796
 {
   "results": [
     {
@@ -152,7 +152,7 @@ sha256:1edf99198fbfb6c11b2e5ab9141c2190
   ]
 }
 -- testrun/fyne/go/app.sngl/pickAgain/1 --
-sha256:dbc727527d37e1003ab7d3fb84e3443b
+sha256:aa9c55da5516f6b8cd97b43aa3093905
 {
   "results": [
     {
@@ -162,7 +162,7 @@ sha256:dbc727527d37e1003ab7d3fb84e3443b
   ]
 }
 -- testrun/gtk4/go/app.sngl/pick/1 --
-sha256:1d7efbb32250894a765d0d016cd7cf0d
+sha256:9bf24771efa326c8c6dbd8c0f7936fb4
 {
   "results": [
     {
@@ -172,7 +172,7 @@ sha256:1d7efbb32250894a765d0d016cd7cf0d
   ]
 }
 -- testrun/gtk4/go/app.sngl/pickAgain/1 --
-sha256:53afaacbcbdcc65c41942e44a89ceeb8
+sha256:3e1c48f43f07dd6594b294953719c95f
 {
   "results": [
     {
@@ -182,7 +182,7 @@ sha256:53afaacbcbdcc65c41942e44a89ceeb8
   ]
 }
 -- testrun/html/none/app.sngl/pick/1 --
-sha256:862a26290514278d74a9b78b492b3e81
+sha256:cabcda46a51db2f2d05497d191a12e77
 {
   "results": [
     {
@@ -192,7 +192,7 @@ sha256:862a26290514278d74a9b78b492b3e81
   ]
 }
 -- testrun/html/none/app.sngl/pickAgain/1 --
-sha256:fd19b7f5e5e9ef685b676352c7edb898
+sha256:fe148a8ae16507d5cdb3d8d53fc5f4d0
 {
   "results": [
     {

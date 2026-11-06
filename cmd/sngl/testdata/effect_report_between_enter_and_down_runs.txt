@@ -34,8 +34,8 @@ import test "sngl:test"
 import ui "sngl:ui"
 
 // The length of `key`, asked of the script harness's server.
-func lookup(key string) async.Result[int] {
-    match var r = http.get(url="http://127.0.0.1:47819/status/200") {
+func lookup(key string, life async.Lifetime) async.Result[int] {
+    match var r = http.get(url="http://127.0.0.1:47819/status/200", life=life) {
         failed { return {failed=r} }
         ok { return {ok=key.length()} }
     }
@@ -81,7 +81,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:7f370a1cd4369c3e4f28bd3b0a69fce4
+sha256:87a7fc4d307a81bf1e1a4b9566703323
 {
   "results": [
     {
@@ -91,7 +91,7 @@ sha256:7f370a1cd4369c3e4f28bd3b0a69fce4
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:6f238bf0df5148aea92b0e555a2e9b4f
+sha256:9e254392dca98b606a7eb1c1ff50db14
 {
   "results": [
     {
@@ -101,7 +101,7 @@ sha256:6f238bf0df5148aea92b0e555a2e9b4f
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:57eeae5bd0ee247bf9afc6bed773ffa4
+sha256:936d408c896c8b9cb4a0f36a0740ba37
 {
   "results": [
     {
@@ -111,7 +111,7 @@ sha256:57eeae5bd0ee247bf9afc6bed773ffa4
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:93d91637e98ac589e6965630c655a3d0
+sha256:e2f3142b70f53b99ab33fa8dafdbb016
 {
   "results": [
     {
@@ -121,7 +121,7 @@ sha256:93d91637e98ac589e6965630c655a3d0
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:cd28f94be7dd09ed4d57fdf8c36ad83f
+sha256:014184faa3f442ad5f7d955ba7aa8868
 {
   "results": [
     {

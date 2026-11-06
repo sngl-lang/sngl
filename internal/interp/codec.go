@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/pkg/go/snglasync"
 	"duckfam.us/sngl/pkg/go/snglhttp"
 	"duckfam.us/sngl/pkg/go/sngljson"
 )
@@ -94,10 +95,13 @@ func (env *Env) evalCodecCall(call *ir.Call) (any, bool, error) {
 	if s, ok := arg("body").(string); ok {
 		body = &s
 	}
-	resp, fail := snglhttp.Send(method, url, headers, body)
+	resp, fail := snglhttp.Send(snglasync.Context(lifetimeID(arg("life"))), method, url, headers, body)
 	if fail != nil {
 		kind := "transport"
-		if fail.Timeout {
+		switch {
+		case fail.Cancelled:
+			kind = "cancelled"
+		case fail.Timeout:
 			kind = "timeout"
 		}
 		return resultFailed(call.Type, kind, fail.Message, ""), true, nil

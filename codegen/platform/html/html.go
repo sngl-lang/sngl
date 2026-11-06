@@ -2526,7 +2526,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString(javascript.CodecHelperJS + "\n")
 	}
 	if testCodec {
-		b.WriteString("if (typeof window !== 'undefined') { Object.assign(window, { _snglJSONDecode, _snglJSONEncode, _snglWithQuery, _snglHTTPSend }); }\n\n")
+		b.WriteString("if (typeof window !== 'undefined') { Object.assign(window, { _snglJSONDecode, _snglJSONEncode, _snglWithQuery, _snglHTTPSend, _snglBegin, _snglEnd, _snglEnded }); }\n\n")
 	}
 
 	// Before the refs below, which is where a handler's binding for the
@@ -2714,7 +2714,7 @@ func (g *htmlGen) testsCallCodec() bool {
 			continue
 		}
 		_ = ir.Walk(fn.Block, func(n ir.Node) error {
-			if c, ok := n.(*ir.Call); ok && codegen.IsCodecCall(c) {
+			if c, ok := n.(*ir.Call); ok && (codegen.IsCodecCall(c) || codegen.IsLifetimeCall(c)) {
 				found = true
 			}
 			return nil

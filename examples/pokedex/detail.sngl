@@ -307,7 +307,7 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                                     for var slug = moveSlugs() {
                                         cached(
                                             key = "move/{slug}",
-                                            fetch = func() => poke.moveRetrieveCall(id=slug),
+                                            fetch = func(life async.Lifetime) => poke.moveRetrieveCall(id=slug, life=life),
                                             keep = func(got poke.MoveDetail) => localNames(got.names),
                                             :cache = names,
                                             @load(got) { moveFacts[got.name] = moveFactOf(got) },

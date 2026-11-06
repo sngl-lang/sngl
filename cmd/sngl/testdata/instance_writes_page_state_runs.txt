@@ -133,11 +133,11 @@ func Cache[V].retry(this ref[Cache[V]]) {
     this.round += 1
 }
 
-component cached[T any, V any, F any](key string, fetch func() async.Result[T], keep func(T) V, :cache Cache[V]) F {
+component cached[T any, V any, F any](key string, fetch func(async.Lifetime) async.Result[T], keep func(T) V, :cache Cache[V]) F {
     if cache.wanted(key) {
         async.query(
             on = key,
-            fetch = func(k string) => fetch(),
+            fetch = func(k string, life async.Lifetime) => fetch(life),
             @load(got) { cache.answers[key] = keep(got) },
             @fail(f) { cache.failures[key] = Failed{why=f.message, round=cache.round} },
         )
@@ -145,8 +145,8 @@ component cached[T any, V any, F any](key string, fetch func() async.Result[T], 
 }
 
 // Fails "bad" with a 500, and answers anything else with its length.
-func lookupCall(key string) async.Result[int] {
-    match var r = http.get(url="http://127.0.0.1:47819/status/{key == "bad" ? 500 : 200}") {
+func lookupCall(key string, life async.Lifetime) async.Result[int] {
+    match var r = http.get(url="http://127.0.0.1:47819/status/{key == "bad" ? 500 : 200}", life=life) {
         failed { return {failed=r} }
         ok {
             if r.status != 200 {
@@ -162,7 +162,7 @@ var names = Cache[int]{answers={}, failures={}, round=0}
 component lookup(kind string, slug string) ui.node {
     var key = "{kind}/{slug}"
 
-    cached(key=key, fetch=func() => lookupCall(slug), keep=func(got int) => got, :cache=names)
+    cached(key=key, fetch=func(life async.Lifetime) => lookupCall(slug, life), keep=func(got int) => got, :cache=names)
 }
 
 component sign(@retry()) ui.node {
@@ -210,7 +210,7 @@ sha256:e39c23d9415140cfe031189977766870
   ]
 }
 -- testrun/android/kotlin/cache.sngl/page/1 --
-sha256:8b005613dc4f7e0a6c4b3fa4b52b6b40
+sha256:2f09a2083df093bfd893f6adee3c59c1
 {
   "results": [
     {
@@ -230,7 +230,7 @@ sha256:c25604f835ce956d827c7f4716cd77ff
   ]
 }
 -- testrun/bubbletea/go/cache.sngl/page/1 --
-sha256:832332d35fb5d315478ef62b3bf8d683
+sha256:0ed76b34113a2c34cb56b5a2e0671289
 {
   "results": [
     {
@@ -250,7 +250,7 @@ sha256:dd0e84611e90806b49058c0420e989ab
   ]
 }
 -- testrun/fyne/go/cache.sngl/page/1 --
-sha256:2df170fd020dd59205d4e33ee5325f16
+sha256:ba821f4c8f1fd8d62e72bc8d84b6497e
 {
   "results": [
     {
@@ -270,7 +270,7 @@ sha256:7035d25b0be8e3f13bbf3690bc363ac5
   ]
 }
 -- testrun/gtk4/go/cache.sngl/page/1 --
-sha256:1cb2e41f9ab8ed716fdb7292ab6f8aa3
+sha256:1560bf943d0df76ae1371a8254289986
 {
   "results": [
     {
@@ -290,7 +290,7 @@ sha256:00fd2dd4f3b3fbb25af43776d5614c34
   ]
 }
 -- testrun/html/none/cache.sngl/page/1 --
-sha256:ed2cca8b059c2a29195e1f23413c4134
+sha256:b1ec33b2ecf757e56765e9bc3bbc1270
 {
   "results": [
     {

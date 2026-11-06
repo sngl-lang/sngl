@@ -2294,7 +2294,8 @@ enum class SnglFailureKind(private val sngl: String) {
     AUTH("auth"),
     REQUEST("request"),
     SERVER("server"),
-    DECODE("decode");
+    DECODE("decode"),
+    CANCELLED("cancelled");
 
     override fun toString(): String = sngl
 }
@@ -2528,6 +2529,7 @@ class SnglCodec<T>(val kind: Int) {
         val failed: Boolean,
         val timeout: Boolean,
         val message: String,
+        val cancelled: Boolean = false,
     )
 
     private class Fail(message: String) : Exception(message)
@@ -2815,12 +2817,39 @@ class SnglCodec<T>(val kind: Int) {
             return url + (if (url.contains('?')) "&" else "?") + parts.joinToString("&")
         }
 
+        // sngl:async's lifetimes, by number: each live one holds how to stop
+        // the requests made under it, and 0 -- forever -- is never held.
+        private val lives = java.util.concurrent.ConcurrentHashMap<Int, java.util.concurrent.CopyOnWriteArrayList<() -> Unit>>()
+        private val nextLife = java.util.concurrent.atomic.AtomicInteger()
+
+        fun begin(): Int {
+            val id = nextLife.incrementAndGet()
+            lives[id] = java.util.concurrent.CopyOnWriteArrayList()
+            return id
+        }
+
+        fun end(id: Int) {
+            lives.remove(id)?.forEach { it() }
+        }
+
+        fun ended(id: Int): Boolean = id != 0 && !lives.containsKey(id)
+
+        private fun cancelled(): Response = Response(0, emptyMap(), "", true, false, "cancelled", true)
+
         // Sends one request on a thread of its own and waits for its answer
-        // there: a failure only where no response arrived.
-        suspend fun send(method: String, url: String, headers: Map<String, String>, body: String?): Response =
-            withContext(Dispatchers.IO) {
+        // there: a failure only where no response arrived, or `life` ended
+        // first, which disconnects it.
+        suspend fun send(method: String, url: String, headers: Map<String, String>, body: String?, life: Int): Response {
+            if (ended(life)) return cancelled()
+            return withContext(Dispatchers.IO) {
+                val conn = try {
+                    URL(url).openConnection() as HttpURLConnection
+                } catch (e: Exception) {
+                    return@withContext Response(0, emptyMap(), "", true, false, e.toString())
+                }
+                val abort: () -> Unit = { conn.disconnect() }
+                lives[life]?.add(abort)
                 try {
-                    val conn = URL(url).openConnection() as HttpURLConnection
                     conn.requestMethod = method.uppercase()
                     for (k in headers.keys.sorted()) conn.setRequestProperty(k, headers[k])
                     if (body != null) {
@@ -2835,13 +2864,16 @@ class SnglCodec<T>(val kind: Int) {
                         if (k != null) hs[k.lowercase()] = vs.joinToString(", ")
                     }
                     conn.disconnect()
-                    Response(status, hs, text, false, false, "")
+                    if (ended(life)) cancelled() else Response(status, hs, text, false, false, "")
                 } catch (e: SocketTimeoutException) {
-                    Response(0, emptyMap(), "", true, true, e.toString())
+                    if (ended(life)) cancelled() else Response(0, emptyMap(), "", true, true, e.toString())
                 } catch (e: Exception) {
-                    Response(0, emptyMap(), "", true, false, e.toString())
+                    if (ended(life)) cancelled() else Response(0, emptyMap(), "", true, false, e.toString())
+                } finally {
+                    lives[life]?.remove(abort)
                 }
             }
+        }
     }
 }
 
@@ -3433,15 +3465,35 @@ window.__sngl_boot = () => {
     if (parts.length === 0) return url;
     return url + (url.includes("?") ? "&" : "?") + parts.join("&");
   }
-  async function _snglHTTPSend(method, url, headers, body) {
+  var _snglLives = { n: 0, m: /* @__PURE__ */ new Map() };
+  function _snglBegin() {
+    const id = ++_snglLives.n;
+    _snglLives.m.set(id, new AbortController());
+    return id;
+  }
+  function _snglEnd(id) {
+    const c = _snglLives.m.get(id);
+    if (c) {
+      _snglLives.m.delete(id);
+      c.abort();
+    }
+  }
+  function _snglEnded(id) {
+    return id !== 0 && !_snglLives.m.has(id);
+  }
+  async function _snglHTTPSend(method, url, headers, body, life) {
+    if (_snglEnded(life)) return { f: true, c: true, m: "cancelled" };
     const init = { method: String(method).toUpperCase(), headers: {} };
     if (headers) for (const [k, v] of headers) init.headers[k] = v;
     if (body !== null && body !== void 0) init.body = body;
+    const c = _snglLives.m.get(life);
+    if (c) init.signal = c.signal;
     let resp, text;
     try {
       resp = await fetch(url, init);
       text = await resp.text();
     } catch (e) {
+      if (_snglEnded(life)) return { f: true, c: true, m: "cancelled" };
       return { f: true, t: !!e && e.name === "TimeoutError", m: String(e && e.message || e) };
     }
     const h = /* @__PURE__ */ new Map();
@@ -3471,6 +3523,6 @@ pass sha256:e5a6aeadac910581a9bc2f4e1bf6f770
 -- run/go/gtk4 --
 pass sha256:d438a7bf3c6371ae83f13816ada454d8
 -- run/kotlin/android --
-pass sha256:0aec41ab8d53c09e6faecbbb8ec8ae99
+pass sha256:bd7a9c949280dcb4776a2a7983613a84
 -- run/none/html --
-pass sha256:821bea970c1c916d6ba8fe4230d48a02
+pass sha256:2240a247e6af135543711e228c057b6e

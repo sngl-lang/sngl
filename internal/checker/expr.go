@@ -5190,8 +5190,10 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 					return fmt.Sprintf("cannot use %s as %s for prop %q%s", got, want, strings.TrimPrefix(resolvedName, ":"), onComponent(comp))
 				}})
 				// A mismatched value binds nothing: wrapped, it reached lowering
-				// as a cast to a struct, which the language does not have.
+				// as a cast to a struct, which the language does not have. The
+				// prop was written all the same, so it is not also missing.
 				if mismatched {
+					boundProps[strings.TrimPrefix(resolvedName, ":")] = true
 					continue
 				}
 			}

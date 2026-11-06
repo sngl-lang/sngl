@@ -26,7 +26,7 @@ import go "sngl:language/go"
 func sleep(ns int)
 
 // A slow name answers after the quick one asked behind it.
-func lookup(name string) async.Result[int] {
+func lookup(name string, life async.Lifetime) async.Result[int] {
     if name == "slow" {
         sleep(400000000)
     } else {
@@ -98,7 +98,7 @@ func testEachRowAsksForItsOwn(t Test, c rows) {
     t.assert(picked == 3)
 }
 
-func quick(name string) async.Result[int] {
+func quick(name string, life async.Lifetime) async.Result[int] {
     return {ok=name.length()}
 }
 
@@ -133,7 +133,7 @@ window {
     quickRows
 }
 -- testrun/bubbletea/go/app.sngl/detail/1 --
-sha256:38d6205b29932eac319c2be105b23591
+sha256:aba00984684b7c81e5f76682d1af9be7
 {
   "results": [
     {
@@ -147,7 +147,7 @@ sha256:38d6205b29932eac319c2be105b23591
   ]
 }
 -- testrun/bubbletea/go/app.sngl/dropped/1 --
-sha256:3ab24ae5c20c696a1d016800d611b02e
+sha256:380dddb8964d570d07e8f5058f3fd1f5
 {
   "results": [
     {
@@ -157,7 +157,7 @@ sha256:3ab24ae5c20c696a1d016800d611b02e
   ]
 }
 -- testrun/bubbletea/go/app.sngl/quickRows/1 --
-sha256:a2ed1d1db2f9fa66372d249a8e5d3350
+sha256:1279129eba3ed7b0aced0cb4c3a7d11c
 {
   "results": [
     {
@@ -167,7 +167,7 @@ sha256:a2ed1d1db2f9fa66372d249a8e5d3350
   ]
 }
 -- testrun/bubbletea/go/app.sngl/rows/1 --
-sha256:466337d79383cad16c20a5240c68a053
+sha256:456e59f29a0f91d8a98992073d4d80ef
 {
   "results": [
     {

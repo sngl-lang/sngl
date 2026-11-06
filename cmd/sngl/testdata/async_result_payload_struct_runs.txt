@@ -93,7 +93,7 @@ func answered(r async.Result[http.Response]) async.Result[string] {
 component page ui.node {
     var on = ""
     var v option[string] = null
-    async.query(on=on, fetch=func(k string) => answered(http.get(url="http://127.0.0.1:47819/status/200")), :value=v)
+    async.query(on=on, fetch=func(k string, life async.Lifetime) => answered(http.get(url="http://127.0.0.1:47819/status/200", life=life)), :value=v)
     ui.button #go(text="go", @click { on = "a" })
 }
 
@@ -115,7 +115,7 @@ func ask(k string) async.Result[http.Response] {
     return http.get(url="http://127.0.0.1:47819/status/200")
 }
 
-func shown(k string) async.Result[string] {
+func shown(k string, life async.Lifetime) async.Result[string] {
     match var r = ask(k) {
         failed { return {failed=r} }
         ok { return {ok="y"} }
@@ -138,7 +138,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/handed.sngl/page/1 --
-sha256:efbd0f10c622bf9a483bf643450278b8
+sha256:f42c206a85e7ac98e10866a4b7e6c60b
 {
   "results": [
     {
@@ -148,7 +148,7 @@ sha256:efbd0f10c622bf9a483bf643450278b8
   ]
 }
 -- testrun/android/kotlin/held.sngl/page/1 --
-sha256:f26c154dee3be115385a2cb376264926
+sha256:5d1e1db64ed1d2d20c4e958e795b0c96
 {
   "results": [
     {
@@ -158,7 +158,7 @@ sha256:f26c154dee3be115385a2cb376264926
   ]
 }
 -- testrun/android/kotlin/returned.sngl/page/1 --
-sha256:56aaed870ef8107a5ae2e54dd415fec0
+sha256:616f86d85264461129501f1d95f5b83c
 {
   "results": [
     {
@@ -168,7 +168,7 @@ sha256:56aaed870ef8107a5ae2e54dd415fec0
   ]
 }
 -- testrun/bubbletea/go/handed.sngl/page/1 --
-sha256:3691a6636e0f7642c37413ed0656e3b5
+sha256:e1da044bd7c5e160fad1382876be03e2
 {
   "results": [
     {
@@ -188,7 +188,7 @@ sha256:870b1010ebfc225195afe12640cb7c22
   ]
 }
 -- testrun/bubbletea/go/returned.sngl/page/1 --
-sha256:6c3ed904cde5ee48fc8b4515fff49819
+sha256:c95cae0f54d4754187909e684119d5da
 {
   "results": [
     {
@@ -198,7 +198,7 @@ sha256:6c3ed904cde5ee48fc8b4515fff49819
   ]
 }
 -- testrun/fyne/go/handed.sngl/page/1 --
-sha256:769d19fccac465272ebbc199a1d2cacc
+sha256:86f7eba9f5dcdac57362c4dd3035bdf6
 {
   "results": [
     {
@@ -218,7 +218,7 @@ sha256:16dc67bd6f21e6921cd46db3dc3737fc
   ]
 }
 -- testrun/fyne/go/returned.sngl/page/1 --
-sha256:129bdbd52d494373e26093ca2694ee4e
+sha256:765198ae2d467af0e441234ce4575d67
 {
   "results": [
     {
@@ -228,7 +228,7 @@ sha256:129bdbd52d494373e26093ca2694ee4e
   ]
 }
 -- testrun/gtk4/go/handed.sngl/page/1 --
-sha256:318c0ee461e99ee3ea620763bc69d583
+sha256:54f069731d637d4de0d1e58885398eb7
 {
   "results": [
     {
@@ -248,7 +248,7 @@ sha256:ec818582bb76daca3fad5cdddea4ce68
   ]
 }
 -- testrun/gtk4/go/returned.sngl/page/1 --
-sha256:6b32b3fa4b117184787ac4abc2b0b502
+sha256:8d22cac523f860faaeebbccadede8c20
 {
   "results": [
     {
@@ -258,7 +258,7 @@ sha256:6b32b3fa4b117184787ac4abc2b0b502
   ]
 }
 -- testrun/html/none/handed.sngl/page/1 --
-sha256:70c7d9506fed56e171b04155ee63682c
+sha256:1d6c6997c2f395cde29c482fc41845af
 {
   "results": [
     {
@@ -278,7 +278,7 @@ sha256:1c58489ef9f626368cd8fff76066e1c8
   ]
 }
 -- testrun/html/none/returned.sngl/page/1 --
-sha256:a232dc8afd3243f0773fac8d2c410ae9
+sha256:ad2d3fccfbcf119a9af39d0519e767d2
 {
   "results": [
     {

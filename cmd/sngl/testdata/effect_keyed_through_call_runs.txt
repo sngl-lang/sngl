@@ -41,7 +41,7 @@ func current() => level
 
 func scaled(k int) => current() * k
 
-func lookup(n int) async.Result[string] {
+func lookup(n int, life async.Lifetime) async.Result[string] {
     asked.push(n)
     return {ok="level {n}"}
 }
@@ -105,7 +105,7 @@ func testAWriteOutsideAsksTheQueryAgain(t test.Test, c app) {
     t.assert(asked.format(",") == "0,0,0,1,1,1")
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:26bbdbdb759a88a4e06777b0a58cf9cb
+sha256:67c3691c5b35f6429114e9fb1ee39040
 {
   "results": [
     {
@@ -123,7 +123,7 @@ sha256:26bbdbdb759a88a4e06777b0a58cf9cb
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:4fd454fce0ba27f745f45954857cea86
+sha256:182c9ebf5cfb686a6c9c19cc4374f99b
 {
   "results": [
     {
@@ -141,7 +141,7 @@ sha256:4fd454fce0ba27f745f45954857cea86
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:d9192213893512cd7364e247cf4f2fde
+sha256:3e05edfa28bbc36d1bc015a5bb5151f5
 {
   "results": [
     {
@@ -159,7 +159,7 @@ sha256:d9192213893512cd7364e247cf4f2fde
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:b6251130f091993e8bd196732dd607bf
+sha256:9c5f8e75820b5d35c562d4a811714c64
 {
   "results": [
     {
@@ -177,7 +177,7 @@ sha256:b6251130f091993e8bd196732dd607bf
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:43dc5ffc113419819c1ee1b110864ef8
+sha256:75f9c979f0420da798fd224df99c7786
 {
   "results": [
     {

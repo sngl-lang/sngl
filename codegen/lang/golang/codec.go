@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	jsonRuntime = "duckfam.us/sngl/pkg/go/sngljson"
-	httpRuntime = "duckfam.us/sngl/pkg/go/snglhttp"
+	jsonRuntime  = "duckfam.us/sngl/pkg/go/sngljson"
+	httpRuntime  = "duckfam.us/sngl/pkg/go/snglhttp"
+	asyncRuntime = "duckfam.us/sngl/pkg/go/snglasync"
 )
 
 func init() {
@@ -76,12 +77,19 @@ func (gc *GoIRContext) codecCall(n *ir.Call) (string, bool) {
 	if body == "" {
 		body = "nil"
 	}
+	ctx := "context.Background()"
+	if id := codegen.LifetimeID(n); id != nil {
+		gc.RequireImport(asyncRuntime)
+		ctx = "snglasync.Context(" + gc.EvalExpr(id) + ")"
+	} else {
+		gc.RequireImport("context")
+	}
 	st, ht, bt := codegen.ResponseFieldTypes(n.Type)
 	msg := codegen.HostValue("__snglF.Message", str)
 	var b strings.Builder
-	fmt.Fprintf(&b, "func() %s { %s__snglR, __snglF := snglhttp.Send(%s, %s, %s, %s); ", rt, keep, method, url, headers, body)
-	fmt.Fprintf(&b, "if __snglF != nil { if __snglF.Timeout { return %s }; return %s }; ",
-		gc.EvalExpr(codegen.ResultFailed(n.Type, "timeout", msg)), gc.EvalExpr(codegen.ResultFailed(n.Type, "transport", msg)))
+	fmt.Fprintf(&b, "func() %s { %s__snglR, __snglF := snglhttp.Send(%s, %s, %s, %s, %s); ", rt, keep, ctx, method, url, headers, body)
+	fmt.Fprintf(&b, "if __snglF != nil { if __snglF.Cancelled { return %s }; if __snglF.Timeout { return %s }; return %s }; ",
+		gc.EvalExpr(codegen.ResultFailed(n.Type, "cancelled", msg)), gc.EvalExpr(codegen.ResultFailed(n.Type, "timeout", msg)), gc.EvalExpr(codegen.ResultFailed(n.Type, "transport", msg)))
 	resp := codegen.CodecResponse(n.Type, codegen.HostValue("__snglR.Status", st), codegen.HostValue("__snglR.Headers", ht), codegen.HostValue("__snglR.Body", bt))
 	fmt.Fprintf(&b, "return %s }()", gc.EvalExpr(codegen.ResultOK(n.Type, resp)))
 	return b.String(), true

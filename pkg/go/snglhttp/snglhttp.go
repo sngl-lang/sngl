@@ -7,6 +7,7 @@
 package snglhttp
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -24,19 +25,25 @@ type Response struct {
 }
 
 // Failure is why no response arrived. Timeout says the request reached for
-// the server and got no answer in time; anything else never reached it.
+// the server and got no answer in time, Cancelled that ctx ended first;
+// anything else never reached it.
 type Failure struct {
-	Timeout bool
-	Message string
+	Timeout   bool
+	Cancelled bool
+	Message   string
 }
 
-// Send makes one request and waits for its answer. body is nil for none.
-func Send(method, url string, headers map[string]string, body *string) (Response, *Failure) {
+// Send makes one request in ctx and waits for its answer, or for ctx to end.
+// body is nil for none.
+func Send(ctx context.Context, method, url string, headers map[string]string, body *string) (Response, *Failure) {
+	if ctx.Err() != nil {
+		return Response{}, &Failure{Cancelled: true, Message: "cancelled"}
+	}
 	var r io.Reader
 	if body != nil {
 		r = strings.NewReader(*body)
 	}
-	req, err := http.NewRequest(strings.ToUpper(method), url, r)
+	req, err := http.NewRequestWithContext(ctx, strings.ToUpper(method), url, r)
 	if err != nil {
 		return Response{}, &Failure{Message: err.Error()}
 	}
@@ -45,12 +52,12 @@ func Send(method, url string, headers map[string]string, body *string) (Response
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return Response{}, failure(err)
+		return Response{}, failure(ctx, err)
 	}
 	defer resp.Body.Close()
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return Response{}, failure(err)
+		return Response{}, failure(ctx, err)
 	}
 	out := Response{Status: resp.StatusCode, Headers: map[string]string{}, Body: string(data)}
 	for k, vs := range resp.Header {
@@ -59,7 +66,10 @@ func Send(method, url string, headers map[string]string, body *string) (Response
 	return out, nil
 }
 
-func failure(err error) *Failure {
+func failure(ctx context.Context, err error) *Failure {
+	if ctx.Err() != nil {
+		return &Failure{Cancelled: true, Message: "cancelled"}
+	}
 	var ne net.Error
 	timeout := errors.Is(err, os.ErrDeadlineExceeded) || (errors.As(err, &ne) && ne.Timeout())
 	return &Failure{Timeout: timeout, Message: err.Error()}

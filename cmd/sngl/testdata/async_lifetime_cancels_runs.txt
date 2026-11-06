@@ -1,0 +1,298 @@
+# sngl:async's Lifetime on every target: a request handed one that has ended
+# answers `cancelled` without asking, and ending one stops a request in
+# flight, which then answers `cancelled` at once rather than when the server
+# would have (`/status/200?after=3000`). The second half is the pattern
+# async.query is -- a lifetime per mount, ended by the unmount -- so moving
+# an effect to another key stops the request for the old one.
+#
+# The interpreter makes a request where it is called and waits for it there,
+# so it has none in flight to stop; it runs the first half only. The second
+# ends each lifetime from the program, since android's test waits for the
+# program's requests after each step.
+
+sngl test --platform=none ended.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html ended.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html inflight.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go ended.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go inflight.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go ended.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go inflight.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go ended.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go inflight.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin ended.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin inflight.sngl
+stdout '2 tests, 0 failures'
+
+-- ended.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func kindOf(r async.Result[http.Response]) string {
+    match var got = r {
+        failed { return "{got.kind}" }
+        ok { return "ok" }
+    }
+}
+
+component ended ui.node {
+    var kind = ""
+    var before = false
+    ui.button #ask(text="ask", @click {
+        var life = async.begin()
+        life.end()
+        before = life.ended()
+        kind = kindOf(http.get(url="http://127.0.0.1:47819/status/200", life=life))
+    })
+}
+
+// A request handed a lifetime already ended answers `cancelled` without
+// asking, and `forever` never ends.
+func testAnEndedLifetimeAsksNothing(t test.Test, c ended) {
+    c.ask.click()
+    t.wait(func() => c.kind != "", 1500)
+    t.assert(c.before && c.kind == "cancelled" && !async.forever.ended())
+}
+
+ui.window {
+    ended()
+}
+-- inflight.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+// Answers after `ms`, under `life`.
+func slow(ms int, life async.Lifetime) => http.get(url="http://127.0.0.1:47819/status/200?after={ms}", life=life)
+
+func kindOf(r async.Result[http.Response]) string {
+    match var got = r {
+        failed { return "{got.kind}" }
+        ok { return "ok" }
+    }
+}
+
+// One request outlives the other by seconds, and the short one's answer ends
+// the long one's lifetime: everything happens while the program runs, since
+// a test step may wait for the program's requests to finish.
+component manual ui.node {
+    var life = async.forever
+    var kind = ""
+    effect(@mount {
+        life = async.begin()
+        kind = kindOf(slow(3000, life))
+    })
+    effect(@mount {
+        var r = slow(100, async.forever)
+        life.end()
+    })
+}
+
+// Ending a lifetime stops the request handed it, which answers `cancelled`
+// at once rather than when the server would have.
+func testEndingALifetimeCancelsItsRequest(t test.Test, c manual) {
+    t.wait(func() => c.kind != "", 1500)
+    t.assert(c.kind == "cancelled")
+}
+
+component keyed ui.node {
+    var key = "a"
+    var life = async.forever
+    var kinds list[string] = []
+    effect(
+        on = key,
+        @mount(k) {
+            life = async.begin()
+            var r = slow(k == "a" ? 3000 : 0, life)
+            kinds.push("{k}:{kindOf(r)}")
+        },
+        @unmount { life.end() },
+    )
+    effect(@mount {
+        var r = slow(100, async.forever)
+        key = "b"
+    })
+}
+
+// The pattern async.query is: a lifetime per mount, ended by the unmount, so
+// the request for a key the effect has moved off stops.
+func testARekeyCancelsTheOldRequest(t test.Test, c keyed) {
+    t.wait(func() => c.kinds.length() == 2, 1500)
+    t.assert(c.kinds.contains("a:cancelled") && c.kinds.contains("b:ok"))
+}
+
+ui.window {
+    manual()
+}
+-- testrun/android/kotlin/ended.sngl/ended/1 --
+sha256:0d31c530597bfccb812cf8d9e123da9e
+{
+  "results": [
+    {
+      "Desc": "AnEndedLifetimeAsksNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/inflight.sngl/keyed/1 --
+sha256:28bc9d567c6da6d23cb1a8c912f11f8e
+{
+  "results": [
+    {
+      "Desc": "ARekeyCancelsTheOldRequest",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/inflight.sngl/manual/1 --
+sha256:4989e36181f2d519601168afafe1ad2c
+{
+  "results": [
+    {
+      "Desc": "EndingALifetimeCancelsItsRequest",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/ended.sngl/ended/1 --
+sha256:215d106e3107459d3b5c3237f8b45998
+{
+  "results": [
+    {
+      "Desc": "AnEndedLifetimeAsksNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/inflight.sngl/keyed/1 --
+sha256:602e834dcae6bbabe2319bf587334d65
+{
+  "results": [
+    {
+      "Desc": "ARekeyCancelsTheOldRequest",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/inflight.sngl/manual/1 --
+sha256:fb054bd00b6149d2550159a50d436551
+{
+  "results": [
+    {
+      "Desc": "EndingALifetimeCancelsItsRequest",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/ended.sngl/ended/1 --
+sha256:c9a6ae5318960eaa947b18e3406b0f02
+{
+  "results": [
+    {
+      "Desc": "AnEndedLifetimeAsksNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/inflight.sngl/keyed/1 --
+sha256:40aa06866e90953d7a6e9496dea931a0
+{
+  "results": [
+    {
+      "Desc": "ARekeyCancelsTheOldRequest",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/inflight.sngl/manual/1 --
+sha256:65ca018ab09764d225c77037efd0a6e9
+{
+  "results": [
+    {
+      "Desc": "EndingALifetimeCancelsItsRequest",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/ended.sngl/ended/1 --
+sha256:666d758d3353c7daffb1709aeebca9bf
+{
+  "results": [
+    {
+      "Desc": "AnEndedLifetimeAsksNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/inflight.sngl/keyed/1 --
+sha256:1df3e19ca8f31d6d1b14fe2e7694b366
+{
+  "results": [
+    {
+      "Desc": "ARekeyCancelsTheOldRequest",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/inflight.sngl/manual/1 --
+sha256:a3bd8e78127211a905efbb5f756e6e82
+{
+  "results": [
+    {
+      "Desc": "EndingALifetimeCancelsItsRequest",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/ended.sngl/ended/1 --
+sha256:c6233133b67f4529872416f918eb7203
+{
+  "results": [
+    {
+      "Desc": "AnEndedLifetimeAsksNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/inflight.sngl/keyed/1 --
+sha256:4995c5e09ac2f31ce7abb1d79d11ff50
+{
+  "results": [
+    {
+      "Desc": "ARekeyCancelsTheOldRequest",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/inflight.sngl/manual/1 --
+sha256:5a191703f36d84ad094d4129642dfa87
+{
+  "results": [
+    {
+      "Desc": "EndingALifetimeCancelsItsRequest",
+      "Passed": true
+    }
+  ]
+}

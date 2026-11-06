@@ -48,7 +48,7 @@ import ui "sngl:ui"
 
 var asked list[string] = []
 
-func lookup(name string) async.Result[int] {
+func lookup(name string, life async.Lifetime) async.Result[int] {
     asked.push(name)
     return {ok=name.length()}
 }
@@ -95,7 +95,7 @@ import ui "sngl:ui"
 
 var asked list[string] = []
 
-func lookup(name string) async.Result[int] {
+func lookup(name string, life async.Lifetime) async.Result[int] {
     asked.push(name)
     return {ok=name.length()}
 }
@@ -134,7 +134,7 @@ ui.window {
     pair
 }
 -- testrun/bubbletea/go/app.sngl/pair/1 --
-sha256:245e98e84e1901e99c58865a649fce98
+sha256:afc2b924c6dc453f8ebdf2f08a81e30c
 {
   "results": [
     {
@@ -144,7 +144,7 @@ sha256:245e98e84e1901e99c58865a649fce98
   ]
 }
 -- testrun/bubbletea/go/unbound.sngl/pair/1 --
-sha256:f18a6049997f32d33934e738c6fce92e
+sha256:c0710b2383f8ac36b3978a9f3ea5a482
 {
   "results": [
     {
@@ -154,7 +154,7 @@ sha256:f18a6049997f32d33934e738c6fce92e
   ]
 }
 -- testrun/fyne/go/app.sngl/pair/1 --
-sha256:1e37a824db3c4b28ab6ded5694c6c77f
+sha256:93ad5723f009e813e6a7be6c603b68c1
 {
   "results": [
     {
@@ -164,7 +164,7 @@ sha256:1e37a824db3c4b28ab6ded5694c6c77f
   ]
 }
 -- testrun/fyne/go/unbound.sngl/pair/1 --
-sha256:8b7b3eac0558eaa4b27767a6ad1f8a39
+sha256:af89876ac18cc09c483fa68b15798fe8
 {
   "results": [
     {
@@ -174,7 +174,7 @@ sha256:8b7b3eac0558eaa4b27767a6ad1f8a39
   ]
 }
 -- testrun/gtk4/go/app.sngl/pair/1 --
-sha256:dcc2140c9e75369c8e5423a755e60aff
+sha256:a96bede73703d188fff22bc5f8598c9d
 {
   "results": [
     {
@@ -184,7 +184,7 @@ sha256:dcc2140c9e75369c8e5423a755e60aff
   ]
 }
 -- testrun/gtk4/go/unbound.sngl/pair/1 --
-sha256:92bb37a3dbfb00a0aa006fdf56435641
+sha256:b6cf2fc339854a72f17b9fa4ff2e0207
 {
   "results": [
     {
@@ -194,7 +194,7 @@ sha256:92bb37a3dbfb00a0aa006fdf56435641
   ]
 }
 -- testrun/html/none/app.sngl/pair/1 --
-sha256:de055705ad4e4c7abd65d4d3534f5331
+sha256:2e61adcdc3dc60df023a46275fc7e723
 {
   "results": [
     {
@@ -204,7 +204,7 @@ sha256:de055705ad4e4c7abd65d4d3534f5331
   ]
 }
 -- testrun/html/none/unbound.sngl/pair/1 --
-sha256:46e5a59b805cde6cf37de2c641908a33
+sha256:5d511a1dfc684067298217435a7577cb
 {
   "results": [
     {
