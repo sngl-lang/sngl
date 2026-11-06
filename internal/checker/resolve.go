@@ -67,6 +67,14 @@ func namesType(t *ir.Type, name string) bool {
 	return s == name
 }
 
+// derefType is what a `ref[T]` refers to, and any other type itself.
+func derefType(t *ir.Type) *ir.Type {
+	if t != nil && t.Kind == ir.TypeRef && len(t.Elems) == 1 {
+		return t.Elems[0]
+	}
+	return t
+}
+
 // constructBuiltinGeneric applies a generic built-in constructor (identified by
 // its #[builtin] kind) to the type arguments of t. The construction logic stays
 // in the compiler; only the name→kind binding lives in scope.
@@ -902,14 +910,17 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		fn.Receiver = c.receiverType(typeName)
 		fn.Name = methodName
 		// The receiver convention: a method's first param is the receiver when
-		// it is named `this` — prepended synthetically for bare component
-		// funcs, or written out as `func T.m(this T)` — or when its type is
-		// the type the method is attached to, whatever it is called. The
-		// second form is what lets `func int.ident(n int)` be reached as
-		// `1.ident()` and as `int.ident(1)`. Mark it structurally here, the
-		// one place that owns the convention, so codegen/interp/lowering find
-		// the receiver by Param.Receiver rather than re-matching a name.
-		if len(fn.Params) > 0 && (fn.Params[0].Name == ir.ReceiverParam || namesType(fn.Params[0].Type, typeName)) {
+		// its type is the type the method is attached to, or a `ref` to it,
+		// whatever it is called -- written out, or prepended synthetically
+		// for a method written in a type's body or a bare component func. It
+		// is what lets `func int.ident(n int)` be reached as `1.ident()` and
+		// as `int.ident(1)`, and `func Counter.bump(c ref[Counter])` write the
+		// counter it is called on; a first parameter named `this` of another
+		// type is an ordinary parameter of a static method. Mark it
+		// structurally here, the one place that owns the convention, so
+		// codegen/interp/lowering find the receiver by Param.Receiver rather
+		// than re-matching a name.
+		if len(fn.Params) > 0 && namesType(derefType(fn.Params[0].Type), typeName) {
 			fn.Params[0].Receiver = true
 		}
 	}

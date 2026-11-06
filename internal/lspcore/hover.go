@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"duckfam.us/sngl/ast"
-	"duckfam.us/sngl/ir"
 )
 
 // Hover returns markdown hover info for the word at the given 1-based position.
@@ -83,7 +82,9 @@ func hoverInStmtsWithOptions(stmts []ast.Stmt, doc *ast.Document, word string, o
 				return info
 			}
 		case *ast.FuncDef:
-			if s.Name == word {
+			// A method is named by its type, `Counter.bump`, and the word
+			// under the cursor is the method's own name.
+			if _, name, _ := ast.SplitMethodName(s.Name); s.Name == word || name == word {
 				return formatFuncHover(s, doc)
 			}
 		case *ast.ConstDecl:
@@ -283,7 +284,7 @@ func typeExprString(te ast.TypeExpr) string {
 		}
 		s := "func(" + strings.Join(params, ", ") + ")"
 		if t.Return != nil {
-			s += " -> " + typeExprString(t.Return)
+			s += " " + typeExprString(t.Return)
 		}
 		return s
 	default:
@@ -297,16 +298,7 @@ func formatFuncHover(f *ast.FuncDef, doc *ast.Document) string {
 	sb.WriteString(f.Name)
 	sb.WriteByte('(')
 
-	// Suppress synthetic 'this' param in method hover.
-	// Nested funcs get desugared with a synthetic this as the first param;
-	// for display we want to show the method as the user wrote it.
-	params := f.Params.Params
-	_, _, isMethod := ast.SplitMethodName(f.Name)
-	if isMethod && len(params) > 0 && params[0].Name == ir.ReceiverParam {
-		params = params[1:]
-	}
-
-	for i, p := range params {
+	for i, p := range f.Params.Params {
 		if i > 0 {
 			sb.WriteString(", ")
 		}

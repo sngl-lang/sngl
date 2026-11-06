@@ -71,7 +71,8 @@ func (c *checker) checkExprExpecting(e ast.Expr, expected *ir.Type) ir.Expr {
 }
 
 // isAddressableListExpr reports whether e denotes a mutable, addressable list:
-// a (non-const) var, a component field, or a field/element path rooted at one.
+// a (non-const) var or parameter, a component field, or a field/element path
+// rooted at one.
 // Computed lists (filter/map/method results) and const lists are not
 // addressable, so an &-bound loop variable can't write through them.
 func isAddressableListExpr(e ir.Expr) bool {
@@ -83,7 +84,9 @@ func isAddressableListExpr(e ir.Expr) bool {
 		case *ir.Component:
 			return true // component self; fields on it are mutable state
 		case *ir.Param:
-			return sym.Name == ir.ReceiverParam // implicit component receiver
+			// A parameter is the function's own copy, or through a `ref` the
+			// caller's, whatever it is called, as `&` takes it.
+			return !sym.Const
 		case *ir.LoopVar:
 			return true // element of an outer &-bound loop (nested addressable)
 		}
@@ -1729,7 +1732,12 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 			// A native is excluded because it *is* a host identifier: its
 			// parameters are the host's, and the receiver arrives before the
 			// dot under `method` and as argument zero without it.
+			argSig := sig
 			if fn.PkgPath() == "" && (fn.Foreign.Name == "" || fn.Foreign.Marked) {
+				// The call is wrong as a whole, so its arguments are checked
+				// for what they are and not against parameters the value
+				// before the dot was meant to fill.
+				argSig = nil
 				if len(sig.Params) == 0 {
 					c.error(sel.Pos, "%s.%s is static: it declares no parameters, so call it as %s.%s()",
 						fn.RecvName(), fn.Name, fn.RecvName(), fn.Name)
@@ -1738,7 +1746,7 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 						fn.RecvName(), fn.Name, fn.RecvName(), fn.RecvName(), fn.Name)
 				}
 			}
-			rest := c.checkCallArgs(call.Args, sig)
+			rest := c.checkCallArgs(call.Args, argSig)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
 			receiverArg = true
 		}

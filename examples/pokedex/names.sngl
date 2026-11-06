@@ -376,17 +376,17 @@ func Cache[V].whyFailed(this Cache[V], key string) => this.failedNow(key) ? this
 func Cache[V].failing(this Cache[V]) => this.failures.values().filter(func(f Failed) => f.round == this.round)
 
 // Asks again for every key that failed.
-func Cache[V].retry(this Cache[V]) {
+func Cache[V].retry(this ref[Cache[V]]) {
     this.round += 1
 }
 
 // Keeps `answer` as what `key` answered.
-func Cache[V].keep(this Cache[V], key string, answer V) {
+func Cache[V].keep(this ref[Cache[V]], key string, answer V) {
     this.answers[key] = answer
 }
 
 // Records that `key` failed this round, and why.
-func Cache[V].fail(this Cache[V], key string, f async.Failure) {
+func Cache[V].fail(this ref[Cache[V]], key string, f async.Failure) {
     this.failures[key] = Failed{why=f.message, round=this.round}
 }
 

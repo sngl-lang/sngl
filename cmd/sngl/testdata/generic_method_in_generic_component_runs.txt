@@ -33,7 +33,7 @@ struct Tally[V any] {
 }
 
 // Keeps `v` under `key`.
-func Tally[V].keep(this Tally[V], key string, v V) {
+func Tally[V].keep(this ref[Tally[V]], key string, v V) {
     this.counts[key] = v
 }
 

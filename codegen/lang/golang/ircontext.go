@@ -771,7 +771,7 @@ func (gc *GoIRContext) modelField(n *ir.Select) (string, bool) {
 	case nil, *ir.Component, *codegen.Receiver:
 		// A synthesized receiver read carries no symbol.
 	case *ir.Param:
-		if !sym.Receiver && sym.Name != ir.ReceiverParam {
+		if !sym.Receiver {
 			return "", false
 		}
 	default:

@@ -273,7 +273,7 @@ func (c *checker) selectFuncParams(decl *ast.FuncDef, base *ir.Func) []*ir.Param
 	for _, p := range base.Params {
 		// The receiver a method on a generic built-in carries as a parameter
 		// is no parameter a call writes, and is read as the method's own.
-		if seen[p.Name] || p.Name == ir.ReceiverParam {
+		if seen[p.Name] || p.Receiver {
 			out = append(out, p)
 		}
 	}

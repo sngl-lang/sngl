@@ -1453,11 +1453,18 @@ type Param struct {
 	Name    string
 	Type    *Type
 	Default Expr // nil if no default
-	// Receiver marks the synthetic first parameter the checker prepends when
-	// desugaring a nested method (`func Type.m()`) or a bare component func
-	// into top-level form. Codegen/interp/lowering test this flag to recognize
-	// the implicit receiver structurally, rather than matching its name.
+	// Receiver marks a method's receiver: the first parameter a method
+	// declared outside its type names, of that type or a `ref` to it, or the
+	// one the checker prepends when desugaring a method written in a type's
+	// body or a bare component func into top-level form. Codegen/interp/
+	// lowering test this flag to recognize the receiver structurally, rather
+	// than matching its name.
 	Receiver bool
+	// Ambient marks the receiver a method written in a struct's or enum's
+	// body binds without declaring it, its body's `this`. It is the caller's
+	// value, as a `ref` receiver is; one a declaration names is a copy unless
+	// it is declared `ref[T]`.
+	Ambient bool `json:",omitempty"`
 	// Const is the `const` prefix: the argument is a compile-time value at
 	// every call site, so a read of the parameter is one too (IsConst).
 	Const bool `json:",omitempty"`

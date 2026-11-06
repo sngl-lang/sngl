@@ -1,6 +1,8 @@
 // A call passes two parameters by reference: a method's ambient `this`, the
 // receiver's own value, and a parameter declared `ref[T]`, the cell `&x`
-// hands it. A named parameter of any other type is a value. A function
+// hands it. A named parameter of any other type is a value, a method's
+// receiver too, whatever it is called: one writing its caller's takes a
+// `ref`, which a call on a value hands it as `&` would. A function
 // writing one by reference hands back what it wrote and the call writes it to
 // the place it passed (passRefParams), so the program reads the same on every
 // target.
@@ -59,6 +61,28 @@ func touch(s Stack) int {
     return s.items.length()
 }
 
+struct Counter {
+    n int
+}
+
+// A receiver named `this` is a value like one named anything else.
+func Counter.bumpCopy(this Counter) int {
+    this.n += 1
+    return this.n
+}
+
+func Counter.bump(c ref[Counter]) {
+    c.n += 1
+}
+
+struct Box[T any] {
+    value T
+}
+
+func Box[T].set(this ref[Box[T]], v T) {
+    this.value = v
+}
+
 component box ui.node {
     var (
         st = Stack{}
@@ -91,6 +115,16 @@ component box ui.node {
         out = "{st.items.length()} {n}"
     }
 
+    func receivers() {
+        var c = Counter{n=1}
+        var copied = c.bumpCopy()
+        c.bump()
+        Counter.bump(&c)
+        var b = Box[string]{value="a"}
+        b.set("b")
+        out = "{c.n} {copied} {b.value}"
+    }
+
     ui.text #o(value=out)
 }
 
@@ -107,6 +141,11 @@ func testRefParamIsTheCallersCell(t Test, c box) {
 func testNamedParamIsAValue(t Test, c box) {
     c.values()
     t.assert(c.o.value == "0 1")
+}
+
+func testNamedReceiverIsAValueAndARefTheCallers(t Test, c box) {
+    c.receivers()
+    t.assert(c.o.value == "3 2 b")
 }
 
 func testATestCallsAMethod(t Test, c box) {

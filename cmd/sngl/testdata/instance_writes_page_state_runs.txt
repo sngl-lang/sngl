@@ -129,7 +129,7 @@ func Cache[V].wanted(this Cache[V], key string) => !this.known(key) && !this.fai
 
 func Cache[V].failing(this Cache[V]) => this.failures.values().filter(func(f Failed) => f.round == this.round)
 
-func Cache[V].retry(this Cache[V]) {
+func Cache[V].retry(this ref[Cache[V]]) {
     this.round += 1
 }
 
@@ -210,7 +210,7 @@ sha256:e39c23d9415140cfe031189977766870
   ]
 }
 -- testrun/android/kotlin/cache.sngl/page/1 --
-sha256:89360e7207814efffdb4001ad0858c42
+sha256:22ccaa664b51f70d0439581e675e9189
 {
   "results": [
     {
@@ -230,7 +230,7 @@ sha256:c25604f835ce956d827c7f4716cd77ff
   ]
 }
 -- testrun/bubbletea/go/cache.sngl/page/1 --
-sha256:650e4a7f3d7db4e43de088c6ec4a2b4a
+sha256:9d4ba6bbb1f748765ee87c5967a92032
 {
   "results": [
     {
@@ -250,7 +250,7 @@ sha256:dd0e84611e90806b49058c0420e989ab
   ]
 }
 -- testrun/fyne/go/cache.sngl/page/1 --
-sha256:9181935b4997b4375b60c5e0b2ed1162
+sha256:7794ceac2a05294f9558c62d4aff5f6c
 {
   "results": [
     {
@@ -270,7 +270,7 @@ sha256:7035d25b0be8e3f13bbf3690bc363ac5
   ]
 }
 -- testrun/gtk4/go/cache.sngl/page/1 --
-sha256:dc5451fdc7958f5307791403532c1192
+sha256:2d459dd1294f3c530d46a14ffa9c5c01
 {
   "results": [
     {

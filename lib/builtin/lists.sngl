@@ -41,7 +41,7 @@ const func list[T].length(this list[T]) int
 // append returns a new slice rather than mutating, so the two halves had to be
 // emitted separately and no single expression said both.
 #[_intrinsic("list.push", mutates, mutatesReceiver)]
-func list[T].push(this list[T], item T)
+func list[T].push(this ref[list[T]], item T)
 
 // Removes the item at index from the receiver list (`this`) in place.
 // Out-of-range indices leave the list unchanged.
@@ -50,26 +50,26 @@ func list[T].push(this list[T], item T)
 // receiver and also returns it invites `l = l.remove(i)`, which performs the
 // removal once and reads as though it performed it twice.
 #[_intrinsic("list.remove", mutates, mutatesReceiver)]
-func list[T].remove(this list[T], index int)
+func list[T].remove(this ref[list[T]], index int)
 
 // Inserts item at index in the receiver list, in place, shifting what was at
 // index and after it one place along. An index equal to the length appends; an
 // index outside [0, length] leaves the list unchanged, as remove's does.
 #[_intrinsic("list.insert", mutates, mutatesReceiver)]
-func list[T].insert(this list[T], index int, item T)
+func list[T].insert(this ref[list[T]], index int, item T)
 
 // Removes every item from the receiver list, in place. Not `l = []`: that
 // replaces the list, and an effect keyed on it is told so with `@update`
 // rather than `@clear`.
 #[_intrinsic("list.clear", mutates, mutatesReceiver)]
-func list[T].clear(this list[T])
+func list[T].clear(this ref[list[T]])
 
 // Puts the receiver list's items in increasing order, in place: a's ahead of
 // b's where `a < b`. Only a list of a type `<` orders has one; sortBy orders
 // any other. The sort is stable, which only a list of floats can tell, with
 // its 0 and -0.
 #[_intrinsic("list.sort", mutates, mutatesReceiver)]
-func list[T ordered].sort(this list[T])
+func list[T ordered].sort(this ref[list[T]])
 
 // Puts the receiver list's items in the order before says, in place:
 // `before(a, b)` is true where a goes ahead of b. The sort is stable, so two
@@ -77,7 +77,7 @@ func list[T ordered].sort(this list[T])
 // `moves.sortBy(func(a, b) => a.level < b.level)` keeps the moves
 // of one level in the order they came.
 #[_intrinsic("list.sortBy", mutates, mutatesReceiver)]
-func list[T].sortBy(this list[T], before func(T, T) bool)
+func list[T].sortBy(this ref[list[T]], before func(T, T) bool)
 
 // Index of the first occurrence of item in l (by equality), or -1 if
 // absent.

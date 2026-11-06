@@ -148,7 +148,13 @@ so a call's arguments line up with a library method's parameters: points-to
 leaves a frozen function's parameters uncolored, which the off-by-one of the
 implicit receiver had done by accident, and passBuiltinMethods finds the
 receiver in either place (`genericBuiltinReceiver`)
-(`testdata/error_static_method_this.sngl`).
+(`testdata/error_static_method_this.sngl`). A named receiver is a value
+whatever its name, `this` included; one declared `ref[T]` writes back, so
+`list.push` declares `this ref[list[T]]`. Only the receiver a method written
+in a struct's body binds without declaring it is the caller's by default,
+and the checker marks it `Param.Ambient` where it desugars the method, since
+the desugared parameter is otherwise the one a declaration writes
+(`testdata/ref_params.sngl`).
 
 **A receiver's list may narrow a parameter its declaration leaves `any`**
 (`func list[T ordered].sort()`). The parser keeps the constraint on

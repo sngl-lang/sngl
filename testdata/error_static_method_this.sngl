@@ -22,3 +22,17 @@ func use() {
     var b = Box.make(1)
     var c = b.make(2) // ERROR(check) "Box.make is static: its first parameter is not Box, so call it as Box.make(…)"
 }
+
+struct Money {
+    cents int
+}
+
+// A first parameter named `this` is the receiver only where it is of the
+// type: this one is an int, so the method is static.
+func Money.half(this int) => this / 2
+
+func spend() {
+    var m = Money{cents=10}
+    var h = Money.half(10)
+    var g = m.half() // ERROR(check) "Money.half is static: its first parameter is not Money, so call it as Money.half(…)"
+}

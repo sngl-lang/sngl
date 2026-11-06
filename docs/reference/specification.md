@@ -492,10 +492,12 @@ assignment, a variable's initializer, a `push` or `insert`, an element, field or
 entry of a literal -- stores a copy, as deep as the value holds structs, lists
 and maps, so a later write to either place leaves the other as it was. A
 named parameter is passed by value the same way: a function that writes it
-writes its own copy and not the caller's. Two parameters are passed by
-reference instead -- a method's receiver named `this`, so a method that
-writes `this` writes the value it was called on, and a parameter declared
-`ref[T]` (see [References](#references)). A struct may be
+writes its own copy and not the caller's, and so is a receiver a method
+declares, whatever it is called. Two parameters are passed by reference
+instead -- the `this` a method written in a struct's body binds, so such a
+method that writes `this` writes the value it was called on, and a parameter
+declared `ref[T]`, a method's receiver among them (see
+[References](#references)). A struct may be
 generic over type parameters:
 
 ```
@@ -1256,11 +1258,12 @@ A **method** is a function whose name is qualified by a receiver type,
 naming its constraint); see
 [Generic type parameters](#generic-type-parameters). A method is dispatched on
 the type of the receiver expression. Declared outside its type, a method
-names its receiver as its first parameter, of the receiver's type:
+names its receiver as its first parameter, of the receiver's type or a `ref` to it:
 `func Money.plus(m Money, cents int)` is called as `m.plus(5)` and as
-`Money.plus(m, 5)`. Named `this`, the receiver is passed by reference, so a
-write to it is a write to the value the method was called on; named
-otherwise it is a copy. A method with no such parameter is static, called on
+`Money.plus(m, 5)`. The receiver is a copy, as any parameter is, whatever it
+is called. One declared `ref[T]` is the caller's cell, so a write to it is a
+write to the value the method was called on: `func Money.add(m ref[Money], cents int)` is called as `m.add(5)`, which hands it `m` as `&m` would, and
+as `Money.add(&m, 5)`. A method with no such parameter is static, called on
 the type, `Money.zero()`, and its body has no `this`. A `func` written inside a `struct` or
 `enum` body is a method of that type, and its body reads the receiver's fields
 by bare name. A `func` written in a component body is a method of the

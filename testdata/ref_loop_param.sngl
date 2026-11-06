@@ -1,0 +1,39 @@
+// A `&` loop binds the elements of a parameter as of a var: the function
+// writes its own copy, a named receiver's included whatever it is called, and
+// the caller's list through a `ref`.
+
+import . "sngl:test"
+
+struct Bag {
+    items list[int]
+}
+
+func Bag.zeroedCopy(b Bag) Bag {
+    for var &x = b.items {
+        x = 0
+    }
+    return b
+}
+
+func Bag.zero(b ref[Bag]) {
+    for var &x = b.items {
+        x = 0
+    }
+}
+
+func zeroed(xs list[int]) list[int] {
+    for var &x = xs {
+        x = 0
+    }
+    return xs
+}
+
+func testParamLoops(t Test) {
+    var b = Bag{items=[1, 2]}
+    var c = b.zeroedCopy()
+    t.assert(b.items == [1, 2] && c.items == [0, 0])
+    var ys = [3, 4]
+    t.assert(zeroed(ys) == [0, 0] && ys == [3, 4])
+    b.zero()
+    t.assert(b.items == [0, 0])
+}

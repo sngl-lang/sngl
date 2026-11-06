@@ -1,29 +1,32 @@
 # A method's ambient `this` and a `ref[T]` parameter are passed by reference,
-# and a named parameter is a value, on every target: testdata/ref_params.sngl
+# and a named parameter is a value, a method's named receiver too, on every
+# target: testdata/ref_params.sngl
 # is the program, and testdata/ref_params.txtar the code.
 
 sngl test --platform=none app.sngl
-stdout '4 tests, 0 failures'
+stdout '5 tests, 0 failures'
 
 sngl test --platform=html app.sngl
-stdout '4 tests, 0 failures'
+stdout '5 tests, 0 failures'
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout '4 tests, 0 failures'
+stdout '5 tests, 0 failures'
 
 sngl test --platform=fyne --language=go app.sngl
-stdout '4 tests, 0 failures'
+stdout '5 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
-stdout '4 tests, 0 failures'
+stdout '5 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
-stdout '4 tests, 0 failures'
+stdout '5 tests, 0 failures'
 
 -- app.sngl --
 // A call passes two parameters by reference: a method's ambient `this`, the
 // receiver's own value, and a parameter declared `ref[T]`, the cell `&x`
-// hands it. A named parameter of any other type is a value. A function
+// hands it. A named parameter of any other type is a value, a method's
+// receiver too, whatever it is called: one writing its caller's takes a
+// `ref`, which a call on a value hands it as `&` would. A function
 // writing one by reference hands back what it wrote and the call writes it to
 // the place it passed (passRefParams), so the program reads the same on every
 // target.
@@ -82,6 +85,28 @@ func touch(s Stack) int {
     return s.items.length()
 }
 
+struct Counter {
+    n int
+}
+
+// A receiver named `this` is a value like one named anything else.
+func Counter.bumpCopy(this Counter) int {
+    this.n += 1
+    return this.n
+}
+
+func Counter.bump(c ref[Counter]) {
+    c.n += 1
+}
+
+struct Box[T any] {
+    value T
+}
+
+func Box[T].set(this ref[Box[T]], v T) {
+    this.value = v
+}
+
 component box ui.node {
     var (
         st = Stack{}
@@ -114,6 +139,16 @@ component box ui.node {
         out = "{st.items.length()} {n}"
     }
 
+    func receivers() {
+        var c = Counter{n=1}
+        var copied = c.bumpCopy()
+        c.bump()
+        Counter.bump(&c)
+        var b = Box[string]{value="a"}
+        b.set("b")
+        out = "{c.n} {copied} {b.value}"
+    }
+
     ui.text #o(value=out)
 }
 
@@ -132,6 +167,11 @@ func testNamedParamIsAValue(t Test, c box) {
     t.assert(c.o.value == "0 1")
 }
 
+func testNamedReceiverIsAValueAndARefTheCallers(t Test, c box) {
+    c.receivers()
+    t.assert(c.o.value == "3 2 b")
+}
+
 func testATestCallsAMethod(t Test, c box) {
     c.st.add(9)
     t.assert(c.st.items.length() == 1)
@@ -141,7 +181,7 @@ ui.window {
     box
 }
 -- testrun/android/kotlin/app.sngl/box/1 --
-sha256:ce86121c66a1df6e25acf0e38d49613f
+sha256:d11b6be9c7aa0e4981d25fbfad200a21
 {
   "results": [
     {
@@ -150,6 +190,10 @@ sha256:ce86121c66a1df6e25acf0e38d49613f
     },
     {
       "Desc": "NamedParamIsAValue",
+      "Passed": true
+    },
+    {
+      "Desc": "NamedReceiverIsAValueAndARefTheCallers",
       "Passed": true
     },
     {
@@ -163,7 +207,7 @@ sha256:ce86121c66a1df6e25acf0e38d49613f
   ]
 }
 -- testrun/bubbletea/go/app.sngl/box/1 --
-sha256:d724259ad755ce70bba8d5c6510825d0
+sha256:fc7bbe7c8fd4ae44ad797d1b7bb15603
 {
   "results": [
     {
@@ -172,6 +216,10 @@ sha256:d724259ad755ce70bba8d5c6510825d0
     },
     {
       "Desc": "NamedParamIsAValue",
+      "Passed": true
+    },
+    {
+      "Desc": "NamedReceiverIsAValueAndARefTheCallers",
       "Passed": true
     },
     {
@@ -185,7 +233,7 @@ sha256:d724259ad755ce70bba8d5c6510825d0
   ]
 }
 -- testrun/fyne/go/app.sngl/box/1 --
-sha256:a157dca91f932e333ff24c21a99271f8
+sha256:1801528906064fb07a040ee294e83111
 {
   "results": [
     {
@@ -194,6 +242,10 @@ sha256:a157dca91f932e333ff24c21a99271f8
     },
     {
       "Desc": "NamedParamIsAValue",
+      "Passed": true
+    },
+    {
+      "Desc": "NamedReceiverIsAValueAndARefTheCallers",
       "Passed": true
     },
     {
@@ -207,7 +259,7 @@ sha256:a157dca91f932e333ff24c21a99271f8
   ]
 }
 -- testrun/gtk4/go/app.sngl/box/1 --
-sha256:31ffe19e4510265871b3d84c0d22e43f
+sha256:8d69393469a6baa2936142b776cff7ec
 {
   "results": [
     {
@@ -216,6 +268,10 @@ sha256:31ffe19e4510265871b3d84c0d22e43f
     },
     {
       "Desc": "NamedParamIsAValue",
+      "Passed": true
+    },
+    {
+      "Desc": "NamedReceiverIsAValueAndARefTheCallers",
       "Passed": true
     },
     {
@@ -229,7 +285,7 @@ sha256:31ffe19e4510265871b3d84c0d22e43f
   ]
 }
 -- testrun/html/none/app.sngl/box/1 --
-sha256:04bb8312ce236257fcd47afa76dd681f
+sha256:40829581415a5b70370596b422c0db5f
 {
   "results": [
     {
@@ -238,6 +294,10 @@ sha256:04bb8312ce236257fcd47afa76dd681f
     },
     {
       "Desc": "NamedParamIsAValue",
+      "Passed": true
+    },
+    {
+      "Desc": "NamedReceiverIsAValueAndARefTheCallers",
       "Passed": true
     },
     {

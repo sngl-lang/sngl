@@ -12,3 +12,16 @@ func tick() {}
 
 // HOVER(double) "func double(x int) int"
 func double(x int) int { return x * 2 }
+
+struct Counter {
+    n int
+}
+
+// A receiver the declaration writes is shown as written, `this` or not.
+// HOVER(bump) "func Counter.bump(this ref[Counter])"
+func Counter.bump(this ref[Counter]) {
+    this.n += 1
+}
+
+// HOVER(twice) "func twice(f func(int) int, x int) int"
+func twice(f func(int) int, x int) int { return f(f(x)) }
