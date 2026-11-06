@@ -78,9 +78,17 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.mode = "quiet"
-	m.heard__inst0 = ""
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["mode"] {
+		m.mode = "quiet"
+	}
+	if !preset["heard__inst0"] {
+		m.heard__inst0 = ""
+	}
 }
 
 func Pick(mode string) string {
@@ -163,6 +171,7 @@ import "testing"
 func TestTheProviderFollowsItsState(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.saidClick()
 	if !((c.heard__inst0 == "quiet")) { t.Errorf("assert failed: %s", "(c.heard__inst0 == \"quiet\")") }
 	c.loudClick()
@@ -177,7 +186,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -208,9 +221,13 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var mode by mutableStateOf("quiet")
-    var heard__inst0 by mutableStateOf("")
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var mode by mutableStateOf(__snglPre(__pre, "mode") { "quiet" })
+    var heard__inst0 by mutableStateOf(__snglPre(__pre, "heard__inst0") { "" })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -779,12 +796,13 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
@@ -1312,6 +1330,8 @@ window.__sngl_boot = () => {
     Object.assign(window, { i18n });
   }
   var state = { mode: "quiet", heard__inst0: "" };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.saidClick = () => $0.click();
   state.loudClick = () => $1.click();
   if (typeof window !== "undefined") {
@@ -1339,12 +1359,11 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:1f5eeeee6654545b818c9b86d06becbc
+pass sha256:400297a3bf608a1a422620dabb58618f
 -- run/kotlin/android --
-pass sha256:41b85d57bd665080252b2d88f01a23e7
+pass sha256:83084ab89e2eb3ae04d178282636c511
 -- run/none/html --
-pass sha256:23948cfb567d905f18b9f28db7b1c7cd
+pass sha256:299e783a6ed4cdaf184a66869efa4374

@@ -63,7 +63,7 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func, simulate string) *codegen.TestRes
 	// component's var initializers.
 	clock := interp.NewVirtual()
 
-	env, err := interp.BuildSimulatedEnv(pkg, compName, clock, simulate)
+	env, err := interp.BuildTestEnv(pkg, compName, clock, simulate)
 	if err != nil {
 		r.Error = err.Error()
 		r.Duration = time.Since(start)
@@ -81,13 +81,11 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func, simulate string) *codegen.TestRes
 		if cVal.comp != nil {
 			cVal.body = cVal.comp.Stmts
 		}
-		// Mounted here rather than on the first read. A test whose opening
-		// statement is a write -- `c.running = false` before any assertion --
-		// would otherwise settle for the first time after it, and the initial
-		// lifetime would never have existed to be torn down: the write would
-		// read as the program starting in its new state instead of moving to
-		// it.
-		cVal.settle()
+		// Mounted where the test first needs it (ir.TestSetup): what the
+		// statements ahead of that set -- a context, a prop or var's starting
+		// value -- is what the mount reads, as a call site's would be.
+		cVal.unmounted = true
+		cVal.preset = map[ir.Symbol]bool{}
 		env.Set(fn.Params[1], cVal)
 	}
 
@@ -102,6 +100,17 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func, simulate string) *codegen.TestRes
 		body = nil
 	}
 	for _, stmt := range body {
+		// The instance mounts on the first read of it (settle), and on a
+		// read of package state, which goes through no instance.
+		if cVal != nil && cVal.unmounted && readsPackageState(stmt, pkg) {
+			cVal.mount()
+		}
+		if cVal != nil && cVal.settleErr != nil {
+			err := cVal.settleErr
+			cVal.settleErr = nil
+			r.Failures = append(r.Failures, codegen.TestFailure{Line: errorLine(err, stmt), Message: err.Error(), Fatal: true})
+			break
+		}
 		err := env.Exec(stmt)
 		if interp.IsReturn(err) {
 			break
@@ -118,7 +127,7 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func, simulate string) *codegen.TestRes
 		// handler, and the effects it calls for run before the next
 		// statement, as a compiled test settles after each write: a read of
 		// package state goes through no instance to settle it.
-		if cVal != nil {
+		if cVal != nil && !cVal.unmounted {
 			cVal.settle()
 			if err := cVal.settleErr; err != nil {
 				cVal.settleErr = nil
@@ -132,6 +141,15 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func, simulate string) *codegen.TestRes
 		}
 	}
 
+	// A test that never needed it still mounts it, so what mounting does
+	// is torn down and checked as in any other.
+	if cVal != nil && cVal.unmounted && len(r.Failures) == 0 {
+		cVal.mount()
+		if err := cVal.settleErr; err != nil {
+			cVal.settleErr = nil
+			r.Failures = append(r.Failures, codegen.TestFailure{Message: err.Error(), Fatal: true})
+		}
+	}
 	if err := tVal.teardown(); err != nil && len(r.Failures) == 0 {
 		r.Failures = append(r.Failures, codegen.TestFailure{Message: err.Error(), Fatal: true})
 	}
@@ -263,6 +281,13 @@ type componentValue struct {
 	inst *ir.NodeInst
 	site *interp.Node
 
+	// unmounted holds while the test is setting the instance up: nothing is
+	// rendered or settled, and each prop or var a write sets is in preset,
+	// which the mount leaves as the test set it. The instance a test was
+	// given only.
+	unmounted bool
+	preset    map[ir.Symbol]bool
+
 	// fx is the running set of lifetime brackets, on the root wrapper only:
 	// the mount walk descends through components, so one set covers every
 	// effect in the tree and a child wrapper has nothing of its own to settle.
@@ -283,6 +308,10 @@ type componentValue struct {
 // read whose signature says nothing about effects, and a test that cannot
 // settle has already gone wrong somewhere the assertion will show.
 func (cv *componentValue) settle() {
+	if cv != nil && cv.unmounted {
+		cv.mount()
+		return
+	}
 	if cv == nil || cv.fx == nil || cv.Env == nil {
 		return
 	}
@@ -293,6 +322,37 @@ func (cv *componentValue) settle() {
 	if err != nil {
 		cv.settleErr = err
 	}
+}
+
+// mount starts the instance a test was given from what the test set up: each
+// prop and var it did not set from its initializer, which reads the contexts
+// the test set, and then the first render.
+func (cv *componentValue) mount() {
+	if !cv.unmounted {
+		return
+	}
+	cv.unmounted = false
+	if cv.comp != nil {
+		interp.InitComponentState(cv.Env, cv.comp, cv.preset)
+	}
+	cv.settle()
+}
+
+// readsPackageState reports whether s reads a var of the package's.
+func readsPackageState(s ir.Stmt, pkg *ir.Package) bool {
+	vars := map[ir.Symbol]bool{}
+	for _, v := range pkg.Vars {
+		vars[v] = true
+	}
+	found := false
+	_ = ir.Walk(s, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok && vars[id.Sym] {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // errorLine returns the 1-based source line of the failing expression. For

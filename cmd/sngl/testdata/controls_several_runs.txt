@@ -71,7 +71,7 @@ func testASelectInASlotChooses(t test.Test, c form) {
     t.assert(c.extra == "Yes")
 }
 -- testrun/android/kotlin/app.sngl/form/1 --
-sha256:cdb470a508c2fb3ac1955c7551df20fa
+sha256:1f9cd3239c5d9474ed943d1dba2d6ce9
 {
   "results": [
     {
@@ -85,7 +85,7 @@ sha256:cdb470a508c2fb3ac1955c7551df20fa
   ]
 }
 -- testrun/bubbletea/go/app.sngl/form/1 --
-sha256:1296fd382ef1460cdd0d67591f11d4f6
+sha256:b0d07dc80f4eafb5a90b4b409d01c42b
 {
   "results": [
     {
@@ -99,7 +99,7 @@ sha256:1296fd382ef1460cdd0d67591f11d4f6
   ]
 }
 -- testrun/fyne/go/app.sngl/form/1 --
-sha256:3a90938c7599309d7d995e8690023c5a
+sha256:f35009c11faa53d20dcb70c8260ad75c
 {
   "results": [
     {
@@ -113,7 +113,7 @@ sha256:3a90938c7599309d7d995e8690023c5a
   ]
 }
 -- testrun/gtk4/go/app.sngl/form/1 --
-sha256:854140a2b51dcb34b2cb937b7fb96f5c
+sha256:71057cec1cbe513347010a58f8c510be
 {
   "results": [
     {
@@ -127,7 +127,7 @@ sha256:854140a2b51dcb34b2cb937b7fb96f5c
   ]
 }
 -- testrun/html/none/app.sngl/form/1 --
-sha256:0e9352358ee2f44c6f4a4bd6c4171e54
+sha256:1c1294fd4d08b7d30e7abb618045cc9d
 {
   "results": [
     {

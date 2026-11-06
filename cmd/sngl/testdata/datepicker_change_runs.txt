@@ -52,7 +52,7 @@ func testPick(t Test, c picker) {
     t.assert(c.picked == day)
 }
 -- testrun/android/kotlin/app.sngl/picker/1 --
-sha256:73612c81705daa5ac9c508fc551e5bf0
+sha256:adea4e9bc7bec69ac0ec78d8bae83e85
 {
   "results": [
     {
@@ -62,7 +62,7 @@ sha256:73612c81705daa5ac9c508fc551e5bf0
   ]
 }
 -- testrun/bubbletea/go/app.sngl/picker/1 --
-sha256:8c033149dbb598dae964325ab767d30b
+sha256:9bf20f0d270b1fe4417c8859749c4520
 {
   "results": [
     {
@@ -72,7 +72,7 @@ sha256:8c033149dbb598dae964325ab767d30b
   ]
 }
 -- testrun/fyne/go/app.sngl/picker/1 --
-sha256:e2c2d26f28d355a57ba48e91d18da4b3
+sha256:077c3e2e3c58ccfeae5a90650801dfb0
 {
   "results": [
     {
@@ -82,7 +82,7 @@ sha256:e2c2d26f28d355a57ba48e91d18da4b3
   ]
 }
 -- testrun/gtk4/go/app.sngl/picker/1 --
-sha256:775b766ceb04e2d26637d5b47b52d869
+sha256:8b68ea63ebfafc6f9490aa29bfad8627
 {
   "results": [
     {
@@ -92,7 +92,7 @@ sha256:775b766ceb04e2d26637d5b47b52d869
   ]
 }
 -- testrun/html/none/app.sngl/picker/1 --
-sha256:ae334d0b2efd7468550e0bd462ed7053
+sha256:bab50fa8d0b955f5558f8e92f1613e7c
 {
   "results": [
     {

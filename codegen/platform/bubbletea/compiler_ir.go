@@ -593,13 +593,24 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	// Binds are initialized sequentially so a later init can read an earlier
 	// field as `m.<name>`; a struct-literal init leaves `m` undefined.
 	b.WriteString("// New creates a Model with default bind values.\n")
-	b.WriteString("func New() Model {\n")
-	b.WriteString("\tm := Model{&modelState{}}\n")
+	if info.tests {
+		// A test mounts its Model where it first needs it, and what it set
+		// up ahead of that keeps the value it set (mountTestComponent).
+		b.WriteString("func New() Model {\n\treturn Model{&modelState{}}.__mount(nil)\n}\n\n")
+		b.WriteString("func (m Model) __mount(preset map[string]bool) Model {\n")
+	} else {
+		b.WriteString("func New() Model {\n")
+		b.WriteString("\tm := Model{&modelState{}}\n")
+	}
 	if info.sleepers > 0 {
 		fmt.Fprintf(&b, "\tm.%s = make(chan struct{}, 1)\n", wakeField)
 	}
 	emitTimerInits(&b, info.timers)
 	for _, bind := range info.binds {
+		if info.tests {
+			fmt.Fprintf(&b, "\tif !preset[%q] {\n\t\tm.%s = %s\n\t}\n", bind.name, bind.name, bind.init)
+			continue
+		}
 		fmt.Fprintf(&b, "\tm.%s = %s\n", bind.name, bind.init)
 	}
 	firstFocusable := true

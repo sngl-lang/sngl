@@ -105,9 +105,17 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.ns = []int{1, 2}
-	m.ps = []Point{Point{X: 1, Y: 2}}
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["ns"] {
+		m.ns = []int{1, 2}
+	}
+	if !preset["ps"] {
+		m.ps = []Point{Point{X: 1, Y: 2}}
+	}
 }
 
 func Render__int(label string, vs []int) string {
@@ -234,6 +242,7 @@ import "testing"
 func TestShown(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((Render__int("n", c.ns) == "n: <1> <2> [1, 2]")) { t.Errorf("assert failed: %s", "(Render__int(\"n\", c.ns) == \"n: <1> <2> [1, 2]\")") }
 	if !((Render__Point("p", c.ps) == "p: <(1, 2)> [(1, 2)]")) { t.Errorf("assert failed: %s", "(Render__Point(\"p\", c.ps) == \"p: <(1, 2)> [(1, 2)]\")") }
 	if !((Hex__int((c.ns[0] + 254)) == "ff")) { t.Errorf("assert failed: %s", "(Hex__int((c.ns[0] + 254)) == \"ff\")") }
@@ -249,7 +258,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -258,6 +271,7 @@ func newTestComponent() *Model {
 
 package test.sngl.app
 
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -284,9 +298,13 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    val ns = mutableStateListOf(1, 2)
-    val ps = mutableStateListOf(Point(x = 1, y = 2))
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    val ns = if ("ns" in __pre) (__pre["ns"] as List<Int>).toMutableStateList() else mutableStateListOf(1, 2)
+    val ps = if ("ps" in __pre) (__pre["ps"] as List<Point>).toMutableStateList() else mutableStateListOf(Point(x = 1, y = 2))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -408,19 +426,22 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { ns: [1, 2], ps: null };
-  state.ps = [{ x: 1, y: 2 }];
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
+  if (!("ps" in __snglPre)) state.ps = [{ x: 1, y: 2 }];
   state.growClick = () => $3.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
@@ -494,12 +515,11 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:877382ef9f0818da1dbcb0133b403a86
+pass sha256:2573b933831c083c5f10d6400a922710
 -- run/kotlin/android --
-pass sha256:b459cf628626496177c8f0a2a2b84080
+pass sha256:e419767ba701ef226195fe906c6605d2
 -- run/none/html --
-pass sha256:3993e27de3a86735292d68746505b207
+pass sha256:854ba5b8cf3c93f5b849f64722b2d0ae

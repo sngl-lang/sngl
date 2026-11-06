@@ -227,43 +227,118 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.level = 0
-	m.mounts = []int{}
-	m.open = true
-	m.copies = []int{1, 2}
-	m.seen__inst0 = 0
-	m.seen__inst1 = map[string]int{}
-	m.__effect0_live = []bool{}
-	m.__effect0_desired = []bool{}
-	m.__effect1_key = 0
-	m.__effect1_dirty = false
-	m.__effect1_absent = false
-	m.__effect2_key = 0
-	m.__effect2_live = []int{}
-	m.__effect2_desired = []int{}
-	m.__effect3_live = []string{}
-	m.__effect3_desired = []string{}
-	m.__effect3_paths = []string{}
-	m.__effect3_livePaths = []string{}
-	m.__effect3_pathAt = map[string]int{}
-	m.__effect3_liveAt = map[string]int{}
-	m.__effect4_key = __anon_copy_on_d67d15{}
-	m.__effect4_dirty = false
-	m.__effect4_keys = map[string]__anon_copy_on_d67d15{}
-	m.__effect4_rekey = false
-	m.__effect5_key = 0
-	m.__effect5_live = []int{}
-	m.__effect5_desired = []int{}
-	m.__effect5_paths = []string{}
-	m.__effect5_livePaths = []string{}
-	m.__effect5_pathAt = map[string]int{}
-	m.__effect5_liveAt = map[string]int{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
-	m.__focusID = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["level"] {
+		m.level = 0
+	}
+	if !preset["mounts"] {
+		m.mounts = []int{}
+	}
+	if !preset["open"] {
+		m.open = true
+	}
+	if !preset["copies"] {
+		m.copies = []int{1, 2}
+	}
+	if !preset["seen__inst0"] {
+		m.seen__inst0 = 0
+	}
+	if !preset["seen__inst1"] {
+		m.seen__inst1 = map[string]int{}
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []bool{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []bool{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = 0
+	}
+	if !preset["__effect1_dirty"] {
+		m.__effect1_dirty = false
+	}
+	if !preset["__effect1_absent"] {
+		m.__effect1_absent = false
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = 0
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []int{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []int{}
+	}
+	if !preset["__effect3_live"] {
+		m.__effect3_live = []string{}
+	}
+	if !preset["__effect3_desired"] {
+		m.__effect3_desired = []string{}
+	}
+	if !preset["__effect3_paths"] {
+		m.__effect3_paths = []string{}
+	}
+	if !preset["__effect3_livePaths"] {
+		m.__effect3_livePaths = []string{}
+	}
+	if !preset["__effect3_pathAt"] {
+		m.__effect3_pathAt = map[string]int{}
+	}
+	if !preset["__effect3_liveAt"] {
+		m.__effect3_liveAt = map[string]int{}
+	}
+	if !preset["__effect4_key"] {
+		m.__effect4_key = __anon_copy_on_d67d15{}
+	}
+	if !preset["__effect4_dirty"] {
+		m.__effect4_dirty = false
+	}
+	if !preset["__effect4_keys"] {
+		m.__effect4_keys = map[string]__anon_copy_on_d67d15{}
+	}
+	if !preset["__effect4_rekey"] {
+		m.__effect4_rekey = false
+	}
+	if !preset["__effect5_key"] {
+		m.__effect5_key = 0
+	}
+	if !preset["__effect5_live"] {
+		m.__effect5_live = []int{}
+	}
+	if !preset["__effect5_desired"] {
+		m.__effect5_desired = []int{}
+	}
+	if !preset["__effect5_paths"] {
+		m.__effect5_paths = []string{}
+	}
+	if !preset["__effect5_livePaths"] {
+		m.__effect5_livePaths = []string{}
+	}
+	if !preset["__effect5_pathAt"] {
+		m.__effect5_pathAt = map[string]int{}
+	}
+	if !preset["__effect5_liveAt"] {
+		m.__effect5_liveAt = map[string]int{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
 	m.__effects0_settle()
 	return m
 }
@@ -894,6 +969,7 @@ import (
 func TestAWriteOutsideReachesTheEffect(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.raiseClick()
 	if !((c.open && (c.seen__inst0 == 1))) { t.Errorf("assert failed: %s", "(c.open && (c.seen__inst0 == 1))") }
 	if !(((func() int { if __v, __ok := c.seen__inst1[__identified0(c.copies)[0].Id]; __ok { return __v }; return 0 }() == 1) && (func() int { if __v, __ok := c.seen__inst1[__identified0(c.copies)[1].Id]; __ok { return __v }; return 0 }() == 1))) { t.Errorf("assert failed: %s", "((func() int { if __v, __ok := c.seen__inst1[__identified0(c.copies)[0].Id]; __ok { return __v }; return 0 }() == 1) && (func() int { if __v, __ok := c.seen__inst1[__identified0(c.copies)[1].Id]; __ok { return __v }; return 0 }() == 1))") }
@@ -902,6 +978,7 @@ func TestAWriteOutsideReachesTheEffect(t *testing.T) {
 func TestAWriteOutsideRemountsAKeyedEffect(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.raiseClick()
 	__list0 := []string{}
 	for _, __item0 := range c.mounts {
@@ -911,7 +988,13 @@ func TestAWriteOutsideRemountsAKeyedEffect(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -965,22 +1048,56 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.level = 0
-	m.mounts = []int{}
-	m.open = true
-	m.copies = []int{1, 2}
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__inst0_live = []*GaugeInstance{}
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__inst1_live = map[string]*GaugeInstance{}
-	m.__rendering1 = false
-	m.__renderAgain1 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["level"] {
+		m.level = 0
+	}
+	if !preset["mounts"] {
+		m.mounts = []int{}
+	}
+	if !preset["open"] {
+		m.open = true
+	}
+	if !preset["copies"] {
+		m.copies = []int{1, 2}
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__inst0_live"] {
+		m.__inst0_live = []*GaugeInstance{}
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__inst1_live"] {
+		m.__inst1_live = map[string]*GaugeInstance{}
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
 }
 
 func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
@@ -1423,6 +1540,7 @@ import (
 func TestAWriteOutsideReachesTheEffect(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.raiseClick()
 	if !((c.open && (c.gReadSeen() == 1))) { t.Errorf("assert failed: %s", "(c.open && (c.gReadSeen() == 1))") }
 	if !(((c.rowReadSeenAt("0") == 1) && (c.rowReadSeenAt("1") == 1))) { t.Errorf("assert failed: %s", "((c.rowReadSeenAt(\"0\") == 1) && (c.rowReadSeenAt(\"1\") == 1))") }
@@ -1431,6 +1549,7 @@ func TestAWriteOutsideReachesTheEffect(t *testing.T) {
 func TestAWriteOutsideRemountsAKeyedEffect(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.raiseClick()
 	__list0 := []string{}
 	for _, __item0 := range c.mounts {
@@ -1446,7 +1565,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -1514,22 +1637,56 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.level = 0
-	m.mounts = []int{}
-	m.open = true
-	m.copies = []int{1, 2}
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__inst0_live = []*GaugeInstance{}
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__inst1_live = map[string]*GaugeInstance{}
-	m.__rendering1 = false
-	m.__renderAgain1 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["level"] {
+		m.level = 0
+	}
+	if !preset["mounts"] {
+		m.mounts = []int{}
+	}
+	if !preset["open"] {
+		m.open = true
+	}
+	if !preset["copies"] {
+		m.copies = []int{1, 2}
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__inst0_live"] {
+		m.__inst0_live = []*GaugeInstance{}
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__inst1_live"] {
+		m.__inst1_live = map[string]*GaugeInstance{}
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
 }
 
 func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
@@ -1974,6 +2131,7 @@ import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -2013,14 +2171,18 @@ val SnglInstances = mutableMapOf<String, Map<String, (List<Any?>) -> Any?>>()
 
 lateinit var state: MainScreenState
 
-class MainScreenState {
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
     init { state = this }
     init { SnglInstances.clear() }
-    var level by mutableStateOf(0)
-    val mounts = mutableStateListOf<Int>()
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
-    var open by mutableStateOf(true)
-    val copies = mutableStateListOf(1, 2)
+    var level by mutableStateOf(__snglPre(__pre, "level") { 0 })
+    val mounts = if ("mounts" in __pre) (__pre["mounts"] as List<Int>).toMutableStateList() else mutableStateListOf<Int>()
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
+    var open by mutableStateOf(__snglPre(__pre, "open") { true })
+    val copies = if ("copies" in __pre) (__pre["copies"] as List<Int>).toMutableStateList() else mutableStateListOf(1, 2)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -2338,18 +2500,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { level: 0, mounts: [], open: true, copies: [1, 2] };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.raiseClick = () => $0.click();
   state.gReadSeen = () => document.querySelector('[data-sngl-instance="g"]')?.__sngl?.__read_seen();
   state.rowReadSeenAt = (k) => document.querySelector('[data-sngl-instance="row"][data-sngl-copy="' + k + '"]')?.__sngl?.__read_seen();
@@ -2642,16 +2807,15 @@ window.__sngl_boot = () => {
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e2795a0a75225ef81e3e880537640667
+pass sha256:6df8414bdad0b46816798667260dbc4e
 -- run/go/fyne --
-pass sha256:38b6c38e1e530d014ed63900241fc49a
+pass sha256:148f83095ef51afda4d57602f29a1237
 -- run/go/gtk4 --
-pass sha256:e81e3763baafacee42b720d29e560f6c
+pass sha256:1cb977c664f695a8b35bc035b5444fc8
 -- run/kotlin/android --
-pass sha256:d8622c469762a6d3b42c97e935bc5480
+pass sha256:135a95706cc5bba55c17d29d53218f40
 -- run/none/html --
-pass sha256:d7a3ee1ece18fe95ec0b2ccf9a55f5aa
+pass sha256:e6d6cdb7ee2afcb988e48fb3c4f19983

@@ -94,15 +94,35 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.rows = []string{"a", "b"}
-	m.log = ""
-	m.__root = container.NewVBox()
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__inst1_live = map[string]*NestInstance{}
-	m.__rendering1 = false
-	m.__renderAgain1 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["rows"] {
+		m.rows = []string{"a", "b"}
+	}
+	if !preset["log"] {
+		m.log = ""
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__inst1_live"] {
+		m.__inst1_live = map[string]*NestInstance{}
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
 }
 
 func __identified0(__xs []string) []__anon_id_elem_c6a818 {
@@ -545,6 +565,7 @@ import "testing"
 func TestWhatARowHoldsIsDestroyedFirst(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.log == "")) { t.Errorf("assert failed: %s", "(c.log == \"\")") }
 	c.dropClick()
 	if !((c.log == "b-;b;")) { t.Errorf("assert failed: %s", "(c.log == \"b-;b;\")") }
@@ -557,7 +578,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -617,15 +642,35 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.rows = []string{"a", "b"}
-	m.log = ""
-	m.__root = nil
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__inst1_live = map[string]*NestInstance{}
-	m.__rendering1 = false
-	m.__renderAgain1 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["rows"] {
+		m.rows = []string{"a", "b"}
+	}
+	if !preset["log"] {
+		m.log = ""
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__inst1_live"] {
+		m.__inst1_live = map[string]*NestInstance{}
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
 }
 
 func __identified0(__xs []string) []__anon_id_elem_c6a818 {
@@ -1075,6 +1120,7 @@ func (m *Model) dropClick() {
 
 package test.sngl.app
 
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -1093,7 +1139,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.key
-import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.DisposableEffect
 
 data class __anon_id_elem_c6a818(
@@ -1111,9 +1156,13 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    val rows = mutableStateListOf("a", "b")
-    var log by mutableStateOf("")
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    val rows = if ("rows" in __pre) (__pre["rows"] as List<String>).toMutableStateList() else mutableStateListOf("a", "b")
+    var log by mutableStateOf(__snglPre(__pre, "log") { "" })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1245,18 +1294,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { rows: ["a", "b"], log: "" };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.dropClick = () => $0.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
@@ -1593,19 +1645,18 @@ window.__sngl_boot = () => {
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:1f857400b79ab4c776a139b589498080
+pass sha256:defe42422bcc3098997d9edd6899547f
 -- run/go/gtk4 --
-pass sha256:4a69acd63f2523e31817c7c72abbe7f4
+pass sha256:e121e4dfe9c509c0ab2e14005dcf95b9
 -- run/kotlin/android --
-pass sha256:149d999b187f543771ae789255a60768
+pass sha256:31133616477fa8db19c103709036c450
 -- run/none/html --
-pass sha256:bf40c4446259f6af9c2442f873566820
+pass sha256:cfd1210fa21d70788ab21d27def0b5b9
 -- testrun/html/none/component_instance_teardown_nested.sngl/main/1 --
-sha256:15c41f8223610adfb6215d432d4fdc6e
+sha256:3b8b1e49704007468dda7d2011a894e2
 {
   "results": [
     {

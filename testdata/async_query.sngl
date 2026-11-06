@@ -76,12 +76,14 @@ func testAsksAtMount(t Test, c detail) {
 }
 
 func testAsksAgainOnAChangeOfKey(t Test, c detail) {
+    t.assert(c.len.value == "7")
     c.name = "fig"
     t.assert(c.len.value == "3")
     t.assert(c.loads == 2)
 }
 
 func testAFailureKeepsTheLastAnswer(t Test, c detail) {
+    t.assert(c.err.value == "")
     c.name = ""
     t.assert(c.err.value == "could not load : no name")
     t.assert(c.len.value == "7")

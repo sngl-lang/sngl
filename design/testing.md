@@ -240,12 +240,34 @@ These rules keep them agreeing:
   funcs reading it are spelled through the instance (`ExprCtx.StateReceiver`
   on Go and JS; on android the state members MainScreen spells as `state.<x>`,
   rebound to the instance). Each test starts from a fresh one — a new Model on
-  the Go targets, a remounted page on html. android disposes the last test's
+  the Go targets, a page booted afresh on html. android disposes the last test's
   composition before it makes the next one's state (`clearCurrentTestModel`):
   a new `MainScreenState` is the file's `state`, which a component other than
   MainScreen reads, so the last test's `@unmount`, run as the next model
   replaced it, wrote into the next test's log
   (`cmd/sngl/testdata/test_unmount_stays_in_its_test_runs.txt`).
+- **The component a test takes mounts on the first statement that needs it**
+  (`ir.TestSetup`, `lower.passTestMount`). Leading `t.setContext` calls and
+  plain writes of the component's own props and vars set it up: a write is
+  the value it starts from, and a context the value its mount reads. At the
+  first other statement, or at the end of a body that has none, the test
+  mounts it: the initializers of what it did not set run, in order, and it
+  builds and settles. passTestMount runs late, so it drops the redraws and
+  settles lowering put after each setup write and puts one `test.mount` call,
+  naming what was set, in their place. Each emitter spells that call: a bare
+  Model `__init(preset)` initializes and `mountTestComponent` builds on the Go
+  targets; html boots the page from what the test wrote into a plain object
+  (`window.__snglPre`), its context vars included, where it booted as the
+  page loaded; android makes `MainScreenState(__pre)`. The interpreter mounts
+  on the first read through the instance (`componentValue.settle`), on a
+  `t` method other than `setContext`, `assert` and `must`, and before a
+  statement reading package state, and initializes the instance only then
+  (`interp.BuildTestEnv`): an initializer that ran at construction and again
+  at the mount opened what it owns twice. A page that fetched on mount fetched
+  before the body could say where from, so a test pointed at the recording
+  server through a provider wrapped in a component of its own -- the Pokédex
+  had 26 -- and a test checking a transition now reads the starting state
+  before it writes (`testdata/test_mounts_where_first_needed.txtar`).
 - **The component a test takes is rendered with no call site**, so each of its
   props holds its default, or its type's zero where it has none: a var of the
   component on a compiled target (`bindRootProps`), bound ahead of its own vars

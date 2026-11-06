@@ -308,48 +308,133 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.shown__inst0 = true
-	m.log__inst0 = []string{}
-	m.items__inst0 = []string{"a", "b", "c"}
-	m.log__inst1 = []string{}
-	m.k__inst0 = 0
-	m.log__inst2 = []string{}
-	m.key__inst0 = Counter{}
-	m.n__inst0 = 0
-	m.log__inst3 = []string{}
-	m.key__inst1 = Pair{A: 1, B: "x"}
-	m.log__inst4 = []string{}
-	m.visible__inst0 = true
-	m.__effect0_live = []bool{}
-	m.__effect0_desired = []bool{}
-	m.__effect1_key = ""
-	m.__effect1_live = []string{}
-	m.__effect1_desired = []string{}
-	m.__effect1_paths = []string{}
-	m.__effect1_livePaths = []string{}
-	m.__effect1_pathAt = map[string]int{}
-	m.__effect1_liveAt = map[string]int{}
-	m.__effect2_key = 0
-	m.__effect2_live = []int{}
-	m.__effect2_desired = []int{}
-	m.__effect3_key = 0
-	m.__effect3_live = []int{}
-	m.__effect3_desired = []int{}
-	m.__effect4_key = 0
-	m.__effect4_live = []int{}
-	m.__effect4_desired = []int{}
-	m.__effect5_key = 0
-	m.__effect5_live = []int{}
-	m.__effect5_desired = []int{}
-	m.__effect6_key = Pair{}
-	m.__effect6_live = []Pair{}
-	m.__effect6_desired = []Pair{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
-	m.__focusID = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["shown__inst0"] {
+		m.shown__inst0 = true
+	}
+	if !preset["log__inst0"] {
+		m.log__inst0 = []string{}
+	}
+	if !preset["items__inst0"] {
+		m.items__inst0 = []string{"a", "b", "c"}
+	}
+	if !preset["log__inst1"] {
+		m.log__inst1 = []string{}
+	}
+	if !preset["k__inst0"] {
+		m.k__inst0 = 0
+	}
+	if !preset["log__inst2"] {
+		m.log__inst2 = []string{}
+	}
+	if !preset["key__inst0"] {
+		m.key__inst0 = Counter{}
+	}
+	if !preset["n__inst0"] {
+		m.n__inst0 = 0
+	}
+	if !preset["log__inst3"] {
+		m.log__inst3 = []string{}
+	}
+	if !preset["key__inst1"] {
+		m.key__inst1 = Pair{A: 1, B: "x"}
+	}
+	if !preset["log__inst4"] {
+		m.log__inst4 = []string{}
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []bool{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []bool{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = ""
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []string{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []string{}
+	}
+	if !preset["__effect1_paths"] {
+		m.__effect1_paths = []string{}
+	}
+	if !preset["__effect1_livePaths"] {
+		m.__effect1_livePaths = []string{}
+	}
+	if !preset["__effect1_pathAt"] {
+		m.__effect1_pathAt = map[string]int{}
+	}
+	if !preset["__effect1_liveAt"] {
+		m.__effect1_liveAt = map[string]int{}
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = 0
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []int{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []int{}
+	}
+	if !preset["__effect3_key"] {
+		m.__effect3_key = 0
+	}
+	if !preset["__effect3_live"] {
+		m.__effect3_live = []int{}
+	}
+	if !preset["__effect3_desired"] {
+		m.__effect3_desired = []int{}
+	}
+	if !preset["__effect4_key"] {
+		m.__effect4_key = 0
+	}
+	if !preset["__effect4_live"] {
+		m.__effect4_live = []int{}
+	}
+	if !preset["__effect4_desired"] {
+		m.__effect4_desired = []int{}
+	}
+	if !preset["__effect5_key"] {
+		m.__effect5_key = 0
+	}
+	if !preset["__effect5_live"] {
+		m.__effect5_live = []int{}
+	}
+	if !preset["__effect5_desired"] {
+		m.__effect5_desired = []int{}
+	}
+	if !preset["__effect6_key"] {
+		m.__effect6_key = Pair{}
+	}
+	if !preset["__effect6_live"] {
+		m.__effect6_live = []Pair{}
+	}
+	if !preset["__effect6_desired"] {
+		m.__effect6_desired = []Pair{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
 	m.__effects0_settle()
 	return m
 }
@@ -1505,6 +1590,7 @@ import (
 func TestBranchIsTheLifetime(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((strings.Join(c.log__inst0, ",") == "in")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst0, \",\") == \"in\")") }
 	c.toggleClick()
 	if !((strings.Join(c.log__inst0, ",") == "in,out")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst0, \",\") == \"in,out\")") }
@@ -1517,6 +1603,7 @@ func TestBranchIsTheLifetime(t *testing.T) {
 func TestEndingsRunNewestFirst(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((strings.Join(c.log__inst1, ",") == "+a,+b,+c")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst1, \",\") == \"+a,+b,+c\")") }
 	c.dropClick()
 	if !((strings.Join(c.log__inst1, ",") == "+a,+b,+c,-c,-b")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst1, \",\") == \"+a,+b,+c,-c,-b\")") }
@@ -1525,6 +1612,7 @@ func TestEndingsRunNewestFirst(t *testing.T) {
 func TestPushMountsTheNewBracket(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.addClick()
 	if !((strings.Join(c.log__inst1, ",") == "+a,+b,+c,+d")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst1, \",\") == \"+a,+b,+c,+d\")") }
 }
@@ -1532,6 +1620,7 @@ func TestPushMountsTheNewBracket(t *testing.T) {
 func TestBothEndBeforeEitherBegins(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((strings.Join(c.log__inst2, ",") == "+A,+B")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst2, \",\") == \"+A,+B\")") }
 	c.rekeyClick()
 	if !((strings.Join(c.log__inst2, ",") == "+A,+B,-B,-A,+A,+B")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst2, \",\") == \"+A,+B,-B,-A,+A,+B\")") }
@@ -1540,6 +1629,7 @@ func TestBothEndBeforeEitherBegins(t *testing.T) {
 func TestAFieldWriteRekeys(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.fieldClick()
 	if !((strings.Join(c.log__inst3, ",") == "f+,c+,f-,f+")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst3, \",\") == \"f+,c+,f-,f+\")") }
 }
@@ -1547,6 +1637,7 @@ func TestAFieldWriteRekeys(t *testing.T) {
 func TestACalledKeyRekeys(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.calledClick()
 	if !((strings.Join(c.log__inst3, ",") == "f+,c+,c-,c+")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst3, \",\") == \"f+,c+,c-,c+\")") }
 }
@@ -1554,6 +1645,7 @@ func TestACalledKeyRekeys(t *testing.T) {
 func TestAStructKeyComparesFieldByField(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.sameClick()
 	if !((strings.Join(c.log__inst4, ",") == "m")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst4, \",\") == \"m\")") }
 	c.bumpClick()
@@ -1561,7 +1653,13 @@ func TestAStructKeyComparesFieldByField(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from component_effect_lifetimes.sngl; DO NOT EDIT.
 
@@ -1659,47 +1757,131 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.shown__inst0 = true
-	m.log__inst0 = []string{}
-	m.items__inst0 = []string{"a", "b", "c"}
-	m.log__inst1 = []string{}
-	m.k__inst0 = 0
-	m.log__inst2 = []string{}
-	m.key__inst0 = Counter{}
-	m.n__inst0 = 0
-	m.log__inst3 = []string{}
-	m.key__inst1 = Pair{A: 1, B: "x"}
-	m.log__inst4 = []string{}
-	m.visible__inst0 = true
-	m.__effect0_live = []bool{}
-	m.__effect0_desired = []bool{}
-	m.__effect1_key = ""
-	m.__effect1_live = []string{}
-	m.__effect1_desired = []string{}
-	m.__effect1_paths = []string{}
-	m.__effect1_livePaths = []string{}
-	m.__effect1_pathAt = map[string]int{}
-	m.__effect1_liveAt = map[string]int{}
-	m.__effect2_key = 0
-	m.__effect2_live = []int{}
-	m.__effect2_desired = []int{}
-	m.__effect3_key = 0
-	m.__effect3_live = []int{}
-	m.__effect3_desired = []int{}
-	m.__effect4_key = 0
-	m.__effect4_live = []int{}
-	m.__effect4_desired = []int{}
-	m.__effect5_key = 0
-	m.__effect5_live = []int{}
-	m.__effect5_desired = []int{}
-	m.__effect6_key = Pair{}
-	m.__effect6_live = []Pair{}
-	m.__effect6_desired = []Pair{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["shown__inst0"] {
+		m.shown__inst0 = true
+	}
+	if !preset["log__inst0"] {
+		m.log__inst0 = []string{}
+	}
+	if !preset["items__inst0"] {
+		m.items__inst0 = []string{"a", "b", "c"}
+	}
+	if !preset["log__inst1"] {
+		m.log__inst1 = []string{}
+	}
+	if !preset["k__inst0"] {
+		m.k__inst0 = 0
+	}
+	if !preset["log__inst2"] {
+		m.log__inst2 = []string{}
+	}
+	if !preset["key__inst0"] {
+		m.key__inst0 = Counter{}
+	}
+	if !preset["n__inst0"] {
+		m.n__inst0 = 0
+	}
+	if !preset["log__inst3"] {
+		m.log__inst3 = []string{}
+	}
+	if !preset["key__inst1"] {
+		m.key__inst1 = Pair{A: 1, B: "x"}
+	}
+	if !preset["log__inst4"] {
+		m.log__inst4 = []string{}
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []bool{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []bool{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = ""
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []string{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []string{}
+	}
+	if !preset["__effect1_paths"] {
+		m.__effect1_paths = []string{}
+	}
+	if !preset["__effect1_livePaths"] {
+		m.__effect1_livePaths = []string{}
+	}
+	if !preset["__effect1_pathAt"] {
+		m.__effect1_pathAt = map[string]int{}
+	}
+	if !preset["__effect1_liveAt"] {
+		m.__effect1_liveAt = map[string]int{}
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = 0
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []int{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []int{}
+	}
+	if !preset["__effect3_key"] {
+		m.__effect3_key = 0
+	}
+	if !preset["__effect3_live"] {
+		m.__effect3_live = []int{}
+	}
+	if !preset["__effect3_desired"] {
+		m.__effect3_desired = []int{}
+	}
+	if !preset["__effect4_key"] {
+		m.__effect4_key = 0
+	}
+	if !preset["__effect4_live"] {
+		m.__effect4_live = []int{}
+	}
+	if !preset["__effect4_desired"] {
+		m.__effect4_desired = []int{}
+	}
+	if !preset["__effect5_key"] {
+		m.__effect5_key = 0
+	}
+	if !preset["__effect5_live"] {
+		m.__effect5_live = []int{}
+	}
+	if !preset["__effect5_desired"] {
+		m.__effect5_desired = []int{}
+	}
+	if !preset["__effect6_key"] {
+		m.__effect6_key = Pair{}
+	}
+	if !preset["__effect6_live"] {
+		m.__effect6_live = []Pair{}
+	}
+	if !preset["__effect6_desired"] {
+		m.__effect6_desired = []Pair{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
 }
 
 func __identified0(__xs []string) []__anon_id_elem_c6a818 {
@@ -2421,6 +2603,7 @@ import (
 func TestBranchIsTheLifetime(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((strings.Join(c.log__inst0, ",") == "in")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst0, \",\") == \"in\")") }
 	c.toggleClick()
 	if !((strings.Join(c.log__inst0, ",") == "in,out")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst0, \",\") == \"in,out\")") }
@@ -2433,6 +2616,7 @@ func TestBranchIsTheLifetime(t *testing.T) {
 func TestEndingsRunNewestFirst(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((strings.Join(c.log__inst1, ",") == "+a,+b,+c")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst1, \",\") == \"+a,+b,+c\")") }
 	c.dropClick()
 	if !((strings.Join(c.log__inst1, ",") == "+a,+b,+c,-c,-b")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst1, \",\") == \"+a,+b,+c,-c,-b\")") }
@@ -2441,6 +2625,7 @@ func TestEndingsRunNewestFirst(t *testing.T) {
 func TestPushMountsTheNewBracket(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.addClick()
 	if !((strings.Join(c.log__inst1, ",") == "+a,+b,+c,+d")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst1, \",\") == \"+a,+b,+c,+d\")") }
 }
@@ -2448,6 +2633,7 @@ func TestPushMountsTheNewBracket(t *testing.T) {
 func TestBothEndBeforeEitherBegins(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((strings.Join(c.log__inst2, ",") == "+A,+B")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst2, \",\") == \"+A,+B\")") }
 	c.rekeyClick()
 	if !((strings.Join(c.log__inst2, ",") == "+A,+B,-B,-A,+A,+B")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst2, \",\") == \"+A,+B,-B,-A,+A,+B\")") }
@@ -2456,6 +2642,7 @@ func TestBothEndBeforeEitherBegins(t *testing.T) {
 func TestAFieldWriteRekeys(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.fieldClick()
 	if !((strings.Join(c.log__inst3, ",") == "f+,c+,f-,f+")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst3, \",\") == \"f+,c+,f-,f+\")") }
 }
@@ -2463,6 +2650,7 @@ func TestAFieldWriteRekeys(t *testing.T) {
 func TestACalledKeyRekeys(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.calledClick()
 	if !((strings.Join(c.log__inst3, ",") == "f+,c+,c-,c+")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst3, \",\") == \"f+,c+,c-,c+\")") }
 }
@@ -2470,6 +2658,7 @@ func TestACalledKeyRekeys(t *testing.T) {
 func TestAStructKeyComparesFieldByField(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.sameClick()
 	if !((strings.Join(c.log__inst4, ",") == "m")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst4, \",\") == \"m\")") }
 	c.bumpClick()
@@ -2483,7 +2672,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -2594,47 +2787,131 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.shown__inst0 = true
-	m.log__inst0 = []string{}
-	m.items__inst0 = []string{"a", "b", "c"}
-	m.log__inst1 = []string{}
-	m.k__inst0 = 0
-	m.log__inst2 = []string{}
-	m.key__inst0 = Counter{}
-	m.n__inst0 = 0
-	m.log__inst3 = []string{}
-	m.key__inst1 = Pair{A: 1, B: "x"}
-	m.log__inst4 = []string{}
-	m.visible__inst0 = true
-	m.__effect0_live = []bool{}
-	m.__effect0_desired = []bool{}
-	m.__effect1_key = ""
-	m.__effect1_live = []string{}
-	m.__effect1_desired = []string{}
-	m.__effect1_paths = []string{}
-	m.__effect1_livePaths = []string{}
-	m.__effect1_pathAt = map[string]int{}
-	m.__effect1_liveAt = map[string]int{}
-	m.__effect2_key = 0
-	m.__effect2_live = []int{}
-	m.__effect2_desired = []int{}
-	m.__effect3_key = 0
-	m.__effect3_live = []int{}
-	m.__effect3_desired = []int{}
-	m.__effect4_key = 0
-	m.__effect4_live = []int{}
-	m.__effect4_desired = []int{}
-	m.__effect5_key = 0
-	m.__effect5_live = []int{}
-	m.__effect5_desired = []int{}
-	m.__effect6_key = Pair{}
-	m.__effect6_live = []Pair{}
-	m.__effect6_desired = []Pair{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["shown__inst0"] {
+		m.shown__inst0 = true
+	}
+	if !preset["log__inst0"] {
+		m.log__inst0 = []string{}
+	}
+	if !preset["items__inst0"] {
+		m.items__inst0 = []string{"a", "b", "c"}
+	}
+	if !preset["log__inst1"] {
+		m.log__inst1 = []string{}
+	}
+	if !preset["k__inst0"] {
+		m.k__inst0 = 0
+	}
+	if !preset["log__inst2"] {
+		m.log__inst2 = []string{}
+	}
+	if !preset["key__inst0"] {
+		m.key__inst0 = Counter{}
+	}
+	if !preset["n__inst0"] {
+		m.n__inst0 = 0
+	}
+	if !preset["log__inst3"] {
+		m.log__inst3 = []string{}
+	}
+	if !preset["key__inst1"] {
+		m.key__inst1 = Pair{A: 1, B: "x"}
+	}
+	if !preset["log__inst4"] {
+		m.log__inst4 = []string{}
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []bool{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []bool{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = ""
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []string{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []string{}
+	}
+	if !preset["__effect1_paths"] {
+		m.__effect1_paths = []string{}
+	}
+	if !preset["__effect1_livePaths"] {
+		m.__effect1_livePaths = []string{}
+	}
+	if !preset["__effect1_pathAt"] {
+		m.__effect1_pathAt = map[string]int{}
+	}
+	if !preset["__effect1_liveAt"] {
+		m.__effect1_liveAt = map[string]int{}
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = 0
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []int{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []int{}
+	}
+	if !preset["__effect3_key"] {
+		m.__effect3_key = 0
+	}
+	if !preset["__effect3_live"] {
+		m.__effect3_live = []int{}
+	}
+	if !preset["__effect3_desired"] {
+		m.__effect3_desired = []int{}
+	}
+	if !preset["__effect4_key"] {
+		m.__effect4_key = 0
+	}
+	if !preset["__effect4_live"] {
+		m.__effect4_live = []int{}
+	}
+	if !preset["__effect4_desired"] {
+		m.__effect4_desired = []int{}
+	}
+	if !preset["__effect5_key"] {
+		m.__effect5_key = 0
+	}
+	if !preset["__effect5_live"] {
+		m.__effect5_live = []int{}
+	}
+	if !preset["__effect5_desired"] {
+		m.__effect5_desired = []int{}
+	}
+	if !preset["__effect6_key"] {
+		m.__effect6_key = Pair{}
+	}
+	if !preset["__effect6_live"] {
+		m.__effect6_live = []Pair{}
+	}
+	if !preset["__effect6_desired"] {
+		m.__effect6_desired = []Pair{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
 }
 
 func __identified0(__xs []string) []__anon_id_elem_c6a818 {
@@ -3350,6 +3627,7 @@ package test.sngl.app
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -3390,19 +3668,23 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var shown__inst0 by mutableStateOf(true)
-    val log__inst0 = mutableStateListOf<String>()
-    val items__inst0 = mutableStateListOf("a", "b", "c")
-    val log__inst1 = mutableStateListOf<String>()
-    var k__inst0 by mutableStateOf(0)
-    val log__inst2 = mutableStateListOf<String>()
-    var key__inst0 by mutableStateOf(Counter())
-    var n__inst0 by mutableStateOf(0)
-    val log__inst3 = mutableStateListOf<String>()
-    var key__inst1 by mutableStateOf(Pair(a = 1, b = "x"))
-    val log__inst4 = mutableStateListOf<String>()
-    var visible__inst0 by mutableStateOf(true)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var shown__inst0 by mutableStateOf(__snglPre(__pre, "shown__inst0") { true })
+    val log__inst0 = if ("log__inst0" in __pre) (__pre["log__inst0"] as List<String>).toMutableStateList() else mutableStateListOf<String>()
+    val items__inst0 = if ("items__inst0" in __pre) (__pre["items__inst0"] as List<String>).toMutableStateList() else mutableStateListOf("a", "b", "c")
+    val log__inst1 = if ("log__inst1" in __pre) (__pre["log__inst1"] as List<String>).toMutableStateList() else mutableStateListOf<String>()
+    var k__inst0 by mutableStateOf(__snglPre(__pre, "k__inst0") { 0 })
+    val log__inst2 = if ("log__inst2" in __pre) (__pre["log__inst2"] as List<String>).toMutableStateList() else mutableStateListOf<String>()
+    var key__inst0 by mutableStateOf(__snglPre(__pre, "key__inst0") { Counter() })
+    var n__inst0 by mutableStateOf(__snglPre(__pre, "n__inst0") { 0 })
+    val log__inst3 = if ("log__inst3" in __pre) (__pre["log__inst3"] as List<String>).toMutableStateList() else mutableStateListOf<String>()
+    var key__inst1 by mutableStateOf(__snglPre(__pre, "key__inst1") { Pair(a = 1, b = "x") })
+    val log__inst4 = if ("log__inst4" in __pre) (__pre["log__inst4"] as List<String>).toMutableStateList() else mutableStateListOf<String>()
+    var visible__inst0 by mutableStateOf(__snglPre(__pre, "visible__inst0") { true })
     fun scaled__inst0(m: Int): Int = (m * n__inst0)
 }
 
@@ -3680,20 +3962,23 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { shown__inst0: true, log__inst0: [], items__inst0: ["a", "b", "c"], log__inst1: [], k__inst0: 0, log__inst2: [], key__inst0: null, n__inst0: 0, log__inst3: [], key__inst1: null, log__inst4: [], visible__inst0: true };
-  state.key__inst0 = { n: 0 };
-  state.key__inst1 = { a: 1, b: "x" };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
+  if (!("key__inst0" in __snglPre)) state.key__inst0 = { n: 0 };
+  if (!("key__inst1" in __snglPre)) state.key__inst1 = { a: 1, b: "x" };
   state.toggleClick = () => $0.click();
   state.dropClick = () => $1.click();
   state.addClick = () => $2.click();
@@ -4184,21 +4469,20 @@ window.__sngl_boot = () => {
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e826347e4869f461907a51a22f672bb9
+pass sha256:ee996d778bf67aee6b9168fbad9de164
 -- run/go/fyne --
-pass sha256:ae723c7af39f7a9e29187ebe8185e0a5
+pass sha256:88f53a3619ad0f5054425450d77227c4
 -- run/go/gtk4 --
-pass sha256:5d4653f3c2685946d8fa7f088083dd5f
+pass sha256:e2613250c2a54f665aae60f0713d7b0a
 -- run/kotlin/android --
-pass sha256:ecf882f1197503b1373b7f23a4ef96b1
+pass sha256:6eaac3c7bb4f238a204008bb642207f2
 -- run/none/html --
-pass sha256:b77e2442af2862e31c914ef16ec59907
+pass sha256:9b99a877056da2516942c67a176bb575
 -- testrun/html/none/component_effect_lifetimes.sngl/branch/1 --
-sha256:32702d7b0dd1528e1f7c3adce82d133d
+sha256:0533c3b1c4213fac875b26910acc67d4
 {
   "results": [
     {
@@ -4208,7 +4492,7 @@ sha256:32702d7b0dd1528e1f7c3adce82d133d
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/keys/1 --
-sha256:b3718384287be60bbeeeb4faebc8e155
+sha256:e603ddf762c598fb887bb751f6b1ba35
 {
   "results": [
     {
@@ -4222,7 +4506,7 @@ sha256:b3718384287be60bbeeeb4faebc8e155
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/perElement/1 --
-sha256:507d3cfb4e8e1455e961900610cd38dc
+sha256:f5a291d17b2f17573b4ac0c024a64e9b
 {
   "results": [
     {
@@ -4236,7 +4520,7 @@ sha256:507d3cfb4e8e1455e961900610cd38dc
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/structKey/1 --
-sha256:f86cd15a7af356d6c9dac4157d520720
+sha256:367d1e36ec70008df0eb8e1f7e317950
 {
   "results": [
     {
@@ -4246,7 +4530,7 @@ sha256:f86cd15a7af356d6c9dac4157d520720
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/twoPositions/1 --
-sha256:1e37d66b39aba0731663793603207727
+sha256:a57145937ba30eb0dc5e9a7a9d9ea977
 {
   "results": [
     {

@@ -82,7 +82,7 @@ func testEachBookIsAskedForOnce(t test.Test, c page) {
     t.assert(c.count != null && c.count.value == "2")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:8511312420791bd195e84c99932f3742
+sha256:ec73d748d68614d0bf076ef3d627a660
 {
   "results": [
     {
@@ -92,7 +92,7 @@ sha256:8511312420791bd195e84c99932f3742
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:8caea815aeb06033e93cb6f0b2609f07
+sha256:5de1ded7c130c0c3f562f4bbf19f3a1e
 {
   "results": [
     {
@@ -102,7 +102,7 @@ sha256:8caea815aeb06033e93cb6f0b2609f07
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:83684ffa109cec91e38bb4fb64da6560
+sha256:9212165e957f9632bcf6619813be91c8
 {
   "results": [
     {
@@ -112,7 +112,7 @@ sha256:83684ffa109cec91e38bb4fb64da6560
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:ea91468b382ea74d889e024f95126206
+sha256:a301f9af48d3e99b32430b2e051a9d8e
 {
   "results": [
     {
@@ -122,7 +122,7 @@ sha256:ea91468b382ea74d889e024f95126206
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:d1b0dcc4a34023bad07ee1d695e1b8a1
+sha256:4be1f857f0e79d82192746c7b7611095
 {
   "results": [
     {

@@ -81,6 +81,7 @@ component keyed ui.node {
 // A mount that waits reads the key its own lifetime began with after the
 // wait, though another has begun since.
 func testAMountKeepsItsKeyAcrossAWait(t test.Test, c keyed) {
+    t.assert(c.key == "a")
     c.key = "b"
     t.wait(func() => c.seen.length() == 2, 3000)
     t.assert(c.seen.contains("a") && c.seen.contains("b"))
@@ -90,7 +91,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/app.sngl/keyed/1 --
-sha256:ac8e40efb0b41354c6e0842bdfcee324
+sha256:1eb8fa690c1255be8c3d3f0702fe114c
 {
   "results": [
     {
@@ -100,7 +101,7 @@ sha256:ac8e40efb0b41354c6e0842bdfcee324
   ]
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:2e51dcaefc40315a5400c6d2b0cd8b62
+sha256:287059d6624617e46d31fa841ce7bef7
 {
   "results": [
     {
@@ -110,7 +111,7 @@ sha256:2e51dcaefc40315a5400c6d2b0cd8b62
   ]
 }
 -- testrun/bubbletea/go/app.sngl/keyed/1 --
-sha256:1e4fd9cb549c408fe323b8e743c8521f
+sha256:16f7dba511fc7f91ffa4c23d247d447a
 {
   "results": [
     {
@@ -120,7 +121,7 @@ sha256:1e4fd9cb549c408fe323b8e743c8521f
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:c95bb1d7d2ea183649e2993e760fe260
+sha256:6fcb4948d19f40e0e02fdaa235643afc
 {
   "results": [
     {
@@ -130,7 +131,7 @@ sha256:c95bb1d7d2ea183649e2993e760fe260
   ]
 }
 -- testrun/fyne/go/app.sngl/keyed/1 --
-sha256:fc5e11db650475dff5a52d2b9dd31f66
+sha256:7d572d22aa8ee9d6c3d44c053c80ffba
 {
   "results": [
     {
@@ -140,7 +141,7 @@ sha256:fc5e11db650475dff5a52d2b9dd31f66
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:c381dbf49b9bb33e2d1db8838d1c1f5a
+sha256:3c570a43968ec480ce334ad120e281bc
 {
   "results": [
     {
@@ -150,7 +151,7 @@ sha256:c381dbf49b9bb33e2d1db8838d1c1f5a
   ]
 }
 -- testrun/gtk4/go/app.sngl/keyed/1 --
-sha256:b6c4a4c23428a9036095a625e1d242db
+sha256:43d5a99d6ceed61163538bcd0581364a
 {
   "results": [
     {
@@ -160,7 +161,7 @@ sha256:b6c4a4c23428a9036095a625e1d242db
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:1bbb1f257efa17fd0c5c59511f74c15d
+sha256:00f3e727a94d225d694b6b768cdbda93
 {
   "results": [
     {
@@ -170,7 +171,7 @@ sha256:1bbb1f257efa17fd0c5c59511f74c15d
   ]
 }
 -- testrun/html/none/app.sngl/keyed/1 --
-sha256:53d318995f7181472a24ea9bafa973a8
+sha256:7858298e62ba7681af3f23f4a509d2ff
 {
   "results": [
     {
@@ -180,7 +181,7 @@ sha256:53d318995f7181472a24ea9bafa973a8
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:94dc0047233b9c3fcca6e5f86cbcbef3
+sha256:32ba078bf32874d2d2eba2a1ee7cd8e5
 {
   "results": [
     {

@@ -94,7 +94,7 @@ func testAToggleEntryFollowsItsState(t test.Test, c app) {
     t.assert(c.autosave && c.main.menu[0].children[1].checked)
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:e0f27d504d1c1b03cf8ec24244d96e3b
+sha256:73be2829723224f7b03e7e80a80dd4ad
 {
   "results": [
     {
@@ -112,7 +112,7 @@ sha256:e0f27d504d1c1b03cf8ec24244d96e3b
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:e0563acc06ea4769c408d3f10f4472e8
+sha256:a82b9348a4d70c047da29d7a7461e85c
 {
   "results": [
     {
@@ -130,7 +130,7 @@ sha256:e0563acc06ea4769c408d3f10f4472e8
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:1310082f23ba8ae473fcf5acaab093da
+sha256:2c1673e38f9e7cad4fa138f253db5075
 {
   "results": [
     {
@@ -148,7 +148,7 @@ sha256:1310082f23ba8ae473fcf5acaab093da
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:f72b22e234b9ed80f5a6a22076dbcf1f
+sha256:56a8f19c6929d0ec24c07de3bca22524
 {
   "results": [
     {
@@ -166,7 +166,7 @@ sha256:f72b22e234b9ed80f5a6a22076dbcf1f
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:ce6082ab84268a0636a233bc473e3785
+sha256:2c9c0aa2b39429b284ad5d9ac0a45402
 {
   "results": [
     {

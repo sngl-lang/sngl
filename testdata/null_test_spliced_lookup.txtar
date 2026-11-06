@@ -109,16 +109,38 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.asked = []string{}
-	m.about = About{}
-	m.__effect0_key = ""
-	m.__effect0_live = []string{}
-	m.__effect0_desired = []string{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["asked"] {
+		m.asked = []string{}
+	}
+	if !preset["about"] {
+		m.about = About{}
+	}
+	if !preset["__effect0_key"] {
+		m.__effect0_key = ""
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []string{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []string{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
 }
 
 func (m *Model) wanted(key string) bool {
@@ -248,6 +270,7 @@ import "testing"
 func TestANullHabitatAsksNothing(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	var __lt0 string
 	if (c.about.Habitat != nil) {
 		__lt0 = (*(c.about.Habitat)).Name
@@ -274,7 +297,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -283,6 +310,7 @@ func newTestComponent() *Model {
 
 package test.sngl.app
 
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -316,9 +344,13 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    val asked = mutableStateListOf<String>()
-    var about by mutableStateOf(About())
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    val asked = if ("asked" in __pre) (__pre["asked"] as List<String>).toMutableStateList() else mutableStateListOf<String>()
+    var about by mutableStateOf(__snglPre(__pre, "about") { About() })
     fun wanted(key: String): Boolean = !(asked.indexOf(key) >= 0)
 }
 
@@ -408,19 +440,22 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { asked: [], about: null };
-  state.about = { habitat: null };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
+  if (!("about" in __snglPre)) state.about = { habitat: null };
   state.foundClick = () => $1.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
@@ -499,12 +534,11 @@ window.__sngl_boot = () => {
   __effects0_settle();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:1d737a672c5724ccd8f8b23ef16995da
+pass sha256:ffb1e7e688c2eb8d8c9b738581f87dc1
 -- run/kotlin/android --
-pass sha256:164506d5edbf0763e650a05036efca83
+pass sha256:5859e631d0f115c4c9bfccff7442ad4c
 -- run/none/html --
-pass sha256:fa1e72babe345e815a6303b34e16743c
+pass sha256:8a75f3004c1161fc018222578998149d

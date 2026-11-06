@@ -45,7 +45,7 @@ ui.window {
     row
 }
 -- testrun/bubbletea/go/app.sngl/row/1 --
-sha256:03a5712e9ff913f5065f48339e98e909
+sha256:a3b010f962ce53cc13677a3653006d8d
 {
   "results": [
     {

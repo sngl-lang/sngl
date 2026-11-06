@@ -84,7 +84,7 @@ func testChangeReachesThroughAnInstance(t test.Test, c wrapped) {
     t.assert(c.inner.chosen == Fruit.cherry)
 }
 -- testrun/android/kotlin/app.sngl/chooser/1 --
-sha256:92873409d56052d3c35c5df6089a0587
+sha256:82954bec64dcae646750c8bf8cf0b390
 {
   "results": [
     {
@@ -98,7 +98,7 @@ sha256:92873409d56052d3c35c5df6089a0587
   ]
 }
 -- testrun/android/kotlin/app.sngl/wrapped/1 --
-sha256:345e320b665c032c02c2428ad43b9710
+sha256:9ad162a5ac8adb06aec5c6abe538d135
 {
   "results": [
     {
@@ -108,7 +108,7 @@ sha256:345e320b665c032c02c2428ad43b9710
   ]
 }
 -- testrun/bubbletea/go/app.sngl/chooser/1 --
-sha256:695ab00c2502d7b5e244c0bb2afd7207
+sha256:8e8995b039501ab70e4bf05887772b15
 {
   "results": [
     {
@@ -122,7 +122,7 @@ sha256:695ab00c2502d7b5e244c0bb2afd7207
   ]
 }
 -- testrun/bubbletea/go/app.sngl/wrapped/1 --
-sha256:9bceca8db200548715b8e651bf03f6ff
+sha256:5b01af8edf79f2886e8fd99b61f0e019
 {
   "results": [
     {
@@ -132,7 +132,7 @@ sha256:9bceca8db200548715b8e651bf03f6ff
   ]
 }
 -- testrun/fyne/go/app.sngl/chooser/1 --
-sha256:b3c00bbd8cd87b406dc28e4e0846975f
+sha256:2944a3f80cb56edf2f65bb6ddf83d9ef
 {
   "results": [
     {
@@ -146,7 +146,7 @@ sha256:b3c00bbd8cd87b406dc28e4e0846975f
   ]
 }
 -- testrun/fyne/go/app.sngl/wrapped/1 --
-sha256:06c2650b6f46379dc76f77deb27fda47
+sha256:a7ff8f7e3974579e9bac95c307a76a69
 {
   "results": [
     {
@@ -156,7 +156,7 @@ sha256:06c2650b6f46379dc76f77deb27fda47
   ]
 }
 -- testrun/gtk4/go/app.sngl/chooser/1 --
-sha256:bb5ac3b7d797b98ee8bdcb21f830c741
+sha256:81cdba5a535cd8646a3ae906483a2eac
 {
   "results": [
     {
@@ -170,7 +170,7 @@ sha256:bb5ac3b7d797b98ee8bdcb21f830c741
   ]
 }
 -- testrun/gtk4/go/app.sngl/wrapped/1 --
-sha256:23ddf06f5e1b95070040bb0c23f13cef
+sha256:0fec8ee83244cc31d7067bd64f450823
 {
   "results": [
     {
@@ -180,7 +180,7 @@ sha256:23ddf06f5e1b95070040bb0c23f13cef
   ]
 }
 -- testrun/html/none/app.sngl/chooser/1 --
-sha256:78aa96563bf3853ca82d4d7fbc09ba79
+sha256:3d397f9d628786f92ca9a52e90b39862
 {
   "results": [
     {
@@ -194,7 +194,7 @@ sha256:78aa96563bf3853ca82d4d7fbc09ba79
   ]
 }
 -- testrun/html/none/app.sngl/wrapped/1 --
-sha256:b9c68fc86531d77f98c2beb7c2e1f7b9
+sha256:bb860afb3ea6333725589dc6b852bef9
 {
   "results": [
     {

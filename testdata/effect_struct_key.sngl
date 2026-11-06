@@ -48,6 +48,7 @@ func testWritingTheSameValuesBackKeepsTheLifetime(t Test, c main) {
 }
 
 func testChangingOneFieldIsANewLifetime(t Test, c main) {
+    t.assert(c.out.value == "m")
     c.key = pair{a=1, b="y"}
     t.assert(c.out.value == "m,u,m")
 }

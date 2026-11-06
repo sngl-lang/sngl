@@ -94,7 +94,7 @@ func testClearLeavesACopyAlone(t test.Test) {
     t.assert(kept == [3, 1, 2])
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:01c50ba018a68bd53893085938a91b06
+sha256:1a6b5b8e7594010dc85fdeca37b563a7
 {
   "results": [
     {
@@ -128,7 +128,7 @@ sha256:01c50ba018a68bd53893085938a91b06
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:2d10e2b102aa6ea6e26a7ddb063407b3
+sha256:36ed050850cf96a97ec3bf2632271b5a
 {
   "results": [
     {
@@ -162,7 +162,7 @@ sha256:2d10e2b102aa6ea6e26a7ddb063407b3
   ]
 }
 -- testrun/html/none/app.sngl/_/1 --
-sha256:44d3a532acf139539a43db0ff985d05b
+sha256:5127a5320503ff5e9010264f177426db
 {
   "results": [
     {

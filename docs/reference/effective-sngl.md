@@ -1694,6 +1694,22 @@ Read props: `c.display.value`. Fire events: `c.inc.click()`. A ref inside a `for
 
 Each test starts with fresh state. Mutations in one test do not leak to another.
 
+### When the component mounts
+
+The component a test takes mounts when the test first needs it: at the first statement that reads it, calls one of its methods, fires an event, waits, ticks or snapshots. Until then the test is setting it up. A `t.setContext` sets the value the mount reads, and a write of one of the component's props or vars sets the value it starts from, as a call site would:
+
+<!-- SNGL-nocheck -->
+
+```sngl
+func testShowsTheNameItWasGiven(t test.Test, c Greeting) {
+    t.setContext(i18n.locale, "fr-FR")
+    c.name = "Ada"
+    t.assert(c.label.value == "Bonjour, Ada")
+}
+```
+
+Nothing it renders, fetches or runs on mount has happened before that, so a page that asks for its data as it mounts asks once, with what the test set up. A test checking what a change does reads the starting state first, which mounts it, and then writes. A test that never needs the component still mounts it, at its end.
+
 ### Timers in tests
 
 Time does not pass on its own in a test. `t.tick()` advances to the next timer deadline and fires what is due; a timer whose `enabled` is false does not fire:

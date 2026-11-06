@@ -104,20 +104,50 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.parent = 1
-	m.xs = []string{"a", "b"}
-	m.__root = container.NewVBox()
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__inst1_live = []*__child1Instance{}
-	m.__rendering1 = false
-	m.__renderAgain1 = false
-	m.__slot2 = nil
-	m.__slot2_at = nil
-	m.__inst2_live = map[string]*RowInstance{}
-	m.__rendering2 = false
-	m.__renderAgain2 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["parent"] {
+		m.parent = 1
+	}
+	if !preset["xs"] {
+		m.xs = []string{"a", "b"}
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__inst1_live"] {
+		m.__inst1_live = []*__child1Instance{}
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
+	if !preset["__slot2"] {
+		m.__slot2 = nil
+	}
+	if !preset["__slot2_at"] {
+		m.__slot2_at = nil
+	}
+	if !preset["__inst2_live"] {
+		m.__inst2_live = map[string]*RowInstance{}
+	}
+	if !preset["__rendering2"] {
+		m.__rendering2 = false
+	}
+	if !preset["__renderAgain2"] {
+		m.__renderAgain2 = false
+	}
 }
 
 func __identified0(__xs []string) []__anon_id_elem_c6a818 {
@@ -488,6 +518,7 @@ import "testing"
 func TestBump(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.bumpClick()
 	if !((c.parent == 2)) { t.Errorf("assert failed: %s", "(c.parent == 2)") }
 }
@@ -499,7 +530,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -558,20 +593,50 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.parent = 1
-	m.xs = []string{"a", "b"}
-	m.__root = nil
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__inst1_live = []*__child1Instance{}
-	m.__rendering1 = false
-	m.__renderAgain1 = false
-	m.__slot2 = nil
-	m.__slot2_at = nil
-	m.__inst2_live = map[string]*RowInstance{}
-	m.__rendering2 = false
-	m.__renderAgain2 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["parent"] {
+		m.parent = 1
+	}
+	if !preset["xs"] {
+		m.xs = []string{"a", "b"}
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__inst1_live"] {
+		m.__inst1_live = []*__child1Instance{}
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
+	if !preset["__slot2"] {
+		m.__slot2 = nil
+	}
+	if !preset["__slot2_at"] {
+		m.__slot2_at = nil
+	}
+	if !preset["__inst2_live"] {
+		m.__inst2_live = map[string]*RowInstance{}
+	}
+	if !preset["__rendering2"] {
+		m.__rendering2 = false
+	}
+	if !preset["__renderAgain2"] {
+		m.__renderAgain2 = false
+	}
 }
 
 func __identified0(__xs []string) []__anon_id_elem_c6a818 {
@@ -962,6 +1027,6 @@ func (m *Model) bumpClick() {
 	gtk4rt.Emit(m.bump, "clicked")
 }
 -- run/go/fyne --
-pass sha256:ead195c0200e834170901d36227aacf3
+pass sha256:27d070c28d1b27d73472b3035dd6e836
 -- run/go/gtk4 --
-pass sha256:daa2b5bacbb98ce0065ba095675df969
+pass sha256:640f0c8dabc4449e4579a8b4140ca7ac

@@ -66,6 +66,7 @@ func testMadeOncePerCopy(t test.Test, c page) {
 }
 
 func testRekeyedCopyReleasesItsOldValue(t test.Test, c page) {
+    t.assert(opened == 2)
     c.ws = [3.0, 2.0]
     t.assert(opened == 3)
     t.assert(closed == 1)
@@ -73,6 +74,7 @@ func testRekeyedCopyReleasesItsOldValue(t test.Test, c page) {
 }
 
 func testLeavingCopyReleases(t test.Test, c page) {
+    t.assert(closed == 0)
     c.ws = [1.0]
     t.assert(closed == 1)
     t.assert(lastClosed == 2)
@@ -185,41 +187,112 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.opened = 0
-	m.closed = 0
-	m.lastClosed = 0
-	m.ws = []float64{1.0, 2.0}
-	m.p__inst0 = map[string]Pic{}
-	m.__copied__inst0 = map[string]__anon_copy_v0_2d5b73{}
-	m.__effect0_live = []string{}
-	m.__effect0_desired = []string{}
-	m.__effect0_paths = []string{}
-	m.__effect0_livePaths = []string{}
-	m.__effect0_pathAt = map[string]int{}
-	m.__effect0_liveAt = map[string]int{}
-	m.__effect1_key = __anon_copy_v0_2d5b73{}
-	m.__effect1_live = []__anon_copy_v0_2d5b73{}
-	m.__effect1_desired = []__anon_copy_v0_2d5b73{}
-	m.__effect1_paths = []string{}
-	m.__effect1_livePaths = []string{}
-	m.__effect1_pathAt = map[string]int{}
-	m.__effect1_liveAt = map[string]int{}
-	m.__effect2_key = ""
-	m.__effect2_live = []string{}
-	m.__effect2_desired = []string{}
-	m.__effect2_paths = []string{}
-	m.__effect2_livePaths = []string{}
-	m.__effect2_pathAt = map[string]int{}
-	m.__effect2_liveAt = map[string]int{}
-	m.__effect3_key = __anon_copy_on_5fc366{}
-	m.__effect3_dirty = false
-	m.__effect3_keys = map[string]__anon_copy_on_5fc366{}
-	m.__effect3_rekey = false
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["opened"] {
+		m.opened = 0
+	}
+	if !preset["closed"] {
+		m.closed = 0
+	}
+	if !preset["lastClosed"] {
+		m.lastClosed = 0
+	}
+	if !preset["ws"] {
+		m.ws = []float64{1.0, 2.0}
+	}
+	if !preset["p__inst0"] {
+		m.p__inst0 = map[string]Pic{}
+	}
+	if !preset["__copied__inst0"] {
+		m.__copied__inst0 = map[string]__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []string{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []string{}
+	}
+	if !preset["__effect0_paths"] {
+		m.__effect0_paths = []string{}
+	}
+	if !preset["__effect0_livePaths"] {
+		m.__effect0_livePaths = []string{}
+	}
+	if !preset["__effect0_pathAt"] {
+		m.__effect0_pathAt = map[string]int{}
+	}
+	if !preset["__effect0_liveAt"] {
+		m.__effect0_liveAt = map[string]int{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = __anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_paths"] {
+		m.__effect1_paths = []string{}
+	}
+	if !preset["__effect1_livePaths"] {
+		m.__effect1_livePaths = []string{}
+	}
+	if !preset["__effect1_pathAt"] {
+		m.__effect1_pathAt = map[string]int{}
+	}
+	if !preset["__effect1_liveAt"] {
+		m.__effect1_liveAt = map[string]int{}
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = ""
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []string{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []string{}
+	}
+	if !preset["__effect2_paths"] {
+		m.__effect2_paths = []string{}
+	}
+	if !preset["__effect2_livePaths"] {
+		m.__effect2_livePaths = []string{}
+	}
+	if !preset["__effect2_pathAt"] {
+		m.__effect2_pathAt = map[string]int{}
+	}
+	if !preset["__effect2_liveAt"] {
+		m.__effect2_liveAt = map[string]int{}
+	}
+	if !preset["__effect3_key"] {
+		m.__effect3_key = __anon_copy_on_5fc366{}
+	}
+	if !preset["__effect3_dirty"] {
+		m.__effect3_dirty = false
+	}
+	if !preset["__effect3_keys"] {
+		m.__effect3_keys = map[string]__anon_copy_on_5fc366{}
+	}
+	if !preset["__effect3_rekey"] {
+		m.__effect3_rekey = false
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
 	m.__effects0_settle()
 	return m
 }
@@ -634,6 +707,7 @@ import "testing"
 func TestMadeOncePerCopy(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.opened == 2)) { t.Errorf("assert failed: %s", "(c.opened == 2)") }
 	if !((c.closed == 0)) { t.Errorf("assert failed: %s", "(c.closed == 0)") }
 }
@@ -641,6 +715,8 @@ func TestMadeOncePerCopy(t *testing.T) {
 func TestRekeyedCopyReleasesItsOldValue(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
+	if !((c.opened == 2)) { t.Errorf("assert failed: %s", "(c.opened == 2)") }
 	c.ws = []float64{3.0, 2.0}
 	c.__effect3_rekey_mark()
 	c.__effects0_settle()
@@ -652,6 +728,8 @@ func TestRekeyedCopyReleasesItsOldValue(t *testing.T) {
 func TestLeavingCopyReleases(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
+	if !((c.closed == 0)) { t.Errorf("assert failed: %s", "(c.closed == 0)") }
 	c.ws = []float64{1.0}
 	c.__effect3_rekey_mark()
 	c.__effects0_settle()
@@ -660,7 +738,13 @@ func TestLeavingCopyReleases(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -760,41 +844,113 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.opened = 0
-	m.closed = 0
-	m.lastClosed = 0
-	m.ws = []float64{1.0, 2.0}
-	m.p__inst0 = map[string]Pic{}
-	m.__copied__inst0 = map[string]__anon_copy_v0_2d5b73{}
-	m.__effect0_live = []string{}
-	m.__effect0_desired = []string{}
-	m.__effect0_paths = []string{}
-	m.__effect0_livePaths = []string{}
-	m.__effect0_pathAt = map[string]int{}
-	m.__effect0_liveAt = map[string]int{}
-	m.__effect1_key = __anon_copy_v0_2d5b73{}
-	m.__effect1_live = []__anon_copy_v0_2d5b73{}
-	m.__effect1_desired = []__anon_copy_v0_2d5b73{}
-	m.__effect1_paths = []string{}
-	m.__effect1_livePaths = []string{}
-	m.__effect1_pathAt = map[string]int{}
-	m.__effect1_liveAt = map[string]int{}
-	m.__effect2_key = ""
-	m.__effect2_live = []string{}
-	m.__effect2_desired = []string{}
-	m.__effect2_paths = []string{}
-	m.__effect2_livePaths = []string{}
-	m.__effect2_pathAt = map[string]int{}
-	m.__effect2_liveAt = map[string]int{}
-	m.__effect3_key = __anon_copy_on_5fc366{}
-	m.__effect3_dirty = false
-	m.__effect3_keys = map[string]__anon_copy_on_5fc366{}
-	m.__effect3_rekey = false
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["opened"] {
+		m.opened = 0
+	}
+	if !preset["closed"] {
+		m.closed = 0
+	}
+	if !preset["lastClosed"] {
+		m.lastClosed = 0
+	}
+	if !preset["ws"] {
+		m.ws = []float64{1.0, 2.0}
+	}
+	if !preset["p__inst0"] {
+		m.p__inst0 = map[string]Pic{}
+	}
+	if !preset["__copied__inst0"] {
+		m.__copied__inst0 = map[string]__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []string{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []string{}
+	}
+	if !preset["__effect0_paths"] {
+		m.__effect0_paths = []string{}
+	}
+	if !preset["__effect0_livePaths"] {
+		m.__effect0_livePaths = []string{}
+	}
+	if !preset["__effect0_pathAt"] {
+		m.__effect0_pathAt = map[string]int{}
+	}
+	if !preset["__effect0_liveAt"] {
+		m.__effect0_liveAt = map[string]int{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = __anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_paths"] {
+		m.__effect1_paths = []string{}
+	}
+	if !preset["__effect1_livePaths"] {
+		m.__effect1_livePaths = []string{}
+	}
+	if !preset["__effect1_pathAt"] {
+		m.__effect1_pathAt = map[string]int{}
+	}
+	if !preset["__effect1_liveAt"] {
+		m.__effect1_liveAt = map[string]int{}
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = ""
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []string{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []string{}
+	}
+	if !preset["__effect2_paths"] {
+		m.__effect2_paths = []string{}
+	}
+	if !preset["__effect2_livePaths"] {
+		m.__effect2_livePaths = []string{}
+	}
+	if !preset["__effect2_pathAt"] {
+		m.__effect2_pathAt = map[string]int{}
+	}
+	if !preset["__effect2_liveAt"] {
+		m.__effect2_liveAt = map[string]int{}
+	}
+	if !preset["__effect3_key"] {
+		m.__effect3_key = __anon_copy_on_5fc366{}
+	}
+	if !preset["__effect3_dirty"] {
+		m.__effect3_dirty = false
+	}
+	if !preset["__effect3_keys"] {
+		m.__effect3_keys = map[string]__anon_copy_on_5fc366{}
+	}
+	if !preset["__effect3_rekey"] {
+		m.__effect3_rekey = false
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
 }
 
 func (m *Model) close__r0(p Pic) {
@@ -1132,6 +1288,7 @@ import "testing"
 func TestMadeOncePerCopy(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.opened == 2)) { t.Errorf("assert failed: %s", "(c.opened == 2)") }
 	if !((c.closed == 0)) { t.Errorf("assert failed: %s", "(c.closed == 0)") }
 }
@@ -1139,6 +1296,8 @@ func TestMadeOncePerCopy(t *testing.T) {
 func TestRekeyedCopyReleasesItsOldValue(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
+	if !((c.opened == 2)) { t.Errorf("assert failed: %s", "(c.opened == 2)") }
 	c.ws = []float64{3.0, 2.0}
 	c.__effect3_rekey_mark()
 	c.__effects0_settle()
@@ -1150,6 +1309,8 @@ func TestRekeyedCopyReleasesItsOldValue(t *testing.T) {
 func TestLeavingCopyReleases(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
+	if !((c.closed == 0)) { t.Errorf("assert failed: %s", "(c.closed == 0)") }
 	c.ws = []float64{1.0}
 	c.__effect3_rekey_mark()
 	c.__effects0_settle()
@@ -1164,7 +1325,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -1499,41 +1664,113 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.opened = 0
-	m.closed = 0
-	m.lastClosed = 0
-	m.ws = []float64{1.0, 2.0}
-	m.p__inst0 = map[string]Pic{}
-	m.__copied__inst0 = map[string]__anon_copy_v0_2d5b73{}
-	m.__effect0_live = []string{}
-	m.__effect0_desired = []string{}
-	m.__effect0_paths = []string{}
-	m.__effect0_livePaths = []string{}
-	m.__effect0_pathAt = map[string]int{}
-	m.__effect0_liveAt = map[string]int{}
-	m.__effect1_key = __anon_copy_v0_2d5b73{}
-	m.__effect1_live = []__anon_copy_v0_2d5b73{}
-	m.__effect1_desired = []__anon_copy_v0_2d5b73{}
-	m.__effect1_paths = []string{}
-	m.__effect1_livePaths = []string{}
-	m.__effect1_pathAt = map[string]int{}
-	m.__effect1_liveAt = map[string]int{}
-	m.__effect2_key = ""
-	m.__effect2_live = []string{}
-	m.__effect2_desired = []string{}
-	m.__effect2_paths = []string{}
-	m.__effect2_livePaths = []string{}
-	m.__effect2_pathAt = map[string]int{}
-	m.__effect2_liveAt = map[string]int{}
-	m.__effect3_key = __anon_copy_on_5fc366{}
-	m.__effect3_dirty = false
-	m.__effect3_keys = map[string]__anon_copy_on_5fc366{}
-	m.__effect3_rekey = false
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["opened"] {
+		m.opened = 0
+	}
+	if !preset["closed"] {
+		m.closed = 0
+	}
+	if !preset["lastClosed"] {
+		m.lastClosed = 0
+	}
+	if !preset["ws"] {
+		m.ws = []float64{1.0, 2.0}
+	}
+	if !preset["p__inst0"] {
+		m.p__inst0 = map[string]Pic{}
+	}
+	if !preset["__copied__inst0"] {
+		m.__copied__inst0 = map[string]__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []string{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []string{}
+	}
+	if !preset["__effect0_paths"] {
+		m.__effect0_paths = []string{}
+	}
+	if !preset["__effect0_livePaths"] {
+		m.__effect0_livePaths = []string{}
+	}
+	if !preset["__effect0_pathAt"] {
+		m.__effect0_pathAt = map[string]int{}
+	}
+	if !preset["__effect0_liveAt"] {
+		m.__effect0_liveAt = map[string]int{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = __anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_paths"] {
+		m.__effect1_paths = []string{}
+	}
+	if !preset["__effect1_livePaths"] {
+		m.__effect1_livePaths = []string{}
+	}
+	if !preset["__effect1_pathAt"] {
+		m.__effect1_pathAt = map[string]int{}
+	}
+	if !preset["__effect1_liveAt"] {
+		m.__effect1_liveAt = map[string]int{}
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = ""
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []string{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []string{}
+	}
+	if !preset["__effect2_paths"] {
+		m.__effect2_paths = []string{}
+	}
+	if !preset["__effect2_livePaths"] {
+		m.__effect2_livePaths = []string{}
+	}
+	if !preset["__effect2_pathAt"] {
+		m.__effect2_pathAt = map[string]int{}
+	}
+	if !preset["__effect2_liveAt"] {
+		m.__effect2_liveAt = map[string]int{}
+	}
+	if !preset["__effect3_key"] {
+		m.__effect3_key = __anon_copy_on_5fc366{}
+	}
+	if !preset["__effect3_dirty"] {
+		m.__effect3_dirty = false
+	}
+	if !preset["__effect3_keys"] {
+		m.__effect3_keys = map[string]__anon_copy_on_5fc366{}
+	}
+	if !preset["__effect3_rekey"] {
+		m.__effect3_rekey = false
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
 }
 
 func (m *Model) close__r0(p Pic) {
@@ -1922,18 +2159,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { opened: 0, closed: 0, lastClosed: 0, ws: [1, 2] };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -2216,14 +2456,13 @@ window.__sngl_boot = () => {
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:05d4df171f56635e1275e27ce1d72105
+pass sha256:63eb1867e049e18c71da2f666d807732
 -- run/go/fyne --
-pass sha256:2026ebafe4322316fc4f4527f448a59f
+pass sha256:ef0259f4d03202cf5abaa16b00c788f0
 -- run/go/gtk4 --
-pass sha256:bbc0d53b917043ba758f541f569eebe8
+pass sha256:35c85c0d571a6d6fb9f11d52a884f462
 -- run/none/html --
-pass sha256:571c0f4ef1d9377742c5c4c50608550b
+pass sha256:238f38fdd29fde3238ab1c055421fdef

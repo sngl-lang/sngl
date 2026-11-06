@@ -774,7 +774,10 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		if shared {
 			body.WriteString("lateinit var state: MainScreenState\n\n")
 		}
-		body.WriteString("class MainScreenState {\n")
+		// Made where a test mounts it, from what the test set up ahead of
+		// that: each property it set starts from what it set.
+		body.WriteString("@Suppress(\"UNCHECKED_CAST\")\nprivate fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =\n    if (key in pre) pre[key] as T else init()\n\n")
+		body.WriteString("class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {\n")
 		if shared {
 			body.WriteString("    init { state = this }\n")
 		}
@@ -796,10 +799,11 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 				initVal = classKC.EvalExpr(bind.initEx)
 			}
 			if bind.isList {
-				fmt.Fprintf(&body, "    val %s = %s\n", bind.name, listStateInitKt(kc, bind, initVal))
+				elem := listElementTypeKt(bind.ktType)
+				fmt.Fprintf(&body, "    val %s = if (%q in __pre) (__pre[%q] as List<%s>).%s() else %s\n", bind.name, bind.name, bind.name, elem, kc.Name(ktToMutableStateList), listStateInitKt(kc, bind, initVal))
 			} else {
 				stateDelegate(kc)
-				fmt.Fprintf(&body, "    var %s by %s%s(%s)\n", bind.name, kc.Name(ktMutableStateOf), stateTypeArg(bind, initVal), initVal)
+				fmt.Fprintf(&body, "    var %s by %s%s(__snglPre(__pre, %q) { %s })\n", bind.name, kc.Name(ktMutableStateOf), stateTypeArg(bind, initVal), bind.name, initVal)
 			}
 		}
 		// Getters, not derivedStateOf: one read outside any composition and

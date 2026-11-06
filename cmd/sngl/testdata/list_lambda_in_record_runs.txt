@@ -50,7 +50,7 @@ func testDoubles(t test.Test, c main) {
     t.assert(c.c != null && c.c.doubled().length() == 2)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:38c937d6562bfe698c9eda7e543c0470
+sha256:f8c30f9d3fe4e348f884a08a6e7d8c4a
 {
   "results": [
     {
@@ -60,7 +60,7 @@ sha256:38c937d6562bfe698c9eda7e543c0470
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:e7221d2c1874ae3bac7054ca738f663e
+sha256:83b2142cd5a1c009f2369bd372da0e80
 {
   "results": [
     {
@@ -70,7 +70,7 @@ sha256:e7221d2c1874ae3bac7054ca738f663e
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:e9d0aebd45fcdaecc9769430ff5304c4
+sha256:56739d3ed85e87318503037a7c2fa11b
 {
   "results": [
     {
@@ -80,7 +80,7 @@ sha256:e9d0aebd45fcdaecc9769430ff5304c4
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:ffd559751de1a5769281eb0a3d078cda
+sha256:d61fdd7d3120d7f6c06fd078ba170798
 {
   "results": [
     {
@@ -90,7 +90,7 @@ sha256:ffd559751de1a5769281eb0a3d078cda
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:38bf77b09844613073ec5f0d1935c71f
+sha256:463bd3e04bff624a96570997eaa15eab
 {
   "results": [
     {

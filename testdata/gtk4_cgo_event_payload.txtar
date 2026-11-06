@@ -97,18 +97,44 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.last = ""
-	m.on = false
-	m.rows = []string{"a", "b"}
-	m.value__inst0 = ""
-	m.checked__inst0 = m.on
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__inst0_live = map[string]*RowInstance{}
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["last"] {
+		m.last = ""
+	}
+	if !preset["on"] {
+		m.on = false
+	}
+	if !preset["rows"] {
+		m.rows = []string{"a", "b"}
+	}
+	if !preset["value__inst0"] {
+		m.value__inst0 = ""
+	}
+	if !preset["checked__inst0"] {
+		m.checked__inst0 = m.on
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__inst0_live"] {
+		m.__inst0_live = map[string]*RowInstance{}
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func __identified0(__xs []string) []__anon_id_elem_c6a818 {
@@ -392,6 +418,7 @@ import "testing"
 func TestBuilds(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.last == "")) { t.Errorf("assert failed: %s", "(c.last == \"\")") }
 }
 
@@ -402,7 +429,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -473,25 +504,65 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.last = ""
-	m.on = false
-	m.rows = []string{"a", "b"}
-	m.value__inst0 = ""
-	m.checked__inst0 = m.on
-	m.__effect1_key = ""
-	m.__effect1_live = []string{}
-	m.__effect1_desired = []string{}
-	m.__effects1_settling = false
-	m.__effects1_pending = false
-	m.__effects1_torn = false
-	m.__effects1_steps = 0
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__inst0_live = map[string]*RowInstance{}
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["last"] {
+		m.last = ""
+	}
+	if !preset["on"] {
+		m.on = false
+	}
+	if !preset["rows"] {
+		m.rows = []string{"a", "b"}
+	}
+	if !preset["value__inst0"] {
+		m.value__inst0 = ""
+	}
+	if !preset["checked__inst0"] {
+		m.checked__inst0 = m.on
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = ""
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []string{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []string{}
+	}
+	if !preset["__effects1_settling"] {
+		m.__effects1_settling = false
+	}
+	if !preset["__effects1_pending"] {
+		m.__effects1_pending = false
+	}
+	if !preset["__effects1_torn"] {
+		m.__effects1_torn = false
+	}
+	if !preset["__effects1_steps"] {
+		m.__effects1_steps = 0
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__inst0_live"] {
+		m.__inst0_live = map[string]*RowInstance{}
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func __identified0(__xs []string) []__anon_id_elem_c6a818 {
@@ -924,6 +995,6 @@ func (m *Model) entryChange(v string) {
 	gtk4rt.Emit(m.__named_entry, "activate")
 }
 -- run/go/fyne --
-pass sha256:5cc79b70c1ada0923ef66575639b3056
+pass sha256:9661e56f3de85189db963ff961e6ccf2
 -- run/go/gtk4 --
-pass sha256:19f663a198be5b7918861898d3a79791
+pass sha256:f57da9c74cef01eb63861f560c1c83a1

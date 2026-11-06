@@ -105,6 +105,7 @@ component page ui.node {
 }
 
 func testEachHolderReleasesItsOwn(t test.Test, c page) {
+    t.assert(log == ["dup 1", "dup 1", "dup 1", "dup 1"])
     c.show = false
     t.assert(log == ["dup 1", "dup 1", "dup 1", "dup 1", "close 1", "close 1", "close 1", "close 1", "close 1"])
 }
@@ -131,7 +132,7 @@ component twice ui.node {
     ui.text(value="{b.fd}")
 }
 
-func testWithoutARetainAValueStoredTwiceIsReleasedTwice(t test.Test, c twice) { // ERROR(test) "raw released twice: allocated at owned_retain.sngl:128:13, released where the compiler releases it and again where the compiler releases it"
+func testWithoutARetainAValueStoredTwiceIsReleasedTwice(t test.Test, c twice) { // ERROR(test) "raw released twice: allocated at owned_retain.sngl:129:13, released where the compiler releases it and again where the compiler releases it"
     t.assert(c.b.fd == 1)
 }
 

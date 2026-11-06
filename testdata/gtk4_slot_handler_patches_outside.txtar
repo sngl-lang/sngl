@@ -73,14 +73,32 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.on = true
-	m.rows = []int{1}
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["on"] {
+		m.on = true
+	}
+	if !preset["rows"] {
+		m.rows = []int{1}
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
@@ -226,6 +244,7 @@ import "testing"
 func TestOff(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.offClickAt("0")
 	if !((c.on == false)) { t.Errorf("assert failed: %s", "(c.on == false)") }
 }
@@ -237,7 +256,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -287,14 +310,32 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.on = true
-	m.rows = []int{1}
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["on"] {
+		m.on = true
+	}
+	if !preset["rows"] {
+		m.rows = []int{1}
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
@@ -431,6 +472,6 @@ func (m *Model) __list_off(key string, w gtk4rt.Handle) {
 	m.__copies_off[key] = w
 }
 -- run/go/fyne --
-pass sha256:ba1313d268b202c36057452ad0db8c81
+pass sha256:0725f4ebc6da2d62eef71bf7e5ef36f7
 -- run/go/gtk4 --
-pass sha256:e0368263680034de12096e3abfb05465
+pass sha256:a9b13f4ff12a5c228849f2aa827a5e2f

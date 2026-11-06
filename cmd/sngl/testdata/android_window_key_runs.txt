@@ -92,7 +92,7 @@ func testAStoppedTabMovesNoFocus(t test.Test, c app) {
     t.assert(c.heard == "[editing+Tab][editing+a]")
 }
 -- testrun/android/kotlin/keys.sngl/app/1 --
-sha256:d1e0a0b9557b55f360abb8f11bd0dbbd
+sha256:11dd78cd4ee10073bd1a22587e6f6e46
 {
   "results": [
     {

@@ -16,6 +16,16 @@ import (
 
 // CallMethod dispatches method calls on the Test value.
 func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (any, error) {
+	// Setting a context sets up what the mount reads, and an assertion
+	// reads what its argument read; anything else the test asks of time or
+	// the tree needs it mounted.
+	switch method {
+	case "setContext", "setLocale", "assert", "must":
+	default:
+		if tv.comp != nil {
+			tv.comp.mount()
+		}
+	}
 	switch method {
 	case "assert":
 		if len(args) != 1 {
@@ -425,6 +435,10 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 	if sym == nil {
 		return fmt.Errorf("cannot assign to undefined component field %q", field)
 	}
+	// A compound write reads what it writes.
+	if cv.unmounted && op != ast.AssignSet {
+		cv.mount()
+	}
 	cur, _ := cv.Env.Value(sym)
 	// Component-field values are dynamically typed in the test harness, so the
 	// declared width is not available here; ApplyOp falls back to inferring the
@@ -434,6 +448,10 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 		return err
 	}
 	cv.Env.Set(sym, nv)
+	if cv.unmounted {
+		cv.preset[sym] = true
+		return nil
+	}
 	cv.Env.NoteReplace(sym)
 	// A two-way prop's cell is the var its call site bound, where it bound one.
 	if err := cv.Env.WriteBound(sym, nv); err != nil {
@@ -469,6 +487,7 @@ func (cv *componentValue) declaresEvent(name string) bool {
 // when the method is not defined on the component; the caller falls back to
 // other dispatch paths in that case.
 func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir.CallArg) (any, bool, error) {
+	cv.mount()
 	if len(method) > 0 && method[0] == '@' {
 		// The target's override of the event says how a test raises it.
 		if cv.comp != nil {
@@ -625,6 +644,7 @@ func (cv *componentValue) Toggle(field string) error {
 }
 
 func (cv *componentValue) WriteBackList(field string, list []any) error {
+	cv.mount()
 	sym, err := cv.writableFieldSym(field)
 	if err != nil {
 		return err

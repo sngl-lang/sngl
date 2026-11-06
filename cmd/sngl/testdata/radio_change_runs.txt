@@ -41,7 +41,7 @@ ui.window {
     fitting
 }
 -- testrun/android/kotlin/app.sngl/fitting/1 --
-sha256:8d54654a3601759c4d471a858b9a4e33
+sha256:7ce468995824d62a9e61e7c2cd2a1a81
 {
   "results": [
     {
@@ -51,7 +51,7 @@ sha256:8d54654a3601759c4d471a858b9a4e33
   ]
 }
 -- testrun/gtk4/go/app.sngl/fitting/1 --
-sha256:cf20c72e5c4faac1c17046f6ce1975a6
+sha256:098bacdd4f250112d6d37184a0b4de26
 {
   "results": [
     {
@@ -61,7 +61,7 @@ sha256:cf20c72e5c4faac1c17046f6ce1975a6
   ]
 }
 -- testrun/html/none/app.sngl/fitting/1 --
-sha256:d0ca002d9fc7484fa43b25d0aec3c9cb
+sha256:2a9a9edea40db0128ef7cbe33a9efda9
 {
   "results": [
     {

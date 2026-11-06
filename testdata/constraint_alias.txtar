@@ -110,9 +110,17 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.n = 1
-	m.p = Point{X: 1, Y: 2}
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["n"] {
+		m.n = 1
+	}
+	if !preset["p"] {
+		m.p = Point{X: 1, Y: 2}
+	}
 }
 
 func Show__int(v int) string {
@@ -198,6 +206,7 @@ import (
 func TestShown(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((Show__int(c.n) == "<1>")) { t.Errorf("assert failed: %s", "(Show__int(c.n) == \"<1>\")") }
 	if !((Show__Point(c.p) == "<(1, 2)>")) { t.Errorf("assert failed: %s", "(Show__Point(c.p) == \"<(1, 2)>\")") }
 	if !((fmt.Sprint(KeyOf__int_Slot(Slot{Key: (c.n + 6)})) == "7")) { t.Errorf("assert failed: %s", "(fmt.Sprint(KeyOf__int_Slot(Slot{Key: (c.n + 6)})) == \"7\")") }
@@ -213,7 +222,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -254,9 +267,13 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var n by mutableStateOf(1)
-    var p by mutableStateOf(Point(x = 1, y = 2))
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var n by mutableStateOf(__snglPre(__pre, "n") { 1 })
+    var p by mutableStateOf(__snglPre(__pre, "p") { Point(x = 1, y = 2) })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -354,19 +371,22 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { n: 1, p: null };
-  state.p = { x: 1, y: 2 };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
+  if (!("p" in __snglPre)) state.p = { x: 1, y: 2 };
   state.growClick = () => $3.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
@@ -406,12 +426,11 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:d2328b0691a68099d518a002f2da90c5
+pass sha256:7d94086b25ad6b1b45cad9811466b05b
 -- run/kotlin/android --
-pass sha256:37b5629c6cb10c5298bbd3fa5e351eb4
+pass sha256:b551a822d5607e5e81004a5e0a9625f0
 -- run/none/html --
-pass sha256:4a4649c652cc044a067b6d25b42cf1e8
+pass sha256:55ccb43b7bcbe84b798fdbf3e3af86a4

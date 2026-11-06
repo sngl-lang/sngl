@@ -46,6 +46,7 @@ import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -77,10 +78,14 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 val SnglCopy = SemanticsPropertyKey<String>("SnglCopy")
 
-class MainScreenState {
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
-    val items = mutableStateListOf("a", "b")
-    var log by mutableStateOf("")
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
+    val items = if ("items" in __pre) (__pre["items"] as List<String>).toMutableStateList() else mutableStateListOf("a", "b")
+    var log by mutableStateOf(__snglPre(__pre, "log") { "" })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -324,4 +329,4 @@ class MainScreenTest {
 
 }
 -- run/kotlin/android --
-pass sha256:39060d735438747ac86c0d39c0f7b9ae
+pass sha256:d643c730c1811327ef02e940b34bb449

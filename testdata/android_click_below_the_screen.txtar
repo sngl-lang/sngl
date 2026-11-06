@@ -66,9 +66,13 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 val SnglCopy = SemanticsPropertyKey<String>("SnglCopy")
 
-class MainScreenState {
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
-    var log by mutableStateOf("")
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
+    var log by mutableStateOf(__snglPre(__pre, "log") { "" })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -264,4 +268,4 @@ class MainScreenTest {
 
 }
 -- run/kotlin/android --
-pass sha256:a91e1078446053dfd16f083268cd8655
+pass sha256:553bddda715e2b2b5e8780a6f2389e6b

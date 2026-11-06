@@ -284,19 +284,22 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { base: 3, fruit__inst0: "apple", n__inst0: 0, handle__inst0: 0, maybe__inst0: null, a__inst0: 0, visible__inst0: true, on__inst0: true, on__inst1: false, n__inst1: 0, visible__inst1: true };
-  state.maybe__inst0 = 3;
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
+  if (!("maybe__inst0" in __snglPre)) state.maybe__inst0 = 3;
   state.doubled = () => doubled();
   state.blocky = () => blocky();
   state.sChange = (p) => {
@@ -993,13 +996,12 @@ window.__sngl_boot = () => {
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:48ee92fa25b8a4e872e0c2cfe4a98d75
+pass sha256:f3406aaed0641280f57162824ce4f67d
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
-sha256:d0361f3ceb5732edd48b4c0a983cbaf4
+sha256:5dcbcf9d144b8421aa259727771a523a
 {
   "results": [
     {
@@ -1009,7 +1011,7 @@ sha256:d0361f3ceb5732edd48b4c0a983cbaf4
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/callback/1 --
-sha256:075fb1f54ad16dc1ee3980182642c2da
+sha256:87cfaa0685f023922c4d515628e7e666
 {
   "results": [
     {
@@ -1019,7 +1021,7 @@ sha256:075fb1f54ad16dc1ee3980182642c2da
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/carousel/1 --
-sha256:52707a3fcf396d1ab4423b4195722bcd
+sha256:b2ac4371a4dae4e1b8161864f240bd40
 {
   "results": [
     {
@@ -1029,7 +1031,7 @@ sha256:52707a3fcf396d1ab4423b4195722bcd
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/computed/1 --
-sha256:a3f3e5ac3a48b43944bc9b7bbf78400e
+sha256:72feb40224f0772807fc4de6c20e1b2f
 {
   "results": [
     {
@@ -1039,7 +1041,7 @@ sha256:a3f3e5ac3a48b43944bc9b7bbf78400e
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/narrowed/1 --
-sha256:35782ed561f27f77e724b5856a2c314c
+sha256:ce48baafae9652b330c696c86c3a492d
 {
   "results": [
     {
@@ -1049,7 +1051,7 @@ sha256:35782ed561f27f77e724b5856a2c314c
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/picker/1 --
-sha256:097cce6078e51420307bcb4287ad43b2
+sha256:a5dae694df3aab532ed4fdbc7fb35760
 {
   "results": [
     {
@@ -1059,7 +1061,7 @@ sha256:097cce6078e51420307bcb4287ad43b2
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/slots/1 --
-sha256:418cf5c83629e33209c400bb39f37c7a
+sha256:a3265dbdd91c07f1f781bccf80e665b1
 {
   "results": [
     {

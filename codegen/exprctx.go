@@ -507,6 +507,31 @@ func TestSetContext(c *ir.Call) (name string, value ir.Expr, ok bool) {
 	return name, c.Args[len(c.Args)-1].Value, true
 }
 
+// BuildsTests reports whether pkg is built with its tests: a build that
+// ships drops them (build.dropTests), so a package holding one is a test's.
+func BuildsTests(pkg *ir.Package) bool {
+	return pkg != nil && slices.ContainsFunc(pkg.Funcs, func(f *ir.Func) bool { return f != nil && f.IsTest })
+}
+
+// TestMount reads the call passTestMount puts where a test mounts its
+// component: the name the test gave it, and the names of the fields the test
+// set up ahead of it, which the mount's initializers leave as they are.
+func TestMount(s ir.Stmt) (recv string, preset []string, ok bool) {
+	cs, isCall := s.(*ir.CallStmt)
+	if !isCall || !ir.IsTestCall(cs.Call, ir.TestMountID) {
+		return "", nil, false
+	}
+	if id, isIdent := cs.Call.Args[0].Value.(*ir.Ident); isIdent {
+		recv = id.Name
+	}
+	for _, a := range cs.Call.Args[1:] {
+		if lit, isLit := a.Value.(*ir.Literal); isLit {
+			preset = append(preset, lit.Value)
+		}
+	}
+	return recv, preset, true
+}
+
 func CollectTestFuncs(pkg *ir.Package) (fns []*ir.Func, suffixes []string, methodFields map[string]bool) {
 	methodFields = map[string]bool{}
 	if pkg == nil {

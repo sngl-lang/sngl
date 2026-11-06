@@ -432,7 +432,8 @@ fun CurrentTestScreen() {
     __snglCurrentModel.value?.let { key(it) { MainScreen(it) } }
 }
 
-fun newTestComponent(): MainScreenState = MainScreenState()
+// Made where a test mounts it, from what the test set up ahead of that.
+fun newTestComponent(pre: Map<String, Any?> = emptyMap()): MainScreenState = MainScreenState(pre)
 `)
 	if err := writeAndroidSourceFile(sink, prefix+"TestModelAccessor.kt", req.Lang, ktOpts, accessor); err != nil {
 		return err

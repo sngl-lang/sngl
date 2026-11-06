@@ -143,7 +143,7 @@ window {
     }
 }
 -- testrun/bubbletea/go/alone.sngl/counter/1 --
-sha256:5dc7dea1b5425116b9465ccdb2ff0f5f
+sha256:7e4da6b5204ac5c7f1b59221e41f8f43
 {
   "results": [
     {
@@ -153,7 +153,7 @@ sha256:5dc7dea1b5425116b9465ccdb2ff0f5f
   ]
 }
 -- testrun/bubbletea/go/composed.sngl/counter/1 --
-sha256:5dc7dea1b5425116b9465ccdb2ff0f5f
+sha256:7e4da6b5204ac5c7f1b59221e41f8f43
 {
   "results": [
     {
@@ -163,7 +163,7 @@ sha256:5dc7dea1b5425116b9465ccdb2ff0f5f
   ]
 }
 -- testrun/bubbletea/go/rooted.sngl/counter/1 --
-sha256:5dc7dea1b5425116b9465ccdb2ff0f5f
+sha256:7e4da6b5204ac5c7f1b59221e41f8f43
 {
   "results": [
     {
@@ -173,7 +173,7 @@ sha256:5dc7dea1b5425116b9465ccdb2ff0f5f
   ]
 }
 -- testrun/bubbletea/go/two.sngl/counter/1 --
-sha256:a20322373f171e79e17cdba9e513cce6
+sha256:a0b3b3be863143bb0b9e842f951fa25a
 {
   "results": [
     {
@@ -183,7 +183,7 @@ sha256:a20322373f171e79e17cdba9e513cce6
   ]
 }
 -- testrun/bubbletea/go/two.sngl/greeter/1 --
-sha256:839c5efb871a9afc6e71e5a93737c71f
+sha256:a01e2422f25606d89bad05b8633fec89
 {
   "results": [
     {
@@ -193,7 +193,7 @@ sha256:839c5efb871a9afc6e71e5a93737c71f
   ]
 }
 -- testrun/html/none/alone.sngl/counter/1 --
-sha256:30c03dbef5d3010247e283b513e13b92
+sha256:badec3283f9dd0c2912a5e46bd2fa7bb
 {
   "results": [
     {
@@ -203,7 +203,7 @@ sha256:30c03dbef5d3010247e283b513e13b92
   ]
 }
 -- testrun/html/none/composed.sngl/counter/1 --
-sha256:30c03dbef5d3010247e283b513e13b92
+sha256:badec3283f9dd0c2912a5e46bd2fa7bb
 {
   "results": [
     {
@@ -213,7 +213,7 @@ sha256:30c03dbef5d3010247e283b513e13b92
   ]
 }
 -- testrun/html/none/rooted.sngl/counter/1 --
-sha256:30c03dbef5d3010247e283b513e13b92
+sha256:badec3283f9dd0c2912a5e46bd2fa7bb
 {
   "results": [
     {
@@ -223,7 +223,7 @@ sha256:30c03dbef5d3010247e283b513e13b92
   ]
 }
 -- testrun/html/none/two.sngl/counter/1 --
-sha256:a301e9bb66a03b95fe91dc58aa7dadc4
+sha256:e94ec8127a4807ee455902823fcaea9d
 {
   "results": [
     {
@@ -233,7 +233,7 @@ sha256:a301e9bb66a03b95fe91dc58aa7dadc4
   ]
 }
 -- testrun/html/none/two.sngl/greeter/1 --
-sha256:010d2793140c8818f9e1ce757ce8c0a4
+sha256:bd4f6755fc6a4d6bf751ccea52c493e6
 {
   "results": [
     {

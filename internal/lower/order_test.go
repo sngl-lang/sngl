@@ -171,6 +171,9 @@ var alwaysOn = []string{
 	"SpreadOnce",
 	"StampUsage",
 	"TestInstanceReach",
+	// Where a test mounts what it takes is the test's answer, not a
+	// target's.
+	"TestMount",
 	"TestReach",
 	"TestRefOwner",
 	// A context nothing provides is folded to its default on every target: the

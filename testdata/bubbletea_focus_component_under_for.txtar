@@ -148,11 +148,22 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.xs = []string{"a", "b"}
-	m.last = ""
-	m.__focusID = 0
-	m.__focusLoop0_cursor = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["xs"] {
+		m.xs = []string{"a", "b"}
+	}
+	if !preset["last"] {
+		m.last = ""
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
+	if !preset["__focusLoop0_cursor"] {
+		m.__focusLoop0_cursor = 0
+	}
 	m.__focusSettle()
 	return m
 }
@@ -593,10 +604,17 @@ import "testing"
 func TestNothingPicked(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.last == "")) { t.Errorf("assert failed: %s", "(c.last == \"\")") }
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- run/go/bubbletea --
-pass sha256:289bc7ccf795639be44f7d9e65f16870
+pass sha256:1bd2ce37aea1a2d3646156b15d5415b6

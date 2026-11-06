@@ -109,7 +109,8 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 }
 
 // testBootOpen and testBootClose make a test page's program re-runnable, so
-// each test starts from a freshly mounted page. Whatever the page raises outside a
+// each test starts from a freshly mounted page, built from what the test set
+// up before it (window.__snglPre). Whatever the page raises outside a
 // test body -- while it loads, or later from a timer -- is kept for the test
 // module to fail on, since nothing else would see it.
 const testBootOpen = `window.__snglErrors = [];
@@ -117,19 +118,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 `
 
+// The page boots when a test mounts it (mountTestComponent), from what the
+// test set up ahead of that, and not as it loads.
 const testBootClose = `};
-window.__sngl_boot();
 `
 
 // injectTestagentBootstrap appends the testagent module script to every
@@ -2299,8 +2302,17 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 	b.WriteString(strings.Join(stateFields, ", "))
 	b.WriteString("};\n")
-	for _, di := range deferredInits {
-		fmt.Fprintf(b, "state.%s = %s;\n", di.name, di.value)
+	if g.testMode {
+		// What a test set up before it mounted the page is what it starts
+		// from; an initializer reading it reads that.
+		b.WriteString("const __snglPre = window.__snglPre ?? {};\nObject.assign(state, __snglPre);\n")
+		for _, di := range deferredInits {
+			fmt.Fprintf(b, "if (!(%q in __snglPre)) state.%s = %s;\n", di.name, di.name, di.value)
+		}
+	} else {
+		for _, di := range deferredInits {
+			fmt.Fprintf(b, "state.%s = %s;\n", di.name, di.value)
+		}
 	}
 	if g.testMode {
 		// Bridged onto the state object as zero-arg methods so tests can read
@@ -2637,6 +2649,11 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 		}
 		openDecl(b, v.Name)
 		b.WriteString("let " + v.Name + " = ")
+		// A context a test set before it mounted the page is what the
+		// page reads.
+		if g.testMode && strings.HasPrefix(v.Name, "__ctx_") {
+			fmt.Fprintf(b, "%q in __snglPre ? __snglPre.%s : ", v.Name, v.Name)
+		}
 		if v.Init != nil {
 			b.WriteString(jc.EvalExpr(v.Init))
 		} else {

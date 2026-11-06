@@ -34,12 +34,14 @@ func testBranchEntryMounts(t Test, c main) {
 }
 
 func testBranchLeavingUnmounts(t Test, c main) {
+    t.assert(c.out.value == "in")
     c.shown = false
     t.assert(c.out.value == "in,out")
 }
 
 // Re-entering the branch is a new lifetime, not a resumed one.
 func testBranchReturningMountsAgain(t Test, c main) {
+    t.assert(c.out.value == "in")
     c.shown = false
     c.shown = true
     t.assert(c.out.value == "in,out,in")

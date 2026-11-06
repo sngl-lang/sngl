@@ -74,7 +74,7 @@ ui.window {
     line()
 }
 -- testrun/html/none/app.sngl/line/1 --
-sha256:955ef58c67181220711752eaff54e348
+sha256:58bf958f6dbe3d002e9a88eb5c1cb4d1
 {
   "results": [
     {
@@ -84,7 +84,7 @@ sha256:955ef58c67181220711752eaff54e348
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:29e3cf4054c8997934b604597fee45fb
+sha256:fb4fd621c26e5cd46bdc5b124485b0e0
 {
   "results": [
     {

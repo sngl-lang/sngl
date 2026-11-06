@@ -41,7 +41,7 @@ func testAColorPrintsAsItsHex(t test.Test, c page) {
     t.assert(c.lit.value == "#336699")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:b659bd8a0fafc57172447f0aa6e83d35
+sha256:bb3e2763b27c61e8e0d64b1d1c47bce7
 {
   "results": [
     {
@@ -51,7 +51,7 @@ sha256:b659bd8a0fafc57172447f0aa6e83d35
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:efd07510bba87c7a5f92410af86920bd
+sha256:93b0f060026f4d77e46a59fa86748c42
 {
   "results": [
     {
@@ -61,7 +61,7 @@ sha256:efd07510bba87c7a5f92410af86920bd
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:31489bd9303a58667a4812a276462795
+sha256:72d34d35e506a1cdd18a6a881a6a8a90
 {
   "results": [
     {
@@ -71,7 +71,7 @@ sha256:31489bd9303a58667a4812a276462795
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:b10d74a0ebd6cb7ea0656eb2cbb6cf94
+sha256:9ea04a26540b4a82f84097b26bfdda6c
 {
   "results": [
     {
@@ -81,7 +81,7 @@ sha256:b10d74a0ebd6cb7ea0656eb2cbb6cf94
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:872140d8c4ef61ab0c76725cefcbc870
+sha256:5d6699f0b066e090ae95e95a04f2ee95
 {
   "results": [
     {

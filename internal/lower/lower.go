@@ -148,6 +148,9 @@ var passes = []pass{
 	passRenderCatch,
 	passErrorCatch,
 	passReleaseTemps,
+	// After passReactivity's redraws and passEffect's settles, which it drops
+	// from what a test sets up before its component mounts.
+	passTestMount,
 	// After everything that splices a handler or drops an emit, so what
 	// reads a write's local is what the build keeps.
 	passFoldWrites,

@@ -74,8 +74,14 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.depth = 2
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["depth"] {
+		m.depth = 2
+	}
 }
 
 func (m *Model) deeper_click_handler() {
@@ -125,6 +131,7 @@ import "testing"
 func TestDeepens(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.deeperClick()
 	if !((c.depth == 3)) { t.Errorf("assert failed: %s", "(c.depth == 3)") }
 }
@@ -136,7 +143,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -170,8 +181,14 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.depth = 2
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["depth"] {
+		m.depth = 2
+	}
 }
 
 func (m *Model) deeper_clicked_handler() {
@@ -240,18 +257,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { depth: 2 };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.deeperClick = () => $0.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
@@ -262,12 +282,11 @@ window.__sngl_boot = () => {
   });
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:045b5139667f914afc3b6f40ba4e993a
+pass sha256:5352700a33ae6c6e8c4f127b153a4271
 -- run/go/gtk4 --
-pass sha256:86d232300ee58d551aa97d9038a52ba9
+pass sha256:0540a0611e5d5b5d2a839e939fefebec
 -- run/none/html --
-pass sha256:03c97ac12720adf0393c81f84f747afa
+pass sha256:edf8d27e8a34f0f2d079bb7e229534cc
