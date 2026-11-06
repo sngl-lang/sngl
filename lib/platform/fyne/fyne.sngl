@@ -797,9 +797,9 @@ const component ui.menu[platform](style) {
 
 // --- Data display ---
 //
-// `tree` and `radio` take their contents as a list prop rather than as
-// children, and Fyne's Tree reads its own through callbacks a Spec has no way
-// to spell. Each renders as its container, empty.
+// `tree` takes its contents as a list prop rather than as children, and
+// Fyne's Tree reads its own through callbacks a Spec has no way to spell. It
+// renders as its container, empty.
 
 // A table is a grid of labels a column per heading, the headings first and
 // then each row's cells, so a cell lines up under its heading. Fyne's own
@@ -822,8 +822,45 @@ const component ui.tree[platform](style) {
     VBox(style=style) {}
 }
 
-const component ui.radio[platform](style) {
-    VBox(style=style) {}
+// A radio is a Check per choice, the one holding `value` checked, along
+// `direction`, as gtk4's is a check button per choice: Fyne's RadioGroup
+// knows its options by label and reports one, where a choice's value is of
+// whatever type the choices hold. A choice checked writes its value; one
+// unchecked writes nothing, since a radio's choice is undone only by another.
+const component ui.radio[platform](value, direction, style, @change, options) {
+    // A choice of the option holding `v`, a check's or a test's.
+    func pickValue(v T) {
+        if v != value {
+            value = v
+            change(v)
+        }
+    }
+    if direction == ui.Orientation.horizontal {
+        HBox(style=style) {
+            for var opt = options {
+                Check(text=opt.label, checked=(opt.value == value), @change(on) {
+                    if on {
+                        pickValue(opt.value)
+                    }
+                }) {}
+            }
+        }
+    } else {
+        VBox(style=style) {
+            for var opt = options {
+                Check(text=opt.label, checked=(opt.value == value), @change(on) {
+                    if on {
+                        pickValue(opt.value)
+                    }
+                }) {}
+            }
+        }
+    }
+}
+
+// A test picks the option holding `value` as checking its box does.
+func ui.radio[T].change[platform](value) {
+    pickValue(value)
 }
 
 // --- Text ---

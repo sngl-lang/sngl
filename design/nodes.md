@@ -531,7 +531,11 @@ design/testing.md): gtk4 selects the label through `gtk4rt.DropDownSelect`
 and fyne through `Select.SetSelected`, each of which reports the change as a
 pick does; html, bubbletea and android call the method their control's own
 handler calls with a label (`pickLabel`, `choose`), and a radio's the one its
-buttons call (`pickValue`). Handed to the generated invokers, the value gave
+buttons call (`pickValue`). A radio is a control per choice on every target
+but html: gtk4's check buttons, fyne's Checks, bubbletea's `(•)` rows, each
+calling `pickValue` when chosen, so a program's write -- which checks the new
+choice, and fyne's Check reports -- fires nothing
+(`cmd/sngl/testdata/radio_change_runs.txt`). Handed to the generated invokers, the value gave
 fyne's `OnChanged` an enum's name where it knew a label, and an int did not
 compile.
 bubbletea's binds write the call site's var from Go, so its override holds

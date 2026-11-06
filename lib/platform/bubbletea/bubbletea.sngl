@@ -405,9 +405,46 @@ const component ui.checkbox[platform](label, checked, focusable, style, @change)
 
 // --- Tier 1: Core Input ---
 
-const component ui.radio[platform](style) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+// A radio is a row per choice, `(•)` beside the one holding `value` and
+// `( )` beside the rest, along `direction`; each is focused and chosen as a
+// checkbox is, with space.
+const component ui.radio[platform](value, disabled, direction, style, @change, options) {
+    // A choice of the option holding `v`, a row's or a test's.
+    func pickValue(v T) {
+        if v != value {
+            value = v
+            change(v)
+        }
     }
+    // The axis is the layout's constant, so each is a branch of its own.
+    if direction == ui.Orientation.horizontal {
+        Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+            for var opt = options {
+                Styled(
+                    content = (opt.value == value ? "(•) " : "( ) ") + opt.label,
+                    focus = Focus{enabled=!disabled && style.display != ui.Display.none, tab=true},
+                    events = [Event{on="change", key="space"}],
+                    @change { pickValue(opt.value) },
+                ) {}
+            }
+        }
+    } else {
+        Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+            for var opt = options {
+                Styled(
+                    content = (opt.value == value ? "(•) " : "( ) ") + opt.label,
+                    focus = Focus{enabled=!disabled && style.display != ui.Display.none, tab=true},
+                    events = [Event{on="change", key="space"}],
+                    @change { pickValue(opt.value) },
+                ) {}
+            }
+        }
+    }
+}
+
+// A test picks the option holding `value` as choosing its row does.
+func ui.radio[T].change[platform](value) {
+    pickValue(value)
 }
 
 const component ui.toggle[platform](label, checked, focusable, style, @change) {

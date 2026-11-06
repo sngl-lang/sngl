@@ -1,13 +1,18 @@
 # A test picks a radio's option by the value it holds, through the target's
 # override of the radio's @change, which calls what pressing the option's
 # button calls. The options hold an int labeled otherwise, so a value is never
-# taken for a label. fyne and bubbletea render no radio yet, so there is no
-# option of one to pick.
+# taken for a label.
 
 sngl test --platform=none app.sngl
 stdout '1 tests, 0 failures'
 
 sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
 stdout '1 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
@@ -42,6 +47,26 @@ ui.window {
 }
 -- testrun/android/kotlin/app.sngl/fitting/1 --
 sha256:6af3bf336217458dc518c77991519b3d
+{
+  "results": [
+    {
+      "Desc": "ARadioChangePicksTheOptionHolding",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/fitting/1 --
+sha256:bc98aa838b10e7e2ca50b8f8134f01d4
+{
+  "results": [
+    {
+      "Desc": "ARadioChangePicksTheOptionHolding",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/fitting/1 --
+sha256:86778aa8d30af5b1d5a2769dc6018d12
 {
   "results": [
     {
