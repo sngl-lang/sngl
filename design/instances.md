@@ -281,6 +281,29 @@ on every render, so a page whose answers wrote what its slot renders asked
 for every name again with each answer and never finished
 (`cmd/sngl/testdata/slot_nested_query_kept_runs.txt`).
 
+**A block built at run time that holds a node and calls its method is a
+component of its own** (`passHandleBlocks`, after `InlinePure` and before
+`NoInlineComponents`). A reactive `if`'s branch, a loop's body or a tab's
+panel -- a population of a data component, which its record holds -- is built
+at run time on every target keeping an instance's state, and a handler there
+calling `ask.refresh()` was the owner's function, with no one instance of the
+query to call it on: refused, so the Pokédex wrote each such request in a
+component of its own (`asked`). The pass writes that component: the block's
+free reads become props and its other handlers events, as
+`passSlotChildInstances` lifts a slot child, while a handler calling through a
+handle the block holds -- its own or the one an implicit-state wrapper `Wraps`
+-- stays with the node, a call through such a handle stays unlifted
+(`slotChildSynth.heldHandles`), and a write that handler makes of the owner's
+state is raised to the site, which makes it (`relayWrites`). A write whose
+place reads what the block binds, `rows[i] = x`, cannot be, and leaves the
+block to the refusal. android's callbacks are prop lambdas, so a node's
+callback props count as its handlers. Under a `for`, a component calling
+through the handle of a node it renders is built per copy whatever state it
+holds itself (`callsOwnNode` in `perCopy`): its state is the wrapper's, so
+it was spliced per copy and its call named a handle every copy shared
+(`cmd/sngl/testdata/handle_call_in_built_block_runs.txt`,
+`handle_call_runtime_instance.txt`).
+
 **A render asked for while it runs runs after it** (`renderOnce`): a render
 builds its instances, a query's mount runs in the constructor, and a fetch
 that answers at once runs the call site's `@load` there. One writing what the

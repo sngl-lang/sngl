@@ -958,7 +958,41 @@ type reactiveCtx struct {
 // would splice, which nothing builds at run time in its place.
 func (rc reactiveCtx) perCopy(n *ir.NodeInst) bool {
 	c := n.Component
-	return rc.in || rc.repeated && c != nil && (ownsState(n) || holdsLifetime(c.Stmts) || splicesLibraryState(c.Stmts))
+	return rc.in || rc.repeated && c != nil && (ownsState(n) || holdsLifetime(c.Stmts) || splicesLibraryState(c.Stmts) || callsOwnNode(c))
+}
+
+// callsOwnNode reports whether c calls a method through the `#id` of a node it
+// renders, a wrapper's among them. Spliced under a `for`, every copy's call
+// names the one handle, and the node is each copy's: a query in a tab's
+// panel with the sign that asks again beside it, whose state is the query
+// wrapper's and none of the panel's own
+// (cmd/sngl/testdata/handle_call_in_built_block_runs.txt).
+func callsOwnNode(c *ir.Component) bool {
+	handles := map[*ir.Var]bool{}
+	ir.WalkView(c.Stmts, func(s ir.Stmt) bool {
+		if n, ok := s.(*ir.NodeInst); ok {
+			for _, h := range []*ir.Var{n.Handle, n.Wraps} {
+				if h != nil {
+					handles[h] = true
+				}
+			}
+		}
+		return true
+	})
+	if len(handles) == 0 {
+		return false
+	}
+	found := false
+	_ = ir.Walk(c, func(n ir.Node) error {
+		if call, ok := n.(*ir.Call); ok && call.Func != nil {
+			if h, _ := handleReceiver(call); h != nil && handles[h] {
+				found = true
+				return ir.SkipAll
+			}
+		}
+		return nil
+	})
+	return found
 }
 
 // ownsState reports whether n's component keeps state of its own there. A

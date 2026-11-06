@@ -1,12 +1,15 @@
-# A method called through the `#id` of a node a reactive `if` holds has no one
-# instance to reach on a target that builds the node at run time, and the
-# refusal says so. Rendered twice, the component's own body still held the
-# call when the inliner asked which copy it meant, and the build was refused
-# as a node rendered more than once, though the component was spliced into
-# each place and its own body was dropped after.
-! sngl generate --platform gtk4 --lang go -o out p.sngl
-stderr 'calls a method of the node `#ask`, which this target does not splice where it is written'
+# A method called through the `#id` of a node a reactive `if` holds reaches
+# it where the call is in the branch too: the branch is a component of its own
+# holding both (passHandleBlocks). Rendered twice, the component's own body
+# still held the call when the inliner asked which copy it meant, and the
+# build was refused as a node rendered more than once, though the component
+# was spliced into each place and its own body was dropped after.
+sngl generate --platform gtk4 --lang go -o out p.sngl
 ! stderr 'rendered more than once'
+
+# A handler that calls it and writes the page's state as well moves into the
+# branch's component with it, its write raised to the page, which makes it.
+sngl generate --platform gtk4 --lang go -o writes writes.sngl
 
 # bubbletea keeps a run-time instance's state where a call reaches it.
 sngl generate --platform bubbletea --lang go -o tea p.sngl
@@ -47,6 +50,31 @@ component both ui.node {
 
 ui.window {
     both
+}
+
+-- writes.sngl --
+import async "sngl:async"
+import ui "sngl:ui"
+
+func look(k string, life async.Lifetime) async.Result[int] {
+    return {ok=k.length()}
+}
+
+component page(name string) ui.node {
+    var got option[int] = null
+    var on = true
+
+    if on {
+        async.query #ask(on=name, fetch=look, :value=got)
+        ui.button #again(text="Again", @click {
+            got = null
+            ask.refresh()
+        })
+    }
+}
+
+ui.window {
+    page(name="a")
 }
 
 -- twice.sngl --

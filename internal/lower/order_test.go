@@ -106,6 +106,9 @@ var alwaysOn = []string{
 	"ForeignPrimitive",
 	// A function writing a prop through the handle it is handed is inlined
 	// on every target: no target writes a prop through a handle.
+	// Read off InstanceState inside the pass: a block a target builds at run
+	// time holds the node its handler calls on every target that builds one.
+	"HandleBlocks",
 	"HandleParams",
 	"HoistBodyTypes",
 	"HoistState",

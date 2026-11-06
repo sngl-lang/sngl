@@ -445,10 +445,7 @@ component loadError(why string, @retry()) ui.node {
 
 // A request a page makes once it knows what to ask, and where the request
 // failed, what `say` makes of why beside a sign that asks again, the sign
-// alone where it makes "". The query and its failure are this component's
-// own, so the sign's retry reaches it wherever a target builds the component:
-// one under a page's `if` is built at run time, and a method of a node in it
-// is no method of the page's.
+// alone where it makes "".
 component asked[K any, T any](
     on     K,
     fetch  func(K, async.Lifetime) async.Result[T],

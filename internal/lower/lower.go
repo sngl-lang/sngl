@@ -97,6 +97,10 @@ var passes = []pass{
 	passUnprovidedContext,
 	passContext,
 	passInlinePure,
+	// After InlinePure, which splices a component whose node and caller a
+	// branch then holds; before NoInlineComponents, which builds the block
+	// at run time or splices it.
+	passHandleBlocks,
 	passNoInlineComponents,
 	passMonomorphizeCodecs,
 	// Once the inliners have settled every node's ID, before anything copies one.

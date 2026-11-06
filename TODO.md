@@ -13,11 +13,6 @@ language is a locale. What is left:
 
 2. **A first search of the National dex mounts about 1,025 requests at
    once.** Nothing caps the requests in flight (see `snglhttp` below).
-3. **A node's method is out of reach in a block built at run time.** On html,
-   gtk4, fyne and android, `ask.refresh()` refuses to build where `#ask` is
-   under a reactive `if` or in a tab of the same component (bubbletea answers
-   it), so the example puts each such request in a component of its own,
-   `asked`, whose instance holds the node.
 
 ## Bugs
 
@@ -40,13 +35,7 @@ language is a locale. What is left:
     query's `fetch=func(k) { var r = get(k); mon = "b"; return r }` runs on
     a goroutine against `m.snapshotRef()`, so `mon = "b"` lands on the copy
     and nothing rekeys; every other target writes the page's `mon`.
-13. **Binding a two-way prop to an inner query's cell loses the query's
-    method.** `component asked(:failure option[async.Failure] = null)` whose
-    query binds `:failure=failure` and whose body calls `ask.refresh()`,
-    placed under a reactive `if` with `:failure` bound, is refused on html,
-    gtk4 and fyne as a node not spliced where it is written; with `:failure`
-    left unbound (the query's cell moved to a wrapper) it builds.
-14. **fyne's test agent cannot reach a node a window's menu calls.** A
+13. **fyne's test agent cannot reach a node a window's menu calls.** A
     `poke.pokedexList #dexesAsk(…)` in the window whose menu item's
     `@select` calls `dexesAsk.refresh()` builds a test agent reading
     `c.dexesAsk`, which the model does not hold. The window keeps asking

@@ -147,9 +147,9 @@ asked(
 )
 ```
 
-A component of its own because most targets build what an `if` holds at run
-time, and reach no method of a node in it from the page; an instance of
-`asked` holds its query, and its sign's `ask.refresh()` reaches it.
+The query and the sign that refreshes it can sit under the `if` itself just
+as well: the branch's call of `ask.refresh()` reaches the query beside it on
+every target. `asked` is the one shape written once.
 
 A name is shown by its slug until its own arrives, so the
 lookups that fail are counted on one sign per page (`lookupsError`), which

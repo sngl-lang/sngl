@@ -62,7 +62,10 @@ type slotChildSynth struct {
 	// owned is every func a component owns, which the component it is lifted
 	// out of holds and the lifted one does not.
 	owned map[*ir.Func]bool
-	n     int
+	// heldHandles is the node handles the lifted body holds, a method called
+	// through one of which is the lifted component's own (passHandleBlocks).
+	heldHandles map[*ir.Var]bool
+	n           int
 }
 
 func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error {
@@ -426,6 +429,9 @@ func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 			l.uniq++
 			return &ir.Ident{Name: p.Name, Type: x.ExprType(), Sym: p}, ir.SkipDir
 		case *ir.Call:
+			if h, _ := handleReceiver(x); h != nil && st.heldHandles[h] {
+				return node, nil
+			}
 			typ := x.ExprType()
 			// A render's raise travels whole too: the boundary that hears it
 			// is the site's, whose state the lifted body does not hold.

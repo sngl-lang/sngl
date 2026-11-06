@@ -1,0 +1,266 @@
+# A method called through the `#id` of a node a block built at run time holds
+# reaches that node where the call is in the block too, on every target: a
+# reactive `if`'s branch, a tab's panel, and a component spliced into one
+# whose two-way prop is bound, which holds no cell of its own. The block is a
+# component of its own (passHandleBlocks), holding the node and the handler
+# that calls it, as the Pokédex's `asked` was written to be by hand; what the
+# handler writes of the page's is raised to the page, which writes it.
+
+sngl test --platform=none app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '3 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func look(k string, life async.Lifetime) async.Result[string] {
+    return {ok=k}
+}
+
+component branch ui.node {
+    var on = false
+    var loads = 0
+    var tries = 0
+
+    ui.vbox {
+        if on {
+            async.query #ask(on="a", fetch=look, @load(v) { loads = loads + 1 })
+            ui.button #again(text="Again", @click {
+                tries += 1
+                ask.refresh()
+            })
+        }
+    }
+}
+
+func testACallInABranchReachesItsNode(t test.Test, c branch) {
+    c.on = true
+    t.wait(func() => c.loads == 1, 2000)
+    if c.again != null {
+        c.again.click()
+    }
+    t.wait(func() => c.loads == 2, 2000)
+    t.assert(c.tries == 1)
+}
+
+component panel ui.node {
+    var at = 1
+    var loads = 0
+
+    ui.tabs(:selected=at) {
+        ui.tab(label="One") {
+            ui.text("first")
+        }
+        ui.tab(label="Two") {
+            async.query #ask(on="a", fetch=look, @load(v) { loads = loads + 1 })
+            ui.button #again(text="Again", @click { ask.refresh() })
+        }
+    }
+}
+
+func testACallInATabReachesItsNode(t test.Test, c panel) {
+    t.wait(func() => c.loads == 1, 2000)
+    if c.again != null {
+        c.again.click()
+    }
+    t.wait(func() => c.loads == 2, 2000)
+}
+
+component asked(:value option[string] = null, @loaded()) ui.node {
+    async.query #ask(on="a", fetch=look, :value=value, @load(v) { loaded() })
+    if value != null {
+        ui.button #again(text="Again", @click { ask.refresh() })
+    }
+}
+
+component bound ui.node {
+    var on = false
+    var got option[string] = null
+    var loads = 0
+
+    ui.vbox {
+        if on {
+            asked #it(:value=got, @loaded { loads = loads + 1 })
+        }
+    }
+}
+
+func testABoundSpliceReachesItsNode(t test.Test, c bound) {
+    c.on = true
+    t.wait(func() => c.loads == 1, 2000)
+    t.assert(c.got == "a")
+    if c.it != null && c.it.again != null {
+        c.it.again.click()
+    }
+    t.wait(func() => c.loads == 2, 2000)
+}
+
+ui.window {
+    branch()
+}
+-- testrun/android/kotlin/app.sngl/bound/1 --
+sha256:94b131bab80f8fae12d8d892e8bf96c9
+{
+  "results": [
+    {
+      "Desc": "ABoundSpliceReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/branch/1 --
+sha256:83984ce7b5450c25398556d37d93f5ff
+{
+  "results": [
+    {
+      "Desc": "ACallInABranchReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/panel/1 --
+sha256:3702a7dd4bf8e82015c3b7a6148b4081
+{
+  "results": [
+    {
+      "Desc": "ACallInATabReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/bound/1 --
+sha256:61798ca9ffcc6773fb608d0d78480d01
+{
+  "results": [
+    {
+      "Desc": "ABoundSpliceReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/branch/1 --
+sha256:8bdf49c43c0963c066654c1f16f1c41b
+{
+  "results": [
+    {
+      "Desc": "ACallInABranchReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/panel/1 --
+sha256:5daf9f9fb87ffaf74ae8638a405839f5
+{
+  "results": [
+    {
+      "Desc": "ACallInATabReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/bound/1 --
+sha256:3e86a1e37b10990f3fc2d32f29e45c52
+{
+  "results": [
+    {
+      "Desc": "ABoundSpliceReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/branch/1 --
+sha256:edc09487c2c738d17e32c8c08a6a003c
+{
+  "results": [
+    {
+      "Desc": "ACallInABranchReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/panel/1 --
+sha256:12711ed86e57dfcc99f95386f9e87c8d
+{
+  "results": [
+    {
+      "Desc": "ACallInATabReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/bound/1 --
+sha256:5f3838a4cfc6720bdd45cf08ac9053ef
+{
+  "results": [
+    {
+      "Desc": "ABoundSpliceReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/branch/1 --
+sha256:177491e8b9d1011d220bcc07e2a50367
+{
+  "results": [
+    {
+      "Desc": "ACallInABranchReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/panel/1 --
+sha256:5cc2acf5984bea0cd842c191d4d08af1
+{
+  "results": [
+    {
+      "Desc": "ACallInATabReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/bound/1 --
+sha256:194a8db9545bd3c9eef48c19a9a47ecd
+{
+  "results": [
+    {
+      "Desc": "ABoundSpliceReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/branch/1 --
+sha256:29ff90aa0ad283eb2d30a344a6505bdc
+{
+  "results": [
+    {
+      "Desc": "ACallInABranchReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/panel/1 --
+sha256:f6497067ad4060e0874b338e23b92332
+{
+  "results": [
+    {
+      "Desc": "ACallInATabReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
