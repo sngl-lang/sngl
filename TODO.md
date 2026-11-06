@@ -6,50 +6,32 @@ points first, then the bugs and the generated code.
 
 ## Where the language makes this painful
 
-1. **Failure and retry is hand-rolled per request.** Each of the detail page's
-   four requests carries `xFailure`, `xFailedFor`, an `if x != xFailedFor`
-   guard and its own sign, and home's `dexFailures` is state only a test
-   reads. `formCard` says `#id.refresh()` needs every two-way prop bound, so
-   the others could not use it: that is a compiler bug the example worked
-   around. Fix it, and let `async.query` own "failed, not asked again until
-   refreshed".
-2. **A `for` matches its copies by position**, so home keeps `asking`
-   append-only (never cleared when the dex changes) for its requests to keep
-   their place. Wanted: identity tied to the loop, not a magic `key` prop on
-   whatever the body holds, and not a wrapper that adds a level of nesting.
-   Design open.
-3. **No structural typing over generated types.** `lookup` is nine `if kind ==`
-   branches, `names.sngl` has nine `xNamed` helpers identical but for their
-   types, and `inLanguage` takes two accessor lambdas where a constraint on
-   `{language.name, name}` would do. Try constraint aliases.
-4. **Effect keys built as strings**
-   (`on="{chosenDex != null ? chosenDex.name : ""}/{namingAll}/{shown}"`): a
-   struct literal works. Example fix.
-5. **Missing library pieces:**
-   - no `sort`, so `movesOf` writes an insertion sort;
-   - no grid or wrapping row, so `rows()` cuts the grid by hand;
-   - `ui.select` binds its label rather than a value, which costs
-     `methodNamed`, `methodLabeled` and an effect relabeling on a locale
-     change.
-6. **A hand-made cache in package vars** (`names`, `failures`, `round`) with a
-   global counter driving retries. Bad design: compose the logic in a generic
-   component, the way hooks compose in React.
-7. **Compiler bugs worked around in comments:**
-   - `home.sngl:141`: a request under an `if` in a `for` kept bubbletea from
-     asking for another dex;
-   - `detail.sngl:308`: the checker takes a call in a branch to reach `about`
-     and its null test.
-8. **Testing requests needs help.** 63 tests need 26 wrapper components, each
+The language and library halves of 2, 3, 4, 6 and 7 are done: loop copies
+match by element identity, a constraint alias names the per-language entries,
+the names live in a generic cache component, and the checker keeps the null
+test across a call. What is left:
+
+1. **Failure and retry is still hand-rolled for three requests.** The query
+   now owns "failed, cleared on a new key" and `#id.refresh()` works with
+   unbound cells, but the detail page's mon, chain and shape requests still
+   carry `xFailure`, `xFailedFor` and an `if x != xFailedFor` guard, and
+   home's `dexFailures` is state only a test reads. Move them to the query
+   and `refresh()`.
+2. **Library pieces the example does not use yet:** `movesOf` still writes an
+   insertion sort (use the list sort), `rows()` still cuts the grid by hand
+   (use `ui.grid`), and the Moves tab's select still binds its label, which
+   costs `methodNamed`, `methodLabeled` and an effect relabeling on a locale
+   change (bind the value).
+3. **Testing requests needs help.** 63 tests need 26 wrapper components, each
    `poke.server(local){ artwork(dot){ … } }`, and `testdata/http` is trimmed
    by hand. Ideas: a SNGL-level recorder of real requests, and a `TestMain`
    kind of setup shared by a file's tests.
-9. **Example design and bugs:**
+4. **Example design and bugs:**
    - `idOf("")` indexes `-1` and panics;
    - `slugsOf` dedupes in O(n²) where `.contains` exists;
-   - `names.sngl:673`'s `$"{count} {stat}"` warns on every build;
+   - `names.sngl`'s `$"{count} {stat}"` warns on every build;
    - the kept language is its label ("Français"), not its locale;
-   - the README contradicts itself on whether `names` is shared (lines 410
-     and 431–436 against `names.sngl:330`);
+   - the README contradicts itself on whether `names` is shared;
    - a first search of the National dex mounts about 1,025 requests at once.
 
 ## Bugs
@@ -78,8 +60,8 @@ points first, then the bugs and the generated code.
    `rewritePropMutationsToEmit` turns the write into an emit, and the read
    that follows still reads the parameter. The overrides now pass the
    picked value; the lowering still reads stale.
-8. **The other triggers should move to overrides of their events.** Select
-   and radio say how a test raises `@change` in SNGL
+8. **The other triggers should move to overrides of their events.** Done
+   for select and radio, which say how a test raises `@change` in SNGL
    (`func ui.select[T].change[platform](value)`); the generated invokers
    (`codegen.TriggerEventName`, `ir.PressedNode`, bubbletea's payload
    invokers) still answer every other event.
