@@ -652,18 +652,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 								}
 							} else {
 								if m.__focusLoop0_cursor == __focusPos0 {
+									__checkbox_checked_wrote0 := !func() bool {
+										if __v, __ok := m.checked__inst0[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
+											return __v
+										}
+										return (it.Task == "done")
+									}()
 									__cell1_checked__inst0 := func() bool {
 										if __v, __ok := m.checked__inst0[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
 											return __v
 										}
 										return (it.Task == "done")
 									}()
-									__cell1_checked__inst0 = !func() bool {
-										if __v, __ok := m.checked__inst0[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
-											return __v
-										}
-										return (it.Task == "done")
-									}()
+									__cell1_checked__inst0 = __checkbox_checked_wrote0
 									m.checked__inst0[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = __cell1_checked__inst0
 									return
 								}
@@ -686,18 +687,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 											}
 										} else {
 											if m.__focusLoop0_cursor == __focusPos0 {
+												__checkbox_checked_wrote0 := !func() bool {
+													if __v, __ok := m.checked__inst1[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
+														return __v
+													}
+													return (it.Task == "done")
+												}()
 												__cell1_checked__inst1 := func() bool {
 													if __v, __ok := m.checked__inst1[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
 														return __v
 													}
 													return (it.Task == "done")
 												}()
-												__cell1_checked__inst1 = !func() bool {
-													if __v, __ok := m.checked__inst1[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
-														return __v
-													}
-													return (it.Task == "done")
-												}()
+												__cell1_checked__inst1 = __checkbox_checked_wrote0
 												m.checked__inst1[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))] = __cell1_checked__inst1
 												return
 											}
@@ -720,18 +722,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 														}
 													} else {
 														if m.__focusLoop0_cursor == __focusPos0 {
+															__checkbox_checked_wrote0 := !func() bool {
+																if __v, __ok := m.checked__inst2[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
+																	return __v
+																}
+																return (it.Task == "done")
+															}()
 															__cell1_checked__inst2 := func() bool {
 																if __v, __ok := m.checked__inst2[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
 																	return __v
 																}
 																return (it.Task == "done")
 															}()
-															__cell1_checked__inst2 = !func() bool {
-																if __v, __ok := m.checked__inst2[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
-																	return __v
-																}
-																return (it.Task == "done")
-															}()
+															__cell1_checked__inst2 = __checkbox_checked_wrote0
 															m.checked__inst2[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))] = __cell1_checked__inst2
 															return
 														}
@@ -9774,7 +9777,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:69318f958c005356504f3a9b713a3876
+pass sha256:3de2af430febdd01952bf58cb395e481
 -- run/go/fyne --
 pass sha256:e3717e0ab201171d24ed77026426c2d6
 -- run/none/html --

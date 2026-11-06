@@ -522,11 +522,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.widget0.Blur()
 			}
 		case msg.Code == tea.KeySpace && m.__focusID == 0:
-			m.checked__inst0 = !m.checked__inst0
+			__checkbox_checked_wrote0 := !m.checked__inst0
+			m.checked__inst0 = __checkbox_checked_wrote0
 			m.on = !m.on
 		case msg.Code == tea.KeySpace && m.__focusID == 2:
-			m.checked__inst1 = !m.checked__inst1
-			m.seen = ((fmt.Sprint(m.checked__inst1) + " ") + fmt.Sprint(m.on))
+			__toggle_checked_wrote0 := !m.checked__inst1
+			m.checked__inst1 = __toggle_checked_wrote0
+			m.seen = ((fmt.Sprint(__toggle_checked_wrote0) + " ") + fmt.Sprint(m.on))
 		}
 	}
 	if m.__focusID == 1 {
@@ -995,7 +997,8 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) box_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.box) != m.checked__inst0 {
-		m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.box)
+		__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(m.box)
+		m.checked__inst0 = __checkbox_checked_wrote0
 		gtk4rt.CheckButtonSetActive(m.box, m.checked__inst0)
 		m.on = !m.on
 	}
@@ -1003,22 +1006,25 @@ func (m *Model) box_toggled_handler() {
 
 func (m *Model) field_changed_handler() {
 	if gtk4rt.EditableGetText(m.field) != m.value__inst0 {
-		m.value__inst0 = gtk4rt.EditableGetText(m.field)
+		__input_value_wrote0 := gtk4rt.EditableGetText(m.field)
+		m.value__inst0 = __input_value_wrote0
 		m.v = (m.v + "!")
 	}
 	m.__effects0_settle()
 }
 
 func (m *Model) field_activate_handler() {
-	m.value__inst0 = gtk4rt.EditableGetText(m.field)
+	__input_value_wrote1 := gtk4rt.EditableGetText(m.field)
+	m.value__inst0 = __input_value_wrote1
 	m.__effects0_settle()
 }
 
 func (m *Model) sw_notifyActive_handler() {
 	if gtk4rt.SwitchGetActive(m.sw) != m.checked__inst1 {
-		m.checked__inst1 = gtk4rt.SwitchGetActive(m.sw)
+		__toggle_checked_wrote0 := gtk4rt.SwitchGetActive(m.sw)
+		m.checked__inst1 = __toggle_checked_wrote0
 		gtk4rt.SetBool(m.sw, "active", m.checked__inst1)
-		m.seen = ((fmt.Sprint(m.checked__inst1) + " ") + fmt.Sprint(m.on))
+		m.seen = ((fmt.Sprint(__toggle_checked_wrote0) + " ") + fmt.Sprint(m.on))
 	}
 }
 
@@ -1447,23 +1453,27 @@ window.__sngl_boot = () => {
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   __n0.addEventListener("change", function(e) {
-    state.checked__inst0 = e.currentTarget.checked;
+    let __checkbox_checked_wrote0 = e.currentTarget.checked;
+    state.checked__inst0 = __checkbox_checked_wrote0;
     __n0.checked = state.checked__inst0;
     state.on = !state.on;
   });
   $1.addEventListener("input", function(e) {
-    state.value__inst0 = e.currentTarget.value;
+    let __input_value_wrote0 = e.currentTarget.value;
+    state.value__inst0 = __input_value_wrote0;
     $1.value = state.value__inst0;
     state.v = state.v + "!";
   });
   $1.addEventListener("change", function(e) {
-    state.value__inst0 = e.currentTarget.value;
+    let __input_value_wrote1 = e.currentTarget.value;
+    state.value__inst0 = __input_value_wrote1;
     $1.value = state.value__inst0;
   });
   __n1.addEventListener("change", function(e) {
-    state.checked__inst1 = e.currentTarget.checked;
+    let __toggle_checked_wrote0 = e.currentTarget.checked;
+    state.checked__inst1 = __toggle_checked_wrote0;
     __n1.checked = state.checked__inst1;
-    state.seen = String(state.checked__inst1) + " " + String(state.on);
+    state.seen = String(__toggle_checked_wrote0) + " " + String(state.on);
   });
   function __sngl_init() {
     __n0.checked = state.checked__inst0;
@@ -1477,12 +1487,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8f7c1b943a45c34eb825b2c54814ad6a
+pass sha256:ff40b5b9f0a6bdc60ad9f7be0b4c484b
 -- run/go/fyne --
 pass sha256:000059486a6eb1b56573142b69886fa1
 -- run/go/gtk4 --
-pass sha256:61db05f18cb6bee288d5b0238d312e2c
+pass sha256:de8711d828e03be1a892efeccc8bdd68
 -- run/kotlin/android --
 pass sha256:d4111c8d23a405c17f8d6eea904366d1
 -- run/none/html --
-pass sha256:733545b405a727421dd1eee492220a1a
+pass sha256:f2bb4ce8a57d37d3a63122f6efe85567

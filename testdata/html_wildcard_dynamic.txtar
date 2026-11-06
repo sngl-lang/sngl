@@ -114,7 +114,8 @@ body { font-family: system-ui, sans-serif; }
     __n0.disabled = false;
     __n0.setAttribute("type", "checkbox");
     __n0.addEventListener("change", (e) => {
-      checked = e.currentTarget.checked;
+      let __checkbox_checked_wrote0 = e.currentTarget.checked;
+      checked = __checkbox_checked_wrote0;
       __n0.checked = checked;
     });
     __n5.appendChild(__n0);
@@ -207,4 +208,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:5a699366c2218de31abea31879c7bd97
+pass sha256:471195b081424d3e3e15938e43c7acff

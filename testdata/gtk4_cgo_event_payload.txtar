@@ -642,21 +642,24 @@ func (m *Model) __snglTeardown() {
 
 func (m *Model) box_changed_handler() {
 	if gtk4rt.EditableGetText(m.box) != m.value__inst0 {
-		m.value__inst0 = gtk4rt.EditableGetText(m.box)
+		__input_value_wrote0 := gtk4rt.EditableGetText(m.box)
+		m.value__inst0 = __input_value_wrote0
 	}
 	m.__effects1_settle()
 }
 
 func (m *Model) box_activate_handler() {
-	m.value__inst0 = gtk4rt.EditableGetText(m.box)
-	m.last = ("got " + m.value__inst0)
+	__input_value_wrote1 := gtk4rt.EditableGetText(m.box)
+	m.value__inst0 = __input_value_wrote1
+	m.last = ("got " + __input_value_wrote1)
 	gtk4rt.LabelSetLabel(m.__n3, m.last)
 	m.__effects1_settle()
 }
 
 func (m *Model) __n2_notifyActive_handler() {
 	if gtk4rt.SwitchGetActive(m.__n2) != m.checked__inst0 {
-		m.checked__inst0 = gtk4rt.SwitchGetActive(m.__n2)
+		__toggle_checked_wrote0 := gtk4rt.SwitchGetActive(m.__n2)
+		m.checked__inst0 = __toggle_checked_wrote0
 		gtk4rt.SetBool(m.__n2, "active", m.checked__inst0)
 	}
 }
@@ -706,13 +709,15 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.SetBool(c.entry, "can-focus", true)
 	gtk4rt.Connect(c.entry, "changed", func() {
 		if gtk4rt.EditableGetText(c.entry) != c.value__inst1 {
-			c.value__inst1 = gtk4rt.EditableGetText(c.entry)
+			__input_value_wrote0 := gtk4rt.EditableGetText(c.entry)
+			c.value__inst1 = __input_value_wrote0
 		}
 		c.__effects0_settle()
 	})
 	gtk4rt.Connect(c.entry, "activate", func() {
-		c.value__inst1 = gtk4rt.EditableGetText(c.entry)
-		c.got = ((c.__prop_label + " ") + c.value__inst1)
+		__input_value_wrote1 := gtk4rt.EditableGetText(c.entry)
+		c.value__inst1 = __input_value_wrote1
+		c.got = ((c.__prop_label + " ") + __input_value_wrote1)
 		gtk4rt.LabelSetLabel(c.__n1, c.got)
 		c.__effects0_settle()
 	})
@@ -723,7 +728,8 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "notify::active", func() {
 		if gtk4rt.SwitchGetActive(c.__n0) != c.checked__inst1 {
-			c.checked__inst1 = gtk4rt.SwitchGetActive(c.__n0)
+			__toggle_checked_wrote0 := gtk4rt.SwitchGetActive(c.__n0)
+			c.checked__inst1 = __toggle_checked_wrote0
 			gtk4rt.SetBool(c.__n0, "active", c.checked__inst1)
 		}
 	})
@@ -933,4 +939,4 @@ func (m *Model) entryChange(v string) {
 -- run/go/fyne --
 pass sha256:db9d4b1d48012f590a9fb92bc0a338ba
 -- run/go/gtk4 --
-pass sha256:8a9a5d13280498605880e5b761809a3e
+pass sha256:c667f0e12b41e186a303aa7e4ce1613e

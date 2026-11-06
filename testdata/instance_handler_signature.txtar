@@ -539,7 +539,8 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "toggled", func() {
 		if gtk4rt.CheckButtonGetActive(c.__n0) != c.checked__inst0 {
-			c.checked__inst0 = gtk4rt.CheckButtonGetActive(c.__n0)
+			__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(c.__n0)
+			c.checked__inst0 = __checkbox_checked_wrote0
 			gtk4rt.CheckButtonSetActive(c.__n0, c.checked__inst0)
 			c.on = !c.on
 			gtk4rt.LabelSetLabel(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
@@ -552,7 +553,8 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.SetBool(c.__n1, "can-focus", true)
 	gtk4rt.Connect(c.__n1, "toggled", func() {
 		if gtk4rt.CheckButtonGetActive(c.__n1) != c.checked__inst1 {
-			c.checked__inst1 = gtk4rt.CheckButtonGetActive(c.__n1)
+			__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(c.__n1)
+			c.checked__inst1 = __checkbox_checked_wrote0
 			gtk4rt.CheckButtonSetActive(c.__n1, c.checked__inst1)
 		}
 	})
@@ -561,14 +563,16 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.SetBool(c.entry, "can-focus", true)
 	gtk4rt.Connect(c.entry, "changed", func() {
 		if gtk4rt.EditableGetText(c.entry) != c.value__inst0 {
-			c.value__inst0 = gtk4rt.EditableGetText(c.entry)
-			c.typed = c.value__inst0
+			__input_value_wrote0 := gtk4rt.EditableGetText(c.entry)
+			c.value__inst0 = __input_value_wrote0
+			c.typed = __input_value_wrote0
 			gtk4rt.LabelSetLabel(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
 		}
 		c.__effects0_settle()
 	})
 	gtk4rt.Connect(c.entry, "activate", func() {
-		c.value__inst0 = gtk4rt.EditableGetText(c.entry)
+		__input_value_wrote1 := gtk4rt.EditableGetText(c.entry)
+		c.value__inst0 = __input_value_wrote1
 		c.__effects0_settle()
 	})
 	gtk4rt.BoxAppend(__n5, c.entry)
@@ -718,4 +722,4 @@ func (m *Model) entryChange(v string) {
 -- run/go/fyne --
 pass sha256:9c06d579cccfc61f5920b29c15ce8b76
 -- run/go/gtk4 --
-pass sha256:27d17b46b922ef1682afddcf6f3d2264
+pass sha256:afcc13968e764790de6ac50c5975ed42

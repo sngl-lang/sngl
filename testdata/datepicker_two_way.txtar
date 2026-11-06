@@ -789,7 +789,8 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) d_daySelected_handler() {
-	m.picked__inst0 = gtk4rt.CalendarGetDate(m.d)
+	__datepicker_value_wrote0 := gtk4rt.CalendarGetDate(m.d)
+	m.picked__inst0 = __datepicker_value_wrote0
 	var __lt18 string
 	if m.picked__inst0 != nil {
 		__lt18 = (*(m.picked__inst0)).Format("2006-01-02")
@@ -1156,7 +1157,8 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("change", function(e) {
-    state.picked__inst0 = e.currentTarget.value === "" ? null : e.currentTarget.value;
+    let __datepicker_value_wrote0 = e.currentTarget.value === "" ? null : e.currentTarget.value;
+    state.picked__inst0 = __datepicker_value_wrote0;
     $0.value = state.picked__inst0 !== null ? String(state.picked__inst0) : "";
     __n1.textContent = state.picked__inst0 !== null ? String(state.picked__inst0) : "none";
     state.changes__inst0 += 1;
@@ -1174,8 +1176,8 @@ pass sha256:1885fd0693bdb348aa39aca04b86a844
 -- run/go/fyne --
 pass sha256:7822854c3fe655308a27c97bc8cdc2f8
 -- run/go/gtk4 --
-pass sha256:4476de1dc554b847a42313efb225e3a2
+pass sha256:3d13b00bdcf74f9a6a2de90fab08f1b0
 -- run/kotlin/android --
 pass sha256:c2c429cadd1446bb0ba7006f34a32530
 -- run/none/html --
-pass sha256:b5913c0854ddaed3725da1f08aef6928
+pass sha256:68e5503b916b510e2e5ea1174e278e7e

@@ -291,7 +291,8 @@ func (m *Model) __effect0_mount() {
 		m.failure__inst0 = nil
 	}
 	m.asked__inst0 = __effect0_mount_key.N
-	m.pending__inst0 = true
+	__query_pending_wrote0 := true
+	m.pending__inst0 = __query_pending_wrote0
 	m.life__inst0 = Lifetime{_id: snglasync.Begin()}
 	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
@@ -714,7 +715,8 @@ fun MainScreen() {
                     		failure__inst0 = null
                     	}
                     	asked__inst0 = k.n
-                    	pending__inst0 = true
+                    	var __query_pending_wrote0 = true
+                    	pending__inst0 = __query_pending_wrote0
                     	life__inst0 = Lifetime(_id = SnglCodec.begin())
                     	var r: SnglResult__Echo = lookup(k.key, life__inst0)
                     	if ((((mine != attempt__inst0) || (k.key != key__inst0)) || (k.n != refreshes__inst0))) {
@@ -1317,7 +1319,8 @@ body { font-family: system-ui, sans-serif; }
     }
     ;
     state.asked__inst0 = __effect0_mount_key.n;
-    state.pending__inst0 = true;
+    let __query_pending_wrote0 = true;
+    state.pending__inst0 = __query_pending_wrote0;
     state.life__inst0 = { _id: _snglBegin() };
     let r = await lookup(__effect0_mount_key.key, state.life__inst0);
     if (mine !== state.attempt__inst0 || __effect0_mount_key.key !== state.key__inst0 || __effect0_mount_key.n !== state.refreshes__inst0) {
@@ -1659,8 +1662,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:40fba3218e1fab725635d3f827286307
+pass sha256:ecc26400ed706ac9672228542fbcdbff
 -- run/kotlin/android --
-pass sha256:a1e4f3b34f47f0c508e0c40348d1b295
+pass sha256:cb9d67ccdd2b10126b0cae7b7b5f010d
 -- run/none/html --
-pass sha256:facbee83df944c125f52097e4326b054
+pass sha256:778428f004b77cd177b5f3bf056712d7

@@ -645,27 +645,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeySpace && m.__focusID == 0 && (m.__pressing || m.__focusShown()):
-			m.checked__inst0 = !m.checked__inst0
+			__checkbox_checked_wrote0 := !m.checked__inst0
+			m.checked__inst0 = __checkbox_checked_wrote0
 		case msg.Code == tea.KeySpace && m.__focusID == 1 && (m.__pressing || m.__focusShown()):
-			m.checked__inst1 = !m.checked__inst1
+			__checkbox_checked_wrote0 := !m.checked__inst1
+			m.checked__inst1 = __checkbox_checked_wrote0
 		case msg.Code == tea.KeySpace && m.__focusID == 2 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos2 := 0
 				for _, it := range __identified0(m.items__inst0) {
 					_ = it
 					if m.__focusLoop2_cursor == __focusPos2 {
+						__checkbox_checked_wrote0 := !func() bool {
+							if __v, __ok := m.checked__inst2[it.Id]; __ok {
+								return __v
+							}
+							return false
+						}()
 						__cell2_checked__inst2 := func() bool {
 							if __v, __ok := m.checked__inst2[it.Id]; __ok {
 								return __v
 							}
 							return false
 						}()
-						__cell2_checked__inst2 = !func() bool {
-							if __v, __ok := m.checked__inst2[it.Id]; __ok {
-								return __v
-							}
-							return false
-						}()
+						__cell2_checked__inst2 = __checkbox_checked_wrote0
 						m.checked__inst2[it.Id] = __cell2_checked__inst2
 						return
 					}
@@ -1256,7 +1259,8 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 
 func (m *Model) box_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.box) != m.checked__inst0 {
-		m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.box)
+		__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(m.box)
+		m.checked__inst0 = __checkbox_checked_wrote0
 		gtk4rt.CheckButtonSetActive(m.box, m.checked__inst0)
 		var __lt18 string
 		if m.checked__inst0 {
@@ -1270,7 +1274,8 @@ func (m *Model) box_toggled_handler() {
 
 func (m *Model) __n3_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.__n3) != m.checked__inst1 {
-		m.checked__inst1 = gtk4rt.CheckButtonGetActive(m.__n3)
+		__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(m.__n3)
+		m.checked__inst1 = __checkbox_checked_wrote0
 		gtk4rt.CheckButtonSetActive(m.__n3, m.checked__inst1)
 	}
 }
@@ -1301,7 +1306,8 @@ func new__checkbox_state3Instance(__model *Model, __a___start_checked bool, __a_
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "toggled", func() {
 		if gtk4rt.CheckButtonGetActive(c.__n0) != c.checked {
-			c.checked = gtk4rt.CheckButtonGetActive(c.__n0)
+			__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(c.__n0)
+			c.checked = __checkbox_checked_wrote0
 			gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
 		}
 	})
@@ -1745,7 +1751,8 @@ body { font-family: system-ui, sans-serif; }
     __n0.disabled = false;
     __n0.setAttribute("type", "checkbox");
     __n0.addEventListener("change", (e) => {
-      checked = e.currentTarget.checked;
+      let __checkbox_checked_wrote0 = e.currentTarget.checked;
+      checked = __checkbox_checked_wrote0;
       __n0.checked = checked;
     });
     __n8.appendChild(__n0);
@@ -1836,12 +1843,14 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   __n3.addEventListener("change", function(e) {
-    state.checked__inst0 = e.currentTarget.checked;
+    let __checkbox_checked_wrote0 = e.currentTarget.checked;
+    state.checked__inst0 = __checkbox_checked_wrote0;
     __n3.checked = state.checked__inst0;
     __n4.textContent = state.checked__inst0 ? "on" : "off";
   });
   __n5.addEventListener("change", function(e) {
-    state.checked__inst1 = e.currentTarget.checked;
+    let __checkbox_checked_wrote0 = e.currentTarget.checked;
+    state.checked__inst1 = __checkbox_checked_wrote0;
     __n5.checked = state.checked__inst1;
   });
   function __sngl_init() {
@@ -1855,12 +1864,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f4305f3684fb7a22d89f006ad0a1c92d
+pass sha256:630d1c594556affffc6bff377e960ef9
 -- run/go/fyne --
 pass sha256:33c58cf7ac65257d8ad3c1ff2b41acba
 -- run/go/gtk4 --
-pass sha256:01f22636778e018a377e483888aa652c
+pass sha256:0f69a30e41c2601dd12506b01eb129b3
 -- run/kotlin/android --
 pass sha256:348b060235b3fba23ce0339be0e0cbab
 -- run/none/html --
-pass sha256:4cb9c711cef448d4d71a16c3725eaa34
+pass sha256:4d060e4ef988b8b3984f0f1218033b32

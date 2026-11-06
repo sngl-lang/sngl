@@ -25,12 +25,6 @@ language is a locale. What is left:
 
 ## Bugs
 
-7. **A two-way prop read after its write is stale in a run-time instance.**
-   `value = x; change(value)` in an override hands `change` the old value
-   where the component is built at run time (android's `Select__string`):
-   `rewritePropMutationsToEmit` turns the write into an emit, and the read
-   that follows still reads the parameter. The overrides now pass the
-   picked value; the lowering still reads stale.
 8. **The other triggers should move to overrides of their events.** Done
    for select and radio, which say how a test raises `@change` in SNGL
    (`func ui.select[T].change[platform](value)`); the generated invokers

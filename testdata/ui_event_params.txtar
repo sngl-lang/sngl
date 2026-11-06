@@ -621,12 +621,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.widget0.Blur()
 			}
 		case msg.Code == tea.KeySpace && m.__focusID == 0:
-			m.on = !m.on
-			m.seen = ((("box " + fmt.Sprint(m.on)) + " ") + fmt.Sprint(m.on))
+			__checkbox_checked_wrote0 := !m.on
+			m.on = __checkbox_checked_wrote0
+			m.seen = ((("box " + fmt.Sprint(__checkbox_checked_wrote0)) + " ") + fmt.Sprint(m.on))
 		case msg.Code == tea.KeySpace && m.__focusID == 1:
-			m.checked__inst0 = !m.checked__inst0
-			m.lit = m.checked__inst0
-			m.seen = ("sw " + fmt.Sprint(m.checked__inst0))
+			__toggle_checked_wrote0 := !m.checked__inst0
+			m.checked__inst0 = __toggle_checked_wrote0
+			m.lit = __toggle_checked_wrote0
+			m.seen = ("sw " + fmt.Sprint(__toggle_checked_wrote0))
 		case msg.Code == tea.KeyEnter && m.__focusID == 4:
 			m.clicks += 1
 		}
@@ -1379,41 +1381,46 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) box_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.box) != m.on {
-		m.on = gtk4rt.CheckButtonGetActive(m.box)
+		__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(m.box)
+		m.on = __checkbox_checked_wrote0
 		gtk4rt.CheckButtonSetActive(m.box, m.on)
-		m.seen = ((("box " + fmt.Sprint(m.on)) + " ") + fmt.Sprint(m.on))
+		m.seen = ((("box " + fmt.Sprint(__checkbox_checked_wrote0)) + " ") + fmt.Sprint(m.on))
 		gtk4rt.LabelSetLabel(m.__n0, m.seen)
 	}
 }
 
 func (m *Model) sw_notifyActive_handler() {
 	if gtk4rt.SwitchGetActive(m.sw) != m.checked__inst0 {
-		m.checked__inst0 = gtk4rt.SwitchGetActive(m.sw)
+		__toggle_checked_wrote0 := gtk4rt.SwitchGetActive(m.sw)
+		m.checked__inst0 = __toggle_checked_wrote0
 		gtk4rt.SetBool(m.sw, "active", m.checked__inst0)
-		m.lit = m.checked__inst0
-		m.seen = ("sw " + fmt.Sprint(m.checked__inst0))
+		m.lit = __toggle_checked_wrote0
+		m.seen = ("sw " + fmt.Sprint(__toggle_checked_wrote0))
 		gtk4rt.LabelSetLabel(m.__n0, m.seen)
 	}
 }
 
 func (m *Model) field_changed_handler() {
 	if gtk4rt.EditableGetText(m.field) != m.name {
-		m.name = gtk4rt.EditableGetText(m.field)
-		m.seen = ((("input " + m.name) + " ") + m.name)
+		__input_value_wrote0 := gtk4rt.EditableGetText(m.field)
+		m.name = __input_value_wrote0
+		m.seen = ((("input " + __input_value_wrote0) + " ") + m.name)
 		gtk4rt.LabelSetLabel(m.__n0, m.seen)
 	}
 	m.__effects0_settle()
 }
 
 func (m *Model) field_activate_handler() {
-	m.name = gtk4rt.EditableGetText(m.field)
+	__input_value_wrote1 := gtk4rt.EditableGetText(m.field)
+	m.name = __input_value_wrote1
 	m.__effects0_settle()
 }
 
 func (m *Model) day_daySelected_handler() {
-	m.picked = gtk4rt.CalendarGetDate(m.day)
+	__datepicker_value_wrote0 := gtk4rt.CalendarGetDate(m.day)
+	m.picked = __datepicker_value_wrote0
 	var __lt18 string
-	if m.picked == nil {
+	if __datepicker_value_wrote0 == nil {
 		__lt18 = "no day"
 	} else {
 		__lt18 = "day"
@@ -2044,32 +2051,37 @@ window.__sngl_boot = () => {
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   __n0.addEventListener("change", function(e) {
-    state.on = e.currentTarget.checked;
+    let __checkbox_checked_wrote0 = e.currentTarget.checked;
+    state.on = __checkbox_checked_wrote0;
     __n0.checked = state.on;
-    state.seen = "box " + String(state.on) + " " + String(state.on);
+    state.seen = "box " + String(__checkbox_checked_wrote0) + " " + String(state.on);
     __n2.textContent = state.seen;
   });
   __n1.addEventListener("change", function(e) {
-    state.checked__inst0 = e.currentTarget.checked;
+    let __toggle_checked_wrote0 = e.currentTarget.checked;
+    state.checked__inst0 = __toggle_checked_wrote0;
     __n1.checked = state.checked__inst0;
-    state.lit = state.checked__inst0;
-    state.seen = "sw " + String(state.checked__inst0);
+    state.lit = __toggle_checked_wrote0;
+    state.seen = "sw " + String(__toggle_checked_wrote0);
     __n2.textContent = state.seen;
   });
   $2.addEventListener("input", function(e) {
-    state.name = e.currentTarget.value;
+    let __input_value_wrote0 = e.currentTarget.value;
+    state.name = __input_value_wrote0;
     $2.value = state.name;
-    state.seen = "input " + state.name + " " + state.name;
+    state.seen = "input " + __input_value_wrote0 + " " + state.name;
     __n2.textContent = state.seen;
   });
   $2.addEventListener("change", function(e) {
-    state.name = e.currentTarget.value;
+    let __input_value_wrote1 = e.currentTarget.value;
+    state.name = __input_value_wrote1;
     $2.value = state.name;
   });
   $3.addEventListener("change", function(e) {
-    state.picked = e.currentTarget.value === "" ? null : e.currentTarget.value;
+    let __datepicker_value_wrote0 = e.currentTarget.value === "" ? null : e.currentTarget.value;
+    state.picked = __datepicker_value_wrote0;
     $3.value = state.picked !== null ? String(state.picked) : "";
-    state.seen = state.picked === null ? "no day" : "day";
+    state.seen = __datepicker_value_wrote0 === null ? "no day" : "day";
     __n2.textContent = state.seen;
   });
   $4.addEventListener("click", function() {
@@ -2089,12 +2101,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:beeb7bdb44443215040961e61dc38b74
+pass sha256:8ec24d994775695cfeb8acbb32fcb591
 -- run/go/fyne --
 pass sha256:a383535bc3e69b5522503c95f0ffc8dd
 -- run/go/gtk4 --
-pass sha256:a886d5947c2132b7ca7d6968285e19c9
+pass sha256:84b60fc022a4c2be7c596ec84d5dd77b
 -- run/kotlin/android --
 pass sha256:52ab27b0096e8badf59b25f7fc667188
 -- run/none/html --
-pass sha256:5f6ef86c218c77269eb73fcd1b3f80e2
+pass sha256:f0a2ca96ab66e64180e030f61fedbb63

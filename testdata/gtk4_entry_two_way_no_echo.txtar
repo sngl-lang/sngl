@@ -531,13 +531,15 @@ func newSearchInstance(__model *Model) *SearchInstance {
 	gtk4rt.SetBool(gtk4rt.Handle(unsafe.Pointer(c.box)), "can-focus", true)
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(c.box)), "changed", func() {
 		if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box)))) != c.search {
-			c.search = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
+			__input_value_wrote0 := C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
+			c.search = __input_value_wrote0
 			gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.search)
 		}
 		c.__effects0_settle()
 	})
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(c.box)), "activate", func() {
-		c.search = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
+		__input_value_wrote1 := C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
+		c.search = __input_value_wrote1
 		gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.search)
 		c.__effects0_settle()
 	})
@@ -705,4 +707,4 @@ func (m *Model) boxChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__named_box)), sig)
 }
 -- run/go/gtk4 --
-pass sha256:91b609406b54eb79990a886526c8959d
+pass sha256:1ab453176c4f8503f7958f20410e99ac

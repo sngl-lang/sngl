@@ -647,7 +647,8 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "toggled", func() {
 		if gtk4rt.CheckButtonGetActive(c.__n0) != c.checked {
-			c.checked = gtk4rt.CheckButtonGetActive(c.__n0)
+			__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(c.__n0)
+			c.checked = __checkbox_checked_wrote0
 			gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
 		}
 	})
@@ -723,4 +724,4 @@ func (m *Model) moreClick() {
 -- run/go/fyne --
 pass sha256:4ebbc525a11c82d9f6bcbf1e8c7b51b5
 -- run/go/gtk4 --
-pass sha256:9c0f7677055362d321670f8fd23bc855
+pass sha256:a62c200db8386abb37e393ffe3ea8909

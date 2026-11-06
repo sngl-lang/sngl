@@ -657,25 +657,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if it.Elem != m.skip {
 						__focusPos1++
 						if m.__focusLoop1_cursor == __focusPos1 {
+							__checkbox_checked_wrote0 := !func() bool {
+								if __v, __ok := m.checked__inst0[it.Id]; __ok {
+									return __v
+								}
+								return false
+							}()
 							__cell2_checked__inst0 := func() bool {
 								if __v, __ok := m.checked__inst0[it.Id]; __ok {
 									return __v
 								}
 								return false
 							}()
-							__cell2_checked__inst0 = !func() bool {
-								if __v, __ok := m.checked__inst0[it.Id]; __ok {
-									return __v
-								}
-								return false
-							}()
+							__cell2_checked__inst0 = __checkbox_checked_wrote0
 							m.checked__inst0[it.Id] = __cell2_checked__inst0
-							m.log = ((it.Elem + " ") + fmt.Sprint(func() bool {
-								if __v, __ok := m.checked__inst0[it.Id]; __ok {
-									return __v
-								}
-								return false
-							}()))
+							m.log = ((it.Elem + " ") + fmt.Sprint(__checkbox_checked_wrote0))
 							return
 						}
 						__focusPos1++
@@ -1664,9 +1660,10 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__model.__list_tick(c.__prop___copy, c.tick)
 	gtk4rt.Connect(c.tick, "toggled", func() {
 		if gtk4rt.CheckButtonGetActive(c.tick) != c.checked {
-			c.checked = gtk4rt.CheckButtonGetActive(c.tick)
+			__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(c.tick)
+			c.checked = __checkbox_checked_wrote0
 			gtk4rt.CheckButtonSetActive(c.tick, c.checked)
-			c.__prop_change(c.checked)
+			c.__prop_change(__checkbox_checked_wrote0)
 		}
 	})
 	c.Root = c.tick
@@ -2268,9 +2265,10 @@ window.__sngl_boot = () => {
     __n1.disabled = false;
     __n1.setAttribute("type", "checkbox");
     __n1.addEventListener("change", (e) => {
-      checked = e.currentTarget.checked;
+      let __checkbox_checked_wrote0 = e.currentTarget.checked;
+      checked = __checkbox_checked_wrote0;
       __n1.checked = checked;
-      __prop_change(checked);
+      __prop_change(__checkbox_checked_wrote0);
     });
     tick.appendChild(__n1);
     let __n2 = document.createElement("span");
@@ -2408,12 +2406,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:02da6b8af28a28c812445e330b9f3644
+pass sha256:79f68f590f0730604334aa5a587cc0f8
 -- run/go/fyne --
 pass sha256:9df16bff6b6874082f7b06a9955e6f2f
 -- run/go/gtk4 --
-pass sha256:b4f1afa58cc39905402009d7a4755eb0
+pass sha256:3a74b33942f870ad25700f32eaf3ade6
 -- run/kotlin/android --
 pass sha256:8f4b2d44e2a1f79409fa44a53b883bcb
 -- run/none/html --
-pass sha256:83be958ee078ba71d7f5554d87a3066c
+pass sha256:b00e45df69ab5ea9934f46f8049eff95

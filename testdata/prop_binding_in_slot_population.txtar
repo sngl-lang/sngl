@@ -702,14 +702,16 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) entry_changed_handler() {
 	if gtk4rt.EditableGetText(m.entry) != m.name {
-		m.name = gtk4rt.EditableGetText(m.entry)
+		__input_value_wrote0 := gtk4rt.EditableGetText(m.entry)
+		m.name = __input_value_wrote0
 		gtk4rt.LabelSetLabel(m.__n1, ("hello " + m.name))
 	}
 	m.__effects0_settle()
 }
 
 func (m *Model) entry_activate_handler() {
-	m.name = gtk4rt.EditableGetText(m.entry)
+	__input_value_wrote1 := gtk4rt.EditableGetText(m.entry)
+	m.name = __input_value_wrote1
 	gtk4rt.LabelSetLabel(m.__n1, ("hello " + m.name))
 	m.__effects0_settle()
 }
@@ -803,12 +805,14 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   __n1.addEventListener("input", function(e) {
-    state.name = e.currentTarget.value;
+    let __input_value_wrote0 = e.currentTarget.value;
+    state.name = __input_value_wrote0;
     __n1.value = state.name;
     __n2.textContent = "hello " + state.name;
   });
   __n1.addEventListener("change", function(e) {
-    state.name = e.currentTarget.value;
+    let __input_value_wrote1 = e.currentTarget.value;
+    state.name = __input_value_wrote1;
     __n1.value = state.name;
     __n2.textContent = "hello " + state.name;
   });
@@ -825,6 +829,6 @@ pass sha256:acea703562e6fc08a4fb413091da77e8
 -- run/go/fyne --
 pass sha256:23ae43cba8f25a2f213cc1a58690ba82
 -- run/go/gtk4 --
-pass sha256:1bc0ddb50e0346b999cd0ca487024d57
+pass sha256:4f7b714d234724b9af3277a0828c23ad
 -- run/none/html --
-pass sha256:d27513d14a1cd0d441c12cc6039a7cdf
+pass sha256:1cc67309d0f984b62e42e19f2e3c839e

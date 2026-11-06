@@ -204,7 +204,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 }
 
 func (m *Model) cal__own0_daySelected_handler() {
-	m.value__inst0 = gtk4rt.CalendarGetDate(m.cal__own0)
+	__datepicker_value_wrote0 := gtk4rt.CalendarGetDate(m.cal__own0)
+	m.value__inst0 = __datepicker_value_wrote0
 	m.__effects0_settle()
 }
 
@@ -276,4 +277,4 @@ func (m *Model) calPresent() bool {
 	return m.cal != nil
 }
 -- run/go/gtk4 --
-pass sha256:4a55bf698e56540cf315a47f692fb0ed
+pass sha256:f1070f704f8a3d9bce77b8d036bb4644

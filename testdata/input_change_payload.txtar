@@ -587,14 +587,16 @@ func (m *Model) __snglTeardown() {
 
 func (m *Model) entry_changed_handler() {
 	if gtk4rt.EditableGetText(m.entry) != m.value__inst0 {
-		m.value__inst0 = gtk4rt.EditableGetText(m.entry)
+		__input_value_wrote0 := gtk4rt.EditableGetText(m.entry)
+		m.value__inst0 = __input_value_wrote0
 	}
 	m.__effects1_settle()
 }
 
 func (m *Model) entry_activate_handler() {
-	m.value__inst0 = gtk4rt.EditableGetText(m.entry)
-	m.last = ("got " + m.value__inst0)
+	__input_value_wrote1 := gtk4rt.EditableGetText(m.entry)
+	m.value__inst0 = __input_value_wrote1
+	m.last = ("got " + __input_value_wrote1)
 	gtk4rt.LabelSetLabel(m.__n1, m.last)
 	m.__effects1_settle()
 }
@@ -650,13 +652,15 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.SetBool(c.entry, "can-focus", true)
 	gtk4rt.Connect(c.entry, "changed", func() {
 		if gtk4rt.EditableGetText(c.entry) != c.value__inst1 {
-			c.value__inst1 = gtk4rt.EditableGetText(c.entry)
+			__input_value_wrote0 := gtk4rt.EditableGetText(c.entry)
+			c.value__inst1 = __input_value_wrote0
 		}
 		c.__effects0_settle()
 	})
 	gtk4rt.Connect(c.entry, "activate", func() {
-		c.value__inst1 = gtk4rt.EditableGetText(c.entry)
-		c.committed = c.value__inst1
+		__input_value_wrote1 := gtk4rt.EditableGetText(c.entry)
+		c.value__inst1 = __input_value_wrote1
+		c.committed = __input_value_wrote1
 		gtk4rt.LabelSetLabel(c.__n0, c.committed)
 		c.__effects0_settle()
 	})
@@ -665,13 +669,15 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.SetBool(c.entry__1, "can-focus", true)
 	gtk4rt.Connect(c.entry__1, "changed", func() {
 		if gtk4rt.EditableGetText(c.entry__1) != c.value__inst2 {
-			c.value__inst2 = gtk4rt.EditableGetText(c.entry__1)
+			__textarea_value_wrote0 := gtk4rt.EditableGetText(c.entry__1)
+			c.value__inst2 = __textarea_value_wrote0
 		}
 		c.__effects0_settle()
 	})
 	gtk4rt.Connect(c.entry__1, "activate", func() {
-		c.value__inst2 = gtk4rt.EditableGetText(c.entry__1)
-		c.committed = ((c.__prop_label + ":") + c.value__inst2)
+		__textarea_value_wrote1 := gtk4rt.EditableGetText(c.entry__1)
+		c.value__inst2 = __textarea_value_wrote1
+		c.committed = ((c.__prop_label + ":") + __textarea_value_wrote1)
 		gtk4rt.LabelSetLabel(c.__n0, c.committed)
 		c.__effects0_settle()
 	})
@@ -888,4 +894,4 @@ func (m *Model) entry__1Change(v string) {
 -- run/go/fyne --
 pass sha256:b8e653d4efd6ad006768bbb7f22bb174
 -- run/go/gtk4 --
-pass sha256:8392e003a3f2d9d5151b4f4609a09549
+pass sha256:12386ee76127fe71445c4d5f17c068d8

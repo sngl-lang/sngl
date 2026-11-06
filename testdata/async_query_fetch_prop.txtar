@@ -421,7 +421,8 @@ func (c *__query_state1Instance) __effect0_mount() {
 		c.failure = nil
 	}
 	c.asked__inst0 = __effect0_mount_key.N
-	c.pending = true
+	__query_pending_wrote0 := true
+	c.pending = __query_pending_wrote0
 	c.life__inst0 = Lifetime{_id: snglasync.Begin()}
 	__async_arg0 := c.__prop_fetch
 	__async_arg1 := __effect0_mount_key.Key
@@ -859,7 +860,8 @@ func (c *__query_state1Instance) __effect0_mount() {
 		c.failure = nil
 	}
 	c.asked__inst0 = __effect0_mount_key.N
-	c.pending = true
+	__query_pending_wrote0 := true
+	c.pending = __query_pending_wrote0
 	c.life__inst0 = Lifetime{_id: snglasync.Begin()}
 	__async_arg0 := c.__prop_fetch
 	__async_arg1 := __effect0_mount_key.Key
@@ -1090,6 +1092,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:c619a505abee2065bb1ad524f919cdac
+pass sha256:cb5415b14619eec87866de96bd9d51a6
 -- run/go/gtk4 --
-pass sha256:59e46faa725487900b60203d7b19dd47
+pass sha256:a79570404a9aa209f3771b501b9866af

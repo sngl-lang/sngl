@@ -954,25 +954,30 @@ window.__sngl_boot = () => {
   var __slotAnchor_3 = document.querySelector('[data-sngl-slot="3"]');
   __renderSlot3(__slotAnchor_3);
   $6.addEventListener("input", function(e) {
-    state.name = e.currentTarget.value;
+    let __input_value_wrote0 = e.currentTarget.value;
+    state.name = __input_value_wrote0;
     $6.value = state.name;
   });
   $6.addEventListener("change", function(e) {
-    state.name = e.currentTarget.value;
+    let __input_value_wrote1 = e.currentTarget.value;
+    state.name = __input_value_wrote1;
     $6.value = state.name;
   });
   __n0.addEventListener("change", function(e) {
-    state.checked__inst0 = e.currentTarget.checked;
+    let __checkbox_checked_wrote0 = e.currentTarget.checked;
+    state.checked__inst0 = __checkbox_checked_wrote0;
     __n0.checked = state.checked__inst0;
   });
   $10.addEventListener("change", function(e) {
     select_pickLabel__inst0(state, e.currentTarget.value);
   });
   $12.addEventListener("input", function(e) {
-    state.note = e.currentTarget.value;
+    let __textarea_value_wrote0 = e.currentTarget.value;
+    state.note = __textarea_value_wrote0;
   });
   $12.addEventListener("change", function(e) {
-    state.note = e.currentTarget.value;
+    let __textarea_value_wrote1 = e.currentTarget.value;
+    state.note = __textarea_value_wrote1;
   });
   __n11.addEventListener("swipe", function(e) {
     let k = swipedTo([false, false], state.sel, e.detail);
@@ -1011,7 +1016,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:bfe291634f22bc8c063e4d640b37b158
+pass sha256:ff73bca1c9770fcb19b91200a796d0f7
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
 sha256:d420d5f3816cba56fcb73bfb59e0fbe7
 {

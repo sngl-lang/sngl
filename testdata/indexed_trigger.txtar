@@ -725,25 +725,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = it
 					__focusPos1++
 					if m.__focusLoop1_cursor == __focusPos1 {
+						__checkbox_checked_wrote0 := !func() bool {
+							if __v, __ok := m.checked__inst0[it.Id]; __ok {
+								return __v
+							}
+							return false
+						}()
 						__cell2_checked__inst0 := func() bool {
 							if __v, __ok := m.checked__inst0[it.Id]; __ok {
 								return __v
 							}
 							return false
 						}()
-						__cell2_checked__inst0 = !func() bool {
-							if __v, __ok := m.checked__inst0[it.Id]; __ok {
-								return __v
-							}
-							return false
-						}()
+						__cell2_checked__inst0 = __checkbox_checked_wrote0
 						m.checked__inst0[it.Id] = __cell2_checked__inst0
-						m.log = ((it.Elem + " ") + fmt.Sprint(func() bool {
-							if __v, __ok := m.checked__inst0[it.Id]; __ok {
-								return __v
-							}
-							return false
-						}()))
+						m.log = ((it.Elem + " ") + fmt.Sprint(__checkbox_checked_wrote0))
 						return
 					}
 					__focusPos1++
@@ -2182,9 +2178,10 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__model.__list_box(c.__prop___copy, c.box)
 	gtk4rt.Connect(c.box, "toggled", func() {
 		if gtk4rt.CheckButtonGetActive(c.box) != c.checked {
-			c.checked = gtk4rt.CheckButtonGetActive(c.box)
+			__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(c.box)
+			c.checked = __checkbox_checked_wrote0
 			gtk4rt.CheckButtonSetActive(c.box, c.checked)
-			c.__prop_change(c.checked)
+			c.__prop_change(__checkbox_checked_wrote0)
 		}
 	})
 	c.Root = c.box
@@ -2267,13 +2264,15 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a___c
 	c.__model.__list_field(c.__prop___copy, c.field)
 	gtk4rt.Connect(c.field, "changed", func() {
 		if gtk4rt.EditableGetText(c.field) != c.value {
-			c.value = gtk4rt.EditableGetText(c.field)
+			__input_value_wrote0 := gtk4rt.EditableGetText(c.field)
+			c.value = __input_value_wrote0
 		}
 		c.__effects0_settle()
 	})
 	gtk4rt.Connect(c.field, "activate", func() {
-		c.value = gtk4rt.EditableGetText(c.field)
-		c.__prop_change(c.value)
+		__input_value_wrote1 := gtk4rt.EditableGetText(c.field)
+		c.value = __input_value_wrote1
+		c.__prop_change(__input_value_wrote1)
 		c.__effects0_settle()
 	})
 	__snglMountAfterBuild(c.__effects0_settle)
@@ -3012,9 +3011,10 @@ window.__sngl_boot = () => {
     __n1.disabled = false;
     __n1.setAttribute("type", "checkbox");
     __n1.addEventListener("change", (e) => {
-      checked = e.currentTarget.checked;
+      let __checkbox_checked_wrote0 = e.currentTarget.checked;
+      checked = __checkbox_checked_wrote0;
       __n1.checked = checked;
-      __prop_change(checked);
+      __prop_change(__checkbox_checked_wrote0);
     });
     box.appendChild(__n1);
     let __n2 = document.createElement("span");
@@ -3062,13 +3062,15 @@ window.__sngl_boot = () => {
     field.setAttribute("placeholder", "");
     field.setAttribute("data-sngl-copy", __prop___copy);
     field.addEventListener("input", (e) => {
-      value = e.currentTarget.value;
+      let __input_value_wrote0 = e.currentTarget.value;
+      value = __input_value_wrote0;
       field.value = value;
     });
     field.addEventListener("change", (e) => {
-      value = e.currentTarget.value;
+      let __input_value_wrote1 = e.currentTarget.value;
+      value = __input_value_wrote1;
       field.value = value;
-      __prop_change(value);
+      __prop_change(__input_value_wrote1);
     });
     __root.appendChild(field);
     return {
@@ -3312,12 +3314,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:543f2c9e63fd3518da8a71b83d1f28bc
+pass sha256:e70063c1c22d542ab4599f30c338bb7f
 -- run/go/fyne --
 pass sha256:0eed587be68d76bf904421ee764bee10
 -- run/go/gtk4 --
-pass sha256:0b0a286fa5cf41b74d5f8102627fa37f
+pass sha256:5d4ac3b4eada9cff0998e65d75e21670
 -- run/kotlin/android --
 pass sha256:95e5169a22ee0986a1c5c5cc1bc40213
 -- run/none/html --
-pass sha256:623fc404a8f6de829d58ca28bfb6ee6f
+pass sha256:21c0a209da5d268345bf28f999c9f99b

@@ -373,7 +373,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeySpace && m.__focusID == 0:
-			m.on = !m.on
+			__toggle_checked_wrote0 := !m.on
+			m.on = __toggle_checked_wrote0
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -565,7 +566,8 @@ func (m *Model) __wrote_on() {
 
 func (m *Model) __n0_notifyActive_handler() {
 	if gtk4rt.SwitchGetActive(m.__n0) != m.on {
-		m.on = gtk4rt.SwitchGetActive(m.__n0)
+		__toggle_checked_wrote0 := gtk4rt.SwitchGetActive(m.__n0)
+		m.on = __toggle_checked_wrote0
 		gtk4rt.SetBool(m.__n0, "active", m.on)
 	}
 }
@@ -724,7 +726,8 @@ window.__sngl_boot = () => {
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   __n0.addEventListener("change", function(e) {
-    state.on = e.currentTarget.checked;
+    let __toggle_checked_wrote0 = e.currentTarget.checked;
+    state.on = __toggle_checked_wrote0;
     __n0.checked = state.on;
   });
   function __sngl_init() {
@@ -737,15 +740,15 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1fb4a3a3416f613f9df9619eeee54ec1
+pass sha256:9a9cbee98ae6435941694ae0d397e4d7
 -- run/go/fyne --
 pass sha256:2b3ef9f2226b7cc4bf33fa87a83eb050
 -- run/go/gtk4 --
-pass sha256:8b178539fd1ee3c4dd046a7e8ae1fc78
+pass sha256:962a3dd5d3c07d4956ea17f9e41099f3
 -- run/kotlin/android --
 pass sha256:45ef00317407c700d1ccb657302f4ce3
 -- run/none/html --
-pass sha256:ef0b727ccb1aecfaa7cf12b2431d9179
+pass sha256:610281ed0bceebb1a79539b059dd3aac
 -- testrun/html/none/component_toggle.sngl/main/1 --
 sha256:5673525bc949f55b826bd2dbeca812c7
 {
