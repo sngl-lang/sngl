@@ -1,15 +1,15 @@
 import async "sngl:async"
 import i18n "sngl:i18n"
-import seq "sngl:seq"
 import poke "openapi:./pokeapi.yml"
 import ui "sngl:ui"
 
 // The last segment of a PokéAPI resource URL, which is the resource's id:
 // "https://pokeapi.co/api/v2/evolution-chain/1/" is "1". A summary names
 // what it points at by URL alone, and an id is what the next request asks.
+// A URL with no segment, "" among them, has no id, and is "".
 func idOf(url string) string {
     var parts = string.split(url, "/").filter(func(p string) => p != "")
-    return parts[parts.length() - 1]
+    return parts.length() > 0 ? parts[parts.length() - 1] : ""
 }
 
 // A name as the games print it: "mr-mime" is "Mr Mime".
@@ -443,6 +443,32 @@ component loadError(why string, @retry()) ui.node {
     }
 }
 
+// A request a page makes once it knows what to ask, and where the request
+// failed, what `say` makes of why beside a sign that asks again, the sign
+// alone where it makes "". The query and its failure are this component's
+// own, so the sign's retry reaches it wherever a target builds the component:
+// one under a page's `if` is built at run time, and a method of a node in it
+// is no method of the page's.
+component asked[K any, T any](
+    on     K,
+    fetch  func(K, async.Lifetime) async.Result[T],
+    :value option[T] = null,
+    :pending = false,
+    say    func(string) string = func(why string) => "",
+) ui.node {
+    var failure option[async.Failure] = null
+
+    async.query #ask(on=on, fetch=fetch, :value=value, :pending=pending, :failure=failure)
+    if failure != null {
+        ui.hbox(style={gap=8px, alignItems=center}) {
+            if say(failure.message) != "" {
+                ui.text #said(value=say(failure.message))
+            }
+            loadError #problem(why=requestFailed(failure.message), @retry { ask.refresh() })
+        }
+    }
+}
+
 // The lookups that failed this round, as one sign that asks for every one
 // again: a name is shown by its slug until its own arrives, so a failed one
 // is no hole on the page, only a word in the wrong language.
@@ -466,7 +492,7 @@ func slugsOf(keys list[string], kind string) list[string] {
     for var k = keys {
         if string.startsWith(k, prefix) {
             var slug = string.substring(k, string.length(prefix), string.length(k))
-            if out.filter(func(s string) => s == slug).length() == 0 {
+            if !out.contains(slug) {
                 out.push(slug)
             }
         }
@@ -476,16 +502,6 @@ func slugsOf(keys list[string], kind string) list[string] {
 
 // A dex's name, or its own name made readable where it has none.
 func dexTitle(names list[poke.PokedexName], name string) => nameIn(names, display(name))
-
-// `items` in rows of `width`, the last holding what is left: a grid, since a
-// `Style` neither wraps a row nor lays out columns.
-func rows[T any](items list[T], width int) list[list[T]] {
-    var out list[list[T]] = []
-    for var start = seq.step(0, items.length(), width) {
-        out.push(items.slice(start, int.min(start + width, items.length())))
-    }
-    return out
-}
 
 // The Pokémon a species' page shows: its default variety, whose name is not
 // always the species' -- the species deoxys is the Pokémon deoxys-normal.
@@ -771,42 +787,24 @@ func dexGroups(dex option[poke.PokedexDetail]) list[string] {
     return dex != null ? dex.versionGroups.map(func(g poke.VersionGroupSummary) => g.name) : []
 }
 
-// A way a Pokémon learns a move, as the Moves tab offers it: its label, and
-// PokéAPI's name for it.
-struct LearnMethod {
-    label string
-    name  string
+// A way a Pokémon learns a move, as the Moves tab offers them, by level
+// first.
+enum LearnMethod { levelUp, machine, egg, tutor }
+
+// PokéAPI's name for the way `m`.
+func methodSlug(m LearnMethod) => match m {
+    levelUp => "level-up"
+    machine => "machine"
+    egg => "egg"
+    tutor => "tutor"
 }
 
-// The ways the Moves tab offers, by level first.
-func learnMethods() list[LearnMethod] {
-    return [
-        LearnMethod{label=$"Level", name="level-up"},
-        LearnMethod{label=$"Machine", name="machine"},
-        LearnMethod{label=$"Egg", name="egg"},
-        LearnMethod{label=$"Tutor", name="tutor"},
-    ]
-}
-
-// PokéAPI's name for the way labeled `label`, by level where none is.
-func methodNamed(label string) string {
-    for var m = learnMethods() {
-        if m.label == label {
-            return m.name
-        }
-    }
-    return "level-up"
-}
-
-// The label of the way PokéAPI names `name`, by level's where it is none of
-// them.
-func methodLabeled(name string) string {
-    for var m = learnMethods() {
-        if m.name == name {
-            return m.label
-        }
-    }
-    return learnMethods()[0].label
+// What the Moves tab's select calls the way `m`, in the reader's language.
+func methodLabel(m LearnMethod) => match m {
+    levelUp => $"Level"
+    machine => $"Machine"
+    egg => $"Egg"
+    tutor => $"Tutor"
 }
 
 // One row of the Moves tab: the level a move is learned at, "" for a way
@@ -861,22 +859,19 @@ func before(a learned, b learned) bool {
 
 // The moves a Pokémon learns by `method` in `group`, as the Moves tab's rows,
 // in the order `before` says, each with what `facts` holds of it.
-func movesOf(moves list[poke.PokemonMove], group string, method string, facts map[string, MoveFact], store map[string, list[Named]]) list[MoveRow] {
+func movesOf(moves list[poke.PokemonMove], group string, method LearnMethod, facts map[string, MoveFact], store map[string, list[Named]]) list[MoveRow] {
+    var slug = methodSlug(method)
     var sorted list[learned] = []
     for var m = moves {
         for var d = m.versionGroupDetails {
-            if d.versionGroup.name == group && d.moveLearnMethod.name == method {
+            if d.versionGroup.name == group && d.moveLearnMethod.name == slug {
                 var order = d.order
-                var it = learned{level=d.levelLearnedAt, order=order != null ? order : 0, name=called(store, `move`, m.move.name), move=m.move.name}
-                var at = sorted.length()
-                for at > 0 && before(it, sorted[at - 1]) {
-                    at -= 1
-                }
-                sorted.insert(at, it)
+                sorted.push(learned{level=d.levelLearnedAt, order=order != null ? order : 0, name=called(store, `move`, m.move.name), move=m.move.name})
             }
         }
     }
-    return sorted.map(func(l learned) => moveRow(l, method == "level-up" ? "{l.level}" : "", facts, store))
+    sorted.sortBy(before)
+    return sorted.map(func(l learned) => moveRow(l, method == levelUp ? "{l.level}" : "", facts, store))
 }
 
 // `l`'s row, at `level`, with what `facts` holds of it.

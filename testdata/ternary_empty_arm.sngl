@@ -1,0 +1,21 @@
+import test "sngl:test"
+import ui "sngl:ui"
+
+// An empty literal arm takes its type from the other arm where nothing else
+// says what it holds.
+func listed(n option[int]) => n != null ? [n] : []
+
+func none(n option[int]) => n == null ? [] : [n]
+
+component page ui.node {
+    ui.text(value="{listed(3).length()}")
+}
+
+func testAnEmptyArmTakesTheOthersType(t test.Test) {
+    t.assert(listed(3).length() == 1 && listed(null).length() == 0)
+    t.assert(none(null).length() == 0 && none(4)[0] == 4)
+}
+
+ui.window {
+    page
+}

@@ -293,12 +293,20 @@ const component ui.toggle[platform](label, checked, focusable, style, @change) {
 // as its own to place a cursor, so the tap that opens the menu is a layer over
 // it. Setting the box's text to a choice's label chooses as picking does,
 // which is how a test chooses; a label that names no choice, or the choice
-// already selected, reports nothing.
+// already selected, reports nothing. A test whose trigger reaches no instance
+// of the select -- one in a block built at run time, which raises the event
+// through the invoker -- sets the text to the value it chose, written out,
+// so a text that is no label chooses the choice whose value it spells.
 component ui.select[platform](placeholder, value, disabled, focusable, style, @change, options) {
     var open = false
     func choose(label string) {
         open = false
         var at = ui.choiceLabeled(options, label)
+        for var i, o = options {
+            if at < 0 && spelled(o.value) == label {
+                at = i
+            }
+        }
         if at >= 0 && options[at].value != value {
             value = options[at].value
             change(options[at].value)

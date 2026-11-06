@@ -52,15 +52,16 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	if err := repointCellReads(pkg, cellOwners, st.cells); err != nil {
 		return err
 	}
-	if err := repointHandleCalls(pkg, st.methods, st.methodOwner); err != nil {
-		return err
-	}
+	ambiguous := repointHandleCalls(pkg, st.methods, st.methodOwner)
 	clearDemotedReceivers(pkg, st.demoted)
 	for c := range unreachedCycles(pkg, main, cycles) {
 		delete(st.keep, c)
 	}
 	dropNestedMethods(pkg, st.keep)
 	pkg.Components = retainComponents(pkg.Components, st.keep)
+	if err := refuseAmbiguousHandleCalls(pkg, ambiguous); err != nil {
+		return err
+	}
 	if err := refuseUnsplicedHandleCalls(pkg); err != nil {
 		return err
 	}

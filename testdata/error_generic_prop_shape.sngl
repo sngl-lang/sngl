@@ -1,0 +1,13 @@
+import async "sngl:async"
+import ui "sngl:ui"
+
+// A generic component's prop typed by its own type parameter is held to the
+// shape of the prop it is passed to: no binding of query's T makes a fetch of
+// one parameter a fetch of two.
+component asked[T any, F any](key string, fetch func(string) async.Result[T]) F {
+    async.query(on=key, fetch=fetch) // ERROR(check) "cannot use func(string) Result[T] as func(string, Lifetime) Result[T] for prop \"fetch\""
+}
+
+ui.window {
+    ui.text(value="x")
+}

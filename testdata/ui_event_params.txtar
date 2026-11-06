@@ -1945,7 +1945,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         var d = "2024-03-05"
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("day")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString(d)) }; composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("day")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString((d).toString())) }; composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.picked == d)", (c.picked == d))
         org.junit.Assert.assertTrue("(c.seen == \"day\")", (c.seen == "day"))
     }
@@ -2095,6 +2095,6 @@ pass sha256:a383535bc3e69b5522503c95f0ffc8dd
 -- run/go/gtk4 --
 pass sha256:a886d5947c2132b7ca7d6968285e19c9
 -- run/kotlin/android --
-pass sha256:0972f4c2e5e2e9e9bda7a3a75630c052
+pass sha256:52ab27b0096e8badf59b25f7fc667188
 -- run/none/html --
 pass sha256:5f6ef86c218c77269eb73fcd1b3f80e2

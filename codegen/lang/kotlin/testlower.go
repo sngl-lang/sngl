@@ -398,7 +398,9 @@ const (
 // now holds, which the node's SetText action puts there in place of what it
 // held, as clickAction runs its OnClick: performTextReplacement asks first
 // that the node be an editable text field, and a select is a read-only one
-// that answers SetText with the choice it names.
+// that answers SetText with the choice it names. A typed select's value is
+// written out as text (its toString, which an enum spells as SNGL does), and
+// the select chooses the choice whose value it spells.
 func composeAction(event string, args []ir.CallArg, lower func(ir.Expr) string) string {
 	switch event {
 	case "click":
@@ -409,6 +411,11 @@ func composeAction(event string, args []ir.CallArg, lower func(ir.Expr) string) 
 		return "performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.RequestFocus)"
 	case "input", "change", "changed":
 		text := extractEventValue(args, lower)
+		if len(args) == 1 {
+			if t := args[0].Value.ExprType(); t != nil && t.Kind != ir.TypeString {
+				text = "(" + text + ").toString()"
+			}
+		}
 		return fmt.Sprintf("performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString(%s)) }", text)
 	case "reachEnd":
 		// A scroll's end is reached by scrolling to it, which SnglScroll's

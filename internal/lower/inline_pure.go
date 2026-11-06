@@ -1873,19 +1873,30 @@ func freshenShadowingParams(body []ir.Stmt, taken map[string]bool, names renamer
 // freshNodeHandles gives each node in a spliced copy of a body a handle of its
 // own, recorded in renames for the reads of it. Shared, two splices of one
 // override held one `#cal`, and its own effect's read of it could not say
-// which copy it meant (uniqueNodeIDs).
+// which copy it meant (uniqueNodeIDs). The handle a wrapper of passImplicitState
+// carries for the node it moved (Wraps) is one too: shared, two splices of a
+// component calling `ask.refresh()` on its query held one `#ask`, and the call
+// could not say which copy's refresh it meant.
 func freshNodeHandles(body []ir.Stmt, renames map[ir.Symbol]ir.Symbol) {
+	fresh := func(h *ir.Var) *ir.Var {
+		f, ok := renames[h].(*ir.Var)
+		if !ok {
+			f = cloneVarShallow(h)
+			renames[h] = f
+		}
+		return f
+	}
 	_ = ir.Walk(body, func(node ir.Node) error {
 		n, ok := node.(*ir.NodeInst)
-		if !ok || n.Handle == nil {
+		if !ok {
 			return nil
 		}
-		fresh, ok := renames[n.Handle].(*ir.Var)
-		if !ok {
-			fresh = cloneVarShallow(n.Handle)
-			renames[n.Handle] = fresh
+		if n.Handle != nil {
+			n.Handle = fresh(n.Handle)
 		}
-		n.Handle = fresh
+		if n.Wraps != nil {
+			n.Wraps = fresh(n.Wraps)
+		}
 		return nil
 	})
 }

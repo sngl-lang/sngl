@@ -1070,23 +1070,32 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 	condExpr := c.checkExpr(x.Cond)
 	// The arms of a ternary are the two branches of an if, so a null test in
 	// the condition narrows them the same way.
-	thenFacts := map[narrowKey]narrowFact{}
-	narrowingsFrom(condExpr, true, thenFacts)
-	var thenRegion ir.Expr
-	restoreThen := c.pushNarrowings(thenFacts, nil, &thenRegion)
 	restorePrelude := c.noPrelude()
 	defer restorePrelude()
-	thenExpr := c.checkExprExpecting(x.Then, c.expected)
-	thenRegion = thenExpr
-	restoreThen()
-
-	elseFacts := map[narrowKey]narrowFact{}
-	narrowingsFrom(condExpr, false, elseFacts)
-	var elseRegion ir.Expr
-	restoreElse := c.pushNarrowings(elseFacts, nil, &elseRegion)
-	elseExpr := c.checkExprExpecting(x.Else, c.expected)
-	elseRegion = elseExpr
-	restoreElse()
+	arm := func(e ast.Expr, positive bool, expected *ir.Type) ir.Expr {
+		facts := map[narrowKey]narrowFact{}
+		narrowingsFrom(condExpr, positive, facts)
+		var region ir.Expr
+		restore := c.pushNarrowings(facts, nil, &region)
+		got := c.checkExprExpecting(e, expected)
+		region = got
+		restore()
+		return got
+	}
+	// An empty literal arm has no type of its own, so where nothing is
+	// expected it takes the other arm's: `n != null ? [n] : []`.
+	var thenExpr, elseExpr ir.Expr
+	if c.expected == nil && emptyLiteral(x.Then) && !emptyLiteral(x.Else) {
+		elseExpr = arm(x.Else, false, nil)
+		thenExpr = arm(x.Then, true, exprType(elseExpr))
+	} else {
+		thenExpr = arm(x.Then, true, c.expected)
+		expected := c.expected
+		if expected == nil && emptyLiteral(x.Else) {
+			expected = exprType(thenExpr)
+		}
+		elseExpr = arm(x.Else, false, expected)
+	}
 	// Checked expecting an option, an arm reading a narrowed option is that
 	// option, while a bare arm beside it is its element: `f(o == null ? 1.0
 	// : o)` for an option[float] parameter. The ternary is the option, the
@@ -1114,6 +1123,20 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 		c.error(x.Pos, "ternary branches have mismatched types %s and %s", w, g)
 	}
 	return &ir.Ternary{AST: x, Type: typ, Cond: condExpr, Then: thenExpr, Else: elseExpr}
+}
+
+// emptyLiteral reports whether e is an empty list or map literal, `[]`,
+// which has no type until something says what it holds.
+func emptyLiteral(e ast.Expr) bool {
+	switch n := e.(type) {
+	case *ast.ListExpr:
+		return len(n.Elements) == 0
+	case *ast.MapLit:
+		return len(n.Entries) == 0
+	case *ast.ParenExpr:
+		return emptyLiteral(n.Inner)
+	}
+	return false
 }
 
 // armsDisagree reports whether a ternary's arms are of two types neither of
@@ -2422,15 +2445,8 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 		t := operand.Elems[0]
 		return &ir.Index{AST: x, Type: t, Operand: operandExpr, Idx: indexExpr}
 	}
-	// One copy of a node a loop rendered under one id, `c.row[1]`, is a node
-	// of the same component as the id names.
-	if operand.Kind == ir.TypeComponent && operand.Decl != nil {
-		if _, ok := operandExpr.(*ir.Select); ok {
-			return &ir.Index{AST: x, Type: operand, Operand: operandExpr, Idx: indexExpr}
-		}
-	}
 	switch operand.Kind {
-	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeEnum, ir.TypeUnit, ir.TypeFunc:
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeEnum, ir.TypeUnit, ir.TypeFunc, ir.TypeComponent:
 		c.error(x.Pos, "cannot index %s", operand)
 		return &ir.Index{AST: x, Type: TypInvalid, Operand: operandExpr, Idx: indexExpr}
 	}

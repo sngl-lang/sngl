@@ -753,7 +753,10 @@ mutates state, is an error naming the write. A branch that narrows nothing
 anybody read is unaffected, so `if x != null { x = null }` is legal.
 
 A narrowing does not cross into a lambda. The body runs when the lambda is
-called, which may be after the test has stopped holding.
+called, which may be after the test has stopped holding. An event handler of
+a node under a view's test is not part of the branch either: it runs when the
+event fires, and the view tests again before anything reads the value, so
+what a handler writes or calls leaves the test standing.
 
 ### Generic type parameters
 

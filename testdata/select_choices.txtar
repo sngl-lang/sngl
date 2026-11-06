@@ -1335,6 +1335,11 @@ fun MainScreen() {
     fun choose__inst0(label: String) {
         open__inst0 = false
         var at = choiceLabeled__string(listOf(Choice__record__string(label = "None", value = "None"), *fruits.map({ f: String -> Choice__record__string(label = f, value = f) }).toTypedArray()), label)
+        for ((i, o) in listOf(Choice__record__string(label = "None", value = "None"), *fruits.map({ f: String -> Choice__record__string(label = f, value = f) }).toTypedArray()).withIndex()) {
+        	if (((at < 0) && (o.value.toString() == label))) {
+        		at = i
+        	}
+        }
         if (((at >= 0) && (listOf(Choice__record__string(label = "None", value = "None"), *fruits.map({ f: String -> Choice__record__string(label = f, value = f) }).toTypedArray())[at].value != pick))) {
         	pick = listOf(Choice__record__string(label = "None", value = "None"), *fruits.map({ f: String -> Choice__record__string(label = f, value = f) }).toTypedArray())[at].value
         }
@@ -1714,6 +1719,6 @@ pass sha256:505d89fe887c5b823d10f7b7eec869d4
 -- run/go/gtk4 --
 pass sha256:45abf2131efd19445b0eb0c4a423761d
 -- run/kotlin/android --
-pass sha256:49151d55d6e58910fe9ab9a96d85c918
+pass sha256:2a93448725330676a8d7771074ca8707
 -- run/none/html --
 pass sha256:649655763126adf8a75b36b8565a5432

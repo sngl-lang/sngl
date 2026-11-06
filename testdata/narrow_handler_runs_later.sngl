@@ -1,0 +1,31 @@
+import test "sngl:test"
+import ui "sngl:ui"
+
+// A handler under a view's null test runs when its event fires, by which
+// time the view has tested again, so what it writes or calls leaves the test
+// standing for the reads beside it.
+var chosen option[string] = "bulbasaur"
+
+func forget() {
+    chosen = null
+}
+
+component page ui.node {
+    if chosen != null {
+        ui.text #name(value=chosen)
+        ui.button #clear(text="Clear", @click { forget() })
+        ui.button #drop(text="Drop", @click { chosen = null })
+    }
+}
+
+func testAHandlerLeavesTheTest(t test.Test, c page) {
+    t.assert(c.name != null && c.name.value == "bulbasaur")
+    if c.clear != null {
+        c.clear.click()
+    }
+    t.assert(chosen == null && c.name == null)
+}
+
+ui.window {
+    page
+}

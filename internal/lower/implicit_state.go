@@ -614,13 +614,18 @@ func cellReadError(w *ir.Component, v *ir.Var, copies int) error {
 // component built at run time splices the node into its own body, and spliced
 // whole elsewhere it carries a copy of that clone to the owner it lands in.
 //
-// What no splice answered is refused by refuseUnsplicedHandleCalls, once the
-// components nothing renders are gone.
-func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.Func, owner map[*ir.Func]*[]*ir.Func) error {
+// A call no owner told apart is answered with the error it would be, and
+// refused by refuseAmbiguousHandleCalls only where it survives the components
+// nothing renders: a component spliced wherever it is written keeps its own
+// body until then, and a node under a reactive `if` in it -- built at run
+// time, its methods hoisted onto the instance's state -- has a clone in no
+// owner that body is. What no splice answered is refused by
+// refuseUnsplicedHandleCalls, at the same point.
+func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.Func, owner map[*ir.Func]*[]*ir.Func) map[*ir.Call]error {
 	if len(methods) == 0 {
 		return nil
 	}
-	var bad error
+	ambiguous := map[*ir.Call]error{}
 	repoint := func(root any, funcs *[]*ir.Func) {
 		_ = ir.Rewrite(root, func(n ir.Node) (ir.Node, error) {
 			call, ok := n.(*ir.Call)
@@ -646,8 +651,8 @@ func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.
 			switch {
 			case len(clones) == 1:
 				pointCallAt(call, clones[0], asArg)
-			case len(clones) > 1 && bad == nil && funcs == nil:
-				bad = fmt.Errorf("%s: `#%s` is rendered more than once, so a call of its %s cannot say which copy it means; give each copy its own id", handleCallPos(call), h.WrittenName(), call.Func.Name)
+			case len(clones) > 1 && funcs == nil:
+				ambiguous[call] = fmt.Errorf("%s: `#%s` is rendered more than once, so a call of its %s cannot say which copy it means; give each copy its own id", handleCallPos(call), h.WrittenName(), call.Func.Name)
 			}
 			return n, nil
 		})
@@ -669,6 +674,22 @@ func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.
 		}
 	}
 	repoint(pkg, nil)
+	return ambiguous
+}
+
+// refuseAmbiguousHandleCalls reports the first call repointHandleCalls could
+// not tell apart that the package still holds.
+func refuseAmbiguousHandleCalls(pkg *ir.Package, ambiguous map[*ir.Call]error) error {
+	if len(ambiguous) == 0 {
+		return nil
+	}
+	var bad error
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if call, ok := n.(*ir.Call); ok && bad == nil {
+			bad = ambiguous[call]
+		}
+		return nil
+	})
 	return bad
 }
 

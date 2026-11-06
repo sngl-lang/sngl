@@ -6,7 +6,7 @@ import ui "sngl:ui"
 // this size, so the list is one request.
 const dexLimit = 50
 
-// How many cards a row holds.
+// How many cards a row of the grid holds.
 const columns = 3
 
 // The Pokédex chosen, by name and as PokéAPI answers it. The window's menu
@@ -31,12 +31,6 @@ func chooseDex(name string) {
 // dex asks for every one, so it matches what the cards say.
 component homePage(pageSize = 30, @open(name string)) ui.node {
     var loading = false
-    var failure option[async.Failure] = null
-    // The dex that failed to load, which is not asked for again until the
-    // sign of its failure forgets it, and how many times one has: a retry
-    // that answers as the one before leaves `failure` as it was.
-    var failedDex option[string] = null
-    var dexFailures = 0
     var shown = pageSize
     var search = ""
     var namingAll = false
@@ -73,9 +67,6 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
         return all.slice(0, int.min(shown, all.length()))
     }
 
-    // The grid, a row of `columns` cards at a time.
-    func grid() => rows(visible(), columns)
-
     // Shows a page more of the matches, where there are more to show.
     func more() {
         if matching().length() > shown {
@@ -92,18 +83,6 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
             namingAll = true
         }
     })
-    if dexName != null && dexName != failedDex {
-        poke.pokedexRetrieve(
-            id = dexName,
-            :value = chosenDex,
-            :pending = loading,
-            :failure = failure,
-            @fail {
-                failedDex = dexName
-                dexFailures += 1
-            },
-        )
-    }
     // A request per species, kept by its slug, so one dropping out of the
     // list leaves every other request where it is.
     for var slug = naming() {
@@ -121,23 +100,22 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
         if namesPending() {
             ui.spinner #namesLoading(label=$"Loading names")
         }
-        if failedDex != null && failedDex == dexName {
-            ui.hbox(style={gap=8px, alignItems=center}) {
-                ui.text(value=couldNotLoadDex(whyOf(failure)))
-                loadError #dexFailed(why=requestFailed(whyOf(failure)), @retry { failedDex = null })
-            }
+        if dexName != null {
+            asked #dexAsk(
+                on = dexName,
+                fetch = func(id string, life async.Lifetime) => poke.pokedexRetrieveCall(id=id, life=life),
+                :value = chosenDex,
+                :pending = loading,
+                say = couldNotLoadDex,
+            )
         }
         if chosenDex == null && loading {
             ui.spinner(label=$"Loading")
         }
         ui.scroll #cards(style={flex=1}, @reachEnd { more() }) {
-            ui.vbox(style={gap=8px}) {
-                for var row = grid() {
-                    ui.hbox(style={gap=8px}) {
-                        for var entry = row {
-                            card(entry=entry, name=label(entry), @open { open(entry.pokemonSpecies.name) })
-                        }
-                    }
+            ui.grid(columns=columns, style={gap=8px}) {
+                for var entry = visible() {
+                    card(entry=entry, name=label(entry), @open { open(entry.pokemonSpecies.name) })
                 }
             }
         }

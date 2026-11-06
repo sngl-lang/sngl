@@ -315,21 +315,16 @@ func testChoosingADexStartsTheGridAgain(t test.Test, c home) {
     t.assert(c.page.about != null && c.page.about.value == "Kanto · Kanto · 40 Pokémon")
 }
 
-func testTheGridIsRowsOfThree(t test.Test, c home) {
+func testTheGridIsInDexOrder(t test.Test, c home) {
     t.wait(func() => chosenDex != null, 5000)
-    // A page more may have followed the first already, where the grid's end
-    // showed on a target that lays it out: 30 cards are 10 rows, 40 are 14.
-    t.assert(c.page.grid().length() == (c.page.visible().length() + 2) / 3)
-    t.assert(c.page.grid()[0].map(func(e poke.PokemonDexNumber) => number(e.entryNumber)).format(",") == "#001,#002,#003")
-    t.assert(c.page.grid()[9].map(func(e poke.PokemonDexNumber) => e.pokemonSpecies.name).format(",") == "sandslash,nidoran-f,nidorina")
+    t.assert(c.page.visible().slice(0, 3).map(func(e poke.PokemonDexNumber) => number(e.entryNumber)).format(",") == "#001,#002,#003")
+    t.assert(c.page.visible().slice(27, 30).map(func(e poke.PokemonDexNumber) => e.pokemonSpecies.name).format(",") == "sandslash,nidoran-f,nidorina")
 }
 
 func testTheEndOfTheGridAddsTheRest(t test.Test, c home) {
     t.wait(func() => chosenDex != null, 5000)
     c.page.cards.reachEnd()
     t.assert(c.page.visible().length() == 40)
-    t.assert(c.page.grid().length() == 14)
-    t.assert(c.page.grid()[13].length() == 1)
     // The dex has no more to show, so its end shows nothing more.
     c.page.cards.reachEnd()
     t.assert(c.page.visible().length() == 40)
@@ -339,7 +334,6 @@ func testTheSearchCoversTheWholeDex(t test.Test, c home) {
     t.wait(func() => chosenDex != null, 5000)
     c.page.searchBox.input("GGLY")
     t.assert(c.page.visible().map(func(e poke.PokemonDexNumber) => e.pokemonSpecies.name).format(",") == "jigglypuff,wigglytuff")
-    t.assert(c.page.grid().length() == 1)
 }
 
 // PokéAPI's document says a move's contest type is always there, and Acid
@@ -382,17 +376,15 @@ func testACardNamesItsSpeciesInTheReadersLanguage(t test.Test, c home) {
 func testADexThatFailsAsksAgain(t test.Test, c home) {
     t.wait(func() => chosenDex != null, 5000)
     chooseDex("nowhere")
-    t.wait(func() => c.page.dexFailed != null, 5000)
-    var sign = c.page.dexFailed
-    t.assert(sign != null && string.contains(sign.why, "404"))
-    var failed = c.page.dexFailures
-    if sign != null {
-        sign.sign.click()
+    t.wait(func() => c.page.dexAsk != null && c.page.dexAsk.problem != null, 5000)
+    var ask = c.page.dexAsk
+    t.assert(ask != null && ask.said != null && string.contains(ask.said.value, "404"))
+    if ask != null && ask.problem != null {
+        ask.problem.sign.click()
     }
     // Asked again, and failed again.
-    t.wait(func() => c.page.dexFailures == failed + 1, 5000)
-    t.assert(c.page.dexFailures == failed + 1)
-    t.assert(c.page.dexFailed != null)
+    t.wait(func() => !c.page.loading, 5000)
+    t.assert(c.page.dexAsk != null && c.page.dexAsk.problem != null)
 }
 
 func testASearchAsksForEveryName(t test.Test, c home) {
@@ -603,8 +595,8 @@ func testSpritesLabelEveryPicture(t test.Test, c mouse) {
     if c.detail.tabs != null {
         c.detail.tabs.change(3)
     }
-    t.assert(c.detail.spriteLabel[1][0] != null && c.detail.spriteLabel[1][0].value == "Female front")
-    t.assert(c.detail.spriteLabel[3][1] != null && c.detail.spriteLabel[3][1].value == "Shiny female Home")
+    t.assert(c.detail.spriteLabel[4] != null && c.detail.spriteLabel[4].value == "Female front")
+    t.assert(c.detail.spriteLabel[13] != null && c.detail.spriteLabel[13].value == "Shiny female Home")
 }
 
 func testSpritesLeaveOutAFemaleTheyLack(t test.Test, c seed) {
@@ -615,8 +607,8 @@ func testSpritesLeaveOutAFemaleTheyLack(t test.Test, c seed) {
     if c.detail.tabs != null {
         c.detail.tabs.change(3)
     }
-    t.assert(c.detail.spriteLabel[1][0] != null && c.detail.spriteLabel[1][0].value == "Official artwork")
-    t.assert(c.detail.spriteLabel[2][0] == null)
+    t.assert(c.detail.spriteLabel[4] != null && c.detail.spriteLabel[4].value == "Official artwork")
+    t.assert(c.detail.spriteLabel[8] == null)
     t.assert(c.detail.forms().length() == 0)
 }
 
@@ -721,22 +713,20 @@ func testTheSelectSwitchesTheMethod(t test.Test, c seed) {
     }
     t.assert(c.detail.methodPick != null)
     if c.detail.methodPick != null {
-        c.detail.methodPick.change("Machine")
+        c.detail.methodPick.change(machine)
     }
-    t.assert(c.detail.method == "machine")
+    t.assert(c.detail.method == machine)
     t.wait(func() => movesLine(c.detail.moveRows()) == "Body Slam, Curse, Double-Edge, Rest, Seed Bomb, Solar Beam, Swords Dance, Take Down, Toxic", 5000)
     t.assert(movesLine(c.detail.moveRows()) == "Body Slam, Curse, Double-Edge, Rest, Seed Bomb, Solar Beam, Swords Dance, Take Down, Toxic")
     t.assert(c.detail.moveRows()[0].level == "")
     if c.detail.methodPick != null {
-        c.detail.methodPick.change("Egg")
+        c.detail.methodPick.change(egg)
     }
     t.assert(movesLine(c.detail.moveRows()) == "Curse, Ingrain, Petal Dance, Toxic")
 }
 
-// The way chosen is PokéAPI's name, so the moves stay the machine's in
-// another language, whose labels the old one's matches none of. The select's
-// label follows the language by an effect keyed on the locale, which a
-// test's t.setContext does not move on html or android.
+// The way chosen is a member of an enum, so the moves stay the machine's in
+// another language, and only the choices' labels change.
 func testTheMethodOutlivesALanguage(t test.Test, c seed) {
     t.wait(func() => c.detail.mon != null, 5000)
     t.assert(c.detail.tabs != null)
@@ -744,12 +734,12 @@ func testTheMethodOutlivesALanguage(t test.Test, c seed) {
         c.detail.tabs.change(4)
     }
     if c.detail.methodPick != null {
-        c.detail.methodPick.change("Machine")
+        c.detail.methodPick.change(machine)
     }
     t.setContext(i18n.locale, "fr")
-    t.assert(c.detail.method == "machine")
+    t.assert(c.detail.method == machine)
     t.assert(c.detail.moveRows().length() == 9 && c.detail.moveRows()[0].level == "")
-    t.assert(methodLabeled("machine") == "CT" && methodLabeled("egg") == "Œuf")
+    t.assert(methodLabel(machine) == "CT" && methodLabel(egg) == "Œuf")
 }
 
 func testAMethodWithNoMoves(t test.Test, c seed) {
@@ -759,7 +749,7 @@ func testAMethodWithNoMoves(t test.Test, c seed) {
         c.detail.tabs.change(4)
     }
     if c.detail.methodPick != null {
-        c.detail.methodPick.change("Tutor")
+        c.detail.methodPick.change(tutor)
     }
     t.assert(c.detail.moveRows().length() == 0)
     t.assert(c.detail.movesCount != null && c.detail.movesCount.value == "It learns no moves this way.")
@@ -927,11 +917,11 @@ func testJapaneseFallsBackToKana(t test.Test, c seed) {
 // submenu before picking from it, as a person does.
 func testTheLanguageChoiceTranslatesThePages(t test.Test, c shell) {
     t.wait(func() => c.app.homeList != null && c.app.homeList.about != null, 5000)
-    t.assert(c.app.language == "English")
+    t.assert(c.app.language == "en")
     t.assert(c.app.homeList != null && c.app.homeList.searchBox.placeholder == "Search this Pokédex")
     c.app.pokedex.menu[0].select()
     c.app.pokedex.menu[0].children[3].select()
-    t.assert(c.app.language == "Español")
+    t.assert(c.app.language == "es")
     t.assert(c.app.pokedex.menu[0].children[3].checked && !c.app.pokedex.menu[0].children[0].checked)
     t.wait(func() => c.app.homeList != null && c.app.homeList.about != null && c.app.homeList.about.value == "Nacional · todas las regiones · 40 Pokémon", 5000)
     t.assert(c.app.homeList != null && c.app.homeList.about != null && c.app.homeList.about.value == "Nacional · todas las regiones · 40 Pokémon")
@@ -942,8 +932,8 @@ func testTheLanguageChoiceTranslatesThePages(t test.Test, c shell) {
 // pages as the menu's pick does.
 func testWritingTheLanguageTranslatesThePages(t test.Test, c shell) {
     t.wait(func() => c.app.homeList != null && c.app.homeList.about != null, 5000)
-    c.app.language = "Español"
-    t.assert(c.app.language == "Español")
+    c.app.language = "es"
+    t.assert(c.app.language == "es")
     t.wait(func() => c.app.homeList != null && c.app.homeList.searchBox.placeholder == "Buscar en esta Pokédex", 5000)
     t.assert(c.app.homeList != null && c.app.homeList.searchBox.placeholder == "Buscar en esta Pokédex")
 }
@@ -972,7 +962,7 @@ func testNames(t test.Test, c home) {
     t.assert(display("mr-mime") == "Mr Mime")
     t.assert(idOf("http://127.0.0.1:47819/examples/pokedex/api/v2/evolution-chain/2/") == "2")
     t.assert(number(7) == "#007" && number(151) == "#151" && number(1025) == "#1025")
-    t.assert(rows([1, 2, 3, 4, 5, 6, 7], 3).map(func(r list[int]) => r.length()).format(",") == "3,3,1")
+    t.assert(idOf("") == "" && idOf("/") == "")
     t.assert(artworkOf(`https://example.com/{id}.png`, "25") == "https://example.com/25.png")
     t.assert(genderOf(-1) == "Genderless" && genderOf(0) == "100% male, 0% female" && genderOf(8) == "0% male, 100% female")
     t.assert(oneLine(" a\nb\x0cc  d ") == "a b c d")
@@ -1016,10 +1006,10 @@ func testNames(t test.Test, c home) {
     t.assert(latestGroup(["red-blue", "yellow", "firered-leafgreen", "red-green-japan", "blue-japan"], tackle) == "firered-leafgreen")
     t.assert(latestGroup(["gold-silver", "crystal"], tackle) == "")
     t.assert(latestGroup([], [poke.PokemonMove{move=poke.MoveSummary{name="tackle", url=""}, versionGroupDetails=[learnedIn("champions"), learnedIn("a-game-to-come")]}]) == "a-game-to-come")
-    t.assert(methodNamed("Machine") == "machine" && methodNamed("Nothing") == "level-up")
+    t.assert(methodSlug(levelUp) == "level-up" && methodSlug(machine) == "machine")
     t.assert(languageOf("fr_CA.UTF-8") == "fr" && languageOf("C") == "c")
     t.assert(pokeLanguages("ja-JP").format(",") == "ja,ja-hrkt,en" && pokeLanguages("pt-BR").format(",") == "en")
-    t.assert(languageLabel("de-AT") == "Deutsch" && languageLabel("C.UTF-8") == "English" && localeLabeled("日本語") == "ja")
+    t.assert(offered("de-AT") == "de" && offered("C.UTF-8") == "en" && offered("ja") == "ja")
 }
 
 func testEveryNameDecodes(t test.Test, c named) {

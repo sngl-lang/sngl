@@ -26,7 +26,7 @@ launcher red.
 | `app.sngl`           | the window: its bar and menu over a `nav.stack` of home, a page per Pokémon and a page per form |
 | `home.sngl`          | the Pokédex chosen, a search, and a grid of its Pokémon, 30 at a time                           |
 | `detail.sngl`        | a species' page: a header over About, Stats, Evolution, Sprites and Moves                       |
-| `names.sngl`         | ids, names, rows, the artwork, an evolution's rows, a gallery, the moves, and lines' text       |
+| `names.sngl`         | ids, names, the artwork, an evolution's rows, a gallery, the moves, and lines' text             |
 | `icon.svg`           | the app's icon, which `output` names                                                            |
 | `pokeapi.yml`        | PokéAPI's OpenAPI document, vendored, with the nulls it leaves out                              |
 | `i18n.manifest.json` | the app's own words in French, German, Spanish and Japanese                                     |
@@ -90,8 +90,7 @@ the latest game that dex covers. `dexName` is kept from one run to the next
 grid's scroll fires `@reachEnd` as its end comes into view, and home shows the
 next 30 of what matches. A first page too
 short to scroll has its end in view already, so the next one follows it at
-once. The grid is rows of three that `rows` in `names.sngl` cuts, since a
-`Style` neither wraps a row nor lays out columns.
+once. The grid is a `ui.grid` of three columns over the cards shown.
 
 **A card shows its species' name in the reader's language.** An entry names
 its species only by PokéAPI's slug, `nidoran-f`, and the names in each
@@ -116,9 +115,26 @@ for var slug = naming() {
 ⚠ sign whose tooltip says what went wrong, and a click asks again
 (`loadError`). A page's own requests -- the dex, the species, its Pokémon,
 its evolution chain, a form -- each have a sign where what they would show
-is, and each is mounted unless what it would ask for is what last failed, so
-asking for something else asks at once and the sign asks again by forgetting
-the failure. A name is shown by its slug until its own arrives, so the
+is. Each is an `async.query`, which asks again only when its key changes or
+it is refreshed, and clears its failure when asked about something else, so
+the sign's click is the request's `refresh`. One a page makes only once it
+knows what to ask -- under an `if` -- is an `asked`, which holds the query,
+its failure and the sign, and says why with what `say` makes of it:
+
+```sngl
+asked(
+    on = shown(),
+    fetch = func(id string, life async.Lifetime) => poke.pokemonRetrieveCall(id=id, life=life),
+    :value = mon,
+    say = func(why string) => couldNotLoadMon(display(name), why),
+)
+```
+
+A component of its own because most targets build what an `if` holds at run
+time, and reach no method of a node in it from the page; an instance of
+`asked` holds its query, and its sign's `ask.refresh()` reaches it.
+
+A name is shown by its slug until its own arrives, so the
 lookups that fail are counted on one sign per page (`lookupsError`), which
 starts the cache's next round of asking (`Cache.retry`): a key that failed
 in the last round is wanted again, so its `cached` mounts its query, and
@@ -246,9 +262,8 @@ types, Stats and Sprites are the form's, and the title is the form's name, a
 fourth request keyed on the Pokémon's first form:
 
 ```sngl
-poke.pokemonRetrieve(id=shown(), :value=mon, :failure=monFailure)
-if form != "" && mon != null && mon.forms.length() > 0 {
-    poke.pokemonFormRetrieve(id=mon.forms[0].name, :value=shape)
+if shapeName() != "" {
+    asked(on=shapeName(), fetch=func(id string, life async.Lifetime) => poke.pokemonFormRetrieveCall(id=id, life=life), :value=shape)
 }
 ```
 
@@ -263,10 +278,10 @@ is how PokéAPI names a variety's form.
 
 **Moves** is a list of the moves the Pokémon shown learns, a level, a name,
 a type, a power and an accuracy per line, under a `ui.select` of the way it learns them: by level, by
-machine, from an egg or from a tutor (`learnMethods`). By level the rows are
+machine, from an egg or from a tutor, the members of `LearnMethod`. By level the rows are
 ordered by level, and moves learned at one level by PokéAPI's `order` --
 Tackle before Growl; the other ways have no level, and are ordered by name
-(`movesOf`). The moves are those of one version group (`latestGroup`): the
+(`movesOf`, which sorts by `before`). The moves are those of one version group (`latestGroup`): the
 latest that both the dex chosen on home covers -- every group, for the
 National dex, which names none -- and the Pokémon learns any move in.
 PokéAPI's ids are not release order (red-green-japan is 28, after
@@ -319,7 +334,7 @@ ui.window #pokedex(title=pages.current.title, canGoBack=pages.canGoBack(), @back
     component menu {
         ui.menuItem(label=$"Language") {
             for var l = languages {
-                ui.menuItem(label=l.label, checked=l.label == language, @select { language = l.label })
+                ui.menuItem(label=l.label, checked=l.locale == language, @select { language = l.locale })
             }
         }
         ui.menuItem(label=$"Pokédex") {
@@ -351,7 +366,7 @@ The language and the dex outlive the process. `sngl:settings` binds each to
 a name, loads what was kept when the window mounts, and keeps every change:
 
 ```sngl
-settings.kept(name="language", default=languageLabel(i18n.defaultLocale()), :value=language)
+settings.kept(name="language", default=offered(null), :value=language)
 settings.kept(name="dexName", default="national", :value=dexName)
 ```
 
@@ -370,14 +385,15 @@ an `i18n.locale` provider holding the one chosen, so its title and its menu
 are in it too:
 
 ```sngl
-i18n.locale(localeLabeled(language)) {
+i18n.locale(offered(language)) {
     ui.window #pokedex(…) { … }
 }
 ```
 
 It starts at the language kept from the last run, and on a first run at the
 process's locale -- `fr_CA.UTF-8` is French -- or English where that is none
-of the five (`languageLabel`).
+of the five (`offered`). What is kept is the locale, `fr`, not the
+language's name.
 
 **What PokéAPI says is picked by one function.** `pokeLanguages` turns a SNGL
 locale into PokéAPI's names for its language, in the order to look for them,
@@ -454,13 +470,18 @@ writes them, by `i18n.numberFloat` and `i18n.numberInt`: Bulbasaur is "0.7
 m" in English and "0,7 m" in French, and "87.5% male, 12.5% female" is
 "87,5 % mâles, 12,5 % femelles".
 
-The Moves select's labels are the app's own words, and the way chosen is
-PokéAPI's name for it: choosing a label maps it back by comparing it with the
-same `$"..."` labels (`methodNamed`), and an `effect` keyed on `i18n.locale`
-writes the label of the way shown again as the language changes
-(`methodLabeled`), so a language chosen while the tab shows the machine's
-moves still shows them, under "CT". Learn methods are therefore never asked
-for.
+The Moves select holds a `LearnMethod`, and each choice's label is the app's
+own word for it (`methodLabel`), so a language chosen while the tab shows the
+machine's moves still shows them, under "CT"; `methodSlug` is PokéAPI's name
+for the way. Learn methods are therefore never asked for.
+
+```sngl
+ui.select #methodPick(:value=method) {
+    for var m = LearnMethod {
+        ui.choice(label=methodLabel(m), value=m)
+    }
+}
+```
 
 Left in English, or as PokéAPI's slug made readable: a card's name on home
 and in Evolution -- a species' name lives on the species, and a card asks for

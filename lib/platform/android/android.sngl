@@ -760,6 +760,12 @@ component SnglPager(
 #[kt.native("snglChooses", "", method)]
 const func Modifier.snglChooses(onText func(string)) Modifier
 
+// A value written out as Kotlin writes it, which for an enum is the member as
+// SNGL spells it: what a test raising a typed select's change through the
+// invoker sets the box's text to.
+#[kt.native("toString", "", method)]
+const func spelled[T any](v T) string
+
 // Keeps a control from taking focus, by a key or a press: one written
 // `focusable=false`, whose keys then reach the window. Kotlin the platform
 // ships (codegen/platform/android/focus.kt), since Compose says it in a

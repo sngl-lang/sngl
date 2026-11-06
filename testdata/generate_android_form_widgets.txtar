@@ -101,6 +101,11 @@ fun MainScreen() {
     fun choose__inst0(label: String) {
         open__inst0 = false
         var at = choiceLabeled__string(listOf(Choice__record__string(label = "Apple", value = "Apple"), Choice__record__string(label = "Banana", value = "Banana")), label)
+        for ((i, o) in listOf(Choice__record__string(label = "Apple", value = "Apple"), Choice__record__string(label = "Banana", value = "Banana")).withIndex()) {
+        	if (((at < 0) && (o.value.toString() == label))) {
+        		at = i
+        	}
+        }
         if (((at >= 0) && (listOf(Choice__record__string(label = "Apple", value = "Apple"), Choice__record__string(label = "Banana", value = "Banana"))[at].value != value__inst2))) {
         	value__inst2 = listOf(Choice__record__string(label = "Apple", value = "Apple"), Choice__record__string(label = "Banana", value = "Banana"))[at].value
         }
@@ -285,4 +290,4 @@ private fun parseDate(s: String): String? =
         null
     }
 -- run/kotlin/android --
-pass sha256:860e7d9127db6485b6c54a2cd875d2a1
+pass sha256:c3d4287149fc71101d7c3e5edd6fca09

@@ -6,33 +6,22 @@ points first, then the bugs and the generated code.
 
 ## Where the language makes this painful
 
-The language and library halves of 2, 3, 4, 6 and 7 are done: loop copies
-match by element identity, a constraint alias names the per-language entries,
-the names live in a generic cache component, and the checker keeps the null
-test across a call. What is left:
+What the example worked around is done: requests and their retries are
+queries (`asked` wraps the ones under a page's `if`), the grid is `ui.grid`,
+moves sort by `before`, the Moves select holds a `LearnMethod`, and the kept
+language is a locale. What is left:
 
-1. **Failure and retry is still hand-rolled for three requests.** The query
-   now owns "failed, cleared on a new key" and `#id.refresh()` works with
-   unbound cells, but the detail page's mon, chain and shape requests still
-   carry `xFailure`, `xFailedFor` and an `if x != xFailedFor` guard, and
-   home's `dexFailures` is state only a test reads. Move them to the query
-   and `refresh()`.
-2. **Library pieces the example does not use yet:** `movesOf` still writes an
-   insertion sort (use the list sort), `rows()` still cuts the grid by hand
-   (use `ui.grid`), and the Moves tab's select still binds its label, which
-   costs `methodNamed`, `methodLabeled` and an effect relabeling on a locale
-   change (bind the value).
-3. **Testing requests needs help.** 63 tests need 26 wrapper components, each
+1. **Testing requests needs help.** 63 tests need 26 wrapper components, each
    `poke.server(local){ artwork(dot){ … } }`, and `testdata/http` is trimmed
    by hand. Ideas: a SNGL-level recorder of real requests, and a `TestMain`
    kind of setup shared by a file's tests.
-4. **Example design and bugs:**
-   - `idOf("")` indexes `-1` and panics;
-   - `slugsOf` dedupes in O(n²) where `.contains` exists;
-   - `names.sngl`'s `$"{count} {stat}"` warns on every build;
-   - the kept language is its label ("Français"), not its locale;
-   - the README contradicts itself on whether `names` is shared;
-   - a first search of the National dex mounts about 1,025 requests at once.
+2. **A first search of the National dex mounts about 1,025 requests at
+   once.** Nothing caps the requests in flight (see `snglhttp` below).
+3. **A node's method is out of reach in a block built at run time.** On html,
+   gtk4, fyne and android, `ask.refresh()` refuses to build where `#ask` is
+   under a reactive `if` or in a tab of the same component (bubbletea answers
+   it), so the example puts each such request in a component of its own,
+   `asked`, whose instance holds the node.
 
 ## Bugs
 
@@ -81,11 +70,29 @@ test across a call. What is left:
     query's `fetch=func(k) { var r = get(k); mon = "b"; return r }` runs on
     a goroutine against `m.snapshotRef()`, so `mon = "b"` lands on the copy
     and nothing rekeys; every other target writes the page's `mon`.
-14. **A generic component's prop typed by its caller's type parameter goes
-    unchecked.** In `component asked[T any, F any](fetch func(string) async.Result[T])`,
-    `async.query(on=key, fetch=fetch)` is accepted although query's fetch is
-    `func(K, Lifetime) Result[T]`; the same body in a component over `int`
-    is refused.
+14. **Binding a two-way prop to an inner query's cell loses the query's
+    method.** `component asked(:failure option[async.Failure] = null)` whose
+    query binds `:failure=failure` and whose body calls `ask.refresh()`,
+    placed under a reactive `if` with `:failure` bound, is refused on html,
+    gtk4 and fyne as a node not spliced where it is written; with `:failure`
+    left unbound (the query's cell moved to a wrapper) it builds.
+15. **fyne gives a page's node and one of a run-time instance under its `if`
+    one field.** A page writing `ui.text #failed` beside `if on { asked() }`,
+    where `asked`'s body holds `loadError #failed`, builds `c.failed` for
+    both: `c.failed.Add undefined (type *widget.Label …)`, or in the Pokédex
+    `*Container has no setter for "text"`. The block's state gathers both
+    after uniqueNodeIDs has held each owner's ids apart. `asked` names its
+    sign `#problem`, an id nothing else in the example takes.
+16. **fyne writes a two-way binding back under the name a child instance
+    gave it.** A var a block's child instance reads as a prop (`shape`, as
+    `__p4`) and an `asked(:value=shape)` inside that block binds is written
+    back in the page as `__prop___p4 = __value`: `undefined: __prop___p4`.
+    The Pokédex asks for the form beside the Pokémon, outside the header.
+17. **fyne's test agent cannot reach a node a window's menu calls.** A
+    `poke.pokedexList #dexesAsk(…)` in the window whose menu item's
+    `@select` calls `dexesAsk.refresh()` builds a test agent reading
+    `c.dexesAsk`, which the model does not hold. The window keeps asking
+    again by forgetting the failure.
 
 ## Generated code
 

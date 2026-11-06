@@ -289,7 +289,15 @@ func (c *checker) clearNarrowings() func() {
 // T-typed read reach a backend that would dereference a null.
 func (c *checker) validateNarrowings(pkg *ir.Package, reactive map[*ir.Var]struct{}) {
 	reach := newComponentReach(pkg)
+	// A component's method body is checked more than once, and records its
+	// tests each time; each is validated once.
+	seen := map[narrowCheckID]bool{}
 	for _, chk := range c.narrowChecks {
+		id := narrowCheckID{chk.key, chk.fact.pos}
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
 		v := &narrowValidator{c: c, chk: chk, reactive: reactive, reach: reach}
 		if chk.expr != nil {
 			ir.Walk(chk.expr, v.visit)
@@ -303,12 +311,22 @@ func (c *checker) validateNarrowings(pkg *ir.Package, reactive map[*ir.Var]struc
 	}
 }
 
+type narrowCheckID struct {
+	key narrowKey
+	pos ast.Pos
+}
+
 type narrowValidator struct {
 	c        *checker
 	chk      narrowCheck
 	reactive map[*ir.Var]struct{}
 	reach    *componentReach
 	done     bool
+	// later holds the statements of the handlers of the nodes the region
+	// places: a handler runs when its event fires, by which time the view
+	// has tested the branch again, so nothing it calls makes a read in the
+	// branch absent. No narrowing reaches into one either (clearNarrowings).
+	later map[ir.Stmt]bool
 }
 
 func (v *narrowValidator) report(pos ast.Pos, what string) {
@@ -353,7 +371,22 @@ func (v *narrowValidator) visit(n ir.Node) error {
 	if v.done {
 		return ir.SkipDir
 	}
+	if s, ok := n.(ir.Stmt); ok && v.later[s] {
+		return ir.SkipDir
+	}
 	switch x := n.(type) {
+	case *ir.NodeInst:
+		for _, h := range x.Handlers {
+			if h.Func == nil {
+				continue
+			}
+			if v.later == nil {
+				v.later = map[ir.Stmt]bool{}
+			}
+			for _, s := range h.Func.Block {
+				v.later[s] = true
+			}
+		}
 	case *ir.Assign:
 		if v.invalidatedBy(x.Target) {
 			v.report(narrowStmtPos(x.AST), "assigned in this branch")

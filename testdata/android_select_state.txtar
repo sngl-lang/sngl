@@ -304,6 +304,11 @@ fun MainScreen() {
     fun choose__inst0(label: String) {
         open__inst0 = false
         var at = choiceLabeled__string(listOf(Choice__record__string(label = "x", value = "x")), label)
+        for ((i, o) in listOf(Choice__record__string(label = "x", value = "x")).withIndex()) {
+        	if (((at < 0) && (o.value.toString() == label))) {
+        		at = i
+        	}
+        }
         if (((at >= 0) && (listOf(Choice__record__string(label = "x", value = "x"))[at].value != one))) {
         	one = listOf(Choice__record__string(label = "x", value = "x"))[at].value
         }
@@ -368,6 +373,11 @@ fun Select__string(placeholder: String = "", value: String, disabled: Boolean = 
     fun choose(label: String) {
         open = false
         var at = choiceLabeled__string(options, label)
+        for ((i, o) in options.withIndex()) {
+        	if (((at < 0) && (o.value.toString() == label))) {
+        		at = i
+        	}
+        }
         if (((at >= 0) && (options[at].value != value))) {
         	onValue?.invoke(options[at].value)
         	onChange?.invoke(options[at].value)
@@ -410,6 +420,11 @@ fun __select_state0(__start_value: String = "", placeholder: String, options: Li
     fun choose__inst1(label: String) {
         open__inst1 = false
         var at = choiceLabeled__string(options, label)
+        for ((i, o) in options.withIndex()) {
+        	if (((at < 0) && (o.value.toString() == label))) {
+        		at = i
+        	}
+        }
         if (((at >= 0) && (options[at].value != value))) {
         	value = options[at].value
         	onChange?.invoke(options[at].value)
@@ -707,4 +722,4 @@ import androidx.compose.ui.focus.focusProperties
 // lambda with a receiver, which SNGL has no way to write.
 fun Modifier.snglUnfocusable(): Modifier = focusProperties { canFocus = false }
 -- run/kotlin/android --
-pass sha256:3892ae13c99c8f35d63885e2e4007beb
+pass sha256:376c41a8d257cd89fba206554a8dd9b2
