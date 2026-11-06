@@ -2132,6 +2132,41 @@ func (c *checker) inferQualified(x *ast.SelectExpr, ns *ir.Namespace, ident *ast
 	return bad()
 }
 
+// bodyMemberRead is `this.value` in a method written in a component body --
+// an event's override among them -- read as the bare `value` the body
+// reads: the prop or var itself, which every instance's lowering rewrites
+// where the instance holds it. As a select off the receiver it reached fyne
+// as `this.Value = to`. Nil for anything else, a member an event's parameter
+// of the same name shadows included: `this` is how the body names the prop.
+func (c *checker) bodyMemberRead(x *ast.SelectExpr, operand ir.Expr) ir.Expr {
+	comp, fn := c.currentComponent, c.currentFunc
+	id, ok := operand.(*ir.Ident)
+	if !ok || comp == nil || c.componentScope == nil || fn == nil {
+		return nil
+	}
+	if recv, ok := id.Sym.(*ir.Param); !ok || !recv.Receiver || (recv != fn.RecvParam && !slices.Contains(fn.Params, recv)) {
+		return nil
+	}
+	sym, ok := c.componentScope.Lookup(x.Field)
+	if !ok {
+		return nil
+	}
+	own := false
+	switch s := sym.(type) {
+	case *ir.Param:
+		own = slices.ContainsFunc(comp.Props, func(p *ir.Prop) bool { return p.Sym == s })
+	case *ir.Var:
+		own = slices.Contains(comp.Vars, s)
+	}
+	if !own {
+		return nil
+	}
+	saved := c.scope
+	c.scope = c.componentScope
+	defer func() { c.scope = saved }()
+	return c.inferIdent(&ast.IdentExpr{Pos: x.Pos, Name: x.Field})
+}
+
 func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 	if ns, ident := c.namespaceOperand(x.Operand); ns != nil {
 		return c.inferQualified(x, ns, ident)
@@ -2265,6 +2300,9 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				}
 				c.error(x.Pos, "%s is a family, and a value of one reaches only the props its members share: it declares no %q", comp.Name, x.Field)
 				return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
+			}
+			if read := c.bodyMemberRead(x, operandExpr); read != nil {
+				return read
 			}
 			if comp, ok := operand.Decl.(*ir.Component); ok {
 				// What the operand's type arguments bound: `pkg.params` off a

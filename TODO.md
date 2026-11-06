@@ -34,37 +34,35 @@ language is a locale. What is left:
    override's handler logic (`pickLabel`) rather than setting the element's
    value and dispatching `change`; android and bubbletea do the same.
 10. **fyne and bubbletea render no radio**: each override is an empty box.
-11. **`this.value = value` in a component method does not compile on fyne**
-    (`undefined: this`).
-12. **A trigger in a block's state instance falls back to the invoker.** gtk4
+11. **A trigger in a block's state instance falls back to the invoker.** gtk4
     holds a select under a reactive `if` or a tab in an instance of its
     block's state, whose methods a test has no route to, so the test's
     trigger is restored to the event (`restoreUnreachedTriggers`) and the
     invoker is handed the value: right for a string select, wrong for a
     typed one.
-13. **bubbletea loses a write made in the waiting part of a call.** A
+12. **bubbletea loses a write made in the waiting part of a call.** A
     query's `fetch=func(k) { var r = get(k); mon = "b"; return r }` runs on
     a goroutine against `m.snapshotRef()`, so `mon = "b"` lands on the copy
     and nothing rekeys; every other target writes the page's `mon`.
-14. **Binding a two-way prop to an inner query's cell loses the query's
+13. **Binding a two-way prop to an inner query's cell loses the query's
     method.** `component asked(:failure option[async.Failure] = null)` whose
     query binds `:failure=failure` and whose body calls `ask.refresh()`,
     placed under a reactive `if` with `:failure` bound, is refused on html,
     gtk4 and fyne as a node not spliced where it is written; with `:failure`
     left unbound (the query's cell moved to a wrapper) it builds.
-15. **fyne gives a page's node and one of a run-time instance under its `if`
+14. **fyne gives a page's node and one of a run-time instance under its `if`
     one field.** A page writing `ui.text #failed` beside `if on { asked() }`,
     where `asked`'s body holds `loadError #failed`, builds `c.failed` for
     both: `c.failed.Add undefined (type *widget.Label …)`, or in the Pokédex
     `*Container has no setter for "text"`. The block's state gathers both
     after uniqueNodeIDs has held each owner's ids apart. `asked` names its
     sign `#problem`, an id nothing else in the example takes.
-16. **fyne writes a two-way binding back under the name a child instance
+15. **fyne writes a two-way binding back under the name a child instance
     gave it.** A var a block's child instance reads as a prop (`shape`, as
     `__p4`) and an `asked(:value=shape)` inside that block binds is written
     back in the page as `__prop___p4 = __value`: `undefined: __prop___p4`.
     The Pokédex asks for the form beside the Pokémon, outside the header.
-17. **fyne's test agent cannot reach a node a window's menu calls.** A
+16. **fyne's test agent cannot reach a node a window's menu calls.** A
     `poke.pokedexList #dexesAsk(…)` in the window whose menu item's
     `@select` calls `dexesAsk.refresh()` builds a test agent reading
     `c.dexesAsk`, which the model does not hold. The window keeps asking
