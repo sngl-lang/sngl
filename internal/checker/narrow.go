@@ -277,10 +277,16 @@ func (c *checker) suspendNarrowing() func() {
 // lambda body runs later, or not at all, and by then the test that narrowed a
 // value may no longer hold -- so no narrowing crosses an imperative-body
 // boundary. enterFuncBody is the one place that boundary is named.
+//
+// A body starts with narrowing on, too, whatever suspended it outside: a
+// lambda in an assignment's target is no lvalue, and a library loaded
+// part-way through checking one -- `this.value = v` in a static method
+// looks `this` up among the libraries for its hint -- checked
+// `s.scope != null ? s.scope : ""` with nothing narrowed.
 func (c *checker) clearNarrowings() func() {
-	savedFacts, savedUsed := c.narrowed, c.narrowUsed
-	c.narrowed, c.narrowUsed = nil, nil
-	return func() { c.narrowed, c.narrowUsed = savedFacts, savedUsed }
+	savedFacts, savedUsed, savedNo := c.narrowed, c.narrowUsed, c.noNarrow
+	c.narrowed, c.narrowUsed, c.noNarrow = nil, nil, 0
+	return func() { c.narrowed, c.narrowUsed, c.noNarrow = savedFacts, savedUsed, savedNo }
 }
 
 // validateNarrowings runs after the purity fixed point, which is the first
