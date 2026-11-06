@@ -976,7 +976,7 @@ func ownsState(n *ir.NodeInst) bool {
 		if i := slices.IndexFunc(n.Props, func(a ir.Arg) bool { return a.Name == v.Name }); i >= 0 {
 			val = n.Props[i].Value
 		}
-		return !rereadable(val)
+		return !substitutable(v, val)
 	})
 }
 

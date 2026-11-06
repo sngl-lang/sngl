@@ -25,12 +25,6 @@ language is a locale. What is left:
 
 ## Bugs
 
-1. **html does not generate.** `sngl generate --platform html --lang go examples/pokedex`, the README's first command, fails with `prop "placeholder" cannot be rendered server-side`: `$"…"` reads the locale
-   context, and `exprIsReactive` (`codegen/platform/html/rendermodel.go:308`)
-   counts only state. No test generates the app for html in route mode.
-2. **html never changes language.** `var __ctx_locale__inst0 = i18n.defaultLocale()` is never written again, so the menu's choice only
-   rerenders the menu. Likely the same root as 1: a context bound to state is
-   not reactive.
 3. **html crashes on a species with no habitat.** Inlining `lookup` hoisted
    `wanted("habitat", state.about__inst0.habitat.name)` out of its
    `if about.habitat != null`. Every recorded species has a habitat.
