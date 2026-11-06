@@ -764,8 +764,6 @@ type RowInstance struct {
 	__model      *Model
 	__prop_label string
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
 }
 
 func newRowInstance(__model *Model, __a_label string) *RowInstance {
@@ -773,7 +771,6 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	__n1 := widget.NewLabel("")
 	__n1.SetText(c.shout())
 	c.Root = __n1
@@ -969,15 +966,12 @@ type RowInstance struct {
 	__model      *Model
 	__prop_label string
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
 }
 
 func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c := &RowInstance{}
 	c.__model = __model
 	c.__prop_label = __a_label
-	c.__slot0 = nil
 	__n1 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n1, c.shout())
 	gtk4rt.LabelSetXAlign(__n1, 0.0)
@@ -1002,9 +996,6 @@ func (c *RowInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1407,7 +1398,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let label = props.label ?? "";
     let __prop_label = label;
-    let __slot02 = [];
     function shout() {
       let out = "";
       for (const c of [1, 2]) {
@@ -1510,15 +1500,15 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:2935f88cf0740924a3d6afe554f02a4e
 -- run/go/fyne --
-pass sha256:0b51dfec5bd1cc7096c7f40f91081ad5
+pass sha256:5099de8aabc753289e4d5a2ce668d162
 -- run/go/gtk4 --
-pass sha256:fc49cffdd29eeffa7fc563431ce4e7e4
+pass sha256:5d5817551fb4666732f46643fdbd893a
 -- run/kotlin/android --
 pass sha256:1e2a5eca00e8c384d9827d6acf5d2e49
 -- run/none/html --
-pass sha256:a7d5ac564ca2548aa436b89edd1bfc84
+pass sha256:fdf152bf74ffa705e995b3a44ee559c3
 -- testrun/html/none/component_func_reads_loop_prop.sngl/main/1 --
-sha256:12db569c4047d7e990fc8ec0cf144015
+sha256:6049a3f7c712e8a02e2c8f56ea8cfe2c
 {
   "results": [
     {

@@ -175,15 +175,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) entry_changed_handler() {
 	if gtk4rt.EditableGetText(m.entry) != m.value__inst0 {
-		__input_value_wrote0 := gtk4rt.EditableGetText(m.entry)
-		m.value__inst0 = __input_value_wrote0
+		m.value__inst0 = gtk4rt.EditableGetText(m.entry)
 	}
 	m.__effects0_settle()
 }
 
 func (m *Model) entry_activate_handler() {
-	__input_value_wrote1 := gtk4rt.EditableGetText(m.entry)
-	m.value__inst0 = __input_value_wrote1
+	m.value__inst0 = gtk4rt.EditableGetText(m.entry)
 	m.__effects0_settle()
 }
 
@@ -300,4 +298,4 @@ func (m *Model) entryChange(v string) {
 	gtk4rt.Emit(m.entry, "activate")
 }
 -- run/go/gtk4 --
-pass sha256:a05859bc6194322ab10af66b86aeffe1
+pass sha256:9033040f04f9d40ee2e0c68c6dff4867

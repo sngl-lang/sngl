@@ -307,8 +307,6 @@ type __canvas0Instance struct {
 	__prop___p0  __anon_id_elem_cdfd47
 	__prop___on0 func()
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
 	__n3         *canvas.Image
 	__n3Ctx      *snglcanvas.Context
 	__n3Tap      *fynelayout.Tap
@@ -320,7 +318,6 @@ func new__canvas0Instance(__model *Model, __a___p0 __anon_id_elem_cdfd47, __a___
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n3Ctx = snglcanvas.New(40, 40)
 	c._canvasDraw1(c.__n3Ctx)
 	c.__n3 = canvas.NewImageFromImage(c.__n3Ctx.Result())
@@ -871,8 +868,6 @@ type __canvas0Instance struct {
 	__prop___p0  __anon_id_elem_cdfd47
 	__prop___on0 func()
 	__root       *C.GtkBox
-	__slot0      []*C.GtkWidget
-	__slot0_at   *C.GtkWidget
 	__n3         *C.GtkDrawingArea
 	__n3Gesture  *C.GtkGesture
 }
@@ -882,7 +877,6 @@ func new__canvas0Instance(__model *Model, __a___p0 __anon_id_elem_cdfd47, __a___
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
-	c.__slot0 = nil
 	c.__n3 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(c.__n3, C.int(40))
 	C.gtk_drawing_area_set_content_height(c.__n3, C.int(40))
@@ -923,9 +917,6 @@ func (c *__canvas0Instance) Destroy() {
 	if c.Root != nil {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
 	}
 }
 
@@ -1072,7 +1063,6 @@ window.__sngl_boot = () => {
     });
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       _snglCanvasDraw(__n3, 40, 40, "", _canvasDraw1);
@@ -1248,8 +1238,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:910b528cf7163baaad6c6c76aad8d569
+pass sha256:4ba83227339c2af4d60e5a58500a58c1
 -- run/go/gtk4 --
-pass sha256:ff34111218bea92f99ed5c88ebc2c87a
+pass sha256:e24e0d6a9bb3a89a59c4ab3bfcf765f9
 -- run/none/html --
-pass sha256:484a89af1c16de13f9bea71121a65844
+pass sha256:e278bc8acc98f73c2c08c061fc2d598a

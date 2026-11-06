@@ -2397,12 +2397,6 @@ type __checkbox_state0Instance struct {
 	__prop_change          func(bool)
 	checked                bool
 	__root                 *fyne.Container
-	__slot0                []fyne.CanvasObject
-	__slot0_at             fyne.CanvasObject
-	__slot1                []fyne.CanvasObject
-	__slot1_at             fyne.CanvasObject
-	__slot2                []fyne.CanvasObject
-	__slot2_at             fyne.CanvasObject
 	mark                   *fynelayout.Check
 }
 
@@ -2415,9 +2409,6 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__prop_change = __a_change
 	c.checked = c.__prop___start_checked
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.mark = fynelayout.NewCheck("", nil)
 	c.mark.SetText(c.__prop_label)
 	c.mark.SetChecked(c.checked)
@@ -2846,12 +2837,6 @@ type __checkbox_state0Instance struct {
 	__prop_change          func(bool)
 	checked                bool
 	__root                 gtk4rt.Handle
-	__slot0                []gtk4rt.Handle
-	__slot0_at             gtk4rt.Handle
-	__slot1                []gtk4rt.Handle
-	__slot1_at             gtk4rt.Handle
-	__slot2                []gtk4rt.Handle
-	__slot2_at             gtk4rt.Handle
 	mark                   gtk4rt.Handle
 }
 
@@ -2863,9 +2848,6 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__prop___copy = __a___copy
 	c.__prop_change = __a_change
 	c.checked = c.__prop___start_checked
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.mark = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(c.mark, c.__prop_label)
 	gtk4rt.CheckButtonSetActive(c.mark, c.checked)
@@ -2912,15 +2894,6 @@ func (c *__checkbox_state0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
 	}
 }
 
@@ -3764,9 +3737,6 @@ window.__sngl_boot = () => {
     let __prop___copy = __copy;
     let __prop_change = change;
     let checked = __prop___start_checked;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___start_checked(__v) {
       __prop___start_checked = __v;
     }
@@ -3820,9 +3790,6 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       even.setAttribute("data-sngl-copy", String(__prop___p0));
@@ -3864,9 +3831,6 @@ window.__sngl_boot = () => {
     });
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       dot.setAttribute("data-sngl-copy", String(__prop___p0));
@@ -4196,10 +4160,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:1de5bc12ebb2938df064f48f44e07326
 -- run/go/fyne --
-pass sha256:e237e3e3662462092ed50b0dcdfead96
+pass sha256:a8ab9bf4cc4b0b921f50017ce2908182
 -- run/go/gtk4 --
-pass sha256:0615b4e9afc6928546067381cd303abf
+pass sha256:3e861c274fa3df86dd0a1866a4700e4e
 -- run/kotlin/android --
 pass sha256:8e74f9bc52d7517920f10ba9aaa5e693
 -- run/none/html --
-pass sha256:3775b99340db4222a2d77b349c7f8247
+pass sha256:9e538c92c37fd04a8b836514eed59d1b

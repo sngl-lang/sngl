@@ -1098,12 +1098,6 @@ type __child0Instance struct {
 	__slot0_at     fyne.CanvasObject
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
 	__n8           *fyne.Container
 }
 
@@ -1115,9 +1109,6 @@ func new__child0Instance(__model *Model, __a___p0 bool) *__child0Instance {
 	c.__slot0 = nil
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n8 = fynelayout.NewVBox()
 	c.__renderSlot0(c.__n8)
 	c.Root = c.__n8
@@ -1165,16 +1156,10 @@ type __child1Instance struct {
 	__model        *Model
 	__prop___p0    []int
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__rendering1   bool
 	__renderAgain1 bool
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
 	__n10          *fyne.Container
 }
 
@@ -1183,12 +1168,9 @@ func new__child1Instance(__model *Model, __a___p0 []int) *__child1Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n10 = fynelayout.NewVBox()
 	c.__renderSlot1(c.__n10)
 	c.Root = c.__n10
@@ -1551,9 +1533,6 @@ body { font-family: system-ui, sans-serif; }
     let __slot0 = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot1 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __renderSlot0(__slotAnchor_0);
@@ -1614,12 +1593,9 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot0 = [];
     let __slot1 = [];
     let __rendering1 = false;
     let __renderAgain1 = false;
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __renderSlot1(__slotAnchor_1);
@@ -1860,8 +1836,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:abd1d0ba996d639e922412133572f54a
 -- run/go/fyne --
-pass sha256:62ceb6dfb48604abbe021fd56ca3e29f
+pass sha256:7a1cbe41102a9a7673a84cf6c5807c6a
 -- run/kotlin/android --
 pass sha256:a0cbd6979fe3affabb14028c6d70ba9a
 -- run/none/html --
-pass sha256:2ce22701f2bd2fb13401f92e36a37c0f
+pass sha256:d3bf27075c0fc66ea8508bf9188307d7

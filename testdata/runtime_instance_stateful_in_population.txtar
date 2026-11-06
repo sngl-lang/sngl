@@ -945,8 +945,6 @@ type CounterInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 	__n0                *widget.Label
 }
 
@@ -964,7 +962,6 @@ func newCounterInstance(__model *Model, __a_tag string, __a_seen func(string)) *
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	__n5 := fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(((("counter " + c.__prop_tag) + " ") + fmt.Sprint(c.n)))
@@ -1042,8 +1039,6 @@ type Card__slot0Instance struct {
 	__prop___on0 func(string)
 	k            int
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
 	__n2         *CounterInstance
 }
 
@@ -1055,7 +1050,6 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 __anon_id_el
 	c.__prop___on0 = __a___on0
 	c.k = (c.__prop_start * 2)
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	__n6 := fynelayout.NewVBox()
 	__n1 := widget.NewLabel("")
 	__n1.SetText(("card " + fmt.Sprint(c.k)))
@@ -1298,8 +1292,6 @@ type CounterInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 }
 
@@ -1316,7 +1308,6 @@ func newCounterInstance(__model *Model, __a_tag string, __a_seen func(string)) *
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	__n5 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n5, 1)
 	gtk4rt.SetLook(__n5, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1392,9 +1383,6 @@ func (c *CounterInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 }
 
 // Card__slot0Instance is one live instance of the Card__slot0 component.
@@ -1406,8 +1394,6 @@ type Card__slot0Instance struct {
 	__prop___on0 func(string)
 	k            int
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
 	__n2         *CounterInstance
 }
 
@@ -1418,7 +1404,6 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 __anon_id_el
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
 	c.k = (c.__prop_start * 2)
-	c.__slot0 = nil
 	__n6 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n6, 1)
 	gtk4rt.SetLook(__n6, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1458,9 +1443,6 @@ func (c *Card__slot0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1883,7 +1865,6 @@ window.__sngl_boot = () => {
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
     function __effect0_mount() {
       __prop_seen(__effect0_key);
     }
@@ -1961,7 +1942,6 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
     let k = __prop_start * 2;
-    let __slot02 = [];
     function __set_start(__v) {
       __prop_start = __v;
     }
@@ -2078,10 +2058,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:58ff0833794e95756bb822b4cb1bb263
 -- run/go/fyne --
-pass sha256:fe4214f078c5573eb16906dab80092d0
+pass sha256:e129b24c2b439bdb9d57e06d1d437bd9
 -- run/go/gtk4 --
-pass sha256:17e2fdadc0d136e1dfde7297344338ce
+pass sha256:4df2222f821e192cfde980ebb5402470
 -- run/kotlin/android --
 pass sha256:88858699dede308338d2ab5003e5fd94
 -- run/none/html --
-pass sha256:4a28846af6e1b01acc52abc3f89d7db4
+pass sha256:0cd3bfe7f5e5902ce8d31159d1c8be08

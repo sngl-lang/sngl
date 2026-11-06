@@ -645,11 +645,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeySpace && m.__focusID == 0 && (m.__pressing || m.__focusShown()):
-			__checkbox_checked_wrote0 := !m.checked__inst0
-			m.checked__inst0 = __checkbox_checked_wrote0
+			m.checked__inst0 = !m.checked__inst0
 		case msg.Code == tea.KeySpace && m.__focusID == 1 && (m.__pressing || m.__focusShown()):
-			__checkbox_checked_wrote0 := !m.checked__inst1
-			m.checked__inst1 = __checkbox_checked_wrote0
+			m.checked__inst1 = !m.checked__inst1
 		case msg.Code == tea.KeySpace && m.__focusID == 2 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos2 := 0
@@ -1042,8 +1040,6 @@ type __checkbox_state3Instance struct {
 	__prop_label           string
 	checked                bool
 	__root                 *fyne.Container
-	__slot0                []fyne.CanvasObject
-	__slot0_at             fyne.CanvasObject
 	__n0                   *fynelayout.Check
 }
 
@@ -1054,7 +1050,6 @@ func new__checkbox_state3Instance(__model *Model, __a___start_checked bool, __a_
 	c.__prop_label = __a_label
 	c.checked = c.__prop___start_checked
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = fynelayout.NewCheck("", nil)
 	c.__n0.SetText(c.__prop_label)
 	c.__n0.SetChecked(c.checked)
@@ -1259,8 +1254,7 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 
 func (m *Model) box_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.box) != m.checked__inst0 {
-		__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(m.box)
-		m.checked__inst0 = __checkbox_checked_wrote0
+		m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.box)
 		gtk4rt.CheckButtonSetActive(m.box, m.checked__inst0)
 		var __lt18 string
 		if m.checked__inst0 {
@@ -1274,8 +1268,7 @@ func (m *Model) box_toggled_handler() {
 
 func (m *Model) __n3_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.__n3) != m.checked__inst1 {
-		__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(m.__n3)
-		m.checked__inst1 = __checkbox_checked_wrote0
+		m.checked__inst1 = gtk4rt.CheckButtonGetActive(m.__n3)
 		gtk4rt.CheckButtonSetActive(m.__n3, m.checked__inst1)
 	}
 }
@@ -1288,8 +1281,6 @@ type __checkbox_state3Instance struct {
 	__prop_label           string
 	checked                bool
 	__root                 gtk4rt.Handle
-	__slot0                []gtk4rt.Handle
-	__slot0_at             gtk4rt.Handle
 	__n0                   gtk4rt.Handle
 }
 
@@ -1299,15 +1290,13 @@ func new__checkbox_state3Instance(__model *Model, __a___start_checked bool, __a_
 	c.__prop___start_checked = __a___start_checked
 	c.__prop_label = __a_label
 	c.checked = c.__prop___start_checked
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(c.__n0, c.__prop_label)
 	gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "toggled", func() {
 		if gtk4rt.CheckButtonGetActive(c.__n0) != c.checked {
-			__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(c.__n0)
-			c.checked = __checkbox_checked_wrote0
+			c.checked = gtk4rt.CheckButtonGetActive(c.__n0)
 			gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
 		}
 	})
@@ -1329,9 +1318,6 @@ func (c *__checkbox_state3Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1736,7 +1722,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop___start_checked = __start_checked;
     let __prop_label = label;
     let checked = __prop___start_checked;
-    let __slot02 = [];
     function __set___start_checked(__v) {
       __prop___start_checked = __v;
     }
@@ -1751,8 +1736,7 @@ body { font-family: system-ui, sans-serif; }
     __n0.disabled = false;
     __n0.setAttribute("type", "checkbox");
     __n0.addEventListener("change", (e) => {
-      let __checkbox_checked_wrote0 = e.currentTarget.checked;
-      checked = __checkbox_checked_wrote0;
+      checked = e.currentTarget.checked;
       __n0.checked = checked;
     });
     __n8.appendChild(__n0);
@@ -1843,14 +1827,12 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   __n3.addEventListener("change", function(e) {
-    let __checkbox_checked_wrote0 = e.currentTarget.checked;
-    state.checked__inst0 = __checkbox_checked_wrote0;
+    state.checked__inst0 = e.currentTarget.checked;
     __n3.checked = state.checked__inst0;
     __n4.textContent = state.checked__inst0 ? "on" : "off";
   });
   __n5.addEventListener("change", function(e) {
-    let __checkbox_checked_wrote0 = e.currentTarget.checked;
-    state.checked__inst1 = __checkbox_checked_wrote0;
+    state.checked__inst1 = e.currentTarget.checked;
     __n5.checked = state.checked__inst1;
   });
   function __sngl_init() {
@@ -1864,12 +1846,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:630d1c594556affffc6bff377e960ef9
+pass sha256:0bf83756a38114f1f1634abe94a37ede
 -- run/go/fyne --
-pass sha256:33c58cf7ac65257d8ad3c1ff2b41acba
+pass sha256:a7ae19755a6cb74f0bd466f902083588
 -- run/go/gtk4 --
-pass sha256:0f69a30e41c2601dd12506b01eb129b3
+pass sha256:be9cba2b96f5acb06fd9ada4d9e3d599
 -- run/kotlin/android --
 pass sha256:348b060235b3fba23ce0339be0e0cbab
 -- run/none/html --
-pass sha256:4d060e4ef988b8b3984f0f1218033b32
+pass sha256:39151a0a6009837cfd1b95ecb4a98851

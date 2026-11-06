@@ -674,8 +674,6 @@ type Frame__slot2Instance struct {
 	__inst0_live   []*Frame__slot2Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 	__n5           *fyne.Container
 	__n0           *widget.Label
 }
@@ -691,7 +689,6 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n5 = fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
@@ -798,8 +795,6 @@ type Frame__slot0Instance struct {
 	__prop___depth int
 	__prop___p0    int
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*Frame__slot2Instance
@@ -816,7 +811,6 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
 	c.__rendering1 = false
@@ -1015,8 +1009,6 @@ type Frame__slot2Instance struct {
 	__inst0_live   []*Frame__slot2Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
 	__n5           gtk4rt.Handle
 	__n0           gtk4rt.Handle
 }
@@ -1031,7 +1023,6 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n5 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n5, 1)
 	gtk4rt.SetLook(c.__n5, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1143,9 +1134,6 @@ func (c *Frame__slot2Instance) Destroy() {
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
 	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // Frame__slot0Instance is one live instance of the frame__slot0 component.
@@ -1156,8 +1144,6 @@ type Frame__slot0Instance struct {
 	__prop___depth int
 	__prop___p0    int
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*Frame__slot2Instance
@@ -1173,7 +1159,6 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__prop_n = __a_n
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
 	c.__rendering1 = false
@@ -1285,9 +1270,6 @@ func (c *Frame__slot0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 	if c.__slot1_at != nil {
 		gtk4rt.Release(c.__slot1_at)
@@ -1612,7 +1594,6 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_live = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot1 = [];
     function __set_n(__v) {
       __prop_n = __v;
       __n0.textContent = "level " + describe(__prop_n) + " of " + String(__prop___p0);
@@ -1736,7 +1717,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop_n = n;
     let __prop___depth = __depth;
     let __prop___p0 = __p0;
-    let __slot0 = [];
     let __slot1 = [];
     let __inst3_live = [];
     let __rendering1 = false;
@@ -1873,10 +1853,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:e9ccba3ed6df1bc537cc3317b79e4611
 -- run/go/fyne --
-pass sha256:2ca153423c91caf41793f1fb90ee1b94
+pass sha256:1113d8fc9dd68d91c8ad2c43a3dad38a
 -- run/go/gtk4 --
-pass sha256:7a861ebc827c1ac457347a6ac71311ce
+pass sha256:abb355ed270ff0ea59af61f96ee948d1
 -- run/kotlin/android --
 pass sha256:33fbf6898dafef51c8c8441b077e3afb
 -- run/none/html --
-pass sha256:e992fc0269d0743693213bd5dfba38cc
+pass sha256:63539669641cdb795776b515e6c4e886

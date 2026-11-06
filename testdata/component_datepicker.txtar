@@ -718,8 +718,7 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) cal_daySelected_handler() {
-	__datepicker_value_wrote0 := gtk4rt.CalendarGetDate(m.cal)
-	m.value__inst0 = __datepicker_value_wrote0
+	m.value__inst0 = gtk4rt.CalendarGetDate(m.cal)
 	m.__effects0_settle()
 }
 
@@ -961,8 +960,7 @@ window.__sngl_boot = () => {
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   __n0.addEventListener("change", function(e) {
-    let __datepicker_value_wrote0 = e.currentTarget.value === "" ? null : e.currentTarget.value;
-    state.value__inst0 = __datepicker_value_wrote0;
+    state.value__inst0 = e.currentTarget.value === "" ? null : e.currentTarget.value;
     __n0.value = state.value__inst0 !== null ? String(state.value__inst0) : "";
   });
   function __sngl_init() {
@@ -979,11 +977,11 @@ pass sha256:33c7411ed889fab34224b077c1edc0b0
 -- run/go/fyne --
 pass sha256:04425781697e45d6c6ef5c821059c609
 -- run/go/gtk4 --
-pass sha256:e402d640f7bb3707e4274848f9fc7ee5
+pass sha256:929fdfda8b156b75e6ed4092caec3de6
 -- run/kotlin/android --
 pass sha256:460a86e95513d9571ac07ba76d795c55
 -- run/none/html --
-pass sha256:2241610c4cb9c321c6d171daa787d24d
+pass sha256:6b658df74fddb5b955d97face1817518
 -- testrun/html/none/component_datepicker.sngl/main/1 --
 sha256:91c1610cd8309a80b028b434cfc1c89b
 {

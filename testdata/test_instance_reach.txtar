@@ -913,8 +913,6 @@ type __child0Instance struct {
 	__prop___p0  int
 	__prop___on0 func()
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
 	k            *fynelayout.Button
 }
 
@@ -924,7 +922,6 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.k = fynelayout.NewButton("", nil)
 	c.k.SetText(("k" + fmt.Sprint(c.__prop___p0)))
 	c.k.OnTapped = func() {
@@ -1169,8 +1166,6 @@ type __child0Instance struct {
 	__prop___p0  int
 	__prop___on0 func()
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
 	k            gtk4rt.Handle
 }
 
@@ -1179,7 +1174,6 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
-	c.__slot0 = nil
 	c.k = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.k, ("k" + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.SetBool(c.k, "can-focus", true)
@@ -1208,9 +1202,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1649,7 +1640,6 @@ window.__sngl_boot = () => {
     });
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.textContent = "k" + String(__prop___p0);
@@ -1787,10 +1777,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:72d72ae274b781a249dac27d235a0a32
 -- run/go/fyne --
-pass sha256:0694e867d34aa82088a82408078cf696
+pass sha256:f9549988a01a7d616075c354fb86cf68
 -- run/go/gtk4 --
-pass sha256:f35a00cd93e1647c9d1677bfee60d6f2
+pass sha256:bbf5e9688855ad7bc4e43bdf8e011379
 -- run/kotlin/android --
 pass sha256:ffef578a17839d66e3ddbd54ab455d25
 -- run/none/html --
-pass sha256:496efab721e852ac5e6f69215a3c6e7b
+pass sha256:c2e0ce5cf3fa6501b2c39918f1742f15

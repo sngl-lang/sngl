@@ -51,8 +51,7 @@ body { font-family: system-ui, sans-serif; }
     __n2.textContent = state.name__inst0;
   });
   __n1.addEventListener("change", function(e) {
-    let __input_value_wrote1 = e.currentTarget.value;
-    state.value__inst0 = __input_value_wrote1;
+    state.value__inst0 = e.currentTarget.value;
     __n1.value = state.value__inst0;
   });
   function __sngl_init() {
@@ -64,4 +63,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b0b2b7c5b105af7c21f0fd29deb071f1
+pass sha256:dbe2520a8bd6455346c373f22c1e4449

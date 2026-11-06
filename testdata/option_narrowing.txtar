@@ -567,8 +567,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = String(__prop___p0 * 2);
@@ -707,4 +705,4 @@ pass sha256:0b4c74aff388c85d05b5ac69d7de9b25
 -- run/kotlin/android --
 pass sha256:aaea1c4ae9ed3548c2933ddf937102b6
 -- run/none/html --
-pass sha256:0f74b5213f514155e9017ad69f8a4dc3
+pass sha256:419def7a0d261aebdaaa813e337748fd

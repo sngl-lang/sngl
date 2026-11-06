@@ -890,8 +890,6 @@ type RowInstance struct {
 	__prop_label int
 	hits         int
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
 	__n0         *fynelayout.Button
 }
 
@@ -901,7 +899,6 @@ func newRowInstance(__model *Model, __a_label int) *RowInstance {
 	c.__prop_label = __a_label
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((fmt.Sprint(c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 	c.__n0.OnTapped = func() {
@@ -1103,8 +1100,6 @@ type RowInstance struct {
 	__prop_label int
 	hits         int
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
 	__n0         gtk4rt.Handle
 }
 
@@ -1113,7 +1108,6 @@ func newRowInstance(__model *Model, __a_label int) *RowInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.hits = 0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((fmt.Sprint(c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
@@ -1135,9 +1129,6 @@ func (c *RowInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1190,6 +1181,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/bubbletea --
 pass sha256:8bf2fcf28bf20391adb4ec8fc966d8a9
 -- run/go/fyne --
-pass sha256:e868e046622b6a227a8bd9379a426745
+pass sha256:650109f25ed29339bf10b5d61c8990c5
 -- run/go/gtk4 --
-pass sha256:67ff216aac628ade95db1fd294d3d291
+pass sha256:1fd5d0e8be18c65febaf97ccf4567189

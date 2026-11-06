@@ -1129,8 +1129,6 @@ type Model struct {
 	log            string
 	shown          bool
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst2_live   []*Card__slot0Instance
@@ -1159,8 +1157,6 @@ func New() *Model {
 	m.log = ""
 	m.shown = true
 	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst2_live = []*Card__slot0Instance{}
@@ -1495,10 +1491,6 @@ type Card__slot0Instance struct {
 	__inst1_live   map[string]*__child1Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
 	__n4           *fyne.Container
 	__n0           *fynelayout.Button
 }
@@ -1517,8 +1509,6 @@ func newCard__slot0Instance(__model *Model, __a___p0 []string, __a___copy string
 	c.__inst1_live = map[string]*__child1Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.__n4 = fynelayout.NewVBox()
 	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(("t " + fmt.Sprint(c.open)))
@@ -1701,12 +1691,6 @@ type __child0Instance struct {
 	__prop___p2  int
 	__prop___on0 func()
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
-	__slot2      []fyne.CanvasObject
-	__slot2_at   fyne.CanvasObject
 	cell         *fynelayout.Button
 }
 
@@ -1718,9 +1702,6 @@ func new__child0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 	c.__prop___p2 = __a___p2
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	var __lt12 string
 	if c.__prop___p1 == "" {
 		__lt12 = fmt.Sprint(c.__prop___p2)
@@ -1790,12 +1771,6 @@ type __child1Instance struct {
 	__prop___p2  int
 	__prop___on0 func()
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
-	__slot2      []fyne.CanvasObject
-	__slot2_at   fyne.CanvasObject
 	mark         *fynelayout.Button
 }
 
@@ -1807,9 +1782,6 @@ func new__child1Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 	c.__prop___p2 = __a___p2
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	var __lt15 string
 	if c.__prop___p1 == "" {
 		__lt15 = fmt.Sprint(c.__prop___p2)
@@ -1877,12 +1849,6 @@ type __child2Instance struct {
 	__prop___p0  string
 	__prop___on0 func()
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
-	__slot2      []fyne.CanvasObject
-	__slot2_at   fyne.CanvasObject
 	tag          *fynelayout.Button
 }
 
@@ -1892,9 +1858,6 @@ func new__child2Instance(__model *Model, __a___p0 string, __a___on0 func()) *__c
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.tag = fynelayout.NewButton("", nil)
 	c.tag.SetText(("x" + c.__prop___p0))
 	c.tag.OnTapped = func() {
@@ -2002,8 +1965,6 @@ type Model struct {
 	log            string
 	shown          bool
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst2_live   []*Card__slot0Instance
@@ -2032,8 +1993,6 @@ func New() *Model {
 	m.log = ""
 	m.shown = true
 	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst2_live = []*Card__slot0Instance{}
@@ -2251,10 +2210,6 @@ type Card__slot0Instance struct {
 	__inst1_live   map[string]*__child1Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
 	__n4           gtk4rt.Handle
 	__n0           gtk4rt.Handle
 }
@@ -2272,8 +2227,6 @@ func newCard__slot0Instance(__model *Model, __a___p0 []string, __a___copy string
 	c.__inst1_live = map[string]*__child1Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n4, 1)
 	gtk4rt.SetLook(c.__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -2460,12 +2413,6 @@ func (c *Card__slot0Instance) Destroy() {
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
 	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -2477,12 +2424,6 @@ type __child0Instance struct {
 	__prop___p2  int
 	__prop___on0 func()
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
-	__slot2      []gtk4rt.Handle
-	__slot2_at   gtk4rt.Handle
 	cell         gtk4rt.Handle
 }
 
@@ -2493,9 +2434,6 @@ func new__child0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 	c.__prop___p1 = __a___p1
 	c.__prop___p2 = __a___p2
 	c.__prop___on0 = __a___on0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	var __lt20 string
 	if c.__prop___p1 == "" {
 		__lt20 = fmt.Sprint(c.__prop___p2)
@@ -2556,15 +2494,6 @@ func (c *__child0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
 }
 
 // __child1Instance is one live instance of the __child1 component.
@@ -2576,12 +2505,6 @@ type __child1Instance struct {
 	__prop___p2  int
 	__prop___on0 func()
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
-	__slot2      []gtk4rt.Handle
-	__slot2_at   gtk4rt.Handle
 	mark         gtk4rt.Handle
 }
 
@@ -2592,9 +2515,6 @@ func new__child1Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 	c.__prop___p1 = __a___p1
 	c.__prop___p2 = __a___p2
 	c.__prop___on0 = __a___on0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	var __lt23 string
 	if c.__prop___p1 == "" {
 		__lt23 = fmt.Sprint(c.__prop___p2)
@@ -2655,15 +2575,6 @@ func (c *__child1Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
 }
 
 // __child2Instance is one live instance of the __child2 component.
@@ -2673,12 +2584,6 @@ type __child2Instance struct {
 	__prop___p0  string
 	__prop___on0 func()
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
-	__slot2      []gtk4rt.Handle
-	__slot2_at   gtk4rt.Handle
 	tag          gtk4rt.Handle
 }
 
@@ -2687,9 +2592,6 @@ func new__child2Instance(__model *Model, __a___p0 string, __a___on0 func()) *__c
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.tag = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.tag, ("x" + c.__prop___p0))
 	gtk4rt.SetBool(c.tag, "can-focus", true)
@@ -2718,15 +2620,6 @@ func (c *__child2Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
 	}
 }
 
@@ -3289,13 +3182,11 @@ window.__sngl_boot = () => {
     let __prop___on0 = __on0;
     let __prop___on1 = __on1;
     let open = 0;
-    let __slot02 = [];
+    let __slot0 = [];
     let __inst1_live = /* @__PURE__ */ new Map([]);
     let __inst2_live = /* @__PURE__ */ new Map([]);
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __renderSlot0(__slotAnchor_0);
@@ -3324,9 +3215,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain0) {
             __renderAgain0 = false;
-            let __place0_prev = __slot02;
+            let __place0_prev = __slot0;
             let __place0_i = 0;
-            __slot02 = [];
+            __slot0 = [];
             let __inst1_next = /* @__PURE__ */ new Map([]);
             let __inst1_seen = /* @__PURE__ */ new Map([]);
             let __inst2_next = /* @__PURE__ */ new Map([]);
@@ -3367,7 +3258,7 @@ window.__sngl_boot = () => {
               } else {
                 parent.insertBefore(__n5__el, __place0_i_ref0);
               }
-              __slot02.push(__n5__el);
+              __slot0.push(__n5__el);
               let __n6 = null;
               let __key3 = String(it.id);
               let __key3_n = __inst2_seen.has(__key3) ? __inst2_seen.get(__key3) : 0;
@@ -3403,7 +3294,7 @@ window.__sngl_boot = () => {
               } else {
                 parent.insertBefore(__n6__el, __place0_i_ref1);
               }
-              __slot02.push(__n6__el);
+              __slot0.push(__n6__el);
             }
             for (const [__inst1_live_k, __inst1_live_v] of __inst1_live.entries()) {
               if (!__inst1_next.has(__inst1_live_k)) {
@@ -3418,7 +3309,7 @@ window.__sngl_boot = () => {
             }
             __inst2_live = __inst2_next;
             for (const __place0_prev_e of __place0_prev) {
-              if (__slot02.indexOf(__place0_prev_e) < 0) {
+              if (__slot0.indexOf(__place0_prev_e) < 0) {
                 parent.removeChild(__place0_prev_e);
               }
             }
@@ -3480,9 +3371,6 @@ window.__sngl_boot = () => {
     let __prop___p1 = __p1;
     let __prop___p2 = __p2;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       cell.setAttribute("data-sngl-copy", __prop___p0 === "" ? String(__prop___p1) : __prop___p0 + "/" + String(__prop___p1));
@@ -3533,9 +3421,6 @@ window.__sngl_boot = () => {
     let __prop___p1 = __p1;
     let __prop___p2 = __p2;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       mark.setAttribute("data-sngl-copy", __prop___p0 === "" ? String(__prop___p1) : __prop___p0 + "/" + String(__prop___p1));
@@ -3582,9 +3467,6 @@ window.__sngl_boot = () => {
     });
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n4.textContent = "x" + __prop___p0;
@@ -3612,7 +3494,6 @@ window.__sngl_boot = () => {
       __set___on0
     };
   }
-  var __slot0 = [];
   var __slot1 = [];
   var __inst4_live = [];
   var __rendering1 = false;
@@ -3819,10 +3700,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:2c44a62cb06e80ffb5ac85b42e7495cb
 -- run/go/fyne --
-pass sha256:1f37ddb73a561c2715eaa412adfe551c
+pass sha256:f741fd97d1dbff191e595a807bba4ba7
 -- run/go/gtk4 --
-pass sha256:0e975670e8c4feec4cf6d0b07f8d0bc9
+pass sha256:c69fc73111efd16833e6dd7ea02f4b4e
 -- run/kotlin/android --
 pass sha256:462734379c041e593a609053e9f1f597
 -- run/none/html --
-pass sha256:e644dfac3f72ac6a4ea70947e27dd152
+pass sha256:9cacc773628d2f2d801374eaa77792f8

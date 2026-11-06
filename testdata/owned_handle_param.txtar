@@ -446,8 +446,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeySpace && m.__focusID == 0:
-			__checkbox_checked_wrote0 := !m.shown__inst0
-			m.shown__inst0 = __checkbox_checked_wrote0
+			m.shown__inst0 = !m.shown__inst0
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			__arg0 := File{Fd: m.n__inst0}
 			m.shown__inst0 = (__arg0.Fd > 0)
@@ -511,4 +510,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:fa2ccf1c345994ff13b2798a16e9ab45
+pass sha256:875a7d6c5f6b1160d6947324fd5f87f3

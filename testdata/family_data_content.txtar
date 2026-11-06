@@ -879,8 +879,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 int
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
 	__n0        *widget.Label
 }
 
@@ -889,7 +887,6 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(fmt.Sprint(c.__prop___p0))
 	c.Root = c.__n0
@@ -1068,8 +1065,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 int
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
 	__n0        gtk4rt.Handle
 }
 
@@ -1077,7 +1072,6 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, fmt.Sprint(c.__prop___p0))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
@@ -1095,9 +1089,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1399,7 +1390,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = String(__prop___p0);
@@ -1542,10 +1532,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:c9bca922d887012e56dded2d24c8e90f
 -- run/go/fyne --
-pass sha256:7062205b4b3c2191cb6d54a09b25d71a
+pass sha256:2bcf0db8936ae032a23d243353812968
 -- run/go/gtk4 --
-pass sha256:bfc8f490b54dccb1969d5363c5ce04b3
+pass sha256:273664b1c6a3edaa4da009466e41ace5
 -- run/kotlin/android --
 pass sha256:daf5ca92bfb8648aec9c730d0a02e28a
 -- run/none/html --
-pass sha256:1777dd947a15daa24809c5afc3836c0e
+pass sha256:e90b739be1507f3fa4d65dd0b0d310a7

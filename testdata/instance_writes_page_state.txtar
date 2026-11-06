@@ -1080,8 +1080,6 @@ type RowInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 	__n0                *fynelayout.Button
 }
 
@@ -1098,7 +1096,6 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((c.label + " ") + fmt.Sprint(c.__model.total)))
 	c.__n0.OnTapped = func() {
@@ -1401,8 +1398,6 @@ type RowInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 }
 
@@ -1418,7 +1413,6 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.label + " ") + fmt.Sprint(c.__model.total)))
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
@@ -1526,9 +1520,6 @@ func (c *RowInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1933,7 +1924,6 @@ body { font-family: system-ui, sans-serif; }
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
     function __effect0_mount() {
       state.total = state.total + 1;
       __n2.textContent = String(state.total);
@@ -2126,10 +2116,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:2f1f863ff1fd5a6e08432a97217dd7c9
 -- run/go/fyne --
-pass sha256:671d6d5c5229cf6bad3de3fc48dcbaf6
+pass sha256:a4c329666daca1dff0e6dc212ec8e531
 -- run/go/gtk4 --
-pass sha256:b3a31abc2c1235f75accac9b15b831c2
+pass sha256:8678af21e25f6dff46adc217254e63d5
 -- run/kotlin/android --
 pass sha256:9a85b43f713aa80711afd3435212d722
 -- run/none/html --
-pass sha256:74cbef7cb068bd720cf4f6377f79cb4b
+pass sha256:b1de86a2473464a66c6a8d17093a5c9c

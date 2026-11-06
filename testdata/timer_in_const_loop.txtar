@@ -960,10 +960,6 @@ type TimerInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
-	__slot1             []fyne.CanvasObject
-	__slot1_at          fyne.CanvasObject
 }
 
 func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bool, __a_tick func()) *TimerInstance {
@@ -986,8 +982,6 @@ func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bo
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = fynelayout.Nothing()
 	return c
@@ -1402,10 +1396,6 @@ type TimerInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
-	__slot1             []gtk4rt.Handle
-	__slot1_at          gtk4rt.Handle
 }
 
 func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bool, __a_tick func()) *TimerInstance {
@@ -1422,8 +1412,6 @@ func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bo
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = gtk4rt.Nothing()
 	gtk4rt.Retain(c.Root)
@@ -1519,12 +1507,6 @@ func (c *TimerInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -1670,8 +1652,6 @@ body { font-family: system-ui, sans-serif; }
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __effect0_mount() {
       handle = setInterval(() => {
         __prop_tick();
@@ -1935,8 +1915,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:04891a6c1dcf422ed92578fc7d2c77e5
 -- run/go/fyne --
-pass sha256:67e9f524e45e5b7e32232de444611ad9
+pass sha256:2d10b5ef35d657affdb90585742bdbb2
 -- run/go/gtk4 --
-pass sha256:ee3922210f359c72c0e1c47bdd95b37a
+pass sha256:f72c5334673c9a0b1e369887b6cc109e
 -- run/none/html --
-pass sha256:a8d22ec40af583406ccae61c62ba65a1
+pass sha256:f7b2773a2307d98baef387a545408f67

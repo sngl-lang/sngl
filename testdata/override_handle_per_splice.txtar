@@ -285,41 +285,35 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) first_changed_handler() {
 	if gtk4rt.EditableGetText(m.first) != m.a {
-		__input_value_wrote0 := gtk4rt.EditableGetText(m.first)
-		m.a = __input_value_wrote0
+		m.a = gtk4rt.EditableGetText(m.first)
 	}
 	m.__effects0_settle()
 }
 
 func (m *Model) first_activate_handler() {
-	__input_value_wrote1 := gtk4rt.EditableGetText(m.first)
-	m.a = __input_value_wrote1
+	m.a = gtk4rt.EditableGetText(m.first)
 	m.__effects0_settle()
 }
 
 func (m *Model) second_changed_handler() {
 	if gtk4rt.EditableGetText(m.second) != m.b {
-		__input_value_wrote0 := gtk4rt.EditableGetText(m.second)
-		m.b = __input_value_wrote0
+		m.b = gtk4rt.EditableGetText(m.second)
 	}
 	m.__effects0_settle()
 }
 
 func (m *Model) second_activate_handler() {
-	__input_value_wrote1 := gtk4rt.EditableGetText(m.second)
-	m.b = __input_value_wrote1
+	m.b = gtk4rt.EditableGetText(m.second)
 	m.__effects0_settle()
 }
 
 func (m *Model) cal_daySelected_handler() {
-	__datepicker_value_wrote0 := gtk4rt.CalendarGetDate(m.cal)
-	m.d = __datepicker_value_wrote0
+	m.d = gtk4rt.CalendarGetDate(m.cal)
 	m.__effects0_settle()
 }
 
 func (m *Model) cal__1_daySelected_handler() {
-	__datepicker_value_wrote0 := gtk4rt.CalendarGetDate(m.cal__1)
-	m.value__inst0 = __datepicker_value_wrote0
+	m.value__inst0 = gtk4rt.CalendarGetDate(m.cal__1)
 	m.__effects0_settle()
 }
 
@@ -430,4 +424,4 @@ func (m *Model) cal__1Change(v *time.Time) {
 	gtk4rt.Emit(m.cal__1, "day-selected")
 }
 -- run/go/gtk4 --
-pass sha256:c1ec0c99bfdcd107edbfc1c496e2c961
+pass sha256:758090ceb57f68bb6c865c906fd406f8

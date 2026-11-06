@@ -599,10 +599,6 @@ type RowInstance struct {
 	__prop_label string
 	on           bool
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
 	__n0         *fynelayout.Button
 	__n0__box    *fynelayout.Box
 }
@@ -613,8 +609,6 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__prop_label = __a_label
 	c.on = false
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	var __lt10 string
 	if c.on {
 		__lt10 = "bold"
@@ -665,10 +659,6 @@ type __child0Instance struct {
 	__prop___p0 __anon_id_elem_c6a818
 	__prop___p1 int
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
 	__n1        *widget.Label
 	__n1__box   *fynelayout.Box
 }
@@ -679,8 +669,6 @@ func new__child0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	var __lt15 snglcolor.Color
 	if c.__prop___p1 == 0 {
 		__lt15 = snglcolor.Color{R: 255, A: 255}
@@ -722,4 +710,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:9ea5cdf33daf2d68cf5b2d6acf2cfaa2
+pass sha256:40d69d42ba24f779eaf4eb5910f2a2bf

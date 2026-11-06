@@ -1014,16 +1014,6 @@ type __child0Instance struct {
 	__prop___p0 _page__value
 	__prop___p1 int
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
-	__slot2     []fyne.CanvasObject
-	__slot2_at  fyne.CanvasObject
-	__slot3     []fyne.CanvasObject
-	__slot3_at  fyne.CanvasObject
-	__slot4     []fyne.CanvasObject
-	__slot4_at  fyne.CanvasObject
 	__n0        *widget.Label
 }
 
@@ -1033,11 +1023,6 @@ func new__child0Instance(__model *Model, __a___p0 _page__value, __a___p1 int) *_
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	var __lt12 string
 	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
 		__lt12 = "showing"
@@ -1420,16 +1405,6 @@ type __child0Instance struct {
 	__prop___p0 _page__value
 	__prop___p1 int
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
-	__slot2     []gtk4rt.Handle
-	__slot2_at  gtk4rt.Handle
-	__slot3     []gtk4rt.Handle
-	__slot3_at  gtk4rt.Handle
-	__slot4     []gtk4rt.Handle
-	__slot4_at  gtk4rt.Handle
 	__n0        gtk4rt.Handle
 }
 
@@ -1438,11 +1413,6 @@ func new__child0Instance(__model *Model, __a___p0 _page__value, __a___p1 int) *_
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	var __lt20 string
 	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
 		__lt20 = "showing"
@@ -1483,21 +1453,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
 	}
 }
 
@@ -2105,9 +2060,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:255babf0eadeb774b066889b806d5df5
 -- run/go/fyne --
-pass sha256:9641f4db488b99541c1e4b7b2b8a27a2
+pass sha256:f3e017f1b19f5307f48c54cf8acc3dd5
 -- run/go/gtk4 --
-pass sha256:bf70b31c07846ab47f783734b2285b97
+pass sha256:18c5c40bdccc57c934bebe65cb51a772
 -- run/kotlin/android --
 pass sha256:ae566d640377ffc649874b145020b0ac
 -- run/none/html --

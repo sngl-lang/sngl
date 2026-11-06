@@ -148,6 +148,9 @@ var passes = []pass{
 	passRenderCatch,
 	passErrorCatch,
 	passReleaseTemps,
+	// After everything that splices a handler or drops an emit, so what
+	// reads a write's local is what the build keeps.
+	passFoldWrites,
 	// Last: it reads every body the passes above finished rewriting.
 	passMutatedVars,
 	passCSE,

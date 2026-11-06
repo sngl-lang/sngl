@@ -309,10 +309,6 @@ type __checkbox_state0Instance struct {
 	__prop_disabled        bool
 	checked                bool
 	__root                 *fyne.Container
-	__slot0                []fyne.CanvasObject
-	__slot0_at             fyne.CanvasObject
-	__slot1                []fyne.CanvasObject
-	__slot1_at             fyne.CanvasObject
 	__n0                   *fynelayout.Check
 }
 
@@ -323,8 +319,6 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__prop_disabled = __a_disabled
 	c.checked = c.__prop___start_checked
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n0 = fynelayout.NewCheck("", nil)
 	c.__n0.SetText("")
 	c.__n0.SetChecked(c.checked)
@@ -626,10 +620,6 @@ type __checkbox_state0Instance struct {
 	__prop_disabled        bool
 	checked                bool
 	__root                 gtk4rt.Handle
-	__slot0                []gtk4rt.Handle
-	__slot0_at             gtk4rt.Handle
-	__slot1                []gtk4rt.Handle
-	__slot1_at             gtk4rt.Handle
 	__n0                   gtk4rt.Handle
 }
 
@@ -639,16 +629,13 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__prop___start_checked = __a___start_checked
 	c.__prop_disabled = __a_disabled
 	c.checked = c.__prop___start_checked
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n0 = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(c.__n0, "")
 	gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
 	gtk4rt.Connect(c.__n0, "toggled", func() {
 		if gtk4rt.CheckButtonGetActive(c.__n0) != c.checked {
-			__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(c.__n0)
-			c.checked = __checkbox_checked_wrote0
+			c.checked = gtk4rt.CheckButtonGetActive(c.__n0)
 			gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
 		}
 	})
@@ -669,12 +656,6 @@ func (c *__checkbox_state0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -722,6 +703,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:4ebbc525a11c82d9f6bcbf1e8c7b51b5
+pass sha256:2b77f25492ace6bd383aebc5522919da
 -- run/go/gtk4 --
-pass sha256:a62c200db8386abb37e393ffe3ea8909
+pass sha256:ebfb8190cfd26c66b00b601e262d7ff0

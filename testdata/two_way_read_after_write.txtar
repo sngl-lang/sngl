@@ -214,8 +214,6 @@ type PickerInstance struct {
 	__prop___on_value func(string)
 	taps              int
 	__root            *fyne.Container
-	__slot0           []fyne.CanvasObject
-	__slot0_at        fyne.CanvasObject
 	pick              *fynelayout.Button
 }
 
@@ -227,7 +225,6 @@ func newPickerInstance(__model *Model, __a_value string, __a_change func(string)
 	c.__prop___on_value = __a___on_value
 	c.taps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.pick = fynelayout.NewButton("", nil)
 	c.pick.SetText("pick")
 	c.pick.OnTapped = func() {
@@ -454,7 +451,6 @@ window.__sngl_boot = () => {
     let __prop_change = change;
     let __prop___on_value = __on_value;
     let taps = 0;
-    let __slot02 = [];
     function __set_value(__v) {
       __prop_value = __v;
     }
@@ -580,8 +576,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:6caba4a2fd0520d48d2655cb2d652ba1
+pass sha256:179f31f1c2078e6cb14828e7fc0299d8
 -- run/kotlin/android --
 pass sha256:bd8b6f4941f13f250b0d37288650c4f3
 -- run/none/html --
-pass sha256:9ef12406a7f573b35c85484aaa4c3665
+pass sha256:c0bf1c4898f27cc8f3fbd1731b711528

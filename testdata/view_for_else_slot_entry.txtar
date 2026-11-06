@@ -646,7 +646,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = String(__prop___p0.elem);
@@ -756,4 +755,4 @@ pass sha256:bb2e86f38fcb8fe85fe15fd0df3f0ba3
 -- run/go/gtk4 --
 pass sha256:706fe3fc6998fc287a60008bd3424d4d
 -- run/none/html --
-pass sha256:13f67999f1125e5bbae0de52c66850a5
+pass sha256:01f0c0504615c640176e3cea95c09741

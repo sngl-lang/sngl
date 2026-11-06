@@ -97,7 +97,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.innerText = __prop___p0.elem;
@@ -193,4 +192,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b8d08b5173efba44064bed76cdeb732f
+pass sha256:9076ea7cf399393f73c261a15fed7fb2

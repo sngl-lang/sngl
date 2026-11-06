@@ -693,16 +693,14 @@ func (m *Model) __wrote_name() {
 
 func (m *Model) entry_changed_handler() {
 	if gtk4rt.EditableGetText(m.entry) != m.name {
-		__input_value_wrote0 := gtk4rt.EditableGetText(m.entry)
-		m.name = __input_value_wrote0
+		m.name = gtk4rt.EditableGetText(m.entry)
 		gtk4rt.LabelSetLabel(m.__n0, (("Hello, " + m.name) + "!"))
 	}
 	m.__effects0_settle()
 }
 
 func (m *Model) entry_activate_handler() {
-	__input_value_wrote1 := gtk4rt.EditableGetText(m.entry)
-	m.name = __input_value_wrote1
+	m.name = gtk4rt.EditableGetText(m.entry)
 	gtk4rt.LabelSetLabel(m.__n0, (("Hello, " + m.name) + "!"))
 	m.__effects0_settle()
 }
@@ -1031,14 +1029,12 @@ window.__sngl_boot = () => {
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   __n0.addEventListener("input", function(e) {
-    let __input_value_wrote0 = e.currentTarget.value;
-    state.name = __input_value_wrote0;
+    state.name = e.currentTarget.value;
     __n0.value = state.name;
     __n1.textContent = "Hello, " + state.name + "!";
   });
   __n0.addEventListener("change", function(e) {
-    let __input_value_wrote1 = e.currentTarget.value;
-    state.name = __input_value_wrote1;
+    state.name = e.currentTarget.value;
     __n0.value = state.name;
     __n1.textContent = "Hello, " + state.name + "!";
   });
@@ -1057,11 +1053,11 @@ pass sha256:44055b00513869b12699f33db4503038
 -- run/go/fyne --
 pass sha256:80febfca868c60a62c8d88109732e596
 -- run/go/gtk4 --
-pass sha256:39fd857b20e32f5ac48619b52851a154
+pass sha256:0c04bb44497a01d837d2971e1f1fdaad
 -- run/kotlin/android --
 pass sha256:e72de98fa623e982b701d5b364213b6a
 -- run/none/html --
-pass sha256:e1d70fc2bd9dc2ecdd5950c51fe3c305
+pass sha256:fe22ec038b57c2127110d7b02fc8afda
 -- testrun/html/none/component_input.sngl/main/1 --
 sha256:fd48a84099b223bc3aff6da3e6a44919
 {

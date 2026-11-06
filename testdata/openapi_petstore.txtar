@@ -750,8 +750,7 @@ func (m *Model) __effect0_mount() {
 		m.failure__inst1 = nil
 	}
 	m.asked__inst1 = __effect0_mount_key.N
-	__query_pending_wrote0 := true
-	m.pending__inst0 = __query_pending_wrote0
+	m.pending__inst0 = true
 	m.life__inst1 = Lifetime{_id: snglasync.Begin()}
 	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
@@ -840,8 +839,7 @@ func (m *Model) __effect1_mount() {
 		m.__renderSlot2(m.__n2.Container)
 	}
 	m.asked__inst0 = __effect1_mount_key.N
-	__query_pending_wrote0 := true
-	m.loading__inst0 = __query_pending_wrote0
+	m.loading__inst0 = true
 	m.__renderSlot1(m.__n2.Container)
 	m.life__inst0 = Lifetime{_id: snglasync.Begin()}
 	__async_arg2 := __effect1_mount_key.Key
@@ -1339,14 +1337,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 *Failure
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
-	__slot2     []fyne.CanvasObject
-	__slot2_at  fyne.CanvasObject
-	__slot3     []fyne.CanvasObject
-	__slot3_at  fyne.CanvasObject
 	__n0        *widget.Label
 }
 
@@ -1355,10 +1345,6 @@ func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(("Could not load rex: " + (*(c.__prop___p0)).Message))
 	c.Root = c.__n0
@@ -1378,14 +1364,6 @@ type __child1Instance struct {
 	__model     *Model
 	__prop___p0 *PetDetail
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
-	__slot2     []fyne.CanvasObject
-	__slot2_at  fyne.CanvasObject
-	__slot3     []fyne.CanvasObject
-	__slot3_at  fyne.CanvasObject
 	__n1        *widget.Label
 }
 
@@ -1394,10 +1372,6 @@ func new__child1Instance(__model *Model, __a___p0 *PetDetail) *__child1Instance 
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n1 = widget.NewLabel("")
 	c.__n1.SetText(((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
 	c.Root = c.__n1
@@ -1851,8 +1825,7 @@ func (m *Model) __effect0_mount() {
 		m.failure__inst1 = nil
 	}
 	m.asked__inst1 = __effect0_mount_key.N
-	__query_pending_wrote0 := true
-	m.pending__inst0 = __query_pending_wrote0
+	m.pending__inst0 = true
 	m.life__inst1 = Lifetime{_id: snglasync.Begin()}
 	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
@@ -1941,8 +1914,7 @@ func (m *Model) __effect1_mount() {
 		m.__renderSlot2(m.__n2)
 	}
 	m.asked__inst0 = __effect1_mount_key.N
-	__query_pending_wrote0 := true
-	m.loading__inst0 = __query_pending_wrote0
+	m.loading__inst0 = true
 	m.__renderSlot1(m.__n2)
 	m.life__inst0 = Lifetime{_id: snglasync.Begin()}
 	__async_arg2 := __effect1_mount_key.Key
@@ -2278,14 +2250,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 *Failure
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
-	__slot2     []gtk4rt.Handle
-	__slot2_at  gtk4rt.Handle
-	__slot3     []gtk4rt.Handle
-	__slot3_at  gtk4rt.Handle
 	__n0        gtk4rt.Handle
 }
 
@@ -2293,10 +2257,6 @@ func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, ("Could not load rex: " + (*(c.__prop___p0)).Message))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
@@ -2315,18 +2275,6 @@ func (c *__child0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
 }
 
 // __child1Instance is one live instance of the __child1 component.
@@ -2335,14 +2283,6 @@ type __child1Instance struct {
 	__model     *Model
 	__prop___p0 *PetDetail
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
-	__slot2     []gtk4rt.Handle
-	__slot2_at  gtk4rt.Handle
-	__slot3     []gtk4rt.Handle
-	__slot3_at  gtk4rt.Handle
 	__n1        gtk4rt.Handle
 }
 
@@ -2350,10 +2290,6 @@ func new__child1Instance(__model *Model, __a___p0 *PetDetail) *__child1Instance 
 	c := &__child1Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n1, ((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
 	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
@@ -2371,18 +2307,6 @@ func (c *__child1Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
 	}
 }
 
@@ -2760,8 +2684,7 @@ fun MainScreen() {
                     		failure__inst1 = null
                     	}
                     	asked__inst1 = k.n
-                    	var __query_pending_wrote0 = true
-                    	pending__inst0 = __query_pending_wrote0
+                    	pending__inst0 = true
                     	life__inst1 = Lifetime(_id = SnglCodec.begin())
                     	var r: SnglResult__PaginatedPetSummaryList = petListCall(k.key.limit, k.key.offset, life__inst1, "https://petstore.example")
                     	if ((((mine != attempt__inst1) || (k.key != __anon_limit_offset_7e7555(limit = 20, offset = offset__inst0))) || (k.n != refreshes__inst1))) {
@@ -2807,8 +2730,7 @@ fun MainScreen() {
                     		failure__inst0 = null
                     	}
                     	asked__inst0 = k.n
-                    	var __query_pending_wrote0 = true
-                    	loading__inst0 = __query_pending_wrote0
+                    	loading__inst0 = true
                     	life__inst0 = Lifetime(_id = SnglCodec.begin())
                     	var r: SnglResult__PetDetail = petRetrieveCall(k.key, life__inst0, "https://mirror.example")
                     	if ((((mine != attempt__inst0) || (k.key != "rex")) || (k.n != refreshes__inst0))) {
@@ -3523,8 +3445,7 @@ body { font-family: system-ui, sans-serif; }
     }
     ;
     state.asked__inst1 = __effect0_mount_key.n;
-    let __query_pending_wrote0 = true;
-    state.pending__inst0 = __query_pending_wrote0;
+    state.pending__inst0 = true;
     state.life__inst1 = { _id: _snglBegin() };
     let r = await petListCall(__effect0_mount_key.key.limit, __effect0_mount_key.key.offset, state.life__inst1, "https://petstore.example");
     if (mine !== state.attempt__inst1 || !((a, b) => a == null || b == null ? a === b : a.limit === b.limit && a.offset === b.offset)(__effect0_mount_key.key, { limit: 20, offset: state.offset__inst0 }) || __effect0_mount_key.n !== state.refreshes__inst1) {
@@ -3561,8 +3482,7 @@ body { font-family: system-ui, sans-serif; }
     }
     ;
     state.asked__inst0 = __effect1_mount_key.n;
-    let __query_pending_wrote0 = true;
-    state.loading__inst0 = __query_pending_wrote0;
+    state.loading__inst0 = true;
     __renderSlot1(__slotAnchor_1);
     state.life__inst0 = { _id: _snglBegin() };
     let r = await petRetrieveCall(__effect1_mount_key.key, state.life__inst0, "https://mirror.example");
@@ -3630,10 +3550,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = "Could not load rex: " + __prop___p0.message;
@@ -3653,10 +3569,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.textContent = "#" + String(__prop___p0.id) + " " + __prop___p0.name;
@@ -3676,10 +3588,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n2.textContent = __prop___p0.name;
@@ -3699,10 +3607,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n3.textContent = __prop___p0.type.name;
@@ -4545,10 +4449,10 @@ component petBreedRetrieve[F any](
     )
 }
 -- run/go/fyne --
-pass sha256:35c8f4b318bc185b8ae2b0d080e09a30
+pass sha256:fae389b86a2d27f0c2007b3bfc9d3cdd
 -- run/go/gtk4 --
-pass sha256:471a881b57557c41f519c69be141af6b
+pass sha256:8e6734b46d9926d41ed0d5eb72739b9d
 -- run/kotlin/android --
-pass sha256:4c739d73a000d40878e67a5fd5314529
+pass sha256:77a6bcf32453c549518492a7bda7c5ba
 -- run/none/html --
-pass sha256:440142b255196162e556d01b80ebe5ed
+pass sha256:bdfdac7d6de818042a6a7ee20e13af25

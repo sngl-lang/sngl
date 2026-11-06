@@ -364,11 +364,6 @@ window.__sngl_boot = () => {
     let __p1 = props.__p1;
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.value = __prop___p0.label;
@@ -402,11 +397,6 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n2.value = __prop___p0.label;
@@ -456,11 +446,6 @@ window.__sngl_boot = () => {
     let __prop___p1 = __p1;
     let __prop___p2 = __p2;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n4.textContent = __prop___p0.label;
@@ -511,11 +496,7 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___p2 = __p2;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
+    let __slot4 = [];
     let __rendering4 = false;
     let __renderAgain4 = false;
     function __set___p0(__v) {
@@ -539,9 +520,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain4) {
             __renderAgain4 = false;
-            let __place8_prev = __slot42;
+            let __place8_prev = __slot4;
             let __place8_i = 0;
-            __slot42 = [];
+            __slot4 = [];
             if (__prop___p2.__id === 0) {
               let __n12 = document.createElement("span");
               __n12.textContent = "panel";
@@ -554,7 +535,7 @@ window.__sngl_boot = () => {
               } else {
                 parent.insertBefore(__n12, __place8_i_ref0);
               }
-              __slot42.push(__n12);
+              __slot4.push(__n12);
             } else {
               if (__prop___p2.__id === 1) {
                 let __n13 = document.createElement("span");
@@ -568,11 +549,11 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n13, __place8_i_ref1);
                 }
-                __slot42.push(__n13);
+                __slot4.push(__n13);
               }
             }
             for (const __place8_prev_e of __place8_prev) {
-              if (__slot42.indexOf(__place8_prev_e) < 0) {
+              if (__slot4.indexOf(__place8_prev_e) < 0) {
                 parent.removeChild(__place8_prev_e);
               }
             }
@@ -615,7 +596,6 @@ window.__sngl_boot = () => {
   var __inst7_live = [];
   var __rendering3 = false;
   var __renderAgain3 = false;
-  var __slot4 = [];
   function __renderSlot0(parent) {
     if (__rendering0) {
       __renderAgain0 = true;
@@ -954,30 +934,25 @@ window.__sngl_boot = () => {
   var __slotAnchor_3 = document.querySelector('[data-sngl-slot="3"]');
   __renderSlot3(__slotAnchor_3);
   $6.addEventListener("input", function(e) {
-    let __input_value_wrote0 = e.currentTarget.value;
-    state.name = __input_value_wrote0;
+    state.name = e.currentTarget.value;
     $6.value = state.name;
   });
   $6.addEventListener("change", function(e) {
-    let __input_value_wrote1 = e.currentTarget.value;
-    state.name = __input_value_wrote1;
+    state.name = e.currentTarget.value;
     $6.value = state.name;
   });
   __n0.addEventListener("change", function(e) {
-    let __checkbox_checked_wrote0 = e.currentTarget.checked;
-    state.checked__inst0 = __checkbox_checked_wrote0;
+    state.checked__inst0 = e.currentTarget.checked;
     __n0.checked = state.checked__inst0;
   });
   $10.addEventListener("change", function(e) {
     select_pickLabel__inst0(state, e.currentTarget.value);
   });
   $12.addEventListener("input", function(e) {
-    let __textarea_value_wrote0 = e.currentTarget.value;
-    state.note = __textarea_value_wrote0;
+    state.note = e.currentTarget.value;
   });
   $12.addEventListener("change", function(e) {
-    let __textarea_value_wrote1 = e.currentTarget.value;
-    state.note = __textarea_value_wrote1;
+    state.note = e.currentTarget.value;
   });
   __n11.addEventListener("swipe", function(e) {
     let k = swipedTo([false, false], state.sel, e.detail);
@@ -1016,9 +991,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ff73bca1c9770fcb19b91200a796d0f7
+pass sha256:ec156e387487a77991ae0d0fed6497aa
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:d420d5f3816cba56fcb73bfb59e0fbe7
+sha256:5b5130771d850e557f5603a81f2d344d
 {
   "results": [
     {

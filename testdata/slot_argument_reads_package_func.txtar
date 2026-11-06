@@ -545,8 +545,6 @@ type Frame__slot2Instance struct {
 	__inst0_live   []*Frame__slot2Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 	__n5           *fyne.Container
 	__n0           *widget.Label
 }
@@ -561,7 +559,6 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n5 = fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(("level " + fmt.Sprint((c.__prop_n * 2))))
@@ -651,8 +648,6 @@ type Frame__slot0Instance struct {
 	__prop_n       int
 	__prop___depth int
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*Frame__slot2Instance
@@ -668,7 +663,6 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__prop_n = __a_n
 	c.__prop___depth = __a___depth
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
 	c.__rendering1 = false
@@ -833,8 +827,6 @@ type Frame__slot2Instance struct {
 	__inst0_live   []*Frame__slot2Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
 	__n5           gtk4rt.Handle
 	__n0           gtk4rt.Handle
 }
@@ -848,7 +840,6 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n5 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n5, 1)
 	gtk4rt.SetLook(c.__n5, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -944,9 +935,6 @@ func (c *Frame__slot2Instance) Destroy() {
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
 	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // Frame__slot0Instance is one live instance of the frame__slot0 component.
@@ -956,8 +944,6 @@ type Frame__slot0Instance struct {
 	__prop_n       int
 	__prop___depth int
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*Frame__slot2Instance
@@ -972,7 +958,6 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__model = __model
 	c.__prop_n = __a_n
 	c.__prop___depth = __a___depth
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
 	c.__rendering1 = false
@@ -1068,9 +1053,6 @@ func (c *Frame__slot0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 	if c.__slot1_at != nil {
 		gtk4rt.Release(c.__slot1_at)
@@ -1364,7 +1346,6 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_live = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot1 = [];
     function __set_n(__v) {
       __prop_n = __v;
       __n0.textContent = "level " + String(__prop_n * 2);
@@ -1470,7 +1451,6 @@ body { font-family: system-ui, sans-serif; }
     let __depth = props.__depth ?? 0;
     let __prop_n = n;
     let __prop___depth = __depth;
-    let __slot0 = [];
     let __slot1 = [];
     let __inst3_live = [];
     let __rendering1 = false;
@@ -1585,10 +1565,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:59d54c46b953bc7d120f9f95ee989352
 -- run/go/fyne --
-pass sha256:35f386c4a440a13fdb91afdc0d8dfafe
+pass sha256:b42d497dd15000858ddb9cb5d1b5650f
 -- run/go/gtk4 --
-pass sha256:52f25c430355dab18f38f9c7fc2d71e1
+pass sha256:6567c473bbc5808b9a4e524bb1f853f4
 -- run/kotlin/android --
 pass sha256:60725fb3074820afd43a5db6f5decc7d
 -- run/none/html --
-pass sha256:91ec817c8621a39e10d5e8a019f07125
+pass sha256:a77efec66651bf85efa167b94257a7a6

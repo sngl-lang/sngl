@@ -730,15 +730,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) entry_changed_handler() {
 	if gtk4rt.EditableGetText(m.entry) != m.value__inst0 {
-		__input_value_wrote0 := gtk4rt.EditableGetText(m.entry)
-		m.value__inst0 = __input_value_wrote0
+		m.value__inst0 = gtk4rt.EditableGetText(m.entry)
 	}
 	m.__effects0_settle()
 }
 
 func (m *Model) entry_activate_handler() {
-	__input_value_wrote1 := gtk4rt.EditableGetText(m.entry)
-	m.value__inst0 = __input_value_wrote1
+	m.value__inst0 = gtk4rt.EditableGetText(m.entry)
 	m.__effects0_settle()
 }
 
@@ -881,13 +879,11 @@ body { font-family: system-ui, sans-serif; }
   state.value__inst0 = state.name__inst0;
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   __n1.addEventListener("input", function(e) {
-    let __input_value_wrote0 = e.currentTarget.value;
-    state.value__inst0 = __input_value_wrote0;
+    state.value__inst0 = e.currentTarget.value;
     __n1.value = state.value__inst0;
   });
   __n1.addEventListener("change", function(e) {
-    let __input_value_wrote1 = e.currentTarget.value;
-    state.value__inst0 = __input_value_wrote1;
+    state.value__inst0 = e.currentTarget.value;
     __n1.value = state.value__inst0;
   });
   function __sngl_init() {
@@ -902,8 +898,8 @@ pass sha256:063e66b46e60af8befbea9d24402e4d2
 -- run/go/fyne --
 pass sha256:51de69565226a4106da04843359ade6c
 -- run/go/gtk4 --
-pass sha256:1e2e1a3b25adbbf30215d045f4a8ba51
+pass sha256:71c8ade9efd94d8938681e4f339d451e
 -- run/kotlin/android --
 pass sha256:2552ab02c3a6e1c9a6fe867d11dec8e6
 -- run/none/html --
-pass sha256:87f9f9ec826775af0ee8bc6c3aded9d5
+pass sha256:f39fdae2d442a337629e986f0f3199e3

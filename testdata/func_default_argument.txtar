@@ -1218,8 +1218,6 @@ type CounterInstance struct {
 	step       int
 	total      int
 	__root     *fyne.Container
-	__slot0    []fyne.CanvasObject
-	__slot0_at fyne.CanvasObject
 	__n0       *fynelayout.Button
 }
 
@@ -1230,7 +1228,6 @@ func newCounterInstance(__model *Model, __a_inc int) *CounterInstance {
 	c.step = 2
 	c.total = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(fmt.Sprint(c.total))
 	c.__n0.OnTapped = func() {
@@ -1478,8 +1475,6 @@ type CounterInstance struct {
 	step       int
 	total      int
 	__root     gtk4rt.Handle
-	__slot0    []gtk4rt.Handle
-	__slot0_at gtk4rt.Handle
 	__n0       gtk4rt.Handle
 }
 
@@ -1489,7 +1484,6 @@ func newCounterInstance(__model *Model, __a_inc int) *CounterInstance {
 	c.__prop_inc = __a_inc
 	c.step = 2
 	c.total = 0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, fmt.Sprint(c.total))
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
@@ -1514,9 +1508,6 @@ func (c *CounterInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1830,7 +1821,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop_inc = inc;
     let step = 2;
     let total = 0;
-    let __slot02 = [];
     function add(a, by) {
       total += a + by;
       __n0.textContent = String(total);
@@ -1956,10 +1946,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3702ed0626660dec19bc4e558bc36c51
 -- run/go/fyne --
-pass sha256:b804dbc3fc3d36513fe467c2039e8730
+pass sha256:7348425469ed260becd37a7d5a4b5655
 -- run/go/gtk4 --
-pass sha256:06d511de6034e9b99f0f94cd7ea5b3f6
+pass sha256:05471b3ee80099ab8489faaf6af7c4d1
 -- run/kotlin/android --
 pass sha256:e41ec3190d0f19489e9d94e61e267172
 -- run/none/html --
-pass sha256:a0d5aaca15301288d392ac29d2ab8564
+pass sha256:1e1ddec627a51579d7d88a5ef4794076

@@ -340,8 +340,6 @@ type TimerInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 }
 
 func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bool, __a_tick func()) *TimerInstance {
@@ -364,7 +362,6 @@ func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bo
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = fynelayout.Nothing()
 	return c
@@ -702,8 +699,6 @@ type TimerInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 }
 
 func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bool, __a_tick func()) *TimerInstance {
@@ -720,7 +715,6 @@ func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bo
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = gtk4rt.Nothing()
 	gtk4rt.Retain(c.Root)
@@ -816,9 +810,6 @@ func (c *TimerInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -966,7 +957,6 @@ body { font-family: system-ui, sans-serif; }
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
     function __effect0_mount() {
       handle = setInterval(() => {
         __prop_tick();
@@ -1143,8 +1133,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:a9b457f758dfbf1cfa789213255e697a
+pass sha256:c17e35b1eec0cd0895a31dd3e50e8fc4
 -- run/go/gtk4 --
-pass sha256:64adc7ba30089734401c38a8ecdce0a9
+pass sha256:a4aa6cdcd5568fb4475bcf11eddbf95b
 -- run/none/html --
-pass sha256:a15debf718cb4f36306d7dc42986de99
+pass sha256:fe20fbbfa9e91d2361dfd16a3157c80a

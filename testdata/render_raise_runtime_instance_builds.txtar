@@ -244,14 +244,12 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 
 // RowInstance is one live instance of the row component.
 type RowInstance struct {
-	Root       fyne.CanvasObject
-	__model    *Model
-	__prop_n   int
-	clicks     int
-	__root     *fyne.Container
-	__slot0    []fyne.CanvasObject
-	__slot0_at fyne.CanvasObject
-	__n0       *widget.Label
+	Root     fyne.CanvasObject
+	__model  *Model
+	__prop_n int
+	clicks   int
+	__root   *fyne.Container
+	__n0     *widget.Label
 }
 
 func newRowInstance(__model *Model, __a_n int) *RowInstance {
@@ -260,7 +258,6 @@ func newRowInstance(__model *Model, __a_n int) *RowInstance {
 	c.__prop_n = __a_n
 	c.clicks = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(Label(c.__prop_n))
 	__n3 := fynelayout.NewButton("", nil)
@@ -346,7 +343,6 @@ body { font-family: system-ui, sans-serif; }
     let n = props.n ?? 0;
     let __prop_n = n;
     let clicks = 0;
-    let __slot02 = [];
     function __set_n(__v) {
       __prop_n = __v;
       __n0.textContent = label(__prop_n);
@@ -448,6 +444,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:f614feeab1d3c11bf2f0de2d3d698838
+pass sha256:4778d56d276ff36ded250a3b385548b4
 -- run/none/html --
-pass sha256:af235787c5c7cc9d29eaab5e31f0d9f2
+pass sha256:13516fcc62f729263e703034a95b6358

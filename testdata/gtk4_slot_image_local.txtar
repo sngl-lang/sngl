@@ -182,8 +182,6 @@ type __file_state0Instance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 }
 
@@ -200,7 +198,6 @@ func new__file_state0Instance(__model *Model, __a_path string) *__file_state0Ins
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.ImageSourceNew()
 	gtk4rt.ImageSourceSetPicture(c.__n0, c.picture__inst0)
 	__snglMountAfterBuild(c.__effects0_settle)
@@ -293,9 +290,6 @@ func (c *__file_state0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 }
 
 func (m *Model) Shown() bool {
@@ -382,4 +376,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/gtk4 --
-pass sha256:44af48da77e0337d9be7aa2623c04e5a
+pass sha256:23214826f7e2cf02aecc50f371a6b63f

@@ -345,8 +345,6 @@ type AskerInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 	__n0                *widget.Label
 }
 
@@ -370,7 +368,6 @@ func newAskerInstance(__model *Model, __a_key string, __a___ctx_server string) *
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	var __lt11 string
 	if c.got != nil {
 		__lt11 = (*(c.got))
@@ -397,8 +394,7 @@ func (c *AskerInstance) __effect0_mount() {
 		c.failure__inst0 = nil
 	}
 	c.asked__inst0 = __effect0_mount_key.N
-	__query_pending_wrote0 := true
-	c.pending__inst0 = __query_pending_wrote0
+	c.pending__inst0 = true
 	c.life__inst0 = Lifetime{_id: snglasync.Begin()}
 	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
@@ -530,4 +526,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:88e7384c4dcf7a2e19c86b6f93667ea8
+pass sha256:3a16820ac44d219c8f20fbf9cb249506

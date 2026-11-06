@@ -51,7 +51,7 @@ sha256:8d54654a3601759c4d471a858b9a4e33
   ]
 }
 -- testrun/gtk4/go/app.sngl/fitting/1 --
-sha256:df753d3ec70a2ee8a7b9969deb0e55f1
+sha256:cf20c72e5c4faac1c17046f6ce1975a6
 {
   "results": [
     {
@@ -61,7 +61,7 @@ sha256:df753d3ec70a2ee8a7b9969deb0e55f1
   ]
 }
 -- testrun/html/none/app.sngl/fitting/1 --
-sha256:1d27207e60e467c04ad3582b353d6be6
+sha256:d0ca002d9fc7484fa43b25d0aec3c9cb
 {
   "results": [
     {

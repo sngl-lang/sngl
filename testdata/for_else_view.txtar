@@ -1278,8 +1278,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = __prop___p0.elem;
@@ -1297,8 +1295,6 @@ body { font-family: system-ui, sans-serif; }
   function __cf___child1(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
-    let __slot02 = [];
-    let __slot12 = [];
     let __n7 = document.createElement("span");
     __n7.textContent = "tick";
     __root.appendChild(__n7);
@@ -1492,4 +1488,4 @@ pass sha256:f4a25615b8c83912c3560df5fbb851d1
 -- run/kotlin/android --
 pass sha256:a1256741abd869652fea94cfed4b0dfe
 -- run/none/html --
-pass sha256:a4a6be948d2c546b17416d1230e00813
+pass sha256:cc2e92b882ef0975be3df4aa6d4a1d71

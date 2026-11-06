@@ -305,8 +305,6 @@ type AskerInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 }
 
 func newAskerInstance(__model *Model, __a_n int) *AskerInstance {
@@ -322,7 +320,6 @@ func newAskerInstance(__model *Model, __a_n int) *AskerInstance {
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = fynelayout.Nothing()
 	return c
@@ -650,8 +647,6 @@ type AskerInstance struct {
 	__effects1_torn     bool
 	__effects1_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 }
 
 func newAskerInstance(__model *Model, __a_n int) *AskerInstance {
@@ -666,7 +661,6 @@ func newAskerInstance(__model *Model, __a_n int) *AskerInstance {
 	c.__effects1_pending = false
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
-	c.__slot0 = nil
 	__snglMountAfterBuild(c.__effects1_settle)
 	c.Root = gtk4rt.Nothing()
 	gtk4rt.Retain(c.Root)
@@ -728,9 +722,6 @@ func (c *AskerInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -837,6 +828,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:72fa249f34d94c9b0760cac841f17442
+pass sha256:23fe7bf17e7c996a6e28bf9a11673305
 -- run/go/gtk4 --
-pass sha256:148b1938869759d6e6610c15875d2eab
+pass sha256:ae774492c33e967de790643d4ec79fde

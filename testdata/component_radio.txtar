@@ -646,7 +646,6 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.value = __prop___p0.label;
@@ -788,9 +787,9 @@ pass sha256:c8ba70cad659e21eb7c1e2a3b8dfdb34
 -- run/kotlin/android --
 pass sha256:7c2631b3e115e47cf201aa4b2b0f488a
 -- run/none/html --
-pass sha256:d288c07d661c16b19e0a96e58a49c5b5
+pass sha256:88de6f383a9c8ffc1dfdcfbd917551dc
 -- testrun/html/none/component_radio.sngl/main/1 --
-sha256:09f33dfc0faf8f02c3b07b5ea11cd727
+sha256:7923fddc9c1faf915babddf14bdc3e85
 {
   "results": [
     {

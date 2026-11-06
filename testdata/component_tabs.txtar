@@ -1246,9 +1246,6 @@ window.__sngl_boot = () => {
     let __prop___p1 = __p1;
     let __prop___p2 = __p2;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = __prop___p0.label;
@@ -1299,9 +1296,7 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___p2 = __p2;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
+    let __slot2 = [];
     let __rendering2 = false;
     let __renderAgain2 = false;
     function __set___p0(__v) {
@@ -1325,9 +1320,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain2) {
             __renderAgain2 = false;
-            let __place4_prev = __slot22;
+            let __place4_prev = __slot2;
             let __place4_i = 0;
-            __slot22 = [];
+            __slot2 = [];
             if (__prop___p2.__id === 0) {
               let __n6 = document.createElement("span");
               __n6.textContent = "Overview content";
@@ -1340,7 +1335,7 @@ window.__sngl_boot = () => {
               } else {
                 parent.insertBefore(__n6, __place4_i_ref0);
               }
-              __slot22.push(__n6);
+              __slot2.push(__n6);
             } else {
               if (__prop___p2.__id === 1) {
                 let __n7 = document.createElement("span");
@@ -1354,7 +1349,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n7, __place4_i_ref1);
                 }
-                __slot22.push(__n7);
+                __slot2.push(__n7);
               } else {
                 if (__prop___p2.__id === 2) {
                   let __n8 = document.createElement("span");
@@ -1368,12 +1363,12 @@ window.__sngl_boot = () => {
                   } else {
                     parent.insertBefore(__n8, __place4_i_ref2);
                   }
-                  __slot22.push(__n8);
+                  __slot2.push(__n8);
                 }
               }
             }
             for (const __place4_prev_e of __place4_prev) {
-              if (__slot22.indexOf(__place4_prev_e) < 0) {
+              if (__slot2.indexOf(__place4_prev_e) < 0) {
                 parent.removeChild(__place4_prev_e);
               }
             }
@@ -1408,7 +1403,6 @@ window.__sngl_boot = () => {
   var __inst3_live = [];
   var __rendering1 = false;
   var __renderAgain1 = false;
-  var __slot2 = [];
   function __renderSlot0(parent) {
     if (__rendering0) {
       __renderAgain0 = true;
@@ -1646,9 +1640,9 @@ pass sha256:1052783f934d745bfbc0a569baae8515
 -- run/kotlin/android --
 pass sha256:e87dc2e9d3ba63bc00d50edc2d394fcd
 -- run/none/html --
-pass sha256:25ace70e1bbcbe94d7edd19d51d57182
+pass sha256:6d70acc106246079dfdf5ab5bdc55f96
 -- testrun/html/none/component_tabs.sngl/main/1 --
-sha256:3ce6da628c09708b9e4b3d2c189abe1b
+sha256:8b14dea8203a5814aee14e8a074de876
 {
   "results": [
     {

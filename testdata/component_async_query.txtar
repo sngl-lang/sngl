@@ -175,8 +175,7 @@ window.__sngl_boot = () => {
     }
     ;
     state.asked__inst1 = __effect0_mount_key.n;
-    let __query_pending_wrote0 = true;
-    state.loading__inst0 = __query_pending_wrote0;
+    state.loading__inst0 = true;
     $1.textContent = String(state.loading__inst0);
     state.life__inst1 = { _id: _snglBegin() };
     let r = await lookup(__effect0_mount_key.key, state.life__inst1);
@@ -215,8 +214,7 @@ window.__sngl_boot = () => {
     }
     ;
     state.asked__inst0__inst0 = __effect2_mount_key.n;
-    let __query_pending_wrote0 = true;
-    state.pending__inst0 = __query_pending_wrote0;
+    state.pending__inst0 = true;
     state.life__inst0__inst0 = { _id: _snglBegin() };
     let r = await lookup(__effect2_mount_key.key, state.life__inst0__inst0);
     if (mine !== state.attempt__inst0__inst0 || __effect2_mount_key.key !== "slow" || __effect2_mount_key.n !== state.refreshes__inst0__inst0) {
@@ -619,7 +617,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:50a42c7354da0916df37722b7dd0da5f
+pass sha256:ea3789f613f43a7c7d3f59b0624ba933
 -- testrun/html/none/component_async_query.sngl/dropped/1 --
 sha256:1e7721f2b808f3c97b6487136d506bf7
 {

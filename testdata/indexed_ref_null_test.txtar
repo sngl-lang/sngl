@@ -1331,8 +1331,6 @@ type __checkbox_state0Instance struct {
 	__prop_change          func(bool)
 	checked                bool
 	__root                 *fyne.Container
-	__slot0                []fyne.CanvasObject
-	__slot0_at             fyne.CanvasObject
 	tick                   *fynelayout.Check
 }
 
@@ -1345,7 +1343,6 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__prop_change = __a_change
 	c.checked = c.__prop___start_checked
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.tick = fynelayout.NewCheck("", nil)
 	c.tick.SetText(c.__prop_label)
 	c.tick.SetChecked(c.checked)
@@ -1639,8 +1636,6 @@ type __checkbox_state0Instance struct {
 	__prop_change          func(bool)
 	checked                bool
 	__root                 gtk4rt.Handle
-	__slot0                []gtk4rt.Handle
-	__slot0_at             gtk4rt.Handle
 	tick                   gtk4rt.Handle
 }
 
@@ -1652,7 +1647,6 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__prop___copy = __a___copy
 	c.__prop_change = __a_change
 	c.checked = c.__prop___start_checked
-	c.__slot0 = nil
 	c.tick = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(c.tick, c.__prop_label)
 	gtk4rt.CheckButtonSetActive(c.tick, c.checked)
@@ -1699,9 +1693,6 @@ func (c *__checkbox_state0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -2241,7 +2232,6 @@ window.__sngl_boot = () => {
     let __prop___copy = __copy;
     let __prop_change = change;
     let checked = __prop___start_checked;
-    let __slot02 = [];
     function __set___start_checked(__v) {
       __prop___start_checked = __v;
     }
@@ -2408,10 +2398,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:79f68f590f0730604334aa5a587cc0f8
 -- run/go/fyne --
-pass sha256:9df16bff6b6874082f7b06a9955e6f2f
+pass sha256:1a662c97bd6d74148ba764864c56aa97
 -- run/go/gtk4 --
-pass sha256:3a74b33942f870ad25700f32eaf3ade6
+pass sha256:f9b46aadc63f902474132a63a6990c24
 -- run/kotlin/android --
 pass sha256:8f4b2d44e2a1f79409fa44a53b883bcb
 -- run/none/html --
-pass sha256:b00e45df69ab5ea9934f46f8049eff95
+pass sha256:6c78fba48bc3633165d7525dd0556cfa

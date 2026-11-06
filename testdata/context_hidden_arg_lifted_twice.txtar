@@ -1216,10 +1216,6 @@ type ShowInstance struct {
 	__prop___ctx_label string
 	k                  int
 	__root             *fyne.Container
-	__slot0            []fyne.CanvasObject
-	__slot0_at         fyne.CanvasObject
-	__slot1            []fyne.CanvasObject
-	__slot1_at         fyne.CanvasObject
 	__n0               *fynelayout.Button
 }
 
@@ -1230,8 +1226,6 @@ func newShowInstance(__model *Model, __a_n int, __a___ctx_label string) *ShowIns
 	c.__prop___ctx_label = __a___ctx_label
 	c.k = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((((c.__prop___ctx_label + " ") + fmt.Sprint(c.__prop_n)) + " ") + fmt.Sprint(c.k)))
 	c.__n0.OnTapped = func() {
@@ -1267,8 +1261,6 @@ type PageInstance struct {
 	__inst1_live       []*__child1Instance
 	__rendering0       bool
 	__renderAgain0     bool
-	__slot1            []fyne.CanvasObject
-	__slot1_at         fyne.CanvasObject
 	__n5               *fyne.Container
 }
 
@@ -1283,7 +1275,6 @@ func newPageInstance(__model *Model, __a___ctx_label string) *PageInstance {
 	c.__inst1_live = []*__child1Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n5 = fynelayout.NewVBox()
 	__n8 := fynelayout.NewButton("", nil)
 	__n8.SetText("flip")
@@ -1400,10 +1391,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 string
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
 	__n1        *ShowInstance
 }
 
@@ -1412,8 +1399,6 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n9 := fynelayout.NewVBox()
 	c.__n1 = newShowInstance(c.__model, 1, c.__prop___p0)
 	__n1__el := c.__n1.Root
@@ -1437,10 +1422,6 @@ type __child1Instance struct {
 	__model     *Model
 	__prop___p0 string
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
 	__n2        *ShowInstance
 }
 
@@ -1449,8 +1430,6 @@ func new__child1Instance(__model *Model, __a___p0 string) *__child1Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n10 := fynelayout.NewVBox()
 	c.__n2 = newShowInstance(c.__model, 2, c.__prop___p0)
 	__n2__el := c.__n2.Root
@@ -1657,10 +1636,6 @@ type ShowInstance struct {
 	__prop___ctx_label string
 	k                  int
 	__root             gtk4rt.Handle
-	__slot0            []gtk4rt.Handle
-	__slot0_at         gtk4rt.Handle
-	__slot1            []gtk4rt.Handle
-	__slot1_at         gtk4rt.Handle
 	__n0               gtk4rt.Handle
 }
 
@@ -1670,8 +1645,6 @@ func newShowInstance(__model *Model, __a_n int, __a___ctx_label string) *ShowIns
 	c.__prop_n = __a_n
 	c.__prop___ctx_label = __a___ctx_label
 	c.k = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((((c.__prop___ctx_label + " ") + fmt.Sprint(c.__prop_n)) + " ") + fmt.Sprint(c.k)))
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
@@ -1699,12 +1672,6 @@ func (c *ShowInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // PageInstance is one live instance of the page component.
@@ -1720,8 +1687,6 @@ type PageInstance struct {
 	__inst1_live       []*__child1Instance
 	__rendering0       bool
 	__renderAgain0     bool
-	__slot1            []gtk4rt.Handle
-	__slot1_at         gtk4rt.Handle
 	__n5               gtk4rt.Handle
 }
 
@@ -1735,7 +1700,6 @@ func newPageInstance(__model *Model, __a___ctx_label string) *PageInstance {
 	c.__inst1_live = []*__child1Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n5 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n5, 1)
 	gtk4rt.SetLook(c.__n5, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1859,9 +1823,6 @@ func (c *PageInstance) Destroy() {
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
 	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -1870,10 +1831,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 string
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
 	__n1        *ShowInstance
 }
 
@@ -1881,8 +1838,6 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n9 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n9, 1)
 	gtk4rt.SetLook(__n9, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1909,12 +1864,6 @@ func (c *__child0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // __child1Instance is one live instance of the __child1 component.
@@ -1923,10 +1872,6 @@ type __child1Instance struct {
 	__model     *Model
 	__prop___p0 string
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
 	__n2        *ShowInstance
 }
 
@@ -1934,8 +1879,6 @@ func new__child1Instance(__model *Model, __a___p0 string) *__child1Instance {
 	c := &__child1Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n10 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n10, 1)
 	gtk4rt.SetLook(__n10, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1961,12 +1904,6 @@ func (c *__child1Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -2083,8 +2020,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop_n = n;
     let __prop___ctx_label = __ctx_label;
     let k = 0;
-    let __slot0 = [];
-    let __slot12 = [];
     function __set_n(__v) {
       __prop_n = __v;
       __n0.textContent = __prop___ctx_label + " " + String(__prop_n) + " " + String(k);
@@ -2124,7 +2059,6 @@ body { font-family: system-ui, sans-serif; }
     let __inst2_live = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot12 = [];
     function __set___ctx_label(__v) {
       __prop___ctx_label = __v;
       for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
@@ -2269,8 +2203,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot0 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.__set___ctx_label(__prop___p0);
@@ -2293,8 +2225,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot0 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n2.__set___ctx_label(__prop___p0);
@@ -2399,8 +2329,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:292cbae7faa4365b43fc3d2698b42af7
 -- run/go/fyne --
-pass sha256:5cdd258c88991c717e543e7c7152a265
+pass sha256:c683c9b1a09aa3f601b251a184c3e09e
 -- run/go/gtk4 --
-pass sha256:c183465ef00da1b0f62dd3fe3e856b4f
+pass sha256:f94d45d49136a6a9ca16c052fc142fd1
 -- run/none/html --
-pass sha256:2dd49292f0b72cebd6489fa407be2052
+pass sha256:47f0e35b4603c472374824ffece48d14

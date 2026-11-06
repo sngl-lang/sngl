@@ -366,19 +366,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 
 // Card__slot3Instance is one live instance of the Card__slot3 component.
 type Card__slot3Instance struct {
-	Root       fyne.CanvasObject
-	__model    *Model
-	hits       int
-	__root     *fyne.Container
-	__slot0    []fyne.CanvasObject
-	__slot0_at fyne.CanvasObject
-	__slot1    []fyne.CanvasObject
-	__slot1_at fyne.CanvasObject
-	__slot2    []fyne.CanvasObject
-	__slot2_at fyne.CanvasObject
-	__slot3    []fyne.CanvasObject
-	__slot3_at fyne.CanvasObject
-	__n0       *fynelayout.Button
+	Root    fyne.CanvasObject
+	__model *Model
+	hits    int
+	__root  *fyne.Container
+	__n0    *fynelayout.Button
 }
 
 func newCard__slot3Instance(__model *Model) *Card__slot3Instance {
@@ -386,10 +378,6 @@ func newCard__slot3Instance(__model *Model) *Card__slot3Instance {
 	c.__model = __model
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	__n11 := fynelayout.NewVBox()
 	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(("hit " + fmt.Sprint(c.hits)))
@@ -416,14 +404,6 @@ type Card__slot2Instance struct {
 	__prop___p0 __anon_id_elem_c6a818
 	hits        int
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
-	__slot2     []fyne.CanvasObject
-	__slot2_at  fyne.CanvasObject
-	__slot3     []fyne.CanvasObject
-	__slot3_at  fyne.CanvasObject
 	__n1        *fynelayout.Button
 	__n2        *widget.Label
 }
@@ -434,10 +414,6 @@ func newCard__slot2Instance(__model *Model, __a___p0 __anon_id_elem_c6a818) *Car
 	c.__prop___p0 = __a___p0
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	__n13 := fynelayout.NewVBox()
 	c.__n1 = fynelayout.NewButton("", nil)
 	c.__n1.SetText(("hit " + fmt.Sprint(c.hits)))
@@ -471,12 +447,6 @@ type Row__slot1Instance struct {
 	__inst0_live   map[string]*Card__slot3Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
 }
 
 func newRow__slot1Instance(__model *Model) *Row__slot1Instance {
@@ -488,9 +458,6 @@ func newRow__slot1Instance(__model *Model) *Row__slot1Instance {
 	c.__inst0_live = map[string]*Card__slot3Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	__n5 := fynelayout.NewHBox()
 	c.__renderSlot0(__n5)
 	c.Root = __n5
@@ -578,17 +545,11 @@ type Row__slot0Instance struct {
 	__prop___p0    __anon_id_elem_c6a818
 	open           bool
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   map[string]*Card__slot2Instance
 	__rendering1   bool
 	__renderAgain1 bool
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
 }
 
 func newRow__slot0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818) *Row__slot0Instance {
@@ -597,13 +558,10 @@ func newRow__slot0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818) *Row_
 	c.__prop___p0 = __a___p0
 	c.open = true
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = map[string]*Card__slot2Instance{}
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	c.__slot2 = nil
-	c.__slot3 = nil
 	__n7 := fynelayout.NewHBox()
 	c.__renderSlot1(__n7)
 	c.Root = __n7
@@ -971,29 +929,17 @@ func (m *Model) __n3_visible_handler(__visible bool) {
 
 // Card__slot3Instance is one live instance of the Card__slot3 component.
 type Card__slot3Instance struct {
-	Root       gtk4rt.Handle
-	__model    *Model
-	hits       int
-	__root     gtk4rt.Handle
-	__slot0    []gtk4rt.Handle
-	__slot0_at gtk4rt.Handle
-	__slot1    []gtk4rt.Handle
-	__slot1_at gtk4rt.Handle
-	__slot2    []gtk4rt.Handle
-	__slot2_at gtk4rt.Handle
-	__slot3    []gtk4rt.Handle
-	__slot3_at gtk4rt.Handle
-	__n0       gtk4rt.Handle
+	Root    gtk4rt.Handle
+	__model *Model
+	hits    int
+	__root  gtk4rt.Handle
+	__n0    gtk4rt.Handle
 }
 
 func newCard__slot3Instance(__model *Model) *Card__slot3Instance {
 	c := &Card__slot3Instance{}
 	c.__model = __model
 	c.hits = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	__n11 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n11, 1)
 	gtk4rt.SetLook(__n11, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1021,18 +967,6 @@ func (c *Card__slot3Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
 }
 
 // Card__slot2Instance is one live instance of the Card__slot2 component.
@@ -1042,14 +976,6 @@ type Card__slot2Instance struct {
 	__prop___p0 __anon_id_elem_c6a818
 	hits        int
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
-	__slot2     []gtk4rt.Handle
-	__slot2_at  gtk4rt.Handle
-	__slot3     []gtk4rt.Handle
-	__slot3_at  gtk4rt.Handle
 	__n1        gtk4rt.Handle
 	__n2        gtk4rt.Handle
 }
@@ -1059,10 +985,6 @@ func newCard__slot2Instance(__model *Model, __a___p0 __anon_id_elem_c6a818) *Car
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.hits = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	__n13 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n13, 1)
 	gtk4rt.SetLook(__n13, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1093,18 +1015,6 @@ func (c *Card__slot2Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
 }
 
 // Row__slot1Instance is one live instance of the Row__slot1 component.
@@ -1118,12 +1028,6 @@ type Row__slot1Instance struct {
 	__inst0_live   map[string]*Card__slot3Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
 }
 
 func newRow__slot1Instance(__model *Model) *Row__slot1Instance {
@@ -1134,9 +1038,6 @@ func newRow__slot1Instance(__model *Model) *Row__slot1Instance {
 	c.__inst0_live = map[string]*Card__slot3Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	__n5 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n5, 0)
 	gtk4rt.SetLook(__n5, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1229,15 +1130,6 @@ func (c *Row__slot1Instance) Destroy() {
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
 	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
 }
 
 // Row__slot0Instance is one live instance of the Row__slot0 component.
@@ -1247,17 +1139,11 @@ type Row__slot0Instance struct {
 	__prop___p0    __anon_id_elem_c6a818
 	open           bool
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   map[string]*Card__slot2Instance
 	__rendering1   bool
 	__renderAgain1 bool
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
 }
 
 func newRow__slot0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818) *Row__slot0Instance {
@@ -1265,13 +1151,10 @@ func newRow__slot0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818) *Row_
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.open = true
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = map[string]*Card__slot2Instance{}
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	c.__slot2 = nil
-	c.__slot3 = nil
 	__n7 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n7, 0)
 	gtk4rt.SetLook(__n7, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1369,17 +1252,8 @@ func (c *Row__slot0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 	if c.__slot1_at != nil {
 		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
 	}
 }
 
@@ -1500,10 +1374,6 @@ body { font-family: system-ui, sans-serif; }
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let hits = 0;
-    let __slot0 = [];
-    let __slot1 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     let __n11 = document.createElement("div");
     __n11.setAttribute("style", "display:flex;flex-direction:column");
     let __n12 = document.createElement("button");
@@ -1541,10 +1411,6 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     let hits = 0;
-    let __slot0 = [];
-    let __slot1 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n2.textContent = "ALPHA " + __prop___p0.elem;
@@ -1582,9 +1448,6 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_live = /* @__PURE__ */ new Map([]);
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot1 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     function __renderSlot0(parent) {
       if (__rendering0) {
         __renderAgain0 = true;
@@ -1672,13 +1535,10 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     let open = true;
-    let __slot0 = [];
     let __slot1 = [];
     let __inst3_live = /* @__PURE__ */ new Map([]);
     let __rendering1 = false;
     let __renderAgain1 = false;
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       for (const [__inst3_live_uk, __inst3_live_uv] of __inst3_live.entries()) {
@@ -1911,8 +1771,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:e659fa65e3c1b90d56c418474f5ced47
+pass sha256:2123c81c2c124dd4c50871b169ba2861
 -- run/go/gtk4 --
-pass sha256:cf372616d3f5764a861b80f8ee24883d
+pass sha256:4cf94952f9bbc2185e4566bc9e9d9864
 -- run/none/html --
-pass sha256:865df1f840da13f3fd935bf922731043
+pass sha256:c060e7e85267acce219bde18bb7dd059

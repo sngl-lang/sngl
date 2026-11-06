@@ -803,8 +803,6 @@ type BadgeInstance struct {
 	__prop_label string
 	hits         int
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
 	hit          *fynelayout.Button
 }
 
@@ -814,7 +812,6 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__prop_label = __a_label
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.hit = fynelayout.NewButton("", nil)
 	c.hit.SetText(((("hit " + c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 	c.hit.OnTapped = func() {
@@ -1003,8 +1000,6 @@ type BadgeInstance struct {
 	__prop_label string
 	hits         int
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
 	hit          gtk4rt.Handle
 }
 
@@ -1013,7 +1008,6 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.hits = 0
-	c.__slot0 = nil
 	c.hit = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.hit, ((("hit " + c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 	gtk4rt.SetBool(c.hit, "can-focus", true)
@@ -1036,9 +1030,6 @@ func (c *BadgeInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1409,7 +1400,6 @@ window.__sngl_boot = () => {
     let label = props.label ?? "";
     let __prop_label = label;
     let hits = 0;
-    let __slot02 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n0.textContent = "hit " + __prop_label + " " + String(hits);
@@ -1529,10 +1519,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:ab9ace5350c4b80845c4a43e351a7863
 -- run/go/fyne --
-pass sha256:96534418c696ebb0e7d04a338b5145f3
+pass sha256:63fd8e8733a3f90fd8b52ea9b1f931d4
 -- run/go/gtk4 --
-pass sha256:ea265a346120d3af2cc22ca98e47b5c0
+pass sha256:29d5f3d492359f9acca27ae4a66762f3
 -- run/kotlin/android --
 pass sha256:52d67535bff010b52721e3a156cd073a
 -- run/none/html --
-pass sha256:88d6341b387773e6cc08d935a1c57a84
+pass sha256:44abae7a0b86abbb7becf3e5ad463bea

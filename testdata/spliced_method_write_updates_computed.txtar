@@ -410,8 +410,6 @@ type Row__slot0Instance struct {
 	__effects1_torn     bool
 	__effects1_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 	__n0                *widget.Label
 	__n1                *widget.Label
 }
@@ -429,7 +427,6 @@ func newRow__slot0Instance(__model *Model, __a_label string, __a___p0 __anon_id_
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	__n6 := fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(c.summary())
@@ -771,8 +768,6 @@ type Row__slot0Instance struct {
 	__effects1_torn     bool
 	__effects1_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 	__n1                gtk4rt.Handle
 }
@@ -789,7 +784,6 @@ func newRow__slot0Instance(__model *Model, __a_label string, __a___p0 __anon_id_
 	c.__effects1_pending = false
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
-	c.__slot0 = nil
 	__n6 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n6, 1)
 	gtk4rt.SetLook(__n6, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -874,9 +868,6 @@ func (c *Row__slot0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1044,7 +1035,6 @@ body { font-family: system-ui, sans-serif; }
     let __effects1_pending = false;
     let __effects1_torn = false;
     let __effects1_steps = 0;
-    let __slot02 = [];
     function mark(n) {
       marks = marks + n;
       __n0.textContent = summary();
@@ -1244,8 +1234,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:ad3821b84e06b824ee568353e1189dd0
+pass sha256:10987e300ef6905e87a613034b40e321
 -- run/go/gtk4 --
-pass sha256:9b2d4e8c0ce68574a9b787550bd5313f
+pass sha256:5ce631b154a788a1c4f8cb701634511f
 -- run/none/html --
-pass sha256:394debe6302ad713b11bccb07e55ff3b
+pass sha256:75878f1aa33139377a8d49f7d3b0ca9a

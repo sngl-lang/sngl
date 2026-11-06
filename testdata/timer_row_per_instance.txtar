@@ -125,7 +125,6 @@ body { font-family: system-ui, sans-serif; }
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
     function __effect0_mount() {
       handle = setInterval(() => {
         __prop_tick();
@@ -307,4 +306,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4dccf0846d7d8acd5258547271fc4840
+pass sha256:67bf74c57d36ea3c26a9d7b6714bf9c0

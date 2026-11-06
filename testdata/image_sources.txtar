@@ -1060,8 +1060,6 @@ type __child0Instance struct {
 	__slot0_at     fyne.CanvasObject
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 	__n3           *fynelayout.Image
 	__n3__box      *fynelayout.Box
 }
@@ -1076,7 +1074,6 @@ func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___o
 	c.__slot0 = nil
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n3 = fynelayout.NewImage()
 	c.__n3__box = fynelayout.NewBox(c.__n3)
 	c.__n3.SetFit("cover")
@@ -1822,10 +1819,6 @@ type __remote_state1Instance struct {
 	__effects1_torn     bool
 	__effects1_steps    int
 	__root              *C.GtkBox
-	__slot0             []*C.GtkWidget
-	__slot0_at          *C.GtkWidget
-	__slot1             []*C.GtkWidget
-	__slot1_at          *C.GtkWidget
 	__n0                *C.GtkPicture
 }
 
@@ -1842,8 +1835,6 @@ func new__remote_state1Instance(__model *Model, __a_url string) *__remote_state1
 	c.__effects1_pending = false
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n0 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.picture__inst4)
 	__snglMountAfterBuild(c.__effects1_settle)
@@ -1936,12 +1927,6 @@ func (c *__remote_state1Instance) Destroy() {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
-	}
-	if c.__slot1_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot1_at)))
-	}
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -1957,8 +1942,6 @@ type __child0Instance struct {
 	__inst0_live   []*__remote_state1Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []*C.GtkWidget
-	__slot1_at     *C.GtkWidget
 	__n5           *C.GtkBox
 }
 
@@ -1972,7 +1955,6 @@ func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___o
 	c.__inst0_live = []*__remote_state1Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n5 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
 	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(c.__n5)), "cover")
 	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(c.__n5)), gtk4rt.Look{Css: "border-radius: 20px; ", Width: 40.0, Height: 40.0})
@@ -2070,9 +2052,6 @@ func (c *__child0Instance) Destroy() {
 	}
 	if c.__slot0_at != nil {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
-	}
-	if c.__slot1_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot1_at)))
 	}
 }
 
@@ -2990,7 +2969,6 @@ body { font-family: system-ui, sans-serif; }
     let __slot0 = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __renderSlot0(__slotAnchor_0);
@@ -3273,10 +3251,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:90e83063ffa8768195474e917c45778d
 -- run/go/fyne --
-pass sha256:3bd8e839520413f4799ee82f561f740e
+pass sha256:46b0d9c399a635f8e566000346768e50
 -- run/go/gtk4 --
-pass sha256:5b106e3f075ece94bead98d9b6c66d64
+pass sha256:0d5645853c04ea32eeed6da054d0cb5f
 -- run/kotlin/android --
 pass sha256:9164c4affdd04c825ec35937d1b533d2
 -- run/none/html --
-pass sha256:491c8320eab3e882774d35c4c6925147
+pass sha256:a3ffac96acdc9b2a59d5dbcfd8a83b66

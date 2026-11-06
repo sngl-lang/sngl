@@ -947,8 +947,6 @@ type CardInstance struct {
 	__prop_pick  func(int, string)
 	clicks       int
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
 	__n0         *fynelayout.Button
 }
 
@@ -959,7 +957,6 @@ func newCardInstance(__model *Model, __a_label string, __a_pick func(int, string
 	c.__prop_pick = __a_pick
 	c.clicks = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(c.__prop_label)
 	c.__n0.OnTapped = func() {
@@ -1175,8 +1172,6 @@ type CardInstance struct {
 	__prop_pick  func(int, string)
 	clicks       int
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
 	__n0         gtk4rt.Handle
 }
 
@@ -1186,7 +1181,6 @@ func newCardInstance(__model *Model, __a_label string, __a_pick func(int, string
 	c.__prop_label = __a_label
 	c.__prop_pick = __a_pick
 	c.clicks = 0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, c.__prop_label)
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
@@ -1212,9 +1206,6 @@ func (c *CardInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1330,7 +1321,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop_label = label;
     let __prop_pick = pick;
     let clicks = 0;
-    let __slot02 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n0.textContent = __prop_label;
@@ -1452,8 +1442,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:6a187c5df9d8f9878402ef31fdb08b4e
 -- run/go/fyne --
-pass sha256:9018c81165fc4b506f07a3b08993339d
+pass sha256:167677abf7faf81b9f305676fefa53f1
 -- run/go/gtk4 --
-pass sha256:269084db69763a0d098630efbef6c18c
+pass sha256:e759aac9ee27d11d69dacb19678300ea
 -- run/none/html --
-pass sha256:e791af756085932ed2811add443befd0
+pass sha256:b168036ec1dd6bd4a6bb4691d81e7637

@@ -1435,8 +1435,6 @@ type Stored__intInstance struct {
 	__effects1_torn     bool
 	__effects1_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 	__n0                *widget.Label
 }
 
@@ -1456,7 +1454,6 @@ func newStored__intInstance(__model *Model, __a_text string, __a_value int, __a_
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(c.last)
 	__snglMountAfterBuild(c.__effects1_settle)
@@ -1997,8 +1994,6 @@ type Stored__intInstance struct {
 	__effects1_torn     bool
 	__effects1_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 }
 
@@ -2017,7 +2012,6 @@ func newStored__intInstance(__model *Model, __a_text string, __a_value int, __a_
 	c.__effects1_pending = false
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, c.last)
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
@@ -2103,9 +2097,6 @@ func (c *Stored__intInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -3062,7 +3053,6 @@ window.__sngl_boot = () => {
     let __effects1_pending = false;
     let __effects1_torn = false;
     let __effects1_steps = 0;
-    let __slot02 = [];
     function __effect4_mount() {
       __prop___on_value(readOr__int(__prop_text, __prop_value));
     }
@@ -3519,10 +3509,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:4a83b334c327a919de91c932d18dd0ab
 -- run/go/fyne --
-pass sha256:e5a6aeadac910581a9bc2f4e1bf6f770
+pass sha256:0edb080ef65d13b9439cbae0ea01fc64
 -- run/go/gtk4 --
-pass sha256:d438a7bf3c6371ae83f13816ada454d8
+pass sha256:dd15b98d60232be293a76843becc705d
 -- run/kotlin/android --
 pass sha256:bd7a9c949280dcb4776a2a7983613a84
 -- run/none/html --
-pass sha256:2240a247e6af135543711e228c057b6e
+pass sha256:f1b39b2c71244a844dbd3ed082ed418c

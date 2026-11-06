@@ -1000,8 +1000,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 Shape
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
 	round       *widget.Label
 }
 
@@ -1010,7 +1008,6 @@ func new__child0Instance(__model *Model, __a___p0 Shape) *__child0Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.round = widget.NewLabel("")
 	c.round.SetText(("radius " + fmt.Sprint(c.__prop___p0.Circle)))
 	c.Root = c.round
@@ -1264,8 +1261,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 Shape
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
 	round       gtk4rt.Handle
 }
 
@@ -1273,7 +1268,6 @@ func new__child0Instance(__model *Model, __a___p0 Shape) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
 	c.round = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.round, ("radius " + fmt.Sprint(c.__prop___p0.Circle)))
 	gtk4rt.LabelSetXAlign(c.round, 0.0)
@@ -1291,9 +1285,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1613,7 +1604,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       round.textContent = "radius " + String(__prop___p0.value);
@@ -1728,10 +1718,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:fa04407671de6833fb4e47b71bdcdb5b
 -- run/go/fyne --
-pass sha256:fc8eec43fa93d75dd83dfa2889b3ba22
+pass sha256:9f41255fdb64e063fa19fdc172b572a1
 -- run/go/gtk4 --
-pass sha256:c22fceb5e7605cc6cc11abfa35e23efd
+pass sha256:70df53e69e5a311bf07a5f9de025b088
 -- run/kotlin/android --
 pass sha256:ca61db144d85b2ab45d50f4f92b85c5e
 -- run/none/html --
-pass sha256:cc52f69bb6850ddc76176d786042d5eb
+pass sha256:ed57fa843b774f0fd5cf8cef5d198079

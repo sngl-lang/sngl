@@ -213,7 +213,6 @@ window.__sngl_boot = () => {
     let __effects1_pending = false;
     let __effects1_torn = false;
     let __effects1_steps = 0;
-    let __slot02 = [];
     function __effect3_mount() {
       handle = setInterval(() => {
         __prop_tick();
@@ -571,7 +570,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:c7cbca7940cb7dc23cf395660d1bee3b
+pass sha256:1d0550c84963d9922bd51089be90da24
 -- testrun/html/none/component_timer_schedules.sngl/gated/1 --
 sha256:fd6818c9dc7936292d12d79ce822328d
 {
@@ -593,7 +592,7 @@ sha256:6288b67febab7b2b99eedc09bfc62e71
   ]
 }
 -- testrun/html/none/component_timer_schedules.sngl/row/1 --
-sha256:bfe671cf2f02887ca3d6dc9be6040cc2
+sha256:d79dec2c7f41a031939c3f827ba40a9b
 {
   "results": [
     {

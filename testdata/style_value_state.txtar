@@ -1153,8 +1153,6 @@ type __child0Instance struct {
 	__prop___p0 __anon_id_elem_c6a818
 	__prop___p1 Style
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
 	__n0        *widget.Label
 	__n0__box   *fynelayout.Box
 }
@@ -1165,7 +1163,6 @@ func new__child0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0__box = fynelayout.NewBox(c.__n0)
 	c.__n0.SetText(c.__prop___p0.Elem)
@@ -1678,8 +1675,6 @@ type __child0Instance struct {
 	__prop___p0 __anon_id_elem_c6a818
 	__prop___p1 Style
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
 	__n0        gtk4rt.Handle
 }
 
@@ -1688,7 +1683,6 @@ func new__child0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, c.__prop___p0.Elem)
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
@@ -1712,9 +1706,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -2272,7 +2263,6 @@ body { display: flex; flex-direction: column; }
     let __p1 = props.__p1;
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = __prop___p0.elem;
@@ -2574,10 +2564,10 @@ body { display: flex; flex-direction: column; }
 -- run/go/bubbletea --
 pass sha256:cb4517644c8faa1a07fbf7e0fe73d460
 -- run/go/fyne --
-pass sha256:99dbe82cc79937d80bfdd7273d0cfa48
+pass sha256:e3a23ba15b74786e816f3f2278040af2
 -- run/go/gtk4 --
-pass sha256:7118c92be7effef636a57b914ac86432
+pass sha256:ee23ef1bb1b4848bdfa1aaade1dd6cb6
 -- run/kotlin/android --
 pass sha256:78f512afebfc10add11d12fc211eb0f5
 -- run/none/html --
-pass sha256:44571bde16f90b1e5080c8b1a8a4b58a
+pass sha256:f807ec3f2e74049f15f7da1543592731

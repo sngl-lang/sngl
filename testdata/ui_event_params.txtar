@@ -1411,8 +1411,7 @@ func (m *Model) field_changed_handler() {
 }
 
 func (m *Model) field_activate_handler() {
-	__input_value_wrote1 := gtk4rt.EditableGetText(m.field)
-	m.name = __input_value_wrote1
+	m.name = gtk4rt.EditableGetText(m.field)
 	m.__effects0_settle()
 }
 
@@ -2073,8 +2072,7 @@ window.__sngl_boot = () => {
     __n2.textContent = state.seen;
   });
   $2.addEventListener("change", function(e) {
-    let __input_value_wrote1 = e.currentTarget.value;
-    state.name = __input_value_wrote1;
+    state.name = e.currentTarget.value;
     $2.value = state.name;
   });
   $3.addEventListener("change", function(e) {
@@ -2105,8 +2103,8 @@ pass sha256:8ec24d994775695cfeb8acbb32fcb591
 -- run/go/fyne --
 pass sha256:a383535bc3e69b5522503c95f0ffc8dd
 -- run/go/gtk4 --
-pass sha256:84b60fc022a4c2be7c596ec84d5dd77b
+pass sha256:6761efc8428bbe7dcfa32a97596c9f4c
 -- run/kotlin/android --
 pass sha256:52ab27b0096e8badf59b25f7fc667188
 -- run/none/html --
-pass sha256:f0a2ca96ab66e64180e030f61fedbb63
+pass sha256:b3ac1ab5ae437821e9fa9d32b6265af1

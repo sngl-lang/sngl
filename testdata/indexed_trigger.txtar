@@ -1719,8 +1719,6 @@ type __checkbox_state0Instance struct {
 	__prop_change          func(bool)
 	checked                bool
 	__root                 *fyne.Container
-	__slot0                []fyne.CanvasObject
-	__slot0_at             fyne.CanvasObject
 	box                    *fynelayout.Check
 }
 
@@ -1733,7 +1731,6 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__prop_change = __a_change
 	c.checked = c.__prop___start_checked
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.box = fynelayout.NewCheck("", nil)
 	c.box.SetText(c.__prop_label)
 	c.box.SetChecked(c.checked)
@@ -1789,8 +1786,6 @@ type __input_state1Instance struct {
 	__prop_change        func(string)
 	value                string
 	__root               *fyne.Container
-	__slot0              []fyne.CanvasObject
-	__slot0_at           fyne.CanvasObject
 	field                *fynelayout.Entry
 }
 
@@ -1802,7 +1797,6 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a___c
 	c.__prop_change = __a_change
 	c.value = c.__prop___start_value
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.field = fynelayout.NewEntry()
 	c.field.SetText(c.value)
 	c.field.SetPlaceHolder("")
@@ -2157,8 +2151,6 @@ type __checkbox_state0Instance struct {
 	__prop_change          func(bool)
 	checked                bool
 	__root                 gtk4rt.Handle
-	__slot0                []gtk4rt.Handle
-	__slot0_at             gtk4rt.Handle
 	box                    gtk4rt.Handle
 }
 
@@ -2170,7 +2162,6 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__prop___copy = __a___copy
 	c.__prop_change = __a_change
 	c.checked = c.__prop___start_checked
-	c.__slot0 = nil
 	c.box = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(c.box, c.__prop_label)
 	gtk4rt.CheckButtonSetActive(c.box, c.checked)
@@ -2218,9 +2209,6 @@ func (c *__checkbox_state0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 }
 
 // __input_state1Instance is one live instance of the __input_state1 component.
@@ -2239,8 +2227,6 @@ type __input_state1Instance struct {
 	__effects0_torn      bool
 	__effects0_steps     int
 	__root               gtk4rt.Handle
-	__slot0              []gtk4rt.Handle
-	__slot0_at           gtk4rt.Handle
 	field                gtk4rt.Handle
 }
 
@@ -2258,14 +2244,12 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a___c
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	c.field = gtk4rt.New("GtkEntry")
 	gtk4rt.SetBool(c.field, "can-focus", true)
 	c.__model.__list_field(c.__prop___copy, c.field)
 	gtk4rt.Connect(c.field, "changed", func() {
 		if gtk4rt.EditableGetText(c.field) != c.value {
-			__input_value_wrote0 := gtk4rt.EditableGetText(c.field)
-			c.value = __input_value_wrote0
+			c.value = gtk4rt.EditableGetText(c.field)
 		}
 		c.__effects0_settle()
 	})
@@ -2352,9 +2336,6 @@ func (c *__input_state1Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -2987,7 +2968,6 @@ window.__sngl_boot = () => {
     let __prop___copy = __copy;
     let __prop_change = change;
     let checked = __prop___start_checked;
-    let __slot02 = [];
     function __set___start_checked(__v) {
       __prop___start_checked = __v;
     }
@@ -3042,7 +3022,6 @@ window.__sngl_boot = () => {
     let __prop___copy = __copy;
     let __prop_change = change;
     let value = __prop___start_value;
-    let __slot02 = [];
     function __set___start_value(__v) {
       __prop___start_value = __v;
     }
@@ -3062,8 +3041,7 @@ window.__sngl_boot = () => {
     field.setAttribute("placeholder", "");
     field.setAttribute("data-sngl-copy", __prop___copy);
     field.addEventListener("input", (e) => {
-      let __input_value_wrote0 = e.currentTarget.value;
-      value = __input_value_wrote0;
+      value = e.currentTarget.value;
       field.value = value;
     });
     field.addEventListener("change", (e) => {
@@ -3092,7 +3070,6 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       tap.setAttribute("data-sngl-copy", String(__prop___p0));
@@ -3316,10 +3293,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:e70063c1c22d542ab4599f30c338bb7f
 -- run/go/fyne --
-pass sha256:0eed587be68d76bf904421ee764bee10
+pass sha256:633c148131018c927ca488809667f1ff
 -- run/go/gtk4 --
-pass sha256:5d4ac3b4eada9cff0998e65d75e21670
+pass sha256:f205744145c371f831819a8d4a6a1387
 -- run/kotlin/android --
 pass sha256:95e5169a22ee0986a1c5c5cc1bc40213
 -- run/none/html --
-pass sha256:21c0a209da5d268345bf28f999c9f99b
+pass sha256:6fcc4d08b9e279b07750505dd16f2d6c

@@ -263,8 +263,6 @@ type RowInstance struct {
 	value__inst1 string
 	value__inst2 string
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
 	__n0         *fynelayout.Entry
 	__n1         *fynelayout.Entry
 	__n2         *widget.Label
@@ -278,7 +276,6 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.value__inst1 = ""
 	c.value__inst2 = ""
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	__n7 := fynelayout.NewVBox()
 	c.__n0 = fynelayout.NewEntry()
 	c.__n0.SetText(c.value__inst1)
@@ -587,8 +584,7 @@ func (m *Model) __snglTeardown() {
 
 func (m *Model) entry_changed_handler() {
 	if gtk4rt.EditableGetText(m.entry) != m.value__inst0 {
-		__input_value_wrote0 := gtk4rt.EditableGetText(m.entry)
-		m.value__inst0 = __input_value_wrote0
+		m.value__inst0 = gtk4rt.EditableGetText(m.entry)
 	}
 	m.__effects1_settle()
 }
@@ -620,8 +616,6 @@ type RowInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 	entry               gtk4rt.Handle
 	entry__1            gtk4rt.Handle
 	__n0                gtk4rt.Handle
@@ -644,7 +638,6 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	__n4 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n4, 1)
 	gtk4rt.SetLook(__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -652,8 +645,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.SetBool(c.entry, "can-focus", true)
 	gtk4rt.Connect(c.entry, "changed", func() {
 		if gtk4rt.EditableGetText(c.entry) != c.value__inst1 {
-			__input_value_wrote0 := gtk4rt.EditableGetText(c.entry)
-			c.value__inst1 = __input_value_wrote0
+			c.value__inst1 = gtk4rt.EditableGetText(c.entry)
 		}
 		c.__effects0_settle()
 	})
@@ -669,8 +661,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.SetBool(c.entry__1, "can-focus", true)
 	gtk4rt.Connect(c.entry__1, "changed", func() {
 		if gtk4rt.EditableGetText(c.entry__1) != c.value__inst2 {
-			__textarea_value_wrote0 := gtk4rt.EditableGetText(c.entry__1)
-			c.value__inst2 = __textarea_value_wrote0
+			c.value__inst2 = gtk4rt.EditableGetText(c.entry__1)
 		}
 		c.__effects0_settle()
 	})
@@ -778,9 +769,6 @@ func (c *RowInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -892,6 +880,6 @@ func (m *Model) entry__1Change(v string) {
 	gtk4rt.Emit(m.__named_entry__1, "activate")
 }
 -- run/go/fyne --
-pass sha256:b8e653d4efd6ad006768bbb7f22bb174
+pass sha256:a4b29e77c259284a4e59dd759d6dd99a
 -- run/go/gtk4 --
-pass sha256:12386ee76127fe71445c4d5f17c068d8
+pass sha256:167fbf3f9439b912329a22c94e355cce

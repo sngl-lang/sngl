@@ -406,14 +406,6 @@ window.__sngl_boot = () => {
     let __p1 = props.__p1;
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.value = __prop___p0.label;
@@ -442,14 +434,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.textContent = "[" + String(__prop___p0 * 2) + "]";
@@ -469,14 +453,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n2.textContent = "[" + String(__prop___p0 + 1) + "]";
@@ -496,14 +472,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n3.textContent = "N=" + String(__prop___p0);
@@ -1029,7 +997,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:27ad04118939c576386662e3ab4fe864
+pass sha256:48ee92fa25b8a4e872e0c2cfe4a98d75
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
 sha256:d0361f3ceb5732edd48b4c0a983cbaf4
 {
@@ -1071,7 +1039,7 @@ sha256:a3f3e5ac3a48b43944bc9b7bbf78400e
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/narrowed/1 --
-sha256:c5590a0169d81d5f4d1e670d512478c7
+sha256:35782ed561f27f77e724b5856a2c314c
 {
   "results": [
     {
@@ -1081,7 +1049,7 @@ sha256:c5590a0169d81d5f4d1e670d512478c7
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/picker/1 --
-sha256:a5152a9bb501e666695902f4f6ce21cd
+sha256:097cce6078e51420307bcb4287ad43b2
 {
   "results": [
     {
@@ -1091,7 +1059,7 @@ sha256:a5152a9bb501e666695902f4f6ce21cd
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/slots/1 --
-sha256:5d613e64be78c805c004bbd7c58f70d0
+sha256:418cf5c83629e33209c400bb39f37c7a
 {
   "results": [
     {

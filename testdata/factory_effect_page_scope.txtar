@@ -97,7 +97,6 @@ body { font-family: system-ui, sans-serif; }
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
     function __effect0_mount() {
       log.push("+");
       __n0.textContent = __prop_label + "[" + log.join(",") + "]";
@@ -259,4 +258,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:3cf96e793157102fc7749051622954e0
+pass sha256:1af9c3082c997df77fba140307f055d6

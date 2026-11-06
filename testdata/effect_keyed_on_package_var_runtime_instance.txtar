@@ -1295,10 +1295,6 @@ type GaugeInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
-	__slot1             []fyne.CanvasObject
-	__slot1_at          fyne.CanvasObject
 	shown               *widget.Label
 }
 
@@ -1318,8 +1314,6 @@ func newGaugeInstance(__model *Model, __a___copy string, __a___on_level int) *Ga
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.shown = widget.NewLabel("")
 	c.shown.SetText(fmt.Sprint(c.seen))
 	__snglMountAfterBuild(c.__effects0_settle)
@@ -1718,10 +1712,6 @@ type GaugeInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
-	__slot1             []gtk4rt.Handle
-	__slot1_at          gtk4rt.Handle
 	shown               gtk4rt.Handle
 }
 
@@ -1740,8 +1730,6 @@ func newGaugeInstance(__model *Model, __a___copy string, __a___on_level int) *Ga
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.shown = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.shown, fmt.Sprint(c.seen))
 	gtk4rt.LabelSetXAlign(c.shown, 0.0)
@@ -1832,12 +1820,6 @@ func (c *GaugeInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -2427,8 +2409,6 @@ window.__sngl_boot = () => {
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __effect0_update() {
       seen = __effect0_key;
       shown.textContent = String(seen);
@@ -2668,10 +2648,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:e2795a0a75225ef81e3e880537640667
 -- run/go/fyne --
-pass sha256:53d56f97bcf2373c87b582525defc6d9
+pass sha256:38b6c38e1e530d014ed63900241fc49a
 -- run/go/gtk4 --
-pass sha256:b3d3288e8a7fda14744e560dbb088eb6
+pass sha256:e81e3763baafacee42b720d29e560f6c
 -- run/kotlin/android --
 pass sha256:d8622c469762a6d3b42c97e935bc5480
 -- run/none/html --
-pass sha256:7e40859a33bbf56d1a6cfcce851638d7
+pass sha256:d7a3ee1ece18fe95ec0b2ccf9a55f5aa

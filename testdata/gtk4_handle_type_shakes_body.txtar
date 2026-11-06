@@ -158,8 +158,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) d_daySelected_handler() {
-	__datepicker_value_wrote0 := gtk4rt.CalendarGetDate(m.d)
-	m.value__inst0 = __datepicker_value_wrote0
+	m.value__inst0 = gtk4rt.CalendarGetDate(m.d)
 	m.__effects0_settle()
 }
 
@@ -211,4 +210,4 @@ func (m *Model) dChange(v *time.Time) {
 	gtk4rt.Emit(m.d, "day-selected")
 }
 -- run/go/gtk4 --
-pass sha256:7de2933adecf86fadfbd89db61398a21
+pass sha256:faa7715cfc5adbdb804b606b637829ae

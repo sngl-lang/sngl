@@ -265,8 +265,6 @@ type Frame__slot0Instance struct {
 	__prop___p0 __anon_id_elem_4ccb28
 	hits        int
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
 	__n0        *widget.Label
 	__n4        *canvas.Image
 	__n4Ctx     *snglcanvas.Context
@@ -278,7 +276,6 @@ func newFrame__slot0Instance(__model *Model, __a___p0 __anon_id_elem_4ccb28) *Fr
 	c.__prop___p0 = __a___p0
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	__n3 := fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(("hits " + fmt.Sprint(c.hits)))
@@ -811,8 +808,6 @@ type Frame__slot0Instance struct {
 	__prop___p0 __anon_id_elem_4ccb28
 	hits        int
 	__root      *C.GtkBox
-	__slot0     []*C.GtkWidget
-	__slot0_at  *C.GtkWidget
 	__n0        *C.GtkLabel
 	__n4        *C.GtkDrawingArea
 }
@@ -822,7 +817,6 @@ func newFrame__slot0Instance(__model *Model, __a___p0 __anon_id_elem_4ccb28) *Fr
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.hits = 0
-	c.__slot0 = nil
 	__n3 := (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
 	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(__n3)), 1)
 	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n3)), gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -869,9 +863,6 @@ func (c *Frame__slot0Instance) Destroy() {
 	if c.Root != nil {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
 	}
 }
 
@@ -997,7 +988,6 @@ window.__sngl_boot = () => {
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     let hits = 0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       _snglCanvasDraw(__n4, 40, 40, "", _canvasDraw0);
@@ -1157,8 +1147,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:16e3ce714bbe89094fea79bc2fd7a4e9
+pass sha256:ae2677872fff62a4d36fcbbebbc4cd1e
 -- run/go/gtk4 --
-pass sha256:50993d92f2aac9cfe0f153fd233e18de
+pass sha256:7d7127916f3c2f8838a11693cb49f990
 -- run/none/html --
-pass sha256:2c63431abd9f9121c17e7c18cf22387f
+pass sha256:18d215fdb2feef3d8026f4f6e0951aa9

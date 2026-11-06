@@ -711,16 +711,6 @@ window.__sngl_boot = () => {
     let __prop___copy = __copy;
     let __prop_pick = pick;
     let seen = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
-    let __slot82 = [];
-    let __slot92 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n0.textContent = "pick " + __prop_label + ":" + String(seen);
@@ -767,16 +757,6 @@ window.__sngl_boot = () => {
     let __prop_onpick = onpick;
     let __prop___copy = __copy;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
-    let __slot82 = [];
-    let __slot92 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n1.textContent = "pick " + __prop_label + ":" + String(hits);
@@ -820,16 +800,6 @@ window.__sngl_boot = () => {
     let __prop_label = label;
     let __prop___copy = __copy;
     let n = __prop_start;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
-    let __slot82 = [];
-    let __slot92 = [];
     function __set_label(__v) {
       __prop_label = __v;
       shown__reach6.textContent = "[" + __prop_label + ":" + String(n) + "]";
@@ -872,16 +842,6 @@ window.__sngl_boot = () => {
     let __prop_level = level;
     let __prop___copy = __copy;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
-    let __slot82 = [];
-    let __slot92 = [];
     function __set_level(__v) {
       __prop_level = __v;
       _snglCanvasDraw(cv, 100, 100, "", _canvasDraw0);
@@ -932,16 +892,6 @@ window.__sngl_boot = () => {
     let __prop_label = label;
     let __prop___copy = __copy;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
-    let __slot82 = [];
-    let __slot92 = [];
     function __set_label(__v) {
       __prop_label = __v;
       shown__reach0.textContent = "[" + __prop_label + ":" + String(hits) + "]";
@@ -985,16 +935,6 @@ window.__sngl_boot = () => {
     let __prop_label = label;
     let __prop___copy = __copy;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
-    let __slot82 = [];
-    let __slot92 = [];
     function __set_label(__v) {
       __prop_label = __v;
       shown__reach1.textContent = "[" + __prop_label + ":" + String(hits) + "]";
@@ -1038,16 +978,6 @@ window.__sngl_boot = () => {
     let __prop_label = label;
     let __prop___copy = __copy;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
-    let __slot82 = [];
-    let __slot92 = [];
     function __set_label(__v) {
       __prop_label = __v;
       shown__reach2.textContent = "[" + __prop_label + ":" + String(hits) + "]";
@@ -1091,16 +1021,6 @@ window.__sngl_boot = () => {
     let __prop_label = label;
     let __prop___copy = __copy;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
-    let __slot82 = [];
-    let __slot92 = [];
     function __set_label(__v) {
       __prop_label = __v;
       shown__reach3.textContent = "[" + __prop_label + ":" + String(hits) + "]";
@@ -1144,16 +1064,6 @@ window.__sngl_boot = () => {
     let __prop_label = label;
     let __prop___copy = __copy;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
-    let __slot82 = [];
-    let __slot92 = [];
     function __set_label(__v) {
       __prop_label = __v;
       shown__reach4.textContent = "[" + __prop_label + ":" + String(hits) + "]";
@@ -1195,16 +1105,6 @@ window.__sngl_boot = () => {
     let label = props.label ?? "";
     let __prop_label = label;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
-    let __slot82 = [];
-    let __slot92 = [];
     function __set_label(__v) {
       __prop_label = __v;
       shown__reach5.textContent = "[" + __prop_label + ":" + String(hits) + "]";
@@ -2044,9 +1944,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:221c73e4a40e10955b1986ef93cb5e29
+pass sha256:2a45ceea0159b5644cfb0f91af65d2d2
 -- testrun/html/none/component_browser_runtime.sngl/branch/1 --
-sha256:500a5e324f446f67445d02fbaa882e41
+sha256:d179ae576d7ce3fb388e02abc1014f47
 {
   "results": [
     {
@@ -2056,7 +1956,7 @@ sha256:500a5e324f446f67445d02fbaa882e41
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/callback/1 --
-sha256:411391df07c929a7d7064c7943b2328e
+sha256:207cc216b131b4b1a6ff21e14eb315c3
 {
   "results": [
     {
@@ -2066,7 +1966,7 @@ sha256:411391df07c929a7d7064c7943b2328e
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/duplicates/1 --
-sha256:795be2b892376c6b9090d2f21f665f2e
+sha256:1c144371e3a16b7324034cb506d3246c
 {
   "results": [
     {
@@ -2076,7 +1976,7 @@ sha256:795be2b892376c6b9090d2f21f665f2e
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/events/1 --
-sha256:81504e6a8fb65bbf7fd04b1bcd3e2728
+sha256:0bed06f06e9466ec5ee83fc8e406d081
 {
   "results": [
     {
@@ -2090,7 +1990,7 @@ sha256:81504e6a8fb65bbf7fd04b1bcd3e2728
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/gauges/1 --
-sha256:8aa37e45008aaeb725c5acb7e1b4b910
+sha256:d8d103edb3d6aa1e2045454b3c72d058
 {
   "results": [
     {
@@ -2100,7 +2000,7 @@ sha256:8aa37e45008aaeb725c5acb7e1b4b910
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/growing/1 --
-sha256:b4e8c111d70361130da6e47edc572f60
+sha256:e4462e6a4a8624825f113818a3d18e19
 {
   "results": [
     {
@@ -2110,7 +2010,7 @@ sha256:b4e8c111d70361130da6e47edc572f60
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/keyed/1 --
-sha256:1c3a66a62afdcf9aa8e75f8951d8e6b9
+sha256:b9b554477f247c0dd1a7063a15d57b06
 {
   "results": [
     {
@@ -2120,7 +2020,7 @@ sha256:1c3a66a62afdcf9aa8e75f8951d8e6b9
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/perElement/1 --
-sha256:a9bd9cbc3fc7713390ccc4d361d01792
+sha256:360544d2b03cbb16436f42f6c58dcf04
 {
   "results": [
     {
@@ -2130,7 +2030,7 @@ sha256:a9bd9cbc3fc7713390ccc4d361d01792
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/rebased/1 --
-sha256:883424cb90d4a0e8dad50dd8fc89a24e
+sha256:728808a88f2c261244f2209d2eb94d1a
 {
   "results": [
     {
@@ -2144,7 +2044,7 @@ sha256:883424cb90d4a0e8dad50dd8fc89a24e
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/renamed/1 --
-sha256:429e24e140493d266860a26b1a2bbb7e
+sha256:838e96693c2a08d2c0636d0492b8a006
 {
   "results": [
     {

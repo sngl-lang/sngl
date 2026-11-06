@@ -1374,10 +1374,6 @@ type BadgeInstance struct {
 	__prop_label string
 	hits         int
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
 	hit          *fynelayout.Button
 }
 
@@ -1387,8 +1383,6 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__prop_label = __a_label
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.hit = fynelayout.NewButton("", nil)
 	c.hit.SetText((c.__prop_label + fmt.Sprint(c.hits)))
 	c.hit.OnTapped = func() {
@@ -1414,10 +1408,6 @@ type __child0Instance struct {
 	__prop___p0  int
 	__prop___on0 func()
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
 	k            *fynelayout.Button
 }
 
@@ -1427,8 +1417,6 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.k = fynelayout.NewButton("", nil)
 	c.k.SetText(("mk" + fmt.Sprint(c.__prop___p0)))
 	c.k.OnTapped = func() {
@@ -1461,10 +1449,6 @@ type __child1Instance struct {
 	__prop___p0  int
 	__prop___on0 func()
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
 	k__own0      *fynelayout.Button
 }
 
@@ -1474,8 +1458,6 @@ func new__child1Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.k__own0 = fynelayout.NewButton("", nil)
 	c.k__own0.SetText(("pk" + fmt.Sprint(c.__prop___p0)))
 	c.k__own0.OnTapped = func() {
@@ -1848,10 +1830,6 @@ type BadgeInstance struct {
 	__prop_label string
 	hits         int
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
 	hit          gtk4rt.Handle
 }
 
@@ -1860,8 +1838,6 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.hits = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.hit = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.hit, (c.__prop_label + fmt.Sprint(c.hits)))
 	gtk4rt.SetBool(c.hit, "can-focus", true)
@@ -1885,12 +1861,6 @@ func (c *BadgeInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -1900,10 +1870,6 @@ type __child0Instance struct {
 	__prop___p0  int
 	__prop___on0 func()
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
 	k            gtk4rt.Handle
 }
 
@@ -1912,8 +1878,6 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.k = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.k, ("mk" + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.SetBool(c.k, "can-focus", true)
@@ -1943,12 +1907,6 @@ func (c *__child0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // __child1Instance is one live instance of the __child1 component.
@@ -1958,10 +1916,6 @@ type __child1Instance struct {
 	__prop___p0  int
 	__prop___on0 func()
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
 	k__own0      gtk4rt.Handle
 }
 
@@ -1970,8 +1924,6 @@ func new__child1Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.k__own0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.k__own0, ("pk" + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.SetBool(c.k__own0, "can-focus", true)
@@ -2000,12 +1952,6 @@ func (c *__child1Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -2544,8 +2490,6 @@ window.__sngl_boot = () => {
     let label = props.label ?? "";
     let __prop_label = label;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n0.textContent = __prop_label + String(hits);
@@ -2578,8 +2522,6 @@ window.__sngl_boot = () => {
     });
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.textContent = "mk" + String(__prop___p0);
@@ -2615,8 +2557,6 @@ window.__sngl_boot = () => {
     });
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n2.textContent = "pk" + String(__prop___p0);
@@ -2894,10 +2834,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:5af97c6ec3e84ee19645d725b3d1bd8b
 -- run/go/fyne --
-pass sha256:cd3dc104001c13c73d3f5f3e60f95d30
+pass sha256:e237b5e6c71961fac303c2ddd88b6b6b
 -- run/go/gtk4 --
-pass sha256:860eb0cb1a7d7a8676eadf2a8e4301f9
+pass sha256:70ccc0d1d9fee982f6ebfd83992c876d
 -- run/kotlin/android --
 pass sha256:78135c9e37ac2c2ea5665d57c7b53370
 -- run/none/html --
-pass sha256:7b081a5f335680cf5e1cf36a39c205ef
+pass sha256:53a6ec03eb5b602e81b5f42126d52bf7

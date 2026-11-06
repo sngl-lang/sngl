@@ -99,6 +99,9 @@ var alwaysOn = []string{
 	// A test raises an event the target overrides through that override,
 	// on every target.
 	"EventTriggers",
+	// A write held in a local only the write reads is put back, whatever
+	// the target.
+	"FoldWrites",
 	"ForElse",
 	"ForeignPrimitive",
 	// A function writing a prop through the handle it is handed is inlined

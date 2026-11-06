@@ -972,7 +972,6 @@ body { font-family: system-ui, sans-serif; }
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let taps = 0;
-    let __slot02 = [];
     let __n4 = document.createElement("button");
     __n4.disabled = false;
     __n4.addEventListener("click", () => {
@@ -1083,4 +1082,4 @@ pass sha256:0e658f59e262114112d2fbfe40727f41
 -- run/kotlin/android --
 pass sha256:b76b7e56a1f1e5f7b154456c1244dbcf
 -- run/none/html --
-pass sha256:88c2c7869f6229c15a89ecb8a3776aa8
+pass sha256:135ff3fcc2170961ad949cf63594f5f9

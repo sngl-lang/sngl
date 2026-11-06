@@ -1184,8 +1184,6 @@ type Model struct {
 	skip           string
 	shown          bool
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*__child0Instance
@@ -1200,8 +1198,6 @@ type Model struct {
 	__inst2_live   map[string]*__child1Instance
 	__rendering3   bool
 	__renderAgain3 bool
-	__slot4        []fyne.CanvasObject
-	__slot4_at     fyne.CanvasObject
 
 	__n10       *fyne.Container
 	move        *fynelayout.Button
@@ -1224,8 +1220,6 @@ func New() *Model {
 	m.skip = "b"
 	m.shown = true
 	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst1_live = []*__child0Instance{}
@@ -1240,8 +1234,6 @@ func New() *Model {
 	m.__inst2_live = map[string]*__child1Instance{}
 	m.__rendering3 = false
 	m.__renderAgain3 = false
-	m.__slot4 = nil
-	m.__slot4_at = nil
 	return m
 }
 
@@ -1659,14 +1651,6 @@ type StepInstance struct {
 	__inst0_live   []*StepInstance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
-	__slot4        []fyne.CanvasObject
-	__slot4_at     fyne.CanvasObject
 	__n5           *fyne.Container
 	__n0           *widget.Label
 	__rooted       []fyne.CanvasObject
@@ -1682,10 +1666,6 @@ func newStepInstance(__model *Model, __a_n int, __a___depth int) *StepInstance {
 	c.__inst0_live = []*StepInstance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	c.__n5 = fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(("s" + fmt.Sprint(c.__prop_n)))
@@ -1779,14 +1759,6 @@ type __block_state0Instance struct {
 	__prop___on_skip func(string)
 	local            int
 	__root           *fyne.Container
-	__slot0          []fyne.CanvasObject
-	__slot0_at       fyne.CanvasObject
-	__slot1          []fyne.CanvasObject
-	__slot1_at       fyne.CanvasObject
-	__slot2          []fyne.CanvasObject
-	__slot2_at       fyne.CanvasObject
-	__slot3          []fyne.CanvasObject
-	__slot3_at       fyne.CanvasObject
 	__slot4          []fyne.CanvasObject
 	__slot4_at       fyne.CanvasObject
 	__inst3_live     []*__child2Instance
@@ -1805,10 +1777,6 @@ func new__block_state0Instance(__model *Model, __a_n string, __a_skip string, __
 	c.__prop___on_skip = __a___on_skip
 	c.local = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__inst3_live = []*__child2Instance{}
 	c.__inst4_live = []*__child4Instance{}
@@ -1994,16 +1962,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 string
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
-	__slot2     []fyne.CanvasObject
-	__slot2_at  fyne.CanvasObject
-	__slot3     []fyne.CanvasObject
-	__slot3_at  fyne.CanvasObject
-	__slot4     []fyne.CanvasObject
-	__slot4_at  fyne.CanvasObject
 	one         *widget.Label
 }
 
@@ -2012,11 +1970,6 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	c.one = widget.NewLabel("")
 	c.one.SetText(c.__prop___p0)
 	c.Root = c.one
@@ -2038,16 +1991,6 @@ type __child1Instance struct {
 	__prop___p1  string
 	__prop___on0 func(string)
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
-	__slot2      []fyne.CanvasObject
-	__slot2_at   fyne.CanvasObject
-	__slot3      []fyne.CanvasObject
-	__slot3_at   fyne.CanvasObject
-	__slot4      []fyne.CanvasObject
-	__slot4_at   fyne.CanvasObject
 	__n2         *__block_state0Instance
 }
 
@@ -2058,11 +2001,6 @@ func new__child1Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 	c.__prop___p1 = __a___p1
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	__n15 := fynelayout.NewVBox()
 	c.__n2 = new__block_state0Instance(c.__model, c.__prop___p0.Elem, c.__prop___p1, func(__on0_0 string) {
 		c.__prop___on0(__on0_0)
@@ -2097,16 +2035,6 @@ type __child2Instance struct {
 	__model     *Model
 	__prop___p0 string
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
-	__slot2     []fyne.CanvasObject
-	__slot2_at  fyne.CanvasObject
-	__slot3     []fyne.CanvasObject
-	__slot3_at  fyne.CanvasObject
-	__slot4     []fyne.CanvasObject
-	__slot4_at  fyne.CanvasObject
 	__n3        *widget.Label
 }
 
@@ -2115,11 +2043,6 @@ func new__child2Instance(__model *Model, __a___p0 string) *__child2Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	c.__n3 = widget.NewLabel("")
 	c.__n3.SetText(c.__prop___p0)
 	c.Root = c.__n3
@@ -2140,16 +2063,6 @@ type __child3Instance struct {
 	__prop___p0 string
 	__prop___p1 __anon_id_elem_cdfd47
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
-	__slot2     []fyne.CanvasObject
-	__slot2_at  fyne.CanvasObject
-	__slot3     []fyne.CanvasObject
-	__slot3_at  fyne.CanvasObject
-	__slot4     []fyne.CanvasObject
-	__slot4_at  fyne.CanvasObject
 	f           *widget.Label
 }
 
@@ -2159,11 +2072,6 @@ func new__child3Instance(__model *Model, __a___p0 string, __a___p1 __anon_id_ele
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	c.f = widget.NewLabel("")
 	c.f.SetText((c.__prop___p0 + fmt.Sprint(c.__prop___p1.Elem)))
 	c.Root = c.f
@@ -2188,16 +2096,6 @@ type __child4Instance struct {
 	__model     *Model
 	__prop___p0 string
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
-	__slot2     []fyne.CanvasObject
-	__slot2_at  fyne.CanvasObject
-	__slot3     []fyne.CanvasObject
-	__slot3_at  fyne.CanvasObject
-	__slot4     []fyne.CanvasObject
-	__slot4_at  fyne.CanvasObject
 	e           *widget.Label
 }
 
@@ -2206,11 +2104,6 @@ func new__child4Instance(__model *Model, __a___p0 string) *__child4Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	c.e = widget.NewLabel("")
 	c.e.SetText(c.__prop___p0)
 	c.Root = c.e
@@ -2329,8 +2222,6 @@ type Model struct {
 	skip           string
 	shown          bool
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*__child0Instance
@@ -2345,8 +2236,6 @@ type Model struct {
 	__inst2_live   map[string]*__child1Instance
 	__rendering3   bool
 	__renderAgain3 bool
-	__slot4        []gtk4rt.Handle
-	__slot4_at     gtk4rt.Handle
 	__n10          gtk4rt.Handle
 	move           gtk4rt.Handle
 	hide           gtk4rt.Handle
@@ -2365,8 +2254,6 @@ func New() *Model {
 	m.skip = "b"
 	m.shown = true
 	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst1_live = []*__child0Instance{}
@@ -2381,8 +2268,6 @@ func New() *Model {
 	m.__inst2_live = map[string]*__child1Instance{}
 	m.__rendering3 = false
 	m.__renderAgain3 = false
-	m.__slot4 = nil
-	m.__slot4_at = nil
 	return m
 }
 
@@ -2657,14 +2542,6 @@ type StepInstance struct {
 	__inst0_live   []*StepInstance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
-	__slot4        []gtk4rt.Handle
-	__slot4_at     gtk4rt.Handle
 	__n5           gtk4rt.Handle
 	__n0           gtk4rt.Handle
 	__rooted       []gtk4rt.Handle
@@ -2679,10 +2556,6 @@ func newStepInstance(__model *Model, __a_n int, __a___depth int) *StepInstance {
 	c.__inst0_live = []*StepInstance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	c.__n5 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n5, 1)
 	gtk4rt.SetLook(c.__n5, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -2780,18 +2653,6 @@ func (c *StepInstance) Destroy() {
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
 	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
-	}
 }
 
 // __block_state0Instance is one live instance of the __block_state0 component.
@@ -2803,14 +2664,6 @@ type __block_state0Instance struct {
 	__prop___on_skip func(string)
 	local            int
 	__root           gtk4rt.Handle
-	__slot0          []gtk4rt.Handle
-	__slot0_at       gtk4rt.Handle
-	__slot1          []gtk4rt.Handle
-	__slot1_at       gtk4rt.Handle
-	__slot2          []gtk4rt.Handle
-	__slot2_at       gtk4rt.Handle
-	__slot3          []gtk4rt.Handle
-	__slot3_at       gtk4rt.Handle
 	__slot4          []gtk4rt.Handle
 	__slot4_at       gtk4rt.Handle
 	__inst3_live     []*__child2Instance
@@ -2829,10 +2682,6 @@ func new__block_state0Instance(__model *Model, __a_n string, __a_skip string, __
 	c.__prop___on_skip = __a___on_skip
 	c.local = 0
 	c.__root = gtk4rt.ContentsNew()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__inst3_live = []*__child2Instance{}
 	c.__inst4_live = []*__child4Instance{}
@@ -3021,18 +2870,6 @@ func (c *__block_state0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
 	if c.__slot4_at != nil {
 		gtk4rt.Release(c.__slot4_at)
 	}
@@ -3044,16 +2881,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 string
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
-	__slot2     []gtk4rt.Handle
-	__slot2_at  gtk4rt.Handle
-	__slot3     []gtk4rt.Handle
-	__slot3_at  gtk4rt.Handle
-	__slot4     []gtk4rt.Handle
-	__slot4_at  gtk4rt.Handle
 	one         gtk4rt.Handle
 }
 
@@ -3061,11 +2888,6 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	c.one = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.one, c.__prop___p0)
 	gtk4rt.LabelSetXAlign(c.one, 0.0)
@@ -3084,21 +2906,6 @@ func (c *__child0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
-	}
 }
 
 // __child1Instance is one live instance of the __child1 component.
@@ -3109,16 +2916,6 @@ type __child1Instance struct {
 	__prop___p1  string
 	__prop___on0 func(string)
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
-	__slot2      []gtk4rt.Handle
-	__slot2_at   gtk4rt.Handle
-	__slot3      []gtk4rt.Handle
-	__slot3_at   gtk4rt.Handle
-	__slot4      []gtk4rt.Handle
-	__slot4_at   gtk4rt.Handle
 	__n2         *__block_state0Instance
 }
 
@@ -3128,11 +2925,6 @@ func new__child1Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__prop___on0 = __a___on0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	__n15 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n15, 1)
 	gtk4rt.SetLook(__n15, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -3170,21 +2962,6 @@ func (c *__child1Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
-	}
 }
 
 // __child2Instance is one live instance of the __child2 component.
@@ -3193,16 +2970,6 @@ type __child2Instance struct {
 	__model     *Model
 	__prop___p0 string
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
-	__slot2     []gtk4rt.Handle
-	__slot2_at  gtk4rt.Handle
-	__slot3     []gtk4rt.Handle
-	__slot3_at  gtk4rt.Handle
-	__slot4     []gtk4rt.Handle
-	__slot4_at  gtk4rt.Handle
 	__n3        gtk4rt.Handle
 }
 
@@ -3210,11 +2977,6 @@ func new__child2Instance(__model *Model, __a___p0 string) *__child2Instance {
 	c := &__child2Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	c.__n3 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n3, c.__prop___p0)
 	gtk4rt.LabelSetXAlign(c.__n3, 0.0)
@@ -3233,21 +2995,6 @@ func (c *__child2Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
-	}
 }
 
 // __child3Instance is one live instance of the __child3 component.
@@ -3257,16 +3004,6 @@ type __child3Instance struct {
 	__prop___p0 string
 	__prop___p1 __anon_id_elem_cdfd47
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
-	__slot2     []gtk4rt.Handle
-	__slot2_at  gtk4rt.Handle
-	__slot3     []gtk4rt.Handle
-	__slot3_at  gtk4rt.Handle
-	__slot4     []gtk4rt.Handle
-	__slot4_at  gtk4rt.Handle
 	f           gtk4rt.Handle
 }
 
@@ -3275,11 +3012,6 @@ func new__child3Instance(__model *Model, __a___p0 string, __a___p1 __anon_id_ele
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	c.f = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.f, (c.__prop___p0 + fmt.Sprint(c.__prop___p1.Elem)))
 	gtk4rt.LabelSetXAlign(c.f, 0.0)
@@ -3303,21 +3035,6 @@ func (c *__child3Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
-	}
 }
 
 // __child4Instance is one live instance of the __child4 component.
@@ -3326,16 +3043,6 @@ type __child4Instance struct {
 	__model     *Model
 	__prop___p0 string
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
-	__slot2     []gtk4rt.Handle
-	__slot2_at  gtk4rt.Handle
-	__slot3     []gtk4rt.Handle
-	__slot3_at  gtk4rt.Handle
-	__slot4     []gtk4rt.Handle
-	__slot4_at  gtk4rt.Handle
 	e           gtk4rt.Handle
 }
 
@@ -3343,11 +3050,6 @@ func new__child4Instance(__model *Model, __a___p0 string) *__child4Instance {
 	c := &__child4Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	c.e = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.e, c.__prop___p0)
 	gtk4rt.LabelSetXAlign(c.e, 0.0)
@@ -3365,21 +3067,6 @@ func (c *__child4Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
 	}
 }
 
@@ -4081,14 +3768,10 @@ window.__sngl_boot = () => {
     let __depth = props.__depth ?? 0;
     let __prop_n = n;
     let __prop___depth = __depth;
-    let __slot02 = [];
+    let __slot0 = [];
     let __inst1_live = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
     function __set_n(__v) {
       __prop_n = __v;
       __n0.textContent = "s" + String(__prop_n);
@@ -4107,9 +3790,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain0) {
             __renderAgain0 = false;
-            let __place0_prev = __slot02;
+            let __place0_prev = __slot0;
             let __place0_i = 0;
-            __slot02 = [];
+            __slot0 = [];
             let __inst1_next = [];
             let __inst1_i = 0;
             if (__prop_n > 0) {
@@ -4140,7 +3823,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n4__el, __place0_i_ref0);
                 }
-                __slot02.push(__n4__el);
+                __slot0.push(__n4__el);
               }
             }
             for (const [__inst1_i_d, _] of __inst1_live.entries()) {
@@ -4151,7 +3834,7 @@ window.__sngl_boot = () => {
             }
             __inst1_live = __inst1_next;
             for (const __place0_prev_e of __place0_prev) {
-              if (__slot02.indexOf(__place0_prev_e) < 0) {
+              if (__slot0.indexOf(__place0_prev_e) < 0) {
                 parent.removeChild(__place0_prev_e);
               }
             }
@@ -4198,11 +3881,7 @@ window.__sngl_boot = () => {
     let __prop_skip = skip;
     let __prop___on_skip = __on_skip;
     let local = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
+    let __slot4 = [];
     let __inst9_live = [];
     let __inst10_live = [];
     let __inst11_live = /* @__PURE__ */ new Map([]);
@@ -4231,9 +3910,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain4) {
             __renderAgain4 = false;
-            let __place8_prev = __slot42;
+            let __place8_prev = __slot4;
             let __place8_i = 0;
-            __slot42 = [];
+            __slot4 = [];
             let __inst9_next = [];
             let __inst9_i = 0;
             let __inst10_next = [];
@@ -4264,7 +3943,7 @@ window.__sngl_boot = () => {
               } else {
                 parent.insertBefore(__n12__el, __place8_i_ref0);
               }
-              __slot42.push(__n12__el);
+              __slot4.push(__n12__el);
               if (__prop_n === "a") {
                 let __n13 = null;
                 if (__inst10_live.length > __inst10_i) {
@@ -4289,7 +3968,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n13__el, __place8_i_ref1);
                 }
-                __slot42.push(__n13__el);
+                __slot4.push(__n13__el);
               } else {
                 let __n14 = document.createElement("span");
                 __n14.textContent = "z";
@@ -4302,7 +3981,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n14, __place8_i_ref2);
                 }
-                __slot42.push(__n14);
+                __slot4.push(__n14);
               }
               for (const i of [{ id: "1", elem: 1 }, { id: "2", elem: 2 }]) {
                 let __n15 = null;
@@ -4334,7 +4013,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n15__el, __place8_i_ref3);
                 }
-                __slot42.push(__n15__el);
+                __slot4.push(__n15__el);
               }
             }
             for (const [__inst9_i_d, _] of __inst9_live.entries()) {
@@ -4358,7 +4037,7 @@ window.__sngl_boot = () => {
             }
             __inst11_live = __inst11_next;
             for (const __place8_prev_e of __place8_prev) {
-              if (__slot42.indexOf(__place8_prev_e) < 0) {
+              if (__slot4.indexOf(__place8_prev_e) < 0) {
                 parent.removeChild(__place8_prev_e);
               }
             }
@@ -4406,11 +4085,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       one.textContent = __prop___p0;
@@ -4436,11 +4110,6 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n2.__set_n(__prop___p0.elem);
@@ -4474,11 +4143,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n3.textContent = __prop___p0;
@@ -4500,11 +4164,6 @@ window.__sngl_boot = () => {
     let __p1 = props.__p1;
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       f.textContent = __prop___p0 + String(__prop___p1.elem);
@@ -4530,11 +4189,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       e.textContent = __prop___p0;
@@ -4555,11 +4209,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       p.textContent = __prop___p0.elem;
@@ -4575,7 +4224,6 @@ window.__sngl_boot = () => {
       __set___p0
     };
   }
-  var __slot0 = [];
   var __slot1 = [];
   var __inst3_live = [];
   var __rendering1 = false;
@@ -4588,7 +4236,6 @@ window.__sngl_boot = () => {
   var __inst7_live = /* @__PURE__ */ new Map([]);
   var __rendering3 = false;
   var __renderAgain3 = false;
-  var __slot4 = [];
   function __renderSlot1(parent) {
     if (__rendering1) {
       __renderAgain1 = true;
@@ -4884,10 +4531,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:293df1cceb7df84d1ebd29a528b0dc21
 -- run/go/fyne --
-pass sha256:661262c2af7f0c234b6eea7e70277bbf
+pass sha256:38141ecdf994568fe70186f68cebd9df
 -- run/go/gtk4 --
-pass sha256:b3b6d1b4090df1481893f44b7da5bc6f
+pass sha256:381b989f7e660ccea31a4cd6caae3557
 -- run/kotlin/android --
 pass sha256:d745ac13c27d817281e484cde63fa6ad
 -- run/none/html --
-pass sha256:8c9bd8dac9f5ae1050f4af73a95d223f
+pass sha256:7f923d1facebdff8433e384fd7930423

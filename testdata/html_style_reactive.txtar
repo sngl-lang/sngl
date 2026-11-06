@@ -119,7 +119,6 @@ body { font-family: system-ui, sans-serif; }
     let label = props.label ?? "";
     let __prop_label = label;
     let on = false;
-    let __slot02 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n1.textContent = __prop_label;
@@ -248,4 +247,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ebf8a471134c4112d2be394690e00baf
+pass sha256:251f78481aea6c429fa89e4ff4fb7cd9

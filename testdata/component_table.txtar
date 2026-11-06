@@ -597,8 +597,6 @@ type Model struct {
 	__inst0_live   []*__child0Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -612,8 +610,6 @@ func New() *Model {
 	m.__inst0_live = []*__child0Instance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
 	return m
 }
 
@@ -706,8 +702,6 @@ type __child0Instance struct {
 	__prop___p2    TableRow__record
 	__prop___on0   func(any)
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__rendering1   bool
@@ -723,7 +717,6 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___p1 int, __a___p2 Ta
 	c.__prop___p1 = __a___p1
 	c.__prop___p2 = __a___p2
 	c.__prop___on0 = __a___on0
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__rendering1 = false
 	c.__renderAgain1 = false
@@ -794,9 +787,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 	if c.__slot1_at != nil {
 		gtk4rt.Release(c.__slot1_at)
@@ -1034,7 +1024,7 @@ pass sha256:7ea07444168d946e25c45ed8b24ffcb1
 -- run/go/fyne --
 pass sha256:1384240ba062b0ed0e6c5aa47563e398
 -- run/go/gtk4 --
-pass sha256:68b28120be62aa63dc42a422e202f4ce
+pass sha256:6c9d44fb02e63ab3e5ed0410d7111bd8
 -- run/kotlin/android --
 pass sha256:b8d00e1dd02466a44565cbda93bbde98
 -- run/none/html --

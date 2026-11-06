@@ -1165,8 +1165,6 @@ type HolderInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 	__n0                *widget.Label
 }
 
@@ -1184,7 +1182,6 @@ func newHolderInstance(__model *Model, __a_n int) *HolderInstance {
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(fmt.Sprint(c.label.Fd))
 	__snglMountAfterBuild(c.__effects0_settle)
@@ -1548,8 +1545,6 @@ type HolderInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 }
 
@@ -1566,7 +1561,6 @@ func newHolderInstance(__model *Model, __a_n int) *HolderInstance {
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, fmt.Sprint(c.label.Fd))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
@@ -1659,9 +1653,6 @@ func (c *HolderInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -2250,7 +2241,6 @@ window.__sngl_boot = () => {
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
     function __effect0_unmount() {
       close(label);
     }
@@ -2480,10 +2470,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:6941b1f23c2b538253f683ecf6af764f
 -- run/go/fyne --
-pass sha256:535362f6ec1f9ad3430d467af4d942c2
+pass sha256:b597001571f4a07ab25d4c13b7c5488c
 -- run/go/gtk4 --
-pass sha256:04b6b4a0d734f571d758305f9777c490
+pass sha256:549780894b6bc2dfe31fe850e4fcb0ee
 -- run/kotlin/android --
 pass sha256:08b25ee1055f5e12142e560ec921e029
 -- run/none/html --
-pass sha256:cf7376c73492e779ad6d67b90a22b033
+pass sha256:66a29e391f30474b257e1c70c93d9789

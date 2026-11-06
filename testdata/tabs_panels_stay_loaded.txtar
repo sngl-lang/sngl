@@ -1255,8 +1255,6 @@ type Model struct {
 	__inst0_live   []*__child0Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 
 	strip                  *fynelayout.Tabs
 	__named_press          *fynelayout.Button
@@ -1280,8 +1278,6 @@ func New() *Model {
 	m.__inst0_live = []*__child0Instance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
 	return m
 }
 
@@ -1499,15 +1495,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 
 // CounterInstance is one live instance of the counter component.
 type CounterInstance struct {
-	Root       fyne.CanvasObject
-	__model    *Model
-	hits       int
-	__root     *fyne.Container
-	__slot0    []fyne.CanvasObject
-	__slot0_at fyne.CanvasObject
-	__slot1    []fyne.CanvasObject
-	__slot1_at fyne.CanvasObject
-	press      *fynelayout.Button
+	Root    fyne.CanvasObject
+	__model *Model
+	hits    int
+	__root  *fyne.Container
+	press   *fynelayout.Button
 }
 
 func newCounterInstance(__model *Model) *CounterInstance {
@@ -1515,8 +1507,6 @@ func newCounterInstance(__model *Model) *CounterInstance {
 	c.__model = __model
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.press = fynelayout.NewButton("", nil)
 	c.press.SetText(fmt.Sprint(c.hits))
 	c.press.OnTapped = func() {
@@ -1545,10 +1535,6 @@ type LaterInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
-	__slot1             []fyne.CanvasObject
-	__slot1_at          fyne.CanvasObject
 }
 
 func newLaterInstance(__model *Model) *LaterInstance {
@@ -1561,8 +1547,6 @@ func newLaterInstance(__model *Model) *LaterInstance {
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n3 := widget.NewLabel("")
 	__n3.SetText("later")
 	__snglMountAfterBuild(c.__effects0_settle)
@@ -1624,10 +1608,6 @@ type __block_state0Instance struct {
 	__prop___on_seen func(int)
 	taps             int
 	__root           *fyne.Container
-	__slot0          []fyne.CanvasObject
-	__slot0_at       fyne.CanvasObject
-	__slot1          []fyne.CanvasObject
-	__slot1_at       fyne.CanvasObject
 	tap              *fynelayout.Button
 }
 
@@ -1638,8 +1618,6 @@ func new__block_state0Instance(__model *Model, __a_seen int, __a___on_seen func(
 	c.__prop___on_seen = __a___on_seen
 	c.taps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.tap = fynelayout.NewButton("", nil)
 	c.tap.SetText(fmt.Sprint(c.taps))
 	c.tap.OnTapped = func() {
@@ -1676,8 +1654,6 @@ type __child0Instance struct {
 	__prop___on0   func()
 	__prop___on1   func(int)
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*CounterInstance
@@ -1697,7 +1673,6 @@ func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a
 	c.__prop___on0 = __a___on0
 	c.__prop___on1 = __a___on1
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*CounterInstance{}
 	c.__inst2_live = []*__block_state0Instance{}
@@ -2001,8 +1976,6 @@ type Model struct {
 	__inst0_live           []*__child0Instance
 	__rendering0           bool
 	__renderAgain0         bool
-	__slot1                []gtk4rt.Handle
-	__slot1_at             gtk4rt.Handle
 	strip                  gtk4rt.Handle
 	__named_press          gtk4rt.Handle
 	__named_tap            gtk4rt.Handle
@@ -2026,8 +1999,6 @@ func New() *Model {
 	m.__inst0_live = []*__child0Instance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
 	return m
 }
 
@@ -2112,23 +2083,17 @@ func (m *Model) __snglTeardown() {
 
 // CounterInstance is one live instance of the counter component.
 type CounterInstance struct {
-	Root       gtk4rt.Handle
-	__model    *Model
-	hits       int
-	__root     gtk4rt.Handle
-	__slot0    []gtk4rt.Handle
-	__slot0_at gtk4rt.Handle
-	__slot1    []gtk4rt.Handle
-	__slot1_at gtk4rt.Handle
-	press      gtk4rt.Handle
+	Root    gtk4rt.Handle
+	__model *Model
+	hits    int
+	__root  gtk4rt.Handle
+	press   gtk4rt.Handle
 }
 
 func newCounterInstance(__model *Model) *CounterInstance {
 	c := &CounterInstance{}
 	c.__model = __model
 	c.hits = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.press = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.press, fmt.Sprint(c.hits))
 	gtk4rt.SetBool(c.press, "can-focus", true)
@@ -2150,12 +2115,6 @@ func (c *CounterInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // LaterInstance is one live instance of the later component.
@@ -2169,10 +2128,6 @@ type LaterInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
-	__slot1             []gtk4rt.Handle
-	__slot1_at          gtk4rt.Handle
 }
 
 func newLaterInstance(__model *Model) *LaterInstance {
@@ -2184,8 +2139,6 @@ func newLaterInstance(__model *Model) *LaterInstance {
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n3 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n3, "later")
 	gtk4rt.LabelSetXAlign(__n3, 0.0)
@@ -2244,12 +2197,6 @@ func (c *LaterInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // __block_state0Instance is one live instance of the __block_state0 component.
@@ -2260,10 +2207,6 @@ type __block_state0Instance struct {
 	__prop___on_seen func(int)
 	taps             int
 	__root           gtk4rt.Handle
-	__slot0          []gtk4rt.Handle
-	__slot0_at       gtk4rt.Handle
-	__slot1          []gtk4rt.Handle
-	__slot1_at       gtk4rt.Handle
 	tap              gtk4rt.Handle
 }
 
@@ -2273,8 +2216,6 @@ func new__block_state0Instance(__model *Model, __a_seen int, __a___on_seen func(
 	c.__prop_seen = __a_seen
 	c.__prop___on_seen = __a___on_seen
 	c.taps = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.tap = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.tap, fmt.Sprint(c.taps))
 	gtk4rt.SetBool(c.tap, "can-focus", true)
@@ -2305,12 +2246,6 @@ func (c *__block_state0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -2323,8 +2258,6 @@ type __child0Instance struct {
 	__prop___on0   func()
 	__prop___on1   func(int)
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*CounterInstance
@@ -2343,7 +2276,6 @@ func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a
 	c.__prop___p2 = __a___p2
 	c.__prop___on0 = __a___on0
 	c.__prop___on1 = __a___on1
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*CounterInstance{}
 	c.__inst2_live = []*__block_state0Instance{}
@@ -2532,9 +2464,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 	if c.__slot1_at != nil {
 		gtk4rt.Release(c.__slot1_at)
@@ -3197,9 +3126,6 @@ window.__sngl_boot = () => {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     let press = document.createElement("button");
     press.setAttribute("data-sngl-id", "press");
     press.disabled = false;
@@ -3231,9 +3157,6 @@ window.__sngl_boot = () => {
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __effect0_mount() {
       state.mounts += 1;
     }
@@ -3293,9 +3216,6 @@ window.__sngl_boot = () => {
     let __prop_seen = seen;
     let __prop___on_seen = __on_seen;
     let taps = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set_seen(__v) {
       __prop_seen = __v;
     }
@@ -3336,9 +3256,6 @@ window.__sngl_boot = () => {
     let __prop___p1 = __p1;
     let __prop___p2 = __p2;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       strip__change.textContent = __prop___p0.label;
@@ -3397,9 +3314,7 @@ window.__sngl_boot = () => {
     let __prop___p2 = __p2;
     let __prop___p3 = __p3;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
+    let __slot2 = [];
     let __inst5_live = [];
     let __inst6_live = [];
     let __inst7_live = [];
@@ -3435,9 +3350,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain2) {
             __renderAgain2 = false;
-            let __place4_prev = __slot22;
+            let __place4_prev = __slot2;
             let __place4_i = 0;
-            __slot22 = [];
+            __slot2 = [];
             let __inst5_next = [];
             let __inst5_i = 0;
             let __inst6_next = [];
@@ -3468,7 +3383,7 @@ window.__sngl_boot = () => {
               } else {
                 parent.insertBefore(c__el, __place4_i_ref0);
               }
-              __slot22.push(c__el);
+              __slot2.push(c__el);
             } else {
               if (__prop___p2.__id === 1) {
                 let __n7 = null;
@@ -3499,7 +3414,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n7__el, __place4_i_ref1);
                 }
-                __slot22.push(__n7__el);
+                __slot2.push(__n7__el);
               } else {
                 if (__prop___p2.__id === 2) {
                   let __n8 = null;
@@ -3524,7 +3439,7 @@ window.__sngl_boot = () => {
                   } else {
                     parent.insertBefore(__n8__el, __place4_i_ref2);
                   }
-                  __slot22.push(__n8__el);
+                  __slot2.push(__n8__el);
                 }
               }
             }
@@ -3550,7 +3465,7 @@ window.__sngl_boot = () => {
             }
             __inst7_live = __inst7_next;
             for (const __place4_prev_e of __place4_prev) {
-              if (__slot22.indexOf(__place4_prev_e) < 0) {
+              if (__slot2.indexOf(__place4_prev_e) < 0) {
                 parent.removeChild(__place4_prev_e);
               }
             }
@@ -3605,7 +3520,6 @@ window.__sngl_boot = () => {
   var __inst3_live = [];
   var __rendering1 = false;
   var __renderAgain1 = false;
-  var __slot2 = [];
   function __renderSlot0(parent) {
     if (__rendering0) {
       __renderAgain0 = true;
@@ -3845,10 +3759,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:a806f20fa402a8ee057bbe23dd0c573b
 -- run/go/fyne --
-pass sha256:f3ca4e2f023ab66245ab331d519e088d
+pass sha256:ca3d6db3c4f9477ca8e32e59ebe10978
 -- run/go/gtk4 --
-pass sha256:179a6ae203f13d14bbffcb7d7bc4c29c
+pass sha256:09ae1a9d744bc2eed25976d418063b06
 -- run/kotlin/android --
 pass sha256:bfc8124ae97d257d4edd2f44d1e97af1
 -- run/none/html --
-pass sha256:caab378bfb2bfd70fd029f035ce5bb1d
+pass sha256:becffbfae15f2cb7f2632b0ef339d95a

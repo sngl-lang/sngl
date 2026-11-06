@@ -278,9 +278,6 @@ window.__sngl_boot = () => {
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __effect0_mount() {
       log.push("+");
       shown.textContent = __prop_label + "[" + log.join(",") + "]";
@@ -378,9 +375,6 @@ window.__sngl_boot = () => {
     let __prop_label = label;
     let __prop_onpick = onpick;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n0.textContent = "pick " + __prop_label + ":" + String(hits);
@@ -414,9 +408,6 @@ window.__sngl_boot = () => {
     let __p1 = props.__p1;
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.textContent = "<" + __prop___p0.elem + __prop___p1 + ">";
@@ -680,9 +671,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:c1bb11bf4b0cf95bbbe3b4651cb00586
+pass sha256:c04d2694c583d3b863e8d77f655318ab
 -- testrun/html/none/component_browser_instances.sngl/decorated/1 --
-sha256:ebccbba911df0adfaec5701a94d81c34
+sha256:533f1bbe47d72445bb42cd131a3ae3ec
 {
   "results": [
     {
@@ -692,7 +683,7 @@ sha256:ebccbba911df0adfaec5701a94d81c34
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/factory/1 --
-sha256:6f305842c87ecc3864d45577e8922f94
+sha256:06320e761e555b5bec5d2228bb3b3362
 {
   "results": [
     {
@@ -702,7 +693,7 @@ sha256:6f305842c87ecc3864d45577e8922f94
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/funcProp/1 --
-sha256:2cee87c7becb0b78a8c7c9fc944a1018
+sha256:97462571b0e7968b4467830812782629
 {
   "results": [
     {

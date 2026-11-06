@@ -1187,10 +1187,6 @@ type __child0Instance struct {
 	__prop___p1 __anon_id_elem_c6a818
 	__prop___p2 Sel
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
 	line        *widget.Label
 }
 
@@ -1201,8 +1197,6 @@ func new__child0Instance(__model *Model, __a___p0 Row, __a___p1 __anon_id_elem_c
 	c.__prop___p1 = __a___p1
 	c.__prop___p2 = __a___p2
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.line = widget.NewLabel("")
 	c.line.SetText(((((c.__prop___p0.Name + " ") + c.__prop___p1.Elem) + " picked ") + c.__prop___p2.Pick))
 	c.Root = c.line
@@ -1234,10 +1228,6 @@ type __child1Instance struct {
 	__prop___p1 int
 	__prop___p2 int
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
 	__n0        *widget.Label
 }
 
@@ -1248,8 +1238,6 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 	c.__prop___p1 = __a___p1
 	c.__prop___p2 = __a___p2
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	var __lt17 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
 		__lt17 = "showing"
@@ -1653,10 +1641,6 @@ type __child0Instance struct {
 	__prop___p1 __anon_id_elem_c6a818
 	__prop___p2 Sel
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
 	line        gtk4rt.Handle
 }
 
@@ -1666,8 +1650,6 @@ func new__child0Instance(__model *Model, __a___p0 Row, __a___p1 __anon_id_elem_c
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__prop___p2 = __a___p2
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.line = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1.Elem) + " picked ") + c.__prop___p2.Pick))
 	gtk4rt.LabelSetXAlign(c.line, 0.0)
@@ -1696,12 +1678,6 @@ func (c *__child0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // __child1Instance is one live instance of the __child1 component.
@@ -1712,10 +1688,6 @@ type __child1Instance struct {
 	__prop___p1 int
 	__prop___p2 int
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
 	__n0        gtk4rt.Handle
 }
 
@@ -1725,8 +1697,6 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__prop___p2 = __a___p2
-	c.__slot0 = nil
-	c.__slot1 = nil
 	var __lt24 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
 		__lt24 = "showing"
@@ -1778,12 +1748,6 @@ func (c *__child1Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -2062,8 +2026,8 @@ fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
 -- run/go/bubbletea --
 pass sha256:f4400b6d3d24997a1c3e3c8a96a30702
 -- run/go/fyne --
-pass sha256:46b9053b2fd11442519faf135c1966bc
+pass sha256:178b1660dd4af07132ff549507c27571
 -- run/go/gtk4 --
-pass sha256:fc0dc3ac358930665fec25f14cb553ac
+pass sha256:ce943cb0c8056866ff1f55ed4f4afc17
 -- run/kotlin/android --
 pass sha256:1463afc166c1d5f628fdd85a6e0523f8

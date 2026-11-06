@@ -3,6 +3,7 @@ package lower
 import (
 	"slices"
 	"strconv"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -254,7 +255,7 @@ func propMutation(s ir.Stmt, compName, propName string, propType *ir.Type, wrote
 	// Named for the component as well as the prop: a component forwarding
 	// its own `:pending` to a query reports it from the handler the query's
 	// report is spliced into, and two `__pending_wrote0`s met in one scope.
-	tmp := &ir.Var{Name: "__" + compName + "_" + propName + "_wrote" + strconv.Itoa(*n), Type: propType, Synthesized: true}
+	tmp := &ir.Var{Name: "__" + compName + "_" + propName + wroteMark + strconv.Itoa(*n), Type: propType, Synthesized: true}
 	*n++
 	return &ir.LocalVar{Name: tmp.Name, Type: propType, Init: newVal(cur), Sym: tmp},
 		&ir.Emit{Name: propName, Args: []ir.CallArg{{Value: &ir.Ident{Name: tmp.Name, Type: propType, Sym: tmp, Synthesized: true}}}},
@@ -398,4 +399,55 @@ func hasBindingEvent(comp *ir.Component, name string) bool {
 		}
 	}
 	return false
+}
+
+// wroteMark is in the name of every local propMutation holds a write in.
+const wroteMark = "_wrote"
+
+// passFoldWrites puts back what propMutation held in a local where only the
+// write reads it: the read after it was an emit of an event nobody handles,
+// which inlining dropped, or the component was spliced where it stands, and
+// its write a write of the caller's var. html's input reported `value` and
+// then `input(value)`, and every bound field read
+// `let __input_value_wrote0 = e.currentTarget.value; state.name =
+// __input_value_wrote0`.
+var passFoldWrites = pass{
+	name:    "FoldWrites",
+	enabled: func(Features) bool { return true },
+	apply: func(pkg *ir.Package, _ Features, _ Options) error {
+		ir.RewriteBlocks(pkg, foldWrites)
+		return nil
+	},
+}
+
+func foldWrites(stmts []ir.Stmt) []ir.Stmt {
+	for i := 0; i+1 < len(stmts); i++ {
+		lv, ok := stmts[i].(*ir.LocalVar)
+		if !ok || lv.Sym == nil || lv.Init == nil || !strings.Contains(lv.Name, wroteMark) {
+			continue
+		}
+		as, ok := stmts[i+1].(*ir.Assign)
+		if !ok || as.Op != ast.AssignSet {
+			continue
+		}
+		if id, ok := as.Value.(*ir.Ident); !ok || id.Sym != lv.Sym || readsOf(stmts[i+1:], lv.Sym) != 1 {
+			continue
+		}
+		as.Value = lv.Init
+		stmts = slices.Delete(stmts, i, i+1)
+		i--
+	}
+	return stmts
+}
+
+// readsOf counts the reads of sym in stmts.
+func readsOf(stmts []ir.Stmt, sym ir.Symbol) int {
+	n := 0
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok && id.Sym == sym {
+			n++
+		}
+		return nil
+	})
+	return n
 }

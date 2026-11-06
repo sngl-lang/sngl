@@ -522,8 +522,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.widget0.Blur()
 			}
 		case msg.Code == tea.KeySpace && m.__focusID == 0:
-			__checkbox_checked_wrote0 := !m.checked__inst0
-			m.checked__inst0 = __checkbox_checked_wrote0
+			m.checked__inst0 = !m.checked__inst0
 			m.on = !m.on
 		case msg.Code == tea.KeySpace && m.__focusID == 2:
 			__toggle_checked_wrote0 := !m.checked__inst1
@@ -997,8 +996,7 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) box_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.box) != m.checked__inst0 {
-		__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(m.box)
-		m.checked__inst0 = __checkbox_checked_wrote0
+		m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.box)
 		gtk4rt.CheckButtonSetActive(m.box, m.checked__inst0)
 		m.on = !m.on
 	}
@@ -1006,16 +1004,14 @@ func (m *Model) box_toggled_handler() {
 
 func (m *Model) field_changed_handler() {
 	if gtk4rt.EditableGetText(m.field) != m.value__inst0 {
-		__input_value_wrote0 := gtk4rt.EditableGetText(m.field)
-		m.value__inst0 = __input_value_wrote0
+		m.value__inst0 = gtk4rt.EditableGetText(m.field)
 		m.v = (m.v + "!")
 	}
 	m.__effects0_settle()
 }
 
 func (m *Model) field_activate_handler() {
-	__input_value_wrote1 := gtk4rt.EditableGetText(m.field)
-	m.value__inst0 = __input_value_wrote1
+	m.value__inst0 = gtk4rt.EditableGetText(m.field)
 	m.__effects0_settle()
 }
 
@@ -1453,20 +1449,17 @@ window.__sngl_boot = () => {
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   __n0.addEventListener("change", function(e) {
-    let __checkbox_checked_wrote0 = e.currentTarget.checked;
-    state.checked__inst0 = __checkbox_checked_wrote0;
+    state.checked__inst0 = e.currentTarget.checked;
     __n0.checked = state.checked__inst0;
     state.on = !state.on;
   });
   $1.addEventListener("input", function(e) {
-    let __input_value_wrote0 = e.currentTarget.value;
-    state.value__inst0 = __input_value_wrote0;
+    state.value__inst0 = e.currentTarget.value;
     $1.value = state.value__inst0;
     state.v = state.v + "!";
   });
   $1.addEventListener("change", function(e) {
-    let __input_value_wrote1 = e.currentTarget.value;
-    state.value__inst0 = __input_value_wrote1;
+    state.value__inst0 = e.currentTarget.value;
     $1.value = state.value__inst0;
   });
   __n1.addEventListener("change", function(e) {
@@ -1487,12 +1480,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ff40b5b9f0a6bdc60ad9f7be0b4c484b
+pass sha256:4acb6199b8696017ee87f056e6886403
 -- run/go/fyne --
 pass sha256:000059486a6eb1b56573142b69886fa1
 -- run/go/gtk4 --
-pass sha256:de8711d828e03be1a892efeccc8bdd68
+pass sha256:07790d5244b53e648fa691b7267ee538
 -- run/kotlin/android --
 pass sha256:d4111c8d23a405c17f8d6eea904366d1
 -- run/none/html --
-pass sha256:f2bb4ce8a57d37d3a63122f6efe85567
+pass sha256:dfc2ad173b50d82a0804158c86b76c87

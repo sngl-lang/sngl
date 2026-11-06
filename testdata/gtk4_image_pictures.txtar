@@ -644,8 +644,6 @@ type __remote_state1Instance struct {
 	__effects1_torn     bool
 	__effects1_steps    int
 	__root              *C.GtkBox
-	__slot0             []*C.GtkWidget
-	__slot0_at          *C.GtkWidget
 	__n0                *C.GtkPicture
 }
 
@@ -662,7 +660,6 @@ func new__remote_state1Instance(__model *Model, __a_url string) *__remote_state1
 	c.__effects1_pending = false
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
-	c.__slot0 = nil
 	c.__n0 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.picture__inst2)
 	__snglMountAfterBuild(c.__effects1_settle)
@@ -754,9 +751,6 @@ func (c *__remote_state1Instance) Destroy() {
 	if c.Root != nil {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
 	}
 }
 
@@ -890,4 +884,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:91835b588aed295906c71cbf39d4a87a
+pass sha256:4b0843c3f2ecc9fb108c779123f1229a

@@ -395,18 +395,18 @@ func (st *reactivityState) buildSlots(stmts []ir.Stmt) {
 	// Build one slot var + Func per unique ID. Sort for deterministic
 	// codegen output: slot vars enter comp.Vars in this order and
 	// propagate downstream (e.g. JS state object field order).
-	// The package body's owner is walked last and holds only the slots
-	// written in it: a slot of a component is that owner's, and
-	// synthesized here too it declared a second `__slotN` on the package.
-	if o, ok := st.owner.(pkgOwner); ok && o.root == ir.AppParent {
-		own := map[string]bool{}
-		for id := range uniqueSlots {
-			if st.buildRenderSlotForProbe(id, stmts) {
-				own[id] = true
-			}
+	// Each owner holds only the slots written in the block being walked:
+	// reverseSlots is the package's, and a var for each of them on every
+	// owner gave each of the Pokédex's 70 records on gtk4 all 48 of its
+	// slots, 1.5% of which it rendered -- and the package body a second
+	// `__slotN` of a component's.
+	own := map[string]bool{}
+	for id := range uniqueSlots {
+		if st.buildRenderSlotForProbe(id, stmts) {
+			own[id] = true
 		}
-		uniqueSlots = own
 	}
+	uniqueSlots = own
 	slotIDs := make([]string, 0, len(uniqueSlots))
 	for id := range uniqueSlots {
 		slotIDs = append(slotIDs, id)

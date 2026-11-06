@@ -113,7 +113,6 @@ body { font-family: system-ui, sans-serif; }
     let __p1 = props.__p1;
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.value = __prop___p0.label;
@@ -284,7 +283,6 @@ body { font-family: system-ui, sans-serif; }
     let __p1 = props.__p1;
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.value = __prop___p0.label;
@@ -387,4 +385,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d4546d4febd114e14785b7669916197b
+pass sha256:0156da175bb510e8841118cecb1b0b68

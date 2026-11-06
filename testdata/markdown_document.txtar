@@ -9631,8 +9631,6 @@ type __checkbox_state1Instance struct {
 	__prop_disabled        bool
 	checked                bool
 	__root                 *fyne.Container
-	__slot0                []fyne.CanvasObject
-	__slot0_at             fyne.CanvasObject
 	__n0                   *fynelayout.Check
 }
 
@@ -9643,7 +9641,6 @@ func new__checkbox_state1Instance(__model *Model, __a___start_checked bool, __a_
 	c.__prop_disabled = __a_disabled
 	c.checked = c.__prop___start_checked
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = fynelayout.NewCheck("", nil)
 	c.__n0.SetText("")
 	c.__n0.SetChecked(c.checked)
@@ -9779,6 +9776,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3de2af430febdd01952bf58cb395e481
 -- run/go/fyne --
-pass sha256:e3717e0ab201171d24ed77026426c2d6
+pass sha256:dcba68bbfa65f9cf7e9c174d1302c030
 -- run/none/html --
 pass sha256:03996153110d51b9f07e126c7c2b2fd7

@@ -245,8 +245,6 @@ type __child0Instance struct {
 	__slot0_at     fyne.CanvasObject
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 	__n2           *fyne.Container
 }
 
@@ -259,7 +257,6 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 int) *__chi
 	c.__slot0 = nil
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n2 = fynelayout.NewHBox()
 	c.__renderSlot0(c.__n2)
 	c.Root = c.__n2
@@ -481,8 +478,6 @@ type __child0Instance struct {
 	__slot0_at     gtk4rt.Handle
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
 	__n2           gtk4rt.Handle
 }
 
@@ -494,7 +489,6 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 int) *__chi
 	c.__slot0 = nil
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n2 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n2, 0)
 	gtk4rt.SetLook(c.__n2, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -550,9 +544,6 @@ func (c *__child0Instance) Destroy() {
 	}
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -675,7 +666,6 @@ body { font-family: system-ui, sans-serif; }
     let __slot0 = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __renderSlot0(__slotAnchor_0);
@@ -818,8 +808,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:94b91a868bc70c67978dc87701fe503e
+pass sha256:9880a47b17c319035f89cb1a526fa494
 -- run/go/gtk4 --
-pass sha256:99e5358a9350266a7bf63177bef340fd
+pass sha256:a35a44195da86a1e787f6aa0f377e034
 -- run/none/html --
-pass sha256:a7acec93af61b5032bc0ffe55fe72612
+pass sha256:22f260b42e25bbdfffb2ffa16677db69

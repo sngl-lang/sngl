@@ -964,8 +964,6 @@ type WatchInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 	__n0                *widget.Label
 }
 
@@ -983,7 +981,6 @@ func newWatchInstance(__model *Model, __a_tag string, __a_seen func(string)) *Wa
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	__n3 := fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(((("watch " + c.__prop_tag) + " ") + fmt.Sprint(c.n)))
@@ -1274,8 +1271,6 @@ type WatchInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 }
 
@@ -1292,7 +1287,6 @@ func newWatchInstance(__model *Model, __a_tag string, __a_seen func(string)) *Wa
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	__n3 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n3, 1)
 	gtk4rt.SetLook(__n3, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1367,9 +1361,6 @@ func (c *WatchInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1815,7 +1806,6 @@ window.__sngl_boot = () => {
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
     function __effect0_mount() {
       __prop_seen(__effect0_key);
     }
@@ -1972,10 +1962,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:8f7566e21a570eca425020108fbf2300
 -- run/go/fyne --
-pass sha256:f4eedc38a1d9c153c8fb2e653bc9b6bb
+pass sha256:19b8bf60d853b262b304fd82bada5cb1
 -- run/go/gtk4 --
-pass sha256:05c2777576cc8f65acfa463211d8baf2
+pass sha256:b270c79893b25555ebe4eadd803b4be3
 -- run/kotlin/android --
 pass sha256:66f1bba60ef1feaf9a9f754d83ea30c8
 -- run/none/html --
-pass sha256:3157fee05dffab5fa2fa22f67d3d1ad7
+pass sha256:35af245986a71d0f1b7cf1b31aec3dce

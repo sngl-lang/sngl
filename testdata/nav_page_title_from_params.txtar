@@ -939,8 +939,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 Item
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
 	__n0        *widget.Label
 }
 
@@ -949,7 +947,6 @@ func new__child0Instance(__model *Model, __a___p0 Item) *__child0Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(c.__prop___p0.Name)
 	c.Root = c.__n0
@@ -1213,8 +1210,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 Item
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
 	__n0        gtk4rt.Handle
 }
 
@@ -1222,7 +1217,6 @@ func new__child0Instance(__model *Model, __a___p0 Item) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, c.__prop___p0.Name)
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
@@ -1240,9 +1234,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1533,8 +1524,8 @@ class MainScreenTest {
 -- run/go/bubbletea --
 pass sha256:c048ccdbd2883fdf6cb35c4d36a35f8b
 -- run/go/fyne --
-pass sha256:1b6be7530ef91ef4da8638aaff8da678
+pass sha256:6ce9ef39a483ccb204c3a66e749c4900
 -- run/go/gtk4 --
-pass sha256:ae6d45332fb3fe4f78cbdc1911fc26ad
+pass sha256:b4794d4ba34725338fa5640c84b6674a
 -- run/kotlin/android --
 pass sha256:676ddc9879d9eff0c2bf08de5aca64f0

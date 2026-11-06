@@ -951,8 +951,6 @@ type Card__slot0Instance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 	__n1                *widget.Label
 }
 
@@ -971,7 +969,6 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 __anon_id_el
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	__n4 := fynelayout.NewVBox()
 	__n0 := widget.NewLabel("")
 	__n0.SetText(("card " + fmt.Sprint(c.k)))
@@ -1269,8 +1266,6 @@ type Card__slot0Instance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 	__n1                gtk4rt.Handle
 }
 
@@ -1288,7 +1283,6 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 __anon_id_el
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	__n4 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n4, 1)
 	gtk4rt.SetLook(__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1371,9 +1365,6 @@ func (c *Card__slot0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1814,7 +1805,6 @@ window.__sngl_boot = () => {
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
     function __effect0_mount() {
       __prop___on0(__effect0_key);
     }
@@ -1979,10 +1969,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:5ca1ca1c3d6005c51f8caaaf4800bcd7
 -- run/go/fyne --
-pass sha256:d0b37281ae0c5151a9a33ccc1da47010
+pass sha256:2191f2d57757c3d4219a53c6a99d350e
 -- run/go/gtk4 --
-pass sha256:bfe8951125d806ce9e9a71e0f48ad248
+pass sha256:89b6422fc1930909fa40ede2ae2b5ca2
 -- run/kotlin/android --
 pass sha256:feb97e6bcde18e20bf6063043c3fb237
 -- run/none/html --
-pass sha256:6e187e6542ce5389f8acfd3c2e7328e9
+pass sha256:adb1135eca10f008f5043d298da4a91e

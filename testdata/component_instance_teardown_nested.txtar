@@ -81,8 +81,6 @@ type Model struct {
 	rows           []string
 	log            string
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   map[string]*NestInstance
@@ -99,8 +97,6 @@ func New() *Model {
 	m.rows = []string{"a", "b"}
 	m.log = ""
 	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst1_live = map[string]*NestInstance{}
@@ -328,8 +324,6 @@ type NestInstance struct {
 	__inst0_live        map[string]*NestInstance
 	__rendering0        bool
 	__renderAgain0      bool
-	__slot1             []fyne.CanvasObject
-	__slot1_at          fyne.CanvasObject
 	__n0                *widget.Label
 }
 
@@ -359,7 +353,6 @@ func newNestInstance(__model *Model, __a_tag string, __a_depth int, __a_note fun
 	c.__inst0_live = map[string]*NestInstance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText((("[" + c.__prop_tag) + "]"))
 	c.__root.Add(c.__n0)
@@ -611,8 +604,6 @@ type Model struct {
 	rows           []string
 	log            string
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   map[string]*NestInstance
@@ -629,8 +620,6 @@ func New() *Model {
 	m.rows = []string{"a", "b"}
 	m.log = ""
 	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst1_live = map[string]*NestInstance{}
@@ -790,8 +779,6 @@ type NestInstance struct {
 	__inst0_live        map[string]*NestInstance
 	__rendering0        bool
 	__renderAgain0      bool
-	__slot1             []gtk4rt.Handle
-	__slot1_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 }
 
@@ -821,7 +808,6 @@ func newNestInstance(__model *Model, __a_tag string, __a_depth int, __a_note fun
 	c.__inst0_live = map[string]*NestInstance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, (("[" + c.__prop_tag) + "]"))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
@@ -1006,9 +992,6 @@ func (c *NestInstance) Destroy() {
 	}
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -1345,11 +1328,10 @@ window.__sngl_boot = () => {
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
+    let __slot0 = [];
     let __inst1_live = /* @__PURE__ */ new Map([]);
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot12 = [];
     function __effect0_unmount() {
       __prop_note(__prop_tag);
     }
@@ -1439,9 +1421,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain0) {
             __renderAgain0 = false;
-            let __place0_prev = __slot02;
+            let __place0_prev = __slot0;
             let __place0_i = 0;
-            __slot02 = [];
+            __slot0 = [];
             let __inst1_next = /* @__PURE__ */ new Map([]);
             let __inst1_seen = /* @__PURE__ */ new Map([]);
             for (const k of __identified0(kids)) {
@@ -1479,7 +1461,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n2__el, __place0_i_ref0);
                 }
-                __slot02.push(__n2__el);
+                __slot0.push(__n2__el);
               }
             }
             for (const [__inst1_live_k, __inst1_live_v] of __inst1_live.entries()) {
@@ -1489,7 +1471,7 @@ window.__sngl_boot = () => {
             }
             __inst1_live = __inst1_next;
             for (const __place0_prev_e of __place0_prev) {
-              if (__slot02.indexOf(__place0_prev_e) < 0) {
+              if (__slot0.indexOf(__place0_prev_e) < 0) {
                 parent.removeChild(__place0_prev_e);
               }
             }
@@ -1518,7 +1500,6 @@ window.__sngl_boot = () => {
       __set___depth
     };
   }
-  var __slot0 = [];
   var __slot1 = [];
   var __inst3_live = /* @__PURE__ */ new Map([]);
   var __rendering1 = false;
@@ -1616,15 +1597,15 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:769e241c4a5d24afcd0b155b9467bc22
+pass sha256:1f857400b79ab4c776a139b589498080
 -- run/go/gtk4 --
-pass sha256:0642ef45f20a0402cd269a95870d8da8
+pass sha256:4a69acd63f2523e31817c7c72abbe7f4
 -- run/kotlin/android --
 pass sha256:149d999b187f543771ae789255a60768
 -- run/none/html --
-pass sha256:3a13f07fcadc464506c1d57643e296d6
+pass sha256:bf40c4446259f6af9c2442f873566820
 -- testrun/html/none/component_instance_teardown_nested.sngl/main/1 --
-sha256:082ee4231f2bb19b3910e745b5ea7d65
+sha256:15c41f8223610adfb6215d432d4fdc6e
 {
   "results": [
     {

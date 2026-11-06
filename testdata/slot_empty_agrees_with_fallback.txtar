@@ -1944,11 +1944,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = String(__prop___p0.elem);
@@ -2279,4 +2274,4 @@ pass sha256:79a6bd937aea4dc46645a93a8b1074c8
 -- run/kotlin/android --
 pass sha256:97273448fc70152341c55a52de626ed5
 -- run/none/html --
-pass sha256:ca2ad3d19ceec264acadf41c0c3e4572
+pass sha256:8f5d65d28bd4269137556a50d70bc0f7

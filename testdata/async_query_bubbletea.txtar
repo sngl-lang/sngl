@@ -416,8 +416,7 @@ func (m *Model) __effect0_mount() {
 		m.failure__inst0 = nil
 	}
 	m.asked__inst0 = __effect0_mount_key.N
-	__query_pending_wrote0 := true
-	m.loading__inst0 = __query_pending_wrote0
+	m.loading__inst0 = true
 	m.life__inst0 = Lifetime{_id: snglasync.Begin()}
 	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
@@ -932,4 +931,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:aa6f5c0b1fd3e8eed18841b3b385a824
+pass sha256:e1d8592699b70305ec29581a275f1e27

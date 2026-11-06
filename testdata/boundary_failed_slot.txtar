@@ -554,7 +554,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = __prop___p0;
@@ -693,4 +692,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:bc099fd9a6c760f8ed6dd15634cd1a29
 -- run/none/html --
-pass sha256:2e8b7bc657cdaffc55329362db3ef8bf
+pass sha256:a4acddb98c906083778c3f360ff71682

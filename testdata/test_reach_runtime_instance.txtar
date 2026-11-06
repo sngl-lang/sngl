@@ -1133,10 +1133,6 @@ type Model struct {
 	names          []string
 	log            string
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 	__slot2        []fyne.CanvasObject
 	__slot2_at     fyne.CanvasObject
 	__inst1_live   []*BadgeInstance
@@ -1167,10 +1163,6 @@ func New() *Model {
 	m.names = []string{"a", "b"}
 	m.log = ""
 	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__slot1 = nil
-	m.__slot1_at = nil
 	m.__slot2 = nil
 	m.__slot2_at = nil
 	m.__inst1_live = []*BadgeInstance{}
@@ -1522,12 +1514,6 @@ type BadgeInstance struct {
 	__slot0_at     fyne.CanvasObject
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
 	shown          *widget.Label
 	hit            *fynelayout.Button
 	done           *widget.Label
@@ -1542,9 +1528,6 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__slot0 = nil
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.shown = widget.NewLabel("")
 	c.shown.SetText((((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 	c.hit = fynelayout.NewButton("", nil)
@@ -1623,17 +1606,11 @@ type TileInstance struct {
 	__prop_tapped  func(int)
 	taps           int
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst0_live   []*__child0Instance
 	__rendering1   bool
 	__renderAgain1 bool
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
 	face           *widget.Label
 	tap            *fynelayout.Button
 }
@@ -1646,13 +1623,10 @@ func newTileInstance(__model *Model, __a_label string, __a___copy string, __a_ta
 	c.__prop_tapped = __a_tapped
 	c.taps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst0_live = []*__child0Instance{}
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.face = widget.NewLabel("")
 	c.face.SetText((((("<" + c.__prop_label) + ":") + fmt.Sprint(c.taps)) + ">"))
 	c.tap = fynelayout.NewButton("", nil)
@@ -1767,14 +1741,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 string
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
-	__slot2     []fyne.CanvasObject
-	__slot2_at  fyne.CanvasObject
-	__slot3     []fyne.CanvasObject
-	__slot3_at  fyne.CanvasObject
 	fin         *widget.Label
 }
 
@@ -1783,10 +1749,6 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.fin = widget.NewLabel("")
 	c.fin.SetText("fin")
 	c.__model.__list_fin(c.__prop___p0, c.fin)
@@ -1925,10 +1887,6 @@ type Model struct {
 	names          []string
 	log            string
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
 	__slot2        []gtk4rt.Handle
 	__slot2_at     gtk4rt.Handle
 	__inst1_live   []*BadgeInstance
@@ -1959,10 +1917,6 @@ func New() *Model {
 	m.names = []string{"a", "b"}
 	m.log = ""
 	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__slot1 = nil
-	m.__slot1_at = nil
 	m.__slot2 = nil
 	m.__slot2_at = nil
 	m.__inst1_live = []*BadgeInstance{}
@@ -2154,12 +2108,6 @@ type BadgeInstance struct {
 	__slot0_at     gtk4rt.Handle
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
 	shown          gtk4rt.Handle
 	hit            gtk4rt.Handle
 	done           gtk4rt.Handle
@@ -2174,9 +2122,6 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__slot0 = nil
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.shown = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 	gtk4rt.LabelSetXAlign(c.shown, 0.0)
@@ -2255,15 +2200,6 @@ func (c *BadgeInstance) Destroy() {
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
 	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
 }
 
 // TileInstance is one live instance of the tile component.
@@ -2275,17 +2211,11 @@ type TileInstance struct {
 	__prop_tapped  func(int)
 	taps           int
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst0_live   []*__child0Instance
 	__rendering1   bool
 	__renderAgain1 bool
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
 	face           gtk4rt.Handle
 	tap            gtk4rt.Handle
 }
@@ -2298,13 +2228,10 @@ func newTileInstance(__model *Model, __a_label string, __a___copy string, __a_ta
 	c.__prop_tapped = __a_tapped
 	c.taps = 0
 	c.__root = gtk4rt.ContentsNew()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst0_live = []*__child0Instance{}
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.face = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.face, (((("<" + c.__prop_label) + ":") + fmt.Sprint(c.taps)) + ">"))
 	gtk4rt.LabelSetXAlign(c.face, 0.0)
@@ -2418,17 +2345,8 @@ func (c *TileInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 	if c.__slot1_at != nil {
 		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
 	}
 }
 
@@ -2438,14 +2356,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 string
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
-	__slot2     []gtk4rt.Handle
-	__slot2_at  gtk4rt.Handle
-	__slot3     []gtk4rt.Handle
-	__slot3_at  gtk4rt.Handle
 	fin         gtk4rt.Handle
 }
 
@@ -2453,10 +2363,6 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.fin = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.fin, "fin")
 	gtk4rt.LabelSetXAlign(c.fin, 0.0)
@@ -2480,18 +2386,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
 	}
 }
 
@@ -3157,12 +3051,9 @@ window.__sngl_boot = () => {
     let label = props.label ?? "";
     let __prop_label = label;
     let hits = 0;
-    let __slot02 = [];
+    let __slot0 = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     function reset() {
       hits = 0;
       shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
@@ -3181,9 +3072,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain0) {
             __renderAgain0 = false;
-            let __place0_prev = __slot02;
+            let __place0_prev = __slot0;
             let __place0_i = 0;
-            __slot02 = [];
+            __slot0 = [];
             if (hits >= 2) {
               let done = document.createElement("span");
               done.setAttribute("data-sngl-id", "done");
@@ -3197,10 +3088,10 @@ window.__sngl_boot = () => {
               } else {
                 parent.insertBefore(done, __place0_i_ref0);
               }
-              __slot02.push(done);
+              __slot0.push(done);
             }
             for (const __place0_prev_e of __place0_prev) {
-              if (__slot02.indexOf(__place0_prev_e) < 0) {
+              if (__slot0.indexOf(__place0_prev_e) < 0) {
                 parent.removeChild(__place0_prev_e);
               }
             }
@@ -3254,13 +3145,10 @@ window.__sngl_boot = () => {
     let __prop___copy = __copy;
     let __prop_tapped = tapped;
     let taps = 0;
-    let __slot02 = [];
-    let __slot12 = [];
+    let __slot1 = [];
     let __inst2_live = [];
     let __rendering1 = false;
     let __renderAgain1 = false;
-    let __slot22 = [];
-    let __slot32 = [];
     function __set_label(__v) {
       __prop_label = __v;
       face.textContent = "<" + __prop_label + ":" + String(taps) + ">";
@@ -3284,9 +3172,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain1) {
             __renderAgain1 = false;
-            let __place1_prev = __slot12;
+            let __place1_prev = __slot1;
             let __place1_i = 0;
-            __slot12 = [];
+            __slot1 = [];
             let __inst2_next = [];
             let __inst2_i = 0;
             if (taps >= 2) {
@@ -3313,7 +3201,7 @@ window.__sngl_boot = () => {
               } else {
                 parent.insertBefore(__n0__el, __place1_i_ref0);
               }
-              __slot12.push(__n0__el);
+              __slot1.push(__n0__el);
             }
             for (const [__inst2_i_d, _] of __inst2_live.entries()) {
               let __inst2_i_j = __inst2_live.length - 1 - __inst2_i_d;
@@ -3323,7 +3211,7 @@ window.__sngl_boot = () => {
             }
             __inst2_live = __inst2_next;
             for (const __place1_prev_e of __place1_prev) {
-              if (__slot12.indexOf(__place1_prev_e) < 0) {
+              if (__slot1.indexOf(__place1_prev_e) < 0) {
                 parent.removeChild(__place1_prev_e);
               }
             }
@@ -3382,10 +3270,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       fin.setAttribute("data-sngl-copy", __prop___p0);
@@ -3402,8 +3286,6 @@ window.__sngl_boot = () => {
       __set___p0
     };
   }
-  var __slot0 = [];
-  var __slot1 = [];
   var __slot2 = [];
   var __inst4_live = [];
   var __rendering2 = false;
@@ -3562,10 +3444,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:744a8bdc39757f5b5a7b14126cef7bcb
 -- run/go/fyne --
-pass sha256:df4e4bef0816b7cc293c7e5346757e5d
+pass sha256:2b81d68c7adbdd7dd3c2ce74efce3cd7
 -- run/go/gtk4 --
-pass sha256:e6b869400531be9fd7500121043330ac
+pass sha256:4dcc7eb5bad98ca81ea220492432b882
 -- run/kotlin/android --
 pass sha256:6b699571037b9fceb906aadeb7371e65
 -- run/none/html --
-pass sha256:79a149e713ab8cf6a98146a086ccb6ae
+pass sha256:0ded1d3932de795c2a183eff17991c3f

@@ -677,8 +677,6 @@ type TickerInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 	__n0                *widget.Label
 }
 
@@ -701,7 +699,6 @@ func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
 	__snglMountAfterBuild(c.__effects0_settle)
@@ -1009,8 +1006,6 @@ type TickerInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 }
 
@@ -1027,7 +1022,6 @@ func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, ((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
@@ -1126,9 +1120,6 @@ func (c *TickerInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1232,7 +1223,6 @@ body { font-family: system-ui, sans-serif; }
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
     function __effect0_mount() {
       handle__inst0 = setInterval(() => {
         ticks = ticks + 1;
@@ -1399,8 +1389,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:b0f7ae1a23caf9f5f5ab0c356d38d2c8
 -- run/go/fyne --
-pass sha256:23dac63e90c9cd4b1abc265855597bfc
+pass sha256:f4548e6a05b5f29f23971d54d8f055c7
 -- run/go/gtk4 --
-pass sha256:a3301ab97d689383bff108f097e9f1ab
+pass sha256:35ad5f6fe10fb772ef367ec4b2b310fb
 -- run/none/html --
-pass sha256:8d6f91d3968f0d4f706e401dcea07a2b
+pass sha256:514c42f42c9663237e5fb5aa4cb75548

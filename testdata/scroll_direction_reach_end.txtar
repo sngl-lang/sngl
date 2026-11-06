@@ -1671,8 +1671,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = "column " + String(__prop___p0);
@@ -1693,8 +1691,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.textContent = "row " + String(__prop___p0);
@@ -1927,4 +1923,4 @@ pass sha256:85e44764bbea0d2ab272c16cf47b6240
 -- run/kotlin/android --
 pass sha256:d10aadc80bcd23cb72d95d92689563dc
 -- run/none/html --
-pass sha256:38e35f93ebf4bcf3f89b72cac3bda1a1
+pass sha256:35c30fcc1d9ec3b3d8283df42166bee5

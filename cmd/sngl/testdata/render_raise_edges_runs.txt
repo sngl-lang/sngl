@@ -360,7 +360,7 @@ sha256:1557f819e229c3060617d06b676ee0e0
   ]
 }
 -- testrun/fyne/go/app.sngl/slotted/1 --
-sha256:f4e0f6233743996918da5dd3080dce72
+sha256:7fc05756913bf2faad287a7c46f9cd29
 {
   "results": [
     {
@@ -410,7 +410,7 @@ sha256:973e22dfe1bc5182f780e15765a75373
   ]
 }
 -- testrun/gtk4/go/app.sngl/slotted/1 --
-sha256:51c7ac3c6ea5252648487bca4e9f16d6
+sha256:1e09831e31550283027fec2763632c0d
 {
   "results": [
     {
@@ -460,7 +460,7 @@ sha256:3aaecd61ff49b22da73db3045de3837e
   ]
 }
 -- testrun/html/none/app.sngl/slotted/1 --
-sha256:ebccdc55a55a141684d1ec24f6552180
+sha256:bf2fbdd559181bd66da7e1049a4df6c8
 {
   "results": [
     {

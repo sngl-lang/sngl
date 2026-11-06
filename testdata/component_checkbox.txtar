@@ -373,8 +373,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeySpace && m.__focusID == 0:
-			__checkbox_checked_wrote0 := !m.on
-			m.on = __checkbox_checked_wrote0
+			m.on = !m.on
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -566,8 +565,7 @@ func (m *Model) __wrote_on() {
 
 func (m *Model) __n0_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.__n0) != m.on {
-		__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(m.__n0)
-		m.on = __checkbox_checked_wrote0
+		m.on = gtk4rt.CheckButtonGetActive(m.__n0)
 		gtk4rt.CheckButtonSetActive(m.__n0, m.on)
 	}
 }
@@ -726,8 +724,7 @@ window.__sngl_boot = () => {
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   __n0.addEventListener("change", function(e) {
-    let __checkbox_checked_wrote0 = e.currentTarget.checked;
-    state.on = __checkbox_checked_wrote0;
+    state.on = e.currentTarget.checked;
     __n0.checked = state.on;
   });
   function __sngl_init() {
@@ -740,15 +737,15 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5ec16d58b6787a4fc3b7533563b6d950
+pass sha256:f1dc29a1995bfa47fcff0c8158eb45fc
 -- run/go/fyne --
 pass sha256:727c827da0ff0b8225d005f17823e431
 -- run/go/gtk4 --
-pass sha256:6209cfdf655a2648e0edb5dcb24f3f30
+pass sha256:61f909e0cd876b0df41ff286bf0eb705
 -- run/kotlin/android --
 pass sha256:3e757561cff086399b65237dc5bc76fa
 -- run/none/html --
-pass sha256:f2ba65c00b07f9d585531982f011739d
+pass sha256:4d99677a35452864d1da76d5634dd482
 -- testrun/html/none/component_checkbox.sngl/main/1 --
 sha256:9941b67c7574e42e78bb43328df98845
 {

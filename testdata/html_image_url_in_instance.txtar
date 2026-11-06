@@ -107,7 +107,6 @@ window.__sngl_boot = () => {
     let url = props.url ?? "";
     let __prop_url = url;
     let taps = 0;
-    let __slot02 = [];
     function __set_url(__v) {
       __prop_url = __v;
       __n0.src = __prop_url;
@@ -222,4 +221,4 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:3e78c58bd0430e89c0e99670c404411d
+pass sha256:3a6c35f35b89eb3b5fae34b1b0f06a8e

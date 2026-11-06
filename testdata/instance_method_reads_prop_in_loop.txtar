@@ -739,7 +739,6 @@ body { font-family: system-ui, sans-serif; }
     let label = props.label ?? "";
     let __prop_label = label;
     let hits = 0;
-    let __slot02 = [];
     function describe() {
       return __prop_label + ":" + String(hits);
     }
@@ -844,4 +843,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:f8801019d357595ddc5cfb9c517dc447
 -- run/none/html --
-pass sha256:79087e5841dfd9ff8dc377c66a4a9b01
+pass sha256:ed0104e6770712d829ce782749b15f84

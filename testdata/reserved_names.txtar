@@ -1385,8 +1385,6 @@ type ModifierInstance struct {
 	__prop_label string
 	count        int
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
 	__n0         *fynelayout.Button
 }
 
@@ -1396,7 +1394,6 @@ func newModifierInstance(__model *Model, __a_label string) *ModifierInstance {
 	c.__prop_label = __a_label
 	c.count = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((c.__prop_label + " ") + fmt.Sprint(c.count)))
 	c.__n0.OnTapped = func() {
@@ -1650,8 +1647,6 @@ type ModifierInstance struct {
 	__prop_label string
 	count        int
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
 	__n0         gtk4rt.Handle
 }
 
@@ -1660,7 +1655,6 @@ func newModifierInstance(__model *Model, __a_label string) *ModifierInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.count = 0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.count)))
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
@@ -1682,9 +1676,6 @@ func (c *ModifierInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -2152,7 +2143,6 @@ body { font-family: system-ui, sans-serif; }
     let label = props.label ?? "";
     let __prop_label = label;
     let count = 0;
-    let __slot02 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n0.textContent = __prop_label + " " + String(count);
@@ -2278,10 +2268,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ab52263eba470f91fe8bb9be98c3a8f3
 -- run/go/fyne --
-pass sha256:32c5711c84d33a747790bc1fbd211ac0
+pass sha256:ea3f5fbf75973cadda1685811652466b
 -- run/go/gtk4 --
-pass sha256:4a9fdbba969f3b1245128b6c32585ab4
+pass sha256:0c74f8c88acfef1294c6c49b6ad72d06
 -- run/kotlin/android --
 pass sha256:7ae453c3c148546223d8f9a1e0bfa99d
 -- run/none/html --
-pass sha256:8ec9ab136617cf65197508116b7e4503
+pass sha256:116b98e9cfdb7be6fdc1aef81fc2a842

@@ -663,15 +663,13 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) entry_changed_handler() {
 	if gtk4rt.EditableGetText(m.entry) != m.text {
-		__textarea_value_wrote0 := gtk4rt.EditableGetText(m.entry)
-		m.text = __textarea_value_wrote0
+		m.text = gtk4rt.EditableGetText(m.entry)
 	}
 	m.__effects0_settle()
 }
 
 func (m *Model) entry_activate_handler() {
-	__textarea_value_wrote1 := gtk4rt.EditableGetText(m.entry)
-	m.text = __textarea_value_wrote1
+	m.text = gtk4rt.EditableGetText(m.entry)
 	m.__effects0_settle()
 }
 
@@ -826,12 +824,10 @@ window.__sngl_boot = () => {
   }
   var $0 = document.getElementById("$0");
   $0.addEventListener("input", function(e) {
-    let __textarea_value_wrote0 = e.currentTarget.value;
-    state.text = __textarea_value_wrote0;
+    state.text = e.currentTarget.value;
   });
   $0.addEventListener("change", function(e) {
-    let __textarea_value_wrote1 = e.currentTarget.value;
-    state.text = __textarea_value_wrote1;
+    state.text = e.currentTarget.value;
   });
 })();
 };
@@ -843,11 +839,11 @@ pass sha256:ec07a4b6a53263f5f8f3083dd7c5bb0d
 -- run/go/fyne --
 pass sha256:2e1d4ad04d794a5132f457fc28c7457c
 -- run/go/gtk4 --
-pass sha256:ff9efb3bf8cf9aaae1f0c3bd2189edba
+pass sha256:c9dfa9f9bb82be6c956f7b79b21e7986
 -- run/kotlin/android --
 pass sha256:4fc59473cd8e4ffafbbc01656bf49036
 -- run/none/html --
-pass sha256:8618755995f6c159753294c6697587c4
+pass sha256:9b69b71c0efd09f934030dfb060ecba7
 -- testrun/html/none/component_textarea.sngl/main/1 --
 sha256:fbfbc89bf9ea7cbe1a670bf0390a297a
 {

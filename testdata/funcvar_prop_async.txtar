@@ -87,7 +87,6 @@ body { font-family: system-ui, sans-serif; }
     let fetch = props.fetch ?? (() => "");
     let __prop_fetch = fetch;
     let label = "";
-    let __slot02 = [];
     function __set_fetch(__v) {
       __prop_fetch = __v;
     }
@@ -189,4 +188,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9b4a5cd46dced81abc332b046940c290
+pass sha256:75b5d8df3c0979504c5b306cfccd468c

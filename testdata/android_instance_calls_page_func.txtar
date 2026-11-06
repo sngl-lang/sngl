@@ -930,7 +930,6 @@ window.__sngl_boot = () => {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let fd = open();
-    let __slot02 = [];
     let shows = document.createElement("span");
     shows.setAttribute("data-sngl-id", "shows");
     shows.textContent = String(fd);
@@ -1029,4 +1028,4 @@ pass sha256:5dda45832d9643717eb4da4f0f586cca
 -- run/kotlin/android --
 pass sha256:0380b5e707dfb07d2991fdbd8b795644
 -- run/none/html --
-pass sha256:edc1235f40a5d2b973fdcfac4a642422
+pass sha256:f83b5d7173f0dfbaa218eb5b0081b26c

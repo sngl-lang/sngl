@@ -1212,15 +1212,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 
 // __block_state0Instance is one live instance of the __block_state0 component.
 type __block_state0Instance struct {
-	Root       fyne.CanvasObject
-	__model    *Model
-	hits       int
-	__root     *fyne.Container
-	__slot0    []fyne.CanvasObject
-	__slot0_at fyne.CanvasObject
-	__slot1    []fyne.CanvasObject
-	__slot1_at fyne.CanvasObject
-	__n0       *widget.Label
+	Root    fyne.CanvasObject
+	__model *Model
+	hits    int
+	__root  *fyne.Container
+	__n0    *widget.Label
 }
 
 func new__block_state0Instance(__model *Model) *__block_state0Instance {
@@ -1228,8 +1224,6 @@ func new__block_state0Instance(__model *Model) *__block_state0Instance {
 	c.__model = __model
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n11 := fynelayout.NewButton("", nil)
 	__n11.SetText("hit")
 	__n11.OnTapped = func() {
@@ -1255,10 +1249,6 @@ type __block_state1Instance struct {
 	__prop___on_total func(int)
 	n                 int
 	__root            *fyne.Container
-	__slot0           []fyne.CanvasObject
-	__slot0_at        fyne.CanvasObject
-	__slot1           []fyne.CanvasObject
-	__slot1_at        fyne.CanvasObject
 	__n1              *fynelayout.Button
 	__n2              *widget.Label
 }
@@ -1271,8 +1261,6 @@ func new__block_state1Instance(__model *Model, __a_it string, __a_total int, __a
 	c.__prop___on_total = __a___on_total
 	c.n = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n1 = fynelayout.NewButton("", nil)
 	c.__n1.SetText(c.__prop_it)
 	c.__n1.OnTapped = func() {
@@ -1310,10 +1298,6 @@ type __child0Instance struct {
 	__prop___p1  int
 	__prop___on0 func(int)
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
 	__n3         *__block_state1Instance
 }
 
@@ -1324,8 +1308,6 @@ func new__child0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 	c.__prop___p1 = __a___p1
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n12 := fynelayout.NewHBox()
 	c.__n3 = new__block_state1Instance(c.__model, c.__prop___p0.Elem, c.__prop___p1, func(__on0_0 int) {
 		c.__prop___on0(__on0_0)
@@ -1630,23 +1612,17 @@ func (m *Model) __n14_clicked_handler() {
 
 // __block_state0Instance is one live instance of the __block_state0 component.
 type __block_state0Instance struct {
-	Root       gtk4rt.Handle
-	__model    *Model
-	hits       int
-	__root     gtk4rt.Handle
-	__slot0    []gtk4rt.Handle
-	__slot0_at gtk4rt.Handle
-	__slot1    []gtk4rt.Handle
-	__slot1_at gtk4rt.Handle
-	__n0       gtk4rt.Handle
+	Root    gtk4rt.Handle
+	__model *Model
+	hits    int
+	__root  gtk4rt.Handle
+	__n0    gtk4rt.Handle
 }
 
 func new__block_state0Instance(__model *Model) *__block_state0Instance {
 	c := &__block_state0Instance{}
 	c.__model = __model
 	c.hits = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n11 := gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(__n11, "hit")
 	gtk4rt.SetBool(__n11, "can-focus", true)
@@ -1672,12 +1648,6 @@ func (c *__block_state0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // __block_state1Instance is one live instance of the __block_state1 component.
@@ -1689,10 +1659,6 @@ type __block_state1Instance struct {
 	__prop___on_total func(int)
 	n                 int
 	__root            gtk4rt.Handle
-	__slot0           []gtk4rt.Handle
-	__slot0_at        gtk4rt.Handle
-	__slot1           []gtk4rt.Handle
-	__slot1_at        gtk4rt.Handle
 	__n1              gtk4rt.Handle
 	__n2              gtk4rt.Handle
 }
@@ -1704,8 +1670,6 @@ func new__block_state1Instance(__model *Model, __a_it string, __a_total int, __a
 	c.__prop_total = __a_total
 	c.__prop___on_total = __a___on_total
 	c.n = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n1 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n1, c.__prop_it)
 	gtk4rt.SetBool(c.__n1, "can-focus", true)
@@ -1744,12 +1708,6 @@ func (c *__block_state1Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -1760,10 +1718,6 @@ type __child0Instance struct {
 	__prop___p1  int
 	__prop___on0 func(int)
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
 	__n3         *__block_state1Instance
 }
 
@@ -1773,8 +1727,6 @@ func new__child0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__prop___on0 = __a___on0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n12 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n12, 0)
 	gtk4rt.SetLook(__n12, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1811,12 +1763,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -2263,7 +2209,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop_total = total;
     let __prop___on_total = __on_total;
     let n = 0;
-    let __slot02 = [];
     function __set_it(__v) {
       __prop_it = __v;
       __n0.textContent = __prop_it;
@@ -2310,7 +2255,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n2.__set_it(__prop___p0.elem);
@@ -2504,7 +2448,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop_total = total;
     let __prop___on_total = __on_total;
     let n = 0;
-    let __slot02 = [];
     function __set_it(__v) {
       __prop_it = __v;
       __n0.textContent = __prop_it;
@@ -2551,7 +2494,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n2.__set_it(__prop___p0.elem);
@@ -2701,10 +2643,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:937be20e76c0bec4c7bbd2d0c09e912b
 -- run/go/fyne --
-pass sha256:7cafd6d4d523dcd1c01c1f7b96591f8f
+pass sha256:c5549cdfb2c44d4c4646604db6c3649d
 -- run/go/gtk4 --
-pass sha256:fdb1dcb45670b2838750ea69335c04f7
+pass sha256:5b559045b01ea9243995d86fda4d8eb5
 -- run/kotlin/android --
 pass sha256:1ecc8767485daffba77a93fc0b51fc5f
 -- run/none/html --
-pass sha256:4f4ec400fd886402f64388234fce33f0
+pass sha256:2fa133724af37e259eef02073920bdfd

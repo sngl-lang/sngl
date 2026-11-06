@@ -695,12 +695,10 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 
 // PageInstance is one live instance of the page component.
 type PageInstance struct {
-	Root       fyne.CanvasObject
-	__model    *Model
-	src        string
-	__root     *fyne.Container
-	__slot0    []fyne.CanvasObject
-	__slot0_at fyne.CanvasObject
+	Root    fyne.CanvasObject
+	__model *Model
+	src     string
+	__root  *fyne.Container
 }
 
 func newPageInstance(__model *Model) *PageInstance {
@@ -708,7 +706,6 @@ func newPageInstance(__model *Model) *PageInstance {
 	c.__model = __model
 	c.src = "a.png"
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	__n4 := fynelayout.NewVBox()
 	__n5 := fynelayout.NewImage()
 	__n5.SetFit("contain")
@@ -878,8 +875,6 @@ type PageInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 }
 
@@ -896,7 +891,6 @@ func newPageInstance(__model *Model) *PageInstance {
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	__n4 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n4, 1)
 	gtk4rt.SetLook(__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -994,9 +988,6 @@ func (c *PageInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 }
 
 func (m *Model) Shown() bool {
@@ -1077,6 +1068,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/bubbletea --
 pass sha256:4f35ae3eccd96fdb9b8ae61db7ddc2f1
 -- run/go/fyne --
-pass sha256:405def3de789f5c4feeefb94cca02231
+pass sha256:9957022f7adf394391b657ea22ad973f
 -- run/go/gtk4 --
-pass sha256:fb330b57d1fc000b06d2d170e8514c45
+pass sha256:a407ba7067df382eea9fdc5a20a0a1cf

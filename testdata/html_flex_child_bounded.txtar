@@ -83,7 +83,6 @@ body { display: flex; flex-direction: column; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = String(__prop___p0);
@@ -224,4 +223,4 @@ body { display: flex; flex-direction: column; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:7a0e0c392b770f291fc74d4a8baba91b
+pass sha256:d40214647fea2299dc140cb4d15226b5

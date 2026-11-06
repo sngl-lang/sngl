@@ -1068,8 +1068,6 @@ type Card__slot0Instance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 	__n0                *widget.Label
 }
 
@@ -1092,7 +1090,6 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 __anon_id_el
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	__n4 := fynelayout.NewVBox()
 	__n5 := fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
@@ -1436,8 +1433,6 @@ type Card__slot0Instance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 }
 
@@ -1459,7 +1454,6 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 __anon_id_el
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	__n4 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n4, 1)
 	gtk4rt.SetLook(__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1577,9 +1571,6 @@ func (c *Card__slot0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -2052,7 +2043,6 @@ window.__sngl_boot = () => {
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
     function __effect0_mount() {
       __prop___on0(__effect0_key);
     }
@@ -2253,10 +2243,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:37805e4bad02bce4d518354ffb850cd3
 -- run/go/fyne --
-pass sha256:f518f7263e870b20cb4060870be89606
+pass sha256:bc683e458b5dc8a6385aae7a8eb5b1b1
 -- run/go/gtk4 --
-pass sha256:6610524d4df08358e37727e5850e57df
+pass sha256:ee1897283b945a9242a035e0f219fd22
 -- run/kotlin/android --
 pass sha256:e36f94469f3e6fd98c3349ee7d6c155d
 -- run/none/html --
-pass sha256:24a8517f22f49fcd97629fc2ee7e8591
+pass sha256:83d7fcf0e59b37a6b494edd44c2c85db

@@ -437,11 +437,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeySpace && m.__focusID == 0:
-			__checkbox_checked_wrote0 := !m.shown__inst0
-			m.shown__inst0 = __checkbox_checked_wrote0
+			m.shown__inst0 = !m.shown__inst0
 		case msg.Code == tea.KeySpace && m.__focusID == 1:
-			__checkbox_checked_wrote0 := !m.checked__inst0
-			m.checked__inst0 = __checkbox_checked_wrote0
+			m.checked__inst0 = !m.checked__inst0
 		case msg.Code == tea.KeyEnter && m.__focusID == 2:
 			m.shown__inst0 = false
 			m.checked__inst0 = !m.checked__inst0
@@ -752,16 +750,14 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) bound_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.bound) != m.shown__inst0 {
-		__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(m.bound)
-		m.shown__inst0 = __checkbox_checked_wrote0
+		m.shown__inst0 = gtk4rt.CheckButtonGetActive(m.bound)
 		gtk4rt.CheckButtonSetActive(m.bound, m.shown__inst0)
 	}
 }
 
 func (m *Model) free_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.free) != m.checked__inst0 {
-		__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(m.free)
-		m.checked__inst0 = __checkbox_checked_wrote0
+		m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.free)
 		gtk4rt.CheckButtonSetActive(m.free, m.checked__inst0)
 		var __lt18 string
 		if m.checked__inst0 {
@@ -1113,13 +1109,11 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   __n1.addEventListener("change", function(e) {
-    let __checkbox_checked_wrote0 = e.currentTarget.checked;
-    state.shown__inst0 = __checkbox_checked_wrote0;
+    state.shown__inst0 = e.currentTarget.checked;
     __n1.checked = state.shown__inst0;
   });
   __n2.addEventListener("change", function(e) {
-    let __checkbox_checked_wrote0 = e.currentTarget.checked;
-    state.checked__inst0 = __checkbox_checked_wrote0;
+    state.checked__inst0 = e.currentTarget.checked;
     __n2.checked = state.checked__inst0;
     $2.textContent = state.checked__inst0 ? "on" : "off";
   });
@@ -1140,12 +1134,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ba16f8964f0f16b60219e1abb32b2c88
+pass sha256:0cd648126902ef6dcc4b5f0a0251dc21
 -- run/go/fyne --
 pass sha256:5bb07b8ea50d2deff00180019545355a
 -- run/go/gtk4 --
-pass sha256:cd2ae4a8e1324b8d20070e3dab70b660
+pass sha256:21cc5b4bfc12f48708c345d0a9f36a33
 -- run/kotlin/android --
 pass sha256:c5fb6e94f29ba19355caa333b18a0bad
 -- run/none/html --
-pass sha256:949f793c79bef89a07fea09de260d470
+pass sha256:75e81e0dc184e70652c729c092f05706

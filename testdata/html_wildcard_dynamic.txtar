@@ -99,7 +99,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop___start_checked = __start_checked;
     let __prop_label = label;
     let checked = __prop___start_checked;
-    let __slot02 = [];
     function __set___start_checked(__v) {
       __prop___start_checked = __v;
     }
@@ -114,8 +113,7 @@ body { font-family: system-ui, sans-serif; }
     __n0.disabled = false;
     __n0.setAttribute("type", "checkbox");
     __n0.addEventListener("change", (e) => {
-      let __checkbox_checked_wrote0 = e.currentTarget.checked;
-      checked = __checkbox_checked_wrote0;
+      checked = e.currentTarget.checked;
       __n0.checked = checked;
     });
     __n5.appendChild(__n0);
@@ -208,4 +206,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:471195b081424d3e3e15938e43c7acff
+pass sha256:ff69d25a1dec293bb9920f6c4f7e654a

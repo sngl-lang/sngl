@@ -1206,8 +1206,6 @@ type PickerInstance struct {
 	taps          int
 	width__inst0  int
 	__root        *fyne.Container
-	__slot0       []fyne.CanvasObject
-	__slot0_at    fyne.CanvasObject
 	__n1          *fynelayout.Button
 }
 
@@ -1218,7 +1216,6 @@ func newPickerInstance(__model *Model, __a_picked func(int)) *PickerInstance {
 	c.taps = 0
 	c.width__inst0 = 1
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	__n8 := fynelayout.NewHBox()
 	__n0 := widget.NewLabel("")
 	__n0.SetText(("w" + fmt.Sprint(c.width__inst0)))
@@ -1453,8 +1450,6 @@ type PickerInstance struct {
 	taps          int
 	width__inst0  int
 	__root        gtk4rt.Handle
-	__slot0       []gtk4rt.Handle
-	__slot0_at    gtk4rt.Handle
 	__n1          gtk4rt.Handle
 }
 
@@ -1464,7 +1459,6 @@ func newPickerInstance(__model *Model, __a_picked func(int)) *PickerInstance {
 	c.__prop_picked = __a_picked
 	c.taps = 0
 	c.width__inst0 = 1
-	c.__slot0 = nil
 	__n8 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n8, 0)
 	gtk4rt.SetLook(__n8, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1494,9 +1488,6 @@ func (c *PickerInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1917,7 +1908,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop_picked = picked;
     let taps = 0;
     let width__inst0 = 1;
-    let __slot02 = [];
     function __set_picked(__v) {
       __prop_picked = __v;
     }
@@ -2055,10 +2045,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:6844953c5575a18f02b85ae8cdc3c29f
 -- run/go/fyne --
-pass sha256:234885d468468153172cadaf3cc4e040
+pass sha256:e8eb47b2c57e4ddc0476b4a5c32a3288
 -- run/go/gtk4 --
-pass sha256:f74fcd40b3556aec7f9ddf1421c6d7a1
+pass sha256:c9f1cd2d622e027c941c45d67c681265
 -- run/kotlin/android --
 pass sha256:3640f86926a533228c5726acbd936cad
 -- run/none/html --
-pass sha256:628a584b5a6fc795cc153fe5bde05031
+pass sha256:61e2488a90871809e0e7f02cb0bea95e

@@ -1132,12 +1132,6 @@ type CounterInstance struct {
 	__prop_label string
 	n            int
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
-	__slot2      []fyne.CanvasObject
-	__slot2_at   fyne.CanvasObject
 	__n0         *fynelayout.Button
 }
 
@@ -1147,9 +1141,6 @@ func newCounterInstance(__model *Model, __a_label string) *CounterInstance {
 	c.__prop_label = __a_label
 	c.n = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((c.__prop_label + " ") + fmt.Sprint(c.n)))
 	c.__n0.OnTapped = func() {
@@ -1468,12 +1459,6 @@ type CounterInstance struct {
 	__prop_label string
 	n            int
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
-	__slot2      []gtk4rt.Handle
-	__slot2_at   gtk4rt.Handle
 	__n0         gtk4rt.Handle
 }
 
@@ -1482,9 +1467,6 @@ func newCounterInstance(__model *Model, __a_label string) *CounterInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.n = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.n)))
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
@@ -1506,15 +1488,6 @@ func (c *CounterInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
 	}
 }
 
@@ -1957,9 +1930,6 @@ window.__sngl_boot = () => {
     let label = props.label ?? "";
     let __prop_label = label;
     let n = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n0.textContent = __prop_label + " " + String(n);
@@ -1988,9 +1958,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.textContent = "first " + String(__prop___p0.elem);
@@ -2010,9 +1977,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n2.textContent = "second " + String(__prop___p0.elem);
@@ -2033,9 +1997,6 @@ window.__sngl_boot = () => {
     let __on0 = props.__on0 ?? (() => {
     });
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___on0(__v) {
       __prop___on0 = __v;
     }
@@ -2345,10 +2306,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:dc67bef1679ae281daa803d0b21dea3a
 -- run/go/fyne --
-pass sha256:96a7079febb94dc9b8945adca2a2c27d
+pass sha256:bc8baa86ab5900e4413582ff0ed8349e
 -- run/go/gtk4 --
-pass sha256:79f6e61ef9a5023095dbde47fce84c27
+pass sha256:cb877ea70b9b6a684870704add8909af
 -- run/kotlin/android --
 pass sha256:151db5457c973a4aa013af349d59ec18
 -- run/none/html --
-pass sha256:5a4a800a42d6dc6b56cfa3b52f55f126
+pass sha256:9c58f9239b59033c4cde1a0b26a89b65

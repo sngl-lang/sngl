@@ -35,7 +35,6 @@ func __identified0(__xs list[int]) list[struct {
     return __out
 }
 var __root _application
-var __slot0 list[text] = []
 component main node {
     var items list[int] = [1, 2, 3]
     var __root node

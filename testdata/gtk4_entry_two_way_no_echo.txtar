@@ -506,8 +506,6 @@ type SearchInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *C.GtkBox
-	__slot0             []*C.GtkWidget
-	__slot0_at          *C.GtkWidget
 	box                 *C.GtkEntry
 	__n0                *C.GtkLabel
 }
@@ -523,7 +521,6 @@ func newSearchInstance(__model *Model) *SearchInstance {
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	__n4 := (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
 	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(__n4)), 1)
 	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n4)), gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -531,15 +528,13 @@ func newSearchInstance(__model *Model) *SearchInstance {
 	gtk4rt.SetBool(gtk4rt.Handle(unsafe.Pointer(c.box)), "can-focus", true)
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(c.box)), "changed", func() {
 		if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box)))) != c.search {
-			__input_value_wrote0 := C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
-			c.search = __input_value_wrote0
+			c.search = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
 			gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.search)
 		}
 		c.__effects0_settle()
 	})
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(c.box)), "activate", func() {
-		__input_value_wrote1 := C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
-		c.search = __input_value_wrote1
+		c.search = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
 		gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.search)
 		c.__effects0_settle()
 	})
@@ -607,9 +602,6 @@ func (c *SearchInstance) Destroy() {
 	if c.Root != nil {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
 	}
 }
 
@@ -707,4 +699,4 @@ func (m *Model) boxChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__named_box)), sig)
 }
 -- run/go/gtk4 --
-pass sha256:1ab453176c4f8503f7958f20410e99ac
+pass sha256:cdba597a0f25c54331dd59ef01c09389

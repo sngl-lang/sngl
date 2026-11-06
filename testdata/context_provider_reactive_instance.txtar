@@ -744,8 +744,6 @@ type ShowInstance struct {
 	__prop_n           int
 	__prop___ctx_label string
 	__root             *fyne.Container
-	__slot0            []fyne.CanvasObject
-	__slot0_at         fyne.CanvasObject
 	__n0               *widget.Label
 }
 
@@ -755,7 +753,6 @@ func newShowInstance(__model *Model, __a_n int, __a___ctx_label string) *ShowIns
 	c.__prop_n = __a_n
 	c.__prop___ctx_label = __a___ctx_label
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(((c.__prop___ctx_label + " ") + fmt.Sprint(c.__prop_n)))
 	c.Root = c.__n0
@@ -963,8 +960,6 @@ type ShowInstance struct {
 	__prop_n           int
 	__prop___ctx_label string
 	__root             gtk4rt.Handle
-	__slot0            []gtk4rt.Handle
-	__slot0_at         gtk4rt.Handle
 	__n0               gtk4rt.Handle
 }
 
@@ -973,7 +968,6 @@ func newShowInstance(__model *Model, __a_n int, __a___ctx_label string) *ShowIns
 	c.__model = __model
 	c.__prop_n = __a_n
 	c.__prop___ctx_label = __a___ctx_label
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, ((c.__prop___ctx_label + " ") + fmt.Sprint(c.__prop_n)))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
@@ -996,9 +990,6 @@ func (c *ShowInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1344,7 +1335,6 @@ body { font-family: system-ui, sans-serif; }
     let __ctx_label = props.__ctx_label ?? "a";
     let __prop_n = n;
     let __prop___ctx_label = __ctx_label;
-    let __slot02 = [];
     function __set_n(__v) {
       __prop_n = __v;
       __n0.textContent = __prop___ctx_label + " " + String(__prop_n);
@@ -1452,10 +1442,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:953355e0c1d16b791255d69f72cad471
 -- run/go/fyne --
-pass sha256:de9477b29cc03f93274f1005e78093c2
+pass sha256:6c73f67fd42a35b01f4efd16a815fe4b
 -- run/go/gtk4 --
-pass sha256:4d11b0f2a39ffe351cb1378bd0f9e41f
+pass sha256:0640d4f4c9247c7fe2c936ab2ad325e6
 -- run/kotlin/android --
 pass sha256:e413e1f07994d6fdad671d73fa545bf9
 -- run/none/html --
-pass sha256:7372a1a1036d10b543cba1c56b4d9bef
+pass sha256:d9269ef5cf118d4d8c401f79694fc380

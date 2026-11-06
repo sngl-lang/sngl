@@ -64,11 +64,10 @@ sngl generate --platform=fyne --lang=go --out=fy rooted.sngl
 grep 'func \(m \*Model\) incClick\(\)' fy/model.go
 grep 'm.inc.OnTapped\(\)' fy/model.go
 
-# html only emits invokers under test mode -- an ordinary page carries no test
-# surface at all.
+# bubbletea and html emit invokers only for a test build -- an ordinary
+# program carries no test surface at all.
 sngl generate --platform=bubbletea --lang=go --out=bt rooted.sngl
-grep 'func \(m \*Model\) incClick\(\)' bt/model.go
-grep 'm.Update\(tea.KeyPressMsg{Code: tea.KeyEnter}\)' bt/model.go
+! grep 'incClick' bt/model.go
 
 sngl generate --platform=html --lang=none --opt test=true --out=ht rooted.sngl
 grep 'state.incClick = \(\) =>' ht/index.html

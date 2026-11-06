@@ -1800,10 +1800,6 @@ type AvatarInstance struct {
 	failed          bool
 	hits            int
 	__root          *fyne.Container
-	__slot0         []fyne.CanvasObject
-	__slot0_at      fyne.CanvasObject
-	__slot1         []fyne.CanvasObject
-	__slot1_at      fyne.CanvasObject
 	__n0            *fynelayout.Button
 	__n0__box       *fynelayout.Box
 }
@@ -1820,8 +1816,6 @@ func newAvatarInstance(__model *Model, __a_initials string, __a_size string, __a
 	c.failed = false
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0__box = fynelayout.NewBox(c.__n0)
 	c.__n0.SetText(((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
@@ -2716,10 +2710,6 @@ type AvatarInstance struct {
 	failed          bool
 	hits            int
 	__root          gtk4rt.Handle
-	__slot0         []gtk4rt.Handle
-	__slot0_at      gtk4rt.Handle
-	__slot1         []gtk4rt.Handle
-	__slot1_at      gtk4rt.Handle
 	__n0            gtk4rt.Handle
 }
 
@@ -2734,8 +2724,6 @@ func newAvatarInstance(__model *Model, __a_initials string, __a_size string, __a
 	c.__prop_click = __a_click
 	c.failed = false
 	c.hits = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
@@ -2779,12 +2767,6 @@ func (c *AvatarInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -3571,8 +3553,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop_click = click;
     let failed = false;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set_initials(__v) {
       __prop_initials = __v;
       __n1.textContent = __prop_initials + " " + String(hits);
@@ -3802,10 +3782,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:7b73c8c2046e6441709471305c0f8e27
 -- run/go/fyne --
-pass sha256:61a8379dfef6c84b02cc11c0e4057cf2
+pass sha256:6ba9296b376f1e441a7c25db44f45c16
 -- run/go/gtk4 --
-pass sha256:1c36a5e8fa52107c1bf06f20bb97b5e9
+pass sha256:8797e80b689bcbd508de55e78972015b
 -- run/kotlin/android --
 pass sha256:763e66f0579fec7155875031fd83e4bc
 -- run/none/html --
-pass sha256:5ba5e1faea6e750b9f4a68036fea7c74
+pass sha256:21b624e0ed4b2ce06de937cfdba0816e

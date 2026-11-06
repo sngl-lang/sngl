@@ -374,10 +374,6 @@ type __canvas0Instance struct {
 	__prop___p1  float64
 	__prop___on0 func()
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
 	__n3         *canvas.Image
 	__n3Ctx      *snglcanvas.Context
 	__n3Tap      *fynelayout.Tap
@@ -390,8 +386,6 @@ func new__canvas0Instance(__model *Model, __a___p0 __anon_id_elem_4ccb28, __a___
 	c.__prop___p1 = __a___p1
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n3Ctx = snglcanvas.New(40, 40)
 	c._canvasDraw0(c.__n3Ctx)
 	c.__n3 = canvas.NewImageFromImage(c.__n3Ctx.Result())
@@ -442,10 +436,6 @@ type __canvas1Instance struct {
 	__model     *Model
 	__prop___p0 __anon_id_elem_4ccb28
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
 	__n4        *canvas.Image
 	__n4Ctx     *snglcanvas.Context
 }
@@ -455,8 +445,6 @@ func new__canvas1Instance(__model *Model, __a___p0 __anon_id_elem_4ccb28) *__can
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n4Ctx = snglcanvas.New(40, 40)
 	c._canvasDraw1(c.__n4Ctx)
 	c.__n4 = canvas.NewImageFromImage(c.__n4Ctx.Result())
@@ -1078,10 +1066,6 @@ type __canvas0Instance struct {
 	__prop___p1  float64
 	__prop___on0 func()
 	__root       *C.GtkBox
-	__slot0      []*C.GtkWidget
-	__slot0_at   *C.GtkWidget
-	__slot1      []*C.GtkWidget
-	__slot1_at   *C.GtkWidget
 	__n3         *C.GtkDrawingArea
 	__n3Gesture  *C.GtkGesture
 }
@@ -1092,8 +1076,6 @@ func new__canvas0Instance(__model *Model, __a___p0 __anon_id_elem_4ccb28, __a___
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__prop___on0 = __a___on0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n3 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(c.__n3, C.int(40))
 	C.gtk_drawing_area_set_content_height(c.__n3, C.int(40))
@@ -1140,12 +1122,6 @@ func (c *__canvas0Instance) Destroy() {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
-	}
-	if c.__slot1_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot1_at)))
-	}
 }
 
 // __canvas1Instance is one live instance of the __canvas1 component.
@@ -1154,10 +1130,6 @@ type __canvas1Instance struct {
 	__model     *Model
 	__prop___p0 __anon_id_elem_4ccb28
 	__root      *C.GtkBox
-	__slot0     []*C.GtkWidget
-	__slot0_at  *C.GtkWidget
-	__slot1     []*C.GtkWidget
-	__slot1_at  *C.GtkWidget
 	__n4        *C.GtkDrawingArea
 }
 
@@ -1165,8 +1137,6 @@ func new__canvas1Instance(__model *Model, __a___p0 __anon_id_elem_4ccb28) *__can
 	c := &__canvas1Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n4 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(c.__n4, C.int(40))
 	C.gtk_drawing_area_set_content_height(c.__n4, C.int(40))
@@ -1197,12 +1167,6 @@ func (c *__canvas1Instance) Destroy() {
 	if c.Root != nil {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
-	}
-	if c.__slot1_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot1_at)))
 	}
 }
 
@@ -1348,8 +1312,6 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       _snglCanvasDraw(__n3, 40, 40, "", _canvasDraw0);
@@ -1390,8 +1352,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       _snglCanvasDraw(__n4, 40, 40, "", _canvasDraw1);
@@ -1623,8 +1583,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:8fccbf7f783e9245f1f78bfdb63e0303
+pass sha256:f524b65af9345305a5d1dc0c92b9212f
 -- run/go/gtk4 --
-pass sha256:d668c9187ae2b26167f2adc8029f8b25
+pass sha256:485f006232570bdf3ac3ddde292b5c02
 -- run/none/html --
-pass sha256:87941855d15734967eb82b91f335ffab
+pass sha256:713a95ca971619a0156e7c77ca78e1d5

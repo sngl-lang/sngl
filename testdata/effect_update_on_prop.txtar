@@ -226,8 +226,6 @@ type ChildInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 	__n0                *widget.Label
 }
 
@@ -243,7 +241,6 @@ func newChildInstance(__model *Model, __a_n int) *ChildInstance {
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(fmt.Sprint(c.seen))
 	c.Root = c.__n0
@@ -456,7 +453,6 @@ body { font-family: system-ui, sans-serif; }
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
     function __effect0_update() {
       seen = __effect0_key;
       __n0.textContent = String(seen);
@@ -583,8 +579,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:ba3539e7912298d75c37c2a75df3b753
+pass sha256:369b64af340417a68a1168b34a25e501
 -- run/kotlin/android --
 pass sha256:6c137ad117451b122036e0347ac0c934
 -- run/none/html --
-pass sha256:03abb2301bded21efee9cd98354c3c65
+pass sha256:1d0e81056d3e89c445b4a9aceed26fac

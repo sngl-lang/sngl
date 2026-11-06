@@ -877,8 +877,6 @@ type Model struct {
 	shown          bool
 	other          bool
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*BadgeInstance
@@ -903,8 +901,6 @@ func New() *Model {
 	m.shown = true
 	m.other = false
 	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst1_live = []*BadgeInstance{}
@@ -1106,12 +1102,6 @@ type BadgeInstance struct {
 	__prop_label string
 	hits         int
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
-	__slot2      []fyne.CanvasObject
-	__slot2_at   fyne.CanvasObject
 	hit          *fynelayout.Button
 }
 
@@ -1121,9 +1111,6 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__prop_label = __a_label
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.hit = fynelayout.NewButton("", nil)
 	c.hit.SetText((c.__prop_label + fmt.Sprint(c.hits)))
 	c.hit.OnTapped = func() {
@@ -1153,10 +1140,6 @@ type PanelInstance struct {
 	__inst0_live   []*BadgeInstance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
 	__n0           *fyne.Container
 	flip           *fynelayout.Button
 }
@@ -1170,8 +1153,6 @@ func newPanelInstance(__model *Model) *PanelInstance {
 	c.__inst0_live = []*BadgeInstance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.__n0 = fynelayout.NewVBox()
 	c.flip = fynelayout.NewButton("", nil)
 	c.flip.SetText("f")
@@ -1309,8 +1290,6 @@ type Model struct {
 	shown          bool
 	other          bool
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*BadgeInstance
@@ -1335,8 +1314,6 @@ func New() *Model {
 	m.shown = true
 	m.other = false
 	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst1_live = []*BadgeInstance{}
@@ -1477,12 +1454,6 @@ type BadgeInstance struct {
 	__prop_label string
 	hits         int
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
-	__slot2      []gtk4rt.Handle
-	__slot2_at   gtk4rt.Handle
 	hit          gtk4rt.Handle
 }
 
@@ -1491,9 +1462,6 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.hits = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.hit = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.hit, (c.__prop_label + fmt.Sprint(c.hits)))
 	gtk4rt.SetBool(c.hit, "can-focus", true)
@@ -1517,15 +1485,6 @@ func (c *BadgeInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
 }
 
 // PanelInstance is one live instance of the panel component.
@@ -1539,10 +1498,6 @@ type PanelInstance struct {
 	__inst0_live   []*BadgeInstance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
 	__n0           gtk4rt.Handle
 	flip           gtk4rt.Handle
 }
@@ -1555,8 +1510,6 @@ func newPanelInstance(__model *Model) *PanelInstance {
 	c.__inst0_live = []*BadgeInstance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.__n0 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n0, 1)
 	gtk4rt.SetLook(c.__n0, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1640,12 +1593,6 @@ func (c *PanelInstance) Destroy() {
 	}
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
 	}
 }
 
@@ -2071,9 +2018,6 @@ window.__sngl_boot = () => {
     let label = props.label ?? "";
     let __prop_label = label;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n0.textContent = __prop_label + String(hits);
@@ -2102,12 +2046,10 @@ window.__sngl_boot = () => {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let on = true;
-    let __slot02 = [];
+    let __slot0 = [];
     let __inst1_live = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot12 = [];
-    let __slot22 = [];
     function __renderSlot0(parent) {
       if (__rendering0) {
         __renderAgain0 = true;
@@ -2117,9 +2059,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain0) {
             __renderAgain0 = false;
-            let __place0_prev = __slot02;
+            let __place0_prev = __slot0;
             let __place0_i = 0;
-            __slot02 = [];
+            __slot0 = [];
             let __inst1_next = [];
             let __inst1_i = 0;
             if (on) {
@@ -2147,7 +2089,7 @@ window.__sngl_boot = () => {
               } else {
                 parent.insertBefore(b__el, __place0_i_ref0);
               }
-              __slot02.push(b__el);
+              __slot0.push(b__el);
             }
             for (const [__inst1_i_d, _] of __inst1_live.entries()) {
               let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -2157,7 +2099,7 @@ window.__sngl_boot = () => {
             }
             __inst1_live = __inst1_next;
             for (const __place0_prev_e of __place0_prev) {
-              if (__slot02.indexOf(__place0_prev_e) < 0) {
+              if (__slot0.indexOf(__place0_prev_e) < 0) {
                 parent.removeChild(__place0_prev_e);
               }
             }
@@ -2201,7 +2143,6 @@ window.__sngl_boot = () => {
       }
     };
   }
-  var __slot0 = [];
   var __slot1 = [];
   var __inst3_live = [];
   var __rendering1 = false;
@@ -2352,10 +2293,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:4e07f4508e2eda19d64fc118b13eeb28
 -- run/go/fyne --
-pass sha256:15a286b438929c3f930ef64e2b938421
+pass sha256:f4690cc672912ce960302f95f74cb957
 -- run/go/gtk4 --
-pass sha256:779bece036ac17ced531595b0e4babc8
+pass sha256:cdcc9a6f796a236ae1d7b2b893cd953e
 -- run/kotlin/android --
 pass sha256:a3551a0cf812d42e72f0a018baff1c5e
 -- run/none/html --
-pass sha256:d6c2d30d97839ff4bc53e2632afec586
+pass sha256:2f75baeea4c030db8b15d4c3681993a1

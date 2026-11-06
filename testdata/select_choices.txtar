@@ -1610,7 +1610,6 @@ body { font-family: system-ui, sans-serif; }
     let __p1 = props.__p1;
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.value = __prop___p0.label;
@@ -1721,4 +1720,4 @@ pass sha256:45abf2131efd19445b0eb0c4a423761d
 -- run/kotlin/android --
 pass sha256:2a93448725330676a8d7771074ca8707
 -- run/none/html --
-pass sha256:649655763126adf8a75b36b8565a5432
+pass sha256:71036b5f67153c96bccdfff69f39de33

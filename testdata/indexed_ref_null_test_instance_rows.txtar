@@ -928,8 +928,6 @@ type Model struct {
 	__inst0_live   []*__child0Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 
 	__n3        *fyne.Container
 	move        *fynelayout.Button
@@ -947,8 +945,6 @@ func New() *Model {
 	m.__inst0_live = []*__child0Instance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
 	return m
 }
 
@@ -1097,10 +1093,6 @@ type BadgeInstance struct {
 	__prop_label string
 	hits         int
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
 	hit          *fynelayout.Button
 }
 
@@ -1110,8 +1102,6 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__prop_label = __a_label
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.hit = fynelayout.NewButton("", nil)
 	c.hit.SetText(((("hit " + c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 	c.hit.OnTapped = func() {
@@ -1139,8 +1129,6 @@ type __block_state0Instance struct {
 	__prop___on_skip func(string)
 	local            int
 	__root           *fyne.Container
-	__slot0          []fyne.CanvasObject
-	__slot0_at       fyne.CanvasObject
 	__slot1          []fyne.CanvasObject
 	__slot1_at       fyne.CanvasObject
 	__inst1_live     map[string]*BadgeInstance
@@ -1156,7 +1144,6 @@ func new__block_state0Instance(__model *Model, __a_r []string, __a_skip string, 
 	c.__prop___on_skip = __a___on_skip
 	c.local = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = map[string]*BadgeInstance{}
 	c.__rendering1 = false
@@ -1268,10 +1255,6 @@ type __child0Instance struct {
 	__prop___p1  string
 	__prop___on0 func(string)
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
 	__n1         *__block_state0Instance
 }
 
@@ -1282,8 +1265,6 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 string, __a
 	c.__prop___p1 = __a___p1
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n4 := fynelayout.NewVBox()
 	c.__n1 = new__block_state0Instance(c.__model, c.__prop___p0, c.__prop___p1, func(__on0_0 string) {
 		c.__prop___on0(__on0_0)
@@ -1392,8 +1373,6 @@ type Model struct {
 	__inst0_live   []*__child0Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
 	move           gtk4rt.Handle
 	__named_hit    gtk4rt.Handle
 }
@@ -1410,8 +1389,6 @@ func New() *Model {
 	m.__inst0_live = []*__child0Instance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
 	return m
 }
 
@@ -1518,10 +1495,6 @@ type BadgeInstance struct {
 	__prop_label string
 	hits         int
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
 	hit          gtk4rt.Handle
 }
 
@@ -1530,8 +1503,6 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.hits = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.hit = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.hit, ((("hit " + c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 	gtk4rt.SetBool(c.hit, "can-focus", true)
@@ -1555,12 +1526,6 @@ func (c *BadgeInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // __block_state0Instance is one live instance of the __block_state0 component.
@@ -1572,8 +1537,6 @@ type __block_state0Instance struct {
 	__prop___on_skip func(string)
 	local            int
 	__root           gtk4rt.Handle
-	__slot0          []gtk4rt.Handle
-	__slot0_at       gtk4rt.Handle
 	__slot1          []gtk4rt.Handle
 	__slot1_at       gtk4rt.Handle
 	__inst1_live     map[string]*BadgeInstance
@@ -1589,7 +1552,6 @@ func new__block_state0Instance(__model *Model, __a_r []string, __a_skip string, 
 	c.__prop___on_skip = __a___on_skip
 	c.local = 0
 	c.__root = gtk4rt.ContentsNew()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = map[string]*BadgeInstance{}
 	c.__rendering1 = false
@@ -1701,9 +1663,6 @@ func (c *__block_state0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 	if c.__slot1_at != nil {
 		gtk4rt.Release(c.__slot1_at)
 	}
@@ -1717,10 +1676,6 @@ type __child0Instance struct {
 	__prop___p1  string
 	__prop___on0 func(string)
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
 	__n1         *__block_state0Instance
 }
 
@@ -1730,8 +1685,6 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 string, __a
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__prop___on0 = __a___on0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n4 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n4, 1)
 	gtk4rt.SetLook(__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1768,12 +1721,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -2199,8 +2146,6 @@ window.__sngl_boot = () => {
     let label = props.label ?? "";
     let __prop_label = label;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n0.textContent = "hit " + __prop_label + " " + String(hits);
@@ -2236,8 +2181,7 @@ window.__sngl_boot = () => {
     let __prop_skip = skip;
     let __prop___on_skip = __on_skip;
     let local = 0;
-    let __slot02 = [];
-    let __slot12 = [];
+    let __slot1 = [];
     let __inst3_live = /* @__PURE__ */ new Map([]);
     let __rendering1 = false;
     let __renderAgain1 = false;
@@ -2261,9 +2205,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain1) {
             __renderAgain1 = false;
-            let __place2_prev = __slot12;
+            let __place2_prev = __slot1;
             let __place2_i = 0;
-            __slot12 = [];
+            __slot1 = [];
             let __inst3_next = /* @__PURE__ */ new Map([]);
             let __inst3_seen = /* @__PURE__ */ new Map([]);
             for (const n of __identified0(__prop_r)) {
@@ -2297,7 +2241,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(b__el, __place2_i_ref0);
                 }
-                __slot12.push(b__el);
+                __slot1.push(b__el);
               }
             }
             for (const [__inst3_live_k, __inst3_live_v] of __inst3_live.entries()) {
@@ -2307,7 +2251,7 @@ window.__sngl_boot = () => {
             }
             __inst3_live = __inst3_next;
             for (const __place2_prev_e of __place2_prev) {
-              if (__slot12.indexOf(__place2_prev_e) < 0) {
+              if (__slot1.indexOf(__place2_prev_e) < 0) {
                 parent.removeChild(__place2_prev_e);
               }
             }
@@ -2350,8 +2294,6 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n2.__set_r(__prop___p0);
@@ -2384,7 +2326,6 @@ window.__sngl_boot = () => {
   var __inst1_live = [];
   var __rendering0 = false;
   var __renderAgain0 = false;
-  var __slot1 = [];
   function __renderSlot0(parent) {
     if (__rendering0) {
       __renderAgain0 = true;
@@ -2482,10 +2423,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:847fc98889c84ec1bad836fcb072fb93
 -- run/go/fyne --
-pass sha256:55e99959c1015161d33832850d2d007a
+pass sha256:a80e964393d20f602c7abb112c9f254b
 -- run/go/gtk4 --
-pass sha256:b0e347d861cf55f464d70dbd99fd7c23
+pass sha256:2f9166d035b4a3e7472e8ac2475ea821
 -- run/kotlin/android --
 pass sha256:778bc82db589e01e1d83d236c39da3bc
 -- run/none/html --
-pass sha256:73ab893d2e8a46d31d561ebf36a8f20d
+pass sha256:01e3a0119274e385884ad146788018b8

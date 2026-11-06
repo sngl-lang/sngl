@@ -120,9 +120,6 @@ body { font-family: system-ui, sans-serif; }
     let start = props.start ?? 0;
     let __prop_start = start;
     let n = __prop_start;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     let __n0 = document.createElement("span");
     __n0.textContent = String(n);
     __root.appendChild(__n0);
@@ -145,9 +142,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
     let __prop___on1 = __on1;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p1(__v) {
       __prop___p1 = __v;
       __n2.value = __prop___p1;
@@ -195,9 +189,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___p2 = __p2;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p1(__v) {
       __prop___p1 = __v;
       if (__prop___p1) {
@@ -247,9 +238,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
     let __prop___on1 = __on1;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       let __n6__re6 = __cf_seeded({ start: __prop___p0 });
@@ -333,8 +321,7 @@ body { font-family: system-ui, sans-serif; }
             if (__inst1_live.length > __inst1_i && __inst1_was___p0[__inst1_i] === (state.big ? "section" : "div")) {
               __n9 = __inst1_live[__inst1_i];
               __n9.__set___on0((e) => {
-                let __input_value_wrote0 = e.currentTarget.value;
-                state.name = __input_value_wrote0;
+                state.name = e.currentTarget.value;
                 for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
                   __inst1_live[__inst1_live_ui].__set___p1(state.name);
@@ -347,8 +334,7 @@ body { font-family: system-ui, sans-serif; }
                 ;
               });
               __n9.__set___on1((e) => {
-                let __input_value_wrote1 = e.currentTarget.value;
-                state.name = __input_value_wrote1;
+                state.name = e.currentTarget.value;
                 for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
                   __inst1_live[__inst1_live_ui].__set___p1(state.name);
@@ -366,8 +352,7 @@ body { font-family: system-ui, sans-serif; }
                 __inst1_live[__inst1_i].__destroy();
               }
               let __n9__new = __cf___child0({ __p0: state.big ? "section" : "div", __p1: state.name, __on0: (e) => {
-                let __input_value_wrote0 = e.currentTarget.value;
-                state.name = __input_value_wrote0;
+                state.name = e.currentTarget.value;
                 for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
                   __inst1_live[__inst1_live_ui].__set___p1(state.name);
@@ -379,8 +364,7 @@ body { font-family: system-ui, sans-serif; }
                 }
                 ;
               }, __on1: (e) => {
-                let __input_value_wrote1 = e.currentTarget.value;
-                state.name = __input_value_wrote1;
+                state.name = e.currentTarget.value;
                 for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
                   __inst1_live[__inst1_live_ui].__set___p1(state.name);
@@ -509,8 +493,7 @@ body { font-family: system-ui, sans-serif; }
             if (__inst5_live.length > __inst5_i) {
               __n11 = __inst5_live[__inst5_i];
               __n11.__set___on0((e) => {
-                let __input_value_wrote0 = e.currentTarget.value;
-                state.name = __input_value_wrote0;
+                state.name = e.currentTarget.value;
                 for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
                   __inst1_live[__inst1_live_ui].__set___p1(state.name);
@@ -523,8 +506,7 @@ body { font-family: system-ui, sans-serif; }
                 ;
               });
               __n11.__set___on1((e) => {
-                let __input_value_wrote1 = e.currentTarget.value;
-                state.name = __input_value_wrote1;
+                state.name = e.currentTarget.value;
                 for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
                   __inst1_live[__inst1_live_ui].__set___p1(state.name);
@@ -543,8 +525,7 @@ body { font-family: system-ui, sans-serif; }
                 __inst5_live[__inst5_i].__destroy();
               }
               let __n11__new = __cf___child2({ __p0: state.k, __p1: state.name, __on0: (e) => {
-                let __input_value_wrote0 = e.currentTarget.value;
-                state.name = __input_value_wrote0;
+                state.name = e.currentTarget.value;
                 for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
                   __inst1_live[__inst1_live_ui].__set___p1(state.name);
@@ -556,8 +537,7 @@ body { font-family: system-ui, sans-serif; }
                 }
                 ;
               }, __on1: (e) => {
-                let __input_value_wrote1 = e.currentTarget.value;
-                state.name = __input_value_wrote1;
+                state.name = e.currentTarget.value;
                 for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
                   __inst1_live[__inst1_live_ui].__set___p1(state.name);
@@ -646,4 +626,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:6ec2946f14a2f8f6d00a1c6d30af19d7
+pass sha256:6d7374810e8c07e0fd333423854b8ed8

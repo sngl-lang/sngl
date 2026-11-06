@@ -233,8 +233,6 @@ type FlipInstance struct {
 	__inst0_live   []*__child0Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 	__n4           *fyne.Container
 	go__r0         *fynelayout.Button
 	line           *widget.Label
@@ -250,7 +248,6 @@ func newFlipInstance(__model *Model, __a_n int) *FlipInstance {
 	c.__inst0_live = []*__child0Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n4 = fynelayout.NewVBox()
 	c.go__r0 = fynelayout.NewButton("", nil)
 	c.go__r0.SetText("flip")
@@ -346,10 +343,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 int
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
 	__n0        *widget.Label
 }
 
@@ -358,8 +351,6 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText((fmt.Sprint(c.__prop___p0) + " extra"))
 	c.Root = c.__n0
@@ -544,8 +535,6 @@ type FlipInstance struct {
 	__inst0_live   []*__child0Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
 	__n4           gtk4rt.Handle
 	go__r0         gtk4rt.Handle
 	line           gtk4rt.Handle
@@ -560,7 +549,6 @@ func newFlipInstance(__model *Model, __a_n int) *FlipInstance {
 	c.__inst0_live = []*__child0Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n4, 1)
 	gtk4rt.SetLook(c.__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -664,9 +652,6 @@ func (c *FlipInstance) Destroy() {
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
 	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -675,10 +660,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 int
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
 	__n0        gtk4rt.Handle
 }
 
@@ -686,8 +667,6 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, (fmt.Sprint(c.__prop___p0) + " extra"))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
@@ -705,12 +684,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -804,7 +777,6 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_live = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot12 = [];
     function __set_n(__v) {
       __prop_n = __v;
       line.textContent = String(__prop_n) + " " + String(state.shown);
@@ -921,8 +893,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot0 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = String(__prop___p0) + " extra";
@@ -1023,8 +993,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:4375d3ac2fce45cab92ed14c495eca26
+pass sha256:658cbb9e07df561cf726d7a554c1d912
 -- run/go/gtk4 --
-pass sha256:5b345514a117875182d71d6459c77b5d
+pass sha256:3d813161860f0123f61c38b525ef6736
 -- run/none/html --
-pass sha256:96c4fc6a192b909070a5df66347e7e26
+pass sha256:8f1253998fde988c6d14d2ddd0ba38b0

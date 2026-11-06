@@ -742,8 +742,6 @@ type CounterInstance struct {
 	__prop_label string
 	hits         int
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
 	__n0         *fynelayout.Button
 }
 
@@ -753,7 +751,6 @@ func newCounterInstance(__model *Model, __a_label string) *CounterInstance {
 	c.__prop_label = __a_label
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((c.__prop_label + " ") + fmt.Sprint(c.hits)))
 	c.__n0.OnTapped = func() {
@@ -929,8 +926,6 @@ type CounterInstance struct {
 	__prop_label string
 	hits         int
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
 	__n0         gtk4rt.Handle
 }
 
@@ -939,7 +934,6 @@ func newCounterInstance(__model *Model, __a_label string) *CounterInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.hits = 0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.hits)))
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
@@ -963,9 +957,6 @@ func (c *CounterInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1248,7 +1239,6 @@ body { font-family: system-ui, sans-serif; }
     let label = props.label ?? "";
     let __prop_label = label;
     let hits = 0;
-    let __slot02 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n0.textContent = __prop_label + " " + String(hits);
@@ -1352,10 +1342,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:d7719ce67cab4b905199e4d8b89e1035
 -- run/go/fyne --
-pass sha256:1b6e8d741de477866444d241bdfffc7d
+pass sha256:1dfee03dec201797f659ef20597e1230
 -- run/go/gtk4 --
-pass sha256:acdc24ff0215694d693741ebed0ee5ca
+pass sha256:8ac72ffed5bd311b063aab6995c2bf2b
 -- run/kotlin/android --
 pass sha256:870123b78568501d6f60ddfacbac3907
 -- run/none/html --
-pass sha256:3c533e5728aba48d9e77df94e6b2923e
+pass sha256:fbff471e1013bd1ab73b98b229f692b2
