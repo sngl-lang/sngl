@@ -1064,9 +1064,14 @@ func rebaseKeeping(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[ir.Symbo
 	unnamed := false
 	out := newExprWalker(func(x ir.Expr) ir.Expr {
 		// A context answers the provider the instance is under, which the
-		// test has no name for.
+		// test has no name for -- unless the instance is the test's own,
+		// which nothing provides for but the test: what it reads is what
+		// the test set, or the default, and a provider around the node in
+		// the instance's body is the answer's (underProviders).
 		if _, ok := x.(*ir.ContextRead); ok {
-			unnamed = true
+			if _, own := unnarrowed(inst).(*ir.Ident); !own {
+				unnamed = true
+			}
 			return x
 		}
 		// A method of comp called with its receiver left implicit, as its

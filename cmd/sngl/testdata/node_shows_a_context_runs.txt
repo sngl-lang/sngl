@@ -1,0 +1,122 @@
+# A test reads the prop of a node that shows a context, on every target: what
+# the test set, or the default, and inside a provider the component writes,
+# the provider's. Read through the test's own instance the context answers
+# nothing but the test, which the read was refused as though it could not
+# name; left standing, html read `.value` off nothing and the Go targets
+# called an accessor nobody wrote.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+context[string] #greeting("hello")
+
+component page ui.node {
+    ui.text #shown(value=greeting)
+    greeting("inner") {
+        ui.text #inner(value=greeting)
+    }
+}
+
+// A node showing a context is read like any other.
+func testANodeShowsAContext(t test.Test, c page) {
+    t.assert(c.shown.value == "hello")
+}
+
+func testASetContextShows(t test.Test, c page) {
+    t.setContext(greeting, "hi")
+    t.assert(c.shown.value == "hi")
+    t.assert(c.inner.value == "inner")
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:af7ac0d716a5cc0025fa13e470f873d3
+{
+  "results": [
+    {
+      "Desc": "ANodeShowsAContext",
+      "Passed": true
+    },
+    {
+      "Desc": "ASetContextShows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:a194f2cfe402006686f03e8f780de78b
+{
+  "results": [
+    {
+      "Desc": "ANodeShowsAContext",
+      "Passed": true
+    },
+    {
+      "Desc": "ASetContextShows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:75c78c43708d076216b63c71eab96205
+{
+  "results": [
+    {
+      "Desc": "ANodeShowsAContext",
+      "Passed": true
+    },
+    {
+      "Desc": "ASetContextShows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:b19041e82fae6fbbd854efd3f67ea326
+{
+  "results": [
+    {
+      "Desc": "ANodeShowsAContext",
+      "Passed": true
+    },
+    {
+      "Desc": "ASetContextShows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:bd44407db3930c349b12731d8b263add
+{
+  "results": [
+    {
+      "Desc": "ANodeShowsAContext",
+      "Passed": true
+    },
+    {
+      "Desc": "ASetContextShows",
+      "Passed": true
+    }
+  ]
+}
