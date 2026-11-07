@@ -167,20 +167,20 @@ func (s *Select) choose(row int) {
 }
 
 // selectButton is the box a closed select is drawn in, and an open one's
-// button; focused, its edge is bold.
-func selectButton(focused bool) lipgloss.Style {
-	b := lipgloss.RoundedBorder()
+// button, as a button's is: focused, it is marked `>` and its edge is bold.
+func selectButton(focused bool, label string) string {
+	mark := " "
 	if focused {
-		b = lipgloss.ThickBorder()
+		mark = ">"
 	}
-	return lipgloss.NewStyle().Border(b).Padding(0, 1)
+	return Focused(ButtonLook(lipgloss.NewStyle()), focused).Render(mark + " " + label)
 }
 
 // View draws the button, and where it is open hands f the popover to draw
 // below it.
 func (s Select) View(options []string, f *Floats) string {
 	s.SetOptions(options)
-	button := selectButton(s.st.focused).Render(s.clip(s.value) + " ▾")
+	button := selectButton(s.st.focused, s.clip(s.value)+" ▾")
 	if !s.st.open {
 		return button
 	}
@@ -192,7 +192,7 @@ func (s Select) clip(l string) string {
 	if s.width <= 0 {
 		return l
 	}
-	return lipgloss.NewStyle().MaxWidth(max(s.width-6, 1)).Render(l)
+	return lipgloss.NewStyle().MaxWidth(max(s.width-7, 1)).Render(l)
 }
 
 // popover is the choices from the row the popover starts at, the cursor's

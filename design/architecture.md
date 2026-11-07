@@ -211,6 +211,12 @@ target with no way to say a field is meant for one.
   (`markPress`, `bubbletea/click_run_test.go`). A Widget's `events` name the
   key a click presses, as a Styled's do: a select's is Enter, which opens it.
 
+  The stop focus is on is marked `>` at its start, and where its box has an
+  edge -- a button's, given a rounded one where its Style draws none
+  (`tui.ButtonLook`), a tab's, a select's -- the edge is drawn bold
+  (`tui.Focused`); a tab's corners on the panel's line turn bold only up the
+  tab's side. A select drew only the bold edge and the rest only the mark.
+
   A select is a button, and an open one's choices float below it over the
   view (`tui.Floats`, the Model's `__floats`): its view marks its block and
   hands over the popover, the view's scans take the marks out where they are

@@ -10,14 +10,14 @@ import seq "sngl:seq"
 import ui "sngl:ui"
 
 ui.window {
-    var shown = 20
+    var shown = 5
     var pages = 0
 
     ui.vbox(style={flex=1}) {
         ui.text(value="pages {pages}")
         ui.scroll(style={flex=1}, @reachEnd {
-            if shown < 50 {
-                shown += 10
+            if shown < 20 {
+                shown += 5
                 pages += 1
             }
         }) {
@@ -68,7 +68,7 @@ func settle(m Model) Model {
 func TestAScrollCutsWheelsAndLoadsMore(t *testing.T) {
 	m := settle(send(New(), tea.WindowSizeMsg{Width: 40, Height: 8}))
 	v := view(m)
-	if !strings.Contains(v, "row 0") || strings.Contains(v, "row 9") {
+	if !strings.Contains(v, "row 0") || strings.Contains(v, "row 4") {
 		t.Fatalf("an 8-line window drew:\n%s", v)
 	}
 	if m.pages != 0 {
@@ -84,7 +84,7 @@ func TestAScrollCutsWheelsAndLoadsMore(t *testing.T) {
 	if m.pages != 1 {
 		t.Fatalf("the end in view loaded %d pages, want 1", m.pages)
 	}
-	if v := view(m); !strings.Contains(v, "row 1") {
+	if v := view(m); !strings.Contains(v, "row 5") {
 		t.Fatalf("the page after:\n%s", v)
 	}
 	// The wheel above the scroll moves nothing.
@@ -95,15 +95,17 @@ func TestAScrollCutsWheelsAndLoadsMore(t *testing.T) {
 	}
 }
 
-// Tab brings the row it focuses into view, and PgUp pages back.
+// Tab brings the row it focuses into view, and PgUp pages back, a row
+// being a button's three lines.
 func TestAScrollFollowsTab(t *testing.T) {
 	m := settle(send(New(), tea.WindowSizeMsg{Width: 40, Height: 8}))
-	for range 9 {
+	for range 4 {
 		m = send(m, tea.KeyPressMsg{Code: tea.KeyTab})
 	}
-	if v := view(m); !strings.Contains(v, "> row 9") {
-		t.Fatalf("Tab to row 9 drew:\n%s", v)
+	if v := view(m); !strings.Contains(v, "> row 4") || strings.Contains(v, "row 0") {
+		t.Fatalf("Tab to row 4 drew:\n%s", v)
 	}
+	m = send(m, tea.KeyPressMsg{Code: tea.KeyPgUp})
 	m = send(m, tea.KeyPressMsg{Code: tea.KeyPgUp})
 	if v := view(m); !strings.Contains(v, "row 0") {
 		t.Fatalf("PgUp drew:\n%s", v)

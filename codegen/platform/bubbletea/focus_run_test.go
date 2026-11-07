@@ -317,7 +317,7 @@ func TestAGrowingStopKeepsItsPlace(t *testing.T) {
 	m := key(New(), tea.WindowSizeMsg{Width: 80, Height: 24})
 	for i, w := range []string{"a", "a!", "b", "b!", "end", "a"} {
 		view := m.View().Content
-		if !regexp.MustCompile("a [ >]+a! [ >]+b [ >]+b! [ >]+end").MatchString(view) || len(regexp.MustCompile("a [ >]{20,}a!").FindString(view)) == 0 {
+		if !regexp.MustCompile("a [ >┃│]+a! [ >┃│]+b [ >┃│]+b! [ >┃│]+end").MatchString(view) || len(regexp.MustCompile("a {20,}[┃│]").FindString(view)) == 0 {
 			t.Fatalf("stop %d: the growers took no free space:\n%s", i, view)
 		}
 		if !regexp.MustCompile("> " + regexp.QuoteMeta(w) + "( |$)").MatchString(view) {

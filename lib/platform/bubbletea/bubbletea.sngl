@@ -333,7 +333,7 @@ const component ui.button[platform](text, focusable, style) {
         content = text,
         focus = Focus{enabled=style.display != ui.Display.none, tab=focusable},
         events = [Event{on="click", key="enter"}],
-        look = lookOf(style),
+        look = buttonLook(lookOf(style)),
         fit = fitOf(style.whiteSpace, style.display),
         grow = growOf(style.flex, style.display),
     ) {}
@@ -982,6 +982,9 @@ const func doubleBorder() Border
 
 #[go.native(_tui, "tui.TabLook")]
 const func tabLook(selected bool, first bool, disabled bool, variant string) Look
+
+#[go.native(_tui, "tui.ButtonLook")]
+const func buttonLook(look Look) Look
 
 #[go.native(_tui, "tui.TabGap")]
 const func tabGap() Look

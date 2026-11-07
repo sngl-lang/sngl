@@ -829,6 +829,9 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 			vc.line(`%sPrefix := " "`, resultVar)
 			vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
 			text = resultVar + `Prefix + " " + ` + text
+			// The stop focus is on is drawn bold as well as marked.
+			vc.requireImport(tuiImportPath)
+			style = fmt.Sprintf("tui.Focused(%s, %sFocused)", style, resultVar)
 		}
 		// Text breaks its lines at the width of the box it is in.
 		if vc.availW != "" {
