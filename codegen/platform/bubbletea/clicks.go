@@ -203,18 +203,34 @@ func dedent(s string, n int) string {
 //
 // A float's marks are taken out the same way, for Draw to lay each float
 // over everything once the overlays are down (emitFloatsDraw).
-func emitClickScan(b *strings.Builder, overlays []pendingOverlay, floats bool) {
-	fmt.Fprintf(b, "\tcontent = m.%s.Scan(content, 0, 0)\n", clicksField)
-	if floats {
-		fmt.Fprintf(b, "\tcontent = m.%s.Scan(content, 0, 0)\n", floatsField)
+//
+// A scroll's marks are taken out the same way, for the wheel to find the
+// box under it.
+func emitClickScan(b *strings.Builder, overlays []pendingOverlay, info *irAnalysis) {
+	var fields []string
+	if info.hasFocus {
+		fields = append(fields, clicksField)
+	}
+	if info.floats {
+		fields = append(fields, floatsField)
+	}
+	if len(info.scrolls) > 0 {
+		fields = append(fields, scrollsField)
+	}
+	if len(fields) == 0 {
+		return
+	}
+	for _, f := range fields {
+		fmt.Fprintf(b, "\tcontent = m.%s.Scan(content, 0, 0)\n", f)
 	}
 	for _, ov := range overlays {
 		fmt.Fprintf(b, "\tif %s != \"\" {\n", ov.boxVar)
-		fmt.Fprintf(b, "\t\tm.%s.Cover()\n", clicksField)
+		if info.hasFocus {
+			fmt.Fprintf(b, "\t\tm.%s.Cover()\n", clicksField)
+		}
 		fmt.Fprintf(b, "\t\tx, y := tui.OverlayAt(content, %s, %s, m.width, m.height)\n", ov.boxVar, ov.placementExpr)
-		fmt.Fprintf(b, "\t\t%s = m.%s.Scan(%s, x, y)\n", ov.boxVar, clicksField, ov.boxVar)
-		if floats {
-			fmt.Fprintf(b, "\t\t%s = m.%s.Scan(%s, x, y)\n", ov.boxVar, floatsField, ov.boxVar)
+		for _, f := range fields {
+			fmt.Fprintf(b, "\t\t%s = m.%s.Scan(%s, x, y)\n", ov.boxVar, f, ov.boxVar)
 		}
 		b.WriteString("\t}\n")
 	}

@@ -310,3 +310,82 @@ func TestASelectsPopoverClosesWithoutChoosing(t *testing.T) {
 func TestASelectOpensAPopover(t *testing.T) {
 	runEmittedProgram(t, selectRunSrc, selectRunDriver)
 }
+
+// tabbedSelectRunSrc is the Pokédex's moves select: typed, bound two-way,
+// in a tab's panel, which a loop over the tabs renders.
+const tabbedSelectRunSrc = `
+import ui "sngl:ui"
+
+enum Method { level, machine, egg }
+
+ui.window {
+    var tab = 0
+    var method = Method.level
+
+    ui.vbox {
+        ui.tabs(:selected=tab) {
+            ui.tab(label="About") {
+                ui.text(value="about")
+            }
+            ui.tab(label="Moves") {
+                ui.select #pick(:value=method) {
+                    for var m = Method {
+                        ui.choice(label="by {m}", value=m)
+                    }
+                }
+            }
+        }
+        ui.text(value="method {method}")
+    }
+}
+`
+
+const tabbedSelectRunDriver = `package ui
+
+import (
+	"strings"
+	"testing"
+
+	"charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
+)
+
+func send(m Model, msg tea.Msg) Model {
+	next, _ := m.Update(msg)
+	return next.(Model)
+}
+
+func view(m Model) string { return ansi.Strip(m.View().Content) }
+
+func click(t *testing.T, m Model, label string) Model {
+	t.Helper()
+	for y, line := range strings.Split(view(m), "\n") {
+		if x := strings.Index(line, label); x >= 0 {
+			return send(m, tea.MouseClickMsg{X: ansi.StringWidth(line[:x]), Y: y, Button: tea.MouseLeft})
+		}
+	}
+	t.Fatalf("no %q in the view:\n%s", label, view(m))
+	return m
+}
+
+// The select shows the value bound to it, and a click opens it and chooses.
+func TestATabbedSelectShowsAndChooses(t *testing.T) {
+	m := send(New(), tea.WindowSizeMsg{Width: 60, Height: 24})
+	m = click(t, m, "Moves")
+	if v := view(m); !strings.Contains(v, "by level ▾") {
+		t.Fatalf("the select did not show its value:\n%s", v)
+	}
+	m = click(t, m, "by level ▾")
+	m = click(t, m, "by egg")
+	if m.method != "egg" {
+		t.Fatalf("a click on egg chose %q:\n%s", m.method, view(m))
+	}
+	if v := view(m); !strings.Contains(v, "by egg ▾") {
+		t.Fatalf("the select did not show its choice:\n%s", v)
+	}
+}
+`
+
+func TestATabbedSelectTakesItsValue(t *testing.T) {
+	runEmittedProgram(t, tabbedSelectRunSrc, tabbedSelectRunDriver)
+}

@@ -150,6 +150,14 @@ component Layout(
     // Whether a click anywhere in the box presses the first focus stop it
     // holds, as a clickable card's whole face does.
     press      bool = false,
+    // The axis the box scrolls along (tui.Scrolls): its content is cut to
+    // the extent it is given there, at the offset the wheel and the paging
+    // keys move. -1 is a box that does not scroll, and so is one whose axis
+    // the build cannot read.
+    scroll     int = -1,
+    // The end of a scrolling box's content coming within half a viewport of
+    // being shown, as ui.scroll's `@reachEnd` says.
+    @reachEnd(),
     children   ...component,
 ) ui.node
 
@@ -285,9 +293,32 @@ const component ui.spacer[platform](style) {
     Styled(content="", look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex == null ? 1.0 : style.flex, style.display)) {}
 }
 
-const component ui.scroll[platform](style, content) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+// A scroll is a box cut to the extent it is given, which the wheel over it
+// scrolls -- a drag is the terminal's, which selects text -- and PgUp and
+// PgDn page while focus is in it.
+const component ui.scroll[platform](style, direction, @reachEnd, content) {
+    Layout(
+        join = JoinDir.vertical,
+        look = lookOf(style),
+        boxed = drawsBox(style),
+        fit = fitOf(style.whiteSpace, style.display),
+        grow = growOf(style.flex, style.display),
+        align = crossOf(style.alignItems),
+        justify = justifyOf(style.justifyContent),
+        spacing = rowsOf(style.gap),
+        scroll = scrollAxis(direction),
+        @reachEnd { reachEnd() },
+    ) {
         content
+    }
+}
+
+// The axis a tui.Scrolls scroll moves along, as its constants number them.
+const func scrollAxis(d ui.ScrollDirection) int {
+    return match d {
+        vertical => 0
+        horizontal => 1
+        both => 2
     }
 }
 

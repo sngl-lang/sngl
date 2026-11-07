@@ -220,6 +220,20 @@ target with no way to say a field is meant for one.
   anything else hears them, so Esc goes back no page; a click on it is the
   select's, forwarded, rather than a press of the stop it covers.
 
+  A scroll is a Layout given a `scroll` axis, its content laid out unbounded
+  along it and cut to the extent the box is given at the offset the Model's
+  `tui.Scrolls` keeps, keyed by the node and the copy of each loop around it
+  (`scroll.go`). Its block is marked as a click's is, so the wheel scrolls the
+  smallest box under it moving along the wheel's axis; PgUp and PgDn page the
+  one focus was drawn in, and Tab brings the stop it lands on into view,
+  which the scroll finds in its content before cutting it
+  (`tui.Clicks.Find`). A drag is the terminal's, which selects text with it.
+  `@reachEnd` is the view's to notice and Update's to run: the view signals
+  `__wake`, as one drawing a sleeping widget does, and Update runs the handler
+  of each scroll whose end is in view at a size it has not reported. A scroll
+  in a loop has no handler, since Update has no copy's loop variables
+  (`bubbletea/scroll_run_test.go`).
+
   A widget bound two-way writes its value back where Update forwards a
   message to it and where a test's invoker puts one in, and where the bind's
   write-back handler (`ir.EventHandler.WriteBack`) does more than assign --

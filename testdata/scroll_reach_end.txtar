@@ -164,6 +164,8 @@ type Model struct {
 type modelState struct {
 	shown int
 
+	__scrolls     *tui.Scrolls
+	__wake        chan struct{}
 	width, height int
 }
 
@@ -173,6 +175,8 @@ func New() Model {
 }
 
 func (m Model) __mount(preset map[string]bool) Model {
+	m.__wake = make(chan struct{}, 1)
+	m.__scrolls = tui.NewScrolls()
 	if !preset["shown"] {
 		m.shown = 40
 	}
@@ -221,13 +225,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt4 bool
+	var __lt5 bool
 	if s.BorderWidth != nil {
-		__lt4 = (PxOf(s.BorderWidth) > 0.0)
+		__lt5 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt4 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt4 {
+	if __lt5 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -251,100 +255,100 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt5 int
+		var __lt6 int
 		if s.MaxLines == nil {
-			__lt5 = 0
+			__lt6 = 0
 		} else {
-			__lt5 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
 	}
 	return l
 }
 
 func PxOf(m__r1 *Measurement) float64 {
-	var __lt7 float64
+	var __lt8 float64
 	if m__r1 == nil {
-		__lt7 = 0.0
+		__lt8 = 0.0
 	} else {
-		__lt7 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
-	}
-	return __lt7
-}
-
-func AlignOf(a string) lipgloss.Position {
-	var __lt8 lipgloss.Position
-	switch a {
-	case "center":
-		__lt8 = lipgloss.Center
-	case "right":
-		__lt8 = lipgloss.Right
-	default:
-		__lt8 = lipgloss.Left
+		__lt8 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
 	return __lt8
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt9 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt9 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt9 = tui.DashedBorder()
+func AlignOf(a string) lipgloss.Position {
+	var __lt9 lipgloss.Position
+	switch a {
+	case "center":
+		__lt9 = lipgloss.Center
+	case "right":
+		__lt9 = lipgloss.Right
 	default:
-		var __lt10 lipgloss.Border
-		if s.BorderRadius != nil {
-			__lt10 = lipgloss.RoundedBorder()
-		} else {
-			__lt10 = lipgloss.NormalBorder()
-		}
-		__lt9 = __lt10
+		__lt9 = lipgloss.Left
 	}
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt12 *Measurement
-	if own != nil {
-		__lt12 = own
-	} else {
-		var __lt11 *Measurement
-		if axis != nil {
-			__lt11 = axis
+func BorderOf(s Style) lipgloss.Border {
+	var __lt10 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt10 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt10 = tui.DashedBorder()
+	default:
+		var __lt11 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt11 = lipgloss.RoundedBorder()
 		} else {
-			__lt11 = all
+			__lt11 = lipgloss.NormalBorder()
 		}
-		__lt12 = __lt11
+		__lt10 = __lt11
 	}
-	return CellsOf(__lt12)
+	return __lt10
+}
+
+func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+	var __lt13 *Measurement
+	if own != nil {
+		__lt13 = own
+	} else {
+		var __lt12 *Measurement
+		if axis != nil {
+			__lt12 = axis
+		} else {
+			__lt12 = all
+		}
+		__lt13 = __lt12
+	}
+	return CellsOf(__lt13)
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
-	var __lt13 int
+	var __lt14 int
 	if px <= 0.0 {
-		__lt13 = 0
+		__lt14 = 0
 	} else {
-		__lt13 = max(1, (int(px) / 8))
+		__lt14 = max(1, (int(px) / 8))
 	}
-	return __lt13
+	return __lt14
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
+	var __lt16 int
 	if height__r0 == 0 {
-		__lt15 = lines
+		__lt16 = lines
 	} else {
-		var __lt14 int
+		var __lt15 int
 		if lines == 0 {
-			__lt14 = height__r0
+			__lt15 = height__r0
 		} else {
-			__lt14 = min(height__r0, lines)
+			__lt15 = min(height__r0, lines)
 		}
-		__lt15 = __lt14
+		__lt16 = __lt15
 	}
-	return __lt15
+	return __lt16
 }
 
 func (m Model) Shown() int {
@@ -362,8 +366,19 @@ func SetShownCmd(v int) tea.Cmd {
 	return func() tea.Msg { return setShownMsg{value: v} }
 }
 
+// snglWakeMsg says the view drew a widget that was asleep.
+type snglWakeMsg struct{}
+
+// __awaitWake waits for the view to draw a widget that is asleep.
+func (m Model) __awaitWake() tea.Cmd {
+	return func() tea.Msg {
+		<-m.__wake
+		return snglWakeMsg{}
+	}
+}
+
 func (m Model) Init() tea.Cmd {
-	return nil
+	return m.__awaitWake()
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -373,13 +388,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setShownMsg:
 		m = m.SetShown(msg.value)
+	case snglWakeMsg:
+		if m.__scrolls.Due("0") {
+			if m.shown < 60 {
+				m.shown += 10
+			}
+		}
+		cmds = append(cmds, m.__awaitWake())
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseWheelMsg:
+		m.__scrolls.Wheel(msg)
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
 			return m, tea.Quit
+		case (msg.Code == tea.KeyPgUp || msg.Code == tea.KeyPgDown) && m.__scrolls.Key(msg):
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -394,6 +419,7 @@ func (m *Model) listReachEnd() {
 }
 
 func (m Model) View() tea.View {
+	m.__scrolls.Reset()
 	var content string
 	var contentChildren []string
 	var content_0 string
@@ -413,6 +439,17 @@ func (m Model) View() tea.View {
 	content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
 	contentChildren = append(contentChildren, content_0)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	contentVW, contentVH := tui.Inner(lipgloss.NewStyle(), tui.Avail(m.width), m.height)
+	contentFocus, contentFocused := tui.Box{}, false
+	content = m.__scrolls.View("0", content, contentVW, contentVH, 0, contentFocus, contentFocused, true)
+	content = m.__scrolls.Scan(content, 0, 0)
+	m.__scrolls.Settle()
+	if m.__scrolls.Waiting() {
+		select {
+		case m.__wake <- struct{}{}:
+		default:
+		}
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -1517,7 +1554,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:fced749fb026a7676f207b69524eb9b1
+pass sha256:bffcac45df38e05a3c172dfc6d676b90
 -- run/go/fyne --
 pass sha256:0d9758631027613ea989befecc162950
 -- run/go/gtk4 --

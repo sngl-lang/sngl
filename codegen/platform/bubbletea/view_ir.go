@@ -46,6 +46,11 @@ type irViewContext struct {
 	availW, availH string
 	sizeTo         *growSize
 
+	// scrolls is each scroll the view draws (collectScrolls), and hasFocus
+	// whether the model declares focus, which a scroll asks where it is.
+	scrolls  map[*ir.NodeInst]*scrollInfo
+	hasFocus bool
+
 	// joinGap and joinAt are the Layout being rendered's spacing and where it
 	// puts its children across it, as Go: what a loop's copies and a branch's
 	// nodes among its children are joined with, being its parts too.
@@ -155,15 +160,17 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 	}
 
 	vc := &irViewContext{
-		gc:      gc,
-		ctx:     ctx,
-		shows:   info.settles,
-		unread:  unreadLocals(bodyStmts),
-		widgets: info.widgets,
-		availW:  "tui.Avail(m.width)",
-		availH:  "m.height",
-		buf:     &strings.Builder{},
-		indent:  1,
+		gc:       gc,
+		ctx:      ctx,
+		shows:    info.settles,
+		unread:   unreadLocals(bodyStmts),
+		widgets:  info.widgets,
+		availW:   "tui.Avail(m.width)",
+		availH:   "m.height",
+		buf:      &strings.Builder{},
+		indent:   1,
+		scrolls:  info.scrolls,
+		hasFocus: info.hasFocus,
 	}
 
 	if info.hasFocus {
@@ -172,6 +179,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 	if info.sleepers > 0 {
 		vc.line("m.%s = [%d]bool{}", drawnField, info.sleepers)
 	}
+	emitScrollViewStart(vc, info)
 	vc.renderBody(bodyStmts, "content")
 
 	// Overlay (modal/drawer) box vars are assigned inside their `if open { ... }`
@@ -204,9 +212,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 	// the background); any other placement names a drawer side. The tui helpers
 	// no-op when the box var is "" (overlay closed), so this stays correct
 	// without threading the `open` expr — the `if open` gate leaves boxVar "".
-	if info.hasFocus {
-		emitClickScan(b, vc.overlays, info.floats)
-	}
+	emitClickScan(b, vc.overlays, info)
 	for _, ov := range vc.overlays {
 		gc.RequireImport(tuiImportPath)
 		dim := "false"
@@ -231,6 +237,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 	}
 
 	emitFloatsDraw(b, info)
+	emitScrollViewEnd(b, info)
 	b.WriteString("\tv := tea.NewView(content)\n")
 	b.WriteString("\tv.AltScreen = true\n")
 	if info.hasFocus {
@@ -241,7 +248,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 }
 
 // shows is whether the model declares __focusShown (irViewContext.shows).
-func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, gc *golang.GoIRContext, cfg Config, shows bool) {
+func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, gc *golang.GoIRContext, cfg Config, shows bool, info *irAnalysis) {
 	methodName := golang.ComponentRenderMethod(cc.Component.Name)
 
 	var params []string
@@ -272,6 +279,8 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 		availW:      availW,
 		shows:       shows,
 		unread:      unreadLocals(cc.Body),
+		scrolls:     info.scrolls,
+		hasFocus:    info.hasFocus,
 	}
 
 	vc.renderBody(cc.Body, "result")
@@ -1051,6 +1060,16 @@ func (vc *irViewContext) growsAsPart(s ir.Stmt) bool {
 func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, style string) {
 	horizontal := bp.Join != joinVertical
 	savedW, savedH := vc.availW, vc.availH
+	// A scroll's content is as long as it comes out along the axis it
+	// scrolls, and cut to the extent it is given after (clipScroll).
+	if axis, ok := scrollAxisOf(n); ok {
+		if axis != 1 {
+			vc.availH = ""
+		}
+		if axis != 0 {
+			vc.availW = ""
+		}
+	}
 	inner := ""
 	outer := vc.buf
 	justify := "0"
@@ -1207,6 +1226,7 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 			style += ".AlignHorizontal(" + pos + ")"
 		}
 	}
+	vc.clipScroll(n, resultVar, style, savedW, savedH)
 	if style != plainLook || vc.fits(n) {
 		vc.line(`%s = %s`, resultVar, vc.render(n, style, resultVar))
 	}

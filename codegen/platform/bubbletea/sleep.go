@@ -37,17 +37,22 @@ func emitSleepDecls(b *strings.Builder) {
 }
 
 func emitSleepFields(b *strings.Builder, info *irAnalysis) {
-	if info.sleepers == 0 {
-		return
+	if info.sleepers > 0 {
+		fmt.Fprintf(b, "\t%s, %s [%d]bool\n", drawnField, asleepField, info.sleepers)
 	}
-	fmt.Fprintf(b, "\t%s, %s [%d]bool\n", drawnField, asleepField, info.sleepers)
-	fmt.Fprintf(b, "\t%s chan struct{}\n", wakeField)
+	if info.wakes() {
+		fmt.Fprintf(b, "\t%s chan struct{}\n", wakeField)
+	}
 }
+
+// wakes reports whether the view may wake Update: it drew a widget asleep,
+// or a scroll's end came into view (scroll.go).
+func (info *irAnalysis) wakes() bool { return info.sleepers > 0 || info.reaches }
 
 // emitWakeCase writes Update's answer to the view drawing a widget asleep:
 // each one drawn is woken with its init.
-func emitWakeCase(b *strings.Builder, info *irAnalysis) {
-	if info.sleepers == 0 {
+func emitWakeCase(b *strings.Builder, info *irAnalysis, gc goEvaluator) {
+	if !info.wakes() {
 		return
 	}
 	fmt.Fprintf(b, "\tcase %s:\n", wakeMsgType)
@@ -60,6 +65,7 @@ func emitWakeCase(b *strings.Builder, info *irAnalysis) {
 		fmt.Fprintf(b, "\t\t\tcmds = append(cmds, %s)\n", w.model.Init)
 		b.WriteString("\t\t}\n")
 	}
+	emitScrollReach(b, info, gc)
 	fmt.Fprintf(b, "\t\tcmds = append(cmds, %s)\n", awaitWake)
 }
 

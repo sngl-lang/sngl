@@ -257,6 +257,10 @@ type irAnalysis struct {
 	// floats is true where a widget's templates hand it the Model's
 	// tui.Floats, which an open select draws its popover through.
 	floats bool
+	// scrolls is each scroll a view draws, and reaches whether one has an
+	// `@reachEnd` Update runs (scroll.go).
+	scrolls map[*ir.NodeInst]*scrollInfo
+	reaches bool
 	// sleepers counts the widgets that tick themselves (sleep.go).
 	sleepers int
 	// keyType is the Go type of the KeyPress the window's `@key` hears, ""
@@ -481,6 +485,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 	}
 	info.floats = slices.ContainsFunc(info.widgets, usesFloats)
+	collectScrolls(view, ctx.Pkg, info)
 	info.settles = info.hasFocus && slices.ContainsFunc(ctx.AllFuncs(), func(f *ir.Func) bool { return f.Name == "__focusSettle" })
 
 	if info.NeedsToast {
@@ -590,6 +595,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	if info.floats {
 		fmt.Fprintf(&b, "\t%s *tui.Floats\n", floatsField)
 	}
+	emitScrollFields(&b, info)
 	emitSleepFields(&b, info)
 	if screenKeyHandler(info) != nil {
 		fmt.Fprintf(&b, "\t%s bool\n", unheardField)
@@ -609,13 +615,14 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("func New() Model {\n")
 		b.WriteString("\tm := Model{&modelState{}}\n")
 	}
-	if info.sleepers > 0 {
+	if info.wakes() {
 		fmt.Fprintf(&b, "\tm.%s = make(chan struct{}, 1)\n", wakeField)
 	}
 	emitTimerInits(&b, info.timers)
 	if info.floats {
 		fmt.Fprintf(&b, "\tm.%s = tui.NewFloats()\n", floatsField)
 	}
+	emitScrollInit(&b, info)
 	for _, bind := range info.binds {
 		if info.tests {
 			fmt.Fprintf(&b, "\tif !preset[%q] {\n\t\tm.%s = %s\n\t}\n", bind.name, bind.name, bind.init)
@@ -796,7 +803,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		emitPostDecls(&b)
 		widgetInits = append(widgetInits, awaitPost)
 	}
-	if info.sleepers > 0 {
+	if info.wakes() {
 		emitSleepDecls(&b)
 		widgetInits = append(widgetInits, awaitWake)
 	}
@@ -849,7 +856,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	emitIRView(&b, info, ctx, gc, cfg)
 
 	for _, cc := range ctx.NonRootComponents() {
-		emitIRComponentMethod(&b, cc, ctx, gc, cfg, info.settles)
+		emitIRComponentMethod(&b, cc, ctx, gc, cfg, info.settles, info)
 	}
 
 	if cfg.Main {
@@ -1105,7 +1112,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 
 	// Timer ticks
 	emitTimerCases(b, info.timers, gc)
-	emitWakeCase(b, info)
+	emitWakeCase(b, info, gc)
 
 	// Toast dismiss
 	if info.NeedsToast {
@@ -1129,6 +1136,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	if info.hasFocus {
 		emitClickCase(b, info)
 	}
+	emitScrollWheel(b, info)
 
 	// KeyPressMsg
 	b.WriteString("\tcase tea.KeyPressMsg:\n")
@@ -1172,9 +1180,11 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	if info.hasFocus {
 		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyTab && msg.Mod == 0%s:\n", caseGuard)
 		b.WriteString("\t\t\tm.__focusNext()\n")
+		emitScrollFollow(b, info, "\t\t\t")
 		emitIRFocusSync(b, info.widgets)
 		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyTab && msg.Mod == tea.ModShift%s:\n", caseGuard)
 		b.WriteString("\t\t\tm.__focusPrev()\n")
+		emitScrollFollow(b, info, "\t\t\t")
 		emitIRFocusSync(b, info.widgets)
 	}
 
@@ -1186,6 +1196,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		info.owners = triggerOwners(viewStmts(ctx), codegen.TriggeredEvents(ctx.Pkg))
 	}
 	emitIRButtonHandlers(b, viewStmts(ctx), info, gc, caseGuard, invokerSink)
+	emitScrollKeys(b, info)
 
 	b.WriteString("\t\t}\n") // end switch
 	b.WriteString("\t}\n")   // end type switch
@@ -1283,6 +1294,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	if info.hasFocus {
 		emitPress(b, info)
 	}
+	emitIsFocused(b, info)
 	emitScreenKeyMethod(b, info, gc)
 	emitDrawnMethods(b, info)
 }

@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/codegen/lang/golang"
 	"duckfam.us/sngl/internal/lower"
@@ -91,6 +92,22 @@ func newLoopWidget(n *ir.NodeInst, loops []*ir.For, bindProp string) *loopWidget
 			}
 			return nil
 		})
+		// A write-back that assigns one var every copy shares -- a select
+		// whose label is the override's own state, not a cell per copy --
+		// sets each copy from that var. Without it the copy was never set,
+		// and the Pokédex's moves select drew no choice.
+		if lw.cell == nil {
+			for _, st := range h.Func.Block {
+				if as, ok := st.(*ir.Assign); ok && as.Op == ast.AssignSet {
+					if id, ok := as.Target.(*ir.Ident); ok {
+						if _, isVar := id.Sym.(*ir.Var); isVar {
+							lw.cell = id
+							break
+						}
+					}
+				}
+			}
+		}
 	}
 	return lw
 }

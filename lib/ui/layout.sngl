@@ -101,9 +101,9 @@ enum ScrollDirection { vertical, horizontal, both }
 // arrival, so a first page shorter than the viewport loads the next
 // without waiting for a scroll that cannot happen. A handler that adds
 // nothing is not called again until the end is scrolled away from and
-// back. bubbletea draws a scroll as its content, cut off by the
-// terminal, and the interpreter lays nothing out: both fire it only when
-// a test does.
+// back. bubbletea scrolls with the mouse wheel, and with PgUp and PgDn
+// while focus is in the scroll, leaving a drag to the terminal; the
+// interpreter lays nothing out, and fires it only when a test does.
 component scroll(
     style     Style = Style{},
     direction ScrollDirection = ScrollDirection.vertical,

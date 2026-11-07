@@ -467,7 +467,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				_ = i
 				if m.__focusLoop0_cursor == __focusPos0 {
 					__key := i.Id
-					w := m.widget0Copy(i.Id)
+					w := m.widget0Copy(i.Id, m.text)
 					w.Focus()
 					__prev := w.Value()
 					w, cmd = w.Update(msg)
@@ -518,11 +518,14 @@ func (m Model) __press(s snglStop) tea.Cmd {
 
 // widget0Copy is the copy of widget0 the key names, built the first time it renders
 // and set from its cell whenever the two differ.
-func (m *Model) widget0Copy(key string) textinput.Model {
+func (m *Model) widget0Copy(key string, value string) textinput.Model {
 	w, ok := m.widget0[key]
 	if !ok {
 		w = textinput.New()
 		w.SetWidth(tui.WidgetWidth(m.width))
+	}
+	if w.Value() != value {
+		w.SetValue(value)
 	}
 	m.widget0[key] = w
 	return w
@@ -575,7 +578,7 @@ func (m Model) View() tea.View {
 		for _, i := range []__anon_id_elem_cdfd47{__anon_id_elem_cdfd47{Id: "1", Elem: 1}, __anon_id_elem_cdfd47{Id: "2", Elem: 2}} {
 			_ = i
 			var contentItem string
-			contentItem = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(m.widget0Copy(i.Id).View())
+			contentItem = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(m.widget0Copy(i.Id, m.text).View())
 			contentItem = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: false, key: tea.KeyPressMsg{}}, contentItem)
 			__focusPos0++
 			contentItems = append(contentItems, contentItem)
@@ -598,4 +601,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:d1bcd7ce5c28080bd57b9c61160a3de4
+pass sha256:1ec88470d18ede5f9142fb6757402015

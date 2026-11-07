@@ -103,11 +103,15 @@ func (c *Clicks[T]) Scan(s string, x, y int) string {
 
 // At is what a click at column x, row y presses: the smallest box holding it,
 // which is the innermost of blocks drawn one inside another.
-func (c *Clicks[T]) At(x, y int) (T, bool) {
+func (c *Clicks[T]) At(x, y int) (T, bool) { return c.AtWhere(x, y, nil) }
+
+// AtWhere is At among the blocks whose mark pick takes, every one where pick
+// is nil: the wheel scrolls the innermost scroll moving along its axis.
+func (c *Clicks[T]) AtWhere(x, y int, pick func(T) bool) (T, bool) {
 	best := -1
 	area := 0
 	for k, b := range c.boxes {
-		if x < b.x0 || x > b.x1 || y < b.y0 || y > b.y1 {
+		if x < b.x0 || x > b.x1 || y < b.y0 || y > b.y1 || pick != nil && !pick(c.marked[b.i]) {
 			continue
 		}
 		if a := (b.x1 - b.x0 + 1) * (b.y1 - b.y0 + 1); best < 0 || a < area {
@@ -119,4 +123,21 @@ func (c *Clicks[T]) At(x, y int) (T, bool) {
 		return zero, false
 	}
 	return c.marked[c.boxes[best].i], true
+}
+
+// Box is the cells a block covers, its corners inclusive.
+type Box struct{ X0, Y0, X1, Y1 int }
+
+// Find is where in s, its top left corner the origin, the first block whose
+// mark pick takes was drawn, leaving c as it was: a scroll asks where the
+// stop focus is on lies in its content before it cuts the content.
+func (c *Clicks[T]) Find(s string, pick func(T) bool) (Box, bool) {
+	scratch := Clicks[T]{marked: c.marked, opens: c.opens, closes: c.closes}
+	scratch.Scan(s, 0, 0)
+	for _, b := range scratch.boxes {
+		if pick(c.marked[b.i]) {
+			return Box{b.x0, b.y0, b.x1, b.y1}, true
+		}
+	}
+	return Box{}, false
 }
