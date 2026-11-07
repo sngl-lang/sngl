@@ -255,26 +255,14 @@ func __identified1(__xs []string) []__anon_id_elem_c6a818 {
 	return __out
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
-}
-
-func CellsOf(m__r1 *Measurement) int {
-	var px float64 = PxOf(m__r1)
-	var __lt4 int
-	if px <= 0.0 {
-		__lt4 = 0
-	} else {
-		__lt4 = max(1, (int(px) / 8))
-	}
-	return __lt4
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func TokenColor(p Palette, kind string) snglcolor.Color {
@@ -336,13 +324,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt8 bool
+	var __lt7 bool
 	if s.BorderWidth != nil {
-		__lt8 = (PxOf(s.BorderWidth) > 0.0)
+		__lt7 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt8 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt7 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt8 {
+	if __lt7 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -366,80 +354,95 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt9 int
+		var __lt8 int
 		if s.MaxLines == nil {
-			__lt9 = 0
+			__lt8 = 0
 		} else {
-			__lt9 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt8 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt9))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt8))
 	}
 	return l
 }
 
-func PxOf(m__r2 *Measurement) float64 {
-	var __lt11 float64
-	if m__r2 == nil {
-		__lt11 = 0.0
+func PxOf(m__r1 *Measurement) float64 {
+	var __lt10 float64
+	if m__r1 == nil {
+		__lt10 = 0.0
 	} else {
-		__lt11 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+		__lt10 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+	}
+	return __lt10
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt11 lipgloss.Position
+	switch a {
+	case "center":
+		__lt11 = lipgloss.Center
+	case "right":
+		__lt11 = lipgloss.Right
+	default:
+		__lt11 = lipgloss.Left
 	}
 	return __lt11
 }
 
-func AlignOf(a string) lipgloss.Position {
-	var __lt12 lipgloss.Position
-	switch a {
-	case "center":
-		__lt12 = lipgloss.Center
-	case "right":
-		__lt12 = lipgloss.Right
+func BorderOf(s Style) lipgloss.Border {
+	var __lt12 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt12 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt12 = tui.DashedBorder()
 	default:
-		__lt12 = lipgloss.Left
+		var __lt13 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt13 = lipgloss.RoundedBorder()
+		} else {
+			__lt13 = lipgloss.NormalBorder()
+		}
+		__lt12 = __lt13
 	}
 	return __lt12
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt13 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt13 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt13 = tui.DashedBorder()
-	default:
-		var __lt14 lipgloss.Border
-		if s.BorderRadius != nil {
-			__lt14 = lipgloss.RoundedBorder()
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
+	var __lt15 *Measurement
+	if own != nil {
+		__lt15 = own
+	} else {
+		var __lt14 *Measurement
+		if axis != nil {
+			__lt14 = axis
 		} else {
-			__lt14 = lipgloss.NormalBorder()
+			__lt14 = all
 		}
-		__lt13 = __lt14
+		__lt15 = __lt14
 	}
-	return __lt13
+	return SpaceOf(__lt15, across)
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
-	var __lt16 *Measurement
-	if own != nil {
-		__lt16 = own
+func CellsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt16 int
+	if px <= 0.0 {
+		__lt16 = 0
 	} else {
-		var __lt15 *Measurement
-		if axis != nil {
-			__lt15 = axis
-		} else {
-			__lt15 = all
-		}
-		__lt16 = __lt15
+		__lt16 = max(1, (int(px) / 8))
 	}
-	var px float64 = PxOf(__lt16)
-	var __lt17 float64
-	if across {
-		__lt17 = 8.0
+	return __lt16
+}
+
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt17 int
+	if px <= 0.0 {
+		__lt17 = 0
 	} else {
-		__lt17 = 16.0
+		__lt17 = max(1, (int(px) / 16))
 	}
-	return int(((px / __lt17) + 0.5))
+	return __lt17
 }
 
 func LineCap(height__r0 int, lines int) int {
@@ -1741,11 +1744,11 @@ func (m Model) View() tea.View {
 																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1ItemChildren...)
 																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Items = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Items, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item)
 																							}
-																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1 = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Items...)
+																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1 = tui.Spaced(false, lipgloss.Left, 0, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Items...)
 																							if content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1 != "" {
 																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0ItemChildren = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0ItemChildren, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1)
 																							}
-																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0ItemChildren...)
+																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item = lipgloss.JoinVertical(lipgloss.Left, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0ItemChildren...)
 																						}
 																					}
 																				}
@@ -1770,11 +1773,11 @@ func (m Model) View() tea.View {
 											content_0Item_0Item_1_0Item_0Item_1_0Item_0Item = tui.Spaced(true, lipgloss.Top, 1, content_0Item_0Item_1_0Item_0Item_1_0Item_0ItemChildren...)
 											content_0Item_0Item_1_0Item_0Item_1_0Item_0Items = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0Items, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item)
 										}
-										content_0Item_0Item_1_0Item_0Item_1_0Item_0 = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_0Item_1_0Item_0Items...)
+										content_0Item_0Item_1_0Item_0Item_1_0Item_0 = tui.Spaced(false, lipgloss.Left, 0, content_0Item_0Item_1_0Item_0Item_1_0Item_0Items...)
 										if content_0Item_0Item_1_0Item_0Item_1_0Item_0 != "" {
 											content_0Item_0Item_1_0Item_0Item_1_0ItemChildren = append(content_0Item_0Item_1_0Item_0Item_1_0ItemChildren, content_0Item_0Item_1_0Item_0Item_1_0Item_0)
 										}
-										content_0Item_0Item_1_0Item_0Item_1_0Item = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_0Item_1_0ItemChildren...)
+										content_0Item_0Item_1_0Item_0Item_1_0Item = lipgloss.JoinVertical(lipgloss.Left, content_0Item_0Item_1_0Item_0Item_1_0ItemChildren...)
 										content_0Item_0Item_1_0Item_0Item_1_0Item = tui.Paint(content_0Item_0Item_1_0Item_0Item_1_0ItemLook, content_0Item_0Item_1_0Item_0Item_1_0Item)
 									} else {
 										if inner.Kind == "paragraph" {
@@ -2589,11 +2592,11 @@ func (m Model) View() tea.View {
 																						content_0Item_0Item_1_0Item_0Item_1_0Item_1Item = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_0Item_1_0Item_1ItemChildren...)
 																						content_0Item_0Item_1_0Item_0Item_1_0Item_1Items = append(content_0Item_0Item_1_0Item_0Item_1_0Item_1Items, content_0Item_0Item_1_0Item_0Item_1_0Item_1Item)
 																					}
-																					content_0Item_0Item_1_0Item_0Item_1_0Item_1 = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_0Item_1_0Item_1Items...)
+																					content_0Item_0Item_1_0Item_0Item_1_0Item_1 = tui.Spaced(false, lipgloss.Left, 0, content_0Item_0Item_1_0Item_0Item_1_0Item_1Items...)
 																					if content_0Item_0Item_1_0Item_0Item_1_0Item_1 != "" {
 																						content_0Item_0Item_1_0Item_0Item_1_0ItemChildren = append(content_0Item_0Item_1_0Item_0Item_1_0ItemChildren, content_0Item_0Item_1_0Item_0Item_1_0Item_1)
 																					}
-																					content_0Item_0Item_1_0Item_0Item_1_0Item = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_0Item_1_0ItemChildren...)
+																					content_0Item_0Item_1_0Item_0Item_1_0Item = lipgloss.JoinVertical(lipgloss.Left, content_0Item_0Item_1_0Item_0Item_1_0ItemChildren...)
 																				}
 																			}
 																		}
@@ -2619,11 +2622,11 @@ func (m Model) View() tea.View {
 								content_0Item_0Item_1_0Item_0Item = tui.Spaced(true, lipgloss.Top, 1, content_0Item_0Item_1_0Item_0ItemChildren...)
 								content_0Item_0Item_1_0Item_0Items = append(content_0Item_0Item_1_0Item_0Items, content_0Item_0Item_1_0Item_0Item)
 							}
-							content_0Item_0Item_1_0Item_0 = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_0Items...)
+							content_0Item_0Item_1_0Item_0 = tui.Spaced(false, lipgloss.Left, 0, content_0Item_0Item_1_0Item_0Items...)
 							if content_0Item_0Item_1_0Item_0 != "" {
 								content_0Item_0Item_1_0ItemChildren = append(content_0Item_0Item_1_0ItemChildren, content_0Item_0Item_1_0Item_0)
 							}
-							content_0Item_0Item_1_0Item = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0ItemChildren...)
+							content_0Item_0Item_1_0Item = lipgloss.JoinVertical(lipgloss.Left, content_0Item_0Item_1_0ItemChildren...)
 							content_0Item_0Item_1_0Item = tui.Paint(content_0Item_0Item_1_0ItemLook, content_0Item_0Item_1_0Item)
 						} else {
 							if inner.Kind == "paragraph" {
@@ -3438,11 +3441,11 @@ func (m Model) View() tea.View {
 																			content_0Item_0Item_1_0Item_1Item = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_1ItemChildren...)
 																			content_0Item_0Item_1_0Item_1Items = append(content_0Item_0Item_1_0Item_1Items, content_0Item_0Item_1_0Item_1Item)
 																		}
-																		content_0Item_0Item_1_0Item_1 = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_1Items...)
+																		content_0Item_0Item_1_0Item_1 = tui.Spaced(false, lipgloss.Left, 0, content_0Item_0Item_1_0Item_1Items...)
 																		if content_0Item_0Item_1_0Item_1 != "" {
 																			content_0Item_0Item_1_0ItemChildren = append(content_0Item_0Item_1_0ItemChildren, content_0Item_0Item_1_0Item_1)
 																		}
-																		content_0Item_0Item_1_0Item = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0ItemChildren...)
+																		content_0Item_0Item_1_0Item = lipgloss.JoinVertical(lipgloss.Left, content_0Item_0Item_1_0ItemChildren...)
 																	}
 																}
 															}
@@ -3468,11 +3471,11 @@ func (m Model) View() tea.View {
 					content_0Item_0Item = tui.Spaced(true, lipgloss.Top, 1, content_0Item_0ItemChildren...)
 					content_0Item_0Items = append(content_0Item_0Items, content_0Item_0Item)
 				}
-				content_0Item_0 = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Items...)
+				content_0Item_0 = tui.Spaced(false, lipgloss.Left, 0, content_0Item_0Items...)
 				if content_0Item_0 != "" {
 					content_0ItemChildren = append(content_0ItemChildren, content_0Item_0)
 				}
-				content_0Item = tui.Spaced(false, lipgloss.Left, 1, content_0ItemChildren...)
+				content_0Item = lipgloss.JoinVertical(lipgloss.Left, content_0ItemChildren...)
 				content_0Item = tui.Paint(content_0ItemLook, content_0Item)
 			} else {
 				if b.Kind == "paragraph" {
@@ -4287,11 +4290,11 @@ func (m Model) View() tea.View {
 																content_0Item_1Item = tui.Spaced(true, lipgloss.Top, 2, content_0Item_1ItemChildren...)
 																content_0Item_1Items = append(content_0Item_1Items, content_0Item_1Item)
 															}
-															content_0Item_1 = tui.Spaced(false, lipgloss.Left, 1, content_0Item_1Items...)
+															content_0Item_1 = tui.Spaced(false, lipgloss.Left, 0, content_0Item_1Items...)
 															if content_0Item_1 != "" {
 																content_0ItemChildren = append(content_0ItemChildren, content_0Item_1)
 															}
-															content_0Item = tui.Spaced(false, lipgloss.Left, 1, content_0ItemChildren...)
+															content_0Item = lipgloss.JoinVertical(lipgloss.Left, content_0ItemChildren...)
 														}
 													}
 												}
@@ -9807,7 +9810,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8aa252ddcb8116dc14506b27f602b9e8
+pass sha256:1277a5d060e54c56ddb69361caca30c6
 -- run/go/fyne --
 pass sha256:9e0a06ced8c16ecdbb67b4d29381e683
 -- run/none/html --

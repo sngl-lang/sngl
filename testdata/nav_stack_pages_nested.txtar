@@ -368,52 +368,55 @@ func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) in
 		}
 		__lt12 = __lt11
 	}
-	var px float64 = PxOf(__lt12)
-	var __lt13 float64
-	if across {
-		__lt13 = 8.0
-	} else {
-		__lt13 = 16.0
-	}
-	return int(((px / __lt13) + 0.5))
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
 	var px float64 = PxOf(m__r1)
-	var __lt14 int
+	var __lt13 int
 	if px <= 0.0 {
-		__lt14 = 0
+		__lt13 = 0
 	} else {
-		__lt14 = max(1, (int(px) / 8))
+		__lt13 = max(1, (int(px) / 8))
 	}
-	return __lt14
+	return __lt13
 }
 
 func RowsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
-	var __lt15 int
+	var __lt14 int
 	if px <= 0.0 {
-		__lt15 = 0
+		__lt14 = 0
 	} else {
-		__lt15 = max(1, (int(px) / 16))
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt17 int
+	var __lt16 int
 	if height__r0 == 0 {
-		__lt17 = lines
+		__lt16 = lines
 	} else {
-		var __lt16 int
+		var __lt15 int
 		if lines == 0 {
-			__lt16 = height__r0
+			__lt15 = height__r0
 		} else {
-			__lt16 = min(height__r0, lines)
+			__lt15 = min(height__r0, lines)
 		}
-		__lt17 = __lt16
+		__lt16 = __lt15
 	}
-	return __lt17
+	return __lt16
+}
+
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt17 float64
+	if across {
+		__lt17 = 8.0
+	} else {
+		__lt17 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt17) + 0.5))
 }
 
 func (m *Model) __focusLoop0_len() int {
@@ -2041,7 +2044,7 @@ fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
     return __out
 }
 -- run/go/bubbletea --
-pass sha256:7e7d7e18dc93e60251f59076237ec2a0
+pass sha256:eab7b5528cfe54f143b93d19110ece88
 -- run/go/fyne --
 pass sha256:31190a65fe668ae797b40957b625d890
 -- run/go/gtk4 --

@@ -209,15 +209,14 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	return __out
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -341,23 +340,27 @@ func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) in
 		}
 		__lt12 = __lt11
 	}
-	var px float64 = PxOf(__lt12)
-	var __lt13 float64
-	if across {
-		__lt13 = 8.0
-	} else {
-		__lt13 = 16.0
-	}
-	return int(((px / __lt13) + 0.5))
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
+	var __lt13 int
+	if px <= 0.0 {
+		__lt13 = 0
+	} else {
+		__lt13 = max(1, (int(px) / 8))
+	}
+	return __lt13
+}
+
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
 	var __lt14 int
 	if px <= 0.0 {
 		__lt14 = 0
 	} else {
-		__lt14 = max(1, (int(px) / 8))
+		__lt14 = max(1, (int(px) / 16))
 	}
 	return __lt14
 }
@@ -382,30 +385,30 @@ func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
 	m.__effect0_paths = []string{}
 	m.__effect0_pathAt = map[string]int{}
-	for _, m__r3 := range __identified0(m.items) {
+	for _, m__r4 := range __identified0(m.items) {
 		__effect0_fresh := true
 		var __effect0_at int = func() int {
-			if __v, __ok := m.__effect0_liveAt[m__r3.Id]; __ok {
+			if __v, __ok := m.__effect0_liveAt[m__r4.Id]; __ok {
 				return __v
 			}
 			return -1
 		}()
 		if __effect0_at >= 0 {
-			__effect0_fresh = (m.__effect0_live[__effect0_at] != m__r3.Id)
+			__effect0_fresh = (m.__effect0_live[__effect0_at] != m__r4.Id)
 		}
-		m.__effect0_pathAt[m__r3.Id] = len(m.__effect0_paths)
-		m.__effect0_paths = append(m.__effect0_paths, m__r3.Id)
+		m.__effect0_pathAt[m__r4.Id] = len(m.__effect0_paths)
+		m.__effect0_paths = append(m.__effect0_paths, m__r4.Id)
 		if __effect0_fresh {
 			var __cell1_hits__inst0 int = func() int {
-				if __v, __ok := m.hits__inst0[m__r3.Id]; __ok {
+				if __v, __ok := m.hits__inst0[m__r4.Id]; __ok {
 					return __v
 				}
 				return 0
 			}()
 			__cell1_hits__inst0 = 0
-			m.hits__inst0[m__r3.Id] = __cell1_hits__inst0
+			m.hits__inst0[m__r4.Id] = __cell1_hits__inst0
 		}
-		m.__effect0_desired = append(m.__effect0_desired, m__r3.Id)
+		m.__effect0_desired = append(m.__effect0_desired, m__r4.Id)
 	}
 	m.__effect0_live = m.__effect0_desired
 	m.__effect0_livePaths = m.__effect0_paths
@@ -588,17 +591,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 0 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos0 := 0
-				for _, m__r3 := range __identified0(m.items) {
-					_ = m__r3
+				for _, m__r4 := range __identified0(m.items) {
+					_ = m__r4
 					if m.__focusLoop0_cursor == __focusPos0 {
 						var __cell2_hits__inst0 int = func() int {
-							if __v, __ok := m.hits__inst0[m__r3.Id]; __ok {
+							if __v, __ok := m.hits__inst0[m__r4.Id]; __ok {
 								return __v
 							}
 							return 0
 						}()
 						__cell2_hits__inst0 += 1
-						m.hits__inst0[m__r3.Id] = __cell2_hits__inst0
+						m.hits__inst0[m__r4.Id] = __cell2_hits__inst0
 						return
 					}
 					__focusPos0++
@@ -647,16 +650,16 @@ func (m Model) View() tea.View {
 		__focusPos0 := 0
 		_ = __focusPos0
 		var part0_0Items []string
-		for _, m__r3 := range __identified0(m.items) {
-			_ = m__r3
+		for _, m__r4 := range __identified0(m.items) {
+			_ = m__r4
 			var part0_0Item string
 			part0_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0)) && m.__focusShown()
 			part0_0ItemPrefix := " "
 			if part0_0ItemFocused {
 				part0_0ItemPrefix = ">"
 			}
-			part0_0ItemText := part0_0ItemPrefix + " " + fmt.Sprint(((fmt.Sprint(m__r3.Elem) + " ") + fmt.Sprint(func() int {
-				if __v, __ok := m.hits__inst0[m__r3.Id]; __ok {
+			part0_0ItemText := part0_0ItemPrefix + " " + fmt.Sprint(((fmt.Sprint(m__r4.Elem) + " ") + fmt.Sprint(func() int {
+				if __v, __ok := m.hits__inst0[m__r4.Id]; __ok {
 					return __v
 				}
 				return 0
@@ -1191,7 +1194,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/bubbletea --
-pass sha256:541c8fb0545d2ff60092184d6f85834f
+pass sha256:e2228e955cf00bdb83c8c73b65ae0332
 -- run/go/fyne --
 pass sha256:34d5d0d3db4b7538b37d66732a044b6c
 -- run/go/gtk4 --

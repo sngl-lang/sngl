@@ -167,15 +167,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -299,23 +298,27 @@ func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) in
 		}
 		__lt13 = __lt12
 	}
-	var px float64 = PxOf(__lt13)
-	var __lt14 float64
-	if across {
-		__lt14 = 8.0
-	} else {
-		__lt14 = 16.0
-	}
-	return int(((px / __lt14) + 0.5))
+	return SpaceOf(__lt13, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
+	} else {
+		__lt14 = max(1, (int(px) / 8))
+	}
+	return __lt14
+}
+
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
 	var __lt15 int
 	if px <= 0.0 {
 		__lt15 = 0
 	} else {
-		__lt15 = max(1, (int(px) / 8))
+		__lt15 = max(1, (int(px) / 16))
 	}
 	return __lt15
 }
@@ -1073,7 +1076,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b2c645f7b6edb539d84eb995e25a27c8
+pass sha256:0761ab0fcbfa7b0733f0e0d7421bc076
 -- run/go/fyne --
 pass sha256:4a409d09e48f6d87f2f29a2d0722b84d
 -- run/go/gtk4 --

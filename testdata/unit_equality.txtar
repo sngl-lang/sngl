@@ -302,52 +302,55 @@ func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) in
 		}
 		__lt9 = __lt8
 	}
-	var px float64 = PxOf(__lt9)
-	var __lt10 float64
-	if across {
-		__lt10 = 8.0
-	} else {
-		__lt10 = 16.0
-	}
-	return int(((px / __lt10) + 0.5))
+	return SpaceOf(__lt9, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
 	var px float64 = PxOf(m__r1)
-	var __lt11 int
+	var __lt10 int
 	if px <= 0.0 {
-		__lt11 = 0
+		__lt10 = 0
 	} else {
-		__lt11 = max(1, (int(px) / 8))
+		__lt10 = max(1, (int(px) / 8))
 	}
-	return __lt11
+	return __lt10
 }
 
 func RowsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
-	var __lt12 int
+	var __lt11 int
 	if px <= 0.0 {
-		__lt12 = 0
+		__lt11 = 0
 	} else {
-		__lt12 = max(1, (int(px) / 16))
+		__lt11 = max(1, (int(px) / 16))
 	}
-	return __lt12
+	return __lt11
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt14 int
+	var __lt13 int
 	if height__r0 == 0 {
-		__lt14 = lines
+		__lt13 = lines
 	} else {
-		var __lt13 int
+		var __lt12 int
 		if lines == 0 {
-			__lt13 = height__r0
+			__lt12 = height__r0
 		} else {
-			__lt13 = min(height__r0, lines)
+			__lt12 = min(height__r0, lines)
 		}
-		__lt14 = __lt13
+		__lt13 = __lt12
 	}
-	return __lt14
+	return __lt13
+}
+
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt14) + 0.5))
 }
 
 func (m Model) A__inst0() Measurement {
@@ -641,7 +644,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:abad864b8a7d54240c99db566cc9e0bc
+pass sha256:8c16e5eb7d3013c875d16b226828eba6
 -- run/kotlin/android --
 pass sha256:a63c30a019cae72418b77e7a7ffea404
 -- run/none/html --

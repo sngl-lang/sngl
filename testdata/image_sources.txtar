@@ -294,15 +294,14 @@ func (m Model) __canvasTransmit() tea.Cmd {
 	return tea.Raw(__ctb.String())
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func ApplyStyle(ctx *snglcanvas.Context, style Style__draw) {
@@ -434,23 +433,27 @@ func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) in
 		}
 		__lt15 = __lt14
 	}
-	var px float64 = PxOf(__lt15)
-	var __lt16 float64
-	if across {
-		__lt16 = 8.0
-	} else {
-		__lt16 = 16.0
-	}
-	return int(((px / __lt16) + 0.5))
+	return SpaceOf(__lt15, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
+	var __lt16 int
+	if px <= 0.0 {
+		__lt16 = 0
+	} else {
+		__lt16 = max(1, (int(px) / 8))
+	}
+	return __lt16
+}
+
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
 	var __lt17 int
 	if px <= 0.0 {
 		__lt17 = 0
 	} else {
-		__lt17 = max(1, (int(px) / 8))
+		__lt17 = max(1, (int(px) / 16))
 	}
 	return __lt17
 }
@@ -3262,7 +3265,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b02e6de582670fe3b708c46a72a39d3d
+pass sha256:de50de046fa35ea9a2c763a8fbea5b84
 -- run/go/fyne --
 pass sha256:46b0d9c399a635f8e566000346768e50
 -- run/go/gtk4 --

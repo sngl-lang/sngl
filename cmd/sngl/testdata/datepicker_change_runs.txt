@@ -62,7 +62,7 @@ sha256:28f6f6c0bfeb99911f6b12dcfd1b9b11
   ]
 }
 -- testrun/bubbletea/go/app.sngl/picker/1 --
-sha256:c239c41431c219ed18991299a8129a94
+sha256:82c1cbcb1b5ee3a44aae32deaeebf208
 {
   "results": [
     {

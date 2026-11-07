@@ -301,14 +301,110 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
+	var __lt8 *Measurement
+	if s.MarginTop != nil {
+		__lt8 = s.MarginTop
+	} else {
+		var __lt7 *Measurement
+		if s.MarginY != nil {
+			__lt7 = s.MarginY
+		} else {
+			__lt7 = s.Margin
+		}
+		__lt8 = __lt7
+	}
+	l = l.MarginTop(SpaceOf(__lt8, false))
+	var __lt10 *Measurement
+	if s.MarginRight != nil {
+		__lt10 = s.MarginRight
+	} else {
+		var __lt9 *Measurement
+		if s.MarginX != nil {
+			__lt9 = s.MarginX
+		} else {
+			__lt9 = s.Margin
+		}
+		__lt10 = __lt9
+	}
+	l = l.MarginRight(SpaceOf(__lt10, true))
+	var __lt12 *Measurement
+	if s.MarginBottom != nil {
+		__lt12 = s.MarginBottom
+	} else {
+		var __lt11 *Measurement
+		if s.MarginY != nil {
+			__lt11 = s.MarginY
+		} else {
+			__lt11 = s.Margin
+		}
+		__lt12 = __lt11
+	}
+	l = l.MarginBottom(SpaceOf(__lt12, false))
+	var __lt14 *Measurement
+	if s.MarginLeft != nil {
+		__lt14 = s.MarginLeft
+	} else {
+		var __lt13 *Measurement
+		if s.MarginX != nil {
+			__lt13 = s.MarginX
+		} else {
+			__lt13 = s.Margin
+		}
+		__lt14 = __lt13
+	}
+	l = l.MarginLeft(SpaceOf(__lt14, true))
+	var __lt16 *Measurement
+	if s.PaddingTop != nil {
+		__lt16 = s.PaddingTop
+	} else {
+		var __lt15 *Measurement
+		if s.PaddingY != nil {
+			__lt15 = s.PaddingY
+		} else {
+			__lt15 = s.Padding
+		}
+		__lt16 = __lt15
+	}
+	l = l.PaddingTop(SpaceOf(__lt16, false))
+	var __lt18 *Measurement
+	if s.PaddingRight != nil {
+		__lt18 = s.PaddingRight
+	} else {
+		var __lt17 *Measurement
+		if s.PaddingX != nil {
+			__lt17 = s.PaddingX
+		} else {
+			__lt17 = s.Padding
+		}
+		__lt18 = __lt17
+	}
+	l = l.PaddingRight(SpaceOf(__lt18, true))
+	var __lt20 *Measurement
+	if s.PaddingBottom != nil {
+		__lt20 = s.PaddingBottom
+	} else {
+		var __lt19 *Measurement
+		if s.PaddingY != nil {
+			__lt19 = s.PaddingY
+		} else {
+			__lt19 = s.Padding
+		}
+		__lt20 = __lt19
+	}
+	l = l.PaddingBottom(SpaceOf(__lt20, false))
+	var __lt22 *Measurement
+	if s.PaddingLeft != nil {
+		__lt22 = s.PaddingLeft
+	} else {
+		var __lt21 *Measurement
+		if s.PaddingX != nil {
+			__lt21 = s.PaddingX
+		} else {
+			__lt21 = s.Padding
+		}
+		__lt22 = __lt21
+	}
+	l = l.PaddingLeft(SpaceOf(__lt22, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -319,98 +415,81 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt7 int
+		var __lt23 int
 		if s.MaxLines == nil {
-			__lt7 = 0
+			__lt23 = 0
 		} else {
-			__lt7 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt23 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt7))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt23))
 	}
 	return l
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
-	var __lt9 *Measurement
-	if own != nil {
-		__lt9 = own
-	} else {
-		var __lt8 *Measurement
-		if axis != nil {
-			__lt8 = axis
-		} else {
-			__lt8 = all
-		}
-		__lt9 = __lt8
-	}
-	var px float64 = PxOf(__lt9)
-	var __lt10 float64
-	if across {
-		__lt10 = 8.0
-	} else {
-		__lt10 = 16.0
-	}
-	return int(((px / __lt10) + 0.5))
-}
-
-func CellsOf(m__r0 *Measurement) int {
-	var __lt11 float64
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt24 float64
 	if m__r0 == nil {
-		__lt11 = 0.0
+		__lt24 = 0.0
 	} else {
-		__lt11 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
+		__lt24 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
 	}
-	var px float64 = __lt11
-	var __lt12 int
-	if px <= 0.0 {
-		__lt12 = 0
+	var __lt25 float64
+	if across {
+		__lt25 = 8.0
 	} else {
-		__lt12 = max(1, (int(px) / 8))
+		__lt25 = 16.0
 	}
-	return __lt12
+	return int(((__lt24 / __lt25) + 0.5))
 }
 
-func RowsOf(m__r1 *Measurement) int {
-	var __lt13 float64
+func CellsOf(m__r1 *Measurement) int {
+	var __lt26 float64
 	if m__r1 == nil {
-		__lt13 = 0.0
+		__lt26 = 0.0
 	} else {
-		__lt13 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+		__lt26 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
-	var px float64 = __lt13
-	var __lt14 int
+	var px float64 = __lt26
+	var __lt27 int
 	if px <= 0.0 {
-		__lt14 = 0
+		__lt27 = 0
 	} else {
-		__lt14 = max(1, (int(px) / 16))
+		__lt27 = max(1, (int(px) / 8))
 	}
-	return __lt14
+	return __lt27
+}
+
+func RowsOf(m__r2 *Measurement) int {
+	var __lt28 float64
+	if m__r2 == nil {
+		__lt28 = 0.0
+	} else {
+		__lt28 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+	}
+	var px float64 = __lt28
+	var __lt29 int
+	if px <= 0.0 {
+		__lt29 = 0
+	} else {
+		__lt29 = max(1, (int(px) / 16))
+	}
+	return __lt29
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt16 int
+	var __lt31 int
 	if height__r0 == 0 {
-		__lt16 = lines
+		__lt31 = lines
 	} else {
-		var __lt15 int
+		var __lt30 int
 		if lines == 0 {
-			__lt15 = height__r0
+			__lt30 = height__r0
 		} else {
-			__lt15 = min(height__r0, lines)
+			__lt30 = min(height__r0, lines)
 		}
-		__lt16 = __lt15
+		__lt31 = __lt30
 	}
-	return __lt16
-}
-
-func PxOf(m__r2 *Measurement) float64 {
-	var __lt17 float64
-	if m__r2 == nil {
-		__lt17 = 0.0
-	} else {
-		__lt17 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
-	}
-	return __lt17
+	return __lt31
 }
 
 func (m *Model) change__trigger__inst0(to int) {
@@ -958,7 +1037,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5166304dbaf4f47d46af603d1075c7e3
+pass sha256:264c35c198f300f1b4366b790251dbb3
 -- run/go/fyne --
 pass sha256:315b2e35a350eb4c4dc4251f091eeaf9
 -- run/go/gtk4 --

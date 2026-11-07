@@ -207,15 +207,14 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	return __out
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -339,23 +338,27 @@ func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) in
 		}
 		__lt12 = __lt11
 	}
-	var px float64 = PxOf(__lt12)
-	var __lt13 float64
-	if across {
-		__lt13 = 8.0
-	} else {
-		__lt13 = 16.0
-	}
-	return int(((px / __lt13) + 0.5))
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
+	var __lt13 int
+	if px <= 0.0 {
+		__lt13 = 0
+	} else {
+		__lt13 = max(1, (int(px) / 8))
+	}
+	return __lt13
+}
+
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
 	var __lt14 int
 	if px <= 0.0 {
 		__lt14 = 0
 	} else {
-		__lt14 = max(1, (int(px) / 8))
+		__lt14 = max(1, (int(px) / 16))
 	}
 	return __lt14
 }
@@ -1865,7 +1868,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:49e2b58ae9da7129f95eb4e5b0fe1499
+pass sha256:c62d8f70a86804036e382eeca0265486
 -- run/go/fyne --
 pass sha256:b3825ac1493df7e271e668d0bd35797a
 -- run/go/gtk4 --

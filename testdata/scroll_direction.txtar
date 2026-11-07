@@ -169,26 +169,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
-}
-
-func CellsOf(m__r1 *Measurement) int {
-	var px float64 = PxOf(m__r1)
-	var __lt5 int
-	if px <= 0.0 {
-		__lt5 = 0
-	} else {
-		__lt5 = max(1, (int(px) / 8))
-	}
-	return __lt5
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -216,13 +204,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt6 bool
+	var __lt5 bool
 	if s.BorderWidth != nil {
-		__lt6 = (PxOf(s.BorderWidth) > 0.0)
+		__lt5 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt6 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt6 {
+	if __lt5 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -246,80 +234,95 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt7 int
+		var __lt6 int
 		if s.MaxLines == nil {
-			__lt7 = 0
+			__lt6 = 0
 		} else {
-			__lt7 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt7))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
 	}
 	return l
 }
 
-func PxOf(m__r2 *Measurement) float64 {
-	var __lt9 float64
-	if m__r2 == nil {
-		__lt9 = 0.0
+func PxOf(m__r1 *Measurement) float64 {
+	var __lt8 float64
+	if m__r1 == nil {
+		__lt8 = 0.0
 	} else {
-		__lt9 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+		__lt8 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+	}
+	return __lt8
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt9 lipgloss.Position
+	switch a {
+	case "center":
+		__lt9 = lipgloss.Center
+	case "right":
+		__lt9 = lipgloss.Right
+	default:
+		__lt9 = lipgloss.Left
 	}
 	return __lt9
 }
 
-func AlignOf(a string) lipgloss.Position {
-	var __lt10 lipgloss.Position
-	switch a {
-	case "center":
-		__lt10 = lipgloss.Center
-	case "right":
-		__lt10 = lipgloss.Right
+func BorderOf(s Style) lipgloss.Border {
+	var __lt10 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt10 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt10 = tui.DashedBorder()
 	default:
-		__lt10 = lipgloss.Left
+		var __lt11 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt11 = lipgloss.RoundedBorder()
+		} else {
+			__lt11 = lipgloss.NormalBorder()
+		}
+		__lt10 = __lt11
 	}
 	return __lt10
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt11 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt11 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt11 = tui.DashedBorder()
-	default:
-		var __lt12 lipgloss.Border
-		if s.BorderRadius != nil {
-			__lt12 = lipgloss.RoundedBorder()
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
+	var __lt13 *Measurement
+	if own != nil {
+		__lt13 = own
+	} else {
+		var __lt12 *Measurement
+		if axis != nil {
+			__lt12 = axis
 		} else {
-			__lt12 = lipgloss.NormalBorder()
+			__lt12 = all
 		}
-		__lt11 = __lt12
+		__lt13 = __lt12
 	}
-	return __lt11
+	return SpaceOf(__lt13, across)
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
-	var __lt14 *Measurement
-	if own != nil {
-		__lt14 = own
+func CellsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt13 *Measurement
-		if axis != nil {
-			__lt13 = axis
-		} else {
-			__lt13 = all
-		}
-		__lt14 = __lt13
+		__lt14 = max(1, (int(px) / 8))
 	}
-	var px float64 = PxOf(__lt14)
-	var __lt15 float64
-	if across {
-		__lt15 = 8.0
+	return __lt14
+}
+
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt15 int
+	if px <= 0.0 {
+		__lt15 = 0
 	} else {
-		__lt15 = 16.0
+		__lt15 = max(1, (int(px) / 16))
 	}
-	return int(((px / __lt15) + 0.5))
+	return __lt15
 }
 
 func LineCap(height__r0 int, lines int) int {
@@ -1489,7 +1492,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:fbc7e8205a12441acf8944820a59483c
+pass sha256:b46bfed2ffd53b2aed2c15f32389ff49
 -- run/go/fyne --
 pass sha256:ed3ec962c6d353842ac95da6cf4f617e
 -- run/go/gtk4 --

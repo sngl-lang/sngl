@@ -177,15 +177,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt4 int
-	if px <= 0.0 {
-		__lt4 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt4 float64
+	if across {
+		__lt4 = 8.0
 	} else {
-		__lt4 = max(1, (int(px) / 16))
+		__lt4 = 16.0
 	}
-	return __lt4
+	return int(((PxOf(m__r0) / __lt4) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -309,23 +308,27 @@ func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) in
 		}
 		__lt13 = __lt12
 	}
-	var px float64 = PxOf(__lt13)
-	var __lt14 float64
-	if across {
-		__lt14 = 8.0
-	} else {
-		__lt14 = 16.0
-	}
-	return int(((px / __lt14) + 0.5))
+	return SpaceOf(__lt13, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
+	} else {
+		__lt14 = max(1, (int(px) / 8))
+	}
+	return __lt14
+}
+
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
 	var __lt15 int
 	if px <= 0.0 {
 		__lt15 = 0
 	} else {
-		__lt15 = max(1, (int(px) / 8))
+		__lt15 = max(1, (int(px) / 16))
 	}
 	return __lt15
 }
@@ -835,7 +838,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- run/go/bubbletea --
-pass sha256:bb64d01184ca67ae2447269286a76735
+pass sha256:0da749a4487ede9c5cd6af3f97ca0f82
 -- run/go/fyne --
 pass sha256:86ff6c6a7d8fd6a0fd49808bd956716d
 -- run/go/gtk4 --

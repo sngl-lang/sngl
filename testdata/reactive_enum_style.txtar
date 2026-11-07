@@ -221,15 +221,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func SeedOf(s Style) SpanStyle {
@@ -383,23 +382,27 @@ func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) in
 		}
 		__lt15 = __lt14
 	}
-	var px float64 = PxOf(__lt15)
-	var __lt16 float64
-	if across {
-		__lt16 = 8.0
-	} else {
-		__lt16 = 16.0
-	}
-	return int(((px / __lt16) + 0.5))
+	return SpaceOf(__lt15, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
+	var __lt16 int
+	if px <= 0.0 {
+		__lt16 = 0
+	} else {
+		__lt16 = max(1, (int(px) / 8))
+	}
+	return __lt16
+}
+
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
 	var __lt17 int
 	if px <= 0.0 {
 		__lt17 = 0
 	} else {
-		__lt17 = max(1, (int(px) / 8))
+		__lt17 = max(1, (int(px) / 16))
 	}
 	return __lt17
 }
@@ -1213,6 +1216,6 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:b321e08f2dd5f4bb6b44f3a9c8271329
+pass sha256:33a1e02e6e6a493392b618aaeb5b7bae
 -- run/kotlin/android --
 pass sha256:e0157b4327f81bc7715226a2e197d0d9

@@ -45,7 +45,7 @@ ui.window {
     counter()
 }
 -- testrun/bubbletea/go/app.sngl/counter/1 --
-sha256:c40803c78a84135ca355d6bc88695576
+sha256:8f70f2d18b40d52901a4329fe63cdaf9
 {
   "results": [
     {
