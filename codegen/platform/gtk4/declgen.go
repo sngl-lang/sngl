@@ -175,8 +175,8 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 	}
 	slices.Sort(castTypes)
 	for _, cType := range castTypes {
-		fmt.Fprintf(&b, "\n#[macro.cnative(\"C.%s\")]\nstruct %s {}\n", cType, castType(cType))
-		fmt.Fprintf(&b, "\n#[macro.cnative(\"C.%s\")]\nconst func %s(v %s) %s\n", cType, castFunc(cType), casts[cType], castType(cType))
+		fmt.Fprintf(&b, "\n#[macro.cnative(%q)]\nstruct %s {}\n", cType, castType(cType))
+		fmt.Fprintf(&b, "\n#[macro.cnative(%q, cast)]\nconst func %s(v %s) %s\n", cType, castFunc(cType), casts[cType], castType(cType))
 	}
 	return []byte(b.String())
 }
@@ -238,8 +238,9 @@ func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo,
 // calling the C call GIR names through gtk4rt (rtOp), or under cgo as a native
 // taking the C pointers it declares. There the receiver is cast to the class
 // that declares the call, so a subclass reaches its parent's adder, and the
-// child to GtkWidget; each cast is a native of its own,
-// `(*C.GtkBox)(unsafe.Pointer(w))`, since cgo converts no C pointer to another.
+// child to GtkWidget; each cast is a `#[cnative(…, cast)]` of its own, which
+// Go writes `(*C.GtkBox)(unsafe.Pointer(w))`, since cgo converts no C pointer
+// to another.
 type childOps struct {
 	cgo     bool
 	natives map[string]bool
@@ -269,7 +270,7 @@ func (o *childOps) classPtr(b *strings.Builder, cType string) {
 		return
 	}
 	o.classPtrs[cType] = true
-	fmt.Fprintf(b, "\n#[macro.cnative(\"unsafe.Pointer\")]\nconst func _ptr_%s(w %s) c.pointer\n", cType, cType)
+	fmt.Fprintf(b, "\n#[macro.cnative(\"void *\", cast)]\nconst func _ptr_%s(w %s) c.pointer\n", cType, cType)
 }
 
 func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call gir.ChildAdder) {
@@ -312,10 +313,10 @@ func (o *childOps) writeCasts(b *strings.Builder) {
 	if len(o.ptrs) == 0 {
 		return
 	}
-	b.WriteString("\n#[macro.cnative(\"unsafe.Pointer\")]\nconst func _widget(w ui.node) c.pointer\n")
+	b.WriteString("\n#[macro.cnative(\"void *\", cast)]\nconst func _widget(w ui.node) c.pointer\n")
 	for _, cType := range slices.Sorted(maps.Keys(o.ptrs)) {
-		fmt.Fprintf(b, "\n#[macro.cnative(\"*C.%s\")]\nstruct %s {}\n", cType, ptrType(cType))
-		fmt.Fprintf(b, "\n#[macro.cnative(\"(*C.%s)\")]\nconst func %s(p c.pointer) %s\n", cType, ptrFunc(cType), ptrType(cType))
+		fmt.Fprintf(b, "\n#[macro.cnative(\"%s *\")]\nstruct %s {}\n", cType, ptrType(cType))
+		fmt.Fprintf(b, "\n#[macro.cnative(\"%s *\", cast)]\nconst func %s(p c.pointer) %s\n", cType, ptrFunc(cType), ptrType(cType))
 	}
 }
 

@@ -59,8 +59,8 @@ pkg-config for flags and includes `<header>`; anything else is a header
 included as written. What it writes is one `c.link`, and the program declares
 each function with `#[cnative]` -- GTK's headers take a C parser minutes, which
 is why the Go importer that parsed them went rather than moved. A `#[cnative]`
-call returning an int or a float is converted to Go's type at the call, as its
-arguments are to C's.
+call returning an int or a float is converted back to SNGL's at the call, as
+its arguments are to C's (`codegen.CInterop`'s `CCall`).
 
 ## The `openapi:` scheme
 

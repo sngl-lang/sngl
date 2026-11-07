@@ -500,10 +500,7 @@ func protocolSplice(fn *ir.Func, args []ir.Expr) (ir.Expr, error) {
 		}
 		return n, nil
 	})
-	if err := marshalSpliced(spliced); err != nil {
-		return nil, err
-	}
-	return spliced, nil
+	return marshalSpliced(spliced)
 }
 
 // childOp is the node op intrinsic (AppendChild, RemoveChild) of child under

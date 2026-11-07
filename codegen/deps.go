@@ -293,6 +293,8 @@ func (w *depExtractor) walkExpr(e ir.Expr) {
 		}
 	case *ir.Conversion:
 		w.walkExpr(n.Operand)
+	case *ir.CConvert:
+		w.walkExpr(n.Operand)
 	case *ir.ListLit:
 		for _, el := range n.Elems {
 			w.walkExpr(el)

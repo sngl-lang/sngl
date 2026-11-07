@@ -312,6 +312,8 @@ func collectScopeRefsExpr(e ir.Expr, info *scopeRefInfo) {
 		}
 	case *ir.Conversion:
 		collectScopeRefsExpr(x.Operand, info)
+	case *ir.CConvert:
+		collectScopeRefsExpr(x.Operand, info)
 	case *ir.Select:
 		collectScopeRefsExpr(x.Operand, info)
 	case *ir.Index:

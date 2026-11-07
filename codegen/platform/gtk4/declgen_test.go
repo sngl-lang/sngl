@@ -584,8 +584,8 @@ func TestWidgetSource_DeclaresConstructors(t *testing.T) {
 		"    return _gtk_link_button_new(\"\")\n",
 		// An enumeration crosses as its own C type, through a cast; an int
 		// whose C type is cgo's own as an int.
-		"#[macro.cnative(\"C.GtkOrientation\")]\nstruct _c_GtkOrientation {}\n",
-		"#[macro.cnative(\"C.GtkOrientation\")]\nconst func _to_GtkOrientation(v int) _c_GtkOrientation\n",
+		"#[macro.cnative(\"GtkOrientation\")]\nstruct _c_GtkOrientation {}\n",
+		"#[macro.cnative(\"GtkOrientation\", cast)]\nconst func _to_GtkOrientation(v int) _c_GtkOrientation\n",
 		"func _gtk_box_new(orientation _c_GtkOrientation, spacing int) GtkBox\n",
 		"    return _gtk_box_new(_to_GtkOrientation(0), 0)\n",
 		// Any other pointer is an opaque one, handed null.
@@ -624,9 +624,9 @@ func TestWidgetSource_DeclaresChildOps(t *testing.T) {
 		// A replacing adder, and one a subclass inherits from its parent.
 		"func _append_GtkFrame(parent GtkFrame, child ui.node) {\n    _gtk_frame_set_child(_as_GtkFrame(_ptr_GtkFrame(parent)), _as_GtkWidget(_widget(child)))\n}\n",
 		"func _append_GtkLinkButton(parent GtkLinkButton, child ui.node) {\n    _gtk_button_set_child(_as_GtkButton(_ptr_GtkLinkButton(parent)), _as_GtkWidget(_widget(child)))\n}\n",
-		"#[macro.cnative(\"unsafe.Pointer\")]\nconst func _ptr_GtkBox(w GtkBox) c.pointer\n",
-		"#[macro.cnative(\"*C.GtkButton\")]\nstruct _p_GtkButton {}\n",
-		"#[macro.cnative(\"(*C.GtkButton)\")]\nconst func _as_GtkButton(p c.pointer) _p_GtkButton\n",
+		"#[macro.cnative(\"void *\", cast)]\nconst func _ptr_GtkBox(w GtkBox) c.pointer\n",
+		"#[macro.cnative(\"GtkButton *\")]\nstruct _p_GtkButton {}\n",
+		"#[macro.cnative(\"GtkButton *\", cast)]\nconst func _as_GtkButton(p c.pointer) _p_GtkButton\n",
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated source lacks\n%s", want)

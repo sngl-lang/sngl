@@ -485,6 +485,12 @@ func walkExprLambdas(ctx context.Context, e ir.Expr, t IntrinsicTranslator) (ir.
 			cp.Operand = v
 			return &cp, true
 		}
+	case *ir.CConvert:
+		if v, moved := walkExprLambdas(ctx, x.Operand, t); moved {
+			cp := *x
+			cp.Operand = v
+			return &cp, true
+		}
 	case *ir.Binary:
 		left, movedLeft := walkExprLambdas(ctx, x.Left, t)
 		right, movedRight := walkExprLambdas(ctx, x.Right, t)

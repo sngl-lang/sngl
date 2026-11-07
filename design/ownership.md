@@ -18,11 +18,15 @@ found by kind among what the program and the C function's own package import
 after `LibFuncs`, so a promoted library helper's calls are reached, and before
 `NoTernary`, which lowers `cbool`'s. `cstring` answers a `c.str`, which is
 `#[owned(free)]`, so a C string is an owned value like any other and
-`ReleaseTemps` will see it. The printer keeps only the other direction, a C
-number coming back as `int(...)`. A `bool` argument used to panic the printer,
-cgo having no conversion for one (`testdata/c_bool_argument.txtar`); `free`
-reaches cgo's `C.free` through `unsafe.Pointer`, a qualified native name the
-printer spells as written (`testdata/c_free.txtar`). An argument whose own
+`ReleaseTemps` will see it. Each conversion is a `#[cnative(…, cast)]`, and
+the pass writes it, and every call of a cast, as an `ir.CConvert` the
+language renders (`design/architecture.md`, *C is described as C spells
+it*); a `CConvert` of a string is an allocation, as the call it replaced was.
+The printer keeps only the other direction, a C number coming back as
+`int(...)`. A `bool` argument used to panic the printer, cgo having no
+conversion for one (`testdata/c_bool_argument.txtar`); `free` reaches C's
+`free` through `pointerTo`, a cast to `void *` Go writes as `unsafe.Pointer`
+(`testdata/c_free.txtar`). An argument whose own
 type is no longer the one its parameter names is converted already and left:
 a body the pass rewrote in place may be spliced by a later pass and walked
 again with the splice (`marshalSpliced`), and before this a gtk4 link

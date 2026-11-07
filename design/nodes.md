@@ -127,8 +127,12 @@ declaration itself. Two things about the name that are easy to get wrong:
   `kotlin.native`, which android needs to describe Compose, and by
   **`#[cnative]` in `sngl:macro`** — C is an ABI rather than a target, so a
   platform built on a C library (gtk4 on cairo) names C identifiers and no
-  language at all. The Go backend renders those as cgo. Each argument is
-  converted before any backend sees the call, by `lower.CMarshal`, through the
+  language at all. The name is C's spelling -- a function's identifier, a
+  type such as `cairo_t *` -- and the checker refuses a language's (`C.`,
+  `unsafe.Pointer`), so a declaration reachable only from Go cannot be written
+  (`testdata/error_cnative_spelling.sngl`); each language renders it through
+  `codegen.CInterop` (`design/architecture.md`). Each argument is converted
+  before any backend sees the call, by `lower.CMarshal`, through the
   `sngl:x/c` conversion its parameter's type names (`cstring`, `cint`,
   `cdouble`, `cbool`), so a C string is an owned `c.str` in the IR rather than
   a `C.CString` only the printed Go held (`testdata/c_bool_argument.txtar`). Which
@@ -185,7 +189,7 @@ declaration itself. Two things about the name that are easy to get wrong:
   reached past `alpha` positionally.
 - **A native mark names a *type* as readily as a function**, which is what
   makes a host handle spellable: `#[go.native("time", "*time.Ticker")] struct Schedule { C go.chan[time.datetime] }` with `#[go.native("time", "time.Ticker.Stop", method)] func Schedule.stop()` beside it -- and a *field* of one is how a host API hands a channel back. gtk4 has done the same for C all along —
-  `#[cnative("*C.cairo_t")] struct CairoContext {}` — so the form predates the
+  `#[cnative("cairo_t *")] struct CairoContext {}` — so the form predates the
   need for it by a platform.
 
   **Reach for it before working around a signature.** fyne's and gtk4's timer

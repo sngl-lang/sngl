@@ -1,0 +1,41 @@
+// A `#[cnative]` name is C's spelling, and each language adds what it needs
+// to reach it: Go writes `C.` and `unsafe.Pointer`, C writes nothing. A
+// language's spelling is refused where it is written, so no declaration can
+// be reached only from Go. A conversion to a C type is a `cast`, which returns
+// the type it names.
+import macro "sngl:macro"
+
+#[macro.cnative("*C.cairo_t")] // ERROR(check) "names no type before its pointer"
+struct Context {}
+
+#[macro.cnative("C.cairo_line_cap_t")] // ERROR(check) "holds \".\""
+struct LineCap {}
+
+#[macro.cnative("unsafe.Pointer")] // ERROR(check) "holds \".\""
+struct Pointer {}
+
+#[macro.cnative("char * const")] // ERROR(check) "has \"const\" after its pointer"
+struct ConstPointer {}
+
+#[macro.cnative("int[4]")] // ERROR(check) "an array or a function pointer stays in C"
+struct Four {}
+
+#[macro.cnative("C.CString")] // ERROR(check) "names no C function"
+func cstring(s string) LineCap
+// ERROR(check:23) "\"cstring\" has no body"
+
+#[macro.cnative("cairo_line_cap_t", cast)] // ERROR(check) "a struct is a C type"
+struct Cast {}
+
+#[macro.cnative("cairo_line_cap_t")]
+struct Cap {}
+
+#[macro.cnative("cairo_line_join_t")]
+struct Join {}
+
+#[macro.cnative("cairo_line_cap_t", cast)] // ERROR(check) "takes one parameter and returns that type"
+const func noValue() Cap
+// ERROR(check:36) "\"noValue\" has no body"
+
+#[macro.cnative("cairo_line_cap_t", cast)] // ERROR(check) "converts to cairo_line_cap_t, so toJoin returns a #[cnative(\"cairo_line_cap_t\")] struct, not Join"
+const func toJoin(v int) Join

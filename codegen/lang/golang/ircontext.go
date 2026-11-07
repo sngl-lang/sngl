@@ -1153,24 +1153,22 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 // The name is spelled as Go spells it after the import, `http.Get`, which is
 // what the path makes available. RequireImport adds the path; nothing here
 // derives a qualifier from it, because a Go package's name is not a function
-// of its import path.
+// of its import path. A C function is CInterop's to call (cinterop.go).
 func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	if n.Func == nil || n.Func.Foreign.Path == "" || n.Func.Foreign.Marked {
 		return "", false
 	}
-	args := gc.evalCallArgs(n.Args)
-	name := n.Func.Foreign.Name
-	// The renderer adds the "C." prefix to a bare C identifier; a qualified
-	// name is spelled as written, which is how sngl:x/c reaches cgo's
-	// `unsafe.Pointer` for a `void *`.
-	switch {
-	case n.Func.Foreign.Path != "C":
-		gc.RequireImport(n.Func.Foreign.Path)
-	case strings.HasPrefix(name, "unsafe."):
-		gc.RequireImport("unsafe")
-	case !strings.Contains(name, "."):
-		name = "C." + name
+	// A cast lower.CMarshal never saw: a library body a pass promoted after
+	// it ran, which is the library's own and not rewritten -- c.free's.
+	if n.Func.IsCCast() && len(n.Args) == 1 {
+		return gc.CConvert(ir.NewCConvert(n.Func, n.Args[0].Value)), true
 	}
+	args := gc.evalCallArgs(n.Args)
+	if n.Func.Foreign.Path == ir.CPath {
+		return gc.CCall(n.Func, args), true
+	}
+	name := n.Func.Foreign.Name
+	gc.RequireImport(n.Func.Foreign.Path)
 	// Context-taking native call: inject the context expression as the first
 	// argument. When the importer flagged HasContextArg, supply
 	// gc.Ctx.ContextVar (e.g. "r.Context()"), defaulting to
@@ -1193,19 +1191,7 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	if n.Func.NativeMethod && len(args) > 0 {
 		return args[0] + "." + methodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
 	}
-	call := name + "(" + strings.Join(args, ", ") + ")"
-	// The arguments went the other way in lower.CMarshal: a C function's
-	// number comes back as cgo's type for it, which a Go int or float64 is
-	// not assignable from.
-	if n.Func.Foreign.Path == "C" && n.Func.Return != nil {
-		switch n.Func.Return.Kind {
-		case ir.TypeInt:
-			call = "int(" + call + ")"
-		case ir.TypeFloat:
-			call = "float64(" + call + ")"
-		}
-	}
-	return call, true
+	return name + "(" + strings.Join(args, ", ") + ")", true
 }
 
 // methodTail is the last segment of a qualified native name, which is the
@@ -1911,7 +1897,9 @@ func TypeImports(t *ir.Type) []string {
 		case ClassifyUnit(unitDeclOf(e)) == UnitDuration:
 			add("time")
 		default:
-			if sd, ok := e.Decl.(*ir.StructDef); ok && sd.Foreign.Name != "" && !sd.Foreign.Marked && sd.Foreign.Path != "" && sd.Foreign.Path != "C" {
+			if ct := ir.CTypeOf(e); ct != nil && strings.Contains(CTypeToGo(ct), "unsafe.") {
+				add("unsafe")
+			} else if sd, ok := e.Decl.(*ir.StructDef); ok && sd.Foreign.Name != "" && !sd.Foreign.Marked && sd.Foreign.Path != "" && sd.Foreign.Path != ir.CPath {
 				add(sd.Foreign.Path)
 			}
 		}
@@ -2176,6 +2164,9 @@ func IRTypeToGo(t *ir.Type) string {
 			return colorGoType
 		}
 		if sd, ok := t.Decl.(*ir.StructDef); ok {
+			if sd.Foreign.C != nil {
+				return CTypeToGo(sd.Foreign.C)
+			}
 			// A mark names a type this file also declares, so using the mark's
 			// name here would leave two names for one type and no import.
 			if sd.Foreign.Name != "" && !sd.Foreign.Marked {

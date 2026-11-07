@@ -100,6 +100,8 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 			}
 		case *ir.Conversion:
 			walkExpr(x.Operand)
+		case *ir.CConvert:
+			walkExpr(x.Operand)
 		case *ir.Select:
 			walkExpr(x.Operand)
 		case *ir.Index:
@@ -305,6 +307,9 @@ func liftLambdas(e ir.Expr, l *lifter) ir.Expr {
 		}
 		return x
 	case *ir.Conversion:
+		x.Operand = liftLambdas(x.Operand, l)
+		return x
+	case *ir.CConvert:
 		x.Operand = liftLambdas(x.Operand, l)
 		return x
 	case *ir.Select:
@@ -731,6 +736,9 @@ func (l *lifter) rewriteExpr(e ir.Expr, captureField map[ir.Symbol]ir.Expr, capt
 		}
 		return x
 	case *ir.Conversion:
+		x.Operand = l.rewriteExpr(x.Operand, captureField, captureMutable)
+		return x
+	case *ir.CConvert:
 		x.Operand = l.rewriteExpr(x.Operand, captureField, captureMutable)
 		return x
 	case *ir.Select:

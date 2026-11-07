@@ -112,7 +112,7 @@ func (m *cMarshal) walkFunc(fn *ir.Func) error {
 }
 
 func (m *cMarshal) walk(root any) error {
-	return ir.Walk(root, func(n ir.Node) error {
+	err := ir.Walk(root, func(n ir.Node) error {
 		call, ok := n.(*ir.Call)
 		if !ok || call.Func == nil {
 			return nil
@@ -123,18 +123,41 @@ func (m *cMarshal) walk(root any) error {
 		}
 		return m.call(call)
 	})
+	if err != nil {
+		return err
+	}
+	return ir.Rewrite(root, rewriteCasts)
+}
+
+// rewriteCasts makes each call of a `#[cnative(…, cast)]` function the
+// ir.CConvert it declares. Its argument was converted as any C call's is, so
+// a number reaches a typedef'd enum as a C `int` first, which cgo needs.
+func rewriteCasts(n ir.Node) (ir.Node, error) {
+	if c, ok := n.(*ir.Call); ok && c.Func.IsCCast() && len(c.Args) == 1 {
+		return ir.NewCConvert(c.Func, c.Args[0].Value), nil
+	}
+	return n, nil
 }
 
 // marshalSpliced converts the C calls of an expression a pass splices after
-// passCMarshal ran.
-func marshalSpliced(e ir.Expr) error {
+// passCMarshal ran, and is e with its casts made conversions.
+func marshalSpliced(e ir.Expr) (ir.Expr, error) {
 	m := &cMarshal{done: map[*ir.Call]bool{}, walked: map[*ir.Func]bool{}, indexed: map[*ir.Package]bool{}}
-	return ir.Walk(e, func(n ir.Node) error {
+	err := ir.Walk(e, func(n ir.Node) error {
 		if c, ok := n.(*ir.Call); ok && c.Func != nil {
 			return m.call(c)
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	out, err := rewriteCasts(e)
+	if err != nil {
+		return nil, err
+	}
+	e = out.(ir.Expr)
+	return e, ir.Rewrite(e, rewriteCasts)
 }
 
 // call converts each argument of c, when c calls a C function other than a
@@ -234,7 +257,7 @@ func isNull(e ir.Expr) bool {
 	return false
 }
 
-// convertArg is arg made through conv: a call of a native conversion, or a
+// convertArg is arg made through conv: the conversion a cast declares, or a
 // bodied one's `=>` expression with arg in place of its parameter, since a
 // library function is emitted only when the program reaches it.
 func convertArg(conv *ir.Func, arg ir.Expr) ir.Expr {
@@ -251,6 +274,9 @@ func convertArg(conv *ir.Func, arg ir.Expr) ir.Expr {
 			return n, nil
 		})
 		return out
+	}
+	if conv.IsCCast() {
+		return ir.NewCConvert(conv, arg)
 	}
 	return &ir.Call{Type: conv.Return, Func: conv, Args: []ir.CallArg{{Value: arg}}}
 }

@@ -207,6 +207,8 @@ func gatherStateVarRefs(e ir.Expr, stateVars map[*ir.Var]bool, out map[*ir.Var]b
 		}
 	case *ir.Conversion:
 		gatherStateVarRefs(x.Operand, stateVars, out)
+	case *ir.CConvert:
+		gatherStateVarRefs(x.Operand, stateVars, out)
 	case *ir.Select:
 		gatherStateVarRefs(x.Operand, stateVars, out)
 	case *ir.Index:

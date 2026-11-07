@@ -61,9 +61,13 @@ func (c *converter) correspondenceAttr(f Foreign, fn *Func) (ast.MacroAttr, bool
 		}
 		return c.attr("language/"+f.Scheme, "native", append(args, nativeFlagIdents(fn)...)...), true
 	case "c":
-		// cnative(name) and nothing else: C is an ABI rather than a target, so
-		// there is no module to name and Path is the constant "C".
-		return c.attr("macro", "cnative", posArg(ast.NewStringLiteral(f.Name))), true
+		// cnative(name), and cast on a conversion: C is an ABI rather than a
+		// target, so there is no module to name and Path is the constant "C".
+		args := []ast.Arg{posArg(ast.NewStringLiteral(f.Name))}
+		if fn.IsCCast() {
+			args = append(args, posArg(&ast.IdentExpr{Name: "cast"}))
+		}
+		return c.attr("macro", "cnative", args...), true
 	}
 	return ast.MacroAttr{}, false
 }

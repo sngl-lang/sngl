@@ -67,6 +67,8 @@ func flattenSpreadExprCtx(e ir.Expr, pkg *ir.Package) ir.Expr {
 		}
 	case *ir.Conversion:
 		x.Operand = rewrite(x.Operand)
+	case *ir.CConvert:
+		x.Operand = rewrite(x.Operand)
 	case *ir.Select:
 		x.Operand = rewrite(x.Operand)
 	case *ir.Index:

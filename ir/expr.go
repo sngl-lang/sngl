@@ -648,6 +648,8 @@ func IsConst(e Expr) bool {
 		return x.Func != nil && x.Func.Const
 	case *Conversion:
 		return IsConst(x.Operand)
+	case *CConvert:
+		return IsConst(x.Operand)
 	case *Select:
 		return IsConst(x.Operand)
 	case *Index:

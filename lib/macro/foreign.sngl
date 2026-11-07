@@ -33,9 +33,23 @@ func foreign(path string = "", name string = "", flags list[ir.ForeignFlag] = []
 // through the conversion `sngl:x/c` declares for its parameter's type, written
 // in before any backend sees the call.
 //
-// The name is spelled as the emitting language reaches it, prefix included
-// where one is needed -- `C.cairo_line_cap_t` for a type, `cairo_arc` for a
-// function the renderer prefixes itself, `unsafe.Pointer` for one it does not.
+// The name is spelled as C spells it, and each language adds what it needs to
+// reach it: a function is its identifier (`cairo_arc`), and a type is a C type
+// (`cairo_t *`, `cairo_line_cap_t`, `const char *`) -- a name, `const` written
+// first, and pointers. An array or a function pointer is not a type this
+// spells.
+//
+// `cast` declares a conversion rather than a function: a bodyless function of
+// one parameter whose name is the C type it converts to, which is the C type
+// its return type declares. `#[cnative("cairo_line_cap_t", cast)] const func toLineCap(v int) LineCap` makes a number one, and a pointer type makes a
+// pointer, or a node, one.
 //
 // Struct and function are the forms that carry it, as `#[foreign]`'s are.
-func cnative(name string) ir.Macro
+func cnative(name string, flags list[CNativeFlag] = []) ir.Macro
+
+// What a `#[cnative]` function is beyond its name.
+enum CNativeFlag {
+    // The function is a conversion to the C type its name spells, which its
+    // return type declares, rather than a C function to call.
+    cast
+}

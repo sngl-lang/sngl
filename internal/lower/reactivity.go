@@ -1210,6 +1210,8 @@ func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 		st.gatherFuncReads(x.Func, out, nil)
 	case *ir.Conversion:
 		st.gatherDeps(x.Operand, out)
+	case *ir.CConvert:
+		st.gatherDeps(x.Operand, out)
 	case *ir.Select:
 		st.gatherDeps(x.Operand, out)
 	case *ir.Index:
@@ -1939,6 +1941,10 @@ func rewriteIdentsToCaptures(e ir.Expr, rewrite map[ir.Symbol]ir.Expr) ir.Expr {
 		}
 		return &cp
 	case *ir.Conversion:
+		cp := *x
+		cp.Operand = rewriteIdentsToCaptures(x.Operand, rewrite)
+		return &cp
+	case *ir.CConvert:
 		cp := *x
 		cp.Operand = rewriteIdentsToCaptures(x.Operand, rewrite)
 		return &cp

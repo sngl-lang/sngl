@@ -270,6 +270,9 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 			}
 		case *ir.Conversion:
 			walkExpr(x.Operand)
+		case *ir.CConvert:
+			// A value only C holds, as a C function's result is.
+			hasNative = true
 		case *ir.Select:
 			walkExpr(x.Operand)
 		case *ir.Index:
@@ -538,6 +541,10 @@ func calleeCallsNative(f *ir.Func, seen map[*ir.Func]bool) bool {
 				found = true
 				return ir.SkipAll
 			}
+		}
+		if _, ok := n.(*ir.CConvert); ok {
+			found = true
+			return ir.SkipAll
 		}
 		c, ok := n.(*ir.Call)
 		if !ok || c.Func == nil {

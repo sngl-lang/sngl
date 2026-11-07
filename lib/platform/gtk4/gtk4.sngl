@@ -825,7 +825,7 @@ const _rtPkg = "duckfam.us/sngl/pkg/go/gtk4rt"
 // The armed source itself, held as an opaque type rather than as an id paired
 // with its callback slot in a table the runtime keeps. `*gtk4rt.Schedule` is a
 // name this declaration can spell -- the same thing `#[cnative]` does for
-// `*C.cairo_t` below.
+// `cairo_t *` below.
 #[go.native(_rtPkg, "*gtk4rt.Schedule")]
 struct Schedule {}
 
@@ -876,11 +876,11 @@ func _connect(w ui.node, signal string, handler func()) {
 // parameter type names (`c.cdouble`, `c.cstring`), which is why this package
 // imports one. Nothing here is Go's.
 //
-// Named as the cgo pointer it is, so a helper that takes the context has the
+// Named as the C pointer it is, so a helper that takes the context has the
 // right type in its own signature -- the draw function's own parameter type
 // comes from this platform, but `paint(ctx, style)` is an ordinary func and
 // carries whatever this declaration says.
-#[cnative("*C.cairo_t")]
+#[cnative("cairo_t *")]
 struct CairoContext {}
 
 #[cnative("cairo_save")]
@@ -897,18 +897,18 @@ func CairoContext.setLineWidth(w float)
 
 // cairo's cap and join are typedef'd enums, not plain ints, so the
 // declarations name those types and a conversion is written where the value is
-// produced. An `int` parameter would emit `C.int(...)` and not compile --
-// which the emitted-cgo build test says, loudly.
-#[cnative("C.cairo_line_cap_t")]
+// produced. An `int` parameter would cross as a C `int`, which cgo refuses
+// for one -- as the emitted-cgo build test says, loudly.
+#[cnative("cairo_line_cap_t")]
 struct LineCapValue {}
 
-#[cnative("C.cairo_line_join_t")]
+#[cnative("cairo_line_join_t")]
 struct LineJoinValue {}
 
-#[cnative("C.cairo_line_cap_t")]
+#[cnative("cairo_line_cap_t", cast)]
 const func toLineCap(v int) LineCapValue
 
-#[cnative("C.cairo_line_join_t")]
+#[cnative("cairo_line_join_t", cast)]
 const func toLineJoin(v int) LineJoinValue
 
 #[cnative("cairo_set_line_cap")]
@@ -956,21 +956,21 @@ func CairoContext.stroke()
 func CairoContext.setFontSize(size float)
 
 // The slant and the weight are typedef'd enums like the line cap and join, so
-// they are cast the same way rather than passed as `C.int` -- cgo refuses an
-// int where a `cairo_font_slant_t` belongs.
+// they are cast the same way rather than passed as a C `int` -- cgo refuses
+// an int where a `cairo_font_slant_t` belongs.
 //
 // `Style` exposes neither, so both are always the normal value. Declared
 // anyway, because the alternative is a native that lies about its signature.
-#[cnative("C.cairo_font_slant_t")]
+#[cnative("cairo_font_slant_t")]
 struct FontSlant {}
 
-#[cnative("C.cairo_font_weight_t")]
+#[cnative("cairo_font_weight_t")]
 struct FontWeight {}
 
-#[cnative("C.cairo_font_slant_t")]
+#[cnative("cairo_font_slant_t", cast)]
 const func toFontSlant(v int) FontSlant
 
-#[cnative("C.cairo_font_weight_t")]
+#[cnative("cairo_font_weight_t", cast)]
 const func toFontWeight(v int) FontWeight
 
 #[cnative("cairo_select_font_face")]

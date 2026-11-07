@@ -3214,6 +3214,8 @@ func exprUsesI18n(expr ir.Expr) bool {
 			}
 		case *ir.Conversion:
 			walk(x.Operand)
+		case *ir.CConvert:
+			walk(x.Operand)
 		case *ir.Select:
 			walk(x.Operand)
 		case *ir.Index:
@@ -3498,6 +3500,8 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 				walkExpr(a.Value)
 			}
 		case *ir.Conversion:
+			walkExpr(x.Operand)
+		case *ir.CConvert:
 			walkExpr(x.Operand)
 		case *ir.ListLit:
 			for _, el := range x.Elems {

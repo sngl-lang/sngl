@@ -240,6 +240,10 @@ func hoistChildren(h *hoister, e ir.Expr) ir.Expr {
 		cp := *x
 		cp.Operand = hoistExpr(h, x.Operand)
 		return &cp
+	case *ir.CConvert:
+		cp := *x
+		cp.Operand = hoistExpr(h, x.Operand)
+		return &cp
 	case *ir.Select:
 		cp := *x
 		cp.Operand = hoistExpr(h, x.Operand)
@@ -324,6 +328,8 @@ func exprHasLocals(e ir.Expr) bool {
 		}
 		return false
 	case *ir.Conversion:
+		return exprHasLocals(x.Operand)
+	case *ir.CConvert:
 		return exprHasLocals(x.Operand)
 	case *ir.Select:
 		return exprHasLocals(x.Operand)

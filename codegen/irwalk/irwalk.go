@@ -138,6 +138,13 @@ func EvalExpr(r Renderer, e ir.Expr) string {
 		return r.Call(n)
 	case *ir.Conversion:
 		return r.Conversion(n)
+	case *ir.CConvert:
+		// Only a language that calls C renders one (codegen.CInterop), and
+		// lower.CMarshal writes one only for a call of a C function.
+		if c, ok := r.(interface{ CConvert(*ir.CConvert) string }); ok {
+			return c.CConvert(n)
+		}
+		panic(fmt.Sprintf("irwalk.EvalExpr: %T calls no C, and is handed a conversion to %s", r, n.To))
 	case *ir.Lambda:
 		return r.Lambda(n)
 	case *ir.MatchExpr:

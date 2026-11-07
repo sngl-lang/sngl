@@ -163,6 +163,8 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		if inner := unwrappedOptionOperand(x); inner != nil {
 			return foldExpr(inner, ctx)
 		}
+	case *ir.CConvert:
+		x.Operand = foldExpr(x.Operand, ctx)
 	case *ir.Select:
 		x.Operand = foldExpr(x.Operand, ctx)
 		if v := literalField(x); v != nil {

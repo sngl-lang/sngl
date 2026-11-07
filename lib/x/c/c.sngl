@@ -13,31 +13,31 @@ component link(const include string, const system bool = false, const cflags lis
 
 // A C string: a NUL-terminated copy of a `string` the program allocated, which
 // `free` gives back.
-#[macro.cnative("*C.char")]
+#[macro.cnative("char *")]
 #[macro.owned(free)]
 struct str {}
 
 // A C `int` and a C `double`, the types a SNGL `int` and `float` cross as.
-#[macro.cnative("C.int")]
+#[macro.cnative("int")]
 struct integer {}
 
-#[macro.cnative("C.double")]
+#[macro.cnative("double")]
 struct double {}
 
 // The conversions a call of a C function makes of each argument, chosen by
 // the parameter's type. Nothing calls them by name: the compiler finds each by
-// its mark and writes the call, so a `string` handed to C is a `str` the
+// its mark and writes the conversion, so a `string` handed to C is a `str` the
 // program holds and must give back.
 #[marks.builtin("cString")]
-#[macro.cnative("C.CString")]
+#[macro.cnative("char *", cast)]
 func cstring(s string) str
 
 #[marks.builtin("cInt")]
-#[macro.cnative("C.int")]
+#[macro.cnative("int", cast)]
 const func cint(i int) integer
 
 #[marks.builtin("cDouble")]
-#[macro.cnative("C.double")]
+#[macro.cnative("double", cast)]
 const func cdouble(f float) double
 
 // C spells a boolean as an `int`, 1 or 0, which is what GLib's `gboolean` is.
@@ -46,10 +46,10 @@ const func cdouble(f float) double
 const func cbool(b bool) => cint(b ? 1 : 0)
 
 // C's `void *`, which `free` takes.
-#[macro.cnative("unsafe.Pointer")]
+#[macro.cnative("void *")]
 struct pointer {}
 
-#[macro.cnative("unsafe.Pointer")]
+#[macro.cnative("void *", cast)]
 const func pointerTo(s str) pointer
 
 #[macro.cnative("free")]

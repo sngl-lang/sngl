@@ -232,6 +232,8 @@ func ExprHasAsyncCall(e Expr) bool {
 		}
 	case *Conversion:
 		return ExprHasAsyncCall(x.Operand)
+	case *CConvert:
+		return ExprHasAsyncCall(x.Operand)
 	case *Select:
 		return ExprHasAsyncCall(x.Operand)
 	case *Index:

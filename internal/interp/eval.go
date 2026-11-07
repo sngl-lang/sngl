@@ -1215,6 +1215,8 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 		return env.evalCall(n)
 	case *ir.Conversion:
 		return env.evalConversion(n)
+	case *ir.CConvert:
+		return env.evalCConvert(n)
 	case *ir.ListLit:
 		return env.evalListLit(n)
 	case *ir.StructLit:

@@ -106,6 +106,8 @@ func rewriteEnumExpr(e ir.Expr, memberOrdinal func(*ir.EnumDef, string) (int, bo
 		}
 	case *ir.Conversion:
 		x.Operand = rewriteEnumExpr(x.Operand, memberOrdinal)
+	case *ir.CConvert:
+		x.Operand = rewriteEnumExpr(x.Operand, memberOrdinal)
 	case *ir.Index:
 		x.Operand = rewriteEnumExpr(x.Operand, memberOrdinal)
 		x.Idx = rewriteEnumExpr(x.Idx, memberOrdinal)

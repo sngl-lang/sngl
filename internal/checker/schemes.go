@@ -498,3 +498,19 @@ func (c *checker) reportUnlinkedCNativeCalls() {
 		return nil
 	})
 }
+
+// checkCCasts refuses a `#[cnative(…, cast)]` function whose return type is
+// not the C type its name spells: the conversion is written to that type, so
+// a declaration naming another would hand C a value of the wrong one. Read
+// once every mark has run, since the return type's own mark may run after the
+// cast's.
+func (c *checker) checkCCasts() {
+	for _, fn := range c.pkg.Funcs {
+		if !fn.IsCCast() || fn.AST == nil {
+			continue
+		}
+		if got := ir.CTypeOf(fn.Return); !got.Equal(fn.Foreign.C) {
+			c.error(fn.AST.Pos, "#[cnative(%q, cast)] converts to %s, so %s returns a #[cnative(%q)] struct, not %s", fn.Foreign.Name, fn.Foreign.C, fn.Name, fn.Foreign.C.String(), fn.Return)
+		}
+	}
+}

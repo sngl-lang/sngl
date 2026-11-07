@@ -450,6 +450,8 @@ func (h *refHoister) expr(e ir.Expr) ir.Expr {
 		x.Idx = h.expr(x.Idx)
 	case *ir.Conversion:
 		x.Operand = h.expr(x.Operand)
+	case *ir.CConvert:
+		x.Operand = h.expr(x.Operand)
 	case *ir.Spread:
 		x.Operand = h.expr(x.Operand)
 	case *ir.ListLit:

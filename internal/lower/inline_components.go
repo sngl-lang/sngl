@@ -1306,6 +1306,8 @@ func walkExprIdents(e ir.Expr, visit func(*ir.Ident)) {
 		}
 	case *ir.Conversion:
 		walkExprIdents(n.Operand, visit)
+	case *ir.CConvert:
+		walkExprIdents(n.Operand, visit)
 	case *ir.Call:
 		if n.Receiver != nil {
 			walkExprIdents(n.Receiver, visit)

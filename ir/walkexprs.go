@@ -46,7 +46,8 @@ var (
 //
 //   - Ident.Sym, Type.Decl, Prop.Sym, LocalVar.Sym — the declaration a name
 //     resolves to.
-//   - Call.Func — the callee, owned by pkg.Funcs; Closure.Func — the lifted
+//   - Call.Func — the callee, owned by pkg.Funcs; CConvert.Via — the cast a
+//     conversion was written through, likewise; Closure.Func — the lifted
 //     body, likewise appended to pkg.Funcs by passLambda. Lambda.Func,
 //     Timer.Handler, EventHandler.Func and ErrorBoundary.Handler are owned and
 //     are walked.
@@ -186,6 +187,8 @@ func (w *rewriter) expr(e Expr) Expr {
 			w.fn(x.ErrorHandler.Func)
 		}
 	case *Conversion:
+		x.Operand = w.expr(x.Operand)
+	case *CConvert:
 		x.Operand = w.expr(x.Operand)
 	case *Select:
 		x.Operand = w.expr(x.Operand)

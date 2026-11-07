@@ -103,6 +103,8 @@ func (w *walker) expr(e Expr) {
 		}
 	case *Conversion:
 		w.expr(x.Operand)
+	case *CConvert:
+		w.expr(x.Operand)
 	case *Select:
 		w.expr(x.Operand)
 		w.expr(x.Via)

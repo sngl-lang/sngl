@@ -428,9 +428,9 @@ func callsLibrary(release *ir.Func) bool {
 }
 
 // constant reports whether e is built from constants: a literal of an owned
-// type whose fields are, or a call of a const function, or of sngl:x/c's
-// `cstring`, whose arguments are; a list or map literal of such values is
-// one too.
+// type whose fields are, a call of a const function whose arguments are, or a
+// conversion to C of a constant -- a C string copied from a literal; a list or
+// map literal of such values is one too.
 func (st *releaseTemps) constant(e ir.Expr) bool {
 	switch x := e.(type) {
 	case *ir.StructLit:
@@ -449,9 +449,11 @@ func (st *releaseTemps) constant(e ir.Expr) bool {
 			}
 		}
 		return true
+	case *ir.CConvert:
+		return constantArg(x.Operand)
 	case *ir.Call:
 		fn := x.Func
-		if fn == nil || x.Receiver != nil || x.ErrorMode != ir.ErrorNone || !(fn.Const || fn.Builtin == ir.BuiltinCString) {
+		if fn == nil || x.Receiver != nil || x.ErrorMode != ir.ErrorNone || !fn.Const {
 			return false
 		}
 		for _, a := range x.Args {
@@ -670,6 +672,10 @@ func (c *tempCollector) visit(slot *ir.Expr, borrowed bool) {
 		// it, or it out of one -- passes through; converted to anything else
 		// it is read.
 		c.visit(&x.Operand, borrowed && ir.Owned(x.Type) && ir.Owned(x.Operand.ExprType()) || !ir.Owned(x.Type))
+	case *ir.CConvert:
+		// Read: a string is copied, and anything else crosses as it is
+		// for the call.
+		c.visit(&x.Operand, true)
 	case *ir.Select:
 		c.visit(&x.Operand, true)
 	case *ir.Index:

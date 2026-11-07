@@ -696,6 +696,10 @@ type Foreign struct {
 	// the checker rejects any reference to it. Only a foreign declaration can
 	// be one: SNGL's own syntax cannot express a type SNGL has no name for.
 	Unusable string
+	// C is the C type a `#[cnative]` struct is, or a `#[cnative(…, cast)]`
+	// function converts to, parsed from Name. Nil for a C function, whose
+	// Name is the identifier to call.
+	C *CType
 }
 
 // Func represents any function: top-level, type-attached method, or lambda.

@@ -50,6 +50,17 @@ func (env *Env) callCNative(call *ir.Call) (any, error) {
 	return env.nativeResult(fn.Return)
 }
 
+// evalCConvert stubs a conversion to C as callCNative stubs a call: the
+// operand is evaluated, and the value is the C type's zero, or a fresh handle
+// where the type is owned -- a string copied to a `char *` the program gives
+// back.
+func (env *Env) evalCConvert(x *ir.CConvert) (any, error) {
+	if _, err := env.Eval(x.Operand); err != nil {
+		return nil, err
+	}
+	return env.nativeResult(x.Type)
+}
+
 // nativeResult is what a stubbed native answers for its return type t.
 func (env *Env) nativeResult(t *ir.Type) (any, error) {
 	if t == nil {

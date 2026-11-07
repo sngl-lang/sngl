@@ -35,6 +35,7 @@ var irNodeTypes = map[string]reflect.Type{
 	"Ternary":     reflect.TypeFor[Ternary](),
 	"Call":        reflect.TypeFor[Call](),
 	"Conversion":  reflect.TypeFor[Conversion](),
+	"CConvert":    reflect.TypeFor[CConvert](),
 	"Select":      reflect.TypeFor[Select](),
 	"Index":       reflect.TypeFor[Index](),
 	"StructLit":   reflect.TypeFor[StructLit](),
@@ -82,6 +83,8 @@ var carrierTypes = map[string]reflect.Type{
 var referenceSlots = map[string]bool{
 	// The callee, owned by pkg.Funcs -- a recursive call closes a cycle here.
 	"Call.Func": true,
+	// The cast a conversion was written through, owned by its package.
+	"CConvert.Via": true,
 	// Aliases Call.ErrorHandler or a handler owned by an enclosing boundary
 	// or window, each of which is walked where it is owned.
 	"Call.ResolvedHandler": true,

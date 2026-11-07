@@ -1,0 +1,86 @@
+package golang
+
+import (
+	"strings"
+
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
+)
+
+// Go reaches C through cgo: a C name is `C.` and the name, `void *` is
+// `unsafe.Pointer`, and a conversion is a Go conversion or cgo's own
+// `C.CString`.
+var _ codegen.CInterop = (*GoIRContext)(nil)
+
+// cgoNames is cgo's name for each C type C spells in more than one word.
+var cgoNames = map[string]string{
+	"signed char":        "schar",
+	"unsigned char":      "uchar",
+	"unsigned short":     "ushort",
+	"unsigned int":       "uint",
+	"unsigned":           "uint",
+	"unsigned long":      "ulong",
+	"long long":          "longlong",
+	"unsigned long long": "ulonglong",
+}
+
+// CTypeToGo is t as cgo spells it, with no import beside it: `*C.cairo_t`,
+// `C.int`, `unsafe.Pointer`. const is C's alone; cgo drops it.
+func CTypeToGo(t *ir.CType) string {
+	if t.Name == "void" && t.Ptr > 0 {
+		return strings.Repeat("*", t.Ptr-1) + "unsafe.Pointer"
+	}
+	name := t.Name
+	if n, ok := cgoNames[name]; ok {
+		name = n
+	}
+	return strings.Repeat("*", t.Ptr) + "C." + name
+}
+
+// CType is t as cgo spells it, requiring `unsafe` where the spelling names it.
+func (gc *GoIRContext) CType(t *ir.CType) string {
+	s := CTypeToGo(t)
+	if strings.Contains(s, "unsafe.") {
+		gc.RequireImport("unsafe")
+	}
+	return s
+}
+
+// CConvert is x as cgo writes it: a string is copied with `C.CString`, a
+// number converted to its C type, and a pointer converted through
+// `unsafe.Pointer`, since cgo converts no C pointer to another. One that is
+// `void *` already, or becomes it, needs only the one conversion.
+func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
+	operand := gc.EvalExpr(x.Operand)
+	switch x.Kind {
+	case ir.CConvertString:
+		return "C.CString(" + operand + ")"
+	case ir.CConvertNumber:
+		return gc.CType(x.To) + "(" + operand + ")"
+	}
+	gc.RequireImport("unsafe")
+	if x.To.IsVoidPointer() {
+		return "unsafe.Pointer(" + operand + ")"
+	}
+	if !ir.CTypeOf(x.Operand.ExprType()).IsVoidPointer() {
+		operand = "unsafe.Pointer(" + operand + ")"
+	}
+	return "(" + gc.CType(x.To) + ")(" + operand + ")"
+}
+
+// CCall is a call of the C function fn with args rendered. A C function's
+// number comes back as cgo's type for it, which a Go int or float64 is not
+// assignable from, so it is converted back: the arguments went the other way
+// in lower.CMarshal.
+func (gc *GoIRContext) CCall(fn *ir.Func, args []string) string {
+	call := "C." + fn.Foreign.Name + "(" + strings.Join(args, ", ") + ")"
+	if fn.Return != nil {
+		switch fn.Return.Kind {
+		case ir.TypeInt:
+			call = "int(" + call + ")"
+		case ir.TypeFloat:
+			call = "float64(" + call + ")"
+		}
+	}
+	return call
+}

@@ -548,6 +548,8 @@ func recordExprHelpers(h *HelperSet, e ir.Expr) {
 		}
 	case *ir.Spread:
 		recordExprHelpers(h, n.Operand)
+	case *ir.CConvert:
+		recordExprHelpers(h, n.Operand)
 	case *ir.Lambda:
 		if n.Func != nil {
 			recordFuncHelpers(h, n.Func)

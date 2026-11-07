@@ -337,21 +337,6 @@ func TestEvalCall_CgoNativePrefix(t *testing.T) {
 	}
 }
 
-func TestEvalCall_LegacyCgoPrefix(t *testing.T) {
-	// Existing callers may still pass "C.foo" in Foreign.Name.
-	// Renderer must not double up the prefix.
-	gc := newMinimalIRCtx()
-	call := &ir.Call{
-		Receiver: &ir.Ident{Name: "C"},
-		Func:     &ir.Func{Foreign: ir.Foreign{Path: "C", Name: "C.gtk_label_new"}},
-	}
-	got := gc.EvalExpr(call)
-	want := "C.gtk_label_new()"
-	if got != want {
-		t.Errorf("EvalExpr legacy cgo call = %q; want %q", got, want)
-	}
-}
-
 func TestEmitFuncDef_PlainFunc(t *testing.T) {
 	gc := newMinimalIRCtx()
 	fn := &ir.Func{

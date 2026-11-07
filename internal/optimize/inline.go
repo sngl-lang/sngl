@@ -337,6 +337,8 @@ func callsFunc(e ir.Expr, target *ir.Func) bool {
 		}
 	case *ir.Conversion:
 		return callsFunc(x.Operand, target)
+	case *ir.CConvert:
+		return callsFunc(x.Operand, target)
 	case *ir.Select:
 		return callsFunc(x.Operand, target)
 	case *ir.Index:
@@ -524,6 +526,8 @@ func containsContextRead(e ir.Expr) bool {
 		}
 	case *ir.Conversion:
 		return containsContextRead(x.Operand)
+	case *ir.CConvert:
+		return containsContextRead(x.Operand)
 	case *ir.Select:
 		return containsContextRead(x.Operand)
 	case *ir.Index:
@@ -706,6 +710,8 @@ func substituteParams(e ir.Expr, subs map[*ir.Param]ir.Expr) ir.Expr {
 		}
 	case *ir.Conversion:
 		x.Operand = substituteParams(x.Operand, subs)
+	case *ir.CConvert:
+		x.Operand = substituteParams(x.Operand, subs)
 	case *ir.Select:
 		// A field of a struct literal argument is that field's value: copying
 		// the whole literal into every field read, for literalField to cut
@@ -824,6 +830,10 @@ func cloneExpr(e ir.Expr) ir.Expr {
 		}
 		return &cp
 	case *ir.Conversion:
+		cp := *x
+		cp.Operand = cloneExpr(x.Operand)
+		return &cp
+	case *ir.CConvert:
 		cp := *x
 		cp.Operand = cloneExpr(x.Operand)
 		return &cp

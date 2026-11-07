@@ -606,6 +606,8 @@ func (st *offloadState) bindArgs(s ir.Stmt) []ir.Stmt {
 				visit(x.Operand)
 			case *ir.Conversion:
 				visit(x.Operand)
+			case *ir.CConvert:
+				visit(x.Operand)
 			case *ir.Select:
 				visit(x.Operand)
 			case *ir.StructLit:
@@ -695,6 +697,8 @@ func (st *offloadState) exprWaits(e ir.Expr) bool {
 			}
 		}
 	case *ir.Conversion:
+		return st.exprWaits(x.Operand)
+	case *ir.CConvert:
 		return st.exprWaits(x.Operand)
 	case *ir.Select:
 		return st.exprWaits(x.Operand)

@@ -60,6 +60,20 @@ type LangTranslator interface {
 	NewFileEmitter(sink Sink, opts FileOptions) FileEmitter
 }
 
+// CInterop is how a language calls C. The IR describes C as C spells it --
+// `#[cnative]` names, ir.CType, ir.CConvert -- and each language renders that
+// as it reaches C: Go through cgo, C directly. A language that calls no C
+// does not implement it.
+type CInterop interface {
+	// CType spells a C type: `*C.cairo_t` in Go, `cairo_t *` in C.
+	CType(t *ir.CType) string
+	// CConvert renders a conversion to a C type.
+	CConvert(x *ir.CConvert) string
+	// CCall renders a call of the C function fn with its arguments rendered,
+	// and converts a number it returns back to SNGL's.
+	CCall(fn *ir.Func, args []string) string
+}
+
 // UnimplementedFileEmitter is returned by languages that have not migrated to
 // the FileEmitter surface; every emitting method errors.
 type UnimplementedFileEmitter struct {

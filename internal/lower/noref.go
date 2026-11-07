@@ -302,6 +302,10 @@ func (r *refRewriter) rewriteExpr(e ir.Expr) ir.Expr {
 		x.Operand = r.rewriteExpr(x.Operand)
 		x.Type = r.rewriteType(x.Type)
 		return x
+	case *ir.CConvert:
+		x.Operand = r.rewriteExpr(x.Operand)
+		x.Type = r.rewriteType(x.Type)
+		return x
 	case *ir.Select:
 		x.Operand = r.rewriteExpr(x.Operand)
 		return x
@@ -503,6 +507,8 @@ func seedAddressedVarsInExpr(e ir.Expr, set map[*ir.Var]bool) {
 			seedAddressedVarsInExpr(x.Args[i].Value, set)
 		}
 	case *ir.Conversion:
+		seedAddressedVarsInExpr(x.Operand, set)
+	case *ir.CConvert:
 		seedAddressedVarsInExpr(x.Operand, set)
 	case *ir.Select:
 		seedAddressedVarsInExpr(x.Operand, set)

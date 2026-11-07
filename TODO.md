@@ -211,7 +211,13 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
 
 ### The steps
 
-1. **Neutral spellings, Go rendering, no golden changes.**
+1. **Neutral spellings, Go rendering, no golden changes.** Done: no golden
+   changed. A cast is `#[cnative("cairo_line_cap_t", cast)]`, returning the
+   struct that declares the type it names. `CConvert.Via` keeps the cast a
+   conversion was written through, for the dump. The deny test is the
+   checker's own refusal of a language's spelling
+   (`testdata/error_cnative_spelling.sngl`), which covers every
+   `#[cnative]` name rather than `lib/`'s.
    - Add `ir.CType` and the declarator parse in `markCNative`.
    - Add `ir.CConvert`, and have `CMarshal` write it.
    - Add golang's `CInterop`.
