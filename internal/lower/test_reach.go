@@ -365,10 +365,39 @@ func (r *resolver) repointCall(c *ir.Call, fail func(ir.Expr, string, ...any)) {
 			// renders it -- where the test names the node itself, as one
 			// flattened onto the root: the one copy of the copy.
 			if next := r.copies()[c.Func]; len(next) == 1 && c.Func != nil {
+				if r.onModel(next[0]) {
+					r.onInstance(c)
+				}
 				c.Func = next[0]
 				continue
 			}
 			return
+		}
+	}
+}
+
+// onModel reports whether fn is a function of the root or of the package,
+// which a test calls on the instance it holds: a menu item's `@select {
+// dexesAsk.refresh() }`, which a test's read of the menu's items copies, came
+// out as `c.refresh__inst12(c.dexesAsk)`, handed the node a field the Model
+// does not hold where its receiver is the Model itself
+// (cmd/sngl/testdata/menu_item_calls_its_window_node_runs.txt).
+func (r *resolver) onModel(fn *ir.Func) bool {
+	return r.root != nil && slices.Contains(r.root.Funcs, fn) || slices.Contains(r.pkg.Funcs, fn)
+}
+
+// onInstance hands c's receiver the test's instance its receiver is read
+// through, where it hands one.
+func (r *resolver) onInstance(c *ir.Call) {
+	switch {
+	case c.Receiver != nil:
+		if inst := r.instance(c.Receiver); inst != nil {
+			c.Receiver = inst
+		}
+	case len(c.Args) > 0 && len(c.Func.Params) > 0 && c.Func.Params[0].Receiver:
+		if inst := r.instance(c.Args[0].Value); inst != nil {
+			c.Args = slices.Clone(c.Args)
+			c.Args[0].Value = inst
 		}
 	}
 }
@@ -432,8 +461,10 @@ func (r *resolver) repointCallOnce(c *ir.Call, fail func(ir.Expr, string, ...any
 	var inst ir.Expr = r.instance(recv)
 	// A node an instance that was itself spliced renders, `c.inner.pick`:
 	// the clone is that instance's method, which its own splice copied
-	// again, so the call is the instance's for repointCall's next step.
-	if sel, ok := unnarrowed(recv).(*ir.Select); ok && r.instOf(sel.Operand) != nil {
+	// again, so the call is the instance's for repointCall's next step --
+	// unless the clone is already the Model's (onModel), whose receiver is
+	// the test's instance.
+	if sel, ok := unnarrowed(recv).(*ir.Select); ok && r.instOf(sel.Operand) != nil && !r.onModel(clone) {
 		inst = sel.Operand
 	}
 	if asArg {

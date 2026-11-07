@@ -429,8 +429,10 @@ func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 			l.uniq++
 			return &ir.Ident{Name: p.Name, Type: x.ExprType(), Sym: p}, ir.SkipDir
 		case *ir.Call:
-			if h, _ := handleReceiver(x); h != nil && st.heldHandles[h] {
-				return node, nil
+			if len(st.heldHandles) > 0 && x.Func != nil {
+				if h, _ := handleReceiver(x); h != nil && st.heldHandles[h] {
+					return node, nil
+				}
 			}
 			typ := x.ExprType()
 			// A render's raise travels whole too: the boundary that hears it

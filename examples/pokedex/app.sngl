@@ -96,7 +96,7 @@ component Pokedex root {
                     // A menu holds no sign, so the failure is an item that
                     // asks again when chosen.
                     if dexesFailure != null {
-                        ui.menuItem(label=couldNotLoadDexes(whyOf(dexesFailure)), @select { dexesFailure = null })
+                        ui.menuItem(label=couldNotLoadDexes(whyOf(dexesFailure)), @select { dexesAsk.refresh() })
                     }
                     for var d = dexes {
                         ui.menuItem(label=display(d.name), checked=d.name == dexName, @select { chooseDex(d.name) })
@@ -105,9 +105,7 @@ component Pokedex root {
             }
             settings.kept(name="language", default=offered(null), :value=language)
             settings.kept(name="dexName", default="national", :value=dexName)
-            if dexesFailure == null {
-                poke.pokedexList(limit=dexLimit, offset=0, :failure=dexesFailure, @load(page) { dexes = page.results })
-            }
+            poke.pokedexList #dexesAsk(limit=dexLimit, offset=0, :failure=dexesFailure, @load(page) { dexes = page.results })
             nav.stack #pages {
                 nav.page #variety(
                     href = `/pokemon/{name}/{form}`,

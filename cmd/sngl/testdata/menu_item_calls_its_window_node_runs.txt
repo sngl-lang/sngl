@@ -1,0 +1,125 @@
+# A test's read of a window's menu reads its items, each item's @select with
+# them, and one of those calls a method through a node the window holds: the
+# Pokédex's menu asking for the Pokédexes again. The read copies the call
+# into the test, which pointed it at the method's clone on the Model and
+# handed it the node's instance besides -- `c.refresh__inst0(c.app)`, too
+# many arguments and a field the Model does not hold, on fyne, gtk4 and
+# bubbletea -- where the program's own call of the clone hands it nothing.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func look(k string, life async.Lifetime) async.Result[string] {
+    return {ok=k}
+}
+
+// A request with a method of its own, as an adapter openapi writes is.
+component lister(:failure option[async.Failure] = null, @loaded(v string)) ui.node {
+    async.query #ask(on="a", fetch=look, :failure=failure, @load(v) { loaded(v) })
+
+    func refresh() {
+        ask.refresh()
+    }
+}
+
+component App root {
+    var loads = 0
+    var failure option[async.Failure] = null
+    var picked = ""
+
+    ui.window #main(title="App") {
+        component menu {
+            ui.menuItem(label="Lists") {
+                if failure != null {
+                    ui.menuItem(label="Again", @select { dexesAsk.refresh() })
+                }
+                ui.menuItem(label="One", checked=picked == "one", @select { picked = "one" })
+            }
+        }
+        lister #dexesAsk(:failure=failure, @loaded(v) { loads = loads + 1 })
+        ui.text("{loads}")
+    }
+}
+
+component shell root {
+    App #app
+}
+
+// A read of a window's menu reads its items, each item's @select with them,
+// one of which calls through a node the window holds.
+func testAMenuReachesItsNode(t test.Test, c shell) {
+    t.wait(func() => c.app.loads == 1, 2000)
+    c.app.main.menu[0].select()
+    c.app.main.menu[0].children[0].select()
+    t.assert(c.app.main.menu[0].children[0].checked)
+}
+-- testrun/android/kotlin/app.sngl/shell/1 --
+sha256:9c8480dd150e5984916273fb5ce025bf
+{
+  "results": [
+    {
+      "Desc": "AMenuReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/shell/1 --
+sha256:c21be4398e2e9b5ff3df7fc691293a90
+{
+  "results": [
+    {
+      "Desc": "AMenuReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/shell/1 --
+sha256:54df0ac58afba659ed6391cecce94e2a
+{
+  "results": [
+    {
+      "Desc": "AMenuReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/shell/1 --
+sha256:168c74e0b2bb9f27c8efea6aa023e1ff
+{
+  "results": [
+    {
+      "Desc": "AMenuReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/shell/1 --
+sha256:5e52e6f379aaaab6e8def6b4dfd6e20d
+{
+  "results": [
+    {
+      "Desc": "AMenuReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
