@@ -535,9 +535,18 @@ A trigger is copied onto the owner of each splice, by `passInlinePure`
 (`copyTriggers`) as by `expandCall`, and a component whose only methods are
 triggers splices as it would without them (`ownMethods`), so a test build
 renders what the app does. A test's call follows the copies through every
-splice, `c.inner.pick.change` included (`repointCall`, `copies`). A copy left
-in an instance a test has no route to -- gtk4's state instance of a block --
-is restored to the event the test wrote (`restoreUnreachedTriggers`).
+splice, `c.inner.pick.change` included (`repointCall`, `copies`). A copy
+that is a method of a component built at run time -- the wrapper gtk4 puts
+around a select under a reactive `if` or in a tab's panel, its effects being
+state -- is called through the instance the Model holds, as a test's
+`c.b.reset()` is (`codegen.LowerInstanceReads`). passImplicitState moved the
+select's `#id` onto the select, so the wrapper's node takes one of its own,
+`<id>__state`, which the call is read through (`nameInstance`). Restored to
+the event instead, the invoker was handed the value where it takes a label,
+and an int did not compile
+(`cmd/sngl/testdata/typed_select_in_built_block_runs.txt`). A copy no one
+instance answers is still restored to the event the test wrote
+(`restoreUnreachedTriggers`).
 
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 

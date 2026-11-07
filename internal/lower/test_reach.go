@@ -644,10 +644,63 @@ func isNullLit(e ir.Expr) bool {
 // instance has its trigger there, which a test has no route to. The event is
 // then raised as every event a target does not override is, through the
 // target's invoker.
+// instanceReceiver is recv read through the instance fn is a method of, where
+// fn is a method of a component built at run time (nameInstance), or nil.
+func instanceReceiver(pkg *ir.Package, fn *ir.Func, recv ir.Expr) ir.Expr {
+	if recv == nil || !slices.ContainsFunc(pkg.Components, func(c *ir.Component) bool {
+		return c.RuntimeInstance && slices.Contains(c.Funcs, fn)
+	}) {
+		return nil
+	}
+	return nameInstance(pkg, fn, recv)
+}
+
+// nameInstance gives the node building the component fn is a method of an id
+// of its own, beside the one the test reaches the node by, and answers recv
+// read through it, or nil where no one node builds it: a wrapper
+// passImplicitState put in a select's place moved the select's `#id` onto the
+// select, and the wrapper's instance, whose method the trigger is, had none,
+// so no Model field held it for a test to call through. Its own, because the
+// select's is its widget's: gtk4 holds that as `__named_<id>` too.
+func nameInstance(pkg *ir.Package, fn *ir.Func, recv ir.Expr) ir.Expr {
+	sel, ok := unnarrowed(recv).(*ir.Select)
+	if !ok {
+		return nil
+	}
+	var sites []*ir.NodeInst
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if ni, ok := n.(*ir.NodeInst); ok && ni.Component != nil && slices.Contains(ni.Component.Funcs, fn) {
+			sites = append(sites, ni)
+		}
+		return nil
+	})
+	id := sel.Field + "__state"
+	if len(sites) != 1 || sites[0].ID != "" && sites[0].ID != id {
+		return nil
+	}
+	sites[0].ID = id
+	read := *sel
+	read.Field = id
+	read.Type = sites[0].Component.SymType()
+	return &read
+}
+
 func restoreUnreachedTriggers(pkg *ir.Package, root *ir.Component, triggers map[*ir.Call]ir.Call, receivers map[*ir.Call]ir.Expr) {
 	for call, was := range triggers {
 		fn := call.Func
 		if fn == nil || fn.Trigger == "" || slices.Contains(pkg.Funcs, fn) || root != nil && slices.Contains(root.Funcs, fn) {
+			continue
+		}
+		// A method of a component built at run time, called through the
+		// node's `#id`, is reached through the instance the Model holds,
+		// as a test's `c.b.reset()` is (codegen.LowerInstanceReads).
+		if r := instanceReceiver(pkg, fn, receivers[call]); r != nil {
+			if call.Receiver == nil && len(call.Args) > 0 && len(fn.Params) > 0 && fn.Params[0].Receiver {
+				call.Args = slices.Clone(call.Args)
+				call.Args[0].Value = r
+			} else {
+				call.Receiver = r
+			}
 			continue
 		}
 		*call = was

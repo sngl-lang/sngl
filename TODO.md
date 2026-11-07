@@ -24,12 +24,6 @@ language is a locale. What is left:
 9. **html has no node handles in JS**, so its select's trigger calls the
    override's handler logic (`pickLabel`) rather than setting the element's
    value and dispatching `change`; android and bubbletea do the same.
-10. **A trigger in a block's state instance falls back to the invoker.** gtk4
-    holds a select under a reactive `if` or a tab in an instance of its
-    block's state, whose methods a test has no route to, so the test's
-    trigger is restored to the event (`restoreUnreachedTriggers`) and the
-    invoker is handed the value: right for a string select, wrong for a
-    typed one.
 
 ## Generated code
 

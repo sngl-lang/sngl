@@ -1,0 +1,182 @@
+# A test picks a select a block built at run time holds -- a reactive `if`'s
+# branch, a tab's panel -- by the value it holds, on every target. gtk4 wraps
+# a select per call site, its effects being state, and builds the wrapper
+# there as an instance whose method the select's trigger is, which a test had
+# no route to: the trigger was restored to the event, whose invoker takes a
+# label, so the int choice did not compile.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+enum Fruit { apple, banana, cherry }
+
+component branch ui.node {
+    var on = true
+    var pick = Fruit.apple
+
+    ui.vbox {
+        if on {
+            ui.select #fruit(:value=pick) {
+                ui.choice(label="Apple", value=Fruit.apple)
+                ui.choice(label="Banana", value=Fruit.banana)
+                ui.choice(label="Cherry", value=Fruit.cherry)
+            }
+        }
+    }
+}
+
+// A typed select a reactive `if` holds is picked by the value it holds.
+func testATypedSelectUnderAnIf(t test.Test, c branch) {
+    if c.fruit != null {
+        c.fruit.change(Fruit.banana)
+    }
+    t.assert(c.pick == Fruit.banana)
+}
+
+component panel ui.node {
+    var at = 1
+    var pick = 1
+
+    ui.tabs(:selected=at) {
+        ui.tab(label="One") {
+            ui.text("first")
+        }
+        ui.tab(label="Two") {
+            ui.select #size(:value=pick) {
+                ui.choice(label="Small", value=1)
+                ui.choice(label="Large", value=2)
+            }
+        }
+    }
+}
+
+// A typed select in a tab's panel is picked by the value it holds.
+func testATypedSelectInATab(t test.Test, c panel) {
+    if c.size != null {
+        c.size.change(2)
+    }
+    t.assert(c.pick == 2)
+}
+
+ui.window {
+    branch()
+}
+-- testrun/android/kotlin/app.sngl/branch/1 --
+sha256:2b9b30563036538f3592c9ddb24c460e
+{
+  "results": [
+    {
+      "Desc": "ATypedSelectUnderAnIf",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/panel/1 --
+sha256:114a3fdedb9a4cea777a876b9ed28fd2
+{
+  "results": [
+    {
+      "Desc": "ATypedSelectInATab",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/branch/1 --
+sha256:737d3c40b5663580c5a8cac92c3af476
+{
+  "results": [
+    {
+      "Desc": "ATypedSelectUnderAnIf",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/panel/1 --
+sha256:a352e623463efb3936f96c4df2f17caf
+{
+  "results": [
+    {
+      "Desc": "ATypedSelectInATab",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/branch/1 --
+sha256:3739f0896896fe7bfb094bf4bbb8b2d5
+{
+  "results": [
+    {
+      "Desc": "ATypedSelectUnderAnIf",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/panel/1 --
+sha256:fead5b5a21e7bb3c132476075eaf9844
+{
+  "results": [
+    {
+      "Desc": "ATypedSelectInATab",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/branch/1 --
+sha256:615efe9e92c6840c3d2f1384bda2bb47
+{
+  "results": [
+    {
+      "Desc": "ATypedSelectUnderAnIf",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/panel/1 --
+sha256:efda0af0dafa98eb3297792017a73178
+{
+  "results": [
+    {
+      "Desc": "ATypedSelectInATab",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/branch/1 --
+sha256:39add39947627b61ff8007135dd5a12d
+{
+  "results": [
+    {
+      "Desc": "ATypedSelectUnderAnIf",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/panel/1 --
+sha256:589d0e987a2669b4e4898ad09f27ccca
+{
+  "results": [
+    {
+      "Desc": "ATypedSelectInATab",
+      "Passed": true
+    }
+  ]
+}
