@@ -175,7 +175,7 @@ sha256:28ce2b45bd2fe25a58a4680ab68a50c3
   ]
 }
 -- testrun/bubbletea/go/unbound.sngl/main/1 --
-sha256:a49ec61e48b11a231fc479f121ba295f
+sha256:960a655b1f762acdfd5ba0432158ad2a
 {
   "results": [
     {
