@@ -470,6 +470,14 @@ func (c *checker) lookupValue(name string) (sym ir.Symbol, ok, recursive bool) {
 
 func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	sym, ok, recursive := c.lookupValue(x.Name)
+	// A method written in a component's body is declared there, so it
+	// shadows what the package declares by its name, as a var written there
+	// would.
+	if ok && c.currentComponent != nil && !c.boundUnderPackage(x.Name) {
+		if _, has := c.lookupBodyMethod(x.Name); has {
+			ok = false
+		}
+	}
 	if !ok {
 		// When expected type is an enum, resolve bare member names. An
 		// option of one wants a member as readily: the slot wraps it.
@@ -641,6 +649,17 @@ func (c *checker) rejectUnexported(pos ast.Pos, sym ir.Symbol) bool {
 func (c *checker) resolvedInPackage(name string) bool {
 	boundary := c.symtab.Root.Parent
 	for s := c.scope; s != nil && s != boundary; s = s.Parent {
+		if _, ok := s.LookupLocal(name); ok {
+			return true
+		}
+	}
+	return false
+}
+
+// boundUnderPackage reports whether name is bound in a scope the package's
+// own encloses: a body's, a block's or a func's, not the package's or above.
+func (c *checker) boundUnderPackage(name string) bool {
+	for s := c.scope; s != nil && s != c.symtab.Root; s = s.Parent {
 		if _, ok := s.LookupLocal(name); ok {
 			return true
 		}

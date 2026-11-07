@@ -17,6 +17,18 @@ var dexName option[string] = null
 
 var chosenDex option[poke.PokedexDetail] = null
 
+// How many cards home shows at first, and how many more each time its grid is
+// scrolled to the end.
+const pageSize = 30
+
+// Where home is: how many of the matches it shows, the search, and whether
+// every species' names are asked for. They outlive the page, so coming back
+// from a Pokémon finds the cards it left, and a target that keeps the page's
+// scroll has them to scroll back to.
+var shown = pageSize
+var search = ""
+var namingAll = false
+
 // Chooses the Pokédex named `name`.
 func chooseDex(name string) {
     dexName = name
@@ -29,11 +41,8 @@ func chooseDex(name string) {
 // nothing. An entry names its species only by PokéAPI's slug, so a card shown
 // asks for its species' names, where no page has yet; the first search of a
 // dex asks for every one, so it matches what the cards say.
-component homePage(pageSize = 30, @open(name string)) ui.node {
+component homePage(@open(name string)) ui.node {
     var loading = false
-    var shown = pageSize
-    var search = ""
-    var namingAll = false
 
     // Every entry of the dex.
     func entries() list[poke.PokemonDexNumber] {
@@ -126,8 +135,8 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
 // opened by a click anywhere on it. The picture's URL comes from the species
 // id in the entry.
 component card(entry poke.PokemonDexNumber, name string, @open()) ui.node {
-    ui.card(clickable=true, style={width=128px}, @click { open() }) {
-        ui.vbox(style={gap=4px, alignItems=center}) {
+    ui.card(clickable=true, @click { open() }) {
+        ui.vbox(style={gap=4px, alignItems=center, flex=1}) {
             ui.image(alt=entry.pokemonSpecies.name, style={width=96px, height=96px}) {
                 ui.remote(url=artworkOf(artwork, idOf(entry.pokemonSpecies.url)))
             }

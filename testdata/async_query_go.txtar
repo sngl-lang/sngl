@@ -1232,7 +1232,7 @@ type CardInstance struct {
 	Root                gtk4rt.Handle
 	__model             *Model
 	__prop_name         string
-	length              *int
+	length__r0          *int
 	pending__inst0      bool
 	failure__inst1      *Failure
 	attempt__inst1      int
@@ -1254,7 +1254,7 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c := &CardInstance{}
 	c.__model = __model
 	c.__prop_name = __a_name
-	c.length = nil
+	c.length__r0 = nil
 	c.pending__inst0 = false
 	c.failure__inst1 = nil
 	c.attempt__inst1 = 0
@@ -1269,8 +1269,8 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
 	var __lt23 string
-	if c.length != nil {
-		__lt23 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
+	if c.length__r0 != nil {
+		__lt23 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length__r0))))
 	} else {
 		__lt23 = c.__prop_name
 	}
@@ -1312,10 +1312,10 @@ func (c *CardInstance) __effect1_mount() {
 			switch {
 			case (r.tag == 0):
 				var got int = r.Ok
-				c.length = snglSome(got)
+				c.length__r0 = snglSome(got)
 				var __lt21 string
-				if c.length != nil {
-					__lt21 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
+				if c.length__r0 != nil {
+					__lt21 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length__r0))))
 				} else {
 					__lt21 = c.__prop_name
 				}
@@ -1410,8 +1410,8 @@ func (c *CardInstance) teardown() {
 func (c *CardInstance) SetName(__v string) {
 	c.__prop_name = __v
 	var __lt22 string
-	if c.length != nil {
-		__lt22 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
+	if c.length__r0 != nil {
+		__lt22 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length__r0))))
 	} else {
 		__lt22 = c.__prop_name
 	}
@@ -1599,4 +1599,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:0231182ec8b228999bb6275a9bd017f8
 -- run/go/gtk4 --
-pass sha256:dd4dc2832f54b8fe1848d991dd1a97ad
+pass sha256:2f9ca57c21f8d106214b3924048757f8

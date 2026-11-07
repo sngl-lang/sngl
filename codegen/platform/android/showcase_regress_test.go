@@ -114,7 +114,7 @@ ui.window {
     vbox { text(value="x") }
 }`
 	out := compileSrc(t, src, false)
-	if !strings.Contains(out, `mutableStateOf<String?>(__snglPre(__pre, "nick") { null })`) {
+	if !strings.Contains(out, "mutableStateOf<String?>(null)") {
 		t.Errorf("expected typed null state for nickname:\n%s", out)
 	}
 	if !strings.Contains(out, "mutableStateOf<User?>(null)") {

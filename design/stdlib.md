@@ -296,6 +296,12 @@ function of its own, and the component a test build is rooted at, which
 `Options.RootComponent` names. `testdata/reserved_names.txtar` is the code and
 `cmd/sngl/testdata/reserved_names_runs.txt` runs it on all six.
 
+A component's own var or func that shadows a name the package declares at
+its top level is renamed the same way, since a target holds both in one
+namespace -- Android's test state class, html's state object -- where the
+two were one member (`cmd/sngl/testdata/state_member_shares_a_name_runs.txt`).
+A name the lowering synthesized (`__root`) is left to the lowering.
+
 **A target is its library package.** `sngl:platform/<name>` and `sngl:language/<name>` are `lib/platform/<name>` and `lib/language/<name>`, and the layout is the registration (`codegen/declared.go`), as `lib/x/scheme/<name>` is a scheme's: each directory is a `DeclaredPlatform` or `DeclaredLang`. Its Go, where it has any, is a generator registered by key (`codegen.RegisterNative`) and named by the node's `#[gen.native("html")]`; `LookupPlatform` and `LookupLang` resolve a declared target through that mark, once, and a node naming none generates nothing -- `none`, whose programs the interpreter runs. A package may import a library scheme -- gtk4's imports `gir:`, whose package is the half of the platform derived from the host.
 
 The point is that the checker does not know where a package comes from: a lib/ directory or a scheme's handler. The last is how gtk4's widget set reaches it -- one component declaration per GTK widget class, generated from the host's introspection data -- and the first how the overrides written against it do. `nodeNative` reads `#[gen.native]` off the source rather than the checked package, since `Unavailable` is asked during a check and checking the target to answer would re-enter it.

@@ -113,7 +113,7 @@ sha256:02db30366d49710902aadea6ae9cd0b9
   ]
 }
 -- testrun/android/kotlin/app.sngl/one/1 --
-sha256:416af0efb98162dc01bfb95e89a89012
+sha256:7951ddafb63b3c2f02c00ad80427e16c
 {
   "results": [
     {
@@ -173,7 +173,7 @@ sha256:e13811dfbece6ba16b39d44debd357bc
   ]
 }
 -- testrun/gtk4/go/app.sngl/one/1 --
-sha256:a6ef5713d386363548e7023256990226
+sha256:14a821ac3d29367a456debd659c129fb
 {
   "results": [
     {

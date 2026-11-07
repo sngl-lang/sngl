@@ -1,0 +1,103 @@
+# A component's own func keeps apart from the package's var of one name, on
+# every target. A test build holds both in one namespace -- Android's state
+# class, html's state object -- where `shown` was one member: Android compared
+# a string with the package's int and its build failed, and html's state
+# object had the var replaced by the func. passReservedNames renames the
+# component's, as it renames one a target reserves.
+
+sngl test --platform=none shared.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html shared.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go shared.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go shared.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go shared.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin shared.sngl
+stdout '1 tests, 0 failures'
+-- shared.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+var shown = 3
+
+component counter ui.node {
+    ui.button #more(text="{shown}", @click { shown += 1 })
+}
+
+component page ui.node {
+    var form = "x"
+    func shown() => "{form}!"
+    func label() => shown() == "x!" ? "own" : "other"
+    ui.vbox {
+        ui.text #line(value=label())
+        counter #count()
+    }
+}
+
+func testOwnName(t test.Test, c page) {
+    t.assert(c.line.value == "own")
+    c.count.more.click()
+    t.assert(c.count.more.text == "4")
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/shared.sngl/page/1 --
+sha256:c109f6b313056f28fcf5d6ac7acc8560
+{
+  "results": [
+    {
+      "Desc": "OwnName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/shared.sngl/page/1 --
+sha256:93e7e56e326cf87703fe24e273268ea9
+{
+  "results": [
+    {
+      "Desc": "OwnName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/shared.sngl/page/1 --
+sha256:46518cb433c60e351798b54a17197546
+{
+  "results": [
+    {
+      "Desc": "OwnName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/shared.sngl/page/1 --
+sha256:a6aa97da15929ed7f300bd811cc63c4b
+{
+  "results": [
+    {
+      "Desc": "OwnName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/shared.sngl/page/1 --
+sha256:234b6870f25edcd075d3ca4398b1b08d
+{
+  "results": [
+    {
+      "Desc": "OwnName",
+      "Passed": true
+    }
+  ]
+}
