@@ -1,7 +1,7 @@
 # A test picks a radio's option by the value it holds, through the target's
 # override of the radio's @change, which calls what pressing the option's
-# button calls. The options hold an int labeled otherwise, so a value is never
-# taken for a label.
+# button calls -- on html, checks the button and dispatches its `change`. The
+# options hold an int labeled otherwise, so a value is never taken for a label.
 
 sngl test --platform=none app.sngl
 stdout '1 tests, 0 failures'
@@ -86,7 +86,7 @@ sha256:098bacdd4f250112d6d37184a0b4de26
   ]
 }
 -- testrun/html/none/app.sngl/fitting/1 --
-sha256:2a9a9edea40db0128ef7cbe33a9efda9
+sha256:480241a16ca2eec1b5c726133ae6bdcb
 {
   "results": [
     {

@@ -5169,7 +5169,14 @@ func (c *checker) componentNamed(target string) *ir.Component {
 	}
 	member, ok := ns.Pkg.Symbols.LookupMember(name)
 	if !ok {
-		return nil
+		// `html.button` is the package's wildcard element, whose handle is
+		// one as much as a declared component's is. An ambiguity is the
+		// node's to report.
+		matches := nsScope(ns).WildcardMatches(name)
+		if len(matches) != 1 {
+			return nil
+		}
+		member = matches[0]
 	}
 	comp, _ := member.(*ir.Component)
 	return comp

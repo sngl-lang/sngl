@@ -80,6 +80,10 @@ type ExprCtx struct {
 	// IdentRewrites remaps bare identifiers regardless of scope, applied
 	// first in identifier translation.
 	IdentRewrites map[string]string
+	// NodeVar spells a read of a node's handle, `#el`, as the variable the
+	// platform emitted the node as, where it emitted one: html's elements are
+	// `$N`, which the handle's name is not.
+	NodeVar func(handle *ir.Ident) (string, bool)
 	// FreeFuncs names the user functions a host emits as free package-level
 	// functions rather than as methods on its receiver, so a call to one
 	// renders under its exported name from any scope.
@@ -382,6 +386,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		RawFieldAccess:  maps.Clone(ctx.RawFieldAccess),
 		MethodFields:    maps.Clone(ctx.MethodFields),
 		IdentRewrites:   maps.Clone(ctx.IdentRewrites),
+		NodeVar:         ctx.NodeVar,
 		FreeFuncs:       ctx.FreeFuncs,       // shared — one decision for the whole build
 		ModelParamFuncs: ctx.ModelParamFuncs, // shared, for the same reason
 		StateReceiver:   ctx.StateReceiver,

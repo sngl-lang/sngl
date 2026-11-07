@@ -161,7 +161,7 @@ sha256:efda0af0dafa98eb3297792017a73178
   ]
 }
 -- testrun/html/none/app.sngl/branch/1 --
-sha256:39add39947627b61ff8007135dd5a12d
+sha256:9bbba5431312ecf80e3ae1dafe4f8038
 {
   "results": [
     {
@@ -171,7 +171,7 @@ sha256:39add39947627b61ff8007135dd5a12d
   ]
 }
 -- testrun/html/none/app.sngl/panel/1 --
-sha256:589d0e987a2669b4e4898ad09f27ccca
+sha256:d03645104d2ea1eb48f11bee1db83389
 {
   "results": [
     {

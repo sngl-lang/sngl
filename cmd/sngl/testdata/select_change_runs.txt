@@ -8,9 +8,9 @@
 # holding the value.
 #
 # gtk4 selects the label on its GtkDropDown and fyne on its Select, each of
-# which reports the change as a pick does; html, bubbletea and android call
-# what their control's own handler calls with a label; the interpreter's
-# control holds the value itself.
+# which reports the change as a pick does; html sets the `<select>`'s value
+# and dispatches `change`; bubbletea and android call what their control's own
+# handler calls with a label; the interpreter's control holds the value itself.
 
 sngl test --platform=none app.sngl
 stdout '3 tests, 0 failures'
@@ -180,7 +180,7 @@ sha256:0fec8ee83244cc31d7067bd64f450823
   ]
 }
 -- testrun/html/none/app.sngl/chooser/1 --
-sha256:3d397f9d628786f92ca9a52e90b39862
+sha256:3362f13582149a50e05e5638211ee622
 {
   "results": [
     {
@@ -194,7 +194,7 @@ sha256:3d397f9d628786f92ca9a52e90b39862
   ]
 }
 -- testrun/html/none/app.sngl/wrapped/1 --
-sha256:bb860afb3ea6333725589dc6b852bef9
+sha256:6d4ff314382740fde5f02dd11ef3f2ad
 {
   "results": [
     {

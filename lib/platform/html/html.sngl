@@ -223,6 +223,34 @@ struct Target {
 // something a read can ask. That the emitter has no way to ask it yet is a
 // separate defect; claiming otherwise here would have a prop read answered
 // with the value the markup was written with.
+// What a target's override of an event does to an element, as a person's
+// input would: a test's `c.pick.change(v)` sets the `<select>`'s value and
+// dispatches `change`, so the listener the page attached runs as it does for
+// a choice, and reads the element as it finds it then.
+// Clicks the element, as a person's press does. Named for the press rather
+// than the event, which a test raises by its own name: `c.go.click()`.
+#[js.native("click", "", method)]
+func element.press()
+
+// Dispatches an event of the type named, which bubbles as the DOM's own
+// input events do.
+#[js.native("_snglFire")]
+func element.fire(event string)
+
+// Sets the text an input, a textarea or a select holds, as typing or choosing
+// does, without an event: fire says what happened.
+#[js.native("_snglSetValue")]
+func element.setValue(value string)
+
+// Checks or clears a checkbox or a radio button, without an event.
+#[js.native("_snglSetChecked")]
+func element.setChecked(checked bool)
+
+// The input at `at` among those under this element, in document order: a
+// radio's buttons, which its loop renders.
+#[js.native("_snglInputAt")]
+func element.inputAt(at int) element
+
 #[gen.renders(identity)]
 #[wildcard("[a-z][a-z0-9]*", "tag")]
 component element(
@@ -498,7 +526,7 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
             change(v)
         }
     }
-    html.fieldset(style=css({display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0px, ...style})) {
+    html.fieldset #group(style=css({display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0px, ...style})) {
         for var opt = options {
             html.label(style=css({display=inlineFlex, alignItems=center, gap=4px})) {
                 html.input(type="radio", value=opt.label, checked=(opt.value == value), disabled=disabled, @change(e) {
@@ -513,9 +541,15 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
     }
 }
 
-// A test picks the option holding `value` as pressing its button does.
+// A test picks the option holding `value` by checking its button, as a
+// person does: the button's own listener reads the label it holds.
 func ui.radio[T].change[platform](value) {
-    pickValue(value)
+    var at = ui.choiceLabeled(options, ui.choiceLabel(options, value))
+    if at >= 0 {
+        var button = group.inputAt(at)
+        button.setChecked(true)
+        button.fire("change")
+    }
 }
 
 const component ui.toggle[platform](label, checked, disabled, focusable, style, @change) {
@@ -541,7 +575,7 @@ const component ui.select[platform](placeholder, value, disabled, focusable, sty
             change(options[at].value)
         }
     }
-    html.select(
+    html.select #sel(
         disabled = disabled,
         attrs = focusable ? {} : {"tabindex"="-1"},
         style = css(style),
@@ -561,10 +595,11 @@ const component ui.select[platform](placeholder, value, disabled, focusable, sty
     }
 }
 
-// A test picks the choice holding `value` as the element's change to its
-// label does.
+// A test picks the choice holding `value` by its label, as a person does:
+// the element's own listener reads the label it now holds.
 func ui.select[T].change[platform](value) {
-    pickLabel(ui.choiceLabel(options, value))
+    sel.setValue(ui.choiceLabel(options, value))
+    sel.fire("change")
 }
 
 const component ui.textarea[platform](placeholder, readonly, value, disabled, rows, focusable, style, @input, @change) {

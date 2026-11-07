@@ -529,10 +529,13 @@ A test hands a value, and each target's override of the event says how its
 control takes it (`func ui.select[T].change[platform](value)`, see
 design/testing.md): gtk4 selects the label through `gtk4rt.DropDownSelect`
 and fyne through `Select.SetSelected`, each of which reports the change as a
-pick does; html, bubbletea and android call the method their control's own
-handler calls with a label (`pickLabel`, `choose`), and a radio's the one its
-buttons call (`pickValue`). A radio is a control per choice on every target
-but html: gtk4's check buttons, fyne's Checks, bubbletea's `(•)` rows, each
+pick does; html sets the `<select>`'s value to the label and dispatches
+`change`, and checks the radio button at the choice's index under the
+`<fieldset>` (`group.inputAt(at)`) and dispatches `change` on it, so the
+listener the page attached runs as it does for a person; bubbletea and
+android call the method their control's own handler calls with a label
+(`pickLabel`, `choose`), and a radio's the one its buttons call
+(`pickValue`). A radio is a control per choice on every target but html: gtk4's check buttons, fyne's Checks, bubbletea's `(•)` rows, each
 calling `pickValue` when chosen, so a program's write -- which checks the new
 choice, and fyne's Check reports -- fires nothing
 (`cmd/sngl/testdata/radio_change_runs.txt`). Handed to the generated invokers, the value gave
@@ -807,6 +810,21 @@ printed and checked again, by `checker.Config.Lowered`, since `text #__n0(…)`
 re-parses as an ordinary node with an ordinary id and nothing in the text says
 which side of the pipeline wrote it. Only a caller that lowered the IR itself
 may set that flag.
+
+**An html element's handle is the element**, which an override drives
+through the natives `sngl:platform/html` declares on `element`: `press`,
+`fire`, `setValue`, `setChecked` and `inputAt`, each a DOM method or a page
+function html writes where a call reached it (`elementHelpers`). `press` is
+named for the act, since `click` is the element's event a test raises by
+that name. `componentNamed` finds the wildcard `html.button` resolves to, so
+the handle is typed as one; it was invalid, so `b.click()` checked as nothing
+and was emitted `b()`. A read is spelled as the element's `$N`
+(`ExprCtx.NodeVar`), and an element whose handle is read is written with an
+id to bind it by, a listener or no (`readHandles`). One built at run time is
+a local of the function building it, named for the handle, which a read
+beside it spells; a trigger html writes on the page reads it from outside, and
+finds it by `data-sngl-id` as the invokers do
+(`cmd/sngl/testdata/html_element_handle_runs.txt`).
 
 **So a handle's remaining use is reading**, and a *prop* read does not compile
 on the Go mutation platforms: `GoIRContext.Select` ends at

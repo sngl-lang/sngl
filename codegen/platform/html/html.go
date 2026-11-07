@@ -208,7 +208,9 @@ func (c *compilation) codegenCtx(req *codegen.Request) *codegen.CodegenCtx {
 // vary by window. projectDir and projectFS live here because everything cached
 // below is a function of them, so no cache key has to carry them.
 type windowShared struct {
-	projectDir string
+	// handlesRead is readHandles' answer, the same for every window.
+	handlesRead map[string]bool
+	projectDir  string
 	// projectFS is the FS the js: virtual root is mounted on; it is the OS
 	// filesystem for the CLI and an in-memory one for the playground.
 	projectFS fs.FS
@@ -822,6 +824,11 @@ type htmlGen struct {
 	// that id on the node and names it in the updaters it builds, while the
 	// element itself is emitted as `$N`. See htmlGen.nodeID.
 	refToVar map[string]string
+	// handleReads are the elements a read of a node's handle named (nodeVar),
+	// which the page binds as it does those a handler writes.
+	handleReads map[string]bool
+	// inTrigger says the function being written is a trigger (nodeVar).
+	inTrigger bool
 	// idToNode maps each emitted element id back to its NodeInst, which is
 	// all a reactive-update Assign inside a handler body has to go on.
 	idToNode map[string]*ir.NodeInst
@@ -906,6 +913,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		noCacheBust:    opts.NoCacheBust,
 		idToNode:       make(map[string]*ir.NodeInst),
 		refToVar:       make(map[string]string),
+		handleReads:    make(map[string]bool),
 		loweredRefs:    make(map[string]bool),
 		loweredLocals:  make(map[string]bool),
 		pageSlots:      make(map[string]bool),
@@ -936,8 +944,36 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	// The JsIRContext path writes jc.Ctx.Helpers and the emit check reads
 	// g.ctx.Helpers; one map makes a flag from either path reach the check.
 	g.ctx.Helpers = g.Helpers
+	g.ctx.NodeVar = g.nodeVar
 
 	return g
+}
+
+// elementHelpers are the page functions html.sngl's element natives name,
+// each written where a call reached it.
+var elementHelpers = []struct{ name, js string }{
+	{"_snglFire", "function _snglFire(el, type) { el.dispatchEvent(new Event(type, { bubbles: true })); }"},
+	{"_snglSetValue", "function _snglSetValue(el, v) { el.value = v; }"},
+	{"_snglSetChecked", "function _snglSetChecked(el, v) { el.checked = v; }"},
+	{"_snglInputAt", "function _snglInputAt(el, at) { return el.querySelectorAll(\"input\")[at]; }"},
+}
+
+// nodeVar is the element a read of handle reads: the `$N` the element was
+// emitted as, which the program's `#id` is not. An element built at run time
+// -- a render slot's, an instance's -- is a local of the function building
+// it, named for the handle, which is what a read beside it spells. A
+// trigger, an override of an event a test build copies onto the page, reads
+// it from outside that function, and finds it as the invokers do, by the
+// mark OnCreateNode gives it.
+func (g *htmlGen) nodeVar(handle *ir.Ident) (string, bool) {
+	if v, ok := g.refToVar[handle.Name]; ok && v != handle.Name {
+		g.handleReads[v] = true
+		return v, true
+	}
+	if !g.inTrigger {
+		return "", false
+	}
+	return fmt.Sprintf("document.querySelector('[data-sngl-id=%q]')", handle.Name), true
 }
 
 func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opts htmlConfig, shared *windowShared) *htmlGen {
@@ -962,6 +998,7 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	}
 	g.ctx.Helpers = helpers
 	g.ctx.NativeImports = native
+	g.ctx.NodeVar = g.nodeVar
 	return g
 }
 
@@ -2507,6 +2544,11 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	if g.ctx.Helpers[spanColorHelper] {
 		b.WriteString(spanColorHelperJS + "\n")
 	}
+	for _, h := range elementHelpers {
+		if g.ctx.Helpers["native:"+h.name] {
+			b.WriteString(h.js + "\n")
+		}
+	}
 	if g.pkg != nil && rendersReachEnd(g.pkg) {
 		b.WriteString(reachEndHelper + "\n")
 		for _, r := range scrollRules {
@@ -2964,6 +3006,9 @@ func (g *htmlGen) collectReferencedIDs() []string {
 	}
 	for _, h := range g.quiet {
 		addID(h.elemID)
+	}
+	for id := range g.handleReads {
+		addID(id)
 	}
 
 	sort.Strings(ids)
@@ -3594,6 +3639,8 @@ func jsFuncName(fn *ir.Func) string {
 }
 
 func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
+	g.inTrigger = fn.Trigger != ""
+	defer func() { g.inTrigger = false }()
 	if codegen.IsComputed(fn) && len(fn.Block) == 1 {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			_ = ret

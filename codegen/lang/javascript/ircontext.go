@@ -564,6 +564,11 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	// synthesized one is promoted with the rest, so a context provider inside
 	// an imported component declared `state.__ctx_depth_1` and read a bare
 	// `__ctx_depth` that nothing bound.
+	if v, ok := n.Sym.(*ir.Var); ok && v.NodeHandle && jc.Ctx.NodeVar != nil {
+		if el, ok := jc.Ctx.NodeVar(n); ok {
+			return el
+		}
+	}
 	if n.Synthesized {
 		return jc.Ctx.RenamedName(n.Name)
 	}

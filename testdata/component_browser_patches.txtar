@@ -343,7 +343,8 @@ window.__sngl_boot = () => {
     ;
   }
   function change__trigger__inst0(value) {
-    pickLabel__inst0(choiceLabel([{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }], value));
+    _snglSetValue($1, choiceLabel([{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }], value));
+    _snglFire($1, "change");
   }
   function choiceLabeled(options, label) {
     for (const [i, o] of options.entries()) {
@@ -915,6 +916,12 @@ window.__sngl_boot = () => {
   function String(v) {
     return "" + v;
   }
+  function _snglFire(el, type) {
+    el.dispatchEvent(new Event(type, { bubbles: true }));
+  }
+  function _snglSetValue(el, v) {
+    el.value = v;
+  }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
   var $11 = document.getElementById("$11");
@@ -999,7 +1006,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:f3406aaed0641280f57162824ce4f67d
+pass sha256:2c432cc4d3c12955a0f8edc8cde3406d
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
 sha256:5dcbcf9d144b8421aa259727771a523a
 {
@@ -1051,7 +1058,7 @@ sha256:ce48baafae9652b330c696c86c3a492d
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/picker/1 --
-sha256:a5dae694df3aab532ed4fdbc7fb35760
+sha256:6e4b200475d6ec4bba2da319a06ccd7c
 {
   "results": [
     {
