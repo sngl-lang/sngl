@@ -205,7 +205,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 	// no-op when the box var is "" (overlay closed), so this stays correct
 	// without threading the `open` expr — the `if open` gate leaves boxVar "".
 	if info.hasFocus {
-		emitClickScan(b, vc.overlays)
+		emitClickScan(b, vc.overlays, info.floats)
 	}
 	for _, ov := range vc.overlays {
 		gc.RequireImport(tuiImportPath)
@@ -230,6 +230,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 		}
 	}
 
+	emitFloatsDraw(b, info)
 	b.WriteString("\tv := tea.NewView(content)\n")
 	b.WriteString("\tv.AltScreen = true\n")
 	if info.hasFocus {
@@ -1100,6 +1101,7 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 			vc.pictureLook = style
 		}
 	}
+	pressAt := vc.pressPosition(n, resultVar)
 	pos := vc.position(n, horizontal)
 	spacing := "0"
 	if v := codegen.NodeProp(n, "spacing"); v != nil {
@@ -1208,6 +1210,69 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	if style != plainLook || vc.fits(n) {
 		vc.line(`%s = %s`, resultVar, vc.render(n, style, resultVar))
 	}
+	vc.markPress(n, resultVar, pressAt)
+}
+
+// pressedStop is the focus stop a Layout given `press` presses, its first,
+// or nil where it presses none.
+func pressedStop(n *ir.NodeInst) *ir.NodeInst {
+	press := codegen.NodeProp(n, "press")
+	if on, known := codegen.IRLiteralBool(press); press == nil || known && !on {
+		return nil
+	}
+	return firstStop(n.Children)
+}
+
+// pressPosition holds, ahead of a pressing Layout's children, the copy of a
+// loop its stop is: the loop's position moves past it as the stop is drawn,
+// and the Layout is marked after. "" where the stop is in no loop.
+func (vc *irViewContext) pressPosition(n *ir.NodeInst, resultVar string) string {
+	stop := pressedStop(n)
+	if stop == nil {
+		return ""
+	}
+	lf, ok := nodeLoopFocus(stop)
+	if !ok {
+		return ""
+	}
+	at := resultVar + "PressAt"
+	vc.line("%s := %s", at, lf.pos)
+	return at
+}
+
+// markPress marks the whole of a Layout given `press` as its first focus
+// stop, so a click on any of the box presses it: a clickable card's stop is
+// the `›` before its face, which was the one cell a click found.
+func (vc *irViewContext) markPress(n *ir.NodeInst, resultVar, at string) {
+	press := codegen.NodeProp(n, "press")
+	stop := pressedStop(n)
+	if stop == nil {
+		if press != nil {
+			vc.discard(press)
+		}
+		return
+	}
+	if on, known := codegen.IRLiteralBool(press); known && on {
+		vc.markStopAt(stop, resultVar, at)
+		return
+	}
+	vc.line(`if %s {`, vc.gc.EvalExpr(press))
+	vc.markStopAt(stop, resultVar, at)
+	vc.line(`}`)
+}
+
+// firstStop is the first focus stop stmts render, in a branch or a slot as
+// well as among them.
+func firstStop(stmts []ir.Stmt) *ir.NodeInst {
+	var found *ir.NodeInst
+	_ = ir.WalkStmts(stmts, func(s ir.Stmt) error {
+		if n, ok := s.(*ir.NodeInst); ok && codegen.NodeProp(n, "__focused") != nil {
+			found = n
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // isPicture reports whether s is a picture a URL names.

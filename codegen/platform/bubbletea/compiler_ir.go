@@ -254,6 +254,9 @@ type irAnalysis struct {
 	widgets   []widgetInfo
 	overlays  []overlayInfo
 	hasFocus  bool // true when __focusOrder pass injected __focusID/__focusNext/__focusPrev
+	// floats is true where a widget's templates hand it the Model's
+	// tui.Floats, which an open select draws its popover through.
+	floats bool
 	// sleepers counts the widgets that tick themselves (sleep.go).
 	sleepers int
 	// keyType is the Go type of the KeyPress the window's `@key` hears, ""
@@ -477,6 +480,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			break
 		}
 	}
+	info.floats = slices.ContainsFunc(info.widgets, usesFloats)
 	info.settles = info.hasFocus && slices.ContainsFunc(ctx.AllFuncs(), func(f *ir.Func) bool { return f.Name == "__focusSettle" })
 
 	if info.NeedsToast {
@@ -583,6 +587,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		gc.RequireImport(tuiImportPath)
 		emitClickFields(&b, info)
 	}
+	if info.floats {
+		fmt.Fprintf(&b, "\t%s *tui.Floats\n", floatsField)
+	}
 	emitSleepFields(&b, info)
 	if screenKeyHandler(info) != nil {
 		fmt.Fprintf(&b, "\t%s bool\n", unheardField)
@@ -606,6 +613,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		fmt.Fprintf(&b, "\tm.%s = make(chan struct{}, 1)\n", wakeField)
 	}
 	emitTimerInits(&b, info.timers)
+	if info.floats {
+		fmt.Fprintf(&b, "\tm.%s = tui.NewFloats()\n", floatsField)
+	}
 	for _, bind := range info.binds {
 		if info.tests {
 			fmt.Fprintf(&b, "\tif !preset[%q] {\n\t\tm.%s = %s\n\t}\n", bind.name, bind.name, bind.init)
@@ -1072,6 +1082,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		b.WriteString("\t_ = overlayOpen\n")
 	}
 
+	emitFloatsGuard(b, info)
 	b.WriteString("\tswitch msg := msg.(type) {\n")
 
 	// Set messages — consts have no setter, skip them. Synthesized
@@ -1116,7 +1127,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	}
 
 	if info.hasFocus {
-		emitClickCase(b)
+		emitClickCase(b, info)
 	}
 
 	// KeyPressMsg
@@ -1828,14 +1839,15 @@ func emitIRFocusSync(b *strings.Builder, widgets []widgetInfo) {
 // modelHasFocusMethods reports whether a bubbles model type exposes
 // Focus()/Blur() methods. textinput and textarea track an internal focus flag
 // (and only blink/accept keys while focused); the SNGL focus machinery drives
-// that via explicit Focus()/Blur() calls. list-backed widgets (menu/tree/
-// select) have no such methods — they always accept navigation messages and
+// that via explicit Focus()/Blur() calls, and a tui.Select draws its button so
+// and closes its popover on Blur. list-backed widgets (menu/tree) have no
+// such methods — they always accept navigation messages and
 // are gated purely by the focus-conditioned Update forwarding — so emitting
 // Focus()/Blur() against them would not compile. Widgets absent from this set
 // still participate in focus routing; they just skip the method calls.
 func modelHasFocusMethods(modelType string) bool {
 	switch modelType {
-	case "textinput.Model", "textarea.Model":
+	case "textinput.Model", "textarea.Model", "tui.Select":
 		return true
 	default:
 		return false

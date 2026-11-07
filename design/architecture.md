@@ -205,6 +205,21 @@ target with no way to say a field is meant for one.
   the test's `stop` where it stopped, and otherwise sends the key through
   Update the same way (`bubbletea/key_run_test.go`).
 
+  A Layout given `press` marks its whole box as its first focus stop, so a
+  click anywhere on a clickable card presses the `›` that is the card's stop;
+  the loop's position is read before the card's children move it on
+  (`markPress`, `bubbletea/click_run_test.go`). A Widget's `events` name the
+  key a click presses, as a Styled's do: a select's is Enter, which opens it.
+
+  A select is a button, and an open one's choices float below it over the
+  view (`tui.Floats`, the Model's `__floats`): its view marks its block and
+  hands over the popover, the view's scans take the marks out where they are
+  drawn -- the content's and each overlay's box -- and `Draw` lays each
+  popover last, above the button where there is no room below. While one is
+  open, Update closes it on Esc, on Tab and on a click outside it, before
+  anything else hears them, so Esc goes back no page; a click on it is the
+  select's, forwarded, rather than a press of the stop it covers.
+
   A widget bound two-way writes its value back where Update forwards a
   message to it and where a test's invoker puts one in, and where the bind's
   write-back handler (`ir.EventHandler.WriteBack`) does more than assign --

@@ -19,6 +19,17 @@ import (
 type Clicks[T any] struct {
 	marked []T
 	boxes  []clickBox
+	// opens and closes are the final bytes of a mark's two halves: z and {
+	// where they are zero, and another pair for marks of another kind drawn
+	// into the same view (Floats).
+	opens, closes byte
+}
+
+func (c *Clicks[T]) finals() (byte, byte) {
+	if c.opens == 0 {
+		return 'z', '{'
+	}
+	return c.opens, c.closes
 }
 
 type clickBox struct {
@@ -40,7 +51,8 @@ func (c *Clicks[T]) Mark(v T, s string) string {
 	i := len(c.marked)
 	c.marked = append(c.marked, v)
 	n := strconv.Itoa(i)
-	return "\x1b[" + n + "z" + s + "\x1b[" + n + "{"
+	opens, closes := c.finals()
+	return "\x1b[" + n + string(opens) + s + "\x1b[" + n + string(closes)
 }
 
 // Cover forgets every box found so far: what an overlay is drawn over takes
@@ -62,14 +74,15 @@ func (c *Clicks[T]) Scan(s string, x, y int) string {
 	var out strings.Builder
 	out.Grow(len(s))
 	col, row := x, y
+	opens, closes := c.finals()
 	var state byte
 	for len(s) > 0 {
 		seq, width, n, next := ansi.DecodeSequence(s, state, nil)
 		state = next
 		s = s[n:]
-		if final := seq[len(seq)-1]; len(seq) > 3 && seq[0] == ansi.ESC && seq[1] == '[' && (final == 'z' || final == '{') {
+		if final := seq[len(seq)-1]; len(seq) > 3 && seq[0] == ansi.ESC && seq[1] == '[' && (final == opens || final == closes) {
 			if i, err := strconv.Atoi(seq[2 : len(seq)-1]); err == nil && i >= 0 && i < len(c.marked) {
-				if final == 'z' {
+				if final == opens {
 					opened[i] = open{col, row}
 				} else if o, ok := opened[i]; ok {
 					delete(opened, i)

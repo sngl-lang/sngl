@@ -147,6 +147,9 @@ component Layout(
     rowSpacing int = 0,
     // Body text revealed, dim, under the focused trigger this Layout wraps.
     tooltip    string,
+    // Whether a click anywhere in the box presses the first focus stop it
+    // holds, as a clickable card's whole face does.
+    press      bool = false,
     children   ...component,
 ) ui.node
 
@@ -171,13 +174,16 @@ component Styled(
 #[gen.renders(identity)]
 #[intrinsic("bubbletea:Widget")]
 component Widget(
-    const model Model,
-    focus       Focus,
-    const binds list[Bind],
-    placeholder string,
-    look        Look,
-    fit         Fit,
-    grow        float,
+    const model  Model,
+    focus        Focus,
+    const binds  list[Bind],
+    // The key a click on the widget presses, as a Styled's: a select's opens
+    // it. A widget given none, a text field, is only focused by one.
+    const events list[Event] = [],
+    placeholder  string,
+    look         Look,
+    fit          Fit,
+    grow         float,
 
     // Operands for the `$\{name\}` tokens in this widget's Model strings. A
     // token names one of these props, so the set grows with the templates
@@ -462,7 +468,8 @@ const component ui.toggle[platform](label, checked, focusable, style, @change) {
     ) {}
 }
 
-// A select is tui.Select: a list whose cursor is the choice, holding the
+// A select is tui.Select: a button showing the choice, which Enter or a click
+// opens into a popover of the choices below it (tui.Floats), holding the
 // label of the value even before a choice carries it. Its choices are handed
 // to every view and update, since they are the program's and may arrive after
 // it starts. The widget knows its choices by label, so the override holds the
@@ -484,11 +491,12 @@ component ui.select[platform](value, focusable, style, @change, options) {
         model = Model{
             type = "tui.Select",
             new = "tui.NewSelect(40, 10)",
-            view = ".View($\{options\})",
-            update = ".Update(msg, $\{options\})",
+            view = ".View($\{options\}, m.__floats)",
+            update = ".Update(msg, $\{options\}, m.__floats)",
             resize = ".SetSize($\{w\}, $\{h\})",
         },
         focus = Focus{enabled=style.display != ui.Display.none, tab=focusable},
+        events = [Event{on="open", key="enter"}],
         binds = [Bind{prop="choice", get=".Value()", set=".SetValue"}],
         options = options.map(func(o) => o.label),
         :choice = label,
@@ -615,7 +623,7 @@ const component ui.divider[platform](style) {
 // content beside a `›` that takes the focus and fires `@click` on enter, as a
 // button's label does.
 const component ui.card[platform](style, clickable, @click, content) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), press=clickable) {
         if clickable {
             Styled(
                 content = "› ",

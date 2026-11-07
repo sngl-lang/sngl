@@ -170,12 +170,14 @@ type modelState struct {
 	widget0 tui.Select
 
 	__clicks      tui.Clicks[snglStop]
+	__floats      *tui.Floats
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{&modelState{}}
+	m.__floats = tui.NewFloats()
 	m.fruits = []string{"Apple", "Banana"}
 	m.pick = "Apple"
 	m.label__inst0 = ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
@@ -196,6 +198,7 @@ func New() Model {
 	m.__focusID = 0
 	m.widget0 = tui.NewSelect(40, 10)
 	m.widget0.SetValue(m.label__inst0)
+	m.widget0.Focus()
 	m.resizeWidgets()
 	m.__effects0_settle()
 	return m
@@ -579,6 +582,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 	_ = cmd
+	if m.__floats.Open() {
+		switch msg := msg.(type) {
+		case tea.KeyPressMsg:
+			if msg.Code == tea.KeyEsc {
+				m.__floats.Close()
+				return m, nil
+			}
+			if msg.Code == tea.KeyTab {
+				m.__floats.Close()
+			}
+		case tea.MouseClickMsg:
+			if !m.__floats.At(msg.X, msg.Y) {
+				m.__floats.Close()
+				return m, nil
+			}
+		}
+	}
 	switch msg := msg.(type) {
 	case setFruitsMsg:
 		m = m.SetFruits(msg.value)
@@ -593,7 +613,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.resizeWidgets()
 	case tea.MouseClickMsg:
-		if msg.Button == tea.MouseLeft {
+		if msg.Button == tea.MouseLeft && !m.__floats.At(msg.X, msg.Y) {
 			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
 				cmds = append(cmds, m.__press(s))
 			}
@@ -610,8 +630,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
+			if m.__focusID == 0 {
+				m.widget0.Focus()
+			} else {
+				m.widget0.Blur()
+			}
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
+			if m.__focusID == 0 {
+				m.widget0.Focus()
+			} else {
+				m.widget0.Blur()
+			}
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.fruits = []string{"Apple", "Banana", "Cherry"}
 			m.__effects0_settle()
@@ -637,7 +667,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
 			}
 			return __out
-		}())
+		}(), m.__floats)
 		cmds = append(cmds, cmd)
 		m.label__inst0 = m.widget0.Value()
 		if __v := m.widget0.Value(); __v != __prev {
@@ -652,6 +682,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // focus back once it is pressed.
 func (m Model) __press(s snglStop) tea.Cmd {
 	m.__focusID = s.slot
+	if m.__focusID == 0 {
+		m.widget0.Focus()
+	} else {
+		m.widget0.Blur()
+	}
 	var cmd tea.Cmd
 	if s.press {
 		_, cmd = m.Update(s.key)
@@ -691,8 +726,8 @@ func (m Model) View() tea.View {
 				__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
 			}
 			return __out
-		}()))
-		part0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: false, key: tea.KeyPressMsg{}}, part0_0)
+		}(), m.__floats))
+		part0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_0)
 		part0Children = append(part0Children, part0_0)
 		var part0_1 string
 		part0_1Focused := (m.__focusID == 1)
@@ -708,6 +743,8 @@ func (m Model) View() tea.View {
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	content = m.__clicks.Scan(content, 0, 0)
+	content = m.__floats.Scan(content, 0, 0)
+	content = m.__floats.Draw(content, m.width, m.height)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	v.MouseMode = tea.MouseModeCellMotion
@@ -1712,7 +1749,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:020bedee85713adae85f6caf669e894e
+pass sha256:11dfb43a8bad3539a5bed522f17c18b8
 -- run/go/fyne --
 pass sha256:505d89fe887c5b823d10f7b7eec869d4
 -- run/go/gtk4 --
