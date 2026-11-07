@@ -47,25 +47,13 @@ const languages = [
     Language{locale="ja", label="日本語"},
 ]
 
-// The label of the language of `locale`, English's where the app does not
-// offer it.
-func languageLabel(locale string) string {
+// The locale of the language the app offers for `locale` -- "fr_CA.UTF-8"
+// is "fr" -- English's where it offers none, and the process's while the
+// kept choice is still loading.
+func offered(locale option[string]) string {
+    var want = languageOf(locale != null ? locale : i18n.defaultLocale())
     for var l = languages {
-        if l.locale == languageOf(locale) {
-            return l.label
-        }
-    }
-    return languages[0].label
-}
-
-// The locale of the language labeled `label`, English's where none is, and
-// the process's while the kept choice is still loading.
-func localeLabeled(label option[string]) string {
-    if label == null {
-        return localeLabeled(languageLabel(i18n.defaultLocale()))
-    }
-    for var l = languages {
-        if l.label == label {
+        if l.locale == want {
             return l.locale
         }
     }
@@ -80,6 +68,7 @@ func localeLabeled(label option[string]) string {
 // after the form's page, which its handler names, and before the list, whose
 // handler names it; the stack starts at "/" wherever that is.
 component Pokedex root {
+    // The locale chosen, null until the kept one loads.
     var language option[string] = null
     var dexes list[poke.PokedexSummary] = []
     var dexesFailure option[async.Failure] = null
@@ -95,30 +84,28 @@ component Pokedex root {
     }
 
     // Around the window, so its title and its menu are in the language too.
-    i18n.locale(localeLabeled(language)) {
+    i18n.locale(offered(language)) {
         ui.window #pokedex(title=pages.current.title, canGoBack=pages.canGoBack(), @back { pages.back() }) {
             component menu {
                 ui.menuItem(label=$"Language") {
                     for var l = languages {
-                        ui.menuItem(label=l.label, checked=l.label == language, @select { language = l.label })
+                        ui.menuItem(label=l.label, checked=l.locale == language, @select { language = l.locale })
                     }
                 }
                 ui.menuItem(label=$"Pokédex") {
                     // A menu holds no sign, so the failure is an item that
                     // asks again when chosen.
                     if dexesFailure != null {
-                        ui.menuItem(label=couldNotLoadDexes(whyOf(dexesFailure)), @select { dexesFailure = null })
+                        ui.menuItem(label=couldNotLoadDexes(whyOf(dexesFailure)), @select { dexesAsk.refresh() })
                     }
                     for var d = dexes {
                         ui.menuItem(label=display(d.name), checked=d.name == dexName, @select { chooseDex(d.name) })
                     }
                 }
             }
-            settings.kept(name="language", default=languageLabel(i18n.defaultLocale()), :value=language)
+            settings.kept(name="language", default=offered(null), :value=language)
             settings.kept(name="dexName", default="national", :value=dexName)
-            if dexesFailure == null {
-                poke.pokedexList(limit=dexLimit, offset=0, :failure=dexesFailure, @load(page) { dexes = page.results })
-            }
+            poke.pokedexList #dexesAsk(limit=dexLimit, offset=0, :failure=dexesFailure, @load(page) { dexes = page.results })
             nav.stack #pages {
                 nav.page #variety(
                     href = `/pokemon/{name}/{form}`,

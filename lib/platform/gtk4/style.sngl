@@ -133,6 +133,15 @@ const func boxLookOf(s ui.Style, otherwise int) gtk.Look {
     return look
 }
 
+// The look of a grid's GtkBox: a box's, laid out `columns` to a row, or
+// flowing where it has none.
+const func gridLookOf(s ui.Style, columns option[int]) gtk.Look {
+    var look = lookHidden(s, s.display == ui.Display.none, true, spacingOf(s, 6))
+    look.grid = true
+    look.columns = columns == null ? 0 : columns
+    return look
+}
+
 // The look of a widget whose visibility a prop drives, which answers
 // `display` itself through shown.
 const func lookBesideVisible(s ui.Style) gtk.Look {

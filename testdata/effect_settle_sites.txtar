@@ -105,6 +105,11 @@ type Measurement struct {
 	Rem float64
 }
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -197,6 +202,10 @@ type modelState struct {
 	__effect2_key       string
 	__effect2_live      []string
 	__effect2_desired   []string
+	__effect2_paths     []string
+	__effect2_livePaths []string
+	__effect2_pathAt    map[string]int
+	__effect2_liveAt    map[string]int
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -227,6 +236,10 @@ func New() Model {
 	m.__effect2_key = ""
 	m.__effect2_live = []string{}
 	m.__effect2_desired = []string{}
+	m.__effect2_paths = []string{}
+	m.__effect2_livePaths = []string{}
+	m.__effect2_pathAt = map[string]int{}
+	m.__effect2_liveAt = map[string]int{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_torn = false
@@ -240,6 +253,26 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -279,14 +312,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -350,7 +383,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt6
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt9 *Measurement
 	if own != nil {
 		__lt9 = own
@@ -363,7 +396,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt9 = __lt8
 	}
-	return CellsOf(__lt9)
+	return SpaceOf(__lt9, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
@@ -402,6 +435,16 @@ func LineCap(height__r0 int, lines int) int {
 		__lt13 = __lt12
 	}
 	return __lt13
+}
+
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt14) + 0.5))
 }
 
 func (m *Model) __effect0_mount() {
@@ -506,24 +549,36 @@ func (m *Model) __effect2_mount() {
 
 func (m *Model) __effect2_down() {
 	m.__effect2_desired = []string{}
-	for _, it := range m.items__inst0 {
-		m.__effect2_desired = append(m.__effect2_desired, it)
+	m.__effect2_paths = []string{}
+	m.__effect2_pathAt = map[string]int{}
+	for _, it := range __identified0(m.items__inst0) {
+		m.__effect2_desired = append(m.__effect2_desired, it.Elem)
+		m.__effect2_pathAt[it.Id] = len(m.__effect2_paths)
+		m.__effect2_paths = append(m.__effect2_paths, it.Id)
 	}
 }
 
 func (m *Model) __effect2_up() {
 	for __effect2_i, __effect2_k := range m.__effect2_desired {
-		if __effect2_i >= len(m.__effect2_live) {
+		var __effect2_at int = func() int {
+			if __v, __ok := m.__effect2_liveAt[m.__effect2_paths[__effect2_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect2_at < 0 {
 			m.__effect2_key = __effect2_k
 			m.__effect2_mount()
 		} else {
-			if m.__effect2_live[__effect2_i] != __effect2_k {
+			if m.__effect2_live[__effect2_at] != __effect2_k {
 				m.__effect2_key = __effect2_k
 				m.__effect2_mount()
 			}
 		}
 	}
 	m.__effect2_live = m.__effect2_desired
+	m.__effect2_livePaths = m.__effect2_paths
+	m.__effect2_liveAt = m.__effect2_pathAt
 }
 
 func (m *Model) __effects0_settle() {
@@ -732,11 +787,13 @@ func (m Model) View() tea.View {
 		if part0Part_0Focused {
 			part0Part_0Prefix = ">"
 		}
-		part0Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_0Prefix + " " + fmt.Sprint("add"))
+		part0Part_0Text := part0Part_0Prefix + " " + fmt.Sprint("add")
+		part0Part_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_0Focused), tui.Avail(m.width), part0Part_0Text).Render(part0Part_0Text)
 		part0Part_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_0)
 		part0Parts = append(part0Parts, part0Part_0)
 		var part0Part_1 string
-		part0Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(strings.Join(m.log__inst0, ",")))
+		part0Part_1Text := fmt.Sprint(strings.Join(m.log__inst0, ","))
+		part0Part_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_1Text).Render(part0Part_1Text)
 		part0Parts = append(part0Parts, part0Part_1)
 		part0 = tui.Spaced(false, lipgloss.Left, 0, part0Parts...)
 	}
@@ -761,4 +818,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:7aca0adffa08a9b0640f539e007a4970
+pass sha256:3e77b0bc82b3003b85f550817f1f3dd9

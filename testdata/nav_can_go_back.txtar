@@ -87,6 +87,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type __anon_e3b0c4 struct {
 }
 
@@ -182,12 +185,25 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.backs = 0
-	m.pages__current = _page__value{Href: "/", Title: "Home", Meta: __anon_e3b0c4{}}
-	m.pages__history = []Pages__entry{}
-	m.visible__inst0 = true
-	m.__focusID = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["backs"] {
+		m.backs = 0
+	}
+	if !preset["pages__current"] {
+		m.pages__current = _page__value{Href: "/", Title: "Home", Meta: __anon_e3b0c4{}}
+	}
+	if !preset["pages__history"] {
+		m.pages__history = []Pages__entry{}
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
 	return m
 }
 
@@ -234,14 +250,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -305,7 +321,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt6
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt9 *Measurement
 	if own != nil {
 		__lt9 = own
@@ -318,7 +334,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt9 = __lt8
 	}
-	return CellsOf(__lt9)
+	return SpaceOf(__lt9, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
@@ -357,6 +373,16 @@ func LineCap(height__r0 int, lines int) int {
 		__lt13 = __lt12
 	}
 	return __lt13
+}
+
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt14) + 0.5))
 }
 
 func (m *Model) __focusNext() {
@@ -525,10 +551,12 @@ func (m Model) View() tea.View {
 		var contentContentParts []string
 		var contentContentPart_0 string
 		if m.pages__current.Id == 0 {
-			contentContentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("home"))
+			contentContentPart_0Text := fmt.Sprint("home")
+			contentContentPart_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentContentPart_0Text).Render(contentContentPart_0Text)
 		} else {
 			if m.pages__current.Id == 1 {
-				contentContentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("about"))
+				contentContentPart_0Text := fmt.Sprint("about")
+				contentContentPart_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentContentPart_0Text).Render(contentContentPart_0Text)
 			}
 		}
 		if contentContentPart_0 != "" {
@@ -540,7 +568,8 @@ func (m Model) View() tea.View {
 		if contentContentPart_1Focused {
 			contentContentPart_1Prefix = ">"
 		}
-		contentContentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentContentPart_1Prefix + " " + fmt.Sprint("About"))
+		contentContentPart_1Text := contentContentPart_1Prefix + " " + fmt.Sprint("About")
+		contentContentPart_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), contentContentPart_1Focused), tui.Avail(m.width), contentContentPart_1Text).Render(contentContentPart_1Text)
 		contentContentPart_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentContentPart_1)
 		contentContentParts = append(contentContentParts, contentContentPart_1)
 		contentContent = tui.Spaced(false, lipgloss.Left, 0, contentContentParts...)
@@ -573,6 +602,7 @@ import "testing"
 func TestNotAtTheStart(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !(!(len(c.pages__history) > 0)) { t.Errorf("assert failed: %s", "!(len(c.pages__history) > 0)") }
 	if !(!(len(c.pages__history) > 0)) { t.Errorf("assert failed: %s", "!(len(c.pages__history) > 0)") }
 }
@@ -580,6 +610,7 @@ func TestNotAtTheStart(t *testing.T) {
 func TestAfterAGo(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.toAboutClick()
 	if !((len(c.pages__history) > 0)) { t.Errorf("assert failed: %s", "(len(c.pages__history) > 0)") }
 	if !((len(c.pages__history) > 0)) { t.Errorf("assert failed: %s", "(len(c.pages__history) > 0)") }
@@ -588,6 +619,7 @@ func TestAfterAGo(t *testing.T) {
 func TestTheWindowsBackReturns(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.toAboutClick()
 	c.mainBack()
 	if !((c.backs == 1)) { t.Errorf("assert failed: %s", "(c.backs == 1)") }
@@ -596,7 +628,13 @@ func TestTheWindowsBackReturns(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -610,6 +648,9 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
+
+type Test struct {
+}
 
 type __anon_e3b0c4 struct {
 }
@@ -649,20 +690,50 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.backs = 0
-	m.pages__current = _page__value{Href: "/", Title: "Home", Meta: __anon_e3b0c4{}}
-	m.pages__history = []Pages__entry{}
-	m.visible__inst0 = true
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__rendering1 = false
-	m.__renderAgain1 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["backs"] {
+		m.backs = 0
+	}
+	if !preset["pages__current"] {
+		m.pages__current = _page__value{Href: "/", Title: "Home", Meta: __anon_e3b0c4{}}
+	}
+	if !preset["pages__history"] {
+		m.pages__history = []Pages__entry{}
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -851,6 +922,7 @@ import "testing"
 func TestNotAtTheStart(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !(!(len(c.pages__history) > 0)) { t.Errorf("assert failed: %s", "!(len(c.pages__history) > 0)") }
 	if !(!(len(c.pages__history) > 0)) { t.Errorf("assert failed: %s", "!(len(c.pages__history) > 0)") }
 }
@@ -858,6 +930,7 @@ func TestNotAtTheStart(t *testing.T) {
 func TestAfterAGo(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.toAboutClick()
 	if !((len(c.pages__history) > 0)) { t.Errorf("assert failed: %s", "(len(c.pages__history) > 0)") }
 	if !((len(c.pages__history) > 0)) { t.Errorf("assert failed: %s", "(len(c.pages__history) > 0)") }
@@ -866,6 +939,7 @@ func TestAfterAGo(t *testing.T) {
 func TestTheWindowsBackReturns(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.toAboutClick()
 	c.main__backBack()
 	if !((c.backs == 1)) { t.Errorf("assert failed: %s", "(c.backs == 1)") }
@@ -880,7 +954,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -902,6 +980,9 @@ func main() {
 package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
+
+type Test struct {
+}
 
 type __anon_e3b0c4 struct {
 }
@@ -941,20 +1022,50 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.backs = 0
-	m.pages__current = _page__value{Href: "/", Title: "Home", Meta: __anon_e3b0c4{}}
-	m.pages__history = []Pages__entry{}
-	m.visible__inst0 = true
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__rendering1 = false
-	m.__renderAgain1 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["backs"] {
+		m.backs = 0
+	}
+	if !preset["pages__current"] {
+		m.pages__current = _page__value{Href: "/", Title: "Home", Meta: __anon_e3b0c4{}}
+	}
+	if !preset["pages__history"] {
+		m.pages__history = []Pages__entry{}
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1152,6 +1263,12 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 class __anon_e3b0c4 {
     override fun equals(other: Any?) = other is __anon_e3b0c4
     override fun hashCode() = 0
@@ -1186,9 +1303,13 @@ fun _page__valueOf(entry: NavBackStackEntry?): _page__value? {
     }
 }
 
-class MainScreenState {
-    var backs by mutableStateOf(0)
-    var visible__inst0 by mutableStateOf(true)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var backs by mutableStateOf(__snglPre(__pre, "backs") { 0 })
+    var visible__inst0 by mutableStateOf(__snglPre(__pre, "visible__inst0") { true })
     lateinit var pages__nav: androidx.navigation.NavHostController
     val pages__current: _page__value get() = _page__valueOf(if (::pages__nav.isInitialized) pages__nav.currentBackStackEntry else null) ?: _page__value(href = "/", title = "Home")
 }
@@ -1409,10 +1530,10 @@ class MainScreenTest {
 
 }
 -- run/go/bubbletea --
-pass sha256:bb98660e7335025880a64e4efbf1b0c4
+pass sha256:f4ff9777436983e33bd69fd01659d3bf
 -- run/go/fyne --
-pass sha256:aa0acee35f2b603a30a80369abbda664
+pass sha256:841fcb8dd5b9127e0c1d0dcb903f6fdd
 -- run/go/gtk4 --
-pass sha256:305c499e8b9d8e4a0260a8d5e944143b
+pass sha256:9b1fbdc366e49d860f3c0e242ae9b6bc
 -- run/kotlin/android --
-pass sha256:aea3c8a019969ff737989e86957de55a
+pass sha256:fa20068808c94c01b89e4fa11b4d6eeb

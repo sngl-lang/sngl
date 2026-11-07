@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"strings"
+
 	"duckfam.us/sngl/ir"
 )
 
@@ -129,6 +131,10 @@ type reservedRenamer struct {
 	// root is the component a test build is rooted at, which the harness
 	// finds by its name.
 	root string
+	// shadowed is what the package declares at its top level, which a
+	// component's own var or func is renamed away from while it is collected
+	// (see collect).
+	shadowed map[string]bool
 	// tests is each test's instance. A test's select of a node an instance
 	// the build spliced renders names the node by the id its splice gave it,
 	// and the node then stands in the body of whatever rendered the instance,
@@ -147,13 +153,24 @@ func (r *reservedRenamer) sym(s ir.Symbol, name string, set func(string)) string
 	if n, ok := r.syms[s]; ok {
 		return n
 	}
-	if !r.reserved[name] {
+	if !r.reserved[name] && !r.shadowsTop(s, name) {
 		return ""
 	}
 	n := r.fresh(name)
 	r.syms[s] = n
 	set(n)
 	return n
+}
+
+// shadowsTop reports whether s is a component's own var or func spelled as
+// something the package declares at its top level; a parameter of one is
+// bound inside it, where nothing else is.
+func (r *reservedRenamer) shadowsTop(s ir.Symbol, name string) bool {
+	switch s.(type) {
+	case *ir.Var, *ir.Func:
+		return r.shadowed[name]
+	}
+	return false
 }
 
 func (r *reservedRenamer) member(comp *ir.Component, old, n string) {
@@ -277,13 +294,38 @@ func (r *reservedRenamer) collect(pkg *ir.Package) {
 		}
 		r.typeDecl(ud, ud.Name, func(n string) { ud.Name = n }, ud.Methods)
 	}
+	// A component's own var or func may shadow one the package declares, but
+	// a target holds both in one namespace -- Android's test state class,
+	// html's state object -- where the two were one member and a read of
+	// either named whichever the target found first. So the component's is
+	// renamed, as a reserved name would be.
+	// A name the lowering synthesized (`__root`) is the lowering's to place.
+	top := map[string]bool{}
+	claim := func(name string) {
+		if !strings.HasPrefix(name, "__") {
+			top[name] = true
+		}
+	}
+	for _, v := range pkg.Consts {
+		claim(v.Name)
+	}
+	for _, v := range pkg.Vars {
+		claim(v.Name)
+	}
+	for _, fn := range pkg.Funcs {
+		if !fn.IsMethod() && !fn.IsTest {
+			claim(fn.Name)
+		}
+	}
 	for _, comp := range pkg.Components {
+		r.shadowed = top
 		for _, v := range comp.Vars {
 			r.variable(v, comp)
 		}
 		for _, fn := range comp.Funcs {
 			r.fn(fn, comp)
 		}
+		r.shadowed = nil
 		if primitive(comp) || !r.reserved[comp.Name] || comp.Name == r.root {
 			continue
 		}

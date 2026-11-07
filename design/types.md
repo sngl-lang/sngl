@@ -119,6 +119,12 @@ through a generic it calls (`ir.BoundReach`), at each binding
 (`monomorphizeFuncs`), because a target keeping generic functions whole would
 have no type to call. `ir.GenericCallee` binds a receiver its parameters do
 not list for that, and `Monomorphize` binds through it too. A
+generic component's body is spliced at its bound types only after
+`Monomorphize`, so a program generic it calls at the component's parameters
+-- `cache.keep(k, v)` on a `:cache Cache[V]` -- is kept then and copied by
+`MonomorphizeCodecs` after the splice, which copies every generic but one
+kept past `maxInstances` (`FuncLowering.PastInstances`)
+(`cmd/sngl/testdata/generic_method_in_generic_component_runs.txt`). A
 `_formatArgs[T]` written for a T holds what the constraint's format takes, and
 the bound type's may take more: `ir.FormatCall` leaves a field the literal
 does not hold to the format's default, and the interpreter completes such a
@@ -126,6 +132,45 @@ literal at the running bindings (`ir.FormatArgsLit`)
 (`testdata/generic_constraint_method.sngl`,
 `error_generic_constraint_method.sngl`, `generic_constraint_method.txtar`,
 `internal/lower/testdata/builtin_methods_constraint.txtar`).
+
+**A method declared outside its type names its receiver**, generic or not:
+`func Box[T].get(this Box[T])`, the brackets restating the type's parameters
+for the parameters and body, as an event override's restate a component's.
+One with no parameter of the receiver's type is static on a generic type as
+on a concrete one, and its body has no `this` (`staticThisHint`). Such a
+method once took an ambient `this` the checker declared for it, which made
+`func Box[T].make(v T)` an instance method while `func Money.zero()` was
+static, and a body's receiver a name no parameter declared. Only a
+component's method -- an event override, `nav.stack`'s `current` -- still
+binds one, and is called on an instance whether or not it has a body.
+The receiver is then an ordinary first parameter everywhere after the check,
+so a call's arguments line up with a library method's parameters: points-to
+leaves a frozen function's parameters uncolored, which the off-by-one of the
+implicit receiver had done by accident, and passBuiltinMethods finds the
+receiver in either place (`genericBuiltinReceiver`)
+(`testdata/error_static_method_this.sngl`). A named receiver is a value
+whatever its name, `this` included; one declared `ref[T]` writes back, so
+`list.push` declares `this ref[list[T]]`. Only the receiver a method written
+in a struct's body binds without declaring it is the caller's by default,
+and the checker marks it `Param.Ambient` where it desugars the method, since
+the desugared parameter is otherwise the one a declaration writes
+(`testdata/ref_params.sngl`).
+
+**A receiver's list may narrow a parameter its declaration leaves `any`**
+(`func list[T ordered].sort()`). The parser keeps the constraint on
+`FuncDef.RecvTypeParams`; `inheritReceiverConstraints` skips a parameter with
+one, so `resolveTypeParams` gives the method's T the narrower constraint, and
+a body reads it as that. Narrowing a parameter the declaration already
+constrains would ask for both, which no constraint spells, so it is an error
+and the declaration's stands. A call measures the receiver's binding against
+the narrowed constraint (`checkNarrowedReceiver`) where it binds the
+receiver's parameters; the declaration's own were measured where the
+receiver's type was written. `ordered` is a constraint the checker answers
+(`ordered` in constraints.go): a number, a single-base unit, a string, or a
+type parameter constrained to `ordered`; Go and Kotlin copy a generic body per
+type, so `<` on a `T ordered` needs nothing of them
+(`testdata/list_sort.sngl`, `error_list_sort.sngl`,
+`cmd/sngl/testdata/list_sort_runs.txt`).
 
 **An alias is an `ir.Alias`, not a declaration of what it names**
 (`internal/checker/aliases.go`): `struct Name = Type` parses as an

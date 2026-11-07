@@ -11,9 +11,9 @@ import . "sngl:test"
 component main node {
     var sel = "medium"
     radio(:value=sel, direction=horizontal) {
-        choice(label="small")
-        choice(label="medium")
-        choice(label="large")
+        choice(label="small", value="small")
+        choice(label="medium", value="medium")
+        choice(label="large", value="large")
     }
 }
 
@@ -66,6 +66,14 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type Test struct {
+}
+
+type Choice__record__string struct {
+	Label string
+	Value string
 }
 
 type Style struct {
@@ -122,6 +130,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -129,15 +145,35 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
-	sel string
+	sel                 string
+	__focusID           int
+	__focusLoop0_cursor int
+	__focusLoop1_cursor int
 
+	__clicks      tui.Clicks[snglStop]
+	__pressing    bool
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.sel = "medium"
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["sel"] {
+		m.sel = "medium"
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
+	if !preset["__focusLoop0_cursor"] {
+		m.__focusLoop0_cursor = 0
+	}
+	if !preset["__focusLoop1_cursor"] {
+		m.__focusLoop1_cursor = 0
+	}
+	m.__focusSettle()
 	return m
 }
 
@@ -147,15 +183,68 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func LookOf(s Style) lipgloss.Style {
+	return BoxLook(s, true)
+}
+
+func DrawsBox(s Style) bool {
+	return (((((((((((((((((((((((((((s.Color != nil) || (s.Background != nil)) || (s.FontWeight != "unset")) || (s.Opacity != nil)) || (s.FontStyle != "unset")) || (s.TextAlign != "unset")) || (s.BorderWidth != nil)) || (s.BorderStyle != "unset")) || (s.Margin != nil)) || (s.MarginX != nil)) || (s.MarginY != nil)) || (s.MarginTop != nil)) || (s.MarginRight != nil)) || (s.MarginBottom != nil)) || (s.MarginLeft != nil)) || (s.Padding != nil)) || (s.PaddingX != nil)) || (s.PaddingY != nil)) || (s.PaddingTop != nil)) || (s.PaddingRight != nil)) || (s.PaddingBottom != nil)) || (s.PaddingLeft != nil)) || (s.Width != nil)) || (s.Height != nil)) || (s.MaxWidth != nil)) || (s.MaxHeight != nil)) || (s.MaxLines != nil))
+}
+
+func FitOf(whiteSpace string, display string) tui.Fit {
+	return tui.Fit{Wrap: WrapOf(whiteSpace), Hidden: (display == "none")}
+}
+
+func GrowOf(flex *float64, display string) float64 {
+	var __lt0 float64
+	if (flex == nil) || (display == "none") {
+		__lt0 = 0.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt0 = (*(flex))
 	}
-	return __lt3
+	return __lt0
+}
+
+func CrossOf(a string) float64 {
+	var __lt1 float64
+	switch a {
+	case "center":
+		__lt1 = 0.5
+	case "end":
+		__lt1 = 1.0
+	default:
+		__lt1 = 0.0
+	}
+	return __lt1
+}
+
+func JustifyOf(j string) int {
+	var __lt2 int
+	switch j {
+	case "center":
+		__lt2 = 1
+	case "end":
+		__lt2 = 2
+	case "spaceBetween":
+		__lt2 = 3
+	case "spaceAround":
+		__lt2 = 4
+	case "spaceEvenly":
+		__lt2 = 5
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
+	} else {
+		__lt3 = 16.0
+	}
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -195,14 +284,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -222,6 +311,19 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
 	}
 	return l
+}
+
+func WrapOf(whiteSpace string) int {
+	var __lt6 int
+	switch whiteSpace {
+	case "nowrap":
+		__lt6 = 1
+	case "pre":
+		__lt6 = 2
+	default:
+		__lt6 = 0
+	}
+	return __lt6
 }
 
 func PxOf(m__r1 *Measurement) float64 {
@@ -266,7 +368,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -279,7 +381,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -293,20 +395,129 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
+}
+
+func (m *Model) pickValue__inst0(v__r0 string) {
+	if v__r0 != m.sel {
+		m.sel = v__r0
+	}
+}
+
+func (m *Model) __focusLoop0_len() int {
+	var __focusCount int = 0
+	for range []Choice__record__string{Choice__record__string{Label: "small", Value: "small"}, Choice__record__string{Label: "medium", Value: "medium"}, Choice__record__string{Label: "large", Value: "large"}} {
+		__focusCount = (__focusCount + 1)
+	}
+	return __focusCount
+}
+
+func (m *Model) __focusLoop1_len() int {
+	var __focusCount int = 0
+	for range []Choice__record__string{Choice__record__string{Label: "small", Value: "small"}, Choice__record__string{Label: "medium", Value: "medium"}, Choice__record__string{Label: "large", Value: "large"}} {
+		__focusCount = (__focusCount + 1)
+	}
+	return __focusCount
+}
+
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 0 {
+		return (m.__focusLoop0_len() > 0)
+	}
+	if m.__focusID == 1 {
+		return false
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
+	if m.__focusID == 0 {
+		var __focusLen int = m.__focusLoop0_len()
+		if (m.__focusLoop0_cursor + 1) < __focusLen {
+			m.__focusLoop0_cursor = (m.__focusLoop0_cursor + 1)
+		} else {
+			m.__focusID = 1
+			m.__focusLoop1_cursor = 0
+		}
+	} else {
+		if m.__focusID == 1 {
+			var __focusLen int = m.__focusLoop1_len()
+			if (m.__focusLoop1_cursor + 1) < __focusLen {
+				m.__focusLoop1_cursor = (m.__focusLoop1_cursor + 1)
+			} else {
+				m.__focusID = 0
+				m.__focusLoop0_cursor = 0
+			}
+		}
+	}
+}
+
+func (m *Model) __focusStepPrev() {
+	if m.__focusID == 0 {
+		if m.__focusLoop0_cursor > 0 {
+			m.__focusLoop0_cursor = (m.__focusLoop0_cursor - 1)
+		} else {
+			var __focusLen int = m.__focusLoop1_len()
+			m.__focusID = 1
+			m.__focusLoop1_cursor = (__focusLen - 1)
+		}
+	} else {
+		if m.__focusID == 1 {
+			if m.__focusLoop1_cursor > 0 {
+				m.__focusLoop1_cursor = (m.__focusLoop1_cursor - 1)
+			} else {
+				var __focusLen int = m.__focusLoop0_len()
+				m.__focusID = 0
+				m.__focusLoop0_cursor = (__focusLen - 1)
+			}
+		}
+	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Sel() string {
@@ -338,21 +549,113 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
 			return m, tea.Quit
+		case msg.Code == tea.KeyTab && msg.Mod == 0:
+			m.__focusNext()
+		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
+			m.__focusPrev()
+		case msg.Code == tea.KeySpace && m.__focusID == 0 && (m.__pressing || m.__focusShown()):
+			func() {
+				__focusPos0 := 0
+				for _, opt := range []Choice__record__string{Choice__record__string{Label: "small", Value: "small"}, Choice__record__string{Label: "medium", Value: "medium"}, Choice__record__string{Label: "large", Value: "large"}} {
+					_ = opt
+					var __lt17 string
+					_ = __lt17
+					if opt.Value == m.sel {
+						__lt17 = "(•) "
+					} else {
+						__lt17 = "( ) "
+					}
+					if true {
+						if m.__focusLoop0_cursor == __focusPos0 {
+							m.pickValue__inst0(opt.Value)
+							return
+						}
+						__focusPos0++
+					}
+				}
+			}()
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	prev := [...]int{m.__focusID, m.__focusLoop0_cursor, m.__focusLoop1_cursor}
+	m.__focusID = s.slot
+	switch s.slot {
+	case 0:
+		m.__focusLoop0_cursor = s.pos
+	case 1:
+		m.__focusLoop1_cursor = s.pos
+	}
+	tabbed := m.__focusShown()
+	var cmd tea.Cmd
+	if s.press {
+		m.__pressing = true
+		_, cmd = m.Update(s.key)
+		m.__pressing = false
+	}
+	if !tabbed {
+		m.__focusID = prev[0]
+		m.__focusLoop0_cursor = prev[1]
+		m.__focusLoop1_cursor = prev[2]
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	var contentChildren []string
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	var content_0 string
+	__focusPos0 := 0
+	_ = __focusPos0
+	var content_0Items []string
+	for _, opt := range []Choice__record__string{Choice__record__string{Label: "small", Value: "small"}, Choice__record__string{Label: "medium", Value: "medium"}, Choice__record__string{Label: "large", Value: "large"}} {
+		_ = opt
+		var content_0Item string
+		var __lt17 string
+		if opt.Value == m.sel {
+			__lt17 = "(•) "
+		} else {
+			__lt17 = "( ) "
+		}
+		content_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0)) && m.__focusShown()
+		content_0ItemPrefix := " "
+		if content_0ItemFocused {
+			content_0ItemPrefix = ">"
+		}
+		content_0ItemText := content_0ItemPrefix + " " + fmt.Sprint((__lt17 + opt.Label))
+		content_0Item = tui.Within(tui.Focused(lipgloss.NewStyle(), content_0ItemFocused), tui.Avail(m.width), content_0ItemText).Render(content_0ItemText)
+		content_0Item = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_0Item)
+		if true {
+			__focusPos0++
+		}
+		content_0Items = append(content_0Items, content_0Item)
+	}
+	content_0 = tui.Spaced(true, lipgloss.Top, 0, content_0Items...)
+	if content_0 != "" {
+		contentChildren = append(contentChildren, content_0)
+	}
+	content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -372,6 +675,7 @@ import "testing"
 func TestRadioValueMutates(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.sel == "medium")) { t.Errorf("assert failed: %s", "(c.sel == \"medium\")") }
 	c.sel = "large"
 	if !((c.sel == "large")) { t.Errorf("assert failed: %s", "(c.sel == \"large\")") }
@@ -380,7 +684,13 @@ func TestRadioValueMutates(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from component_radio.sngl; DO NOT EDIT.
 
@@ -390,25 +700,280 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
 	"os"
 )
 
+type Test struct {
+}
+
+type Choice__record__string struct {
+	Label string
+	Value string
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
-	sel string
+	sel            string
+	__root         *fyne.Container
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__inst0_live   []*__child0Instance
+	__inst1_live   []*__child1Instance
+	__rendering0   bool
+	__renderAgain0 bool
+	__slot1        []fyne.CanvasObject
+	__slot1_at     fyne.CanvasObject
+	__inst2_live   []*__child2Instance
+	__inst3_live   []*__child3Instance
+	__rendering1   bool
+	__renderAgain1 bool
 
-	__n0 *fyne.Container
+	__n8 *fyne.Container
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.sel = "medium"
+	m.__init(nil)
 	return m
 }
 
-func (m *Model) __n0_value_handler(__value string) {
-	m.sel = __value
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["sel"] {
+		m.sel = "medium"
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__inst0_live"] {
+		m.__inst0_live = []*__child0Instance{}
+	}
+	if !preset["__inst1_live"] {
+		m.__inst1_live = []*__child1Instance{}
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__inst2_live"] {
+		m.__inst2_live = []*__child2Instance{}
+	}
+	if !preset["__inst3_live"] {
+		m.__inst3_live = []*__child3Instance{}
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
+}
+
+func (m *Model) pickValue__inst0(v string) {
+	if v != m.sel {
+		m.sel = v
+		for __inst0_live_ui, _ := range m.__inst0_live {
+			m.__inst0_live[__inst0_live_ui].Set__p1(m.sel)
+		}
+		for __inst1_live_ui, _ := range m.__inst1_live {
+			m.__inst1_live[__inst1_live_ui].Set__p1(m.sel)
+		}
+		for __inst2_live_ui, _ := range m.__inst2_live {
+			m.__inst2_live[__inst2_live_ui].Set__p1(m.sel)
+		}
+		for __inst3_live_ui, _ := range m.__inst3_live {
+			m.__inst3_live[__inst3_live_ui].Set__p1(m.sel)
+		}
+	}
+}
+
+func (m *Model) __renderSlot0(__parent *fyne.Container) {
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				__inst0_next := []*__child0Instance{}
+				var __inst0_i int = 0
+				__inst1_next := []*__child1Instance{}
+				var __inst1_i int = 0
+				for _, opt := range []Choice__record__string{Choice__record__string{Label: "small", Value: "small"}, Choice__record__string{Label: "medium", Value: "medium"}, Choice__record__string{Label: "large", Value: "large"}} {
+					var __n4 *__child0Instance
+					if len(m.__inst0_live) > __inst0_i {
+						__n4 = m.__inst0_live[__inst0_i]
+						__n4.Set__on0(func(on bool) {
+							if on {
+								m.pickValue__inst0(opt.Value)
+							}
+						})
+						__n4.Set__p0(opt)
+						__n4.Set__p1(m.sel)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n4__new := new__child0Instance(m, opt, m.sel, func(on bool) {
+							if on {
+								m.pickValue__inst0(opt.Value)
+							}
+						})
+						__n4 = __n4__new
+					}
+					__inst0_next = append(__inst0_next, __n4)
+					__inst0_i = (__inst0_i + 1)
+					__n4__el := __n4.Root
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
+					m.__slot0 = append(m.__slot0, __n4__el)
+				}
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
+				}
+				m.__inst0_live = __inst0_next
+				for __inst1_i_d, _ := range m.__inst1_live {
+					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+					if __inst1_i_j >= __inst1_i {
+						m.__inst1_live[__inst1_i_j].Destroy()
+					}
+				}
+				m.__inst1_live = __inst1_next
+			}
+		}()
+	}
+}
+
+func (m *Model) __renderSlot1(__parent *fyne.Container) {
+	if m.__rendering1 {
+		m.__renderAgain1 = true
+	} else {
+		m.__rendering1 = true
+		m.__renderAgain1 = true
+		func() {
+			defer func() {
+				m.__rendering1 = false
+			}()
+			for m.__renderAgain1 {
+				m.__renderAgain1 = false
+				for _, __entry := range m.__slot1 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot1 = nil
+				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+				__inst2_next := []*__child2Instance{}
+				var __inst2_i int = 0
+				__inst3_next := []*__child3Instance{}
+				var __inst3_i int = 0
+				for _, opt := range []Choice__record__string{Choice__record__string{Label: "small", Value: "small"}, Choice__record__string{Label: "medium", Value: "medium"}, Choice__record__string{Label: "large", Value: "large"}} {
+					var __n6 *__child2Instance
+					if len(m.__inst2_live) > __inst2_i {
+						__n6 = m.__inst2_live[__inst2_i]
+						__n6.Set__on0(func(on bool) {
+							if on {
+								m.pickValue__inst0(opt.Value)
+							}
+						})
+						__n6.Set__p0(opt)
+						__n6.Set__p1(m.sel)
+					} else {
+						if len(m.__inst2_live) > __inst2_i {
+							m.__inst2_live[__inst2_i].Destroy()
+						}
+						__n6__new := new__child2Instance(m, opt, m.sel, func(on bool) {
+							if on {
+								m.pickValue__inst0(opt.Value)
+							}
+						})
+						__n6 = __n6__new
+					}
+					__inst2_next = append(__inst2_next, __n6)
+					__inst2_i = (__inst2_i + 1)
+					__n6__el := __n6.Root
+					fynelayout.InsertBefore(__parent, m.__slot1_at, __n6__el)
+					m.__slot1 = append(m.__slot1, __n6__el)
+				}
+				for __inst2_i_d, _ := range m.__inst2_live {
+					var __inst2_i_j int = ((len(m.__inst2_live) - 1) - __inst2_i_d)
+					if __inst2_i_j >= __inst2_i {
+						m.__inst2_live[__inst2_i_j].Destroy()
+					}
+				}
+				m.__inst2_live = __inst2_next
+				for __inst3_i_d, _ := range m.__inst3_live {
+					var __inst3_i_j int = ((len(m.__inst3_live) - 1) - __inst3_i_d)
+					if __inst3_i_j >= __inst3_i {
+						m.__inst3_live[__inst3_i_j].Destroy()
+					}
+				}
+				m.__inst3_live = __inst3_next
+			}
+		}()
+	}
+}
+
+func (m *Model) __wrote_sel() {
+	for __inst0_live_ui, _ := range m.__inst0_live {
+		m.__inst0_live[__inst0_live_ui].Set__p1(m.sel)
+	}
+	for __inst1_live_ui, _ := range m.__inst1_live {
+		m.__inst1_live[__inst1_live_ui].Set__p1(m.sel)
+	}
+	for __inst2_live_ui, _ := range m.__inst2_live {
+		m.__inst2_live[__inst2_live_ui].Set__p1(m.sel)
+	}
+	for __inst3_live_ui, _ := range m.__inst3_live {
+		m.__inst3_live[__inst3_live_ui].Set__p1(m.sel)
+	}
+}
+
+func (m *Model) __snglTeardown() {
+	for __inst3_live_di, _ := range m.__inst3_live {
+		var __inst3_live_dj int = ((len(m.__inst3_live) - 1) - __inst3_live_di)
+		m.__inst3_live[__inst3_live_dj].Destroy()
+	}
+	m.__inst3_live = []*__child3Instance{}
+	for __inst2_live_di, _ := range m.__inst2_live {
+		var __inst2_live_dj int = ((len(m.__inst2_live) - 1) - __inst2_live_di)
+		m.__inst2_live[__inst2_live_dj].Destroy()
+	}
+	m.__inst2_live = []*__child2Instance{}
+	for __inst1_live_di, _ := range m.__inst1_live {
+		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
+		m.__inst1_live[__inst1_live_dj].Destroy()
+	}
+	m.__inst1_live = []*__child1Instance{}
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__child0Instance{}
 }
 
 func (m *Model) Sel() string {
@@ -421,10 +986,191 @@ func (m *Model) SetSel(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = fynelayout.NewVBox()
-	content := fyne.CanvasObject(m.__n0)
+	m.__n8 = fynelayout.NewHBox()
+	m.__renderSlot0(m.__n8)
+	content := fyne.CanvasObject(m.__n8)
 	return content
 }
+
+// __child0Instance is one live instance of the __child0 component.
+type __child0Instance struct {
+	Root         fyne.CanvasObject
+	__model      *Model
+	__prop___p0  Choice__record__string
+	__prop___p1  string
+	__prop___on0 func(bool)
+	__root       *fyne.Container
+	__n0         *fynelayout.Check
+}
+
+func new__child0Instance(__model *Model, __a___p0 Choice__record__string, __a___p1 string, __a___on0 func(bool)) *__child0Instance {
+	c := &__child0Instance{}
+	c.__model = __model
+	c.__prop___p0 = __a___p0
+	c.__prop___p1 = __a___p1
+	c.__prop___on0 = __a___on0
+	c.__root = container.NewVBox()
+	c.__n0 = fynelayout.NewCheck("", nil)
+	c.__n0.SetText(c.__prop___p0.Label)
+	c.__n0.SetChecked((c.__prop___p0.Value == c.__prop___p1))
+	c.__n0.OnChanged = func(__on0_0 bool) {
+		c.__prop___on0(__on0_0)
+	}
+	c.Root = c.__n0
+	return c
+}
+
+func (c *__child0Instance) Set__p0(__v Choice__record__string) {
+	c.__prop___p0 = __v
+	c.__n0.SetText(c.__prop___p0.Label)
+	c.__n0.SetChecked((c.__prop___p0.Value == c.__prop___p1))
+}
+
+func (c *__child0Instance) Set__p1(__v string) {
+	c.__prop___p1 = __v
+	c.__n0.SetChecked((c.__prop___p0.Value == c.__prop___p1))
+}
+
+func (c *__child0Instance) Set__on0(__v func(bool)) {
+	c.__prop___on0 = __v
+}
+
+func (c *__child0Instance) Destroy() {}
+
+// __child1Instance is one live instance of the __child1 component.
+type __child1Instance struct {
+	Root         fyne.CanvasObject
+	__model      *Model
+	__prop___p0  Choice__record__string
+	__prop___p1  string
+	__prop___on0 func(bool)
+	__root       *fyne.Container
+	__n1         *fynelayout.Check
+}
+
+func new__child1Instance(__model *Model, __a___p0 Choice__record__string, __a___p1 string, __a___on0 func(bool)) *__child1Instance {
+	c := &__child1Instance{}
+	c.__model = __model
+	c.__prop___p0 = __a___p0
+	c.__prop___p1 = __a___p1
+	c.__prop___on0 = __a___on0
+	c.__root = container.NewVBox()
+	c.__n1 = fynelayout.NewNoTabCheck("", nil)
+	c.__n1.SetText(c.__prop___p0.Label)
+	c.__n1.SetChecked((c.__prop___p0.Value == c.__prop___p1))
+	c.__n1.OnChanged = func(__on0_0 bool) {
+		c.__prop___on0(__on0_0)
+	}
+	c.Root = c.__n1
+	return c
+}
+
+func (c *__child1Instance) Set__p0(__v Choice__record__string) {
+	c.__prop___p0 = __v
+	c.__n1.SetText(c.__prop___p0.Label)
+	c.__n1.SetChecked((c.__prop___p0.Value == c.__prop___p1))
+}
+
+func (c *__child1Instance) Set__p1(__v string) {
+	c.__prop___p1 = __v
+	c.__n1.SetChecked((c.__prop___p0.Value == c.__prop___p1))
+}
+
+func (c *__child1Instance) Set__on0(__v func(bool)) {
+	c.__prop___on0 = __v
+}
+
+func (c *__child1Instance) Destroy() {}
+
+// __child2Instance is one live instance of the __child2 component.
+type __child2Instance struct {
+	Root         fyne.CanvasObject
+	__model      *Model
+	__prop___p0  Choice__record__string
+	__prop___p1  string
+	__prop___on0 func(bool)
+	__root       *fyne.Container
+	__n2         *fynelayout.Check
+}
+
+func new__child2Instance(__model *Model, __a___p0 Choice__record__string, __a___p1 string, __a___on0 func(bool)) *__child2Instance {
+	c := &__child2Instance{}
+	c.__model = __model
+	c.__prop___p0 = __a___p0
+	c.__prop___p1 = __a___p1
+	c.__prop___on0 = __a___on0
+	c.__root = container.NewVBox()
+	c.__n2 = fynelayout.NewCheck("", nil)
+	c.__n2.SetText(c.__prop___p0.Label)
+	c.__n2.SetChecked((c.__prop___p0.Value == c.__prop___p1))
+	c.__n2.OnChanged = func(__on0_0 bool) {
+		c.__prop___on0(__on0_0)
+	}
+	c.Root = c.__n2
+	return c
+}
+
+func (c *__child2Instance) Set__p0(__v Choice__record__string) {
+	c.__prop___p0 = __v
+	c.__n2.SetText(c.__prop___p0.Label)
+	c.__n2.SetChecked((c.__prop___p0.Value == c.__prop___p1))
+}
+
+func (c *__child2Instance) Set__p1(__v string) {
+	c.__prop___p1 = __v
+	c.__n2.SetChecked((c.__prop___p0.Value == c.__prop___p1))
+}
+
+func (c *__child2Instance) Set__on0(__v func(bool)) {
+	c.__prop___on0 = __v
+}
+
+func (c *__child2Instance) Destroy() {}
+
+// __child3Instance is one live instance of the __child3 component.
+type __child3Instance struct {
+	Root         fyne.CanvasObject
+	__model      *Model
+	__prop___p0  Choice__record__string
+	__prop___p1  string
+	__prop___on0 func(bool)
+	__root       *fyne.Container
+	__n3         *fynelayout.Check
+}
+
+func new__child3Instance(__model *Model, __a___p0 Choice__record__string, __a___p1 string, __a___on0 func(bool)) *__child3Instance {
+	c := &__child3Instance{}
+	c.__model = __model
+	c.__prop___p0 = __a___p0
+	c.__prop___p1 = __a___p1
+	c.__prop___on0 = __a___on0
+	c.__root = container.NewVBox()
+	c.__n3 = fynelayout.NewNoTabCheck("", nil)
+	c.__n3.SetText(c.__prop___p0.Label)
+	c.__n3.SetChecked((c.__prop___p0.Value == c.__prop___p1))
+	c.__n3.OnChanged = func(__on0_0 bool) {
+		c.__prop___on0(__on0_0)
+	}
+	c.Root = c.__n3
+	return c
+}
+
+func (c *__child3Instance) Set__p0(__v Choice__record__string) {
+	c.__prop___p0 = __v
+	c.__n3.SetText(c.__prop___p0.Label)
+	c.__n3.SetChecked((c.__prop___p0.Value == c.__prop___p1))
+}
+
+func (c *__child3Instance) Set__p1(__v string) {
+	c.__prop___p1 = __v
+	c.__n3.SetChecked((c.__prop___p0.Value == c.__prop___p1))
+}
+
+func (c *__child3Instance) Set__on0(__v func(bool)) {
+	c.__prop___on0 = __v
+}
+
+func (c *__child3Instance) Destroy() {}
 
 func main() {
 	a := app.New()
@@ -433,6 +1179,7 @@ func main() {
 	w.SetContent(m.BuildUI())
 	w.Resize(fyne.NewSize(480, 640))
 	w.ShowAndRun()
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/go/fyne/model_test.go --
@@ -443,10 +1190,13 @@ import "testing"
 func TestRadioValueMutates(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.sel == "medium")) { t.Errorf("assert failed: %s", "(c.sel == \"medium\")") }
 	c.sel = "large"
+	c.__wrote_sel()
 	if !((c.sel == "large")) { t.Errorf("assert failed: %s", "(c.sel == \"large\")") }
 	c.sel = "small"
+	c.__wrote_sel()
 	if !((c.sel == "small")) { t.Errorf("assert failed: %s", "(c.sel == \"small\")") }
 }
 
@@ -457,7 +1207,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -479,8 +1233,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 
-data class Choice__record(
-    var label: String = ""
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
+data class Choice__record__string(
+    var label: String = "",
+    var value: String = ""
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -489,8 +1250,17 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var sel by mutableStateOf("medium")
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var sel by mutableStateOf(__snglPre(__pre, "sel") { "medium" })
+    fun pickValue__inst0(v: String) {
+        if ((v != sel)) {
+        	sel = v
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -498,10 +1268,10 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Row(modifier = Modifier.safeDrawingPadding()) {
-        for (opt in listOf(Choice__record(label = "small"), Choice__record(label = "medium"), Choice__record(label = "large"))) {
+        for (opt in listOf(Choice__record__string(label = "small", value = "small"), Choice__record__string(label = "medium", value = "medium"), Choice__record__string(label = "large", value = "large"))) {
             Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = (state.sel == opt.label), onClick = {
-                    state.sel = opt.label
+                RadioButton(selected = (state.sel == opt.value), onClick = {
+                    state.pickValue__inst0(opt.value)
                 })
                 Text(text = opt.label, modifier = Modifier)
             }
@@ -570,20 +1340,56 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { sel: "medium" };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
+  }
+  function css(s) {
+    return [{ property: "border", value: s.border }, { property: "margin", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? s.margin === null ? "" : s.margin.em === 0 && s.margin.rem === 0 ? String(s.margin.px) + "px" : s.margin.px === 0 && s.margin.rem === 0 ? String(s.margin.em) + "em" : s.margin.px === 0 && s.margin.em === 0 ? String(s.margin.rem) + "rem" : "calc(" + plus(plus(s.margin.px === 0 ? "" : String(s.margin.px) + "px", s.margin.em === 0 ? "" : String(s.margin.em) + "em"), s.margin.rem === 0 ? "" : String(s.margin.rem) + "rem") + ")" : "" }, { property: "margin-top", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginTop !== null ? s.marginTop : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-right", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginRight !== null ? s.marginRight : s.marginX !== null ? s.marginX : s.margin) }, { property: "margin-bottom", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginBottom !== null ? s.marginBottom : s.marginY !== null ? s.marginY : s.margin) }, { property: "margin-left", value: s.marginX === null && s.marginY === null && s.marginTop === null && s.marginRight === null && s.marginBottom === null && s.marginLeft === null ? "" : lengthOf(s.marginLeft !== null ? s.marginLeft : s.marginX !== null ? s.marginX : s.margin) }, { property: "padding", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? s.padding === null ? "" : s.padding.em === 0 && s.padding.rem === 0 ? String(s.padding.px) + "px" : s.padding.px === 0 && s.padding.rem === 0 ? String(s.padding.em) + "em" : s.padding.px === 0 && s.padding.em === 0 ? String(s.padding.rem) + "rem" : "calc(" + plus(plus(s.padding.px === 0 ? "" : String(s.padding.px) + "px", s.padding.em === 0 ? "" : String(s.padding.em) + "em"), s.padding.rem === 0 ? "" : String(s.padding.rem) + "rem") + ")" : "" }, { property: "padding-top", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingTop !== null ? s.paddingTop : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-right", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingRight !== null ? s.paddingRight : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "padding-bottom", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingBottom !== null ? s.paddingBottom : s.paddingY !== null ? s.paddingY : s.padding) }, { property: "padding-left", value: s.paddingX === null && s.paddingY === null && s.paddingTop === null && s.paddingRight === null && s.paddingBottom === null && s.paddingLeft === null ? "" : lengthOf(s.paddingLeft !== null ? s.paddingLeft : s.paddingX !== null ? s.paddingX : s.padding) }, { property: "gap", value: s.gap === null ? "" : s.gap.em === 0 && s.gap.rem === 0 ? String(s.gap.px) + "px" : s.gap.px === 0 && s.gap.rem === 0 ? String(s.gap.em) + "em" : s.gap.px === 0 && s.gap.em === 0 ? String(s.gap.rem) + "rem" : "calc(" + plus(plus(s.gap.px === 0 ? "" : String(s.gap.px) + "px", s.gap.em === 0 ? "" : String(s.gap.em) + "em"), s.gap.rem === 0 ? "" : String(s.gap.rem) + "rem") + ")" }, { property: "display", value: s.display === "flex" ? "flex" : s.display === "block" ? "block" : s.display === "inline" ? "inline" : s.display === "inlineBlock" ? "inline-block" : s.display === "inlineFlex" ? "inline-flex" : s.display === "none" ? "none" : s.display === "grid" ? "grid" : "" }, { property: "flex-direction", value: s.flexDirection === "row" ? "row" : s.flexDirection === "column" ? "column" : s.flexDirection === "rowReverse" ? "row-reverse" : s.flexDirection === "columnReverse" ? "column-reverse" : "" }, { property: "align-items", value: s.alignItems === "start" ? "start" : s.alignItems === "center" ? "center" : s.alignItems === "end" ? "end" : s.alignItems === "stretch" ? "stretch" : s.alignItems === "baseline" ? "baseline" : "" }, { property: "justify-content", value: s.justifyContent === "start" ? "start" : s.justifyContent === "center" ? "center" : s.justifyContent === "end" ? "end" : s.justifyContent === "spaceBetween" ? "space-between" : s.justifyContent === "spaceAround" ? "space-around" : s.justifyContent === "spaceEvenly" ? "space-evenly" : "" }, { property: "flex", value: s.flex === null ? "" : String(s.flex) }, { property: "min-width", value: s.flex === null ? "" : "0" }, { property: "min-height", value: s.flex === null ? "" : "0" }, { property: "width", value: s.width === null ? "" : s.width.em === 0 && s.width.rem === 0 ? String(s.width.px) + "px" : s.width.px === 0 && s.width.rem === 0 ? String(s.width.em) + "em" : s.width.px === 0 && s.width.em === 0 ? String(s.width.rem) + "rem" : "calc(" + plus(plus(s.width.px === 0 ? "" : String(s.width.px) + "px", s.width.em === 0 ? "" : String(s.width.em) + "em"), s.width.rem === 0 ? "" : String(s.width.rem) + "rem") + ")" }, { property: "min-width", value: s.minWidth === null ? "" : s.minWidth.em === 0 && s.minWidth.rem === 0 ? String(s.minWidth.px) + "px" : s.minWidth.px === 0 && s.minWidth.rem === 0 ? String(s.minWidth.em) + "em" : s.minWidth.px === 0 && s.minWidth.em === 0 ? String(s.minWidth.rem) + "rem" : "calc(" + plus(plus(s.minWidth.px === 0 ? "" : String(s.minWidth.px) + "px", s.minWidth.em === 0 ? "" : String(s.minWidth.em) + "em"), s.minWidth.rem === 0 ? "" : String(s.minWidth.rem) + "rem") + ")" }, { property: "height", value: s.height === null ? "" : s.height.em === 0 && s.height.rem === 0 ? String(s.height.px) + "px" : s.height.px === 0 && s.height.rem === 0 ? String(s.height.em) + "em" : s.height.px === 0 && s.height.em === 0 ? String(s.height.rem) + "rem" : "calc(" + plus(plus(s.height.px === 0 ? "" : String(s.height.px) + "px", s.height.em === 0 ? "" : String(s.height.em) + "em"), s.height.rem === 0 ? "" : String(s.height.rem) + "rem") + ")" }, { property: "max-width", value: s.maxWidth === null ? "" : s.maxWidth.em === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.px) + "px" : s.maxWidth.px === 0 && s.maxWidth.rem === 0 ? String(s.maxWidth.em) + "em" : s.maxWidth.px === 0 && s.maxWidth.em === 0 ? String(s.maxWidth.rem) + "rem" : "calc(" + plus(plus(s.maxWidth.px === 0 ? "" : String(s.maxWidth.px) + "px", s.maxWidth.em === 0 ? "" : String(s.maxWidth.em) + "em"), s.maxWidth.rem === 0 ? "" : String(s.maxWidth.rem) + "rem") + ")" }, { property: "max-height", value: s.maxHeight === null ? "" : s.maxHeight.em === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.px) + "px" : s.maxHeight.px === 0 && s.maxHeight.rem === 0 ? String(s.maxHeight.em) + "em" : s.maxHeight.px === 0 && s.maxHeight.em === 0 ? String(s.maxHeight.rem) + "rem" : "calc(" + plus(plus(s.maxHeight.px === 0 ? "" : String(s.maxHeight.px) + "px", s.maxHeight.em === 0 ? "" : String(s.maxHeight.em) + "em"), s.maxHeight.rem === 0 ? "" : String(s.maxHeight.rem) + "rem") + ")" }, { property: "position", value: s.position === "static" ? "static" : s.position === "relative" ? "relative" : s.position === "absolute" ? "absolute" : s.position === "fixed" ? "fixed" : s.position === "sticky" ? "sticky" : "" }, { property: "top", value: s.top === null ? "" : s.top.em === 0 && s.top.rem === 0 ? String(s.top.px) + "px" : s.top.px === 0 && s.top.rem === 0 ? String(s.top.em) + "em" : s.top.px === 0 && s.top.em === 0 ? String(s.top.rem) + "rem" : "calc(" + plus(plus(s.top.px === 0 ? "" : String(s.top.px) + "px", s.top.em === 0 ? "" : String(s.top.em) + "em"), s.top.rem === 0 ? "" : String(s.top.rem) + "rem") + ")" }, { property: "bottom", value: s.bottom === null ? "" : s.bottom.em === 0 && s.bottom.rem === 0 ? String(s.bottom.px) + "px" : s.bottom.px === 0 && s.bottom.rem === 0 ? String(s.bottom.em) + "em" : s.bottom.px === 0 && s.bottom.em === 0 ? String(s.bottom.rem) + "rem" : "calc(" + plus(plus(s.bottom.px === 0 ? "" : String(s.bottom.px) + "px", s.bottom.em === 0 ? "" : String(s.bottom.em) + "em"), s.bottom.rem === 0 ? "" : String(s.bottom.rem) + "rem") + ")" }, { property: "left", value: s.left === null ? "" : s.left.em === 0 && s.left.rem === 0 ? String(s.left.px) + "px" : s.left.px === 0 && s.left.rem === 0 ? String(s.left.em) + "em" : s.left.px === 0 && s.left.em === 0 ? String(s.left.rem) + "rem" : "calc(" + plus(plus(s.left.px === 0 ? "" : String(s.left.px) + "px", s.left.em === 0 ? "" : String(s.left.em) + "em"), s.left.rem === 0 ? "" : String(s.left.rem) + "rem") + ")" }, { property: "right", value: s.right === null ? "" : s.right.em === 0 && s.right.rem === 0 ? String(s.right.px) + "px" : s.right.px === 0 && s.right.rem === 0 ? String(s.right.em) + "em" : s.right.px === 0 && s.right.em === 0 ? String(s.right.rem) + "rem" : "calc(" + plus(plus(s.right.px === 0 ? "" : String(s.right.px) + "px", s.right.em === 0 ? "" : String(s.right.em) + "em"), s.right.rem === 0 ? "" : String(s.right.rem) + "rem") + ")" }, { property: "z-index", value: s.zIndex === null ? "" : String(s.zIndex) }, { property: "color", value: s.color === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.color) }, { property: "font-size", value: s.fontSize === null ? "" : s.fontSize.em === 0 && s.fontSize.rem === 0 ? String(s.fontSize.px) + "px" : s.fontSize.px === 0 && s.fontSize.rem === 0 ? String(s.fontSize.em) + "em" : s.fontSize.px === 0 && s.fontSize.em === 0 ? String(s.fontSize.rem) + "rem" : "calc(" + plus(plus(s.fontSize.px === 0 ? "" : String(s.fontSize.px) + "px", s.fontSize.em === 0 ? "" : String(s.fontSize.em) + "em"), s.fontSize.rem === 0 ? "" : String(s.fontSize.rem) + "rem") + ")" }, { property: "font-family", value: s.fontFamily }, { property: "font-weight", value: s.fontWeight === "normal" ? "normal" : s.fontWeight === "bold" ? "bold" : s.fontWeight === "lighter" ? "lighter" : s.fontWeight === "bolder" ? "bolder" : "" }, { property: "font-style", value: s.fontStyle === "normal" ? "normal" : s.fontStyle === "italic" ? "italic" : s.fontStyle === "oblique" ? "oblique" : "" }, { property: "text-align", value: s.textAlign === "left" ? "left" : s.textAlign === "center" ? "center" : s.textAlign === "right" ? "right" : s.textAlign === "justify" ? "justify" : "" }, { property: "white-space", value: s.whiteSpace === "normal" ? "normal" : s.whiteSpace === "pre" ? "pre" : s.whiteSpace === "preWrap" ? "pre-wrap" : s.whiteSpace === "preLine" ? "pre-line" : s.whiteSpace === "nowrap" ? "nowrap" : "" }, { property: "background-color", value: s.background === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.background) }, { property: "border-radius", value: s.borderRadius === null ? "" : s.borderRadius.em === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.px) + "px" : s.borderRadius.px === 0 && s.borderRadius.rem === 0 ? String(s.borderRadius.em) + "em" : s.borderRadius.px === 0 && s.borderRadius.em === 0 ? String(s.borderRadius.rem) + "rem" : "calc(" + plus(plus(s.borderRadius.px === 0 ? "" : String(s.borderRadius.px) + "px", s.borderRadius.em === 0 ? "" : String(s.borderRadius.em) + "em"), s.borderRadius.rem === 0 ? "" : String(s.borderRadius.rem) + "rem") + ")" }, { property: "border-width", value: s.borderWidth === null ? "" : s.borderWidth.em === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.px) + "px" : s.borderWidth.px === 0 && s.borderWidth.rem === 0 ? String(s.borderWidth.em) + "em" : s.borderWidth.px === 0 && s.borderWidth.em === 0 ? String(s.borderWidth.rem) + "rem" : "calc(" + plus(plus(s.borderWidth.px === 0 ? "" : String(s.borderWidth.px) + "px", s.borderWidth.em === 0 ? "" : String(s.borderWidth.em) + "em"), s.borderWidth.rem === 0 ? "" : String(s.borderWidth.rem) + "rem") + ")" }, { property: "border-style", value: s.borderStyle === "none" ? "none" : s.borderStyle === "solid" ? "solid" : s.borderStyle === "dashed" ? "dashed" : s.borderStyle === "dotted" ? "dotted" : s.borderStyle === "double" ? "double" : s.borderWidth !== null && s.border === "" ? "solid" : "" }, { property: "border-color", value: s.borderColor === null ? "" : ((c) => "#" + (c.a === 255 ? [c.r, c.g, c.b] : [c.r, c.g, c.b, c.a]).map((v) => v.toString(16).padStart(2, "0")).join(""))(s.borderColor) }, { property: "border-collapse", value: s.borderCollapse }, { property: "opacity", value: s.opacity === null ? "" : String(s.opacity) }, { property: "cursor", value: s.cursor }, { property: "list-style-type", value: s.listStyleType === "none" ? "none" : s.listStyleType === "disc" ? "disc" : s.listStyleType === "circle" ? "circle" : s.listStyleType === "square" ? "square" : s.listStyleType === "decimal" ? "decimal" : "" }, { property: "-webkit-line-clamp", value: s.maxLines === null ? "" : String(s.maxLines) }, { property: "overflow", value: s.maxLines === null ? "" : "hidden" }, { property: "display", value: s.maxLines === null ? "" : "-webkit-box" }, { property: "-webkit-box-orient", value: s.maxLines === null ? "" : "vertical" }, { property: "border-bottom", value: s.borderBottom }, { property: "border-left", value: s.borderLeft }];
+  }
+  function choiceLabeled(options, label) {
+    for (const [i, o] of options.entries()) {
+      ;
+      if (o.label === label) {
+        ;
+        return i;
+      }
+      ;
+    }
+    ;
+    return -1;
+  }
+  function lengthOf(m) {
+    return m === null ? "" : m.em === 0 && m.rem === 0 ? String(m.px) + "px" : m.px === 0 && m.rem === 0 ? String(m.em) + "em" : m.px === 0 && m.em === 0 ? String(m.rem) + "rem" : "calc(" + plus(plus(m.px === 0 ? "" : String(m.px) + "px", m.em === 0 ? "" : String(m.em) + "em"), m.rem === 0 ? "" : String(m.rem) + "rem") + ")";
+  }
+  function plus(a, b) {
+    return a === "" ? b : b === "" ? a : a + " + " + b;
+  }
+  function radio_pickValue__inst0(state2, v) {
+    if (v !== state2.sel) {
+      ;
+      state2.sel = v;
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        ;
+        __inst1_live[__inst1_live_ui].__set___p1(state2.sel);
+      }
+      ;
+    }
+    ;
   }
   function __snglTeardown() {
     for (const [__inst1_live_di, _] of __inst1_live.entries()) {
@@ -595,28 +1401,27 @@ window.__sngl_boot = () => {
     __inst1_live = [];
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { __snglTeardown });
+    Object.assign(window, { css, choiceLabeled, lengthOf, plus, radio_pickValue__inst0, __snglTeardown });
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __p1 = props.__p1;
-    let __on0 = props.__on0 ?? (() => {
+    let __on0 = props.__on0 ?? ((__e0) => {
     });
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.value = __prop___p0.label;
-      __n0.checked = __prop___p0.label === __prop___p1;
+      __n0.checked = __prop___p0.value === __prop___p1;
       __n1.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n0.checked = __prop___p0.label === __prop___p1;
+      __n0.checked = __prop___p0.value === __prop___p1;
     }
     function __set___on0(__v) {
       __prop___on0 = __v;
@@ -625,11 +1430,11 @@ window.__sngl_boot = () => {
     __n4.setAttribute("style", "gap:4px;display:inline-flex;align-items:center");
     let __n0 = document.createElement("input");
     __n0.value = __prop___p0.label;
-    __n0.checked = __prop___p0.label === __prop___p1;
+    __n0.checked = __prop___p0.value === __prop___p1;
     __n0.disabled = false;
     __n0.setAttribute("type", "radio");
-    __n0.addEventListener("change", () => {
-      __prop___on0();
+    __n0.addEventListener("change", (__on0_0) => {
+      __prop___on0(__on0_0);
     });
     __n4.appendChild(__n0);
     let __n1 = document.createElement("span");
@@ -663,15 +1468,15 @@ window.__sngl_boot = () => {
           __slot0 = [];
           let __inst1_next = [];
           let __inst1_i = 0;
-          for (const opt of [{ label: "small" }, { label: "medium" }, { label: "large" }]) {
+          for (const opt of [{ label: "small", value: "small" }, { label: "medium", value: "medium" }, { label: "large", value: "large" }]) {
             let __n2 = null;
             if (__inst1_live.length > __inst1_i) {
               __n2 = __inst1_live[__inst1_i];
-              __n2.__set___on0(() => {
-                state.sel = opt.label;
-                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+              __n2.__set___on0((e) => {
+                let at = choiceLabeled([{ label: "small", value: "small" }, { label: "medium", value: "medium" }, { label: "large", value: "large" }], e.currentTarget.value);
+                if (at >= 0) {
                   ;
-                  __inst1_live[__inst1_live_ui].__set___p1(state.sel);
+                  radio_pickValue__inst0(state, [{ label: "small", value: "small" }, { label: "medium", value: "medium" }, { label: "large", value: "large" }][at].value);
                 }
                 ;
               });
@@ -681,11 +1486,11 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n2__new = __cf___child0({ __p0: opt, __p1: state.sel, __on0: () => {
-                state.sel = opt.label;
-                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+              let __n2__new = __cf___child0({ __p0: opt, __p1: state.sel, __on0: (e) => {
+                let at = choiceLabeled([{ label: "small", value: "small" }, { label: "medium", value: "medium" }, { label: "large", value: "large" }], e.currentTarget.value);
+                if (at >= 0) {
                   ;
-                  __inst1_live[__inst1_live_ui].__set___p1(state.sel);
+                  radio_pickValue__inst0(state, [{ label: "small", value: "small" }, { label: "medium", value: "medium" }, { label: "large", value: "large" }][at].value);
                 }
                 ;
               } });
@@ -731,24 +1536,26 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { __wrote_sel });
   }
+  function String(v) {
+    return "" + v;
+  }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a732594e036aa70e67b7c62f860befdc
+pass sha256:df30ee4058fe32b3e60a07baace9e081
 -- run/go/fyne --
-pass sha256:c8ba70cad659e21eb7c1e2a3b8dfdb34
+pass sha256:8bb2fa8ff51d704b1d93b78a613542ab
 -- run/kotlin/android --
-pass sha256:c16a2b0ca8f3569c02c1708367d67b79
+pass sha256:c4024c3e85dfc9b32beb0251c0affb02
 -- run/none/html --
-pass sha256:ab7b23a9868a571189a8be2b2393d118
+pass sha256:be7d6b37a094b94dd47bc7141071e4ed
 -- testrun/html/none/component_radio.sngl/main/1 --
-sha256:f313f89a2a2431f77c739a2a51a8eb1b
+sha256:e9186e5161fa04e2bd3cca6478c17148
 {
   "results": [
     {

@@ -60,7 +60,7 @@ struct Holder[T fieldsOf[struct {
 }
 
 // A method's receiver list restates names, and its T is what the struct says.
-func Holder[T].label() => "<{this.item.name}>"
+func Holder[T].label(this Holder[T]) => "<{this.item.name}>"
 
 // A T handed on is measured by its own constraint.
 func relay[T fieldsOf[struct {
@@ -110,7 +110,7 @@ struct Entry {
 }
 
 // A receiver may spell the parameters differently.
-func Keyed[A, B].keyOf() => this.item.key
+func Keyed[A, B].keyOf(this Keyed[A, B]) => this.item.key
 
 component badge[T fieldsOf[struct {
     name string

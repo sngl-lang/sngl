@@ -245,12 +245,22 @@ func emitSnapshotMethods(info *irAnalysis) (string, []string) {
 
 type irAnalysis struct {
 	*codegen.CommonAnalysis
+	// tests is whether the package holds a test, whose invokers are its own:
+	// a build to ship holds none, and writes none of them.
+	tests     bool
 	binds     []irBind
 	externs   []irExtern
 	computeds []irComputed
 	widgets   []widgetInfo
 	overlays  []overlayInfo
 	hasFocus  bool // true when __focusOrder pass injected __focusID/__focusNext/__focusPrev
+	// floats is true where a widget's templates hand it the Model's
+	// tui.Floats, which an open select draws its popover through.
+	floats bool
+	// scrolls is each scroll a view draws, and reaches whether one has an
+	// `@reachEnd` Update runs (scroll.go).
+	scrolls map[*ir.NodeInst]*scrollInfo
+	reaches bool
 	// sleepers counts the widgets that tick themselves (sleep.go).
 	sleepers int
 	// keyType is the Go type of the KeyPress the window's `@key` hears, ""
@@ -317,6 +327,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
 		gc:             gc,
+		tests:          codegen.BuildsTests(ctx.Pkg),
 	}
 	pkg := ctx.Pkg
 	screen, err := codegen.SoleScreen(viewStmts(ctx), "bubbletea:Screen", "bubbletea", screenPos)
@@ -473,6 +484,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			break
 		}
 	}
+	info.floats = slices.ContainsFunc(info.widgets, usesFloats)
+	collectScrolls(view, ctx.Pkg, info)
 	info.settles = info.hasFocus && slices.ContainsFunc(ctx.AllFuncs(), func(f *ir.Func) bool { return f.Name == "__focusSettle" })
 
 	if info.NeedsToast {
@@ -579,6 +592,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		gc.RequireImport(tuiImportPath)
 		emitClickFields(&b, info)
 	}
+	if info.floats {
+		fmt.Fprintf(&b, "\t%s *tui.Floats\n", floatsField)
+	}
+	emitScrollFields(&b, info)
 	emitSleepFields(&b, info)
 	if screenKeyHandler(info) != nil {
 		fmt.Fprintf(&b, "\t%s bool\n", unheardField)
@@ -589,13 +606,28 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	// Binds are initialized sequentially so a later init can read an earlier
 	// field as `m.<name>`; a struct-literal init leaves `m` undefined.
 	b.WriteString("// New creates a Model with default bind values.\n")
-	b.WriteString("func New() Model {\n")
-	b.WriteString("\tm := Model{&modelState{}}\n")
-	if info.sleepers > 0 {
+	if info.tests {
+		// A test mounts its Model where it first needs it, and what it set
+		// up ahead of that keeps the value it set (mountTestComponent).
+		b.WriteString("func New() Model {\n\treturn Model{&modelState{}}.__mount(nil)\n}\n\n")
+		b.WriteString("func (m Model) __mount(preset map[string]bool) Model {\n")
+	} else {
+		b.WriteString("func New() Model {\n")
+		b.WriteString("\tm := Model{&modelState{}}\n")
+	}
+	if info.wakes() {
 		fmt.Fprintf(&b, "\tm.%s = make(chan struct{}, 1)\n", wakeField)
 	}
 	emitTimerInits(&b, info.timers)
+	if info.floats {
+		fmt.Fprintf(&b, "\tm.%s = tui.NewFloats()\n", floatsField)
+	}
+	emitScrollInit(&b, info)
 	for _, bind := range info.binds {
+		if info.tests {
+			fmt.Fprintf(&b, "\tif !preset[%q] {\n\t\tm.%s = %s\n\t}\n", bind.name, bind.name, bind.init)
+			continue
+		}
 		fmt.Fprintf(&b, "\tm.%s = %s\n", bind.name, bind.init)
 	}
 	firstFocusable := true
@@ -771,7 +803,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		emitPostDecls(&b)
 		widgetInits = append(widgetInits, awaitPost)
 	}
-	if info.sleepers > 0 {
+	if info.wakes() {
 		emitSleepDecls(&b)
 		widgetInits = append(widgetInits, awaitWake)
 	}
@@ -808,7 +840,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	emitIRUpdate(&b, info, ctx, gc, cfg, func(inv btEventInvoker) {
 		eventInvokers = append(eventInvokers, inv)
 	})
-	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerArgs(ctx.Pkg), usesPosts(ctx.Pkg), info.settles)
+	// A test's own, so a package with no test to call them, as a build to
+	// ship has none, emits none: the Pokédex shipped twenty-six of them,
+	// some two hundred lines each.
+	if info.tests {
+		emitBtEventInvokers(&b, eventInvokers, codegen.TriggerArgs(ctx.Pkg), usesPosts(ctx.Pkg), info.settles)
+	}
 	emitBtDirectInvokers(&b, viewStmts(ctx), eventInvokers, info, gc, codegen.TriggeredEvents(ctx.Pkg))
 	presentIDs, keyedPresent := codegen.NullTestedRefs(ctx.Pkg)
 	emitPresenceChecks(&b, ctx.Pkg, viewStmts(ctx), presentIDs, gc)
@@ -819,7 +856,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	emitIRView(&b, info, ctx, gc, cfg)
 
 	for _, cc := range ctx.NonRootComponents() {
-		emitIRComponentMethod(&b, cc, ctx, gc, cfg, info.settles)
+		emitIRComponentMethod(&b, cc, ctx, gc, cfg, info.settles, info)
 	}
 
 	if cfg.Main {
@@ -1052,6 +1089,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		b.WriteString("\t_ = overlayOpen\n")
 	}
 
+	emitFloatsGuard(b, info)
 	b.WriteString("\tswitch msg := msg.(type) {\n")
 
 	// Set messages — consts have no setter, skip them. Synthesized
@@ -1074,7 +1112,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 
 	// Timer ticks
 	emitTimerCases(b, info.timers, gc)
-	emitWakeCase(b, info)
+	emitWakeCase(b, info, gc)
 
 	// Toast dismiss
 	if info.NeedsToast {
@@ -1096,8 +1134,9 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	}
 
 	if info.hasFocus {
-		emitClickCase(b)
+		emitClickCase(b, info)
 	}
+	emitScrollWheel(b, info)
 
 	// KeyPressMsg
 	b.WriteString("\tcase tea.KeyPressMsg:\n")
@@ -1141,9 +1180,11 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	if info.hasFocus {
 		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyTab && msg.Mod == 0%s:\n", caseGuard)
 		b.WriteString("\t\t\tm.__focusNext()\n")
+		emitScrollFollow(b, info, "\t\t\t")
 		emitIRFocusSync(b, info.widgets)
 		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyTab && msg.Mod == tea.ModShift%s:\n", caseGuard)
 		b.WriteString("\t\t\tm.__focusPrev()\n")
+		emitScrollFollow(b, info, "\t\t\t")
 		emitIRFocusSync(b, info.widgets)
 	}
 
@@ -1155,6 +1196,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		info.owners = triggerOwners(viewStmts(ctx), codegen.TriggeredEvents(ctx.Pkg))
 	}
 	emitIRButtonHandlers(b, viewStmts(ctx), info, gc, caseGuard, invokerSink)
+	emitScrollKeys(b, info)
 
 	b.WriteString("\t\t}\n") // end switch
 	b.WriteString("\t}\n")   // end type switch
@@ -1252,6 +1294,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	if info.hasFocus {
 		emitPress(b, info)
 	}
+	emitIsFocused(b, info)
 	emitScreenKeyMethod(b, info, gc)
 	emitDrawnMethods(b, info)
 }
@@ -1711,7 +1754,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			{"input", get != "" && !hasInput && val.goType == "string" && !choosesOnMove(w)},
 			{"change", get != "" && !hasChange && commits(w)},
 		} {
-			if !ev.want || !named {
+			if !ev.want || !named || !info.tests {
 				continue
 			}
 			fmt.Fprintf(b, "// %s%s puts v in the #%s widget; for tests.\n", w.node.ID, golang.ExportName(ev.name), w.node.ID)
@@ -1747,7 +1790,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
 			drawAfterUpdate(b)
 			b.WriteString("}\n\n")
-			if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") {
+			if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") || !info.tests {
 				continue
 			}
 			fmt.Fprintf(b, "// %s%s types v into the #%s widget and runs its @%s; for tests.\n", w.node.ID, golang.ExportName(ev.name), w.node.ID, ev.name)
@@ -1808,14 +1851,15 @@ func emitIRFocusSync(b *strings.Builder, widgets []widgetInfo) {
 // modelHasFocusMethods reports whether a bubbles model type exposes
 // Focus()/Blur() methods. textinput and textarea track an internal focus flag
 // (and only blink/accept keys while focused); the SNGL focus machinery drives
-// that via explicit Focus()/Blur() calls. list-backed widgets (menu/tree/
-// select) have no such methods — they always accept navigation messages and
+// that via explicit Focus()/Blur() calls, and a tui.Select draws its button so
+// and closes its popover on Blur. list-backed widgets (menu/tree) have no
+// such methods — they always accept navigation messages and
 // are gated purely by the focus-conditioned Update forwarding — so emitting
 // Focus()/Blur() against them would not compile. Widgets absent from this set
 // still participate in focus routing; they just skip the method calls.
 func modelHasFocusMethods(modelType string) bool {
 	switch modelType {
-	case "textinput.Model", "textarea.Model":
+	case "textinput.Model", "textarea.Model", "tui.Select":
 		return true
 	default:
 		return false

@@ -1,0 +1,49 @@
+// The component a test takes mounts where the test first needs it. What the
+// test set up before that -- a context, a prop or var's starting value -- is
+// what it starts from, as a call site would give it: a var initialized from a
+// prop reads the prop the test set, and `@mount` the context. A write once it
+// has mounted moves it instead, and a test that never needs it mounts it at
+// its end.
+
+import test "sngl:test"
+import ui "sngl:ui"
+
+context #server("real")
+
+component page(name string = "a") ui.node {
+    var shown = name
+    var running = true
+    var asked = ""
+    var mounts = 0
+
+    effect(@mount {
+        mounts += 1
+        asked = "{server}/{name}"
+    })
+    ui.text #label(shown)
+}
+
+func testStartsFromWhatTheTestSet(t test.Test, c page) {
+    t.setContext(server, "local")
+    c.name = "b"
+    c.running = false
+    t.assert(c.asked == "local/b")
+    t.assert(c.mounts == 1)
+    t.assert(c.shown == "b")
+    t.assert(!c.running)
+}
+
+func testAWriteAfterTheMountMovesIt(t test.Test, c page) {
+    t.assert(c.asked == "real/a")
+    c.name = "b"
+    t.assert(c.shown == "a")
+    t.assert(c.mounts == 1)
+}
+
+func testMountsAtTheEnd(t test.Test, c page) {
+    c.name = "b"
+}
+
+ui.window {
+    page()
+}

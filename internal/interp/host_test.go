@@ -23,7 +23,7 @@ component main node {
             }
         }
         for var it = items {
-            text(value=it, key=it)
+            text(value=it)
         }
     }
 }

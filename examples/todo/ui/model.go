@@ -113,6 +113,10 @@ type modelState struct {
 	visible__inst0      bool
 	__effect0_live      []string
 	__effect0_desired   []string
+	__effect0_paths     []string
+	__effect0_livePaths []string
+	__effect0_pathAt    map[string]int
+	__effect0_liveAt    map[string]int
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -136,6 +140,10 @@ func New() Model {
 	m.visible__inst0 = true
 	m.__effect0_live = []string{}
 	m.__effect0_desired = []string{}
+	m.__effect0_paths = []string{}
+	m.__effect0_livePaths = []string{}
+	m.__effect0_pathAt = map[string]int{}
+	m.__effect0_liveAt = map[string]int{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_torn = false
@@ -172,26 +180,14 @@ func (m Model) status() string {
 	return (("Todo List (" + fmt.Sprint(len(m.todos))) + " items)")
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
-}
-
-func CellsOf(m__r1 *Measurement) int {
-	var px float64 = PxOf(m__r1)
-	var __lt4 int
-	if px <= 0.0 {
-		__lt4 = 0
-	} else {
-		__lt4 = max(1, (int(px) / 8))
-	}
-	return __lt4
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -219,26 +215,26 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt5 bool
+	var __lt4 bool
 	if s.BorderWidth != nil {
-		__lt5 = (PxOf(s.BorderWidth) > 0.0)
+		__lt4 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt4 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt5 {
+	if __lt4 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -249,98 +245,130 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt6 int
+		var __lt5 int
 		if s.MaxLines == nil {
-			__lt6 = 0
+			__lt5 = 0
 		} else {
-			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt5 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
 	}
 	return l
 }
 
-func PxOf(m__r2 *Measurement) float64 {
-	var __lt8 float64
-	if m__r2 == nil {
-		__lt8 = 0.0
+func PxOf(m__r1 *Measurement) float64 {
+	var __lt7 float64
+	if m__r1 == nil {
+		__lt7 = 0.0
 	} else {
-		__lt8 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+		__lt7 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+	}
+	return __lt7
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt8 lipgloss.Position
+	switch a {
+	case "center":
+		__lt8 = lipgloss.Center
+	case "right":
+		__lt8 = lipgloss.Right
+	default:
+		__lt8 = lipgloss.Left
 	}
 	return __lt8
 }
 
-func AlignOf(a string) lipgloss.Position {
-	var __lt9 lipgloss.Position
-	switch a {
-	case "center":
-		__lt9 = lipgloss.Center
-	case "right":
-		__lt9 = lipgloss.Right
+func BorderOf(s Style) lipgloss.Border {
+	var __lt9 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt9 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt9 = tui.DashedBorder()
 	default:
-		__lt9 = lipgloss.Left
+		var __lt10 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt10 = lipgloss.RoundedBorder()
+		} else {
+			__lt10 = lipgloss.NormalBorder()
+		}
+		__lt9 = __lt10
 	}
 	return __lt9
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt10 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt10 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt10 = tui.DashedBorder()
-	default:
-		var __lt11 lipgloss.Border
-		if s.BorderRadius != nil {
-			__lt11 = lipgloss.RoundedBorder()
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
+	var __lt12 *Measurement
+	if own != nil {
+		__lt12 = own
+	} else {
+		var __lt11 *Measurement
+		if axis != nil {
+			__lt11 = axis
 		} else {
-			__lt11 = lipgloss.NormalBorder()
+			__lt11 = all
 		}
-		__lt10 = __lt11
+		__lt12 = __lt11
 	}
-	return __lt10
+	return SpaceOf(__lt12, across)
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt13 *Measurement
-	if own != nil {
-		__lt13 = own
+func CellsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt13 int
+	if px <= 0.0 {
+		__lt13 = 0
 	} else {
-		var __lt12 *Measurement
-		if axis != nil {
-			__lt12 = axis
-		} else {
-			__lt12 = all
-		}
-		__lt13 = __lt12
+		__lt13 = max(1, (int(px) / 8))
 	}
-	return CellsOf(__lt13)
+	return __lt13
+}
+
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
+	} else {
+		__lt14 = max(1, (int(px) / 16))
+	}
+	return __lt14
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
+	var __lt16 int
 	if height__r0 == 0 {
-		__lt15 = lines
+		__lt16 = lines
 	} else {
-		var __lt14 int
+		var __lt15 int
 		if lines == 0 {
-			__lt14 = height__r0
+			__lt15 = height__r0
 		} else {
-			__lt14 = min(height__r0, lines)
+			__lt15 = min(height__r0, lines)
 		}
-		__lt15 = __lt14
+		__lt16 = __lt15
 	}
-	return __lt15
+	return __lt16
 }
 
 func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
+	m.__effect0_paths = []string{}
+	m.__effect0_pathAt = map[string]int{}
 	for index, item := range m.todos {
 		__effect0_fresh := true
-		if len(m.__effect0_desired) < len(m.__effect0_live) {
-			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(index))
+		var __effect0_at int = func() int {
+			if __v, __ok := m.__effect0_liveAt[fmt.Sprint(index)]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect0_at >= 0 {
+			__effect0_fresh = (m.__effect0_live[__effect0_at] != fmt.Sprint(index))
 		}
+		m.__effect0_pathAt[fmt.Sprint(index)] = len(m.__effect0_paths)
+		m.__effect0_paths = append(m.__effect0_paths, fmt.Sprint(index))
 		if __effect0_fresh {
 			__cell1_checked__inst0 := func() bool {
 				if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
@@ -354,6 +382,8 @@ func (m *Model) __effect0_enter() {
 		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(index))
 	}
 	m.__effect0_live = m.__effect0_desired
+	m.__effect0_livePaths = m.__effect0_paths
+	m.__effect0_liveAt = m.__effect0_pathAt
 }
 
 func (m *Model) __effects0_settle() {
@@ -597,18 +627,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = index
 					_ = item
 					if m.__focusLoop2_cursor == __focusPos2 {
+						__checkbox_checked_wrote0 := !func() bool {
+							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
+								return __v
+							}
+							return false
+						}()
 						__cell2_checked__inst0 := func() bool {
 							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
 								return __v
 							}
 							return false
 						}()
-						__cell2_checked__inst0 = !func() bool {
-							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
-								return __v
-							}
-							return false
-						}()
+						__cell2_checked__inst0 = __checkbox_checked_wrote0
 						m.checked__inst0[fmt.Sprint(index)] = __cell2_checked__inst0
 						m.todos[index].Done = !m.todos[index].Done
 						m.__effects0_settle()
@@ -678,9 +709,12 @@ func (m Model) View() tea.View {
 	var parts []string
 	var part0 string
 	if m.visible__inst0 {
+		part0Look := BoxLook(Style{Padding: snglSome(Measurement{Px: 16}), Gap: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
+		part0W, _ := tui.Inner(part0Look, tui.Avail(m.width), m.height)
 		var part0Children []string
 		var part0_0 string
-		part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(Measurement{Px: 24}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.status()))
+		part0_0Text := fmt.Sprint(m.status())
+		part0_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(Measurement{Px: 24}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), part0W, part0_0Text).Render(part0_0Text)
 		part0Children = append(part0Children, part0_0)
 		var part0_1 string
 		var part0_1Children []string
@@ -694,11 +728,12 @@ func (m Model) View() tea.View {
 		if part0_1_1Focused {
 			part0_1_1Prefix = ">"
 		}
-		part0_1_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1_1Prefix + " " + fmt.Sprint("Add"))
+		part0_1_1Text := part0_1_1Prefix + " " + fmt.Sprint("Add")
+		part0_1_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_1_1Focused), part0W, part0_1_1Text).Render(part0_1_1Text)
 		part0_1_1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_1_1)
 		part0_1Children = append(part0_1Children, part0_1_1)
 		part0_1 = tui.Spaced(true, lipgloss.Center, 1, part0_1Children...)
-		part0_1 = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).AlignVertical(lipgloss.Center).Render(part0_1)
+		part0_1 = tui.Paint(tui.Stretch(BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), part0W).AlignVertical(lipgloss.Center), part0_1)
 		part0Children = append(part0Children, part0_1)
 		var part0_2 string
 		var part0_2Children []string
@@ -715,16 +750,17 @@ func (m Model) View() tea.View {
 			if part0_2_0ItemFocused {
 				part0_2_0ItemPrefix = ">"
 			}
-			part0_2_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2_0ItemPrefix + " " + fmt.Sprint(item.Text))
+			part0_2_0ItemText := part0_2_0ItemPrefix + " " + fmt.Sprint(item.Text)
+			part0_2_0Item = tui.Within(tui.Focused(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), part0_2_0ItemFocused), part0W, part0_2_0ItemText).Render(part0_2_0ItemText)
 			part0_2_0Item = m.__clicks.Mark(snglStop{slot: 2, pos: __focusPos2, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, part0_2_0Item)
 			__focusPos2++
 			part0_2_0Items = append(part0_2_0Items, part0_2_0Item)
 		}
-		part0_2_0 = tui.Spaced(false, lipgloss.Left, 1, part0_2_0Items...)
+		part0_2_0 = tui.Spaced(false, lipgloss.Left, 0, part0_2_0Items...)
 		if part0_2_0 != "" {
 			part0_2Children = append(part0_2Children, part0_2_0)
 		}
-		part0_2 = tui.Spaced(false, lipgloss.Left, 1, part0_2Children...)
+		part0_2 = lipgloss.JoinVertical(lipgloss.Left, part0_2Children...)
 		part0Children = append(part0Children, part0_2)
 		var part0_3 string
 		part0_3Focused := (m.__focusID == 3) && m.__focusShown()
@@ -732,11 +768,12 @@ func (m Model) View() tea.View {
 		if part0_3Focused {
 			part0_3Prefix = ">"
 		}
-		part0_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "center", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_3Prefix + " " + fmt.Sprint("Remove"))
+		part0_3Text := part0_3Prefix + " " + fmt.Sprint("Remove")
+		part0_3 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "center", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_3Focused), part0W, part0_3Text).Render(part0_3Text)
 		part0_3 = m.__clicks.Mark(snglStop{slot: 3, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_3)
 		part0Children = append(part0Children, part0_3)
 		part0 = tui.Spaced(false, lipgloss.Left, 1, part0Children...)
-		part0 = BoxLook(Style{Padding: snglSome(Measurement{Px: 16}), Gap: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0)
+		part0 = tui.Paint(part0Look, part0)
 	}
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)

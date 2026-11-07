@@ -98,6 +98,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -161,13 +164,22 @@ type Model struct {
 type modelState struct {
 	shown int
 
+	__scrolls     *tui.Scrolls
+	__wake        chan struct{}
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.shown = 40
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	m.__wake = make(chan struct{}, 1)
+	m.__scrolls = tui.NewScrolls()
+	if !preset["shown"] {
+		m.shown = 40
+	}
 	return m
 }
 
@@ -177,15 +189,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -213,26 +224,26 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt4 bool
+	var __lt5 bool
 	if s.BorderWidth != nil {
-		__lt4 = (PxOf(s.BorderWidth) > 0.0)
+		__lt5 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt4 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt4 {
+	if __lt5 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -243,100 +254,111 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt5 int
+		var __lt6 int
 		if s.MaxLines == nil {
-			__lt5 = 0
+			__lt6 = 0
 		} else {
-			__lt5 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
 	}
 	return l
 }
 
 func PxOf(m__r1 *Measurement) float64 {
-	var __lt7 float64
+	var __lt8 float64
 	if m__r1 == nil {
-		__lt7 = 0.0
+		__lt8 = 0.0
 	} else {
-		__lt7 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
-	}
-	return __lt7
-}
-
-func AlignOf(a string) lipgloss.Position {
-	var __lt8 lipgloss.Position
-	switch a {
-	case "center":
-		__lt8 = lipgloss.Center
-	case "right":
-		__lt8 = lipgloss.Right
-	default:
-		__lt8 = lipgloss.Left
+		__lt8 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
 	return __lt8
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt9 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt9 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt9 = tui.DashedBorder()
+func AlignOf(a string) lipgloss.Position {
+	var __lt9 lipgloss.Position
+	switch a {
+	case "center":
+		__lt9 = lipgloss.Center
+	case "right":
+		__lt9 = lipgloss.Right
 	default:
-		var __lt10 lipgloss.Border
-		if s.BorderRadius != nil {
-			__lt10 = lipgloss.RoundedBorder()
-		} else {
-			__lt10 = lipgloss.NormalBorder()
-		}
-		__lt9 = __lt10
+		__lt9 = lipgloss.Left
 	}
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt12 *Measurement
-	if own != nil {
-		__lt12 = own
-	} else {
-		var __lt11 *Measurement
-		if axis != nil {
-			__lt11 = axis
+func BorderOf(s Style) lipgloss.Border {
+	var __lt10 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt10 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt10 = tui.DashedBorder()
+	default:
+		var __lt11 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt11 = lipgloss.RoundedBorder()
 		} else {
-			__lt11 = all
+			__lt11 = lipgloss.NormalBorder()
 		}
-		__lt12 = __lt11
+		__lt10 = __lt11
 	}
-	return CellsOf(__lt12)
+	return __lt10
+}
+
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
+	var __lt13 *Measurement
+	if own != nil {
+		__lt13 = own
+	} else {
+		var __lt12 *Measurement
+		if axis != nil {
+			__lt12 = axis
+		} else {
+			__lt12 = all
+		}
+		__lt13 = __lt12
+	}
+	return SpaceOf(__lt13, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
-	var __lt13 int
+	var __lt14 int
 	if px <= 0.0 {
-		__lt13 = 0
+		__lt14 = 0
 	} else {
-		__lt13 = max(1, (int(px) / 8))
+		__lt14 = max(1, (int(px) / 8))
 	}
-	return __lt13
+	return __lt14
+}
+
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt15 int
+	if px <= 0.0 {
+		__lt15 = 0
+	} else {
+		__lt15 = max(1, (int(px) / 16))
+	}
+	return __lt15
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
+	var __lt17 int
 	if height__r0 == 0 {
-		__lt15 = lines
+		__lt17 = lines
 	} else {
-		var __lt14 int
+		var __lt16 int
 		if lines == 0 {
-			__lt14 = height__r0
+			__lt16 = height__r0
 		} else {
-			__lt14 = min(height__r0, lines)
+			__lt16 = min(height__r0, lines)
 		}
-		__lt15 = __lt14
+		__lt17 = __lt16
 	}
-	return __lt15
+	return __lt17
 }
 
 func (m Model) Shown() int {
@@ -354,8 +376,19 @@ func SetShownCmd(v int) tea.Cmd {
 	return func() tea.Msg { return setShownMsg{value: v} }
 }
 
+// snglWakeMsg says the view drew a widget that was asleep.
+type snglWakeMsg struct{}
+
+// __awaitWake waits for the view to draw a widget that is asleep.
+func (m Model) __awaitWake() tea.Cmd {
+	return func() tea.Msg {
+		<-m.__wake
+		return snglWakeMsg{}
+	}
+}
+
 func (m Model) Init() tea.Cmd {
-	return nil
+	return m.__awaitWake()
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -365,13 +398,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setShownMsg:
 		m = m.SetShown(msg.value)
+	case snglWakeMsg:
+		if m.__scrolls.Due("0") {
+			if m.shown < 60 {
+				m.shown += 10
+			}
+		}
+		cmds = append(cmds, m.__awaitWake())
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseWheelMsg:
+		m.__scrolls.Wheel(msg)
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
 			return m, tea.Quit
+		case (msg.Code == tea.KeyPgUp || msg.Code == tea.KeyPgDown) && m.__scrolls.Key(msg):
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -386,6 +429,7 @@ func (m *Model) listReachEnd() {
 }
 
 func (m Model) View() tea.View {
+	m.__scrolls.Reset()
 	var content string
 	var contentChildren []string
 	var content_0 string
@@ -395,7 +439,8 @@ func (m Model) View() tea.View {
 	for i := range m.shown {
 		_ = i
 		var content_0_0Item string
-		content_0_0Item = BoxLook(Style{Height: snglSome(Measurement{Px: 48}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("row " + fmt.Sprint(i))))
+		content_0_0ItemText := fmt.Sprint(("row " + fmt.Sprint(i)))
+		content_0_0Item = tui.Within(BoxLook(Style{Height: snglSome(Measurement{Px: 48}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0_0ItemText).Render(content_0_0ItemText)
 		content_0_0Items = append(content_0_0Items, content_0_0Item)
 	}
 	content_0_0 = tui.Spaced(false, lipgloss.Left, 0, content_0_0Items...)
@@ -405,6 +450,17 @@ func (m Model) View() tea.View {
 	content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
 	contentChildren = append(contentChildren, content_0)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	contentVW, contentVH := tui.Inner(lipgloss.NewStyle(), tui.Avail(m.width), m.height)
+	contentFocus, contentFocused := tui.Box{}, false
+	content = m.__scrolls.View("0", content, contentVW, contentVH, 0, contentFocus, contentFocused, true)
+	content = m.__scrolls.Scan(content, 0, 0)
+	m.__scrolls.Settle()
+	if m.__scrolls.Waiting() {
+		select {
+		case m.__wake <- struct{}{}:
+		default:
+		}
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -426,13 +482,20 @@ import "testing"
 func TestReachEndLoadsAPage(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	var before int = c.shown
 	c.listReachEnd()
 	if !((c.shown > before)) { t.Errorf("assert failed: %s", "(c.shown > before)") }
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -448,6 +511,9 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
+
+type Test struct {
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -466,13 +532,29 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.shown = 40
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["shown"] {
+		m.shown = 40
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -558,6 +640,7 @@ import "testing"
 func TestReachEndLoadsAPage(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	var before int = c.shown
 	c.listReachEnd()
 	if !((c.shown > before)) { t.Errorf("assert failed: %s", "(c.shown > before)") }
@@ -570,7 +653,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -596,6 +683,9 @@ import (
 	"fmt"
 )
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	shown          int
@@ -612,13 +702,29 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.shown = 40
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["shown"] {
+		m.shown = 40
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -711,6 +817,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.key
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.LocalTextStyle
@@ -734,6 +841,12 @@ data class Measurement(
     val em: Double = 0.0,
     val rem: Double = 0.0
 )
+
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
 
 data class Style(
     var padding: Measurement? = null,
@@ -924,9 +1037,13 @@ enum class SnglListStyle(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
-class MainScreenState {
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
-    var shown by mutableStateOf(40)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
+    var shown by mutableStateOf(__snglPre(__pre, "shown") { 40 })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -940,7 +1057,9 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     }) {
         Column(modifier = Modifier.snglFlexible(false)) {
             for (i in 0 until state.shown) {
-                Text(text = ("row " + i.toString()), modifier = flexed(styleModifier(Style(height = Measurement(px = 48.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+                key(i.toString()) {
+                    Text(text = ("row " + i.toString()), modifier = flexed(styleModifier(Style(height = Measurement(px = 48.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+                }
             }
         }
     }
@@ -1262,18 +1381,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { shown: 40 };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.listReachEnd = (p) => {
     Object.assign($1, p);
     $1.dispatchEvent(Object.assign(new Event("reachEnd"), p));
@@ -1282,13 +1404,12 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function __snglTeardown() {
-    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+    for (const [__inst1_live_dk, __inst1_live_dv] of __inst1_live.entries()) {
       ;
-      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
-      __inst1_live[__inst1_live_dj].__destroy();
+      __inst1_live_dv.__destroy();
     }
     ;
-    __inst1_live = [];
+    __inst1_live = /* @__PURE__ */ new Map([]);
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { __snglTeardown });
@@ -1298,7 +1419,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = "row " + String(__prop___p0);
@@ -1315,7 +1435,7 @@ window.__sngl_boot = () => {
     };
   }
   var __slot0 = [];
-  var __inst1_live = [];
+  var __inst1_live = /* @__PURE__ */ new Map([]);
   var __rendering0 = false;
   var __renderAgain0 = false;
   function __renderSlot0(parent) {
@@ -1330,22 +1450,27 @@ window.__sngl_boot = () => {
           let __place0_prev = __slot0;
           let __place0_i = 0;
           __slot0 = [];
-          let __inst1_next = [];
-          let __inst1_i = 0;
+          let __inst1_next = /* @__PURE__ */ new Map([]);
+          let __inst1_seen = /* @__PURE__ */ new Map([]);
           for (let i = 0, __end = state.shown; i < __end; i++) {
             let __n1 = null;
-            if (__inst1_live.length > __inst1_i) {
-              __n1 = __inst1_live[__inst1_i];
+            let __key2 = String(String(i));
+            let __key2_n = __inst1_seen.has(__key2) ? __inst1_seen.get(__key2) : 0;
+            __inst1_seen.set(__key2, __key2_n + 1);
+            if (__key2_n > 0) {
+              __key2 = __key2 + "#" + String(__key2_n);
+            }
+            if (__inst1_live.has(__key2)) {
+              __n1 = __inst1_live.has(__key2) ? __inst1_live.get(__key2) : null;
               __n1.__set___p0(i);
             } else {
-              if (__inst1_live.length > __inst1_i) {
-                __inst1_live[__inst1_i].__destroy();
+              if (__inst1_live.has(__key2)) {
+                (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
               let __n1__new = __cf___child0({ __p0: i });
               __n1 = __n1__new;
             }
-            __inst1_next.push(__n1);
-            __inst1_i = __inst1_i + 1;
+            __inst1_next.set(__key2, __n1);
             let __n1__el = __n1.__root;
             let __place0_i_ref0 = null;
             if (__place0_i < __place0_prev.length) {
@@ -1358,10 +1483,9 @@ window.__sngl_boot = () => {
             }
             __slot0.push(__n1__el);
           }
-          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-            if (__inst1_i_j >= __inst1_i) {
-              __inst1_live[__inst1_i_j].__destroy();
+          for (const [__inst1_live_k, __inst1_live_v] of __inst1_live.entries()) {
+            if (!__inst1_next.has(__inst1_live_k)) {
+              __inst1_live_v.__destroy();
             }
           }
           __inst1_live = __inst1_next;
@@ -1438,16 +1562,15 @@ window.__sngl_boot = () => {
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e21f7b35b0ca5112c45b7c647aa9f8a7
+pass sha256:5a4034cb1163c2f3082b2aecd48bbcba
 -- run/go/fyne --
-pass sha256:52ee0924f584320b8c8c03cee986a4a1
+pass sha256:0d9758631027613ea989befecc162950
 -- run/go/gtk4 --
-pass sha256:8067cabf330f25a768af03d00c8c3f0e
+pass sha256:e524928baf743310bdbed034cd03168d
 -- run/kotlin/android --
-pass sha256:4d117b599b360a544b395c349928a0b2
+pass sha256:4bee11b91272d47ac6ea1f1709ef170c
 -- run/none/html --
-pass sha256:82c5750c83fa9dea36ef9d0b440c277d
+pass sha256:5a11dce680a4292f5f291ebfed96f4a6

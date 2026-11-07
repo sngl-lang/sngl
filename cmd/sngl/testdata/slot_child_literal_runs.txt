@@ -43,7 +43,7 @@ func testALiteralInAPanelBindsItsOwn(t test.Test, c shelf) {
     t.assert(c.joined != null && c.joined.value == "<1><2>")
 }
 -- testrun/android/kotlin/app.sngl/shelf/1 --
-sha256:102c49730feb89caf626099e0fa02d67
+sha256:ce52f7a969f0ba3f142ecd843a43203d
 {
   "results": [
     {
@@ -53,7 +53,7 @@ sha256:102c49730feb89caf626099e0fa02d67
   ]
 }
 -- testrun/bubbletea/go/app.sngl/shelf/1 --
-sha256:4172d4d0c4f13c56a64699c4261528bf
+sha256:b99236beda580fa1f3f3093f95ee289c
 {
   "results": [
     {
@@ -63,7 +63,7 @@ sha256:4172d4d0c4f13c56a64699c4261528bf
   ]
 }
 -- testrun/fyne/go/app.sngl/shelf/1 --
-sha256:cbcd48933b1d79b9c96622a28d358693
+sha256:7b13adfb5b9aedbaa819518dd6b30647
 {
   "results": [
     {
@@ -73,7 +73,7 @@ sha256:cbcd48933b1d79b9c96622a28d358693
   ]
 }
 -- testrun/gtk4/go/app.sngl/shelf/1 --
-sha256:0be1dd521855f66c02ed77ad7367aa73
+sha256:2279cbeac9042e00f65d9e9990211ed2
 {
   "results": [
     {
@@ -83,7 +83,7 @@ sha256:0be1dd521855f66c02ed77ad7367aa73
   ]
 }
 -- testrun/html/none/app.sngl/shelf/1 --
-sha256:f4f839b9eaee08767c8b59d95dff3af6
+sha256:c6646a59c8d27ef929223e0ef3ca81a2
 {
   "results": [
     {

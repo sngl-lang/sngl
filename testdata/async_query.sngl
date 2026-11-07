@@ -11,7 +11,7 @@ import . "sngl:ui"
 
 var asked list[string] = []
 
-func lookup(name string) async.Result[int] {
+func lookup(name string, life async.Lifetime = async.forever) async.Result[int] {
     asked.push(name)
     if name == "" {
         return {failed={kind=async.FailureKind.request, message="no name", code="400"}}
@@ -41,6 +41,33 @@ component detail node {
     button #retry(text="Retry", @click { q.refresh() })
 }
 
+// A failure is about the key it was asked of: asking about another clears
+// it before the request goes out, and a refresh keeps it until it answers.
+var standing option[async.Failure] = null
+var stoodAtAsk list[bool] = []
+
+func lookupNoting(name string, life async.Lifetime) async.Result[int] {
+    stoodAtAsk.push(standing != null)
+    return lookup(name)
+}
+
+component noting node {
+    var name = ""
+
+    async.query #q(on=name, fetch=lookupNoting, :failure=standing)
+    button #retry(text="Retry", @click { q.refresh() })
+    button #next(text="Next", @click { name = "kiwi" })
+}
+
+func testAnotherKeyClearsTheFailure(t Test, c noting) {
+    t.assert(standing != null)
+    c.retry.click()
+    t.assert(stoodAtAsk.format(",") == "false,true")
+    c.next.click()
+    t.assert(stoodAtAsk.format(",") == "false,true,false")
+    t.assert(standing == null)
+}
+
 func testAsksAtMount(t Test, c detail) {
     t.assert(c.len.value == "7")
     t.assert(c.pending.value == "false")
@@ -49,12 +76,14 @@ func testAsksAtMount(t Test, c detail) {
 }
 
 func testAsksAgainOnAChangeOfKey(t Test, c detail) {
+    t.assert(c.len.value == "7")
     c.name = "fig"
     t.assert(c.len.value == "3")
     t.assert(c.loads == 2)
 }
 
 func testAFailureKeepsTheLastAnswer(t Test, c detail) {
+    t.assert(c.err.value == "")
     c.name = ""
     t.assert(c.err.value == "could not load : no name")
     t.assert(c.len.value == "7")

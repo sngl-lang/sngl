@@ -1,4 +1,6 @@
-// 64-bit signed integer. Arithmetic operators produce `int` when both
+// Signed integer of the target's own width: 64 bits on Go and Kotlin, a
+// number on JavaScript, exact within ±2^53; a sized numeric, `int64`, is for
+// a value whose width matters. Arithmetic operators produce `int` when both
 // operands are `int`; division truncates. Methods on the `int` receiver
 // (`min`, `max`, `abs`, `clamp`) live alongside this type; convert to
 // `float` with `float(x)` before doing fractional math.

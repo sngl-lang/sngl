@@ -118,27 +118,32 @@ func (g *htmlGen) adoptElemDecl(comp *ir.Component) {
 	if g.elemDecl != nil || comp == nil {
 		return
 	}
-	var scan func(stmts []ir.Stmt)
-	scan = func(stmts []ir.Stmt) {
-		for _, s := range stmts {
-			switch n := s.(type) {
-			case *ir.LocalVar:
-				if n.Type != nil && n.Type.Kind == ir.TypeComponent {
-					if c, ok := n.Type.Decl.(*ir.Component); ok && isElement(c) && g.elemDecl == nil {
-						g.elemDecl = c
-					}
-				}
-			case *ir.If, *ir.For, *ir.Match:
-				for _, b := range ir.TransparentBlocks(n) {
-					scan(*b)
-				}
-			}
-		}
-	}
-	scan(comp.Stmts)
+	g.adoptElemDeclIn(comp.Stmts)
 	for _, fn := range comp.Funcs {
 		if fn != nil {
-			scan(fn.Block)
+			g.adoptElemDeclIn(fn.Block)
+		}
+	}
+}
+
+// adoptElemDeclIn takes the raw-element declaration from the first flattened
+// node in stmts, where none is known yet.
+func (g *htmlGen) adoptElemDeclIn(stmts []ir.Stmt) {
+	for _, s := range stmts {
+		if g.elemDecl != nil {
+			return
+		}
+		switch n := s.(type) {
+		case *ir.LocalVar:
+			if n.Type != nil && n.Type.Kind == ir.TypeComponent {
+				if c, ok := n.Type.Decl.(*ir.Component); ok && isElement(c) {
+					g.elemDecl = c
+				}
+			}
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				g.adoptElemDeclIn(*b)
+			}
 		}
 	}
 }
@@ -266,9 +271,11 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 	// well as its body: a setter or a slot renderer naming the factory's `t`
 	// means that one and not an element of the page writing a `#t`.
 	own := codegen.CreatedIDs(comp.Stmts)
+	sources := createdSources(comp.Stmts)
 	for _, fn := range comp.Funcs {
 		if fn != nil {
 			maps.Copy(own, codegen.CreatedIDs(fn.Block))
+			maps.Copy(sources, createdSources(fn.Block))
 		}
 	}
 	// Function declarations hoist, so the setters and slot renderers may be
@@ -279,6 +286,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 		}
 		tr := g.newHTMLTranslator(jc)
 		tr.own = maps.Clone(own)
+		tr.sources = maps.Clone(sources)
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
@@ -308,6 +316,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 		}
 		dtr := g.newHTMLTranslator(jc)
 		dtr.own = maps.Clone(own)
+		dtr.sources = maps.Clone(sources)
 		drawn := &ir.Func{
 			Name:   cv.Name,
 			Params: []*ir.Param{{Name: "ctx", Type: drawCtxType(cv.Draw)}},
@@ -320,6 +329,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 
 	tr := g.newHTMLTranslator(jc)
 	tr.own = maps.Clone(own)
+	tr.sources = maps.Clone(sources)
 	body := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
 	topLevel := make(map[string]bool, len(tr.topLevel))
 	for _, id := range tr.topLevel {

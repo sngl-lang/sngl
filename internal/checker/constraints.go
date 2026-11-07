@@ -13,8 +13,8 @@ import (
 // A type parameter's constraint says what a type bound to it must be, and is
 // one of sngl:builtin's constraints: `any` says nothing, `anyStruct` asks for
 // a struct, `anyFields` for a type with fields, `fieldsOf[S]` for one with at
-// least S's fields at equal types, and `methodsOf[S]` for one with a method
-// fitting each of S's functions. A named struct satisfies `fieldsOf` as
+// least S's fields at equal types, `methodsOf[S]` for one with a method
+// fitting each of S's functions, and `ordered` for one `<` orders. A named struct satisfies `fieldsOf` as
 // readily as an anonymous one -- the constraint is about fields, not
 // identity -- and so does a component, and a field default on the type being
 // measured plays no part. `methodsOf` asks for nothing else, so an int may
@@ -57,7 +57,7 @@ func (c *checker) resolveConstraintFor(te ast.TypeExpr, self *ir.Type, alias boo
 			return ir.TypAny
 		}
 	}
-	c.error(*te.ExprPos(), "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]`, `methodsOf[S]` or an alias of one")
+	c.error(*te.ExprPos(), "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]`, `methodsOf[S]`, `ordered` or an alias of one")
 	return ir.TypAny
 }
 
@@ -93,7 +93,7 @@ func (c *checker) namedConstraint(t *ast.NamedType, self *ir.Type) (*ir.Type, bo
 	}
 	con := &ir.Type{Kind: ir.TypeConstraint, Decl: sd}
 	switch sd.Builtin {
-	case ir.BuiltinAnyStruct, ir.BuiltinAnyFields:
+	case ir.BuiltinAnyStruct, ir.BuiltinAnyFields, ir.BuiltinOrdered:
 		if len(t.TypeArgs) > 0 {
 			c.error(t.Pos, "`%s` takes no type arguments", t.Name)
 		}
@@ -208,6 +208,11 @@ func (c *checker) unsatisfied(t, constraint *ir.Type, bindings map[string]*ir.Ty
 			return ""
 		}
 		switch {
+		case kind == ir.BuiltinOrdered:
+			if ir.ConstraintKind(sym.Constraint) != ir.BuiltinOrdered {
+				return "its constraint does not say `<` orders it"
+			}
+			return ""
 		case kind == ir.BuiltinAnyStruct && ir.ConstraintKind(sym.Constraint) != ir.BuiltinAnyStruct:
 			return "its constraint does not say it is a struct"
 		case kind != ir.BuiltinMethodsOf && !ir.ConstraintFielded(sym.Constraint):
@@ -219,6 +224,11 @@ func (c *checker) unsatisfied(t, constraint *ir.Type, bindings map[string]*ir.Ty
 		}
 	}
 	switch kind {
+	case ir.BuiltinOrdered:
+		if !ordered(t) {
+			return "`<` does not order it"
+		}
+		return ""
 	case ir.BuiltinMethodsOf:
 		methods := ir.ConstraintMethods(constraint)
 		for _, name := range slices.Sorted(maps.Keys(methods)) {
@@ -250,6 +260,19 @@ func (c *checker) unsatisfied(t, constraint *ir.Type, bindings map[string]*ir.Ty
 		}
 	}
 	return ""
+}
+
+// ordered reports whether `<` orders two values of t: a number, a
+// single-base unit, a string, or a type parameter constrained to one of them.
+func ordered(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	if t.Kind == ir.TypeTypeParam {
+		sym, _ := t.Decl.(*ir.TypeParamSym)
+		return sym != nil && ir.ConstraintKind(sym.Constraint) == ir.BuiltinOrdered
+	}
+	return t.IsNumeric() || t.Kind == ir.TypeString || t.IsSingleBaseUnit()
 }
 
 // methodUnsatisfied says why t's method named as want is does not take a call
@@ -419,6 +442,27 @@ func (c *checker) checkConstraint(pos ast.Pos, tp ir.TypeParam, t *ir.Type, bind
 	c.measuredAt = pos
 	if why := c.unsatisfied(t, con, bindings); why != "" {
 		c.error(pos, "%s does not satisfy %s, the constraint on %s: %s", t, con, tp.Name, why)
+	}
+}
+
+// checkNarrowedReceiver reports a call of fn, a method whose receiver's list
+// narrows a constraint, `func list[T ordered].sort()`, on a receiver whose
+// type does not satisfy it. A constraint the declaration gives the receiver
+// held where the receiver's type was written.
+func (c *checker) checkNarrowedReceiver(call *ast.CallExpr, fn *ir.Func, params []ir.TypeParam, bindings map[string]*ir.Type) {
+	if fn.AST == nil || len(fn.AST.RecvTypeParams) != len(params) {
+		return
+	}
+	for i, tp := range params {
+		t, ok := bindings[tp.Name]
+		if !ok || fn.AST.RecvTypeParams[i].Constraint == nil {
+			continue
+		}
+		con := tp.Constraint.Substitute(bindings)
+		c.measuredAt = call.Pos
+		if why := c.unsatisfied(t, con, bindings); why != "" {
+			c.error(call.Pos, "%s needs its receiver's %s to satisfy %s, and %s does not: %s", fn.Name, tp.Name, con, t, why)
+		}
 	}
 }
 

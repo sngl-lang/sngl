@@ -248,6 +248,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	__rel0                *C.char
@@ -270,18 +273,44 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.__rel0 = C.CString("first panel")
-	m.__rel1 = C.CString("second panel")
-	m.__rel2 = C.CString("more panel")
-	m.idx = 0
-	m.changed = -1
-	m.extra = false
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["__rel0"] {
+		m.__rel0 = C.CString("first panel")
+	}
+	if !preset["__rel1"] {
+		m.__rel1 = C.CString("second panel")
+	}
+	if !preset["__rel2"] {
+		m.__rel2 = C.CString("more panel")
+	}
+	if !preset["idx"] {
+		m.idx = 0
+	}
+	if !preset["changed"] {
+		m.changed = -1
+	}
+	if !preset["extra"] {
+		m.extra = false
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func (m *Model) __snglTeardown() {
@@ -434,4 +463,4 @@ func (m *Model) __list_tabs__change(key string, w *C.GtkBox) {
 	m.__copies_tabs__change[key] = w
 }
 -- run/go/gtk4 --
-pass sha256:18c6387b898d866f6719fd05b2dd0ced
+pass sha256:6882215771a591ffcbb2c19bed8cfc0c

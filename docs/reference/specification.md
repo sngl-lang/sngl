@@ -422,14 +422,17 @@ user-defined types.
 
 ### Predeclared types
 
-| Type     | Description                                            |
-|----------|--------------------------------------------------------|
-| `bool`   | `true` or `false`.                                     |
-| `int`    | 64-bit signed integer. Division truncates toward zero. |
-| `float`  | 64-bit IEEE-754 floating point.                        |
-| `string` | Immutable UTF-8 text.                                  |
+| Type     | Description                                                                                                                                     |
+|----------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| `bool`   | `true` or `false`.                                                                                                                              |
+| `int`    | Signed integer of the target's own width: 64 bits on Go and Kotlin, a number on JavaScript, exact within ±2^53. Division truncates toward zero. |
+| `float`  | 64-bit IEEE-754 floating point.                                                                                                                 |
+| `string` | Immutable UTF-8 text.                                                                                                                           |
 
-`any`, `anyStruct`, `anyFields`, `fieldsOf` and `methodsOf` are predeclared
+A value whose width is part of what it means takes a sized numeric instead,
+`int64` or `uint8` and the rest, which every target holds at its width.
+
+`any`, `anyStruct`, `anyFields`, `fieldsOf`, `methodsOf` and `ordered` are predeclared
 beside them and are no type a value may have: they are the constraints a type
 parameter names (see [Generic type parameters](#generic-type-parameters)).
 
@@ -492,10 +495,12 @@ assignment, a variable's initializer, a `push` or `insert`, an element, field or
 entry of a literal -- stores a copy, as deep as the value holds structs, lists
 and maps, so a later write to either place leaves the other as it was. A
 named parameter is passed by value the same way: a function that writes it
-writes its own copy and not the caller's. Two parameters are passed by
-reference instead -- a method's ambient `this`, so a method declared in a
-struct's body that writes `this` writes the value it was called on, and a
-parameter declared `ref[T]` (see [References](#references)). A struct may be
+writes its own copy and not the caller's, and so is a receiver a method
+declares, whatever it is called. Two parameters are passed by reference
+instead -- the `this` a method written in a struct's body binds, so such a
+method that writes `this` writes the value it was called on, and a parameter
+declared `ref[T]`, a method's receiver among them (see
+[References](#references)). A struct may be
 generic over type parameters:
 
 ```
@@ -751,7 +756,10 @@ mutates state, is an error naming the write. A branch that narrows nothing
 anybody read is unaffected, so `if x != null { x = null }` is legal.
 
 A narrowing does not cross into a lambda. The body runs when the lambda is
-called, which may be after the test has stopped holding.
+called, which may be after the test has stopped holding. An event handler of
+a node under a view's test is not part of the branch either: it runs when the
+event fires, and the view tests again before anything reads the value, so
+what a handler writes or calls leaves the test standing.
 
 ### Generic type parameters
 
@@ -761,13 +769,14 @@ component. Every type parameter names a **constraint** after its name: what a
 type bound to it must be. A constraint is one `sngl:builtin` declares, or an
 alias of one, and every file has them without an import:
 
-| Constraint     | A type bound to the parameter must                  |
-|----------------|-----------------------------------------------------|
-| `any`          | be anything                                         |
-| `anyStruct`    | be a struct, whatever its fields                    |
-| `anyFields`    | have fields: a struct, or a data component's record |
-| `fieldsOf[S]`  | have each of S's fields, at an equal type           |
-| `methodsOf[S]` | have a method fitting each function S declares      |
+| Constraint     | A type bound to the parameter must                          |
+|----------------|-------------------------------------------------------------|
+| `any`          | be anything                                                 |
+| `anyStruct`    | be a struct, whatever its fields                            |
+| `anyFields`    | have fields: a struct, or a data component's record         |
+| `fieldsOf[S]`  | have each of S's fields, at an equal type                   |
+| `methodsOf[S]` | have a method fitting each function S declares              |
+| `ordered`      | be ordered by `<`: a number, a single-base unit or a string |
 
 S is an anonymous struct, of fields for `fieldsOf` and of functions for
 `methodsOf`. A struct is no constraint by itself: `[T struct { name string }]`
@@ -826,6 +835,10 @@ func hex[T methodsOf[struct {
 var a = hex(255) // "ff": int.format also takes width and pad, which have defaults
 ```
 
+Two values of a `T ordered` compare with `<`, `<=`, `>` and `>=` as two values
+of the type bound to it do: `func larger[T ordered](a T, b T) => a < b ? b : a`. A list of one sorts with `sort()`. A type parameter is `ordered` only
+where its own constraint is.
+
 In a generic body a value of a constrained `T` has the fields `fieldsOf`
 names, typed from the constraint, and the functions `methodsOf` names, and
 nothing else: `v.name` reads a field, `v.format(16)` calls the bound type's
@@ -882,11 +895,22 @@ first name is followed by `]` or `.` is a target and one whose first name is
 followed by a type is a type-parameter list. `func first[T]` is therefore an
 override of a target named `T`, not a generic function.
 
-A method on a generic type restates its receiver's parameters by name alone,
-since the type's declaration already constrains them, and in its body each is
-what that declaration says it is:
-`func list[T].map[U any](f func(T) U) list[U]`. The `.` after the bracket is
-what makes it a receiver's.
+A method on a generic type restates its receiver's parameters by name, since
+the type's declaration already constrains them, and in its parameters and
+body each is what that declaration says it is:
+`func list[T].map[U any](this list[T], f func(T) U) list[U]`. The `.` after
+the bracket is what makes it a receiver's. The method names its receiver as
+its first parameter, as one on a concrete type does, and one with no such
+parameter is static (see [Functions and methods](#functions-and-methods)). A receiver's list may instead write a constraint
+for a parameter its declaration constrains to `any`, which narrows it: the
+method belongs to a receiver only where the type bound to that parameter
+satisfies the constraint, and in its body the parameter is what the
+constraint says. `func list[T ordered].sort(this list[T])` is a method of a `list[int]`
+and no method of a `list[bool]`, and a call of it on one is an error. Written
+for one parameter, the list writes one for each, `any` for those it leaves
+alone (`func pair[K any, V ordered].least(this pair[K, V])`), and none takes a default.
+Writing a parameter its declaration constrains with anything but `any` or
+that same constraint is an error.
 
 In a type position the arguments are written in brackets (`Box[int]`,
 `map[string, int]`). At a call site they may be written the same way, after
@@ -905,11 +929,11 @@ wherever an expression goes; a value that is a type is an error.
 Where nothing is written, a type parameter is bound by inference:
 
 - A **receiver type parameter** of a method on a generic type is bound from the
-  receiver's concrete type. For `func list[T].first() T`, a call on a
+  receiver's concrete type. For `func list[T].first(this list[T]) T`, a call on a
   `list[int]` binds `T = int`, so the result type is `int`.
 - A **method type parameter** is bound from the call's argument types,
   typically through a function argument's result type. For
-  `func list[T].map[U any](f func(T) U) list[U]`, calling `xs.map(g)` on a
+  `func list[T].map[U any](this list[T], f func(T) U) list[U]`, calling `xs.map(g)` on a
   `list[int]` with `g : func(int) string` binds `T = int` and `U = string`,
   yielding a `list[string]`.
 
@@ -1003,7 +1027,7 @@ under `lib/` is one package, `lib/<path>` being `sngl:<path>`:
 | `sngl:seq`          | `count`, `range`, `step`: the `iter[int]` sequences a counting loop walks                          |
 | `sngl:family`       | the `crosses` and `eventless` marks, and the `one[T]` slot count                                   |
 | `sngl:math`         | `pi`, `tau`                                                                                        |
-| `sngl:async`        | `start`, `do`                                                                                      |
+| `sngl:async`        | `start`, `do`, `query`, and `Lifetime`: what a request belongs to, ended to stop it                |
 | `sngl:dialog`       | `Alert`, `File`                                                                                    |
 | `sngl:settings`     | `kept`, `load`, `save` and the `store` context: values an app keeps from one run to the next       |
 | `sngl:test`         | `Test`                                                                                             |
@@ -1188,7 +1212,7 @@ FuncBodyTail =
     "=>" Expr
     | [ Type ] [ StmtBlock ]
 
-FuncName = IDENT [ "[" IDENT FuncNameBracket | "." IDENT [ NameBracket ] ]
+FuncName = IDENT { "." IDENT | "[" IDENT FuncNameBracket }
 
 TypeParamList = "[" TypeParam { "," TypeParam } "]"
 
@@ -1235,11 +1259,21 @@ struct keeps its meaning, naming parameters by its fields. A variadic parameter
 given no arguments is the empty list, so it takes no default.
 
 A **method** is a function whose name is qualified by a receiver type,
-`func Type.method(…)`. Type parameters may appear after the receiver type
-(receiver-level, names only) and after the method name (method-level, each
-naming its constraint); see
+`func Type.method(…)`, which may be another package's, named through its
+import: `func http.Response.fine(…)`. Type parameters may appear after the
+receiver type (receiver-level: its names, or a constraint for each, which
+narrows one the type's declaration leaves `any` and restates any other) and
+after the method name (method-level, each naming its constraint); see
 [Generic type parameters](#generic-type-parameters). A method is dispatched on
-the type of the receiver expression. A `func` written inside a `struct` or
+the type of the receiver expression. Declared outside its type, a method
+names its receiver as its first parameter, of the receiver's type or a `ref` to it:
+`func Money.plus(m Money, cents int)` is called as `m.plus(5)` and as
+`Money.plus(m, 5)`. The receiver is a copy, as any parameter is, whatever it
+is called. One declared `ref[T]` is the caller's cell, so a write to it is a
+write to the value the method was called on: `func Money.add(m ref[Money], cents int)` is called as `m.add(5)`, which hands it `m` as `&m` would, and
+as `Money.add(&m, 5)`. So it is called on a place, as `&` takes one: not on a
+`const` or a call's result, where the write would land nowhere. A method with no such parameter is static, called on
+the type, `Money.zero()`, and its body has no `this`. A `func` written inside a `struct` or
 `enum` body is a method of that type, and its body reads the receiver's fields
 by bare name. A `func` written in a component body is a method of the
 component.
@@ -1399,7 +1433,11 @@ their codes: `"apple" < "fig"`, and `"pear" < "pears"`.
 The ternary operator `c ? a : b` evaluates `a` when `c` is true and `b`
 otherwise; `c` must be `bool`. Where one arm is an `option[T]` and the other a
 `T`, the ternary is the `option[T]`: `o == null ? 1.0 : o` handed to an
-`option[float]` parameter is that option. The unary operators are `!` (logical negation,
+`option[float]` parameter is that option. Otherwise one arm's type is
+assignable to the other's, or an arm is `null`: a bare name in an arm is
+whatever the scope binds under it, so where a component is named `grid`,
+`ok ? flex : grid` is an error rather than two members of an enum, and the
+member is written `Display.grid`. The unary operators are `!` (logical negation,
 on `bool`), `-` (numeric or unit negation), `&` (reference), `*`
 (dereference), and `const` (constant assertion).
 
@@ -1742,6 +1780,14 @@ Iterating a list, an iterator, or a map:
   iteration requires the two-variable form;
 - `for xs` binds nothing, for a loop whose body never names the element.
 
+The name of an enum is iterable too. `for var m = Method` walks the members of
+`Method` in the order the type declares them, as though the head were the list
+of them, so `for var i, m = Method` binds each member's position as well. A
+member another package keeps to itself is left out. An enum with a member that
+carries a payload has no such list, since that member is no value without
+one, and neither has a generic enum named without its type arguments; naming
+either is an error.
+
 A counting loop iterates a `sngl:seq` sequence:
 
 <!-- SNGL-component -->
@@ -1801,6 +1847,38 @@ comes back.
 A head expression may not begin with `{`: that brace is the body's. A map or
 anonymous-struct literal in the head of a `for` — or of an `if` — is written
 parenthesized.
+
+#### A copy's identity
+
+Each copy of a view loop's body keeps its state and its lifetimes — the vars
+of a component it renders, an effect's mount — while a render holds a copy of
+the same **identity**, wherever in the list that copy is. An element's identity
+is, in order:
+
+- what its type's `key` method answers, where the type declares one taking
+  nothing but the element;
+- the element itself, where it is a `bool`, a number, a `string`, a unit or an
+  enum carrying no payload;
+- otherwise its index, which is the identity of every copy of a loop over a
+  struct with no `key`.
+
+```sngl
+struct Todo {
+    id   int
+    text string
+
+    const func key() => id
+}
+```
+
+A copy whose identity a render no longer holds ends its lifetimes, and one
+whose identity is new begins them. A `key` answers a value that compares alike
+on every target (as an effect's `on` does) and that formats: anything else is
+an error at the loop. A struct is no identity of its own, though it compares,
+since a field written would make the copy another; nor is an element bound
+with `&`, for the same reason, though its type's `key` still is. Copies sharing
+one identity are told apart by their order among themselves. A test's path into
+a loop's copies, `c.row[1]`, counts by position whatever the identities are.
 
 #### The else block
 
@@ -2673,6 +2751,9 @@ The rules:
 - **Its name is its record type in a value position.** `list[fruit]` is a list
   of records. In a family position (a return position, a slot's content) the
   name is the component.
+- **A generic data component's record is generic too.** `component choice[T any](label string, value T) choice[T]` records a `value` of whatever type its
+  container binds: a slot `options ...component choice[T]` is read as a
+  `list[choice[T]]`, and a record's `value` is a `T` there.
 
 A component **with a body** may compose records: it names the data family in
 its return position, or leaves its family to be inferred from a body that
@@ -2943,9 +3024,45 @@ import of its package like any other name.
 The index shares its bracket with a type-parameter list, and is told from one
 by its shape: a target is a name or a qualified name alone, while every type
 parameter names a constraint. An override of a method on a generic type writes
-the index after the method's name, `func list[T].second[html.platform]()`, and a
+the index after the method's name, `func list[T].second[html.platform](this list[T])`, and a
 declaration with type parameters of its own writes its list first,
 `func f[T any][html.platform]()`.
+
+**An override of an event** says how a test raises the event on that target.
+It is written as a method of the component named for the event, with the
+target's index after it, and its parameter list selects the event's
+parameters by name as any override's does. A receiver is written as its
+declaration names it, qualified by its package and with its type parameters,
+which are never implied:
+
+```sngl
+import none "sngl:platform/none"
+import ui "sngl:ui"
+
+component dial(:value int, @change(to int)) ui.node
+
+component dial[none.platform](value, @change) {
+    ui.button #up(text="{value}", @click {
+        value += 1
+        change(value)
+    })
+}
+
+func dial.change[none.platform](to) {
+    value = to
+    change(to)
+}
+
+ui.window {
+    dial(value=0)
+}
+```
+
+The body is a method of that target's override of the component, so it reads
+the props and the nodes the override named, and an override of an event for a
+target with no override of its component is an error. A test's
+`c.d.change(3)` runs it in place of reaching the control the override
+renders; an event a target does not override is raised there as before.
 
 ## Platform and language plugins
 
@@ -3078,7 +3195,7 @@ FuncBodyTail =
     "=>" Expr
     | [ Type ] [ StmtBlock ]
 
-FuncName = IDENT [ "[" IDENT FuncNameBracket | "." IDENT [ NameBracket ] ]
+FuncName = IDENT { "." IDENT | "[" IDENT FuncNameBracket }
 
 TypeParamList = "[" TypeParam { "," TypeParam } "]"
 

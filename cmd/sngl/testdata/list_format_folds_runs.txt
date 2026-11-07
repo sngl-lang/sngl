@@ -1,0 +1,50 @@
+# A list's format folded where its receiver is a constant: html's fold
+# interpreted the method's body with no binding for the receiver's T, and the
+# `_format` of each element formatted nothing, so `"{xs}"`-style comparisons
+# folded to false. The folder answers a method on a generic type by its own
+# implementation, as it did while the receiver was implicit.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+
+func langs(l string) list[string] {
+    return match l {
+        "ja" => ["ja", "ja-hrkt", "en"]
+        else => ["en"]
+    }
+}
+
+func testFormatFolds(t test.Test) {
+    t.assert(["ja", "en"].format(",") == "ja,en")
+    t.assert(langs("ja").format(",") == "ja,ja-hrkt,en")
+    t.assert(langs("ja").format(",") == "ja,ja-hrkt,en" && langs("pt").format(",") == "en")
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:d803e3a76606ceb60cc5b3243de00deb
+{
+  "results": [
+    {
+      "Desc": "FormatFolds",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:bf1237d68087b515feb8b670beb8d944
+{
+  "results": [
+    {
+      "Desc": "FormatFolds",
+      "Passed": true
+    }
+  ]
+}

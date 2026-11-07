@@ -48,6 +48,7 @@ var fyneCtors = map[string]any{
 	"fyne.io/fyne/v2/layout.NewSpacer":            layout.NewSpacer,
 	"duckfam.us/sngl/pkg/go/fynelayout.NewVBox":   fynelayout.NewVBox,
 	"duckfam.us/sngl/pkg/go/fynelayout.NewHBox":   fynelayout.NewHBox,
+	"duckfam.us/sngl/pkg/go/fynelayout.NewGrid":   fynelayout.NewGrid,
 	"fyne.io/fyne/v2/container.NewVScroll":        container.NewVScroll,
 	// The window's Toplevel is this platform's own runtime type, not a Fyne
 	// widget, and is held to the same reflection as the rest.

@@ -15,8 +15,8 @@ grep '(?m)^above *\nbelow *$' app.sngl.snapshots/page.ansi
 # focus starts on the first button shown, not the hidden one before it.
 ! grep 'hidden' app.sngl.snapshots/page.ansi
 ! grep 'level' app.sngl.snapshots/page.ansi
-grep '(?m)^> first *$' app.sngl.snapshots/page.ansi
-grep '(?m)^  second *$' app.sngl.snapshots/page.ansi
+grep '(?m)^┃> first ┃ *$' app.sngl.snapshots/page.ansi
+grep '(?m)^│  second │ *$' app.sngl.snapshots/page.ansi
 
 -- app.sngl --
 import test "sngl:test"
@@ -59,7 +59,7 @@ ui.window {
     page
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:bf6c994f068d1351ed9338503c5af82e
+sha256:584d165eb3450ba682ae04b844376c1d
 {
   "results": [
     {
@@ -68,6 +68,6 @@ sha256:bf6c994f068d1351ed9338503c5af82e
     }
   ],
   "snapshots": {
-    "page.ansi": "YWJvdmUgICAKYmVsb3cgICAKPiBmaXJzdCAKICBzZWNvbmQ="
+    "page.ansi": "YWJvdmUgICAgICAKYmVsb3cgICAgICAK4pSP4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSTIArilIM+IGZpcnN0IOKUgyAK4pSX4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSbIArila3ilIDilIDilIDilIDilIDilIDilIDilIDilIDila4K4pSCICBzZWNvbmQg4pSCCuKVsOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKVrw=="
   }
 }

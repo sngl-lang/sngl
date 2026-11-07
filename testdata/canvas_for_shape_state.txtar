@@ -66,6 +66,7 @@ func testMadeOncePerCopy(t test.Test, c page) {
 }
 
 func testRekeyedCopyReleasesItsOldValue(t test.Test, c page) {
+    t.assert(opened == 2)
     c.ws = [3.0, 2.0]
     t.assert(opened == 3)
     t.assert(closed == 1)
@@ -73,6 +74,7 @@ func testRekeyedCopyReleasesItsOldValue(t test.Test, c page) {
 }
 
 func testLeavingCopyReleases(t test.Test, c page) {
+    t.assert(closed == 0)
     c.ws = [1.0]
     t.assert(closed == 1)
     t.assert(lastClosed == 2)
@@ -108,6 +110,19 @@ type Pic struct {
 	N int
 }
 
+type Test struct {
+}
+
+type __anon_id_elem_4ccb28 struct {
+	Id   string
+	Elem float64
+}
+
+type __anon_copy_v0_2d5b73 struct {
+	Copy string
+	V0   string
+}
+
 type __anon_copy_on_5fc366 struct {
 	Copy string
 	On   float64
@@ -140,15 +155,31 @@ type modelState struct {
 	lastClosed          int
 	ws                  []float64
 	p__inst0            map[string]Pic
+	__copied__inst0     map[string]__anon_copy_v0_2d5b73
 	__effect0_live      []string
 	__effect0_desired   []string
-	__effect1_key       string
-	__effect1_live      []string
-	__effect1_desired   []string
-	__effect2_key       __anon_copy_on_5fc366
-	__effect2_dirty     bool
-	__effect2_keys      map[string]__anon_copy_on_5fc366
-	__effect2_rekey     bool
+	__effect0_paths     []string
+	__effect0_livePaths []string
+	__effect0_pathAt    map[string]int
+	__effect0_liveAt    map[string]int
+	__effect1_key       __anon_copy_v0_2d5b73
+	__effect1_live      []__anon_copy_v0_2d5b73
+	__effect1_desired   []__anon_copy_v0_2d5b73
+	__effect1_paths     []string
+	__effect1_livePaths []string
+	__effect1_pathAt    map[string]int
+	__effect1_liveAt    map[string]int
+	__effect2_key       string
+	__effect2_live      []string
+	__effect2_desired   []string
+	__effect2_paths     []string
+	__effect2_livePaths []string
+	__effect2_pathAt    map[string]int
+	__effect2_liveAt    map[string]int
+	__effect3_key       __anon_copy_on_5fc366
+	__effect3_dirty     bool
+	__effect3_keys      map[string]__anon_copy_on_5fc366
+	__effect3_rekey     bool
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -159,25 +190,112 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.opened = 0
-	m.closed = 0
-	m.lastClosed = 0
-	m.ws = []float64{1.0, 2.0}
-	m.p__inst0 = map[string]Pic{}
-	m.__effect0_live = []string{}
-	m.__effect0_desired = []string{}
-	m.__effect1_key = ""
-	m.__effect1_live = []string{}
-	m.__effect1_desired = []string{}
-	m.__effect2_key = __anon_copy_on_5fc366{}
-	m.__effect2_dirty = false
-	m.__effect2_keys = map[string]__anon_copy_on_5fc366{}
-	m.__effect2_rekey = false
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["opened"] {
+		m.opened = 0
+	}
+	if !preset["closed"] {
+		m.closed = 0
+	}
+	if !preset["lastClosed"] {
+		m.lastClosed = 0
+	}
+	if !preset["ws"] {
+		m.ws = []float64{1.0, 2.0}
+	}
+	if !preset["p__inst0"] {
+		m.p__inst0 = map[string]Pic{}
+	}
+	if !preset["__copied__inst0"] {
+		m.__copied__inst0 = map[string]__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []string{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []string{}
+	}
+	if !preset["__effect0_paths"] {
+		m.__effect0_paths = []string{}
+	}
+	if !preset["__effect0_livePaths"] {
+		m.__effect0_livePaths = []string{}
+	}
+	if !preset["__effect0_pathAt"] {
+		m.__effect0_pathAt = map[string]int{}
+	}
+	if !preset["__effect0_liveAt"] {
+		m.__effect0_liveAt = map[string]int{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = __anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_paths"] {
+		m.__effect1_paths = []string{}
+	}
+	if !preset["__effect1_livePaths"] {
+		m.__effect1_livePaths = []string{}
+	}
+	if !preset["__effect1_pathAt"] {
+		m.__effect1_pathAt = map[string]int{}
+	}
+	if !preset["__effect1_liveAt"] {
+		m.__effect1_liveAt = map[string]int{}
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = ""
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []string{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []string{}
+	}
+	if !preset["__effect2_paths"] {
+		m.__effect2_paths = []string{}
+	}
+	if !preset["__effect2_livePaths"] {
+		m.__effect2_livePaths = []string{}
+	}
+	if !preset["__effect2_pathAt"] {
+		m.__effect2_pathAt = map[string]int{}
+	}
+	if !preset["__effect2_liveAt"] {
+		m.__effect2_liveAt = map[string]int{}
+	}
+	if !preset["__effect3_key"] {
+		m.__effect3_key = __anon_copy_on_5fc366{}
+	}
+	if !preset["__effect3_dirty"] {
+		m.__effect3_dirty = false
+	}
+	if !preset["__effect3_keys"] {
+		m.__effect3_keys = map[string]__anon_copy_on_5fc366{}
+	}
+	if !preset["__effect3_rekey"] {
+		m.__effect3_rekey = false
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
 	m.__effects0_settle()
 	return m
 }
@@ -191,15 +309,15 @@ func (m *Model) SetTerminalSize(w, h int) {
 var _canvasSurface0 snglcanvas.Surface
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
-	for __copy0, k := range m.ws {
+	for _, k := range __identified0(m.ws) {
 		ctx.Save()
 		ApplyStyle(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 		ctx.Rect(0.0, 0.0, float64(func() Pic {
-			if __v, __ok := m.p__inst0[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.p__inst0[k.Id]; __ok {
 				return __v
 			}
 			return Pic{}
-		}().N), k)
+		}().N), k.Elem)
 		ctx.Restore()
 	}
 }
@@ -227,6 +345,26 @@ func (m *Model) load(n int) Pic {
 	return Pic{N: n}
 }
 
+func __identified0(__xs []float64) []__anon_id_elem_4ccb28 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_4ccb28{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_4ccb28{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
 func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
@@ -237,90 +375,160 @@ func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 
 func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
-	for __copy0, k := range m.ws {
+	m.__effect0_paths = []string{}
+	m.__effect0_pathAt = map[string]int{}
+	for _, k := range __identified0(m.ws) {
 		__effect0_fresh := true
-		if len(m.__effect0_desired) < len(m.__effect0_live) {
-			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		var __effect0_at int = func() int {
+			if __v, __ok := m.__effect0_liveAt[k.Id]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect0_at >= 0 {
+			__effect0_fresh = (m.__effect0_live[__effect0_at] != k.Id)
 		}
+		m.__effect0_pathAt[k.Id] = len(m.__effect0_paths)
+		m.__effect0_paths = append(m.__effect0_paths, k.Id)
 		if __effect0_fresh {
 			__cell2_p__inst0 := func() Pic {
-				if __v, __ok := m.p__inst0[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.p__inst0[k.Id]; __ok {
 					return __v
 				}
 				return Pic{}
 			}()
-			__cell2_p__inst0 = m.load(int(k))
-			m.p__inst0[fmt.Sprint(__copy0)] = __cell2_p__inst0
+			__cell2_p__inst0 = m.load(int(k.Elem))
+			m.p__inst0[k.Id] = __cell2_p__inst0
 		}
-		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+		m.__effect0_desired = append(m.__effect0_desired, k.Id)
 	}
 	m.__effect0_live = m.__effect0_desired
+	m.__effect0_livePaths = m.__effect0_paths
+	m.__effect0_liveAt = m.__effect0_pathAt
 }
 
-func (m *Model) __effect1_unmount() {
-	__copyKey := m.__effect1_key
+func (m *Model) __effect1_mount() {
+	m.__copied__inst0[m.__effect1_key.Copy] = m.__effect1_key
+}
+
+func (m *Model) __effect1_down() {
+	m.__effect1_desired = []__anon_copy_v0_2d5b73{}
+	m.__effect1_paths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	for _, k := range __identified0(m.ws) {
+		m.__effect1_desired = append(m.__effect1_desired, __anon_copy_v0_2d5b73{Copy: k.Id, V0: k.Id})
+		m.__effect1_pathAt[k.Id] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, k.Id)
+	}
+}
+
+func (m *Model) __effect1_up() {
+	for __effect1_i, __effect1_k := range m.__effect1_desired {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_liveAt[m.__effect1_paths[__effect1_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
+			m.__effect1_key = __effect1_k
+			m.__effect1_mount()
+		} else {
+			if (m.__effect1_live[__effect1_at].Copy != __effect1_k.Copy) || (m.__effect1_live[__effect1_at].V0 != __effect1_k.V0) {
+				m.__effect1_key = __effect1_k
+				m.__effect1_mount()
+			}
+		}
+	}
+	m.__effect1_live = m.__effect1_desired
+	m.__effect1_livePaths = m.__effect1_paths
+	m.__effect1_liveAt = m.__effect1_pathAt
+}
+
+func (m *Model) __effect2_unmount() {
+	__copyKey := m.__effect2_key
+	__copied0 := func() __anon_copy_v0_2d5b73 {
+		if __v, __ok := m.__copied__inst0[__copyKey]; __ok {
+			return __v
+		}
+		return __anon_copy_v0_2d5b73{}
+	}().V0
 	m.close__r0(func() Pic {
-		if __v, __ok := m.p__inst0[__copyKey]; __ok {
+		if __v, __ok := m.p__inst0[__copied0]; __ok {
 			return __v
 		}
 		return Pic{}
 	}())
 }
 
-func (m *Model) __effect1_down() {
-	m.__effect1_desired = []string{}
-	for __copy0, _ := range m.ws {
-		m.__effect1_desired = append(m.__effect1_desired, fmt.Sprint(__copy0))
+func (m *Model) __effect2_down() {
+	m.__effect2_desired = []string{}
+	m.__effect2_paths = []string{}
+	m.__effect2_pathAt = map[string]int{}
+	for _, k := range __identified0(m.ws) {
+		m.__effect2_desired = append(m.__effect2_desired, k.Id)
+		m.__effect2_pathAt[k.Id] = len(m.__effect2_paths)
+		m.__effect2_paths = append(m.__effect2_paths, k.Id)
 	}
-	for __effect1_i, _ := range m.__effect1_live {
-		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
-		if __effect1_j >= len(m.__effect1_desired) {
-			m.__effect1_key = m.__effect1_live[__effect1_j]
-			m.__effect1_unmount()
+	for __effect2_i, _ := range m.__effect2_live {
+		var __effect2_j int = ((len(m.__effect2_live) - 1) - __effect2_i)
+		var __effect2_at int = func() int {
+			if __v, __ok := m.__effect2_pathAt[m.__effect2_livePaths[__effect2_j]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect2_at < 0 {
+			m.__effect2_key = m.__effect2_live[__effect2_j]
+			m.__effect2_unmount()
 		} else {
-			if m.__effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
-				m.__effect1_key = m.__effect1_live[__effect1_j]
-				m.__effect1_unmount()
+			if m.__effect2_desired[__effect2_at] != m.__effect2_live[__effect2_j] {
+				m.__effect2_key = m.__effect2_live[__effect2_j]
+				m.__effect2_unmount()
 			}
 		}
 	}
 }
 
-func (m *Model) __effect1_up() {
-	m.__effect1_live = m.__effect1_desired
+func (m *Model) __effect2_up() {
+	m.__effect2_live = m.__effect2_desired
+	m.__effect2_livePaths = m.__effect2_paths
+	m.__effect2_liveAt = m.__effect2_pathAt
 }
 
-func (m *Model) __effect1_teardown() {
-	for __effect1_ti, _ := range m.__effect1_live {
-		m.__effect1_key = m.__effect1_live[((len(m.__effect1_live) - 1) - __effect1_ti)]
-		m.__effect1_unmount()
+func (m *Model) __effect2_teardown() {
+	for __effect2_ti, _ := range m.__effect2_live {
+		m.__effect2_key = m.__effect2_live[((len(m.__effect2_live) - 1) - __effect2_ti)]
+		m.__effect2_unmount()
 	}
-	m.__effect1_live = []string{}
+	m.__effect2_live = []string{}
+	m.__effect2_livePaths = []string{}
+	m.__effect2_liveAt = map[string]int{}
 }
 
-func (m *Model) __effect2_update() {
-	__copyKey := m.__effect2_key.Copy
-	var k__at0 float64 = 0.0
-	for __copyAt0, __copyElemAt0 := range m.ws {
-		if fmt.Sprint(__copyAt0) == __copyKey {
+func (m *Model) __effect3_update() {
+	__copyKey := m.__effect3_key.Copy
+	k__at0 := __anon_id_elem_4ccb28{}
+	for _, __copyElemAt0 := range __identified0(m.ws) {
+		if __copyElemAt0.Id == __copyKey {
 			k__at0 = __copyElemAt0
 		}
 	}
-	__new0 := m.load(int(k__at0))
+	__new0 := m.load(int(k__at0.Elem))
 	__old1 := func() Pic {
-		if __v, __ok := m.p__inst0[__copyKey]; __ok {
+		if __v, __ok := m.p__inst0[k__at0.Id]; __ok {
 			return __v
 		}
 		return Pic{}
 	}()
 	__cell1_p__inst0 := func() Pic {
-		if __v, __ok := m.p__inst0[__copyKey]; __ok {
+		if __v, __ok := m.p__inst0[k__at0.Id]; __ok {
 			return __v
 		}
 		return Pic{}
 	}()
 	__cell1_p__inst0 = __new0
-	m.p__inst0[__copyKey] = __cell1_p__inst0
+	m.p__inst0[k__at0.Id] = __cell1_p__inst0
 	m.close__r0(__old1)
 }
 
@@ -335,29 +543,31 @@ func (m *Model) __effects0_settle() {
 			for m.__effects0_pending && (m.__effects0_steps < 512) {
 				m.__effects0_pending = false
 				m.__effects0_steps = (m.__effects0_steps + 1)
-				m.__effect0_enter()
-				__effect2_next := map[string]__anon_copy_on_5fc366{}
-				for __copy0, k := range m.ws {
-					m.__effect2_key = __anon_copy_on_5fc366{Copy: fmt.Sprint(__copy0), On: k}
-					__effect2_copy := fmt.Sprint(__copy0)
-					if func() bool { _, __ok := m.__effect2_keys[__effect2_copy]; return __ok }() {
-						__effect2_prev := func() __anon_copy_on_5fc366 {
-							if __v, __ok := m.__effect2_keys[__effect2_copy]; __ok {
+				__effect3_next := map[string]__anon_copy_on_5fc366{}
+				for _, k := range __identified0(m.ws) {
+					m.__effect3_key = __anon_copy_on_5fc366{Copy: k.Id, On: k.Elem}
+					__effect3_copy := k.Id
+					if func() bool { _, __ok := m.__effect3_keys[__effect3_copy]; return __ok }() {
+						__effect3_prev := func() __anon_copy_on_5fc366 {
+							if __v, __ok := m.__effect3_keys[__effect3_copy]; __ok {
 								return __v
 							}
-							return m.__effect2_key
+							return m.__effect3_key
 						}()
-						if m.__effect2_dirty || (m.__effect2_rekey && ((__effect2_prev.Copy != m.__effect2_key.Copy) || (__effect2_prev.On != m.__effect2_key.On))) {
-							m.__effect2_update()
+						if m.__effect3_dirty || (m.__effect3_rekey && ((__effect3_prev.Copy != m.__effect3_key.Copy) || (__effect3_prev.On != m.__effect3_key.On))) {
+							m.__effect3_update()
 						}
 					}
-					__effect2_next[__effect2_copy] = m.__effect2_key
+					__effect3_next[__effect3_copy] = m.__effect3_key
 				}
-				m.__effect2_keys = __effect2_next
-				m.__effect2_dirty = false
-				m.__effect2_rekey = false
+				m.__effect3_keys = __effect3_next
+				m.__effect3_dirty = false
+				m.__effect3_rekey = false
+				m.__effect0_enter()
+				m.__effect2_down()
 				m.__effect1_down()
 				m.__effect1_up()
+				m.__effect2_up()
 			}
 			m.__effects0_settling = false
 			if m.__effects0_pending {
@@ -367,13 +577,13 @@ func (m *Model) __effects0_settle() {
 	}
 }
 
-func (m *Model) __effect2_rekey_mark() {
-	m.__effect2_rekey = true
+func (m *Model) __effect3_rekey_mark() {
+	m.__effect3_rekey = true
 }
 
 func (m *Model) __snglTeardown() {
 	m.__effects0_torn = true
-	m.__effect1_teardown()
+	m.__effect2_teardown()
 }
 
 func (m Model) Opened() int {
@@ -500,6 +710,7 @@ import "testing"
 func TestMadeOncePerCopy(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.opened == 2)) { t.Errorf("assert failed: %s", "(c.opened == 2)") }
 	if !((c.closed == 0)) { t.Errorf("assert failed: %s", "(c.closed == 0)") }
 }
@@ -507,8 +718,10 @@ func TestMadeOncePerCopy(t *testing.T) {
 func TestRekeyedCopyReleasesItsOldValue(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
+	if !((c.opened == 2)) { t.Errorf("assert failed: %s", "(c.opened == 2)") }
 	c.ws = []float64{3.0, 2.0}
-	c.__effect2_rekey_mark()
+	c.__effect3_rekey_mark()
 	c.__effects0_settle()
 	if !((c.opened == 3)) { t.Errorf("assert failed: %s", "(c.opened == 3)") }
 	if !((c.closed == 1)) { t.Errorf("assert failed: %s", "(c.closed == 1)") }
@@ -518,15 +731,23 @@ func TestRekeyedCopyReleasesItsOldValue(t *testing.T) {
 func TestLeavingCopyReleases(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
+	if !((c.closed == 0)) { t.Errorf("assert failed: %s", "(c.closed == 0)") }
 	c.ws = []float64{1.0}
-	c.__effect2_rekey_mark()
+	c.__effect3_rekey_mark()
 	c.__effects0_settle()
 	if !((c.closed == 1)) { t.Errorf("assert failed: %s", "(c.closed == 1)") }
 	if !((c.lastClosed == 2)) { t.Errorf("assert failed: %s", "(c.lastClosed == 2)") }
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -540,6 +761,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"os"
+	"strings"
 )
 
 type ErrorEvent struct {
@@ -555,6 +777,19 @@ type Measurement struct {
 
 type Pic struct {
 	N int
+}
+
+type Test struct {
+}
+
+type __anon_id_elem_4ccb28 struct {
+	Id   string
+	Elem float64
+}
+
+type __anon_copy_v0_2d5b73 struct {
+	Copy string
+	V0   string
 }
 
 type __anon_copy_on_5fc366 struct {
@@ -579,15 +814,31 @@ type Model struct {
 	lastClosed          int
 	ws                  []float64
 	p__inst0            map[string]Pic
+	__copied__inst0     map[string]__anon_copy_v0_2d5b73
 	__effect0_live      []string
 	__effect0_desired   []string
-	__effect1_key       string
-	__effect1_live      []string
-	__effect1_desired   []string
-	__effect2_key       __anon_copy_on_5fc366
-	__effect2_dirty     bool
-	__effect2_keys      map[string]__anon_copy_on_5fc366
-	__effect2_rekey     bool
+	__effect0_paths     []string
+	__effect0_livePaths []string
+	__effect0_pathAt    map[string]int
+	__effect0_liveAt    map[string]int
+	__effect1_key       __anon_copy_v0_2d5b73
+	__effect1_live      []__anon_copy_v0_2d5b73
+	__effect1_desired   []__anon_copy_v0_2d5b73
+	__effect1_paths     []string
+	__effect1_livePaths []string
+	__effect1_pathAt    map[string]int
+	__effect1_liveAt    map[string]int
+	__effect2_key       string
+	__effect2_live      []string
+	__effect2_desired   []string
+	__effect2_paths     []string
+	__effect2_livePaths []string
+	__effect2_pathAt    map[string]int
+	__effect2_liveAt    map[string]int
+	__effect3_key       __anon_copy_on_5fc366
+	__effect3_dirty     bool
+	__effect3_keys      map[string]__anon_copy_on_5fc366
+	__effect3_rekey     bool
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -600,25 +851,113 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.opened = 0
-	m.closed = 0
-	m.lastClosed = 0
-	m.ws = []float64{1.0, 2.0}
-	m.p__inst0 = map[string]Pic{}
-	m.__effect0_live = []string{}
-	m.__effect0_desired = []string{}
-	m.__effect1_key = ""
-	m.__effect1_live = []string{}
-	m.__effect1_desired = []string{}
-	m.__effect2_key = __anon_copy_on_5fc366{}
-	m.__effect2_dirty = false
-	m.__effect2_keys = map[string]__anon_copy_on_5fc366{}
-	m.__effect2_rekey = false
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["opened"] {
+		m.opened = 0
+	}
+	if !preset["closed"] {
+		m.closed = 0
+	}
+	if !preset["lastClosed"] {
+		m.lastClosed = 0
+	}
+	if !preset["ws"] {
+		m.ws = []float64{1.0, 2.0}
+	}
+	if !preset["p__inst0"] {
+		m.p__inst0 = map[string]Pic{}
+	}
+	if !preset["__copied__inst0"] {
+		m.__copied__inst0 = map[string]__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []string{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []string{}
+	}
+	if !preset["__effect0_paths"] {
+		m.__effect0_paths = []string{}
+	}
+	if !preset["__effect0_livePaths"] {
+		m.__effect0_livePaths = []string{}
+	}
+	if !preset["__effect0_pathAt"] {
+		m.__effect0_pathAt = map[string]int{}
+	}
+	if !preset["__effect0_liveAt"] {
+		m.__effect0_liveAt = map[string]int{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = __anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_paths"] {
+		m.__effect1_paths = []string{}
+	}
+	if !preset["__effect1_livePaths"] {
+		m.__effect1_livePaths = []string{}
+	}
+	if !preset["__effect1_pathAt"] {
+		m.__effect1_pathAt = map[string]int{}
+	}
+	if !preset["__effect1_liveAt"] {
+		m.__effect1_liveAt = map[string]int{}
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = ""
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []string{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []string{}
+	}
+	if !preset["__effect2_paths"] {
+		m.__effect2_paths = []string{}
+	}
+	if !preset["__effect2_livePaths"] {
+		m.__effect2_livePaths = []string{}
+	}
+	if !preset["__effect2_pathAt"] {
+		m.__effect2_pathAt = map[string]int{}
+	}
+	if !preset["__effect2_liveAt"] {
+		m.__effect2_liveAt = map[string]int{}
+	}
+	if !preset["__effect3_key"] {
+		m.__effect3_key = __anon_copy_on_5fc366{}
+	}
+	if !preset["__effect3_dirty"] {
+		m.__effect3_dirty = false
+	}
+	if !preset["__effect3_keys"] {
+		m.__effect3_keys = map[string]__anon_copy_on_5fc366{}
+	}
+	if !preset["__effect3_rekey"] {
+		m.__effect3_rekey = false
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
 }
 
 func (m *Model) close__r0(p Pic) {
@@ -631,6 +970,26 @@ func (m *Model) load(n int) Pic {
 	return Pic{N: n}
 }
 
+func __identified0(__xs []float64) []__anon_id_elem_4ccb28 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_4ccb28{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_4ccb28{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
 func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
@@ -641,90 +1000,160 @@ func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 
 func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
-	for __copy0, k := range m.ws {
+	m.__effect0_paths = []string{}
+	m.__effect0_pathAt = map[string]int{}
+	for _, k := range __identified0(m.ws) {
 		__effect0_fresh := true
-		if len(m.__effect0_desired) < len(m.__effect0_live) {
-			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		var __effect0_at int = func() int {
+			if __v, __ok := m.__effect0_liveAt[k.Id]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect0_at >= 0 {
+			__effect0_fresh = (m.__effect0_live[__effect0_at] != k.Id)
 		}
+		m.__effect0_pathAt[k.Id] = len(m.__effect0_paths)
+		m.__effect0_paths = append(m.__effect0_paths, k.Id)
 		if __effect0_fresh {
 			__cell2_p__inst0 := func() Pic {
-				if __v, __ok := m.p__inst0[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.p__inst0[k.Id]; __ok {
 					return __v
 				}
 				return Pic{}
 			}()
-			__cell2_p__inst0 = m.load(int(k))
-			m.p__inst0[fmt.Sprint(__copy0)] = __cell2_p__inst0
+			__cell2_p__inst0 = m.load(int(k.Elem))
+			m.p__inst0[k.Id] = __cell2_p__inst0
 		}
-		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+		m.__effect0_desired = append(m.__effect0_desired, k.Id)
 	}
 	m.__effect0_live = m.__effect0_desired
+	m.__effect0_livePaths = m.__effect0_paths
+	m.__effect0_liveAt = m.__effect0_pathAt
 }
 
-func (m *Model) __effect1_unmount() {
-	__copyKey := m.__effect1_key
+func (m *Model) __effect1_mount() {
+	m.__copied__inst0[m.__effect1_key.Copy] = m.__effect1_key
+}
+
+func (m *Model) __effect1_down() {
+	m.__effect1_desired = []__anon_copy_v0_2d5b73{}
+	m.__effect1_paths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	for _, k := range __identified0(m.ws) {
+		m.__effect1_desired = append(m.__effect1_desired, __anon_copy_v0_2d5b73{Copy: k.Id, V0: k.Id})
+		m.__effect1_pathAt[k.Id] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, k.Id)
+	}
+}
+
+func (m *Model) __effect1_up() {
+	for __effect1_i, __effect1_k := range m.__effect1_desired {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_liveAt[m.__effect1_paths[__effect1_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
+			m.__effect1_key = __effect1_k
+			m.__effect1_mount()
+		} else {
+			if (m.__effect1_live[__effect1_at].Copy != __effect1_k.Copy) || (m.__effect1_live[__effect1_at].V0 != __effect1_k.V0) {
+				m.__effect1_key = __effect1_k
+				m.__effect1_mount()
+			}
+		}
+	}
+	m.__effect1_live = m.__effect1_desired
+	m.__effect1_livePaths = m.__effect1_paths
+	m.__effect1_liveAt = m.__effect1_pathAt
+}
+
+func (m *Model) __effect2_unmount() {
+	__copyKey := m.__effect2_key
+	__copied0 := func() __anon_copy_v0_2d5b73 {
+		if __v, __ok := m.__copied__inst0[__copyKey]; __ok {
+			return __v
+		}
+		return __anon_copy_v0_2d5b73{}
+	}().V0
 	m.close__r0(func() Pic {
-		if __v, __ok := m.p__inst0[__copyKey]; __ok {
+		if __v, __ok := m.p__inst0[__copied0]; __ok {
 			return __v
 		}
 		return Pic{}
 	}())
 }
 
-func (m *Model) __effect1_down() {
-	m.__effect1_desired = []string{}
-	for __copy0, _ := range m.ws {
-		m.__effect1_desired = append(m.__effect1_desired, fmt.Sprint(__copy0))
+func (m *Model) __effect2_down() {
+	m.__effect2_desired = []string{}
+	m.__effect2_paths = []string{}
+	m.__effect2_pathAt = map[string]int{}
+	for _, k := range __identified0(m.ws) {
+		m.__effect2_desired = append(m.__effect2_desired, k.Id)
+		m.__effect2_pathAt[k.Id] = len(m.__effect2_paths)
+		m.__effect2_paths = append(m.__effect2_paths, k.Id)
 	}
-	for __effect1_i, _ := range m.__effect1_live {
-		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
-		if __effect1_j >= len(m.__effect1_desired) {
-			m.__effect1_key = m.__effect1_live[__effect1_j]
-			m.__effect1_unmount()
+	for __effect2_i, _ := range m.__effect2_live {
+		var __effect2_j int = ((len(m.__effect2_live) - 1) - __effect2_i)
+		var __effect2_at int = func() int {
+			if __v, __ok := m.__effect2_pathAt[m.__effect2_livePaths[__effect2_j]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect2_at < 0 {
+			m.__effect2_key = m.__effect2_live[__effect2_j]
+			m.__effect2_unmount()
 		} else {
-			if m.__effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
-				m.__effect1_key = m.__effect1_live[__effect1_j]
-				m.__effect1_unmount()
+			if m.__effect2_desired[__effect2_at] != m.__effect2_live[__effect2_j] {
+				m.__effect2_key = m.__effect2_live[__effect2_j]
+				m.__effect2_unmount()
 			}
 		}
 	}
 }
 
-func (m *Model) __effect1_up() {
-	m.__effect1_live = m.__effect1_desired
+func (m *Model) __effect2_up() {
+	m.__effect2_live = m.__effect2_desired
+	m.__effect2_livePaths = m.__effect2_paths
+	m.__effect2_liveAt = m.__effect2_pathAt
 }
 
-func (m *Model) __effect1_teardown() {
-	for __effect1_ti, _ := range m.__effect1_live {
-		m.__effect1_key = m.__effect1_live[((len(m.__effect1_live) - 1) - __effect1_ti)]
-		m.__effect1_unmount()
+func (m *Model) __effect2_teardown() {
+	for __effect2_ti, _ := range m.__effect2_live {
+		m.__effect2_key = m.__effect2_live[((len(m.__effect2_live) - 1) - __effect2_ti)]
+		m.__effect2_unmount()
 	}
-	m.__effect1_live = []string{}
+	m.__effect2_live = []string{}
+	m.__effect2_livePaths = []string{}
+	m.__effect2_liveAt = map[string]int{}
 }
 
-func (m *Model) __effect2_update() {
-	__copyKey := m.__effect2_key.Copy
-	var k__at0 float64 = 0.0
-	for __copyAt0, __copyElemAt0 := range m.ws {
-		if fmt.Sprint(__copyAt0) == __copyKey {
+func (m *Model) __effect3_update() {
+	__copyKey := m.__effect3_key.Copy
+	k__at0 := __anon_id_elem_4ccb28{}
+	for _, __copyElemAt0 := range __identified0(m.ws) {
+		if __copyElemAt0.Id == __copyKey {
 			k__at0 = __copyElemAt0
 		}
 	}
-	__new0 := m.load(int(k__at0))
+	__new0 := m.load(int(k__at0.Elem))
 	__old1 := func() Pic {
-		if __v, __ok := m.p__inst0[__copyKey]; __ok {
+		if __v, __ok := m.p__inst0[k__at0.Id]; __ok {
 			return __v
 		}
 		return Pic{}
 	}()
 	__cell1_p__inst0 := func() Pic {
-		if __v, __ok := m.p__inst0[__copyKey]; __ok {
+		if __v, __ok := m.p__inst0[k__at0.Id]; __ok {
 			return __v
 		}
 		return Pic{}
 	}()
 	__cell1_p__inst0 = __new0
-	m.p__inst0[__copyKey] = __cell1_p__inst0
+	m.p__inst0[k__at0.Id] = __cell1_p__inst0
 	m.close__r0(__old1)
 }
 
@@ -739,29 +1168,31 @@ func (m *Model) __effects0_settle() {
 			for m.__effects0_pending && (m.__effects0_steps < 512) {
 				m.__effects0_pending = false
 				m.__effects0_steps = (m.__effects0_steps + 1)
-				m.__effect0_enter()
-				__effect2_next := map[string]__anon_copy_on_5fc366{}
-				for __copy0, k := range m.ws {
-					m.__effect2_key = __anon_copy_on_5fc366{Copy: fmt.Sprint(__copy0), On: k}
-					__effect2_copy := fmt.Sprint(__copy0)
-					if func() bool { _, __ok := m.__effect2_keys[__effect2_copy]; return __ok }() {
-						__effect2_prev := func() __anon_copy_on_5fc366 {
-							if __v, __ok := m.__effect2_keys[__effect2_copy]; __ok {
+				__effect3_next := map[string]__anon_copy_on_5fc366{}
+				for _, k := range __identified0(m.ws) {
+					m.__effect3_key = __anon_copy_on_5fc366{Copy: k.Id, On: k.Elem}
+					__effect3_copy := k.Id
+					if func() bool { _, __ok := m.__effect3_keys[__effect3_copy]; return __ok }() {
+						__effect3_prev := func() __anon_copy_on_5fc366 {
+							if __v, __ok := m.__effect3_keys[__effect3_copy]; __ok {
 								return __v
 							}
-							return m.__effect2_key
+							return m.__effect3_key
 						}()
-						if m.__effect2_dirty || (m.__effect2_rekey && ((__effect2_prev.Copy != m.__effect2_key.Copy) || (__effect2_prev.On != m.__effect2_key.On))) {
-							m.__effect2_update()
+						if m.__effect3_dirty || (m.__effect3_rekey && ((__effect3_prev.Copy != m.__effect3_key.Copy) || (__effect3_prev.On != m.__effect3_key.On))) {
+							m.__effect3_update()
 						}
 					}
-					__effect2_next[__effect2_copy] = m.__effect2_key
+					__effect3_next[__effect3_copy] = m.__effect3_key
 				}
-				m.__effect2_keys = __effect2_next
-				m.__effect2_dirty = false
-				m.__effect2_rekey = false
+				m.__effect3_keys = __effect3_next
+				m.__effect3_dirty = false
+				m.__effect3_rekey = false
+				m.__effect0_enter()
+				m.__effect2_down()
 				m.__effect1_down()
 				m.__effect1_up()
+				m.__effect2_up()
 			}
 			m.__effects0_settling = false
 			if m.__effects0_pending {
@@ -771,25 +1202,25 @@ func (m *Model) __effects0_settle() {
 	}
 }
 
-func (m *Model) __effect2_rekey_mark() {
-	m.__effect2_rekey = true
+func (m *Model) __effect3_rekey_mark() {
+	m.__effect3_rekey = true
 }
 
 func (m *Model) __snglTeardown() {
 	m.__effects0_torn = true
-	m.__effect1_teardown()
+	m.__effect2_teardown()
 }
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
-	for __copy0, k := range m.ws {
+	for _, k := range __identified0(m.ws) {
 		ctx.Save()
 		ApplyStyle(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 		ctx.Rect(0.0, 0.0, float64(func() Pic {
-			if __v, __ok := m.p__inst0[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.p__inst0[k.Id]; __ok {
 				return __v
 			}
 			return Pic{}
-		}().N), k)
+		}().N), k.Elem)
 		ctx.Restore()
 	}
 }
@@ -864,6 +1295,7 @@ import "testing"
 func TestMadeOncePerCopy(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.opened == 2)) { t.Errorf("assert failed: %s", "(c.opened == 2)") }
 	if !((c.closed == 0)) { t.Errorf("assert failed: %s", "(c.closed == 0)") }
 }
@@ -871,8 +1303,10 @@ func TestMadeOncePerCopy(t *testing.T) {
 func TestRekeyedCopyReleasesItsOldValue(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
+	if !((c.opened == 2)) { t.Errorf("assert failed: %s", "(c.opened == 2)") }
 	c.ws = []float64{3.0, 2.0}
-	c.__effect2_rekey_mark()
+	c.__effect3_rekey_mark()
 	c.__effects0_settle()
 	if !((c.opened == 3)) { t.Errorf("assert failed: %s", "(c.opened == 3)") }
 	if !((c.closed == 1)) { t.Errorf("assert failed: %s", "(c.closed == 1)") }
@@ -882,8 +1316,10 @@ func TestRekeyedCopyReleasesItsOldValue(t *testing.T) {
 func TestLeavingCopyReleases(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
+	if !((c.closed == 0)) { t.Errorf("assert failed: %s", "(c.closed == 0)") }
 	c.ws = []float64{1.0}
-	c.__effect2_rekey_mark()
+	c.__effect3_rekey_mark()
 	c.__effects0_settle()
 	if !((c.closed == 1)) { t.Errorf("assert failed: %s", "(c.closed == 1)") }
 	if !((c.lastClosed == 2)) { t.Errorf("assert failed: %s", "(c.lastClosed == 2)") }
@@ -896,7 +1332,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -1120,6 +1560,7 @@ import "C"
 import (
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
+	"strings"
 	"unsafe"
 )
 
@@ -1162,6 +1603,19 @@ type Pic struct {
 	N int
 }
 
+type Test struct {
+}
+
+type __anon_id_elem_4ccb28 struct {
+	Id   string
+	Elem float64
+}
+
+type __anon_copy_v0_2d5b73 struct {
+	Copy string
+	V0   string
+}
+
 type __anon_copy_on_5fc366 struct {
 	Copy string
 	On   float64
@@ -1184,15 +1638,31 @@ type Model struct {
 	lastClosed          int
 	ws                  []float64
 	p__inst0            map[string]Pic
+	__copied__inst0     map[string]__anon_copy_v0_2d5b73
 	__effect0_live      []string
 	__effect0_desired   []string
-	__effect1_key       string
-	__effect1_live      []string
-	__effect1_desired   []string
-	__effect2_key       __anon_copy_on_5fc366
-	__effect2_dirty     bool
-	__effect2_keys      map[string]__anon_copy_on_5fc366
-	__effect2_rekey     bool
+	__effect0_paths     []string
+	__effect0_livePaths []string
+	__effect0_pathAt    map[string]int
+	__effect0_liveAt    map[string]int
+	__effect1_key       __anon_copy_v0_2d5b73
+	__effect1_live      []__anon_copy_v0_2d5b73
+	__effect1_desired   []__anon_copy_v0_2d5b73
+	__effect1_paths     []string
+	__effect1_livePaths []string
+	__effect1_pathAt    map[string]int
+	__effect1_liveAt    map[string]int
+	__effect2_key       string
+	__effect2_live      []string
+	__effect2_desired   []string
+	__effect2_paths     []string
+	__effect2_livePaths []string
+	__effect2_pathAt    map[string]int
+	__effect2_liveAt    map[string]int
+	__effect3_key       __anon_copy_on_5fc366
+	__effect3_dirty     bool
+	__effect3_keys      map[string]__anon_copy_on_5fc366
+	__effect3_rekey     bool
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -1205,25 +1675,113 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.opened = 0
-	m.closed = 0
-	m.lastClosed = 0
-	m.ws = []float64{1.0, 2.0}
-	m.p__inst0 = map[string]Pic{}
-	m.__effect0_live = []string{}
-	m.__effect0_desired = []string{}
-	m.__effect1_key = ""
-	m.__effect1_live = []string{}
-	m.__effect1_desired = []string{}
-	m.__effect2_key = __anon_copy_on_5fc366{}
-	m.__effect2_dirty = false
-	m.__effect2_keys = map[string]__anon_copy_on_5fc366{}
-	m.__effect2_rekey = false
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["opened"] {
+		m.opened = 0
+	}
+	if !preset["closed"] {
+		m.closed = 0
+	}
+	if !preset["lastClosed"] {
+		m.lastClosed = 0
+	}
+	if !preset["ws"] {
+		m.ws = []float64{1.0, 2.0}
+	}
+	if !preset["p__inst0"] {
+		m.p__inst0 = map[string]Pic{}
+	}
+	if !preset["__copied__inst0"] {
+		m.__copied__inst0 = map[string]__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []string{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []string{}
+	}
+	if !preset["__effect0_paths"] {
+		m.__effect0_paths = []string{}
+	}
+	if !preset["__effect0_livePaths"] {
+		m.__effect0_livePaths = []string{}
+	}
+	if !preset["__effect0_pathAt"] {
+		m.__effect0_pathAt = map[string]int{}
+	}
+	if !preset["__effect0_liveAt"] {
+		m.__effect0_liveAt = map[string]int{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = __anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []__anon_copy_v0_2d5b73{}
+	}
+	if !preset["__effect1_paths"] {
+		m.__effect1_paths = []string{}
+	}
+	if !preset["__effect1_livePaths"] {
+		m.__effect1_livePaths = []string{}
+	}
+	if !preset["__effect1_pathAt"] {
+		m.__effect1_pathAt = map[string]int{}
+	}
+	if !preset["__effect1_liveAt"] {
+		m.__effect1_liveAt = map[string]int{}
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = ""
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []string{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []string{}
+	}
+	if !preset["__effect2_paths"] {
+		m.__effect2_paths = []string{}
+	}
+	if !preset["__effect2_livePaths"] {
+		m.__effect2_livePaths = []string{}
+	}
+	if !preset["__effect2_pathAt"] {
+		m.__effect2_pathAt = map[string]int{}
+	}
+	if !preset["__effect2_liveAt"] {
+		m.__effect2_liveAt = map[string]int{}
+	}
+	if !preset["__effect3_key"] {
+		m.__effect3_key = __anon_copy_on_5fc366{}
+	}
+	if !preset["__effect3_dirty"] {
+		m.__effect3_dirty = false
+	}
+	if !preset["__effect3_keys"] {
+		m.__effect3_keys = map[string]__anon_copy_on_5fc366{}
+	}
+	if !preset["__effect3_rekey"] {
+		m.__effect3_rekey = false
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
 }
 
 func (m *Model) close__r0(p Pic) {
@@ -1234,6 +1792,26 @@ func (m *Model) close__r0(p Pic) {
 func (m *Model) load(n int) Pic {
 	m.opened += 1
 	return Pic{N: n}
+}
+
+func __identified0(__xs []float64) []__anon_id_elem_4ccb28 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_4ccb28{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_4ccb28{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func Paint(ctx *C.cairo_t, style Style) {
@@ -1280,90 +1858,160 @@ func LineJoinFunc(join string) C.cairo_line_join_t {
 
 func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
-	for __copy0, k := range m.ws {
+	m.__effect0_paths = []string{}
+	m.__effect0_pathAt = map[string]int{}
+	for _, k := range __identified0(m.ws) {
 		__effect0_fresh := true
-		if len(m.__effect0_desired) < len(m.__effect0_live) {
-			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		var __effect0_at int = func() int {
+			if __v, __ok := m.__effect0_liveAt[k.Id]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect0_at >= 0 {
+			__effect0_fresh = (m.__effect0_live[__effect0_at] != k.Id)
 		}
+		m.__effect0_pathAt[k.Id] = len(m.__effect0_paths)
+		m.__effect0_paths = append(m.__effect0_paths, k.Id)
 		if __effect0_fresh {
 			__cell2_p__inst0 := func() Pic {
-				if __v, __ok := m.p__inst0[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.p__inst0[k.Id]; __ok {
 					return __v
 				}
 				return Pic{}
 			}()
-			__cell2_p__inst0 = m.load(int(k))
-			m.p__inst0[fmt.Sprint(__copy0)] = __cell2_p__inst0
+			__cell2_p__inst0 = m.load(int(k.Elem))
+			m.p__inst0[k.Id] = __cell2_p__inst0
 		}
-		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+		m.__effect0_desired = append(m.__effect0_desired, k.Id)
 	}
 	m.__effect0_live = m.__effect0_desired
+	m.__effect0_livePaths = m.__effect0_paths
+	m.__effect0_liveAt = m.__effect0_pathAt
 }
 
-func (m *Model) __effect1_unmount() {
-	__copyKey := m.__effect1_key
+func (m *Model) __effect1_mount() {
+	m.__copied__inst0[m.__effect1_key.Copy] = m.__effect1_key
+}
+
+func (m *Model) __effect1_down() {
+	m.__effect1_desired = []__anon_copy_v0_2d5b73{}
+	m.__effect1_paths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	for _, k := range __identified0(m.ws) {
+		m.__effect1_desired = append(m.__effect1_desired, __anon_copy_v0_2d5b73{Copy: k.Id, V0: k.Id})
+		m.__effect1_pathAt[k.Id] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, k.Id)
+	}
+}
+
+func (m *Model) __effect1_up() {
+	for __effect1_i, __effect1_k := range m.__effect1_desired {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_liveAt[m.__effect1_paths[__effect1_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
+			m.__effect1_key = __effect1_k
+			m.__effect1_mount()
+		} else {
+			if (m.__effect1_live[__effect1_at].Copy != __effect1_k.Copy) || (m.__effect1_live[__effect1_at].V0 != __effect1_k.V0) {
+				m.__effect1_key = __effect1_k
+				m.__effect1_mount()
+			}
+		}
+	}
+	m.__effect1_live = m.__effect1_desired
+	m.__effect1_livePaths = m.__effect1_paths
+	m.__effect1_liveAt = m.__effect1_pathAt
+}
+
+func (m *Model) __effect2_unmount() {
+	__copyKey := m.__effect2_key
+	__copied0 := func() __anon_copy_v0_2d5b73 {
+		if __v, __ok := m.__copied__inst0[__copyKey]; __ok {
+			return __v
+		}
+		return __anon_copy_v0_2d5b73{}
+	}().V0
 	m.close__r0(func() Pic {
-		if __v, __ok := m.p__inst0[__copyKey]; __ok {
+		if __v, __ok := m.p__inst0[__copied0]; __ok {
 			return __v
 		}
 		return Pic{}
 	}())
 }
 
-func (m *Model) __effect1_down() {
-	m.__effect1_desired = []string{}
-	for __copy0, _ := range m.ws {
-		m.__effect1_desired = append(m.__effect1_desired, fmt.Sprint(__copy0))
+func (m *Model) __effect2_down() {
+	m.__effect2_desired = []string{}
+	m.__effect2_paths = []string{}
+	m.__effect2_pathAt = map[string]int{}
+	for _, k := range __identified0(m.ws) {
+		m.__effect2_desired = append(m.__effect2_desired, k.Id)
+		m.__effect2_pathAt[k.Id] = len(m.__effect2_paths)
+		m.__effect2_paths = append(m.__effect2_paths, k.Id)
 	}
-	for __effect1_i, _ := range m.__effect1_live {
-		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
-		if __effect1_j >= len(m.__effect1_desired) {
-			m.__effect1_key = m.__effect1_live[__effect1_j]
-			m.__effect1_unmount()
+	for __effect2_i, _ := range m.__effect2_live {
+		var __effect2_j int = ((len(m.__effect2_live) - 1) - __effect2_i)
+		var __effect2_at int = func() int {
+			if __v, __ok := m.__effect2_pathAt[m.__effect2_livePaths[__effect2_j]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect2_at < 0 {
+			m.__effect2_key = m.__effect2_live[__effect2_j]
+			m.__effect2_unmount()
 		} else {
-			if m.__effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
-				m.__effect1_key = m.__effect1_live[__effect1_j]
-				m.__effect1_unmount()
+			if m.__effect2_desired[__effect2_at] != m.__effect2_live[__effect2_j] {
+				m.__effect2_key = m.__effect2_live[__effect2_j]
+				m.__effect2_unmount()
 			}
 		}
 	}
 }
 
-func (m *Model) __effect1_up() {
-	m.__effect1_live = m.__effect1_desired
+func (m *Model) __effect2_up() {
+	m.__effect2_live = m.__effect2_desired
+	m.__effect2_livePaths = m.__effect2_paths
+	m.__effect2_liveAt = m.__effect2_pathAt
 }
 
-func (m *Model) __effect1_teardown() {
-	for __effect1_ti, _ := range m.__effect1_live {
-		m.__effect1_key = m.__effect1_live[((len(m.__effect1_live) - 1) - __effect1_ti)]
-		m.__effect1_unmount()
+func (m *Model) __effect2_teardown() {
+	for __effect2_ti, _ := range m.__effect2_live {
+		m.__effect2_key = m.__effect2_live[((len(m.__effect2_live) - 1) - __effect2_ti)]
+		m.__effect2_unmount()
 	}
-	m.__effect1_live = []string{}
+	m.__effect2_live = []string{}
+	m.__effect2_livePaths = []string{}
+	m.__effect2_liveAt = map[string]int{}
 }
 
-func (m *Model) __effect2_update() {
-	__copyKey := m.__effect2_key.Copy
-	var k__at0 float64 = 0.0
-	for __copyAt0, __copyElemAt0 := range m.ws {
-		if fmt.Sprint(__copyAt0) == __copyKey {
+func (m *Model) __effect3_update() {
+	__copyKey := m.__effect3_key.Copy
+	k__at0 := __anon_id_elem_4ccb28{}
+	for _, __copyElemAt0 := range __identified0(m.ws) {
+		if __copyElemAt0.Id == __copyKey {
 			k__at0 = __copyElemAt0
 		}
 	}
-	__new0 := m.load(int(k__at0))
+	__new0 := m.load(int(k__at0.Elem))
 	__old1 := func() Pic {
-		if __v, __ok := m.p__inst0[__copyKey]; __ok {
+		if __v, __ok := m.p__inst0[k__at0.Id]; __ok {
 			return __v
 		}
 		return Pic{}
 	}()
 	__cell1_p__inst0 := func() Pic {
-		if __v, __ok := m.p__inst0[__copyKey]; __ok {
+		if __v, __ok := m.p__inst0[k__at0.Id]; __ok {
 			return __v
 		}
 		return Pic{}
 	}()
 	__cell1_p__inst0 = __new0
-	m.p__inst0[__copyKey] = __cell1_p__inst0
+	m.p__inst0[k__at0.Id] = __cell1_p__inst0
 	m.close__r0(__old1)
 }
 
@@ -1378,29 +2026,31 @@ func (m *Model) __effects0_settle() {
 			for m.__effects0_pending && (m.__effects0_steps < 512) {
 				m.__effects0_pending = false
 				m.__effects0_steps = (m.__effects0_steps + 1)
-				m.__effect0_enter()
-				__effect2_next := map[string]__anon_copy_on_5fc366{}
-				for __copy0, k := range m.ws {
-					m.__effect2_key = __anon_copy_on_5fc366{Copy: fmt.Sprint(__copy0), On: k}
-					__effect2_copy := fmt.Sprint(__copy0)
-					if func() bool { _, __ok := m.__effect2_keys[__effect2_copy]; return __ok }() {
-						__effect2_prev := func() __anon_copy_on_5fc366 {
-							if __v, __ok := m.__effect2_keys[__effect2_copy]; __ok {
+				__effect3_next := map[string]__anon_copy_on_5fc366{}
+				for _, k := range __identified0(m.ws) {
+					m.__effect3_key = __anon_copy_on_5fc366{Copy: k.Id, On: k.Elem}
+					__effect3_copy := k.Id
+					if func() bool { _, __ok := m.__effect3_keys[__effect3_copy]; return __ok }() {
+						__effect3_prev := func() __anon_copy_on_5fc366 {
+							if __v, __ok := m.__effect3_keys[__effect3_copy]; __ok {
 								return __v
 							}
-							return m.__effect2_key
+							return m.__effect3_key
 						}()
-						if m.__effect2_dirty || (m.__effect2_rekey && ((__effect2_prev.Copy != m.__effect2_key.Copy) || (__effect2_prev.On != m.__effect2_key.On))) {
-							m.__effect2_update()
+						if m.__effect3_dirty || (m.__effect3_rekey && ((__effect3_prev.Copy != m.__effect3_key.Copy) || (__effect3_prev.On != m.__effect3_key.On))) {
+							m.__effect3_update()
 						}
 					}
-					__effect2_next[__effect2_copy] = m.__effect2_key
+					__effect3_next[__effect3_copy] = m.__effect3_key
 				}
-				m.__effect2_keys = __effect2_next
-				m.__effect2_dirty = false
-				m.__effect2_rekey = false
+				m.__effect3_keys = __effect3_next
+				m.__effect3_dirty = false
+				m.__effect3_rekey = false
+				m.__effect0_enter()
+				m.__effect2_down()
 				m.__effect1_down()
 				m.__effect1_up()
+				m.__effect2_up()
 			}
 			m.__effects0_settling = false
 			if m.__effects0_pending {
@@ -1410,24 +2060,24 @@ func (m *Model) __effects0_settle() {
 	}
 }
 
-func (m *Model) __effect2_rekey_mark() {
-	m.__effect2_rekey = true
+func (m *Model) __effect3_rekey_mark() {
+	m.__effect3_rekey = true
 }
 
 func (m *Model) __snglTeardown() {
 	m.__effects0_torn = true
-	m.__effect1_teardown()
+	m.__effect2_teardown()
 }
 
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
-	for __copy0, k := range m.ws {
+	for _, k := range __identified0(m.ws) {
 		C.cairo_save(ctx)
 		C.cairo_rectangle(ctx, C.double(0.0), C.double(0.0), C.double(float64(func() Pic {
-			if __v, __ok := m.p__inst0[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.p__inst0[k.Id]; __ok {
 				return __v
 			}
 			return Pic{}
-		}().N)), C.double(k))
+		}().N)), C.double(k.Elem))
 		Paint(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 		C.cairo_restore(ctx)
 	}
@@ -1520,18 +2170,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { opened: 0, closed: 0, lastClosed: 0, ws: [1, 2] };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -1543,104 +2196,184 @@ window.__sngl_boot = () => {
     state.opened += 1;
     return { n };
   }
-  function __effect1_unmount() {
-    let __copyKey = __effect1_key;
-    close(state.p__inst0.has(__copyKey) ? state.p__inst0.get(__copyKey) : { n: 0 });
-  }
-  function __effect2_update() {
-    let __copyKey = __effect2_key.copy;
-    let k__at0 = 0;
-    for (const [__copyAt0, __copyElemAt0] of state.ws.entries()) {
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
       ;
-      if (String(__copyAt0) === __copyKey) {
+      let __id = String(__x).replaceAll("#", "##");
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
+  }
+  function __effect1_mount() {
+    state.__copied__inst0.set(__effect1_key.copy, __effect1_key);
+  }
+  function __effect2_unmount() {
+    let __copyKey = __effect2_key;
+    let __copied0 = (state.__copied__inst0.has(__copyKey) ? state.__copied__inst0.get(__copyKey) : { copy: "", v0: "" }).v0;
+    close(state.p__inst0.has(__copied0) ? state.p__inst0.get(__copied0) : { n: 0 });
+  }
+  function __effect3_update() {
+    let __copyKey = __effect3_key.copy;
+    let k__at0 = { id: "", elem: 0 };
+    for (const [__copyAt0, __copyElemAt0] of __identified0(state.ws).entries()) {
+      ;
+      if (__copyElemAt0.id === __copyKey) {
         ;
         k__at0 = __copyElemAt0;
       }
       ;
     }
     ;
-    let __new0 = load(Math.trunc(k__at0));
-    let __old1 = state.p__inst0.has(__copyKey) ? state.p__inst0.get(__copyKey) : { n: 0 };
-    let __cell1_p__inst0 = state.p__inst0.has(__copyKey) ? state.p__inst0.get(__copyKey) : { n: 0 };
+    let __new0 = load(Math.trunc(k__at0.elem));
+    let __old1 = state.p__inst0.has(k__at0.id) ? state.p__inst0.get(k__at0.id) : { n: 0 };
+    let __cell1_p__inst0 = state.p__inst0.has(k__at0.id) ? state.p__inst0.get(k__at0.id) : { n: 0 };
     __cell1_p__inst0 = __new0;
-    state.p__inst0.set(__copyKey, __cell1_p__inst0);
+    state.p__inst0.set(k__at0.id, __cell1_p__inst0);
     close(__old1);
   }
   function __snglTeardown() {
     __effects0_torn = true;
-    __effect1_teardown();
+    __effect2_teardown();
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { close, load, __effect1_unmount, __effect2_update, __snglTeardown });
+    Object.assign(window, { close, load, __identified0, __effect1_mount, __effect2_unmount, __effect3_update, __snglTeardown });
   }
   var __effect0_live = [];
   var __effect0_desired = [];
-  var __effect1_key = "";
+  var __effect0_paths = [];
+  var __effect0_livePaths = [];
+  var __effect0_pathAt = /* @__PURE__ */ new Map([]);
+  var __effect0_liveAt = /* @__PURE__ */ new Map([]);
+  var __effect1_key = { copy: "", v0: "" };
   var __effect1_live = [];
   var __effect1_desired = [];
-  var __effect2_key = { copy: "", on: 0 };
-  var __effect2_dirty = false;
-  var __effect2_keys = /* @__PURE__ */ new Map([]);
-  var __effect2_rekey = false;
+  var __effect1_paths = [];
+  var __effect1_livePaths = [];
+  var __effect1_pathAt = /* @__PURE__ */ new Map([]);
+  var __effect1_liveAt = /* @__PURE__ */ new Map([]);
+  var __effect2_key = "";
+  var __effect2_live = [];
+  var __effect2_desired = [];
+  var __effect2_paths = [];
+  var __effect2_livePaths = [];
+  var __effect2_pathAt = /* @__PURE__ */ new Map([]);
+  var __effect2_liveAt = /* @__PURE__ */ new Map([]);
+  var __effect3_key = { copy: "", on: 0 };
+  var __effect3_dirty = false;
+  var __effect3_keys = /* @__PURE__ */ new Map([]);
+  var __effect3_rekey = false;
   var __effects0_settling = false;
   var __effects0_pending = false;
   var __effects0_torn = false;
   var __effects0_steps = 0;
   function _canvasDraw0(ctx) {
-    for (const [__copy0, k] of state.ws.entries()) {
+    for (const [__copy0, k] of __identified0(state.ws).entries()) {
       ctx.save();
       ctx.restore();
     }
   }
   function _canvasDraw1(ctx) {
-    for (const [__copy0, k] of state.ws.entries()) {
+    for (const [__copy0, k] of __identified0(state.ws).entries()) {
       ctx.save();
       ctx.restore();
     }
   }
   function __effect0_enter() {
     __effect0_desired = [];
-    for (const [__copy0, k] of state.ws.entries()) {
+    __effect0_paths = [];
+    __effect0_pathAt = /* @__PURE__ */ new Map([]);
+    for (const [__copy0, k] of __identified0(state.ws).entries()) {
       let __effect0_fresh = true;
-      if (__effect0_desired.length < __effect0_live.length) {
-        __effect0_fresh = __effect0_live[__effect0_desired.length] !== String(__copy0);
+      let __effect0_at = __effect0_liveAt.has(k.id) ? __effect0_liveAt.get(k.id) : -1;
+      if (__effect0_at >= 0) {
+        __effect0_fresh = __effect0_live[__effect0_at] !== k.id;
       }
+      __effect0_pathAt.set(k.id, __effect0_paths.length);
+      __effect0_paths.push(k.id);
       if (__effect0_fresh) {
-        let __cell2_p__inst0 = state.p__inst0.has(String(__copy0)) ? state.p__inst0.get(String(__copy0)) : { n: 0 };
-        __cell2_p__inst0 = load(Math.trunc(k));
-        state.p__inst0.set(String(__copy0), __cell2_p__inst0);
+        let __cell2_p__inst0 = state.p__inst0.has(k.id) ? state.p__inst0.get(k.id) : { n: 0 };
+        __cell2_p__inst0 = load(Math.trunc(k.elem));
+        state.p__inst0.set(k.id, __cell2_p__inst0);
       }
-      __effect0_desired.push(String(__copy0));
+      __effect0_desired.push(k.id);
     }
     __effect0_live = __effect0_desired;
+    __effect0_livePaths = __effect0_paths;
+    __effect0_liveAt = __effect0_pathAt;
   }
   function __effect1_down() {
     __effect1_desired = [];
-    for (const [__copy0, k] of state.ws.entries()) {
-      __effect1_desired.push(String(__copy0));
+    __effect1_paths = [];
+    __effect1_pathAt = /* @__PURE__ */ new Map([]);
+    for (const [__copy0, k] of __identified0(state.ws).entries()) {
+      __effect1_desired.push({ copy: k.id, v0: k.id });
+      __effect1_pathAt.set(k.id, __effect1_paths.length);
+      __effect1_paths.push(k.id);
     }
-    for (const [__effect1_i, _] of __effect1_live.entries()) {
-      let __effect1_j = __effect1_live.length - 1 - __effect1_i;
-      if (__effect1_j >= __effect1_desired.length) {
-        __effect1_key = __effect1_live[__effect1_j];
-        __effect1_unmount();
+  }
+  function __effect1_up() {
+    for (const [__effect1_i, __effect1_k] of __effect1_desired.entries()) {
+      let __effect1_at = __effect1_liveAt.has(__effect1_paths[__effect1_i]) ? __effect1_liveAt.get(__effect1_paths[__effect1_i]) : -1;
+      if (__effect1_at < 0) {
+        __effect1_key = __effect1_k;
+        __effect1_mount();
       } else {
-        if (__effect1_desired[__effect1_j] !== __effect1_live[__effect1_j]) {
-          __effect1_key = __effect1_live[__effect1_j];
-          __effect1_unmount();
+        if (__effect1_live[__effect1_at].copy !== __effect1_k.copy || __effect1_live[__effect1_at].v0 !== __effect1_k.v0) {
+          __effect1_key = __effect1_k;
+          __effect1_mount();
+        }
+      }
+    }
+    __effect1_live = __effect1_desired;
+    __effect1_livePaths = __effect1_paths;
+    __effect1_liveAt = __effect1_pathAt;
+  }
+  function __effect2_down() {
+    __effect2_desired = [];
+    __effect2_paths = [];
+    __effect2_pathAt = /* @__PURE__ */ new Map([]);
+    for (const [__copy0, k] of __identified0(state.ws).entries()) {
+      __effect2_desired.push(k.id);
+      __effect2_pathAt.set(k.id, __effect2_paths.length);
+      __effect2_paths.push(k.id);
+    }
+    for (const [__effect2_i, _] of __effect2_live.entries()) {
+      let __effect2_j = __effect2_live.length - 1 - __effect2_i;
+      let __effect2_at = __effect2_pathAt.has(__effect2_livePaths[__effect2_j]) ? __effect2_pathAt.get(__effect2_livePaths[__effect2_j]) : -1;
+      if (__effect2_at < 0) {
+        __effect2_key = __effect2_live[__effect2_j];
+        __effect2_unmount();
+      } else {
+        if (__effect2_desired[__effect2_at] !== __effect2_live[__effect2_j]) {
+          __effect2_key = __effect2_live[__effect2_j];
+          __effect2_unmount();
         }
       }
     }
   }
-  function __effect1_up() {
-    __effect1_live = __effect1_desired;
+  function __effect2_up() {
+    __effect2_live = __effect2_desired;
+    __effect2_livePaths = __effect2_paths;
+    __effect2_liveAt = __effect2_pathAt;
   }
-  function __effect1_teardown() {
-    for (const [__effect1_ti, _] of __effect1_live.entries()) {
-      __effect1_key = __effect1_live[__effect1_live.length - 1 - __effect1_ti];
-      __effect1_unmount();
+  function __effect2_teardown() {
+    for (const [__effect2_ti, _] of __effect2_live.entries()) {
+      __effect2_key = __effect2_live[__effect2_live.length - 1 - __effect2_ti];
+      __effect2_unmount();
     }
-    __effect1_live = [];
+    __effect2_live = [];
+    __effect2_livePaths = [];
+    __effect2_liveAt = /* @__PURE__ */ new Map([]);
   }
   function __effects0_settle() {
     if (!__effects0_torn) {
@@ -1653,24 +2386,26 @@ window.__sngl_boot = () => {
         while (__effects0_pending && __effects0_steps < 512) {
           __effects0_pending = false;
           __effects0_steps = __effects0_steps + 1;
-          __effect0_enter();
-          let __effect2_next = /* @__PURE__ */ new Map([]);
-          for (const [__copy0, k] of state.ws.entries()) {
-            __effect2_key = { copy: String(__copy0), on: k };
-            let __effect2_copy = String(__copy0);
-            if (__effect2_keys.has(__effect2_copy)) {
-              let __effect2_prev = __effect2_keys.has(__effect2_copy) ? __effect2_keys.get(__effect2_copy) : __effect2_key;
-              if (__effect2_dirty || __effect2_rekey && (__effect2_prev.copy !== __effect2_key.copy || __effect2_prev.on !== __effect2_key.on)) {
-                __effect2_update();
+          let __effect3_next = /* @__PURE__ */ new Map([]);
+          for (const [__copy0, k] of __identified0(state.ws).entries()) {
+            __effect3_key = { copy: k.id, on: k.elem };
+            let __effect3_copy = k.id;
+            if (__effect3_keys.has(__effect3_copy)) {
+              let __effect3_prev = __effect3_keys.has(__effect3_copy) ? __effect3_keys.get(__effect3_copy) : __effect3_key;
+              if (__effect3_dirty || __effect3_rekey && (__effect3_prev.copy !== __effect3_key.copy || __effect3_prev.on !== __effect3_key.on)) {
+                __effect3_update();
               }
             }
-            __effect2_next.set(__effect2_copy, __effect2_key);
+            __effect3_next.set(__effect3_copy, __effect3_key);
           }
-          __effect2_keys = __effect2_next;
-          __effect2_dirty = false;
-          __effect2_rekey = false;
+          __effect3_keys = __effect3_next;
+          __effect3_dirty = false;
+          __effect3_rekey = false;
+          __effect0_enter();
+          __effect2_down();
           __effect1_down();
           __effect1_up();
+          __effect2_up();
         }
         __effects0_settling = false;
         if (__effects0_pending) {
@@ -1679,11 +2414,11 @@ window.__sngl_boot = () => {
       }
     }
   }
-  function __effect2_rekey_mark() {
-    __effect2_rekey = true;
+  function __effect3_rekey_mark() {
+    __effect3_rekey = true;
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { __effects0_settle, __effect2_rekey_mark });
+    Object.assign(window, { __effects0_settle, __effect3_rekey_mark });
   }
   function _snglCanvasDraw(el, w, h, mode, draw) {
     const ctx = el.getContext("2d");
@@ -1732,14 +2467,13 @@ window.__sngl_boot = () => {
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:abb95fd90b494b53ff09082eb844e8b8
+pass sha256:182ddc986130d60ba7c588cdbc828251
 -- run/go/fyne --
-pass sha256:4242af24920a942658db14900b74a6c9
+pass sha256:fa2ec1ecac46486d478829185ee48e3d
 -- run/go/gtk4 --
-pass sha256:f4dd12e04d18a416b58db9f0c17ecd87
+pass sha256:685c2081b14fde7835d0c936315f41cd
 -- run/none/html --
-pass sha256:d9f2384ca00003e94540ac1f57f83ff6
+pass sha256:f421c9a95ab06abbbce1bd120fb70d21

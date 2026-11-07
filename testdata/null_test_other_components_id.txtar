@@ -77,6 +77,9 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	problem__inst0 string
@@ -98,14 +101,32 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.problem__inst0 = "none"
-	m.visible__inst0 = true
-	m.shown__inst0 = false
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["problem__inst0"] {
+		m.problem__inst0 = "none"
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["shown__inst0"] {
+		m.shown__inst0 = false
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func Check__inst0() {
@@ -248,6 +269,7 @@ import "testing"
 func TestOther(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !(!c.sPresent()) { t.Errorf("assert failed: %s", "!c.sPresent()") }
 	c.tClick()
 	if !(c.sPresent()) { t.Errorf("assert failed: %s", "c.sPresent()") }
@@ -256,6 +278,7 @@ func TestOther(t *testing.T) {
 func TestMain(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.problem__inst0 == "none")) { t.Errorf("assert failed: %s", "(c.problem__inst0 == \"none\")") }
 }
 
@@ -266,7 +289,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -299,18 +326,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { problem__inst0: "none", visible__inst0: true, shown__inst0: false };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.tClick = () => $0.click();
   state.sPresent = () => document.querySelector('[data-sngl-id="s"], [data-sngl-instance="s"]') !== null;
   if (typeof window !== "undefined") {
@@ -387,10 +417,9 @@ window.__sngl_boot = () => {
   });
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:6c6e7db23ecfd0eef279ca7947e221c1
+pass sha256:2c07efade92f7f4f7fe9faf38098fa6f
 -- run/none/html --
-pass sha256:57b1c970e464c821a49947d5b313a1f3
+pass sha256:c387bfc07e9be6c2796143a7adfd0960

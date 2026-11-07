@@ -1,0 +1,26 @@
+// A method whose receiver is a `ref` writes what it is called on, and is
+// handed it as `&` would hand it: a const or a call's result is no place a
+// write could land, so the call is refused as `&` is, where it used to check
+// and drop the write.
+
+struct Money {
+    cents int = 0
+}
+
+func Money.add(m ref[Money], c int) {
+    m.cents += c
+}
+
+const one = Money{cents=1}
+
+func make() => Money{cents=1}
+
+func addAll() {
+    var mine = Money{cents=1}
+    mine.add(5)
+    one.add(5)    // ERROR(check) "add writes its receiver, which is ref[Money], so call it on a var or a field of one"
+    make().add(5) // ERROR(check) "add writes its receiver, which is ref[Money], so call it on a var or a field of one"
+    var xs = [1, 2]
+    xs.push(3)
+    xs.reverse().push(3) // ERROR(check) "push writes its receiver, which is ref[list[int]], so call it on a var or a field of one"
+}

@@ -60,6 +60,9 @@ import (
 	"os"
 )
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	on             bool
@@ -83,17 +86,41 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.on = true
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__rendering1 = false
-	m.__renderAgain1 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["on"] {
+		m.on = true
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -216,6 +243,7 @@ import "testing"
 func TestFlip(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.flipClick()
 	c.flipClick()
 	if !(c.on) { t.Errorf("assert failed: %s", "c.on") }
@@ -228,7 +256,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -250,6 +282,9 @@ func main() {
 package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
+
+type Test struct {
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -274,17 +309,41 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.on = true
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__rendering1 = false
-	m.__renderAgain1 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["on"] {
+		m.on = true
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -416,6 +475,6 @@ func (m *Model) flipClick() {
 	gtk4rt.Emit(m.flip, "clicked")
 }
 -- run/go/fyne --
-pass sha256:55d5ecb53b74e68bcd50c7a01a5e6385
+pass sha256:684c167ab767050aa8beb778bb8b5007
 -- run/go/gtk4 --
-pass sha256:e6ac0a841ed35d00a3047b10dba49b85
+pass sha256:8a35f72fb757f550443b9b9e14f1c763

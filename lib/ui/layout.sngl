@@ -36,6 +36,36 @@ component _example_hbox node {
     }
 }
 
+// Grid layout container. Given `columns`, its children are laid out that many
+// to a row, in columns of equal width that share the grid's; a last row that
+// is short leaves its columns empty. Given none, they flow as an `hbox`'s do,
+// each its own width, and wrap onto a new line where the next would not fit.
+// `style.gap` spaces both the rows and the children within one. A grid does
+// not scroll: put it in a `scroll` for that.
+component grid(
+    columns  option[int] = null,
+    style    Style = Style{},
+    children ...component,
+) node
+
+component _example_grid node {
+    vbox(style={gap=16px, padding=16px}) {
+        grid(columns=3, style={gap=8px}) {
+            text(value="One")
+            text(value="Two")
+            text(value="Three")
+            text(value="Four")
+            text(value="Five")
+        }
+        grid(style={gap=8px, width=160px}) {
+            button(text="Fire")
+            button(text="Water")
+            button(text="Grass")
+            button(text="Electric")
+        }
+    }
+}
+
 // Layered container where children overlap in the order they are declared.
 // Later children paint over earlier ones. Useful for overlays, badges
 // pinned to a corner, or background/foreground composition. Children
@@ -71,9 +101,9 @@ enum ScrollDirection { vertical, horizontal, both }
 // arrival, so a first page shorter than the viewport loads the next
 // without waiting for a scroll that cannot happen. A handler that adds
 // nothing is not called again until the end is scrolled away from and
-// back. bubbletea draws a scroll as its content, cut off by the
-// terminal, and the interpreter lays nothing out: both fire it only when
-// a test does.
+// back. bubbletea scrolls with the mouse wheel, and with PgUp and PgDn
+// while focus is in the scroll, leaving a drag to the terminal; the
+// interpreter lays nothing out, and fires it only when a test does.
 component scroll(
     style     Style = Style{},
     direction ScrollDirection = ScrollDirection.vertical,

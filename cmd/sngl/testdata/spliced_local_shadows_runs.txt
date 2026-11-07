@@ -32,7 +32,7 @@ import async "sngl:async"
 import test "sngl:test"
 import ui "sngl:ui"
 
-func lookup(name string) async.Result[int] {
+func lookup(name string, life async.Lifetime) async.Result[int] {
     return {ok=name.length()}
 }
 
@@ -69,7 +69,7 @@ ui.window {
     cards()
 }
 -- testrun/android/kotlin/app.sngl/cards/1 --
-sha256:edfdac76fb202f4a9cf4b944452bf41b
+sha256:8cdb4778d5bcbdb99b6a0b91d1e9e84d
 {
   "results": [
     {
@@ -79,7 +79,7 @@ sha256:edfdac76fb202f4a9cf4b944452bf41b
   ]
 }
 -- testrun/bubbletea/go/app.sngl/cards/1 --
-sha256:abbde21541e1b9d5885c2fa696457fa7
+sha256:e6c136779cbe9030d91924c62c0f1c5f
 {
   "results": [
     {
@@ -89,7 +89,7 @@ sha256:abbde21541e1b9d5885c2fa696457fa7
   ]
 }
 -- testrun/fyne/go/app.sngl/cards/1 --
-sha256:92c33076f97134260288acf782c1bfc6
+sha256:8c7bb1577d4a4d5a362c65f39927e6b3
 {
   "results": [
     {
@@ -99,7 +99,7 @@ sha256:92c33076f97134260288acf782c1bfc6
   ]
 }
 -- testrun/gtk4/go/app.sngl/cards/1 --
-sha256:9cba8b18169f5a3e8643a6ef003b0e08
+sha256:25b3f5aeda85b9dca72db156e5db3d78
 {
   "results": [
     {
@@ -109,7 +109,7 @@ sha256:9cba8b18169f5a3e8643a6ef003b0e08
   ]
 }
 -- testrun/html/none/app.sngl/cards/1 --
-sha256:e62be420b698f41a22d210fb927ebbcc
+sha256:5817dcf1930995b2740859dbcf26b1fb
 {
   "results": [
     {

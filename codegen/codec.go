@@ -23,6 +23,33 @@ func IsCodecCall(c *ir.Call) bool {
 	return false
 }
 
+// IsLifetimeCall reports whether c calls one of sngl:async's lifetime ids,
+// which each language answers from the runtime its codec calls use.
+func IsLifetimeCall(c *ir.Call) bool {
+	if c == nil || c.Func == nil {
+		return false
+	}
+	switch c.Func.Intrinsic {
+	case "async.begin", "async.end", "async.ended":
+		return true
+	}
+	return false
+}
+
+// LifetimeID is the number of the sngl:async Lifetime an http call is handed,
+// as IR, or nil for a call handed none: a language reads it with its own
+// spelling of the struct's `_id`.
+func LifetimeID(c *ir.Call) ir.Expr {
+	if c == nil || c.Func == nil || (c.Func.Intrinsic != ir.HTTPSendIntrinsic && c.Func.Intrinsic != ir.HTTPGetIntrinsic) {
+		return nil
+	}
+	life := c.ArgFor("life")
+	if life == nil {
+		return nil
+	}
+	return &ir.Select{Operand: life, Field: "_id", Type: ir.TypInt}
+}
+
 // HostValue is a name the emitted code binds itself, as IR: a language
 // renders it as written.
 func HostValue(name string, t *ir.Type) *ir.Ident {
@@ -84,3 +111,44 @@ func ResponseFieldTypes(t *ir.Type) (status, headers, body *ir.Type) {
 	rt := ir.MemberPayload(t, "ok")
 	return fieldType(rt, "status"), fieldType(rt, "headers"), fieldType(rt, "body")
 }
+
+// HTTPHook is what a request call hands sngl:http's answer where the call has
+// one: the hook, and the Request it is handed, whose url is the one the
+// target spelled with the query, url. Nil where the hook is null, which is
+// every build that ships: nothing there provides the answer, and it folds to
+// its default (passTestAnswer sets it in a test).
+func HTTPHook(n *ir.Call, url ir.Expr) (hook, req ir.Expr) {
+	h := n.ArgFor("hook")
+	if h == nil || ir.IsNullLiteral(h) {
+		return nil, nil
+	}
+	ht := h.ExprType()
+	if ht == nil || ht.Kind != ir.TypeOption || len(ht.Elems) != 1 || ht.Elems[0].Sig == nil || len(ht.Elems[0].Sig.Params) != 1 {
+		return nil, nil
+	}
+	rt := ht.Elems[0].Sig.Params[0].Type
+	fields, _ := ir.FieldsOf(rt)
+	typeOf := func(name string) *ir.Type {
+		if f := ir.FieldNamed(fields, name); f != nil {
+			return f.Type
+		}
+		return nil
+	}
+	method := n.ArgFor("method")
+	if method == nil {
+		method = &ir.Ident{Name: "get", Member: "get", Type: typeOf("method")}
+	}
+	headers := n.ArgFor("headers")
+	if headers == nil {
+		headers = &ir.MapLitIR{Type: typeOf("headers")}
+	}
+	body := n.ArgFor("body")
+	if body == nil {
+		body = &ir.Literal{Type: ir.TypNull, Value: "null"}
+	}
+	return h, StructOf(rt, map[string]ir.Expr{"method": method, "url": url, "headers": headers, "body": body})
+}
+
+// NoAnswer begins the message a request fails with where its hook answered
+// null.
+const NoAnswer = ir.HTTPNoAnswer

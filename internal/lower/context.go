@@ -1204,9 +1204,7 @@ func hasCallArgNamed(args []ir.CallArg, name string) bool {
 // forever. A context cannot be assigned, so nothing a substitution would
 // miss writes one.
 //
-// Only a value that is safe to evaluate at every read: the default window
-// roots are seeded with is `#locale`'s `defaultLocale()`, which asked the
-// environment once per translated string when substituted.
+// Only a value that is safe to evaluate at every read (substitutable).
 func providedContextVars(comp *ir.Component, args []ir.Arg) map[*ir.Var]ir.Expr {
 	var out map[*ir.Var]ir.Expr
 	for _, v := range comp.Vars {
@@ -1214,7 +1212,7 @@ func providedContextVars(comp *ir.Component, args []ir.Arg) map[*ir.Var]ir.Expr 
 			continue
 		}
 		for _, arg := range args {
-			if arg.Name == v.Name && rereadable(arg.Value) {
+			if arg.Name == v.Name && substitutable(v, arg.Value) {
 				if out == nil {
 					out = map[*ir.Var]ir.Expr{}
 				}
@@ -1249,6 +1247,31 @@ func substituteVarsExpr(e ir.Expr, vals map[*ir.Var]ir.Expr) ir.Expr {
 	}
 	tmp := substituteVars([]ir.Stmt{&ir.LocalVar{Init: e}}, vals)
 	return tmp[0].(*ir.LocalVar).Init
+}
+
+// substitutable reports whether val, handed a component for its context var
+// v, may be read in place of v wherever the body reads it: one calling
+// nothing but pure functions, and one calling functions that only read,
+// unless it is the context's own default. That default -- `#locale`'s
+// `defaultLocale()`, which window roots are seeded with -- asked the
+// environment once per translated string when substituted, so it is the
+// var's to hold; but a provider computing its value from state through a
+// function that reads the environment, the Pokédex's
+// `i18n.locale(offered(language))`, held as a var was copied once, and html's
+// pages never changed language.
+func substitutable(v *ir.Var, val ir.Expr) bool {
+	if rereadable(val) {
+		return true
+	}
+	return ir.Reevaluable(val) && !sameCall(val, v.Init)
+}
+
+// sameCall reports whether a and b are calls of one function with no
+// arguments.
+func sameCall(a, b ir.Expr) bool {
+	ca, ok := a.(*ir.Call)
+	cb, ok2 := b.(*ir.Call)
+	return ok && ok2 && ca.Func != nil && ca.Func == cb.Func && len(ca.Args) == 0 && len(cb.Args) == 0
 }
 
 // rereadable reports whether e calls nothing but pure functions, so reading

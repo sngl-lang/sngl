@@ -65,7 +65,7 @@ func TestACopysStateReachesItsDrawing(t *testing.T) {
 	before := view(m)
 	next, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = next.(Model)
-	if !m.big__inst0["0"] {
+	if !m.big__inst0["1"] {
 		t.Fatalf("Enter did not reach the first copy: %v", m.big__inst0)
 	}
 	if view(m) == before {

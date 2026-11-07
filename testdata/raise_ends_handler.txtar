@@ -129,6 +129,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -219,16 +222,37 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.caught = 0
-	m.before = 0
-	m.after = 0
-	m.callCaught = ""
-	m.callBefore = 0
-	m.wrote = 0
-	m.back = 0
-	m.callAfter = 0
-	m.__focusID = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["caught"] {
+		m.caught = 0
+	}
+	if !preset["before"] {
+		m.before = 0
+	}
+	if !preset["after"] {
+		m.after = 0
+	}
+	if !preset["callCaught"] {
+		m.callCaught = ""
+	}
+	if !preset["callBefore"] {
+		m.callBefore = 0
+	}
+	if !preset["wrote"] {
+		m.wrote = 0
+	}
+	if !preset["back"] {
+		m.back = 0
+	}
+	if !preset["callAfter"] {
+		m.callAfter = 0
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
 	return m
 }
 
@@ -290,14 +314,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -361,7 +385,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt6
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt9 *Measurement
 	if own != nil {
 		__lt9 = own
@@ -374,7 +398,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt9 = __lt8
 	}
-	return CellsOf(__lt9)
+	return SpaceOf(__lt9, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
@@ -413,6 +437,16 @@ func LineCap(height__r0 int, lines int) int {
 		__lt13 = __lt12
 	}
 	return __lt13
+}
+
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt14) + 0.5))
 }
 
 func (m *Model) __focusNext() {
@@ -681,7 +715,8 @@ func (m Model) View() tea.View {
 	if part0Focused {
 		part0Prefix = ">"
 	}
-	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Prefix + " " + fmt.Sprint("Direct"))
+	part0Text := part0Prefix + " " + fmt.Sprint("Direct")
+	part0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Focused), tui.Avail(m.width), part0Text).Render(part0Text)
 	part0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0)
 	parts = append(parts, part0)
 	var part1 string
@@ -690,7 +725,8 @@ func (m Model) View() tea.View {
 	if part1Focused {
 		part1Prefix = ">"
 	}
-	part1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part1Prefix + " " + fmt.Sprint("Called"))
+	part1Text := part1Prefix + " " + fmt.Sprint("Called")
+	part1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part1Focused), tui.Avail(m.width), part1Text).Render(part1Text)
 	part1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part1)
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
@@ -717,6 +753,7 @@ import "testing"
 func TestDirectRaiseEndsHandler(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.directClick()
 	c.directClick()
 	if !((c.caught == 2)) { t.Errorf("assert failed: %s", "(c.caught == 2)") }
@@ -727,6 +764,7 @@ func TestDirectRaiseEndsHandler(t *testing.T) {
 func TestCalledRaiseEndsHandler(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.calledClick()
 	c.calledClick()
 	if !((c.callCaught == "from check")) { t.Errorf("assert failed: %s", "(c.callCaught == \"from check\")") }
@@ -737,7 +775,13 @@ func TestCalledRaiseEndsHandler(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -754,6 +798,9 @@ import (
 type ErrorEvent struct {
 	Message string
 	Kind    string
+}
+
+type Test struct {
 }
 
 // Model holds the state for this SNGL UI.
@@ -774,15 +821,35 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.caught = 0
-	m.before = 0
-	m.after = 0
-	m.callCaught = ""
-	m.callBefore = 0
-	m.wrote = 0
-	m.back = 0
-	m.callAfter = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["caught"] {
+		m.caught = 0
+	}
+	if !preset["before"] {
+		m.before = 0
+	}
+	if !preset["after"] {
+		m.after = 0
+	}
+	if !preset["callCaught"] {
+		m.callCaught = ""
+	}
+	if !preset["callBefore"] {
+		m.callBefore = 0
+	}
+	if !preset["wrote"] {
+		m.wrote = 0
+	}
+	if !preset["back"] {
+		m.back = 0
+	}
+	if !preset["callAfter"] {
+		m.callAfter = 0
+	}
 }
 
 func (m *Model) check() {
@@ -949,6 +1016,7 @@ import "testing"
 func TestDirectRaiseEndsHandler(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.directClick()
 	c.directClick()
 	if !((c.caught == 2)) { t.Errorf("assert failed: %s", "(c.caught == 2)") }
@@ -959,6 +1027,7 @@ func TestDirectRaiseEndsHandler(t *testing.T) {
 func TestCalledRaiseEndsHandler(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.calledClick()
 	c.calledClick()
 	if !((c.callCaught == "from check")) { t.Errorf("assert failed: %s", "(c.callCaught == \"from check\")") }
@@ -975,7 +1044,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -1003,6 +1076,9 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	caught     int
@@ -1022,15 +1098,35 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.caught = 0
-	m.before = 0
-	m.after = 0
-	m.callCaught = ""
-	m.callBefore = 0
-	m.wrote = 0
-	m.back = 0
-	m.callAfter = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["caught"] {
+		m.caught = 0
+	}
+	if !preset["before"] {
+		m.before = 0
+	}
+	if !preset["after"] {
+		m.after = 0
+	}
+	if !preset["callCaught"] {
+		m.callCaught = ""
+	}
+	if !preset["callBefore"] {
+		m.callBefore = 0
+	}
+	if !preset["wrote"] {
+		m.wrote = 0
+	}
+	if !preset["back"] {
+		m.back = 0
+	}
+	if !preset["callAfter"] {
+		m.callAfter = 0
+	}
 }
 
 func (m *Model) check() {
@@ -1206,7 +1302,7 @@ func Handler() http.Handler {
 
 func handleIndex(__w http.ResponseWriter, _ *http.Request) {
 	__w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	__w.Write([]byte("<!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<button id=\"$0\" data-sngl-id=\"direct\">\n  <span>Direct</span>\n</button>\n<button id=\"$1\" data-sngl-id=\"called\">\n  <span>Called</span>\n</button>\n\n<script>\nwindow.__snglErrors = [];\naddEventListener(\"error\", (e) => window.__snglErrors.push(String(e.message)));\naddEventListener(\"unhandledrejection\", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));\nwindow.__sngl_markup = Array.from(document.body.childNodes)\n  .filter((n) => n.nodeName !== \"SCRIPT\").map((n) => n.cloneNode(true));\nwindow.__sngl_reset = () => {\n  for (const n of Array.from(document.body.childNodes)) {\n    if (n.nodeName !== \"SCRIPT\") n.remove();\n  }\n  const first = document.body.firstChild;\n  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);\n  window.__sngl_boot();\n};\nwindow.__sngl_boot = () => {\n(() => {\n  // sngl-entry.js\n  var state = { caught: 0, before: 0, after: 0, callCaught: \"\", callBefore: 0, wrote: 0, back: 0, callAfter: 0 };\n  state.directClick = () => $0.click();\n  state.calledClick = () => $1.click();\n  if (typeof window !== \"undefined\") {\n    window.__sngl_state = state;\n  }\n  function form_check(state2) {\n    state2.wrote = state2.wrote + 1;\n    stop(\"from check\");\n    state2.wrote = state2.wrote + 100;\n  }\n  function form_submit(state2) {\n    form_check(state2);\n    state2.back = state2.back + 1;\n  }\n  function stop(why) {\n    throw Object.assign(new Error(why), { kind: \"stop\" });\n  }\n  if (typeof window !== \"undefined\") {\n    Object.assign(window, { form_check, form_submit, stop });\n  }\n  var $0 = document.getElementById(\"$0\");\n  var $1 = document.getElementById(\"$1\");\n  $0.addEventListener(\"click\", function() {\n    try {\n      ;\n      state.before = state.before + 1;\n      throw Object.assign(new Error(\"stop\"), { kind: \"stop\" });\n      state.after = state.after + 1;\n    } catch (__e) {\n      ;\n      if (__e?.kind === void 0) throw __e;\n      ;\n      let e = { message: __e.message, kind: __e.kind };\n      void e;\n      state.caught = state.caught + 1;\n    }\n    ;\n  });\n  $1.addEventListener(\"click\", function() {\n    try {\n      ;\n      state.callBefore = state.callBefore + 1;\n      form_submit(state);\n      state.callAfter = state.callAfter + 1;\n    } catch (__e) {\n      ;\n      if (__e?.kind === void 0) throw __e;\n      ;\n      let e = { message: __e.message, kind: __e.kind };\n      void e;\n      state.callCaught = e.message;\n    }\n    ;\n  });\n})();\n};\nwindow.__sngl_boot();\n</script>\n</body></html>\n"))
+	__w.Write([]byte("<!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<button id=\"$0\" data-sngl-id=\"direct\">\n  <span>Direct</span>\n</button>\n<button id=\"$1\" data-sngl-id=\"called\">\n  <span>Called</span>\n</button>\n\n<script>\nwindow.__snglErrors = [];\naddEventListener(\"error\", (e) => window.__snglErrors.push(String(e.message)));\naddEventListener(\"unhandledrejection\", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));\nwindow.__sngl_markup = Array.from(document.body.childNodes)\n  .filter((n) => n.nodeName !== \"SCRIPT\").map((n) => n.cloneNode(true));\nwindow.__sngl_reset = (pre) => {\n  for (const n of Array.from(document.body.childNodes)) {\n    if (n.nodeName !== \"SCRIPT\") n.remove();\n  }\n  const first = document.body.firstChild;\n  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);\n  window.__snglPre = pre ?? null;\n  window.__sngl_boot();\n};\nwindow.__sngl_boot = () => {\n(() => {\n  // sngl-entry.js\n  var state = { caught: 0, before: 0, after: 0, callCaught: \"\", callBefore: 0, wrote: 0, back: 0, callAfter: 0 };\n  var __snglPre = window.__snglPre ?? {};\n  Object.assign(state, __snglPre);\n  state.directClick = () => $0.click();\n  state.calledClick = () => $1.click();\n  if (typeof window !== \"undefined\") {\n    window.__sngl_state = state;\n  }\n  function form_check(state2) {\n    state2.wrote = state2.wrote + 1;\n    stop(\"from check\");\n    state2.wrote = state2.wrote + 100;\n  }\n  function form_submit(state2) {\n    form_check(state2);\n    state2.back = state2.back + 1;\n  }\n  function stop(why) {\n    throw Object.assign(new Error(why), { kind: \"stop\" });\n  }\n  if (typeof window !== \"undefined\") {\n    Object.assign(window, { form_check, form_submit, stop });\n  }\n  var $0 = document.getElementById(\"$0\");\n  var $1 = document.getElementById(\"$1\");\n  $0.addEventListener(\"click\", function() {\n    try {\n      ;\n      state.before = state.before + 1;\n      throw Object.assign(new Error(\"stop\"), { kind: \"stop\" });\n      state.after = state.after + 1;\n    } catch (__e) {\n      ;\n      if (__e?.kind === void 0) throw __e;\n      ;\n      let e = { message: __e.message, kind: __e.kind };\n      void e;\n      state.caught = state.caught + 1;\n    }\n    ;\n  });\n  $1.addEventListener(\"click\", function() {\n    try {\n      ;\n      state.callBefore = state.callBefore + 1;\n      form_submit(state);\n      state.callAfter = state.callAfter + 1;\n    } catch (__e) {\n      ;\n      if (__e?.kind === void 0) throw __e;\n      ;\n      let e = { message: __e.message, kind: __e.kind };\n      void e;\n      state.callCaught = e.message;\n    }\n    ;\n  });\n})();\n};\n</script>\n</body></html>\n"))
 }
 
 func main() {
@@ -1241,6 +1337,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
 class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
@@ -1251,15 +1353,19 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var caught by mutableStateOf(0)
-    var before by mutableStateOf(0)
-    var after by mutableStateOf(0)
-    var callCaught by mutableStateOf("")
-    var callBefore by mutableStateOf(0)
-    var wrote by mutableStateOf(0)
-    var back by mutableStateOf(0)
-    var callAfter by mutableStateOf(0)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var caught by mutableStateOf(__snglPre(__pre, "caught") { 0 })
+    var before by mutableStateOf(__snglPre(__pre, "before") { 0 })
+    var after by mutableStateOf(__snglPre(__pre, "after") { 0 })
+    var callCaught by mutableStateOf(__snglPre(__pre, "callCaught") { "" })
+    var callBefore by mutableStateOf(__snglPre(__pre, "callBefore") { 0 })
+    var wrote by mutableStateOf(__snglPre(__pre, "wrote") { 0 })
+    var back by mutableStateOf(__snglPre(__pre, "back") { 0 })
+    var callAfter by mutableStateOf(__snglPre(__pre, "callAfter") { 0 })
     fun check() {
         wrote = (wrote + 1)
         stop("from check")
@@ -1380,18 +1486,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { caught: 0, before: 0, after: 0, callCaught: "", callBefore: 0, wrote: 0, back: 0, callAfter: 0 };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.directClick = () => $0.click();
   state.calledClick = () => $1.click();
   if (typeof window !== "undefined") {
@@ -1448,18 +1557,17 @@ window.__sngl_boot = () => {
   });
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3be93b1740e883e96d5e176928ab2ead
+pass sha256:3a4a907985b80768d09c8a3d0118e56e
 -- run/go/fyne --
-pass sha256:96598750686afab76099f14a8b92820c
+pass sha256:ed31cc69c32310cf82154d49a30087f2
 -- run/go/gtk4 --
-pass sha256:9d663cb26b3fa1ce73a7f07204abc9fc
+pass sha256:4cbe1995cdd6517803cc1b35e6675446
 -- run/go/html --
-pass sha256:b73c01e0c378af2b6157e75efe8d24f4
+pass sha256:ced4986900ece563a178020a8a2b674e
 -- run/kotlin/android --
-pass sha256:557f1b543f7ed5f1c4a8bd01465637cf
+pass sha256:32790d91986a3cc986bbd0ec02e22a28
 -- run/none/html --
-pass sha256:25ee2e6b0124d5acfc137fd2668e58cb
+pass sha256:b33da550c0bb375fd0111c92ce79ec5a

@@ -636,7 +636,7 @@ func (st *declarativeState) attachRef(n *ir.NodeInst) *ir.Ident {
 }
 
 func (st *declarativeState) lowerComponentNodeIntoStmts(n *ir.NodeInst, id string) []ir.Stmt {
-	if st.instanceRecords && st.nestedInstance != nil && n.Key == nil {
+	if st.instanceRecords && st.nestedInstance != nil {
 		return st.nestedInstance(n)
 	}
 	createCall := st.componentCreateCall(n)

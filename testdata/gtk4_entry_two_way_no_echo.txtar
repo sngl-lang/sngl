@@ -276,6 +276,7 @@ import "C"
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
+	"fmt"
 	"unsafe"
 )
 
@@ -314,6 +315,11 @@ type Measurement struct {
 	Rem float64
 }
 
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
+}
+
 type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
@@ -329,7 +335,7 @@ type Model struct {
 	visible__inst0 bool
 	__slot0        []*C.GtkWidget
 	__slot0_at     *C.GtkWidget
-	__inst0_live   []*SearchInstance
+	__inst0_live   map[string]*SearchInstance
 	__rendering0   bool
 	__renderAgain0 bool
 	__n1           *C.GtkBox
@@ -346,7 +352,7 @@ func New() *Model {
 	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*SearchInstance{}
+	m.__inst0_live = map[string]*SearchInstance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
@@ -411,29 +417,48 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
-				__inst0_next := []*SearchInstance{}
-				var __inst0_i int = 0
-				for range []int{1} {
+				__inst0_next := map[string]*SearchInstance{}
+				__inst0_seen := map[string]int{}
+				for _, i := range []__anon_id_elem_cdfd47{__anon_id_elem_cdfd47{Id: "1", Elem: 1}} {
 					var __n2 *SearchInstance
-					if len(m.__inst0_live) > __inst0_i {
-						__n2 = m.__inst0_live[__inst0_i]
+					__key1 := fmt.Sprint(i.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n2 = func() *SearchInstance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
 					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *SearchInstance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n2__new := newSearchInstance(m)
 						__n2 = __n2__new
 					}
-					__inst0_next = append(__inst0_next, __n2)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
 					gtk4rt.InsertBefore(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(m.__slot0_at)), gtk4rt.Handle(unsafe.Pointer(__n2__el)))
 					m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n2__el)))
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -443,11 +468,10 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*SearchInstance{}
+	m.__inst0_live = map[string]*SearchInstance{}
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -482,8 +506,6 @@ type SearchInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *C.GtkBox
-	__slot0             []*C.GtkWidget
-	__slot0_at          *C.GtkWidget
 	box                 *C.GtkEntry
 	__n0                *C.GtkLabel
 }
@@ -499,7 +521,6 @@ func newSearchInstance(__model *Model) *SearchInstance {
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	__n4 := (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
 	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(__n4)), 1)
 	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n4)), gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -522,7 +543,7 @@ func newSearchInstance(__model *Model) *SearchInstance {
 	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.search)
 	gtk4rt.LabelSetXAlign(gtk4rt.Handle(unsafe.Pointer(c.__n0)), 0.0)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n4)), gtk4rt.Handle(unsafe.Pointer(c.__n0)))
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(__n4))
 	c.__model.__named_box = c.box
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
@@ -582,9 +603,6 @@ func (c *SearchInstance) Destroy() {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
-	}
 }
 
 func (m *Model) Visible__inst0() bool {
@@ -595,11 +613,39 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	__snglBuilding++
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.__n1_closed_handler)
@@ -619,6 +665,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n3)), gtk4rt.Handle(unsafe.Pointer(m.__n5)))
 	m.__renderSlot0(m.__n3)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
+	__snglEndBuild()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 }
 
@@ -652,4 +699,4 @@ func (m *Model) boxChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__named_box)), sig)
 }
 -- run/go/gtk4 --
-pass sha256:ff6e10fb35ae391cfc57d08df23a064e
+pass sha256:cdba597a0f25c54331dd59ef01c09389

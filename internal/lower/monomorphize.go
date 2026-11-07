@@ -35,6 +35,8 @@ type instance struct {
 }
 
 type monomorph struct {
+	// pkg is the build's copy of the package, which notes PastInstances.
+	pkg *ir.Package
 	// lib is where a library generic copy says to copy is declared, nil where
 	// a library's are left alone.
 	lib       *[]*ir.Func
@@ -52,18 +54,58 @@ type monomorph struct {
 // does not know. After the splice, since a generic component's body is
 // spliced at its bound types only then, and the calls it makes are bound
 // only from then.
+//
+// On a target that emits no type parameter it copies every library generic a
+// spliced body calls, for passMonomorphize's reason: a generic override --
+// a select's, calling `ui.choiceLabel(options, value)` -- is spliced at its
+// call's types only here, after passMonomorphize has run. The copies, and the
+// spliced bodies, name struct and enum instantiations passMonomorphize never
+// saw, which are copied in turn. So does a program generic a generic
+// component's body calls at the component's parameters -- a method of
+// `Cache[V]` writing the cache a `:cache Cache[V]` prop names -- which
+// passMonomorphize kept, the call naming V, and which Go then emitted taking
+// the uncopied struct the spliced call no longer hands it. One it kept past
+// maxInstances it leaves (PastInstances): copied again, a polymorphic
+// recursion grew past the bound a second time
+// (cmd/sngl/testdata/generic_method_in_generic_component_runs.txt).
 var passMonomorphizeCodecs = pass{
 	name:    "MonomorphizeCodecs",
 	enabled: func(Features) bool { return true },
-	apply: func(pkg *ir.Package, _ Features, _ Options) error {
+	apply: func(pkg *ir.Package, c Features, _ Options) error {
 		var reach ir.CodecReach
-		monomorphizeFuncs(pkg, func(fn *ir.Func) bool { return len(reach.GenericCodecs(fn)) > 0 }, false)
+		monomorphizeFuncs(pkg, func(fn *ir.Func) bool {
+			return (!c.GenericFuncs && !pkg.PastInstances[fn]) || len(reach.GenericCodecs(fn)) > 0
+		}, false)
+		if !c.GenericFuncs && pkg != nil {
+			names := declNames(pkg)
+			monomorphizeEnums(pkg, names)
+			monomorphizeStructs(pkg, names)
+			monomorphizeEnums(pkg, names)
+		}
 		return nil
 	},
 }
 
 // A library's generic is promoted only later, by LibFuncs, so the codec pass
 // takes in one a call reaches and declares its copies among the program's.
+
+// declNames is every function and struct name pkg declares, which a copy's
+// name must not be.
+func declNames(pkg *ir.Package) map[string]bool {
+	names := map[string]bool{}
+	for _, fn := range pkg.Funcs {
+		names[fn.Name] = true
+	}
+	for _, c := range pkg.Components {
+		for _, fn := range c.Funcs {
+			names[fn.Name] = true
+		}
+	}
+	for _, sd := range pkg.Structs {
+		names[sd.Name] = true
+	}
+	return names
+}
 
 func lowerMonomorphize(pkg *ir.Package, _ Features, _ Options) error {
 	monomorphizeFuncs(pkg, func(*ir.Func) bool { return true }, true)
@@ -78,6 +120,7 @@ func monomorphizeFuncs(pkg *ir.Package, copy func(*ir.Func) bool, types bool) {
 		return
 	}
 	m := &monomorph{
+		pkg:       pkg,
 		copy:      copy,
 		slot:      map[*ir.Func]*[]*ir.Func{},
 		instances: map[*ir.Func][]instance{},
@@ -168,7 +211,17 @@ func (m *monomorph) keepCallees() {
 
 func isGenericBody(fn *ir.Func) bool {
 	return fn != nil && len(fn.TypeParams)+len(fn.RecvTypeParams) > 0 &&
-		fn.Intrinsic == "" && fn.Foreign.Name == "" && len(fn.Block) > 0
+		fn.Intrinsic == "" && fn.Foreign.Name == "" && len(fn.Block) > 0 &&
+		!boundByItsComponent(fn)
+}
+
+// boundByItsComponent reports whether fn is a method of a component generic
+// in the component's parameters alone: the splice of each instance binds
+// them (InstantiateFunc in expandCall), as InstantiateComponent does for a
+// copy, so a copy per call here was one per type every splice then cloned --
+// a select's trigger at the Fruit a test chose, in the int select's splice.
+func boundByItsComponent(fn *ir.Func) bool {
+	return fn.OnComponent() && len(fn.TypeParams) == 0
 }
 
 func (m *monomorph) visit(n ir.Node) {
@@ -246,6 +299,10 @@ func (m *monomorph) instance(fn *ir.Func, b map[string]*ir.Type) *ir.Func {
 	}
 	if len(m.instances[fn]) >= maxInstances {
 		m.kept[fn] = true
+		if m.pkg.PastInstances == nil {
+			m.pkg.PastInstances = map[*ir.Func]bool{}
+		}
+		m.pkg.PastInstances[fn] = true
 		return nil
 	}
 	inst := ir.InstantiateFunc(fn, b)

@@ -74,6 +74,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -143,9 +146,16 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.short = (time.Duration(100) * time.Millisecond)
-	m.long = (time.Duration(1000) * time.Millisecond)
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["short"] {
+		m.short = (time.Duration(100) * time.Millisecond)
+	}
+	if !preset["long"] {
+		m.long = (time.Duration(1000) * time.Millisecond)
+	}
 	return m
 }
 
@@ -155,15 +165,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -203,14 +212,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -274,7 +283,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -287,7 +296,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -301,20 +310,31 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m Model) Short() time.Duration {
@@ -376,13 +396,16 @@ func (m Model) View() tea.View {
 	var content string
 	var contentChildren []string
 	var content_0 string
-	content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(snglStrDuration((m.short + m.long))))
+	content_0Text := fmt.Sprint(snglStrDuration((m.short + m.long)))
+	content_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0Text).Render(content_0Text)
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
-	content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(int((m.short + m.long) / time.Millisecond))))
+	content_1Text := fmt.Sprint(fmt.Sprint(int((m.short + m.long) / time.Millisecond)))
+	content_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1Text).Render(content_1Text)
 	contentChildren = append(contentChildren, content_1)
 	var content_2 string
-	content_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(int((m.short * 3) / time.Millisecond))))
+	content_2Text := fmt.Sprint(fmt.Sprint(int((m.short * 3) / time.Millisecond)))
+	content_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_2Text).Render(content_2Text)
 	contentChildren = append(contentChildren, content_2)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
@@ -410,13 +433,20 @@ import (
 func TestADurationIsANumberOfMilliseconds(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((snglStrDuration((c.short + c.long)) == "1100ms")) { t.Errorf("assert failed: %s", "(snglStrDuration((c.short + c.long)) == \"1100ms\")") }
 	if !((fmt.Sprint(int((c.short + c.long) / time.Millisecond)) == "1100")) { t.Errorf("assert failed: %s", "(fmt.Sprint(int((c.short + c.long) / time.Millisecond)) == \"1100\")") }
 	if !((fmt.Sprint(int((c.short * 3) / time.Millisecond)) == "300")) { t.Errorf("assert failed: %s", "(fmt.Sprint(int((c.short * 3) / time.Millisecond)) == \"300\")") }
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from component_duration_display.sngl; DO NOT EDIT.
 
@@ -436,6 +466,9 @@ func snglStrDuration(v time.Duration) string {
 	return fmt.Sprint(float64(v)/float64(time.Millisecond)) + "ms"
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	short time.Duration
@@ -450,9 +483,17 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.short = (time.Duration(100) * time.Millisecond)
-	m.long = (time.Duration(1000) * time.Millisecond)
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["short"] {
+		m.short = (time.Duration(100) * time.Millisecond)
+	}
+	if !preset["long"] {
+		m.long = (time.Duration(1000) * time.Millisecond)
+	}
 }
 
 func (m *Model) Short() time.Duration {
@@ -508,6 +549,7 @@ import (
 func TestADurationIsANumberOfMilliseconds(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((snglStrDuration((c.short + c.long)) == "1100ms")) { t.Errorf("assert failed: %s", "(snglStrDuration((c.short + c.long)) == \"1100ms\")") }
 	if !((fmt.Sprint(int((c.short + c.long) / time.Millisecond)) == "1100")) { t.Errorf("assert failed: %s", "(fmt.Sprint(int((c.short + c.long) / time.Millisecond)) == \"1100\")") }
 	if !((fmt.Sprint(int((c.short * 3) / time.Millisecond)) == "300")) { t.Errorf("assert failed: %s", "(fmt.Sprint(int((c.short * 3) / time.Millisecond)) == \"300\")") }
@@ -520,7 +562,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -551,6 +597,9 @@ func snglStrDuration(v time.Duration) string {
 	return fmt.Sprint(float64(v)/float64(time.Millisecond)) + "ms"
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	short  time.Duration
@@ -565,9 +614,17 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.short = (time.Duration(100) * time.Millisecond)
-	m.long = (time.Duration(1000) * time.Millisecond)
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["short"] {
+		m.short = (time.Duration(100) * time.Millisecond)
+	}
+	if !preset["long"] {
+		m.long = (time.Duration(1000) * time.Millisecond)
+	}
 }
 
 func (m *Model) Short() time.Duration {
@@ -636,16 +693,26 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
-    var short by mutableStateOf(100L)
-    var long by mutableStateOf(1000L)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
+    var short by mutableStateOf(__snglPre(__pre, "short") { 100L })
+    var long by mutableStateOf(__snglPre(__pre, "long") { 1000L })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -860,18 +927,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { short: 100, long: 1e3 };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -889,21 +959,20 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:01e89b2f2b7d1898030f6036ee7473c5
+pass sha256:4657a36ed97500dec96458b00a87f630
 -- run/go/fyne --
-pass sha256:9939ebf0a40428b775c15cf9b2223ba7
+pass sha256:c356e21e9e95d315eb726169541728ae
 -- run/go/gtk4 --
-pass sha256:cfb0cc5ee5597a307ca1e135fd0a96e6
+pass sha256:c71bb52d08832c7743178ebc13214f24
 -- run/kotlin/android --
-pass sha256:f1a8da4edf35563a2de6a467604b1f54
+pass sha256:11ecdf0e9648925e3d7b30a31ce464a3
 -- run/none/html --
-pass sha256:94f7d9b0a6e88ec9edb741715a53b7fa
+pass sha256:7ef442777200e3ce6ea4a42b07b0584e
 -- testrun/html/none/component_duration_display.sngl/main/1 --
-sha256:5e55888446f301e3a5872fc911eb751d
+sha256:1dfaf3d395f79f8e690f162e177f41e6
 {
   "results": [
     {

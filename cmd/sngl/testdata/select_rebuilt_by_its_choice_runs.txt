@@ -42,8 +42,8 @@ struct Book {
     title string
 }
 
-func fetchBook(title string) async.Result[Book] {
-    match var r = http.get(url="{server}/books/{http.pathEscape(title)}") {
+func fetchBook(title string, life async.Lifetime) async.Result[Book] {
+    match var r = http.get(url="{server}/books/{http.pathEscape(title)}", life=life) {
         failed { return {failed=r} }
         ok {
             match var checked = r.checked() {
@@ -105,7 +105,7 @@ component page(name string, form = "", @back(), @open(name string, form string))
                     ui.vbox(style={gap=8px, padding=8px}) {
                         ui.select #pick(:value=kind) {
                             for var k = kinds() {
-                                ui.choice(label=k.label)
+                                ui.choice(label=k.label, value=k.label)
                             }
                         }
                         ui.table #grid(columns=[$"Title", $"Kind"]) {
@@ -132,6 +132,7 @@ component main ui.node {
 }
 
 func testChoosingRebuildsThePanel(t test.Test, c main) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.p.book != null, 5000)
     if c.p.tabs != null {
         c.p.tabs.change(1)
@@ -144,7 +145,7 @@ func testChoosingRebuildsThePanel(t test.Test, c main) {
     t.assert(c.p.rows().length() == 0 && c.p.none != null)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:48efbb048cad6938458324d1dba3cf49
+sha256:fa56f0e38a53b0583701cffe92852914
 {
   "results": [
     {
@@ -154,7 +155,7 @@ sha256:48efbb048cad6938458324d1dba3cf49
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:d5c7234ea5cfde479a2a98fbc277e83a
+sha256:18505a3308732f26ad2bdf9c5bc4a612
 {
   "results": [
     {
@@ -164,7 +165,7 @@ sha256:d5c7234ea5cfde479a2a98fbc277e83a
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:13ff81933708004c28b71cbc623a4175
+sha256:578e29174e91f9553105451c6beac3a3
 {
   "results": [
     {
@@ -174,7 +175,7 @@ sha256:13ff81933708004c28b71cbc623a4175
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:70aadb43759de9e514c5721c5d363f71
+sha256:e4c823b15b09e65b7acc7d653bf14290
 {
   "results": [
     {
@@ -184,7 +185,7 @@ sha256:70aadb43759de9e514c5721c5d363f71
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:09729fda09e09f732d443dbb4cc826a7
+sha256:095a9fbab50502f15c67de8c5b92d3cd
 {
   "results": [
     {

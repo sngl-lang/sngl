@@ -68,7 +68,7 @@ func testARemountReadsEachRowBack(t test.Test, c app) {
     t.assert(c.rows[1].count == 4)
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:f24e2cde1fc35a923ad8b1b428d471b2
+sha256:7282044e4ff86e6b796e2f4c0145d929
 {
   "results": [
     {
@@ -86,7 +86,7 @@ sha256:f24e2cde1fc35a923ad8b1b428d471b2
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:ef07531be56dda342b5ebab2459c85e7
+sha256:a3acdb7773f67fef630ecc3bc8f0acd3
 {
   "results": [
     {
@@ -104,7 +104,7 @@ sha256:ef07531be56dda342b5ebab2459c85e7
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:81cb91f2de2eb10f5c67579dd806d9f0
+sha256:fd1a1db3803127f9c11923850d66aca7
 {
   "results": [
     {
@@ -122,7 +122,7 @@ sha256:81cb91f2de2eb10f5c67579dd806d9f0
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:1d6431fa0894a36a7fb7e0bb6a255e50
+sha256:b6a892022fa88516df6ae63c2f8d9b79
 {
   "results": [
     {
@@ -140,7 +140,7 @@ sha256:1d6431fa0894a36a7fb7e0bb6a255e50
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:f61ce57fc8f42bfcaa984ad1cfb18dc8
+sha256:0f28543d8cb2ef2e8d1f0bbb5e43b354
 {
   "results": [
     {

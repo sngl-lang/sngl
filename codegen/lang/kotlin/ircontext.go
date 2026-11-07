@@ -403,6 +403,13 @@ func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
 			op := strings.TrimSuffix(n.Op.String(), "=")
 			value = "(" + recv + "[" + key + "] ?: " + ktMapValZero(idx.Operand.ExprType()) + ") " + op + " " + value
 		}
+		// A map in a field of a struct held by state is rebuilt and copied
+		// back up the path, as a field write is below: assigned in place,
+		// `tally.failures = tally.failures + (…)`, the view never recomposed
+		// (cmd/sngl/testdata/instance_writes_page_state_runs.txt).
+		if sel, ok := idx.Operand.(*ir.Select); ok && kc.isStateStructField(sel) {
+			return kc.rebuildStructPath(sel, recv+" + ("+key+" to "+value+")")
+		}
 		return recv + " = " + recv + " + (" + key + " to " + value + ")"
 	}
 	// A list the program keeps as state is a `SnapshotStateList` held by a
@@ -568,15 +575,35 @@ func (kc *KtIRContext) isStateList(e ir.Expr) bool {
 // equality, so a state value mutated through a binding that shared it looked
 // unchanged and no button did anything. A binding nothing writes needs no copy
 // to contain a mutation, and passMutatedVars says which those are, so its
-// copy is dropped and it reads the value it was given.
+// copy is dropped and it reads the value it was given -- where nothing writes
+// that value either: `var kept = xs` and then `xs.push(4)` pushed onto kept.
 func (kc *KtIRContext) valueCopyFor(n *ir.LocalVar, rendered string) string {
 	if n.Sym == nil || kc.Ctx == nil || kc.Ctx.Pkg == nil || kc.Ctx.Pkg.MutatedVars == nil || kc.Ctx.Pkg.MutatedVars[n.Sym] {
 		return rendered
 	}
-	if c, ok := n.Init.(*ir.Call); ok && ir.IsValueCopy(c) && len(c.Args) == 1 {
+	if c, ok := n.Init.(*ir.Call); ok && ir.IsValueCopy(c) && len(c.Args) == 1 && kc.unwritten(c.Args[0].Value) {
 		return kc.EvalExpr(c.Args[0].Value)
 	}
 	return rendered
+}
+
+// unwritten reports whether e reads a value nothing writes after: anything
+// but a path down from a var passMutatedVars marked, whose write would reach
+// the binding through the value they share.
+func (kc *KtIRContext) unwritten(e ir.Expr) bool {
+	for {
+		switch x := e.(type) {
+		case *ir.Select:
+			e = x.Operand
+		case *ir.Index:
+			e = x.Operand
+		case *ir.Ident:
+			v, ok := x.Sym.(*ir.Var)
+			return !ok || !kc.Ctx.Pkg.MutatedVars[v]
+		default:
+			return true
+		}
+	}
 }
 
 func (kc *KtIRContext) ToggleText(_ *ir.Toggle, target string) string {

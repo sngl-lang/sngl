@@ -4,6 +4,12 @@
 # and others built at run time under a `for`, html refused the call as one
 # that could not say which copy it meant -- the Pokédex's retries, each an
 # openapi adapter's `refresh` calling its query's.
+#
+# unbound.sngl leaves the query's `pending` and `failure` unbound, so the
+# query moves into a wrapper holding them and its `#id` moves with it. The
+# handle is still the body's own: bubbletea refused the call as one that could
+# not say which copy it meant, so the Pokédex's cards bound every prop they
+# did not read.
 
 sngl test --platform=none app.sngl
 stdout '1 tests, 0 failures'
@@ -20,6 +26,21 @@ stdout '1 tests, 0 failures'
 sngl test --platform=bubbletea --language=go app.sngl
 stdout '1 tests, 0 failures'
 
+sngl test --platform=none unbound.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html unbound.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go unbound.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go unbound.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go unbound.sngl
+stdout '1 tests, 0 failures'
+
 -- app.sngl --
 import async "sngl:async"
 import test "sngl:test"
@@ -27,7 +48,7 @@ import ui "sngl:ui"
 
 var asked list[string] = []
 
-func lookup(name string) async.Result[int] {
+func lookup(name string, life async.Lifetime) async.Result[int] {
     asked.push(name)
     return {ok=name.length()}
 }
@@ -67,8 +88,63 @@ func testEachCopyAsksAgain(t test.Test, c pair) {
 ui.window {
     pair
 }
+-- unbound.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+var asked list[string] = []
+
+func lookup(name string, life async.Lifetime) async.Result[int] {
+    asked.push(name)
+    return {ok=name.length()}
+}
+
+component asker(name string) ui.node {
+    var length option[int] = null
+
+    func again() {
+        q.refresh()
+    }
+
+    async.query #q(on=name, fetch=lookup, :value=length)
+    ui.button #retry(text="Again", @click { again() })
+}
+
+component pair ui.node {
+    asker #first(name="fig")
+    asker(name="kiwi")
+    asker #second(name="lemon")
+    for var n = ["plum", "pear"] {
+        asker(name=n)
+    }
+}
+
+func testEachCopyAsksAgain(t test.Test, c pair) {
+    t.wait(func() => asked.length() == 5, 5000)
+    c.first.retry.click()
+    t.wait(func() => asked.length() == 6, 5000)
+    t.assert(asked[5] == "fig")
+    c.second.retry.click()
+    t.wait(func() => asked.length() == 7, 5000)
+    t.assert(asked[6] == "lemon")
+}
+
+ui.window {
+    pair
+}
 -- testrun/bubbletea/go/app.sngl/pair/1 --
-sha256:569ecdd9cbe12b48d811a8ff5b79212b
+sha256:a49509e837092b468e3772a1cca910a7
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/unbound.sngl/pair/1 --
+sha256:c95286470d7a40baa99c34bca2a4c476
 {
   "results": [
     {
@@ -78,7 +154,17 @@ sha256:569ecdd9cbe12b48d811a8ff5b79212b
   ]
 }
 -- testrun/fyne/go/app.sngl/pair/1 --
-sha256:f6bf2c679d614e065cd563503a6faf60
+sha256:fb28d8fd72c11dd37f3115b888220dda
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/unbound.sngl/pair/1 --
+sha256:43d8521a0b0f71b70e79a3c2e2cd1c9f
 {
   "results": [
     {
@@ -88,7 +174,17 @@ sha256:f6bf2c679d614e065cd563503a6faf60
   ]
 }
 -- testrun/gtk4/go/app.sngl/pair/1 --
-sha256:d73f65be2d834a2ece040d5b7a98ca17
+sha256:4066938d5ba092372fe4b7e7d802514c
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/unbound.sngl/pair/1 --
+sha256:ae2f540d2438d4de67416b24daafbd2b
 {
   "results": [
     {
@@ -98,7 +194,17 @@ sha256:d73f65be2d834a2ece040d5b7a98ca17
   ]
 }
 -- testrun/html/none/app.sngl/pair/1 --
-sha256:61c3e59177e25f3b00325474f7f7090f
+sha256:deab1f6a0d4c04ea3ef23e5836a0ddda
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/unbound.sngl/pair/1 --
+sha256:72bc6a4075119493c5710395636052fa
 {
   "results": [
     {

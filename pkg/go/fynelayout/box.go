@@ -158,8 +158,13 @@ func (b *Box) SetLook(l Look) {
 	b.fill.CornerRadius = l.Radius
 	b.setText(l)
 	b.pointer.setCursor(l.Cursor)
-	if w, ok := layoutOf(b.Content); ok {
-		w.Gap, w.Cross, w.Justify = l.Gap, l.Cross, l.Justify
+	if c, ok := b.Content.(*fyne.Container); ok {
+		switch w := c.Layout.(type) {
+		case *Weighted:
+			w.Gap, w.Cross, w.Justify = l.Gap, l.Cross, l.Justify
+		case *Grid:
+			w.Gap = l.Gap
+		}
 	}
 	if l.Hidden {
 		b.Hide()
@@ -170,15 +175,6 @@ func (b *Box) SetLook(l Look) {
 	if regrow {
 		b.in.c.Refresh()
 	}
-}
-
-func layoutOf(o fyne.CanvasObject) (*Weighted, bool) {
-	c, ok := o.(*fyne.Container)
-	if !ok {
-		return nil, false
-	}
-	w, ok := c.Layout.(*Weighted)
-	return w, ok
 }
 
 func (b *Box) setText(l Look) {

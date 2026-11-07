@@ -177,15 +177,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt4 int
-	if px <= 0.0 {
-		__lt4 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt4 float64
+	if across {
+		__lt4 = 8.0
 	} else {
-		__lt4 = max(1, (int(px) / 16))
+		__lt4 = 16.0
 	}
-	return __lt4
+	return int(((PxOf(m__r0) / __lt4) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -225,14 +224,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -296,7 +295,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt10
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt13 *Measurement
 	if own != nil {
 		__lt13 = own
@@ -309,7 +308,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt13 = __lt12
 	}
-	return CellsOf(__lt13)
+	return SpaceOf(__lt13, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -323,20 +322,31 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt14
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt16 int
-	if height__r0 == 0 {
-		__lt16 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt15 int
+	if px <= 0.0 {
+		__lt15 = 0
 	} else {
-		var __lt15 int
-		if lines == 0 {
-			__lt15 = height__r0
-		} else {
-			__lt15 = min(height__r0, lines)
-		}
-		__lt16 = __lt15
+		__lt15 = max(1, (int(px) / 16))
 	}
-	return __lt16
+	return __lt15
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt17 int
+	if height__r0 == 0 {
+		__lt17 = lines
+	} else {
+		var __lt16 int
+		if lines == 0 {
+			__lt16 = height__r0
+		} else {
+			__lt16 = min(height__r0, lines)
+		}
+		__lt17 = __lt16
+	}
+	return __lt17
 }
 
 func (m *Model) __focusNext() {
@@ -481,20 +491,23 @@ func (m Model) View() tea.View {
 		if content_0Focused {
 			content_0Prefix = ">"
 		}
-		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("flip"))
+		content_0Text := content_0Prefix + " " + fmt.Sprint("flip")
+		content_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_0Focused), tui.Avail(m.width), content_0Text).Render(content_0Text)
 		content_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
-		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.greeting))
+		content_1Text := fmt.Sprint(m.greeting)
+		content_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1Text).Render(content_1Text)
 		contentChildren = append(contentChildren, content_1)
-		var __lt17 string
+		var __lt18 string
 		if m.on {
-			__lt17 = "x"
+			__lt18 = "x"
 		} else {
-			__lt17 = "y"
+			__lt18 = "y"
 		}
 		var content_4 string
-		content_4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt17))
+		content_4Text := fmt.Sprint(__lt18)
+		content_4 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_4Text).Render(content_4Text)
 		contentChildren = append(contentChildren, content_4)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
@@ -825,7 +838,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- run/go/bubbletea --
-pass sha256:e3e3c370693ae6f63528a3a180abd458
+pass sha256:0da749a4487ede9c5cd6af3f97ca0f82
 -- run/go/fyne --
 pass sha256:86ff6c6a7d8fd6a0fd49808bd956716d
 -- run/go/gtk4 --

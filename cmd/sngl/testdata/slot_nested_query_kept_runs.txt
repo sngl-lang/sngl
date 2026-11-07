@@ -58,11 +58,11 @@ component page ui.node {
         ui.tab(label="Second") {
             ui.vbox {
                 for var title = ["dune", "war and peace"] {
-                    async.query(on=title, fetch=func(t string) => fetchBook(t), @load(got) { loads += 1 })
+                    async.query(on=title, fetch=func(t string, life async.Lifetime) => fetchBook(t), @load(got) { loads += 1 })
                 }
                 ui.select #pick(:value=kind) {
-                    ui.choice(label="Red")
-                    ui.choice(label="Green")
+                    ui.choice(label="Red", value="Red")
+                    ui.choice(label="Green", value="Green")
                 }
                 ui.text #count(value="{loads}")
             }
@@ -75,6 +75,7 @@ ui.window {
 }
 
 func testEachBookIsAskedForOnce(t test.Test, c page) {
+    t.setContext(http.answer, http.network)
     c.tabs.change(1)
     t.wait(func() => c.loads >= 2, 5000)
     t.wait(func() => c.loads > 2, 1000)
@@ -82,7 +83,7 @@ func testEachBookIsAskedForOnce(t test.Test, c page) {
     t.assert(c.count != null && c.count.value == "2")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:0872a105a8be4cd4c709a1aab837e4ac
+sha256:38b933160bfd25700756a9454b011f5c
 {
   "results": [
     {
@@ -92,7 +93,7 @@ sha256:0872a105a8be4cd4c709a1aab837e4ac
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:0859d13705243fe5633b21de34f52957
+sha256:46e57a96b2053c4888676e8a2345c7df
 {
   "results": [
     {
@@ -102,7 +103,7 @@ sha256:0859d13705243fe5633b21de34f52957
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:74d832b33bacc380850fa2bd557aed97
+sha256:d54c3e26cf59256cca7e765392ed2b5c
 {
   "results": [
     {
@@ -112,7 +113,7 @@ sha256:74d832b33bacc380850fa2bd557aed97
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:21e4916501f84684008b005dec8f8591
+sha256:68655ec48e5d90030fa18d58940c4ac5
 {
   "results": [
     {
@@ -122,7 +123,7 @@ sha256:21e4916501f84684008b005dec8f8591
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:59e8d7520704317807a869c602868584
+sha256:1193080b28e0b34422a234b3ebd2394e
 {
   "results": [
     {

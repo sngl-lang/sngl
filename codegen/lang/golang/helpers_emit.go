@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
 )
 
@@ -115,7 +116,23 @@ func StringToNumberHelper(n *ir.Conversion) string {
 // HelpersNeeded walks pkg and returns the helpers the generated code
 // will use. It inspects every typed var (on every state owner) and every
 // checker-inserted ir.Conversion target.
+//
+// A test's own spelling of a time type is the test file's to import, which
+// its GoIRContext does: counted here it left `time` imported and unused in a
+// model whose program never spelled one. The helpers a test needs are still
+// the model's, and import what they use.
 func HelpersNeeded(pkg *ir.Package) HelperSet {
+	h := helpersNeeded(pkg)
+	if !codegen.BuildsTests(pkg) {
+		return h
+	}
+	app := *pkg
+	app.Funcs = slices.DeleteFunc(slices.Clone(pkg.Funcs), func(f *ir.Func) bool { return f.IsTest })
+	h.NeedTimeImport = helpersNeeded(&app).NeedTimeImport || h.NeedDate || h.NeedTime || h.NeedDateTime
+	return h
+}
+
+func helpersNeeded(pkg *ir.Package) HelperSet {
 	var h HelperSet
 	if pkg == nil {
 		return h

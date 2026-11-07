@@ -1,0 +1,36 @@
+import test "sngl:test"
+import ui "sngl:ui"
+
+// A for over an enum's name walks its members in the order the type declares
+// them, so a menu of every member is written once, beside the enum.
+enum Method { levelUp, machine, egg, tutor }
+
+func spelled() string {
+    var out = ""
+    for var i, m = Method {
+        out += "{i}:{m} "
+    }
+    return out
+}
+
+component menu ui.node {
+    var chosen = Method.levelUp
+
+    for var m = Method {
+        ui.button #pick(text="{m}", @click { chosen = m })
+    }
+}
+
+func testMembersInOrder(t test.Test) {
+    t.assert(spelled() == "0:levelUp 1:machine 2:egg 3:tutor ")
+}
+
+func testEachMemberRenders(t test.Test, c menu) {
+    t.assert(c.pick.length() == 4)
+    c.pick[2].click()
+    t.assert(c.chosen == Method.egg)
+}
+
+ui.window {
+    menu
+}

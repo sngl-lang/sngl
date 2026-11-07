@@ -106,6 +106,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -180,9 +183,16 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.depth = 2
-	m.mark = "*"
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["depth"] {
+		m.depth = 2
+	}
+	if !preset["mark"] {
+		m.mark = "*"
+	}
 	return m
 }
 
@@ -192,15 +202,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -240,14 +249,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -311,7 +320,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -324,7 +333,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -338,20 +347,31 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m Model) Depth() int {
@@ -413,9 +433,10 @@ func (m Model) View() tea.View {
 	var content string
 	var contentChildren []string
 	var content_0 string
-	content_0_part := func(m__r3 int) string {
+	content_0_part := func(m__r4 int) string {
 		var result string
-		result = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("level " + fmt.Sprint(m__r3)) + " ") + m.mark)))
+		resultText := fmt.Sprint(((("level " + fmt.Sprint(m__r4)) + " ") + m.mark))
+		result = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), resultText).Render(resultText)
 		return result
 	}
 	content_0 = m.renderFrame(m.depth, "top", 0, content_0_part)
@@ -425,7 +446,8 @@ func (m Model) View() tea.View {
 	var content_1 string
 	content_1_part := func(result_ int) string {
 		var result string
-		result = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("r " + fmt.Sprint(result_)) + " ") + m.mark)))
+		resultText := fmt.Sprint(((("r " + fmt.Sprint(result_)) + " ") + m.mark))
+		result = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), resultText).Render(resultText)
 		return result
 	}
 	content_1 = m.renderFrame((m.depth - 1), "second", 0, content_1_part)
@@ -435,7 +457,8 @@ func (m Model) View() tea.View {
 	var content_2 string
 	content_2_part := func(in int) string {
 		var result string
-		result = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("in " + fmt.Sprint(in)) + " ") + m.mark)))
+		resultText := fmt.Sprint(((("in " + fmt.Sprint(in)) + " ") + m.mark))
+		result = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), resultText).Render(resultText)
 		return result
 	}
 	content_2 = m.renderFrame((m.depth - 2), "third", 0, content_2_part)
@@ -496,11 +519,18 @@ import "testing"
 func TestLevels(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.depth == 2)) { t.Errorf("assert failed: %s", "(c.depth == 2)") }
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -521,23 +551,14 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
-	depth      int
-	mark       string
-	__root     *fyne.Container
-	__slot0    []fyne.CanvasObject
-	__slot0_at fyne.CanvasObject
-	__slot1    []fyne.CanvasObject
-	__slot1_at fyne.CanvasObject
-	__slot2    []fyne.CanvasObject
-	__slot2_at fyne.CanvasObject
-	__slot3    []fyne.CanvasObject
-	__slot3_at fyne.CanvasObject
-	__slot4    []fyne.CanvasObject
-	__slot4_at fyne.CanvasObject
-	__slot5    []fyne.CanvasObject
-	__slot5_at fyne.CanvasObject
+	depth  int
+	mark   string
+	__root *fyne.Container
 
 	__n27     *fyne.Container
 	__n12     *Frame__slot0Instance
@@ -551,22 +572,20 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.depth = 2
-	m.mark = "*"
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__slot2 = nil
-	m.__slot2_at = nil
-	m.__slot3 = nil
-	m.__slot3_at = nil
-	m.__slot4 = nil
-	m.__slot4_at = nil
-	m.__slot5 = nil
-	m.__slot5_at = nil
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["depth"] {
+		m.depth = 2
+	}
+	if !preset["mark"] {
+		m.mark = "*"
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
 }
 
 func (m *Model) Depth() int {
@@ -615,16 +634,6 @@ type Frame__slot6Instance struct {
 	__inst0_live   []*Frame__slot6Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
-	__slot4        []fyne.CanvasObject
-	__slot4_at     fyne.CanvasObject
-	__slot5        []fyne.CanvasObject
-	__slot5_at     fyne.CanvasObject
 	__n16          *fyne.Container
 	__n0           *widget.Label
 	__n1           *widget.Label
@@ -642,11 +651,6 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__inst0_live = []*Frame__slot6Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
-	c.__slot5 = nil
 	c.__n16 = fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(c.__prop_m)
@@ -759,21 +763,11 @@ type Frame__slot5Instance struct {
 	__prop___depth int
 	__prop___p0    string
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*Frame__slot5Instance
 	__rendering1   bool
 	__renderAgain1 bool
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
-	__slot4        []fyne.CanvasObject
-	__slot4_at     fyne.CanvasObject
-	__slot5        []fyne.CanvasObject
-	__slot5_at     fyne.CanvasObject
 	__n18          *fyne.Container
 	__n2           *widget.Label
 	__n3           *widget.Label
@@ -787,15 +781,10 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot5Instance{}
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
-	c.__slot5 = nil
 	c.__n18 = fynelayout.NewVBox()
 	c.__n2 = widget.NewLabel("")
 	c.__n2.SetText(c.__prop_m)
@@ -908,21 +897,11 @@ type Frame__slot4Instance struct {
 	__prop___depth int
 	__prop___p0    string
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 	__slot2        []fyne.CanvasObject
 	__slot2_at     fyne.CanvasObject
 	__inst2_live   []*Frame__slot4Instance
 	__rendering2   bool
 	__renderAgain2 bool
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
-	__slot4        []fyne.CanvasObject
-	__slot4_at     fyne.CanvasObject
-	__slot5        []fyne.CanvasObject
-	__slot5_at     fyne.CanvasObject
 	__n20          *fyne.Container
 	__n4           *widget.Label
 	__n5           *widget.Label
@@ -936,15 +915,10 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__inst2_live = []*Frame__slot4Instance{}
 	c.__rendering2 = false
 	c.__renderAgain2 = false
-	c.__slot3 = nil
-	c.__slot4 = nil
-	c.__slot5 = nil
 	c.__n20 = fynelayout.NewVBox()
 	c.__n4 = widget.NewLabel("")
 	c.__n4.SetText(c.__prop_m)
@@ -1057,21 +1031,11 @@ type Frame__slot2Instance struct {
 	__prop___depth int
 	__prop___p0    string
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
 	__slot3        []fyne.CanvasObject
 	__slot3_at     fyne.CanvasObject
 	__inst3_live   []*Frame__slot6Instance
 	__rendering3   bool
 	__renderAgain3 bool
-	__slot4        []fyne.CanvasObject
-	__slot4_at     fyne.CanvasObject
-	__slot5        []fyne.CanvasObject
-	__slot5_at     fyne.CanvasObject
 	__n22          *fyne.Container
 	__n6           *widget.Label
 	__n7           *widget.Label
@@ -1085,15 +1049,10 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__inst3_live = []*Frame__slot6Instance{}
 	c.__rendering3 = false
 	c.__renderAgain3 = false
-	c.__slot4 = nil
-	c.__slot5 = nil
 	c.__n22 = fynelayout.NewVBox()
 	c.__n6 = widget.NewLabel("")
 	c.__n6.SetText(c.__prop_m)
@@ -1206,21 +1165,11 @@ type Frame__slot1Instance struct {
 	__prop___depth int
 	__prop___p0    string
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
 	__slot4        []fyne.CanvasObject
 	__slot4_at     fyne.CanvasObject
 	__inst4_live   []*Frame__slot5Instance
 	__rendering4   bool
 	__renderAgain4 bool
-	__slot5        []fyne.CanvasObject
-	__slot5_at     fyne.CanvasObject
 	__n24          *fyne.Container
 	__n8           *widget.Label
 	__n9           *widget.Label
@@ -1234,15 +1183,10 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__inst4_live = []*Frame__slot5Instance{}
 	c.__rendering4 = false
 	c.__renderAgain4 = false
-	c.__slot5 = nil
 	c.__n24 = fynelayout.NewVBox()
 	c.__n8 = widget.NewLabel("")
 	c.__n8.SetText(c.__prop_m)
@@ -1355,16 +1299,6 @@ type Frame__slot0Instance struct {
 	__prop___depth int
 	__prop___p0    string
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
-	__slot4        []fyne.CanvasObject
-	__slot4_at     fyne.CanvasObject
 	__slot5        []fyne.CanvasObject
 	__slot5_at     fyne.CanvasObject
 	__inst5_live   []*Frame__slot4Instance
@@ -1383,11 +1317,6 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	c.__slot5 = nil
 	c.__inst5_live = []*Frame__slot4Instance{}
 	c.__rendering5 = false
@@ -1512,6 +1441,7 @@ import "testing"
 func TestLevels(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.depth == 2)) { t.Errorf("assert failed: %s", "(c.depth == 2)") }
 }
 
@@ -1522,7 +1452,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -1553,45 +1487,34 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	depth      int
-	mark       string
-	__root     gtk4rt.Handle
-	__slot0    []gtk4rt.Handle
-	__slot0_at gtk4rt.Handle
-	__slot1    []gtk4rt.Handle
-	__slot1_at gtk4rt.Handle
-	__slot2    []gtk4rt.Handle
-	__slot2_at gtk4rt.Handle
-	__slot3    []gtk4rt.Handle
-	__slot3_at gtk4rt.Handle
-	__slot4    []gtk4rt.Handle
-	__slot4_at gtk4rt.Handle
-	__slot5    []gtk4rt.Handle
-	__slot5_at gtk4rt.Handle
+	depth  int
+	mark   string
+	__root gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.depth = 2
-	m.mark = "*"
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__slot2 = nil
-	m.__slot2_at = nil
-	m.__slot3 = nil
-	m.__slot3_at = nil
-	m.__slot4 = nil
-	m.__slot4_at = nil
-	m.__slot5 = nil
-	m.__slot5_at = nil
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["depth"] {
+		m.depth = 2
+	}
+	if !preset["mark"] {
+		m.mark = "*"
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
 }
 
 // Frame__slot6Instance is one live instance of the frame__slot6 component.
@@ -1608,16 +1531,6 @@ type Frame__slot6Instance struct {
 	__inst0_live   []*Frame__slot6Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
-	__slot4        []gtk4rt.Handle
-	__slot4_at     gtk4rt.Handle
-	__slot5        []gtk4rt.Handle
-	__slot5_at     gtk4rt.Handle
 	__n16          gtk4rt.Handle
 	__n0           gtk4rt.Handle
 	__n1           gtk4rt.Handle
@@ -1634,11 +1547,6 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__inst0_live = []*Frame__slot6Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
-	c.__slot5 = nil
 	c.__n16 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n16, 1)
 	gtk4rt.SetLook(c.__n16, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1756,21 +1664,6 @@ func (c *Frame__slot6Instance) Destroy() {
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
 	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
-	}
-	if c.__slot5_at != nil {
-		gtk4rt.Release(c.__slot5_at)
-	}
 }
 
 // Frame__slot5Instance is one live instance of the frame__slot5 component.
@@ -1782,21 +1675,11 @@ type Frame__slot5Instance struct {
 	__prop___depth int
 	__prop___p0    string
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*Frame__slot5Instance
 	__rendering1   bool
 	__renderAgain1 bool
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
-	__slot4        []gtk4rt.Handle
-	__slot4_at     gtk4rt.Handle
-	__slot5        []gtk4rt.Handle
-	__slot5_at     gtk4rt.Handle
 	__n18          gtk4rt.Handle
 	__n2           gtk4rt.Handle
 	__n3           gtk4rt.Handle
@@ -1809,15 +1692,10 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop_m = __a_m
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot5Instance{}
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
-	c.__slot5 = nil
 	c.__n18 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n18, 1)
 	gtk4rt.SetLook(c.__n18, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1932,23 +1810,8 @@ func (c *Frame__slot5Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 	if c.__slot1_at != nil {
 		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
-	}
-	if c.__slot5_at != nil {
-		gtk4rt.Release(c.__slot5_at)
 	}
 }
 
@@ -1961,21 +1824,11 @@ type Frame__slot4Instance struct {
 	__prop___depth int
 	__prop___p0    string
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
 	__slot2        []gtk4rt.Handle
 	__slot2_at     gtk4rt.Handle
 	__inst2_live   []*Frame__slot4Instance
 	__rendering2   bool
 	__renderAgain2 bool
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
-	__slot4        []gtk4rt.Handle
-	__slot4_at     gtk4rt.Handle
-	__slot5        []gtk4rt.Handle
-	__slot5_at     gtk4rt.Handle
 	__n20          gtk4rt.Handle
 	__n4           gtk4rt.Handle
 	__n5           gtk4rt.Handle
@@ -1988,15 +1841,10 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop_m = __a_m
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__inst2_live = []*Frame__slot4Instance{}
 	c.__rendering2 = false
 	c.__renderAgain2 = false
-	c.__slot3 = nil
-	c.__slot4 = nil
-	c.__slot5 = nil
 	c.__n20 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n20, 1)
 	gtk4rt.SetLook(c.__n20, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -2111,23 +1959,8 @@ func (c *Frame__slot4Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 	if c.__slot2_at != nil {
 		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
-	}
-	if c.__slot5_at != nil {
-		gtk4rt.Release(c.__slot5_at)
 	}
 }
 
@@ -2140,21 +1973,11 @@ type Frame__slot2Instance struct {
 	__prop___depth int
 	__prop___p0    string
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
 	__slot3        []gtk4rt.Handle
 	__slot3_at     gtk4rt.Handle
 	__inst3_live   []*Frame__slot6Instance
 	__rendering3   bool
 	__renderAgain3 bool
-	__slot4        []gtk4rt.Handle
-	__slot4_at     gtk4rt.Handle
-	__slot5        []gtk4rt.Handle
-	__slot5_at     gtk4rt.Handle
 	__n22          gtk4rt.Handle
 	__n6           gtk4rt.Handle
 	__n7           gtk4rt.Handle
@@ -2167,15 +1990,10 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop_m = __a_m
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__inst3_live = []*Frame__slot6Instance{}
 	c.__rendering3 = false
 	c.__renderAgain3 = false
-	c.__slot4 = nil
-	c.__slot5 = nil
 	c.__n22 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n22, 1)
 	gtk4rt.SetLook(c.__n22, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -2290,23 +2108,8 @@ func (c *Frame__slot2Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
 	if c.__slot3_at != nil {
 		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
-	}
-	if c.__slot5_at != nil {
-		gtk4rt.Release(c.__slot5_at)
 	}
 }
 
@@ -2319,21 +2122,11 @@ type Frame__slot1Instance struct {
 	__prop___depth int
 	__prop___p0    string
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
 	__slot4        []gtk4rt.Handle
 	__slot4_at     gtk4rt.Handle
 	__inst4_live   []*Frame__slot5Instance
 	__rendering4   bool
 	__renderAgain4 bool
-	__slot5        []gtk4rt.Handle
-	__slot5_at     gtk4rt.Handle
 	__n24          gtk4rt.Handle
 	__n8           gtk4rt.Handle
 	__n9           gtk4rt.Handle
@@ -2346,15 +2139,10 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop_m = __a_m
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__inst4_live = []*Frame__slot5Instance{}
 	c.__rendering4 = false
 	c.__renderAgain4 = false
-	c.__slot5 = nil
 	c.__n24 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n24, 1)
 	gtk4rt.SetLook(c.__n24, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -2469,23 +2257,8 @@ func (c *Frame__slot1Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
 	if c.__slot4_at != nil {
 		gtk4rt.Release(c.__slot4_at)
-	}
-	if c.__slot5_at != nil {
-		gtk4rt.Release(c.__slot5_at)
 	}
 }
 
@@ -2498,16 +2271,6 @@ type Frame__slot0Instance struct {
 	__prop___depth int
 	__prop___p0    string
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
-	__slot4        []gtk4rt.Handle
-	__slot4_at     gtk4rt.Handle
 	__slot5        []gtk4rt.Handle
 	__slot5_at     gtk4rt.Handle
 	__inst5_live   []*Frame__slot4Instance
@@ -2525,11 +2288,6 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop_m = __a_m
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	c.__slot5 = nil
 	c.__inst5_live = []*Frame__slot4Instance{}
 	c.__rendering5 = false
@@ -2648,21 +2406,6 @@ func (c *Frame__slot0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
-	}
 	if c.__slot5_at != nil {
 		gtk4rt.Release(c.__slot5_at)
 	}
@@ -2731,6 +2474,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
 class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
@@ -2741,10 +2490,14 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
-    var depth by mutableStateOf(2)
-    var mark by mutableStateOf("*")
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
+    var depth by mutableStateOf(__snglPre(__pre, "depth") { 2 })
+    var mark by mutableStateOf(__snglPre(__pre, "mark") { "*" })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -2976,18 +2729,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { depth: 2, mark: "*" };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -3002,15 +2758,10 @@ window.__sngl_boot = () => {
     let __prop_m = m;
     let __prop___depth = __depth;
     let __prop___p0 = __p0;
-    let __slot02 = [];
+    let __slot0 = [];
     let __inst1_live = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
     function __set_result(__v) {
       __prop_result = __v;
       __n1.textContent = "in " + String(__prop_result) + " " + __prop___p0;
@@ -3043,9 +2794,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain0) {
             __renderAgain0 = false;
-            let __place0_prev = __slot02;
+            let __place0_prev = __slot0;
             let __place0_i = 0;
-            __slot02 = [];
+            __slot0 = [];
             let __inst1_next = [];
             let __inst1_i = 0;
             if (__prop_result > 0) {
@@ -3078,7 +2829,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n15__el, __place0_i_ref0);
                 }
-                __slot02.push(__n15__el);
+                __slot0.push(__n15__el);
               }
             }
             for (const [__inst1_i_d, _] of __inst1_live.entries()) {
@@ -3089,7 +2840,7 @@ window.__sngl_boot = () => {
             }
             __inst1_live = __inst1_next;
             for (const __place0_prev_e of __place0_prev) {
-              if (__slot02.indexOf(__place0_prev_e) < 0) {
+              if (__slot0.indexOf(__place0_prev_e) < 0) {
                 parent.removeChild(__place0_prev_e);
               }
             }
@@ -3141,15 +2892,10 @@ window.__sngl_boot = () => {
     let __prop_m = m;
     let __prop___depth = __depth;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
+    let __slot1 = [];
     let __inst3_live = [];
     let __rendering1 = false;
     let __renderAgain1 = false;
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
     function __set_result(__v) {
       __prop_result = __v;
       __n3.textContent = "r " + String(__prop_result) + " " + __prop___p0;
@@ -3182,9 +2928,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain1) {
             __renderAgain1 = false;
-            let __place2_prev = __slot12;
+            let __place2_prev = __slot1;
             let __place2_i = 0;
-            __slot12 = [];
+            __slot1 = [];
             let __inst3_next = [];
             let __inst3_i = 0;
             if (__prop_result > 0) {
@@ -3217,7 +2963,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n17__el, __place2_i_ref0);
                 }
-                __slot12.push(__n17__el);
+                __slot1.push(__n17__el);
               }
             }
             for (const [__inst3_i_d, _] of __inst3_live.entries()) {
@@ -3228,7 +2974,7 @@ window.__sngl_boot = () => {
             }
             __inst3_live = __inst3_next;
             for (const __place2_prev_e of __place2_prev) {
-              if (__slot12.indexOf(__place2_prev_e) < 0) {
+              if (__slot1.indexOf(__place2_prev_e) < 0) {
                 parent.removeChild(__place2_prev_e);
               }
             }
@@ -3280,15 +3026,10 @@ window.__sngl_boot = () => {
     let __prop_m = m;
     let __prop___depth = __depth;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
+    let __slot2 = [];
     let __inst5_live = [];
     let __rendering2 = false;
     let __renderAgain2 = false;
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
     function __set_result(__v) {
       __prop_result = __v;
       __n5.textContent = "level " + String(__prop_result) + " " + __prop___p0;
@@ -3321,9 +3062,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain2) {
             __renderAgain2 = false;
-            let __place4_prev = __slot22;
+            let __place4_prev = __slot2;
             let __place4_i = 0;
-            __slot22 = [];
+            __slot2 = [];
             let __inst5_next = [];
             let __inst5_i = 0;
             if (__prop_result > 0) {
@@ -3356,7 +3097,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n19__el, __place4_i_ref0);
                 }
-                __slot22.push(__n19__el);
+                __slot2.push(__n19__el);
               }
             }
             for (const [__inst5_i_d, _] of __inst5_live.entries()) {
@@ -3367,7 +3108,7 @@ window.__sngl_boot = () => {
             }
             __inst5_live = __inst5_next;
             for (const __place4_prev_e of __place4_prev) {
-              if (__slot22.indexOf(__place4_prev_e) < 0) {
+              if (__slot2.indexOf(__place4_prev_e) < 0) {
                 parent.removeChild(__place4_prev_e);
               }
             }
@@ -3419,15 +3160,10 @@ window.__sngl_boot = () => {
     let __prop_m = m;
     let __prop___depth = __depth;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
+    let __slot3 = [];
     let __inst7_live = [];
     let __rendering3 = false;
     let __renderAgain3 = false;
-    let __slot42 = [];
-    let __slot52 = [];
     function __set_result(__v) {
       __prop_result = __v;
       __n7.textContent = "in " + String(__prop_result) + " " + __prop___p0;
@@ -3460,9 +3196,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain3) {
             __renderAgain3 = false;
-            let __place6_prev = __slot32;
+            let __place6_prev = __slot3;
             let __place6_i = 0;
-            __slot32 = [];
+            __slot3 = [];
             let __inst7_next = [];
             let __inst7_i = 0;
             if (__prop_result > 0) {
@@ -3495,7 +3231,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n21__el, __place6_i_ref0);
                 }
-                __slot32.push(__n21__el);
+                __slot3.push(__n21__el);
               }
             }
             for (const [__inst7_i_d, _] of __inst7_live.entries()) {
@@ -3506,7 +3242,7 @@ window.__sngl_boot = () => {
             }
             __inst7_live = __inst7_next;
             for (const __place6_prev_e of __place6_prev) {
-              if (__slot32.indexOf(__place6_prev_e) < 0) {
+              if (__slot3.indexOf(__place6_prev_e) < 0) {
                 parent.removeChild(__place6_prev_e);
               }
             }
@@ -3558,15 +3294,10 @@ window.__sngl_boot = () => {
     let __prop_m = m;
     let __prop___depth = __depth;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
+    let __slot4 = [];
     let __inst9_live = [];
     let __rendering4 = false;
     let __renderAgain4 = false;
-    let __slot52 = [];
     function __set_result(__v) {
       __prop_result = __v;
       __n9.textContent = "r " + String(__prop_result) + " " + __prop___p0;
@@ -3599,9 +3330,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain4) {
             __renderAgain4 = false;
-            let __place8_prev = __slot42;
+            let __place8_prev = __slot4;
             let __place8_i = 0;
-            __slot42 = [];
+            __slot4 = [];
             let __inst9_next = [];
             let __inst9_i = 0;
             if (__prop_result > 0) {
@@ -3634,7 +3365,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n23__el, __place8_i_ref0);
                 }
-                __slot42.push(__n23__el);
+                __slot4.push(__n23__el);
               }
             }
             for (const [__inst9_i_d, _] of __inst9_live.entries()) {
@@ -3645,7 +3376,7 @@ window.__sngl_boot = () => {
             }
             __inst9_live = __inst9_next;
             for (const __place8_prev_e of __place8_prev) {
-              if (__slot42.indexOf(__place8_prev_e) < 0) {
+              if (__slot4.indexOf(__place8_prev_e) < 0) {
                 parent.removeChild(__place8_prev_e);
               }
             }
@@ -3697,12 +3428,7 @@ window.__sngl_boot = () => {
     let __prop_m = m;
     let __prop___depth = __depth;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
+    let __slot5 = [];
     let __inst11_live = [];
     let __rendering5 = false;
     let __renderAgain5 = false;
@@ -3738,9 +3464,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain5) {
             __renderAgain5 = false;
-            let __place10_prev = __slot52;
+            let __place10_prev = __slot5;
             let __place10_i = 0;
-            __slot52 = [];
+            __slot5 = [];
             let __inst11_next = [];
             let __inst11_i = 0;
             if (__prop_result > 0) {
@@ -3773,7 +3499,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n25__el, __place10_i_ref0);
                 }
-                __slot52.push(__n25__el);
+                __slot5.push(__n25__el);
               }
             }
             for (const [__inst11_i_d, _] of __inst11_live.entries()) {
@@ -3784,7 +3510,7 @@ window.__sngl_boot = () => {
             }
             __inst11_live = __inst11_next;
             for (const __place10_prev_e of __place10_prev) {
-              if (__slot52.indexOf(__place10_prev_e) < 0) {
+              if (__slot5.indexOf(__place10_prev_e) < 0) {
                 parent.removeChild(__place10_prev_e);
               }
             }
@@ -3825,12 +3551,6 @@ window.__sngl_boot = () => {
       __set___p0
     };
   }
-  var __slot0 = [];
-  var __slot1 = [];
-  var __slot2 = [];
-  var __slot3 = [];
-  var __slot4 = [];
-  var __slot5 = [];
   function String(v) {
     return "" + v;
   }
@@ -3845,16 +3565,15 @@ window.__sngl_boot = () => {
   __n14__pos.appendChild(__n14.__root);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:fb93e5d2ecce58e27226ef02b483ae74
+pass sha256:c2ee3d88455eec99037351c6f6de8156
 -- run/go/fyne --
-pass sha256:9f392b64e3834547fab36e573ac33f1c
+pass sha256:52013fe79c71b41556726b249a521b15
 -- run/go/gtk4 --
-pass sha256:1adf7397be4f24688e8eb741dfaac936
+pass sha256:c873e0b06e81a755e1fc359a4bca8ca1
 -- run/kotlin/android --
-pass sha256:8be43ded837a9703835910f7b4a73116
+pass sha256:67255b602693438bdaef79a5ddf7c0fe
 -- run/none/html --
-pass sha256:5ea8e48665e122073db9bbdcb6aed1d5
+pass sha256:e03e16f1f6df223811edd61574725cf4

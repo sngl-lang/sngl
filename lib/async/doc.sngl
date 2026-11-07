@@ -58,6 +58,16 @@
 // arriving after the node unmounts, so a screen never shows what it has
 // stopped asking about; `refresh` asks again without a change of key.
 //
+// `fetch` is handed the key and the attempt's `Lifetime`, which ends when the
+// query asks about something else, refreshes or leaves the tree. A fetch
+// hands it to each request it makes, and one still waiting then stops and
+// answers a `Failure` of kind `cancelled`, which the query drops as it drops
+// any answer it no longer wants.
+//
+//	func fetchBook(title string, life async.Lifetime) async.Result[Book] {
+//	    match var r = http.get(url="…/books/{title}", life=life) { … }
+//	}
+//
 // `fetch` answers a `Result`: the value, or the `Failure` that kept it from
 // arriving. A failure is a value a screen renders beside the stale answer it
 // still has, not a raise -- a 404 is a response that arrived -- and a program

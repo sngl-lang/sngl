@@ -57,10 +57,11 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   __n1.addEventListener("input", function(e) {
-    state.value__inst0 = e.currentTarget.value;
+    let __input_value_wrote0 = e.currentTarget.value;
+    state.value__inst0 = __input_value_wrote0;
     __n1.value = state.value__inst0;
-    state.name__inst0 = state.value__inst0;
-    state.n__inst0 = state.xs__inst0.filter((e2) => state.value__inst0 > 1).length;
+    state.name__inst0 = __input_value_wrote0;
+    state.n__inst0 = state.xs__inst0.filter((e2) => __input_value_wrote0 > 1).length;
     __n2.textContent = String(state.n__inst0);
   });
   __n1.addEventListener("change", function(e) {
@@ -76,4 +77,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:37f6fac8a5613bcefbe633984d5513ef
+pass sha256:2fb93d3235eac2e661ef4f5d34d655c4

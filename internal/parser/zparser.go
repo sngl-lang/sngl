@@ -4081,17 +4081,24 @@ state5:
 //	#   func name[html.platform](...)         → ident lbracket ident dot ident rbracket
 //	#   func name[platform](...)              → ident lbracket ident rbracket
 //	#   func recv.method(...)                 → ident dot ident
-//	#   func recv.method[T any](...)          → ident dot ident NameBracket
-//	#   func recv[T].method[U any](...)       → ident lbracket ident rbracket dot ident NameBracket
+//	#   func recv.method[T any](...)          → ident dot ident lbracket ident TypeParamRest
+//	#   func recv[T].method[U any](...)       → ident lbracket ident rbracket dot ident …
+//	#   func ui.select[T].change[platform]()  → any number of `dot ident` and brackets
 //	#
-//	# A receiver's list restates the receiver's names and no constraints, as Go's
-//	# does, while a function's own list names one for each. A target is a name or
-//	# a qualified one. So all three open `lbracket ident`, and the token after
+//	# A name is any number of `dot ident` and bracketed lists after its first
+//	# ident, and the builder reads each list by where it stands: one before the
+//	# last `dot` is the receiver's parameters, one after the last name is the
+//	# function's own parameters and then the target it overrides.
+//	#
+//	# A receiver's list restates the receiver's names, as Go's does, or names a
+//	# constraint for each, which narrows one its declaration leaves `any` and
+//	# restates any other; a function's own list names one for each. A target is a
+//	# name or a qualified one. So all three open `lbracket ident`, and the token after
 //	# that ident decides: `comma` is a receiver's list, a Type is the function's
 //	# own, `dot` is a qualified target, and `rbracket` is a bare target or a
 //	# receiver's single name -- a `dot` after the bracket says which. Neither
 //	# `comma`, `dot` nor `rbracket` begins a Type.
-//	FuncName = ident [ lbracket ident FuncNameBracket | dot ident [ NameBracket ] ] .
+//	FuncName = ident { dot ident | lbracket ident FuncNameBracket } .
 //
 //	State 0
 //		on  ident
@@ -4099,30 +4106,21 @@ state5:
 //	State 1
 //		Accept
 //		on  dot
-//			shift and goto state 2
+//			shift and goto state 0
 //		on  lbracket
-//			shift and goto state 5
+//			shift and goto state 2
 //	State 2
 //		on  ident
 //			shift and goto state 3
 //	State 3
-//		Accept
-//		on  lbracket
-//			call NameBracket and goto state 4
-//	State 4
-//		Accept
-//	State 5
-//		on  ident
-//			shift and goto state 6
-//	State 6
 //		on  comma, dot, ellipsis, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, rbracket
-//			call FuncNameBracket and goto state 4
+//			call FuncNameBracket and goto state 1
 //
 // FuncName is used internally from Parse.
 func (p *Parser) FuncName() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(FuncName))
-	// state0:
+state0:
 	accept, errorSet = false, 98
 	switch Symbol(p.tok.Ch) {
 	case ident:
@@ -4135,10 +4133,10 @@ state1:
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		p.push(p.shift())
-		goto state2
+		goto state0
 	case lbracket:
 		p.push(p.shift())
-		goto state5
+		goto state2
 	}
 	return p.stop(start, accept, errorSet)
 state2:
@@ -4150,30 +4148,11 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = true, 133
-	switch Symbol(p.tok.Ch) {
-	case lbracket:
-		p.NameBracket()
-		goto state4
-	}
-	return p.stop(start, accept, errorSet)
-state4:
-	accept, errorSet = true, 0
-	return p.stop(start, accept, errorSet)
-state5:
-	accept, errorSet = false, 98
-	switch Symbol(p.tok.Ch) {
-	case ident:
-		p.push(p.shift())
-		goto state6
-	}
-	return p.stop(start, accept, errorSet)
-state6:
 	accept, errorSet = false, 159
 	switch Symbol(p.tok.Ch) {
 	case comma, dot, ellipsis, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, rbracket:
 		p.FuncNameBracket()
-		goto state4
+		goto state1
 	}
 	return p.stop(start, accept, errorSet)
 }
@@ -4181,21 +4160,21 @@ state6:
 // FuncNameBracket grammar:
 //
 //	FuncNameBracket =
-//	      rbracket [ dot ident [ NameBracket ] ]
-//	    | comma ident { comma ident } rbracket dot ident [ NameBracket ]
+//	      rbracket
+//	    | comma ident { comma ident } rbracket
 //	    | dot ident rbracket
-//	    | TypeParamRest [ TargetIndex ]
+//	    | TypeParamRest
 //	    .
 //
 //	State 0
 //		on  comma
 //			shift and goto state 1
-//		on  dot
-//			shift and goto state 7
 //		on  rbracket
-//			shift and goto state 9
+//			shift and goto state 3
+//		on  dot
+//			shift and goto state 4
 //		on  ellipsis, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
-//			call TypeParamRest and goto state 10
+//			call TypeParamRest and goto state 3
 //	State 1
 //		on  ident
 //			shift and goto state 2
@@ -4205,31 +4184,13 @@ state6:
 //		on  rbracket
 //			shift and goto state 3
 //	State 3
-//		on  dot
-//			shift and goto state 4
+//		Accept
 //	State 4
 //		on  ident
 //			shift and goto state 5
 //	State 5
-//		Accept
-//		on  lbracket
-//			call NameBracket and goto state 6
-//	State 6
-//		Accept
-//	State 7
-//		on  ident
-//			shift and goto state 8
-//	State 8
 //		on  rbracket
-//			shift and goto state 6
-//	State 9
-//		Accept
-//		on  dot
-//			shift and goto state 4
-//	State 10
-//		Accept
-//		on  lbracket
-//			call TargetIndex and goto state 6
+//			shift and goto state 3
 //
 // FuncNameBracket is used internally from Parse.
 func (p *Parser) FuncNameBracket() []int32 {
@@ -4241,15 +4202,15 @@ func (p *Parser) FuncNameBracket() []int32 {
 	case comma:
 		p.push(p.shift())
 		goto state1
-	case dot:
-		p.push(p.shift())
-		goto state7
 	case rbracket:
 		p.push(p.shift())
-		goto state9
+		goto state3
+	case dot:
+		p.push(p.shift())
+		goto state4
 	case ellipsis, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		p.TypeParamRest()
-		goto state10
+		goto state3
 	}
 	return p.stop(start, accept, errorSet)
 state1:
@@ -4272,12 +4233,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 173
-	switch Symbol(p.tok.Ch) {
-	case dot:
-		p.push(p.shift())
-		goto state4
-	}
+	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state4:
 	accept, errorSet = false, 98
@@ -4288,46 +4244,11 @@ state4:
 	}
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = true, 133
-	switch Symbol(p.tok.Ch) {
-	case lbracket:
-		p.NameBracket()
-		goto state6
-	}
-	return p.stop(start, accept, errorSet)
-state6:
-	accept, errorSet = true, 0
-	return p.stop(start, accept, errorSet)
-state7:
-	accept, errorSet = false, 98
-	switch Symbol(p.tok.Ch) {
-	case ident:
-		p.push(p.shift())
-		goto state8
-	}
-	return p.stop(start, accept, errorSet)
-state8:
 	accept, errorSet = false, 145
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		p.push(p.shift())
-		goto state6
-	}
-	return p.stop(start, accept, errorSet)
-state9:
-	accept, errorSet = true, 173
-	switch Symbol(p.tok.Ch) {
-	case dot:
-		p.push(p.shift())
-		goto state4
-	}
-	return p.stop(start, accept, errorSet)
-state10:
-	accept, errorSet = true, 133
-	switch Symbol(p.tok.Ch) {
-	case lbracket:
-		p.TargetIndex()
-		goto state6
+		goto state3
 	}
 	return p.stop(start, accept, errorSet)
 }

@@ -8,7 +8,7 @@ import . "sngl:ui"
 
 var asked list[string] = []
 
-func lookup(name string) async.Result[int] {
+func lookup(name string, life async.Lifetime) async.Result[int] {
     asked.push(name)
     return {ok=name.length()}
 }

@@ -82,6 +82,9 @@ func snglSome[T any](v T) *T {
 	return &v
 }
 
+type Test struct {
+}
+
 type __anon_base_width_pad_d16e3f struct {
 	Base  int
 	Width int
@@ -105,10 +108,20 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.xs = []int{10, 11, 12}
-	m.ys = []*float64{snglSome(1.5), nil}
-	m.hs = []string{"red", "green"}
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["xs"] {
+		m.xs = []int{10, 11, 12}
+	}
+	if !preset["ys"] {
+		m.ys = []*float64{snglSome(1.5), nil}
+	}
+	if !preset["hs"] {
+		m.hs = []string{"red", "green"}
+	}
 }
 
 func Joined(xs []int, hs []string) string {
@@ -382,6 +395,7 @@ import (
 func TestLists(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	__list0 := []string{}
 	for _, __item0 := range c.xs {
 		__list0 = append(__list0, _baseText(__item0, 16))
@@ -436,7 +450,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -445,6 +463,7 @@ func newTestComponent() *Model {
 
 package test.sngl.app
 
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -459,6 +478,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
+
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
 
 data class __anon_base_width_pad_d16e3f(
     var base: Int = 0,
@@ -491,10 +516,14 @@ enum class Hue(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
-class MainScreenState {
-    val xs = mutableStateListOf(10, 11, 12)
-    val ys = mutableStateListOf(1.5, null)
-    val hs = mutableStateListOf(Hue.RED, Hue.GREEN)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    val xs = if ("xs" in __pre) (__pre["xs"] as List<Int>).toMutableStateList() else mutableStateListOf(10, 11, 12)
+    val ys = if ("ys" in __pre) (__pre["ys"] as List<Double?>).toMutableStateList() else mutableStateListOf(1.5, null)
+    val hs = if ("hs" in __pre) (__pre["hs"] as List<Hue>).toMutableStateList() else mutableStateListOf(Hue.RED, Hue.GREEN)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -654,20 +683,23 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { xs: [10, 11, 12], ys: null, hs: null };
-  state.ys = [1.5, null];
-  state.hs = ["red", "green"];
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
+  if (!("ys" in __snglPre)) state.ys = [1.5, null];
+  if (!("hs" in __snglPre)) state.hs = ["red", "green"];
   state.growClick = () => $2.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
@@ -790,12 +822,11 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:3cf251611166f5799aa4ca46d5b6f188
+pass sha256:de56efe038f56d1868bc4be319628839
 -- run/kotlin/android --
-pass sha256:aebdd177e2fb3a1119f63accd73841e0
+pass sha256:9422efdfc57305b33e7cd1a47eb94e20
 -- run/none/html --
-pass sha256:050163069bf0b4bbe3adeeacfc81632b
+pass sha256:c9830b8571fa22c37e7c3c78e32bdc76

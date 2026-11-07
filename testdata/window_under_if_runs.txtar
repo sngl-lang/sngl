@@ -424,12 +424,41 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
+
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
 		return m.main.Container
 	}
 	m.__built = true
+	__snglBuilding++
 	m.main = fynelayout.NewToplevel()
 	m.main.SetTitle("Main")
 	m.main.SetVisible(m.visible__inst0)
@@ -441,6 +470,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	fynelayout.AppAttach(m.main)
 	m.__renderSlot0(fynelayout.App)
 	m.__effects0_settle()
+	__snglEndBuild()
 	return m.main.Container
 }
 
@@ -456,8 +486,6 @@ type CounterInstance struct {
 	__effects1_torn     bool
 	__effects1_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 	__n0                *widget.Label
 }
 
@@ -472,10 +500,9 @@ func newCounterInstance(__model *Model) *CounterInstance {
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(fmt.Sprint(c.mounts))
-	c.__effects1_settle()
+	__snglMountAfterBuild(c.__effects1_settle)
 	c.Root = c.__n0
 	return c
 }
@@ -561,8 +588,6 @@ type __window_state1__slot0Instance struct {
 	__prop_closed          func()
 	visible                bool
 	__root                 *fyne.Container
-	__slot0                []fyne.CanvasObject
-	__slot0_at             fyne.CanvasObject
 	__n1                   *fynelayout.Toplevel
 	__n3                   *CounterInstance
 }
@@ -575,7 +600,6 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 	c.__prop_closed = __a_closed
 	c.visible = c.__prop___start_visible
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n1 = fynelayout.NewToplevel()
 	c.__n1.SetTitle(c.__prop_title)
 	c.__n1.SetVisible(c.visible)
@@ -867,8 +891,6 @@ type CounterInstance struct {
 	__effects1_torn     bool
 	__effects1_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 }
 
@@ -882,11 +904,10 @@ func newCounterInstance(__model *Model) *CounterInstance {
 	c.__effects1_pending = false
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, fmt.Sprint(c.mounts))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
-	c.__effects1_settle()
+	__snglMountAfterBuild(c.__effects1_settle)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -970,9 +991,6 @@ func (c *CounterInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 }
 
 // __window_state1__slot0Instance is one live instance of the __window_state1__slot0 component.
@@ -984,8 +1002,6 @@ type __window_state1__slot0Instance struct {
 	__prop_closed          func()
 	visible                bool
 	__root                 gtk4rt.Handle
-	__slot0                []gtk4rt.Handle
-	__slot0_at             gtk4rt.Handle
 	__n1                   gtk4rt.Handle
 	__n3                   *CounterInstance
 }
@@ -997,7 +1013,6 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 	c.__prop_title = __a_title
 	c.__prop_closed = __a_closed
 	c.visible = c.__prop___start_visible
-	c.__slot0 = nil
 	c.__n1 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(c.__n1, c.__prop_title)
 	gtk4rt.ToplevelSetVisible(c.__n1, c.visible)
@@ -1045,9 +1060,6 @@ func (c *__window_state1__slot0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 }
 
 func (m *Model) Details() bool {
@@ -1082,11 +1094,39 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__built {
 		return
 	}
 	m.__built = true
+	__snglBuilding++
 	m.main = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(m.main, "Main")
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
@@ -1100,6 +1140,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.AppAttach(m.main)
 	m.__renderSlot0(gtk4rt.App)
 	m.__effects0_settle()
+	__snglEndBuild()
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
@@ -1109,6 +1150,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/fyne --
-pass sha256:be38aedd4b7d19efac7a6f78fd19441b
+pass sha256:956521055057222fa4c71ec8ed2cb84c
 -- run/go/gtk4 --
-pass sha256:734b747d4fe61ca25d8f02430b2d33c6
+pass sha256:24b043df6e70306a4bfdb8f51000e745

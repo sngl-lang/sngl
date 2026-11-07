@@ -169,15 +169,14 @@ func Twice(n int) int {
 	return (n * 2)
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -217,14 +216,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -288,7 +287,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -301,7 +300,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -315,20 +314,31 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m Model) Depth() int {
@@ -399,7 +409,8 @@ func (m Model) View() tea.View {
 		var content_0 string
 		content_0_label := func(d int) string {
 			var result string
-			result = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("level " + fmt.Sprint(d))))
+			resultText := fmt.Sprint(("level " + fmt.Sprint(d)))
+			result = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), resultText).Render(resultText)
 			return result
 		}
 		content_0 = m.renderFrame(m.depth, 0, content_0_label)
@@ -545,8 +556,6 @@ type Frame__slot2Instance struct {
 	__inst0_live   []*Frame__slot2Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 	__n5           *fyne.Container
 	__n0           *widget.Label
 }
@@ -561,7 +570,6 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n5 = fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(("level " + fmt.Sprint((c.__prop_n * 2))))
@@ -651,8 +659,6 @@ type Frame__slot0Instance struct {
 	__prop_n       int
 	__prop___depth int
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*Frame__slot2Instance
@@ -668,7 +674,6 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__prop_n = __a_n
 	c.__prop___depth = __a___depth
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
 	c.__rendering1 = false
@@ -833,8 +838,6 @@ type Frame__slot2Instance struct {
 	__inst0_live   []*Frame__slot2Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
 	__n5           gtk4rt.Handle
 	__n0           gtk4rt.Handle
 }
@@ -848,7 +851,6 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n5 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n5, 1)
 	gtk4rt.SetLook(c.__n5, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -944,9 +946,6 @@ func (c *Frame__slot2Instance) Destroy() {
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
 	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // Frame__slot0Instance is one live instance of the frame__slot0 component.
@@ -956,8 +955,6 @@ type Frame__slot0Instance struct {
 	__prop_n       int
 	__prop___depth int
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*Frame__slot2Instance
@@ -972,7 +969,6 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__model = __model
 	c.__prop_n = __a_n
 	c.__prop___depth = __a___depth
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
 	c.__rendering1 = false
@@ -1068,9 +1064,6 @@ func (c *Frame__slot0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 	if c.__slot1_at != nil {
 		gtk4rt.Release(c.__slot1_at)
@@ -1364,7 +1357,6 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_live = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot1 = [];
     function __set_n(__v) {
       __prop_n = __v;
       __n0.textContent = "level " + String(__prop_n * 2);
@@ -1470,7 +1462,6 @@ body { font-family: system-ui, sans-serif; }
     let __depth = props.__depth ?? 0;
     let __prop_n = n;
     let __prop___depth = __depth;
-    let __slot0 = [];
     let __slot1 = [];
     let __inst3_live = [];
     let __rendering1 = false;
@@ -1583,12 +1574,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:59d54c46b953bc7d120f9f95ee989352
+pass sha256:57aa43d95d5e86b4a8af521a039911f3
 -- run/go/fyne --
-pass sha256:35f386c4a440a13fdb91afdc0d8dfafe
+pass sha256:b42d497dd15000858ddb9cb5d1b5650f
 -- run/go/gtk4 --
-pass sha256:52f25c430355dab18f38f9c7fc2d71e1
+pass sha256:6567c473bbc5808b9a4e524bb1f853f4
 -- run/kotlin/android --
 pass sha256:60725fb3074820afd43a5db6f5decc7d
 -- run/none/html --
-pass sha256:91ec817c8621a39e10d5e8a019f07125
+pass sha256:a77efec66651bf85efa167b94257a7a6

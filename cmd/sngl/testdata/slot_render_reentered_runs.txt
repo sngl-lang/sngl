@@ -26,7 +26,7 @@ import test "sngl:test"
 import ui "sngl:ui"
 
 // A word as a lookup answers it, at once: itself, marked.
-func lookUp(word string) async.Result[string] {
+func lookUp(word string, life async.Lifetime) async.Result[string] {
     return {ok="{word}!"}
 }
 
@@ -55,7 +55,7 @@ component page ui.node {
                 }
                 ui.select #pick(:value=kind) {
                     for var k = kinds() {
-                        ui.choice(label=k)
+                        ui.choice(label=k, value=k)
                     }
                 }
                 for var w = words() {
@@ -85,7 +85,7 @@ func testEachChoiceTakes(t test.Test, c page) {
     t.assert(c.words().format(",") == "Yellow-a!,Yellow-b!")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:29a2bd5fe5342c0ff6237a1f2950516d
+sha256:57bded9659618676989749de38ce6ea2
 {
   "results": [
     {
@@ -95,7 +95,7 @@ sha256:29a2bd5fe5342c0ff6237a1f2950516d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:ef4af5ffc0fcdd7ca836392463c41528
+sha256:94877ec25490e8e29b7362d47786c4f2
 {
   "results": [
     {
@@ -105,7 +105,7 @@ sha256:ef4af5ffc0fcdd7ca836392463c41528
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:66c81facf702832f24054cf50b2c8ee2
+sha256:1f084beca79708cf5b98b6def564e170
 {
   "results": [
     {
@@ -115,7 +115,7 @@ sha256:66c81facf702832f24054cf50b2c8ee2
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:efc68a508b99d7b9f281ef2a8227a1b2
+sha256:7556c67c497006d01f4a75a51dc678fa
 {
   "results": [
     {
@@ -125,7 +125,7 @@ sha256:efc68a508b99d7b9f281ef2a8227a1b2
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:1e49a90c28768712490605be165495a4
+sha256:e6ed35773024129e7d5c89bd0cf40469
 {
   "results": [
     {

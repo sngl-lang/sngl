@@ -47,7 +47,16 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
+
+type Test struct {
+}
+
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -68,14 +77,52 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.on = true
-	m.rows = []int{1}
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["on"] {
+		m.on = true
+	}
+	if !preset["rows"] {
+		m.rows = []int{1}
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+}
+
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -96,9 +143,9 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 				m.__copies_off = nil
-				for __copy0, r := range m.rows {
+				for __copy0, r := range __identified0(m.rows) {
 					m.off = fynelayout.NewButton("", nil)
-					m.off.SetText(("Off " + fmt.Sprint(r)))
+					m.off.SetText(("Off " + fmt.Sprint(r.Elem)))
 					m.__list_off(fmt.Sprint(__copy0), m.off)
 					m.off.OnTapped = func() {
 						m.on = false
@@ -201,6 +248,7 @@ import "testing"
 func TestOff(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.offClickAt("0")
 	if !((c.on == false)) { t.Errorf("assert failed: %s", "(c.on == false)") }
 }
@@ -212,7 +260,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -236,7 +288,16 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
+
+type Test struct {
+}
+
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -257,14 +318,52 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.on = true
-	m.rows = []int{1}
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["on"] {
+		m.on = true
+	}
+	if !preset["rows"] {
+		m.rows = []int{1}
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+}
+
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -285,9 +384,9 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 				m.__copies_off = nil
-				for __copy0, r := range m.rows {
+				for __copy0, r := range __identified0(m.rows) {
 					m.off = gtk4rt.New("GtkButton")
-					gtk4rt.ButtonSetLabel(m.off, ("Off " + fmt.Sprint(r)))
+					gtk4rt.ButtonSetLabel(m.off, ("Off " + fmt.Sprint(r.Elem)))
 					gtk4rt.SetBool(m.off, "can-focus", true)
 					m.__list_off(fmt.Sprint(__copy0), m.off)
 					gtk4rt.Connect(m.off, "clicked", func() {
@@ -381,6 +480,6 @@ func (m *Model) __list_off(key string, w gtk4rt.Handle) {
 	m.__copies_off[key] = w
 }
 -- run/go/fyne --
-pass sha256:04f3db861f15932a0b419a5b2682db0a
+pass sha256:5fcb1b84c89ee303cacb55e77bef3774
 -- run/go/gtk4 --
-pass sha256:e9a2bf45abfec84e76a653b146a5faca
+pass sha256:5cd627d08628ea21a8d620db03329304

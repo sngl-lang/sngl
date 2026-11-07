@@ -113,6 +113,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -178,15 +181,28 @@ type modelState struct {
 	shown__inst1   int
 	visible__inst0 bool
 
+	__scrolls     *tui.Scrolls
+	__wake        chan struct{}
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.shown__inst0 = 10
-	m.shown__inst1 = 40
-	m.visible__inst0 = true
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	m.__wake = make(chan struct{}, 1)
+	m.__scrolls = tui.NewScrolls()
+	if !preset["shown__inst0"] {
+		m.shown__inst0 = 10
+	}
+	if !preset["shown__inst1"] {
+		m.shown__inst1 = 40
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
 	return m
 }
 
@@ -196,26 +212,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
-}
-
-func CellsOf(m__r1 *Measurement) int {
-	var px float64 = PxOf(m__r1)
-	var __lt4 int
-	if px <= 0.0 {
-		__lt4 = 0
-	} else {
-		__lt4 = max(1, (int(px) / 8))
-	}
-	return __lt4
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -255,14 +259,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -284,12 +288,12 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	return l
 }
 
-func PxOf(m__r2 *Measurement) float64 {
+func PxOf(m__r1 *Measurement) float64 {
 	var __lt8 float64
-	if m__r2 == nil {
+	if m__r1 == nil {
 		__lt8 = 0.0
 	} else {
-		__lt8 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+		__lt8 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
 	return __lt8
 }
@@ -326,7 +330,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt10
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt13 *Measurement
 	if own != nil {
 		__lt13 = own
@@ -339,23 +343,45 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt13 = __lt12
 	}
-	return CellsOf(__lt13)
+	return SpaceOf(__lt13, across)
+}
+
+func CellsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
+	} else {
+		__lt14 = max(1, (int(px) / 8))
+	}
+	return __lt14
+}
+
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt15 int
+	if px <= 0.0 {
+		__lt15 = 0
+	} else {
+		__lt15 = max(1, (int(px) / 16))
+	}
+	return __lt15
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
+	var __lt17 int
 	if height__r0 == 0 {
-		__lt15 = lines
+		__lt17 = lines
 	} else {
-		var __lt14 int
+		var __lt16 int
 		if lines == 0 {
-			__lt14 = height__r0
+			__lt16 = height__r0
 		} else {
-			__lt14 = min(height__r0, lines)
+			__lt16 = min(height__r0, lines)
 		}
-		__lt15 = __lt14
+		__lt17 = __lt16
 	}
-	return __lt15
+	return __lt17
 }
 
 func (m Model) Shown__inst0() int {
@@ -403,8 +429,19 @@ func SetVisible__inst0Cmd(v bool) tea.Cmd {
 	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
+// snglWakeMsg says the view drew a widget that was asleep.
+type snglWakeMsg struct{}
+
+// __awaitWake waits for the view to draw a widget that is asleep.
+func (m Model) __awaitWake() tea.Cmd {
+	return func() tea.Msg {
+		<-m.__wake
+		return snglWakeMsg{}
+	}
+}
+
 func (m Model) Init() tea.Cmd {
-	return nil
+	return m.__awaitWake()
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -418,9 +455,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetShown__inst1(msg.value)
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
+	case snglWakeMsg:
+		if m.__scrolls.Due("0") {
+			if m.shown__inst0 < 30 {
+				m.shown__inst0 += 10
+			}
+		}
+		if m.__scrolls.Due("1") {
+			if m.shown__inst1 < 60 {
+				m.shown__inst1 += 10
+			}
+		}
+		cmds = append(cmds, m.__awaitWake())
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseWheelMsg:
+		m.__scrolls.Wheel(msg)
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -431,6 +482,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 			return m, nil
+		case (msg.Code == tea.KeyPgUp || msg.Code == tea.KeyPgDown) && m.__scrolls.Key(msg):
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -453,10 +505,13 @@ func (m *Model) cellsReachEnd() {
 }
 
 func (m Model) View() tea.View {
+	m.__scrolls.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
+		contentPart_0Look := BoxLook(Style{Height: snglSome(Measurement{Px: 120}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
+		contentPart_0W, _ := tui.Inner(contentPart_0Look, tui.Avail(m.width), m.height)
 		var contentPart_0Children []string
 		var contentPart_0_0 string
 		var contentPart_0_0Children []string
@@ -465,7 +520,8 @@ func (m Model) View() tea.View {
 		for i := range m.shown__inst0 {
 			_ = i
 			var contentPart_0_0_0Item string
-			contentPart_0_0_0Item = BoxLook(Style{Width: snglSome(Measurement{Px: 160}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("column " + fmt.Sprint(i))))
+			contentPart_0_0_0ItemText := fmt.Sprint(("column " + fmt.Sprint(i)))
+			contentPart_0_0_0Item = tui.Within(BoxLook(Style{Width: snglSome(Measurement{Px: 160}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentPart_0W, contentPart_0_0_0ItemText).Render(contentPart_0_0_0ItemText)
 			contentPart_0_0_0Items = append(contentPart_0_0_0Items, contentPart_0_0_0Item)
 		}
 		contentPart_0_0_0 = tui.Spaced(true, lipgloss.Top, 1, contentPart_0_0_0Items...)
@@ -475,9 +531,14 @@ func (m Model) View() tea.View {
 		contentPart_0_0 = tui.Spaced(true, lipgloss.Top, 1, contentPart_0_0Children...)
 		contentPart_0Children = append(contentPart_0Children, contentPart_0_0)
 		contentPart_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0Children...)
-		contentPart_0 = BoxLook(Style{Height: snglSome(Measurement{Px: 120}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_0)
+		contentPart_0VW, contentPart_0VH := tui.Inner(contentPart_0Look, tui.Avail(m.width), m.height)
+		contentPart_0Focus, contentPart_0Focused := tui.Box{}, false
+		contentPart_0 = m.__scrolls.View("0", contentPart_0, contentPart_0VW, contentPart_0VH, 1, contentPart_0Focus, contentPart_0Focused, true)
+		contentPart_0 = tui.Paint(contentPart_0Look, contentPart_0)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
+		contentPart_1Look := BoxLook(Style{Height: snglSome(Measurement{Px: 240}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
+		contentPart_1W, _ := tui.Inner(contentPart_1Look, tui.Avail(m.width), 0)
 		var contentPart_1Children []string
 		var contentPart_1_0 string
 		var contentPart_1_0Children []string
@@ -486,7 +547,8 @@ func (m Model) View() tea.View {
 		for i := range m.shown__inst1 {
 			_ = i
 			var contentPart_1_0_0Item string
-			contentPart_1_0_0Item = BoxLook(Style{Width: snglSome(Measurement{Px: 800}), Height: snglSome(Measurement{Px: 48}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("row " + fmt.Sprint(i))))
+			contentPart_1_0_0ItemText := fmt.Sprint(("row " + fmt.Sprint(i)))
+			contentPart_1_0_0Item = tui.Within(BoxLook(Style{Width: snglSome(Measurement{Px: 800}), Height: snglSome(Measurement{Px: 48}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentPart_1W, contentPart_1_0_0ItemText).Render(contentPart_1_0_0ItemText)
 			contentPart_1_0_0Items = append(contentPart_1_0_0Items, contentPart_1_0_0Item)
 		}
 		contentPart_1_0_0 = tui.Spaced(false, lipgloss.Left, 0, contentPart_1_0_0Items...)
@@ -496,9 +558,20 @@ func (m Model) View() tea.View {
 		contentPart_1_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1_0Children...)
 		contentPart_1Children = append(contentPart_1Children, contentPart_1_0)
 		contentPart_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1Children...)
-		contentPart_1 = BoxLook(Style{Height: snglSome(Measurement{Px: 240}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1)
+		contentPart_1VW, contentPart_1VH := tui.Inner(contentPart_1Look, tui.Avail(m.width), m.height)
+		contentPart_1Focus, contentPart_1Focused := tui.Box{}, false
+		contentPart_1 = m.__scrolls.View("1", contentPart_1, contentPart_1VW, contentPart_1VH, 2, contentPart_1Focus, contentPart_1Focused, true)
+		contentPart_1 = tui.Paint(contentPart_1Look, contentPart_1)
 		contentParts = append(contentParts, contentPart_1)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
+	}
+	content = m.__scrolls.Scan(content, 0, 0)
+	m.__scrolls.Settle()
+	if m.__scrolls.Waiting() {
+		select {
+		case m.__wake <- struct{}{}:
+		default:
+		}
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -521,6 +594,7 @@ import "testing"
 func TestReachEndSidewaysLoadsAPage(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	var before int = c.shown__inst0
 	c.listReachEnd()
 	if !((c.shown__inst0 > before)) { t.Errorf("assert failed: %s", "(c.shown__inst0 > before)") }
@@ -529,13 +603,20 @@ func TestReachEndSidewaysLoadsAPage(t *testing.T) {
 func TestReachEndEitherWayLoadsAPage(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	var before int = c.shown__inst1
 	c.cellsReachEnd()
 	if !((c.shown__inst1 > before)) { t.Errorf("assert failed: %s", "(c.shown__inst1 > before)") }
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -550,6 +631,9 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
+
+type Test struct {
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -579,18 +663,44 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.shown__inst0 = 10
-	m.shown__inst1 = 40
-	m.visible__inst0 = true
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__rendering1 = false
-	m.__renderAgain1 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["shown__inst0"] {
+		m.shown__inst0 = 10
+	}
+	if !preset["shown__inst1"] {
+		m.shown__inst1 = 40
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -762,6 +872,7 @@ import "testing"
 func TestReachEndSidewaysLoadsAPage(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	var before int = c.shown__inst0
 	c.listReachEnd()
 	if !((c.shown__inst0 > before)) { t.Errorf("assert failed: %s", "(c.shown__inst0 > before)") }
@@ -770,6 +881,7 @@ func TestReachEndSidewaysLoadsAPage(t *testing.T) {
 func TestReachEndEitherWayLoadsAPage(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	var before int = c.shown__inst1
 	c.cellsReachEnd()
 	if !((c.shown__inst1 > before)) { t.Errorf("assert failed: %s", "(c.shown__inst1 > before)") }
@@ -782,7 +894,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -809,6 +925,9 @@ import (
 	"fmt"
 )
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	shown__inst0   int
@@ -834,18 +953,44 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.shown__inst0 = 10
-	m.shown__inst1 = 40
-	m.visible__inst0 = true
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__rendering1 = false
-	m.__renderAgain1 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["shown__inst0"] {
+		m.shown__inst0 = 10
+	}
+	if !preset["shown__inst1"] {
+		m.shown__inst1 = 40
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1028,6 +1173,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.unit.Dp
+import androidx.compose.runtime.key
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material3.LocalTextStyle
@@ -1052,6 +1198,12 @@ data class Measurement(
     val em: Double = 0.0,
     val rem: Double = 0.0
 )
+
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
 
 data class Style(
     var padding: Measurement? = null,
@@ -1242,10 +1394,14 @@ enum class SnglListStyle(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
-class MainScreenState {
-    var shown__inst0 by mutableStateOf(10)
-    var shown__inst1 by mutableStateOf(40)
-    var visible__inst0 by mutableStateOf(true)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var shown__inst0 by mutableStateOf(__snglPre(__pre, "shown__inst0") { 10 })
+    var shown__inst1 by mutableStateOf(__snglPre(__pre, "shown__inst1") { 40 })
+    var visible__inst0 by mutableStateOf(__snglPre(__pre, "visible__inst0") { true })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1269,7 +1425,9 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
                 }) {
                     Row(modifier = flexed(styleModifier(Style(gap = Measurement(px = 8.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }).snglFlexible(true), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(8.0f))) {
                         for (i in 0 until state.shown__inst0) {
-                            Text(text = ("column " + i.toString()), modifier = flexed(styleModifier(Style(width = Measurement(px = 160.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+                            key(i.toString()) {
+                                Text(text = ("column " + i.toString()), modifier = flexed(styleModifier(Style(width = Measurement(px = 160.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+                            }
                         }
                     }
                 }
@@ -1280,7 +1438,9 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
                 }) {
                     Column(modifier = Modifier.snglFlexible(false)) {
                         for (i in 0 until state.shown__inst1) {
-                            Text(text = ("row " + i.toString()), modifier = flexed(styleModifier(Style(width = Measurement(px = 800.0), height = Measurement(px = 48.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+                            key(i.toString()) {
+                                Text(text = ("row " + i.toString()), modifier = flexed(styleModifier(Style(width = Measurement(px = 800.0), height = Measurement(px = 48.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+                            }
                         }
                     }
                 }
@@ -1621,18 +1781,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { shown__inst0: 10, shown__inst1: 40, visible__inst0: true };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.listReachEnd = (p) => {
     Object.assign($2, p);
     $2.dispatchEvent(Object.assign(new Event("reachEnd"), p));
@@ -1645,20 +1808,18 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function __snglTeardown() {
-    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+    for (const [__inst3_live_dk, __inst3_live_dv] of __inst3_live.entries()) {
       ;
-      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
-      __inst3_live[__inst3_live_dj].__destroy();
+      __inst3_live_dv.__destroy();
     }
     ;
-    __inst3_live = [];
-    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+    __inst3_live = /* @__PURE__ */ new Map([]);
+    for (const [__inst1_live_dk, __inst1_live_dv] of __inst1_live.entries()) {
       ;
-      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
-      __inst1_live[__inst1_live_dj].__destroy();
+      __inst1_live_dv.__destroy();
     }
     ;
-    __inst1_live = [];
+    __inst1_live = /* @__PURE__ */ new Map([]);
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { __snglTeardown });
@@ -1668,8 +1829,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = "column " + String(__prop___p0);
@@ -1690,8 +1849,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.textContent = "row " + String(__prop___p0);
@@ -1708,11 +1865,11 @@ window.__sngl_boot = () => {
     };
   }
   var __slot0 = [];
-  var __inst1_live = [];
+  var __inst1_live = /* @__PURE__ */ new Map([]);
   var __rendering0 = false;
   var __renderAgain0 = false;
   var __slot1 = [];
-  var __inst3_live = [];
+  var __inst3_live = /* @__PURE__ */ new Map([]);
   var __rendering1 = false;
   var __renderAgain1 = false;
   function __renderSlot0(parent) {
@@ -1727,22 +1884,27 @@ window.__sngl_boot = () => {
           let __place0_prev = __slot0;
           let __place0_i = 0;
           __slot0 = [];
-          let __inst1_next = [];
-          let __inst1_i = 0;
+          let __inst1_next = /* @__PURE__ */ new Map([]);
+          let __inst1_seen = /* @__PURE__ */ new Map([]);
           for (let i = 0, __end = state.shown__inst0; i < __end; i++) {
             let __n3 = null;
-            if (__inst1_live.length > __inst1_i) {
-              __n3 = __inst1_live[__inst1_i];
+            let __key2 = String(String(i));
+            let __key2_n = __inst1_seen.has(__key2) ? __inst1_seen.get(__key2) : 0;
+            __inst1_seen.set(__key2, __key2_n + 1);
+            if (__key2_n > 0) {
+              __key2 = __key2 + "#" + String(__key2_n);
+            }
+            if (__inst1_live.has(__key2)) {
+              __n3 = __inst1_live.has(__key2) ? __inst1_live.get(__key2) : null;
               __n3.__set___p0(i);
             } else {
-              if (__inst1_live.length > __inst1_i) {
-                __inst1_live[__inst1_i].__destroy();
+              if (__inst1_live.has(__key2)) {
+                (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
               let __n3__new = __cf___child0({ __p0: i });
               __n3 = __n3__new;
             }
-            __inst1_next.push(__n3);
-            __inst1_i = __inst1_i + 1;
+            __inst1_next.set(__key2, __n3);
             let __n3__el = __n3.__root;
             let __place0_i_ref0 = null;
             if (__place0_i < __place0_prev.length) {
@@ -1755,10 +1917,9 @@ window.__sngl_boot = () => {
             }
             __slot0.push(__n3__el);
           }
-          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-            if (__inst1_i_j >= __inst1_i) {
-              __inst1_live[__inst1_i_j].__destroy();
+          for (const [__inst1_live_k, __inst1_live_v] of __inst1_live.entries()) {
+            if (!__inst1_next.has(__inst1_live_k)) {
+              __inst1_live_v.__destroy();
             }
           }
           __inst1_live = __inst1_next;
@@ -1785,22 +1946,27 @@ window.__sngl_boot = () => {
           let __place2_prev = __slot1;
           let __place2_i = 0;
           __slot1 = [];
-          let __inst3_next = [];
-          let __inst3_i = 0;
+          let __inst3_next = /* @__PURE__ */ new Map([]);
+          let __inst3_seen = /* @__PURE__ */ new Map([]);
           for (let i = 0, __end = state.shown__inst1; i < __end; i++) {
             let __n4 = null;
-            if (__inst3_live.length > __inst3_i) {
-              __n4 = __inst3_live[__inst3_i];
+            let __key4 = String(String(i));
+            let __key4_n = __inst3_seen.has(__key4) ? __inst3_seen.get(__key4) : 0;
+            __inst3_seen.set(__key4, __key4_n + 1);
+            if (__key4_n > 0) {
+              __key4 = __key4 + "#" + String(__key4_n);
+            }
+            if (__inst3_live.has(__key4)) {
+              __n4 = __inst3_live.has(__key4) ? __inst3_live.get(__key4) : null;
               __n4.__set___p0(i);
             } else {
-              if (__inst3_live.length > __inst3_i) {
-                __inst3_live[__inst3_i].__destroy();
+              if (__inst3_live.has(__key4)) {
+                (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
               let __n4__new = __cf___child1({ __p0: i });
               __n4 = __n4__new;
             }
-            __inst3_next.push(__n4);
-            __inst3_i = __inst3_i + 1;
+            __inst3_next.set(__key4, __n4);
             let __n4__el = __n4.__root;
             let __place2_i_ref0 = null;
             if (__place2_i < __place2_prev.length) {
@@ -1813,10 +1979,9 @@ window.__sngl_boot = () => {
             }
             __slot1.push(__n4__el);
           }
-          for (const [__inst3_i_d, _] of __inst3_live.entries()) {
-            let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
-            if (__inst3_i_j >= __inst3_i) {
-              __inst3_live[__inst3_i_j].__destroy();
+          for (const [__inst3_live_k, __inst3_live_v] of __inst3_live.entries()) {
+            if (!__inst3_next.has(__inst3_live_k)) {
+              __inst3_live_v.__destroy();
             }
           }
           __inst3_live = __inst3_next;
@@ -1904,16 +2069,15 @@ window.__sngl_boot = () => {
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a1476a43aaaed4e93a21c3b14d7044d1
+pass sha256:9acdbc41ec1fc0d21c56136e044b7f1d
 -- run/go/fyne --
-pass sha256:a6533055b6ae9e2a3a1ce0b4f6bc9f80
+pass sha256:4749d73fe5fa467e53081de1f3c1008b
 -- run/go/gtk4 --
-pass sha256:85e44764bbea0d2ab272c16cf47b6240
+pass sha256:fa478df1ab8d5f1cc903d748ff739318
 -- run/kotlin/android --
-pass sha256:dd3880b9abe03929bb3f37d36b2634b6
+pass sha256:c62ce5786f3272e72b053f15a41f3ff0
 -- run/none/html --
-pass sha256:8f951a87fdbbf30b754a6e48b8f1228c
+pass sha256:237cb02af5aa35aebb756e18092e5acb

@@ -1,0 +1,194 @@
+# A query's answer to a key it no longer has writes nothing, and a mount that
+# waits reads its own key after the wait, on every target. The first test
+# is the Pokédex's shape: one request's answer moves another query to a new
+# key a moment before that query's old request fails. Whether the bracket has
+# rekeyed by then is a settle's to say, and android's comes at the next
+# recomposition, so the query compares the key it asked with the one it has.
+# The second caught html reading the next lifetime's key after a mount's
+# wait, from the var the settle overwrites. Nothing reads that mount's `r`,
+# which Go refuses to declare until passUnreadLocals makes it the call.
+# `/status/{code}?after=ms` holds an answer back.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+// Answers `k` after `ms`, or fails where `code` is not a success.
+func answer(k string, code int, ms int) async.Result[string] {
+    match var r = http.get(url="http://127.0.0.1:47819/status/{code}?after={ms}") {
+        failed { return {failed=r} }
+        ok { return {ok=k} }
+    }
+}
+
+// The species arrives first and names the form to ask for.
+func species(k string, life async.Lifetime) => answer("b", 200, 150)
+
+// The form asked for before the species arrived is one the server lacks, and
+// its failure arrives just after the species does.
+func form(k string, life async.Lifetime) => answer(k, k == "a" ? 404 : 200, k == "a" ? 160 : 0)
+
+component page ui.node {
+    var mon = ""
+    var shape option[string] = null
+    var failedFor = ""
+    async.query(on="m", fetch=species, @load(got) { mon = got })
+    async.query(on=mon == "" ? "a" : mon, fetch=form, :value=shape, @fail {
+        failedFor = mon == "" ? "a" : mon
+    })
+    ui.text(value=shape != null ? shape : "-")
+}
+
+// The answer to a key the query no longer has writes nothing, whether or not
+// the bracket has rekeyed by the time it arrives.
+func testAStaleAnswerWritesNothing(t test.Test, c page) {
+    t.setContext(http.answer, http.network)
+    t.wait(func() => c.shape != null, 3000)
+    t.assert(c.shape == "b")
+    var gone = c.failedFor
+    t.wait(func() => c.failedFor != gone, 500)
+    t.assert(c.failedFor != "b")
+}
+
+component keyed ui.node {
+    var key = "a"
+    var seen list[string] = []
+    effect(on=key, @mount(k) {
+        var r = answer(k, 200, 150)
+        seen.push(k)
+    })
+}
+
+// A mount that waits reads the key its own lifetime began with after the
+// wait, though another has begun since.
+func testAMountKeepsItsKeyAcrossAWait(t test.Test, c keyed) {
+    t.setContext(http.answer, http.network)
+    t.assert(c.key == "a")
+    c.key = "b"
+    t.wait(func() => c.seen.length() == 2, 3000)
+    t.assert(c.seen.contains("a") && c.seen.contains("b"))
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/keyed/1 --
+sha256:eb39097be626a3f4e7df76f1669e508b
+{
+  "results": [
+    {
+      "Desc": "AMountKeepsItsKeyAcrossAWait",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:a575e063bc6d10644fd85015ebd519b4
+{
+  "results": [
+    {
+      "Desc": "AStaleAnswerWritesNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/keyed/1 --
+sha256:f99cb2ba01abbd2c494b25599a3a3e04
+{
+  "results": [
+    {
+      "Desc": "AMountKeepsItsKeyAcrossAWait",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:daaa699067cb3bf29a66f7bb31d47a71
+{
+  "results": [
+    {
+      "Desc": "AStaleAnswerWritesNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/keyed/1 --
+sha256:e5963fae7f37dca29eccbcc5709c85ab
+{
+  "results": [
+    {
+      "Desc": "AMountKeepsItsKeyAcrossAWait",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:30da03ee974ac63256efe492e2cdd800
+{
+  "results": [
+    {
+      "Desc": "AStaleAnswerWritesNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/keyed/1 --
+sha256:d58978eaa2731e7cd0a1c8f75afea48c
+{
+  "results": [
+    {
+      "Desc": "AMountKeepsItsKeyAcrossAWait",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:b35398ebe6a95958f1fc81b6c4c5cfd5
+{
+  "results": [
+    {
+      "Desc": "AStaleAnswerWritesNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/keyed/1 --
+sha256:ce4eccb543f3376979dfbe2a02759d57
+{
+  "results": [
+    {
+      "Desc": "AMountKeepsItsKeyAcrossAWait",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:3e3d0817f5e69df61c32b082cf374861
+{
+  "results": [
+    {
+      "Desc": "AStaleAnswerWritesNothing",
+      "Passed": true
+    }
+  ]
+}

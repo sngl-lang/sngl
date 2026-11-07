@@ -67,6 +67,14 @@ func namesType(t *ir.Type, name string) bool {
 	return s == name
 }
 
+// derefType is what a `ref[T]` refers to, and any other type itself.
+func derefType(t *ir.Type) *ir.Type {
+	if t != nil && t.Kind == ir.TypeRef && len(t.Elems) == 1 {
+		return t.Elems[0]
+	}
+	return t
+}
+
 // constructBuiltinGeneric applies a generic built-in constructor (identified by
 // its #[builtin] kind) to the type arguments of t. The construction logic stays
 // in the compiler; only the name→kind binding lives in scope.
@@ -180,7 +188,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 			}
 			if typ.Kind == ir.TypeComponent {
 				if comp, ok := typ.Decl.(*ir.Component); ok && len(comp.TypeParams) > 0 {
-					return c.applyComponentTypeArgs(t.Pos, typ, comp, t.TypeArgs)
+					return c.dataRecord(c.applyComponentTypeArgs(t.Pos, typ, comp, t.TypeArgs))
 				}
 			}
 			if typ.Kind == ir.TypeEnum {
@@ -445,8 +453,10 @@ func (c *checker) typeParamConstraint(sd *ir.StructDef, i int) *ir.Type {
 
 // inheritReceiverConstraints gives a method's receiver parameters the
 // constraints of the declaration they restate, `func Holder[T].label()` or
-// `func stack[M].current()`: a receiver's list writes names only, and in the
-// body a T is what the declaration says it is.
+// `func stack[M].current()`: in the body a T is what the declaration says it
+// is. A constraint the list writes, `func list[T ordered].sort()`, narrows
+// one that says nothing: the method is the receiver's only where its T
+// satisfies it, and resolveTypeParams gives it.
 // It runs before the signature is resolved, which may hand a T on to the
 // declaration's own type, `_page[M]`.
 func (c *checker) inheritReceiverConstraints(recv *ir.Type, written []ast.TypeParam) {
@@ -475,12 +485,34 @@ func (c *checker) inheritReceiverConstraints(recv *ir.Type, written []ast.TypePa
 		renamed[declared[i].Name] = c.typeParamSym(p.Name, p.Pos).SymType()
 	}
 	for i, p := range written {
-		if con := constraint(i).Substitute(renamed); con != nil {
-			if sym := c.typeParamSym(p.Name, p.Pos); sym.Constraint == nil {
-				sym.Constraint = con
+		con := constraint(i).Substitute(renamed)
+		sym := c.typeParamSym(p.Name, p.Pos)
+		if p.Constraint != nil {
+			// A constraint written narrows one that says nothing, and
+			// resolveTypeParams gives it; narrowing one that says something
+			// would ask for both, which no constraint spells. `any`, or the
+			// declaration's own, leaves the parameter as it is: a list
+			// narrowing one parameter writes one for each.
+			if con == nil || con.Kind == ir.TypeAny {
+				continue
 			}
+			if !writesAny(p.Constraint) && !c.resolveConstraint(p.Constraint, sym.SymType()).Equal(con) {
+				c.error(p.Pos, "%s's %s is already constrained by its declaration, to %s; a method narrows only a parameter constrained to any", recv.Decl.SymName(), p.Name, con)
+				continue
+			}
+			sym.Constraint = con
+			continue
+		}
+		if con != nil && sym.Constraint == nil {
+			sym.Constraint = con
 		}
 	}
+}
+
+// writesAny reports whether a constraint is written `any`.
+func writesAny(t ast.TypeExpr) bool {
+	n, ok := t.(*ast.NamedType)
+	return ok && n.Name == "any" && n.Package == "" && len(n.TypeArgs) == 0
 }
 
 // typeParamShells records the names before any other declaration exists. A
@@ -890,14 +922,17 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		fn.Receiver = c.receiverType(typeName)
 		fn.Name = methodName
 		// The receiver convention: a method's first param is the receiver when
-		// it is named `this` — prepended synthetically for bare component
-		// funcs, or written out as `func T.m(this T)` — or when its type is
-		// the type the method is attached to, whatever it is called. The
-		// second form is what lets `func int.ident(n int)` be reached as
-		// `1.ident()` and as `int.ident(1)`. Mark it structurally here, the
-		// one place that owns the convention, so codegen/interp/lowering find
-		// the receiver by Param.Receiver rather than re-matching a name.
-		if len(fn.Params) > 0 && (fn.Params[0].Name == ir.ReceiverParam || namesType(fn.Params[0].Type, typeName)) {
+		// its type is the type the method is attached to, or a `ref` to it,
+		// whatever it is called -- written out, or prepended synthetically
+		// for a method written in a type's body or a bare component func. It
+		// is what lets `func int.ident(n int)` be reached as `1.ident()` and
+		// as `int.ident(1)`, and `func Counter.bump(c ref[Counter])` write the
+		// counter it is called on; a first parameter named `this` of another
+		// type is an ordinary parameter of a static method. Mark it
+		// structurally here, the one place that owns the convention, so
+		// codegen/interp/lowering find the receiver by Param.Receiver rather
+		// than re-matching a name.
+		if len(fn.Params) > 0 && namesType(derefType(fn.Params[0].Type), typeName) {
 			fn.Params[0].Receiver = true
 		}
 	}
@@ -1052,7 +1087,9 @@ func (c *checker) dataRecord(typ *ir.Type) *ir.Type {
 		return typ
 	}
 	if f, ok := typ.Decl.(*ir.Component); ok && f.Data && f.Record != nil {
-		return &ir.Type{Kind: ir.TypeStruct, Decl: f.Record}
+		// A generic data component's record takes its arguments:
+		// `choice[T]` is `choice__record[T]`.
+		return &ir.Type{Kind: ir.TypeStruct, Decl: f.Record, Elems: typ.Elems}
 	}
 	return typ
 }

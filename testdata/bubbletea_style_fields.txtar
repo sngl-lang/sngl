@@ -208,26 +208,14 @@ func GrowOf(flex *float64, display string) float64 {
 	return __lt0
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
-}
-
-func CellsOf(m__r1 *Measurement) int {
-	var px float64 = PxOf(m__r1)
-	var __lt4 int
-	if px <= 0.0 {
-		__lt4 = 0
-	} else {
-		__lt4 = max(1, (int(px) / 8))
-	}
-	return __lt4
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -255,26 +243,26 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt5 bool
+	var __lt4 bool
 	if s.BorderWidth != nil {
-		__lt5 = (PxOf(s.BorderWidth) > 0.0)
+		__lt4 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt4 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt5 {
+	if __lt4 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -285,102 +273,124 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt6 int
+		var __lt5 int
 		if s.MaxLines == nil {
-			__lt6 = 0
+			__lt5 = 0
 		} else {
-			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt5 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
 	}
 	return l
 }
 
 func WrapOf(whiteSpace string) int {
-	var __lt7 int
+	var __lt6 int
 	switch whiteSpace {
 	case "nowrap":
-		__lt7 = 1
+		__lt6 = 1
 	case "pre":
-		__lt7 = 2
+		__lt6 = 2
 	default:
-		__lt7 = 0
+		__lt6 = 0
+	}
+	return __lt6
+}
+
+func PxOf(m__r1 *Measurement) float64 {
+	var __lt7 float64
+	if m__r1 == nil {
+		__lt7 = 0.0
+	} else {
+		__lt7 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
 	return __lt7
 }
 
-func PxOf(m__r2 *Measurement) float64 {
-	var __lt8 float64
-	if m__r2 == nil {
-		__lt8 = 0.0
-	} else {
-		__lt8 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+func AlignOf(a string) lipgloss.Position {
+	var __lt8 lipgloss.Position
+	switch a {
+	case "center":
+		__lt8 = lipgloss.Center
+	case "right":
+		__lt8 = lipgloss.Right
+	default:
+		__lt8 = lipgloss.Left
 	}
 	return __lt8
 }
 
-func AlignOf(a string) lipgloss.Position {
-	var __lt9 lipgloss.Position
-	switch a {
-	case "center":
-		__lt9 = lipgloss.Center
-	case "right":
-		__lt9 = lipgloss.Right
+func BorderOf(s Style) lipgloss.Border {
+	var __lt9 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt9 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt9 = tui.DashedBorder()
 	default:
-		__lt9 = lipgloss.Left
+		var __lt10 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt10 = lipgloss.RoundedBorder()
+		} else {
+			__lt10 = lipgloss.NormalBorder()
+		}
+		__lt9 = __lt10
 	}
 	return __lt9
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt10 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt10 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt10 = tui.DashedBorder()
-	default:
-		var __lt11 lipgloss.Border
-		if s.BorderRadius != nil {
-			__lt11 = lipgloss.RoundedBorder()
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
+	var __lt12 *Measurement
+	if own != nil {
+		__lt12 = own
+	} else {
+		var __lt11 *Measurement
+		if axis != nil {
+			__lt11 = axis
 		} else {
-			__lt11 = lipgloss.NormalBorder()
+			__lt11 = all
 		}
-		__lt10 = __lt11
+		__lt12 = __lt11
 	}
-	return __lt10
+	return SpaceOf(__lt12, across)
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt13 *Measurement
-	if own != nil {
-		__lt13 = own
+func CellsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt13 int
+	if px <= 0.0 {
+		__lt13 = 0
 	} else {
-		var __lt12 *Measurement
-		if axis != nil {
-			__lt12 = axis
-		} else {
-			__lt12 = all
-		}
-		__lt13 = __lt12
+		__lt13 = max(1, (int(px) / 8))
 	}
-	return CellsOf(__lt13)
+	return __lt13
+}
+
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
+	} else {
+		__lt14 = max(1, (int(px) / 16))
+	}
+	return __lt14
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
+	var __lt16 int
 	if height__r0 == 0 {
-		__lt15 = lines
+		__lt16 = lines
 	} else {
-		var __lt14 int
+		var __lt15 int
 		if lines == 0 {
-			__lt14 = height__r0
+			__lt15 = height__r0
 		} else {
-			__lt14 = min(height__r0, lines)
+			__lt15 = min(height__r0, lines)
 		}
-		__lt15 = __lt14
+		__lt16 = __lt15
 	}
-	return __lt15
+	return __lt16
 }
 
 func (m *Model) __focusLoop1_len() int {
@@ -624,16 +634,19 @@ func (m Model) View() tea.View {
 		contentW, contentH := tui.Inner(contentLook, tui.Avail(m.width), m.height)
 		var contentChildren []tui.Part
 		var content_0 string
-		content_0 = BoxLook(Style{Padding: snglSome(Measurement{Em: 1}), PaddingX: snglSome(Measurement{Px: 16}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bolder", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Opacity: snglSome(1.0), Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("literal"))
+		content_0Text := fmt.Sprint("literal")
+		content_0 = tui.Within(BoxLook(Style{Padding: snglSome(Measurement{Em: 1}), PaddingX: snglSome(Measurement{Px: 16}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bolder", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Opacity: snglSome(1.0), Display: "unset", ListStyleType: "unset"}, true), contentW, content_0Text).Render(content_0Text)
 		contentChildren = append(contentChildren, tui.Fixed(content_0))
 		contentChildren = append(contentChildren, tui.Grow(GrowOf(m.opaque.Flex, m.opaque.Display), func(content_1Cells int) string {
 			var content_1 string
-			content_1 = tui.Render(tui.Sized(BoxLook(m.opaque, true), false, content_1Cells), tui.Fit{Wrap: WrapOf(m.opaque.WhiteSpace), Hidden: (m.opaque.Display == "none")}, fmt.Sprint("var"))
+			content_1Text := fmt.Sprint("var")
+			content_1 = tui.Render(tui.Within(tui.Sized(BoxLook(m.opaque, true), false, content_1Cells), contentW, content_1Text), tui.Fit{Wrap: WrapOf(m.opaque.WhiteSpace), Hidden: (m.opaque.Display == "none")}, content_1Text)
 			return content_1
 		}))
 		contentChildren = append(contentChildren, tui.Grow(GrowOf(m.faint.Flex, m.faint.Display), func(content_2Cells int) string {
 			var content_2 string
-			content_2 = tui.Render(tui.Sized(BoxLook(m.faint, true), false, content_2Cells), tui.Fit{Wrap: WrapOf(m.faint.WhiteSpace), Hidden: (m.faint.Display == "none")}, fmt.Sprint("prop"))
+			content_2Text := fmt.Sprint("prop")
+			content_2 = tui.Render(tui.Within(tui.Sized(BoxLook(m.faint, true), false, content_2Cells), contentW, content_2Text), tui.Fit{Wrap: WrapOf(m.faint.WhiteSpace), Hidden: (m.faint.Display == "none")}, content_2Text)
 			return content_2
 		}))
 		var content_3 string
@@ -646,28 +659,31 @@ func (m Model) View() tea.View {
 		var content_4Children []tui.Part
 		content_4Children = append(content_4Children, tui.Grow(1.0, func(content_4_0Cells int) string {
 			var content_4_0 string
-			content_4_0 = tui.Sized(BoxLook(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), true, content_4_0Cells).Render(fmt.Sprint("one"))
+			content_4_0Text := fmt.Sprint("one")
+			content_4_0 = tui.Within(tui.Sized(BoxLook(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), true, content_4_0Cells), content_4_0Cells, content_4_0Text).Render(content_4_0Text)
 			return content_4_0
 		}))
 		content_4Children = append(content_4Children, tui.Grow(2.0, func(content_4_1Cells int) string {
 			var content_4_1 string
-			content_4_1 = tui.Sized(BoxLook(Style{Flex: snglSome(2.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), true, content_4_1Cells).Render(fmt.Sprint("two"))
+			content_4_1Text := fmt.Sprint("two")
+			content_4_1 = tui.Within(tui.Sized(BoxLook(Style{Flex: snglSome(2.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), true, content_4_1Cells), content_4_1Cells, content_4_1Text).Render(content_4_1Text)
 			return content_4_1
 		}))
 		content_4 = tui.Join(true, lipgloss.Top, 0, 0, content_4W, content_4Children)
-		content_4 = content_4Look.Render(content_4)
+		content_4 = tui.Paint(content_4Look, content_4)
 		contentChildren = append(contentChildren, tui.Fixed(content_4))
 		var content_5 string
 		content_5Look := lipgloss.NewStyle()
-		_, content_5H := tui.Inner(content_5Look, contentW, 0)
+		content_5W, content_5H := tui.Inner(content_5Look, contentW, 0)
 		var content_5Children []tui.Part
 		content_5Children = append(content_5Children, tui.Grow(1.0, func(content_5_0Cells int) string {
 			var content_5_0 string
-			content_5_0 = tui.Sized(BoxLook(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), false, content_5_0Cells).Render(fmt.Sprint("takes its own height"))
+			content_5_0Text := fmt.Sprint("takes its own height")
+			content_5_0 = tui.Within(tui.Sized(BoxLook(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), false, content_5_0Cells), content_5W, content_5_0Text).Render(content_5_0Text)
 			return content_5_0
 		}))
 		content_5 = tui.Join(false, lipgloss.Left, 0, 0, content_5H, content_5Children)
-		content_5 = content_5Look.Render(content_5)
+		content_5 = tui.Paint(content_5Look, content_5)
 		contentChildren = append(contentChildren, tui.Fixed(content_5))
 		var content_6 string
 		__focusPos1 := 0
@@ -692,7 +708,8 @@ func (m Model) View() tea.View {
 				if content_6Item_0Focused {
 					content_6Item_0Prefix = ">"
 				}
-				content_6Item_0 = tui.Sized(BoxLook(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), true, content_6Item_0Cells).Render(content_6Item_0Prefix + " " + fmt.Sprint(("wide " + fmt.Sprint(i))))
+				content_6Item_0Text := content_6Item_0Prefix + " " + fmt.Sprint(("wide " + fmt.Sprint(i)))
+				content_6Item_0 = tui.Within(tui.Focused(tui.Sized(tui.ButtonLook(BoxLook(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), true, content_6Item_0Cells), content_6Item_0Focused), content_6Item_0Cells, content_6Item_0Text).Render(content_6Item_0Text)
 				content_6Item_0 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_6Item_0)
 				__focusPos1++
 				return content_6Item_0
@@ -703,12 +720,12 @@ func (m Model) View() tea.View {
 			if content_6Item_1Focused {
 				content_6Item_1Prefix = ">"
 			}
-			content_6Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_6Item_1Prefix + " " + fmt.Sprint("narrow"))
+			content_6Item_1 = tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_6Item_1Focused).Render(content_6Item_1Prefix + " " + fmt.Sprint("narrow"))
 			content_6Item_1 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_6Item_1)
 			__focusPos1++
 			content_6ItemChildren = append(content_6ItemChildren, tui.Fixed(content_6Item_1))
 			content_6Item = tui.Join(true, lipgloss.Top, 0, 0, content_6ItemW, content_6ItemChildren)
-			content_6Item = content_6ItemLook.Render(content_6Item)
+			content_6Item = tui.Paint(content_6ItemLook, content_6Item)
 			content_6Items = append(content_6Items, content_6Item)
 		}
 		content_6 = tui.Spaced(false, lipgloss.Left, 0, content_6Items...)
@@ -716,10 +733,11 @@ func (m Model) View() tea.View {
 			contentChildren = append(contentChildren, tui.Fixed(content_6))
 		}
 		var content_7 string
-		content_7 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", MaxLines: snglSome(2), WhiteSpace: "unset", BorderWidth: snglSome(Measurement{Px: 1}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("capped"))
+		content_7Text := fmt.Sprint("capped")
+		content_7 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", MaxLines: snglSome(2), WhiteSpace: "unset", BorderWidth: snglSome(Measurement{Px: 1}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_7Text).Render(content_7Text)
 		contentChildren = append(contentChildren, tui.Fixed(content_7))
 		content = tui.Join(false, lipgloss.Left, 0, 0, contentH, contentChildren)
-		content = contentLook.Render(content)
+		content = tui.Paint(contentLook, content)
 	}
 	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
@@ -737,4 +755,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:48214202a3d057641b1f3a2be36b08e8
+pass sha256:dd16abe31a022275859ac88a886822dd

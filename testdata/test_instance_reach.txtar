@@ -127,6 +127,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -208,11 +211,22 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.shown = true
-	m.hits = 0
-	m.hits__inst0 = 0
-	m.__focusID = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["shown"] {
+		m.shown = true
+	}
+	if !preset["hits"] {
+		m.hits = 0
+	}
+	if !preset["hits__inst0"] {
+		m.hits__inst0 = 0
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
 	m.__focusSettle()
 	return m
 }
@@ -223,15 +237,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -271,14 +284,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -342,7 +355,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -355,7 +368,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -369,20 +382,31 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m *Model) __focusShown() bool {
@@ -612,11 +636,13 @@ func (m Model) View() tea.View {
 	if content_0Focused {
 		content_0Prefix = ">"
 	}
-	content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("s"))
+	content_0Text := content_0Prefix + " " + fmt.Sprint("s")
+	content_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_0Focused), tui.Avail(m.width), content_0Text).Render(content_0Text)
 	content_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0)
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
-	content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("n" + fmt.Sprint(m.hits))))
+	content_1Text := fmt.Sprint(("n" + fmt.Sprint(m.hits)))
+	content_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1Text).Render(content_1Text)
 	contentChildren = append(contentChildren, content_1)
 	var content_2 string
 	content_2Focused := (m.__focusID == 1) && m.__focusShown()
@@ -624,7 +650,8 @@ func (m Model) View() tea.View {
 	if content_2Focused {
 		content_2Prefix = ">"
 	}
-	content_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_2Prefix + " " + fmt.Sprint(("b" + fmt.Sprint(m.hits__inst0))))
+	content_2Text := content_2Prefix + " " + fmt.Sprint(("b" + fmt.Sprint(m.hits__inst0)))
+	content_2 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_2Focused), tui.Avail(m.width), content_2Text).Render(content_2Text)
 	content_2 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_2)
 	contentChildren = append(contentChildren, content_2)
 	var content_3 string
@@ -634,7 +661,8 @@ func (m Model) View() tea.View {
 		if content_3Focused {
 			content_3Prefix = ">"
 		}
-		content_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_3Prefix + " " + fmt.Sprint(("k" + fmt.Sprint(m.hits))))
+		content_3Text := content_3Prefix + " " + fmt.Sprint(("k" + fmt.Sprint(m.hits)))
+		content_3 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_3Focused), tui.Avail(m.width), content_3Text).Render(content_3Text)
 		content_3 = m.__clicks.Mark(snglStop{slot: 2, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_3)
 	}
 	if content_3 != "" {
@@ -667,6 +695,7 @@ import (
 func TestAlias(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !(c.kPresent()) { t.Errorf("assert failed: %s", "c.kPresent()") }
 	if c.kPresent() {
 		c.kClick()
@@ -683,6 +712,7 @@ func TestAlias(t *testing.T) {
 func TestHelpers(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if c.kPresent() {
 		c.kClick()
 	}
@@ -707,7 +737,13 @@ func TestHelpers(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -722,6 +758,9 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
+
+type Test struct {
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -745,16 +784,38 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.shown = true
-	m.hits = 0
-	m.hits__inst0 = 0
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__inst0_live = []*__child0Instance{}
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["shown"] {
+		m.shown = true
+	}
+	if !preset["hits"] {
+		m.hits = 0
+	}
+	if !preset["hits__inst0"] {
+		m.hits__inst0 = 0
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__inst0_live"] {
+		m.__inst0_live = []*__child0Instance{}
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -913,8 +974,6 @@ type __child0Instance struct {
 	__prop___p0  int
 	__prop___on0 func()
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
 	k            *fynelayout.Button
 }
 
@@ -924,7 +983,6 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.k = fynelayout.NewButton("", nil)
 	c.k.SetText(("k" + fmt.Sprint(c.__prop___p0)))
 	c.k.OnTapped = func() {
@@ -971,6 +1029,7 @@ import (
 func TestAlias(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !(c.kPresent()) { t.Errorf("assert failed: %s", "c.kPresent()") }
 	if c.kPresent() {
 		c.kClick()
@@ -987,6 +1046,7 @@ func TestAlias(t *testing.T) {
 func TestHelpers(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if c.kPresent() {
 		c.kClick()
 	}
@@ -1017,7 +1077,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -1048,6 +1112,9 @@ import (
 	"fmt"
 )
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	shown          bool
@@ -1070,16 +1137,38 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.shown = true
-	m.hits = 0
-	m.hits__inst0 = 0
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__inst0_live = []*__child0Instance{}
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["shown"] {
+		m.shown = true
+	}
+	if !preset["hits"] {
+		m.hits = 0
+	}
+	if !preset["hits__inst0"] {
+		m.hits__inst0 = 0
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__inst0_live"] {
+		m.__inst0_live = []*__child0Instance{}
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1169,8 +1258,6 @@ type __child0Instance struct {
 	__prop___p0  int
 	__prop___on0 func()
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
 	k            gtk4rt.Handle
 }
 
@@ -1179,7 +1266,6 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
-	c.__slot0 = nil
 	c.k = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.k, ("k" + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.SetBool(c.k, "can-focus", true)
@@ -1208,9 +1294,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1315,6 +1398,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -1323,12 +1412,16 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 val SnglPresent = mutableStateMapOf<Any, String>()
 
-class MainScreenState {
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
     init { SnglPresent.clear() }
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
-    var shown by mutableStateOf(true)
-    var hits by mutableStateOf(0)
-    var hits__inst0 by mutableStateOf(0)
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
+    var shown by mutableStateOf(__snglPre(__pre, "shown") { true })
+    var hits by mutableStateOf(__snglPre(__pre, "hits") { 0 })
+    var hits__inst0 by mutableStateOf(__snglPre(__pre, "hits__inst0") { 0 })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1599,18 +1692,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { shown: true, hits: 0, hits__inst0: 0 };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.tsClick = () => $0.click();
   state.hitClick = () => $2.click();
   state.kClick = () => document.querySelector('[data-sngl-id="k"]').click();
@@ -1649,7 +1745,6 @@ window.__sngl_boot = () => {
     });
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.textContent = "k" + String(__prop___p0);
@@ -1781,16 +1876,15 @@ window.__sngl_boot = () => {
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:72d72ae274b781a249dac27d235a0a32
+pass sha256:55b100a27aa1b927fa70e596bf7a0876
 -- run/go/fyne --
-pass sha256:0694e867d34aa82088a82408078cf696
+pass sha256:53c9a163ce67325ab826c36628ad94c5
 -- run/go/gtk4 --
-pass sha256:f35a00cd93e1647c9d1677bfee60d6f2
+pass sha256:e28b51c8654bf4de168fd4199a02b6f9
 -- run/kotlin/android --
-pass sha256:ffef578a17839d66e3ddbd54ab455d25
+pass sha256:04e9fd35ba5f1d4b44aa8e5185cd02da
 -- run/none/html --
-pass sha256:496efab721e852ac5e6f69215a3c6e7b
+pass sha256:e29d4b24960db06b474eb9a2e8062729

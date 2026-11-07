@@ -77,6 +77,9 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	a                   string
@@ -110,27 +113,71 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.a = ""
-	m.b = ""
-	m.d = nil
-	m.value__inst0 = nil
-	m.__effect0_key = ""
-	m.__effect0_live = []string{}
-	m.__effect0_desired = []string{}
-	m.__effect1_key = ""
-	m.__effect1_live = []string{}
-	m.__effect1_desired = []string{}
-	m.__effect2_key = nil
-	m.__effect2_live = []*time.Time{}
-	m.__effect2_desired = []*time.Time{}
-	m.__effect3_key = nil
-	m.__effect3_live = []*time.Time{}
-	m.__effect3_desired = []*time.Time{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["a"] {
+		m.a = ""
+	}
+	if !preset["b"] {
+		m.b = ""
+	}
+	if !preset["d"] {
+		m.d = nil
+	}
+	if !preset["value__inst0"] {
+		m.value__inst0 = nil
+	}
+	if !preset["__effect0_key"] {
+		m.__effect0_key = ""
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []string{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []string{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = ""
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []string{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []string{}
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = nil
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []*time.Time{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []*time.Time{}
+	}
+	if !preset["__effect3_key"] {
+		m.__effect3_key = nil
+	}
+	if !preset["__effect3_live"] {
+		m.__effect3_live = []*time.Time{}
+	}
+	if !preset["__effect3_desired"] {
+		m.__effect3_desired = []*time.Time{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
 }
 
 func (m *Model) __effect0_mount() {
@@ -424,4 +471,4 @@ func (m *Model) cal__1Change(v *time.Time) {
 	gtk4rt.Emit(m.cal__1, "day-selected")
 }
 -- run/go/gtk4 --
-pass sha256:758090ceb57f68bb6c865c906fd406f8
+pass sha256:e38f80e8545f9fda656b6bc898e445d8

@@ -86,8 +86,10 @@ func (jc *JsIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string 
 }
 func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
 	// A MethodFields field is a zero-arg method, so `c.greeting` must invoke
-	// it rather than compare the function object.
-	if jc.Ctx != nil && jc.Ctx.MethodFields != nil && jc.Ctx.MethodFields[n.Field] {
+	// it rather than compare the function object. Only of the instance: a
+	// struct's field named like one of its methods -- `stage.forms` in a page
+	// declaring `func forms()` -- is the field.
+	if jc.Ctx != nil && jc.Ctx.MethodFields != nil && jc.Ctx.MethodFields[n.Field] && isInstance(n.Operand) {
 		return operand + "." + n.Field + "()"
 	}
 	if n.Field == "length" {
@@ -562,6 +564,11 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	// synthesized one is promoted with the rest, so a context provider inside
 	// an imported component declared `state.__ctx_depth_1` and read a bare
 	// `__ctx_depth` that nothing bound.
+	if v, ok := n.Sym.(*ir.Var); ok && v.NodeHandle && jc.Ctx.NodeVar != nil {
+		if el, ok := jc.Ctx.NodeVar(n); ok {
+			return el
+		}
+	}
 	if n.Synthesized {
 		return jc.Ctx.RenamedName(n.Name)
 	}
@@ -652,6 +659,9 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	// A codec call reads the type it reads or writes, which is the call's,
 	// and names the page's runtime.
 	if out, ok := jc.codecCall(n); ok {
+		return out
+	}
+	if out, ok := jc.lifetimeCall(n); ok {
 		return out
 	}
 	if out, _, ok := codegen.EmitIntrinsicCall(langJS, jc.Ctx.Platform, n, jc.EvalExpr); ok {
@@ -1028,14 +1038,37 @@ func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
 	return operand
 }
 
+// paramNames is a parameter list as JavaScript binds it. A parameter named
+// `_` is one nothing reads, which Go and Kotlin let a list hold any number
+// of; JavaScript binds a name once per list, so the second is `_1`.
+func paramNames(params []*ir.Param) []string {
+	out := make([]string, len(params))
+	ignored := 0
+	for i, p := range params {
+		out[i] = p.Name
+		if p.Name == "_" {
+			out[i] = ignoredParam(ignored)
+			ignored++
+		}
+	}
+	return out
+}
+
+// ignoredParam is the name of the i-th parameter nothing reads.
+func ignoredParam(i int) string {
+	if i == 0 {
+		return "_"
+	}
+	return "_" + strconv.Itoa(i)
+}
+
 func nullFuncStubJS(t *ir.Type) string {
 	if t == nil || t.Sig == nil {
 		return "() => null"
 	}
-	arity := len(t.Sig.Params)
-	params := make([]string, arity)
+	params := make([]string, len(t.Sig.Params))
 	for i := range params {
-		params[i] = "_"
+		params[i] = ignoredParam(i)
 	}
 	zero := jsZeroFor(t.Sig.Return)
 	return "(" + strings.Join(params, ", ") + ") => " + zero
@@ -1062,10 +1095,7 @@ func (jc *JsIRContext) evalLambda(n *ir.Lambda) string {
 	if n.Func == nil {
 		return "() => null"
 	}
-	params := make([]string, len(n.Func.Params))
-	for i, p := range n.Func.Params {
-		params[i] = p.Name
-	}
+	params := paramNames(n.Func.Params)
 	asyncPrefix := ""
 	// A handler a lowering made a lambda of was colored nowhere: what it
 	// awaits says so.
@@ -1242,10 +1272,7 @@ func jsBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 // Returns lines without trailing newlines. Caller joins with "\n".
 func (jc *JsIRContext) EmitFuncDef(fn *ir.Func) []string {
 	var lines []string
-	params := make([]string, len(fn.Params))
-	for i, p := range fn.Params {
-		params[i] = p.Name
-	}
+	params := paramNames(fn.Params)
 	// The same color the call sites read: EvalStmt writes `await` in front of a
 	// call to an async func, so a definition that dropped the keyword produced
 	// an await in a sync function -- text no bundler parses.
@@ -1341,4 +1368,11 @@ func endsInJump(stmts []ir.Stmt) bool {
 // writes these before they reach here.
 func (jc *JsIRContext) MatchExpr(n *ir.MatchExpr) string {
 	return irwalk.EvalExpr(jc, n.TernaryChain())
+}
+
+// isInstance reports whether e is a component's instance, whose zero-arg
+// methods a test reads as fields.
+func isInstance(e ir.Expr) bool {
+	t := e.ExprType()
+	return t == nil || t.Kind == ir.TypeComponent
 }

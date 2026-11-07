@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 
@@ -95,6 +96,11 @@ func (st *inlineCompState) recordInstance(n *ir.NodeInst, symRenames map[ir.Symb
 func pureSplice(comp *ir.Component, handle *ir.Var, symRenames map[ir.Symbol]ir.Symbol, before map[string]*ir.Var, body []ir.Stmt) splice {
 	si := &splicedInstance{comp: comp, vars: map[string]*ir.Var{}, funcs: map[*ir.Func]*ir.Func{}, nodes: before, self: handle}
 	for from, to := range symRenames {
+		if f, ok := from.(*ir.Func); ok {
+			if t, ok := to.(*ir.Func); ok {
+				si.funcs[f] = t
+			}
+		}
 		if f, ok := from.(*ir.Var); ok {
 			if t, ok := to.(*ir.Var); ok {
 				si.vars[f.Name] = t
@@ -185,6 +191,8 @@ type resolver struct {
 	// splice of a component a test takes in a build that renders it.
 	byHandle map[*ir.Var][]*splicedInstance
 	rendered map[*ir.Component][]*splicedInstance
+	// funcCopies is what copies() gathers, once.
+	funcCopies map[*ir.Func][]*ir.Func
 }
 
 // testParam is the test's instance e is, or nil.
@@ -266,7 +274,7 @@ func (r *resolver) instance(e ir.Expr) *ir.Ident {
 	}
 }
 
-func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) error {
+func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice, triggers map[*ir.Call]ir.Call, valueTriggers bool) error {
 	if len(reach.params) == 0 {
 		return nil
 	}
@@ -286,6 +294,14 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 	fail := func(e ir.Expr, format string, args ...any) {
 		if bad == nil && reach.root != nil {
 			bad = fmt.Errorf("%s: %s", exprPos(e), fmt.Sprintf(format, args...))
+		}
+	}
+	// Each trigger call's receiver as the test's earlier passes left it,
+	// which is what an event restored to it is raised on.
+	receivers := map[*ir.Call]ir.Expr{}
+	for call := range triggers {
+		if call.Func != nil && call.Func.Trigger != "" && len(call.Args) > 0 {
+			receivers[call] = call.Args[0].Value
 		}
 	}
 	for _, fn := range pkg.Funcs {
@@ -331,12 +347,109 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 			return n, nil
 		})
 	}
+	restoreUnreachedTriggers(pkg, reach.root, triggers, receivers, valueTriggers, fail)
 	return bad
 }
 
 // repointCall points a method called through a spliced instance at the
-// method's clone, called as the instance's own.
+// method's clone, called as the instance's own -- and again where that
+// instance was itself spliced: a select's trigger copied onto the chooser
+// that renders it, and onto what renders the chooser, `c.inner.pick.change`.
 func (r *resolver) repointCall(c *ir.Call, fail func(ir.Expr, string, ...any)) {
+	for range 16 {
+		was := c.Func
+		r.repointCallOnce(c, fail)
+		if c.Func == was {
+			// A copy a later splice copied again -- the trigger a select's
+			// splice copied onto chooser, and chooser's splice onto what
+			// renders it -- where the test names the node itself, as one
+			// flattened onto the root: the one copy of the copy.
+			next := r.copies()[c.Func]
+			if len(next) != 1 && c.Func != nil && c.Func.Trigger != "" {
+				next = r.keptCopies(c.Func)
+			}
+			if len(next) == 1 && c.Func != nil {
+				if r.onModel(next[0]) {
+					r.onInstance(c)
+				}
+				c.Func = next[0]
+				continue
+			}
+			return
+		}
+	}
+}
+
+// keptCopies is each trigger of the root or the package copied from fn,
+// through any number of splices (FuncLowering.CopyOf), where fn itself is in
+// no component the build keeps: a select's trigger copied onto the wrapper
+// passImplicitState put around it, and the wrapper's onto the root, by
+// splices whose handles were made fresh, so neither recorded the copy by the
+// handle the test reads.
+func (r *resolver) keptCopies(fn *ir.Func) []*ir.Func {
+	if r.onModel(fn) || slices.ContainsFunc(r.pkg.Components, func(c *ir.Component) bool { return slices.Contains(c.Funcs, fn) }) {
+		return nil
+	}
+	var out []*ir.Func
+	var kept []*ir.Func
+	if r.root != nil {
+		kept = r.root.Funcs
+	}
+	for _, k := range slices.Concat(kept, r.pkg.Funcs) {
+		for f := k.Lowered.CopyOf; f != nil; f = f.Lowered.CopyOf {
+			if f == fn {
+				out = append(out, k)
+				break
+			}
+		}
+	}
+	return out
+}
+
+// onModel reports whether fn is a function of the root or of the package,
+// which a test calls on the instance it holds: a menu item's `@select {
+// dexesAsk.refresh() }`, which a test's read of the menu's items copies, came
+// out as `c.refresh__inst12(c.dexesAsk)`, handed the node a field the Model
+// does not hold where its receiver is the Model itself
+// (cmd/sngl/testdata/menu_item_calls_its_window_node_runs.txt).
+func (r *resolver) onModel(fn *ir.Func) bool {
+	return r.root != nil && slices.Contains(r.root.Funcs, fn) || slices.Contains(r.pkg.Funcs, fn)
+}
+
+// onInstance hands c's receiver the test's instance its receiver is read
+// through, where it hands one.
+func (r *resolver) onInstance(c *ir.Call) {
+	switch {
+	case c.Receiver != nil:
+		if inst := r.instance(c.Receiver); inst != nil {
+			c.Receiver = inst
+		}
+	case len(c.Args) > 0 && len(c.Func.Params) > 0 && c.Func.Params[0].Receiver:
+		if inst := r.instance(c.Args[0].Value); inst != nil {
+			c.Args = slices.Clone(c.Args)
+			c.Args[0].Value = inst
+		}
+	}
+}
+
+// copies is every func a splice copied, and the copies each splice made.
+func (r *resolver) copies() map[*ir.Func][]*ir.Func {
+	if r.funcCopies == nil {
+		r.funcCopies = map[*ir.Func][]*ir.Func{}
+		for _, sis := range slices.Concat(slices.Collect(maps.Values(r.byHandle)), slices.Collect(maps.Values(r.rendered))) {
+			for _, si := range sis {
+				for from, to := range si.funcs {
+					if !slices.Contains(r.funcCopies[from], to) {
+						r.funcCopies[from] = append(r.funcCopies[from], to)
+					}
+				}
+			}
+		}
+	}
+	return r.funcCopies
+}
+
+func (r *resolver) repointCallOnce(c *ir.Call, fail func(ir.Expr, string, ...any)) {
 	if c.Func == nil || c.Event != "" {
 		return
 	}
@@ -375,7 +488,15 @@ func (r *resolver) repointCall(c *ir.Call, fail func(ir.Expr, string, ...any)) {
 		}
 		return
 	}
-	inst := r.instance(recv)
+	var inst ir.Expr = r.instance(recv)
+	// A node an instance that was itself spliced renders, `c.inner.pick`:
+	// the clone is that instance's method, which its own splice copied
+	// again, so the call is the instance's for repointCall's next step --
+	// unless the clone is already the Model's (onModel), whose receiver is
+	// the test's instance.
+	if sel, ok := unnarrowed(recv).(*ir.Select); ok && r.instOf(sel.Operand) != nil && !r.onModel(clone) {
+		inst = sel.Operand
+	}
 	if asArg {
 		c.Args[0].Value = inst
 	} else {
@@ -411,11 +532,31 @@ func (r *resolver) cellRead(x *ir.Select) (ir.Expr, error) {
 	if owner == nil {
 		return nil, nil
 	}
-	start := rebaseOnInstanceUnder(ir.CloneExprSharingDecls(init), owner, inst, loopBindings(si.loops, idxs))
+	env := loopBindings(si.loops, idxs)
+	start := rebaseOnInstanceUnder(ir.CloneExprSharingDecls(init), owner, inst, env)
 	if start == nil {
 		return nil, fmt.Errorf("`%s` starts from what the copy was handed, which a test cannot name; read it once the copy has written it", x.Field)
 	}
-	return cellGet(v, start, ir.CopyKey(idxs)), nil
+	key := ir.CopyKey(idxs)
+	if Keyed(si.loops) {
+		key = nil
+		for i, fs := range si.loops {
+			var part ir.Expr = &ir.Conversion{Type: ir.TypString, Operand: idxs[i]}
+			if fs.Identity != nil {
+				// The copy at the test's index, known by its identity: what
+				// the loop's identity reads of the element there.
+				if part = rebaseOnInstanceUnder(ir.CloneExprSharingDecls(fs.Identity), owner, inst, env); part == nil {
+					return nil, fmt.Errorf("`%s` is kept by the identity of its copy, which a test cannot name here", x.Field)
+				}
+			}
+			if key == nil {
+				key = part
+				continue
+			}
+			key = &ir.Binary{Type: ir.TypString, Op: ast.BinAdd, Left: &ir.Binary{Type: ir.TypString, Op: ast.BinAdd, Left: key, Right: stringLit(IdentitySep)}, Right: part}
+		}
+	}
+	return cellGet(v, start, key), nil
 }
 
 // refuseUnspliced reports a test reaching through x for a member of a
@@ -477,6 +618,10 @@ func exprPos(e ir.Expr) string {
 		if x.AST != nil {
 			return x.AST.Pos.String()
 		}
+	case *ir.Call:
+		if x.AST != nil {
+			return x.AST.Pos.String()
+		}
 	}
 	return "<unknown>"
 }
@@ -525,4 +670,130 @@ func (r *resolver) droppedNullTest(b *ir.Binary) *ir.Literal {
 func isNullLit(e ir.Expr) bool {
 	lit, ok := unnarrowed(e).(*ir.Literal)
 	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
+}
+
+// instanceReceiver is recv read through the instance fn is a method of, where
+// fn is a method of a component built at run time (nameInstance), or nil.
+func instanceReceiver(pkg *ir.Package, fn *ir.Func, recv ir.Expr) ir.Expr {
+	if recv == nil || !slices.ContainsFunc(pkg.Components, func(c *ir.Component) bool {
+		return c.RuntimeInstance && slices.Contains(c.Funcs, fn)
+	}) {
+		return nil
+	}
+	return nameInstance(pkg, fn, recv)
+}
+
+// nameInstance gives the node building the component fn is a method of an id
+// of its own, beside the one the test reaches the node by, and answers recv
+// read through it, or nil where no one node builds it: a wrapper
+// passImplicitState put in a select's place moved the select's `#id` onto the
+// select, and the wrapper's instance, whose method the trigger is, had none,
+// so no Model field held it for a test to call through. Its own, because the
+// select's is its widget's: gtk4 holds that as `__named_<id>` too.
+func nameInstance(pkg *ir.Package, fn *ir.Func, recv ir.Expr) ir.Expr {
+	// One copy a loop renders, `c.pick[1]`, is that copy of the instances.
+	var at []*ir.Index
+	e := unnarrowed(recv)
+	for {
+		ix, ok := e.(*ir.Index)
+		if !ok {
+			break
+		}
+		at = append(at, ix)
+		e = unnarrowed(ix.Operand)
+	}
+	sel, ok := e.(*ir.Select)
+	if !ok {
+		return nil
+	}
+	var sites []*ir.NodeInst
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if ni, ok := n.(*ir.NodeInst); ok && ni.Component != nil && slices.Contains(ni.Component.Funcs, fn) {
+			sites = append(sites, ni)
+		}
+		return nil
+	})
+	id := sel.Field + "__state"
+	if len(sites) != 1 || sites[0].ID != "" && sites[0].ID != id {
+		return nil
+	}
+	sites[0].ID = id
+	read := *sel
+	read.Field = id
+	t := sites[0].Component.SymType()
+	for range at {
+		t = ir.ListOf(t)
+	}
+	read.Type = t
+	out := ir.Expr(&read)
+	for _, a := range slices.Backward(at) {
+		ix := *a
+		ix.Operand = out
+		t = t.Elems[0]
+		ix.Type = t
+		out = &ix
+	}
+	return out
+}
+
+// throughCopy reports whether e reads one copy of what a loop renders.
+func throughCopy(e ir.Expr) bool {
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if _, ok := x.(*ir.Index); ok {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
+// unreachedTrigger says a test's raise of event, which the target overrides,
+// reaches no node: there is no invoker to fall back to that takes what the
+// override takes.
+func unreachedTrigger(event string) string {
+	return fmt.Sprintf("the test raises `%s` through the target's override of the event, which a test reaches on this target only where no loop repeats the node, nor an instance built at run time holds it inside another (#318)", event)
+}
+
+// restoreUnreachedTriggers handles each trigger call whose copy is no method
+// of the component the test is rooted at, nor a function of the package. One
+// a component built at run time holds -- the wrapper gtk4 puts a select in
+// under a reactive `if` -- is called through the instance the Model holds.
+// Any other is refused (unreachedTrigger), and given back the event the test
+// wrote so the rest of the build reads as written.
+func restoreUnreachedTriggers(pkg *ir.Package, root *ir.Component, triggers map[*ir.Call]ir.Call, receivers map[*ir.Call]ir.Expr, valueTriggers bool, fail func(ir.Expr, string, ...any)) {
+	for call, was := range triggers {
+		fn := call.Func
+		if fn == nil || fn.Trigger == "" || slices.Contains(pkg.Funcs, fn) || root != nil && slices.Contains(root.Funcs, fn) {
+			continue
+		}
+		// A method of a component built at run time, called through the
+		// node's `#id`, is reached through the instance the Model holds,
+		// as a test's `c.b.reset()` is (codegen.LowerInstanceReads).
+		if r := instanceReceiver(pkg, fn, receivers[call]); r != nil {
+			if call.Receiver == nil && len(call.Args) > 0 && len(fn.Params) > 0 && fn.Params[0].Receiver {
+				call.Args = slices.Clone(call.Args)
+				call.Args[0].Value = r
+			} else {
+				call.Receiver = r
+			}
+			continue
+		}
+		// The target overrides the event, and its invoker, which the event
+		// restored would reach, takes what the target's control takes: a
+		// typed select's took its value as a label, and the test did not
+		// compile, or chose nothing.
+		// A target whose test raises the event with the value itself
+		// (ValueTriggers) reaches the node the event names, but not one
+		// copy of the ones a loop renders: android's raise of `c.row[1]`'s
+		// select chose nothing.
+		if !valueTriggers || throughCopy(receivers[call]) {
+			fail(call, "%s", unreachedTrigger(fn.Trigger))
+		}
+		*call = was
+		if r, ok := receivers[call]; ok {
+			call.Receiver = r
+		}
+	}
 }

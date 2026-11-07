@@ -249,7 +249,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt8 = __lt7
 	}
-	l = l.MarginTop(CellsOf(__lt8))
+	l = l.MarginTop(SpaceOf(__lt8, false))
 	var __lt10 *Measurement
 	if s.MarginRight != nil {
 		__lt10 = s.MarginRight
@@ -262,7 +262,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt10 = __lt9
 	}
-	l = l.MarginRight(CellsOf(__lt10))
+	l = l.MarginRight(SpaceOf(__lt10, true))
 	var __lt12 *Measurement
 	if s.MarginBottom != nil {
 		__lt12 = s.MarginBottom
@@ -275,7 +275,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt12 = __lt11
 	}
-	l = l.MarginBottom(CellsOf(__lt12))
+	l = l.MarginBottom(SpaceOf(__lt12, false))
 	var __lt14 *Measurement
 	if s.MarginLeft != nil {
 		__lt14 = s.MarginLeft
@@ -288,7 +288,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt14 = __lt13
 	}
-	l = l.MarginLeft(CellsOf(__lt14))
+	l = l.MarginLeft(SpaceOf(__lt14, true))
 	var __lt16 *Measurement
 	if s.PaddingTop != nil {
 		__lt16 = s.PaddingTop
@@ -301,7 +301,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt16 = __lt15
 	}
-	l = l.PaddingTop(CellsOf(__lt16))
+	l = l.PaddingTop(SpaceOf(__lt16, false))
 	var __lt18 *Measurement
 	if s.PaddingRight != nil {
 		__lt18 = s.PaddingRight
@@ -314,7 +314,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt18 = __lt17
 	}
-	l = l.PaddingRight(CellsOf(__lt18))
+	l = l.PaddingRight(SpaceOf(__lt18, true))
 	var __lt20 *Measurement
 	if s.PaddingBottom != nil {
 		__lt20 = s.PaddingBottom
@@ -327,7 +327,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt20 = __lt19
 	}
-	l = l.PaddingBottom(CellsOf(__lt20))
+	l = l.PaddingBottom(SpaceOf(__lt20, false))
 	var __lt22 *Measurement
 	if s.PaddingLeft != nil {
 		__lt22 = s.PaddingLeft
@@ -340,7 +340,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt22 = __lt21
 	}
-	l = l.PaddingLeft(CellsOf(__lt22))
+	l = l.PaddingLeft(SpaceOf(__lt22, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -362,24 +362,23 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	return l
 }
 
-func CellsOf(m__r0 *Measurement) int {
+func SpaceOf(m__r0 *Measurement, across bool) int {
 	var __lt24 float64
 	if m__r0 == nil {
 		__lt24 = 0.0
 	} else {
 		__lt24 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
 	}
-	var px float64 = __lt24
-	var __lt25 int
-	if px <= 0.0 {
-		__lt25 = 0
+	var __lt25 float64
+	if across {
+		__lt25 = 8.0
 	} else {
-		__lt25 = max(1, (int(px) / 8))
+		__lt25 = 16.0
 	}
-	return __lt25
+	return int(((__lt24 / __lt25) + 0.5))
 }
 
-func RowsOf(m__r1 *Measurement) int {
+func CellsOf(m__r1 *Measurement) int {
 	var __lt26 float64
 	if m__r1 == nil {
 		__lt26 = 0.0
@@ -391,25 +390,42 @@ func RowsOf(m__r1 *Measurement) int {
 	if px <= 0.0 {
 		__lt27 = 0
 	} else {
-		__lt27 = max(1, (int(px) / 16))
+		__lt27 = max(1, (int(px) / 8))
 	}
 	return __lt27
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt29 int
-	if height__r0 == 0 {
-		__lt29 = lines
+func RowsOf(m__r2 *Measurement) int {
+	var __lt28 float64
+	if m__r2 == nil {
+		__lt28 = 0.0
 	} else {
-		var __lt28 int
-		if lines == 0 {
-			__lt28 = height__r0
-		} else {
-			__lt28 = min(height__r0, lines)
-		}
-		__lt29 = __lt28
+		__lt28 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+	}
+	var px float64 = __lt28
+	var __lt29 int
+	if px <= 0.0 {
+		__lt29 = 0
+	} else {
+		__lt29 = max(1, (int(px) / 16))
 	}
 	return __lt29
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt31 int
+	if height__r0 == 0 {
+		__lt31 = lines
+	} else {
+		var __lt30 int
+		if lines == 0 {
+			__lt30 = height__r0
+		} else {
+			__lt30 = min(height__r0, lines)
+		}
+		__lt31 = __lt30
+	}
+	return __lt31
 }
 
 func (m *Model) __focusNext() {
@@ -515,7 +531,8 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
-		contentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(Label(m.k)))
+		contentPart_0Text := fmt.Sprint(Label(m.k))
+		contentPart_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_0Text).Render(contentPart_0Text)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1Focused := (m.__focusID == 0)
@@ -523,7 +540,8 @@ func (m Model) View() tea.View {
 		if contentPart_1Focused {
 			contentPart_1Prefix = ">"
 		}
-		contentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("more"))
+		contentPart_1Text := contentPart_1Prefix + " " + fmt.Sprint("more")
+		contentPart_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), contentPart_1Focused), tui.Avail(m.width), contentPart_1Text).Render(contentPart_1Text)
 		contentPart_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_1)
 		contentParts = append(contentParts, contentPart_1)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
@@ -574,6 +592,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2c7e968c4e5f694688c43b9a7522b41b
+pass sha256:5a0ab805b990d9f570d47c029f75e1d5
 -- run/none/html --
 pass sha256:a9aa352b4c660b34ab8290f194b46544

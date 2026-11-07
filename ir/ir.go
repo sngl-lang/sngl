@@ -216,6 +216,13 @@ type Package struct {
 	// the record where it draws something (lower.NameRecordPresses).
 	RecordPicks map[*Call]*RecordPick `json:"-"`
 
+	// PastInstances are the generics passMonomorphize made as many copies of
+	// as it makes of one, a polymorphic recursion, and kept the original of
+	// for every binding past them, which no later copying may grow again.
+	// Kept here rather than on the function, which may be the library's,
+	// shared by every build and frozen.
+	PastInstances map[*Func]bool `json:"-"`
+
 	// Run is the build's function for the target's `@run` handler: it takes
 	// the command line and the host's `run`, and the host's own entry point
 	// calls it before anything the program renders exists. Nil where the
@@ -736,9 +743,14 @@ type Func struct {
 	// the optimizer. Const is what the declaration says: `const func`, a
 	// contract the checker holds the body to and callers may rely on. Only
 	// Const makes a call a compile-time value (IsConst).
-	Purity         Purity
-	Const          bool `json:",omitempty"`
-	IsTest         bool
+	Purity Purity
+	Const  bool `json:",omitempty"`
+	IsTest bool
+	// Trigger is the event of its component a target's override says how a
+	// test raises, for a method written as that override
+	// (`func ui.select[T].change[platform](value)`); empty for every other
+	// function. A test's trigger of the event calls it.
+	Trigger        string `json:",omitempty"`
 	Reads          []*Var // vars the body reads itself; what it calls reads is the callee's
 	Writes         []*Var // vars the body mutates itself, likewise
 	HasContextArg  bool
@@ -856,6 +868,10 @@ func (p *NodeProtocol) Op(op ProtocolOp) *Func {
 // either. A value rather than a pointer, so a Func copied to give it a
 // receiver carries its own.
 type FuncLowering struct {
+	// CopyOf is the trigger a splice copied this one from, onto the owner it
+	// landed in: a test's call of the trigger follows the copies down to the
+	// one the build keeps, through splices that recorded none.
+	CopyOf *Func
 	// SlotRender says this is a reactive slot's __renderSlot<N>: a body of
 	// node operations that renders into the `parent` its one parameter names.
 	// Synthesized does not answer that -- an effect's settle halves and the
@@ -1444,11 +1460,18 @@ type Param struct {
 	Name    string
 	Type    *Type
 	Default Expr // nil if no default
-	// Receiver marks the synthetic first parameter the checker prepends when
-	// desugaring a nested method (`func Type.m()`) or a bare component func
-	// into top-level form. Codegen/interp/lowering test this flag to recognize
-	// the implicit receiver structurally, rather than matching its name.
+	// Receiver marks a method's receiver: the first parameter a method
+	// declared outside its type names, of that type or a `ref` to it, or the
+	// one the checker prepends when desugaring a method written in a type's
+	// body or a bare component func into top-level form. Codegen/interp/
+	// lowering test this flag to recognize the receiver structurally, rather
+	// than matching its name.
 	Receiver bool
+	// Ambient marks the receiver a method written in a struct's or enum's
+	// body binds without declaring it, its body's `this`. It is the caller's
+	// value, as a `ref` receiver is; one a declaration names is a copy unless
+	// it is declared `ref[T]`.
+	Ambient bool `json:",omitempty"`
 	// Const is the `const` prefix: the argument is a compile-time value at
 	// every call site, so a read of the parameter is one too (IsConst).
 	Const bool `json:",omitempty"`
@@ -1529,6 +1552,12 @@ type StructDef struct {
 	// type nothing counts: a value stored from another holder is passed
 	// through it, and each holder then releases its own.
 	Retain *Func `json:"-"`
+	// InstanceOf and InstanceArgs are the generic struct this one is a copy
+	// of and the type arguments it was copied at, as EnumDef's are: what lets
+	// a later copying, after a body is spliced at bound types, find this one
+	// rather than declaring the same instantiation twice.
+	InstanceOf   *StructDef `json:"-"`
+	InstanceArgs []*Type    `json:"-"`
 }
 
 func (s *StructDef) SymName() string { return s.Name }

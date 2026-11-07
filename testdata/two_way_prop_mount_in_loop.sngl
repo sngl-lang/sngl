@@ -1,0 +1,39 @@
+import test "sngl:test"
+import ui "sngl:ui"
+
+// A two-way prop an effect's mount writes reaches the var its call site
+// bound, from a node placed under a `for` in a component that is not the
+// root: the iteration mounts in a copy of the component's scope, and the
+// write is carried back from it as a handler's is.
+component setter(:value option[int] = null) ui.node {
+    effect(on=1, @mount(k) { value = 2 })
+    ui.button #set(text="Set", @click { value = 3 })
+}
+
+component page ui.node {
+    var m option[int] = null
+
+    for var k = [0] {
+        setter #s(:value=m)
+    }
+}
+
+component seed ui.node {
+    page #p
+}
+
+func testAMountWritesTheBoundVar(t test.Test, c seed) {
+    t.assert(c.p.m == 2)
+}
+
+func testAClickWritesTheBoundVar(t test.Test, c seed) {
+    var s = c.p.s[0]
+    if s != null {
+        s.set.click()
+    }
+    t.assert(c.p.m == 3)
+}
+
+ui.window {
+    seed
+}

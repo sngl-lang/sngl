@@ -48,8 +48,8 @@ struct Page {
     tags list[string]
 }
 
-func lookup(name string) async.Result[Echo] {
-    match var r = http.get(url="{server}/echo/{http.pathEscape(name)}", query=Page{size=20, tags=["a"]}) {
+func lookup(name string, life async.Lifetime) async.Result[Echo] {
+    match var r = http.get(url="{server}/echo/{http.pathEscape(name)}", query=Page{size=20, tags=["a"]}, life=life) {
         failed { return {failed=r} }
         ok {
             match var checked = r.checked() {
@@ -83,7 +83,9 @@ window {
 package main
 
 import (
+	"context"
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglasync"
 	"duckfam.us/sngl/pkg/go/snglhttp"
 	"duckfam.us/sngl/pkg/go/sngljson"
 	"fmt"
@@ -131,6 +133,10 @@ type Response struct {
 	Body    string
 }
 
+type Lifetime struct {
+	_id int
+}
+
 type Failure struct {
 	Kind    string
 	Message string
@@ -155,6 +161,8 @@ type Model struct {
 	failure__inst0      *Failure
 	attempt__inst0      int
 	refreshes__inst0    int
+	asked__inst0        int
+	life__inst0         Lifetime
 	__effect0_key       __anon_key_n_a1dba7
 	__effect0_live      []__anon_key_n_a1dba7
 	__effect0_desired   []__anon_key_n_a1dba7
@@ -180,6 +188,8 @@ func New() *Model {
 	m.failure__inst0 = nil
 	m.attempt__inst0 = 0
 	m.refreshes__inst0 = 0
+	m.asked__inst0 = -1
+	m.life__inst0 = Lifetime{}
 	m.__effect0_key = __anon_key_n_a1dba7{}
 	m.__effect0_live = []__anon_key_n_a1dba7{}
 	m.__effect0_desired = []__anon_key_n_a1dba7{}
@@ -202,14 +212,17 @@ func __snglDo(f func()) {
 	fyne.Do(f)
 }
 
-func Lookup(name string) Result__Echo {
+func Lookup(name string, life Lifetime) Result__Echo {
 	__match0 := func() Result__Response {
-		__snglR, __snglF := snglhttp.Send("GET", sngljson.WithQuery(("http://127.0.0.1:47819/echo/"+sngljson.Escape(name)), sngljson.Query(Page{Size: snglSome(20), Tags: []string{"a"}}, func() *sngljson.Codec {
+		__snglR, __snglF := snglhttp.Send(snglasync.Context(life._id), "GET", sngljson.WithQuery(("http://127.0.0.1:47819/echo/"+sngljson.Escape(name)), sngljson.Query(Page{Size: snglSome(20), Tags: []string{"a"}}, func() *sngljson.Codec {
 			c0 := &sngljson.Codec{Kind: sngljson.Struct}
 			c0.Fields = []sngljson.Field{{Wire: "page-size", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "tags", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: &sngljson.Codec{Kind: sngljson.String}}}}
 			return c0
 		}())), nil, nil)
 		if __snglF != nil {
+			if __snglF.Cancelled {
+				return Result__Response{tag: 1, Failed: Failure{Kind: "cancelled", Message: __snglF.Message}}
+			}
 			if __snglF.Timeout {
 				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 			}
@@ -266,16 +279,28 @@ func ResponseChecked(r Response) Result__Response {
 	return Result__Response{tag: 1, Failed: Failure{Kind: kind, Message: ("HTTP " + fmt.Sprint(r.Status)), Code: fmt.Sprint(r.Status)}}
 }
 
+func LifetimeEnd(life Lifetime) {
+	snglasync.End(life._id)
+}
+
 func (m *Model) __effect0_mount() {
+	__effect0_mount_key := m.__effect0_key
 	m.attempt__inst0 += 1
 	var mine int = m.attempt__inst0
+	if __effect0_mount_key.N == m.asked__inst0 {
+		m.failure__inst0 = nil
+	}
+	m.asked__inst0 = __effect0_mount_key.N
 	m.pending__inst0 = true
-	__async_arg0 := m.__effect0_key.Key
+	m.life__inst0 = Lifetime{_id: snglasync.Begin()}
+	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
+	__async_arg1 := m.life__inst0
+	_ = __async_arg1
 	go func() {
-		r := Lookup(__async_arg0)
+		r := Lookup(__async_arg0, __async_arg1)
 		__snglDo(func() {
-			if mine != m.attempt__inst0 {
+			if ((mine != m.attempt__inst0) || (__effect0_mount_key.Key != m.key__inst0)) || (__effect0_mount_key.N != m.refreshes__inst0) {
 				return
 			}
 			m.pending__inst0 = false
@@ -312,6 +337,7 @@ func (m *Model) __effect0_mount() {
 
 func (m *Model) __effect0_unmount() {
 	m.attempt__inst0 += 1
+	LifetimeEnd(m.life__inst0)
 }
 
 func (m *Model) __effect0_down() {
@@ -390,24 +416,27 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n2_click_handler() {
-	__async_arg1 := "post"
-	_ = __async_arg1
-	__async_arg2 := __anon_e3b0c4{}
+	__async_arg2 := "post"
 	_ = __async_arg2
-	__async_arg3 := map[string]string{"X-Sngl": "on"}
+	__async_arg3 := __anon_e3b0c4{}
 	_ = __async_arg3
-	__async_arg4 := snglSome(sngljson.Encode[Echo](Echo{Method: "m", Kind: "hardcover"}, func() *sngljson.Codec {
+	__async_arg4 := map[string]string{"X-Sngl": "on"}
+	_ = __async_arg4
+	__async_arg5 := snglSome(sngljson.Encode[Echo](Echo{Method: "m", Kind: "hardcover"}, func() *sngljson.Codec {
 		c0 := &sngljson.Codec{Kind: sngljson.Struct}
 		c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"hard-cover", "paperback"}, Names: []string{"hardcover", "paperback"}}
 		c0.Fields = []sngljson.Field{{Wire: "method", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "raw_query", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "kind", Codec: c1}}
 		return c0
 	}()))
-	_ = __async_arg4
+	_ = __async_arg5
 	go func() {
 		__match2 := func() Result__Response {
-			_ = __async_arg2
-			__snglR, __snglF := snglhttp.Send(__async_arg1, "http://127.0.0.1:47819/echo", __async_arg3, __async_arg4)
+			_ = __async_arg3
+			__snglR, __snglF := snglhttp.Send(context.Background(), __async_arg2, "http://127.0.0.1:47819/echo", __async_arg4, __async_arg5)
 			if __snglF != nil {
+				if __snglF.Cancelled {
+					return Result__Response{tag: 1, Failed: Failure{Kind: "cancelled", Message: __snglF.Message}}
+				}
 				if __snglF.Timeout {
 					return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 				}
@@ -489,6 +518,22 @@ func (m *Model) Refreshes__inst0() int {
 
 func (m *Model) SetRefreshes__inst0(v int) {
 	m.refreshes__inst0 = v
+}
+
+func (m *Model) Asked__inst0() int {
+	return m.asked__inst0
+}
+
+func (m *Model) SetAsked__inst0(v int) {
+	m.asked__inst0 = v
+}
+
+func (m *Model) Life__inst0() Lifetime {
+	return m.life__inst0
+}
+
+func (m *Model) SetLife__inst0(v Lifetime) {
+	m.life__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -574,6 +619,10 @@ data class Response(
     var body: String = ""
 )
 
+data class Lifetime(
+    var _id: Int = 0
+)
+
 data class Failure(
     var kind: SnglFailureKind = SnglFailureKind.TRANSPORT,
     var message: String = "",
@@ -598,16 +647,17 @@ enum class Kind(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
-enum class SnglFailureKind(private val sngl: String) {
-    TRANSPORT("transport"),
-    TIMEOUT("timeout"),
-    AUTH("auth"),
-    REQUEST("request"),
-    SERVER("server"),
-    DECODE("decode");
+enum class SnglMethod(private val sngl: String) {
+    GET("get"),
+    HEAD("head"),
+    POST("post"),
+    PUT("put"),
+    PATCH("patch"),
+    DELETE("delete");
 
     override fun toString(): String = sngl
 }
+
 
 sealed class SnglResult__Response {
     data class Ok(val value: Response) : SnglResult__Response()
@@ -619,13 +669,14 @@ sealed class SnglResult__Echo {
     data class Failed(val value: Failure) : SnglResult__Echo()
 }
 
-enum class SnglMethod(private val sngl: String) {
-    GET("get"),
-    HEAD("head"),
-    POST("post"),
-    PUT("put"),
-    PATCH("patch"),
-    DELETE("delete");
+enum class SnglFailureKind(private val sngl: String) {
+    TRANSPORT("transport"),
+    TIMEOUT("timeout"),
+    AUTH("auth"),
+    REQUEST("request"),
+    SERVER("server"),
+    DECODE("decode"),
+    CANCELLED("cancelled");
 
     override fun toString(): String = sngl
 }
@@ -641,6 +692,8 @@ fun MainScreen() {
     var failure__inst0 by remember { mutableStateOf<Failure?>(null) }
     var attempt__inst0 by remember { mutableStateOf(0) }
     var refreshes__inst0 by remember { mutableStateOf(0) }
+    var asked__inst0 by remember { mutableStateOf(-1) }
+    var life__inst0 by remember { mutableStateOf(Lifetime()) }
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -658,9 +711,14 @@ fun MainScreen() {
                     SnglCodec.start {
                     	attempt__inst0 += 1
                     	var mine = attempt__inst0
+                    	if ((k.n == asked__inst0)) {
+                    		failure__inst0 = null
+                    	}
+                    	asked__inst0 = k.n
                     	pending__inst0 = true
-                    	var r: SnglResult__Echo = lookup(k.key)
-                    	if ((mine != attempt__inst0)) {
+                    	life__inst0 = Lifetime(_id = SnglCodec.begin())
+                    	var r: SnglResult__Echo = lookup(k.key, life__inst0)
+                    	if ((((mine != attempt__inst0) || (k.key != key__inst0)) || (k.n != refreshes__inst0))) {
                     		return@start
                     	}
                     	pending__inst0 = false
@@ -679,12 +737,13 @@ fun MainScreen() {
                 }
                 onDispose {
                     attempt__inst0 += 1
+                    life__inst0.end()
                 }
             }
             Text(text = (if ((answer__inst0 != null)) SnglCodec.encode(answer__inst0!!, run { val c0 = SnglCodec<Echo>(SnglCodec.STRUCT); val c1 = SnglCodec<Kind>(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.string()), SnglCodecField("raw_query", SnglCodec.option(SnglCodec.string())), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a.at(0), query = a.at(1), kind = a.at(2)) }; c0.read = { v -> listOf<Any?>(v.method, v.query, v.kind) }; c1.wires = listOf("hard-cover", "paperback"); c1.values = listOf(Kind.HARDCOVER, Kind.PAPERBACK); c0 }) else "-"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 SnglCodec.start {
-                	var __match2: SnglResult__Response = run { val __r = SnglCodec.send(SnglMethod.POST.toString(), "http://127.0.0.1:47819/echo", mapOf("X-Sngl" to "on"), SnglCodec.encode(Echo(method = "m"), run { val c0 = SnglCodec<Echo>(SnglCodec.STRUCT); val c1 = SnglCodec<Kind>(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.string()), SnglCodecField("raw_query", SnglCodec.option(SnglCodec.string())), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a.at(0), query = a.at(1), kind = a.at(2)) }; c0.read = { v -> listOf<Any?>(v.method, v.query, v.kind) }; c1.wires = listOf("hard-cover", "paperback"); c1.values = listOf(Kind.HARDCOVER, Kind.PAPERBACK); c0 })); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) }
+                	var __match2: SnglResult__Response = run { val __r = SnglCodec.send(SnglMethod.POST.toString(), "http://127.0.0.1:47819/echo", mapOf("X-Sngl" to "on"), SnglCodec.encode(Echo(method = "m"), run { val c0 = SnglCodec<Echo>(SnglCodec.STRUCT); val c1 = SnglCodec<Kind>(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.string()), SnglCodecField("raw_query", SnglCodec.option(SnglCodec.string())), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a.at(0), query = a.at(1), kind = a.at(2)) }; c0.read = { v -> listOf<Any?>(v.method, v.query, v.kind) }; c1.wires = listOf("hard-cover", "paperback"); c1.values = listOf(Kind.HARDCOVER, Kind.PAPERBACK); c0 }), 0); if (__r.failed) (if (__r.cancelled) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.CANCELLED, message = __r.message)) else if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) }
                 	when {
                 		(__match2 is SnglResult__Response.Ok) -> {
                 			var r = (__match2 as SnglResult__Response.Ok).value
@@ -702,8 +761,8 @@ fun MainScreen() {
     }
 }
 
-suspend fun lookup(name: String): SnglResult__Echo {
-    var __match0: SnglResult__Response = run { val __r = SnglCodec.send("get", SnglCodec.withQuery(("http://127.0.0.1:47819/echo/" + SnglCodec.escape(name)), Page(size = 20, tags = listOf("a")), run { val c0 = SnglCodec<Page>(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("page-size", SnglCodec.option(SnglCodec.int())), SnglCodecField("tags", SnglCodec.list(SnglCodec.string()))); c0.make = { a -> Page(size = a.at(0), tags = a.at(1)) }; c0.read = { v -> listOf<Any?>(v.size, v.tags) }; c0 }), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) }
+suspend fun lookup(name: String, life: Lifetime): SnglResult__Echo {
+    var __match0: SnglResult__Response = run { val __r = SnglCodec.send("get", SnglCodec.withQuery(("http://127.0.0.1:47819/echo/" + SnglCodec.escape(name)), Page(size = 20, tags = listOf("a")), run { val c0 = SnglCodec<Page>(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("page-size", SnglCodec.option(SnglCodec.int())), SnglCodecField("tags", SnglCodec.list(SnglCodec.string()))); c0.make = { a -> Page(size = a.at(0), tags = a.at(1)) }; c0.read = { v -> listOf<Any?>(v.size, v.tags) }; c0 }), emptyMap(), null, life._id); if (__r.failed) (if (__r.cancelled) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.CANCELLED, message = __r.message)) else if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) }
     when {
     	(__match0 is SnglResult__Response.Failed) -> {
     		var r = (__match0 as SnglResult__Response.Failed).value
@@ -744,6 +803,10 @@ fun Response.checked(): SnglResult__Response {
     	}
     }
     return SnglResult__Response.Failed(Failure(kind = kind, message = ("HTTP " + this.status.toString()), code = this.status.toString()))
+}
+
+fun Lifetime.end() {
+    SnglCodec.end(this._id)
 }
 -- out/kotlin/android/SnglCodec.kt --
 package test.sngl.app
@@ -801,6 +864,7 @@ class SnglCodec<T>(val kind: Int) {
         val failed: Boolean,
         val timeout: Boolean,
         val message: String,
+        val cancelled: Boolean = false,
     )
 
     private class Fail(message: String) : Exception(message)
@@ -1088,12 +1152,39 @@ class SnglCodec<T>(val kind: Int) {
             return url + (if (url.contains('?')) "&" else "?") + parts.joinToString("&")
         }
 
+        // sngl:async's lifetimes, by number: each live one holds how to stop
+        // the requests made under it, and 0 -- forever -- is never held.
+        private val lives = java.util.concurrent.ConcurrentHashMap<Int, java.util.concurrent.CopyOnWriteArrayList<() -> Unit>>()
+        private val nextLife = java.util.concurrent.atomic.AtomicInteger()
+
+        fun begin(): Int {
+            val id = nextLife.incrementAndGet()
+            lives[id] = java.util.concurrent.CopyOnWriteArrayList()
+            return id
+        }
+
+        fun end(id: Int) {
+            lives.remove(id)?.forEach { it() }
+        }
+
+        fun ended(id: Int): Boolean = id != 0 && !lives.containsKey(id)
+
+        private fun cancelled(): Response = Response(0, emptyMap(), "", true, false, "cancelled", true)
+
         // Sends one request on a thread of its own and waits for its answer
-        // there: a failure only where no response arrived.
-        suspend fun send(method: String, url: String, headers: Map<String, String>, body: String?): Response =
-            withContext(Dispatchers.IO) {
+        // there: a failure only where no response arrived, or `life` ended
+        // first, which disconnects it.
+        suspend fun send(method: String, url: String, headers: Map<String, String>, body: String?, life: Int): Response {
+            if (ended(life)) return cancelled()
+            return withContext(Dispatchers.IO) {
+                val conn = try {
+                    URL(url).openConnection() as HttpURLConnection
+                } catch (e: Exception) {
+                    return@withContext Response(0, emptyMap(), "", true, false, e.toString())
+                }
+                val abort: () -> Unit = { conn.disconnect() }
+                lives[life]?.add(abort)
                 try {
-                    val conn = URL(url).openConnection() as HttpURLConnection
                     conn.requestMethod = method.uppercase()
                     for (k in headers.keys.sorted()) conn.setRequestProperty(k, headers[k])
                     if (body != null) {
@@ -1108,13 +1199,18 @@ class SnglCodec<T>(val kind: Int) {
                         if (k != null) hs[k.lowercase()] = vs.joinToString(", ")
                     }
                     conn.disconnect()
+                    // A response that arrived is the answer, whenever the
+                    // lifetime ended: a failure is only where none did.
                     Response(status, hs, text, false, false, "")
                 } catch (e: SocketTimeoutException) {
-                    Response(0, emptyMap(), "", true, true, e.toString())
+                    if (ended(life)) cancelled() else Response(0, emptyMap(), "", true, true, e.toString())
                 } catch (e: Exception) {
-                    Response(0, emptyMap(), "", true, false, e.toString())
+                    if (ended(life)) cancelled() else Response(0, emptyMap(), "", true, false, e.toString())
+                } finally {
+                    lives[life]?.remove(abort)
                 }
             }
+        }
     }
 }
 
@@ -1148,13 +1244,14 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { key__inst0: "a", answer__inst0: null, sent__inst0: 0, visible__inst0: true, pending__inst0: false, failure__inst0: null, attempt__inst0: 0, refreshes__inst0: 0 };
-  async function lookup(name) {
-    let __match0 = ((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", _snglWithQuery("http://127.0.0.1:47819/echo/" + encodeURIComponent(name).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()), { size: 20, tags: ["a"] }, (() => {
+  var state = { key__inst0: "a", answer__inst0: null, sent__inst0: 0, visible__inst0: true, pending__inst0: false, failure__inst0: null, attempt__inst0: 0, refreshes__inst0: 0, asked__inst0: -1, life__inst0: null };
+  state.life__inst0 = { _id: 0 };
+  async function lookup(name, life) {
+    let __match0 = ((__r) => __r.f ? __r.c ? { tag: "failed", value: { kind: "cancelled", message: __r.m, code: "" } } : __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", _snglWithQuery("http://127.0.0.1:47819/echo/" + encodeURIComponent(name).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()), { size: 20, tags: ["a"] }, (() => {
       const c0 = { k: "s" };
       c0.f = [["size", "page-size", { k: "o", e: { k: "i" } }], ["tags", "tags", { k: "l", e: { k: "str" } }]];
       return c0;
-    })()), null, null));
+    })()), null, null, life._id));
     if (__match0.tag === "failed") {
       ;
       let r = __match0.value;
@@ -1210,12 +1307,23 @@ body { font-family: system-ui, sans-serif; }
     ;
     return { tag: "failed", value: { kind, message: "HTTP " + String(r.status), code: String(r.status) } };
   }
+  function Lifetime_end(life) {
+    _snglEnd(life._id);
+  }
   async function __effect0_mount() {
+    let __effect0_mount_key = __effect0_key;
     state.attempt__inst0 += 1;
     let mine = state.attempt__inst0;
+    if (__effect0_mount_key.n === state.asked__inst0) {
+      ;
+      state.failure__inst0 = null;
+    }
+    ;
+    state.asked__inst0 = __effect0_mount_key.n;
     state.pending__inst0 = true;
-    let r = await lookup(__effect0_key.key);
-    if (mine !== state.attempt__inst0) {
+    state.life__inst0 = { _id: _snglBegin() };
+    let r = await lookup(__effect0_mount_key.key, state.life__inst0);
+    if (mine !== state.attempt__inst0 || __effect0_mount_key.key !== state.key__inst0 || __effect0_mount_key.n !== state.refreshes__inst0) {
       ;
       return;
     }
@@ -1241,6 +1349,7 @@ body { font-family: system-ui, sans-serif; }
   }
   function __effect0_unmount() {
     state.attempt__inst0 += 1;
+    Lifetime_end(state.life__inst0);
   }
   function __snglTeardown() {
     __effects0_torn = true;
@@ -1484,15 +1593,35 @@ body { font-family: system-ui, sans-serif; }
     if (parts.length === 0) return url;
     return url + (url.includes("?") ? "&" : "?") + parts.join("&");
   }
-  async function _snglHTTPSend(method, url, headers, body) {
+  var _snglLives = { n: 0, m: /* @__PURE__ */ new Map() };
+  function _snglBegin() {
+    const id = ++_snglLives.n;
+    _snglLives.m.set(id, new AbortController());
+    return id;
+  }
+  function _snglEnd(id) {
+    const c = _snglLives.m.get(id);
+    if (c) {
+      _snglLives.m.delete(id);
+      c.abort();
+    }
+  }
+  function _snglEnded(id) {
+    return id !== 0 && !_snglLives.m.has(id);
+  }
+  async function _snglHTTPSend(method, url, headers, body, life) {
+    if (_snglEnded(life)) return { f: true, c: true, m: "cancelled" };
     const init = { method: String(method).toUpperCase(), headers: {} };
     if (headers) for (const [k, v] of headers) init.headers[k] = v;
     if (body !== null && body !== void 0) init.body = body;
+    const c = _snglLives.m.get(life);
+    if (c) init.signal = c.signal;
     let resp, text;
     try {
       resp = await fetch(url, init);
       text = await resp.text();
     } catch (e) {
+      if (_snglEnded(life)) return { f: true, c: true, m: "cancelled" };
       return { f: true, t: !!e && e.name === "TimeoutError", m: String(e && e.message || e) };
     }
     const h = /* @__PURE__ */ new Map();
@@ -1502,12 +1631,12 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", async function() {
-    let __match2 = ((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("post", "http://127.0.0.1:47819/echo", /* @__PURE__ */ new Map([["X-Sngl", "on"]]), _snglJSONEncode({ method: "m", query: null, kind: "hardcover" }, (() => {
+    let __match2 = ((__r) => __r.f ? __r.c ? { tag: "failed", value: { kind: "cancelled", message: __r.m, code: "" } } : __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("post", "http://127.0.0.1:47819/echo", /* @__PURE__ */ new Map([["X-Sngl", "on"]]), _snglJSONEncode({ method: "m", query: null, kind: "hardcover" }, (() => {
       const c0 = { k: "s" };
       const c1 = { k: "e", w: ["hard-cover", "paperback"], n: ["hardcover", "paperback"] };
       c0.f = [["method", "method", { k: "str" }], ["query", "raw_query", { k: "o", e: { k: "str" } }], ["kind", "kind", c1]];
       return c0;
-    })())));
+    })()), 0));
     if (__match2.tag === "ok") {
       ;
       let r = __match2.value;
@@ -1533,8 +1662,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:75bb2626a25cb06fbbc41d468523939c
+pass sha256:4e647ae627ca47089e53b52582210ae2
 -- run/kotlin/android --
-pass sha256:fa6b24ca1bf6985aaa36fd2b55dbd42a
+pass sha256:5969ed96d847ffdf182dbef5284cceec
 -- run/none/html --
-pass sha256:d64b67f4f3377875880fbc4bb853661b
+pass sha256:facbee83df944c125f52097e4326b054

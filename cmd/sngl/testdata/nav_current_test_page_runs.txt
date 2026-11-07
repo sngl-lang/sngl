@@ -58,7 +58,7 @@ func testTheCurrentPagesTitleIsRead(t test.Test, c site) {
     t.assert(c.heading.value == "Site - Home")
 }
 -- testrun/android/kotlin/app.sngl/site/1 --
-sha256:794b1773b85078815a18094db24d5a5b
+sha256:24f6f722dff6ad0191f810d73d93dbe2
 {
   "results": [
     {
@@ -72,7 +72,7 @@ sha256:794b1773b85078815a18094db24d5a5b
   ]
 }
 -- testrun/bubbletea/go/app.sngl/site/1 --
-sha256:f6186b4905e4cee73dd6dcb63a1b81e4
+sha256:017a8875c7888e570a42c0f3bcd66741
 {
   "results": [
     {
@@ -86,7 +86,7 @@ sha256:f6186b4905e4cee73dd6dcb63a1b81e4
   ]
 }
 -- testrun/fyne/go/app.sngl/site/1 --
-sha256:13a632f21825c0bbdab0d682d39e3967
+sha256:5a1ba5d4d527d8e1924d6c48325f7d35
 {
   "results": [
     {
@@ -100,7 +100,7 @@ sha256:13a632f21825c0bbdab0d682d39e3967
   ]
 }
 -- testrun/gtk4/go/app.sngl/site/1 --
-sha256:f819f351081700a002775f77c52267c6
+sha256:ca54759914fa2ce7e0dff7a63ab8f28b
 {
   "results": [
     {
@@ -114,7 +114,7 @@ sha256:f819f351081700a002775f77c52267c6
   ]
 }
 -- testrun/html/none/app.sngl/site/1 --
-sha256:21897ed94ed9fd58f23e26444f5cdada
+sha256:e809af81f5e54a33cceb271796f2c0c8
 {
   "results": [
     {

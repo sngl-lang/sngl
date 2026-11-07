@@ -138,6 +138,9 @@ type P struct {
 	A int
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -227,30 +230,55 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.folded = []int{0, 1, 2, 3}
-	m.xs = []int{4, 5}
-	m.around = slices.Concat([]int{0}, m.xs, []int{9})
-	m.copied = slices.Concat(m.xs)
-	m.aroundLen = len(m.around)
-	m.widened = slices.Concat(func(s []int) []float64 {
-		out := make([]float64, len(s))
-		for i, v := range s {
-			out[i] = float64(v)
-		}
-		return out
-	}(m.xs), []float64{2.5})
-	m.floats = func(s []int) []float64 {
-		out := make([]float64, len(s))
-		for i, v := range s {
-			out[i] = float64(v)
-		}
-		return out
-	}(m.xs)
-	m.ps = []P{P{A: 1}, P{A: 2}}
-	m.holes = []*int{snglSome(1), nil}
-	m.leading = []*int{nil, snglSome(1)}
-	m.__focusID = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["folded"] {
+		m.folded = []int{0, 1, 2, 3}
+	}
+	if !preset["xs"] {
+		m.xs = []int{4, 5}
+	}
+	if !preset["around"] {
+		m.around = slices.Concat([]int{0}, m.xs, []int{9})
+	}
+	if !preset["copied"] {
+		m.copied = slices.Concat(m.xs)
+	}
+	if !preset["aroundLen"] {
+		m.aroundLen = len(m.around)
+	}
+	if !preset["widened"] {
+		m.widened = slices.Concat(func(s []int) []float64 {
+			out := make([]float64, len(s))
+			for i, v := range s {
+				out[i] = float64(v)
+			}
+			return out
+		}(m.xs), []float64{2.5})
+	}
+	if !preset["floats"] {
+		m.floats = func(s []int) []float64 {
+			out := make([]float64, len(s))
+			for i, v := range s {
+				out[i] = float64(v)
+			}
+			return out
+		}(m.xs)
+	}
+	if !preset["ps"] {
+		m.ps = []P{P{A: 1}, P{A: 2}}
+	}
+	if !preset["holes"] {
+		m.holes = []*int{snglSome(1), nil}
+	}
+	if !preset["leading"] {
+		m.leading = []*int{nil, snglSome(1)}
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
 	return m
 }
 
@@ -314,14 +342,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -385,7 +413,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt6
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt9 *Measurement
 	if own != nil {
 		__lt9 = own
@@ -398,7 +426,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt9 = __lt8
 	}
-	return CellsOf(__lt9)
+	return SpaceOf(__lt9, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
@@ -437,6 +465,16 @@ func LineCap(height__r0 int, lines int) int {
 		__lt13 = __lt12
 	}
 	return __lt13
+}
+
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt14) + 0.5))
 }
 
 func (m *Model) __focusNext() {
@@ -653,7 +691,8 @@ func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var parts []string
 	var part0 string
-	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((fmt.Sprint(m.aroundLen) + " ") + "4")))
+	part0Text := fmt.Sprint(((fmt.Sprint(m.aroundLen) + " ") + "4"))
+	part0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Text).Render(part0Text)
 	parts = append(parts, part0)
 	var part1 string
 	part1Focused := (m.__focusID == 0)
@@ -661,7 +700,8 @@ func (m Model) View() tea.View {
 	if part1Focused {
 		part1Prefix = ">"
 	}
-	part1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part1Prefix + " " + fmt.Sprint("scribble"))
+	part1Text := part1Prefix + " " + fmt.Sprint("scribble")
+	part1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part1Focused), tui.Avail(m.width), part1Text).Render(part1Text)
 	part1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part1)
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
@@ -688,6 +728,7 @@ import "testing"
 func TestListSpread(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.aroundLen == 4)) { t.Errorf("assert failed: %s", "(c.aroundLen == 4)") }
 	if !((c.around[0] == 0)) { t.Errorf("assert failed: %s", "(c.around[0] == 0)") }
 	if !((c.around[1] == 4)) { t.Errorf("assert failed: %s", "(c.around[1] == 4)") }
@@ -711,7 +752,13 @@ func TestListSpread(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -738,6 +785,9 @@ type P struct {
 	A int
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	folded    []int
@@ -758,29 +808,53 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.folded = []int{0, 1, 2, 3}
-	m.xs = []int{4, 5}
-	m.around = slices.Concat([]int{0}, m.xs, []int{9})
-	m.copied = slices.Concat(m.xs)
-	m.aroundLen = len(m.around)
-	m.widened = slices.Concat(func(s []int) []float64 {
-		out := make([]float64, len(s))
-		for i, v := range s {
-			out[i] = float64(v)
-		}
-		return out
-	}(m.xs), []float64{2.5})
-	m.floats = func(s []int) []float64 {
-		out := make([]float64, len(s))
-		for i, v := range s {
-			out[i] = float64(v)
-		}
-		return out
-	}(m.xs)
-	m.ps = []P{P{A: 1}, P{A: 2}}
-	m.holes = []*int{snglSome(1), nil}
-	m.leading = []*int{nil, snglSome(1)}
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["folded"] {
+		m.folded = []int{0, 1, 2, 3}
+	}
+	if !preset["xs"] {
+		m.xs = []int{4, 5}
+	}
+	if !preset["around"] {
+		m.around = slices.Concat([]int{0}, m.xs, []int{9})
+	}
+	if !preset["copied"] {
+		m.copied = slices.Concat(m.xs)
+	}
+	if !preset["aroundLen"] {
+		m.aroundLen = len(m.around)
+	}
+	if !preset["widened"] {
+		m.widened = slices.Concat(func(s []int) []float64 {
+			out := make([]float64, len(s))
+			for i, v := range s {
+				out[i] = float64(v)
+			}
+			return out
+		}(m.xs), []float64{2.5})
+	}
+	if !preset["floats"] {
+		m.floats = func(s []int) []float64 {
+			out := make([]float64, len(s))
+			for i, v := range s {
+				out[i] = float64(v)
+			}
+			return out
+		}(m.xs)
+	}
+	if !preset["ps"] {
+		m.ps = []P{P{A: 1}, P{A: 2}}
+	}
+	if !preset["holes"] {
+		m.holes = []*int{snglSome(1), nil}
+	}
+	if !preset["leading"] {
+		m.leading = []*int{nil, snglSome(1)}
+	}
 }
 
 func (m *Model) joinedLen(extra int) int {
@@ -906,6 +980,7 @@ import "testing"
 func TestListSpread(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.aroundLen == 4)) { t.Errorf("assert failed: %s", "(c.aroundLen == 4)") }
 	if !((c.around[0] == 0)) { t.Errorf("assert failed: %s", "(c.around[0] == 0)") }
 	if !((c.around[1] == 4)) { t.Errorf("assert failed: %s", "(c.around[1] == 4)") }
@@ -935,7 +1010,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -972,6 +1051,9 @@ type P struct {
 	A int
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	folded    []int
@@ -991,29 +1073,53 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.folded = []int{0, 1, 2, 3}
-	m.xs = []int{4, 5}
-	m.around = slices.Concat([]int{0}, m.xs, []int{9})
-	m.copied = slices.Concat(m.xs)
-	m.aroundLen = len(m.around)
-	m.widened = slices.Concat(func(s []int) []float64 {
-		out := make([]float64, len(s))
-		for i, v := range s {
-			out[i] = float64(v)
-		}
-		return out
-	}(m.xs), []float64{2.5})
-	m.floats = func(s []int) []float64 {
-		out := make([]float64, len(s))
-		for i, v := range s {
-			out[i] = float64(v)
-		}
-		return out
-	}(m.xs)
-	m.ps = []P{P{A: 1}, P{A: 2}}
-	m.holes = []*int{snglSome(1), nil}
-	m.leading = []*int{nil, snglSome(1)}
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["folded"] {
+		m.folded = []int{0, 1, 2, 3}
+	}
+	if !preset["xs"] {
+		m.xs = []int{4, 5}
+	}
+	if !preset["around"] {
+		m.around = slices.Concat([]int{0}, m.xs, []int{9})
+	}
+	if !preset["copied"] {
+		m.copied = slices.Concat(m.xs)
+	}
+	if !preset["aroundLen"] {
+		m.aroundLen = len(m.around)
+	}
+	if !preset["widened"] {
+		m.widened = slices.Concat(func(s []int) []float64 {
+			out := make([]float64, len(s))
+			for i, v := range s {
+				out[i] = float64(v)
+			}
+			return out
+		}(m.xs), []float64{2.5})
+	}
+	if !preset["floats"] {
+		m.floats = func(s []int) []float64 {
+			out := make([]float64, len(s))
+			for i, v := range s {
+				out[i] = float64(v)
+			}
+			return out
+		}(m.xs)
+	}
+	if !preset["ps"] {
+		m.ps = []P{P{A: 1}, P{A: 2}}
+	}
+	if !preset["holes"] {
+		m.holes = []*int{snglSome(1), nil}
+	}
+	if !preset["leading"] {
+		m.leading = []*int{nil, snglSome(1)}
+	}
 }
 
 func (m *Model) joinedLen(extra int) int {
@@ -1138,11 +1244,11 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.toMutableStateList
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -1160,6 +1266,12 @@ data class P(
     var a: Int = 0
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -1168,16 +1280,20 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 val folded: List<Int> = listOf(0, 1, 2, 3)
 
-class MainScreenState {
-    val xs = mutableStateListOf(4, 5)
-    val around = mutableStateListOf(0, *xs.toTypedArray(), 9)
-    val copied = mutableStateListOf(*xs.toTypedArray())
-    var aroundLen by mutableStateOf(around.size)
-    val widened = mutableStateListOf(*xs.map { it.toDouble() }.toTypedArray(), 2.5)
-    val floats = xs.map { it.toDouble() }.toMutableStateList()
-    val ps = mutableStateListOf(P(a = 1), P(a = 2))
-    val holes = mutableStateListOf(1, null)
-    val leading = mutableStateListOf(null, 1)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    val xs = if ("xs" in __pre) (__pre["xs"] as List<Int>).toMutableStateList() else mutableStateListOf(4, 5)
+    val around = if ("around" in __pre) (__pre["around"] as List<Int>).toMutableStateList() else mutableStateListOf(0, *xs.toTypedArray(), 9)
+    val copied = if ("copied" in __pre) (__pre["copied"] as List<Int>).toMutableStateList() else mutableStateListOf(*xs.toTypedArray())
+    var aroundLen by mutableStateOf(__snglPre(__pre, "aroundLen") { around.size })
+    val widened = if ("widened" in __pre) (__pre["widened"] as List<Double>).toMutableStateList() else mutableStateListOf(*xs.map { it.toDouble() }.toTypedArray(), 2.5)
+    val floats = if ("floats" in __pre) (__pre["floats"] as List<Double>).toMutableStateList() else xs.map { it.toDouble() }.toMutableStateList()
+    val ps = if ("ps" in __pre) (__pre["ps"] as List<P>).toMutableStateList() else mutableStateListOf(P(a = 1), P(a = 2))
+    val holes = if ("holes" in __pre) (__pre["holes"] as List<Int?>).toMutableStateList() else mutableStateListOf(1, null)
+    val leading = if ("leading" in __pre) (__pre["leading"] as List<Int?>).toMutableStateList() else mutableStateListOf(null, 1)
     fun joinedLen(extra: Int): Int {
         var ys = mutableListOf<Int>(*xs.toTypedArray(), 0, 1, 2, 3, extra)
         return ys.size
@@ -1278,12 +1394,13 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
@@ -1294,14 +1411,16 @@ window.__sngl_boot = () => {
     Object.assign(window, { folded });
   }
   var state = { xs: [4, 5], around: null, copied: null, aroundLen: null, widened: null, floats: null, ps: null, holes: null, leading: null };
-  state.around = [0, ...state.xs, 9];
-  state.copied = [...state.xs];
-  state.aroundLen = state.around.length;
-  state.widened = [...state.xs, 2.5];
-  state.floats = state.xs;
-  state.ps = [{ a: 1 }, { a: 2 }];
-  state.holes = [1, null];
-  state.leading = [null, 1];
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
+  if (!("around" in __snglPre)) state.around = [0, ...state.xs, 9];
+  if (!("copied" in __snglPre)) state.copied = [...state.xs];
+  if (!("aroundLen" in __snglPre)) state.aroundLen = state.around.length;
+  if (!("widened" in __snglPre)) state.widened = [...state.xs, 2.5];
+  if (!("floats" in __snglPre)) state.floats = state.xs;
+  if (!("ps" in __snglPre)) state.ps = [{ a: 1 }, { a: 2 }];
+  if (!("holes" in __snglPre)) state.holes = [1, null];
+  if (!("leading" in __snglPre)) state.leading = [null, 1];
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -1335,16 +1454,15 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:afa89bca59b10759298c7656425ba461
+pass sha256:aacf09520645d20361383ba2c9444305
 -- run/go/fyne --
-pass sha256:0c5958fd337ace75324892f4c6429525
+pass sha256:08683520ad34b39effb23aa54903a70d
 -- run/go/gtk4 --
-pass sha256:df98fd402e4bdecb17ace2553be8f092
+pass sha256:b3c51e4dd956b163fe1abd742b1e47ab
 -- run/kotlin/android --
-pass sha256:5e09d17d95bb6fcfb6d700f19add686e
+pass sha256:2832fa17f3995c64bba4add79053358a
 -- run/none/html --
-pass sha256:96616a49027402c21cce75c7b02c72cd
+pass sha256:4ad673833903b0a529b3f73f43ec6c76

@@ -121,6 +121,12 @@ func init() {
 			"if (__i >= 0 && __i <= __l.size) __l.add(__i, " + a[2] + ") }"
 	})
 	reg("list.clear", func(a []string) string { return a[0] + ".clear()" })
+	// MutableList.sort and sortWith are stable, being java.util's.
+	reg("list.sort", func(a []string) string { return a[0] + ".sort()" })
+	reg("list.sortBy", func(a []string) string {
+		return "run { val __before = " + a[1] + "; " + a[0] +
+			".sortWith { __a, __b -> if (__before(__a, __b)) -1 else if (__before(__b, __a)) 1 else 0 } }"
+	})
 
 	// --- list and map (non-mutating) ---
 	reg("list.length", func(a []string) string { return a[0] + ".size" })

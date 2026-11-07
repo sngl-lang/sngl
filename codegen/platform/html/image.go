@@ -116,6 +116,32 @@ func sourceAttrs(props map[string]ir.Expr, favicon bool) map[string]ir.Expr {
 	return out
 }
 
+// createdSources is each image source root creates, by the element's id: the
+// setters a factory declares are translated before its body creates the
+// element, so a translator learning sources as it meets their creation
+// (OnCreateNode) had none for a setter, and a card built at run time wrote
+// its new URL as a `url` attribute no <img> reads.
+func createdSources(roots ...any) map[string]string {
+	out := map[string]string{}
+	for _, root := range roots {
+		_ = ir.Walk(root, func(n ir.Node) error {
+			lv, ok := n.(*ir.LocalVar)
+			if !ok {
+				return nil
+			}
+			c, ok := lv.Init.(*ir.Call)
+			if !ok || c.Func == nil || c.Func.Intrinsic != ir.NodeOpCreateNode || len(c.Args) == 0 {
+				return nil
+			}
+			if tag, ok := codegen.IRLiteralString(c.Args[0].Value); ok && (tag == imageURLElement || tag == imageDrawingElement) {
+				out[lv.Name] = tag
+			}
+			return nil
+		})
+	}
+	return out
+}
+
 // sourcePropAssign is a prop write to an image source this scope built: its
 // URL is the `<img>`'s `src`, and a drawing's size is the canvas it paints
 // into, which on the `<img>` would be the size it is shown at.

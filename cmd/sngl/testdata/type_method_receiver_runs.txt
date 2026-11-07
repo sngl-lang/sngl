@@ -37,9 +37,9 @@ func Pt.sum(q Pt) int {
     return q.x + q.y + bonus
 }
 
-func list[T].pick() => this[n]
+func list[T].pick(this list[T]) => this[n]
 
-func list[T].second() T {
+func list[T].second(this list[T]) T {
     var i = 0
     for var x = this {
         if i == 1 {
@@ -85,7 +85,7 @@ ui.window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:14f6f411bff09a2012cb44cd19756a95
+sha256:d5ee8cf9ee84555b989cafc11f823326
 {
   "results": [
     {
@@ -95,7 +95,7 @@ sha256:14f6f411bff09a2012cb44cd19756a95
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:63a81ad057bdf213c36a4d12cac9a7a4
+sha256:e317baff549c3814bc1654a14cba7ad3
 {
   "results": [
     {
@@ -105,7 +105,7 @@ sha256:63a81ad057bdf213c36a4d12cac9a7a4
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:5754d51548e96f59082d6e70a054efda
+sha256:38ae060aedd9446141682856c04fa7e4
 {
   "results": [
     {
@@ -115,7 +115,7 @@ sha256:5754d51548e96f59082d6e70a054efda
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:e0ce8798388ca08a638f9e26191655b5
+sha256:278ecc92d86f5799c6dc2b60b505e392
 {
   "results": [
     {
@@ -125,7 +125,7 @@ sha256:e0ce8798388ca08a638f9e26191655b5
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:55b869936bb51d8414ad76c9d1b2657d
+sha256:6735bba1998e25027991a92f4e237868
 {
   "results": [
     {

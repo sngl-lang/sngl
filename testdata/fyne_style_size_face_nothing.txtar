@@ -61,6 +61,7 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"duckfam.us/sngl/pkg/go/snglcolor"
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -79,7 +80,7 @@ type Model struct {
 	visible__inst0 bool
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
-	__inst0_live   []*AskerInstance
+	__inst0_live   map[string]*AskerInstance
 	__rendering0   bool
 	__renderAgain0 bool
 
@@ -102,7 +103,7 @@ func New() *Model {
 	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*AskerInstance{}
+	m.__inst0_live = map[string]*AskerInstance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
@@ -125,30 +126,49 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-				__inst0_next := []*AskerInstance{}
-				var __inst0_i int = 0
+				__inst0_next := map[string]*AskerInstance{}
+				__inst0_seen := map[string]int{}
 				for i := range m.count__inst0 {
 					var __n1 *AskerInstance
-					if len(m.__inst0_live) > __inst0_i {
-						__n1 = m.__inst0_live[__inst0_i]
+					__key1 := fmt.Sprint(fmt.Sprint(i))
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n1 = func() *AskerInstance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
 						__n1.SetN(i)
 					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *AskerInstance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n1__new := newAskerInstance(m, i)
 						__n1 = __n1__new
 					}
-					__inst0_next = append(__inst0_next, __n1)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n1
 					__n1__el := __n1.Root
 					fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__el)
 					m.__slot0 = append(m.__slot0, __n1__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -158,11 +178,10 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*AskerInstance{}
+	m.__inst0_live = map[string]*AskerInstance{}
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -203,12 +222,41 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
+
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
 		return m.__n0.Container
 	}
 	m.__built = true
+	__snglBuilding++
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
@@ -239,6 +287,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.Add(m.__n7)
 	m.__n0.Add(m.__n2)
 	fynelayout.AppAttach(m.__n0)
+	__snglEndBuild()
 	return m.__n0.Container
 }
 
@@ -256,8 +305,6 @@ type AskerInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 }
 
 func newAskerInstance(__model *Model, __a_n int) *AskerInstance {
@@ -273,8 +320,7 @@ func newAskerInstance(__model *Model, __a_n int) *AskerInstance {
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = fynelayout.Nothing()
 	return c
 }
@@ -359,7 +405,10 @@ func main() {
 
 package main
 
-import "duckfam.us/sngl/pkg/go/gtk4rt"
+import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"fmt"
+)
 
 type ErrorEvent struct {
 	Message string
@@ -381,7 +430,7 @@ type Model struct {
 	__effects0_steps      int
 	__slot0               []gtk4rt.Handle
 	__slot0_at            gtk4rt.Handle
-	__inst0_live          []*AskerInstance
+	__inst0_live          map[string]*AskerInstance
 	__rendering0          bool
 	__renderAgain0        bool
 	__n0                  gtk4rt.Handle
@@ -411,7 +460,7 @@ func New() *Model {
 	m.__effects0_steps = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*AskerInstance{}
+	m.__inst0_live = map[string]*AskerInstance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
@@ -483,11 +532,10 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*AskerInstance{}
+	m.__inst0_live = map[string]*AskerInstance{}
 	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
@@ -509,30 +557,49 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-				__inst0_next := []*AskerInstance{}
-				var __inst0_i int = 0
+				__inst0_next := map[string]*AskerInstance{}
+				__inst0_seen := map[string]int{}
 				for i := range m.count__inst0 {
 					var __n2 *AskerInstance
-					if len(m.__inst0_live) > __inst0_i {
-						__n2 = m.__inst0_live[__inst0_i]
+					__key1 := fmt.Sprint(fmt.Sprint(i))
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n2 = func() *AskerInstance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
 						__n2.SetN(i)
 					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *AskerInstance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n2__new := newAskerInstance(m, i)
 						__n2 = __n2__new
 					}
-					__inst0_next = append(__inst0_next, __n2)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
 					m.__slot0 = append(m.__slot0, __n2__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -580,8 +647,6 @@ type AskerInstance struct {
 	__effects1_torn     bool
 	__effects1_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 }
 
 func newAskerInstance(__model *Model, __a_n int) *AskerInstance {
@@ -596,8 +661,7 @@ func newAskerInstance(__model *Model, __a_n int) *AskerInstance {
 	c.__effects1_pending = false
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
-	c.__slot0 = nil
-	c.__effects1_settle()
+	__snglMountAfterBuild(c.__effects1_settle)
 	c.Root = gtk4rt.Nothing()
 	gtk4rt.Retain(c.Root)
 	return c
@@ -659,9 +723,6 @@ func (c *AskerInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 }
 
 func (m *Model) Count__inst0() int {
@@ -688,11 +749,39 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__built {
 		return
 	}
 	m.__built = true
+	__snglBuilding++
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
@@ -729,6 +818,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
 	gtk4rt.AppAttach(m.__n0)
 	m.__effects0_settle()
+	__snglEndBuild()
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
@@ -738,6 +828,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:71e4052f46f65e791d5c6531b1eed5ec
+pass sha256:23fe7bf17e7c996a6e28bf9a11673305
 -- run/go/gtk4 --
-pass sha256:0acc03f262957dc61267696d833523cc
+pass sha256:ae774492c33e967de790643d4ec79fde

@@ -281,6 +281,34 @@ on every render, so a page whose answers wrote what its slot renders asked
 for every name again with each answer and never finished
 (`cmd/sngl/testdata/slot_nested_query_kept_runs.txt`).
 
+**A block built at run time that holds a node and calls its method is a
+component of its own** (`passHandleBlocks`, after `InlinePure` and before
+`NoInlineComponents`). A reactive `if`'s branch, a loop's body or a tab's
+panel -- a population of a data component, which its record holds -- is built
+at run time on every target keeping an instance's state, and a handler there
+calling `ask.refresh()` was the owner's function, with no one instance of the
+query to call it on: refused, so the Pokédex wrote each such request in a
+component of its own (`asked`). The pass writes that component: the block's
+free reads become props and its other handlers events, as
+`passSlotChildInstances` lifts a slot child, while a handler calling through a
+handle the block holds -- its own or the one an implicit-state wrapper `Wraps`
+-- stays with the node, a call through such a handle stays unlifted
+(`slotChildSynth.heldHandles`), and a write that handler makes of the owner's
+state is raised to the site, which makes it (`relayWrites`): an assignment, a
+toggle, or a call mutating its receiver, `log.push(7)`, whose arguments the
+raise hands on -- left as it was, `liftValues` made the receiver a prop and
+the push wrote the copy. A write of a whole var hands on the value it writes,
+held in a local the rest of the handler reads, since the site's write reaches
+the block's prop only when the site renders again, on android at its next
+recomposition. A write whose place reads what the block binds, `rows[i] = x`, cannot be, nor a call writing through a `ref` argument, and leaves the
+block to the refusal (`cmd/sngl/testdata/handle_call_in_built_block_runs.txt`). android's callbacks are prop lambdas, so a node's
+callback props count as its handlers. Under a `for`, a component calling
+through the handle of a node it renders is built per copy whatever state it
+holds itself (`callsOwnNode` in `perCopy`): its state is the wrapper's, so
+it was spliced per copy and its call named a handle every copy shared
+(`cmd/sngl/testdata/handle_call_in_built_block_runs.txt`,
+`handle_call_runtime_instance.txt`).
+
 **A render asked for while it runs runs after it** (`renderOnce`): a render
 builds its instances, a query's mount runs in the constructor, and a fetch
 that answers at once runs the call site's `@load` there. One writing what the
@@ -437,7 +465,12 @@ key differs runs: a prop reports only a new value, and after the per-copy
 splice the loop variable is the prop
 (`testdata/canvas_for_shape_state.txtar`, where replacing the list rekeys
 one copy and releases one value). Before this a write to the list reached no
-copy at all, and a dirty flag ran every copy.
+copy at all, and a dirty flag ran every copy. A pass runs its reports before
+its enter functions, so the enters read the state the downs and ups do: run
+between them, a report writing what a loop reads had an enter see a copy
+leave that the downs saw stay, and the next pass began the copy's cells
+afresh under its query still running, which then answered stale
+(`cmd/sngl/testdata/effect_report_between_enter_and_down_runs.txt`).
 
 **A two-way prop the caller leaves unbound is state of the instance**
 (`ir.UnboundProps`): a cell that starts from what the call site gave the prop,
@@ -474,7 +507,15 @@ bound, or, for a node whose family is a type parameter the call site leaves
 to the position -- `async.query`'s `F` -- of the family that position takes
 (`wrapperFamily`): with none, a wrapper built at run time holding the query's
 effect was a root no pass could type
-(`cmd/sngl/testdata/async_query_under_if_in_built_instance_runs.txt`). One shape is refused, which no `sngl:ui`
+(`cmd/sngl/testdata/async_query_under_if_in_built_instance_runs.txt`). A
+call site in a generic component may bind the node's parameters to its
+owner's -- `async.query(fetch=fetch)` in a component over T -- and then the
+wrapper is generic in the owner's parameters, instantiated at each of them
+(`siteBindings`), so a splice of the owner at its types binds the wrapper's:
+declared at the call site's types alone, the query's cell kept its own T,
+which no splice reached, and bubbletea declared it `*any`, while html's
+wrapper took no family from an F the owner had not bound
+(`cmd/sngl/testdata/query_in_generic_component_runs.txt`). One shape is refused, which no `sngl:ui`
 component reaches: a call site populating a named slot the node does not
 declare.
 
@@ -670,7 +711,8 @@ branch around it, reads one is refused (`refuseFocusReadingSlotArgs`,
 that draws nothing is passed over.** passFocusOrder asks of each stop what
 says it is drawn -- the branches around it and its `Focus` record's `enabled`
 (`style.display != none` in every bubbletea override), and of a loop slot
-that its loop renders a stop -- and where any stop may not be, builds
+that the branches around the loop are taken and it renders a stop -- and
+where any stop may not be, builds
 `__focusShown`: Tab steps again while the stop reached is not shown, at most
 once per other stop, and New and every Update end by settling focus off a stop
 that stopped being shown, telling the widgets only when it moved, since a
@@ -685,8 +727,14 @@ through the `fitOf` call the optimizer leaves standing where an argument is a
 ternary), and a stop a loop renders is one only while its own record is
 enabled and no box between it and the loop hides it: passFocusOrder puts that
 condition on the node (`__focusCounted`), and the loop's count, the view's
-ordinal and Update's walk each number the stop only while it holds. Before,
-both were stops with nothing drawn (`TestFocusPassesOverHiddenStopsInLoopsAndBoxes`). A canvas under a loop is the same shape: its
+ordinal and Update's walks each number the stop only while it holds. Before,
+both were stops with nothing drawn (`TestFocusPassesOverHiddenStopsInLoopsAndBoxes`).
+A loop slot asked only its length was drawn on every page: Tab on the
+Pokédex's detail page reached the list's cards, and Enter opened Bulbasaur
+(`click_run_test.go`'s `TestTabStaysOnThePageDrawn`). The walk handing a
+looped widget its keys numbered every tab's stops where the view numbered the
+shown tab's, so a click on the Moves tab's select pressed a stop of the
+Evolution tab (`TestATabbedSelectTakesItsValue`). A canvas under a loop is the same shape: its
 drawing reads the iteration's variables, so it is written inline as the
 rasterizer View hands tui rather than as a `_canvasDrawN` method, with a
 surface and a kitty image ID per copy, and the transmit reaches each copy
@@ -732,7 +780,26 @@ constructor skips it where `RootSlotRenders` finds no render into it
 holds its Model (`__model`), and a name its component does not declare -- the
 page's state, widgets and funcs -- is spelled through it
 (`ExprCtx.OuterReceiver`, `golang.PageNodes`); spelled through the record, it
-named a field no record has. On android a composable other than MainScreen
+named a field no record has. A call of a page method is spelled so too
+(`recvFor`), and a page node an instance names is a field of the Model, not a
+local of its build (`lowerNodeEscape` files a use of a node the record never
+creates under the page). So a write of page state in an instance's handler
+re-fires the page's slots reading it: passReactivity builds every body's
+render slots, and rewrites its reactive structures into calls of them, before
+it injects any update, since a component's body is walked before the package
+body's and the handler's re-fire was dropped for want of the slot's function
+or its parent; and a test build's root is the page there, not another
+component whose slots the writer cannot name. html renders the page's slots
+at their anchors, from a factory too (`rewriteSlotCallsToAnchors`), and
+Kotlin writes a map entry in a field of a state struct by copying the path
+back to the state, as a field write is (`AssignText`), since an entry
+assigned in place recomposed nothing
+(`cmd/sngl/testdata/instance_writes_page_state_runs.txt`). On fyne and gtk4
+an instance built inside the page's first build holds its first settle until
+the build ends (`golang.HoldMountsDuring`), as a component's own first settle
+runs after its body: a mount answering at once patched a node the build had
+not made yet
+(`cmd/sngl/testdata/instance_mount_during_first_build_runs.txt`). On android a composable other than MainScreen
 cannot see MainScreen's `remember`ed locals, so page state such a composable
 reads is declared at file level (`sharedPageState`). So is a package function
 it calls, with every function that one calls and the state they reach

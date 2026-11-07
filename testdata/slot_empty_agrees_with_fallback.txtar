@@ -74,6 +74,7 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -87,6 +88,11 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
 }
 
 type Style struct {
@@ -205,15 +211,34 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
-	} else {
-		__lt3 = max(1, (int(px) / 16))
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
 	}
-	return __lt3
+	return __out
+}
+
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
+	} else {
+		__lt3 = 16.0
+	}
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -253,14 +278,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -324,7 +349,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -337,7 +362,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -351,20 +376,31 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m *Model) __effect0_mount() {
@@ -560,74 +596,69 @@ func (m Model) __press(s snglStop) tea.Cmd {
 	return cmd
 }
 
-// showClick activates the #show widget the way a keypress does; for tests.
-func (m *Model) showClick() {
-	prev := m.__focusID
-	m.__focusID = 0
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	*m = nm.(Model)
-	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
-}
-
 func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var parts []string
 	var part0 string
 	if m.visible__inst0 {
 		var part0Parts []string
-		var __lt16 string
+		var __lt17 string
 		if !m.a__inst0 && !m.b__inst0 {
-			__lt16 = "asks: empty"
+			__lt17 = "asks: empty"
 		} else {
-			__lt16 = "asks: full"
+			__lt17 = "asks: full"
 		}
 		var part0Part_2 string
-		part0Part_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt16))
+		part0Part_2Text := fmt.Sprint(__lt17)
+		part0Part_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_2Text).Render(part0Part_2Text)
 		part0Parts = append(part0Parts, part0Part_2)
 		var part0Part_3 string
 		var part0Part_3Children []string
 		var part0Part_3_0 string
 		if m.a__inst0 {
-			part0Part_3_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("a"))
+			part0Part_3_0Text := fmt.Sprint("a")
+			part0Part_3_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_3_0Text).Render(part0Part_3_0Text)
 		}
 		if part0Part_3_0 != "" {
 			part0Part_3Children = append(part0Part_3Children, part0Part_3_0)
 		}
 		var part0Part_3_1 string
 		if m.b__inst0 {
-			part0Part_3_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("b"))
+			part0Part_3_1Text := fmt.Sprint("b")
+			part0Part_3_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_3_1Text).Render(part0Part_3_1Text)
 		}
 		if part0Part_3_1 != "" {
 			part0Part_3Children = append(part0Part_3Children, part0Part_3_1)
 		}
 		var part0Part_3_2 string
 		if !m.a__inst0 && !m.b__inst0 {
-			part0Part_3_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("fallback"))
+			part0Part_3_2Text := fmt.Sprint("fallback")
+			part0Part_3_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_3_2Text).Render(part0Part_3_2Text)
 		}
 		if part0Part_3_2 != "" {
 			part0Part_3Children = append(part0Part_3Children, part0Part_3_2)
 		}
 		part0Part_3 = lipgloss.JoinVertical(lipgloss.Left, part0Part_3Children...)
 		part0Parts = append(part0Parts, part0Part_3)
-		var __lt17 string
-		if len(m.xs__inst0) == 0 {
-			__lt17 = "asks: empty"
+		var __lt18 string
+		if len(__identified0(m.xs__inst0)) == 0 {
+			__lt18 = "asks: empty"
 		} else {
-			__lt17 = "asks: full"
+			__lt18 = "asks: full"
 		}
 		var part0Part_6 string
-		part0Part_6 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt17))
+		part0Part_6Text := fmt.Sprint(__lt18)
+		part0Part_6 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_6Text).Render(part0Part_6Text)
 		part0Parts = append(part0Parts, part0Part_6)
 		var part0Part_7 string
 		var part0Part_7Children []string
 		var part0Part_7_0 string
 		var part0Part_7_0Items []string
-		for _, x := range m.xs__inst0 {
+		for _, x := range __identified0(m.xs__inst0) {
 			_ = x
 			var part0Part_7_0Item string
-			part0Part_7_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(x)))
+			part0Part_7_0ItemText := fmt.Sprint(fmt.Sprint(x.Elem))
+			part0Part_7_0Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_7_0ItemText).Render(part0Part_7_0ItemText)
 			part0Part_7_0Items = append(part0Part_7_0Items, part0Part_7_0Item)
 		}
 		part0Part_7_0 = tui.Spaced(false, lipgloss.Left, 0, part0Part_7_0Items...)
@@ -635,27 +666,31 @@ func (m Model) View() tea.View {
 			part0Part_7Children = append(part0Part_7Children, part0Part_7_0)
 		}
 		var part0Part_7_1 string
-		if len(m.xs__inst0) == 0 {
-			part0Part_7_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("fallback"))
+		if len(__identified0(m.xs__inst0)) == 0 {
+			part0Part_7_1Text := fmt.Sprint("fallback")
+			part0Part_7_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_7_1Text).Render(part0Part_7_1Text)
 		}
 		if part0Part_7_1 != "" {
 			part0Part_7Children = append(part0Part_7Children, part0Part_7_1)
 		}
 		part0Part_7 = lipgloss.JoinVertical(lipgloss.Left, part0Part_7Children...)
 		part0Parts = append(part0Parts, part0Part_7)
-		__lt18 := "asks: empty"
+		__lt19 := "asks: empty"
 		var part0Part_9 string
-		part0Part_9 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt18))
+		part0Part_9Text := fmt.Sprint(__lt19)
+		part0Part_9 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_9Text).Render(part0Part_9Text)
 		part0Parts = append(part0Parts, part0Part_9)
 		var part0Part_10 string
 		var part0Part_10Children []string
 		var part0Part_10_0 string
-		part0Part_10_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("fallback"))
+		part0Part_10_0Text := fmt.Sprint("fallback")
+		part0Part_10_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_10_0Text).Render(part0Part_10_0Text)
 		part0Part_10Children = append(part0Part_10Children, part0Part_10_0)
 		part0Part_10 = lipgloss.JoinVertical(lipgloss.Left, part0Part_10Children...)
 		part0Parts = append(part0Parts, part0Part_10)
 		var part0Part_11 string
-		part0Part_11 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("mounted " + fmt.Sprint(m.mounted__inst0))))
+		part0Part_11Text := fmt.Sprint(("mounted " + fmt.Sprint(m.mounted__inst0)))
+		part0Part_11 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_11Text).Render(part0Part_11Text)
 		part0Parts = append(part0Parts, part0Part_11)
 		var part0Part_12 string
 		part0Part_12Focused := (m.__focusID == 0)
@@ -663,7 +698,8 @@ func (m Model) View() tea.View {
 		if part0Part_12Focused {
 			part0Part_12Prefix = ">"
 		}
-		part0Part_12 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_12Prefix + " " + fmt.Sprint("show"))
+		part0Part_12Text := part0Part_12Prefix + " " + fmt.Sprint("show")
+		part0Part_12 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_12Focused), tui.Avail(m.width), part0Part_12Text).Render(part0Part_12Text)
 		part0Part_12 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_12)
 		part0Parts = append(part0Parts, part0Part_12)
 		part0 = tui.Spaced(false, lipgloss.Left, 0, part0Parts...)
@@ -697,11 +733,17 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
 
 type ErrorEvent struct {
 	Message string
 	Kind    string
+}
+
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
 }
 
 // Model holds the state for this SNGL UI.
@@ -786,6 +828,26 @@ func New() *Model {
 	m.__rendering4 = false
 	m.__renderAgain4 = false
 	return m
+}
+
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __effect0_mount() {
@@ -934,9 +996,9 @@ func (m *Model) __renderSlot3(__parent *fyne.Container) {
 				}
 				m.__slot3 = nil
 				m.__slot3_at = fynelayout.SlotAnchor(__parent, m.__slot3_at)
-				for _, x := range m.xs__inst0 {
+				for _, x := range __identified0(m.xs__inst0) {
 					__n5 := widget.NewLabel("")
-					__n5.SetText(fmt.Sprint(x))
+					__n5.SetText(fmt.Sprint(x.Elem))
 					fynelayout.InsertBefore(__parent, m.__slot3_at, __n5)
 					m.__slot3 = append(m.__slot3, __n5)
 				}
@@ -962,7 +1024,7 @@ func (m *Model) __renderSlot4(__parent *fyne.Container) {
 				}
 				m.__slot4 = nil
 				m.__slot4_at = fynelayout.SlotAnchor(__parent, m.__slot4_at)
-				if len(m.xs__inst0) == 0 {
+				if len(__identified0(m.xs__inst0)) == 0 {
 					__n6 := widget.NewLabel("")
 					__n6.SetText("fallback")
 					fynelayout.InsertBefore(__parent, m.__slot4_at, __n6)
@@ -994,7 +1056,7 @@ func (m *Model) show_click_handler() {
 	m.__renderSlot2(m.__n7)
 	m.xs__inst0 = []int{7}
 	var __lt14 string
-	if len(m.xs__inst0) == 0 {
+	if len(__identified0(m.xs__inst0)) == 0 {
 		__lt14 = "asks: empty"
 	} else {
 		__lt14 = "asks: full"
@@ -1076,7 +1138,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__renderSlot2(m.__n7)
 	m.__n0.Add(m.__n7)
 	var __lt11 string
-	if len(m.xs__inst0) == 0 {
+	if len(__identified0(m.xs__inst0)) == 0 {
 		__lt11 = "asks: empty"
 	} else {
 		__lt11 = "asks: full"
@@ -1137,11 +1199,17 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
 
 type ErrorEvent struct {
 	Message string
 	Kind    string
+}
+
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -1226,6 +1294,26 @@ func New() *Model {
 	m.__rendering4 = false
 	m.__renderAgain4 = false
 	return m
+}
+
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __effect0_mount() {
@@ -1377,9 +1465,9 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 				}
 				m.__slot3 = nil
 				m.__slot3_at = gtk4rt.SlotAnchor(parent, m.__slot3_at)
-				for _, x := range m.xs__inst0 {
+				for _, x := range __identified0(m.xs__inst0) {
 					__n5 := gtk4rt.New("GtkLabel")
-					gtk4rt.LabelSetLabel(__n5, fmt.Sprint(x))
+					gtk4rt.LabelSetLabel(__n5, fmt.Sprint(x.Elem))
 					gtk4rt.LabelSetXAlign(__n5, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot3_at, __n5)
 					m.__slot3 = append(m.__slot3, __n5)
@@ -1406,7 +1494,7 @@ func (m *Model) __renderSlot4(parent gtk4rt.Handle) {
 				}
 				m.__slot4 = nil
 				m.__slot4_at = gtk4rt.SlotAnchor(parent, m.__slot4_at)
-				if len(m.xs__inst0) == 0 {
+				if len(__identified0(m.xs__inst0)) == 0 {
 					__n6 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n6, "fallback")
 					gtk4rt.LabelSetXAlign(__n6, 0.0)
@@ -1442,7 +1530,7 @@ func (m *Model) show_clicked_handler() {
 	m.__renderSlot2(m.__n7)
 	m.xs__inst0 = []int{7}
 	var __lt22 string
-	if len(m.xs__inst0) == 0 {
+	if len(__identified0(m.xs__inst0)) == 0 {
 		__lt22 = "asks: empty"
 	} else {
 		__lt22 = "asks: full"
@@ -1520,7 +1608,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot2(m.__n7)
 	gtk4rt.BoxAppend(m.__n0, m.__n7)
 	var __lt19 string
-	if len(m.xs__inst0) == 0 {
+	if len(__identified0(m.xs__inst0)) == 0 {
 		__lt19 = "asks: empty"
 	} else {
 		__lt19 = "asks: full"
@@ -1593,11 +1681,17 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.runtime.key
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
+
+data class __anon_id_elem_cdfd47(
+    var id: String = "",
+    var elem: Int = 0
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1635,12 +1729,14 @@ fun MainScreen() {
                     Text(text = "fallback", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
-            Text(text = (if ((xs__inst0.size == 0)) "asks: empty" else "asks: full"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = (if ((__identified0(xs__inst0).size == 0)) "asks: empty" else "asks: full"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
-                for (x in xs__inst0) {
-                    Text(text = x.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                for (x in __identified0(xs__inst0)) {
+                    key(x.id) {
+                        Text(text = x.elem.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                    }
                 }
-                if ((xs__inst0.size == 0)) {
+                if ((__identified0(xs__inst0).size == 0)) {
                     Text(text = "fallback", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
@@ -1662,6 +1758,21 @@ fun MainScreen() {
             }
         }
     }
+}
+
+fun __identified0(__xs: List<Int>): List<__anon_id_elem_cdfd47> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_cdfd47>()
+    for (__x in __xs) {
+    	var __id = __x.toString().replace("#", "##")
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_cdfd47(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/SnglFlexible.kt --
 package test.sngl.app
@@ -1822,35 +1933,47 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { a__inst0: false, b__inst0: false, xs__inst0: [], mounted__inst0: 0, visible__inst0: true };
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
+      ;
+      let __id = String(__x).replaceAll("#", "##");
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
+  }
   function __effect0_mount() {
     state.mounted__inst0 = state.mounted__inst0 + 1;
     __n2.textContent = "mounted " + String(state.mounted__inst0);
   }
   function __snglTeardown() {
-    for (const [__inst4_live_di, _] of __inst4_live.entries()) {
+    for (const [__inst4_live_dk, __inst4_live_dv] of __inst4_live.entries()) {
       ;
-      let __inst4_live_dj = __inst4_live.length - 1 - __inst4_live_di;
-      __inst4_live[__inst4_live_dj].__destroy();
+      __inst4_live_dv.__destroy();
     }
     ;
-    __inst4_live = [];
+    __inst4_live = /* @__PURE__ */ new Map([]);
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
-      __n0.textContent = String(__prop___p0);
+      __n0.textContent = String(__prop___p0.elem);
     }
     let __n0 = document.createElement("span");
-    __n0.textContent = String(__prop___p0);
+    __n0.textContent = String(__prop___p0.elem);
     __root.appendChild(__n0);
     return {
       __root,
@@ -1875,7 +1998,7 @@ body { font-family: system-ui, sans-serif; }
   var __rendering2 = false;
   var __renderAgain2 = false;
   var __slot3 = [];
-  var __inst4_live = [];
+  var __inst4_live = /* @__PURE__ */ new Map([]);
   var __rendering3 = false;
   var __renderAgain3 = false;
   var __slot4 = [];
@@ -2041,22 +2164,27 @@ body { font-family: system-ui, sans-serif; }
           let __place3_prev = __slot3;
           let __place3_i = 0;
           __slot3 = [];
-          let __inst4_next = [];
-          let __inst4_i = 0;
-          for (const x of state.xs__inst0) {
+          let __inst4_next = /* @__PURE__ */ new Map([]);
+          let __inst4_seen = /* @__PURE__ */ new Map([]);
+          for (const x of __identified0(state.xs__inst0)) {
             let __n6 = null;
-            if (__inst4_live.length > __inst4_i) {
-              __n6 = __inst4_live[__inst4_i];
+            let __key5 = String(x.id);
+            let __key5_n = __inst4_seen.has(__key5) ? __inst4_seen.get(__key5) : 0;
+            __inst4_seen.set(__key5, __key5_n + 1);
+            if (__key5_n > 0) {
+              __key5 = __key5 + "#" + String(__key5_n);
+            }
+            if (__inst4_live.has(__key5)) {
+              __n6 = __inst4_live.has(__key5) ? __inst4_live.get(__key5) : null;
               __n6.__set___p0(x);
             } else {
-              if (__inst4_live.length > __inst4_i) {
-                __inst4_live[__inst4_i].__destroy();
+              if (__inst4_live.has(__key5)) {
+                (__inst4_live.has(__key5) ? __inst4_live.get(__key5) : null).__destroy();
               }
               let __n6__new = __cf___child0({ __p0: x });
               __n6 = __n6__new;
             }
-            __inst4_next.push(__n6);
-            __inst4_i = __inst4_i + 1;
+            __inst4_next.set(__key5, __n6);
             let __n6__el = __n6.__root;
             let __place3_i_ref0 = null;
             if (__place3_i < __place3_prev.length) {
@@ -2069,10 +2197,9 @@ body { font-family: system-ui, sans-serif; }
             }
             __slot3.push(__n6__el);
           }
-          for (const [__inst4_i_d, _] of __inst4_live.entries()) {
-            let __inst4_i_j = __inst4_live.length - 1 - __inst4_i_d;
-            if (__inst4_i_j >= __inst4_i) {
-              __inst4_live[__inst4_i_j].__destroy();
+          for (const [__inst4_live_k, __inst4_live_v] of __inst4_live.entries()) {
+            if (!__inst4_next.has(__inst4_live_k)) {
+              __inst4_live_v.__destroy();
             }
           }
           __inst4_live = __inst4_next;
@@ -2099,7 +2226,7 @@ body { font-family: system-ui, sans-serif; }
           let __place5_prev = __slot4;
           let __place5_i = 0;
           __slot4 = [];
-          if (state.xs__inst0.length === 0) {
+          if (__identified0(state.xs__inst0).length === 0) {
             let __n7 = document.createElement("span");
             __n7.textContent = "fallback";
             let __place5_i_ref0 = null;
@@ -2147,13 +2274,13 @@ body { font-family: system-ui, sans-serif; }
     __renderSlot1(__slotAnchor_1);
     __renderSlot2(__slotAnchor_2);
     state.xs__inst0 = [7];
-    $1.textContent = state.xs__inst0.length === 0 ? "asks: empty" : "asks: full";
+    $1.textContent = __identified0(state.xs__inst0).length === 0 ? "asks: empty" : "asks: full";
     __renderSlot3(__slotAnchor_3);
     __renderSlot4(__slotAnchor_4);
   });
   function __sngl_init() {
     $0.textContent = !state.a__inst0 && !state.b__inst0 ? "asks: empty" : "asks: full";
-    $1.textContent = state.xs__inst0.length === 0 ? "asks: empty" : "asks: full";
+    $1.textContent = __identified0(state.xs__inst0).length === 0 ? "asks: empty" : "asks: full";
     __n2.textContent = "mounted " + String(state.mounted__inst0);
   }
   __sngl_init();
@@ -2163,12 +2290,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:fa34343aff58f22e1a1bb8bb4fab000b
+pass sha256:b5255fc74f19dc577624b839bc9a450a
 -- run/go/fyne --
-pass sha256:220f1e00c5f54d3f74346e45fe3e75fa
+pass sha256:6db927765f95ba8bacd266748e9b0894
 -- run/go/gtk4 --
-pass sha256:f45fe7a0aeba60d55dff5502a7829ecf
+pass sha256:8c854c4d289a211fcbca649e14f6bcb2
 -- run/kotlin/android --
-pass sha256:301ce7243a929be0dd3a4993b8b96a46
+pass sha256:c2165c1a967542a66a0139c9b7a3c400
 -- run/none/html --
-pass sha256:f08bf5bf3eb5884ef214a4c2d8fe522c
+pass sha256:8bded371c5dc93c67a5ae60f423c3628

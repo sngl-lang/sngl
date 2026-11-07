@@ -46,10 +46,19 @@ type irViewContext struct {
 	availW, availH string
 	sizeTo         *growSize
 
+	// scrolls is each scroll the view draws (collectScrolls), and hasFocus
+	// whether the model declares focus, which a scroll asks where it is.
+	scrolls  map[*ir.NodeInst]*scrollInfo
+	hasFocus bool
+
 	// joinGap and joinAt are the Layout being rendered's spacing and where it
 	// puts its children across it, as Go: what a loop's copies and a branch's
 	// nodes among its children are joined with, being its parts too.
 	joinGap, joinAt string
+	// cells is whether the Layout being rendered is a grid, whose every node
+	// a loop's copy or a branch renders is a cell of its own, as each is a
+	// child of the grid in CSS.
+	cells bool
 	// pictureLook names the look of the box a picture is shown in, whose size
 	// the picture is fitted to; "" where it is in no box.
 	pictureLook string
@@ -151,15 +160,17 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 	}
 
 	vc := &irViewContext{
-		gc:      gc,
-		ctx:     ctx,
-		shows:   info.settles,
-		unread:  unreadLocals(bodyStmts),
-		widgets: info.widgets,
-		availW:  "tui.Avail(m.width)",
-		availH:  "m.height",
-		buf:     &strings.Builder{},
-		indent:  1,
+		gc:       gc,
+		ctx:      ctx,
+		shows:    info.settles,
+		unread:   unreadLocals(bodyStmts),
+		widgets:  info.widgets,
+		availW:   "tui.Avail(m.width)",
+		availH:   "m.height",
+		buf:      &strings.Builder{},
+		indent:   1,
+		scrolls:  info.scrolls,
+		hasFocus: info.hasFocus,
 	}
 
 	if info.hasFocus {
@@ -168,6 +179,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 	if info.sleepers > 0 {
 		vc.line("m.%s = [%d]bool{}", drawnField, info.sleepers)
 	}
+	emitScrollViewStart(vc, info)
 	vc.renderBody(bodyStmts, "content")
 
 	// Overlay (modal/drawer) box vars are assigned inside their `if open { ... }`
@@ -200,9 +212,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 	// the background); any other placement names a drawer side. The tui helpers
 	// no-op when the box var is "" (overlay closed), so this stays correct
 	// without threading the `open` expr — the `if open` gate leaves boxVar "".
-	if info.hasFocus {
-		emitClickScan(b, vc.overlays)
-	}
+	emitClickScan(b, vc.overlays, info)
 	for _, ov := range vc.overlays {
 		gc.RequireImport(tuiImportPath)
 		dim := "false"
@@ -226,6 +236,8 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 		}
 	}
 
+	emitFloatsDraw(b, info)
+	emitScrollViewEnd(b, info)
 	b.WriteString("\tv := tea.NewView(content)\n")
 	b.WriteString("\tv.AltScreen = true\n")
 	if info.hasFocus {
@@ -236,7 +248,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 }
 
 // shows is whether the model declares __focusShown (irViewContext.shows).
-func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, gc *golang.GoIRContext, cfg Config, shows bool) {
+func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, gc *golang.GoIRContext, cfg Config, shows bool, info *irAnalysis) {
 	methodName := golang.ComponentRenderMethod(cc.Component.Name)
 
 	var params []string
@@ -267,6 +279,8 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 		availW:      availW,
 		shows:       shows,
 		unread:      unreadLocals(cc.Body),
+		scrolls:     info.scrolls,
+		hasFocus:    info.hasFocus,
 	}
 
 	vc.renderBody(cc.Body, "result")
@@ -286,7 +300,9 @@ func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string
 		return
 	}
 	vc.line("var %s string", childVar)
+	vc.stretchAcross(child)
 	vc.renderStmt(child, childVar)
+	vc.sizeTo = nil
 	vc.appendPart(child, childVar, childrenVar)
 }
 
@@ -808,14 +824,27 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 			content = vc.gc.EvalExpr(bp.Content)
 		}
 		vc.requireImport("fmt")
-		if fp := codegen.NodeProp(n, "__focused"); fp != nil {
+		text := "fmt.Sprint(" + content + ")"
+		fp := codegen.NodeProp(n, "__focused")
+		if fp != nil {
 			vc.line(`%sFocused := %s`, resultVar, vc.focusedExpr(fp))
 			vc.line(`%sPrefix := " "`, resultVar)
 			vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
-			vc.line(`%s = %s`, resultVar, vc.render(n, style, resultVar+`Prefix + " " + fmt.Sprint(`+content+`)`))
+			text = resultVar + `Prefix + " " + ` + text
+			// The stop focus is on is drawn bold as well as marked.
+			vc.requireImport(tuiImportPath)
+			style = fmt.Sprintf("tui.Focused(%s, %sFocused)", style, resultVar)
+		}
+		// Text breaks its lines at the width of the box it is in.
+		if vc.availW != "" {
+			vc.requireImport(tuiImportPath)
+			vc.line(`%sText := %s`, resultVar, text)
+			text = resultVar + "Text"
+			style = fmt.Sprintf("tui.Within(%s, %s, %s)", style, vc.availW, text)
+		}
+		vc.line(`%s = %s`, resultVar, vc.render(n, style, text))
+		if fp != nil {
 			vc.markStop(n, resultVar)
-		} else {
-			vc.line(`%s = %s`, resultVar, vc.render(n, style, "fmt.Sprint("+content+")"))
 		}
 
 	case bpWidget:
@@ -883,6 +912,19 @@ func (vc *irViewContext) render(n *ir.NodeInst, look, text string) string {
 	return fmt.Sprintf("tui.Render(%s, %s, %s)", look, vc.gc.EvalExpr(codegen.NodeProp(n, "fit")), text)
 }
 
+// paint is render for a box holding blocks styled already: its background
+// goes on under each of them (tui.Paint).
+func (vc *irViewContext) paint(n *ir.NodeInst, look, text string) string {
+	if !vc.fits(n) {
+		if f := codegen.NodeProp(n, "fit"); f != nil {
+			vc.discard(f)
+		}
+		vc.requireImport(tuiImportPath)
+		return fmt.Sprintf("tui.Paint(%s, %s)", look, text)
+	}
+	return vc.render(n, look, text)
+}
+
 // look is the lipgloss style a primitive renders with: what its override built
 // from the node's Style, sized to the share of its parent it grows into.
 func (vc *irViewContext) look(n *ir.NodeInst) string {
@@ -900,16 +942,42 @@ func (vc *irViewContext) look(n *ir.NodeInst) string {
 	}
 	if s := vc.sizeTo; s != nil {
 		vc.sizeTo = nil
+		if s.stretch {
+			if look == plainLook {
+				return look
+			}
+			return fmt.Sprintf("tui.Stretch(%s, %s)", look, s.cells)
+		}
 		look = fmt.Sprintf("tui.Sized(%s, %t, %s)", look, s.horizontal, s.cells)
+		if s.across != "" {
+			look = fmt.Sprintf("tui.Stretch(%s, %s)", look, s.across)
+		}
 	}
 	return look
 }
 
 // growSize is the share of a Layout's free space the primitive rendered next
-// grows into: the Go int holding it, and the axis it is along.
+// grows into: the Go int holding it, and the axis it is along. One that
+// stretches is a box across a column, which keeps a width of its own.
 type growSize struct {
 	horizontal bool
 	cells      string
+	stretch    bool
+	// across is the width a share down a column stretches across, "" for
+	// none.
+	across string
+}
+
+// stretchAcross has the box child renders next stretch across the column
+// it is in, as CSS stretches a flex item across a column whose items it
+// does not align: a card's names were centered in their own width, at its
+// left edge. A box with no look of its own is the size of what it joined.
+func (vc *irViewContext) stretchAcross(child ir.Stmt) {
+	n, ok := child.(*ir.NodeInst)
+	if !ok || !vc.vertical || vc.availW == "" || vc.joinAt != "lipgloss.Left" || btIntrinsic(n) != "Layout" {
+		return
+	}
+	vc.sizeTo = &growSize{horizontal: true, cells: vc.availW, stretch: true}
 }
 
 // grows reports whether n is a primitive its override handed a share of its
@@ -925,16 +993,37 @@ func grows(n *ir.NodeInst) bool {
 	return true
 }
 
+// gridded reports whether n is a grid, a Layout given a count of columns or
+// told to flow.
+func gridded(n *ir.NodeInst) bool {
+	c := codegen.NodeProp(n, "columns")
+	if c == nil || btIntrinsic(n) != "Layout" {
+		return false
+	}
+	v, ok := codegen.IRLiteralNumber(c)
+	return !ok || v >= 0
+}
+
+// growsWithin reports whether s holds a node that sizes itself to the box
+// it is in: one that grows, or a grid, whose rows are the box's width.
 func growsWithin(s ir.Stmt) bool {
 	found := false
 	_ = ir.Walk([]ir.Stmt{s}, func(nd ir.Node) error {
-		if n, ok := nd.(*ir.NodeInst); ok && (grows(n) || componentGrows(n.Component, nil)) {
+		if n, ok := nd.(*ir.NodeInst); ok && (grows(n) || gridded(n) || componentGrows(n.Component, nil)) {
 			found = true
 			return ir.SkipAll
 		}
 		return nil
 	})
 	return found
+}
+
+// stretches reports whether s is a box a grid's column stretches to its
+// width, as CSS's grid stretches each item: a card was as wide as its name,
+// in a column padded around it.
+func (vc *irViewContext) stretches(s ir.Stmt) bool {
+	n, ok := s.(*ir.NodeInst)
+	return ok && vc.cells && btIntrinsic(n) == "Layout"
 }
 
 // directlyGrows reports whether s is a child its Layout renders once the
@@ -1033,6 +1122,14 @@ func (vc *irViewContext) growsAsPart(s ir.Stmt) bool {
 func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, style string) {
 	horizontal := bp.Join != joinVertical
 	savedW, savedH := vc.availW, vc.availH
+	// A scroll's content is as long as it comes out down a scroll moving
+	// along it, and cut to the extent it is given after (clipScroll). Across,
+	// it is given the scroll's width, as CSS gives a block's: what grows
+	// fills it, and what cannot shrink to it spills past it, which a scroll
+	// moving across shows by scrolling.
+	if axis, ok := scrollAxisOf(n); ok && axis != 1 {
+		vc.availH = ""
+	}
 	inner := ""
 	outer := vc.buf
 	justify := "0"
@@ -1041,9 +1138,18 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 			justify = vc.gc.EvalExpr(v)
 		}
 	}
+	// A grid's children are a row at a time, `columns` to one or flowing
+	// where that is zero; a Layout given none joins them along its axis.
+	columns := ""
+	if gridded(n) {
+		columns = vc.gc.EvalExpr(codegen.NodeProp(n, "columns"))
+	}
 	// A box placing its children along it needs its extent, as one whose
-	// child grows does: what they leave of it is what it places them in.
-	if justify != "0" || slices.ContainsFunc(n.Children, growsWithin) {
+	// child grows does: what they leave of it is what it places them in. A
+	// grid fits its rows to it.
+	// A column whose look has a frame gives its children the width inside
+	// it, which a text breaks its lines at.
+	if columns != "" || justify != "0" || slices.ContainsFunc(n.Children, growsWithin) || !horizontal && vc.availW != "" && style != plainLook {
 		vc.requireImport(tuiImportPath)
 		look := resultVar + "Look"
 		vc.line("%s := %s", look, style)
@@ -1076,6 +1182,7 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 			vc.pictureLook = style
 		}
 	}
+	pressAt := vc.pressPosition(n, resultVar)
 	pos := vc.position(n, horizontal)
 	spacing := "0"
 	if v := codegen.NodeProp(n, "spacing"); v != nil {
@@ -1085,7 +1192,11 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	}
 	prevGap, prevAt := vc.joinGap, vc.joinAt
 	vc.joinGap, vc.joinAt = spacing, pos
-	parts := justify != "0" || slices.ContainsFunc(n.Children, vc.growsAsPart)
+	// A grid's children are parts, each node in a loop or a branch one of
+	// its own, and one that grows is its column's width.
+	parts := columns != "" || justify != "0" || slices.ContainsFunc(n.Children, vc.growsAsPart)
+	prevCells := vc.cells
+	vc.cells = columns != ""
 	childrenVar := resultVar + "Children"
 	if parts {
 		vc.line("var %s []tui.Part", childrenVar)
@@ -1104,6 +1215,7 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	}
 	vc.vertical, vc.horizontal = prevVertical, prevHorizontal
 	vc.joinGap, vc.joinAt = prevGap, prevAt
+	vc.cells = prevCells
 	vc.pictureLook = prevPicture
 	// tooltip: reveal the body text (dim) below the trigger while the wrapped
 	// focusable descendant is focused. The `tooltip` prop carries the text;
@@ -1134,6 +1246,12 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 		}
 	}
 	switch {
+	case columns != "":
+		rowSpacing := "0"
+		if v := codegen.NodeProp(n, "rowSpacing"); v != nil {
+			rowSpacing = vc.gc.EvalExpr(v)
+		}
+		vc.line(`%s = tui.Grid(%s, %s, %s, %s, %s, %s)`, resultVar, columns, pos, spacing, rowSpacing, extent(main), childrenVar)
 	case parts:
 		vc.line(`%s = tui.Join(%t, %s, %s, %s, %s, %s)`, resultVar, horizontal, pos, justify, spacing, extent(main), childrenVar)
 	case spacing != "0":
@@ -1170,9 +1288,73 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 			style += ".AlignHorizontal(" + pos + ")"
 		}
 	}
+	vc.clipScroll(n, resultVar, style, savedW, savedH)
 	if style != plainLook || vc.fits(n) {
-		vc.line(`%s = %s`, resultVar, vc.render(n, style, resultVar))
+		vc.line(`%s = %s`, resultVar, vc.paint(n, style, resultVar))
 	}
+	vc.markPress(n, resultVar, pressAt)
+}
+
+// pressedStop is the focus stop a Layout given `press` presses, its first,
+// or nil where it presses none.
+func pressedStop(n *ir.NodeInst) *ir.NodeInst {
+	press := codegen.NodeProp(n, "press")
+	if on, known := codegen.IRLiteralBool(press); press == nil || known && !on {
+		return nil
+	}
+	return firstStop(n.Children)
+}
+
+// pressPosition holds, ahead of a pressing Layout's children, the copy of a
+// loop its stop is: the loop's position moves past it as the stop is drawn,
+// and the Layout is marked after. "" where the stop is in no loop.
+func (vc *irViewContext) pressPosition(n *ir.NodeInst, resultVar string) string {
+	stop := pressedStop(n)
+	if stop == nil {
+		return ""
+	}
+	lf, ok := nodeLoopFocus(stop)
+	if !ok {
+		return ""
+	}
+	at := resultVar + "PressAt"
+	vc.line("%s := %s", at, lf.pos)
+	return at
+}
+
+// markPress marks the whole of a Layout given `press` as its first focus
+// stop, so a click on any of the box presses it: a clickable card's stop is
+// the `›` before its face, which was the one cell a click found.
+func (vc *irViewContext) markPress(n *ir.NodeInst, resultVar, at string) {
+	press := codegen.NodeProp(n, "press")
+	stop := pressedStop(n)
+	if stop == nil {
+		if press != nil {
+			vc.discard(press)
+		}
+		return
+	}
+	if on, known := codegen.IRLiteralBool(press); known && on {
+		vc.markStopAt(stop, resultVar, at)
+		return
+	}
+	vc.line(`if %s {`, vc.gc.EvalExpr(press))
+	vc.markStopAt(stop, resultVar, at)
+	vc.line(`}`)
+}
+
+// firstStop is the first focus stop stmts render, in a branch or a slot as
+// well as among them.
+func firstStop(stmts []ir.Stmt) *ir.NodeInst {
+	var found *ir.NodeInst
+	_ = ir.WalkStmts(stmts, func(s ir.Stmt) error {
+		if n, ok := s.(*ir.NodeInst); ok && codegen.NodeProp(n, "__focused") != nil {
+			found = n
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // isPicture reports whether s is a picture a URL names.
@@ -1186,7 +1368,8 @@ func isPicture(s ir.Stmt) bool {
 const availParam = "__availW"
 
 // componentGrows reports whether c's body has a child growing into its
-// Layout's free space, which needs the width c is placed in. seen holds the
+// Layout's free space, or a grid, either of which needs the width c is
+// placed in. seen holds the
 // components already asked, for a recursive one.
 func componentGrows(c *ir.Component, seen map[*ir.Component]bool) bool {
 	if c == nil || seen[c] {
@@ -1198,7 +1381,7 @@ func componentGrows(c *ir.Component, seen map[*ir.Component]bool) bool {
 	seen[c] = true
 	found := false
 	_ = ir.Walk(c.Body.Stmts, func(nd ir.Node) error {
-		if n, ok := nd.(*ir.NodeInst); ok && (grows(n) || componentGrows(n.Component, seen)) {
+		if n, ok := nd.(*ir.NodeInst); ok && (grows(n) || gridded(n) || componentGrows(n.Component, seen)) {
 			found = true
 			return ir.SkipAll
 		}
@@ -1232,23 +1415,25 @@ func isIdentByte(c byte) bool {
 func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, horizontal bool) {
 	switch x := child.(type) {
 	case *ir.If:
-		if vc.growsAsPart(x) {
+		if vc.cells && !ir.ComputesValue(x) || vc.growsAsPart(x) {
 			vc.renderIfParts(x, childVar, partsVar, horizontal)
 			return
 		}
 	case *ir.For:
-		if vc.growsAsPart(x) {
+		if vc.cells && !computesOnly(x) || vc.growsAsPart(x) {
 			vc.renderForParts(x, childVar, partsVar, horizontal)
 			return
 		}
 	}
-	if !vc.directlyGrows(child) {
+	if !vc.directlyGrows(child) && !vc.stretches(child) {
 		if !rendersPart(child) {
 			vc.renderStmt(child, "")
 			return
 		}
 		vc.line("var %s string", childVar)
+		vc.stretchAcross(child)
 		vc.renderStmt(child, childVar)
+		vc.sizeTo = nil
 		if vc.mayDrawNothing(child) {
 			vc.line("if %s != \"\" {", childVar)
 			vc.line("\t%s = append(%s, tui.Fixed(%s))", partsVar, partsVar, childVar)
@@ -1261,7 +1446,11 @@ func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, ho
 	n := child.(*ir.NodeInst)
 	bases := vc.countAhead(n, childVar)
 	cells := childVar + "Cells"
-	vc.line("%s = append(%s, tui.Grow(%s, func(%s int) string {", partsVar, partsVar, vc.gc.EvalExpr(codegen.NodeProp(n, "grow")), cells)
+	share := "1.0"
+	if vc.directlyGrows(child) {
+		share = vc.gc.EvalExpr(codegen.NodeProp(n, "grow"))
+	}
+	vc.line("%s = append(%s, tui.Grow(%s, func(%s int) string {", partsVar, partsVar, share, cells)
 	vc.indent++
 	for _, c := range slices.Sorted(maps.Keys(bases)) {
 		vc.line("%s := %s", c, bases[c])
@@ -1274,6 +1463,9 @@ func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, ho
 		vc.availH = cells
 	}
 	vc.sizeTo = &growSize{horizontal: horizontal, cells: cells}
+	if !horizontal && vc.availW != "" && vc.joinAt == "lipgloss.Left" && btIntrinsic(n) == "Layout" {
+		vc.sizeTo.across = vc.availW
+	}
 	vc.line("var %s string", childVar)
 	vc.renderStmt(child, childVar)
 	vc.sizeTo = nil

@@ -74,6 +74,9 @@ import (
 	"os"
 )
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
@@ -91,10 +94,20 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.visible__inst0 = true
-	m.got__inst0 = "-"
-	m.got__inst1 = "-"
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["got__inst0"] {
+		m.got__inst0 = "-"
+	}
+	if !preset["got__inst1"] {
+		m.got__inst1 = "-"
+	}
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -198,6 +211,7 @@ import "testing"
 func TestValueReadsTheProvider(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.ask__reach0Click()
 	if !((c.got__inst0 == "mirror 1")) { t.Errorf("assert failed: %s", "(c.got__inst0 == \"mirror 1\")") }
 }
@@ -205,6 +219,7 @@ func TestValueReadsTheProvider(t *testing.T) {
 func TestValueReadsTheDefault(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.ask__reach1Click()
 	if !((c.got__inst1 == "default 1")) { t.Errorf("assert failed: %s", "(c.got__inst1 == \"default 1\")") }
 }
@@ -216,7 +231,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -245,16 +264,26 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var visible__inst0 by mutableStateOf(true)
-    var got__inst0 by mutableStateOf("-")
-    var got__inst1 by mutableStateOf("-")
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var visible__inst0 by mutableStateOf(__snglPre(__pre, "visible__inst0") { true })
+    var got__inst0 by mutableStateOf(__snglPre(__pre, "got__inst0") { "-" })
+    var got__inst1 by mutableStateOf(__snglPre(__pre, "got__inst1") { "-" })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -357,18 +386,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { visible__inst0: true, got__inst0: "-", got__inst1: "-" };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.ask__reach0Click = () => $0.click();
   state.ask__reach1Click = () => $1.click();
   if (typeof window !== "undefined") {
@@ -398,12 +430,11 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:9c42ee4f7dfa400f09ba1ef469e2fc4c
+pass sha256:9a7d7392e613aad64342e032db15ab64
 -- run/kotlin/android --
-pass sha256:b69ce611fb1051fedbb642ff9e99846e
+pass sha256:6f848d77205b6fa940921421d0766ddd
 -- run/none/html --
-pass sha256:a8b4f1ba7dc1056318cc220f6a03338f
+pass sha256:f32eb0e3f50bc1a14e1031620a0b2d21

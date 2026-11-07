@@ -189,15 +189,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func CellsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 8))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -237,14 +236,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -308,7 +307,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -321,34 +320,45 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
-func RowsOf(m__r2 *Measurement) int {
+func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
 	var __lt13 int
 	if px <= 0.0 {
 		__lt13 = 0
 	} else {
-		__lt13 = max(1, (int(px) / 16))
+		__lt13 = max(1, (int(px) / 8))
 	}
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m *Model) __focusLoop0_len() int {
@@ -619,7 +629,8 @@ func (m Model) View() tea.View {
 			if contentPart_0_0ItemFocused {
 				contentPart_0_0ItemPrefix = ">"
 			}
-			contentPart_0_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_0_0ItemPrefix + " " + fmt.Sprint(c.Label))
+			contentPart_0_0ItemText := contentPart_0_0ItemPrefix + " " + fmt.Sprint(c.Label)
+			contentPart_0_0Item = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), contentPart_0_0ItemFocused), tui.Avail(m.width), contentPart_0_0ItemText).Render(contentPart_0_0ItemText)
 			contentPart_0_0Item = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_0_0Item)
 			__focusPos0++
 			contentPart_0_0Items = append(contentPart_0_0Items, contentPart_0_0Item)
@@ -640,7 +651,8 @@ func (m Model) View() tea.View {
 			var contentPart_1Item string
 			if k == m.shown {
 				if c.__id == 0 {
-					contentPart_1Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("first"))
+					contentPart_1ItemText := fmt.Sprint("first")
+					contentPart_1Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_1ItemText).Render(contentPart_1ItemText)
 				} else {
 					if c.__id == 1 {
 						var contentPart_1ItemParts []string
@@ -650,12 +662,14 @@ func (m Model) View() tea.View {
 						if contentPart_1ItemPart_0Focused {
 							contentPart_1ItemPart_0Prefix = ">"
 						}
-						contentPart_1ItemPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1ItemPart_0Prefix + " " + fmt.Sprint("hit"))
+						contentPart_1ItemPart_0Text := contentPart_1ItemPart_0Prefix + " " + fmt.Sprint("hit")
+						contentPart_1ItemPart_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), contentPart_1ItemPart_0Focused), tui.Avail(m.width), contentPart_1ItemPart_0Text).Render(contentPart_1ItemPart_0Text)
 						contentPart_1ItemPart_0 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_1ItemPart_0)
 						__focusPos1++
 						contentPart_1ItemParts = append(contentPart_1ItemParts, contentPart_1ItemPart_0)
 						var contentPart_1ItemPart_1 string
-						contentPart_1ItemPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(m.hits)))
+						contentPart_1ItemPart_1Text := fmt.Sprint(fmt.Sprint(m.hits))
+						contentPart_1ItemPart_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_1ItemPart_1Text).Render(contentPart_1ItemPart_1Text)
 						contentPart_1ItemParts = append(contentPart_1ItemParts, contentPart_1ItemPart_1)
 						contentPart_1Item = tui.Spaced(false, lipgloss.Left, 0, contentPart_1ItemParts...)
 					}
@@ -879,8 +893,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 int
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
 	__n0        *widget.Label
 }
 
@@ -889,7 +901,6 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(fmt.Sprint(c.__prop___p0))
 	c.Root = c.__n0
@@ -1068,8 +1079,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 int
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
 	__n0        gtk4rt.Handle
 }
 
@@ -1077,7 +1086,6 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, fmt.Sprint(c.__prop___p0))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
@@ -1095,9 +1103,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1399,7 +1404,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = String(__prop___p0);
@@ -1540,12 +1544,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c9bca922d887012e56dded2d24c8e90f
+pass sha256:9a29060591679d06d504c9f74152ca4a
 -- run/go/fyne --
-pass sha256:7062205b4b3c2191cb6d54a09b25d71a
+pass sha256:2bcf0db8936ae032a23d243353812968
 -- run/go/gtk4 --
-pass sha256:bfc8f490b54dccb1969d5363c5ce04b3
+pass sha256:273664b1c6a3edaa4da009466e41ace5
 -- run/kotlin/android --
 pass sha256:daf5ca92bfb8648aec9c730d0a02e28a
 -- run/none/html --
-pass sha256:1777dd947a15daa24809c5afc3836c0e
+pass sha256:e90b739be1507f3fa4d65dd0b0d310a7

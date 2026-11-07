@@ -246,12 +246,41 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
+
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
 		return m.main.Container
 	}
 	m.__built = true
+	__snglBuilding++
 	m.main = fynelayout.NewToplevel()
 	m.main.SetTitle("Main")
 	m.main.SetVisible(m.visible__inst0)
@@ -270,6 +299,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.main.Add(m.__n2)
 	fynelayout.AppAttach(m.main)
 	m.__renderSlot0(fynelayout.App)
+	__snglEndBuild()
 	return m.main.Container
 }
 
@@ -290,8 +320,6 @@ type __window_state1__slot0Instance struct {
 	__effects0_torn        bool
 	__effects0_steps       int
 	__root                 *fyne.Container
-	__slot0                []fyne.CanvasObject
-	__slot0_at             fyne.CanvasObject
 	__n0                   *fynelayout.Toplevel
 	__n1                   *widget.Label
 }
@@ -312,7 +340,6 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = fynelayout.NewToplevel()
 	c.__n0.SetTitle(c.__prop_title)
 	c.__n0.SetVisible(c.visible)
@@ -326,7 +353,7 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 	c.__n1 = widget.NewLabel("")
 	c.__n1.SetText(fmt.Sprint(c.__prop___p0))
 	c.__n0.Add(c.__n1)
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = c.__n0
 	return c
 }
@@ -583,8 +610,6 @@ type __window_state1__slot0Instance struct {
 	__effects0_torn        bool
 	__effects0_steps       int
 	__root                 gtk4rt.Handle
-	__slot0                []gtk4rt.Handle
-	__slot0_at             gtk4rt.Handle
 	__n0                   gtk4rt.Handle
 	__n1                   gtk4rt.Handle
 }
@@ -604,7 +629,6 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(c.__n0, c.__prop_title)
 	gtk4rt.ToplevelSetVisible(c.__n0, c.visible)
@@ -621,7 +645,7 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 	gtk4rt.LabelSetLabel(c.__n1, fmt.Sprint(c.__prop___p0))
 	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
 	gtk4rt.BoxAppend(c.__n0, c.__n1)
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -699,9 +723,6 @@ func (c *__window_state1__slot0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 }
 
 func (m *Model) Details() bool {
@@ -736,11 +757,39 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__built {
 		return
 	}
 	m.__built = true
+	__snglBuilding++
 	m.main = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(m.main, "Main")
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
@@ -763,6 +812,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.main, m.__n2)
 	gtk4rt.AppAttach(m.main)
 	m.__renderSlot0(gtk4rt.App)
+	__snglEndBuild()
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
@@ -831,7 +881,6 @@ dialog { margin: auto; padding: 1em; }
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
     function __effect0_mount() {
       __prop___on0();
     }
@@ -1042,8 +1091,8 @@ dialog { margin: auto; padding: 1em; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:176ae782e88d7b45f8cdfc49ea979e1a
+pass sha256:6c426adf3f602221961e18871bbfe3bb
 -- run/go/gtk4 --
-pass sha256:1a3d294aa4f32bb184ed03c8535150c6
+pass sha256:7c9ed089989786e13e880b879e9a1302
 -- run/none/html --
-pass sha256:cf4a6029b8b089cf84d513cf7e1ad48e
+pass sha256:eb0796ce49fb4794208c7c1f61682561

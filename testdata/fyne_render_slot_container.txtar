@@ -34,11 +34,18 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -67,6 +74,26 @@ func New() *Model {
 	return m
 }
 
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -84,10 +111,10 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-				for _, it := range m.items {
+				for _, it := range __identified0(m.items) {
 					__n1 := fynelayout.NewHBox()
 					__n2 := widget.NewLabel("")
-					__n2.SetText(("row " + it))
+					__n2.SetText(("row " + it.Elem))
 					__n1.Add(__n2)
 					fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
 					m.__slot0 = append(m.__slot0, __n1)
@@ -155,4 +182,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:d1245e083980aa04834e3b806daa3ebb
+pass sha256:46c11c70754a5a0cebdc8d12eb7f2c11

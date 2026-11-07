@@ -81,6 +81,24 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { active: 0, items: ["a", "b"], visible__inst0: true };
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
+      ;
+      let __id = __x.replaceAll("#", "##");
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
+  }
   function lengthOf(m) {
     return m === null ? "" : m.em === 0 && m.rem === 0 ? String(m.px) + "px" : m.px === 0 && m.rem === 0 ? String(m.em) + "em" : m.px === 0 && m.em === 0 ? String(m.rem) + "rem" : "calc(" + plus(plus(m.px === 0 ? "" : String(m.px) + "px", m.em === 0 ? "" : String(m.em) + "em"), m.rem === 0 ? "" : String(m.rem) + "rem") + ")";
   }
@@ -88,13 +106,12 @@ body { font-family: system-ui, sans-serif; }
     return a === "" ? b : b === "" ? a : a + " + " + b;
   }
   function __snglTeardown() {
-    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+    for (const [__inst1_live_dk, __inst1_live_dv] of __inst1_live.entries()) {
       ;
-      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
-      __inst1_live[__inst1_live_dj].__destroy();
+      __inst1_live_dv.__destroy();
     }
     ;
-    __inst1_live = [];
+    __inst1_live = /* @__PURE__ */ new Map([]);
   }
   function __cf_row(props) {
     const __root = document.createElement("div");
@@ -102,7 +119,6 @@ body { font-family: system-ui, sans-serif; }
     let label = props.label ?? "";
     let __prop_label = label;
     let on = false;
-    let __slot02 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n1.textContent = __prop_label;
@@ -132,7 +148,7 @@ body { font-family: system-ui, sans-serif; }
     };
   }
   var __slot0 = [];
-  var __inst1_live = [];
+  var __inst1_live = /* @__PURE__ */ new Map([]);
   var __rendering0 = false;
   var __renderAgain0 = false;
   function __renderSlot0(parent) {
@@ -147,22 +163,27 @@ body { font-family: system-ui, sans-serif; }
           let __place0_prev = __slot0;
           let __place0_i = 0;
           __slot0 = [];
-          let __inst1_next = [];
-          let __inst1_i = 0;
-          for (const it of state.items) {
+          let __inst1_next = /* @__PURE__ */ new Map([]);
+          let __inst1_seen = /* @__PURE__ */ new Map([]);
+          for (const it of __identified0(state.items)) {
             let __n4 = null;
-            if (__inst1_live.length > __inst1_i) {
-              __n4 = __inst1_live[__inst1_i];
-              __n4.__set_label(it);
+            let __key2 = String(it.id);
+            let __key2_n = __inst1_seen.has(__key2) ? __inst1_seen.get(__key2) : 0;
+            __inst1_seen.set(__key2, __key2_n + 1);
+            if (__key2_n > 0) {
+              __key2 = __key2 + "#" + String(__key2_n);
+            }
+            if (__inst1_live.has(__key2)) {
+              __n4 = __inst1_live.has(__key2) ? __inst1_live.get(__key2) : null;
+              __n4.__set_label(it.elem);
             } else {
-              if (__inst1_live.length > __inst1_i) {
-                __inst1_live[__inst1_i].__destroy();
+              if (__inst1_live.has(__key2)) {
+                (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n4__new = __cf_row({ label: it });
+              let __n4__new = __cf_row({ label: it.elem });
               __n4 = __n4__new;
             }
-            __inst1_next.push(__n4);
-            __inst1_i = __inst1_i + 1;
+            __inst1_next.set(__key2, __n4);
             let __n4__el = __n4.__root;
             let __place0_i_ref0 = null;
             if (__place0_i < __place0_prev.length) {
@@ -175,10 +196,9 @@ body { font-family: system-ui, sans-serif; }
             }
             __slot0.push(__n4__el);
           }
-          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-            if (__inst1_i_j >= __inst1_i) {
-              __inst1_live[__inst1_i_j].__destroy();
+          for (const [__inst1_live_k, __inst1_live_v] of __inst1_live.entries()) {
+            if (!__inst1_next.has(__inst1_live_k)) {
+              __inst1_live_v.__destroy();
             }
           }
           __inst1_live = __inst1_next;
@@ -227,4 +247,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:6c25551a98e0402a08c88e8b56c54328
+pass sha256:3284c806a36a4d71d5d09719a9e60cbb

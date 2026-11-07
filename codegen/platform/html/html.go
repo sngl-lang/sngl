@@ -109,7 +109,8 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 }
 
 // testBootOpen and testBootClose make a test page's program re-runnable, so
-// each test starts from a freshly mounted page. Whatever the page raises outside a
+// each test starts from a freshly mounted page, built from what the test set
+// up before it (window.__snglPre). Whatever the page raises outside a
 // test body -- while it loads, or later from a timer -- is kept for the test
 // module to fail on, since nothing else would see it.
 const testBootOpen = `window.__snglErrors = [];
@@ -117,19 +118,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 `
 
+// The page boots when a test mounts it (mountTestComponent), from what the
+// test set up ahead of that, and not as it loads.
 const testBootClose = `};
-window.__sngl_boot();
 `
 
 // injectTestagentBootstrap appends the testagent module script to every
@@ -205,7 +208,9 @@ func (c *compilation) codegenCtx(req *codegen.Request) *codegen.CodegenCtx {
 // vary by window. projectDir and projectFS live here because everything cached
 // below is a function of them, so no cache key has to carry them.
 type windowShared struct {
-	projectDir string
+	// handlesRead is readHandles' answer, the same for every window.
+	handlesRead map[string]bool
+	projectDir  string
 	// projectFS is the FS the js: virtual root is mounted on; it is the OS
 	// filesystem for the CLI and an in-memory one for the playground.
 	projectFS fs.FS
@@ -819,6 +824,14 @@ type htmlGen struct {
 	// that id on the node and names it in the updaters it builds, while the
 	// element itself is emitted as `$N`. See htmlGen.nodeID.
 	refToVar map[string]string
+	// handleVar is the element each node handle names, by the handle's
+	// symbol: two splices of one component name theirs alike.
+	handleVar map[*ir.Var]string
+	// handleReads are the elements a read of a node's handle named (nodeVar),
+	// which the page binds as it does those a handler writes.
+	handleReads map[string]bool
+	// inTrigger says the function being written is a trigger (nodeVar).
+	inTrigger bool
 	// idToNode maps each emitted element id back to its NodeInst, which is
 	// all a reactive-update Assign inside a handler body has to go on.
 	idToNode map[string]*ir.NodeInst
@@ -903,6 +916,8 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		noCacheBust:    opts.NoCacheBust,
 		idToNode:       make(map[string]*ir.NodeInst),
 		refToVar:       make(map[string]string),
+		handleReads:    make(map[string]bool),
+		handleVar:      make(map[*ir.Var]string),
 		loweredRefs:    make(map[string]bool),
 		loweredLocals:  make(map[string]bool),
 		pageSlots:      make(map[string]bool),
@@ -933,8 +948,38 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	// The JsIRContext path writes jc.Ctx.Helpers and the emit check reads
 	// g.ctx.Helpers; one map makes a flag from either path reach the check.
 	g.ctx.Helpers = g.Helpers
+	g.ctx.NodeVar = g.nodeVar
 
 	return g
+}
+
+// elementHelpers are the page functions html.sngl's element natives name,
+// each written where a call reached it.
+var elementHelpers = []struct{ name, js string }{
+	{"_snglFire", "function _snglFire(el, type) { el.dispatchEvent(new Event(type, { bubbles: true })); }"},
+	{"_snglSetValue", "function _snglSetValue(el, v) { el.value = v; }"},
+	{"_snglSetChecked", "function _snglSetChecked(el, v) { el.checked = v; }"},
+	{"_snglInputAt", "function _snglInputAt(el, at) { return el.querySelectorAll(\"input\")[at]; }"},
+}
+
+// nodeVar is the element a read of handle reads: the `$N` the element was
+// emitted as, which the program's `#id` is not. An element built at run time
+// -- a render slot's, an instance's -- is a local of the function building
+// it, named for the handle, which is what a read beside it spells. A
+// trigger, an override of an event a test build copies onto the page, reads
+// it from outside that function, and finds it as the invokers do, by the
+// mark OnCreateNode gives it.
+func (g *htmlGen) nodeVar(handle *ir.Ident) (string, bool) {
+	if h, ok := handle.Sym.(*ir.Var); ok {
+		if v := g.handleVar[h]; v != "" && g.written[v] {
+			g.handleReads[v] = true
+			return v, true
+		}
+	}
+	if !g.inTrigger {
+		return "", false
+	}
+	return fmt.Sprintf("document.querySelector('[data-sngl-id=%q]')", handle.Name), true
 }
 
 func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opts htmlConfig, shared *windowShared) *htmlGen {
@@ -959,6 +1004,7 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	}
 	g.ctx.Helpers = helpers
 	g.ctx.NativeImports = native
+	g.ctx.NodeVar = g.nodeVar
 	return g
 }
 
@@ -999,6 +1045,18 @@ func (g *htmlGen) prewalkShared() {
 	}
 	for _, n := range g.shared.prewalked.funcs {
 		g.prewalkNode(n)
+	}
+	// A page whose every node is in a reactive slot meets none above: the
+	// slot's render holds them flattened, and every prop of them fell
+	// through to setAttribute, which disables a button handed
+	// `disabled=false` (cmd/sngl/testdata/handle_local_trigger_runs.txt).
+	for _, c := range g.pageComponents() {
+		g.adoptElemDecl(c)
+	}
+	for _, fn := range g.pkg.Funcs {
+		if fn != nil && g.elemDecl == nil {
+			g.adoptElemDeclIn(fn.Block)
+		}
 	}
 }
 
@@ -1134,21 +1192,37 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 	if g.pkg == nil {
 		return
 	}
-	visit := retargetSlotCalls
-	// Not into a factory: a slot there renders into the instance's own root,
-	// which the lowering already named, and a page anchor would point every
-	// instance at one node.
+	visit := func(root any) { retargetSlotCalls(root, nil) }
+	page := map[*ir.Func]bool{}
 	for _, c := range g.pageComponents() {
 		visit(c.Stmts)
 		for _, fn := range c.Funcs {
 			if fn != nil {
 				visit(fn.Block)
+				page[fn] = true
 			}
 		}
 	}
 	for _, fn := range g.pkg.Funcs {
 		if fn != nil {
 			visit(fn.Block)
+			page[fn] = true
+		}
+	}
+	// In a factory only the page's slots: a slot of the instance's own
+	// renders into the instance's root, which the lowering already named, and
+	// a page anchor would point every instance at one node. A write there of
+	// page state re-fires the page's slot, which was handed the node the page
+	// named, and the instance's node of that name was removed from instead.
+	for _, c := range g.pkg.Components {
+		if c == nil || !g.isInstanceComponent(c) {
+			continue
+		}
+		retargetSlotCalls(c.Stmts, page)
+		for _, fn := range c.Funcs {
+			if fn != nil {
+				retargetSlotCalls(fn.Block, page)
+			}
 		}
 	}
 }
@@ -1157,11 +1231,11 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 // which is cloned from its Window and so is none of what the package-wide
 // rewrite reached.
 func (g *htmlGen) rewriteDocumentSlotCalls() {
-	retargetSlotCalls(g.irBodyStmts)
+	retargetSlotCalls(g.irBodyStmts, nil)
 }
 
 // retargetSlotCalls points every `__renderSlotN(parentRef)` under root at
-// the slot's anchor.
+// the slot's anchor, of a render function in only where it is non-nil.
 //
 // ir.Walk rather than a descent of the statements that can hold one,
 // because "which statement holds the re-fire" is a question this has been
@@ -1169,10 +1243,10 @@ func (g *htmlGen) rewriteDocumentSlotCalls() {
 // of a CallStmt, so a timer handler was covered while `h = setInterval(func
 // () { ... })` -- an ir.Assign -- was not, and the re-fire inside it kept
 // the parentRef it was threaded with and removeChild'd from the wrong node.
-func retargetSlotCalls(root any) {
+func retargetSlotCalls(root any, only map[*ir.Func]bool) {
 	_ = walkThroughCatch(root, func(node ir.Node) error {
 		call, ok := node.(*ir.Call)
-		if !ok || call.Func == nil {
+		if !ok || call.Func == nil || only != nil && !only[call.Func] {
 			return nil
 		}
 		n := slotIndexFromRenderFunc(call.Func.Name)
@@ -1233,6 +1307,11 @@ func (g *htmlGen) nodeID(n *ir.NodeInst) string {
 	}
 	if n != nil {
 		g.idToNode[id] = n
+		for _, h := range []*ir.Var{n.Handle, n.Wraps} {
+			if h != nil {
+				g.handleVar[h] = id
+			}
+		}
 		if n.ID != "" && n.ID != id {
 			g.refToVar[n.ID] = id
 			// Under the op's own name too: OnPropAssign recovers the
@@ -2241,7 +2320,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// funcs: a test reading a const map -- or a func the optimizer inlined
 	// into one -- read a name nothing declared there.
 	if g.testMode && len(ownConsts) > 0 {
-		fmt.Fprintf(b, "if (typeof window !== 'undefined') { Object.assign(window, { %s }); }\n\n", strings.Join(ownConsts, ", "))
+		b.WriteString(javascript.ExposeLine(ownConsts) + "\n")
 	}
 
 	// A var whose initializer reads other state is emitted as a separate
@@ -2271,8 +2350,17 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 	b.WriteString(strings.Join(stateFields, ", "))
 	b.WriteString("};\n")
-	for _, di := range deferredInits {
-		fmt.Fprintf(b, "state.%s = %s;\n", di.name, di.value)
+	if g.testMode {
+		// What a test set up before it mounted the page is what it starts
+		// from; an initializer reading it reads that.
+		b.WriteString("const __snglPre = window.__snglPre ?? {};\nObject.assign(state, __snglPre);\n")
+		for _, di := range deferredInits {
+			fmt.Fprintf(b, "if (!(%q in __snglPre)) state.%s = %s;\n", di.name, di.name, di.value)
+		}
+	} else {
+		for _, di := range deferredInits {
+			fmt.Fprintf(b, "state.%s = %s;\n", di.name, di.value)
+		}
 	}
 	if g.testMode {
 		// Bridged onto the state object as zero-arg methods so tests can read
@@ -2411,7 +2499,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			names = append(names, jsFuncName(fn))
 		}
 		if len(names) > 0 {
-			fmt.Fprintf(b, "if (typeof window !== 'undefined') { Object.assign(window, { %s }); }\n\n", strings.Join(names, ", "))
+			b.WriteString(javascript.ExposeLine(names) + "\n")
 		}
 	}
 
@@ -2467,6 +2555,11 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	if g.ctx.Helpers[spanColorHelper] {
 		b.WriteString(spanColorHelperJS + "\n")
 	}
+	for _, h := range elementHelpers {
+		if g.ctx.Helpers["native:"+h.name] {
+			b.WriteString(h.js + "\n")
+		}
+	}
 	if g.pkg != nil && rendersReachEnd(g.pkg) {
 		b.WriteString(reachEndHelper + "\n")
 		for _, r := range scrollRules {
@@ -2498,7 +2591,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString(javascript.CodecHelperJS + "\n")
 	}
 	if testCodec {
-		b.WriteString("if (typeof window !== 'undefined') { Object.assign(window, { _snglJSONDecode, _snglJSONEncode, _snglWithQuery, _snglHTTPSend }); }\n\n")
+		b.WriteString("if (typeof window !== 'undefined') { Object.assign(window, { _snglJSONDecode, _snglJSONEncode, _snglWithQuery, _snglHTTPSend, _snglBegin, _snglEnd, _snglEnded }); }\n\n")
 	}
 
 	// Before the refs below, which is where a handler's binding for the
@@ -2609,6 +2702,11 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 		}
 		openDecl(b, v.Name)
 		b.WriteString("let " + v.Name + " = ")
+		// A context a test set before it mounted the page is what the
+		// page reads.
+		if g.testMode && strings.HasPrefix(v.Name, "__ctx_") {
+			fmt.Fprintf(b, "%q in __snglPre ? __snglPre.%s : ", v.Name, v.Name)
+		}
 		if v.Init != nil {
 			b.WriteString(jc.EvalExpr(v.Init))
 		} else {
@@ -2686,7 +2784,7 @@ func (g *htmlGen) testsCallCodec() bool {
 			continue
 		}
 		_ = ir.Walk(fn.Block, func(n ir.Node) error {
-			if c, ok := n.(*ir.Call); ok && codegen.IsCodecCall(c) {
+			if c, ok := n.(*ir.Call); ok && (codegen.IsCodecCall(c) || codegen.IsLifetimeCall(c)) {
 				found = true
 			}
 			return nil
@@ -2919,6 +3017,9 @@ func (g *htmlGen) collectReferencedIDs() []string {
 	}
 	for _, h := range g.quiet {
 		addID(h.elemID)
+	}
+	for id := range g.handleReads {
+		addID(id)
 	}
 
 	sort.Strings(ids)
@@ -3549,6 +3650,8 @@ func jsFuncName(fn *ir.Func) string {
 }
 
 func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
+	g.inTrigger = fn.Trigger != ""
+	defer func() { g.inTrigger = false }()
 	if codegen.IsComputed(fn) && len(fn.Block) == 1 {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			_ = ret

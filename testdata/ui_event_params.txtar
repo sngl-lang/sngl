@@ -138,6 +138,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -225,15 +228,34 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.on = false
-	m.lit = false
-	m.name = ""
-	m.picked = nil
-	m.seen = "none"
-	m.clicks = 0
-	m.checked__inst0 = m.lit
-	m.__focusID = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["on"] {
+		m.on = false
+	}
+	if !preset["lit"] {
+		m.lit = false
+	}
+	if !preset["name"] {
+		m.name = ""
+	}
+	if !preset["picked"] {
+		m.picked = nil
+	}
+	if !preset["seen"] {
+		m.seen = "none"
+	}
+	if !preset["clicks"] {
+		m.clicks = 0
+	}
+	if !preset["checked__inst0"] {
+		m.checked__inst0 = m.lit
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
 	m.widget0 = textinput.New()
 	m.widget0.SetValue(m.name)
 	m.widget0.Focus()
@@ -256,15 +278,14 @@ func (m *Model) resizeWidgets() {
 	m.widget1.SetWidth(tui.WidgetWidth(m.width))
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -304,14 +325,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -375,7 +396,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -388,7 +409,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -402,20 +423,31 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m *Model) __focusNext() {
@@ -621,12 +653,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.widget0.Blur()
 			}
 		case msg.Code == tea.KeySpace && m.__focusID == 0:
-			m.on = !m.on
-			m.seen = ((("box " + fmt.Sprint(m.on)) + " ") + fmt.Sprint(m.on))
+			__checkbox_checked_wrote0 := !m.on
+			m.on = __checkbox_checked_wrote0
+			m.seen = ((("box " + fmt.Sprint(__checkbox_checked_wrote0)) + " ") + fmt.Sprint(m.on))
 		case msg.Code == tea.KeySpace && m.__focusID == 1:
-			m.checked__inst0 = !m.checked__inst0
-			m.lit = m.checked__inst0
-			m.seen = ("sw " + fmt.Sprint(m.checked__inst0))
+			__toggle_checked_wrote0 := !m.checked__inst0
+			m.checked__inst0 = __toggle_checked_wrote0
+			m.lit = __toggle_checked_wrote0
+			m.seen = ("sw " + fmt.Sprint(__toggle_checked_wrote0))
 		case msg.Code == tea.KeyEnter && m.__focusID == 4:
 			m.clicks += 1
 		}
@@ -724,13 +758,13 @@ func (m *Model) fieldInput(v string) {
 func (m *Model) __widget1_change(__v *time.Time) {
 	value := __v
 	_ = value
-	var __lt16 string
+	var __lt17 string
 	if value == nil {
-		__lt16 = "no day"
+		__lt17 = "no day"
 	} else {
-		__lt16 = "day"
+		__lt17 = "day"
 	}
-	m.seen = __lt16
+	m.seen = __lt17
 	_ = m.View()
 }
 
@@ -751,7 +785,8 @@ func (m Model) View() tea.View {
 	if content_0Focused {
 		content_0Prefix = ">"
 	}
-	content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("a"))
+	content_0Text := content_0Prefix + " " + fmt.Sprint("a")
+	content_0 = tui.Within(tui.Focused(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Focused), tui.Avail(m.width), content_0Text).Render(content_0Text)
 	content_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_0)
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
@@ -760,7 +795,8 @@ func (m Model) View() tea.View {
 	if content_1Focused {
 		content_1Prefix = ">"
 	}
-	content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_1Prefix + " " + fmt.Sprint("b"))
+	content_1Text := content_1Prefix + " " + fmt.Sprint("b")
+	content_1 = tui.Within(tui.Focused(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_1Focused), tui.Avail(m.width), content_1Text).Render(content_1Text)
 	content_1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_1)
 	contentChildren = append(contentChildren, content_1)
 	var content_2 string
@@ -777,11 +813,13 @@ func (m Model) View() tea.View {
 	if content_4Focused {
 		content_4Prefix = ">"
 	}
-	content_4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_4Prefix + " " + fmt.Sprint("go"))
+	content_4Text := content_4Prefix + " " + fmt.Sprint("go")
+	content_4 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_4Focused), tui.Avail(m.width), content_4Text).Render(content_4Text)
 	content_4 = m.__clicks.Mark(snglStop{slot: 4, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_4)
 	contentChildren = append(contentChildren, content_4)
 	var content_5 string
-	content_5 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.seen))
+	content_5Text := fmt.Sprint(m.seen)
+	content_5 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_5Text).Render(content_5Text)
 	contentChildren = append(contentChildren, content_5)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	content = m.__clicks.Scan(content, 0, 0)
@@ -807,6 +845,7 @@ import "testing"
 func TestCheckbox(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.boxChange(true)
 	if !((c.seen == "box true true")) { t.Errorf("assert failed: %s", "(c.seen == \"box true true\")") }
 	if !((c.on == true)) { t.Errorf("assert failed: %s", "(c.on == true)") }
@@ -818,6 +857,7 @@ func TestCheckbox(t *testing.T) {
 func TestToggle(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.swChange(true)
 	if !((c.seen == "sw true")) { t.Errorf("assert failed: %s", "(c.seen == \"sw true\")") }
 	if !((c.lit == true)) { t.Errorf("assert failed: %s", "(c.lit == true)") }
@@ -829,6 +869,7 @@ func TestToggle(t *testing.T) {
 func TestInput(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.fieldInput("ada")
 	if !((c.seen == "input ada ada")) { t.Errorf("assert failed: %s", "(c.seen == \"input ada ada\")") }
 	if !((c.name == "ada")) { t.Errorf("assert failed: %s", "(c.name == \"ada\")") }
@@ -837,6 +878,7 @@ func TestInput(t *testing.T) {
 func TestDatepicker(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	d := mustParseDate("2024-03-05")
 	c.dayChange(snglSome(d))
 	if !(snglOptEq(c.picked, d)) { t.Errorf("assert failed: %s", "snglOptEq(c.picked, d)") }
@@ -846,13 +888,20 @@ func TestDatepicker(t *testing.T) {
 func TestButton(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.pressClick()
 	c.pressClick()
 	if !((c.clicks == 2)) { t.Errorf("assert failed: %s", "(c.clicks == 2)") }
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -891,6 +940,9 @@ func mustParseDate(s string) time.Time {
 	return t
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	on             bool
@@ -913,14 +965,32 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.on = false
-	m.lit = false
-	m.name = ""
-	m.picked = nil
-	m.seen = "none"
-	m.clicks = 0
-	m.checked__inst0 = m.lit
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["on"] {
+		m.on = false
+	}
+	if !preset["lit"] {
+		m.lit = false
+	}
+	if !preset["name"] {
+		m.name = ""
+	}
+	if !preset["picked"] {
+		m.picked = nil
+	}
+	if !preset["seen"] {
+		m.seen = "none"
+	}
+	if !preset["clicks"] {
+		m.clicks = 0
+	}
+	if !preset["checked__inst0"] {
+		m.checked__inst0 = m.lit
+	}
 }
 
 func (m *Model) box_toggle_handler(on__p0 bool) {
@@ -1140,6 +1210,7 @@ import "testing"
 func TestCheckbox(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.boxChange(true)
 	if !((c.seen == "box true true")) { t.Errorf("assert failed: %s", "(c.seen == \"box true true\")") }
 	if !((c.on == true)) { t.Errorf("assert failed: %s", "(c.on == true)") }
@@ -1151,6 +1222,7 @@ func TestCheckbox(t *testing.T) {
 func TestToggle(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.swChange(true)
 	if !((c.seen == "sw true")) { t.Errorf("assert failed: %s", "(c.seen == \"sw true\")") }
 	if !((c.lit == true)) { t.Errorf("assert failed: %s", "(c.lit == true)") }
@@ -1162,6 +1234,7 @@ func TestToggle(t *testing.T) {
 func TestInput(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.fieldInput("ada")
 	if !((c.seen == "input ada ada")) { t.Errorf("assert failed: %s", "(c.seen == \"input ada ada\")") }
 	if !((c.name == "ada")) { t.Errorf("assert failed: %s", "(c.name == \"ada\")") }
@@ -1170,6 +1243,7 @@ func TestInput(t *testing.T) {
 func TestDatepicker(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	d := mustParseDate("2024-03-05")
 	c.dayChange(snglSome(d))
 	if !(snglOptEq(c.picked, d)) { t.Errorf("assert failed: %s", "snglOptEq(c.picked, d)") }
@@ -1179,6 +1253,7 @@ func TestDatepicker(t *testing.T) {
 func TestButton(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.pressClick()
 	c.pressClick()
 	if !((c.clicks == 2)) { t.Errorf("assert failed: %s", "(c.clicks == 2)") }
@@ -1191,7 +1266,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -1240,6 +1319,9 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	on                  bool
@@ -1272,24 +1354,62 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.on = false
-	m.lit = false
-	m.name = ""
-	m.picked = nil
-	m.seen = "none"
-	m.clicks = 0
-	m.checked__inst0 = m.lit
-	m.__effect0_key = ""
-	m.__effect0_live = []string{}
-	m.__effect0_desired = []string{}
-	m.__effect1_key = nil
-	m.__effect1_live = []*time.Time{}
-	m.__effect1_desired = []*time.Time{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["on"] {
+		m.on = false
+	}
+	if !preset["lit"] {
+		m.lit = false
+	}
+	if !preset["name"] {
+		m.name = ""
+	}
+	if !preset["picked"] {
+		m.picked = nil
+	}
+	if !preset["seen"] {
+		m.seen = "none"
+	}
+	if !preset["clicks"] {
+		m.clicks = 0
+	}
+	if !preset["checked__inst0"] {
+		m.checked__inst0 = m.lit
+	}
+	if !preset["__effect0_key"] {
+		m.__effect0_key = ""
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []string{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []string{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = nil
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []*time.Time{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []*time.Time{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
 }
 
 func (m *Model) __effect0_mount() {
@@ -1379,27 +1499,30 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) box_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.box) != m.on {
-		m.on = gtk4rt.CheckButtonGetActive(m.box)
+		__checkbox_checked_wrote0 := gtk4rt.CheckButtonGetActive(m.box)
+		m.on = __checkbox_checked_wrote0
 		gtk4rt.CheckButtonSetActive(m.box, m.on)
-		m.seen = ((("box " + fmt.Sprint(m.on)) + " ") + fmt.Sprint(m.on))
+		m.seen = ((("box " + fmt.Sprint(__checkbox_checked_wrote0)) + " ") + fmt.Sprint(m.on))
 		gtk4rt.LabelSetLabel(m.__n0, m.seen)
 	}
 }
 
 func (m *Model) sw_notifyActive_handler() {
 	if gtk4rt.SwitchGetActive(m.sw) != m.checked__inst0 {
-		m.checked__inst0 = gtk4rt.SwitchGetActive(m.sw)
+		__toggle_checked_wrote0 := gtk4rt.SwitchGetActive(m.sw)
+		m.checked__inst0 = __toggle_checked_wrote0
 		gtk4rt.SetBool(m.sw, "active", m.checked__inst0)
-		m.lit = m.checked__inst0
-		m.seen = ("sw " + fmt.Sprint(m.checked__inst0))
+		m.lit = __toggle_checked_wrote0
+		m.seen = ("sw " + fmt.Sprint(__toggle_checked_wrote0))
 		gtk4rt.LabelSetLabel(m.__n0, m.seen)
 	}
 }
 
 func (m *Model) field_changed_handler() {
 	if gtk4rt.EditableGetText(m.field) != m.name {
-		m.name = gtk4rt.EditableGetText(m.field)
-		m.seen = ((("input " + m.name) + " ") + m.name)
+		__input_value_wrote0 := gtk4rt.EditableGetText(m.field)
+		m.name = __input_value_wrote0
+		m.seen = ((("input " + __input_value_wrote0) + " ") + m.name)
 		gtk4rt.LabelSetLabel(m.__n0, m.seen)
 	}
 	m.__effects0_settle()
@@ -1411,9 +1534,10 @@ func (m *Model) field_activate_handler() {
 }
 
 func (m *Model) day_daySelected_handler() {
-	m.picked = gtk4rt.CalendarGetDate(m.day)
+	__datepicker_value_wrote0 := gtk4rt.CalendarGetDate(m.day)
+	m.picked = __datepicker_value_wrote0
 	var __lt18 string
-	if m.picked == nil {
+	if __datepicker_value_wrote0 == nil {
 		__lt18 = "no day"
 	} else {
 		__lt18 = "day"
@@ -1601,21 +1725,31 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
-    var on by mutableStateOf(false)
-    var lit by mutableStateOf(false)
-    var name by mutableStateOf("")
-    var picked by mutableStateOf<String?>(null)
-    var seen by mutableStateOf("none")
-    var clicks by mutableStateOf(0)
-    var checked__inst0 by mutableStateOf(lit)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
+    var on by mutableStateOf(__snglPre(__pre, "on") { false })
+    var lit by mutableStateOf(__snglPre(__pre, "lit") { false })
+    var name by mutableStateOf(__snglPre(__pre, "name") { "" })
+    var picked by mutableStateOf<String?>(__snglPre(__pre, "picked") { null })
+    var seen by mutableStateOf(__snglPre(__pre, "seen") { "none" })
+    var clicks by mutableStateOf(__snglPre(__pre, "clicks") { 0 })
+    var checked__inst0 by mutableStateOf(__snglPre(__pre, "checked__inst0") { lit })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1945,7 +2079,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         var d = "2024-03-05"
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("day")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString(d)) }; composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("day")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString((d).toString())) }; composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.picked == d)", (c.picked == d))
         org.junit.Assert.assertTrue("(c.seen == \"day\")", (c.seen == "day"))
     }
@@ -1997,19 +2131,22 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { on: false, lit: false, name: "", picked: null, seen: "none", clicks: 0, checked__inst0: null };
-  state.checked__inst0 = state.lit;
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
+  if (!("checked__inst0" in __snglPre)) state.checked__inst0 = state.lit;
   state.fieldInput = (p) => {
     Object.assign($2, p);
     $2.dispatchEvent(Object.assign(new Event("input"), p));
@@ -2044,22 +2181,25 @@ window.__sngl_boot = () => {
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   __n0.addEventListener("change", function(e) {
-    state.on = e.currentTarget.checked;
+    let __checkbox_checked_wrote0 = e.currentTarget.checked;
+    state.on = __checkbox_checked_wrote0;
     __n0.checked = state.on;
-    state.seen = "box " + String(state.on) + " " + String(state.on);
+    state.seen = "box " + String(__checkbox_checked_wrote0) + " " + String(state.on);
     __n2.textContent = state.seen;
   });
   __n1.addEventListener("change", function(e) {
-    state.checked__inst0 = e.currentTarget.checked;
+    let __toggle_checked_wrote0 = e.currentTarget.checked;
+    state.checked__inst0 = __toggle_checked_wrote0;
     __n1.checked = state.checked__inst0;
-    state.lit = state.checked__inst0;
-    state.seen = "sw " + String(state.checked__inst0);
+    state.lit = __toggle_checked_wrote0;
+    state.seen = "sw " + String(__toggle_checked_wrote0);
     __n2.textContent = state.seen;
   });
   $2.addEventListener("input", function(e) {
-    state.name = e.currentTarget.value;
+    let __input_value_wrote0 = e.currentTarget.value;
+    state.name = __input_value_wrote0;
     $2.value = state.name;
-    state.seen = "input " + state.name + " " + state.name;
+    state.seen = "input " + __input_value_wrote0 + " " + state.name;
     __n2.textContent = state.seen;
   });
   $2.addEventListener("change", function(e) {
@@ -2067,9 +2207,10 @@ window.__sngl_boot = () => {
     $2.value = state.name;
   });
   $3.addEventListener("change", function(e) {
-    state.picked = e.currentTarget.value === "" ? null : e.currentTarget.value;
+    let __datepicker_value_wrote0 = e.currentTarget.value === "" ? null : e.currentTarget.value;
+    state.picked = __datepicker_value_wrote0;
     $3.value = state.picked !== null ? String(state.picked) : "";
-    state.seen = state.picked === null ? "no day" : "day";
+    state.seen = __datepicker_value_wrote0 === null ? "no day" : "day";
     __n2.textContent = state.seen;
   });
   $4.addEventListener("click", function() {
@@ -2085,16 +2226,15 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:beeb7bdb44443215040961e61dc38b74
+pass sha256:04ed4d18836b303ac3699e75b83f94c5
 -- run/go/fyne --
-pass sha256:a383535bc3e69b5522503c95f0ffc8dd
+pass sha256:cde99df0266fd4b31dd5b833933e87ea
 -- run/go/gtk4 --
-pass sha256:a886d5947c2132b7ca7d6968285e19c9
+pass sha256:30a45f344c434c888fcca4d51f2cdbfe
 -- run/kotlin/android --
-pass sha256:0972f4c2e5e2e9e9bda7a3a75630c052
+pass sha256:07c2198b57ea0611e25cc77908d6b4dd
 -- run/none/html --
-pass sha256:5f6ef86c218c77269eb73fcd1b3f80e2
+pass sha256:21905db21354d4e2500145799710d72a

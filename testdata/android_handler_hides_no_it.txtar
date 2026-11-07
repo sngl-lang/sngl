@@ -46,6 +46,7 @@ import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -53,6 +54,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
@@ -63,6 +65,17 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
+)
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -71,10 +84,14 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 val SnglCopy = SemanticsPropertyKey<String>("SnglCopy")
 
-class MainScreenState {
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
-    val items = mutableStateListOf("a", "b")
-    var log by mutableStateOf("")
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
+    val items = if ("items" in __pre) (__pre["items"] as List<String>).toMutableStateList() else mutableStateListOf("a", "b")
+    var log by mutableStateOf(__snglPre(__pre, "log") { "" })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,13 +99,15 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
-        for ((__copy0, it) in state.items.withIndex()) {
-            __checkbox_state0(label = it, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __copy = __copy0.toString(), onChange = { _ ->
-                state.log = it
-            })
-            __checkbox_state1(label = it, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __copy = __copy0.toString(), onChange = { _ ->
-                state.log = (it + "!")
-            })
+        for ((__copy0, it) in __identified0(state.items).withIndex()) {
+            key(it.id) {
+                __checkbox_state0(label = it.elem, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __copy = __copy0.toString(), onChange = { _ ->
+                    state.log = it.elem
+                })
+                __checkbox_state1(label = it.elem, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __copy = __copy0.toString(), onChange = { _ ->
+                    state.log = (it.elem + "!")
+                })
+            }
         }
         Text(text = state.log, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     }
@@ -122,6 +141,21 @@ fun __checkbox_state1(__start_checked: Boolean = false, label: String, __ctx_fle
             Text(text = label, modifier = Modifier)
         }
     }
+}
+
+fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_c6a818>()
+    for (__x in __xs) {
+    	var __id = __x.replace("#", "##")
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_c6a818(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
 package test.sngl.app
@@ -301,4 +335,4 @@ class MainScreenTest {
 
 }
 -- run/kotlin/android --
-pass sha256:42e30d3486ec49a4c1afe38c9511fc36
+pass sha256:d678036535221a9e031f337fda31c6fc

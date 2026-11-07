@@ -85,6 +85,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -166,11 +169,22 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.idx = 0
-	m.changed = -1
-	m.__focusID = 0
-	m.__focusLoop0_cursor = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["idx"] {
+		m.idx = 0
+	}
+	if !preset["changed"] {
+		m.changed = -1
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
+	if !preset["__focusLoop0_cursor"] {
+		m.__focusLoop0_cursor = 0
+	}
 	m.__focusSettle()
 	return m
 }
@@ -218,14 +232,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -289,7 +303,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt5
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt8 *Measurement
 	if own != nil {
 		__lt8 = own
@@ -302,7 +316,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt8 = __lt7
 	}
-	return CellsOf(__lt8)
+	return SpaceOf(__lt8, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
@@ -341,6 +355,16 @@ func LineCap(height__r0 int, lines int) int {
 		__lt12 = __lt11
 	}
 	return __lt12
+}
+
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt14) + 0.5))
 }
 
 func (m *Model) __focusLoop0_len() int {
@@ -529,7 +553,7 @@ func (m Model) View() tea.View {
 		if content_0_0ItemFocused {
 			content_0_0ItemPrefix = ">"
 		}
-		content_0_0Item = tui.TabLook((k == m.idx), (k == 0), t__r0.Disabled, "underline").Render(content_0_0ItemPrefix + " " + fmt.Sprint(t__r0.Label))
+		content_0_0Item = tui.Focused(tui.TabLook((k == m.idx), (k == 0), t__r0.Disabled, "underline"), content_0_0ItemFocused).Render(content_0_0ItemPrefix + " " + fmt.Sprint(t__r0.Label))
 		content_0_0Item = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0_0Item)
 		if !t__r0.Disabled {
 			__focusPos0++
@@ -542,18 +566,21 @@ func (m Model) View() tea.View {
 	}
 	content_0Children = append(content_0Children, tui.Grow(1.0, func(content_0_1Cells int) string {
 		var content_0_1 string
-		content_0_1 = tui.Sized(tui.TabGap(), true, content_0_1Cells).Render(fmt.Sprint("\n"))
+		content_0_1Text := fmt.Sprint("\n")
+		content_0_1 = tui.Within(tui.Sized(tui.TabGap(), true, content_0_1Cells), content_0_1Cells, content_0_1Text).Render(content_0_1Text)
 		return content_0_1
 	}))
 	content_0 = tui.Join(true, lipgloss.Top, 0, 0, content_0W, content_0Children)
-	content_0 = content_0Look.Render(content_0)
+	content_0 = tui.Paint(content_0Look, content_0)
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	content_1Look := lipgloss.NewStyle()
-	content_1W, _ := tui.Inner(content_1Look, contentW, 0)
+	content_1W, content_1H := tui.Inner(content_1Look, contentW, 0)
 	var content_1Children []tui.Part
 	content_1Children = append(content_1Children, tui.Grow(1.0, func(content_1_0Cells int) string {
 		var content_1_0 string
+		content_1_0Look := tui.Sized(tui.TabPanel("underline"), true, content_1_0Cells)
+		content_1_0W, _ := tui.Inner(content_1_0Look, content_1_0Cells, content_1H)
 		var content_1_0Children []string
 		var content_1_0_0 string
 		var content_1_0_0Items []string
@@ -564,13 +591,16 @@ func (m Model) View() tea.View {
 			var content_1_0_0ItemChildren []string
 			var content_1_0_0Item_0 string
 			if t__r1.__id == 0 {
-				content_1_0_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Overview content"))
+				content_1_0_0Item_0Text := fmt.Sprint("Overview content")
+				content_1_0_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_1_0W, content_1_0_0Item_0Text).Render(content_1_0_0Item_0Text)
 			} else {
 				if t__r1.__id == 1 {
-					content_1_0_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Detail content"))
+					content_1_0_0Item_0Text := fmt.Sprint("Detail content")
+					content_1_0_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_1_0W, content_1_0_0Item_0Text).Render(content_1_0_0Item_0Text)
 				} else {
 					if t__r1.__id == 2 {
-						content_1_0_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Settings content"))
+						content_1_0_0Item_0Text := fmt.Sprint("Settings content")
+						content_1_0_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_1_0W, content_1_0_0Item_0Text).Render(content_1_0_0Item_0Text)
 					}
 				}
 			}
@@ -588,14 +618,14 @@ func (m Model) View() tea.View {
 			content_1_0Children = append(content_1_0Children, content_1_0_0)
 		}
 		content_1_0 = lipgloss.JoinVertical(lipgloss.Left, content_1_0Children...)
-		content_1_0 = tui.Sized(tui.TabPanel("underline"), true, content_1_0Cells).Render(content_1_0)
+		content_1_0 = tui.Paint(content_1_0Look, content_1_0)
 		return content_1_0
 	}))
 	content_1 = tui.Join(true, lipgloss.Top, 0, 0, content_1W, content_1Children)
-	content_1 = content_1Look.Render(content_1)
+	content_1 = tui.Paint(content_1Look, content_1)
 	contentChildren = append(contentChildren, content_1)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = contentLook.Render(content)
+	content = tui.Paint(contentLook, content)
 	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -619,6 +649,7 @@ import "testing"
 func TestTabsSelectedMutates(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.idx == 0)) { t.Errorf("assert failed: %s", "(c.idx == 0)") }
 	c.idx = 2
 	if !((c.idx == 2)) { t.Errorf("assert failed: %s", "(c.idx == 2)") }
@@ -627,7 +658,13 @@ func TestTabsSelectedMutates(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from component_tabs.sngl; DO NOT EDIT.
 
@@ -647,6 +684,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	idx     int
@@ -662,9 +702,17 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.idx = 0
-	m.changed = -1
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["idx"] {
+		m.idx = 0
+	}
+	if !preset["changed"] {
+		m.changed = -1
+	}
 }
 
 func (m *Model) __wrote_idx() {
@@ -740,6 +788,7 @@ import "testing"
 func TestTabsSelectedMutates(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.idx == 0)) { t.Errorf("assert failed: %s", "(c.idx == 0)") }
 	c.idx = 2
 	c.__wrote_idx()
@@ -756,7 +805,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -785,6 +838,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	idx     int
@@ -797,9 +853,17 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.idx = 0
-	m.changed = -1
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["idx"] {
+		m.idx = 0
+	}
+	if !preset["changed"] {
+		m.changed = -1
+	}
 }
 
 func (m *Model) __wrote_idx() {
@@ -899,15 +963,25 @@ data class Tab__record(
     var __id: Int = 0
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var idx by mutableStateOf(0)
-    var changed by mutableStateOf(-1)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var idx by mutableStateOf(__snglPre(__pre, "idx") { 0 })
+    var changed by mutableStateOf(__snglPre(__pre, "changed") { -1 })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1191,18 +1265,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { idx: 0, changed: -1 };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -1246,9 +1323,6 @@ window.__sngl_boot = () => {
     let __prop___p1 = __p1;
     let __prop___p2 = __p2;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = __prop___p0.label;
@@ -1299,9 +1373,7 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___p2 = __p2;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
+    let __slot2 = [];
     let __rendering2 = false;
     let __renderAgain2 = false;
     function __set___p0(__v) {
@@ -1325,9 +1397,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain2) {
             __renderAgain2 = false;
-            let __place4_prev = __slot22;
+            let __place4_prev = __slot2;
             let __place4_i = 0;
-            __slot22 = [];
+            __slot2 = [];
             if (__prop___p2.__id === 0) {
               let __n6 = document.createElement("span");
               __n6.textContent = "Overview content";
@@ -1340,7 +1412,7 @@ window.__sngl_boot = () => {
               } else {
                 parent.insertBefore(__n6, __place4_i_ref0);
               }
-              __slot22.push(__n6);
+              __slot2.push(__n6);
             } else {
               if (__prop___p2.__id === 1) {
                 let __n7 = document.createElement("span");
@@ -1354,7 +1426,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n7, __place4_i_ref1);
                 }
-                __slot22.push(__n7);
+                __slot2.push(__n7);
               } else {
                 if (__prop___p2.__id === 2) {
                   let __n8 = document.createElement("span");
@@ -1368,12 +1440,12 @@ window.__sngl_boot = () => {
                   } else {
                     parent.insertBefore(__n8, __place4_i_ref2);
                   }
-                  __slot22.push(__n8);
+                  __slot2.push(__n8);
                 }
               }
             }
             for (const __place4_prev_e of __place4_prev) {
-              if (__slot22.indexOf(__place4_prev_e) < 0) {
+              if (__slot2.indexOf(__place4_prev_e) < 0) {
                 parent.removeChild(__place4_prev_e);
               }
             }
@@ -1408,7 +1480,6 @@ window.__sngl_boot = () => {
   var __inst3_live = [];
   var __rendering1 = false;
   var __renderAgain1 = false;
-  var __slot2 = [];
   function __renderSlot0(parent) {
     if (__rendering0) {
       __renderAgain0 = true;
@@ -1634,21 +1705,20 @@ window.__sngl_boot = () => {
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4064f08b932be6d16e9528f9c4b3a216
+pass sha256:cfaab8ea5c58d24837c2c8c8dda05629
 -- run/go/fyne --
-pass sha256:5c30b8ad07227dfc898a06bbe9a983b7
+pass sha256:fcc32173caaad7df71c8ad1f754d2bd9
 -- run/go/gtk4 --
-pass sha256:1052783f934d745bfbc0a569baae8515
+pass sha256:062dc729f7c3b52da738836cbc01365f
 -- run/kotlin/android --
-pass sha256:e87dc2e9d3ba63bc00d50edc2d394fcd
+pass sha256:7dbae4deeee32d2ad9dbc994085a6a66
 -- run/none/html --
-pass sha256:25ace70e1bbcbe94d7edd19d51d57182
+pass sha256:8cb934b845de4e55314a3101f8e0acab
 -- testrun/html/none/component_tabs.sngl/main/1 --
-sha256:3ce6da628c09708b9e4b3d2c189abe1b
+sha256:f890472de616af9b00308b2f9839561a
 {
   "results": [
     {

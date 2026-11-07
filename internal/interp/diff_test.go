@@ -55,7 +55,9 @@ component main node {
         if shown {
             text #extra(value="now here")
         }
-        for var it = items {
+        // Bound by &, so its copies are matched by position: a string
+        // would be its own copy's identity.
+        for var &it = items {
             text(value=it)
         }
     }
@@ -143,8 +145,8 @@ func TestAShorterListRemovesTheTail(t *testing.T) {
 
 // TestReorderingAnUnkeyedListAssignsRatherThanMoves is what an unkeyed loop
 // costs. Iterations are addressed by index, so swapping two elements reads as
-// both changing value. That is correct output, just not the cheap one --
-// `key=` is what buys the move, and the next test spends it.
+// both changing value. That is correct output, just not the cheap one -- an
+// identity is what buys the move, and the next test spends it.
 func TestReorderingAnUnkeyedListAssignsRatherThanMoves(t *testing.T) {
 	before, after := mountTwice(t, diffSrc, "main", func(env *Env) {
 		setVar(env, "items", []any{"b", "a"})
@@ -166,14 +168,15 @@ component main node {
     var items = ["a", "b", "c"]
     vbox {
         for var it = items {
-            text(value=it, key=it)
+            text(value=it)
         }
     }
 }
 `
 
-// TestAKeyedReorderMoves: with `key=`, an iteration keeps its identity when the
-// list is reordered, so the nodes survive and only their positions change.
+// TestAKeyedReorderMoves: a string is its own copy's identity, which the
+// iteration keeps when the list is reordered, so the nodes survive and only
+// their positions change.
 func TestAKeyedReorderMoves(t *testing.T) {
 	before, after := mountTwice(t, keyedSrc, "main", func(env *Env) {
 		setVar(env, "items", []any{"c", "a", "b"})
@@ -230,7 +233,7 @@ func TestAKeyedRemovalKeepsTheSurvivorsPut(t *testing.T) {
 	}
 }
 
-// TestKeyedIterationsSurviveAReload: identity by `key=` has to hold across a
+// TestKeyedIterationsSurviveAReload: a copy's identity has to hold across a
 // recompile too, since that is where the whole scheme is aimed.
 func TestKeyedIterationsSurviveAReload(t *testing.T) {
 	envA, _ := envFor(t, keyedSrc, "main")
@@ -252,7 +255,7 @@ component main node {
     var items = ["a", "a", "b"]
     vbox {
         for var it = items {
-            text(value=it, key=it)
+            text(value=it)
         }
     }
 }

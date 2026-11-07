@@ -60,6 +60,11 @@ type Measurement struct {
 	Rem float64
 }
 
+type __anon_id_elem_0cec9d struct {
+	Id   string
+	Elem time.Duration
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -114,8 +119,6 @@ type Style struct {
 	ListStyleType  string
 }
 
-var periods []time.Duration = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
-
 type timerTickMsg0 struct {
 	key string
 	gen int
@@ -130,7 +133,6 @@ type Model struct {
 type modelState struct {
 	ticks__inst0   map[string]int
 	visible__inst0 bool
-	periods        []time.Duration
 
 	__timer0      map[string]int
 	__timer0Seq   map[string]int
@@ -144,7 +146,6 @@ func New() Model {
 	m.__timer0Seq = map[string]int{}
 	m.ticks__inst0 = map[string]int{}
 	m.visible__inst0 = true
-	m.periods = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 	return m
 }
 
@@ -191,14 +192,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -262,7 +263,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt6
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt9 *Measurement
 	if own != nil {
 		__lt9 = own
@@ -275,7 +276,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt9 = __lt8
 	}
-	return CellsOf(__lt9)
+	return SpaceOf(__lt9, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
@@ -314,6 +315,16 @@ func LineCap(height__r0 int, lines int) int {
 		__lt13 = __lt12
 	}
 	return __lt13
+}
+
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt14) + 0.5))
 }
 
 func (m Model) Ticks__inst0() map[string]int {
@@ -362,22 +373,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
 	case timerTickMsg0:
-		for __copy0, p := range m.periods {
-			if fmt.Sprint(__copy0) == msg.key && m.__timer0[msg.key] == msg.gen && true {
+		for _, p := range []__anon_id_elem_0cec9d{__anon_id_elem_0cec9d{Id: "100", Elem: (time.Duration(100) * time.Millisecond)}, __anon_id_elem_0cec9d{Id: "250", Elem: (time.Duration(250) * time.Millisecond)}} {
+			if p.Id == msg.key && m.__timer0[msg.key] == msg.gen && true {
 				var __cell1_ticks__inst0 int = func() int {
-					if __v, __ok := m.ticks__inst0[fmt.Sprint(__copy0)]; __ok {
+					if __v, __ok := m.ticks__inst0[p.Id]; __ok {
 						return __v
 					}
 					return 0
 				}()
 				__cell1_ticks__inst0 = (func() int {
-					if __v, __ok := m.ticks__inst0[fmt.Sprint(__copy0)]; __ok {
+					if __v, __ok := m.ticks__inst0[p.Id]; __ok {
 						return __v
 					}
 					return 0
 				}() + 1)
-				m.ticks__inst0[fmt.Sprint(__copy0)] = __cell1_ticks__inst0
-				cmds = append(cmds, tea.Tick(p, func(time.Time) tea.Msg { return timerTickMsg0{msg.key, msg.gen} }))
+				m.ticks__inst0[p.Id] = __cell1_ticks__inst0
+				cmds = append(cmds, tea.Tick(p.Elem, func(time.Time) tea.Msg { return timerTickMsg0{msg.key, msg.gen} }))
 			}
 		}
 	case tea.WindowSizeMsg:
@@ -402,15 +413,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) __timer0Sync() []tea.Cmd {
 	var cmds []tea.Cmd
 	seen := map[string]bool{}
-	for __copy0, p := range m.periods {
-		key := fmt.Sprint(__copy0)
+	for _, p := range []__anon_id_elem_0cec9d{__anon_id_elem_0cec9d{Id: "100", Elem: (time.Duration(100) * time.Millisecond)}, __anon_id_elem_0cec9d{Id: "250", Elem: (time.Duration(250) * time.Millisecond)}} {
+		key := p.Id
 		if true {
 			seen[key] = true
 			if _, ok := m.__timer0[key]; !ok {
 				m.__timer0Seq[key]++
 				gen := m.__timer0Seq[key]
 				m.__timer0[key] = gen
-				cmds = append(cmds, tea.Tick(p, func(time.Time) tea.Msg { return timerTickMsg0{key, gen} }))
+				cmds = append(cmds, tea.Tick(p.Elem, func(time.Time) tea.Msg { return timerTickMsg0{key, gen} }))
 			}
 		}
 	}
@@ -426,16 +437,16 @@ func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
 		var contentItems []string
-		for __copy0, p := range m.periods {
-			_ = __copy0
+		for _, p := range []__anon_id_elem_0cec9d{__anon_id_elem_0cec9d{Id: "100", Elem: (time.Duration(100) * time.Millisecond)}, __anon_id_elem_0cec9d{Id: "250", Elem: (time.Duration(250) * time.Millisecond)}} {
 			_ = p
 			var contentItem string
-			contentItem = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((snglStrDuration(p) + ": ") + fmt.Sprint(func() int {
-				if __v, __ok := m.ticks__inst0[fmt.Sprint(__copy0)]; __ok {
+			contentItemText := fmt.Sprint(((snglStrDuration(p.Elem) + ": ") + fmt.Sprint(func() int {
+				if __v, __ok := m.ticks__inst0[p.Id]; __ok {
 					return __v
 				}
 				return 0
-			}()))))
+			}())))
+			contentItem = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentItemText).Render(contentItemText)
 			contentItems = append(contentItems, contentItem)
 		}
 		content = tui.Spaced(false, lipgloss.Left, 0, contentItems...)
@@ -478,17 +489,19 @@ type ErrorEvent struct {
 	Kind    string
 }
 
-var periods []time.Duration = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
+type __anon_id_elem_0cec9d struct {
+	Id   string
+	Elem time.Duration
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
-	__inst0_live   []*TickerInstance
+	__inst0_live   map[string]*TickerInstance
 	__rendering0   bool
 	__renderAgain0 bool
-	periods        []time.Duration
 
 	__n1    *fynelayout.Toplevel
 	__built bool
@@ -500,10 +513,9 @@ func New() *Model {
 	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*TickerInstance{}
+	m.__inst0_live = map[string]*TickerInstance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
-	m.periods = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 	return m
 }
 
@@ -536,30 +548,49 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-				__inst0_next := []*TickerInstance{}
-				var __inst0_i int = 0
-				for _, p := range m.periods {
+				__inst0_next := map[string]*TickerInstance{}
+				__inst0_seen := map[string]int{}
+				for _, p := range []__anon_id_elem_0cec9d{__anon_id_elem_0cec9d{Id: "100", Elem: (time.Duration(100) * time.Millisecond)}, __anon_id_elem_0cec9d{Id: "250", Elem: (time.Duration(250) * time.Millisecond)}} {
 					var __n2 *TickerInstance
-					if len(m.__inst0_live) > __inst0_i {
-						__n2 = m.__inst0_live[__inst0_i]
-						__n2.SetPeriod(p)
-					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+					__key1 := fmt.Sprint(p.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
 						}
-						__n2__new := newTickerInstance(m, p)
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n2 = func() *TickerInstance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
+						__n2.SetPeriod(p.Elem)
+					} else {
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *TickerInstance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
+						}
+						__n2__new := newTickerInstance(m, p.Elem)
 						__n2 = __n2__new
 					}
-					__inst0_next = append(__inst0_next, __n2)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
 					fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
 					m.__slot0 = append(m.__slot0, __n2__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -569,11 +600,10 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*TickerInstance{}
+	m.__inst0_live = map[string]*TickerInstance{}
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -592,12 +622,41 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
+
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
 		return m.__n1.Container
 	}
 	m.__built = true
+	__snglBuilding++
 	m.__n1 = fynelayout.NewToplevel()
 	m.__n1.SetTitle("t")
 	m.__n1.SetVisible(m.visible__inst0)
@@ -605,6 +664,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__renderSlot0(m.__n1.Container)
 	fynelayout.AppAttach(m.__n1)
+	__snglEndBuild()
 	return m.__n1.Container
 }
 
@@ -628,8 +688,6 @@ type TickerInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
 	__n0                *widget.Label
 }
 
@@ -652,10 +710,9 @@ func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = c.__n0
 	return c
 }
@@ -829,17 +886,19 @@ type ErrorEvent struct {
 	Kind    string
 }
 
-var periods []time.Duration = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
+type __anon_id_elem_0cec9d struct {
+	Id   string
+	Elem time.Duration
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
-	__inst0_live   []*TickerInstance
+	__inst0_live   map[string]*TickerInstance
 	__rendering0   bool
 	__renderAgain0 bool
-	periods        []time.Duration
 	__n1           gtk4rt.Handle
 	__built        bool
 }
@@ -851,10 +910,9 @@ func New() *Model {
 	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*TickerInstance{}
+	m.__inst0_live = map[string]*TickerInstance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
-	m.periods = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 	return m
 }
 
@@ -875,30 +933,49 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-				__inst0_next := []*TickerInstance{}
-				var __inst0_i int = 0
-				for _, p := range m.periods {
+				__inst0_next := map[string]*TickerInstance{}
+				__inst0_seen := map[string]int{}
+				for _, p := range []__anon_id_elem_0cec9d{__anon_id_elem_0cec9d{Id: "100", Elem: (time.Duration(100) * time.Millisecond)}, __anon_id_elem_0cec9d{Id: "250", Elem: (time.Duration(250) * time.Millisecond)}} {
 					var __n2 *TickerInstance
-					if len(m.__inst0_live) > __inst0_i {
-						__n2 = m.__inst0_live[__inst0_i]
-						__n2.SetPeriod(p)
-					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+					__key1 := fmt.Sprint(p.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
 						}
-						__n2__new := newTickerInstance(m, p)
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n2 = func() *TickerInstance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
+						__n2.SetPeriod(p.Elem)
+					} else {
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *TickerInstance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
+						}
+						__n2__new := newTickerInstance(m, p.Elem)
 						__n2 = __n2__new
 					}
-					__inst0_next = append(__inst0_next, __n2)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
 					m.__slot0 = append(m.__slot0, __n2__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -908,11 +985,10 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*TickerInstance{}
+	m.__inst0_live = map[string]*TickerInstance{}
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -941,8 +1017,6 @@ type TickerInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 }
 
@@ -959,11 +1033,10 @@ func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, ((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1059,9 +1132,6 @@ func (c *TickerInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 }
 
 func (m *Model) Visible__inst0() bool {
@@ -1072,11 +1142,39 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__built {
 		return
 	}
 	m.__built = true
+	__snglBuilding++
 	m.__n1 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(m.__n1, "t")
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
@@ -1085,6 +1183,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__renderSlot0(m.__n1)
 	gtk4rt.AppAttach(m.__n1)
+	__snglEndBuild()
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
@@ -1114,13 +1213,12 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = { visible__inst0: true };
   function __snglTeardown() {
-    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+    for (const [__inst1_live_dk, __inst1_live_dv] of __inst1_live.entries()) {
       ;
-      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
-      __inst1_live[__inst1_live_dj].__destroy();
+      __inst1_live_dv.__destroy();
     }
     ;
-    __inst1_live = [];
+    __inst1_live = /* @__PURE__ */ new Map([]);
   }
   function __cf_ticker(props) {
     const __root = document.createElement("div");
@@ -1136,7 +1234,6 @@ body { font-family: system-ui, sans-serif; }
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
     function __effect0_mount() {
       handle__inst0 = setInterval(() => {
         ticks = ticks + 1;
@@ -1226,7 +1323,7 @@ body { font-family: system-ui, sans-serif; }
     };
   }
   var __slot0 = [];
-  var __inst1_live = [];
+  var __inst1_live = /* @__PURE__ */ new Map([]);
   var __rendering0 = false;
   var __renderAgain0 = false;
   function __renderSlot0(parent) {
@@ -1241,22 +1338,27 @@ body { font-family: system-ui, sans-serif; }
           let __place0_prev = __slot0;
           let __place0_i = 0;
           __slot0 = [];
-          let __inst1_next = [];
-          let __inst1_i = 0;
-          for (const p of [100, 250]) {
+          let __inst1_next = /* @__PURE__ */ new Map([]);
+          let __inst1_seen = /* @__PURE__ */ new Map([]);
+          for (const p of [{ id: "100", elem: 100 }, { id: "250", elem: 250 }]) {
             let __n2 = null;
-            if (__inst1_live.length > __inst1_i) {
-              __n2 = __inst1_live[__inst1_i];
-              __n2.__set_period(p);
+            let __key2 = String(p.id);
+            let __key2_n = __inst1_seen.has(__key2) ? __inst1_seen.get(__key2) : 0;
+            __inst1_seen.set(__key2, __key2_n + 1);
+            if (__key2_n > 0) {
+              __key2 = __key2 + "#" + String(__key2_n);
+            }
+            if (__inst1_live.has(__key2)) {
+              __n2 = __inst1_live.has(__key2) ? __inst1_live.get(__key2) : null;
+              __n2.__set_period(p.elem);
             } else {
-              if (__inst1_live.length > __inst1_i) {
-                __inst1_live[__inst1_i].__destroy();
+              if (__inst1_live.has(__key2)) {
+                (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf_ticker({ period: p });
+              let __n2__new = __cf_ticker({ period: p.elem });
               __n2 = __n2__new;
             }
-            __inst1_next.push(__n2);
-            __inst1_i = __inst1_i + 1;
+            __inst1_next.set(__key2, __n2);
             let __n2__el = __n2.__root;
             let __place0_i_ref0 = null;
             if (__place0_i < __place0_prev.length) {
@@ -1269,10 +1371,9 @@ body { font-family: system-ui, sans-serif; }
             }
             __slot0.push(__n2__el);
           }
-          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-            if (__inst1_i_j >= __inst1_i) {
-              __inst1_live[__inst1_i_j].__destroy();
+          for (const [__inst1_live_k, __inst1_live_v] of __inst1_live.entries()) {
+            if (!__inst1_next.has(__inst1_live_k)) {
+              __inst1_live_v.__destroy();
             }
           }
           __inst1_live = __inst1_next;
@@ -1297,10 +1398,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:482ae8603215b46c54cd8fc21fc70ab6
+pass sha256:c4ff801327ad0079021152036a5543d5
 -- run/go/fyne --
-pass sha256:c707a19cb6343ac5ab97e39c3452eb22
+pass sha256:f4548e6a05b5f29f23971d54d8f055c7
 -- run/go/gtk4 --
-pass sha256:911ebda797b61bbd4a7343014637a33e
+pass sha256:35ad5f6fe10fb772ef367ec4b2b310fb
 -- run/none/html --
-pass sha256:9b7af8324c29b3b7fb4b8a15424a83a5
+pass sha256:514c42f42c9663237e5fb5aa4cb75548

@@ -41,6 +41,8 @@ struct Look {
     justify   int
     spaced    bool
     spacing   int
+    grid      bool
+    columns   int
 }
 `
 

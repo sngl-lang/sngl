@@ -16,6 +16,12 @@ struct anyStruct {}
 #[_builtin(anyFields)]
 struct anyFields {}
 
+// A type `<` orders: a number, a single-base unit or a string. A generic body
+// may compare two values of the type, `func least[T ordered](a T, b T) => a <
+// b ? a : b`, and a list of one sorts, `xs.sort()`.
+#[_builtin(ordered)]
+struct ordered {}
+
 // A type with each of S's fields, at an equal type, and maybe others: a
 // struct or a component. S is an anonymous struct of fields, and they are
 // what a generic body may read of a value of the type: `[T fieldsOf[struct {

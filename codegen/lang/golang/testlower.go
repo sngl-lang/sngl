@@ -3,6 +3,7 @@ package golang
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -59,6 +60,9 @@ func testIRContext(irPkg *ir.Package, platform string, fn *ir.Func, methodFields
 // component-method calls) on GoIRContext, which lets test bodies exercise
 // component state and methods.
 func lowerTestStmt(s ir.Stmt, gc *GoIRContext) []string {
+	if _, preset, ok := codegen.TestMount(s); ok {
+		return []string{mountLine(gc.Ctx.StateReceiver, preset)}
+	}
 	if call, ok := s.(*ir.CallStmt); ok {
 		if line, ok := lowerTestAssert(call, gc); ok {
 			return []string{line}
@@ -228,10 +232,12 @@ func lowerTestSetContext(c *ir.Call, gc *GoIRContext) ([]string, bool) {
 		// Fallback: no component-typed param. Record intent so the test still
 		// compiles; the override won't reach a Model field, but the value is
 		// referenced (via blank) to avoid unused-variable errors.
-		return []string{
-			fmt.Sprintf("// t.setContext(%q, ...): no Model field holds it; the calls after it are passed the value.", ctxName),
-			fmt.Sprintf("_ = %s", valExpr),
-		}, true
+		note := fmt.Sprintf("// t.setContext(%q, ...): no Model field holds it; the calls after it are passed the value.", ctxName)
+		// Go has no type for a bare nil to take.
+		if ir.IsNullLiteral(val) {
+			return []string{note}, true
+		}
+		return []string{note, fmt.Sprintf("_ = %s", valExpr)}, true
 	}
 	lines := make([]string, 0, len(receivers))
 	for _, r := range receivers {
@@ -380,6 +386,12 @@ func LowerTestFile(pkg, platform string, irPkg *ir.Package, fns []*ir.Func, suff
 			body.WriteString("\tsetCurrentTestModel(" + instance + ")\n")
 		}
 		body.WriteString("\t_ = " + instance + "\n")
+		// A test taking no component renders the program, which it needs
+		// from the start; one taking a component mounts it where it first
+		// needs it (passTestMount).
+		if codegen.TestComponentParam(fn) == "" {
+			body.WriteString("\t" + mountLine(instance, nil) + "\n")
+		}
 		block, fields := codegen.LowerRefNullTests(codegen.LowerInstanceReads(fn.Block, irPkg), methodFields)
 		gc := testIRContext(irPkg, platform, fn, fields, instance)
 		for _, s := range block {
@@ -423,6 +435,20 @@ func LowerTestFile(pkg, platform string, irPkg *ir.Package, fns []*ir.Func, suff
 	}
 
 	return b.String()
+}
+
+// mountLine mounts the test's instance, its initializers leaving what preset
+// names as the test set it.
+func mountLine(instance string, preset []string) string {
+	set := "nil"
+	if len(preset) > 0 {
+		parts := make([]string, len(preset))
+		for i, p := range preset {
+			parts[i] = strconv.Quote(p) + ": true"
+		}
+		set = "map[string]bool{" + strings.Join(parts, ", ") + "}"
+	}
+	return instance + " = mountTestComponent(" + instance + ", " + set + ")"
 }
 
 func wrapperHeader(suffix string, mode TestEmitMode) (funcName, paramType string) {

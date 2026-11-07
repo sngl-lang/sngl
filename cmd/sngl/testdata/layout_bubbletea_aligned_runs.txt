@@ -51,7 +51,7 @@ ui.window {
     cards
 }
 -- testrun/bubbletea/go/app.sngl/cards/1 --
-sha256:0efd01308ae4870a0b7af4c159a741ec
+sha256:e2f105f70d58ca36076e95561941f728
 {
   "results": [
     {

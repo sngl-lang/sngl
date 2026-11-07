@@ -35,11 +35,13 @@ const (
 	// The constraints that say something, each a struct sngl:builtin declares
 	// and a type parameter's constraint names (TypeConstraint): AnyStruct a
 	// struct, AnyFields a type with fields, FieldsOf[S] one with S's fields
-	// and MethodsOf[S] one with a method fitting each function S declares.
+	// and MethodsOf[S] one with a method fitting each function S declares;
+	// Ordered a type `<` orders.
 	BuiltinAnyStruct BuiltinKind = "anyStruct"
 	BuiltinAnyFields BuiltinKind = "anyFields"
 	BuiltinFieldsOf  BuiltinKind = "fieldsOf"
 	BuiltinMethodsOf BuiltinKind = "methodsOf"
+	BuiltinOrdered   BuiltinKind = "ordered"
 
 	// The sized numerics, each a scalar of the width and signedness its name
 	// says (TypInt8 … TypFloat64).
@@ -181,6 +183,13 @@ const (
 	BuiltinFormatWith       BuiltinKind = "formatWith"
 	BuiltinAppendFormatWith BuiltinKind = "appendFormatWith"
 
+	// HTTPAnswer is sngl:http's `answer`, the context that answers a request
+	// in place of the network, and HTTPClosed its `closed`, what a test sets
+	// it to before its body runs, so no test reaches the network unless it
+	// says so (lower.passTestAnswer).
+	BuiltinHTTPAnswer BuiltinKind = "httpAnswer"
+	BuiltinHTTPClosed BuiltinKind = "httpClosed"
+
 	// Predeclared constants. These annotate a const declaration whose written
 	// value is a placeholder: the real one is not known until a build picks a
 	// target, so the compiler supplies it. The two target kinds are typed by
@@ -244,7 +253,7 @@ func (b BuiltinKind) IsFamilyRole() bool {
 // something about a type parameter, which only a constraint may name.
 func (b BuiltinKind) IsConstraint() bool {
 	switch b {
-	case BuiltinAnyStruct, BuiltinAnyFields, BuiltinFieldsOf, BuiltinMethodsOf:
+	case BuiltinAnyStruct, BuiltinAnyFields, BuiltinFieldsOf, BuiltinMethodsOf, BuiltinOrdered:
 		return true
 	}
 	return false
@@ -314,7 +323,7 @@ func (b BuiltinKind) IsConst() bool {
 func AllBuiltinKinds() []BuiltinKind {
 	return []BuiltinKind{
 		BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool, BuiltinAny,
-		BuiltinAnyStruct, BuiltinAnyFields, BuiltinFieldsOf, BuiltinMethodsOf,
+		BuiltinAnyStruct, BuiltinAnyFields, BuiltinFieldsOf, BuiltinMethodsOf, BuiltinOrdered,
 		BuiltinInt8, BuiltinInt16, BuiltinInt32, BuiltinInt64,
 		BuiltinUint8, BuiltinUint16, BuiltinUint32, BuiltinUint64,
 		BuiltinFloat32, BuiltinFloat64,
@@ -328,6 +337,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode, BuiltinGenRun, BuiltinGenBuild,
 		BuiltinCString, BuiltinCInt, BuiltinCDouble, BuiltinCBool, BuiltinText,
 		BuiltinFormatArgs, BuiltinFormatWith, BuiltinAppendFormatWith,
+		BuiltinHTTPAnswer, BuiltinHTTPClosed,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
 }
@@ -337,5 +347,5 @@ func AllBuiltinKinds() []BuiltinKind {
 func (b BuiltinKind) Valid() bool {
 	return b == BuiltinAny || b.IsConstraint() || b == BuiltinApplication || b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
 		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsCMarshal() || b.IsConst() || b == BuiltinText ||
-		b == BuiltinFormatArgs || b == BuiltinFormatWith || b == BuiltinAppendFormatWith
+		b == BuiltinFormatArgs || b == BuiltinFormatWith || b == BuiltinAppendFormatWith || b == BuiltinHTTPAnswer || b == BuiltinHTTPClosed
 }

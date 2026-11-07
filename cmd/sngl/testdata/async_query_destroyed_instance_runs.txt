@@ -28,8 +28,8 @@ import http "sngl:http"
 import test "sngl:test"
 import ui "sngl:ui"
 
-func lookup(k string) async.Result[string] {
-    match var r = http.get(url="http://127.0.0.1:47819/status/200") {
+func lookup(k string, life async.Lifetime) async.Result[string] {
+    match var r = http.get(url="http://127.0.0.1:47819/status/200", life=life) {
         failed { return {failed=r} }
         ok { return {ok=k} }
     }
@@ -72,7 +72,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:fd6b7f2870cca7feb2c650d373bdb4a1
+sha256:306c070c0f4ad0f537003fef419c51bf
 {
   "results": [
     {
@@ -82,7 +82,7 @@ sha256:fd6b7f2870cca7feb2c650d373bdb4a1
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:6e62d8b076ed8a5890a5fdb00e37813c
+sha256:d3642db21d89dd258c4f71762a8c2cb9
 {
   "results": [
     {
@@ -92,7 +92,7 @@ sha256:6e62d8b076ed8a5890a5fdb00e37813c
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:68f01fd892a00d9a74feb6004853cb69
+sha256:b58406725954d42d9f58e7c45031bc49
 {
   "results": [
     {
@@ -102,7 +102,7 @@ sha256:68f01fd892a00d9a74feb6004853cb69
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:d508676780eab1943034da13bac0911c
+sha256:35b115da73277f1e3b7b42fe7d5d4203
 {
   "results": [
     {
@@ -112,7 +112,7 @@ sha256:d508676780eab1943034da13bac0911c
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:3bedee4560def13e0bb3087c26638060
+sha256:52da2377f3c37e8e8d850f72ecb32f02
 {
   "results": [
     {

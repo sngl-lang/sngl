@@ -47,6 +47,7 @@ component screen ui.node {
 }
 
 func testQuietStartsAgain(t test.Test, c screen) {
+    t.assert(log == "1 ")
     c.on = false
     c.on = true
     t.assert(log == "1 1 ")
@@ -80,6 +81,9 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type Test struct {
 }
 
 type Style struct {
@@ -175,19 +179,46 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.log = ""
-	m.on = true
-	m.k__inst0 = 0
-	m.__effect0_live = []bool{}
-	m.__effect0_desired = []bool{}
-	m.__effect1_live = []bool{}
-	m.__effect1_desired = []bool{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
-	m.__focusID = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["log"] {
+		m.log = ""
+	}
+	if !preset["on"] {
+		m.on = true
+	}
+	if !preset["k__inst0"] {
+		m.k__inst0 = 0
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []bool{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []bool{}
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []bool{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []bool{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
 	m.__effects0_settle()
 	return m
 }
@@ -198,15 +229,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -246,14 +276,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -317,7 +347,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -330,7 +360,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -344,20 +374,31 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m *Model) __effect0_enter() {
@@ -554,7 +595,8 @@ func (m Model) View() tea.View {
 	if part0_0Focused {
 		part0_0Prefix = ">"
 	}
-	part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint("t"))
+	part0_0Text := part0_0Prefix + " " + fmt.Sprint("t")
+	part0_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_0Focused), tui.Avail(m.width), part0_0Text).Render(part0_0Text)
 	part0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_0)
 	part0Children = append(part0Children, part0_0)
 	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
@@ -583,6 +625,8 @@ import "testing"
 func TestQuietStartsAgain(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
+	if !((c.log == "1 ")) { t.Errorf("assert failed: %s", "(c.log == \"1 \")") }
 	c.on = false
 	c.__effects0_settle()
 	c.on = true
@@ -591,7 +635,13 @@ func TestQuietStartsAgain(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -608,6 +658,9 @@ import (
 type ErrorEvent struct {
 	Message string
 	Kind    string
+}
+
+type Test struct {
 }
 
 // Model holds the state for this SNGL UI.
@@ -631,18 +684,44 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.log = ""
-	m.on = true
-	m.k__inst0 = 0
-	m.__effect0_live = []bool{}
-	m.__effect0_desired = []bool{}
-	m.__effect1_live = []bool{}
-	m.__effect1_desired = []bool{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["log"] {
+		m.log = ""
+	}
+	if !preset["on"] {
+		m.on = true
+	}
+	if !preset["k__inst0"] {
+		m.k__inst0 = 0
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []bool{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []bool{}
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []bool{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []bool{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
 }
 
 func (m *Model) __effect0_enter() {
@@ -773,6 +852,8 @@ import "testing"
 func TestQuietStartsAgain(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
+	if !((c.log == "1 ")) { t.Errorf("assert failed: %s", "(c.log == \"1 \")") }
 	c.on = false
 	c.__effects0_settle()
 	c.on = true
@@ -787,7 +868,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -818,6 +903,9 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	log                 string
@@ -839,18 +927,44 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.log = ""
-	m.on = true
-	m.k__inst0 = 0
-	m.__effect0_live = []bool{}
-	m.__effect0_desired = []bool{}
-	m.__effect1_live = []bool{}
-	m.__effect1_desired = []bool{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["log"] {
+		m.log = ""
+	}
+	if !preset["on"] {
+		m.on = true
+	}
+	if !preset["k__inst0"] {
+		m.k__inst0 = 0
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []bool{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []bool{}
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []bool{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []bool{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
 }
 
 func (m *Model) __effect0_enter() {
@@ -996,17 +1110,27 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var log by mutableStateOf("")
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
-    var on by mutableStateOf(true)
-    var k__inst0 by mutableStateOf(0)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var log by mutableStateOf(__snglPre(__pre, "log") { "" })
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
+    var on by mutableStateOf(__snglPre(__pre, "on") { true })
+    var k__inst0 by mutableStateOf(__snglPre(__pre, "k__inst0") { 0 })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1202,6 +1326,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
+        org.junit.Assert.assertTrue("(c.log == \"1 \")", (c.log == "1 "))
         composeTestRule.runOnUiThread {
             c.on = false
         }
@@ -1239,18 +1364,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { log: "", on: true, k__inst0: 0 };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.tClick = () => $0.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
@@ -1338,16 +1466,15 @@ window.__sngl_boot = () => {
   __effects0_settle();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:200ae7e51e3274792f1d2d5437c7cffb
+pass sha256:6c31706510684d50080a4a3944ccaf25
 -- run/go/fyne --
-pass sha256:2fc0a67894d790bf3d43379b39397b99
+pass sha256:ec5ae42f6737a6f7cce2d8fbd1dd6a60
 -- run/go/gtk4 --
-pass sha256:09490cf7a9537e48c0973f7ad1a9869d
+pass sha256:573f4b37b0af91aedce5fc7a349e4f5f
 -- run/kotlin/android --
-pass sha256:e3695455660a1ac641a15f0d8d38900d
+pass sha256:5bf15c0b8d3271cf68ef9a82ee57838b
 -- run/none/html --
-pass sha256:3dd149596b4e6b14ce81ce62ff7da33d
+pass sha256:e1b2ec8c3068b28057919feaf69f7843

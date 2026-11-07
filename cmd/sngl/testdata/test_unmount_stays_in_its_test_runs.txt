@@ -48,7 +48,7 @@ func testTheSecondSeesNoUnmountOfTheFirst(t test.Test, c app) {
     t.assert(log.format(",") == "+a")
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:12295d2e53d0da00b2da89f5f399b41c
+sha256:12823b8a53200ddb9a626324a927c0d1
 {
   "results": [
     {
@@ -62,7 +62,7 @@ sha256:12295d2e53d0da00b2da89f5f399b41c
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:dbfeba08304cdc25d1bda247369ba476
+sha256:aa47b185a0d561b67f7e17b4c6e3196f
 {
   "results": [
     {
@@ -76,7 +76,7 @@ sha256:dbfeba08304cdc25d1bda247369ba476
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:16e2f91c8f1e25f16e5284b4176492e0
+sha256:ee2d786234df027dac3c0cffb0a58d23
 {
   "results": [
     {
@@ -90,7 +90,7 @@ sha256:16e2f91c8f1e25f16e5284b4176492e0
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:d4ea07195884d7f2c83db58c4377a356
+sha256:83fceb05e8fe5b070390658b452fa7ba
 {
   "results": [
     {
@@ -104,7 +104,7 @@ sha256:d4ea07195884d7f2c83db58c4377a356
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:c342cdc882ae2fcd0ad7548508b8946c
+sha256:b6b6c720da606a7798461e9c3ed558f6
 {
   "results": [
     {

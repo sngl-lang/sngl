@@ -22,7 +22,7 @@ output {
 component Pick(:pick string) ui.node {
     ui.vbox {
         ui.select(:value=pick) {
-            ui.choice(label="a")
+            ui.choice(label="a", value="a")
         }
         ui.text(value=string([1, 2].map(func(n int) => n * 2).length()))
     }
@@ -50,8 +50,14 @@ import (
 	"os"
 )
 
-type Choice__record struct {
+type Choice__record__string struct {
 	Label string
+	Value string
+}
+
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
 }
 
 // Model holds the state for this SNGL UI.
@@ -60,7 +66,7 @@ type Model struct {
 	visible__inst0 bool
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
-	__inst0_live   []*__child0Instance
+	__inst0_live   map[string]*__child0Instance
 	__rendering0   bool
 	__renderAgain0 bool
 
@@ -75,10 +81,28 @@ func New() *Model {
 	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*__child0Instance{}
+	m.__inst0_live = map[string]*__child0Instance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
+}
+
+func ChoiceLabel__string(options []Choice__record__string, value string) string {
+	for _, o := range options {
+		if o.Value == value {
+			return o.Label
+		}
+	}
+	return ""
+}
+
+func ChoiceLabeled__string(options []Choice__record__string, label string) int {
+	for i, o := range options {
+		if o.Label == label {
+			return i
+		}
+	}
+	return -1
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -98,45 +122,66 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-				__inst0_next := []*__child0Instance{}
-				var __inst0_i int = 0
-				for range []int{1} {
+				__inst0_next := map[string]*__child0Instance{}
+				__inst0_seen := map[string]int{}
+				for _, i := range []__anon_id_elem_cdfd47{__anon_id_elem_cdfd47{Id: "1", Elem: 1}} {
 					var __n2 *__child0Instance
-					if len(m.__inst0_live) > __inst0_i {
-						__n2 = m.__inst0_live[__inst0_i]
+					__key1 := fmt.Sprint(i.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n2 = func() *__child0Instance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
 						__n2.Set__on0(func(v string) {
-							if v != m.pick {
-								m.pick = v
-								for __inst0_live_ui, _ := range m.__inst0_live {
-									m.__inst0_live[__inst0_live_ui].Set__p0(m.pick)
+							var at int = ChoiceLabeled__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, v)
+							if (at >= 0) && ([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}[at].Value != m.pick) {
+								m.pick = []Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}[at].Value
+								for _, __inst0_live_uv := range m.__inst0_live {
+									__inst0_live_uv.Set__p0(m.pick)
 								}
 							}
 						})
 						__n2.Set__p0(m.pick)
 					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *__child0Instance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n2__new := new__child0Instance(m, m.pick, func(v string) {
-							if v != m.pick {
-								m.pick = v
-								for __inst0_live_ui, _ := range m.__inst0_live {
-									m.__inst0_live[__inst0_live_ui].Set__p0(m.pick)
+							var at int = ChoiceLabeled__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, v)
+							if (at >= 0) && ([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}[at].Value != m.pick) {
+								m.pick = []Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}[at].Value
+								for _, __inst0_live_uv := range m.__inst0_live {
+									__inst0_live_uv.Set__p0(m.pick)
 								}
 							}
 						})
 						__n2 = __n2__new
 					}
-					__inst0_next = append(__inst0_next, __n2)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
 					fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
 					m.__slot0 = append(m.__slot0, __n2__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -146,11 +191,10 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*__child0Instance{}
+	m.__inst0_live = map[string]*__child0Instance{}
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -199,8 +243,6 @@ type __child0Instance struct {
 	__prop___p0  string
 	__prop___on0 func(string)
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
 	__n0         *fynelayout.Select
 }
 
@@ -210,18 +252,17 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___on0 func(string)
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	__n3 := fynelayout.NewVBox()
 	c.__n0 = fynelayout.NewSelect(nil, nil)
 	c.__n0.SetOptions(func() []string {
-		__out := make([]string, len([]Choice__record{Choice__record{Label: "a"}}))
-		for __i, __item := range []Choice__record{Choice__record{Label: "a"}} {
-			__out[__i] = func(o Choice__record) string { return o.Label }(__item)
+		__out := make([]string, len([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}))
+		for __i, __item := range []Choice__record__string{Choice__record__string{Label: "a", Value: "a"}} {
+			__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
 		}
 		return __out
 	}())
-	if c.__n0.Selected != c.__prop___p0 {
-		c.__n0.SetSelected(c.__prop___p0)
+	if c.__n0.Selected != ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, c.__prop___p0) {
+		c.__n0.SetSelected(ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, c.__prop___p0))
 	}
 	c.__n0.OnChanged = func(__on0_0 string) {
 		c.__prop___on0(__on0_0)
@@ -242,8 +283,8 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___on0 func(string)
 
 func (c *__child0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	if c.__n0.Selected != c.__prop___p0 {
-		c.__n0.SetSelected(c.__prop___p0)
+	if c.__n0.Selected != ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, c.__prop___p0) {
+		c.__n0.SetSelected(ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, c.__prop___p0))
 	}
 }
 
@@ -262,4 +303,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:43b463776cbda3b5401c6e0fc59f7078
+pass sha256:df6cc1071c4df70ade3528618fc1e9d2

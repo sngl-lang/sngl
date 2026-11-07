@@ -28,6 +28,7 @@ func Ctors() map[string]any {
 		"duckfam.us/sngl/pkg/go/fynelayout.NewCheck":          fynelayout.NewCheck,
 		"duckfam.us/sngl/pkg/go/fynelayout.NewDateEntry":      fynelayout.NewDateEntry,
 		"duckfam.us/sngl/pkg/go/fynelayout.NewEntry":          fynelayout.NewEntry,
+		"duckfam.us/sngl/pkg/go/fynelayout.NewGrid":           fynelayout.NewGrid,
 		"duckfam.us/sngl/pkg/go/fynelayout.NewHBox":           fynelayout.NewHBox,
 		"duckfam.us/sngl/pkg/go/fynelayout.NewHyperlink":      fynelayout.NewHyperlink,
 		"duckfam.us/sngl/pkg/go/fynelayout.NewImage":          fynelayout.NewImage,

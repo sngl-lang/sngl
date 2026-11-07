@@ -216,12 +216,28 @@ func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component, inLoop, inBr
 		return nil, fmt.Errorf("%s: %s is given content and leaves :%s unbound, which is not supported yet; bind :%s", nodePos(n), comp.DisplayName(), unbound[0].Name, unbound[0].Name)
 	}
 
-	// The wrapper is no generic: what it declares is at the types the call
-	// site bound.
-	bound := ir.ComponentBindings(n)
+	// What the wrapper declares is at the types the call site bound. Where
+	// the call site is in a generic component and bound one of comp's
+	// parameters to one of its owner's -- `async.query(fetch=fetch)` in a
+	// component over T -- the wrapper is generic in the owner's parameters,
+	// and its instantiation binds each to itself, so a splice of the owner at
+	// its types binds the wrapper's too.
+	bound := st.siteBindings(n)
 	w := &ir.Component{
 		Name:   "__" + identSafe(comp.Name) + "_state" + strconv.Itoa(len(st.made)),
 		Family: wrapperFamily(comp, bound, hosted),
+	}
+	var typeArgs []*ir.Type
+	if st.owner != nil && len(st.owner.TypeParams) > 0 && slices.ContainsFunc(n.TypeArgs, func(t *ir.Type) bool { return t != nil && t.HasTypeParam() }) {
+		w.TypeParams = st.owner.TypeParams
+		for _, tp := range st.owner.TypeParams {
+			typeArgs = append(typeArgs, &ir.Type{Kind: ir.TypeTypeParam, ParamName: tp.Name})
+		}
+		if w.Family == nil && comp.FamilyParam != nil {
+			if f := comp.FamilyParam.Substitute(bound); f != nil && f.Kind == ir.TypeTypeParam {
+				w.FamilyParam = f
+			}
+		}
 	}
 	st.made = append(st.made, w)
 
@@ -376,14 +392,44 @@ func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component, inLoop, inBr
 		AST:       n.AST,
 		Name:      w.Name,
 		Component: w,
+		TypeArgs:  typeArgs,
 		Props:     site,
 		Bindings:  n.Bindings,
 		Handlers:  n.Handlers,
 		Children:  n.Children,
 		Slots:     n.Slots,
+		Wraps:     n.Handle,
 		Key:       n.Key,
 		Ref:       n.Ref,
 	}, nil
+}
+
+// siteBindings is what n's call site bound each of its component's type
+// parameters to, a parameter of the owner included, which
+// ir.ComponentBindings leaves out: bound to the owner's T, the query's own T
+// stood in the cell's type, a parameter no splice binds.
+func (st *implicitState) siteBindings(n *ir.NodeInst) map[string]*ir.Type {
+	if st.owner == nil || len(st.owner.TypeParams) == 0 || len(n.TypeArgs) != len(n.Component.TypeParams) {
+		return ir.ComponentBindings(n)
+	}
+	b := map[string]*ir.Type{}
+	for i, tp := range n.Component.TypeParams {
+		if t := n.TypeArgs[i]; t != nil {
+			b[tp.Name] = t
+		}
+	}
+	return b
+}
+
+// wrappedNode is the node the wrapper n instantiates renders, nil where n is no
+// wrapper's: the one statement of the wrapper's body, which carries the handle
+// the call site wrote (Wraps).
+func wrappedNode(n *ir.NodeInst) *ir.NodeInst {
+	if n.Wraps == nil || n.Component == nil || len(n.Component.Stmts) != 1 {
+		return nil
+	}
+	inner, _ := n.Component.Stmts[0].(*ir.NodeInst)
+	return inner
 }
 
 // cellStartProp is the wrapper's prop carrying where the cell for prop starts.
@@ -568,13 +614,18 @@ func cellReadError(w *ir.Component, v *ir.Var, copies int) error {
 // component built at run time splices the node into its own body, and spliced
 // whole elsewhere it carries a copy of that clone to the owner it lands in.
 //
-// What no splice answered is refused by refuseUnsplicedHandleCalls, once the
-// components nothing renders are gone.
-func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.Func, owner map[*ir.Func]*[]*ir.Func) error {
+// A call no owner told apart is answered with the error it would be, and
+// refused by refuseAmbiguousHandleCalls only where it survives the components
+// nothing renders: a component spliced wherever it is written keeps its own
+// body until then, and a node under a reactive `if` in it -- built at run
+// time, its methods hoisted onto the instance's state -- has a clone in no
+// owner that body is. What no splice answered is refused by
+// refuseUnsplicedHandleCalls, at the same point.
+func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.Func, owner map[*ir.Func]*[]*ir.Func) map[*ir.Call]error {
 	if len(methods) == 0 {
 		return nil
 	}
-	var bad error
+	ambiguous := map[*ir.Call]error{}
 	repoint := func(root any, funcs *[]*ir.Func) {
 		_ = ir.Rewrite(root, func(n ir.Node) (ir.Node, error) {
 			call, ok := n.(*ir.Call)
@@ -600,8 +651,8 @@ func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.
 			switch {
 			case len(clones) == 1:
 				pointCallAt(call, clones[0], asArg)
-			case len(clones) > 1 && bad == nil && funcs == nil:
-				bad = fmt.Errorf("%s: `#%s` is rendered more than once, so a call of its %s cannot say which copy it means; give each copy its own id", handleCallPos(call), h.WrittenName(), call.Func.Name)
+			case len(clones) > 1 && funcs == nil:
+				ambiguous[call] = fmt.Errorf("%s: `#%s` is rendered more than once, so a call of its %s cannot say which copy it means; give each copy its own id", handleCallPos(call), h.WrittenName(), call.Func.Name)
 			}
 			return n, nil
 		})
@@ -623,6 +674,22 @@ func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.
 		}
 	}
 	repoint(pkg, nil)
+	return ambiguous
+}
+
+// refuseAmbiguousHandleCalls reports the first call repointHandleCalls could
+// not tell apart that the package still holds.
+func refuseAmbiguousHandleCalls(pkg *ir.Package, ambiguous map[*ir.Call]error) error {
+	if len(ambiguous) == 0 {
+		return nil
+	}
+	var bad error
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if call, ok := n.(*ir.Call); ok && bad == nil {
+			bad = ambiguous[call]
+		}
+		return nil
+	})
 	return bad
 }
 

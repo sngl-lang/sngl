@@ -99,8 +99,8 @@ window {
         popover(open=shown) { button(text="trigger") }
         table(columns=["Name"], selectable=true) { tableRow(cells=["Ada"]) }
         tree { treeItem(label="root") { treeItem(label="leaf") } }
-        radio { choice(label="a") }
-        select { choice(label="b") }
+        radio { choice(label="a", value="a") }
+        select { choice(label="b", value="b") }
         menubar { menuItem(label="File") }
         menu(open=shown) { menuItem(label="Open") }
         toolbar { button(text="tool") }

@@ -152,26 +152,14 @@ func (m Model) entry() lookup.Entry {
 	return lookup.Resolve(m.path, m.ident1, m.ident2)
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
-}
-
-func CellsOf(m__r1 *Measurement) int {
-	var px float64 = PxOf(m__r1)
-	var __lt4 int
-	if px <= 0.0 {
-		__lt4 = 0
-	} else {
-		__lt4 = max(1, (int(px) / 8))
-	}
-	return __lt4
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -199,26 +187,26 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	var __lt5 bool
+	var __lt4 bool
 	if s.BorderWidth != nil {
-		__lt5 = (PxOf(s.BorderWidth) > 0.0)
+		__lt4 = (PxOf(s.BorderWidth) > 0.0)
 	} else {
-		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+		__lt4 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
 	}
-	if __lt5 {
+	if __lt4 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -229,89 +217,111 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt6 int
+		var __lt5 int
 		if s.MaxLines == nil {
-			__lt6 = 0
+			__lt5 = 0
 		} else {
-			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt5 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
 	}
 	return l
 }
 
-func PxOf(m__r2 *Measurement) float64 {
-	var __lt8 float64
-	if m__r2 == nil {
-		__lt8 = 0.0
+func PxOf(m__r1 *Measurement) float64 {
+	var __lt7 float64
+	if m__r1 == nil {
+		__lt7 = 0.0
 	} else {
-		__lt8 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+		__lt7 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+	}
+	return __lt7
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt8 lipgloss.Position
+	switch a {
+	case "center":
+		__lt8 = lipgloss.Center
+	case "right":
+		__lt8 = lipgloss.Right
+	default:
+		__lt8 = lipgloss.Left
 	}
 	return __lt8
 }
 
-func AlignOf(a string) lipgloss.Position {
-	var __lt9 lipgloss.Position
-	switch a {
-	case "center":
-		__lt9 = lipgloss.Center
-	case "right":
-		__lt9 = lipgloss.Right
+func BorderOf(s Style) lipgloss.Border {
+	var __lt9 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt9 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt9 = tui.DashedBorder()
 	default:
-		__lt9 = lipgloss.Left
+		var __lt10 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt10 = lipgloss.RoundedBorder()
+		} else {
+			__lt10 = lipgloss.NormalBorder()
+		}
+		__lt9 = __lt10
 	}
 	return __lt9
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt10 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt10 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt10 = tui.DashedBorder()
-	default:
-		var __lt11 lipgloss.Border
-		if s.BorderRadius != nil {
-			__lt11 = lipgloss.RoundedBorder()
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
+	var __lt12 *Measurement
+	if own != nil {
+		__lt12 = own
+	} else {
+		var __lt11 *Measurement
+		if axis != nil {
+			__lt11 = axis
 		} else {
-			__lt11 = lipgloss.NormalBorder()
+			__lt11 = all
 		}
-		__lt10 = __lt11
+		__lt12 = __lt11
 	}
-	return __lt10
+	return SpaceOf(__lt12, across)
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt13 *Measurement
-	if own != nil {
-		__lt13 = own
+func CellsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt13 int
+	if px <= 0.0 {
+		__lt13 = 0
 	} else {
-		var __lt12 *Measurement
-		if axis != nil {
-			__lt12 = axis
-		} else {
-			__lt12 = all
-		}
-		__lt13 = __lt12
+		__lt13 = max(1, (int(px) / 8))
 	}
-	return CellsOf(__lt13)
+	return __lt13
+}
+
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
+	} else {
+		__lt14 = max(1, (int(px) / 16))
+	}
+	return __lt14
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
+	var __lt16 int
 	if height__r0 == 0 {
-		__lt15 = lines
+		__lt16 = lines
 	} else {
-		var __lt14 int
+		var __lt15 int
 		if lines == 0 {
-			__lt14 = height__r0
+			__lt15 = height__r0
 		} else {
-			__lt14 = min(height__r0, lines)
+			__lt15 = min(height__r0, lines)
 		}
-		__lt15 = __lt14
+		__lt16 = __lt15
 	}
-	return __lt15
+	return __lt16
 }
 
 func (m *Model) __focusNext() {
@@ -527,6 +537,8 @@ func (m Model) View() tea.View {
 	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
+		contentLook := BoxLook(Style{Padding: snglSome(Measurement{Px: 1}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
+		contentW, _ := tui.Inner(contentLook, tui.Avail(m.width), m.height)
 		var contentChildren []string
 		var content_0 string
 		var content_0Children []string
@@ -542,16 +554,18 @@ func (m Model) View() tea.View {
 		content_0_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(m.widget2.View())
 		content_0_2 = m.__clicks.Mark(snglStop{slot: 2, pos: 0, press: false, key: tea.KeyPressMsg{}}, content_0_2)
 		content_0Children = append(content_0Children, content_0_2)
-		content_0 = tui.Spaced(true, lipgloss.Top, 1, content_0Children...)
+		content_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_0Children...)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		if !m.entry().Found && (m.entry().Error != "") {
 			var content_1Children []string
 			var content_1_0 string
-			content_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Not found"))
+			content_1_0Text := fmt.Sprint("Not found")
+			content_1_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_1_0Text).Render(content_1_0Text)
 			content_1Children = append(content_1Children, content_1_0)
 			var content_1_1 string
-			content_1_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().Error))
+			content_1_1Text := fmt.Sprint(m.entry().Error)
+			content_1_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_1_1Text).Render(content_1_1Text)
 			content_1Children = append(content_1Children, content_1_1)
 			content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
 		}
@@ -562,30 +576,36 @@ func (m Model) View() tea.View {
 		if m.entry().Kind == "index" {
 			var content_2Children []string
 			var content_2_0 string
-			content_2_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().Index.Title))
+			content_2_0Text := fmt.Sprint(m.entry().Index.Title)
+			content_2_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_0Text).Render(content_2_0Text)
 			content_2Children = append(content_2Children, content_2_0)
 			var content_2_1 string
-			content_2_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 170, G: 170, B: 170, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().Index.Description))
+			content_2_1Text := fmt.Sprint(m.entry().Index.Description)
+			content_2_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 170, G: 170, B: 170, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_1Text).Render(content_2_1Text)
 			content_2Children = append(content_2Children, content_2_1)
 			var content_2_2 string
 			if m.entry().Index.IsNative && (m.entry().Index.NativeImportPath != "") {
-				content_2_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontFamily: "monospace", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("Import: " + m.entry().Index.NativeImportPath)))
+				content_2_2Text := fmt.Sprint(("Import: " + m.entry().Index.NativeImportPath))
+				content_2_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontFamily: "monospace", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_2Text).Render(content_2_2Text)
 			}
 			if content_2_2 != "" {
 				content_2Children = append(content_2Children, content_2_2)
 			}
 			var content_2_3 string
-			content_2_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(""))
+			content_2_3Text := fmt.Sprint("")
+			content_2_3 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_3Text).Render(content_2_3Text)
 			content_2Children = append(content_2Children, content_2_3)
 			var content_2_4 string
-			content_2_4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("COMPONENTS"))
+			content_2_4Text := fmt.Sprint("COMPONENTS")
+			content_2_4 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_4Text).Render(content_2_4Text)
 			content_2Children = append(content_2Children, content_2_4)
 			var content_2_5 string
 			var content_2_5Items []string
 			for _, c := range m.entry().Index.Components {
 				_ = c
 				var content_2_5Item string
-				content_2_5Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("  " + c.Name) + " — ") + c.Doc)))
+				content_2_5ItemText := fmt.Sprint(((("  " + c.Name) + " — ") + c.Doc))
+				content_2_5Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_5ItemText).Render(content_2_5ItemText)
 				content_2_5Items = append(content_2_5Items, content_2_5Item)
 			}
 			content_2_5 = tui.Spaced(false, lipgloss.Left, 0, content_2_5Items...)
@@ -593,17 +613,20 @@ func (m Model) View() tea.View {
 				content_2Children = append(content_2Children, content_2_5)
 			}
 			var content_2_6 string
-			content_2_6 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(""))
+			content_2_6Text := fmt.Sprint("")
+			content_2_6 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_6Text).Render(content_2_6Text)
 			content_2Children = append(content_2Children, content_2_6)
 			var content_2_7 string
-			content_2_7 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("TYPES"))
+			content_2_7Text := fmt.Sprint("TYPES")
+			content_2_7 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_7Text).Render(content_2_7Text)
 			content_2Children = append(content_2Children, content_2_7)
 			var content_2_8 string
 			var content_2_8Items []string
 			for _, t__r0 := range m.entry().Index.Types {
 				_ = t__r0
 				var content_2_8Item string
-				content_2_8Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("  " + t__r0.Name) + " — ") + t__r0.Doc)))
+				content_2_8ItemText := fmt.Sprint(((("  " + t__r0.Name) + " — ") + t__r0.Doc))
+				content_2_8Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_8ItemText).Render(content_2_8ItemText)
 				content_2_8Items = append(content_2_8Items, content_2_8Item)
 			}
 			content_2_8 = tui.Spaced(false, lipgloss.Left, 0, content_2_8Items...)
@@ -611,17 +634,20 @@ func (m Model) View() tea.View {
 				content_2Children = append(content_2Children, content_2_8)
 			}
 			var content_2_9 string
-			content_2_9 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(""))
+			content_2_9Text := fmt.Sprint("")
+			content_2_9 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_9Text).Render(content_2_9Text)
 			content_2Children = append(content_2Children, content_2_9)
 			var content_2_10 string
-			content_2_10 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("ENUMS"))
+			content_2_10Text := fmt.Sprint("ENUMS")
+			content_2_10 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_10Text).Render(content_2_10Text)
 			content_2Children = append(content_2Children, content_2_10)
 			var content_2_11 string
 			var content_2_11Items []string
 			for _, e := range m.entry().Index.Enums {
 				_ = e
 				var content_2_11Item string
-				content_2_11Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("  " + e.Name) + " — ") + e.Doc)))
+				content_2_11ItemText := fmt.Sprint(((("  " + e.Name) + " — ") + e.Doc))
+				content_2_11Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_11ItemText).Render(content_2_11ItemText)
 				content_2_11Items = append(content_2_11Items, content_2_11Item)
 			}
 			content_2_11 = tui.Spaced(false, lipgloss.Left, 0, content_2_11Items...)
@@ -629,17 +655,20 @@ func (m Model) View() tea.View {
 				content_2Children = append(content_2Children, content_2_11)
 			}
 			var content_2_12 string
-			content_2_12 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(""))
+			content_2_12Text := fmt.Sprint("")
+			content_2_12 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_12Text).Render(content_2_12Text)
 			content_2Children = append(content_2Children, content_2_12)
 			var content_2_13 string
-			content_2_13 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("FUNCTIONS"))
+			content_2_13Text := fmt.Sprint("FUNCTIONS")
+			content_2_13 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_13Text).Render(content_2_13Text)
 			content_2Children = append(content_2Children, content_2_13)
 			var content_2_14 string
 			var content_2_14Items []string
 			for _, f := range m.entry().Index.Functions {
 				_ = f
 				var content_2_14Item string
-				content_2_14Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("  " + f.Name) + " — ") + f.Doc)))
+				content_2_14ItemText := fmt.Sprint(((("  " + f.Name) + " — ") + f.Doc))
+				content_2_14Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_14ItemText).Render(content_2_14ItemText)
 				content_2_14Items = append(content_2_14Items, content_2_14Item)
 			}
 			content_2_14 = tui.Spaced(false, lipgloss.Left, 0, content_2_14Items...)
@@ -647,17 +676,20 @@ func (m Model) View() tea.View {
 				content_2Children = append(content_2Children, content_2_14)
 			}
 			var content_2_15 string
-			content_2_15 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(""))
+			content_2_15Text := fmt.Sprint("")
+			content_2_15 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_15Text).Render(content_2_15Text)
 			content_2Children = append(content_2Children, content_2_15)
 			var content_2_16 string
-			content_2_16 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("CONSTANTS"))
+			content_2_16Text := fmt.Sprint("CONSTANTS")
+			content_2_16 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_16Text).Render(content_2_16Text)
 			content_2Children = append(content_2Children, content_2_16)
 			var content_2_17 string
 			var content_2_17Items []string
 			for _, c := range m.entry().Index.Constants {
 				_ = c
 				var content_2_17Item string
-				content_2_17Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("  " + c.Name) + " — ") + c.Doc)))
+				content_2_17ItemText := fmt.Sprint(((("  " + c.Name) + " — ") + c.Doc))
+				content_2_17Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_17ItemText).Render(content_2_17ItemText)
 				content_2_17Items = append(content_2_17Items, content_2_17Item)
 			}
 			content_2_17 = tui.Spaced(false, lipgloss.Left, 0, content_2_17Items...)
@@ -665,17 +697,20 @@ func (m Model) View() tea.View {
 				content_2Children = append(content_2Children, content_2_17)
 			}
 			var content_2_18 string
-			content_2_18 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(""))
+			content_2_18Text := fmt.Sprint("")
+			content_2_18 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_18Text).Render(content_2_18Text)
 			content_2Children = append(content_2Children, content_2_18)
 			var content_2_19 string
-			content_2_19 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("DATA"))
+			content_2_19Text := fmt.Sprint("DATA")
+			content_2_19 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_19Text).Render(content_2_19Text)
 			content_2Children = append(content_2Children, content_2_19)
 			var content_2_20 string
 			var content_2_20Items []string
 			for _, d := range m.entry().Index.Data {
 				_ = d
 				var content_2_20Item string
-				content_2_20Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("  " + d.Name) + " — ") + d.Doc)))
+				content_2_20ItemText := fmt.Sprint(((("  " + d.Name) + " — ") + d.Doc))
+				content_2_20Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_2_20ItemText).Render(content_2_20ItemText)
 				content_2_20Items = append(content_2_20Items, content_2_20Item)
 			}
 			content_2_20 = tui.Spaced(false, lipgloss.Left, 0, content_2_20Items...)
@@ -691,20 +726,24 @@ func (m Model) View() tea.View {
 		if m.entry().Kind == "component" {
 			var content_3Children []string
 			var content_3_0 string
-			content_3_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().ComponentDoc.Name))
+			content_3_0Text := fmt.Sprint(m.entry().ComponentDoc.Name)
+			content_3_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_3_0Text).Render(content_3_0Text)
 			content_3Children = append(content_3Children, content_3_0)
 			var content_3_1 string
-			content_3_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().ComponentDoc.Doc))
+			content_3_1Text := fmt.Sprint(m.entry().ComponentDoc.Doc)
+			content_3_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_3_1Text).Render(content_3_1Text)
 			content_3Children = append(content_3Children, content_3_1)
 			var content_3_2 string
-			content_3_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("PROPS"))
+			content_3_2Text := fmt.Sprint("PROPS")
+			content_3_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_3_2Text).Render(content_3_2Text)
 			content_3Children = append(content_3Children, content_3_2)
 			var content_3_3 string
 			var content_3_3Items []string
 			for _, p := range m.entry().ComponentDoc.Props {
 				_ = p
 				var content_3_3Item string
-				content_3_3Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((((("  " + p.Name) + "  ") + p.Type) + "  ") + p.Doc)))
+				content_3_3ItemText := fmt.Sprint(((((("  " + p.Name) + "  ") + p.Type) + "  ") + p.Doc))
+				content_3_3Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_3_3ItemText).Render(content_3_3ItemText)
 				content_3_3Items = append(content_3_3Items, content_3_3Item)
 			}
 			content_3_3 = tui.Spaced(false, lipgloss.Left, 0, content_3_3Items...)
@@ -712,14 +751,16 @@ func (m Model) View() tea.View {
 				content_3Children = append(content_3Children, content_3_3)
 			}
 			var content_3_4 string
-			content_3_4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("SLOTS"))
+			content_3_4Text := fmt.Sprint("SLOTS")
+			content_3_4 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_3_4Text).Render(content_3_4Text)
 			content_3Children = append(content_3Children, content_3_4)
 			var content_3_5 string
 			var content_3_5Items []string
 			for _, sl := range m.entry().ComponentDoc.Slots {
 				_ = sl
 				var content_3_5Item string
-				content_3_5Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((((("  " + sl.Name) + "  ") + sl.Type) + "  ") + sl.Doc)))
+				content_3_5ItemText := fmt.Sprint(((((("  " + sl.Name) + "  ") + sl.Type) + "  ") + sl.Doc))
+				content_3_5Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_3_5ItemText).Render(content_3_5ItemText)
 				content_3_5Items = append(content_3_5Items, content_3_5Item)
 			}
 			content_3_5 = tui.Spaced(false, lipgloss.Left, 0, content_3_5Items...)
@@ -727,14 +768,16 @@ func (m Model) View() tea.View {
 				content_3Children = append(content_3Children, content_3_5)
 			}
 			var content_3_6 string
-			content_3_6 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("EVENTS"))
+			content_3_6Text := fmt.Sprint("EVENTS")
+			content_3_6 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_3_6Text).Render(content_3_6Text)
 			content_3Children = append(content_3Children, content_3_6)
 			var content_3_7 string
 			var content_3_7Items []string
 			for _, e := range m.entry().ComponentDoc.Events {
 				_ = e
 				var content_3_7Item string
-				content_3_7Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((((("  @" + e.Name) + "  ") + e.Payload) + "  ") + e.Doc)))
+				content_3_7ItemText := fmt.Sprint(((((("  @" + e.Name) + "  ") + e.Payload) + "  ") + e.Doc))
+				content_3_7Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_3_7ItemText).Render(content_3_7ItemText)
 				content_3_7Items = append(content_3_7Items, content_3_7Item)
 			}
 			content_3_7 = tui.Spaced(false, lipgloss.Left, 0, content_3_7Items...)
@@ -750,20 +793,24 @@ func (m Model) View() tea.View {
 		if m.entry().Kind == "type" {
 			var content_4Children []string
 			var content_4_0 string
-			content_4_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().TypeDoc.Name))
+			content_4_0Text := fmt.Sprint(m.entry().TypeDoc.Name)
+			content_4_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_4_0Text).Render(content_4_0Text)
 			content_4Children = append(content_4Children, content_4_0)
 			var content_4_1 string
-			content_4_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().TypeDoc.Doc))
+			content_4_1Text := fmt.Sprint(m.entry().TypeDoc.Doc)
+			content_4_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_4_1Text).Render(content_4_1Text)
 			content_4Children = append(content_4Children, content_4_1)
 			var content_4_2 string
-			content_4_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("FIELDS"))
+			content_4_2Text := fmt.Sprint("FIELDS")
+			content_4_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_4_2Text).Render(content_4_2Text)
 			content_4Children = append(content_4Children, content_4_2)
 			var content_4_3 string
 			var content_4_3Items []string
 			for _, f := range m.entry().TypeDoc.Fields {
 				_ = f
 				var content_4_3Item string
-				content_4_3Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("  " + f.Name) + "  ") + f.Type)))
+				content_4_3ItemText := fmt.Sprint(((("  " + f.Name) + "  ") + f.Type))
+				content_4_3Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_4_3ItemText).Render(content_4_3ItemText)
 				content_4_3Items = append(content_4_3Items, content_4_3Item)
 			}
 			content_4_3 = tui.Spaced(false, lipgloss.Left, 0, content_4_3Items...)
@@ -771,14 +818,16 @@ func (m Model) View() tea.View {
 				content_4Children = append(content_4Children, content_4_3)
 			}
 			var content_4_4 string
-			content_4_4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("METHODS"))
+			content_4_4Text := fmt.Sprint("METHODS")
+			content_4_4 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_4_4Text).Render(content_4_4Text)
 			content_4Children = append(content_4Children, content_4_4)
 			var content_4_5 string
 			var content_4_5Items []string
-			for _, m__r3 := range m.entry().TypeDoc.Methods {
-				_ = m__r3
+			for _, m__r4 := range m.entry().TypeDoc.Methods {
+				_ = m__r4
 				var content_4_5Item string
-				content_4_5Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("  ." + m__r3.Short) + "  ") + m__r3.Doc)))
+				content_4_5ItemText := fmt.Sprint(((("  ." + m__r4.Short) + "  ") + m__r4.Doc))
+				content_4_5Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_4_5ItemText).Render(content_4_5ItemText)
 				content_4_5Items = append(content_4_5Items, content_4_5Item)
 			}
 			content_4_5 = tui.Spaced(false, lipgloss.Left, 0, content_4_5Items...)
@@ -794,17 +843,20 @@ func (m Model) View() tea.View {
 		if m.entry().Kind == "enum" {
 			var content_5Children []string
 			var content_5_0 string
-			content_5_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().EnumDoc.Name))
+			content_5_0Text := fmt.Sprint(m.entry().EnumDoc.Name)
+			content_5_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_5_0Text).Render(content_5_0Text)
 			content_5Children = append(content_5Children, content_5_0)
 			var content_5_1 string
-			content_5_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().EnumDoc.Doc))
+			content_5_1Text := fmt.Sprint(m.entry().EnumDoc.Doc)
+			content_5_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_5_1Text).Render(content_5_1Text)
 			content_5Children = append(content_5Children, content_5_1)
 			var content_5_2 string
 			var content_5_2Items []string
-			for _, m__r4 := range m.entry().EnumDoc.Members {
-				_ = m__r4
+			for _, m__r5 := range m.entry().EnumDoc.Members {
+				_ = m__r5
 				var content_5_2Item string
-				content_5_2Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("  • " + m__r4.Name)))
+				content_5_2ItemText := fmt.Sprint(("  • " + m__r5.Name))
+				content_5_2Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_5_2ItemText).Render(content_5_2ItemText)
 				content_5_2Items = append(content_5_2Items, content_5_2Item)
 			}
 			content_5_2 = tui.Spaced(false, lipgloss.Left, 0, content_5_2Items...)
@@ -820,13 +872,16 @@ func (m Model) View() tea.View {
 		if m.entry().Kind == "func" {
 			var content_6Children []string
 			var content_6_0 string
-			content_6_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().FuncDoc.Name))
+			content_6_0Text := fmt.Sprint(m.entry().FuncDoc.Name)
+			content_6_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_6_0Text).Render(content_6_0Text)
 			content_6Children = append(content_6Children, content_6_0)
 			var content_6_1 string
-			content_6_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontFamily: "monospace", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().FuncDoc.Signature))
+			content_6_1Text := fmt.Sprint(m.entry().FuncDoc.Signature)
+			content_6_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontFamily: "monospace", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_6_1Text).Render(content_6_1Text)
 			content_6Children = append(content_6Children, content_6_1)
 			var content_6_2 string
-			content_6_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().FuncDoc.Doc))
+			content_6_2Text := fmt.Sprint(m.entry().FuncDoc.Doc)
+			content_6_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_6_2Text).Render(content_6_2Text)
 			content_6Children = append(content_6Children, content_6_2)
 			content_6 = lipgloss.JoinVertical(lipgloss.Left, content_6Children...)
 		}
@@ -837,13 +892,16 @@ func (m Model) View() tea.View {
 		if m.entry().Kind == "value" {
 			var content_7Children []string
 			var content_7_0 string
-			content_7_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().ValueDoc.Name))
+			content_7_0Text := fmt.Sprint(m.entry().ValueDoc.Name)
+			content_7_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_7_0Text).Render(content_7_0Text)
 			content_7Children = append(content_7Children, content_7_0)
 			var content_7_1 string
-			content_7_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().ValueDoc.Type))
+			content_7_1Text := fmt.Sprint(m.entry().ValueDoc.Type)
+			content_7_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 136, G: 136, B: 136, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_7_1Text).Render(content_7_1Text)
 			content_7Children = append(content_7Children, content_7_1)
 			var content_7_2 string
-			content_7_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().ValueDoc.Doc))
+			content_7_2Text := fmt.Sprint(m.entry().ValueDoc.Doc)
+			content_7_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_7_2Text).Render(content_7_2Text)
 			content_7Children = append(content_7Children, content_7_2)
 			content_7 = lipgloss.JoinVertical(lipgloss.Left, content_7Children...)
 		}
@@ -854,13 +912,16 @@ func (m Model) View() tea.View {
 		if m.entry().Kind == "prop" {
 			var content_8Children []string
 			var content_8_0 string
-			content_8_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((m.entry().PropDoc.ComponentName + ".") + m.entry().PropDoc.Name)))
+			content_8_0Text := fmt.Sprint(((m.entry().PropDoc.ComponentName + ".") + m.entry().PropDoc.Name))
+			content_8_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_8_0Text).Render(content_8_0Text)
 			content_8Children = append(content_8Children, content_8_0)
 			var content_8_1 string
-			content_8_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().PropDoc.Type))
+			content_8_1Text := fmt.Sprint(m.entry().PropDoc.Type)
+			content_8_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_8_1Text).Render(content_8_1Text)
 			content_8Children = append(content_8Children, content_8_1)
 			var content_8_2 string
-			content_8_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().PropDoc.Doc))
+			content_8_2Text := fmt.Sprint(m.entry().PropDoc.Doc)
+			content_8_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_8_2Text).Render(content_8_2Text)
 			content_8Children = append(content_8Children, content_8_2)
 			content_8 = lipgloss.JoinVertical(lipgloss.Left, content_8Children...)
 		}
@@ -871,10 +932,12 @@ func (m Model) View() tea.View {
 		if m.entry().Kind == "field" {
 			var content_9Children []string
 			var content_9_0 string
-			content_9_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((m.entry().FieldDoc.Type + ".") + m.entry().FieldDoc.Name)))
+			content_9_0Text := fmt.Sprint(((m.entry().FieldDoc.Type + ".") + m.entry().FieldDoc.Name))
+			content_9_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_9_0Text).Render(content_9_0Text)
 			content_9Children = append(content_9Children, content_9_0)
 			var content_9_1 string
-			content_9_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().FieldDoc.Expr))
+			content_9_1Text := fmt.Sprint(m.entry().FieldDoc.Expr)
+			content_9_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_9_1Text).Render(content_9_1Text)
 			content_9Children = append(content_9Children, content_9_1)
 			content_9 = lipgloss.JoinVertical(lipgloss.Left, content_9Children...)
 		}
@@ -885,10 +948,12 @@ func (m Model) View() tea.View {
 		if m.entry().Kind == "member" {
 			var content_10Children []string
 			var content_10_0 string
-			content_10_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((m.entry().MemberDoc.EnumName + ".") + m.entry().MemberDoc.Name)))
+			content_10_0Text := fmt.Sprint(((m.entry().MemberDoc.EnumName + ".") + m.entry().MemberDoc.Name))
+			content_10_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_10_0Text).Render(content_10_0Text)
 			content_10Children = append(content_10Children, content_10_0)
 			var content_10_1 string
-			content_10_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entry().MemberDoc.Doc))
+			content_10_1Text := fmt.Sprint(m.entry().MemberDoc.Doc)
+			content_10_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_10_1Text).Render(content_10_1Text)
 			content_10Children = append(content_10Children, content_10_1)
 			content_10 = lipgloss.JoinVertical(lipgloss.Left, content_10Children...)
 		}
@@ -896,7 +961,7 @@ func (m Model) View() tea.View {
 			contentChildren = append(contentChildren, content_10)
 		}
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{Padding: snglSome(Measurement{Px: 1}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
+		content = tui.Paint(contentLook, content)
 	}
 	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)

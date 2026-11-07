@@ -48,6 +48,21 @@ translation folds to what it sets. `flex` is read by the parent: a context
 on android, the Layout on bubbletea, the Box on fyne, the box the widget lands
 in on gtk4, CSS on html.
 
+**A grid is a box each target lays out a row at a time**, its children the
+box's own, so a loop's copies and a render slot's come and go as in an
+`hbox`: CSS's grid of `minmax(0, 1fr)` tracks, or a wrapping flex row, on
+html; a GtkBox under gtk4rt's custom layout (`sngl_grid_measure`), since
+GtkFlowBox wraps each child in one of its own that a slot's anchor is no
+sibling of; `fynelayout.Grid`; `SnglGrid` on android (`grid.kt`), since
+FlowRow's equal columns are weights a short last row stretches across; and
+`tui.Grid` on bubbletea, where a grid's Layout makes each node of a loop or
+a branch a cell (`irViewContext.cells`) and the box it is in learns its
+width as it does for a growing child (`gridded`). A flow's height is its
+width's to say; GTK and Compose measure height for width, and fyne, which
+asks a minimum before it gives one, takes the rows of the width it last laid
+out at and refreshes where that changes. `cmd/sngl/testdata/grid_runs.txt`
+pins every target.
+
 **A literal Style is translated at run time on bubbletea and android**
 (`BoxLook(Style{…}, true)`, `styleModifier(Style(…), true)`), and stays so.
 fyne's and gtk4's `lookOf` build a host record or CSS text in plain SNGL,
@@ -76,7 +91,7 @@ target with no way to say a field is meant for one.
 
 - **html** — two modes selected by `--lang`. Every element's `style` is the `list[Declaration]` `css` answers for a Style, so an override writes `style=css({…, ...style})` and a program writing a raw element writes `style=html.css({…})`; the fold reduces each declaration the build can read to text in the markup, and one only the page knows is a `setProperty`, grouped so a shorthand written empty clears no longhand set beside it (`_snglSetStyles`). A side is a longhand of its own, the first of its own field, its axis's and the whole's that is set, so a whole the page writes leaves a side the build wrote where it was (`cmd/sngl/testdata/style_side_zero_runs.txt`'s `kept`); written as the `padding` shorthand after the side's static attribute, each write reset it. A node's updaters run after a handler only where the lowering wrote none into it: NoReactivity writes every reader after each write, a node carrying the program's own `#id` included, which html once took for a node it had not lowered and updated twice (`inlineUpdated`, `testdata/html_handler_updates_named_node_once.txtar`). Its overrides of `ui.badge`, `ui.chip` and `ui.avatar` render what sngl:ui's bodies do and carry `sngl-<name>` classes, with a modifier per choice (`sngl-badge-success`, `sngl-avatar-large`), so a page's stylesheet reaches every one: A constant loop's copies of a node carrying an `#id` are elements of their own, each with its own variable (`nodeID`, `testdata/html_loop_node_id.txtar`). A window's `@key` is a `sngl-keys` element the override puts after its content, listening for a keydown in the capture phase on its `<dialog>` or, for the document, on the document, so it hears each key before the element with the focus does, and dispatching it as a cancelable `key` event whose fields are the KeyPress; `stop` cancels that event, and the element then prevents and stops the keydown and the keyup after it, since a button the space bar presses clicks as the key comes up and a card clicks in its own keydown listener (`TestWindow_HearsAKeyBeforeTheFocusedButton`). A key pressed in a `<dialog>` is that window's alone: html's dialogs are not modal, so the window with the focus hears the keyboard. A key composing in an input method, a modifier alone and a key lib/ui has no name for pass untouched, and a window whose call site handles none has the element pruned (`codegen/platform/html/keys.go`). A test's `c.<id>.key(press, stop)` hands the press to the element as written and, unstopped, dispatches it where the focus is as a keydown the element lets by. `focusable=false` is `tabindex="-1"` and a mousedown that prevents the focus a click gives (`window_key_browser_test.go`).
   - A style's `flex` is written with `min-width:0;min-height:0`: a flex item's minimum is its content's in CSS, so a box given a share grew with what it held, a scroll in it never scrolled, and a grid loading a page at its end loaded them all (`testdata/html_flex_child_bounded.txtar`).
-  - JavaScript's `===` is an object's identity, so `==` between structs, colors included, payload enums and lists is written out field by field and element by element from the type (`jsEqualExpr`); written as `===`, two colors alike were unequal (`cmd/sngl/testdata/struct_equality_runs.txt`, `struct_list_equality_runs.txt`). A test runs in a module beside the page and finds the page's funcs and consts on window, where a test build publishes both.
+  - JavaScript's `===` is an object's identity, so `==` between structs, colors included, payload enums and lists is written out field by field and element by element from the type (`jsEqualExpr`); written as `===`, two colors alike were unequal (`cmd/sngl/testdata/struct_equality_runs.txt`, `struct_list_equality_runs.txt`). A test runs in a module beside the page and finds the page's funcs and consts on window, where a test build publishes both -- except a name the window holds as its own (`javascript.WindowOwn`): `closed` and `top` have only a getter, so the page raised as it booted, and `status` took a func as a string. Those go on `window.__snglOwn`, the module binding each func to a lookup there and reading each const there where the test reads it (`cmd/sngl/testdata/window_own_names_runs.txt`).
   - `--lang none` (default): static site — one document per page of the `nav.stack` a window holds, written at the page's href with inline JS, or one `index.html` for a window that holds none (see *Navigation*). Every window after the first one that is always there is a `<dialog>` in its document, in every page's (see *html writes its document from a Window* in design/windows.md).
     Pages are written one at a time from what `documentsOf` decides, folded with `codegen.Request.Fold`, and a page's script is written from the package, which holds every page's component factories and render slots. So those are marked as they are written and `pruneDecls` keeps the ones the rest of the script names: written whole, a site of N pages carried N pages' factories in each and built in N² time.
   - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects the pages of the stack a window holds -- or a window that holds none -- into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any page's href is a pattern. Two pages whose route patterns conflict -- some path matches both and neither is more specific -- are a build error too, since net/http panics at startup on the second registration (`routesConflict`, held to ServeMux itself by its test).
@@ -93,8 +108,14 @@ target with no way to say a field is meant for one.
   (`golang.OffLoopSnapshots`, `emitSnapshotMethods`). Only a literal written
   there: a named function or a func value handed instead runs on the shared
   state (#273), and so does a func value kept in state that such work calls
-  (#274). What such work writes reaches nothing the program shows; it
-  reaches the program by **posting back**: `async.do` is a closure sent on
+  (#274). What such work writes of the snapshot reaches nothing the program
+  shows, so each write of the program's state it makes in place -- in its
+  literal, or in a function literal it calls there, as a query's fetch is
+  once spliced -- is posted back with what lowering put after it
+  (`passOffLoopWrites`): a fetch's `mon = "b"` wrote the copy and nothing
+  rekeyed, and fyne and gtk4 wrote the Model off the thread that draws it
+  (`cmd/sngl/testdata/fetch_writes_the_page_runs.txt`). Work reaches the
+  program by **posting back**: `async.do` is a closure sent on
   `__snglPosts`, which Init and every Update after one listen on with a
   `tea.Cmd` and Update runs as a `__snglPostMsg` (`bubbletea/post.go`). The
   closure carries the Model it writes: inside an off-loop literal that is the
@@ -183,6 +204,62 @@ target with no way to say a field is meant for one.
   pressed; a test's trigger hands the handler the test's own KeyPress, tells
   the test's `stop` where it stopped, and otherwise sends the key through
   Update the same way (`bubbletea/key_run_test.go`).
+
+  A Layout given `press` marks its whole box as its first focus stop, so a
+  click anywhere on a clickable card presses the `›` that is the card's stop;
+  the loop's position is read before the card's children move it on
+  (`markPress`, `bubbletea/click_run_test.go`). A Widget's `events` name the
+  key a click presses, as a Styled's do: a select's is Enter, which opens it.
+
+  The stop focus is on is marked `>` at its start, and where its box has an
+  edge -- a button's, given a rounded one where its Style draws none
+  (`tui.ButtonLook`), a tab's, a select's -- the edge is drawn bold
+  (`tui.Focused`); a tab's corners on the panel's line turn bold only up the
+  tab's side. A select drew only the bold edge and the rest only the mark.
+
+  A card is Material's filled card: a dark surface (`tui.CardLook`) under
+  all of what it holds, since a box's background ended at the reset the
+  first block styled inside it ends with (`tui.Paint` sets it again after
+  each). A clickable one is a stop drawn blank, `>` while focused, where it
+  was a `›` beside the content. As in CSS, a box stretches across the column
+  it is in unless it has a width of its own or its column aligns it
+  (`tui.Stretch`), and across a grid's column (`stretches`): a card was as
+  wide as its name and its names centered in that width. A gap, a padding
+  or a margin is the nearest whole number of cells across (8px) or rows down
+  (16px), none for a sliver; down, it was counted in cells, and a badge's
+  2px above and below its name were a blank row each, and the moves
+  table's 4px gap a third.
+
+  A select is a button, and an open one's choices float below it over the
+  view (`tui.Floats`, the Model's `__floats`): its view marks its block and
+  hands over the popover, the view's scans take the marks out where they are
+  drawn -- the content's and each overlay's box -- and `Draw` lays each
+  popover last, above the button where there is no room below. While one is
+  open, Update closes it on Esc, on Tab and on a click outside it, before
+  anything else hears them, so Esc goes back no page; a click on it is the
+  select's, forwarded, rather than a press of the stop it covers.
+
+  A scroll is a Layout given a `scroll` axis, its content laid out unbounded
+  down it and cut to the extent the box is given at the offset the Model's
+  `tui.Scrolls` keeps, keyed by the node and the copy of each loop around it
+  (`scroll.go`). Across, the content is given the scroll's width, as CSS
+  gives a block: a column that grows fills it, so a table's lines line up,
+  and what cannot shrink to it spills past it, where a scroll moving across
+  shows it; a grid's column is never narrower than its widest part that does
+  not grow. Laid out unbounded, each line of the Pokédex's moves table was
+  its own width (`wrap_run_test.go`). A text breaks its lines at the width of
+  the column it is in (`tui.Within`), which a column with a frame gives as
+  the width inside it; a text run past it was broken again by the box around
+  it, its padding on the first line only. Its block is marked as a click's is, so the wheel scrolls the
+  smallest box under it moving along the wheel's axis; PgUp and PgDn page the
+  one focus was drawn in, and Tab brings the stop it lands on into view,
+  which the scroll finds in its content before cutting it
+  (`tui.Clicks.Find`). A drag is the terminal's, which selects text with it.
+  `@reachEnd` is the view's to notice and Update's to run: the view signals
+  `__wake`, as one drawing a sleeping widget does, and Update runs the handler
+  of each scroll whose end is in view at a size it has not reported. A scroll
+  in a loop has no handler, since Update has no copy's loop variables
+  (`bubbletea/scroll_run_test.go`).
 
   A widget bound two-way writes its value back where Update forwards a
   message to it and where a test's invoker puts one in, and where the bind's
@@ -410,8 +487,11 @@ are overrides of an undefined target, and that error suggests `T any`
 names, a default -- is a parse error naming `T any`
 (`typeParamWithoutConstraint` in `internal/parser/parse.go`). Both are
 `testdata/error_type_param_constraint_required_*.sngl`. A **receiver's** list
-restates names only, as Go's does -- `func list[T].map[U any]` -- and in
-`FuncName` it is the `.` after the bracket that says so (`FuncNameBracket`);
+restates names, as Go's does -- `func list[T].map[U any](this list[T], …)` --
+or names a constraint for each, narrowing one the declaration leaves `any`
+and restating any other, `any` included (`inheritReceiverConstraints`,
+`testdata/receiver_narrows_one_param.sngl`); in `FuncName` it is the `.`
+after the bracket that says it is the receiver's (`FuncNameBracket`);
 the target index lives inside `FuncName` too, which keeps `lbracket` out of its
 FOLLOW set.
 

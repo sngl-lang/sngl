@@ -71,7 +71,8 @@ func (c *checker) checkExprExpecting(e ast.Expr, expected *ir.Type) ir.Expr {
 }
 
 // isAddressableListExpr reports whether e denotes a mutable, addressable list:
-// a (non-const) var, a component field, or a field/element path rooted at one.
+// a (non-const) var or parameter, a component field, or a field/element path
+// rooted at one.
 // Computed lists (filter/map/method results) and const lists are not
 // addressable, so an &-bound loop variable can't write through them.
 func isAddressableListExpr(e ir.Expr) bool {
@@ -83,7 +84,9 @@ func isAddressableListExpr(e ir.Expr) bool {
 		case *ir.Component:
 			return true // component self; fields on it are mutable state
 		case *ir.Param:
-			return sym.Name == ir.ReceiverParam // implicit component receiver
+			// A parameter is the function's own copy, or through a `ref` the
+			// caller's, whatever it is called, as `&` takes it.
+			return !sym.Const
 		case *ir.LoopVar:
 			return true // element of an outer &-bound loop (nested addressable)
 		}
@@ -467,6 +470,14 @@ func (c *checker) lookupValue(name string) (sym ir.Symbol, ok, recursive bool) {
 
 func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	sym, ok, recursive := c.lookupValue(x.Name)
+	// A method written in a component's body is declared there, so it
+	// shadows what the package declares by its name, as a var written there
+	// would.
+	if ok && c.currentComponent != nil && !c.boundUnderPackage(x.Name) {
+		if _, has := c.lookupBodyMethod(x.Name); has {
+			ok = false
+		}
+	}
 	if !ok {
 		// When expected type is an enum, resolve bare member names. An
 		// option of one wants a member as readily: the slot wraps it.
@@ -521,7 +532,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 			c.error(x.Pos, "#%s names the node this argument list declares, so its arguments cannot read it (recursive declaration)", x.Name)
 			return &ir.Ident{AST: x, Type: TypInvalid, Name: x.Name}
 		}
-		c.error(x.Pos, "undefined: %s%s%s", x.Name, c.captureHint(x.Name), c.stdlibHint(x.Name))
+		c.error(x.Pos, "undefined: %s%s%s%s", x.Name, c.captureHint(x.Name), c.stdlibHint(x.Name), c.staticThisHint(x.Name))
 		return &ir.Ident{AST: x, Type: TypInvalid, Name: x.Name}
 	}
 	// The export rule only governs cross-package access: an unexported
@@ -645,6 +656,17 @@ func (c *checker) resolvedInPackage(name string) bool {
 	return false
 }
 
+// boundUnderPackage reports whether name is bound in a scope the package's
+// own encloses: a body's, a block's or a func's, not the package's or above.
+func (c *checker) boundUnderPackage(name string) bool {
+	for s := c.scope; s != nil && s != c.symtab.Root; s = s.Parent {
+		if _, ok := s.LookupLocal(name); ok {
+			return true
+		}
+	}
+	return false
+}
+
 // reportUnusable emits a diagnostic if sym is a scheme-imported declaration
 // that cannot be modeled precisely in SNGL.
 func (c *checker) reportUnusable(pos ast.Pos, name string, sym ir.Symbol) {
@@ -708,6 +730,53 @@ func comparableEq(left, right *ir.Type) bool {
 		return true
 	}
 	return false
+}
+
+// refuseUnwritableReceiver reports a call handing recv to p, a `ref`
+// receiver, where recv is no place: the call hands it as `&recv` would, and
+// `&` takes no const or call result, whose write would land nowhere.
+func (c *checker) refuseUnwritableReceiver(pos ast.Pos, fn *ir.Func, p *ir.Param, recv ir.Expr) {
+	if p.Type == nil || p.Type.Kind != ir.TypeRef || exprType(recv).Kind == ir.TypeInvalid {
+		return
+	}
+	if writablePlace(recv) || c.isAddressable(recv) && !rootIsConst(recv) {
+		return
+	}
+	c.error(pos, "%s writes its receiver, which is %s, so call it on a var or a field of one", fn.Name, p.Type)
+}
+
+// writablePlace reports whether e is a place rooted in what a `ref`
+// dereferences: the element `for var &t` binds.
+func writablePlace(e ir.Expr) bool {
+	for {
+		switch x := e.(type) {
+		case *ir.Select:
+			e = x.Operand
+		case *ir.Index:
+			e = x.Operand
+		case *ir.Unary:
+			return x.Op == ast.UnaryDeref
+		default:
+			return false
+		}
+	}
+}
+
+// rootIsConst reports whether the place e names is in a const.
+func rootIsConst(e ir.Expr) bool {
+	for {
+		switch x := e.(type) {
+		case *ir.Select:
+			e = x.Operand
+		case *ir.Index:
+			e = x.Operand
+		case *ir.Ident:
+			v, ok := x.Sym.(*ir.Var)
+			return ok && v.IsConst
+		default:
+			return false
+		}
+	}
 }
 
 // receivesOperand reports whether a method's first parameter is the operand
@@ -864,6 +933,8 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 				// string comparisons OK
 			case left.SameUnitType(right) && left.IsSingleBaseUnit():
 				// single-base unit comparisons OK (e.g. duration)
+			case left.Kind == ir.TypeTypeParam && left.Equal(right) && ordered(left):
+				// a parameter `ordered` constrains, bound to one of the above
 			default:
 				c.error(x.Pos, "operator %s not defined for %s and %s", x.Op, left, right)
 			}
@@ -1065,23 +1136,32 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 	condExpr := c.checkExpr(x.Cond)
 	// The arms of a ternary are the two branches of an if, so a null test in
 	// the condition narrows them the same way.
-	thenFacts := map[narrowKey]narrowFact{}
-	narrowingsFrom(condExpr, true, thenFacts)
-	var thenRegion ir.Expr
-	restoreThen := c.pushNarrowings(thenFacts, nil, &thenRegion)
 	restorePrelude := c.noPrelude()
 	defer restorePrelude()
-	thenExpr := c.checkExprExpecting(x.Then, c.expected)
-	thenRegion = thenExpr
-	restoreThen()
-
-	elseFacts := map[narrowKey]narrowFact{}
-	narrowingsFrom(condExpr, false, elseFacts)
-	var elseRegion ir.Expr
-	restoreElse := c.pushNarrowings(elseFacts, nil, &elseRegion)
-	elseExpr := c.checkExprExpecting(x.Else, c.expected)
-	elseRegion = elseExpr
-	restoreElse()
+	arm := func(e ast.Expr, positive bool, expected *ir.Type) ir.Expr {
+		facts := map[narrowKey]narrowFact{}
+		narrowingsFrom(condExpr, positive, facts)
+		var region ir.Expr
+		restore := c.pushNarrowings(facts, nil, &region)
+		got := c.checkExprExpecting(e, expected)
+		region = got
+		restore()
+		return got
+	}
+	// An empty literal arm has no type of its own, so where nothing is
+	// expected it takes the other arm's: `n != null ? [n] : []`.
+	var thenExpr, elseExpr ir.Expr
+	if c.expected == nil && emptyLiteral(x.Then) && !emptyLiteral(x.Else) {
+		elseExpr = arm(x.Else, false, nil)
+		thenExpr = arm(x.Then, true, exprType(elseExpr))
+	} else {
+		thenExpr = arm(x.Then, true, c.expected)
+		expected := c.expected
+		if expected == nil && emptyLiteral(x.Else) {
+			expected = exprType(thenExpr)
+		}
+		elseExpr = arm(x.Else, false, expected)
+	}
 	// Checked expecting an option, an arm reading a narrowed option is that
 	// option, while a bare arm beside it is its element: `f(o == null ? 1.0
 	// : o)` for an option[float] parameter. The ternary is the option, the
@@ -1100,8 +1180,44 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 		if tt2, et2 := exprType(thenExpr), exprType(elseExpr); !tt2.Equal(et2) {
 			c.error(x.Pos, "ternary branches have mismatched types %s and %s (add an explicit conversion)", tt2, et2)
 		}
+	} else if armsDisagree(tt, et) {
+		// A bare name an arm meant as a member of the enum the other arm is
+		// reads whatever the scope binds under it, a component of the same
+		// name, and the ternary took the first arm's type whatever the
+		// second's was.
+		w, g := ir.Contrast(tt, et)
+		c.error(x.Pos, "ternary branches have mismatched types %s and %s", w, g)
 	}
 	return &ir.Ternary{AST: x, Type: typ, Cond: condExpr, Then: thenExpr, Else: elseExpr}
+}
+
+// emptyLiteral reports whether e is an empty list or map literal, `[]`,
+// which has no type until something says what it holds.
+func emptyLiteral(e ast.Expr) bool {
+	switch n := e.(type) {
+	case *ast.ListExpr:
+		return len(n.Elements) == 0
+	case *ast.MapLit:
+		return len(n.Entries) == 0
+	case *ast.ParenExpr:
+		return emptyLiteral(n.Inner)
+	}
+	return false
+}
+
+// armsDisagree reports whether a ternary's arms are of two types neither of
+// which the other is assignable to. A `null` arm is the absence the ternary's
+// slot holds, as a `null` written there would be.
+func armsDisagree(then, els *ir.Type) bool {
+	if then == nil || els == nil {
+		return false
+	}
+	for _, t := range []*ir.Type{then, els} {
+		if t.Kind == ir.TypeInvalid || t.Kind == ir.TypeNull {
+			return false
+		}
+	}
+	return !els.IsAssignableTo(then) && !then.IsAssignableTo(els)
 }
 
 // optionArms promotes the bare arm of a ternary whose other arm is an option
@@ -1588,6 +1704,7 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 					ir.BindTypeParams(sig.Params[0].Type, receiver, bindings)
 				}
 			}
+			c.checkNarrowedReceiver(call, fn, sig.RecvTypeParams, bindings)
 			if len(bindings) > 0 {
 				// Substitute the recv bindings and clear RecvTypeParams so the
 				// shifted-sig path below doesn't re-examine them.
@@ -1674,6 +1791,7 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 				TypeParams: sig.TypeParams,
 			}
 			rest := c.checkCallArgs(call.Args, shifted)
+			c.refuseUnwritableReceiver(sel.Pos, fn, sig.Params[0], receiverExpr)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
 			// `this.add(1)` in a component's own body is `add(1)`: the
 			// instance is the one the call is made in, which a call of a
@@ -1681,8 +1799,11 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 			if comp, ok := fn.RecvDecl().(*ir.Component); ok && isOwnReceiver(receiverExpr, comp) {
 				args = rest
 			}
-		} else if !recvParamStyle {
-			// New-style RecvTypeParams method: receiver is NOT a param.
+		} else if !recvParamStyle && (ir.ReceiverOutsideParams(fn) || fn.OnComponent()) {
+			// A receiver outside the parameters -- a component's method, a
+			// constraint's function: the receiver is NOT a param. A method
+			// declared with its receiver's parameters in brackets and no
+			// receiver parameter is static, as one on a concrete type is.
 			// Check all call args against the full (substituted) sig.
 			// Prepend receiver so IR shape is consistent with static call convention.
 			rest := c.checkCallArgs(call.Args, sig)
@@ -1701,7 +1822,12 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 			// A native is excluded because it *is* a host identifier: its
 			// parameters are the host's, and the receiver arrives before the
 			// dot under `method` and as argument zero without it.
+			argSig := sig
 			if fn.PkgPath() == "" && (fn.Foreign.Name == "" || fn.Foreign.Marked) {
+				// The call is wrong as a whole, so its arguments are checked
+				// for what they are and not against parameters the value
+				// before the dot was meant to fill.
+				argSig = nil
 				if len(sig.Params) == 0 {
 					c.error(sel.Pos, "%s.%s is static: it declares no parameters, so call it as %s.%s()",
 						fn.RecvName(), fn.Name, fn.RecvName(), fn.Name)
@@ -1710,7 +1836,7 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 						fn.RecvName(), fn.Name, fn.RecvName(), fn.RecvName(), fn.Name)
 				}
 			}
-			rest := c.checkCallArgs(call.Args, sig)
+			rest := c.checkCallArgs(call.Args, argSig)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
 			receiverArg = true
 		}
@@ -1753,7 +1879,15 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 	event := ""
 	if evt := c.elementEvent(receiverExpr, sel.Field); evt != nil {
 		event = evt.Name
-		argSig = &ir.FuncSig{Params: evt.Params}
+		// A generic component's event takes what its handle's type
+		// arguments bind: `c.pick.change(Method.egg)` for a select of Methods.
+		params := evt.Params
+		if t := exprType(receiverExpr); t != nil {
+			if comp, ok := t.Decl.(*ir.Component); ok && len(comp.TypeParams) > 0 {
+				params = substituteParams(params, componentArgBindings(t, comp))
+			}
+		}
+		argSig = &ir.FuncSig{Params: params}
 	}
 	args := c.checkCallArgs(call.Args, argSig)
 	// A trigger fires the event and yields nothing. Anything else names no
@@ -1765,6 +1899,12 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 			c.error(sel.Pos, "no method %q on type %s", sel.Field, receiver)
 		}
 		typ = TypInvalid
+	}
+	// Fired through a local holding the node, the trigger reads the node
+	// where the local's initializer did: every target's invoker finds the
+	// node by the path the read takes, and a local is no path.
+	if event != "" {
+		receiverExpr = c.throughHandleLocal(receiverExpr)
 	}
 	return &ir.Call{
 		AST:      call,
@@ -1793,7 +1933,7 @@ func (c *checker) resolveMethod(receiver *ir.Type, field string) (*ir.Func, *ir.
 // node -- or nil. This is how a sigil-free `c.inc.click()` is recognized as an
 // event trigger rather than an ordinary method call.
 func (c *checker) elementEvent(recv ir.Expr, event string) *ir.EventDecl {
-	if !isElementRefRead(recv) {
+	if !isElementRefRead(recv) && !c.readsHandleLocal(recv) {
 		return nil
 	}
 	t := exprType(recv)
@@ -1810,6 +1950,60 @@ func (c *checker) elementEvent(recv ir.Expr, event string) *ir.EventDecl {
 		}
 	}
 	return nil
+}
+
+// noteHandleLocal records that the local sym holds a node read by `#id`,
+// where its initializer is one.
+func (c *checker) noteHandleLocal(sym *ir.Var, init ir.Expr) {
+	if init == nil || !isElementRefRead(init) {
+		return
+	}
+	if c.handleLocals == nil {
+		c.handleLocals = map[*ir.Var]ir.Expr{}
+	}
+	c.handleLocals[sym] = init
+}
+
+// describeHandleRead spells the read a handle local was initialized from,
+// `c.one`.
+func describeHandleRead(e ir.Expr) string {
+	if r := refSelect(e); r != nil {
+		if op, ok := r.Operand.(*ir.Ident); ok {
+			return op.Name + "." + r.Field
+		}
+		return r.Field
+	}
+	return "it was given"
+}
+
+// throughHandleLocal is e with a read of a handle local replaced by a copy of
+// the read that initialized it, narrowed as e was.
+func (c *checker) throughHandleLocal(e ir.Expr) ir.Expr {
+	if !c.readsHandleLocal(e) {
+		return e
+	}
+	if conv, ok := e.(*ir.Conversion); ok {
+		id := conv.Operand.(*ir.Ident)
+		out := *conv
+		out.Operand = ir.CloneExprSharingDecls(c.handleLocals[id.Sym.(*ir.Var)])
+		return &out
+	}
+	return ir.CloneExprSharingDecls(c.handleLocals[e.(*ir.Ident).Sym.(*ir.Var)])
+}
+
+// readsHandleLocal reports whether e reads a local holding a node read by
+// `#id` -- `var b = c.b`, narrowed by `if b != null` -- whose events a test
+// fires as it fires the node's: `b.click()` as `c.b.click()`.
+func (c *checker) readsHandleLocal(e ir.Expr) bool {
+	if conv, ok := e.(*ir.Conversion); ok {
+		e = conv.Operand
+	}
+	id, ok := e.(*ir.Ident)
+	if !ok {
+		return false
+	}
+	v, ok := id.Sym.(*ir.Var)
+	return ok && c.handleLocals[v] != nil
 }
 
 // findNodeAST is the node in stmts whose `#id` is id, through `if`s, `for`s
@@ -2017,6 +2211,41 @@ func (c *checker) inferQualified(x *ast.SelectExpr, ns *ir.Namespace, ident *ast
 	return bad()
 }
 
+// bodyMemberRead is `this.value` in a method written in a component body --
+// an event's override among them -- read as the bare `value` the body
+// reads: the prop or var itself, which every instance's lowering rewrites
+// where the instance holds it. As a select off the receiver it reached fyne
+// as `this.Value = to`. Nil for anything else, a member an event's parameter
+// of the same name shadows included: `this` is how the body names the prop.
+func (c *checker) bodyMemberRead(x *ast.SelectExpr, operand ir.Expr) ir.Expr {
+	comp, fn := c.currentComponent, c.currentFunc
+	id, ok := operand.(*ir.Ident)
+	if !ok || comp == nil || c.componentScope == nil || fn == nil {
+		return nil
+	}
+	if recv, ok := id.Sym.(*ir.Param); !ok || !recv.Receiver || (recv != fn.RecvParam && !slices.Contains(fn.Params, recv)) {
+		return nil
+	}
+	sym, ok := c.componentScope.Lookup(x.Field)
+	if !ok {
+		return nil
+	}
+	own := false
+	switch s := sym.(type) {
+	case *ir.Param:
+		own = slices.ContainsFunc(comp.Props, func(p *ir.Prop) bool { return p.Sym == s })
+	case *ir.Var:
+		own = slices.Contains(comp.Vars, s)
+	}
+	if !own {
+		return nil
+	}
+	saved := c.scope
+	c.scope = c.componentScope
+	defer func() { c.scope = saved }()
+	return c.inferIdent(&ast.IdentExpr{Pos: x.Pos, Name: x.Field})
+}
+
 func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 	if ns, ident := c.namespaceOperand(x.Operand); ns != nil {
 		return c.inferQualified(x, ns, ident)
@@ -2150,6 +2379,9 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				}
 				c.error(x.Pos, "%s is a family, and a value of one reaches only the props its members share: it declares no %q", comp.Name, x.Field)
 				return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
+			}
+			if read := c.bodyMemberRead(x, operandExpr); read != nil {
+				return read
 			}
 			if comp, ok := operand.Decl.(*ir.Component); ok {
 				// What the operand's type arguments bound: `pkg.params` off a
@@ -2330,15 +2562,8 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 		t := operand.Elems[0]
 		return &ir.Index{AST: x, Type: t, Operand: operandExpr, Idx: indexExpr}
 	}
-	// One copy of a node a loop rendered under one id, `c.row[1]`, is a node
-	// of the same component as the id names.
-	if operand.Kind == ir.TypeComponent && operand.Decl != nil {
-		if _, ok := operandExpr.(*ir.Select); ok {
-			return &ir.Index{AST: x, Type: operand, Operand: operandExpr, Idx: indexExpr}
-		}
-	}
 	switch operand.Kind {
-	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeEnum, ir.TypeUnit, ir.TypeFunc:
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeEnum, ir.TypeUnit, ir.TypeFunc, ir.TypeComponent:
 		c.error(x.Pos, "cannot index %s", operand)
 		return &ir.Index{AST: x, Type: TypInvalid, Operand: operandExpr, Idx: indexExpr}
 	}
@@ -2527,6 +2752,10 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		// resolve T correctly.
 		if c.expected != nil && c.expected.Kind == ir.TypeStruct && c.expected.Decl == sd {
 			typ = c.expected
+		} else if len(sd.TypeParams) > 0 && len(x.TypeArgs) == 0 {
+			if t := c.inferStructArgs(x.Pos, sd, fields); t != nil {
+				typ = t
+			}
 		}
 		return &ir.StructLit{AST: x, Type: typ, Def: sd, Fields: fields}
 	}
@@ -2537,6 +2766,49 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	}
 	typ := c.anonStructType(anonFields)
 	return &ir.StructLit{AST: x, Type: typ, Def: typ.Decl.(*ir.StructDef), Fields: fields}
+}
+
+// inferStructArgs is a generic struct's type at the arguments its literal's
+// fields say, `pair{k=1, v="x"}` a pair[int, string], as a generic
+// function's arguments say its own: each parameter a field's value binds,
+// or its default. Nil where one is neither, which leaves the literal its
+// declaration's type. A literal no one typed was a bare `pair`, so a method
+// taking its V bound nothing.
+func (c *checker) inferStructArgs(pos ast.Pos, sd *ir.StructDef, fields []ir.FieldInit) *ir.Type {
+	bindings := map[string]*ir.Type{}
+	for _, f := range fields {
+		if f.Spread || f.Name == "" {
+			continue
+		}
+		field := ir.FieldNamed(sd.Fields, f.Name)
+		vt := exprType(f.Value)
+		if field == nil || vt == nil || vt.Kind == ir.TypeInvalid {
+			continue
+		}
+		ir.BindTypeParams(field.Type, vt, bindings)
+	}
+	elems := make([]*ir.Type, len(sd.TypeParams))
+	params := make([]ir.TypeParam, len(sd.TypeParams))
+	for i, tp := range sd.TypeParams {
+		params[i] = tp
+		params[i].Constraint = c.typeParamConstraint(sd, i)
+		switch b := bindings[tp.Name]; {
+		case b != nil && !b.HasTypeParam() && b.Kind != ir.TypeNull:
+			elems[i] = b
+		case c.typeParamDefault(sd, i) != nil:
+			elems[i] = c.typeParamDefault(sd, i)
+		default:
+			return nil
+		}
+	}
+	all := make(map[string]*ir.Type, len(params))
+	for i, tp := range params {
+		all[tp.Name] = elems[i]
+	}
+	for i := range params {
+		c.checkConstraint(pos, params[i], elems[i], all)
+	}
+	return &ir.Type{Kind: ir.TypeStruct, Decl: sd, Elems: elems}
 }
 
 // checkFieldValue holds a struct literal's field value to the rule every
@@ -2982,7 +3254,7 @@ func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList,
 			continue
 		}
 		if pos < len(sig.Params) && !settled(sig.Params[pos]) {
-			bind(sig.Params[pos], exprType(c.inferArgExpr(arg.Value, sig.Params[pos].Type, bindings)))
+			bind(sig.Params[pos], exprType(c.inferArgExpr(arg.Value, sig.Params[pos].Type, slices.Concat(sig.TypeParams, sig.RecvTypeParams), bindings)))
 		}
 		pos++
 	}
@@ -3023,19 +3295,33 @@ func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList,
 // is bound so far substituted -- `ps.map(func(p) => p.name)` has its p from the
 // receiver -- and its return type from its body wherever the parameter's
 // still names a type parameter, which is what the body is binding.
-func (c *checker) inferArgExpr(e ast.Expr, want *ir.Type, bindings map[string]*ir.Type) ir.Expr {
+//
+// What is still to bind is a parameter of the callee, params, that nothing has
+// bound yet. A type parameter of the body the call is written in is a type
+// like any other there: a select's override maps `options`, a
+// `list[choice[T]]`, with its own T in hand.
+func (c *checker) inferArgExpr(e ast.Expr, want *ir.Type, params []ir.TypeParam, bindings map[string]*ir.Type) ir.Expr {
 	lam, ok := e.(*ast.LambdaExpr)
 	if !ok || want == nil || want.Kind != ir.TypeFunc || want.Sig == nil {
 		return c.checkExpr(e)
 	}
+	unbound := func(t *ir.Type) bool {
+		return t.Any(func(t *ir.Type) bool {
+			if t.Kind != ir.TypeTypeParam {
+				return false
+			}
+			_, bound := bindings[t.ParamName]
+			return !bound && slices.ContainsFunc(params, func(tp ir.TypeParam) bool { return tp.Name == t.ParamName })
+		})
+	}
 	sig := want.Sig.Substitute(bindings)
 	for _, p := range sig.Params {
-		if p.Type.HasTypeParam() {
+		if unbound(p.Type) {
 			return c.checkExpr(e)
 		}
 	}
 	exp := &ir.FuncSig{Params: sig.Params}
-	if lam.ReturnType == nil && sig.Return != nil && !sig.Return.HasTypeParam() {
+	if lam.ReturnType == nil && sig.Return != nil && !unbound(sig.Return) {
 		exp.Return = sig.Return
 	}
 	return c.checkExprExpecting(e, &ir.Type{Kind: ir.TypeFunc, Sig: exp})
@@ -3589,6 +3875,7 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 			}
 			c.refuseVarHandlers(spec, name)
 			c.declare(decl.Pos, sym)
+			c.noteHandleLocal(sym, initExpr)
 			out = append(out, &ir.LocalVar{
 				Name: name,
 				Type: typ,
@@ -3615,6 +3902,12 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
 				if v, ok := sym.(*ir.Var); ok && v.IsConst {
 					c.error(x.Pos, "cannot assign to const %q", ident.Name)
+				}
+				// A trigger through the local fires on the node its
+				// initializer read (throughHandleLocal), which a write would
+				// leave it naming still.
+				if v, ok := sym.(*ir.Var); ok && c.handleLocals[v] != nil {
+					c.error(x.Pos, "cannot assign to %q: it holds the node %s, and a local holding a node holds that one; declare another local for another node", ident.Name, describeHandleRead(c.handleLocals[v]))
 				}
 				// Context names are read-only; assignment would bypass reactivity.
 				if _, ok := sym.(*ir.Context); ok {
@@ -3706,6 +3999,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			Type: typ,
 		}
 		c.declare(x.Pos, sym)
+		c.noteHandleLocal(sym, initExpr)
 		return &ir.LocalVar{AST: x, Name: x.Name, Type: typ, Init: initExpr, Sym: sym}
 	case *ast.ReturnStmt:
 		var valExpr ir.Expr
@@ -3917,6 +4211,12 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if iter.Kind == ir.TypeBool {
 			return c.checkHeadlessFor(x, iterExpr)
 		}
+		// An enum's name walks its members, in the order the type declares
+		// them: the loop is over the list of them.
+		if ed, ok := iter.Decl.(*ir.EnumDef); ok && iter.Kind == ir.TypeEnum && namesEnumType(iterExpr, ed) {
+			iterExpr = c.enumMembers(*x.Iter.ExprPos(), iter, ed)
+			iter = exprType(iterExpr)
+		}
 		// A zero-arg computed is called where its result is what is wanted, so
 		// `for var x = items` iterates what `func items() list[T]` returns. There
 		// is no single expected type to hand implicitCall here: any of the
@@ -4066,6 +4366,10 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			// its body.
 			elseBody = c.checkScopeBlockIR(&x.Else, x.Key, x.Value)
 		}
+		var identity ir.Expr
+		if c.funcDepth == 0 {
+			identity = c.loopIdentity(x, iter, elemType, keySym, valueSym, elemRef)
+		}
 		c.popScope()
 		// readonly[T] is the checker's: every read and write of the variables
 		// has been checked, so nothing after the check meets one.
@@ -4074,7 +4378,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				lv.Type = lv.Type.Elems[0]
 			}
 		}
-		loop := &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, RefElem: elemRef}
+		loop := &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, RefElem: elemRef, Identity: identity}
 		c.checkViewForElse(x.Pos, loop, iter)
 		return loop
 	case *ast.VisualNode:
@@ -4713,7 +5017,6 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	}
 	c.ownArgsID = vn.ID
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, spec)
-	key := c.keyArgExpr(vn.Args)
 	c.ownArgsID = outerArgsID
 
 	emitName := name
@@ -4732,7 +5035,6 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 		Slots:     slotContent,
 		ID:        vn.ID,
 		Handle:    c.nodeHandleSym(vn.ID),
-		Key:       key,
 	}
 	node.TypeArgs = c.specArgs[spec]
 	node.WrittenTypeArgs = writtenTypes
@@ -4925,8 +5227,8 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 	for _, a := range vn.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
-			if arg.Name == "" || arg.Name == "key" {
-				continue // positional args and key (handled by loop diffing)
+			if arg.Name == "" {
+				continue
 			}
 			// Strip : prefix for bidirectional binding lookup.
 			name := arg.Name
@@ -4946,19 +5248,6 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 			}
 		}
 	}
-}
-
-// keyArgExpr returns the checked `key=` argument, the list-diffing key for a
-// node in a loop. Every ir.NodeInst constructor calls this: the key is written
-// the same way whichever form the node takes, so reading it in only some of
-// them drops it silently.
-func (c *checker) keyArgExpr(args ast.ArgList) ir.Expr {
-	for _, a := range args.Args {
-		if arg, ok := a.(ast.Arg); ok && arg.Name == "key" && arg.Value != nil {
-			return c.checkExpr(arg.Value)
-		}
-	}
-	return nil
 }
 
 // checkAndSplitArgs checks values and splits a checked ArgList into IR property
@@ -5016,9 +5305,6 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	seenNamed := false
 	for _, a := range args.Args {
 		if arg, ok := a.(ast.Arg); ok {
-			if arg.Name == "key" {
-				continue
-			}
 			if arg.Name != "" && !strings.HasPrefix(arg.Name, ":") {
 				seenNamed = true
 			} else if arg.Name == "" && seenNamed && arg.Value != nil {
@@ -5034,9 +5320,6 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	for i, a := range args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
-			if arg.Name == "key" {
-				continue // handled separately by checkVisualNodeIR
-			}
 			if arg.Value != nil {
 				if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 					seenNamed = true
@@ -5093,8 +5376,10 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 					return fmt.Sprintf("cannot use %s as %s for prop %q%s", got, want, strings.TrimPrefix(resolvedName, ":"), onComponent(comp))
 				}})
 				// A mismatched value binds nothing: wrapped, it reached lowering
-				// as a cast to a struct, which the language does not have.
+				// as a cast to a struct, which the language does not have. The
+				// prop was written all the same, so it is not also missing.
 				if mismatched {
+					boundProps[strings.TrimPrefix(resolvedName, ":")] = true
 					continue
 				}
 			}
@@ -5259,7 +5544,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 	seenNamed := false
 	for _, a := range call.Args.Args {
 		if arg, ok := a.(ast.Arg); ok {
-			if arg.Name != "" && arg.Name != "key" {
+			if arg.Name != "" {
 				seenNamed = true
 			} else if arg.Name == "" && seenNamed && arg.Value != nil {
 				if _, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
@@ -5276,9 +5561,6 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 	for _, a := range call.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
-			if arg.Name == "key" {
-				continue // handled by loop diffing
-			}
 			if arg.Value != nil {
 				if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 					seenNamed = true
@@ -5381,7 +5663,7 @@ func (c *checker) validateCallStmtComponentArgs(call *ast.CallExpr, comp *ir.Com
 	for _, a := range call.Args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
-			if arg.Name == "" || arg.Name == "key" {
+			if arg.Name == "" {
 				continue
 			}
 			propName := arg.Name
@@ -5642,6 +5924,95 @@ func (c *checker) checkViewMapFor(pos ast.Pos, iter *ir.Type) {
 //     range has bounds; a pull sequence answers only by consuming the element
 //     that would have been the answer.
 //   - It must survive a second evaluation, being written once and read twice.
+//
+// loopIdentity is what tells one copy of a view loop from another: the
+// element's `key()` where its type declares one, the element itself where it
+// is a scalar or an enum carrying no payload, and otherwise nil, the copy's
+// position. An element bound by `&` is not its own identity, since
+// a write through it would make the copy another; its `key()` still is.
+func (c *checker) loopIdentity(x *ast.ForStmt, iter, elemType *ir.Type, keySym, valueSym *ir.LoopVar, elemRef bool) ir.Expr {
+	if iter == nil || keySym == nil {
+		return nil
+	}
+	read := func(lv *ir.LoopVar, t *ir.Type) *ir.Ident {
+		return &ir.Ident{Name: lv.Name, Type: t, Sym: lv}
+	}
+	// A map is no view loop's (checkViewMapFor), so its copies need none.
+	if iter.Kind == ir.TypeMap {
+		return nil
+	}
+	elem := keySym
+	if valueSym != nil {
+		elem = valueSym
+	}
+	if elemType == nil || elemType.Kind == ir.TypeInvalid {
+		return nil
+	}
+	// Only a key taking nothing but the element is its identity; any other
+	// is a method of the name, and the copies are told apart by position.
+	if fn, _, ok := c.resolveMethod(elemType, "key"); ok && fn != nil && !ir.IsConstraintMethod(fn) && takesOnlyReceiver(fn) {
+		var recv ir.Expr = read(elem, elemType)
+		if elemRef {
+			recv = read(elem, ir.RefOf(elemType))
+		}
+		sel := &ast.SelectExpr{Pos: x.Pos, Operand: &ast.IdentExpr{Pos: x.Pos, Name: elem.Name}, Field: "key"}
+		call := c.inferMethodCallOn(sel, &ast.CallExpr{Pos: x.Pos, Func: sel}, recv, false)
+		t := exprType(call)
+		if t == nil || t.Kind == ir.TypeInvalid {
+			return nil
+		}
+		if bad := ir.RebuildIncomparable(t); bad != "" {
+			c.error(x.Pos, "%s.key() is what tells one copy of this loop from another, so it must compare alike on every target; %s does not", elemType, bad)
+			return nil
+		}
+		if _, _, ok := c.resolveMethod(t, "format"); !ok {
+			c.error(x.Pos, "%s.key() is what tells one copy of this loop from another, which a target keeps as a string; %s has no format method", elemType, t)
+			return nil
+		}
+		return c.identityString(x, elem.Name+".key()", call)
+	}
+	if elemRef || !implicitIdentity(elemType) {
+		return nil
+	}
+	return c.identityString(x, elem.Name, read(elem, elemType))
+}
+
+// takesOnlyReceiver reports whether fn takes nothing but what it is called
+// on.
+func takesOnlyReceiver(fn *ir.Func) bool {
+	for _, p := range fn.Params {
+		if !p.Receiver {
+			return false
+		}
+	}
+	return true
+}
+
+// identityString is a loop's identity as the string each target keeps it
+// under: what its format writes, as `"{v}"` would.
+func (c *checker) identityString(x *ast.ForStmt, spelled string, v ir.Expr) ir.Expr {
+	if t := exprType(v); t != nil && t.Kind == ir.TypeString {
+		return v
+	}
+	sel := &ast.SelectExpr{Pos: x.Pos, Operand: &ast.IdentExpr{Pos: x.Pos, Name: spelled}, Field: "format"}
+	return c.inferMethodCallOn(sel, &ast.CallExpr{Pos: x.Pos, Func: sel}, v, false)
+}
+
+// implicitIdentity reports whether a value of t is its own identity in a loop:
+// a scalar or an enum carrying no payload, which compares alike everywhere and
+// formats as itself. A struct is not, though it compares: two values of one
+// are equal or not by every field, and a row whose `done` flipped would be
+// another row.
+func implicitIdentity(t *ir.Type) bool {
+	switch t.Kind {
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString, ir.TypeUnit:
+		return true
+	case ir.TypeEnum:
+		return ir.PayloadEnum(t) == nil
+	}
+	return false
+}
+
 func (c *checker) checkViewForElse(pos ast.Pos, loop *ir.For, iter *ir.Type) {
 	if c.funcDepth > 0 || len(loop.Else) == 0 || iter == nil {
 		return

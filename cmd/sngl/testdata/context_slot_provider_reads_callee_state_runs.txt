@@ -36,8 +36,8 @@ component chooser(content ...component ui.node) ui.node {
     var picked = "plain"
 
     ui.select #pick(:value=picked) {
-        ui.choice(label="plain")
-        ui.choice(label="loud")
+        ui.choice(label="plain", value="plain")
+        ui.choice(label="loud", value="loud")
     }
     tone(picked) {
         content
@@ -80,7 +80,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:df9ccedd64d41e96902e3595cec09aab
+sha256:b091cbdcf6d0105eb5e99d89a2171f3b
 {
   "results": [
     {
@@ -94,7 +94,7 @@ sha256:df9ccedd64d41e96902e3595cec09aab
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:31db81a4a4d2a6036c6fad21a3ecafca
+sha256:6130e64296e8e88d0fa746224b732933
 {
   "results": [
     {
@@ -108,7 +108,7 @@ sha256:31db81a4a4d2a6036c6fad21a3ecafca
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:b0fd02270e8ee30ae492dfe54c6033d4
+sha256:3ea2d7a5f02148b9dd5ba9203dfe8b70
 {
   "results": [
     {
@@ -122,7 +122,7 @@ sha256:b0fd02270e8ee30ae492dfe54c6033d4
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:7b7902b7b7b4486effbafd1fdad1e240
+sha256:a97852964a5ecd7ed5d880cdf327836c
 {
   "results": [
     {
@@ -136,7 +136,7 @@ sha256:7b7902b7b7b4486effbafd1fdad1e240
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:fa198aa2e4c2adac0136ba1832bf241e
+sha256:585cffac516e6cb0aa9c35a46dcab5b5
 {
   "results": [
     {

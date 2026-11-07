@@ -99,6 +99,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type MenuItem__record struct {
 	Label    string
 	Disabled bool
@@ -180,11 +183,22 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.sizes = []string{"Small", "Medium", "Large"}
-	m.size = "Medium"
-	m.saved = 0
-	m.visible__inst0 = true
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["sizes"] {
+		m.sizes = []string{"Small", "Medium", "Large"}
+	}
+	if !preset["size"] {
+		m.size = "Medium"
+	}
+	if !preset["saved"] {
+		m.saved = 0
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
 	return m
 }
 
@@ -231,14 +245,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -302,7 +316,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt6
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt9 *Measurement
 	if own != nil {
 		__lt9 = own
@@ -315,7 +329,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt9 = __lt8
 	}
-	return CellsOf(__lt9)
+	return SpaceOf(__lt9, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
@@ -354,6 +368,16 @@ func LineCap(height__r0 int, lines int) int {
 		__lt13 = __lt12
 	}
 	return __lt13
+}
+
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt14) + 0.5))
 }
 
 func (m Model) Size() string {
@@ -437,7 +461,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.size))
+		contentText := fmt.Sprint(m.size)
+		content = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentText).Render(contentText)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -463,6 +488,7 @@ import (
 func TestPickingAnEntryChecksIt(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !(("Medium" == c.size)) { t.Errorf("assert failed: %s", "(\"Medium\" == c.size)") }
 	[]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
@@ -482,6 +508,7 @@ func TestPickingAnEntryChecksIt(t *testing.T) {
 func TestAnEntryRunsItsHandler(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	[]MenuItem__record{MenuItem__record{Label: "File", Children: []MenuItem__record{MenuItem__record{Label: "Save", Children: []MenuItem__record{}, Select: func() {
 		c.saved += 1
 	}}, MenuItem__record{Label: "Close", Disabled: true, Children: []MenuItem__record{}, Select: func() {
@@ -500,11 +527,18 @@ func TestAnEntryRunsItsHandler(t *testing.T) {
 func TestADisabledEntryIsShownAndNotPicked(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !(true) { t.Errorf("assert failed: %s", "true") }
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -522,6 +556,9 @@ import (
 )
 
 var sizes []string = []string{"Small", "Medium", "Large"}
+
+type Test struct {
+}
 
 type MenuItem__record struct {
 	Label    string
@@ -554,16 +591,38 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.sizes = []string{"Small", "Medium", "Large"}
-	m.size = "Medium"
-	m.saved = 0
-	m.visible__inst0 = true
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["sizes"] {
+		m.sizes = []string{"Small", "Medium", "Large"}
+	}
+	if !preset["size"] {
+		m.size = "Medium"
+	}
+	if !preset["saved"] {
+		m.saved = 0
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -768,6 +827,7 @@ import "testing"
 func TestPickingAnEntryChecksIt(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !(("Medium" == c.size)) { t.Errorf("assert failed: %s", "(\"Medium\" == c.size)") }
 	c.main__menuSelectAt("1")
 	c.main__menu__childrenSelectAt("1/2")
@@ -778,6 +838,7 @@ func TestPickingAnEntryChecksIt(t *testing.T) {
 func TestAnEntryRunsItsHandler(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.main__menuSelectAt("0")
 	c.main__menu__childrenSelectAt("0/0")
 	if !((c.saved == 1)) { t.Errorf("assert failed: %s", "(c.saved == 1)") }
@@ -786,6 +847,7 @@ func TestAnEntryRunsItsHandler(t *testing.T) {
 func TestADisabledEntryIsShownAndNotPicked(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !(true) { t.Errorf("assert failed: %s", "true") }
 }
 
@@ -796,7 +858,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -824,6 +890,9 @@ import (
 )
 
 var sizes []string = []string{"Small", "Medium", "Large"}
+
+type Test struct {
+}
 
 type MenuItem__record struct {
 	Label    string
@@ -856,16 +925,38 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.sizes = []string{"Small", "Medium", "Large"}
-	m.size = "Medium"
-	m.saved = 0
-	m.visible__inst0 = true
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["sizes"] {
+		m.sizes = []string{"Small", "Medium", "Large"}
+	}
+	if !preset["size"] {
+		m.size = "Medium"
+	}
+	if !preset["saved"] {
+		m.saved = 0
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1063,6 +1154,12 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 data class MenuItem__record(
     var label: String = "",
     var disabled: Boolean = false,
@@ -1081,10 +1178,14 @@ val sizes: List<String> = listOf("Small", "Medium", "Large")
 
 val SnglCopy = SemanticsPropertyKey<String>("SnglCopy")
 
-class MainScreenState {
-    var size by mutableStateOf("Medium")
-    var saved by mutableStateOf(0)
-    var visible__inst0 by mutableStateOf(true)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var size by mutableStateOf(__snglPre(__pre, "size") { "Medium" })
+    var saved by mutableStateOf(__snglPre(__pre, "saved") { 0 })
+    var visible__inst0 by mutableStateOf(__snglPre(__pre, "visible__inst0") { true })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1323,12 +1424,13 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
@@ -1339,6 +1441,8 @@ window.__sngl_boot = () => {
     Object.assign(window, { sizes });
   }
   var state = { size: "Medium", saved: 0, visible__inst0: true };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.main__menu__itemsClick = () => document.querySelector('[data-sngl-id="main__menu__items"]').click();
   state.main__menu__itemsClickAt = (k) => document.querySelector('[data-sngl-id="main__menu__items"][data-sngl-copy="' + k + '"]').click();
   state.main__menu__items__childrenClick = () => document.querySelector('[data-sngl-id="main__menu__items__children"]').click();
@@ -1437,16 +1541,15 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:793c2795aa7d53dd0e3f308584940625
+pass sha256:8d82eadb4788032ff922da70e753311a
 -- run/go/fyne --
-pass sha256:cabb0fc57da3748dc1e7f97566e2abd1
+pass sha256:4d9bd36ac571f000505018e382023df3
 -- run/go/gtk4 --
-pass sha256:22d780cea07e1cb50ac59b37894b7061
+pass sha256:4227bcc9bb32bd4f15522b5aec2c2a45
 -- run/kotlin/android --
-pass sha256:9d5a26a9ea0cc4c786cb88eb9ba26cf4
+pass sha256:76edb851cd5031100304b9e3af558cfa
 -- run/none/html --
-pass sha256:5043156663ec5c803ab9904bcb814f90
+pass sha256:44803f002c23b68c37eff8957328156e

@@ -168,12 +168,6 @@ type Frame__slot4Instance struct {
 	__inst0_live   []*Frame__slot4Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
 	__n4           *fyne.Container
 }
 
@@ -188,9 +182,6 @@ func newFrame__slot4Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__inst0_live = []*Frame__slot4Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n4 = fynelayout.NewVBox()
 	__n11 := widget.NewLabel("")
 	__n11.SetText("BETA")
@@ -280,17 +271,11 @@ type Frame__slot3Instance struct {
 	__prop___depth int
 	open           bool
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*Frame__slot3Instance
 	__rendering1   bool
 	__renderAgain1 bool
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
 	__n6           *fyne.Container
 }
 
@@ -301,13 +286,10 @@ func newFrame__slot3Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__prop___depth = __a___depth
 	c.open = true
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot3Instance{}
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n6 = fynelayout.NewVBox()
 	__n12 := widget.NewLabel("")
 	__n12.SetText("ALPHA")
@@ -397,17 +379,11 @@ type Frame__slot1Instance struct {
 	__prop___depth int
 	open           bool
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 	__slot2        []fyne.CanvasObject
 	__slot2_at     fyne.CanvasObject
 	__inst2_live   []*Frame__slot4Instance
 	__rendering2   bool
 	__renderAgain2 bool
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
 	__n8           *fyne.Container
 }
 
@@ -418,13 +394,10 @@ func newFrame__slot1Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__prop___depth = __a___depth
 	c.open = true
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__inst2_live = []*Frame__slot4Instance{}
 	c.__rendering2 = false
 	c.__renderAgain2 = false
-	c.__slot3 = nil
 	c.__n8 = fynelayout.NewVBox()
 	__n13 := widget.NewLabel("")
 	__n13.SetText("BETA")
@@ -514,12 +487,6 @@ type Frame__slot0Instance struct {
 	__prop___depth int
 	open           bool
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
 	__slot3        []fyne.CanvasObject
 	__slot3_at     fyne.CanvasObject
 	__inst3_live   []*Frame__slot3Instance
@@ -535,9 +502,6 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__prop___depth = __a___depth
 	c.open = true
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__inst3_live = []*Frame__slot3Instance{}
 	c.__rendering3 = false
@@ -708,12 +672,6 @@ type Frame__slot4Instance struct {
 	__inst0_live   []*Frame__slot4Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
 	__n4           gtk4rt.Handle
 }
 
@@ -727,9 +685,6 @@ func newFrame__slot4Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__inst0_live = []*Frame__slot4Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n4, 1)
 	gtk4rt.SetLook(c.__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -824,15 +779,6 @@ func (c *Frame__slot4Instance) Destroy() {
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
 	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
 }
 
 // Frame__slot3Instance is one live instance of the frame__slot3 component.
@@ -843,17 +789,11 @@ type Frame__slot3Instance struct {
 	__prop___depth int
 	open           bool
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*Frame__slot3Instance
 	__rendering1   bool
 	__renderAgain1 bool
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
 	__n6           gtk4rt.Handle
 }
 
@@ -863,13 +803,10 @@ func newFrame__slot3Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__prop_n = __a_n
 	c.__prop___depth = __a___depth
 	c.open = true
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot3Instance{}
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n6 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n6, 1)
 	gtk4rt.SetLook(c.__n6, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -961,17 +898,8 @@ func (c *Frame__slot3Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 	if c.__slot1_at != nil {
 		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
 	}
 }
 
@@ -983,17 +911,11 @@ type Frame__slot1Instance struct {
 	__prop___depth int
 	open           bool
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
 	__slot2        []gtk4rt.Handle
 	__slot2_at     gtk4rt.Handle
 	__inst2_live   []*Frame__slot4Instance
 	__rendering2   bool
 	__renderAgain2 bool
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
 	__n8           gtk4rt.Handle
 }
 
@@ -1003,13 +925,10 @@ func newFrame__slot1Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__prop_n = __a_n
 	c.__prop___depth = __a___depth
 	c.open = true
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__inst2_live = []*Frame__slot4Instance{}
 	c.__rendering2 = false
 	c.__renderAgain2 = false
-	c.__slot3 = nil
 	c.__n8 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n8, 1)
 	gtk4rt.SetLook(c.__n8, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1101,17 +1020,8 @@ func (c *Frame__slot1Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 	if c.__slot2_at != nil {
 		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
 	}
 }
 
@@ -1123,12 +1033,6 @@ type Frame__slot0Instance struct {
 	__prop___depth int
 	open           bool
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
 	__slot3        []gtk4rt.Handle
 	__slot3_at     gtk4rt.Handle
 	__inst3_live   []*Frame__slot3Instance
@@ -1143,9 +1047,6 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__prop_n = __a_n
 	c.__prop___depth = __a___depth
 	c.open = true
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__inst3_live = []*Frame__slot3Instance{}
 	c.__rendering3 = false
@@ -1241,15 +1142,6 @@ func (c *Frame__slot0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
 	if c.__slot3_at != nil {
 		gtk4rt.Release(c.__slot3_at)
 	}
@@ -1342,9 +1234,6 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_live = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot1 = [];
-    let __slot2 = [];
-    let __slot3 = [];
     function __set_n(__v) {
       __prop_n = __v;
       __renderSlot0(__slotAnchor_0);
@@ -1450,13 +1339,10 @@ body { font-family: system-ui, sans-serif; }
     let __prop_n = n;
     let __prop___depth = __depth;
     let open = true;
-    let __slot0 = [];
     let __slot1 = [];
     let __inst3_live = [];
     let __rendering1 = false;
     let __renderAgain1 = false;
-    let __slot2 = [];
-    let __slot3 = [];
     function __set_n(__v) {
       __prop_n = __v;
       __renderSlot1(__slotAnchor_1);
@@ -1562,13 +1448,10 @@ body { font-family: system-ui, sans-serif; }
     let __prop_n = n;
     let __prop___depth = __depth;
     let open = true;
-    let __slot0 = [];
-    let __slot1 = [];
     let __slot2 = [];
     let __inst5_live = [];
     let __rendering2 = false;
     let __renderAgain2 = false;
-    let __slot3 = [];
     function __set_n(__v) {
       __prop_n = __v;
       __renderSlot2(__slotAnchor_2);
@@ -1674,9 +1557,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop_n = n;
     let __prop___depth = __depth;
     let open = true;
-    let __slot0 = [];
-    let __slot1 = [];
-    let __slot2 = [];
     let __slot3 = [];
     let __inst7_live = [];
     let __rendering3 = false;
@@ -1794,8 +1674,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:65daa2ce60db36e09343e5ea61beee43
+pass sha256:7d03aeb31db750935b165022f558dec4
 -- run/go/gtk4 --
-pass sha256:c5378dc74a573547ee621be7ea3a7705
+pass sha256:639a1682a67b5b3ad5457ceda8e97b87
 -- run/none/html --
-pass sha256:964f6914a0e0d65740ceb1a766d18793
+pass sha256:0000cc5ac5434b602275d3276c989cec

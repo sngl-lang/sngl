@@ -33,6 +33,7 @@ func testMountsOnEntry(t Test, c main) {
 }
 
 func testChangedOnEndsTheOldLifetimeFirst(t Test, c main) {
+    t.assert(c.out.value == "mount")
     c.n = 1
     t.assert(c.out.value == "mount,unmount,mount")
 }
@@ -45,6 +46,7 @@ func testUnchangedOnDoesNothing(t Test, c main) {
 }
 
 func testEveryChangeIsItsOwnLifetime(t Test, c main) {
+    t.assert(c.out.value == "mount")
     c.n = 1
     c.n = 2
     t.assert(c.out.value == "mount,unmount,mount,unmount,mount")

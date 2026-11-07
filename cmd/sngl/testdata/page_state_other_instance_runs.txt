@@ -64,7 +64,7 @@ func testTheOtherInstanceReadsTheWrite(t test.Test, c main) {
     t.assert(c.s != null && c.s.shown.value == "picked b")
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:b71a23705ec98e564e5d445d699a6f77
+sha256:a6b8bb7d0aeb4678312f57474d8364fd
 {
   "results": [
     {
@@ -74,7 +74,7 @@ sha256:b71a23705ec98e564e5d445d699a6f77
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:4f3d248994b69825ec0f9011b23631db
+sha256:8dd13b0d0a222d5b5f7dbaa5f2efdc97
 {
   "results": [
     {
@@ -84,7 +84,7 @@ sha256:4f3d248994b69825ec0f9011b23631db
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:f458c64f426477d2d42f2e545aa1cc15
+sha256:783bc2524f7349f0b604de4980b8b939
 {
   "results": [
     {
@@ -94,7 +94,7 @@ sha256:f458c64f426477d2d42f2e545aa1cc15
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:933c6280cedfe7b6623c6265d20fd1a1
+sha256:7207f1ae22146afb16a8637638ae7e4c
 {
   "results": [
     {
@@ -104,7 +104,7 @@ sha256:933c6280cedfe7b6623c6265d20fd1a1
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:1f268e4a6a1f28455d748d0b9d799827
+sha256:b9db2cef395102b388dc0b75af5d66b9
 {
   "results": [
     {

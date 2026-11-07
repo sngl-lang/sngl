@@ -144,7 +144,7 @@ ui.window {
     flush
 }
 -- testrun/android/kotlin/app.sngl/fixed/1 --
-sha256:b4fe4ef306c86292819ed03b6bcefc48
+sha256:c10232ea01719eee7e5013544dd3c473
 {
   "results": [
     {
@@ -157,7 +157,7 @@ sha256:b4fe4ef306c86292819ed03b6bcefc48
   }
 }
 -- testrun/android/kotlin/app.sngl/flush/1 --
-sha256:5b7215732131d4038f4667dcc56310ba
+sha256:3822cd7fa160c7df2f497387903c6622
 {
   "results": [
     {
@@ -170,7 +170,7 @@ sha256:5b7215732131d4038f4667dcc56310ba
   }
 }
 -- testrun/android/kotlin/app.sngl/kept/1 --
-sha256:3661f3908f651df4c7cde93ea8ac58a5
+sha256:f661e1233e6e23687a8b64768a8b2b8a
 {
   "results": [
     {
@@ -183,7 +183,7 @@ sha256:3661f3908f651df4c7cde93ea8ac58a5
   }
 }
 -- testrun/android/kotlin/app.sngl/sides/1 --
-sha256:ec041d5659a7022746832ba3da9b5db8
+sha256:d702cacd94d3fc8a9895111915bd13d9
 {
   "results": [
     {
@@ -196,7 +196,7 @@ sha256:ec041d5659a7022746832ba3da9b5db8
   }
 }
 -- testrun/bubbletea/go/app.sngl/fixed/1 --
-sha256:1b94af344133302a125e7d3bea9c3d2f
+sha256:9cbcf9ea17adece7af23962a590152ab
 {
   "results": [
     {
@@ -205,11 +205,11 @@ sha256:1b94af344133302a125e7d3bea9c3d2f
     }
   ],
   "snapshots": {
-    "fixed.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAgICAgG1ttICAKG1s0ODsyOzUxOzEwMjsxNTNtIBtbbRtbMzg7MjsyNTU7MjU1OzI1NTs0ODsyOzUxOzEwMjsxNTNta2VwdBtbbRtbNDg7Mjs1MTsxMDI7MTUzbSAbW20gIAobWzQ4OzI7NTE7MTAyOzE1M20gICAgICAbW20gIAo+IHNocmluaw=="
+    "fixed.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtIBtbbRtbMzg7MjsyNTU7MjU1OzI1NTs0ODsyOzUxOzEwMjsxNTNta2VwdBtbbRtbNDg7Mjs1MTsxMDI7MTUzbSAbW20gICAgIAobWzQ4OzI7NTE7MTAyOzE1M20gICAgICAbW20gICAgIArilI/ilIHilIHilIHilIHilIHilIHilIHilIHilIHilJMK4pSDPiBzaHJpbmsg4pSDCuKUl+KUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUmw=="
   }
 }
 -- testrun/bubbletea/go/app.sngl/flush/1 --
-sha256:622afa482c07fc6a8e09ff00e3632c5a
+sha256:c23884bf5c53b94e45fe01ef63abd415
 {
   "results": [
     {
@@ -218,11 +218,11 @@ sha256:622afa482c07fc6a8e09ff00e3632c5a
     }
   ],
   "snapshots": {
-    "flush.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAbW20bWzM4OzI7MjU1OzI1NTsyNTU7NDg7Mjs1MTsxMDI7MTUzbWZsdXNoG1ttG1s0ODsyOzUxOzEwMjsxNTNtICAbW20KG1s0ODsyOzUxOzEwMjsxNTNtICAgICAgICAgG1ttChtbNDg7Mjs1MTsxMDI7MTUzbSAgICAgICAgIBtbbQ=="
+    "flush.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAbW20bWzM4OzI7MjU1OzI1NTsyNTU7NDg7Mjs1MTsxMDI7MTUzbWZsdXNoG1ttG1s0ODsyOzUxOzEwMjsxNTNtICAbW20KG1s0ODsyOzUxOzEwMjsxNTNtICAgICAgICAgG1tt"
   }
 }
 -- testrun/bubbletea/go/app.sngl/kept/1 --
-sha256:05e5524c97c84ac6f0b8d3992ca8b738
+sha256:f02cbd0be79f885cc54d79992f7df96e
 {
   "results": [
     {
@@ -231,11 +231,11 @@ sha256:05e5524c97c84ac6f0b8d3992ca8b738
     }
   ],
   "snapshots": {
-    "kept.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAgICAgG1ttICAKG1s0ODsyOzUxOzEwMjsxNTNtIBtbbRtbMzg7MjsyNTU7MjU1OzI1NTs0ODsyOzUxOzEwMjsxNTNta2VwdBtbbRtbNDg7Mjs1MTsxMDI7MTUzbSAbW20gIAobWzQ4OzI7NTE7MTAyOzE1M20gICAgICAbW20gIAo+IHNocmluaw=="
+    "kept.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtIBtbbRtbMzg7MjsyNTU7MjU1OzI1NTs0ODsyOzUxOzEwMjsxNTNta2VwdBtbbRtbNDg7Mjs1MTsxMDI7MTUzbSAbW20gICAgIAobWzQ4OzI7NTE7MTAyOzE1M20gICAgICAbW20gICAgIArilI/ilIHilIHilIHilIHilIHilIHilIHilIHilIHilJMK4pSDPiBzaHJpbmsg4pSDCuKUl+KUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUmw=="
   }
 }
 -- testrun/bubbletea/go/app.sngl/sides/1 --
-sha256:c176e9c76846cba30d2222f94786a961
+sha256:f899d8282c6e1b9ece63cd871f11fd61
 {
   "results": [
     {
@@ -244,11 +244,11 @@ sha256:c176e9c76846cba30d2222f94786a961
     }
   ],
   "snapshots": {
-    "sides.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAbW20bWzM4OzI7MjU1OzI1NTsyNTU7NDg7Mjs1MTsxMDI7MTUzbWZsdXNoG1ttG1s0ODsyOzUxOzEwMjsxNTNtICAbW20KG1s0ODsyOzUxOzEwMjsxNTNtICAgICAgICAgG1ttChtbNDg7Mjs1MTsxMDI7MTUzbSAgICAgICAgIBtbbQ=="
+    "sides.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAbW20bWzM4OzI7MjU1OzI1NTsyNTU7NDg7Mjs1MTsxMDI7MTUzbWZsdXNoG1ttG1s0ODsyOzUxOzEwMjsxNTNtICAbW20KG1s0ODsyOzUxOzEwMjsxNTNtICAgICAgICAgG1tt"
   }
 }
 -- testrun/fyne/go/app.sngl/fixed/1 --
-sha256:9420e389ad5d0addd0766404cb9c306c
+sha256:b959c9632c837788a2826b07709e3c00
 {
   "results": [
     {
@@ -261,7 +261,7 @@ sha256:9420e389ad5d0addd0766404cb9c306c
   }
 }
 -- testrun/fyne/go/app.sngl/flush/1 --
-sha256:35dbc454e41fae81bfe1f4e8f473054f
+sha256:f7872d2130a36deb1257e35a4fe04f30
 {
   "results": [
     {
@@ -274,7 +274,7 @@ sha256:35dbc454e41fae81bfe1f4e8f473054f
   }
 }
 -- testrun/fyne/go/app.sngl/kept/1 --
-sha256:c224dd7cd5934b136259f5251547f84c
+sha256:d1d32781dd173ff19f18d246fa4f73b6
 {
   "results": [
     {
@@ -287,7 +287,7 @@ sha256:c224dd7cd5934b136259f5251547f84c
   }
 }
 -- testrun/fyne/go/app.sngl/sides/1 --
-sha256:f6b5316d035184bba178bd745db20e60
+sha256:33c89e79636e70d9204f6daa14209d24
 {
   "results": [
     {
@@ -300,7 +300,7 @@ sha256:f6b5316d035184bba178bd745db20e60
   }
 }
 -- testrun/gtk4/go/app.sngl/fixed/1 --
-sha256:4d7f4e919200927e566f9fe319c59d15
+sha256:411ec959f04230ce21e6c3e680c6c045
 {
   "results": [
     {
@@ -313,7 +313,7 @@ sha256:4d7f4e919200927e566f9fe319c59d15
   }
 }
 -- testrun/gtk4/go/app.sngl/flush/1 --
-sha256:82650db9a6dac25a36ee2b24a26e37eb
+sha256:9f271a1504b02553c627ed2187700aaf
 {
   "results": [
     {
@@ -326,7 +326,7 @@ sha256:82650db9a6dac25a36ee2b24a26e37eb
   }
 }
 -- testrun/gtk4/go/app.sngl/kept/1 --
-sha256:2fff6f2d5b212a6dc61c8e7f0b29fddc
+sha256:86c926055bc4047c3e77b85bb69bf5d7
 {
   "results": [
     {
@@ -339,7 +339,7 @@ sha256:2fff6f2d5b212a6dc61c8e7f0b29fddc
   }
 }
 -- testrun/gtk4/go/app.sngl/sides/1 --
-sha256:7f5a48335f2a893cacb42ce37ecb0176
+sha256:2c611db9f0228e4438a431cabf197764
 {
   "results": [
     {
@@ -352,7 +352,7 @@ sha256:7f5a48335f2a893cacb42ce37ecb0176
   }
 }
 -- testrun/html/none/page.sngl/bare/1 --
-sha256:222e37808c9824c6209d2549f65f9df3
+sha256:fdf4a3ec3da13e5a0db150544f894618
 {
   "results": [
     {
@@ -362,7 +362,7 @@ sha256:222e37808c9824c6209d2549f65f9df3
   ]
 }
 -- testrun/html/none/page.sngl/flush/1 --
-sha256:c3986a7d6aaec45e1d382befa43904dc
+sha256:a5f1cc2beddcf6ec2dcb4d722f2eb56d
 {
   "results": [
     {
@@ -372,7 +372,7 @@ sha256:c3986a7d6aaec45e1d382befa43904dc
   ]
 }
 -- testrun/html/none/page.sngl/kept/1 --
-sha256:705b0d8470b4f355350d1f94ba2492f5
+sha256:5774081f4f521fe51dec71c966f06459
 {
   "results": [
     {

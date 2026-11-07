@@ -181,6 +181,14 @@ type Pair struct {
 	B string
 }
 
+type Test struct {
+}
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -272,6 +280,10 @@ type modelState struct {
 	__effect1_key       string
 	__effect1_live      []string
 	__effect1_desired   []string
+	__effect1_paths     []string
+	__effect1_livePaths []string
+	__effect1_pathAt    map[string]int
+	__effect1_liveAt    map[string]int
 	__effect2_key       int
 	__effect2_live      []int
 	__effect2_desired   []int
@@ -299,44 +311,133 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.shown__inst0 = true
-	m.log__inst0 = []string{}
-	m.items__inst0 = []string{"a", "b", "c"}
-	m.log__inst1 = []string{}
-	m.k__inst0 = 0
-	m.log__inst2 = []string{}
-	m.key__inst0 = Counter{}
-	m.n__inst0 = 0
-	m.log__inst3 = []string{}
-	m.key__inst1 = Pair{A: 1, B: "x"}
-	m.log__inst4 = []string{}
-	m.visible__inst0 = true
-	m.__effect0_live = []bool{}
-	m.__effect0_desired = []bool{}
-	m.__effect1_key = ""
-	m.__effect1_live = []string{}
-	m.__effect1_desired = []string{}
-	m.__effect2_key = 0
-	m.__effect2_live = []int{}
-	m.__effect2_desired = []int{}
-	m.__effect3_key = 0
-	m.__effect3_live = []int{}
-	m.__effect3_desired = []int{}
-	m.__effect4_key = 0
-	m.__effect4_live = []int{}
-	m.__effect4_desired = []int{}
-	m.__effect5_key = 0
-	m.__effect5_live = []int{}
-	m.__effect5_desired = []int{}
-	m.__effect6_key = Pair{}
-	m.__effect6_live = []Pair{}
-	m.__effect6_desired = []Pair{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
-	m.__focusID = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["shown__inst0"] {
+		m.shown__inst0 = true
+	}
+	if !preset["log__inst0"] {
+		m.log__inst0 = []string{}
+	}
+	if !preset["items__inst0"] {
+		m.items__inst0 = []string{"a", "b", "c"}
+	}
+	if !preset["log__inst1"] {
+		m.log__inst1 = []string{}
+	}
+	if !preset["k__inst0"] {
+		m.k__inst0 = 0
+	}
+	if !preset["log__inst2"] {
+		m.log__inst2 = []string{}
+	}
+	if !preset["key__inst0"] {
+		m.key__inst0 = Counter{}
+	}
+	if !preset["n__inst0"] {
+		m.n__inst0 = 0
+	}
+	if !preset["log__inst3"] {
+		m.log__inst3 = []string{}
+	}
+	if !preset["key__inst1"] {
+		m.key__inst1 = Pair{A: 1, B: "x"}
+	}
+	if !preset["log__inst4"] {
+		m.log__inst4 = []string{}
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []bool{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []bool{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = ""
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []string{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []string{}
+	}
+	if !preset["__effect1_paths"] {
+		m.__effect1_paths = []string{}
+	}
+	if !preset["__effect1_livePaths"] {
+		m.__effect1_livePaths = []string{}
+	}
+	if !preset["__effect1_pathAt"] {
+		m.__effect1_pathAt = map[string]int{}
+	}
+	if !preset["__effect1_liveAt"] {
+		m.__effect1_liveAt = map[string]int{}
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = 0
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []int{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []int{}
+	}
+	if !preset["__effect3_key"] {
+		m.__effect3_key = 0
+	}
+	if !preset["__effect3_live"] {
+		m.__effect3_live = []int{}
+	}
+	if !preset["__effect3_desired"] {
+		m.__effect3_desired = []int{}
+	}
+	if !preset["__effect4_key"] {
+		m.__effect4_key = 0
+	}
+	if !preset["__effect4_live"] {
+		m.__effect4_live = []int{}
+	}
+	if !preset["__effect4_desired"] {
+		m.__effect4_desired = []int{}
+	}
+	if !preset["__effect5_key"] {
+		m.__effect5_key = 0
+	}
+	if !preset["__effect5_live"] {
+		m.__effect5_live = []int{}
+	}
+	if !preset["__effect5_desired"] {
+		m.__effect5_desired = []int{}
+	}
+	if !preset["__effect6_key"] {
+		m.__effect6_key = Pair{}
+	}
+	if !preset["__effect6_live"] {
+		m.__effect6_live = []Pair{}
+	}
+	if !preset["__effect6_desired"] {
+		m.__effect6_desired = []Pair{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
 	m.__effects0_settle()
 	return m
 }
@@ -345,6 +446,26 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) scaled__inst0(m__r0 int) int {
@@ -388,14 +509,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -459,7 +580,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt6
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt9 *Measurement
 	if own != nil {
 		__lt9 = own
@@ -472,7 +593,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt9 = __lt8
 	}
-	return CellsOf(__lt9)
+	return SpaceOf(__lt9, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -511,6 +632,16 @@ func LineCap(height__r0 int, lines int) int {
 		__lt13 = __lt12
 	}
 	return __lt13
+}
+
+func SpaceOf(m__r4 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r4) / __lt14) + 0.5))
 }
 
 func (m *Model) __effect0_mount() {
@@ -568,16 +699,26 @@ func (m *Model) __effect1_unmount() {
 
 func (m *Model) __effect1_down() {
 	m.__effect1_desired = []string{}
-	for _, it := range m.items__inst0 {
-		m.__effect1_desired = append(m.__effect1_desired, it)
+	m.__effect1_paths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	for _, it := range __identified0(m.items__inst0) {
+		m.__effect1_desired = append(m.__effect1_desired, it.Elem)
+		m.__effect1_pathAt[it.Id] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, it.Id)
 	}
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
-		if __effect1_j >= len(m.__effect1_desired) {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_pathAt[m.__effect1_livePaths[__effect1_j]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
 			m.__effect1_key = m.__effect1_live[__effect1_j]
 			m.__effect1_unmount()
 		} else {
-			if m.__effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
+			if m.__effect1_desired[__effect1_at] != m.__effect1_live[__effect1_j] {
 				m.__effect1_key = m.__effect1_live[__effect1_j]
 				m.__effect1_unmount()
 			}
@@ -587,17 +728,25 @@ func (m *Model) __effect1_down() {
 
 func (m *Model) __effect1_up() {
 	for __effect1_i, __effect1_k := range m.__effect1_desired {
-		if __effect1_i >= len(m.__effect1_live) {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_liveAt[m.__effect1_paths[__effect1_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
 			m.__effect1_key = __effect1_k
 			m.__effect1_mount()
 		} else {
-			if m.__effect1_live[__effect1_i] != __effect1_k {
+			if m.__effect1_live[__effect1_at] != __effect1_k {
 				m.__effect1_key = __effect1_k
 				m.__effect1_mount()
 			}
 		}
 	}
 	m.__effect1_live = m.__effect1_desired
+	m.__effect1_livePaths = m.__effect1_paths
+	m.__effect1_liveAt = m.__effect1_pathAt
 }
 
 func (m *Model) __effect1_teardown() {
@@ -606,6 +755,8 @@ func (m *Model) __effect1_teardown() {
 		m.__effect1_unmount()
 	}
 	m.__effect1_live = []string{}
+	m.__effect1_livePaths = []string{}
+	m.__effect1_liveAt = map[string]int{}
 }
 
 func (m *Model) __effect2_mount() {
@@ -1338,11 +1489,13 @@ func (m Model) View() tea.View {
 		if part0Part_0Focused {
 			part0Part_0Prefix = ">"
 		}
-		part0Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_0Prefix + " " + fmt.Sprint("toggle"))
+		part0Part_0Text := part0Part_0Prefix + " " + fmt.Sprint("toggle")
+		part0Part_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_0Focused), tui.Avail(m.width), part0Part_0Text).Render(part0Part_0Text)
 		part0Part_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_0)
 		part0Parts = append(part0Parts, part0Part_0)
 		var part0Part_1 string
-		part0Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(strings.Join(m.log__inst0, ",")))
+		part0Part_1Text := fmt.Sprint(strings.Join(m.log__inst0, ","))
+		part0Part_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_1Text).Render(part0Part_1Text)
 		part0Parts = append(part0Parts, part0Part_1)
 		var part0Part_2 string
 		part0Part_2Focused := (m.__focusID == 1)
@@ -1350,7 +1503,8 @@ func (m Model) View() tea.View {
 		if part0Part_2Focused {
 			part0Part_2Prefix = ">"
 		}
-		part0Part_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_2Prefix + " " + fmt.Sprint("drop"))
+		part0Part_2Text := part0Part_2Prefix + " " + fmt.Sprint("drop")
+		part0Part_2 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_2Focused), tui.Avail(m.width), part0Part_2Text).Render(part0Part_2Text)
 		part0Part_2 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_2)
 		part0Parts = append(part0Parts, part0Part_2)
 		var part0Part_3 string
@@ -1359,11 +1513,13 @@ func (m Model) View() tea.View {
 		if part0Part_3Focused {
 			part0Part_3Prefix = ">"
 		}
-		part0Part_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_3Prefix + " " + fmt.Sprint("add"))
+		part0Part_3Text := part0Part_3Prefix + " " + fmt.Sprint("add")
+		part0Part_3 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_3Focused), tui.Avail(m.width), part0Part_3Text).Render(part0Part_3Text)
 		part0Part_3 = m.__clicks.Mark(snglStop{slot: 2, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_3)
 		part0Parts = append(part0Parts, part0Part_3)
 		var part0Part_4 string
-		part0Part_4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(strings.Join(m.log__inst1, ",")))
+		part0Part_4Text := fmt.Sprint(strings.Join(m.log__inst1, ","))
+		part0Part_4 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_4Text).Render(part0Part_4Text)
 		part0Parts = append(part0Parts, part0Part_4)
 		var part0Part_5 string
 		part0Part_5Focused := (m.__focusID == 3)
@@ -1371,11 +1527,13 @@ func (m Model) View() tea.View {
 		if part0Part_5Focused {
 			part0Part_5Prefix = ">"
 		}
-		part0Part_5 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_5Prefix + " " + fmt.Sprint("rekey"))
+		part0Part_5Text := part0Part_5Prefix + " " + fmt.Sprint("rekey")
+		part0Part_5 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_5Focused), tui.Avail(m.width), part0Part_5Text).Render(part0Part_5Text)
 		part0Part_5 = m.__clicks.Mark(snglStop{slot: 3, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_5)
 		part0Parts = append(part0Parts, part0Part_5)
 		var part0Part_6 string
-		part0Part_6 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(strings.Join(m.log__inst2, ",")))
+		part0Part_6Text := fmt.Sprint(strings.Join(m.log__inst2, ","))
+		part0Part_6 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_6Text).Render(part0Part_6Text)
 		part0Parts = append(part0Parts, part0Part_6)
 		var part0Part_7 string
 		part0Part_7Focused := (m.__focusID == 4)
@@ -1383,7 +1541,8 @@ func (m Model) View() tea.View {
 		if part0Part_7Focused {
 			part0Part_7Prefix = ">"
 		}
-		part0Part_7 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_7Prefix + " " + fmt.Sprint("field"))
+		part0Part_7Text := part0Part_7Prefix + " " + fmt.Sprint("field")
+		part0Part_7 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_7Focused), tui.Avail(m.width), part0Part_7Text).Render(part0Part_7Text)
 		part0Part_7 = m.__clicks.Mark(snglStop{slot: 4, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_7)
 		part0Parts = append(part0Parts, part0Part_7)
 		var part0Part_8 string
@@ -1392,11 +1551,13 @@ func (m Model) View() tea.View {
 		if part0Part_8Focused {
 			part0Part_8Prefix = ">"
 		}
-		part0Part_8 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_8Prefix + " " + fmt.Sprint("called"))
+		part0Part_8Text := part0Part_8Prefix + " " + fmt.Sprint("called")
+		part0Part_8 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_8Focused), tui.Avail(m.width), part0Part_8Text).Render(part0Part_8Text)
 		part0Part_8 = m.__clicks.Mark(snglStop{slot: 5, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_8)
 		part0Parts = append(part0Parts, part0Part_8)
 		var part0Part_9 string
-		part0Part_9 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(strings.Join(m.log__inst3, ",")))
+		part0Part_9Text := fmt.Sprint(strings.Join(m.log__inst3, ","))
+		part0Part_9 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_9Text).Render(part0Part_9Text)
 		part0Parts = append(part0Parts, part0Part_9)
 		var part0Part_10 string
 		part0Part_10Focused := (m.__focusID == 6)
@@ -1404,7 +1565,8 @@ func (m Model) View() tea.View {
 		if part0Part_10Focused {
 			part0Part_10Prefix = ">"
 		}
-		part0Part_10 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_10Prefix + " " + fmt.Sprint("same"))
+		part0Part_10Text := part0Part_10Prefix + " " + fmt.Sprint("same")
+		part0Part_10 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_10Focused), tui.Avail(m.width), part0Part_10Text).Render(part0Part_10Text)
 		part0Part_10 = m.__clicks.Mark(snglStop{slot: 6, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_10)
 		part0Parts = append(part0Parts, part0Part_10)
 		var part0Part_11 string
@@ -1413,11 +1575,13 @@ func (m Model) View() tea.View {
 		if part0Part_11Focused {
 			part0Part_11Prefix = ">"
 		}
-		part0Part_11 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_11Prefix + " " + fmt.Sprint("bump"))
+		part0Part_11Text := part0Part_11Prefix + " " + fmt.Sprint("bump")
+		part0Part_11 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_11Focused), tui.Avail(m.width), part0Part_11Text).Render(part0Part_11Text)
 		part0Part_11 = m.__clicks.Mark(snglStop{slot: 7, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_11)
 		part0Parts = append(part0Parts, part0Part_11)
 		var part0Part_12 string
-		part0Part_12 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(strings.Join(m.log__inst4, ",")))
+		part0Part_12Text := fmt.Sprint(strings.Join(m.log__inst4, ","))
+		part0Part_12 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_12Text).Render(part0Part_12Text)
 		part0Parts = append(part0Parts, part0Part_12)
 		part0 = tui.Spaced(false, lipgloss.Left, 0, part0Parts...)
 	}
@@ -1452,6 +1616,7 @@ import (
 func TestBranchIsTheLifetime(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((strings.Join(c.log__inst0, ",") == "in")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst0, \",\") == \"in\")") }
 	c.toggleClick()
 	if !((strings.Join(c.log__inst0, ",") == "in,out")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst0, \",\") == \"in,out\")") }
@@ -1464,6 +1629,7 @@ func TestBranchIsTheLifetime(t *testing.T) {
 func TestEndingsRunNewestFirst(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((strings.Join(c.log__inst1, ",") == "+a,+b,+c")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst1, \",\") == \"+a,+b,+c\")") }
 	c.dropClick()
 	if !((strings.Join(c.log__inst1, ",") == "+a,+b,+c,-c,-b")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst1, \",\") == \"+a,+b,+c,-c,-b\")") }
@@ -1472,6 +1638,7 @@ func TestEndingsRunNewestFirst(t *testing.T) {
 func TestPushMountsTheNewBracket(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.addClick()
 	if !((strings.Join(c.log__inst1, ",") == "+a,+b,+c,+d")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst1, \",\") == \"+a,+b,+c,+d\")") }
 }
@@ -1479,6 +1646,7 @@ func TestPushMountsTheNewBracket(t *testing.T) {
 func TestBothEndBeforeEitherBegins(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((strings.Join(c.log__inst2, ",") == "+A,+B")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst2, \",\") == \"+A,+B\")") }
 	c.rekeyClick()
 	if !((strings.Join(c.log__inst2, ",") == "+A,+B,-B,-A,+A,+B")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst2, \",\") == \"+A,+B,-B,-A,+A,+B\")") }
@@ -1487,6 +1655,7 @@ func TestBothEndBeforeEitherBegins(t *testing.T) {
 func TestAFieldWriteRekeys(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.fieldClick()
 	if !((strings.Join(c.log__inst3, ",") == "f+,c+,f-,f+")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst3, \",\") == \"f+,c+,f-,f+\")") }
 }
@@ -1494,6 +1663,7 @@ func TestAFieldWriteRekeys(t *testing.T) {
 func TestACalledKeyRekeys(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.calledClick()
 	if !((strings.Join(c.log__inst3, ",") == "f+,c+,c-,c+")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst3, \",\") == \"f+,c+,c-,c+\")") }
 }
@@ -1501,6 +1671,7 @@ func TestACalledKeyRekeys(t *testing.T) {
 func TestAStructKeyComparesFieldByField(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.sameClick()
 	if !((strings.Join(c.log__inst4, ",") == "m")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst4, \",\") == \"m\")") }
 	c.bumpClick()
@@ -1508,7 +1679,13 @@ func TestAStructKeyComparesFieldByField(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from component_effect_lifetimes.sngl; DO NOT EDIT.
 
@@ -1516,6 +1693,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
@@ -1537,6 +1715,14 @@ type Pair struct {
 	B string
 }
 
+type Test struct {
+}
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	shown__inst0        bool
@@ -1556,6 +1742,10 @@ type Model struct {
 	__effect1_key       string
 	__effect1_live      []string
 	__effect1_desired   []string
+	__effect1_paths     []string
+	__effect1_livePaths []string
+	__effect1_pathAt    map[string]int
+	__effect1_liveAt    map[string]int
 	__effect2_key       int
 	__effect2_live      []int
 	__effect2_desired   []int
@@ -1596,43 +1786,151 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.shown__inst0 = true
-	m.log__inst0 = []string{}
-	m.items__inst0 = []string{"a", "b", "c"}
-	m.log__inst1 = []string{}
-	m.k__inst0 = 0
-	m.log__inst2 = []string{}
-	m.key__inst0 = Counter{}
-	m.n__inst0 = 0
-	m.log__inst3 = []string{}
-	m.key__inst1 = Pair{A: 1, B: "x"}
-	m.log__inst4 = []string{}
-	m.visible__inst0 = true
-	m.__effect0_live = []bool{}
-	m.__effect0_desired = []bool{}
-	m.__effect1_key = ""
-	m.__effect1_live = []string{}
-	m.__effect1_desired = []string{}
-	m.__effect2_key = 0
-	m.__effect2_live = []int{}
-	m.__effect2_desired = []int{}
-	m.__effect3_key = 0
-	m.__effect3_live = []int{}
-	m.__effect3_desired = []int{}
-	m.__effect4_key = 0
-	m.__effect4_live = []int{}
-	m.__effect4_desired = []int{}
-	m.__effect5_key = 0
-	m.__effect5_live = []int{}
-	m.__effect5_desired = []int{}
-	m.__effect6_key = Pair{}
-	m.__effect6_live = []Pair{}
-	m.__effect6_desired = []Pair{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["shown__inst0"] {
+		m.shown__inst0 = true
+	}
+	if !preset["log__inst0"] {
+		m.log__inst0 = []string{}
+	}
+	if !preset["items__inst0"] {
+		m.items__inst0 = []string{"a", "b", "c"}
+	}
+	if !preset["log__inst1"] {
+		m.log__inst1 = []string{}
+	}
+	if !preset["k__inst0"] {
+		m.k__inst0 = 0
+	}
+	if !preset["log__inst2"] {
+		m.log__inst2 = []string{}
+	}
+	if !preset["key__inst0"] {
+		m.key__inst0 = Counter{}
+	}
+	if !preset["n__inst0"] {
+		m.n__inst0 = 0
+	}
+	if !preset["log__inst3"] {
+		m.log__inst3 = []string{}
+	}
+	if !preset["key__inst1"] {
+		m.key__inst1 = Pair{A: 1, B: "x"}
+	}
+	if !preset["log__inst4"] {
+		m.log__inst4 = []string{}
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []bool{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []bool{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = ""
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []string{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []string{}
+	}
+	if !preset["__effect1_paths"] {
+		m.__effect1_paths = []string{}
+	}
+	if !preset["__effect1_livePaths"] {
+		m.__effect1_livePaths = []string{}
+	}
+	if !preset["__effect1_pathAt"] {
+		m.__effect1_pathAt = map[string]int{}
+	}
+	if !preset["__effect1_liveAt"] {
+		m.__effect1_liveAt = map[string]int{}
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = 0
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []int{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []int{}
+	}
+	if !preset["__effect3_key"] {
+		m.__effect3_key = 0
+	}
+	if !preset["__effect3_live"] {
+		m.__effect3_live = []int{}
+	}
+	if !preset["__effect3_desired"] {
+		m.__effect3_desired = []int{}
+	}
+	if !preset["__effect4_key"] {
+		m.__effect4_key = 0
+	}
+	if !preset["__effect4_live"] {
+		m.__effect4_live = []int{}
+	}
+	if !preset["__effect4_desired"] {
+		m.__effect4_desired = []int{}
+	}
+	if !preset["__effect5_key"] {
+		m.__effect5_key = 0
+	}
+	if !preset["__effect5_live"] {
+		m.__effect5_live = []int{}
+	}
+	if !preset["__effect5_desired"] {
+		m.__effect5_desired = []int{}
+	}
+	if !preset["__effect6_key"] {
+		m.__effect6_key = Pair{}
+	}
+	if !preset["__effect6_live"] {
+		m.__effect6_live = []Pair{}
+	}
+	if !preset["__effect6_desired"] {
+		m.__effect6_desired = []Pair{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) scaled__inst0(m__r0 int) int {
@@ -1698,16 +1996,26 @@ func (m *Model) __effect1_unmount() {
 
 func (m *Model) __effect1_down() {
 	m.__effect1_desired = []string{}
-	for _, it := range m.items__inst0 {
-		m.__effect1_desired = append(m.__effect1_desired, it)
+	m.__effect1_paths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	for _, it := range __identified0(m.items__inst0) {
+		m.__effect1_desired = append(m.__effect1_desired, it.Elem)
+		m.__effect1_pathAt[it.Id] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, it.Id)
 	}
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
-		if __effect1_j >= len(m.__effect1_desired) {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_pathAt[m.__effect1_livePaths[__effect1_j]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
 			m.__effect1_key = m.__effect1_live[__effect1_j]
 			m.__effect1_unmount()
 		} else {
-			if m.__effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
+			if m.__effect1_desired[__effect1_at] != m.__effect1_live[__effect1_j] {
 				m.__effect1_key = m.__effect1_live[__effect1_j]
 				m.__effect1_unmount()
 			}
@@ -1717,17 +2025,25 @@ func (m *Model) __effect1_down() {
 
 func (m *Model) __effect1_up() {
 	for __effect1_i, __effect1_k := range m.__effect1_desired {
-		if __effect1_i >= len(m.__effect1_live) {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_liveAt[m.__effect1_paths[__effect1_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
 			m.__effect1_key = __effect1_k
 			m.__effect1_mount()
 		} else {
-			if m.__effect1_live[__effect1_i] != __effect1_k {
+			if m.__effect1_live[__effect1_at] != __effect1_k {
 				m.__effect1_key = __effect1_k
 				m.__effect1_mount()
 			}
 		}
 	}
 	m.__effect1_live = m.__effect1_desired
+	m.__effect1_livePaths = m.__effect1_paths
+	m.__effect1_liveAt = m.__effect1_pathAt
 }
 
 func (m *Model) __effect1_teardown() {
@@ -1736,6 +2052,8 @@ func (m *Model) __effect1_teardown() {
 		m.__effect1_unmount()
 	}
 	m.__effect1_live = []string{}
+	m.__effect1_livePaths = []string{}
+	m.__effect1_liveAt = map[string]int{}
 }
 
 func (m *Model) __effect2_mount() {
@@ -2314,6 +2632,7 @@ import (
 func TestBranchIsTheLifetime(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((strings.Join(c.log__inst0, ",") == "in")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst0, \",\") == \"in\")") }
 	c.toggleClick()
 	if !((strings.Join(c.log__inst0, ",") == "in,out")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst0, \",\") == \"in,out\")") }
@@ -2326,6 +2645,7 @@ func TestBranchIsTheLifetime(t *testing.T) {
 func TestEndingsRunNewestFirst(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((strings.Join(c.log__inst1, ",") == "+a,+b,+c")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst1, \",\") == \"+a,+b,+c\")") }
 	c.dropClick()
 	if !((strings.Join(c.log__inst1, ",") == "+a,+b,+c,-c,-b")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst1, \",\") == \"+a,+b,+c,-c,-b\")") }
@@ -2334,6 +2654,7 @@ func TestEndingsRunNewestFirst(t *testing.T) {
 func TestPushMountsTheNewBracket(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.addClick()
 	if !((strings.Join(c.log__inst1, ",") == "+a,+b,+c,+d")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst1, \",\") == \"+a,+b,+c,+d\")") }
 }
@@ -2341,6 +2662,7 @@ func TestPushMountsTheNewBracket(t *testing.T) {
 func TestBothEndBeforeEitherBegins(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((strings.Join(c.log__inst2, ",") == "+A,+B")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst2, \",\") == \"+A,+B\")") }
 	c.rekeyClick()
 	if !((strings.Join(c.log__inst2, ",") == "+A,+B,-B,-A,+A,+B")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst2, \",\") == \"+A,+B,-B,-A,+A,+B\")") }
@@ -2349,6 +2671,7 @@ func TestBothEndBeforeEitherBegins(t *testing.T) {
 func TestAFieldWriteRekeys(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.fieldClick()
 	if !((strings.Join(c.log__inst3, ",") == "f+,c+,f-,f+")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst3, \",\") == \"f+,c+,f-,f+\")") }
 }
@@ -2356,6 +2679,7 @@ func TestAFieldWriteRekeys(t *testing.T) {
 func TestACalledKeyRekeys(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.calledClick()
 	if !((strings.Join(c.log__inst3, ",") == "f+,c+,c-,c+")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst3, \",\") == \"f+,c+,c-,c+\")") }
 }
@@ -2363,6 +2687,7 @@ func TestACalledKeyRekeys(t *testing.T) {
 func TestAStructKeyComparesFieldByField(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.sameClick()
 	if !((strings.Join(c.log__inst4, ",") == "m")) { t.Errorf("assert failed: %s", "(strings.Join(c.log__inst4, \",\") == \"m\")") }
 	c.bumpClick()
@@ -2376,7 +2701,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -2401,6 +2730,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"fmt"
 	"strings"
 )
 
@@ -2416,6 +2746,14 @@ type Counter struct {
 type Pair struct {
 	A int
 	B string
+}
+
+type Test struct {
+}
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -2437,6 +2775,10 @@ type Model struct {
 	__effect1_key       string
 	__effect1_live      []string
 	__effect1_desired   []string
+	__effect1_paths     []string
+	__effect1_livePaths []string
+	__effect1_pathAt    map[string]int
+	__effect1_liveAt    map[string]int
 	__effect2_key       int
 	__effect2_live      []int
 	__effect2_desired   []int
@@ -2477,43 +2819,151 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.shown__inst0 = true
-	m.log__inst0 = []string{}
-	m.items__inst0 = []string{"a", "b", "c"}
-	m.log__inst1 = []string{}
-	m.k__inst0 = 0
-	m.log__inst2 = []string{}
-	m.key__inst0 = Counter{}
-	m.n__inst0 = 0
-	m.log__inst3 = []string{}
-	m.key__inst1 = Pair{A: 1, B: "x"}
-	m.log__inst4 = []string{}
-	m.visible__inst0 = true
-	m.__effect0_live = []bool{}
-	m.__effect0_desired = []bool{}
-	m.__effect1_key = ""
-	m.__effect1_live = []string{}
-	m.__effect1_desired = []string{}
-	m.__effect2_key = 0
-	m.__effect2_live = []int{}
-	m.__effect2_desired = []int{}
-	m.__effect3_key = 0
-	m.__effect3_live = []int{}
-	m.__effect3_desired = []int{}
-	m.__effect4_key = 0
-	m.__effect4_live = []int{}
-	m.__effect4_desired = []int{}
-	m.__effect5_key = 0
-	m.__effect5_live = []int{}
-	m.__effect5_desired = []int{}
-	m.__effect6_key = Pair{}
-	m.__effect6_live = []Pair{}
-	m.__effect6_desired = []Pair{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["shown__inst0"] {
+		m.shown__inst0 = true
+	}
+	if !preset["log__inst0"] {
+		m.log__inst0 = []string{}
+	}
+	if !preset["items__inst0"] {
+		m.items__inst0 = []string{"a", "b", "c"}
+	}
+	if !preset["log__inst1"] {
+		m.log__inst1 = []string{}
+	}
+	if !preset["k__inst0"] {
+		m.k__inst0 = 0
+	}
+	if !preset["log__inst2"] {
+		m.log__inst2 = []string{}
+	}
+	if !preset["key__inst0"] {
+		m.key__inst0 = Counter{}
+	}
+	if !preset["n__inst0"] {
+		m.n__inst0 = 0
+	}
+	if !preset["log__inst3"] {
+		m.log__inst3 = []string{}
+	}
+	if !preset["key__inst1"] {
+		m.key__inst1 = Pair{A: 1, B: "x"}
+	}
+	if !preset["log__inst4"] {
+		m.log__inst4 = []string{}
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []bool{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []bool{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = ""
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []string{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []string{}
+	}
+	if !preset["__effect1_paths"] {
+		m.__effect1_paths = []string{}
+	}
+	if !preset["__effect1_livePaths"] {
+		m.__effect1_livePaths = []string{}
+	}
+	if !preset["__effect1_pathAt"] {
+		m.__effect1_pathAt = map[string]int{}
+	}
+	if !preset["__effect1_liveAt"] {
+		m.__effect1_liveAt = map[string]int{}
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = 0
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []int{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []int{}
+	}
+	if !preset["__effect3_key"] {
+		m.__effect3_key = 0
+	}
+	if !preset["__effect3_live"] {
+		m.__effect3_live = []int{}
+	}
+	if !preset["__effect3_desired"] {
+		m.__effect3_desired = []int{}
+	}
+	if !preset["__effect4_key"] {
+		m.__effect4_key = 0
+	}
+	if !preset["__effect4_live"] {
+		m.__effect4_live = []int{}
+	}
+	if !preset["__effect4_desired"] {
+		m.__effect4_desired = []int{}
+	}
+	if !preset["__effect5_key"] {
+		m.__effect5_key = 0
+	}
+	if !preset["__effect5_live"] {
+		m.__effect5_live = []int{}
+	}
+	if !preset["__effect5_desired"] {
+		m.__effect5_desired = []int{}
+	}
+	if !preset["__effect6_key"] {
+		m.__effect6_key = Pair{}
+	}
+	if !preset["__effect6_live"] {
+		m.__effect6_live = []Pair{}
+	}
+	if !preset["__effect6_desired"] {
+		m.__effect6_desired = []Pair{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) scaled__inst0(m__r0 int) int {
@@ -2579,16 +3029,26 @@ func (m *Model) __effect1_unmount() {
 
 func (m *Model) __effect1_down() {
 	m.__effect1_desired = []string{}
-	for _, it := range m.items__inst0 {
-		m.__effect1_desired = append(m.__effect1_desired, it)
+	m.__effect1_paths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	for _, it := range __identified0(m.items__inst0) {
+		m.__effect1_desired = append(m.__effect1_desired, it.Elem)
+		m.__effect1_pathAt[it.Id] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, it.Id)
 	}
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
-		if __effect1_j >= len(m.__effect1_desired) {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_pathAt[m.__effect1_livePaths[__effect1_j]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
 			m.__effect1_key = m.__effect1_live[__effect1_j]
 			m.__effect1_unmount()
 		} else {
-			if m.__effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
+			if m.__effect1_desired[__effect1_at] != m.__effect1_live[__effect1_j] {
 				m.__effect1_key = m.__effect1_live[__effect1_j]
 				m.__effect1_unmount()
 			}
@@ -2598,17 +3058,25 @@ func (m *Model) __effect1_down() {
 
 func (m *Model) __effect1_up() {
 	for __effect1_i, __effect1_k := range m.__effect1_desired {
-		if __effect1_i >= len(m.__effect1_live) {
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_liveAt[m.__effect1_paths[__effect1_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at < 0 {
 			m.__effect1_key = __effect1_k
 			m.__effect1_mount()
 		} else {
-			if m.__effect1_live[__effect1_i] != __effect1_k {
+			if m.__effect1_live[__effect1_at] != __effect1_k {
 				m.__effect1_key = __effect1_k
 				m.__effect1_mount()
 			}
 		}
 	}
 	m.__effect1_live = m.__effect1_desired
+	m.__effect1_livePaths = m.__effect1_paths
+	m.__effect1_liveAt = m.__effect1_pathAt
 }
 
 func (m *Model) __effect1_teardown() {
@@ -2617,6 +3085,8 @@ func (m *Model) __effect1_teardown() {
 		m.__effect1_unmount()
 	}
 	m.__effect1_live = []string{}
+	m.__effect1_livePaths = []string{}
+	m.__effect1_liveAt = map[string]int{}
 }
 
 func (m *Model) __effect2_mount() {
@@ -3189,6 +3659,7 @@ package test.sngl.app
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -3207,6 +3678,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.runtime.key
 
 data class Counter(
     var n: Int = 0
@@ -3217,25 +3689,40 @@ data class Pair(
     var b: String = ""
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
+)
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var shown__inst0 by mutableStateOf(true)
-    val log__inst0 = mutableStateListOf<String>()
-    val items__inst0 = mutableStateListOf("a", "b", "c")
-    val log__inst1 = mutableStateListOf<String>()
-    var k__inst0 by mutableStateOf(0)
-    val log__inst2 = mutableStateListOf<String>()
-    var key__inst0 by mutableStateOf(Counter())
-    var n__inst0 by mutableStateOf(0)
-    val log__inst3 = mutableStateListOf<String>()
-    var key__inst1 by mutableStateOf(Pair(a = 1, b = "x"))
-    val log__inst4 = mutableStateListOf<String>()
-    var visible__inst0 by mutableStateOf(true)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var shown__inst0 by mutableStateOf(__snglPre(__pre, "shown__inst0") { true })
+    val log__inst0 = if ("log__inst0" in __pre) (__pre["log__inst0"] as List<String>).toMutableStateList() else mutableStateListOf<String>()
+    val items__inst0 = if ("items__inst0" in __pre) (__pre["items__inst0"] as List<String>).toMutableStateList() else mutableStateListOf("a", "b", "c")
+    val log__inst1 = if ("log__inst1" in __pre) (__pre["log__inst1"] as List<String>).toMutableStateList() else mutableStateListOf<String>()
+    var k__inst0 by mutableStateOf(__snglPre(__pre, "k__inst0") { 0 })
+    val log__inst2 = if ("log__inst2" in __pre) (__pre["log__inst2"] as List<String>).toMutableStateList() else mutableStateListOf<String>()
+    var key__inst0 by mutableStateOf(__snglPre(__pre, "key__inst0") { Counter() })
+    var n__inst0 by mutableStateOf(__snglPre(__pre, "n__inst0") { 0 })
+    val log__inst3 = if ("log__inst3" in __pre) (__pre["log__inst3"] as List<String>).toMutableStateList() else mutableStateListOf<String>()
+    var key__inst1 by mutableStateOf(__snglPre(__pre, "key__inst1") { Pair(a = 1, b = "x") })
+    val log__inst4 = if ("log__inst4" in __pre) (__pre["log__inst4"] as List<String>).toMutableStateList() else mutableStateListOf<String>()
+    var visible__inst0 by mutableStateOf(__snglPre(__pre, "visible__inst0") { true })
     fun scaled__inst0(m: Int): Int = (m * n__inst0)
 }
 
@@ -3276,17 +3763,19 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             }, modifier = Modifier.testTag("add").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "add", modifier = Modifier)
             }
-            for (it in state.items__inst0) {
-                DisposableEffect(it) {
-                    val __snglEffectKey = it
-                    run {
-                        val v = __snglEffectKey
-                        state.log__inst1.add(("+" + v))
-                    }
-                    onDispose {
+            for (it in __identified0(state.items__inst0)) {
+                key(it.id) {
+                    DisposableEffect(it.elem) {
+                        val __snglEffectKey = it.elem
                         run {
                             val v = __snglEffectKey
-                            state.log__inst1.add(("-" + v))
+                            state.log__inst1.add(("+" + v))
+                        }
+                        onDispose {
+                            run {
+                                val v = __snglEffectKey
+                                state.log__inst1.add(("-" + v))
+                            }
                         }
                     }
                 }
@@ -3352,6 +3841,21 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             Text(text = state.log__inst4.joinToString(","), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
+}
+
+fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_c6a818>()
+    for (__x in __xs) {
+    	var __id = __x.replace("#", "##")
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_c6a818(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
 // Code generated by sngl (android) from component_effect_lifetimes.sngl; DO NOT EDIT.
@@ -3496,20 +4000,23 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { shown__inst0: true, log__inst0: [], items__inst0: ["a", "b", "c"], log__inst1: [], k__inst0: 0, log__inst2: [], key__inst0: null, n__inst0: 0, log__inst3: [], key__inst1: null, log__inst4: [], visible__inst0: true };
-  state.key__inst0 = { n: 0 };
-  state.key__inst1 = { a: 1, b: "x" };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
+  if (!("key__inst0" in __snglPre)) state.key__inst0 = { n: 0 };
+  if (!("key__inst1" in __snglPre)) state.key__inst1 = { a: 1, b: "x" };
   state.toggleClick = () => $0.click();
   state.dropClick = () => $1.click();
   state.addClick = () => $2.click();
@@ -3520,6 +4027,24 @@ window.__sngl_boot = () => {
   state.bumpClick = () => $7.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
+  }
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
+      ;
+      let __id = __x.replaceAll("#", "##");
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
   }
   function scaled__inst0(m) {
     return m * state.n__inst0;
@@ -3591,13 +4116,17 @@ window.__sngl_boot = () => {
     __effect0_teardown();
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { scaled__inst0, __effect0_mount, __effect0_unmount, __effect1_mount, __effect1_unmount, __effect2_mount, __effect2_unmount, __effect3_mount, __effect3_unmount, __effect4_mount, __effect4_unmount, __effect5_mount, __effect5_unmount, __effect6_mount, __effect6_unmount, __snglTeardown });
+    Object.assign(window, { __identified0, scaled__inst0, __effect0_mount, __effect0_unmount, __effect1_mount, __effect1_unmount, __effect2_mount, __effect2_unmount, __effect3_mount, __effect3_unmount, __effect4_mount, __effect4_unmount, __effect5_mount, __effect5_unmount, __effect6_mount, __effect6_unmount, __snglTeardown });
   }
   var __effect0_live = [];
   var __effect0_desired = [];
   var __effect1_key = "";
   var __effect1_live = [];
   var __effect1_desired = [];
+  var __effect1_paths = [];
+  var __effect1_livePaths = [];
+  var __effect1_pathAt = /* @__PURE__ */ new Map([]);
+  var __effect1_liveAt = /* @__PURE__ */ new Map([]);
   var __effect2_key = 0;
   var __effect2_live = [];
   var __effect2_desired = [];
@@ -3653,16 +4182,21 @@ window.__sngl_boot = () => {
   }
   function __effect1_down() {
     __effect1_desired = [];
-    for (const it of state.items__inst0) {
-      __effect1_desired.push(it);
+    __effect1_paths = [];
+    __effect1_pathAt = /* @__PURE__ */ new Map([]);
+    for (const it of __identified0(state.items__inst0)) {
+      __effect1_desired.push(it.elem);
+      __effect1_pathAt.set(it.id, __effect1_paths.length);
+      __effect1_paths.push(it.id);
     }
     for (const [__effect1_i, _] of __effect1_live.entries()) {
       let __effect1_j = __effect1_live.length - 1 - __effect1_i;
-      if (__effect1_j >= __effect1_desired.length) {
+      let __effect1_at = __effect1_pathAt.has(__effect1_livePaths[__effect1_j]) ? __effect1_pathAt.get(__effect1_livePaths[__effect1_j]) : -1;
+      if (__effect1_at < 0) {
         __effect1_key = __effect1_live[__effect1_j];
         __effect1_unmount();
       } else {
-        if (__effect1_desired[__effect1_j] !== __effect1_live[__effect1_j]) {
+        if (__effect1_desired[__effect1_at] !== __effect1_live[__effect1_j]) {
           __effect1_key = __effect1_live[__effect1_j];
           __effect1_unmount();
         }
@@ -3671,17 +4205,20 @@ window.__sngl_boot = () => {
   }
   function __effect1_up() {
     for (const [__effect1_i, __effect1_k] of __effect1_desired.entries()) {
-      if (__effect1_i >= __effect1_live.length) {
+      let __effect1_at = __effect1_liveAt.has(__effect1_paths[__effect1_i]) ? __effect1_liveAt.get(__effect1_paths[__effect1_i]) : -1;
+      if (__effect1_at < 0) {
         __effect1_key = __effect1_k;
         __effect1_mount();
       } else {
-        if (__effect1_live[__effect1_i] !== __effect1_k) {
+        if (__effect1_live[__effect1_at] !== __effect1_k) {
           __effect1_key = __effect1_k;
           __effect1_mount();
         }
       }
     }
     __effect1_live = __effect1_desired;
+    __effect1_livePaths = __effect1_paths;
+    __effect1_liveAt = __effect1_pathAt;
   }
   function __effect1_teardown() {
     for (const [__effect1_ti, _] of __effect1_live.entries()) {
@@ -3689,6 +4226,8 @@ window.__sngl_boot = () => {
       __effect1_unmount();
     }
     __effect1_live = [];
+    __effect1_livePaths = [];
+    __effect1_liveAt = /* @__PURE__ */ new Map([]);
   }
   function __effect2_down() {
     __effect2_desired = [];
@@ -3908,6 +4447,9 @@ window.__sngl_boot = () => {
       }
     }
   }
+  function String(v) {
+    return "" + v;
+  }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
@@ -3965,21 +4507,20 @@ window.__sngl_boot = () => {
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:77ed1053c698078234d1cd0b38d783f1
+pass sha256:efbe44d63a6755433e823660ecd746be
 -- run/go/fyne --
-pass sha256:3e81a0968d49634b71ef82002dc60bce
+pass sha256:49d059845d57a48a21677476915e7e9c
 -- run/go/gtk4 --
-pass sha256:5c1201ba93e19c73c27fc380fedfa2c1
+pass sha256:b636ecbbd801d76e504ee57e5197f24e
 -- run/kotlin/android --
-pass sha256:be70f06dfe6cb3666e3f9db9fc32cbc5
+pass sha256:f0d50dd9083976a1902b9fb0059e2a8d
 -- run/none/html --
-pass sha256:52911bf3128f3df890ef86621ac1935f
+pass sha256:e09ec06079f8e6866b988692dca53a1e
 -- testrun/html/none/component_effect_lifetimes.sngl/branch/1 --
-sha256:32702d7b0dd1528e1f7c3adce82d133d
+sha256:0533c3b1c4213fac875b26910acc67d4
 {
   "results": [
     {
@@ -3989,7 +4530,7 @@ sha256:32702d7b0dd1528e1f7c3adce82d133d
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/keys/1 --
-sha256:b3718384287be60bbeeeb4faebc8e155
+sha256:e603ddf762c598fb887bb751f6b1ba35
 {
   "results": [
     {
@@ -4003,7 +4544,7 @@ sha256:b3718384287be60bbeeeb4faebc8e155
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/perElement/1 --
-sha256:395b5c3314a20c1a9b085c8c0b287fc4
+sha256:629a5e33aba0d58cfb6adb1a08711b6b
 {
   "results": [
     {
@@ -4017,7 +4558,7 @@ sha256:395b5c3314a20c1a9b085c8c0b287fc4
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/structKey/1 --
-sha256:f86cd15a7af356d6c9dac4157d520720
+sha256:367d1e36ec70008df0eb8e1f7e317950
 {
   "results": [
     {
@@ -4027,7 +4568,7 @@ sha256:f86cd15a7af356d6c9dac4157d520720
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/twoPositions/1 --
-sha256:1e37d66b39aba0731663793603207727
+sha256:a57145937ba30eb0dc5e9a7a9d9ea977
 {
   "results": [
     {

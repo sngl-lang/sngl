@@ -108,13 +108,19 @@ var currentModel *Model
 func setCurrentTestModel(m *Model) { currentModel = m }
 func currentTestModel() *Model     { return currentModel }
 
-// New() only zeroes the state; the widget fields an Updater writes through are
-// assigned by BuildUI, so a test that never renders would nil-deref on the
-// first state change. The test app has to exist before any widget does.
+// A test's Model starts bare: what the test sets up before it needs the
+// component -- a context, a prop's starting value -- is written into it, and
+// mountTestComponent initializes the rest and builds it. The widget fields an
+// Updater writes through are assigned by BuildUI. The test app has to exist
+// before any widget does.
 func newTestComponent() *Model {
 	` + dropPostsFunc + `()
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -148,7 +154,7 @@ func init() {
 				// Its own file rather than an appendix to model_test.go: the
 				// helper needs an import, and that file's import block is
 				// written by LowerTestFile.
-				helper := []byte("package " + c.cfg.Package + "\n\nimport \"fyne.io/fyne/v2/test\"\n\nfunc newTestComponent() *Model {\n\ttest.NewApp()\n\tm := New()\n\tm.BuildUI()\n\treturn m\n}\n")
+				helper := []byte("package " + c.cfg.Package + "\n\nimport \"fyne.io/fyne/v2/test\"\n\nfunc newTestComponent() *Model {\n\ttest.NewApp()\n\treturn &Model{}\n}\n\nfunc mountTestComponent(m *Model, preset map[string]bool) *Model {\n\tm.__init(preset)\n\tm.BuildUI()\n\treturn m\n}\n")
 				if err := writeRawFile(sink, "testcomponent_test.go", helper); err != nil {
 					return err
 				}

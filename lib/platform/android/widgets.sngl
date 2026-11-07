@@ -71,6 +71,20 @@ const component ui.hbox[platform](style, children) {
     }
 }
 
+// A grid's child takes no share of a row, so its flex is no weight.
+const component ui.grid[platform](columns, style, children) {
+    SnglGrid(
+        modifier = modifierOf(style, flexShare),
+        columns = columns == null ? 0 : columns,
+        gap = style.gap == null ? dpOf(0.0) : length(style.gap),
+        verticalAlignment = rowAlignment(style.alignItems),
+    ) {
+        flexShare(func(w float32) => modifier) {
+            children
+        }
+    }
+}
+
 const component ui.stack[platform](style, layers) {
     Box(modifier=modifierOf(style, flexShare)) {
         flexShare(func(w float32) => modifier.fillMaxSize()) {
@@ -216,6 +230,13 @@ const component ui.checkbox[platform](label, checked, focusable, style, @change)
 // beside its label. onClick is passed nothing, so the override reports the
 // option it looped over.
 const component ui.radio[platform](value, direction, style, @change, options) {
+    // A choice of the option holding `v`, a button's or a test's.
+    func pickValue(v T) {
+        if v != value {
+            value = v
+            change(v)
+        }
+    }
     if direction == ui.Orientation.horizontal {
         Row(
             modifier = modifierOf(style, flexShare),
@@ -224,10 +245,7 @@ const component ui.radio[platform](value, direction, style, @change, options) {
         ) {
             for var opt = options {
                 Row(verticalAlignment=alignCenterVertically) {
-                    RadioButton(selected=(value == opt.label), onClick=func() {
-                        value = opt.label
-                        change(opt.label)
-                    }) {}
+                    RadioButton(selected=(value == opt.value), onClick=func() { pickValue(opt.value) }) {}
                     Text(text=opt.label) {}
                 }
             }
@@ -240,15 +258,17 @@ const component ui.radio[platform](value, direction, style, @change, options) {
         ) {
             for var opt = options {
                 Row(verticalAlignment=alignCenterVertically) {
-                    RadioButton(selected=(value == opt.label), onClick=func() {
-                        value = opt.label
-                        change(opt.label)
-                    }) {}
+                    RadioButton(selected=(value == opt.value), onClick=func() { pickValue(opt.value) }) {}
                     Text(text=opt.label) {}
                 }
             }
         }
     }
+}
+
+// A test picks the option holding `value` as pressing its button does.
+func ui.radio[T].change[platform](value) {
+    pickValue(value)
 }
 
 const component ui.toggle[platform](label, checked, focusable, style, @change) {
@@ -271,21 +291,30 @@ const component ui.toggle[platform](label, checked, focusable, style, @change) {
 // state of each select, and why this override is not const. The field is
 // read-only, since a select chooses among its choices, and still takes a tap
 // as its own to place a cursor, so the tap that opens the menu is a layer over
-// it. Setting the box's text chooses as picking does, which is how a test
-// chooses; a label that names no choice, or is the value already, reports
-// nothing.
+// it. Setting the box's text to a choice's label chooses as picking does,
+// which is how a test chooses; a label that names no choice, or the choice
+// already selected, reports nothing. A test whose trigger reaches no instance
+// of the select -- one in a block built at run time, which raises the event
+// through the invoker -- sets the text to the value it chose, written out,
+// so a text that is no label chooses the choice whose value it spells.
 component ui.select[platform](placeholder, value, disabled, focusable, style, @change, options) {
     var open = false
-    func choose(v string) {
+    func choose(label string) {
         open = false
-        if v != value && options.map(func(o) => o.label).contains(v) {
-            value = v
-            change(v)
+        var at = ui.choiceLabeled(options, label)
+        for var i, o = options {
+            if at < 0 && spelled(o.value) == label {
+                at = i
+            }
+        }
+        if at >= 0 && options[at].value != value {
+            value = options[at].value
+            change(options[at].value)
         }
     }
     Box(modifier=modifierOf(style, flexShare).snglChooses(func(v string) { choose(v) })) {
         OutlinedTextField(
-            value = value,
+            value = ui.choiceLabel(options, value),
             readOnly = true,
             enabled = disabled == false,
             singleLine = true,
@@ -312,6 +341,12 @@ component ui.select[platform](placeholder, value, disabled, focusable, style, @c
             }
         }
     }
+}
+
+// A test picks the choice holding `value` as setting the field's text does:
+// through choose, which the field's setText reaches.
+func ui.select[T].change[platform](value) {
+    choose(ui.choiceLabel(options, value))
 }
 
 const component ui.textarea[platform](value, style, @input, @change) {

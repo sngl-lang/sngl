@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	jsonRuntime = "duckfam.us/sngl/pkg/go/sngljson"
-	httpRuntime = "duckfam.us/sngl/pkg/go/snglhttp"
+	jsonRuntime  = "duckfam.us/sngl/pkg/go/sngljson"
+	httpRuntime  = "duckfam.us/sngl/pkg/go/snglhttp"
+	asyncRuntime = "duckfam.us/sngl/pkg/go/snglasync"
 )
 
 func init() {
@@ -76,12 +77,33 @@ func (gc *GoIRContext) codecCall(n *ir.Call) (string, bool) {
 	if body == "" {
 		body = "nil"
 	}
+	ctx := "context.Background()"
+	if id := codegen.LifetimeID(n); id != nil {
+		gc.RequireImport(asyncRuntime)
+		ctx = "snglasync.Context(" + gc.EvalExpr(id) + ")"
+	} else {
+		gc.RequireImport("context")
+	}
+	// A test's answer, where one is set, answers in the network's place.
+	answer := ""
+	if hook, req := codegen.HTTPHook(n, codegen.HostValue("__snglURL", str)); hook != nil {
+		got := codegen.HostValue("(*__snglA)", ir.MemberPayload(n.Type, "ok"))
+		none := codegen.HostValue(strconv.Quote(codegen.NoAnswer)+" + __snglURL", str)
+		// A lifetime already ended answers `cancelled`, as the network does.
+		ended := ""
+		if id := codegen.LifetimeID(n); id != nil {
+			ended = fmt.Sprintf("if snglasync.Ended(%s) { return %s }; ", gc.EvalExpr(id), gc.EvalExpr(codegen.ResultFailed(n.Type, "cancelled", codegen.HostValue(`"cancelled"`, str))))
+		}
+		answer = fmt.Sprintf("__snglURL := %s; if __snglH := %s; __snglH != nil { %s__snglA := (*__snglH)(%s); if __snglA == nil { return %s }; return %s }; ",
+			url, gc.EvalExpr(hook), ended, gc.EvalExpr(req), gc.EvalExpr(codegen.ResultFailed(n.Type, "transport", none)), gc.EvalExpr(codegen.ResultOK(n.Type, got)))
+		url = "__snglURL"
+	}
 	st, ht, bt := codegen.ResponseFieldTypes(n.Type)
 	msg := codegen.HostValue("__snglF.Message", str)
 	var b strings.Builder
-	fmt.Fprintf(&b, "func() %s { %s__snglR, __snglF := snglhttp.Send(%s, %s, %s, %s); ", rt, keep, method, url, headers, body)
-	fmt.Fprintf(&b, "if __snglF != nil { if __snglF.Timeout { return %s }; return %s }; ",
-		gc.EvalExpr(codegen.ResultFailed(n.Type, "timeout", msg)), gc.EvalExpr(codegen.ResultFailed(n.Type, "transport", msg)))
+	fmt.Fprintf(&b, "func() %s { %s%s__snglR, __snglF := snglhttp.Send(%s, %s, %s, %s, %s); ", rt, keep, answer, ctx, method, url, headers, body)
+	fmt.Fprintf(&b, "if __snglF != nil { if __snglF.Cancelled { return %s }; if __snglF.Timeout { return %s }; return %s }; ",
+		gc.EvalExpr(codegen.ResultFailed(n.Type, "cancelled", msg)), gc.EvalExpr(codegen.ResultFailed(n.Type, "timeout", msg)), gc.EvalExpr(codegen.ResultFailed(n.Type, "transport", msg)))
 	resp := codegen.CodecResponse(n.Type, codegen.HostValue("__snglR.Status", st), codegen.HostValue("__snglR.Headers", ht), codegen.HostValue("__snglR.Body", bt))
 	fmt.Fprintf(&b, "return %s }()", gc.EvalExpr(codegen.ResultOK(n.Type, resp)))
 	return b.String(), true

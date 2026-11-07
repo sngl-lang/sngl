@@ -82,7 +82,17 @@ type NodeInst struct {
 	// Not serialized: it points back into the symbol graph, and a reparse of a
 	// printed tree re-declares the handle from the `#id` it prints.
 	Handle *Var `json:"-"`
-	Key    Expr // key expression for list diffing (nil → implicit index)
+	// Wraps is, on the node lower's passImplicitState puts in a node's place,
+	// the handle of the node its wrapper renders: the call site's handle,
+	// which moved into the wrapper's body with the node. It says the handle is
+	// the call site's component's still, so a splice of that component gives
+	// its copy a handle of its own here, and the wrapper's splice gives the
+	// node the same one.
+	Wraps *Var `json:"-"`
+	// Key is the copy a component built at run time under a loop is kept by,
+	// where the loop tells its copies apart by identity
+	// (lower.keyLoopInstances); nil keeps it by position.
+	Key Expr
 	// TypeArgs is what the call site bound the component's type parameters
 	// to, in declaration order, where it is generic: a handle to the node
 	// carries them, a generic family's slot reads them off its children, and
@@ -514,6 +524,12 @@ type For struct {
 	// final post-RefLoop shape). Zero value (IterElement) holds until lowering
 	// runs; the headless interpreter ignores it.
 	IterKind IterKind
+	// Identity is what tells one copy of a view loop from another, over the
+	// loop's variables, as the string a target keeps it by: the element's
+	// `key()`, or the element itself where it is a scalar or an enum carrying
+	// no payload. Nil where the copy is its position. A copy keeps its state and lifetimes while a copy
+	// of its identity is rendered, wherever in the list it is.
+	Identity Expr `json:",omitempty"`
 }
 
 func (*For) stmtNode() {}

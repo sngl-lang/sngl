@@ -100,6 +100,7 @@ func echoOf(r async.Result[http.Response]) Echo {
 }
 
 func testGetDecodes(t Test) {
+    t.setContext(http.answer, http.network)
     match var b = fetchBook("dune") {
         ok {
             t.assert(b.id == 1)
@@ -114,6 +115,7 @@ func testGetDecodes(t Test) {
 }
 
 func testPathEscape(t Test) {
+    t.setContext(http.answer, http.network)
     t.assert(http.pathEscape("war and peace/2") == "war%20and%20peace%2F2")
     match var b = fetchBook("war and peace") {
         ok {
@@ -125,6 +127,7 @@ func testPathEscape(t Test) {
 }
 
 func testNotFound(t Test) {
+    t.setContext(http.answer, http.network)
     match var f = fetchBook("no such book") {
         ok { t.assert(false) }
         failed {
@@ -136,6 +139,7 @@ func testNotFound(t Test) {
 }
 
 func testStatus(t Test) {
+    t.setContext(http.answer, http.network)
     match var r = http.get(url="{server}/status/503") {
         ok {
             t.assert(r.status == 503)
@@ -159,6 +163,7 @@ func testStatus(t Test) {
 }
 
 func testQuery(t Test) {
+    t.setContext(http.answer, http.network)
     var e = echoOf(http.get(url="{server}/echo", query=Page{limit=20, size=null, tags=["a", "b c"], q="x&y"}))
     t.assert(e.method == "GET")
     t.assert(e.query == "limit=20&tags=a&tags=b%20c&q=x%26y")
@@ -167,6 +172,7 @@ func testQuery(t Test) {
 }
 
 func testSend(t Test) {
+    t.setContext(http.answer, http.network)
     var r = http.send(
         method=http.Method.post,
         url="{server}/echo",
@@ -187,6 +193,7 @@ func testSend(t Test) {
 }
 
 func testTransport(t Test) {
+    t.setContext(http.answer, http.network)
     match var f = http.get(url="http://127.0.0.1:1/") {
         ok { t.assert(false) }
         failed { t.assert(f.kind == async.FailureKind.transport) }
@@ -195,8 +202,8 @@ func testTransport(t Test) {
 
 // A handler that waits, and a query whose answer is a request's: each
 // writes after the answer arrives, which a test waits for.
-func lookup(k string) async.Result[Echo] {
-    match var r = http.get(url="{server}/echo", query={k=k}) {
+func lookup(k string, life async.Lifetime) async.Result[Echo] {
+    match var r = http.get(url="{server}/echo", query={k=k}, life=life) {
         ok { return json.decode[Echo](r.body) }
         failed { return {failed=r} }
     }
@@ -218,12 +225,14 @@ component panel node {
 }
 
 func testHandlerWaits(t Test, c panel) {
+    t.setContext(http.answer, http.network)
     c.ask.click()
     t.wait(func() => c.result.value != "-", 5000)
     t.assert(c.result.value == `{"body":"","header":"","method":"GET","query":"q=hi"}`)
 }
 
 func testQueryAsks(t Test, c panel) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.q.value == "k=a", 5000)
     t.assert(c.q.value == "k=a")
     c.key = "b c"
@@ -243,11 +252,12 @@ func echoKeyed(k string, n int) async.Result[Echo] {
 component adapter node {
     var key = "a"
     var answer option[Echo] = null
-    async.query(on={k=key, n=2}, fetch=func(k struct { k string; n int }) => echoKeyed(k.k, k.n), :value=answer)
+    async.query(on={k=key, n=2}, fetch=func(k struct { k string; n int }, life async.Lifetime) => echoKeyed(k.k, k.n), :value=answer)
     text #q(value=answer != null ? answer.query : "")
 }
 
 func testAdapterSpreadsItsKey(t Test, c adapter) {
+    t.setContext(http.answer, http.network)
     t.wait(func() => c.q.value == "k=a&n=2", 5000)
     t.assert(c.q.value == "k=a&n=2")
 }
@@ -257,7 +267,7 @@ window {
     adapter
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:17908a50a9ff8ba08e8b02daa51ee08a
+sha256:ccc15fb7de28735972ecefb995dc3baa
 {
   "results": [
     {
@@ -291,7 +301,7 @@ sha256:17908a50a9ff8ba08e8b02daa51ee08a
   ]
 }
 -- testrun/android/kotlin/app.sngl/adapter/1 --
-sha256:9828a3d3dcf456df421299827458c61f
+sha256:b2a9a052397c6702ddc18551eb3e43ec
 {
   "results": [
     {
@@ -301,7 +311,7 @@ sha256:9828a3d3dcf456df421299827458c61f
   ]
 }
 -- testrun/android/kotlin/app.sngl/panel/1 --
-sha256:b98d558729fe71ab5eb4b7e0e313a56b
+sha256:0590c9a598bc7d9bf9e37b5ca706dba9
 {
   "results": [
     {
@@ -315,7 +325,7 @@ sha256:b98d558729fe71ab5eb4b7e0e313a56b
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:ca4e0a9bd29e40a9d5dd32565bee8366
+sha256:26a43992983e8688d8a2021c283eb573
 {
   "results": [
     {
@@ -349,7 +359,7 @@ sha256:ca4e0a9bd29e40a9d5dd32565bee8366
   ]
 }
 -- testrun/bubbletea/go/app.sngl/adapter/1 --
-sha256:857001e51d05e9cf994671c98d2b0842
+sha256:11bc06a11a56c7afe59e8a8bc11372bd
 {
   "results": [
     {
@@ -359,7 +369,7 @@ sha256:857001e51d05e9cf994671c98d2b0842
   ]
 }
 -- testrun/bubbletea/go/app.sngl/panel/1 --
-sha256:aba5c1cdad56ea24d00621d27de33328
+sha256:d7dffd56d45cb8a244a9eb334ffdfc3a
 {
   "results": [
     {
@@ -373,7 +383,7 @@ sha256:aba5c1cdad56ea24d00621d27de33328
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:87fd2060d5766634c05fd07cd1009881
+sha256:fd0f98dceb8f083dd1c962d3e6aac7ec
 {
   "results": [
     {
@@ -407,7 +417,7 @@ sha256:87fd2060d5766634c05fd07cd1009881
   ]
 }
 -- testrun/fyne/go/app.sngl/adapter/1 --
-sha256:c6025fc12acd00477f8ffaeaa4aff0bf
+sha256:2a272be1373222ce4d17037b75f4c28c
 {
   "results": [
     {
@@ -417,7 +427,7 @@ sha256:c6025fc12acd00477f8ffaeaa4aff0bf
   ]
 }
 -- testrun/fyne/go/app.sngl/panel/1 --
-sha256:ab29024eda45a33d1c670a1e5ee8c30f
+sha256:d6160fcd6bf1346aae45f71064e91b04
 {
   "results": [
     {
@@ -431,7 +441,7 @@ sha256:ab29024eda45a33d1c670a1e5ee8c30f
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:3a66add1c87e85713481d9582f90b20a
+sha256:2b891c74824933696e5803b547f9b511
 {
   "results": [
     {
@@ -465,7 +475,7 @@ sha256:3a66add1c87e85713481d9582f90b20a
   ]
 }
 -- testrun/gtk4/go/app.sngl/adapter/1 --
-sha256:60b362c62a0563d8b1e4f4f54c3abe05
+sha256:154bac6ebce16eeb09c5eb9146e165c0
 {
   "results": [
     {
@@ -475,7 +485,7 @@ sha256:60b362c62a0563d8b1e4f4f54c3abe05
   ]
 }
 -- testrun/gtk4/go/app.sngl/panel/1 --
-sha256:ca9fdb2a7cd612c08a190ef831bedf12
+sha256:8f57166652089ad75dbde217bcbf6344
 {
   "results": [
     {
@@ -489,7 +499,7 @@ sha256:ca9fdb2a7cd612c08a190ef831bedf12
   ]
 }
 -- testrun/html/none/app.sngl/_/1 --
-sha256:5d6bdb82db939110b09ffa4a60768f08
+sha256:d28a0aa459b2617a8d26e52a0a3111c6
 {
   "results": [
     {
@@ -523,7 +533,7 @@ sha256:5d6bdb82db939110b09ffa4a60768f08
   ]
 }
 -- testrun/html/none/app.sngl/adapter/1 --
-sha256:39e9659da060ef48d1f13fa24ff8476b
+sha256:dac99e4085c9f8674f1a6ad7fef9adb3
 {
   "results": [
     {
@@ -533,7 +543,7 @@ sha256:39e9659da060ef48d1f13fa24ff8476b
   ]
 }
 -- testrun/html/none/app.sngl/panel/1 --
-sha256:691e5f12fa512dd51810bca942c63210
+sha256:0b5b7bc8231aca693b2b9a96343ba26a
 {
   "results": [
     {

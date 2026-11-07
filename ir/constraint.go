@@ -128,7 +128,7 @@ func BoundCall(scope *Scope, call *Call) (Expr, bool) {
 	out := *call
 	out.Func = fn
 	out.Args = args
-	out.ReceiverArg = fn.RecvParam != nil || len(fn.RecvTypeParams) > 0
+	out.ReceiverArg = fn.RecvParam != nil
 	return &out, true
 }
 

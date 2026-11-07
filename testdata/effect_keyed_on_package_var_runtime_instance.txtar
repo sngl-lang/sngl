@@ -85,6 +85,7 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -98,6 +99,14 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type Test struct {
+}
+
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
 }
 
 type __anon_copy_on_d67d15 struct {
@@ -195,6 +204,10 @@ type modelState struct {
 	__effect2_desired   []int
 	__effect3_live      []string
 	__effect3_desired   []string
+	__effect3_paths     []string
+	__effect3_livePaths []string
+	__effect3_pathAt    map[string]int
+	__effect3_liveAt    map[string]int
 	__effect4_key       __anon_copy_on_d67d15
 	__effect4_dirty     bool
 	__effect4_keys      map[string]__anon_copy_on_d67d15
@@ -202,6 +215,10 @@ type modelState struct {
 	__effect5_key       int
 	__effect5_live      []int
 	__effect5_desired   []int
+	__effect5_paths     []string
+	__effect5_livePaths []string
+	__effect5_pathAt    map[string]int
+	__effect5_liveAt    map[string]int
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -214,35 +231,118 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.level = 0
-	m.mounts = []int{}
-	m.open = true
-	m.copies = []int{1, 2}
-	m.seen__inst0 = 0
-	m.seen__inst1 = map[string]int{}
-	m.__effect0_live = []bool{}
-	m.__effect0_desired = []bool{}
-	m.__effect1_key = 0
-	m.__effect1_dirty = false
-	m.__effect1_absent = false
-	m.__effect2_key = 0
-	m.__effect2_live = []int{}
-	m.__effect2_desired = []int{}
-	m.__effect3_live = []string{}
-	m.__effect3_desired = []string{}
-	m.__effect4_key = __anon_copy_on_d67d15{}
-	m.__effect4_dirty = false
-	m.__effect4_keys = map[string]__anon_copy_on_d67d15{}
-	m.__effect4_rekey = false
-	m.__effect5_key = 0
-	m.__effect5_live = []int{}
-	m.__effect5_desired = []int{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
-	m.__focusID = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["level"] {
+		m.level = 0
+	}
+	if !preset["mounts"] {
+		m.mounts = []int{}
+	}
+	if !preset["open"] {
+		m.open = true
+	}
+	if !preset["copies"] {
+		m.copies = []int{1, 2}
+	}
+	if !preset["seen__inst0"] {
+		m.seen__inst0 = 0
+	}
+	if !preset["seen__inst1"] {
+		m.seen__inst1 = map[string]int{}
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []bool{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []bool{}
+	}
+	if !preset["__effect1_key"] {
+		m.__effect1_key = 0
+	}
+	if !preset["__effect1_dirty"] {
+		m.__effect1_dirty = false
+	}
+	if !preset["__effect1_absent"] {
+		m.__effect1_absent = false
+	}
+	if !preset["__effect2_key"] {
+		m.__effect2_key = 0
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []int{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []int{}
+	}
+	if !preset["__effect3_live"] {
+		m.__effect3_live = []string{}
+	}
+	if !preset["__effect3_desired"] {
+		m.__effect3_desired = []string{}
+	}
+	if !preset["__effect3_paths"] {
+		m.__effect3_paths = []string{}
+	}
+	if !preset["__effect3_livePaths"] {
+		m.__effect3_livePaths = []string{}
+	}
+	if !preset["__effect3_pathAt"] {
+		m.__effect3_pathAt = map[string]int{}
+	}
+	if !preset["__effect3_liveAt"] {
+		m.__effect3_liveAt = map[string]int{}
+	}
+	if !preset["__effect4_key"] {
+		m.__effect4_key = __anon_copy_on_d67d15{}
+	}
+	if !preset["__effect4_dirty"] {
+		m.__effect4_dirty = false
+	}
+	if !preset["__effect4_keys"] {
+		m.__effect4_keys = map[string]__anon_copy_on_d67d15{}
+	}
+	if !preset["__effect4_rekey"] {
+		m.__effect4_rekey = false
+	}
+	if !preset["__effect5_key"] {
+		m.__effect5_key = 0
+	}
+	if !preset["__effect5_live"] {
+		m.__effect5_live = []int{}
+	}
+	if !preset["__effect5_desired"] {
+		m.__effect5_desired = []int{}
+	}
+	if !preset["__effect5_paths"] {
+		m.__effect5_paths = []string{}
+	}
+	if !preset["__effect5_livePaths"] {
+		m.__effect5_livePaths = []string{}
+	}
+	if !preset["__effect5_pathAt"] {
+		m.__effect5_pathAt = map[string]int{}
+	}
+	if !preset["__effect5_liveAt"] {
+		m.__effect5_liveAt = map[string]int{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
 	m.__effects0_settle()
 	return m
 }
@@ -253,15 +353,34 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
-	} else {
-		__lt3 = max(1, (int(px) / 16))
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
 	}
-	return __lt3
+	return __out
+}
+
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
+	} else {
+		__lt3 = 16.0
+	}
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -301,14 +420,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -372,7 +491,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -385,7 +504,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -399,20 +518,31 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m *Model) __effect0_enter() {
@@ -462,37 +592,55 @@ func (m *Model) __effect2_up() {
 
 func (m *Model) __effect3_enter() {
 	m.__effect3_desired = []string{}
-	for __copy0, _ := range m.copies {
+	m.__effect3_paths = []string{}
+	m.__effect3_pathAt = map[string]int{}
+	for _, k := range __identified0(m.copies) {
 		__effect3_fresh := true
-		if len(m.__effect3_desired) < len(m.__effect3_live) {
-			__effect3_fresh = (m.__effect3_live[len(m.__effect3_desired)] != fmt.Sprint(__copy0))
+		var __effect3_at int = func() int {
+			if __v, __ok := m.__effect3_liveAt[k.Id]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect3_at >= 0 {
+			__effect3_fresh = (m.__effect3_live[__effect3_at] != k.Id)
 		}
+		m.__effect3_pathAt[k.Id] = len(m.__effect3_paths)
+		m.__effect3_paths = append(m.__effect3_paths, k.Id)
 		if __effect3_fresh {
 			var __cell2_seen__inst1 int = func() int {
-				if __v, __ok := m.seen__inst1[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.seen__inst1[k.Id]; __ok {
 					return __v
 				}
 				return 0
 			}()
 			__cell2_seen__inst1 = 0
-			m.seen__inst1[fmt.Sprint(__copy0)] = __cell2_seen__inst1
+			m.seen__inst1[k.Id] = __cell2_seen__inst1
 		}
-		m.__effect3_desired = append(m.__effect3_desired, fmt.Sprint(__copy0))
+		m.__effect3_desired = append(m.__effect3_desired, k.Id)
 	}
 	m.__effect3_live = m.__effect3_desired
+	m.__effect3_livePaths = m.__effect3_paths
+	m.__effect3_liveAt = m.__effect3_pathAt
 }
 
 func (m *Model) __effect4_update() {
 	__copyKey := m.__effect4_key.Copy
 	var n int = m.__effect4_key.On
+	k__at0 := __anon_id_elem_cdfd47{}
+	for _, __copyElemAt0 := range __identified0(m.copies) {
+		if __copyElemAt0.Id == __copyKey {
+			k__at0 = __copyElemAt0
+		}
+	}
 	var __cell1_seen__inst1 int = func() int {
-		if __v, __ok := m.seen__inst1[__copyKey]; __ok {
+		if __v, __ok := m.seen__inst1[k__at0.Id]; __ok {
 			return __v
 		}
 		return 0
 	}()
 	__cell1_seen__inst1 = n
-	m.seen__inst1[__copyKey] = __cell1_seen__inst1
+	m.seen__inst1[k__at0.Id] = __cell1_seen__inst1
 }
 
 func (m *Model) __effect5_mount() {
@@ -501,24 +649,36 @@ func (m *Model) __effect5_mount() {
 
 func (m *Model) __effect5_down() {
 	m.__effect5_desired = []int{}
-	for range m.copies {
+	m.__effect5_paths = []string{}
+	m.__effect5_pathAt = map[string]int{}
+	for _, k := range __identified0(m.copies) {
 		m.__effect5_desired = append(m.__effect5_desired, m.level)
+		m.__effect5_pathAt[k.Id] = len(m.__effect5_paths)
+		m.__effect5_paths = append(m.__effect5_paths, k.Id)
 	}
 }
 
 func (m *Model) __effect5_up() {
 	for __effect5_i, __effect5_k := range m.__effect5_desired {
-		if __effect5_i >= len(m.__effect5_live) {
+		var __effect5_at int = func() int {
+			if __v, __ok := m.__effect5_liveAt[m.__effect5_paths[__effect5_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect5_at < 0 {
 			m.__effect5_key = __effect5_k
 			m.__effect5_mount()
 		} else {
-			if m.__effect5_live[__effect5_i] != __effect5_k {
+			if m.__effect5_live[__effect5_at] != __effect5_k {
 				m.__effect5_key = __effect5_k
 				m.__effect5_mount()
 			}
 		}
 	}
 	m.__effect5_live = m.__effect5_desired
+	m.__effect5_livePaths = m.__effect5_paths
+	m.__effect5_liveAt = m.__effect5_pathAt
 }
 
 func (m *Model) __effects0_settle() {
@@ -532,8 +692,6 @@ func (m *Model) __effects0_settle() {
 			for m.__effects0_pending && (m.__effects0_steps < 512) {
 				m.__effects0_pending = false
 				m.__effects0_steps = (m.__effects0_steps + 1)
-				m.__effect0_enter()
-				m.__effect3_enter()
 				__effect1_seen := false
 				if m.open {
 					if m.__effect1_dirty {
@@ -550,9 +708,9 @@ func (m *Model) __effects0_settle() {
 					m.__effect1_dirty = false
 				}
 				__effect4_next := map[string]__anon_copy_on_d67d15{}
-				for __copy0, _ := range m.copies {
-					m.__effect4_key = __anon_copy_on_d67d15{Copy: fmt.Sprint(__copy0), On: m.level}
-					__effect4_copy := fmt.Sprint(__copy0)
+				for _, k := range __identified0(m.copies) {
+					m.__effect4_key = __anon_copy_on_d67d15{Copy: k.Id, On: m.level}
+					__effect4_copy := k.Id
 					if func() bool { _, __ok := m.__effect4_keys[__effect4_copy]; return __ok }() {
 						__effect4_prev := func() __anon_copy_on_d67d15 {
 							if __v, __ok := m.__effect4_keys[__effect4_copy]; __ok {
@@ -569,6 +727,8 @@ func (m *Model) __effects0_settle() {
 				m.__effect4_keys = __effect4_next
 				m.__effect4_dirty = false
 				m.__effect4_rekey = false
+				m.__effect0_enter()
+				m.__effect3_enter()
 				m.__effect5_down()
 				m.__effect2_down()
 				m.__effect2_up()
@@ -766,27 +926,30 @@ func (m Model) View() tea.View {
 	if part0_0Focused {
 		part0_0Prefix = ">"
 	}
-	part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint("raise"))
+	part0_0Text := part0_0Prefix + " " + fmt.Sprint("raise")
+	part0_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_0Focused), tui.Avail(m.width), part0_0Text).Render(part0_0Text)
 	part0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_0)
 	part0Children = append(part0Children, part0_0)
 	var part0_1 string
 	if m.open {
-		part0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(m.seen__inst0)))
+		part0_1Text := fmt.Sprint(fmt.Sprint(m.seen__inst0))
+		part0_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_1Text).Render(part0_1Text)
 	}
 	if part0_1 != "" {
 		part0Children = append(part0Children, part0_1)
 	}
 	var part0_2 string
 	var part0_2Items []string
-	for __copy0, _ := range m.copies {
-		_ = __copy0
+	for _, k := range __identified0(m.copies) {
+		_ = k
 		var part0_2Item string
-		part0_2Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(func() int {
-			if __v, __ok := m.seen__inst1[fmt.Sprint(__copy0)]; __ok {
+		part0_2ItemText := fmt.Sprint(fmt.Sprint(func() int {
+			if __v, __ok := m.seen__inst1[k.Id]; __ok {
 				return __v
 			}
 			return 0
-		}())))
+		}()))
+		part0_2Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_2ItemText).Render(part0_2ItemText)
 		part0_2Items = append(part0_2Items, part0_2Item)
 	}
 	part0_2 = tui.Spaced(false, lipgloss.Left, 0, part0_2Items...)
@@ -823,14 +986,16 @@ import (
 func TestAWriteOutsideReachesTheEffect(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.raiseClick()
 	if !((c.open && (c.seen__inst0 == 1))) { t.Errorf("assert failed: %s", "(c.open && (c.seen__inst0 == 1))") }
-	if !(((func() int { if __v, __ok := c.seen__inst1["0"]; __ok { return __v }; return 0 }() == 1) && (func() int { if __v, __ok := c.seen__inst1["1"]; __ok { return __v }; return 0 }() == 1))) { t.Errorf("assert failed: %s", "((func() int { if __v, __ok := c.seen__inst1[\"0\"]; __ok { return __v }; return 0 }() == 1) && (func() int { if __v, __ok := c.seen__inst1[\"1\"]; __ok { return __v }; return 0 }() == 1))") }
+	if !(((func() int { if __v, __ok := c.seen__inst1[__identified0(c.copies)[0].Id]; __ok { return __v }; return 0 }() == 1) && (func() int { if __v, __ok := c.seen__inst1[__identified0(c.copies)[1].Id]; __ok { return __v }; return 0 }() == 1))) { t.Errorf("assert failed: %s", "((func() int { if __v, __ok := c.seen__inst1[__identified0(c.copies)[0].Id]; __ok { return __v }; return 0 }() == 1) && (func() int { if __v, __ok := c.seen__inst1[__identified0(c.copies)[1].Id]; __ok { return __v }; return 0 }() == 1))") }
 }
 
 func TestAWriteOutsideRemountsAKeyedEffect(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.raiseClick()
 	__list0 := []string{}
 	for _, __item0 := range c.mounts {
@@ -840,7 +1005,13 @@ func TestAWriteOutsideRemountsAKeyedEffect(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -854,11 +1025,20 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
 
 type ErrorEvent struct {
 	Message string
 	Kind    string
+}
+
+type Test struct {
+}
+
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
 }
 
 // Model holds the state for this SNGL UI.
@@ -875,7 +1055,7 @@ type Model struct {
 	__renderAgain0 bool
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
-	__inst1_live   []*GaugeInstance
+	__inst1_live   map[string]*GaugeInstance
 	__rendering1   bool
 	__renderAgain1 bool
 
@@ -889,22 +1069,76 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.level = 0
-	m.mounts = []int{}
-	m.open = true
-	m.copies = []int{1, 2}
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__inst0_live = []*GaugeInstance{}
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__inst1_live = []*GaugeInstance{}
-	m.__rendering1 = false
-	m.__renderAgain1 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["level"] {
+		m.level = 0
+	}
+	if !preset["mounts"] {
+		m.mounts = []int{}
+	}
+	if !preset["open"] {
+		m.open = true
+	}
+	if !preset["copies"] {
+		m.copies = []int{1, 2}
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__inst0_live"] {
+		m.__inst0_live = []*GaugeInstance{}
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__inst1_live"] {
+		m.__inst1_live = map[string]*GaugeInstance{}
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
+}
+
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -974,33 +1208,52 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				}
 				m.__slot1 = nil
 				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-				__inst1_next := []*GaugeInstance{}
-				var __inst1_i int = 0
-				for __copy0, _ := range m.copies {
+				__inst1_next := map[string]*GaugeInstance{}
+				__inst1_seen := map[string]int{}
+				for __copy0, k := range __identified0(m.copies) {
 					var row *GaugeInstance
-					if len(m.__inst1_live) > __inst1_i {
-						row = m.__inst1_live[__inst1_i]
+					__key2 := fmt.Sprint(k.Id)
+					var __key2_n int = func() int {
+						if __v, __ok := __inst1_seen[__key2]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst1_seen[__key2] = (__key2_n + 1)
+					if __key2_n > 0 {
+						__key2 = ((__key2 + "#") + fmt.Sprint(__key2_n))
+					}
+					if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+						row = func() *GaugeInstance {
+							if __v, __ok := m.__inst1_live[__key2]; __ok {
+								return __v
+							}
+							return nil
+						}()
 						row.Set__copy(fmt.Sprint(__copy0))
 						row.Set__on_level(m.level)
 					} else {
-						if len(m.__inst1_live) > __inst1_i {
-							m.__inst1_live[__inst1_i].Destroy()
+						if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+							func() *GaugeInstance {
+								if __v, __ok := m.__inst1_live[__key2]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						row__new := newGaugeInstance(m, fmt.Sprint(__copy0), m.level)
 						row = row__new
 					}
-					__inst1_next = append(__inst1_next, row)
-					__inst1_i = (__inst1_i + 1)
+					__inst1_next[__key2] = row
 					row__el := row.Root
 					m.__list_row(fmt.Sprint(__copy0), row.Root)
 					m.__listInst_row(fmt.Sprint(__copy0), row)
 					fynelayout.InsertBefore(__parent, m.__slot1_at, row__el)
 					m.__slot1 = append(m.__slot1, row__el)
 				}
-				for __inst1_i_d, _ := range m.__inst1_live {
-					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-					if __inst1_i_j >= __inst1_i {
-						m.__inst1_live[__inst1_i_j].Destroy()
+				for __inst1_live_k, __inst1_live_v := range m.__inst1_live {
+					if !func() bool { _, __ok := __inst1_next[__inst1_live_k]; return __ok }() {
+						__inst1_live_v.Destroy()
 					}
 				}
 				m.__inst1_live = __inst1_next
@@ -1010,11 +1263,10 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst1_live_di, _ := range m.__inst1_live {
-		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
-		m.__inst1_live[__inst1_live_dj].Destroy()
+	for _, __inst1_live_dv := range m.__inst1_live {
+		__inst1_live_dv.Destroy()
 	}
-	m.__inst1_live = []*GaugeInstance{}
+	m.__inst1_live = map[string]*GaugeInstance{}
 	for __inst0_live_di, _ := range m.__inst0_live {
 		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
 		m.__inst0_live[__inst0_live_dj].Destroy()
@@ -1027,8 +1279,8 @@ func (m *Model) raise_click_handler() {
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__on_level(m.level)
 	}
-	for __inst1_live_ui, _ := range m.__inst1_live {
-		m.__inst1_live[__inst1_live_ui].Set__on_level(m.level)
+	for _, __inst1_live_uv := range m.__inst1_live {
+		__inst1_live_uv.Set__on_level(m.level)
 	}
 }
 
@@ -1121,8 +1373,37 @@ func (m *Model) SetCopies(v []int) {
 	m.copies = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	__snglBuilding++
 	m.__n0 = fynelayout.NewVBox()
 	m.raise = fynelayout.NewButton("", nil)
 	m.raise.SetText("raise")
@@ -1131,6 +1412,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__renderSlot0(m.__n0)
 	m.__renderSlot1(m.__n0)
 	content := fyne.CanvasObject(m.__n0)
+	__snglEndBuild()
 	return content
 }
 
@@ -1151,10 +1433,6 @@ type GaugeInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
-	__slot1             []fyne.CanvasObject
-	__slot1_at          fyne.CanvasObject
 	shown               *widget.Label
 }
 
@@ -1174,11 +1452,9 @@ func newGaugeInstance(__model *Model, __a___copy string, __a___on_level int) *Ga
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.shown = widget.NewLabel("")
 	c.shown.SetText(fmt.Sprint(c.seen))
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = c.shown
 	return c
 }
@@ -1285,6 +1561,7 @@ import (
 func TestAWriteOutsideReachesTheEffect(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.raiseClick()
 	if !((c.open && (c.gReadSeen() == 1))) { t.Errorf("assert failed: %s", "(c.open && (c.gReadSeen() == 1))") }
 	if !(((c.rowReadSeenAt("0") == 1) && (c.rowReadSeenAt("1") == 1))) { t.Errorf("assert failed: %s", "((c.rowReadSeenAt(\"0\") == 1) && (c.rowReadSeenAt(\"1\") == 1))") }
@@ -1293,6 +1570,7 @@ func TestAWriteOutsideReachesTheEffect(t *testing.T) {
 func TestAWriteOutsideRemountsAKeyedEffect(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.raiseClick()
 	__list0 := []string{}
 	for _, __item0 := range c.mounts {
@@ -1308,7 +1586,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -1337,11 +1619,20 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
 
 type ErrorEvent struct {
 	Message string
 	Kind    string
+}
+
+type Test struct {
+}
+
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -1358,7 +1649,7 @@ type Model struct {
 	__renderAgain0 bool
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
-	__inst1_live   []*GaugeInstance
+	__inst1_live   map[string]*GaugeInstance
 	__rendering1   bool
 	__renderAgain1 bool
 	raise          gtk4rt.Handle
@@ -1371,22 +1662,76 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.level = 0
-	m.mounts = []int{}
-	m.open = true
-	m.copies = []int{1, 2}
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__inst0_live = []*GaugeInstance{}
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__inst1_live = []*GaugeInstance{}
-	m.__rendering1 = false
-	m.__renderAgain1 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["level"] {
+		m.level = 0
+	}
+	if !preset["mounts"] {
+		m.mounts = []int{}
+	}
+	if !preset["open"] {
+		m.open = true
+	}
+	if !preset["copies"] {
+		m.copies = []int{1, 2}
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__inst0_live"] {
+		m.__inst0_live = []*GaugeInstance{}
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__inst1_live"] {
+		m.__inst1_live = map[string]*GaugeInstance{}
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
+}
+
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1456,33 +1801,52 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				}
 				m.__slot1 = nil
 				m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-				__inst1_next := []*GaugeInstance{}
-				var __inst1_i int = 0
-				for __copy0, _ := range m.copies {
+				__inst1_next := map[string]*GaugeInstance{}
+				__inst1_seen := map[string]int{}
+				for __copy0, k := range __identified0(m.copies) {
 					var row *GaugeInstance
-					if len(m.__inst1_live) > __inst1_i {
-						row = m.__inst1_live[__inst1_i]
+					__key2 := fmt.Sprint(k.Id)
+					var __key2_n int = func() int {
+						if __v, __ok := __inst1_seen[__key2]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst1_seen[__key2] = (__key2_n + 1)
+					if __key2_n > 0 {
+						__key2 = ((__key2 + "#") + fmt.Sprint(__key2_n))
+					}
+					if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+						row = func() *GaugeInstance {
+							if __v, __ok := m.__inst1_live[__key2]; __ok {
+								return __v
+							}
+							return nil
+						}()
 						row.Set__copy(fmt.Sprint(__copy0))
 						row.Set__on_level(m.level)
 					} else {
-						if len(m.__inst1_live) > __inst1_i {
-							m.__inst1_live[__inst1_i].Destroy()
+						if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+							func() *GaugeInstance {
+								if __v, __ok := m.__inst1_live[__key2]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						row__new := newGaugeInstance(m, fmt.Sprint(__copy0), m.level)
 						row = row__new
 					}
-					__inst1_next = append(__inst1_next, row)
-					__inst1_i = (__inst1_i + 1)
+					__inst1_next[__key2] = row
 					row__el := row.Root
 					m.__list_row(fmt.Sprint(__copy0), row.Root)
 					m.__listInst_row(fmt.Sprint(__copy0), row)
 					gtk4rt.InsertBefore(parent, m.__slot1_at, row__el)
 					m.__slot1 = append(m.__slot1, row__el)
 				}
-				for __inst1_i_d, _ := range m.__inst1_live {
-					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-					if __inst1_i_j >= __inst1_i {
-						m.__inst1_live[__inst1_i_j].Destroy()
+				for __inst1_live_k, __inst1_live_v := range m.__inst1_live {
+					if !func() bool { _, __ok := __inst1_next[__inst1_live_k]; return __ok }() {
+						__inst1_live_v.Destroy()
 					}
 				}
 				m.__inst1_live = __inst1_next
@@ -1492,11 +1856,10 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst1_live_di, _ := range m.__inst1_live {
-		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
-		m.__inst1_live[__inst1_live_dj].Destroy()
+	for _, __inst1_live_dv := range m.__inst1_live {
+		__inst1_live_dv.Destroy()
 	}
-	m.__inst1_live = []*GaugeInstance{}
+	m.__inst1_live = map[string]*GaugeInstance{}
 	for __inst0_live_di, _ := range m.__inst0_live {
 		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
 		m.__inst0_live[__inst0_live_dj].Destroy()
@@ -1509,8 +1872,8 @@ func (m *Model) raise_clicked_handler() {
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__on_level(m.level)
 	}
-	for __inst1_live_ui, _ := range m.__inst1_live {
-		m.__inst1_live[__inst1_live_ui].Set__on_level(m.level)
+	for _, __inst1_live_uv := range m.__inst1_live {
+		__inst1_live_uv.Set__on_level(m.level)
 	}
 }
 
@@ -1531,10 +1894,6 @@ type GaugeInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
-	__slot1             []gtk4rt.Handle
-	__slot1_at          gtk4rt.Handle
 	shown               gtk4rt.Handle
 }
 
@@ -1553,12 +1912,10 @@ func newGaugeInstance(__model *Model, __a___copy string, __a___on_level int) *Ga
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.shown = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.shown, fmt.Sprint(c.seen))
 	gtk4rt.LabelSetXAlign(c.shown, 0.0)
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = c.shown
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1646,12 +2003,6 @@ func (c *GaugeInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 func (m *Model) Level() int {
@@ -1686,11 +2037,39 @@ func (m *Model) SetCopies(v []int) {
 	m.copies = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	__snglBuilding++
 	__n0 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n0, 1)
 	gtk4rt.SetLook(__n0, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1701,6 +2080,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(__n0, m.raise)
 	m.__renderSlot0(__n0)
 	m.__renderSlot1(__n0)
+	__snglEndBuild()
 	gtk4rt.BoxAppend(m.__root, __n0)
 }
 
@@ -1776,6 +2156,7 @@ import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -1789,9 +2170,21 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.key
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
+
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
+data class __anon_id_elem_cdfd47(
+    var id: String = "",
+    var elem: Int = 0
+)
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -1809,14 +2202,18 @@ val SnglInstances = mutableMapOf<String, Map<String, (List<Any?>) -> Any?>>()
 
 lateinit var state: MainScreenState
 
-class MainScreenState {
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
     init { state = this }
     init { SnglInstances.clear() }
-    var level by mutableStateOf(0)
-    val mounts = mutableStateListOf<Int>()
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
-    var open by mutableStateOf(true)
-    val copies = mutableStateListOf(1, 2)
+    var level by mutableStateOf(__snglPre(__pre, "level") { 0 })
+    val mounts = if ("mounts" in __pre) (__pre["mounts"] as List<Int>).toMutableStateList() else mutableStateListOf<Int>()
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
+    var open by mutableStateOf(__snglPre(__pre, "open") { true })
+    val copies = if ("copies" in __pre) (__pre["copies"] as List<Int>).toMutableStateList() else mutableStateListOf(1, 2)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1832,8 +2229,10 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
         if (state.open) {
             Gauge(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __on_level = state.level, __sngl = "g")
         }
-        for ((__copy0, k) in state.copies.withIndex()) {
-            Gauge(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __copy = __copy0.toString(), __on_level = state.level, __sngl = "row[" + __copy0.toString() + "]")
+        for ((__copy0, k) in __identified0(state.copies).withIndex()) {
+            key(k.id) {
+                Gauge(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __copy = __copy0.toString(), __on_level = state.level, __sngl = "row[" + __copy0.toString() + "]")
+            }
         }
     }
 }
@@ -1888,10 +2287,11 @@ fun Gauge(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexSha
     }
 
     DisposableEffect(__sngl) {
-        SnglInstances[__sngl] = mapOf<String, (List<Any?>) -> Any?>(
+        val __entry = mapOf<String, (List<Any?>) -> Any?>(
             "seen" to { _ -> seen },
         )
-        onDispose { SnglInstances.remove(__sngl) }
+        SnglInstances[__sngl] = __entry
+        onDispose { if (SnglInstances[__sngl] === __entry) SnglInstances.remove(__sngl) }
     }
 
     DisposableEffect(__on_level) {
@@ -1904,6 +2304,21 @@ fun Gauge(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexSha
         }
     }
     Text(text = seen.toString(), modifier = Modifier.testTag("shown"), style = LocalTextStyle.current.merge(TextStyle.Default))
+}
+
+fun __identified0(__xs: List<Int>): List<__anon_id_elem_cdfd47> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_cdfd47>()
+    for (__x in __xs) {
+    	var __id = __x.toString().replace("#", "##")
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_cdfd47(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
 package test.sngl.app
@@ -2116,32 +2531,52 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { level: 0, mounts: [], open: true, copies: [1, 2] };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.raiseClick = () => $0.click();
   state.gReadSeen = () => document.querySelector('[data-sngl-instance="g"]')?.__sngl?.__read_seen();
   state.rowReadSeenAt = (k) => document.querySelector('[data-sngl-instance="row"][data-sngl-copy="' + k + '"]')?.__sngl?.__read_seen();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function __snglTeardown() {
-    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
       ;
-      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
-      __inst3_live[__inst3_live_dj].__destroy();
+      let __id = String(__x).replaceAll("#", "##");
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
     }
     ;
-    __inst3_live = [];
+    return __out;
+  }
+  function __snglTeardown() {
+    for (const [__inst3_live_dk, __inst3_live_dv] of __inst3_live.entries()) {
+      ;
+      __inst3_live_dv.__destroy();
+    }
+    ;
+    __inst3_live = /* @__PURE__ */ new Map([]);
     for (const [__inst1_live_di, _] of __inst1_live.entries()) {
       ;
       let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
@@ -2151,7 +2586,7 @@ window.__sngl_boot = () => {
     __inst1_live = [];
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { __snglTeardown });
+    Object.assign(window, { __identified0, __snglTeardown });
   }
   function __cf_gauge(props) {
     const __root = document.createElement("div");
@@ -2170,8 +2605,6 @@ window.__sngl_boot = () => {
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __effect0_update() {
       seen = __effect0_key;
       shown.textContent = String(seen);
@@ -2254,7 +2687,7 @@ window.__sngl_boot = () => {
   var __rendering0 = false;
   var __renderAgain0 = false;
   var __slot1 = [];
-  var __inst3_live = [];
+  var __inst3_live = /* @__PURE__ */ new Map([]);
   var __rendering1 = false;
   var __renderAgain1 = false;
   function __renderSlot0(parent) {
@@ -2328,23 +2761,28 @@ window.__sngl_boot = () => {
           let __place2_prev = __slot1;
           let __place2_i = 0;
           __slot1 = [];
-          let __inst3_next = [];
-          let __inst3_i = 0;
-          for (const [__copy0, k] of state.copies.entries()) {
+          let __inst3_next = /* @__PURE__ */ new Map([]);
+          let __inst3_seen = /* @__PURE__ */ new Map([]);
+          for (const [__copy0, k] of __identified0(state.copies).entries()) {
             let row = null;
-            if (__inst3_live.length > __inst3_i) {
-              row = __inst3_live[__inst3_i];
+            let __key4 = String(k.id);
+            let __key4_n = __inst3_seen.has(__key4) ? __inst3_seen.get(__key4) : 0;
+            __inst3_seen.set(__key4, __key4_n + 1);
+            if (__key4_n > 0) {
+              __key4 = __key4 + "#" + String(__key4_n);
+            }
+            if (__inst3_live.has(__key4)) {
+              row = __inst3_live.has(__key4) ? __inst3_live.get(__key4) : null;
               row.__set___copy(String(__copy0));
               row.__set___on_level(state.level);
             } else {
-              if (__inst3_live.length > __inst3_i) {
-                __inst3_live[__inst3_i].__destroy();
+              if (__inst3_live.has(__key4)) {
+                (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
               let row__new = __cf_gauge({ __copy: String(__copy0), __on_level: state.level });
               row = row__new;
             }
-            __inst3_next.push(row);
-            __inst3_i = __inst3_i + 1;
+            __inst3_next.set(__key4, row);
             let row__el = row.__root;
             row__el.setAttribute("data-sngl-instance", "row");
             row__el.setAttribute("data-sngl-copy", String(__copy0));
@@ -2359,10 +2797,9 @@ window.__sngl_boot = () => {
             }
             __slot1.push(row__el);
           }
-          for (const [__inst3_i_d, _] of __inst3_live.entries()) {
-            let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
-            if (__inst3_i_j >= __inst3_i) {
-              __inst3_live[__inst3_i_j].__destroy();
+          for (const [__inst3_live_k, __inst3_live_v] of __inst3_live.entries()) {
+            if (!__inst3_next.has(__inst3_live_k)) {
+              __inst3_live_v.__destroy();
             }
           }
           __inst3_live = __inst3_next;
@@ -2392,25 +2829,24 @@ window.__sngl_boot = () => {
       __inst1_live[__inst1_live_ui].__set___on_level(state.level);
     }
     ;
-    for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
+    for (const [__inst3_live_uk, __inst3_live_uv] of __inst3_live.entries()) {
       ;
-      __inst3_live[__inst3_live_ui].__set___on_level(state.level);
+      __inst3_live_uv.__set___on_level(state.level);
     }
     ;
   });
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f03cdb7fdb3e392b7b1aa75435553c3b
+pass sha256:bbee16778ed4283e7335210fb5d68eb1
 -- run/go/fyne --
-pass sha256:14356fb8246ccb8b37f8cafcbbaddcd3
+pass sha256:8cdaa09a7f146e5f57da3c7bffb708a2
 -- run/go/gtk4 --
-pass sha256:5d970054bfded29c0404241ceaba84dd
+pass sha256:6f7374c6f2d7584ab6bd17d211890afa
 -- run/kotlin/android --
-pass sha256:8244aea6bcf357e8f92b1171c25cc01b
+pass sha256:108e2f4516145e79408ad1c3eed71f34
 -- run/none/html --
-pass sha256:9e7925fad7335ab46e941e62b0de486d
+pass sha256:95003d065eb72cd3018bf0738f6effad

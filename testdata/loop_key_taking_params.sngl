@@ -1,0 +1,27 @@
+// A view loop tells its copies apart by the element's `key` only where the
+// type declares one taking nothing but the element. A `key` taking more is a
+// method of the name, and the copies are told apart by position: it was
+// called with nothing, and the loop was refused with no line.
+
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct Row {
+    id int
+
+    func key(salt int) => id + salt
+}
+
+component rows ui.node {
+    var all = [Row{id=1}, Row{id=2}]
+
+    ui.vbox {
+        for var r = all {
+            ui.text #shown(value="{r.key(salt=10)}")
+        }
+    }
+}
+
+func testCopiesByPosition(t test.Test, c rows) {
+    t.assert(c.shown[1].value == "12")
+}

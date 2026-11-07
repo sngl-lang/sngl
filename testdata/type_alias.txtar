@@ -93,6 +93,9 @@ type Box__int struct {
 	Value int
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	p     Point
@@ -110,11 +113,23 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.p = Point{X: 1, Y: 2}
-	m.b = Box__int{Value: 4}
-	m.d = "up"
-	m.c__r1 = 3
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["p"] {
+		m.p = Point{X: 1, Y: 2}
+	}
+	if !preset["b"] {
+		m.b = Box__int{Value: 4}
+	}
+	if !preset["d"] {
+		m.d = "up"
+	}
+	if !preset["c__r1"] {
+		m.c__r1 = 3
+	}
 }
 
 func (m *Model) turn_click_handler() {
@@ -219,6 +234,7 @@ import (
 func TestShown(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !(((fmt.Sprint((c.p.X + c.p.Y)) == "3") && (fmt.Sprint(c.b.Value) == "4"))) { t.Errorf("assert failed: %s", "((fmt.Sprint((c.p.X + c.p.Y)) == \"3\") && (fmt.Sprint(c.b.Value) == \"4\"))") }
 	var __lt0 string
 	if (c.d == "up") {
@@ -244,7 +260,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -279,6 +299,12 @@ data class Box__int(
     var value: Int = 0
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -292,11 +318,15 @@ enum class Direction(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
-class MainScreenState {
-    var p by mutableStateOf(Point(x = 1, y = 2))
-    var b by mutableStateOf(Box__int(value = 4))
-    var d by mutableStateOf(Direction.UP)
-    var c by mutableStateOf(3)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var p by mutableStateOf(__snglPre(__pre, "p") { Point(x = 1, y = 2) })
+    var b by mutableStateOf(__snglPre(__pre, "b") { Box__int(value = 4) })
+    var d by mutableStateOf(__snglPre(__pre, "d") { Direction.UP })
+    var c by mutableStateOf(__snglPre(__pre, "c") { 3 })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -382,21 +412,24 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { p: null, b: null, d: null, c: 3 };
-  state.p = { x: 1, y: 2 };
-  state.b = { value: 4 };
-  state.d = "up";
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
+  if (!("p" in __snglPre)) state.p = { x: 1, y: 2 };
+  if (!("b" in __snglPre)) state.b = { value: 4 };
+  if (!("d" in __snglPre)) state.d = "up";
   state.turnClick = () => $4.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
@@ -426,12 +459,11 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:4c3d9acedef22dc1c623e26120eb1445
+pass sha256:373229ce263d3d5d963ea27a0068ec10
 -- run/kotlin/android --
-pass sha256:f3774561ce1850785df35cd7093e2801
+pass sha256:5568c65bb010d8802b8f1b8b3fc60c00
 -- run/none/html --
-pass sha256:26dc7b34a8dfe171e0981bc0e0e06dc8
+pass sha256:30f1394055b63c75cdabe2d822936b6a

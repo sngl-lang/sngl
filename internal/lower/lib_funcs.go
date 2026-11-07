@@ -80,14 +80,22 @@ func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have
 		root := (*roots)[0]
 		*roots = (*roots)[1:]
 		_ = ir.WalkExprs(root, func(e ir.Expr) error {
-			call, ok := e.(*ir.Call)
-			if !ok || !wanted(call.Func) {
+			// Called, or taken as a value: sngl:http's `closed`, which a
+			// test starts with as its answer.
+			var fn *ir.Func
+			switch x := e.(type) {
+			case *ir.Call:
+				fn = x.Func
+			case *ir.Ident:
+				fn, _ = x.Sym.(*ir.Func)
+			}
+			if !wanted(fn) {
 				return nil
 			}
-			have[call.Func] = true
-			*added = append(*added, call.Func)
+			have[fn] = true
+			*added = append(*added, fn)
 			// A promoted helper may call a second one.
-			push(call.Func.Block)
+			push(fn.Block)
 			return nil
 		})
 	}

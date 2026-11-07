@@ -1,0 +1,384 @@
+# A method called through the `#id` of a node a block built at run time holds
+# reaches that node where the call is in the block too, on every target: a
+# reactive `if`'s branch, a tab's panel, and a component spliced into one
+# whose two-way prop is bound, which holds no cell of its own. The block is a
+# component of its own (passHandleBlocks), holding the node and the handler
+# that calls it, as the Pokédex's `asked` was written to be by hand; what the
+# handler writes of the page's is raised to the page, which writes it.
+
+sngl test --platform=none app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '3 tests, 0 failures'
+
+# The kept handler's writes of the page's state are raised to the page: a
+# call mutating its receiver, `log.push(7)`, as an assignment is -- left
+# alone, the push wrote the block's copy of `log` -- and a var it writes is
+# read after as written, `seen = tries`, where the block's prop of `tries`
+# holds the old value until the page renders again, as on android.
+
+sngl test --platform=none relays.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html relays.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go relays.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go relays.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go relays.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin relays.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func look(k string, life async.Lifetime) async.Result[string] {
+    return {ok=k}
+}
+
+component branch ui.node {
+    var on = false
+    var loads = 0
+    var tries = 0
+
+    ui.vbox {
+        if on {
+            async.query #ask(on="a", fetch=look, @load(v) { loads = loads + 1 })
+            ui.button #again(text="Again", @click {
+                tries += 1
+                ask.refresh()
+            })
+        }
+    }
+}
+
+func testACallInABranchReachesItsNode(t test.Test, c branch) {
+    c.on = true
+    t.wait(func() => c.loads == 1, 2000)
+    if c.again != null {
+        c.again.click()
+    }
+    t.wait(func() => c.loads == 2, 2000)
+    t.assert(c.tries == 1)
+}
+
+component panel ui.node {
+    var at = 1
+    var loads = 0
+
+    ui.tabs(:selected=at) {
+        ui.tab(label="One") {
+            ui.text("first")
+        }
+        ui.tab(label="Two") {
+            async.query #ask(on="a", fetch=look, @load(v) { loads = loads + 1 })
+            ui.button #again(text="Again", @click { ask.refresh() })
+        }
+    }
+}
+
+func testACallInATabReachesItsNode(t test.Test, c panel) {
+    t.wait(func() => c.loads == 1, 2000)
+    if c.again != null {
+        c.again.click()
+    }
+    t.wait(func() => c.loads == 2, 2000)
+}
+
+component asked(:value option[string] = null, @loaded()) ui.node {
+    async.query #ask(on="a", fetch=look, :value=value, @load(v) { loaded() })
+    if value != null {
+        ui.button #again(text="Again", @click { ask.refresh() })
+    }
+}
+
+component bound ui.node {
+    var on = false
+    var got option[string] = null
+    var loads = 0
+
+    ui.vbox {
+        if on {
+            asked #it(:value=got, @loaded { loads = loads + 1 })
+        }
+    }
+}
+
+func testABoundSpliceReachesItsNode(t test.Test, c bound) {
+    c.on = true
+    t.wait(func() => c.loads == 1, 2000)
+    t.assert(c.got == "a")
+    if c.it != null && c.it.again != null {
+        c.it.again.click()
+    }
+    t.wait(func() => c.loads == 2, 2000)
+}
+
+ui.window {
+    branch()
+}
+-- relays.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func look(k string, life async.Lifetime) async.Result[string] {
+    return {ok=k}
+}
+
+component branch ui.node {
+    var on = false
+    var loads = 0
+    var tries = 0
+    var seen = 0
+    var log list[int] = []
+
+    ui.vbox {
+        if on {
+            async.query #ask(on="a", fetch=look, @load(v) { loads = loads + 1 })
+            ui.button #again(text="Again", @click {
+                tries += 1
+                seen = tries
+                log.push(7)
+                ask.refresh()
+            })
+        }
+    }
+}
+
+func testReadAfterWrite(t test.Test, c branch) {
+    c.on = true
+    t.wait(func() => c.loads == 1, 2000)
+    if c.again != null {
+        c.again.click()
+    }
+    t.wait(func() => c.loads == 2, 2000)
+    t.assert(c.tries == 1)
+    t.assert(c.seen == 1)
+    t.assert(c.log == [7])
+}
+
+ui.window {
+    branch()
+}
+-- testrun/android/kotlin/app.sngl/bound/1 --
+sha256:fdfe83d165faf4db19cd74e49b674c5d
+{
+  "results": [
+    {
+      "Desc": "ABoundSpliceReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/branch/1 --
+sha256:51f0f14043c6a5a24e9ff9bdd5c048e8
+{
+  "results": [
+    {
+      "Desc": "ACallInABranchReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/panel/1 --
+sha256:c282635da43e7b0e80909b65cbf1f997
+{
+  "results": [
+    {
+      "Desc": "ACallInATabReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/relays.sngl/branch/1 --
+sha256:9e08bf930ad111bab44a75d7c10320d2
+{
+  "results": [
+    {
+      "Desc": "ReadAfterWrite",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/bound/1 --
+sha256:6e6e73b09c2c767cc7d944f15a50b1ab
+{
+  "results": [
+    {
+      "Desc": "ABoundSpliceReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/branch/1 --
+sha256:e283ff3760d289bd3e3ca632c7caf3fa
+{
+  "results": [
+    {
+      "Desc": "ACallInABranchReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/panel/1 --
+sha256:4fb0860b8635eb77e318d4b2a5d1a5d3
+{
+  "results": [
+    {
+      "Desc": "ACallInATabReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/relays.sngl/branch/1 --
+sha256:bf1a7f120127172f6a0eeff0447d1302
+{
+  "results": [
+    {
+      "Desc": "ReadAfterWrite",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/bound/1 --
+sha256:4c49427a63c036e4656baef2fd23e160
+{
+  "results": [
+    {
+      "Desc": "ABoundSpliceReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/branch/1 --
+sha256:a7fd1b8e67c1a0c5385efceba6b11d92
+{
+  "results": [
+    {
+      "Desc": "ACallInABranchReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/panel/1 --
+sha256:7a9de1f65f3f4134063c8ee4f35528a2
+{
+  "results": [
+    {
+      "Desc": "ACallInATabReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/relays.sngl/branch/1 --
+sha256:087a3b3af0c665c32affc3420934b062
+{
+  "results": [
+    {
+      "Desc": "ReadAfterWrite",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/bound/1 --
+sha256:690ce0ac64098f9f81b8a53f4c891d28
+{
+  "results": [
+    {
+      "Desc": "ABoundSpliceReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/branch/1 --
+sha256:fd43062de01847b3c6962fbb2db9198a
+{
+  "results": [
+    {
+      "Desc": "ACallInABranchReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/panel/1 --
+sha256:4f70f3e9374f8d5a15dab9ccfd12680c
+{
+  "results": [
+    {
+      "Desc": "ACallInATabReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/relays.sngl/branch/1 --
+sha256:d213f02e0ebf2cd94ded0250f4489819
+{
+  "results": [
+    {
+      "Desc": "ReadAfterWrite",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/bound/1 --
+sha256:194a8db9545bd3c9eef48c19a9a47ecd
+{
+  "results": [
+    {
+      "Desc": "ABoundSpliceReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/branch/1 --
+sha256:58586bf36e9bf22bee39960151241519
+{
+  "results": [
+    {
+      "Desc": "ACallInABranchReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/panel/1 --
+sha256:f6497067ad4060e0874b338e23b92332
+{
+  "results": [
+    {
+      "Desc": "ACallInATabReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/relays.sngl/branch/1 --
+sha256:f45c6d07f05704d876110c57de54e0cb
+{
+  "results": [
+    {
+      "Desc": "ReadAfterWrite",
+      "Passed": true
+    }
+  ]
+}

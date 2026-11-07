@@ -262,9 +262,16 @@ var currentModel *Model
 
 func setCurrentTestModel(m *Model) { currentModel = m }
 
+// A test's Model starts bare: what the test sets up before it needs the
+// component is written into it, and mountTestComponent initializes the rest
+// and builds it.
 func newTestComponent() *Model {
 	gtkInit.Do(func() { gtk4rt.Init() })
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.buildWidgetTree()
 	return m
 }

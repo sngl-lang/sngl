@@ -83,6 +83,11 @@ type Measurement struct {
 	Rem float64
 }
 
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -137,8 +142,6 @@ type Style struct {
 	ListStyleType  string
 }
 
-var labels []string = []string{"a", "b", "c"}
-
 // snglStop is a focus stop a click presses: the slot and copy focus moves to,
 // and the key that presses it there, where press says it has one.
 type snglStop struct {
@@ -158,7 +161,6 @@ type modelState struct {
 	visible__inst0      bool
 	__focusID           int
 	__focusLoop0_cursor int
-	labels              []string
 
 	__clicks      tui.Clicks[snglStop]
 	__pressing    bool
@@ -172,7 +174,6 @@ func New() Model {
 	m.visible__inst0 = true
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
-	m.labels = []string{"a", "b", "c"}
 	m.__focusSettle()
 	return m
 }
@@ -183,15 +184,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -231,14 +231,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -302,7 +302,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -315,7 +315,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -329,25 +329,36 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m *Model) __focusLoop0_len() int {
 	var __focusCount int = 0
-	for range m.labels {
+	for range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "a", Elem: "a"}, __anon_id_elem_c6a818{Id: "b", Elem: "b"}, __anon_id_elem_c6a818{Id: "c", Elem: "c"}} {
 		__focusCount = (__focusCount + 1)
 	}
 	return __focusCount
@@ -469,36 +480,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 0 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos0 := 0
-				for __copy0, l := range m.labels {
-					_ = __copy0
+				for _, l := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "a", Elem: "a"}, __anon_id_elem_c6a818{Id: "b", Elem: "b"}, __anon_id_elem_c6a818{Id: "c", Elem: "c"}} {
 					_ = l
 					if m.__focusLoop0_cursor == __focusPos0 {
 						var __cell1_hits__inst0 int = func() int {
-							if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.hits__inst0[l.Id]; __ok {
 								return __v
 							}
 							return 0
 						}()
 						__cell1_hits__inst0 = (func() int {
-							if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.hits__inst0[l.Id]; __ok {
 								return __v
 							}
 							return 0
 						}() + 1)
-						m.hits__inst0[fmt.Sprint(__copy0)] = __cell1_hits__inst0
+						m.hits__inst0[l.Id] = __cell1_hits__inst0
 						var __cell2_hits__inst0 int = func() int {
-							if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.hits__inst0[l.Id]; __ok {
 								return __v
 							}
 							return 0
 						}()
 						__cell2_hits__inst0 = (func() int {
-							if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.hits__inst0[l.Id]; __ok {
 								return __v
 							}
 							return 0
 						}() % 10)
-						m.hits__inst0[fmt.Sprint(__copy0)] = __cell2_hits__inst0
+						m.hits__inst0[l.Id] = __cell2_hits__inst0
 						return
 					}
 					__focusPos0++
@@ -543,8 +553,7 @@ func (m Model) View() tea.View {
 		__focusPos0 := 0
 		_ = __focusPos0
 		var content_0Items []string
-		for __copy0, l := range m.labels {
-			_ = __copy0
+		for _, l := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "a", Elem: "a"}, __anon_id_elem_c6a818{Id: "b", Elem: "b"}, __anon_id_elem_c6a818{Id: "c", Elem: "c"}} {
 			_ = l
 			var content_0Item string
 			content_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0)) && m.__focusShown()
@@ -552,12 +561,13 @@ func (m Model) View() tea.View {
 			if content_0ItemFocused {
 				content_0ItemPrefix = ">"
 			}
-			content_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0ItemPrefix + " " + fmt.Sprint(((l + " ") + fmt.Sprint(func() int {
-				if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+			content_0ItemText := content_0ItemPrefix + " " + fmt.Sprint(((l.Elem + " ") + fmt.Sprint(func() int {
+				if __v, __ok := m.hits__inst0[l.Id]; __ok {
 					return __v
 				}
 				return 0
-			}()))))
+			}())))
+			content_0Item = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_0ItemFocused), tui.Avail(m.width), content_0ItemText).Render(content_0ItemText)
 			content_0Item = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0Item)
 			__focusPos0++
 			content_0Items = append(content_0Items, content_0Item)
@@ -597,17 +607,19 @@ import (
 	"os"
 )
 
-var labels []string = []string{"a", "b", "c"}
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
-	__inst0_live   []*CounterInstance
+	__inst0_live   map[string]*CounterInstance
 	__rendering0   bool
 	__renderAgain0 bool
-	labels         []string
 
 	__n1    *fynelayout.Toplevel
 	__n3    *fyne.Container
@@ -620,10 +632,9 @@ func New() *Model {
 	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*CounterInstance{}
+	m.__inst0_live = map[string]*CounterInstance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
-	m.labels = []string{"a", "b", "c"}
 	return m
 }
 
@@ -644,30 +655,49 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-				__inst0_next := []*CounterInstance{}
-				var __inst0_i int = 0
-				for _, l := range m.labels {
+				__inst0_next := map[string]*CounterInstance{}
+				__inst0_seen := map[string]int{}
+				for _, l := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "a", Elem: "a"}, __anon_id_elem_c6a818{Id: "b", Elem: "b"}, __anon_id_elem_c6a818{Id: "c", Elem: "c"}} {
 					var __n2 *CounterInstance
-					if len(m.__inst0_live) > __inst0_i {
-						__n2 = m.__inst0_live[__inst0_i]
-						__n2.SetLabel(l)
-					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+					__key1 := fmt.Sprint(l.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
 						}
-						__n2__new := newCounterInstance(m, l)
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n2 = func() *CounterInstance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
+						__n2.SetLabel(l.Elem)
+					} else {
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *CounterInstance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
+						}
+						__n2__new := newCounterInstance(m, l.Elem)
 						__n2 = __n2__new
 					}
-					__inst0_next = append(__inst0_next, __n2)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
 					fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
 					m.__slot0 = append(m.__slot0, __n2__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -677,11 +707,10 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*CounterInstance{}
+	m.__inst0_live = map[string]*CounterInstance{}
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -724,8 +753,6 @@ type CounterInstance struct {
 	__prop_label string
 	hits         int
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
 	__n0         *fynelayout.Button
 }
 
@@ -735,7 +762,6 @@ func newCounterInstance(__model *Model, __a_label string) *CounterInstance {
 	c.__prop_label = __a_label
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(((c.__prop_label + " ") + fmt.Sprint(c.hits)))
 	c.__n0.OnTapped = func() {
@@ -787,17 +813,19 @@ import (
 	"fmt"
 )
 
-var labels []string = []string{"a", "b", "c"}
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
-	__inst0_live   []*CounterInstance
+	__inst0_live   map[string]*CounterInstance
 	__rendering0   bool
 	__renderAgain0 bool
-	labels         []string
 	__n1           gtk4rt.Handle
 	__n3           gtk4rt.Handle
 	__built        bool
@@ -810,10 +838,9 @@ func New() *Model {
 	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*CounterInstance{}
+	m.__inst0_live = map[string]*CounterInstance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
-	m.labels = []string{"a", "b", "c"}
 	return m
 }
 
@@ -834,30 +861,49 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-				__inst0_next := []*CounterInstance{}
-				var __inst0_i int = 0
-				for _, l := range m.labels {
+				__inst0_next := map[string]*CounterInstance{}
+				__inst0_seen := map[string]int{}
+				for _, l := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "a", Elem: "a"}, __anon_id_elem_c6a818{Id: "b", Elem: "b"}, __anon_id_elem_c6a818{Id: "c", Elem: "c"}} {
 					var __n2 *CounterInstance
-					if len(m.__inst0_live) > __inst0_i {
-						__n2 = m.__inst0_live[__inst0_i]
-						__n2.SetLabel(l)
-					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+					__key1 := fmt.Sprint(l.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
 						}
-						__n2__new := newCounterInstance(m, l)
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n2 = func() *CounterInstance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
+						__n2.SetLabel(l.Elem)
+					} else {
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *CounterInstance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
+						}
+						__n2__new := newCounterInstance(m, l.Elem)
 						__n2 = __n2__new
 					}
-					__inst0_next = append(__inst0_next, __n2)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
 					m.__slot0 = append(m.__slot0, __n2__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -867,11 +913,10 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*CounterInstance{}
+	m.__inst0_live = map[string]*CounterInstance{}
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -892,8 +937,6 @@ type CounterInstance struct {
 	__prop_label string
 	hits         int
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
 	__n0         gtk4rt.Handle
 }
 
@@ -902,7 +945,6 @@ func newCounterInstance(__model *Model, __a_label string) *CounterInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.hits = 0
-	c.__slot0 = nil
 	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.hits)))
 	gtk4rt.SetBool(c.__n0, "can-focus", true)
@@ -926,9 +968,6 @@ func (c *CounterInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -981,19 +1020,23 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
+)
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
-
-val labels: List<String> = listOf("a", "b", "c")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1009,8 +1052,10 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
-            for (l in labels) {
-                Counter(label = l, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() })
+            for (l in listOf(__anon_id_elem_c6a818(id = "a", elem = "a"), __anon_id_elem_c6a818(id = "b", elem = "b"), __anon_id_elem_c6a818(id = "c", elem = "c"))) {
+                key(l.id) {
+                    Counter(label = l.elem, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() })
+                }
             }
         }
     }
@@ -1192,13 +1237,12 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = { visible__inst0: true };
   function __snglTeardown() {
-    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+    for (const [__inst1_live_dk, __inst1_live_dv] of __inst1_live.entries()) {
       ;
-      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
-      __inst1_live[__inst1_live_dj].__destroy();
+      __inst1_live_dv.__destroy();
     }
     ;
-    __inst1_live = [];
+    __inst1_live = /* @__PURE__ */ new Map([]);
   }
   function __cf_counter(props) {
     const __root = document.createElement("div");
@@ -1206,7 +1250,6 @@ body { font-family: system-ui, sans-serif; }
     let label = props.label ?? "";
     let __prop_label = label;
     let hits = 0;
-    let __slot02 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n0.textContent = __prop_label + " " + String(hits);
@@ -1233,7 +1276,7 @@ body { font-family: system-ui, sans-serif; }
     };
   }
   var __slot0 = [];
-  var __inst1_live = [];
+  var __inst1_live = /* @__PURE__ */ new Map([]);
   var __rendering0 = false;
   var __renderAgain0 = false;
   function __renderSlot0(parent) {
@@ -1248,22 +1291,27 @@ body { font-family: system-ui, sans-serif; }
           let __place0_prev = __slot0;
           let __place0_i = 0;
           __slot0 = [];
-          let __inst1_next = [];
-          let __inst1_i = 0;
-          for (const l of ["a", "b", "c"]) {
+          let __inst1_next = /* @__PURE__ */ new Map([]);
+          let __inst1_seen = /* @__PURE__ */ new Map([]);
+          for (const l of [{ id: "a", elem: "a" }, { id: "b", elem: "b" }, { id: "c", elem: "c" }]) {
             let __n2 = null;
-            if (__inst1_live.length > __inst1_i) {
-              __n2 = __inst1_live[__inst1_i];
-              __n2.__set_label(l);
+            let __key2 = String(l.id);
+            let __key2_n = __inst1_seen.has(__key2) ? __inst1_seen.get(__key2) : 0;
+            __inst1_seen.set(__key2, __key2_n + 1);
+            if (__key2_n > 0) {
+              __key2 = __key2 + "#" + String(__key2_n);
+            }
+            if (__inst1_live.has(__key2)) {
+              __n2 = __inst1_live.has(__key2) ? __inst1_live.get(__key2) : null;
+              __n2.__set_label(l.elem);
             } else {
-              if (__inst1_live.length > __inst1_i) {
-                __inst1_live[__inst1_i].__destroy();
+              if (__inst1_live.has(__key2)) {
+                (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf_counter({ label: l });
+              let __n2__new = __cf_counter({ label: l.elem });
               __n2 = __n2__new;
             }
-            __inst1_next.push(__n2);
-            __inst1_i = __inst1_i + 1;
+            __inst1_next.set(__key2, __n2);
             let __n2__el = __n2.__root;
             let __place0_i_ref0 = null;
             if (__place0_i < __place0_prev.length) {
@@ -1276,10 +1324,9 @@ body { font-family: system-ui, sans-serif; }
             }
             __slot0.push(__n2__el);
           }
-          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-            if (__inst1_i_j >= __inst1_i) {
-              __inst1_live[__inst1_i_j].__destroy();
+          for (const [__inst1_live_k, __inst1_live_v] of __inst1_live.entries()) {
+            if (!__inst1_next.has(__inst1_live_k)) {
+              __inst1_live_v.__destroy();
             }
           }
           __inst1_live = __inst1_next;
@@ -1304,12 +1351,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e31c427e628256cae4607d70373b89e4
+pass sha256:75300eb3801fc4d286fdc592672f1ce3
 -- run/go/fyne --
-pass sha256:65e1048bdd3e31a4f5c8fd2bdc042242
+pass sha256:1dfee03dec201797f659ef20597e1230
 -- run/go/gtk4 --
-pass sha256:52bc313b91927fd1292f56c5feb88844
+pass sha256:8ac72ffed5bd311b063aab6995c2bf2b
 -- run/kotlin/android --
-pass sha256:3999594e72713b4140589b7c5348d467
+pass sha256:870123b78568501d6f60ddfacbac3907
 -- run/none/html --
-pass sha256:f511d17d0fb54b75fc381c1e6a33040f
+pass sha256:fbff471e1013bd1ab73b98b229f692b2

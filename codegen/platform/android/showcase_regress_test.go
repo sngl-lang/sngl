@@ -186,7 +186,7 @@ ui.window {
 	if !strings.Contains(out, "state.doubled") {
 		t.Errorf("expected state.doubled at view site:\n%s", out)
 	}
-	if !strings.Contains(out, "mutableStateOf<String?>(null)") {
+	if !strings.Contains(out, `mutableStateOf<String?>(__snglPre(__pre, "nick") { null })`) {
 		t.Errorf("expected typed null state in class:\n%s", out)
 	}
 }
@@ -205,13 +205,13 @@ ui.window {
     var dob option[date] = date("2000-01-01")
     vbox {
         select(placeholder="File.pick", :value=fruit) {
-            choice(label="Apple")
-            choice(label="Banana")
+            choice(label="Apple", value="Apple")
+            choice(label="Banana", value="Banana")
         }
         radio(direction=horizontal, :value=size) {
-            choice(label="small")
-            choice(label="medium")
-            choice(label="large")
+            choice(label="small", value="small")
+            choice(label="medium", value="medium")
+            choice(label="large", value="large")
         }
         datepicker(placeholder="Birthday", :value=dob)
     }
@@ -220,13 +220,14 @@ ui.window {
 	if strings.Contains(out, "TODO") {
 		t.Errorf("widget rendered as a TODO stub:\n%s", out)
 	}
-	// select: a read-only field showing the bound value, which a choice --
-	// picked, or set as the box's text -- writes back.
-	if !strings.Contains(out, "OutlinedTextField(value = fruit, readOnly = `true`") || !strings.Contains(out, "fruit = v") || !strings.Contains(out, ".snglChooses(") {
+	// select: a read-only field showing the bound value's label, whose
+	// choice -- picked, or its label set as the box's text -- writes the
+	// value back.
+	if !strings.Contains(out, "OutlinedTextField(value = choiceLabel__string(") || !strings.Contains(out, "fruit = listOf(") || !strings.Contains(out, ".snglChooses(") {
 		t.Errorf("select not rendered as a value-bound read-only field:\n%s", out)
 	}
 	// radio: a RadioButton per option, selected reflects the bound value.
-	if !strings.Contains(out, "RadioButton(selected = (size == opt.label)") {
+	if !strings.Contains(out, "RadioButton(selected = (size == opt.value)") {
 		t.Errorf("radio not rendered as RadioButton group:\n%s", out)
 	}
 	// datepicker: SnglDateField, the field a date is typed or picked in,

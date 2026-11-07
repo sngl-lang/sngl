@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -1155,95 +1156,129 @@ func (b *builder) buildNameBracket(it nodeIter) (params []ast.TypeParam, target 
 }
 
 func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
-	// FuncName = ident [ lbracket ident FuncNameBracket | dot ident [ NameBracket ] ] .
+	// FuncName = ident { dot ident | lbracket ident FuncNameBracket } .
 	//
-	// All cases after the leading ident:
-	//   [T].method[NameBracket]     → RecvTypeParams=[T], Name="recv.method"
-	//   [T, U].method[NameBracket]  → RecvTypeParams=[T, U], Name="recv.method"
-	//   [T any][TargetIndex]        → TypeParams=[T], Name="name"
-	//   [platform], [html.platform] → Target, Name="name"
-	//   .method[NameBracket]        → Name="recv.method"
-	//   (nothing)                   → Name="name"
-	first := it.shift().Literal
-	f.Name = first
-	if it.done() || it.isNonTerminal() {
-		return
+	// The names are joined by dots, and each bracketed list is read by where
+	// it stands:
+	//   recv[T].method              → RecvTypeParams=[T], Name="recv.method"
+	//   ui.select[T].change         → RecvTypeParams=[T], Name="ui.select.change"
+	//   name[T any]                 → TypeParams=[T]
+	//   name[platform], [html.platform] → Target
+	//   name[T any][html.platform]  → both, in that order
+	type list struct {
+		funcNameList
+		pos   ast.Pos
+		after int // the number of names read before it
 	}
-	switch it.tokenType() {
-	case LBRACKET:
-		it.skip() // lbracket
-		if it.done() || it.isNonTerminal() || it.tokenType() != IDENT {
-			return
+	var names []string
+	var lists []list
+	for !it.done() {
+		if it.isNonTerminal() {
+			it.skip()
+			continue
 		}
-		tok := it.shift()
-		head := ast.TypeParam{Pos: b.posFromToken(tok), Name: tok.Literal}
-		if it.done() || !it.isNonTerminal() || it.symbol() != FuncNameBracket {
-			return
+		switch it.tokenType() {
+		case IDENT:
+			names = append(names, it.shift().Literal)
+		case DOT:
+			it.skip()
+		case LBRACKET:
+			open := it.shift()
+			if it.done() || it.isNonTerminal() || it.tokenType() != IDENT {
+				return
+			}
+			tok := it.shift()
+			head := ast.TypeParam{Pos: b.posFromToken(tok), Name: tok.Literal}
+			if it.done() || !it.isNonTerminal() || it.symbol() != FuncNameBracket {
+				return
+			}
+			l := b.buildFuncNameBracket(it.enter(), head)
+			lists = append(lists, list{pos: b.posFromToken(open), after: len(names), funcNameList: l})
+		default:
+			it.skip()
 		}
-		b.buildFuncNameBracket(it.enter(), f, head)
-	case DOT:
-		b.buildMethodName(&it, f, first)
 	}
-}
-
-// buildFuncNameBracket reads the rest of a bracket opened after a function's
-// first name, whose first ident buildFuncName has already read as head. A
-// `dot` after the bracket makes it a receiver's names; a Type after the head
-// a type parameter list; anything else a target.
-func (b *builder) buildFuncNameBracket(it nodeIter, f *ast.FuncDef, head ast.TypeParam) {
-	// FuncNameBracket = rbracket [ dot ident [ NameBracket ] ]
-	//                 | comma ident { comma ident } rbracket dot ident [ NameBracket ]
-	//                 | dot ident rbracket
-	//                 | TypeParamRest [ TargetIndex ] .
-	first := f.Name
-	if it.done() {
-		return
-	}
-	if it.isNonTerminal() && it.symbol() == TypeParamRest {
-		f.TypeParams = b.buildTypeParamRest(it.enter(), head)
-		if !it.done() && it.isNonTerminal() && it.symbol() == TargetIndex {
-			f.Target = b.buildTargetIndex(it.enter())
-		}
-		return
-	}
-	switch it.tokenType() {
-	case DOT:
-		f.Target = b.buildTargetSelect(&it, &ast.IdentExpr{Pos: head.Pos, Name: head.Name})
-	case RBRACKET:
-		it.skip() // rbracket
-		if it.done() {
-			f.Target = &ast.IdentExpr{Pos: head.Pos, Name: head.Name}
-			return
-		}
-		f.RecvTypeParams = []ast.TypeParam{head}
-		b.buildMethodName(&it, f, first)
-	case COMMA:
-		f.RecvTypeParams = []ast.TypeParam{head}
-		for !it.done() && (it.isNonTerminal() || it.tokenType() != DOT) {
-			if !it.isNonTerminal() && it.tokenType() == IDENT {
-				tok := it.shift()
-				f.RecvTypeParams = append(f.RecvTypeParams, ast.TypeParam{Pos: b.posFromToken(tok), Name: tok.Literal})
+	f.Name = strings.Join(names, ".")
+	for _, l := range lists {
+		switch {
+		case l.after < len(names):
+			// Before the last dot: a receiver's names, and only the
+			// receiver's -- the list right before the method's name. A
+			// constraint there narrows the declaration's: the method is
+			// the receiver's only where the type bound satisfies it.
+			if l.target != nil {
+				b.errorf(l.pos, "a receiver's list names its type parameters, not a target")
 				continue
 			}
-			it.skip() // comma, rbracket
+			if l.after != len(names)-1 {
+				b.errorf(l.pos, "only the receiver type takes type parameters, the list before the method's name")
+				continue
+			}
+			if l.params != nil {
+				if i := slices.IndexFunc(l.params, func(p ast.TypeParam) bool { return p.Default != nil }); i >= 0 {
+					b.errorf(l.params[i].Pos, "a receiver's type parameter has no default: the receiver binds it")
+					continue
+				}
+				f.RecvTypeParams = l.params
+				continue
+			}
+			f.RecvTypeParams = l.names
+		case l.params != nil:
+			if f.TypeParams != nil || f.Target != nil {
+				b.errorf(l.pos, "a function's own type parameters come once, before the target it overrides")
+				continue
+			}
+			f.TypeParams = l.params
+		default:
+			if f.Target != nil {
+				b.errorf(l.pos, "a declaration overrides one target")
+				continue
+			}
+			if l.target == nil {
+				if len(l.names) != 1 {
+					b.errorf(l.pos, "a list of names after a function's name is a receiver's, and is followed by the method's name")
+					continue
+				}
+				l.target = &ast.IdentExpr{Pos: l.names[0].Pos, Name: l.names[0].Name}
+			}
+			f.Target = l.target
 		}
-		b.buildMethodName(&it, f, first)
 	}
 }
 
-// buildMethodName reads `dot ident [ NameBracket ]` after a receiver.
-func (b *builder) buildMethodName(it *nodeIter, f *ast.FuncDef, recv string) {
-	if it.done() || it.isNonTerminal() || it.tokenType() != DOT {
-		return
+// funcNameList is one bracketed list in a function's name: a receiver's
+// names, the function's own parameters, or a qualified target.
+type funcNameList struct {
+	names  []ast.TypeParam
+	params []ast.TypeParam
+	target ast.Expr
+}
+
+// buildFuncNameBracket reads the rest of a bracket in a function's name,
+// whose first ident buildFuncName has already read as head. A Type after the
+// head is a type parameter list, a `dot` a qualified target, and anything
+// else a list of names: a receiver's, or a bare target when it ends the name.
+func (b *builder) buildFuncNameBracket(it nodeIter, head ast.TypeParam) funcNameList {
+	// FuncNameBracket = rbracket
+	//                 | comma ident { comma ident } rbracket
+	//                 | dot ident rbracket
+	//                 | TypeParamRest .
+	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamRest {
+		return funcNameList{params: b.buildTypeParamRest(it.enter(), head)}
 	}
-	it.skip() // dot
-	if it.done() || it.isNonTerminal() || it.tokenType() != IDENT {
-		return
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
+		return funcNameList{target: b.buildTargetSelect(&it, &ast.IdentExpr{Pos: head.Pos, Name: head.Name})}
 	}
-	f.Name = recv + "." + it.shift().Literal
-	if !it.done() && it.isNonTerminal() && it.symbol() == NameBracket {
-		f.TypeParams, f.Target = b.buildNameBracket(it.enter())
+	out := funcNameList{names: []ast.TypeParam{head}}
+	for !it.done() {
+		if !it.isNonTerminal() && it.tokenType() == IDENT {
+			tok := it.shift()
+			out.names = append(out.names, ast.TypeParam{Pos: b.posFromToken(tok), Name: tok.Literal})
+			continue
+		}
+		it.skip() // comma, rbracket
 	}
+	return out
 }
 
 // buildTypeParamRest finishes a function's own list, whose first parameter's

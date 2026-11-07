@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -48,7 +49,7 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 		tested:     testedComponentSet(pkg, opts),
 	}
 	for _, comp := range pkg.Components {
-		st.hoist = &comp.Vars
+		st.hoist, st.hoistFuncs, st.hoistMethods = &comp.Vars, &comp.Funcs, true
 		body, err := st.inlineStmts(comp.Stmts)
 		if err != nil {
 			return err
@@ -70,7 +71,7 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 	}
 	// The package's own body, and then the windows: both hoist into the
 	// package, a window being a rendering root that owns nothing.
-	st.hoist = &pkg.Vars
+	st.hoist, st.hoistFuncs, st.hoistMethods = &pkg.Vars, &pkg.Funcs, false
 	body, err := st.inlineStmts(pkg.Body)
 	if err != nil {
 		return err
@@ -94,6 +95,11 @@ type inlinePureState struct {
 	// instance becomes a local of that instance's factory, which is what makes
 	// one per instance.
 	hoist *[]*ir.Var
+	// hoistFuncs is where a substituted callee's triggers land, the copy of
+	// each this call site makes (Func.Trigger): the owner's methods, or the
+	// package's functions for a root, which hoistMethods says.
+	hoistFuncs   *[]*ir.Func
+	hoistMethods bool
 	// names names each substitution's copy of the callee's state, and a
 	// spliced body's renamed parameters. Shared with passNoInlineComponents
 	// through Options: the two substitute into one emitted namespace and a
@@ -283,7 +289,7 @@ func (st *inlinePureState) isPure(c *ir.Component) bool {
 	if c == nil {
 		return false
 	}
-	if len(c.Funcs) > 0 {
+	if ownMethods(c) > 0 {
 		return false
 	}
 	// A lifetime is state as a var is: spliced under a `for`, every copy's
@@ -335,7 +341,7 @@ func (st *inlinePureState) isPure(c *ir.Component) bool {
 // every copy -- so there the component stays a runtime instance, which gives
 // each copy its own.
 func (st *inlinePureState) constSubstitutable(c *ir.Component) bool {
-	if c == nil || !c.Const || len(c.Funcs) > 0 {
+	if c == nil || !c.Const || ownMethods(c) > 0 {
 		return false
 	}
 	return len(c.Vars) == 0 || st.loopDepth == 0
@@ -501,7 +507,10 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 
 	pure := st.isPure(comp) || st.constSubstitutable(comp)
 	strictApplies := isPlatformStdlibComponent(st.pkg, comp)
-	if pure && comp.PkgPath() == "" && (n.Handle != nil && (st.reached[n.Handle] || st.nullTested[n.ID] && !ir.NodeIDRendersWithBody(comp.Stmts)) || st.tested[comp]) {
+	// A wrapper passImplicitState put around a node is reached by the
+	// node's handle, which it carries as Wraps.
+	reached := n.Handle != nil && st.reached[n.Handle] || n.Wraps != nil && st.reached[n.Wraps]
+	if pure && comp.PkgPath() == "" && (reached || n.Handle != nil && st.nullTested[n.ID] && !ir.NodeIDRendersWithBody(comp.Stmts) || st.tested[comp]) {
 		pure = false
 	}
 	if strictApplies && !pure {
@@ -732,6 +741,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		freshNodeHandles(own, symRenames)
 	}
 	body := own
+	triggers := st.copyTriggers(comp, typeArgs, symRenames)
 
 	// Hoist the callee's own vars onto the owner being walked, one copy per
 	// call site. isPure let them through because nothing rendered reads them,
@@ -767,6 +777,15 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 			(*st.hoist)[i].Init = renameInExpr((*st.hoist)[i].Init, renames, symRenames)
 		}
 		body = renameIdents(body, renames, nil)
+		for _, fn := range triggers {
+			fn.Block = renameIdents(fn.Block, renames, nil)
+		}
+	}
+	for _, fn := range triggers {
+		fn.Block = renameIdents(fn.Block, nil, symRenames)
+		fn.Block = substituteParams(fn.Block, unshadowed(fn, bindings))
+		fn.Block = substituteVars(fn.Block, provided)
+		fn.Block = substituteEvents(fn.Block, callsite.Handlers)
 	}
 	body = renameIdents(body, nil, symRenames)
 
@@ -809,11 +828,17 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// copy it meant never fired for one, and a rename had nothing to repoint
 	// the reads through.
 	var before map[string]*ir.Var
-	if callsite.ID != "" && st.splices != nil && comp.PkgPath() == "" {
+	// A library component's splice is recorded where it brings a trigger a
+	// test calls, which the test's call is pointed at.
+	if callsite.ID != "" && st.splices != nil && (comp.PkgPath() == "" || len(triggers) > 0) {
 		before = bodyNodes(body)
 	}
 	if callsite.ID != "" {
-		if was, ok := ir.AttachNodeIDFrom(body, callsite.ID, callsite.Handle); ok && was != "" && was != callsite.ID {
+		also := make([]any, len(triggers))
+		for i, fn := range triggers {
+			also[i] = fn
+		}
+		if was, ok := ir.AttachNodeIDFrom(body, callsite.ID, callsite.Handle, also...); ok && was != "" && was != callsite.ID {
 			followTestNodeID(st.pkg, was, callsite.ID)
 		}
 	}
@@ -909,11 +934,23 @@ func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
 // copied whole, the literal stood where only one field was read, and a
 // ternary in another of its fields was hoisted by NoTernary into a temp
 // nothing read (`grow=growOf(style.flex)` beside a `fontWeight=on ? …`).
+//
+// A parameter of a function written inside stmts -- a lambda's, a handler's
+// -- is that function's, whatever it is called: `xs.map(func(n int) => n +
+// 1)` in a body whose prop is `n` read the call site's `n`.
 func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
+	if len(bindings) == 0 {
+		return stmts
+	}
+	inner := innerParams(stmts)
+	prop := func(id *ir.Ident) bool {
+		p, isParam := id.Sym.(*ir.Param)
+		return isParam && !inner[p]
+	}
 	w := newExprWalker(func(e ir.Expr) ir.Expr {
 		if sel, ok := e.(*ir.Select); ok {
 			if id, ok := sel.Operand.(*ir.Ident); ok {
-				if _, isParam := id.Sym.(*ir.Param); isParam {
+				if prop(id) {
 					if lit, ok := bindings[id.Name].(*ir.StructLit); ok {
 						if v := literalFieldRead(lit, sel.Field); v != nil {
 							return deepCloneExpr(v)
@@ -923,10 +960,7 @@ func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
 			}
 		}
 		id, ok := e.(*ir.Ident)
-		if !ok {
-			return e
-		}
-		if _, isParam := id.Sym.(*ir.Param); !isParam {
+		if !ok || !prop(id) {
 			return e
 		}
 		if bound, ok := bindings[id.Name]; ok {
@@ -935,6 +969,34 @@ func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
 		return e
 	})
 	return w.stmts(stmts)
+}
+
+// innerParams is each parameter of a function written under stmts.
+func innerParams(stmts []ir.Stmt) map[*ir.Param]bool {
+	out := map[*ir.Param]bool{}
+	add := func(fn *ir.Func) {
+		if fn != nil {
+			for _, p := range fn.Params {
+				out[p] = true
+			}
+		}
+	}
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Lambda:
+			add(x.Func)
+		case *ir.NodeInst:
+			for _, h := range x.Handlers {
+				add(h.Func)
+			}
+		case *ir.ErrorBoundary:
+			if x.Handler != nil {
+				add(x.Handler.Func)
+			}
+		}
+		return nil
+	})
+	return out
 }
 
 // literalFieldRead is what lit holds in field name (ir.StructLit.Field),
@@ -1851,19 +1913,30 @@ func freshenShadowingParams(body []ir.Stmt, taken map[string]bool, names renamer
 // freshNodeHandles gives each node in a spliced copy of a body a handle of its
 // own, recorded in renames for the reads of it. Shared, two splices of one
 // override held one `#cal`, and its own effect's read of it could not say
-// which copy it meant (uniqueNodeIDs).
+// which copy it meant (uniqueNodeIDs). The handle a wrapper of passImplicitState
+// carries for the node it moved (Wraps) is one too: shared, two splices of a
+// component calling `ask.refresh()` on its query held one `#ask`, and the call
+// could not say which copy's refresh it meant.
 func freshNodeHandles(body []ir.Stmt, renames map[ir.Symbol]ir.Symbol) {
+	fresh := func(h *ir.Var) *ir.Var {
+		f, ok := renames[h].(*ir.Var)
+		if !ok {
+			f = cloneVarShallow(h)
+			renames[h] = f
+		}
+		return f
+	}
 	_ = ir.Walk(body, func(node ir.Node) error {
 		n, ok := node.(*ir.NodeInst)
-		if !ok || n.Handle == nil {
+		if !ok {
 			return nil
 		}
-		fresh, ok := renames[n.Handle].(*ir.Var)
-		if !ok {
-			fresh = cloneVarShallow(n.Handle)
-			renames[n.Handle] = fresh
+		if n.Handle != nil {
+			n.Handle = fresh(n.Handle)
 		}
-		n.Handle = fresh
+		if n.Wraps != nil {
+			n.Wraps = fresh(n.Wraps)
+		}
 		return nil
 	})
 }
@@ -2000,4 +2073,82 @@ func literalInt(e ir.Expr) (int, bool) {
 	}
 	n, err := strconv.Atoi(lit.Value)
 	return n, err == nil
+}
+
+// ownMethods is how many of c's funcs are its own methods rather than
+// overrides of its events (Func.Trigger), which a splice copies onto its
+// owner (copyTriggers) and so leave c as substitutable as it was.
+func ownMethods(c *ir.Component) int {
+	n := 0
+	for _, fn := range c.Funcs {
+		if fn.Trigger == "" {
+			n++
+		}
+	}
+	return n
+}
+
+// copyTriggers copies each trigger of comp onto the owner being walked, one
+// per call site as its vars are, and records the copy in symRenames so a
+// test's call of the trigger is pointed at it. The splice substitutes into
+// the copies as it does into the body.
+func (st *inlinePureState) copyTriggers(comp *ir.Component, typeArgs map[string]*ir.Type, symRenames map[ir.Symbol]ir.Symbol) []*ir.Func {
+	if st.hoistFuncs == nil {
+		return nil
+	}
+	var out []*ir.Func
+	for _, f := range comp.Funcs {
+		if f.Trigger == "" {
+			continue
+		}
+		clone := spliceCopy(f, typeArgs)
+		clone.Name = st.names.next(f.Name, "inst")
+		clone.Lowered.CopyOf = f
+		if !st.hoistMethods {
+			dropReceiver(clone)
+		}
+		symRenames[f] = clone
+		*st.hoistFuncs = append(*st.hoistFuncs, clone)
+		out = append(out, clone)
+	}
+	return out
+}
+
+// spliceCopy is a component method's copy for one splice, at the type
+// arguments the call site bound. The method's own parameters stay; the
+// component's the call bound are bound, and left on the copy the
+// monomorphizer took it for a generic nothing called at bound types and kept
+// its generic callees erased.
+func spliceCopy(f *ir.Func, typeArgs map[string]*ir.Type) *ir.Func {
+	if typeArgs == nil {
+		clone := cloneFuncShallow(f)
+		clone.Block = deepCloneStmts(f.Block)
+		return clone
+	}
+	clone := ir.InstantiateFunc(f, typeArgs)
+	clone.TypeParams = f.TypeParams
+	clone.RecvTypeParams = slices.DeleteFunc(slices.Clone(f.RecvTypeParams), func(tp ir.TypeParam) bool {
+		_, bound := typeArgs[tp.Name]
+		return bound
+	})
+	return clone
+}
+
+// unshadowed is bindings without the props fn's parameters shadow: a
+// method's parameter of a prop's name is the method's, as select's trigger
+// takes the `value` it is to choose.
+func unshadowed(fn *ir.Func, bindings map[string]ir.Expr) map[string]ir.Expr {
+	var out map[string]ir.Expr
+	for _, p := range fn.Params {
+		if _, ok := bindings[p.Name]; ok && !p.Receiver {
+			if out == nil {
+				out = maps.Clone(bindings)
+			}
+			delete(out, p.Name)
+		}
+	}
+	if out == nil {
+		return bindings
+	}
+	return out
 }

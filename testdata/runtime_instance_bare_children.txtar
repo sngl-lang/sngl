@@ -82,6 +82,7 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -95,6 +96,11 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
 }
 
 type Style struct {
@@ -178,8 +184,16 @@ type modelState struct {
 	visible__inst0      bool
 	__effect0_live      []string
 	__effect0_desired   []string
+	__effect0_paths     []string
+	__effect0_livePaths []string
+	__effect0_pathAt    map[string]int
+	__effect0_liveAt    map[string]int
 	__effect1_live      []string
 	__effect1_desired   []string
+	__effect1_paths     []string
+	__effect1_livePaths []string
+	__effect1_pathAt    map[string]int
+	__effect1_liveAt    map[string]int
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -203,8 +217,16 @@ func New() Model {
 	m.visible__inst0 = true
 	m.__effect0_live = []string{}
 	m.__effect0_desired = []string{}
+	m.__effect0_paths = []string{}
+	m.__effect0_livePaths = []string{}
+	m.__effect0_pathAt = map[string]int{}
+	m.__effect0_liveAt = map[string]int{}
 	m.__effect1_live = []string{}
 	m.__effect1_desired = []string{}
+	m.__effect1_paths = []string{}
+	m.__effect1_livePaths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	m.__effect1_liveAt = map[string]int{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_torn = false
@@ -223,15 +245,54 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
-	} else {
-		__lt3 = max(1, (int(px) / 16))
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
 	}
-	return __lt3
+	return __out
+}
+
+func __identified1(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
+	} else {
+		__lt3 = 16.0
+	}
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -271,14 +332,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -342,7 +403,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -355,7 +416,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -369,64 +430,99 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
-	for __copy0, _ := range m.items {
+	m.__effect0_paths = []string{}
+	m.__effect0_pathAt = map[string]int{}
+	for _, it := range __identified0(m.items) {
 		__effect0_fresh := true
-		if len(m.__effect0_desired) < len(m.__effect0_live) {
-			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		var __effect0_at int = func() int {
+			if __v, __ok := m.__effect0_liveAt[it.Id]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect0_at >= 0 {
+			__effect0_fresh = (m.__effect0_live[__effect0_at] != it.Id)
 		}
+		m.__effect0_pathAt[it.Id] = len(m.__effect0_paths)
+		m.__effect0_paths = append(m.__effect0_paths, it.Id)
 		if __effect0_fresh {
 			var __cell1_hits__inst0 int = func() int {
-				if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.hits__inst0[it.Id]; __ok {
 					return __v
 				}
 				return 0
 			}()
 			__cell1_hits__inst0 = 0
-			m.hits__inst0[fmt.Sprint(__copy0)] = __cell1_hits__inst0
+			m.hits__inst0[it.Id] = __cell1_hits__inst0
 		}
-		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+		m.__effect0_desired = append(m.__effect0_desired, it.Id)
 	}
 	m.__effect0_live = m.__effect0_desired
+	m.__effect0_livePaths = m.__effect0_paths
+	m.__effect0_liveAt = m.__effect0_pathAt
 }
 
 func (m *Model) __effect1_enter() {
 	m.__effect1_desired = []string{}
-	for __copy0, _ := range m.items {
+	m.__effect1_paths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	for _, it := range __identified1(m.items) {
 		__effect1_fresh := true
-		if len(m.__effect1_desired) < len(m.__effect1_live) {
-			__effect1_fresh = (m.__effect1_live[len(m.__effect1_desired)] != fmt.Sprint(__copy0))
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_liveAt[it.Id]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at >= 0 {
+			__effect1_fresh = (m.__effect1_live[__effect1_at] != it.Id)
 		}
+		m.__effect1_pathAt[it.Id] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, it.Id)
 		if __effect1_fresh {
 			var __cell1_hits__inst1 int = func() int {
-				if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.hits__inst1[it.Id]; __ok {
 					return __v
 				}
 				return 0
 			}()
 			__cell1_hits__inst1 = 0
-			m.hits__inst1[fmt.Sprint(__copy0)] = __cell1_hits__inst1
+			m.hits__inst1[it.Id] = __cell1_hits__inst1
 		}
-		m.__effect1_desired = append(m.__effect1_desired, fmt.Sprint(__copy0))
+		m.__effect1_desired = append(m.__effect1_desired, it.Id)
 	}
 	m.__effect1_live = m.__effect1_desired
+	m.__effect1_livePaths = m.__effect1_paths
+	m.__effect1_liveAt = m.__effect1_pathAt
 }
 
 func (m *Model) __effects0_settle() {
@@ -453,7 +549,7 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) __focusLoop1_len() int {
 	var __focusCount int = 0
-	for range m.items {
+	for range __identified0(m.items) {
 		__focusCount = (__focusCount + 1)
 		__focusCount = (__focusCount + 1)
 	}
@@ -462,7 +558,7 @@ func (m *Model) __focusLoop1_len() int {
 
 func (m *Model) __focusLoop2_len() int {
 	var __focusCount int = 0
-	for range m.items {
+	for range __identified1(m.items) {
 		__focusCount = (__focusCount + 1)
 	}
 	return __focusCount
@@ -681,28 +777,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 1 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos1 := 0
-				for __copy0, it := range m.items {
-					_ = __copy0
+				for _, it := range __identified0(m.items) {
 					_ = it
 					if m.__focusLoop1_cursor == __focusPos1 {
 						var __cell2_hits__inst0 int = func() int {
-							if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.hits__inst0[it.Id]; __ok {
 								return __v
 							}
 							return 0
 						}()
 						__cell2_hits__inst0 = (func() int {
-							if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.hits__inst0[it.Id]; __ok {
 								return __v
 							}
 							return 0
 						}() + 1)
-						m.hits__inst0[fmt.Sprint(__copy0)] = __cell2_hits__inst0
+						m.hits__inst0[it.Id] = __cell2_hits__inst0
 						return
 					}
 					__focusPos1++
 					if m.__focusLoop1_cursor == __focusPos1 {
-						m.picked = it
+						m.picked = it.Elem
 						return
 					}
 					__focusPos1++
@@ -711,22 +806,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 2 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos2 := 0
-				for __copy0, _ := range m.items {
-					_ = __copy0
+				for _, it := range __identified1(m.items) {
+					_ = it
 					if m.__focusLoop2_cursor == __focusPos2 {
 						var __cell2_hits__inst1 int = func() int {
-							if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.hits__inst1[it.Id]; __ok {
 								return __v
 							}
 							return 0
 						}()
 						__cell2_hits__inst1 = (func() int {
-							if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.hits__inst1[it.Id]; __ok {
 								return __v
 							}
 							return 0
 						}() + 1)
-						m.hits__inst1[fmt.Sprint(__copy0)] = __cell2_hits__inst1
+						m.hits__inst1[it.Id] = __cell2_hits__inst1
 						return
 					}
 					__focusPos2++
@@ -777,18 +872,19 @@ func (m Model) View() tea.View {
 		if part0_0Focused {
 			part0_0Prefix = ">"
 		}
-		part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint("add"))
+		part0_0Text := part0_0Prefix + " " + fmt.Sprint("add")
+		part0_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_0Focused), tui.Avail(m.width), part0_0Text).Render(part0_0Text)
 		part0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_0)
 		part0Children = append(part0Children, part0_0)
 		var part0_1 string
-		part0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("picked " + m.picked)))
+		part0_1Text := fmt.Sprint(("picked " + m.picked))
+		part0_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_1Text).Render(part0_1Text)
 		part0Children = append(part0Children, part0_1)
 		var part0_2 string
 		__focusPos1 := 0
 		_ = __focusPos1
 		var part0_2Items []string
-		for __copy0, it := range m.items {
-			_ = __copy0
+		for _, it := range __identified0(m.items) {
 			_ = it
 			var part0_2Item string
 			var part0_2ItemChildren []string
@@ -798,17 +894,19 @@ func (m Model) View() tea.View {
 			if part0_2Item_0Focused {
 				part0_2Item_0Prefix = ">"
 			}
-			part0_2Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2Item_0Prefix + " " + fmt.Sprint(("hit " + fmt.Sprint(func() int {
-				if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+			part0_2Item_0Text := part0_2Item_0Prefix + " " + fmt.Sprint(("hit " + fmt.Sprint(func() int {
+				if __v, __ok := m.hits__inst0[it.Id]; __ok {
 					return __v
 				}
 				return 0
-			}()))))
+			}())))
+			part0_2Item_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_2Item_0Focused), tui.Avail(m.width), part0_2Item_0Text).Render(part0_2Item_0Text)
 			part0_2Item_0 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_2Item_0)
 			__focusPos1++
 			part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_0)
 			var part0_2Item_1 string
-			part0_2Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("item " + it)))
+			part0_2Item_1Text := fmt.Sprint(("item " + it.Elem))
+			part0_2Item_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_2Item_1Text).Render(part0_2Item_1Text)
 			part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_1)
 			var part0_2Item_2 string
 			part0_2Item_2Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1)) && m.__focusShown()
@@ -816,7 +914,8 @@ func (m Model) View() tea.View {
 			if part0_2Item_2Focused {
 				part0_2Item_2Prefix = ">"
 			}
-			part0_2Item_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2Item_2Prefix + " " + fmt.Sprint("pick"))
+			part0_2Item_2Text := part0_2Item_2Prefix + " " + fmt.Sprint("pick")
+			part0_2Item_2 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_2Item_2Focused), tui.Avail(m.width), part0_2Item_2Text).Render(part0_2Item_2Text)
 			part0_2Item_2 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_2Item_2)
 			__focusPos1++
 			part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_2)
@@ -831,8 +930,8 @@ func (m Model) View() tea.View {
 		__focusPos2 := 0
 		_ = __focusPos2
 		var part0_3Items []string
-		for __copy0, _ := range m.items {
-			_ = __copy0
+		for _, it := range __identified1(m.items) {
+			_ = it
 			var part0_3Item string
 			var part0_3ItemChildren []string
 			var part0_3Item_0 string
@@ -841,17 +940,19 @@ func (m Model) View() tea.View {
 			if part0_3Item_0Focused {
 				part0_3Item_0Prefix = ">"
 			}
-			part0_3Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_3Item_0Prefix + " " + fmt.Sprint(("hit " + fmt.Sprint(func() int {
-				if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+			part0_3Item_0Text := part0_3Item_0Prefix + " " + fmt.Sprint(("hit " + fmt.Sprint(func() int {
+				if __v, __ok := m.hits__inst1[it.Id]; __ok {
 					return __v
 				}
 				return 0
-			}()))))
+			}())))
+			part0_3Item_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_3Item_0Focused), tui.Avail(m.width), part0_3Item_0Text).Render(part0_3Item_0Text)
 			part0_3Item_0 = m.__clicks.Mark(snglStop{slot: 2, pos: __focusPos2, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_3Item_0)
 			__focusPos2++
 			part0_3ItemChildren = append(part0_3ItemChildren, part0_3Item_0)
 			var part0_3Item_1 string
-			part0_3Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("empty"))
+			part0_3Item_1Text := fmt.Sprint("empty")
+			part0_3Item_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_3Item_1Text).Render(part0_3Item_1Text)
 			part0_3ItemChildren = append(part0_3ItemChildren, part0_3Item_1)
 			part0_3Item = lipgloss.JoinVertical(lipgloss.Left, part0_3ItemChildren...)
 			part0_3Items = append(part0_3Items, part0_3Item)
@@ -892,7 +993,13 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -901,12 +1008,12 @@ type Model struct {
 	visible__inst0 bool
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
-	__inst0_live   []*Card__slot0Instance
+	__inst0_live   map[string]*Card__slot0Instance
 	__rendering0   bool
 	__renderAgain0 bool
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
-	__inst1_live   []*CardInstance
+	__inst1_live   map[string]*CardInstance
 	__rendering1   bool
 	__renderAgain1 bool
 
@@ -925,15 +1032,55 @@ func New() *Model {
 	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*Card__slot0Instance{}
+	m.__inst0_live = map[string]*Card__slot0Instance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	m.__slot1 = nil
 	m.__slot1_at = nil
-	m.__inst1_live = []*CardInstance{}
+	m.__inst1_live = map[string]*CardInstance{}
 	m.__rendering1 = false
 	m.__renderAgain1 = false
 	return m
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
+func __identified1(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -953,37 +1100,56 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-				__inst0_next := []*Card__slot0Instance{}
-				var __inst0_i int = 0
-				for _, it := range m.items {
+				__inst0_next := map[string]*Card__slot0Instance{}
+				__inst0_seen := map[string]int{}
+				for _, it := range __identified0(m.items) {
 					var __n5 *Card__slot0Instance
-					if len(m.__inst0_live) > __inst0_i {
-						__n5 = m.__inst0_live[__inst0_i]
+					__key1 := fmt.Sprint(it.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n5 = func() *Card__slot0Instance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
 						__n5.Set__on0(func() {
-							m.picked = it
+							m.picked = it.Elem
 							m.__n4.SetText(("picked " + m.picked))
 						})
 						__n5.Set__p0(it)
 					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *Card__slot0Instance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n5__new := newCard__slot0Instance(m, it, func() {
-							m.picked = it
+							m.picked = it.Elem
 							m.__n4.SetText(("picked " + m.picked))
 						})
 						__n5 = __n5__new
 					}
-					__inst0_next = append(__inst0_next, __n5)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n5
 					__n5__el := __n5.Root
 					fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
 					m.__slot0 = append(m.__slot0, __n5__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -1009,29 +1175,48 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				}
 				m.__slot1 = nil
 				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-				__inst1_next := []*CardInstance{}
-				var __inst1_i int = 0
-				for range m.items {
+				__inst1_next := map[string]*CardInstance{}
+				__inst1_seen := map[string]int{}
+				for _, it := range __identified1(m.items) {
 					var __n6 *CardInstance
-					if len(m.__inst1_live) > __inst1_i {
-						__n6 = m.__inst1_live[__inst1_i]
+					__key2 := fmt.Sprint(it.Id)
+					var __key2_n int = func() int {
+						if __v, __ok := __inst1_seen[__key2]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst1_seen[__key2] = (__key2_n + 1)
+					if __key2_n > 0 {
+						__key2 = ((__key2 + "#") + fmt.Sprint(__key2_n))
+					}
+					if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+						__n6 = func() *CardInstance {
+							if __v, __ok := m.__inst1_live[__key2]; __ok {
+								return __v
+							}
+							return nil
+						}()
 					} else {
-						if len(m.__inst1_live) > __inst1_i {
-							m.__inst1_live[__inst1_i].Destroy()
+						if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+							func() *CardInstance {
+								if __v, __ok := m.__inst1_live[__key2]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n6__new := newCardInstance(m)
 						__n6 = __n6__new
 					}
-					__inst1_next = append(__inst1_next, __n6)
-					__inst1_i = (__inst1_i + 1)
+					__inst1_next[__key2] = __n6
 					__n6__el := __n6.Root
 					fynelayout.InsertBefore(__parent, m.__slot1_at, __n6__el)
 					m.__slot1 = append(m.__slot1, __n6__el)
 				}
-				for __inst1_i_d, _ := range m.__inst1_live {
-					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-					if __inst1_i_j >= __inst1_i {
-						m.__inst1_live[__inst1_i_j].Destroy()
+				for __inst1_live_k, __inst1_live_v := range m.__inst1_live {
+					if !func() bool { _, __ok := __inst1_next[__inst1_live_k]; return __ok }() {
+						__inst1_live_v.Destroy()
 					}
 				}
 				m.__inst1_live = __inst1_next
@@ -1041,16 +1226,14 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst1_live_di, _ := range m.__inst1_live {
-		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
-		m.__inst1_live[__inst1_live_dj].Destroy()
+	for _, __inst1_live_dv := range m.__inst1_live {
+		__inst1_live_dv.Destroy()
 	}
-	m.__inst1_live = []*CardInstance{}
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	m.__inst1_live = map[string]*CardInstance{}
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*Card__slot0Instance{}
+	m.__inst0_live = map[string]*Card__slot0Instance{}
 }
 
 func (m *Model) __n3_closed_handler() {
@@ -1118,15 +1301,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 
 // CardInstance is one live instance of the Card component.
 type CardInstance struct {
-	Root       fyne.CanvasObject
-	__model    *Model
-	hits       int
-	__root     *fyne.Container
-	__slot0    []fyne.CanvasObject
-	__slot0_at fyne.CanvasObject
-	__slot1    []fyne.CanvasObject
-	__slot1_at fyne.CanvasObject
-	__n0       *fynelayout.Button
+	Root    fyne.CanvasObject
+	__model *Model
+	hits    int
+	__root  *fyne.Container
+	__n0    *fynelayout.Button
 }
 
 func newCardInstance(__model *Model) *CardInstance {
@@ -1134,8 +1313,6 @@ func newCardInstance(__model *Model) *CardInstance {
 	c.__model = __model
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n8 := fynelayout.NewVBox()
 	c.__n0 = fynelayout.NewButton("", nil)
 	c.__n0.SetText(("hit " + fmt.Sprint(c.hits)))
@@ -1157,27 +1334,21 @@ func (c *CardInstance) Destroy() {}
 type Card__slot0Instance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
-	__prop___p0  string
+	__prop___p0  __anon_id_elem_c6a818
 	__prop___on0 func()
 	hits         int
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
 	__n1         *fynelayout.Button
 	__n2         *widget.Label
 }
 
-func newCard__slot0Instance(__model *Model, __a___p0 string, __a___on0 func()) *Card__slot0Instance {
+func newCard__slot0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___on0 func()) *Card__slot0Instance {
 	c := &Card__slot0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n10 := fynelayout.NewVBox()
 	c.__n1 = fynelayout.NewButton("", nil)
 	c.__n1.SetText(("hit " + fmt.Sprint(c.hits)))
@@ -1187,7 +1358,7 @@ func newCard__slot0Instance(__model *Model, __a___p0 string, __a___on0 func()) *
 	}
 	__n10.Add(c.__n1)
 	c.__n2 = widget.NewLabel("")
-	c.__n2.SetText(("item " + c.__prop___p0))
+	c.__n2.SetText(("item " + c.__prop___p0.Elem))
 	__n10.Add(c.__n2)
 	__n11 := fynelayout.NewButton("", nil)
 	__n11.SetText("pick")
@@ -1199,9 +1370,9 @@ func newCard__slot0Instance(__model *Model, __a___p0 string, __a___on0 func()) *
 	return c
 }
 
-func (c *Card__slot0Instance) Set__p0(__v string) {
+func (c *Card__slot0Instance) Set__p0(__v __anon_id_elem_c6a818) {
 	c.__prop___p0 = __v
-	c.__n2.SetText(("item " + c.__prop___p0))
+	c.__n2.SetText(("item " + c.__prop___p0.Elem))
 }
 
 func (c *Card__slot0Instance) Set__on0(__v func()) {
@@ -1240,7 +1411,13 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -1249,12 +1426,12 @@ type Model struct {
 	visible__inst0 bool
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
-	__inst0_live   []*Card__slot0Instance
+	__inst0_live   map[string]*Card__slot0Instance
 	__rendering0   bool
 	__renderAgain0 bool
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
-	__inst1_live   []*CardInstance
+	__inst1_live   map[string]*CardInstance
 	__rendering1   bool
 	__renderAgain1 bool
 	__n3           gtk4rt.Handle
@@ -1273,15 +1450,55 @@ func New() *Model {
 	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*Card__slot0Instance{}
+	m.__inst0_live = map[string]*Card__slot0Instance{}
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	m.__slot1 = nil
 	m.__slot1_at = nil
-	m.__inst1_live = []*CardInstance{}
+	m.__inst1_live = map[string]*CardInstance{}
 	m.__rendering1 = false
 	m.__renderAgain1 = false
 	return m
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
+}
+
+func __identified1(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1301,37 +1518,56 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-				__inst0_next := []*Card__slot0Instance{}
-				var __inst0_i int = 0
-				for _, it := range m.items {
+				__inst0_next := map[string]*Card__slot0Instance{}
+				__inst0_seen := map[string]int{}
+				for _, it := range __identified0(m.items) {
 					var __n5 *Card__slot0Instance
-					if len(m.__inst0_live) > __inst0_i {
-						__n5 = m.__inst0_live[__inst0_i]
+					__key1 := fmt.Sprint(it.Id)
+					var __key1_n int = func() int {
+						if __v, __ok := __inst0_seen[__key1]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst0_seen[__key1] = (__key1_n + 1)
+					if __key1_n > 0 {
+						__key1 = ((__key1 + "#") + fmt.Sprint(__key1_n))
+					}
+					if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+						__n5 = func() *Card__slot0Instance {
+							if __v, __ok := m.__inst0_live[__key1]; __ok {
+								return __v
+							}
+							return nil
+						}()
 						__n5.Set__on0(func() {
-							m.picked = it
+							m.picked = it.Elem
 							gtk4rt.LabelSetLabel(m.__n4, ("picked " + m.picked))
 						})
 						__n5.Set__p0(it)
 					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+						if func() bool { _, __ok := m.__inst0_live[__key1]; return __ok }() {
+							func() *Card__slot0Instance {
+								if __v, __ok := m.__inst0_live[__key1]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n5__new := newCard__slot0Instance(m, it, func() {
-							m.picked = it
+							m.picked = it.Elem
 							gtk4rt.LabelSetLabel(m.__n4, ("picked " + m.picked))
 						})
 						__n5 = __n5__new
 					}
-					__inst0_next = append(__inst0_next, __n5)
-					__inst0_i = (__inst0_i + 1)
+					__inst0_next[__key1] = __n5
 					__n5__el := __n5.Root
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n5__el)
 					m.__slot0 = append(m.__slot0, __n5__el)
 				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_live_k, __inst0_live_v := range m.__inst0_live {
+					if !func() bool { _, __ok := __inst0_next[__inst0_live_k]; return __ok }() {
+						__inst0_live_v.Destroy()
 					}
 				}
 				m.__inst0_live = __inst0_next
@@ -1357,29 +1593,48 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				}
 				m.__slot1 = nil
 				m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-				__inst1_next := []*CardInstance{}
-				var __inst1_i int = 0
-				for range m.items {
+				__inst1_next := map[string]*CardInstance{}
+				__inst1_seen := map[string]int{}
+				for _, it := range __identified1(m.items) {
 					var __n6 *CardInstance
-					if len(m.__inst1_live) > __inst1_i {
-						__n6 = m.__inst1_live[__inst1_i]
+					__key2 := fmt.Sprint(it.Id)
+					var __key2_n int = func() int {
+						if __v, __ok := __inst1_seen[__key2]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst1_seen[__key2] = (__key2_n + 1)
+					if __key2_n > 0 {
+						__key2 = ((__key2 + "#") + fmt.Sprint(__key2_n))
+					}
+					if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+						__n6 = func() *CardInstance {
+							if __v, __ok := m.__inst1_live[__key2]; __ok {
+								return __v
+							}
+							return nil
+						}()
 					} else {
-						if len(m.__inst1_live) > __inst1_i {
-							m.__inst1_live[__inst1_i].Destroy()
+						if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+							func() *CardInstance {
+								if __v, __ok := m.__inst1_live[__key2]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
 						__n6__new := newCardInstance(m)
 						__n6 = __n6__new
 					}
-					__inst1_next = append(__inst1_next, __n6)
-					__inst1_i = (__inst1_i + 1)
+					__inst1_next[__key2] = __n6
 					__n6__el := __n6.Root
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n6__el)
 					m.__slot1 = append(m.__slot1, __n6__el)
 				}
-				for __inst1_i_d, _ := range m.__inst1_live {
-					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-					if __inst1_i_j >= __inst1_i {
-						m.__inst1_live[__inst1_i_j].Destroy()
+				for __inst1_live_k, __inst1_live_v := range m.__inst1_live {
+					if !func() bool { _, __ok := __inst1_next[__inst1_live_k]; return __ok }() {
+						__inst1_live_v.Destroy()
 					}
 				}
 				m.__inst1_live = __inst1_next
@@ -1389,16 +1644,14 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 }
 
 func (m *Model) __snglTeardown() {
-	for __inst1_live_di, _ := range m.__inst1_live {
-		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
-		m.__inst1_live[__inst1_live_dj].Destroy()
+	for _, __inst1_live_dv := range m.__inst1_live {
+		__inst1_live_dv.Destroy()
 	}
-	m.__inst1_live = []*CardInstance{}
-	for __inst0_live_di, _ := range m.__inst0_live {
-		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
-		m.__inst0_live[__inst0_live_dj].Destroy()
+	m.__inst1_live = map[string]*CardInstance{}
+	for _, __inst0_live_dv := range m.__inst0_live {
+		__inst0_live_dv.Destroy()
 	}
-	m.__inst0_live = []*Card__slot0Instance{}
+	m.__inst0_live = map[string]*Card__slot0Instance{}
 }
 
 func (m *Model) __n3_closed_handler() {
@@ -1420,23 +1673,17 @@ func (m *Model) __n12_clicked_handler() {
 
 // CardInstance is one live instance of the Card component.
 type CardInstance struct {
-	Root       gtk4rt.Handle
-	__model    *Model
-	hits       int
-	__root     gtk4rt.Handle
-	__slot0    []gtk4rt.Handle
-	__slot0_at gtk4rt.Handle
-	__slot1    []gtk4rt.Handle
-	__slot1_at gtk4rt.Handle
-	__n0       gtk4rt.Handle
+	Root    gtk4rt.Handle
+	__model *Model
+	hits    int
+	__root  gtk4rt.Handle
+	__n0    gtk4rt.Handle
 }
 
 func newCardInstance(__model *Model) *CardInstance {
 	c := &CardInstance{}
 	c.__model = __model
 	c.hits = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n8 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n8, 1)
 	gtk4rt.SetLook(__n8, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1462,38 +1709,26 @@ func (c *CardInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // Card__slot0Instance is one live instance of the Card__slot0 component.
 type Card__slot0Instance struct {
 	Root         gtk4rt.Handle
 	__model      *Model
-	__prop___p0  string
+	__prop___p0  __anon_id_elem_c6a818
 	__prop___on0 func()
 	hits         int
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
 	__n1         gtk4rt.Handle
 	__n2         gtk4rt.Handle
 }
 
-func newCard__slot0Instance(__model *Model, __a___p0 string, __a___on0 func()) *Card__slot0Instance {
+func newCard__slot0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___on0 func()) *Card__slot0Instance {
 	c := &Card__slot0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
 	c.hits = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n10 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n10, 1)
 	gtk4rt.SetLook(__n10, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1506,7 +1741,7 @@ func newCard__slot0Instance(__model *Model, __a___p0 string, __a___on0 func()) *
 	})
 	gtk4rt.BoxAppend(__n10, c.__n1)
 	c.__n2 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(c.__n2, ("item " + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n2, ("item " + c.__prop___p0.Elem))
 	gtk4rt.LabelSetXAlign(c.__n2, 0.0)
 	gtk4rt.BoxAppend(__n10, c.__n2)
 	__n11 := gtk4rt.New("GtkButton")
@@ -1521,9 +1756,9 @@ func newCard__slot0Instance(__model *Model, __a___p0 string, __a___on0 func()) *
 	return c
 }
 
-func (c *Card__slot0Instance) Set__p0(__v string) {
+func (c *Card__slot0Instance) Set__p0(__v __anon_id_elem_c6a818) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetLabel(c.__n2, ("item " + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n2, ("item " + c.__prop___p0.Elem))
 }
 
 func (c *Card__slot0Instance) Set__on0(__v func()) {
@@ -1534,12 +1769,6 @@ func (c *Card__slot0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -1625,8 +1854,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ColumnScope
+
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1656,18 +1891,22 @@ fun MainScreen() {
                 Text(text = "add", modifier = Modifier)
             }
             Text(text = ("picked " + picked), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
-            for (it in items) {
-                Card(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, slotContent = {
-                    Text(text = ("item " + it), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
-                    Button(onClick = {
-                        picked = it
-                    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
-                        Text(text = "pick", modifier = Modifier)
-                    }
-                })
+            for (it in __identified0(items)) {
+                key(it.id) {
+                    Card(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, slotContent = {
+                        Text(text = ("item " + it.elem), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                        Button(onClick = {
+                            picked = it.elem
+                        }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                            Text(text = "pick", modifier = Modifier)
+                        }
+                    })
+                }
             }
-            for (it in items) {
-                Card(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() })
+            for (it in __identified1(items)) {
+                key(it.id) {
+                    Card(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() })
+                }
             }
         }
     }
@@ -1689,6 +1928,36 @@ fun Card(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShar
             Text(text = "empty", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
+}
+
+fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_c6a818>()
+    for (__x in __xs) {
+    	var __id = __x.replace("#", "##")
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_c6a818(id = __id, elem = __x))
+    }
+    return __out
+}
+
+fun __identified1(__xs: List<String>): List<__anon_id_elem_c6a818> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_c6a818>()
+    for (__x in __xs) {
+    	var __id = __x.replace("#", "##")
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_c6a818(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/SnglFlexShare.kt --
 package test.sngl.app
@@ -1860,28 +2129,60 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { items: ["a", "b"], picked: "", visible__inst0: true };
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
+      ;
+      let __id = __x.replaceAll("#", "##");
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
+  }
+  function __identified1(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
+      ;
+      let __id = __x.replaceAll("#", "##");
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
+  }
   function __snglTeardown() {
-    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+    for (const [__inst3_live_dk, __inst3_live_dv] of __inst3_live.entries()) {
       ;
-      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
-      __inst3_live[__inst3_live_dj].__destroy();
+      __inst3_live_dv.__destroy();
     }
     ;
-    __inst3_live = [];
-    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+    __inst3_live = /* @__PURE__ */ new Map([]);
+    for (const [__inst1_live_dk, __inst1_live_dv] of __inst1_live.entries()) {
       ;
-      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
-      __inst1_live[__inst1_live_dj].__destroy();
+      __inst1_live_dv.__destroy();
     }
     ;
-    __inst1_live = [];
+    __inst1_live = /* @__PURE__ */ new Map([]);
   }
   function __cf_Card(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
     let __n8 = document.createElement("div");
     __n8.setAttribute("style", "display:flex;flex-direction:column");
     let __n9 = document.createElement("button");
@@ -1915,11 +2216,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
-      __n2.textContent = "item " + __prop___p0;
+      __n2.textContent = "item " + __prop___p0.elem;
     }
     function __set___on0(__v) {
       __prop___on0 = __v;
@@ -1939,7 +2238,7 @@ body { font-family: system-ui, sans-serif; }
     __n12.appendChild(__n1);
     __n11.appendChild(__n12);
     let __n2 = document.createElement("span");
-    __n2.textContent = "item " + __prop___p0;
+    __n2.textContent = "item " + __prop___p0.elem;
     __n11.appendChild(__n2);
     let __n13 = document.createElement("button");
     __n13.disabled = false;
@@ -1962,11 +2261,11 @@ body { font-family: system-ui, sans-serif; }
     };
   }
   var __slot0 = [];
-  var __inst1_live = [];
+  var __inst1_live = /* @__PURE__ */ new Map([]);
   var __rendering0 = false;
   var __renderAgain0 = false;
   var __slot1 = [];
-  var __inst3_live = [];
+  var __inst3_live = /* @__PURE__ */ new Map([]);
   var __rendering1 = false;
   var __renderAgain1 = false;
   function __renderSlot0(parent) {
@@ -1981,29 +2280,34 @@ body { font-family: system-ui, sans-serif; }
           let __place0_prev = __slot0;
           let __place0_i = 0;
           __slot0 = [];
-          let __inst1_next = [];
-          let __inst1_i = 0;
-          for (const it of state.items) {
+          let __inst1_next = /* @__PURE__ */ new Map([]);
+          let __inst1_seen = /* @__PURE__ */ new Map([]);
+          for (const it of __identified0(state.items)) {
             let __n5 = null;
-            if (__inst1_live.length > __inst1_i) {
-              __n5 = __inst1_live[__inst1_i];
+            let __key2 = String(it.id);
+            let __key2_n = __inst1_seen.has(__key2) ? __inst1_seen.get(__key2) : 0;
+            __inst1_seen.set(__key2, __key2_n + 1);
+            if (__key2_n > 0) {
+              __key2 = __key2 + "#" + String(__key2_n);
+            }
+            if (__inst1_live.has(__key2)) {
+              __n5 = __inst1_live.has(__key2) ? __inst1_live.get(__key2) : null;
               __n5.__set___on0(() => {
-                state.picked = it;
+                state.picked = it.elem;
                 __n4.textContent = "picked " + state.picked;
               });
               __n5.__set___p0(it);
             } else {
-              if (__inst1_live.length > __inst1_i) {
-                __inst1_live[__inst1_i].__destroy();
+              if (__inst1_live.has(__key2)) {
+                (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
               let __n5__new = __cf_Card__slot0({ __p0: it, __on0: () => {
-                state.picked = it;
+                state.picked = it.elem;
                 __n4.textContent = "picked " + state.picked;
               } });
               __n5 = __n5__new;
             }
-            __inst1_next.push(__n5);
-            __inst1_i = __inst1_i + 1;
+            __inst1_next.set(__key2, __n5);
             let __n5__el = __n5.__root;
             let __place0_i_ref0 = null;
             if (__place0_i < __place0_prev.length) {
@@ -2016,10 +2320,9 @@ body { font-family: system-ui, sans-serif; }
             }
             __slot0.push(__n5__el);
           }
-          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-            if (__inst1_i_j >= __inst1_i) {
-              __inst1_live[__inst1_i_j].__destroy();
+          for (const [__inst1_live_k, __inst1_live_v] of __inst1_live.entries()) {
+            if (!__inst1_next.has(__inst1_live_k)) {
+              __inst1_live_v.__destroy();
             }
           }
           __inst1_live = __inst1_next;
@@ -2046,21 +2349,26 @@ body { font-family: system-ui, sans-serif; }
           let __place2_prev = __slot1;
           let __place2_i = 0;
           __slot1 = [];
-          let __inst3_next = [];
-          let __inst3_i = 0;
-          for (const it of state.items) {
+          let __inst3_next = /* @__PURE__ */ new Map([]);
+          let __inst3_seen = /* @__PURE__ */ new Map([]);
+          for (const it of __identified1(state.items)) {
             let __n6 = null;
-            if (__inst3_live.length > __inst3_i) {
-              __n6 = __inst3_live[__inst3_i];
+            let __key4 = String(it.id);
+            let __key4_n = __inst3_seen.has(__key4) ? __inst3_seen.get(__key4) : 0;
+            __inst3_seen.set(__key4, __key4_n + 1);
+            if (__key4_n > 0) {
+              __key4 = __key4 + "#" + String(__key4_n);
+            }
+            if (__inst3_live.has(__key4)) {
+              __n6 = __inst3_live.has(__key4) ? __inst3_live.get(__key4) : null;
             } else {
-              if (__inst3_live.length > __inst3_i) {
-                __inst3_live[__inst3_i].__destroy();
+              if (__inst3_live.has(__key4)) {
+                (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
               let __n6__new = __cf_Card({});
               __n6 = __n6__new;
             }
-            __inst3_next.push(__n6);
-            __inst3_i = __inst3_i + 1;
+            __inst3_next.set(__key4, __n6);
             let __n6__el = __n6.__root;
             let __place2_i_ref0 = null;
             if (__place2_i < __place2_prev.length) {
@@ -2073,10 +2381,9 @@ body { font-family: system-ui, sans-serif; }
             }
             __slot1.push(__n6__el);
           }
-          for (const [__inst3_i_d, _] of __inst3_live.entries()) {
-            let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
-            if (__inst3_i_j >= __inst3_i) {
-              __inst3_live[__inst3_i_j].__destroy();
+          for (const [__inst3_live_k, __inst3_live_v] of __inst3_live.entries()) {
+            if (!__inst3_next.has(__inst3_live_k)) {
+              __inst3_live_v.__destroy();
             }
           }
           __inst3_live = __inst3_next;
@@ -2114,12 +2421,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1ef7876089021b12269fa5f0a95e1656
+pass sha256:4e263e02d9cf87f46c35ab83d086fcbe
 -- run/go/fyne --
-pass sha256:28cf2fbbe916d22c19c5ad44683eb157
+pass sha256:15a70acbe3fccdcf7caad15d1b03807b
 -- run/go/gtk4 --
-pass sha256:fa97221da768c0a3a4eacb62fdf4f720
+pass sha256:9fc53b6f4860c9f0951934412954a9d6
 -- run/kotlin/android --
-pass sha256:c2c23de804a919e7ec2997debf7124ec
+pass sha256:3fae323ffc3d01b77959bccd2db95710
 -- run/none/html --
-pass sha256:97a6044270377cc6a26ed5742dafa4a2
+pass sha256:0bc497f08a08ebea5f3dbd509b8ee0db

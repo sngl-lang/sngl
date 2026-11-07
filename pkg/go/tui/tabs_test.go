@@ -9,18 +9,18 @@ import (
 
 func TestTabLook(t *testing.T) {
 	tab := func(selected, first bool) string {
-		return ansi.Strip(TabLook(selected, first, false, "underline").Render("One"))
+		return ansi.Strip(TabLook(selected, first, false, "underline").Render("  One"))
 	}
 	bar := lipgloss.JoinHorizontal(lipgloss.Top, tab(false, true), tab(true, false), tab(false, false),
 		ansi.Strip(Sized(TabGap(), true, 4).Render("\n")))
 	want := "" +
-		"╭─────╮╭─────╮╭─────╮    \n" +
-		"│ One ││ One ││ One │    \n" +
-		"├─────┴┘     └┴─────┴───╮"
+		"╭──────╮╭──────╮╭──────╮    \n" +
+		"│  One ││  One ││  One │    \n" +
+		"├──────┴┘      └┴──────┴───╮"
 	if bar != want {
 		t.Errorf("bar:\n%s\nwant:\n%s", bar, want)
 	}
-	if got := tab(true, true); got != "╭─────╮\n│ One │\n│     └" {
+	if got := tab(true, true); got != "╭──────╮\n│  One │\n│      └" {
 		t.Errorf("first selected:\n%s", got)
 	}
 	if got := ansi.Strip(Sized(TabPanel("underline"), true, 8).Render("x")); got != "│x     │\n╰──────╯" {
@@ -33,7 +33,7 @@ func TestTabLookPills(t *testing.T) {
 	if !on.GetReverse() || off.GetReverse() {
 		t.Errorf("reverse: selected %v, other %v", on.GetReverse(), off.GetReverse())
 	}
-	if got := ansi.Strip(off.Render("Two")); got != " Two " {
+	if got := ansi.Strip(off.Render("  Two")); got != "  Two " {
 		t.Errorf("pill: %q", got)
 	}
 	if TabPanel("pills").GetBorderStyle() != (lipgloss.Border{}) {
@@ -44,5 +44,24 @@ func TestTabLookPills(t *testing.T) {
 func TestTabLookDisabledIsFaint(t *testing.T) {
 	if !TabLook(false, false, true, "underline").GetFaint() || TabLook(false, false, false, "underline").GetFaint() {
 		t.Error("faint is not the disabled tab's alone")
+	}
+}
+
+// A focused tab's edge is bold up to the panel's line, which stays light.
+func TestAFocusedTabIsBold(t *testing.T) {
+	tab := func(selected, first bool) string {
+		return ansi.Strip(Focused(TabLook(selected, first, false, "underline"), true).Render("> One"))
+	}
+	if got := tab(false, false); got != "┏━━━━━━┓\n┃> One ┃\n┸━━━━━━┸" {
+		t.Errorf("focused:\n%s", got)
+	}
+	if got := tab(true, true); got != "┏━━━━━━┓\n┃> One ┃\n╿      ┖" {
+		t.Errorf("focused, first and selected:\n%s", got)
+	}
+	if got := ansi.Strip(Focused(ButtonLook(lipgloss.NewStyle()), true).Render("> Go")); got != "┏━━━━━┓\n┃> Go ┃\n┗━━━━━┛" {
+		t.Errorf("focused button:\n%s", got)
+	}
+	if got := ansi.Strip(Focused(lipgloss.NewStyle(), true).Render("> Go")); got != "> Go" {
+		t.Errorf("a focused stop with no edge: %q", got)
 	}
 }

@@ -321,6 +321,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglasync"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/snglhttp"
 	"duckfam.us/sngl/pkg/go/sngljson"
@@ -334,6 +335,13 @@ import (
 
 func snglSome[T any](v T) *T {
 	return &v
+}
+
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
 }
 
 type ErrorEvent struct {
@@ -363,6 +371,12 @@ type Result__PetBreedDetail struct {
 	tag    int
 	Ok     PetBreedDetail
 	Failed Failure
+}
+
+type Response struct {
+	Status  int
+	Headers map[string]string
+	Body    string
 }
 
 type Failure struct {
@@ -446,10 +460,8 @@ type __anon_key_n_a1dba7 struct {
 	N   int
 }
 
-type Response struct {
-	Status  int
-	Headers map[string]string
-	Body    string
+type Lifetime struct {
+	_id int
 }
 
 // Model holds the state for this SNGL UI.
@@ -465,8 +477,12 @@ type Model struct {
 	failure__inst1      *Failure
 	attempt__inst0      int
 	refreshes__inst0    int
+	asked__inst0        int
+	life__inst0         Lifetime
 	attempt__inst1      int
 	refreshes__inst1    int
+	asked__inst1        int
+	life__inst1         Lifetime
 	__effect0_key       __anon_key_n_92242e
 	__effect0_live      []__anon_key_n_92242e
 	__effect0_desired   []__anon_key_n_92242e
@@ -517,8 +533,12 @@ func New() *Model {
 	m.failure__inst1 = nil
 	m.attempt__inst0 = 0
 	m.refreshes__inst0 = 0
+	m.asked__inst0 = -1
+	m.life__inst0 = Lifetime{}
 	m.attempt__inst1 = 0
 	m.refreshes__inst1 = 0
+	m.asked__inst1 = -1
+	m.life__inst1 = Lifetime{}
 	m.__effect0_key = __anon_key_n_92242e{Key: __anon_limit_offset_7e7555{}}
 	m.__effect0_live = []__anon_key_n_92242e{}
 	m.__effect0_desired = []__anon_key_n_92242e{}
@@ -562,10 +582,13 @@ func __snglDo(f func()) {
 	fyne.Do(f)
 }
 
-func PetBreedRetrieveCall(id string, __ctx_server string) Result__PetBreedDetail {
+func PetBreedRetrieveCall(id string, life Lifetime, __ctx_server string) Result__PetBreedDetail {
 	__match2 := _answered(func() Result__Response {
-		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pet-breeds/") + sngljson.Escape(id)) + "/"), nil, nil)
+		__snglR, __snglF := snglhttp.Send(snglasync.Context(life._id), "GET", (((__ctx_server + "/api/v1/pet-breeds/") + sngljson.Escape(id)) + "/"), nil, nil)
 		if __snglF != nil {
+			if __snglF.Cancelled {
+				return Result__Response{tag: 1, Failed: Failure{Kind: "cancelled", Message: __snglF.Message}}
+			}
 			if __snglF.Timeout {
 				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 			}
@@ -608,14 +631,17 @@ func _answered(r Result__Response) Result__Response {
 	return Result__Response{tag: 0, Ok: Response{Headers: map[string]string{}}}
 }
 
-func PetListCall(limit *int, offset *int, __ctx_server string) Result__PaginatedPetSummaryList {
+func PetListCall(limit *int, offset *int, life Lifetime, __ctx_server string) Result__PaginatedPetSummaryList {
 	__match0 := _answered(func() Result__Response {
-		__snglR, __snglF := snglhttp.Send("GET", sngljson.WithQuery((__ctx_server+"/api/v1/pets/"), sngljson.Query(__anon_limit_offset_7e7555{Limit: limit, Offset: offset}, func() *sngljson.Codec {
+		__snglR, __snglF := snglhttp.Send(snglasync.Context(life._id), "GET", sngljson.WithQuery((__ctx_server+"/api/v1/pets/"), sngljson.Query(__anon_limit_offset_7e7555{Limit: limit, Offset: offset}, func() *sngljson.Codec {
 			c0 := &sngljson.Codec{Kind: sngljson.Struct}
 			c0.Fields = []sngljson.Field{{Wire: "limit", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "offset", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}}
 			return c0
 		}())), nil, nil)
 		if __snglF != nil {
+			if __snglF.Cancelled {
+				return Result__Response{tag: 1, Failed: Failure{Kind: "cancelled", Message: __snglF.Message}}
+			}
 			if __snglF.Timeout {
 				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 			}
@@ -646,10 +672,13 @@ func PetListCall(limit *int, offset *int, __ctx_server string) Result__Paginated
 	return Result__PaginatedPetSummaryList{tag: 0, Ok: PaginatedPetSummaryList{Results: []PetSummary{}}}
 }
 
-func PetRetrieveCall(id string, __ctx_server string) Result__PetDetail {
+func PetRetrieveCall(id string, life Lifetime, __ctx_server string) Result__PetDetail {
 	__match1 := _answered(func() Result__Response {
-		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pets/") + sngljson.Escape(id)) + "/"), nil, nil)
+		__snglR, __snglF := snglhttp.Send(snglasync.Context(life._id), "GET", (((__ctx_server + "/api/v1/pets/") + sngljson.Escape(id)) + "/"), nil, nil)
 		if __snglF != nil {
+			if __snglF.Cancelled {
+				return Result__Response{tag: 1, Failed: Failure{Kind: "cancelled", Message: __snglF.Message}}
+			}
 			if __snglF.Timeout {
 				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 			}
@@ -709,16 +738,30 @@ func ResponseChecked(r Response) Result__Response {
 	return Result__Response{tag: 1, Failed: Failure{Kind: kind, Message: ("HTTP " + fmt.Sprint(r.Status)), Code: fmt.Sprint(r.Status)}}
 }
 
+func LifetimeEnd(life Lifetime) {
+	snglasync.End(life._id)
+}
+
 func (m *Model) __effect0_mount() {
+	__effect0_mount_key := m.__effect0_key
 	m.attempt__inst1 += 1
 	var mine int = m.attempt__inst1
+	if __effect0_mount_key.N == m.asked__inst1 {
+		m.failure__inst1 = nil
+	}
+	m.asked__inst1 = __effect0_mount_key.N
 	m.pending__inst0 = true
-	__async_arg0 := m.__effect0_key.Key
+	m.life__inst1 = Lifetime{_id: snglasync.Begin()}
+	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
+	__async_arg1 := m.life__inst1
+	_ = __async_arg1
 	go func() {
-		r := PetListCall(__async_arg0.Limit, __async_arg0.Offset, "https://petstore.example")
+		r := PetListCall(__async_arg0.Limit, __async_arg0.Offset, __async_arg1, "https://petstore.example")
 		__snglDo(func() {
-			if mine != m.attempt__inst1 {
+			if ((mine != m.attempt__inst1) || !func(_a1, _b2 __anon_limit_offset_7e7555) bool {
+				return snglOptEqual(_a1.Limit, _b2.Limit) && snglOptEqual(_a1.Offset, _b2.Offset)
+			}(__effect0_mount_key.Key, __anon_limit_offset_7e7555{Limit: snglSome(20), Offset: snglSome(m.offset__inst0)})) || (__effect0_mount_key.N != m.refreshes__inst1) {
 				return
 			}
 			m.pending__inst0 = false
@@ -744,6 +787,7 @@ func (m *Model) __effect0_mount() {
 
 func (m *Model) __effect0_unmount() {
 	m.attempt__inst1 += 1
+	LifetimeEnd(m.life__inst1)
 }
 
 func (m *Model) __effect0_down() {
@@ -787,16 +831,25 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_mount() {
+	__effect1_mount_key := m.__effect1_key
 	m.attempt__inst0 += 1
 	var mine int = m.attempt__inst0
+	if __effect1_mount_key.N == m.asked__inst0 {
+		m.failure__inst0 = nil
+		m.__renderSlot2(m.__n2.Container)
+	}
+	m.asked__inst0 = __effect1_mount_key.N
 	m.loading__inst0 = true
 	m.__renderSlot1(m.__n2.Container)
-	__async_arg1 := m.__effect1_key.Key
-	_ = __async_arg1
+	m.life__inst0 = Lifetime{_id: snglasync.Begin()}
+	__async_arg2 := __effect1_mount_key.Key
+	_ = __async_arg2
+	__async_arg3 := m.life__inst0
+	_ = __async_arg3
 	go func() {
-		r := PetRetrieveCall(__async_arg1, "https://mirror.example")
+		r := PetRetrieveCall(__async_arg2, __async_arg3, "https://mirror.example")
 		__snglDo(func() {
-			if mine != m.attempt__inst0 {
+			if ((mine != m.attempt__inst0) || (__effect1_mount_key.Key != "rex")) || (__effect1_mount_key.N != m.refreshes__inst0) {
 				return
 			}
 			m.loading__inst0 = false
@@ -825,6 +878,7 @@ func (m *Model) __effect1_mount() {
 
 func (m *Model) __effect1_unmount() {
 	m.attempt__inst0 += 1
+	LifetimeEnd(m.life__inst0)
 }
 
 func (m *Model) __effect1_down() {
@@ -1085,8 +1139,10 @@ func (m *Model) __n9_click_handler() {
 }
 
 func (m *Model) __n10_click_handler() {
+	__async_arg4 := Lifetime{}
+	_ = __async_arg4
 	go func() {
-		__match0 := PetBreedRetrieveCall("beagle", "https://mirror.example")
+		__match0 := PetBreedRetrieveCall("beagle", __async_arg4, "https://mirror.example")
 		__snglDo(func() {
 			switch {
 			case (__match0.tag == 0):
@@ -1196,6 +1252,22 @@ func (m *Model) SetRefreshes__inst0(v int) {
 	m.refreshes__inst0 = v
 }
 
+func (m *Model) Asked__inst0() int {
+	return m.asked__inst0
+}
+
+func (m *Model) SetAsked__inst0(v int) {
+	m.asked__inst0 = v
+}
+
+func (m *Model) Life__inst0() Lifetime {
+	return m.life__inst0
+}
+
+func (m *Model) SetLife__inst0(v Lifetime) {
+	m.life__inst0 = v
+}
+
 func (m *Model) Attempt__inst1() int {
 	return m.attempt__inst1
 }
@@ -1210,6 +1282,22 @@ func (m *Model) Refreshes__inst1() int {
 
 func (m *Model) SetRefreshes__inst1(v int) {
 	m.refreshes__inst1 = v
+}
+
+func (m *Model) Asked__inst1() int {
+	return m.asked__inst1
+}
+
+func (m *Model) SetAsked__inst1(v int) {
+	m.asked__inst1 = v
+}
+
+func (m *Model) Life__inst1() Lifetime {
+	return m.life__inst1
+}
+
+func (m *Model) SetLife__inst1(v Lifetime) {
+	m.life__inst1 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -1249,14 +1337,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 *Failure
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
-	__slot2     []fyne.CanvasObject
-	__slot2_at  fyne.CanvasObject
-	__slot3     []fyne.CanvasObject
-	__slot3_at  fyne.CanvasObject
 	__n0        *widget.Label
 }
 
@@ -1265,10 +1345,6 @@ func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(("Could not load rex: " + (*(c.__prop___p0)).Message))
 	c.Root = c.__n0
@@ -1288,14 +1364,6 @@ type __child1Instance struct {
 	__model     *Model
 	__prop___p0 *PetDetail
 	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
-	__slot2     []fyne.CanvasObject
-	__slot2_at  fyne.CanvasObject
-	__slot3     []fyne.CanvasObject
-	__slot3_at  fyne.CanvasObject
 	__n1        *widget.Label
 }
 
@@ -1304,10 +1372,6 @@ func new__child1Instance(__model *Model, __a___p0 *PetDetail) *__child1Instance 
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n1 = widget.NewLabel("")
 	c.__n1.SetText(((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
 	c.Root = c.__n1
@@ -1350,6 +1414,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/snglasync"
 	"duckfam.us/sngl/pkg/go/snglhttp"
 	"duckfam.us/sngl/pkg/go/sngljson"
 	"fmt"
@@ -1357,6 +1422,13 @@ import (
 
 func snglSome[T any](v T) *T {
 	return &v
+}
+
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
 }
 
 type ErrorEvent struct {
@@ -1386,6 +1458,12 @@ type Result__PetBreedDetail struct {
 	tag    int
 	Ok     PetBreedDetail
 	Failed Failure
+}
+
+type Response struct {
+	Status  int
+	Headers map[string]string
+	Body    string
 }
 
 type Failure struct {
@@ -1469,10 +1547,8 @@ type __anon_key_n_a1dba7 struct {
 	N   int
 }
 
-type Response struct {
-	Status  int
-	Headers map[string]string
-	Body    string
+type Lifetime struct {
+	_id int
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -1488,8 +1564,12 @@ type Model struct {
 	failure__inst1      *Failure
 	attempt__inst0      int
 	refreshes__inst0    int
+	asked__inst0        int
+	life__inst0         Lifetime
 	attempt__inst1      int
 	refreshes__inst1    int
+	asked__inst1        int
+	life__inst1         Lifetime
 	__effect0_key       __anon_key_n_92242e
 	__effect0_live      []__anon_key_n_92242e
 	__effect0_desired   []__anon_key_n_92242e
@@ -1540,8 +1620,12 @@ func New() *Model {
 	m.failure__inst1 = nil
 	m.attempt__inst0 = 0
 	m.refreshes__inst0 = 0
+	m.asked__inst0 = -1
+	m.life__inst0 = Lifetime{}
 	m.attempt__inst1 = 0
 	m.refreshes__inst1 = 0
+	m.asked__inst1 = -1
+	m.life__inst1 = Lifetime{}
 	m.__effect0_key = __anon_key_n_92242e{Key: __anon_limit_offset_7e7555{}}
 	m.__effect0_live = []__anon_key_n_92242e{}
 	m.__effect0_desired = []__anon_key_n_92242e{}
@@ -1573,10 +1657,13 @@ func New() *Model {
 	return m
 }
 
-func PetBreedRetrieveCall(id string, __ctx_server string) Result__PetBreedDetail {
+func PetBreedRetrieveCall(id string, life Lifetime, __ctx_server string) Result__PetBreedDetail {
 	__match2 := _answered(func() Result__Response {
-		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pet-breeds/") + sngljson.Escape(id)) + "/"), nil, nil)
+		__snglR, __snglF := snglhttp.Send(snglasync.Context(life._id), "GET", (((__ctx_server + "/api/v1/pet-breeds/") + sngljson.Escape(id)) + "/"), nil, nil)
 		if __snglF != nil {
+			if __snglF.Cancelled {
+				return Result__Response{tag: 1, Failed: Failure{Kind: "cancelled", Message: __snglF.Message}}
+			}
 			if __snglF.Timeout {
 				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 			}
@@ -1619,14 +1706,17 @@ func _answered(r Result__Response) Result__Response {
 	return Result__Response{tag: 0, Ok: Response{Headers: map[string]string{}}}
 }
 
-func PetListCall(limit *int, offset *int, __ctx_server string) Result__PaginatedPetSummaryList {
+func PetListCall(limit *int, offset *int, life Lifetime, __ctx_server string) Result__PaginatedPetSummaryList {
 	__match0 := _answered(func() Result__Response {
-		__snglR, __snglF := snglhttp.Send("GET", sngljson.WithQuery((__ctx_server+"/api/v1/pets/"), sngljson.Query(__anon_limit_offset_7e7555{Limit: limit, Offset: offset}, func() *sngljson.Codec {
+		__snglR, __snglF := snglhttp.Send(snglasync.Context(life._id), "GET", sngljson.WithQuery((__ctx_server+"/api/v1/pets/"), sngljson.Query(__anon_limit_offset_7e7555{Limit: limit, Offset: offset}, func() *sngljson.Codec {
 			c0 := &sngljson.Codec{Kind: sngljson.Struct}
 			c0.Fields = []sngljson.Field{{Wire: "limit", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "offset", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}}
 			return c0
 		}())), nil, nil)
 		if __snglF != nil {
+			if __snglF.Cancelled {
+				return Result__Response{tag: 1, Failed: Failure{Kind: "cancelled", Message: __snglF.Message}}
+			}
 			if __snglF.Timeout {
 				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 			}
@@ -1657,10 +1747,13 @@ func PetListCall(limit *int, offset *int, __ctx_server string) Result__Paginated
 	return Result__PaginatedPetSummaryList{tag: 0, Ok: PaginatedPetSummaryList{Results: []PetSummary{}}}
 }
 
-func PetRetrieveCall(id string, __ctx_server string) Result__PetDetail {
+func PetRetrieveCall(id string, life Lifetime, __ctx_server string) Result__PetDetail {
 	__match1 := _answered(func() Result__Response {
-		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pets/") + sngljson.Escape(id)) + "/"), nil, nil)
+		__snglR, __snglF := snglhttp.Send(snglasync.Context(life._id), "GET", (((__ctx_server + "/api/v1/pets/") + sngljson.Escape(id)) + "/"), nil, nil)
 		if __snglF != nil {
+			if __snglF.Cancelled {
+				return Result__Response{tag: 1, Failed: Failure{Kind: "cancelled", Message: __snglF.Message}}
+			}
 			if __snglF.Timeout {
 				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 			}
@@ -1720,16 +1813,30 @@ func ResponseChecked(r Response) Result__Response {
 	return Result__Response{tag: 1, Failed: Failure{Kind: kind, Message: ("HTTP " + fmt.Sprint(r.Status)), Code: fmt.Sprint(r.Status)}}
 }
 
+func LifetimeEnd(life Lifetime) {
+	snglasync.End(life._id)
+}
+
 func (m *Model) __effect0_mount() {
+	__effect0_mount_key := m.__effect0_key
 	m.attempt__inst1 += 1
 	var mine int = m.attempt__inst1
+	if __effect0_mount_key.N == m.asked__inst1 {
+		m.failure__inst1 = nil
+	}
+	m.asked__inst1 = __effect0_mount_key.N
 	m.pending__inst0 = true
-	__async_arg0 := m.__effect0_key.Key
+	m.life__inst1 = Lifetime{_id: snglasync.Begin()}
+	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
+	__async_arg1 := m.life__inst1
+	_ = __async_arg1
 	go func() {
-		r := PetListCall(__async_arg0.Limit, __async_arg0.Offset, "https://petstore.example")
+		r := PetListCall(__async_arg0.Limit, __async_arg0.Offset, __async_arg1, "https://petstore.example")
 		gtk4rt.Post(func() {
-			if mine != m.attempt__inst1 {
+			if ((mine != m.attempt__inst1) || !func(_a1, _b2 __anon_limit_offset_7e7555) bool {
+				return snglOptEqual(_a1.Limit, _b2.Limit) && snglOptEqual(_a1.Offset, _b2.Offset)
+			}(__effect0_mount_key.Key, __anon_limit_offset_7e7555{Limit: snglSome(20), Offset: snglSome(m.offset__inst0)})) || (__effect0_mount_key.N != m.refreshes__inst1) {
 				return
 			}
 			m.pending__inst0 = false
@@ -1755,6 +1862,7 @@ func (m *Model) __effect0_mount() {
 
 func (m *Model) __effect0_unmount() {
 	m.attempt__inst1 += 1
+	LifetimeEnd(m.life__inst1)
 }
 
 func (m *Model) __effect0_down() {
@@ -1798,16 +1906,25 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_mount() {
+	__effect1_mount_key := m.__effect1_key
 	m.attempt__inst0 += 1
 	var mine int = m.attempt__inst0
+	if __effect1_mount_key.N == m.asked__inst0 {
+		m.failure__inst0 = nil
+		m.__renderSlot2(m.__n2)
+	}
+	m.asked__inst0 = __effect1_mount_key.N
 	m.loading__inst0 = true
 	m.__renderSlot1(m.__n2)
-	__async_arg1 := m.__effect1_key.Key
-	_ = __async_arg1
+	m.life__inst0 = Lifetime{_id: snglasync.Begin()}
+	__async_arg2 := __effect1_mount_key.Key
+	_ = __async_arg2
+	__async_arg3 := m.life__inst0
+	_ = __async_arg3
 	go func() {
-		r := PetRetrieveCall(__async_arg1, "https://mirror.example")
+		r := PetRetrieveCall(__async_arg2, __async_arg3, "https://mirror.example")
 		gtk4rt.Post(func() {
-			if mine != m.attempt__inst0 {
+			if ((mine != m.attempt__inst0) || (__effect1_mount_key.Key != "rex")) || (__effect1_mount_key.N != m.refreshes__inst0) {
 				return
 			}
 			m.loading__inst0 = false
@@ -1836,6 +1953,7 @@ func (m *Model) __effect1_mount() {
 
 func (m *Model) __effect1_unmount() {
 	m.attempt__inst0 += 1
+	LifetimeEnd(m.life__inst0)
 }
 
 func (m *Model) __effect1_down() {
@@ -2101,8 +2219,10 @@ func (m *Model) __n9_clicked_handler() {
 }
 
 func (m *Model) __n10_clicked_handler() {
+	__async_arg4 := Lifetime{}
+	_ = __async_arg4
 	go func() {
-		__match0 := PetBreedRetrieveCall("beagle", "https://mirror.example")
+		__match0 := PetBreedRetrieveCall("beagle", __async_arg4, "https://mirror.example")
 		gtk4rt.Post(func() {
 			switch {
 			case (__match0.tag == 0):
@@ -2130,14 +2250,6 @@ type __child0Instance struct {
 	__model     *Model
 	__prop___p0 *Failure
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
-	__slot2     []gtk4rt.Handle
-	__slot2_at  gtk4rt.Handle
-	__slot3     []gtk4rt.Handle
-	__slot3_at  gtk4rt.Handle
 	__n0        gtk4rt.Handle
 }
 
@@ -2145,10 +2257,6 @@ func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, ("Could not load rex: " + (*(c.__prop___p0)).Message))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
@@ -2167,18 +2275,6 @@ func (c *__child0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
 }
 
 // __child1Instance is one live instance of the __child1 component.
@@ -2187,14 +2283,6 @@ type __child1Instance struct {
 	__model     *Model
 	__prop___p0 *PetDetail
 	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
-	__slot2     []gtk4rt.Handle
-	__slot2_at  gtk4rt.Handle
-	__slot3     []gtk4rt.Handle
-	__slot3_at  gtk4rt.Handle
 	__n1        gtk4rt.Handle
 }
 
@@ -2202,10 +2290,6 @@ func new__child1Instance(__model *Model, __a___p0 *PetDetail) *__child1Instance 
 	c := &__child1Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n1, ((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
 	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
@@ -2223,18 +2307,6 @@ func (c *__child1Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
 	}
 }
 
@@ -2326,6 +2398,22 @@ func (m *Model) SetRefreshes__inst0(v int) {
 	m.refreshes__inst0 = v
 }
 
+func (m *Model) Asked__inst0() int {
+	return m.asked__inst0
+}
+
+func (m *Model) SetAsked__inst0(v int) {
+	m.asked__inst0 = v
+}
+
+func (m *Model) Life__inst0() Lifetime {
+	return m.life__inst0
+}
+
+func (m *Model) SetLife__inst0(v Lifetime) {
+	m.life__inst0 = v
+}
+
 func (m *Model) Attempt__inst1() int {
 	return m.attempt__inst1
 }
@@ -2340,6 +2428,22 @@ func (m *Model) Refreshes__inst1() int {
 
 func (m *Model) SetRefreshes__inst1(v int) {
 	m.refreshes__inst1 = v
+}
+
+func (m *Model) Asked__inst1() int {
+	return m.asked__inst1
+}
+
+func (m *Model) SetAsked__inst1(v int) {
+	m.asked__inst1 = v
+}
+
+func (m *Model) Life__inst1() Lifetime {
+	return m.life__inst1
+}
+
+func (m *Model) SetLife__inst1(v Lifetime) {
+	m.life__inst1 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -2409,6 +2513,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgeDefaults
 import androidx.compose.material3.contentColorFor
+
+data class Response(
+    var status: Int = 0,
+    var headers: Map<String, String> = mapOf(),
+    var body: String = ""
+)
 
 data class Failure(
     var kind: SnglFailureKind = SnglFailureKind.TRANSPORT,
@@ -2491,10 +2601,8 @@ data class __anon_key_n_a1dba7(
     var n: Int = 0
 )
 
-data class Response(
-    var status: Int = 0,
-    var headers: Map<String, String> = mapOf(),
-    var body: String = ""
+data class Lifetime(
+    var _id: Int = 0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -2503,13 +2611,25 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
+enum class SnglMethod(private val sngl: String) {
+    GET("get"),
+    HEAD("head"),
+    POST("post"),
+    PUT("put"),
+    PATCH("patch"),
+    DELETE("delete");
+
+    override fun toString(): String = sngl
+}
+
 enum class SnglFailureKind(private val sngl: String) {
     TRANSPORT("transport"),
     TIMEOUT("timeout"),
     AUTH("auth"),
     REQUEST("request"),
     SERVER("server"),
-    DECODE("decode");
+    DECODE("decode"),
+    CANCELLED("cancelled");
 
     override fun toString(): String = sngl
 }
@@ -2548,8 +2668,12 @@ fun MainScreen() {
     var failure__inst1 by remember { mutableStateOf<Failure?>(null) }
     var attempt__inst0 by remember { mutableStateOf(0) }
     var refreshes__inst0 by remember { mutableStateOf(0) }
+    var asked__inst0 by remember { mutableStateOf(-1) }
+    var life__inst0 by remember { mutableStateOf(Lifetime()) }
     var attempt__inst1 by remember { mutableStateOf(0) }
     var refreshes__inst1 by remember { mutableStateOf(0) }
+    var asked__inst1 by remember { mutableStateOf(-1) }
+    var life__inst1 by remember { mutableStateOf(Lifetime()) }
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -2567,9 +2691,14 @@ fun MainScreen() {
                     SnglCodec.start {
                     	attempt__inst1 += 1
                     	var mine = attempt__inst1
+                    	if ((k.n == asked__inst1)) {
+                    		failure__inst1 = null
+                    	}
+                    	asked__inst1 = k.n
                     	pending__inst0 = true
-                    	var r: SnglResult__PaginatedPetSummaryList = petListCall(k.key.limit, k.key.offset, "https://petstore.example")
-                    	if ((mine != attempt__inst1)) {
+                    	life__inst1 = Lifetime(_id = SnglCodec.begin())
+                    	var r: SnglResult__PaginatedPetSummaryList = petListCall(k.key.limit, k.key.offset, life__inst1, "https://petstore.example")
+                    	if ((((mine != attempt__inst1) || (k.key != __anon_limit_offset_7e7555(limit = 20, offset = offset__inst0))) || (k.n != refreshes__inst1))) {
                     		return@start
                     	}
                     	pending__inst0 = false
@@ -2588,6 +2717,7 @@ fun MainScreen() {
                 }
                 onDispose {
                     attempt__inst1 += 1
+                    life__inst1.end()
                 }
             }
             if ((page__inst0 != null)) {
@@ -2607,9 +2737,14 @@ fun MainScreen() {
                     SnglCodec.start {
                     	attempt__inst0 += 1
                     	var mine = attempt__inst0
+                    	if ((k.n == asked__inst0)) {
+                    		failure__inst0 = null
+                    	}
+                    	asked__inst0 = k.n
                     	loading__inst0 = true
-                    	var r: SnglResult__PetDetail = petRetrieveCall(k.key, "https://mirror.example")
-                    	if ((mine != attempt__inst0)) {
+                    	life__inst0 = Lifetime(_id = SnglCodec.begin())
+                    	var r: SnglResult__PetDetail = petRetrieveCall(k.key, life__inst0, "https://mirror.example")
+                    	if ((((mine != attempt__inst0) || (k.key != "rex")) || (k.n != refreshes__inst0))) {
                     		return@start
                     	}
                     	loading__inst0 = false
@@ -2628,6 +2763,7 @@ fun MainScreen() {
                 }
                 onDispose {
                     attempt__inst0 += 1
+                    life__inst0.end()
                 }
             }
             if (loading__inst0) {
@@ -2646,7 +2782,7 @@ fun MainScreen() {
             }
             Button(onClick = {
                 SnglCodec.start {
-                	var __match0: SnglResult__PetBreedDetail = petBreedRetrieveCall("beagle", "https://mirror.example")
+                	var __match0: SnglResult__PetBreedDetail = petBreedRetrieveCall("beagle", Lifetime(), "https://mirror.example")
                 	when {
                 		(__match0 is SnglResult__PetBreedDetail.Ok) -> {
                 			var r = (__match0 as SnglResult__PetBreedDetail.Ok).value
@@ -2666,8 +2802,8 @@ fun MainScreen() {
     }
 }
 
-suspend fun petBreedRetrieveCall(id: String, __ctx_server: String): SnglResult__PetBreedDetail {
-    var __match2: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", (((__ctx_server + "/api/v1/pet-breeds/") + SnglCodec.escape(id)) + "/"), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
+suspend fun petBreedRetrieveCall(id: String, life: Lifetime, __ctx_server: String): SnglResult__PetBreedDetail {
+    var __match2: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", (((__ctx_server + "/api/v1/pet-breeds/") + SnglCodec.escape(id)) + "/"), emptyMap(), null, life._id); if (__r.failed) (if (__r.cancelled) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.CANCELLED, message = __r.message)) else if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
     when {
     	(__match2 is SnglResult__Response.Failed) -> {
     		var r = (__match2 as SnglResult__Response.Failed).value
@@ -2695,8 +2831,8 @@ fun _answered(r: SnglResult__Response): SnglResult__Response {
     return SnglResult__Response.Ok(Response(headers = mapOf<String, String>()))
 }
 
-suspend fun petListCall(limit: Int?, offset: Int?, __ctx_server: String): SnglResult__PaginatedPetSummaryList {
-    var __match0: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", SnglCodec.withQuery((__ctx_server + "/api/v1/pets/"), __anon_limit_offset_7e7555(limit = limit, offset = offset), run { val c0 = SnglCodec<__anon_limit_offset_7e7555>(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("limit", SnglCodec.option(SnglCodec.int())), SnglCodecField("offset", SnglCodec.option(SnglCodec.int()))); c0.make = { a -> __anon_limit_offset_7e7555(limit = a.at(0), offset = a.at(1)) }; c0.read = { v -> listOf<Any?>(v.limit, v.offset) }; c0 }), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
+suspend fun petListCall(limit: Int?, offset: Int?, life: Lifetime, __ctx_server: String): SnglResult__PaginatedPetSummaryList {
+    var __match0: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", SnglCodec.withQuery((__ctx_server + "/api/v1/pets/"), __anon_limit_offset_7e7555(limit = limit, offset = offset), run { val c0 = SnglCodec<__anon_limit_offset_7e7555>(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("limit", SnglCodec.option(SnglCodec.int())), SnglCodecField("offset", SnglCodec.option(SnglCodec.int()))); c0.make = { a -> __anon_limit_offset_7e7555(limit = a.at(0), offset = a.at(1)) }; c0.read = { v -> listOf<Any?>(v.limit, v.offset) }; c0 }), emptyMap(), null, life._id); if (__r.failed) (if (__r.cancelled) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.CANCELLED, message = __r.message)) else if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
     when {
     	(__match0 is SnglResult__Response.Failed) -> {
     		var r = (__match0 as SnglResult__Response.Failed).value
@@ -2710,8 +2846,8 @@ suspend fun petListCall(limit: Int?, offset: Int?, __ctx_server: String): SnglRe
     return SnglResult__PaginatedPetSummaryList.Ok(PaginatedPetSummaryList(results = listOf<PetSummary>()))
 }
 
-suspend fun petRetrieveCall(id: String, __ctx_server: String): SnglResult__PetDetail {
-    var __match1: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", (((__ctx_server + "/api/v1/pets/") + SnglCodec.escape(id)) + "/"), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
+suspend fun petRetrieveCall(id: String, life: Lifetime, __ctx_server: String): SnglResult__PetDetail {
+    var __match1: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", (((__ctx_server + "/api/v1/pets/") + SnglCodec.escape(id)) + "/"), emptyMap(), null, life._id); if (__r.failed) (if (__r.cancelled) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.CANCELLED, message = __r.message)) else if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
     when {
     	(__match1 is SnglResult__Response.Failed) -> {
     		var r = (__match1 as SnglResult__Response.Failed).value
@@ -2742,6 +2878,10 @@ fun Response.checked(): SnglResult__Response {
     	}
     }
     return SnglResult__Response.Failed(Failure(kind = kind, message = ("HTTP " + this.status.toString()), code = this.status.toString()))
+}
+
+fun Lifetime.end() {
+    SnglCodec.end(this._id)
 }
 -- out/kotlin/android/SnglCodec.kt --
 package test.sngl.app
@@ -2799,6 +2939,7 @@ class SnglCodec<T>(val kind: Int) {
         val failed: Boolean,
         val timeout: Boolean,
         val message: String,
+        val cancelled: Boolean = false,
     )
 
     private class Fail(message: String) : Exception(message)
@@ -3086,12 +3227,39 @@ class SnglCodec<T>(val kind: Int) {
             return url + (if (url.contains('?')) "&" else "?") + parts.joinToString("&")
         }
 
+        // sngl:async's lifetimes, by number: each live one holds how to stop
+        // the requests made under it, and 0 -- forever -- is never held.
+        private val lives = java.util.concurrent.ConcurrentHashMap<Int, java.util.concurrent.CopyOnWriteArrayList<() -> Unit>>()
+        private val nextLife = java.util.concurrent.atomic.AtomicInteger()
+
+        fun begin(): Int {
+            val id = nextLife.incrementAndGet()
+            lives[id] = java.util.concurrent.CopyOnWriteArrayList()
+            return id
+        }
+
+        fun end(id: Int) {
+            lives.remove(id)?.forEach { it() }
+        }
+
+        fun ended(id: Int): Boolean = id != 0 && !lives.containsKey(id)
+
+        private fun cancelled(): Response = Response(0, emptyMap(), "", true, false, "cancelled", true)
+
         // Sends one request on a thread of its own and waits for its answer
-        // there: a failure only where no response arrived.
-        suspend fun send(method: String, url: String, headers: Map<String, String>, body: String?): Response =
-            withContext(Dispatchers.IO) {
+        // there: a failure only where no response arrived, or `life` ended
+        // first, which disconnects it.
+        suspend fun send(method: String, url: String, headers: Map<String, String>, body: String?, life: Int): Response {
+            if (ended(life)) return cancelled()
+            return withContext(Dispatchers.IO) {
+                val conn = try {
+                    URL(url).openConnection() as HttpURLConnection
+                } catch (e: Exception) {
+                    return@withContext Response(0, emptyMap(), "", true, false, e.toString())
+                }
+                val abort: () -> Unit = { conn.disconnect() }
+                lives[life]?.add(abort)
                 try {
-                    val conn = URL(url).openConnection() as HttpURLConnection
                     conn.requestMethod = method.uppercase()
                     for (k in headers.keys.sorted()) conn.setRequestProperty(k, headers[k])
                     if (body != null) {
@@ -3106,13 +3274,18 @@ class SnglCodec<T>(val kind: Int) {
                         if (k != null) hs[k.lowercase()] = vs.joinToString(", ")
                     }
                     conn.disconnect()
+                    // A response that arrived is the answer, whenever the
+                    // lifetime ended: a failure is only where none did.
                     Response(status, hs, text, false, false, "")
                 } catch (e: SocketTimeoutException) {
-                    Response(0, emptyMap(), "", true, true, e.toString())
+                    if (ended(life)) cancelled() else Response(0, emptyMap(), "", true, true, e.toString())
                 } catch (e: Exception) {
-                    Response(0, emptyMap(), "", true, false, e.toString())
+                    if (ended(life)) cancelled() else Response(0, emptyMap(), "", true, false, e.toString())
+                } finally {
+                    lives[life]?.remove(abort)
                 }
             }
+        }
     }
 }
 
@@ -3154,9 +3327,11 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { offset__inst0: 0, page__inst0: null, pet__inst0: null, loading__inst0: false, failure__inst0: null, from__inst0: "-", visible__inst0: true, pending__inst0: false, failure__inst1: null, attempt__inst0: 0, refreshes__inst0: 0, attempt__inst1: 0, refreshes__inst1: 0 };
-  async function petBreedRetrieveCall(id, __ctx_server) {
-    let __match2 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", __ctx_server + "/api/v1/pet-breeds/" + encodeURIComponent(id).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()) + "/", null, null)));
+  var state = { offset__inst0: 0, page__inst0: null, pet__inst0: null, loading__inst0: false, failure__inst0: null, from__inst0: "-", visible__inst0: true, pending__inst0: false, failure__inst1: null, attempt__inst0: 0, refreshes__inst0: 0, asked__inst0: -1, life__inst0: null, attempt__inst1: 0, refreshes__inst1: 0, asked__inst1: -1, life__inst1: null };
+  state.life__inst0 = { _id: 0 };
+  state.life__inst1 = { _id: 0 };
+  async function petBreedRetrieveCall(id, life, __ctx_server) {
+    let __match2 = _answered(((__r) => __r.f ? __r.c ? { tag: "failed", value: { kind: "cancelled", message: __r.m, code: "" } } : __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", __ctx_server + "/api/v1/pet-breeds/" + encodeURIComponent(id).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()) + "/", null, null, life._id)));
     if (__match2.tag === "failed") {
       ;
       let r = __match2.value;
@@ -3188,12 +3363,12 @@ body { font-family: system-ui, sans-serif; }
     ;
     return { tag: "ok", value: { status: 0, headers: /* @__PURE__ */ new Map([]), body: "" } };
   }
-  async function petListCall(limit, offset, __ctx_server) {
-    let __match0 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", _snglWithQuery(__ctx_server + "/api/v1/pets/", { limit, offset }, (() => {
+  async function petListCall(limit, offset, life, __ctx_server) {
+    let __match0 = _answered(((__r) => __r.f ? __r.c ? { tag: "failed", value: { kind: "cancelled", message: __r.m, code: "" } } : __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", _snglWithQuery(__ctx_server + "/api/v1/pets/", { limit, offset }, (() => {
       const c0 = { k: "s" };
       c0.f = [["limit", "limit", { k: "o", e: { k: "i" } }], ["offset", "offset", { k: "o", e: { k: "i" } }]];
       return c0;
-    })()), null, null)));
+    })()), null, null, life._id)));
     if (__match0.tag === "failed") {
       ;
       let r = __match0.value;
@@ -3212,8 +3387,8 @@ body { font-family: system-ui, sans-serif; }
     ;
     return { tag: "ok", value: { count: 0, next: null, previous: null, results: [] } };
   }
-  async function petRetrieveCall(id, __ctx_server) {
-    let __match1 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", __ctx_server + "/api/v1/pets/" + encodeURIComponent(id).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()) + "/", null, null)));
+  async function petRetrieveCall(id, life, __ctx_server) {
+    let __match1 = _answered(((__r) => __r.f ? __r.c ? { tag: "failed", value: { kind: "cancelled", message: __r.m, code: "" } } : __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", __ctx_server + "/api/v1/pets/" + encodeURIComponent(id).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()) + "/", null, null, life._id)));
     if (__match1.tag === "failed") {
       ;
       let r = __match1.value;
@@ -3270,12 +3445,23 @@ body { font-family: system-ui, sans-serif; }
     ;
     return { tag: "failed", value: { kind, message: "HTTP " + String(r.status), code: String(r.status) } };
   }
+  function Lifetime_end(life) {
+    _snglEnd(life._id);
+  }
   async function __effect0_mount() {
+    let __effect0_mount_key = __effect0_key;
     state.attempt__inst1 += 1;
     let mine = state.attempt__inst1;
+    if (__effect0_mount_key.n === state.asked__inst1) {
+      ;
+      state.failure__inst1 = null;
+    }
+    ;
+    state.asked__inst1 = __effect0_mount_key.n;
     state.pending__inst0 = true;
-    let r = await petListCall(__effect0_key.key.limit, __effect0_key.key.offset, "https://petstore.example");
-    if (mine !== state.attempt__inst1) {
+    state.life__inst1 = { _id: _snglBegin() };
+    let r = await petListCall(__effect0_mount_key.key.limit, __effect0_mount_key.key.offset, state.life__inst1, "https://petstore.example");
+    if (mine !== state.attempt__inst1 || !((a, b) => a == null || b == null ? a === b : a.limit === b.limit && a.offset === b.offset)(__effect0_mount_key.key, { limit: 20, offset: state.offset__inst0 }) || __effect0_mount_key.n !== state.refreshes__inst1) {
       ;
       return;
     }
@@ -3296,14 +3482,24 @@ body { font-family: system-ui, sans-serif; }
   }
   function __effect0_unmount() {
     state.attempt__inst1 += 1;
+    Lifetime_end(state.life__inst1);
   }
   async function __effect1_mount() {
+    let __effect1_mount_key = __effect1_key;
     state.attempt__inst0 += 1;
     let mine = state.attempt__inst0;
+    if (__effect1_mount_key.n === state.asked__inst0) {
+      ;
+      state.failure__inst0 = null;
+      __renderSlot2(__slotAnchor_2);
+    }
+    ;
+    state.asked__inst0 = __effect1_mount_key.n;
     state.loading__inst0 = true;
     __renderSlot1(__slotAnchor_1);
-    let r = await petRetrieveCall(__effect1_key.key, "https://mirror.example");
-    if (mine !== state.attempt__inst0) {
+    state.life__inst0 = { _id: _snglBegin() };
+    let r = await petRetrieveCall(__effect1_mount_key.key, state.life__inst0, "https://mirror.example");
+    if (mine !== state.attempt__inst0 || __effect1_mount_key.key !== "rex" || __effect1_mount_key.n !== state.refreshes__inst0) {
       ;
       return;
     }
@@ -3327,6 +3523,7 @@ body { font-family: system-ui, sans-serif; }
   }
   function __effect1_unmount() {
     state.attempt__inst0 += 1;
+    Lifetime_end(state.life__inst0);
   }
   function __snglTeardown() {
     for (const [__inst7_live_di, _] of __inst7_live.entries()) {
@@ -3366,10 +3563,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = "Could not load rex: " + __prop___p0.message;
@@ -3389,10 +3582,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.textContent = "#" + String(__prop___p0.id) + " " + __prop___p0.name;
@@ -3412,10 +3601,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n2.textContent = __prop___p0.name;
@@ -3435,10 +3620,6 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n3.textContent = __prop___p0.type.name;
@@ -4005,15 +4186,35 @@ body { font-family: system-ui, sans-serif; }
     if (parts.length === 0) return url;
     return url + (url.includes("?") ? "&" : "?") + parts.join("&");
   }
-  async function _snglHTTPSend(method, url, headers, body) {
+  var _snglLives = { n: 0, m: /* @__PURE__ */ new Map() };
+  function _snglBegin() {
+    const id = ++_snglLives.n;
+    _snglLives.m.set(id, new AbortController());
+    return id;
+  }
+  function _snglEnd(id) {
+    const c = _snglLives.m.get(id);
+    if (c) {
+      _snglLives.m.delete(id);
+      c.abort();
+    }
+  }
+  function _snglEnded(id) {
+    return id !== 0 && !_snglLives.m.has(id);
+  }
+  async function _snglHTTPSend(method, url, headers, body, life) {
+    if (_snglEnded(life)) return { f: true, c: true, m: "cancelled" };
     const init = { method: String(method).toUpperCase(), headers: {} };
     if (headers) for (const [k, v] of headers) init.headers[k] = v;
     if (body !== null && body !== void 0) init.body = body;
+    const c = _snglLives.m.get(life);
+    if (c) init.signal = c.signal;
     let resp, text;
     try {
       resp = await fetch(url, init);
       text = await resp.text();
     } catch (e) {
+      if (_snglEnded(life)) return { f: true, c: true, m: "cancelled" };
       return { f: true, t: !!e && e.name === "TimeoutError", m: String(e && e.message || e) };
     }
     const h = /* @__PURE__ */ new Map();
@@ -4036,7 +4237,7 @@ body { font-family: system-ui, sans-serif; }
     __effects0_settle();
   });
   $1.addEventListener("click", async function() {
-    let __match0 = await petBreedRetrieveCall("beagle", "https://mirror.example");
+    let __match0 = await petBreedRetrieveCall("beagle", { _id: 0 }, "https://mirror.example");
     if (__match0.tag === "ok") {
       ;
       let r = __match0.value;
@@ -4149,8 +4350,8 @@ func _answered(r async.Result[http.Response]) async.Result[http.Response] {
 // GET /api/v1/pets/
 //
 // List pets
-func petListCall(limit option[int] = null, offset option[int] = null) async.Result[PaginatedPetSummaryList] {
-    match var r = _answered(http.get(url="{server}/api/v1/pets/", query={limit=limit, offset=offset})) {
+func petListCall(limit option[int] = null, offset option[int] = null, life async.Lifetime = async.forever) async.Result[PaginatedPetSummaryList] {
+    match var r = _answered(http.get(url="{server}/api/v1/pets/", query={limit=limit, offset=offset}, life=life)) {
         failed { return {failed=r} }
         ok { return json.decode[PaginatedPetSummaryList](r.body) }
     }
@@ -4159,8 +4360,8 @@ func petListCall(limit option[int] = null, offset option[int] = null) async.Resu
 // GET /api/v1/pets/{id}/
 //
 // Get pet
-func petRetrieveCall(id string) async.Result[PetDetail] {
-    match var r = _answered(http.get(url="{server}/api/v1/pets/{http.pathEscape(id)}/")) {
+func petRetrieveCall(id string, life async.Lifetime = async.forever) async.Result[PetDetail] {
+    match var r = _answered(http.get(url="{server}/api/v1/pets/{http.pathEscape(id)}/", life=life)) {
         failed { return {failed=r} }
         ok { return json.decode[PetDetail](r.body) }
     }
@@ -4169,8 +4370,8 @@ func petRetrieveCall(id string) async.Result[PetDetail] {
 // GET /api/v1/pet-breeds/{id}/
 //
 // Get pet breed
-func petBreedRetrieveCall(id string) async.Result[PetBreedDetail] {
-    match var r = _answered(http.get(url="{server}/api/v1/pet-breeds/{http.pathEscape(id)}/")) {
+func petBreedRetrieveCall(id string, life async.Lifetime = async.forever) async.Result[PetBreedDetail] {
+    match var r = _answered(http.get(url="{server}/api/v1/pet-breeds/{http.pathEscape(id)}/", life=life)) {
         failed { return {failed=r} }
         ok { return json.decode[PetBreedDetail](r.body) }
     }
@@ -4198,7 +4399,7 @@ component petList[F any](
         fetch = func(k struct {
             limit  option[int]
             offset option[int]
-        }) => petListCall(limit=k.limit, offset=k.offset),
+        }, life async.Lifetime) => petListCall(limit=k.limit, offset=k.offset, life=life),
         :value = value,
         :pending = pending,
         :failure = failure,
@@ -4261,10 +4462,10 @@ component petBreedRetrieve[F any](
     )
 }
 -- run/go/fyne --
-pass sha256:8fee4653702647fa3ba2782047822884
+pass sha256:a44880c3ab796285738ed6f5bbb65879
 -- run/go/gtk4 --
-pass sha256:b1be864c9f9cdc7fd04a8505a2913cbe
+pass sha256:58119c69b71449fd9340e6f2f0238b08
 -- run/kotlin/android --
-pass sha256:7b2e3e045f304e8751ba24e87abce915
+pass sha256:4b34d5c8b9926fd13bad501ee9b2a0b3
 -- run/none/html --
-pass sha256:c6da311f018f1d8306dc1ca7f526b4aa
+pass sha256:bdfdac7d6de818042a6a7ee20e13af25

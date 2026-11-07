@@ -35,29 +35,36 @@ struct Failure {
 //   - `request` -- the peer rejected what was sent
 //   - `server` -- the peer failed on its own side
 //   - `decode` -- the answer arrived and did not match the declared type
-enum FailureKind { transport, timeout, auth, request, server, decode }
+//   - `cancelled` -- the lifetime the request was handed ended first
+enum FailureKind { transport, timeout, auth, request, server, decode, cancelled }
 
 // A request bracketed by the tree: asked when the node mounts and whenever
 // `on` changes, abandoned when it unmounts. `fetch` is the adapter's call, and
-// it is handed the key it asks for.
+// it is handed the key it asks for and the lifetime of the attempt, which
+// ends when the query asks about something else, refreshes or unmounts: a
+// fetch hands it to each request it makes, and one still waiting then stops.
 //
 // The three two-way props are independent facts, each a cell the call site
 // binds or leaves to the instance:
 //
 //   - `value` -- the last answer, kept through a refresh and through a failure
 //   - `pending` -- an attempt is in flight
-//   - `failure` -- how the last attempt failed, cleared by a success
+//   - `failure` -- how the last attempt failed, cleared by a success and by
+//     asking about another key, so a failure never stands beside a request
+//     for something it was not about; a `refresh` keeps it until it answers
 //
-// **The latest attempt wins.** An answer to a key asked before the current one
-// writes nothing, and nor does one arriving after the node unmounts, so a
-// screen never shows what it is no longer asking about.
+// **The latest attempt wins.** An answer to a key other than the query's
+// current one writes nothing, and nor does one arriving after the node
+// unmounts, so a screen never shows what it is no longer asking about. The
+// key is compared when the answer arrives: whether the bracket has rekeyed by
+// then is a settle's to say, and nothing orders a settle against an answer.
 //
 // It renders nothing, so it goes in any tree: a layout, a drawing or a menu.
 component query[K any, T any, F any](
     // What the request is about. A change asks again.
     on       K,
-    // The adapter's call, handed the key.
-    fetch    func(K) Result[T],
+    // The adapter's call, handed the key and the attempt's lifetime.
+    fetch    func(K, Lifetime) Result[T],
     // The last answer.
     :value   option[T] = null,
     // An attempt is in flight.
@@ -71,6 +78,12 @@ component query[K any, T any, F any](
 ) F {
     var attempt = 0
     var refreshes = 0
+    // The refreshes the last mount was begun with: a mount with as many is
+    // one of another key.
+    var asked = -1
+    // The lifetime of the attempt in flight, ended when it is no longer the
+    // one the query wants.
+    var life = forever
 
     // Asks again without a change of key: a retry button, a poll from a
     // timer. The value stays, and `pending` says an attempt is in flight.
@@ -83,9 +96,14 @@ component query[K any, T any, F any](
         @mount(k) {
             attempt += 1
             var mine = attempt
+            if k.n == asked {
+                failure = null
+            }
+            asked = k.n
             pending = true
-            var r = fetch(k.key)
-            if mine != attempt {
+            life = begin()
+            var r = fetch(k.key, life)
+            if mine != attempt || k.key != on || k.n != refreshes {
                 return
             }
             pending = false
@@ -101,6 +119,9 @@ component query[K any, T any, F any](
                 }
             }
         },
-        @unmount { attempt += 1 },
+        @unmount {
+            attempt += 1
+            life.end()
+        },
     )
 }

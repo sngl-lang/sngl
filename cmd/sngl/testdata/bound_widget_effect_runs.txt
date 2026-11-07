@@ -41,8 +41,8 @@ component app ui.node {
     ui.vbox {
         keep(:value=language)
         ui.select #pick(:value=language) {
-            ui.choice(label="English")
-            ui.choice(label="Deutsch")
+            ui.choice(label="English", value="English")
+            ui.choice(label="Deutsch", value="Deutsch")
         }
         ui.input #field(:value=name)
     }
@@ -61,7 +61,7 @@ func testTypingRunsTheUpdate(t test.Test, c app) {
     t.assert(c.renames == 1)
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:9164df876e11b6d0cafae7b1211529f1
+sha256:d232664d6beb6705c223447e3555be21
 {
   "results": [
     {
@@ -75,7 +75,7 @@ sha256:9164df876e11b6d0cafae7b1211529f1
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:3a899a3a05b5befd125c7c01e46af6ad
+sha256:b41425b6236a09c976e1211913275093
 {
   "results": [
     {
@@ -89,7 +89,7 @@ sha256:3a899a3a05b5befd125c7c01e46af6ad
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:4ec9b36ab33c09c2d1257974e4c9aaea
+sha256:7aafc93733bc3a689c1f97468486ff6a
 {
   "results": [
     {
@@ -103,7 +103,7 @@ sha256:4ec9b36ab33c09c2d1257974e4c9aaea
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:00aba463dd44dbaca053b432eb20a65f
+sha256:39bc90f15e9cf5295b248442fab93795
 {
   "results": [
     {
@@ -117,7 +117,7 @@ sha256:00aba463dd44dbaca053b432eb20a65f
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:4779cf47d52b103ec3fd0c21e5ae279a
+sha256:5192acd93270f680731b849697d5d861
 {
   "results": [
     {

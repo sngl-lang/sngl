@@ -52,7 +52,7 @@ func testStringsAreOrdered(t test.Test, c main) {
     t.assert(sorted(c.words).format(", ") == "apple, fig, pear")
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:ba5de60634a0bc3188776e80d23e91d4
+sha256:397866dde1e93e735c84023362e96d61
 {
   "results": [
     {
@@ -62,7 +62,7 @@ sha256:ba5de60634a0bc3188776e80d23e91d4
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:95dd26fe93be61145835e01b39c75b4a
+sha256:ae2b974107cafffed97664097f15f797
 {
   "results": [
     {
@@ -72,7 +72,7 @@ sha256:95dd26fe93be61145835e01b39c75b4a
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:e76d5cccb98a1322449492cc99136677
+sha256:b32a89c05b2c58b8a8e7780d3c48454f
 {
   "results": [
     {
@@ -82,7 +82,7 @@ sha256:e76d5cccb98a1322449492cc99136677
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:4f7ed380991b726ac7cc0a5348e78b5f
+sha256:cc69204967f83b6689da76afcba9819a
 {
   "results": [
     {
@@ -92,7 +92,7 @@ sha256:4f7ed380991b726ac7cc0a5348e78b5f
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:9b9dadb05b3daca2089e477a423fafe8
+sha256:0bb64e03e5d7ac0d1166d3909967faec
 {
   "results": [
     {

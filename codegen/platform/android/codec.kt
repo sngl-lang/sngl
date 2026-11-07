@@ -53,6 +53,7 @@ class SnglCodec<T>(val kind: Int) {
         val failed: Boolean,
         val timeout: Boolean,
         val message: String,
+        val cancelled: Boolean = false,
     )
 
     private class Fail(message: String) : Exception(message)
@@ -340,12 +341,39 @@ class SnglCodec<T>(val kind: Int) {
             return url + (if (url.contains('?')) "&" else "?") + parts.joinToString("&")
         }
 
+        // sngl:async's lifetimes, by number: each live one holds how to stop
+        // the requests made under it, and 0 -- forever -- is never held.
+        private val lives = java.util.concurrent.ConcurrentHashMap<Int, java.util.concurrent.CopyOnWriteArrayList<() -> Unit>>()
+        private val nextLife = java.util.concurrent.atomic.AtomicInteger()
+
+        fun begin(): Int {
+            val id = nextLife.incrementAndGet()
+            lives[id] = java.util.concurrent.CopyOnWriteArrayList()
+            return id
+        }
+
+        fun end(id: Int) {
+            lives.remove(id)?.forEach { it() }
+        }
+
+        fun ended(id: Int): Boolean = id != 0 && !lives.containsKey(id)
+
+        private fun cancelled(): Response = Response(0, emptyMap(), "", true, false, "cancelled", true)
+
         // Sends one request on a thread of its own and waits for its answer
-        // there: a failure only where no response arrived.
-        suspend fun send(method: String, url: String, headers: Map<String, String>, body: String?): Response =
-            withContext(Dispatchers.IO) {
+        // there: a failure only where no response arrived, or `life` ended
+        // first, which disconnects it.
+        suspend fun send(method: String, url: String, headers: Map<String, String>, body: String?, life: Int): Response {
+            if (ended(life)) return cancelled()
+            return withContext(Dispatchers.IO) {
+                val conn = try {
+                    URL(url).openConnection() as HttpURLConnection
+                } catch (e: Exception) {
+                    return@withContext Response(0, emptyMap(), "", true, false, e.toString())
+                }
+                val abort: () -> Unit = { conn.disconnect() }
+                lives[life]?.add(abort)
                 try {
-                    val conn = URL(url).openConnection() as HttpURLConnection
                     conn.requestMethod = method.uppercase()
                     for (k in headers.keys.sorted()) conn.setRequestProperty(k, headers[k])
                     if (body != null) {
@@ -360,13 +388,18 @@ class SnglCodec<T>(val kind: Int) {
                         if (k != null) hs[k.lowercase()] = vs.joinToString(", ")
                     }
                     conn.disconnect()
+                    // A response that arrived is the answer, whenever the
+                    // lifetime ended: a failure is only where none did.
                     Response(status, hs, text, false, false, "")
                 } catch (e: SocketTimeoutException) {
-                    Response(0, emptyMap(), "", true, true, e.toString())
+                    if (ended(life)) cancelled() else Response(0, emptyMap(), "", true, true, e.toString())
                 } catch (e: Exception) {
-                    Response(0, emptyMap(), "", true, false, e.toString())
+                    if (ended(life)) cancelled() else Response(0, emptyMap(), "", true, false, e.toString())
+                } finally {
+                    lives[life]?.remove(abort)
                 }
             }
+        }
     }
 }
 

@@ -108,6 +108,7 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -121,6 +122,14 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type Test struct {
+}
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
 }
 
 type Style struct {
@@ -208,6 +217,10 @@ type modelState struct {
 	__effect0_desired   []bool
 	__effect1_live      []string
 	__effect1_desired   []string
+	__effect1_paths     []string
+	__effect1_livePaths []string
+	__effect1_pathAt    map[string]int
+	__effect1_liveAt    map[string]int
 	__effect2_live      []bool
 	__effect2_desired   []bool
 	__effects0_settling bool
@@ -224,26 +237,79 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.show = true
-	m.names = []string{"a", "b"}
-	m.hits__inst0 = 0
-	m.hits__inst1 = map[string]int{}
-	m.open__inst0 = true
-	m.hits__inst2 = 0
-	m.hits__inst3 = 0
-	m.__effect0_live = []bool{}
-	m.__effect0_desired = []bool{}
-	m.__effect1_live = []string{}
-	m.__effect1_desired = []string{}
-	m.__effect2_live = []bool{}
-	m.__effect2_desired = []bool{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
-	m.__focusID = 0
-	m.__focusLoop1_cursor = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["show"] {
+		m.show = true
+	}
+	if !preset["names"] {
+		m.names = []string{"a", "b"}
+	}
+	if !preset["hits__inst0"] {
+		m.hits__inst0 = 0
+	}
+	if !preset["hits__inst1"] {
+		m.hits__inst1 = map[string]int{}
+	}
+	if !preset["open__inst0"] {
+		m.open__inst0 = true
+	}
+	if !preset["hits__inst2"] {
+		m.hits__inst2 = 0
+	}
+	if !preset["hits__inst3"] {
+		m.hits__inst3 = 0
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []bool{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []bool{}
+	}
+	if !preset["__effect1_live"] {
+		m.__effect1_live = []string{}
+	}
+	if !preset["__effect1_desired"] {
+		m.__effect1_desired = []string{}
+	}
+	if !preset["__effect1_paths"] {
+		m.__effect1_paths = []string{}
+	}
+	if !preset["__effect1_livePaths"] {
+		m.__effect1_livePaths = []string{}
+	}
+	if !preset["__effect1_pathAt"] {
+		m.__effect1_pathAt = map[string]int{}
+	}
+	if !preset["__effect1_liveAt"] {
+		m.__effect1_liveAt = map[string]int{}
+	}
+	if !preset["__effect2_live"] {
+		m.__effect2_live = []bool{}
+	}
+	if !preset["__effect2_desired"] {
+		m.__effect2_desired = []bool{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
+	if !preset["__focusLoop1_cursor"] {
+		m.__focusLoop1_cursor = 0
+	}
 	m.__focusSettle()
 	m.__effects0_settle()
 	return m
@@ -255,15 +321,34 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
-	} else {
-		__lt3 = max(1, (int(px) / 16))
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
 	}
-	return __lt3
+	return __out
+}
+
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
+	} else {
+		__lt3 = 16.0
+	}
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -303,14 +388,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -374,7 +459,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -387,7 +472,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -401,20 +486,31 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m *Model) __effect0_enter() {
@@ -434,24 +530,36 @@ func (m *Model) __effect0_enter() {
 
 func (m *Model) __effect1_enter() {
 	m.__effect1_desired = []string{}
-	for __copy0, _ := range m.names {
+	m.__effect1_paths = []string{}
+	m.__effect1_pathAt = map[string]int{}
+	for _, n := range __identified0(m.names) {
 		__effect1_fresh := true
-		if len(m.__effect1_desired) < len(m.__effect1_live) {
-			__effect1_fresh = (m.__effect1_live[len(m.__effect1_desired)] != fmt.Sprint(__copy0))
+		var __effect1_at int = func() int {
+			if __v, __ok := m.__effect1_liveAt[n.Id]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect1_at >= 0 {
+			__effect1_fresh = (m.__effect1_live[__effect1_at] != n.Id)
 		}
+		m.__effect1_pathAt[n.Id] = len(m.__effect1_paths)
+		m.__effect1_paths = append(m.__effect1_paths, n.Id)
 		if __effect1_fresh {
 			var __cell1_hits__inst1 int = func() int {
-				if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.hits__inst1[n.Id]; __ok {
 					return __v
 				}
 				return 0
 			}()
 			__cell1_hits__inst1 = 0
-			m.hits__inst1[fmt.Sprint(__copy0)] = __cell1_hits__inst1
+			m.hits__inst1[n.Id] = __cell1_hits__inst1
 		}
-		m.__effect1_desired = append(m.__effect1_desired, fmt.Sprint(__copy0))
+		m.__effect1_desired = append(m.__effect1_desired, n.Id)
 	}
 	m.__effect1_live = m.__effect1_desired
+	m.__effect1_livePaths = m.__effect1_paths
+	m.__effect1_liveAt = m.__effect1_pathAt
 }
 
 func (m *Model) __effect2_enter() {
@@ -494,7 +602,7 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) __focusLoop1_len() int {
 	var __focusCount int = 0
-	for range m.names {
+	for range __identified0(m.names) {
 		__focusCount = (__focusCount + 1)
 	}
 	return __focusCount
@@ -745,23 +853,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 1 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos1 := 0
-				for __copy0, n := range m.names {
+				for __copy0, n := range __identified0(m.names) {
 					_ = __copy0
 					_ = n
 					if m.__focusLoop1_cursor == __focusPos1 {
 						var __cell2_hits__inst1 int = func() int {
-							if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.hits__inst1[n.Id]; __ok {
 								return __v
 							}
 							return 0
 						}()
 						__cell2_hits__inst1 = (func() int {
-							if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.hits__inst1[n.Id]; __ok {
 								return __v
 							}
 							return 0
 						}() + 1)
-						m.hits__inst1[fmt.Sprint(__copy0)] = __cell2_hits__inst1
+						m.hits__inst1[n.Id] = __cell2_hits__inst1
 						return
 					}
 					__focusPos1++
@@ -825,7 +933,7 @@ func (m *Model) hit__reach1Click() {
 			pos int
 		}
 		__focusPos1 := 0
-		for __copy0, n := range m.names {
+		for __copy0, n := range __identified0(m.names) {
 			_ = __copy0
 			_ = n
 			__at = append(__at, struct {
@@ -865,7 +973,7 @@ func (m *Model) hit__reach1ClickAt(key string) {
 			pos int
 		}
 		__focusPos1 := 0
-		for __copy0, n := range m.names {
+		for __copy0, n := range __identified0(m.names) {
 			_ = __copy0
 			_ = n
 			__at = append(__at, struct {
@@ -933,9 +1041,9 @@ func (m *Model) done__reach1Present() bool {
 }
 
 func (m *Model) done__reach0PresentAt(key string) bool {
-	for __copy0, _ := range m.names {
+	for __copy0, n := range __identified0(m.names) {
 		if func() int {
-			if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.hits__inst1[n.Id]; __ok {
 				return __v
 			}
 			return 0
@@ -958,7 +1066,8 @@ func (m Model) View() tea.View {
 	if m.show {
 		var part0_0Parts []string
 		var part0_0Part_0 string
-		part0_0Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint((("[one:" + fmt.Sprint(m.hits__inst0)) + "]")))
+		part0_0Part_0Text := fmt.Sprint((("[one:" + fmt.Sprint(m.hits__inst0)) + "]"))
+		part0_0Part_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_0Part_0Text).Render(part0_0Part_0Text)
 		part0_0Parts = append(part0_0Parts, part0_0Part_0)
 		var part0_0Part_1 string
 		part0_0Part_1Focused := (m.__focusID == 0) && m.__focusShown()
@@ -966,12 +1075,14 @@ func (m Model) View() tea.View {
 		if part0_0Part_1Focused {
 			part0_0Part_1Prefix = ">"
 		}
-		part0_0Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Part_1Prefix + " " + fmt.Sprint("hit"))
+		part0_0Part_1Text := part0_0Part_1Prefix + " " + fmt.Sprint("hit")
+		part0_0Part_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_0Part_1Focused), tui.Avail(m.width), part0_0Part_1Text).Render(part0_0Part_1Text)
 		part0_0Part_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_0Part_1)
 		part0_0Parts = append(part0_0Parts, part0_0Part_1)
 		var part0_0Part_2 string
 		if m.hits__inst0 >= 2 {
-			part0_0Part_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("done"))
+			part0_0Part_2Text := fmt.Sprint("done")
+			part0_0Part_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_0Part_2Text).Render(part0_0Part_2Text)
 		}
 		if part0_0Part_2 != "" {
 			part0_0Parts = append(part0_0Parts, part0_0Part_2)
@@ -985,16 +1096,17 @@ func (m Model) View() tea.View {
 	__focusPos1 := 0
 	_ = __focusPos1
 	var part0_1Items []string
-	for __copy0, n := range m.names {
+	for __copy0, n := range __identified0(m.names) {
 		_ = __copy0
 		_ = n
 		var part0_1Item_0 string
-		part0_1Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint((((("[" + n) + ":") + fmt.Sprint(func() int {
-			if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+		part0_1Item_0Text := fmt.Sprint((((("[" + n.Elem) + ":") + fmt.Sprint(func() int {
+			if __v, __ok := m.hits__inst1[n.Id]; __ok {
 				return __v
 			}
 			return 0
-		}())) + "]")))
+		}())) + "]"))
+		part0_1Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_1Item_0Text).Render(part0_1Item_0Text)
 		part0_1Items = append(part0_1Items, part0_1Item_0)
 		var part0_1Item_1 string
 		part0_1Item_1Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1)) && m.__focusShown()
@@ -1002,18 +1114,20 @@ func (m Model) View() tea.View {
 		if part0_1Item_1Focused {
 			part0_1Item_1Prefix = ">"
 		}
-		part0_1Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1Item_1Prefix + " " + fmt.Sprint("hit"))
+		part0_1Item_1Text := part0_1Item_1Prefix + " " + fmt.Sprint("hit")
+		part0_1Item_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_1Item_1Focused), tui.Avail(m.width), part0_1Item_1Text).Render(part0_1Item_1Text)
 		part0_1Item_1 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_1Item_1)
 		__focusPos1++
 		part0_1Items = append(part0_1Items, part0_1Item_1)
 		var part0_1Item_2 string
 		if func() int {
-			if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+			if __v, __ok := m.hits__inst1[n.Id]; __ok {
 				return __v
 			}
 			return 0
 		}() >= 2 {
-			part0_1Item_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("done"))
+			part0_1Item_2Text := fmt.Sprint("done")
+			part0_1Item_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_1Item_2Text).Render(part0_1Item_2Text)
 		}
 		if part0_1Item_2 != "" {
 			part0_1Items = append(part0_1Items, part0_1Item_2)
@@ -1029,7 +1143,8 @@ func (m Model) View() tea.View {
 	if m.open__inst0 {
 		var part0_2_0Parts []string
 		var part0_2_0Part_0 string
-		part0_2_0Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint((("[in:" + fmt.Sprint(m.hits__inst2)) + "]")))
+		part0_2_0Part_0Text := fmt.Sprint((("[in:" + fmt.Sprint(m.hits__inst2)) + "]"))
+		part0_2_0Part_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_2_0Part_0Text).Render(part0_2_0Part_0Text)
 		part0_2_0Parts = append(part0_2_0Parts, part0_2_0Part_0)
 		var part0_2_0Part_1 string
 		part0_2_0Part_1Focused := (m.__focusID == 2) && m.__focusShown()
@@ -1037,12 +1152,14 @@ func (m Model) View() tea.View {
 		if part0_2_0Part_1Focused {
 			part0_2_0Part_1Prefix = ">"
 		}
-		part0_2_0Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2_0Part_1Prefix + " " + fmt.Sprint("hit"))
+		part0_2_0Part_1Text := part0_2_0Part_1Prefix + " " + fmt.Sprint("hit")
+		part0_2_0Part_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_2_0Part_1Focused), tui.Avail(m.width), part0_2_0Part_1Text).Render(part0_2_0Part_1Text)
 		part0_2_0Part_1 = m.__clicks.Mark(snglStop{slot: 2, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_2_0Part_1)
 		part0_2_0Parts = append(part0_2_0Parts, part0_2_0Part_1)
 		var part0_2_0Part_2 string
 		if m.hits__inst2 >= 2 {
-			part0_2_0Part_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("done"))
+			part0_2_0Part_2Text := fmt.Sprint("done")
+			part0_2_0Part_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_2_0Part_2Text).Render(part0_2_0Part_2Text)
 		}
 		if part0_2_0Part_2 != "" {
 			part0_2_0Parts = append(part0_2_0Parts, part0_2_0Part_2)
@@ -1053,7 +1170,8 @@ func (m Model) View() tea.View {
 		part0_2Children = append(part0_2Children, part0_2_0)
 	}
 	var part0_2_1 string
-	part0_2_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint((("[fixed:" + fmt.Sprint(m.hits__inst3)) + "]")))
+	part0_2_1Text := fmt.Sprint((("[fixed:" + fmt.Sprint(m.hits__inst3)) + "]"))
+	part0_2_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_2_1Text).Render(part0_2_1Text)
 	part0_2Children = append(part0_2Children, part0_2_1)
 	var part0_2_2 string
 	part0_2_2Focused := (m.__focusID == 3) && m.__focusShown()
@@ -1061,12 +1179,14 @@ func (m Model) View() tea.View {
 	if part0_2_2Focused {
 		part0_2_2Prefix = ">"
 	}
-	part0_2_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2_2Prefix + " " + fmt.Sprint("hit"))
+	part0_2_2Text := part0_2_2Prefix + " " + fmt.Sprint("hit")
+	part0_2_2 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_2_2Focused), tui.Avail(m.width), part0_2_2Text).Render(part0_2_2Text)
 	part0_2_2 = m.__clicks.Mark(snglStop{slot: 3, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_2_2)
 	part0_2Children = append(part0_2Children, part0_2_2)
 	var part0_2_3 string
 	if m.hits__inst3 >= 2 {
-		part0_2_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("done"))
+		part0_2_3Text := fmt.Sprint("done")
+		part0_2_3 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_2_3Text).Render(part0_2_3Text)
 	}
 	if part0_2_3 != "" {
 		part0_2Children = append(part0_2Children, part0_2_3)
@@ -1102,6 +1222,7 @@ import (
 func TestEachSiteIsItsOwn(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if c.show {
 		c.hit__reach0Click()
 		if !((c.hits__inst0 == 1)) { t.Errorf("assert failed: %s", "(c.hits__inst0 == 1)") }
@@ -1109,10 +1230,10 @@ func TestEachSiteIsItsOwn(t *testing.T) {
 	if (1 < len(c.names)) {
 		c.hit__reach1ClickAt("1")
 		c.hit__reach1ClickAt("1")
-		if !((func() int { if __v, __ok := c.hits__inst1["1"]; __ok { return __v }; return 0 }() == 2)) { t.Errorf("assert failed: %s", "(func() int { if __v, __ok := c.hits__inst1[\"1\"]; __ok { return __v }; return 0 }() == 2)") }
+		if !((func() int { if __v, __ok := c.hits__inst1[__identified0(c.names)[1].Id]; __ok { return __v }; return 0 }() == 2)) { t.Errorf("assert failed: %s", "(func() int { if __v, __ok := c.hits__inst1[__identified0(c.names)[1].Id]; __ok { return __v }; return 0 }() == 2)") }
 		if !(c.done__reach0PresentAt("1")) { t.Errorf("assert failed: %s", "c.done__reach0PresentAt(\"1\")") }
 		if !(!c.done__reach0PresentAt("0")) { t.Errorf("assert failed: %s", "!c.done__reach0PresentAt(\"0\")") }
-		if !(((((("[" + c.names[1]) + ":") + fmt.Sprint(func() int { if __v, __ok := c.hits__inst1["1"]; __ok { return __v }; return 0 }())) + "]") == "[b:2]")) { t.Errorf("assert failed: %s", "(((((\"[\" + c.names[1]) + \":\") + fmt.Sprint(func() int { if __v, __ok := c.hits__inst1[\"1\"]; __ok { return __v }; return 0 }())) + \"]\") == \"[b:2]\")") }
+		if !(((((("[" + c.names[1]) + ":") + fmt.Sprint(func() int { if __v, __ok := c.hits__inst1[__identified0(c.names)[1].Id]; __ok { return __v }; return 0 }())) + "]") == "[b:2]")) { t.Errorf("assert failed: %s", "(((((\"[\" + c.names[1]) + \":\") + fmt.Sprint(func() int { if __v, __ok := c.hits__inst1[__identified0(c.names)[1].Id]; __ok { return __v }; return 0 }())) + \"]\") == \"[b:2]\")") }
 	}
 	if c.show {
 		if !(!c.done__reach1Present()) { t.Errorf("assert failed: %s", "!c.done__reach1Present()") }
@@ -1123,6 +1244,7 @@ func TestEachSiteIsItsOwn(t *testing.T) {
 func TestReachesThroughTwoInstances(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if c.open__inst0 {
 		c.hit__reach2Click()
 		if !((c.hits__inst2 == 1)) { t.Errorf("assert failed: %s", "(c.hits__inst2 == 1)") }
@@ -1137,7 +1259,13 @@ func TestReachesThroughTwoInstances(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -1151,7 +1279,16 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
+
+type Test struct {
+}
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -1167,7 +1304,7 @@ type Model struct {
 	__renderAgain0 bool
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
-	__inst1_live   []*Badge__site1Instance
+	__inst1_live   map[string]*Badge__site1Instance
 	__rendering1   bool
 	__renderAgain1 bool
 	__slot2        []fyne.CanvasObject
@@ -1179,12 +1316,6 @@ type Model struct {
 	__slot3_at     fyne.CanvasObject
 	__rendering3   bool
 	__renderAgain3 bool
-	__slot4        []fyne.CanvasObject
-	__slot4_at     fyne.CanvasObject
-	__slot5        []fyne.CanvasObject
-	__slot5_at     fyne.CanvasObject
-	__slot6        []fyne.CanvasObject
-	__slot6_at     fyne.CanvasObject
 
 	__n0                  *fyne.Container
 	__n1                  *fyne.Container
@@ -1206,37 +1337,103 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.show = true
-	m.names = []string{"a", "b"}
-	m.open__inst0 = true
-	m.hits__inst0 = 0
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__inst0_live = []*Badge__site0Instance{}
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__inst1_live = []*Badge__site1Instance{}
-	m.__rendering1 = false
-	m.__renderAgain1 = false
-	m.__slot2 = nil
-	m.__slot2_at = nil
-	m.__inst2_live = []*Badge__site2Instance{}
-	m.__rendering2 = false
-	m.__renderAgain2 = false
-	m.__slot3 = nil
-	m.__slot3_at = nil
-	m.__rendering3 = false
-	m.__renderAgain3 = false
-	m.__slot4 = nil
-	m.__slot4_at = nil
-	m.__slot5 = nil
-	m.__slot5_at = nil
-	m.__slot6 = nil
-	m.__slot6_at = nil
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["show"] {
+		m.show = true
+	}
+	if !preset["names"] {
+		m.names = []string{"a", "b"}
+	}
+	if !preset["open__inst0"] {
+		m.open__inst0 = true
+	}
+	if !preset["hits__inst0"] {
+		m.hits__inst0 = 0
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__inst0_live"] {
+		m.__inst0_live = []*Badge__site0Instance{}
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__inst1_live"] {
+		m.__inst1_live = map[string]*Badge__site1Instance{}
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
+	if !preset["__slot2"] {
+		m.__slot2 = nil
+	}
+	if !preset["__slot2_at"] {
+		m.__slot2_at = nil
+	}
+	if !preset["__inst2_live"] {
+		m.__inst2_live = []*Badge__site2Instance{}
+	}
+	if !preset["__rendering2"] {
+		m.__rendering2 = false
+	}
+	if !preset["__renderAgain2"] {
+		m.__renderAgain2 = false
+	}
+	if !preset["__slot3"] {
+		m.__slot3 = nil
+	}
+	if !preset["__slot3_at"] {
+		m.__slot3_at = nil
+	}
+	if !preset["__rendering3"] {
+		m.__rendering3 = false
+	}
+	if !preset["__renderAgain3"] {
+		m.__renderAgain3 = false
+	}
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -1306,33 +1503,52 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				}
 				m.__slot1 = nil
 				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-				__inst1_next := []*Badge__site1Instance{}
-				var __inst1_i int = 0
-				for __copy0, n := range m.names {
+				__inst1_next := map[string]*Badge__site1Instance{}
+				__inst1_seen := map[string]int{}
+				for __copy0, n := range __identified0(m.names) {
 					var r *Badge__site1Instance
-					if len(m.__inst1_live) > __inst1_i {
-						r = m.__inst1_live[__inst1_i]
-						r.SetLabel(n)
+					__key2 := fmt.Sprint(n.Id)
+					var __key2_n int = func() int {
+						if __v, __ok := __inst1_seen[__key2]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst1_seen[__key2] = (__key2_n + 1)
+					if __key2_n > 0 {
+						__key2 = ((__key2 + "#") + fmt.Sprint(__key2_n))
+					}
+					if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+						r = func() *Badge__site1Instance {
+							if __v, __ok := m.__inst1_live[__key2]; __ok {
+								return __v
+							}
+							return nil
+						}()
+						r.SetLabel(n.Elem)
 						r.Set__copy(fmt.Sprint(__copy0))
 					} else {
-						if len(m.__inst1_live) > __inst1_i {
-							m.__inst1_live[__inst1_i].Destroy()
+						if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+							func() *Badge__site1Instance {
+								if __v, __ok := m.__inst1_live[__key2]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
-						r__new := newBadge__site1Instance(m, n, fmt.Sprint(__copy0))
+						r__new := newBadge__site1Instance(m, n.Elem, fmt.Sprint(__copy0))
 						r = r__new
 					}
-					__inst1_next = append(__inst1_next, r)
-					__inst1_i = (__inst1_i + 1)
+					__inst1_next[__key2] = r
 					r__el := r.Root
 					m.__list_r(fmt.Sprint(__copy0), r.Root)
 					m.__listInst_r(fmt.Sprint(__copy0), r)
 					fynelayout.InsertBefore(__parent, m.__slot1_at, r__el)
 					m.__slot1 = append(m.__slot1, r__el)
 				}
-				for __inst1_i_d, _ := range m.__inst1_live {
-					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-					if __inst1_i_j >= __inst1_i {
-						m.__inst1_live[__inst1_i_j].Destroy()
+				for __inst1_live_k, __inst1_live_v := range m.__inst1_live {
+					if !func() bool { _, __ok := __inst1_next[__inst1_live_k]; return __ok }() {
+						__inst1_live_v.Destroy()
 					}
 				}
 				m.__inst1_live = __inst1_next
@@ -1425,11 +1641,10 @@ func (m *Model) __snglTeardown() {
 		m.__inst2_live[__inst2_live_dj].Destroy()
 	}
 	m.__inst2_live = []*Badge__site2Instance{}
-	for __inst1_live_di, _ := range m.__inst1_live {
-		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
-		m.__inst1_live[__inst1_live_dj].Destroy()
+	for _, __inst1_live_dv := range m.__inst1_live {
+		__inst1_live_dv.Destroy()
 	}
-	m.__inst1_live = []*Badge__site1Instance{}
+	m.__inst1_live = map[string]*Badge__site1Instance{}
 	for __inst0_live_di, _ := range m.__inst0_live {
 		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
 		m.__inst0_live[__inst0_live_dj].Destroy()
@@ -1634,22 +1849,10 @@ type Badge__site0Instance struct {
 	__prop_label   string
 	hits           int
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
 	__slot4        []fyne.CanvasObject
 	__slot4_at     fyne.CanvasObject
 	__rendering4   bool
 	__renderAgain4 bool
-	__slot5        []fyne.CanvasObject
-	__slot5_at     fyne.CanvasObject
-	__slot6        []fyne.CanvasObject
-	__slot6_at     fyne.CanvasObject
 	shown          *widget.Label
 	hit__reach0    *fynelayout.Button
 	done__reach1   *widget.Label
@@ -1661,15 +1864,9 @@ func newBadge__site0Instance(__model *Model, __a_label string) *Badge__site0Inst
 	c.__prop_label = __a_label
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__rendering4 = false
 	c.__renderAgain4 = false
-	c.__slot5 = nil
-	c.__slot6 = nil
 	c.shown = widget.NewLabel("")
 	c.shown.SetText((((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 	c.hit__reach0 = fynelayout.NewButton("", nil)
@@ -1741,23 +1938,11 @@ type Badge__site1Instance struct {
 	__prop___copy  string
 	hits           int
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
-	__slot4        []fyne.CanvasObject
-	__slot4_at     fyne.CanvasObject
 	__slot5        []fyne.CanvasObject
 	__slot5_at     fyne.CanvasObject
 	__inst3_live   []*__child0Instance
 	__rendering5   bool
 	__renderAgain5 bool
-	__slot6        []fyne.CanvasObject
-	__slot6_at     fyne.CanvasObject
 	shown          *widget.Label
 	hit__reach1    *fynelayout.Button
 }
@@ -1769,16 +1954,10 @@ func newBadge__site1Instance(__model *Model, __a_label string, __a___copy string
 	c.__prop___copy = __a___copy
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	c.__slot5 = nil
 	c.__inst3_live = []*__child0Instance{}
 	c.__rendering5 = false
 	c.__renderAgain5 = false
-	c.__slot6 = nil
 	c.shown = widget.NewLabel("")
 	c.shown.SetText((((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 	c.hit__reach1 = fynelayout.NewButton("", nil)
@@ -1889,18 +2068,6 @@ type Badge__site2Instance struct {
 	__prop_label   string
 	hits           int
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
-	__slot4        []fyne.CanvasObject
-	__slot4_at     fyne.CanvasObject
-	__slot5        []fyne.CanvasObject
-	__slot5_at     fyne.CanvasObject
 	__slot6        []fyne.CanvasObject
 	__slot6_at     fyne.CanvasObject
 	__rendering6   bool
@@ -1916,12 +2083,6 @@ func newBadge__site2Instance(__model *Model, __a_label string) *Badge__site2Inst
 	c.__prop_label = __a_label
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
-	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__rendering6 = false
 	c.__renderAgain6 = false
@@ -1987,20 +2148,6 @@ type __child0Instance struct {
 	__model      *Model
 	__prop___p0  string
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
-	__slot2      []fyne.CanvasObject
-	__slot2_at   fyne.CanvasObject
-	__slot3      []fyne.CanvasObject
-	__slot3_at   fyne.CanvasObject
-	__slot4      []fyne.CanvasObject
-	__slot4_at   fyne.CanvasObject
-	__slot5      []fyne.CanvasObject
-	__slot5_at   fyne.CanvasObject
-	__slot6      []fyne.CanvasObject
-	__slot6_at   fyne.CanvasObject
 	done__reach0 *widget.Label
 }
 
@@ -2009,13 +2156,6 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
-	c.__slot5 = nil
-	c.__slot6 = nil
 	c.done__reach0 = widget.NewLabel("")
 	c.done__reach0.SetText("done")
 	c.__model.__list_done__reach0(c.__prop___p0, c.done__reach0)
@@ -2061,6 +2201,7 @@ import (
 func TestEachSiteIsItsOwn(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if c.show {
 		c.hit__reach0Click()
 		if !((c.bReadHits() == 1)) { t.Errorf("assert failed: %s", "(c.bReadHits() == 1)") }
@@ -2082,6 +2223,7 @@ func TestEachSiteIsItsOwn(t *testing.T) {
 func TestReachesThroughTwoInstances(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if c.open__inst0 {
 		c.hit__reach2Click()
 		if !((c.innerReadHits() == 1)) { t.Errorf("assert failed: %s", "(c.innerReadHits() == 1)") }
@@ -2102,7 +2244,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -2131,7 +2277,16 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
+
+type Test struct {
+}
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -2147,7 +2302,7 @@ type Model struct {
 	__renderAgain0        bool
 	__slot1               []gtk4rt.Handle
 	__slot1_at            gtk4rt.Handle
-	__inst1_live          []*Badge__site1Instance
+	__inst1_live          map[string]*Badge__site1Instance
 	__rendering1          bool
 	__renderAgain1        bool
 	__slot2               []gtk4rt.Handle
@@ -2159,12 +2314,6 @@ type Model struct {
 	__slot3_at            gtk4rt.Handle
 	__rendering3          bool
 	__renderAgain3        bool
-	__slot4               []gtk4rt.Handle
-	__slot4_at            gtk4rt.Handle
-	__slot5               []gtk4rt.Handle
-	__slot5_at            gtk4rt.Handle
-	__slot6               []gtk4rt.Handle
-	__slot6_at            gtk4rt.Handle
 	__n1                  gtk4rt.Handle
 	shown                 gtk4rt.Handle
 	hit__reach3           gtk4rt.Handle
@@ -2185,37 +2334,103 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.show = true
-	m.names = []string{"a", "b"}
-	m.open__inst0 = true
-	m.hits__inst0 = 0
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__inst0_live = []*Badge__site0Instance{}
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__inst1_live = []*Badge__site1Instance{}
-	m.__rendering1 = false
-	m.__renderAgain1 = false
-	m.__slot2 = nil
-	m.__slot2_at = nil
-	m.__inst2_live = []*Badge__site2Instance{}
-	m.__rendering2 = false
-	m.__renderAgain2 = false
-	m.__slot3 = nil
-	m.__slot3_at = nil
-	m.__rendering3 = false
-	m.__renderAgain3 = false
-	m.__slot4 = nil
-	m.__slot4_at = nil
-	m.__slot5 = nil
-	m.__slot5_at = nil
-	m.__slot6 = nil
-	m.__slot6_at = nil
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["show"] {
+		m.show = true
+	}
+	if !preset["names"] {
+		m.names = []string{"a", "b"}
+	}
+	if !preset["open__inst0"] {
+		m.open__inst0 = true
+	}
+	if !preset["hits__inst0"] {
+		m.hits__inst0 = 0
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__inst0_live"] {
+		m.__inst0_live = []*Badge__site0Instance{}
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__inst1_live"] {
+		m.__inst1_live = map[string]*Badge__site1Instance{}
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
+	if !preset["__slot2"] {
+		m.__slot2 = nil
+	}
+	if !preset["__slot2_at"] {
+		m.__slot2_at = nil
+	}
+	if !preset["__inst2_live"] {
+		m.__inst2_live = []*Badge__site2Instance{}
+	}
+	if !preset["__rendering2"] {
+		m.__rendering2 = false
+	}
+	if !preset["__renderAgain2"] {
+		m.__renderAgain2 = false
+	}
+	if !preset["__slot3"] {
+		m.__slot3 = nil
+	}
+	if !preset["__slot3_at"] {
+		m.__slot3_at = nil
+	}
+	if !preset["__rendering3"] {
+		m.__rendering3 = false
+	}
+	if !preset["__renderAgain3"] {
+		m.__renderAgain3 = false
+	}
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -2285,33 +2500,52 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				}
 				m.__slot1 = nil
 				m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-				__inst1_next := []*Badge__site1Instance{}
-				var __inst1_i int = 0
-				for __copy0, n := range m.names {
+				__inst1_next := map[string]*Badge__site1Instance{}
+				__inst1_seen := map[string]int{}
+				for __copy0, n := range __identified0(m.names) {
 					var r *Badge__site1Instance
-					if len(m.__inst1_live) > __inst1_i {
-						r = m.__inst1_live[__inst1_i]
-						r.SetLabel(n)
+					__key2 := fmt.Sprint(n.Id)
+					var __key2_n int = func() int {
+						if __v, __ok := __inst1_seen[__key2]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__inst1_seen[__key2] = (__key2_n + 1)
+					if __key2_n > 0 {
+						__key2 = ((__key2 + "#") + fmt.Sprint(__key2_n))
+					}
+					if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+						r = func() *Badge__site1Instance {
+							if __v, __ok := m.__inst1_live[__key2]; __ok {
+								return __v
+							}
+							return nil
+						}()
+						r.SetLabel(n.Elem)
 						r.Set__copy(fmt.Sprint(__copy0))
 					} else {
-						if len(m.__inst1_live) > __inst1_i {
-							m.__inst1_live[__inst1_i].Destroy()
+						if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
+							func() *Badge__site1Instance {
+								if __v, __ok := m.__inst1_live[__key2]; __ok {
+									return __v
+								}
+								return nil
+							}().Destroy()
 						}
-						r__new := newBadge__site1Instance(m, n, fmt.Sprint(__copy0))
+						r__new := newBadge__site1Instance(m, n.Elem, fmt.Sprint(__copy0))
 						r = r__new
 					}
-					__inst1_next = append(__inst1_next, r)
-					__inst1_i = (__inst1_i + 1)
+					__inst1_next[__key2] = r
 					r__el := r.Root
 					m.__list_r(fmt.Sprint(__copy0), r.Root)
 					m.__listInst_r(fmt.Sprint(__copy0), r)
 					gtk4rt.InsertBefore(parent, m.__slot1_at, r__el)
 					m.__slot1 = append(m.__slot1, r__el)
 				}
-				for __inst1_i_d, _ := range m.__inst1_live {
-					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-					if __inst1_i_j >= __inst1_i {
-						m.__inst1_live[__inst1_i_j].Destroy()
+				for __inst1_live_k, __inst1_live_v := range m.__inst1_live {
+					if !func() bool { _, __ok := __inst1_next[__inst1_live_k]; return __ok }() {
+						__inst1_live_v.Destroy()
 					}
 				}
 				m.__inst1_live = __inst1_next
@@ -2405,11 +2639,10 @@ func (m *Model) __snglTeardown() {
 		m.__inst2_live[__inst2_live_dj].Destroy()
 	}
 	m.__inst2_live = []*Badge__site2Instance{}
-	for __inst1_live_di, _ := range m.__inst1_live {
-		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
-		m.__inst1_live[__inst1_live_dj].Destroy()
+	for _, __inst1_live_dv := range m.__inst1_live {
+		__inst1_live_dv.Destroy()
 	}
-	m.__inst1_live = []*Badge__site1Instance{}
+	m.__inst1_live = map[string]*Badge__site1Instance{}
 	for __inst0_live_di, _ := range m.__inst0_live {
 		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
 		m.__inst0_live[__inst0_live_dj].Destroy()
@@ -2430,22 +2663,10 @@ type Badge__site0Instance struct {
 	__prop_label   string
 	hits           int
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
 	__slot4        []gtk4rt.Handle
 	__slot4_at     gtk4rt.Handle
 	__rendering4   bool
 	__renderAgain4 bool
-	__slot5        []gtk4rt.Handle
-	__slot5_at     gtk4rt.Handle
-	__slot6        []gtk4rt.Handle
-	__slot6_at     gtk4rt.Handle
 	shown          gtk4rt.Handle
 	hit__reach0    gtk4rt.Handle
 	done__reach1   gtk4rt.Handle
@@ -2457,15 +2678,9 @@ func newBadge__site0Instance(__model *Model, __a_label string) *Badge__site0Inst
 	c.__prop_label = __a_label
 	c.hits = 0
 	c.__root = gtk4rt.ContentsNew()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__rendering4 = false
 	c.__renderAgain4 = false
-	c.__slot5 = nil
-	c.__slot6 = nil
 	c.shown = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 	gtk4rt.LabelSetXAlign(c.shown, 0.0)
@@ -2535,26 +2750,8 @@ func (c *Badge__site0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
 	if c.__slot4_at != nil {
 		gtk4rt.Release(c.__slot4_at)
-	}
-	if c.__slot5_at != nil {
-		gtk4rt.Release(c.__slot5_at)
-	}
-	if c.__slot6_at != nil {
-		gtk4rt.Release(c.__slot6_at)
 	}
 }
 
@@ -2566,23 +2763,11 @@ type Badge__site1Instance struct {
 	__prop___copy  string
 	hits           int
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
-	__slot4        []gtk4rt.Handle
-	__slot4_at     gtk4rt.Handle
 	__slot5        []gtk4rt.Handle
 	__slot5_at     gtk4rt.Handle
 	__inst3_live   []*__child0Instance
 	__rendering5   bool
 	__renderAgain5 bool
-	__slot6        []gtk4rt.Handle
-	__slot6_at     gtk4rt.Handle
 	shown          gtk4rt.Handle
 	hit__reach1    gtk4rt.Handle
 }
@@ -2594,16 +2779,10 @@ func newBadge__site1Instance(__model *Model, __a_label string, __a___copy string
 	c.__prop___copy = __a___copy
 	c.hits = 0
 	c.__root = gtk4rt.ContentsNew()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
 	c.__slot5 = nil
 	c.__inst3_live = []*__child0Instance{}
 	c.__rendering5 = false
 	c.__renderAgain5 = false
-	c.__slot6 = nil
 	c.shown = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 	gtk4rt.LabelSetXAlign(c.shown, 0.0)
@@ -2712,26 +2891,8 @@ func (c *Badge__site1Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
-	}
 	if c.__slot5_at != nil {
 		gtk4rt.Release(c.__slot5_at)
-	}
-	if c.__slot6_at != nil {
-		gtk4rt.Release(c.__slot6_at)
 	}
 }
 
@@ -2742,18 +2903,6 @@ type Badge__site2Instance struct {
 	__prop_label   string
 	hits           int
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
-	__slot4        []gtk4rt.Handle
-	__slot4_at     gtk4rt.Handle
-	__slot5        []gtk4rt.Handle
-	__slot5_at     gtk4rt.Handle
 	__slot6        []gtk4rt.Handle
 	__slot6_at     gtk4rt.Handle
 	__rendering6   bool
@@ -2769,12 +2918,6 @@ func newBadge__site2Instance(__model *Model, __a_label string) *Badge__site2Inst
 	c.__prop_label = __a_label
 	c.hits = 0
 	c.__root = gtk4rt.ContentsNew()
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
-	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__rendering6 = false
 	c.__renderAgain6 = false
@@ -2840,24 +2983,6 @@ func (c *Badge__site2Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
-	}
-	if c.__slot5_at != nil {
-		gtk4rt.Release(c.__slot5_at)
-	}
 	if c.__slot6_at != nil {
 		gtk4rt.Release(c.__slot6_at)
 	}
@@ -2869,20 +2994,6 @@ type __child0Instance struct {
 	__model      *Model
 	__prop___p0  string
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
-	__slot2      []gtk4rt.Handle
-	__slot2_at   gtk4rt.Handle
-	__slot3      []gtk4rt.Handle
-	__slot3_at   gtk4rt.Handle
-	__slot4      []gtk4rt.Handle
-	__slot4_at   gtk4rt.Handle
-	__slot5      []gtk4rt.Handle
-	__slot5_at   gtk4rt.Handle
-	__slot6      []gtk4rt.Handle
-	__slot6_at   gtk4rt.Handle
 	done__reach0 gtk4rt.Handle
 }
 
@@ -2890,13 +3001,6 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
-	c.__slot4 = nil
-	c.__slot5 = nil
-	c.__slot6 = nil
 	c.done__reach0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.done__reach0, "done")
 	gtk4rt.LabelSetXAlign(c.done__reach0, 0.0)
@@ -2920,27 +3024,6 @@ func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
-	}
-	if c.__slot5_at != nil {
-		gtk4rt.Release(c.__slot5_at)
-	}
-	if c.__slot6_at != nil {
-		gtk4rt.Release(c.__slot6_at)
 	}
 }
 
@@ -3154,6 +3237,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -3162,6 +3246,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.key
 import androidx.compose.material3.Text
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.LocalTextStyle
@@ -3171,6 +3256,17 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.semantics.semantics
+
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -3184,14 +3280,18 @@ val SnglPresent = mutableStateMapOf<Any, String>()
 
 val SnglInstances = mutableMapOf<String, Map<String, (List<Any?>) -> Any?>>()
 
-class MainScreenState {
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
     init { SnglPresent.clear() }
     init { SnglInstances.clear() }
-    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(snglFlexShare)
-    var show by mutableStateOf(true)
-    val names = mutableStateListOf("a", "b")
-    var open__inst0 by mutableStateOf(true)
-    var hits__inst0 by mutableStateOf(0)
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
+    var show by mutableStateOf(__snglPre(__pre, "show") { true })
+    val names = if ("names" in __pre) (__pre["names"] as List<String>).toMutableStateList() else mutableStateListOf("a", "b")
+    var open__inst0 by mutableStateOf(__snglPre(__pre, "open__inst0") { true })
+    var hits__inst0 by mutableStateOf(__snglPre(__pre, "hits__inst0") { 0 })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -3202,8 +3302,10 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
         if (state.show) {
             Badge__site0(label = "one", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __sngl = "b")
         }
-        for ((__copy0, n) in state.names.withIndex()) {
-            Badge__site1(label = n, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __copy = __copy0.toString(), __sngl = "r[" + __copy0.toString() + "]")
+        for ((__copy0, n) in __identified0(state.names).withIndex()) {
+            key(n.id) {
+                Badge__site1(label = n.elem, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, __copy = __copy0.toString(), __sngl = "r[" + __copy0.toString() + "]")
+            }
         }
         Column(modifier = Modifier.snglFlexible(false)) {
             if (state.open__inst0) {
@@ -3227,10 +3329,11 @@ fun Badge__site0(label: String = "", __ctx_flexShare: (Float) -> androidx.compos
     var hits by remember { mutableStateOf(0) }
 
     DisposableEffect(__sngl) {
-        SnglInstances[__sngl] = mapOf<String, (List<Any?>) -> Any?>(
+        val __entry = mapOf<String, (List<Any?>) -> Any?>(
             "hits" to { _ -> hits },
         )
-        onDispose { SnglInstances.remove(__sngl) }
+        SnglInstances[__sngl] = __entry
+        onDispose { if (SnglInstances[__sngl] === __entry) SnglInstances.remove(__sngl) }
     }
 
     Text(text = (((("[" + label) + ":") + hits.toString()) + "]"), modifier = Modifier.testTag("shown"), style = LocalTextStyle.current.merge(TextStyle.Default))
@@ -3249,10 +3352,11 @@ fun Badge__site1(label: String = "", __ctx_flexShare: (Float) -> androidx.compos
     var hits by remember { mutableStateOf(0) }
 
     DisposableEffect(__sngl) {
-        SnglInstances[__sngl] = mapOf<String, (List<Any?>) -> Any?>(
+        val __entry = mapOf<String, (List<Any?>) -> Any?>(
             "hits" to { _ -> hits },
         )
-        onDispose { SnglInstances.remove(__sngl) }
+        SnglInstances[__sngl] = __entry
+        onDispose { if (SnglInstances[__sngl] === __entry) SnglInstances.remove(__sngl) }
     }
 
     Text(text = (((("[" + label) + ":") + hits.toString()) + "]"), modifier = Modifier.testTag("shown"), style = LocalTextStyle.current.merge(TextStyle.Default))
@@ -3271,10 +3375,11 @@ fun Badge__site2(label: String = "", __ctx_flexShare: (Float) -> androidx.compos
     var hits by remember { mutableStateOf(0) }
 
     DisposableEffect(__sngl) {
-        SnglInstances[__sngl] = mapOf<String, (List<Any?>) -> Any?>(
+        val __entry = mapOf<String, (List<Any?>) -> Any?>(
             "hits" to { _ -> hits },
         )
-        onDispose { SnglInstances.remove(__sngl) }
+        SnglInstances[__sngl] = __entry
+        onDispose { if (SnglInstances[__sngl] === __entry) SnglInstances.remove(__sngl) }
     }
 
     Text(text = (((("[" + label) + ":") + hits.toString()) + "]"), modifier = Modifier.testTag("shown"), style = LocalTextStyle.current.merge(TextStyle.Default))
@@ -3286,6 +3391,21 @@ fun Badge__site2(label: String = "", __ctx_flexShare: (Float) -> androidx.compos
     if ((hits >= 2)) {
         Text(text = "done", modifier = Modifier.testTag("done"), style = LocalTextStyle.current.merge(TextStyle.Default))
     }
+}
+
+fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_c6a818>()
+    for (__x in __xs) {
+    	var __id = __x.replace("#", "##")
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_c6a818(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglFlexShare.kt --
 package test.sngl.app
@@ -3526,18 +3646,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { show: true, names: ["a", "b"], open__inst0: true, hits__inst0: 0 };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.hit__reach3Click = () => $1.click();
   state.hit__reach0Click = () => document.querySelector('[data-sngl-id="hit__reach0"]').click();
   state.hit__reach0ClickAt = (k) => document.querySelector('[data-sngl-id="hit__reach0"][data-sngl-copy="' + k + '"]').click();
@@ -3583,6 +3706,24 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
+      ;
+      let __id = __x.replaceAll("#", "##");
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
+  }
   function __snglTeardown() {
     for (const [__inst5_live_di, _] of __inst5_live.entries()) {
       ;
@@ -3591,13 +3732,12 @@ window.__sngl_boot = () => {
     }
     ;
     __inst5_live = [];
-    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+    for (const [__inst3_live_dk, __inst3_live_dv] of __inst3_live.entries()) {
       ;
-      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
-      __inst3_live[__inst3_live_dj].__destroy();
+      __inst3_live_dv.__destroy();
     }
     ;
-    __inst3_live = [];
+    __inst3_live = /* @__PURE__ */ new Map([]);
     for (const [__inst1_live_di, _] of __inst1_live.entries()) {
       ;
       let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
@@ -3607,7 +3747,7 @@ window.__sngl_boot = () => {
     __inst1_live = [];
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { __snglTeardown });
+    Object.assign(window, { __identified0, __snglTeardown });
   }
   function __cf_badge__site0(props) {
     const __root = document.createElement("div");
@@ -3615,15 +3755,9 @@ window.__sngl_boot = () => {
     let label = props.label ?? "";
     let __prop_label = label;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
+    let __slot4 = [];
     let __rendering4 = false;
     let __renderAgain4 = false;
-    let __slot52 = [];
-    let __slot62 = [];
     function __set_label(__v) {
       __prop_label = __v;
       shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
@@ -3637,9 +3771,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain4) {
             __renderAgain4 = false;
-            let __place7_prev = __slot42;
+            let __place7_prev = __slot4;
             let __place7_i = 0;
-            __slot42 = [];
+            __slot4 = [];
             if (hits >= 2) {
               let done__reach1 = document.createElement("span");
               done__reach1.setAttribute("data-sngl-id", "done__reach1");
@@ -3653,10 +3787,10 @@ window.__sngl_boot = () => {
               } else {
                 parent.insertBefore(done__reach1, __place7_i_ref0);
               }
-              __slot42.push(done__reach1);
+              __slot4.push(done__reach1);
             }
             for (const __place7_prev_e of __place7_prev) {
-              if (__slot42.indexOf(__place7_prev_e) < 0) {
+              if (__slot4.indexOf(__place7_prev_e) < 0) {
                 parent.removeChild(__place7_prev_e);
               }
             }
@@ -3706,16 +3840,10 @@ window.__sngl_boot = () => {
     let __prop_label = label;
     let __prop___copy = __copy;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
+    let __slot5 = [];
     let __inst9_live = [];
     let __rendering5 = false;
     let __renderAgain5 = false;
-    let __slot62 = [];
     function __set_label(__v) {
       __prop_label = __v;
       shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
@@ -3736,9 +3864,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain5) {
             __renderAgain5 = false;
-            let __place8_prev = __slot52;
+            let __place8_prev = __slot5;
             let __place8_i = 0;
-            __slot52 = [];
+            __slot5 = [];
             let __inst9_next = [];
             let __inst9_i = 0;
             if (hits >= 2) {
@@ -3765,7 +3893,7 @@ window.__sngl_boot = () => {
               } else {
                 parent.insertBefore(__n2__el, __place8_i_ref0);
               }
-              __slot52.push(__n2__el);
+              __slot5.push(__n2__el);
             }
             for (const [__inst9_i_d, _] of __inst9_live.entries()) {
               let __inst9_i_j = __inst9_live.length - 1 - __inst9_i_d;
@@ -3775,7 +3903,7 @@ window.__sngl_boot = () => {
             }
             __inst9_live = __inst9_next;
             for (const __place8_prev_e of __place8_prev) {
-              if (__slot52.indexOf(__place8_prev_e) < 0) {
+              if (__slot5.indexOf(__place8_prev_e) < 0) {
                 parent.removeChild(__place8_prev_e);
               }
             }
@@ -3833,13 +3961,7 @@ window.__sngl_boot = () => {
     let label = props.label ?? "";
     let __prop_label = label;
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
+    let __slot6 = [];
     let __rendering6 = false;
     let __renderAgain6 = false;
     function __set_label(__v) {
@@ -3855,9 +3977,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain6) {
             __renderAgain6 = false;
-            let __place10_prev = __slot62;
+            let __place10_prev = __slot6;
             let __place10_i = 0;
-            __slot62 = [];
+            __slot6 = [];
             if (hits >= 2) {
               let done = document.createElement("span");
               done.setAttribute("data-sngl-id", "done");
@@ -3871,10 +3993,10 @@ window.__sngl_boot = () => {
               } else {
                 parent.insertBefore(done, __place10_i_ref0);
               }
-              __slot62.push(done);
+              __slot6.push(done);
             }
             for (const __place10_prev_e of __place10_prev) {
-              if (__slot62.indexOf(__place10_prev_e) < 0) {
+              if (__slot6.indexOf(__place10_prev_e) < 0) {
                 parent.removeChild(__place10_prev_e);
               }
             }
@@ -3921,13 +4043,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       done__reach0.setAttribute("data-sngl-copy", __prop___p0);
@@ -3949,7 +4064,7 @@ window.__sngl_boot = () => {
   var __rendering0 = false;
   var __renderAgain0 = false;
   var __slot1 = [];
-  var __inst3_live = [];
+  var __inst3_live = /* @__PURE__ */ new Map([]);
   var __rendering1 = false;
   var __renderAgain1 = false;
   var __slot2 = [];
@@ -3959,9 +4074,6 @@ window.__sngl_boot = () => {
   var __slot3 = [];
   var __rendering3 = false;
   var __renderAgain3 = false;
-  var __slot4 = [];
-  var __slot5 = [];
-  var __slot6 = [];
   function __renderSlot0(parent) {
     if (__rendering0) {
       __renderAgain0 = true;
@@ -4033,23 +4145,28 @@ window.__sngl_boot = () => {
           let __place2_prev = __slot1;
           let __place2_i = 0;
           __slot1 = [];
-          let __inst3_next = [];
-          let __inst3_i = 0;
-          for (const [__copy0, n] of state.names.entries()) {
+          let __inst3_next = /* @__PURE__ */ new Map([]);
+          let __inst3_seen = /* @__PURE__ */ new Map([]);
+          for (const [__copy0, n] of __identified0(state.names).entries()) {
             let r = null;
-            if (__inst3_live.length > __inst3_i) {
-              r = __inst3_live[__inst3_i];
-              r.__set_label(n);
+            let __key4 = String(n.id);
+            let __key4_n = __inst3_seen.has(__key4) ? __inst3_seen.get(__key4) : 0;
+            __inst3_seen.set(__key4, __key4_n + 1);
+            if (__key4_n > 0) {
+              __key4 = __key4 + "#" + String(__key4_n);
+            }
+            if (__inst3_live.has(__key4)) {
+              r = __inst3_live.has(__key4) ? __inst3_live.get(__key4) : null;
+              r.__set_label(n.elem);
               r.__set___copy(String(__copy0));
             } else {
-              if (__inst3_live.length > __inst3_i) {
-                __inst3_live[__inst3_i].__destroy();
+              if (__inst3_live.has(__key4)) {
+                (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
-              let r__new = __cf_badge__site1({ label: n, __copy: String(__copy0) });
+              let r__new = __cf_badge__site1({ label: n.elem, __copy: String(__copy0) });
               r = r__new;
             }
-            __inst3_next.push(r);
-            __inst3_i = __inst3_i + 1;
+            __inst3_next.set(__key4, r);
             let r__el = r.__root;
             r__el.setAttribute("data-sngl-instance", "r");
             r__el.setAttribute("data-sngl-copy", String(__copy0));
@@ -4064,10 +4181,9 @@ window.__sngl_boot = () => {
             }
             __slot1.push(r__el);
           }
-          for (const [__inst3_i_d, _] of __inst3_live.entries()) {
-            let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
-            if (__inst3_i_j >= __inst3_i) {
-              __inst3_live[__inst3_i_j].__destroy();
+          for (const [__inst3_live_k, __inst3_live_v] of __inst3_live.entries()) {
+            if (!__inst3_next.has(__inst3_live_k)) {
+              __inst3_live_v.__destroy();
             }
           }
           __inst3_live = __inst3_next;
@@ -4204,16 +4320,15 @@ window.__sngl_boot = () => {
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0b767c023204b9b8fd9d37c6b4598f83
+pass sha256:f9f193db9f96e2bb52261d0f7b5d3b5e
 -- run/go/fyne --
-pass sha256:562f198cee52322f137566c6c98a1541
+pass sha256:20a360274b3c1377ad4fae0cb2b29d31
 -- run/go/gtk4 --
-pass sha256:4845650ed13047904d3ddeadb7f4336e
+pass sha256:b65f0bd4920f660f6f55ad15bd428586
 -- run/kotlin/android --
-pass sha256:2b55cf0aa1d4661c1eb8eb0273689198
+pass sha256:7aa818aaa9b7d27103a0fecabb1f4ab4
 -- run/none/html --
-pass sha256:20f3f6e032a875883b0e0eda58333b6c
+pass sha256:66ec403d2ce8240605c304298e58d823

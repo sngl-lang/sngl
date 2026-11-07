@@ -2,6 +2,8 @@ package lower
 
 import (
 	"slices"
+	"strconv"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -186,11 +188,40 @@ func bodyHasEmitFor(stmts []ir.Stmt, name string) bool {
 // rewritePropMutationsToEmit rewrites every Assign/Toggle targeting propName
 // in comp.Body and comp.Funcs to emit the corresponding event instead.
 func rewritePropMutationsToEmit(comp *ir.Component, propName string, propType *ir.Type) {
+	prop := propRef{name: propName}
+	for _, p := range comp.Props {
+		if p.Name == propName {
+			prop.sym = p.Sym
+		}
+	}
+	n := 0
 	var walk func([]ir.Stmt) []ir.Stmt
 	walk = func(stmts []ir.Stmt) []ir.Stmt {
-		out := make([]ir.Stmt, len(stmts))
+		out := make([]ir.Stmt, 0, len(stmts))
+		// What the body wrote last, which a read after it in this block
+		// reads: the write is a report the caller answers in its own time,
+		// and a component built at run time on android, whose caller writes
+		// the prop back at its next recomposition, read in `value = x;
+		// change(value)` the value it held before.
+		// Held in a local only where something after it reads it, since a
+		// handler's local is declared again wherever the handler is spliced.
+		var wrote *ir.Var
 		for i, s := range stmts {
-			out[i] = rewriteStmtPropMutation(s, propName, propType, walk)
+			if wrote != nil {
+				readWritten(s, prop, wrote)
+			}
+			if tmp, emit, ok := propMutation(s, comp.Name, prop, propType, wrote, &n); ok {
+				if readsProp(stmts[i+1:], prop) {
+					out = append(out, tmp, emit)
+					wrote = tmp.Sym
+				} else {
+					emit.Args[0].Value = tmp.Init
+					out = append(out, emit)
+					wrote = nil
+				}
+				continue
+			}
+			out = append(out, rewriteStmtPropMutation(s, prop, propType, walk))
 		}
 		return out
 	}
@@ -201,28 +232,96 @@ func rewritePropMutationsToEmit(comp *ir.Component, propName string, propType *i
 	// Walk timer handler blocks.
 }
 
-// rewriteStmtPropMutation converts Assign/Toggle targeting propName into an
-// Emit, recursing into nested blocks.
-func rewriteStmtPropMutation(s ir.Stmt, propName string, propType *ir.Type, walk func([]ir.Stmt) []ir.Stmt) ir.Stmt {
+// propMutation is the report an Assign or Toggle of propName becomes: the new
+// value, read from what the block wrote last where it wrote one, held in a
+// local, and the emit of it.
+func propMutation(s ir.Stmt, compName string, prop propRef, propType *ir.Type, wrote *ir.Var, n *int) (*ir.LocalVar, *ir.Emit, bool) {
+	var target ir.Expr
+	var newVal func(cur ir.Expr) ir.Expr
 	switch x := s.(type) {
 	case *ir.Assign:
-		if identTargets(x.Target, propName) {
-			return &ir.Emit{
-				Name: propName,
-				Args: []ir.CallArg{{Value: computeAssignNewVal(x.Target, x.Op, x.Value, propType)}},
-			}
+		if !prop.is(x.Target) {
+			return nil, nil, false
 		}
+		target = x.Target
+		newVal = func(cur ir.Expr) ir.Expr { return computeAssignNewVal(cur, x.Op, x.Value, propType) }
 	case *ir.Toggle:
-		if identTargets(x.Target, propName) {
-			return &ir.Emit{
-				Name: propName,
-				Args: []ir.CallArg{{Value: &ir.Unary{
-					Op:      ast.UnaryNot,
-					Operand: x.Target,
-					Type:    propType,
-				}}},
-			}
+		if !prop.is(x.Target) {
+			return nil, nil, false
 		}
+		target = x.Target
+		newVal = func(cur ir.Expr) ir.Expr { return &ir.Unary{Op: ast.UnaryNot, Operand: cur, Type: propType} }
+	default:
+		return nil, nil, false
+	}
+	cur := target
+	if wrote != nil {
+		cur = &ir.Ident{Name: wrote.Name, Type: propType, Sym: wrote, Synthesized: true}
+	}
+	// Named for the component as well as the prop: a component forwarding
+	// its own `:pending` to a query reports it from the handler the query's
+	// report is spliced into, and two `__pending_wrote0`s met in one scope.
+	tmp := &ir.Var{Name: "__" + compName + "_" + prop.name + wroteMark + strconv.Itoa(*n), Type: propType, Synthesized: true}
+	*n++
+	return &ir.LocalVar{Name: tmp.Name, Type: propType, Init: newVal(cur), Sym: tmp},
+		&ir.Emit{Name: prop.name, Args: []ir.CallArg{{Value: &ir.Ident{Name: tmp.Name, Type: propType, Sym: tmp, Synthesized: true}}}},
+		true
+}
+
+// readsProp reports whether stmts read prop.
+func readsProp(stmts []ir.Stmt, prop propRef) bool {
+	found := false
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if prop.is(e) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
+// readWritten points s's reads of prop at wrote, the value the block wrote
+// it last. A write's target is no read.
+func readWritten(s ir.Stmt, prop propRef, wrote *ir.Var) {
+	targets := map[ir.Expr]bool{}
+	_ = ir.Walk(s, func(n ir.Node) error {
+		if t := placeWritten(n); t != nil {
+			targets[t] = true
+		}
+		return nil
+	})
+	_ = ir.Walk(s, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok && prop.is(id) && !targets[id] {
+			id.Name, id.Sym = wrote.Name, wrote
+		}
+		return nil
+	})
+}
+
+// propRef is a prop as a block reads it: by its symbol, or by name where a
+// lowering wrote the read with none. A parameter of a lambda in the block
+// is a symbol of its own, whatever it is called.
+type propRef struct {
+	name string
+	sym  *ir.Param
+}
+
+func (p propRef) is(e ir.Expr) bool {
+	id, ok := e.(*ir.Ident)
+	if !ok || id.Name != p.name {
+		return false
+	}
+	if id.Sym == nil {
+		return true
+	}
+	return p.sym != nil && id.Sym == ir.Symbol(p.sym)
+}
+
+// rewriteStmtPropMutation converts Assign/Toggle targeting propName nested in
+// s into an Emit, recursing into nested blocks.
+func rewriteStmtPropMutation(s ir.Stmt, prop propRef, propType *ir.Type, walk func([]ir.Stmt) []ir.Stmt) ir.Stmt {
+	switch x := s.(type) {
 	case *ir.If:
 		x.Body = walk(x.Body)
 		x.Else = walk(x.Else)
@@ -288,12 +387,6 @@ func assignOpToBinOp(op ast.AssignOp) ast.BinaryOp {
 	}
 }
 
-// identTargets reports whether expr is an *ir.Ident with the given name.
-func identTargets(e ir.Expr, name string) bool {
-	id, ok := e.(*ir.Ident)
-	return ok && id.Name == name
-}
-
 // findBidiProp finds a bidirectional prop by name on comp.
 func findBidiProp(comp *ir.Component, name string) *ir.Prop {
 	for _, p := range comp.Props {
@@ -314,4 +407,63 @@ func hasBindingEvent(comp *ir.Component, name string) bool {
 		}
 	}
 	return false
+}
+
+// wroteMark is in the name of every local propMutation and relayWrites hold
+// a write in.
+const wroteMark = "_wrote"
+
+// passFoldWrites puts back what propMutation held in a local where only the
+// write reads it: the read after it was an emit of an event nobody handles,
+// which inlining dropped, or the component was spliced where it stands, and
+// its write a write of the caller's var. html's input reported `value` and
+// then `input(value)`, and every bound field read
+// `let __input_value_wrote0 = e.currentTarget.value; state.name =
+// __input_value_wrote0`.
+var passFoldWrites = pass{
+	name:    "FoldWrites",
+	enabled: func(Features) bool { return true },
+	apply: func(pkg *ir.Package, _ Features, _ Options) error {
+		ir.RewriteBlocks(pkg, foldWrites)
+		return nil
+	},
+}
+
+func foldWrites(stmts []ir.Stmt) []ir.Stmt {
+	for i := 0; i+1 < len(stmts); i++ {
+		lv, ok := stmts[i].(*ir.LocalVar)
+		if !ok || lv.Sym == nil || lv.Init == nil || !heldWrite(lv) {
+			continue
+		}
+		as, ok := stmts[i+1].(*ir.Assign)
+		if !ok || as.Op != ast.AssignSet {
+			continue
+		}
+		if id, ok := as.Value.(*ir.Ident); !ok || id.Sym != lv.Sym || readsOf(stmts[i+1:], lv.Sym) != 1 {
+			continue
+		}
+		as.Value = lv.Init
+		stmts = slices.Delete(stmts, i, i+1)
+		i--
+	}
+	return stmts
+}
+
+// heldWrite reports whether lv holds a write a lowering made: a local the
+// compiler declared, carrying wroteMark. A program's own local is never one,
+// whatever it is called.
+func heldWrite(lv *ir.LocalVar) bool {
+	return lv.Sym.Synthesized && strings.Contains(lv.Name, wroteMark)
+}
+
+// readsOf counts the reads of sym in stmts.
+func readsOf(stmts []ir.Stmt, sym ir.Symbol) int {
+	n := 0
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok && id.Sym == sym {
+			n++
+		}
+		return nil
+	})
+	return n
 }

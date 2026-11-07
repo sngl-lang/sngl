@@ -1,0 +1,21 @@
+import test "sngl:test"
+import ui "sngl:ui"
+
+// A loop's id is a list of its copies, indexed once to reach one; the copy,
+// and an id outside a loop, is a node, which has no index.
+component page ui.node {
+    for var s = ["a", "b"] {
+        ui.text #label(value=s)
+    }
+    ui.text #title(value="t")
+}
+
+func testCopies(t test.Test, c page) {
+    t.assert(c.label[1] != null)
+    t.assert(c.label[1][0] != null) // ERROR(check) "cannot index text"
+    t.assert(c.title[0] != null)    // ERROR(check) "cannot index text"
+}
+
+ui.window {
+    page
+}

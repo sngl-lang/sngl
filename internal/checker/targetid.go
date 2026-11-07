@@ -258,6 +258,9 @@ func (c *checker) selectFuncParams(decl *ast.FuncDef, base *ir.Func) []*ir.Param
 		byName[p.Name] = p
 	}
 	seen := map[string]bool{}
+	// A written parameter's type may name the receiver's parameters, as
+	// `func list[T].second[html.platform](this list[T])` does.
+	defer pushTypeParams(c, decl.RecvTypeParams, decl.TypeParams)()
 	for _, p := range decl.Params.Params {
 		bp := byName[p.Name]
 		var want *ir.Type
@@ -270,7 +273,7 @@ func (c *checker) selectFuncParams(decl *ast.FuncDef, base *ir.Func) []*ir.Param
 	for _, p := range base.Params {
 		// The receiver a method on a generic built-in carries as a parameter
 		// is no parameter a call writes, and is read as the method's own.
-		if seen[p.Name] || p.Name == ir.ReceiverParam {
+		if seen[p.Name] || p.Receiver {
 			out = append(out, p)
 		}
 	}
@@ -350,6 +353,9 @@ func (c *checker) collectFuncOverrides() {
 	defer c.saveFile()()
 	for _, decl := range c.userFuncOverrides {
 		c.enterFileOf(decl.Pos)
+		if c.collectTrigger(decl, nil, "") {
+			continue
+		}
 		c.mergeFuncOverride(decl, nil, "")
 	}
 }

@@ -11,9 +11,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"time"
@@ -62,6 +64,7 @@ func Launcher(plat codegen.PlatformGenerator, lang codegen.LangTranslator) codeg
 func Run(ctx context.Context, pkg *ir.Package, cfg Config) (results []*codegen.TestResult, err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			slog.Debug("panic in test launcher", "stack", string(debug.Stack()))
 			err = fmt.Errorf("panic in test launcher: %v", r)
 		}
 	}()
@@ -156,6 +159,7 @@ func launchOneGroup(ctx context.Context, cfg Config, launcher codegen.TestLaunch
 	plat, lang := cfg.Platform, cfg.Lang
 	defer func() {
 		if r := recover(); r != nil {
+			slog.Debug("panic in test launcher", "stack", string(debug.Stack()))
 			err = fmt.Errorf("panic in test launcher: %v", r)
 		}
 	}()

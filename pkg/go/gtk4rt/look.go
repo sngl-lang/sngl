@@ -41,6 +41,10 @@ typedef struct {
     GtkLayoutManager *box_layout;
     // A box that is no box of the program's: its grow is its children's.
     gboolean contents;
+    // A box that is sngl:ui's grid, laid out a row at a time: `columns` to a
+    // row, or flowing where it is zero.
+    gboolean grid;
+    int columns;
 } SnglLook;
 
 static void sngl_unpin(SnglLook *l, int axis);
@@ -310,6 +314,162 @@ static void sngl_flex_allocate(GtkWidget *box, int width, int height, int baseli
     g_ptr_array_unref(kids);
 }
 
+// --- A grid ---
+//
+// sngl:ui's grid is a GtkBox laid out here: its children are the box's, so
+// they come and go as any box's do, and it places them a row at a time. With
+// columns, each takes an equal share of the width less the gaps between
+// them; without, each is its natural width, no wider than the grid, and a
+// row ends where the next would not fit, as CSS's wrapping row does. A row is
+// as tall as its tallest child at the width it is given, and the box's
+// spacing is both the gap within a row and the one between two.
+
+// The width each child of kids takes in a grid width wide, and the index each
+// row runs to; returns how many rows there are.
+static int sngl_grid_rows(GtkWidget *box, int width, GPtrArray *kids, int *widths, int *ends) {
+    SnglLook *l = sngl_look_of(box);
+    int n = kids->len, columns = l ? l->columns : 0, gap = sngl_box_spacing(box), rows = 0;
+    // A width the look asks for is the grid's, as CSS's is, though GTK
+    // takes a size request as the least it may allocate.
+    if (l && l->width > 0 && (width < 0 || width > l->width)) width = l->width;
+    if (columns > 0) {
+        int column = MAX((width - gap * (columns - 1)) / columns, 0);
+        for (int i = 0; i < n; i++) {
+            widths[i] = column;
+            if ((i + 1) % columns == 0 || i == n - 1) ends[rows++] = i + 1;
+        }
+        return rows;
+    }
+    int run = 0;
+    for (int i = 0; i < n; i++) {
+        int min, nat;
+        gtk_widget_measure(g_ptr_array_index(kids, i), GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, NULL, NULL);
+        widths[i] = width < 0 ? nat : MAX(min, MIN(nat, width));
+        if (run > 0 && width >= 0 && run + gap + widths[i] > width) {
+            ends[rows++] = i;
+            run = 0;
+        }
+        run += (run > 0 ? gap : 0) + widths[i];
+    }
+    if (n > 0) ends[rows++] = n;
+    return rows;
+}
+
+// Each row's height, the tallest of its children at their widths, and the
+// sum of them and the gaps between them.
+static int sngl_grid_heights(GtkWidget *box, GPtrArray *kids, int *widths, int *ends, int rows, int *heights) {
+    int total = 0, start = 0;
+    for (int r = 0; r < rows; r++) {
+        int tall = 0;
+        for (int i = start; i < ends[r]; i++) {
+            int min, nat;
+            gtk_widget_measure(g_ptr_array_index(kids, i), GTK_ORIENTATION_VERTICAL, widths[i], &min, &nat, NULL, NULL);
+            tall = MAX(tall, nat);
+        }
+        if (heights) heights[r] = tall;
+        total += tall;
+        start = ends[r];
+    }
+    if (rows > 1) total += sngl_box_spacing(box) * (rows - 1);
+    return total;
+}
+
+static GtkSizeRequestMode sngl_grid_mode(GtkWidget *box) {
+    (void)box;
+    return GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH;
+}
+
+static void sngl_grid_measure(GtkWidget *box, GtkOrientation o, int for_size,
+        int *min, int *nat, int *min_base, int *nat_base) {
+    SnglLook *l = sngl_look_of(box);
+    GPtrArray *kids = sngl_flex_kids(box);
+    int n = kids->len, columns = l ? l->columns : 0, gap = sngl_box_spacing(box);
+    *min = *nat = 0;
+    *min_base = *nat_base = -1;
+    if (o == GTK_ORIENTATION_HORIZONTAL) {
+        // A flow is as narrow as its widest child and naturally a row.
+        int widest = 0, widestNat = 0, sum = 0;
+        for (int i = 0; i < n; i++) {
+            int cmin, cnat;
+            gtk_widget_measure(g_ptr_array_index(kids, i), o, -1, &cmin, &cnat, NULL, NULL);
+            widest = MAX(widest, cmin);
+            widestNat = MAX(widestNat, cnat);
+            sum += cnat;
+        }
+        if (columns > 0) {
+            int across = MIN(columns, n);
+            *min = widest * across + gap * MAX(across - 1, 0);
+            *nat = widestNat * across + gap * MAX(across - 1, 0);
+        } else {
+            *min = widest;
+            *nat = sum + gap * MAX(n - 1, 0);
+        }
+        if (l && l->width > 0) *nat = MAX(*min, MIN(*nat, l->width));
+    } else if (n > 0) {
+        int width = for_size;
+        if (width < 0) {
+            int wmin, wnat, b0, b1;
+            sngl_grid_measure(box, GTK_ORIENTATION_HORIZONTAL, -1, &wmin, &wnat, &b0, &b1);
+            width = wnat;
+        }
+        int *widths = g_new(int, n), *ends = g_new(int, n);
+        int rows = sngl_grid_rows(box, width, kids, widths, ends);
+        *min = *nat = sngl_grid_heights(box, kids, widths, ends, rows, NULL);
+        g_free(widths);
+        g_free(ends);
+    }
+    g_ptr_array_unref(kids);
+}
+
+static void sngl_grid_allocate(GtkWidget *box, int width, int height, int baseline) {
+    (void)height; (void)baseline;
+    GPtrArray *kids = sngl_flex_kids(box);
+    int n = kids->len;
+    if (n == 0) {
+        g_ptr_array_unref(kids);
+        return;
+    }
+    int *widths = g_new(int, n), *ends = g_new(int, n), *heights = g_new(int, n);
+    int rows = sngl_grid_rows(box, width, kids, widths, ends);
+    sngl_grid_heights(box, kids, widths, ends, rows, heights);
+    gboolean rtl = gtk_widget_get_direction(box) == GTK_TEXT_DIR_RTL;
+    int gap = sngl_box_spacing(box), y = 0, start = 0;
+    for (int r = 0; r < rows; r++) {
+        int x = 0;
+        for (int i = start; i < ends[r]; i++) {
+            GtkAllocation a = {rtl ? width - x - widths[i] : x, y, widths[i], heights[r]};
+            gtk_widget_size_allocate(g_ptr_array_index(kids, i), &a, -1);
+            x += widths[i] + gap;
+        }
+        y += heights[r] + gap;
+        start = ends[r];
+    }
+    g_free(widths);
+    g_free(ends);
+    g_free(heights);
+    g_ptr_array_unref(kids);
+}
+
+// Lays a box out as a grid, its own layout kept aside for its axis and its
+// spacing.
+static void sngl_look_set_grid(GtkWidget *box, SnglLook *l, int grid, int columns) {
+    if (!grid || !GTK_IS_BOX(box)) return;
+    gboolean changed = l->columns != columns;
+    l->columns = columns;
+    if (!l->grid) {
+        l->grid = TRUE;
+        GtkLayoutManager *own = gtk_widget_get_layout_manager(box);
+        if (l->box_layout) {
+            // gtk4rt's flex layout had it, and kept GTK's aside already.
+        } else if (GTK_IS_BOX_LAYOUT(own)) {
+            l->box_layout = g_object_ref(own);
+        }
+        gtk_widget_set_layout_manager(box, gtk_custom_layout_new(sngl_grid_mode, sngl_grid_measure, sngl_grid_allocate));
+    } else if (changed) {
+        gtk_widget_queue_resize(box);
+    }
+}
+
 // Gives a box GTK's own layout back, spaced as its look says.
 static void sngl_box_release(GtkWidget *box, SnglLook *l) {
     GtkLayoutManager *own = l->box_layout;
@@ -321,6 +481,10 @@ static void sngl_box_release(GtkWidget *box, SnglLook *l) {
 static void sngl_box_update(GtkWidget *box) {
     if (!box || !GTK_IS_BOX(box)) return;
     SnglLook *l = sngl_look_of(box);
+    if (l && l->grid) {
+        gtk_widget_queue_resize(box);
+        return;
+    }
     gboolean ours = l && l->box_layout;
     gboolean need = (l && l->justify != 0) || sngl_weights_uneven(box);
     if (need && !ours) {
@@ -618,9 +782,9 @@ static void sngl_look_size_label(GtkWidget *w, SnglLook *l, int wrap) {
 
 static void sngl_set_look(GtkWidget *w, const char *css, int width, int height, double grow,
                           int cross, int align, int lines, int wrap, int hidden, const char *cursor,
-                          int justify, int spaced, int spacing) {
+                          int justify, int spaced, int spacing, int grid, int columns) {
     SnglLook *l = sngl_look_of(w);
-    if (!l && !*css && !width && !height && grow <= 0 && !cross && !align && !lines && !wrap && !hidden && !*cursor && !justify) {
+    if (!l && !*css && !width && !height && grow <= 0 && !cross && !align && !lines && !wrap && !hidden && !*cursor && !justify && !grid) {
         if (spaced && GTK_IS_BOX(w)) gtk_box_set_spacing(GTK_BOX(w), spacing);
         return;
     }
@@ -640,6 +804,7 @@ static void sngl_set_look(GtkWidget *w, const char *css, int width, int height, 
     if (l->grow_box) sngl_box_update(l->grow_box);
     sngl_look_set_spacing(w, l, spaced, spacing);
     l->justify = justify;
+    sngl_look_set_grid(w, l, grid, columns);
     sngl_box_update(w);
     sngl_look_set_cross(w, l, cross);
     sngl_look_set_text(w, l, align, lines, wrap);
@@ -773,6 +938,10 @@ type Look struct {
 	// Spacing is a box's, where Spaced says the look holds one.
 	Spaced  bool
 	Spacing int
+	// Grid lays a box out as sngl:ui's grid, Columns to a row, or flowing
+	// where Columns is zero.
+	Grid    bool
+	Columns int
 }
 
 // SetLook gives w what l asks for, and back what an earlier Look took that l
@@ -784,7 +953,7 @@ func SetLook(w Handle, l Look) {
 	defer freeCursor()
 	C.sngl_set_look(widget(w), css, C.int(math.Round(l.Width)), C.int(math.Round(l.Height)), C.double(l.Grow),
 		C.int(l.Cross), C.int(l.TextAlign), C.int(l.Lines), C.int(l.Wrap), C.int(bool01(l.Hidden)), cursor,
-		C.int(l.Justify), C.int(bool01(l.Spaced)), C.int(l.Spacing))
+		C.int(l.Justify), C.int(bool01(l.Spaced)), C.int(l.Spacing), C.int(bool01(l.Grid)), C.int(l.Columns))
 }
 
 // ContentsNew is the box an instance of a component holds its widgets in,

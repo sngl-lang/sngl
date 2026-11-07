@@ -151,7 +151,7 @@ window {
     main
 }
 -- testrun/android/kotlin/entry.sngl/main/1 --
-sha256:a5c0e514babc7b5ec0d4e8f0f17bc87e
+sha256:134086957ecf2ce039712b467cccfa16
 {
   "results": [
     {
@@ -161,7 +161,7 @@ sha256:a5c0e514babc7b5ec0d4e8f0f17bc87e
   ]
 }
 -- testrun/android/kotlin/fallback.sngl/main/1 --
-sha256:e989719b4371c16cf205d6c19c5d694b
+sha256:5df29ef31d20a31916e9817d975d4dee
 {
   "results": [
     {
@@ -171,7 +171,7 @@ sha256:e989719b4371c16cf205d6c19c5d694b
   ]
 }
 -- testrun/bubbletea/go/entry.sngl/main/1 --
-sha256:8054b2d2b8bfa608ddf05335c4a0e303
+sha256:f868b5deb33b5cb064e6ab80d6e8b7d2
 {
   "results": [
     {
@@ -181,7 +181,7 @@ sha256:8054b2d2b8bfa608ddf05335c4a0e303
   ]
 }
 -- testrun/bubbletea/go/fallback.sngl/main/1 --
-sha256:6493fcfba605cea3dff8d0e924e90077
+sha256:98dcc8d8cb7d076812180513938bd9a8
 {
   "results": [
     {
@@ -191,7 +191,7 @@ sha256:6493fcfba605cea3dff8d0e924e90077
   ]
 }
 -- testrun/fyne/go/entry.sngl/main/1 --
-sha256:0f8fa47b490d92d5338f59afed98f31c
+sha256:4c697df5356f2177d54629cfbec90c21
 {
   "results": [
     {
@@ -201,7 +201,7 @@ sha256:0f8fa47b490d92d5338f59afed98f31c
   ]
 }
 -- testrun/fyne/go/fallback.sngl/main/1 --
-sha256:f206507bb04223b489623b1f9eedfcee
+sha256:91172a46fce6b2d70f89f4608ff5b92f
 {
   "results": [
     {
@@ -211,7 +211,7 @@ sha256:f206507bb04223b489623b1f9eedfcee
   ]
 }
 -- testrun/gtk4/go/entry.sngl/main/1 --
-sha256:d7a72df3ee95d75079421628a40e303a
+sha256:c502915ed8c969759a3044a8d07b47c5
 {
   "results": [
     {
@@ -221,7 +221,7 @@ sha256:d7a72df3ee95d75079421628a40e303a
   ]
 }
 -- testrun/gtk4/go/fallback.sngl/main/1 --
-sha256:13a68d0c45b1c32cd5636e057a0f256a
+sha256:805ae16335788936618d7101675bb1c7
 {
   "results": [
     {
@@ -231,7 +231,7 @@ sha256:13a68d0c45b1c32cd5636e057a0f256a
   ]
 }
 -- testrun/html/none/entry.sngl/main/1 --
-sha256:4dc055df7b6896fa6377023686ca896d
+sha256:e4152cb2b7c275b4e7ff0129eeb94ad4
 {
   "results": [
     {
@@ -241,7 +241,7 @@ sha256:4dc055df7b6896fa6377023686ca896d
   ]
 }
 -- testrun/html/none/fallback.sngl/main/1 --
-sha256:4cbea81ca9cda838f28d730938dba6c0
+sha256:86217d363a819b3a837f8ee4fe80e524
 {
   "results": [
     {

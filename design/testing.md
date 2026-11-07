@@ -240,12 +240,35 @@ These rules keep them agreeing:
   funcs reading it are spelled through the instance (`ExprCtx.StateReceiver`
   on Go and JS; on android the state members MainScreen spells as `state.<x>`,
   rebound to the instance). Each test starts from a fresh one — a new Model on
-  the Go targets, a remounted page on html. android disposes the last test's
+  the Go targets, a page booted afresh on html. android disposes the last test's
   composition before it makes the next one's state (`clearCurrentTestModel`):
   a new `MainScreenState` is the file's `state`, which a component other than
   MainScreen reads, so the last test's `@unmount`, run as the next model
   replaced it, wrote into the next test's log
   (`cmd/sngl/testdata/test_unmount_stays_in_its_test_runs.txt`).
+- **The component a test takes mounts on the first statement that needs it**
+  (`ir.TestSetup`, `lower.passTestMount`). Leading `t.setContext` calls and
+  plain writes of the component's own props and vars set it up: a write is
+  the value it starts from, and a context the value its mount reads. At the
+  first other statement, or at the end of a body that has none, the test
+  mounts it: the initializers of what it did not set run, in order, and it
+  builds and settles. passTestMount runs late, so it drops the redraws and
+  settles lowering put after each setup write and puts one `test.mount` call,
+  naming what was set, in their place. Each emitter spells that call: a bare
+  Model `__init(preset)` initializes and `mountTestComponent` builds on the Go
+  targets; html boots the page from what the test wrote into a plain object
+  (`window.__snglPre`), its context vars included, where it booted as the
+  page loaded; android makes `MainScreenState(__pre)`. The interpreter mounts
+  before the first statement `ir.TestSetup` refuses, by the rule the targets
+  follow, and initializes the instance only then (`interp.BuildTestEnv`): an
+  initializer that ran at construction and again at the mount opened what it
+  owns twice. It had a rule of its own, mounting on the first read through
+  the instance or a `t` method, so a write after `var k = 5` was a preset
+  there and a write after the mount on every target. A page that fetched on mount fetched
+  before the body could say where from, so a test pointed at the recording
+  server through a provider wrapped in a component of its own -- the Pokédex
+  had 26 -- and a test checking a transition now reads the starting state
+  before it writes (`testdata/test_mounts_where_first_needed.txtar`).
 - **The component a test takes is rendered with no call site**, so each of its
   props holds its default, or its type's zero where it has none: a var of the
   component on a compiled target (`bindRootProps`), bound ahead of its own vars
@@ -457,13 +480,85 @@ moves a node out of the body that wrote it:
   slot's function for a test that calls it (`exportTestCalled`); the
   function alone was `__slotAnchor_2 is not defined`.
 - **A trigger is an event of the receiver's type**, so the checker tags one
-  through a nested instance (`nestedElementEvent`), and `c.row[1]` types as
+  through a nested instance (`elementEvent`), and `c.row[1]` types as
   the node's component. html's `At` invoker indexes a constant loop's unrolled
   copies as it does the copies built at run time, and the interpreter takes
-  `[0]` of a loop that rendered one copy as that copy.
+  `[0]` of a loop that rendered one copy as that copy. Fired through a local
+  holding the handle, `var b = c.b` and `b.click()`, the trigger's receiver
+  is a copy of the read that initialized the local (`throughHandleLocal`),
+  since every invoker finds the node by the path the read takes and a local
+  is none (`cmd/sngl/testdata/handle_local_trigger_runs.txt`).
 
 `cmd/sngl/testdata/test_reach_nested_runs.txt` and
 `test_reach_runtime_instance_runs.txt` run it on all six.
+
+**A target says how a test raises an event by overriding it**,
+`func ui.select[T].change[platform](value) { … }`, and a trigger of an event
+a target overrides runs that override instead of an invoker the target's
+generator wrote. What a trigger does is then SNGL the checker reads -- its
+parameters are the event's, selected by name (`collectTrigger`), and its body
+is checked as a method of the target's override of the component, so it reads
+the props and nodes that override has -- rather than a per-target generator
+the first test to reach it finds wrong.
+
+The override is a method of the component override for its target:
+`checkOverride` registers it among that override's funcs under
+`<event>__trigger` (never the event's own name, which the body calls to
+emit) with `ir.Func.Trigger` naming the event, so `ir.SpecializeForTarget`
+hands it to every phase after the check with the rest of the body. An
+override of an event for a target with no override of its component is
+refused (`reportUntakenTriggers`): its body would read nothing that exists.
+`lower.passEventTriggers` rewrites `c.d.change(3)` into a call of the method
+on the instance, which the test-reach passes then point at the instance's
+splice as for any method a test calls; the interpreter runs it in the
+instance's scope (`runTrigger`). An event no target overrides keeps its
+invoker. `testdata/trigger_override.sngl` and `error_trigger_override.sngl`
+are the check, `cmd/sngl/testdata/trigger_override_runs.txt` runs it on all
+six.
+
+A library component's override is swapped in only by
+`passPlatformExtensionBody`, after the test passes, so `passEventTriggers`
+finds the trigger through `Component.FuncsFor`, the funcs the swap will
+install. The swap then drops every trigger no call reaches
+(`ir.DropUncalledTriggers`), and with it a node id only a dropped trigger
+read: a method keeps a const override from splicing, and an id costs a
+field, so an app build rendered every select differently for having a test
+half. In a test build the override is a runtime splice (`expandCall`), which
+carries the call site's `#id` onto a library component's root wherever a
+handle is read (`handleRead`), as `passInlinePure` does for every one; a
+component method generic in its component's parameters alone is bound by
+each splice rather than copied per call (`boundByItsComponent`); and a
+method's parameter of a prop's name is the method's, never the prop
+substituted for it (`shadowsAProp`). `select_change_runs.txt` and
+`radio_change_runs.txt` are the selects and radios.
+
+A trigger is copied onto the owner of each splice, by `passInlinePure`
+(`copyTriggers`) as by `expandCall`, and a component whose only methods are
+triggers splices as it would without them (`ownMethods`), so a test build
+renders what the app does. A test's call follows the copies through every
+splice, `c.inner.pick.change` included (`repointCall`, `copies`). A copy
+that is a method of a component built at run time -- the wrapper gtk4 puts
+around a select under a reactive `if` or in a tab's panel, its effects being
+state -- is called through the instance the Model holds, as a test's
+`c.b.reset()` is (`codegen.LowerInstanceReads`). passImplicitState moved the
+select's `#id` onto the select, so the wrapper's node takes one of its own,
+`<id>__state`, which the call is read through (`nameInstance`), at the copy
+a loop's index names, `c.pick__state[1]`. Restored to the event instead, the
+invoker was handed the value where it takes a label, and an int did not
+compile (`cmd/sngl/testdata/typed_select_in_built_block_runs.txt`). Each copy
+names the trigger it was copied from (`FuncLowering.CopyOf`), so a test's
+call reaches the root's copy through splices that recorded none by the handle
+it reads: the wrapper around a select with no `:value` is spliced with a
+fresh handle (`keptCopies`). A trigger still unreached -- a copy bubbletea
+spliced into each element of a loop, taking the loop's variables, or a node
+inside an instance a loop builds -- is refused, naming #318
+(`restoreUnreachedTriggers`, and `verifyTriggersReached` at the end of
+Lower): the invoker restoring the event reached is the target's own, and
+took a label where the override takes a value, so the test did not compile
+or chose nothing. A target whose test raises the event with the value itself
+(`valueTriggers`, android's semantics actions) keeps the event, and is refused
+only through one copy of a loop's, which its raise did not reach
+(`cmd/sngl/testdata/typed_select_reach_runs.txt`).
 
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 

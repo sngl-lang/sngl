@@ -168,6 +168,7 @@ func focusShownExprs(stmts []ir.Stmt, slots []focusSlot) []ir.Expr {
 		return ok
 	}
 	static := map[*ir.NodeInst]int{}
+	loops := map[*ir.For]int{}
 	shown := make([]ir.Expr, len(slots))
 	for i, s := range slots {
 		if s.isLoop {
@@ -177,6 +178,7 @@ func focusShownExprs(stmts []ir.Stmt, slots []focusSlot) []ir.Expr {
 			if tabsPast(slices.Concat(s.loop.forStmt.Body, s.loop.forStmt.Else)) {
 				shown[i] = &ir.Literal{Type: ir.TypBool, Value: "false"}
 			}
+			loops[s.loop.forStmt] = i
 		} else {
 			static[s.node] = i
 		}
@@ -219,6 +221,12 @@ func focusShownExprs(stmts []ir.Stmt, slots []focusSlot) []ir.Expr {
 				}
 				walk(n.Body, append(slices.Clip(conds), deepCloneExpr(n.Cond)))
 				walk(n.Else, append(slices.Clip(conds), notExpr(deepCloneExpr(n.Cond))))
+			case *ir.For:
+				// A loop's stops are drawn where the branches around the
+				// loop are taken, which its length does not ask.
+				if i, ok := loops[n]; ok && len(conds) > 0 {
+					shown[i] = andAll(append(slices.Clip(conds), shown[i]))
+				}
 			case *ir.Match:
 				for _, b := range ir.TransparentBlocks(n) {
 					walk(*b, conds)

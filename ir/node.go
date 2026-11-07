@@ -96,7 +96,9 @@ func AttachNodeID(body []Stmt, id string, handle *Var) bool {
 }
 
 // AttachNodeIDFrom is AttachNodeID, reporting the id the node carried before.
-func AttachNodeIDFrom(body []Stmt, id string, handle *Var) (string, bool) {
+// also is what else reads the body's own handle -- the methods a splice
+// copied with it -- and is repointed with the body.
+func AttachNodeIDFrom(body []Stmt, id string, handle *Var, also ...any) (string, bool) {
 	var own *Var
 	was := ""
 	ok := attachNode(body, func(ni *NodeInst) {
@@ -107,12 +109,16 @@ func AttachNodeIDFrom(body []Stmt, id string, handle *Var) (string, bool) {
 	// effect beside it -- reads it through its own handle, which is now the
 	// call site's: left alone, the read named a field nothing builds.
 	if ok && own != nil && handle != nil && own != handle {
-		_ = Walk(body, func(n Node) error {
+		repoint := func(n Node) error {
 			if id2, isIdent := n.(*Ident); isIdent && id2.Sym == Symbol(own) {
 				id2.Sym, id2.Name = handle, id
 			}
 			return nil
-		})
+		}
+		_ = Walk(body, repoint)
+		for _, n := range also {
+			_ = Walk(n, repoint)
+		}
 	}
 	return was, ok
 }

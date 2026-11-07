@@ -36,8 +36,8 @@ struct Book {
 }
 
 // A book, asked of the harness's server.
-func fetchBook(title string) async.Result[Book] {
-    match var r = http.get(url="{server}/books/{http.pathEscape(title)}") {
+func fetchBook(title string, life async.Lifetime) async.Result[Book] {
+    match var r = http.get(url="{server}/books/{http.pathEscape(title)}", life=life) {
         failed { return {failed=r} }
         ok {
             match var checked = r.checked() {
@@ -63,8 +63,8 @@ component page ui.node {
                     async.query(on=title, fetch=fetchBook, @load(got) { loads += 1 })
                 }
                 ui.select #pick(:value=kind) {
-                    ui.choice(label="Red")
-                    ui.choice(label="Green")
+                    ui.choice(label="Red", value="Red")
+                    ui.choice(label="Green", value="Green")
                 }
                 ui.text #count(value="{loads}")
             }
@@ -77,6 +77,7 @@ ui.window {
 }
 
 func testEachBookIsAskedForOnce(t test.Test, c page) {
+    t.setContext(http.answer, http.network)
     c.tabs.change(1)
     t.wait(func() => c.loads >= 2, 5000)
     t.wait(func() => c.loads > 2, 1000)
@@ -84,7 +85,7 @@ func testEachBookIsAskedForOnce(t test.Test, c page) {
     t.assert(c.count != null && c.count.value == "2")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:79ff6712ae34ab1d3501eca74e952461
+sha256:685a99b56bf0bf3f4184fbee0a538613
 {
   "results": [
     {
@@ -94,7 +95,7 @@ sha256:79ff6712ae34ab1d3501eca74e952461
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:6d206eceac744feec32b583c32cb1501
+sha256:eec89e38c40639b8cbf2cc09ad86c10f
 {
   "results": [
     {
@@ -104,7 +105,7 @@ sha256:6d206eceac744feec32b583c32cb1501
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:9aa38c776f00f3b927e55290386a20ab
+sha256:16e5c264d88640b3a765242b4d992351
 {
   "results": [
     {
@@ -114,7 +115,7 @@ sha256:9aa38c776f00f3b927e55290386a20ab
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:f8d1b1d868e13191c79992d7a90210da
+sha256:43337b36df20d21532640e7b3f49a49d
 {
   "results": [
     {
@@ -124,7 +125,7 @@ sha256:f8d1b1d868e13191c79992d7a90210da
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:d099b464352636ec8abe5caa8fd752e9
+sha256:f716339a19a900b84b4733e005beb3bd
 {
   "results": [
     {

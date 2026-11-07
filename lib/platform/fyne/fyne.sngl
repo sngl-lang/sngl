@@ -660,6 +660,23 @@ const component ui.hbox[platform](style, children) {
     }
 }
 
+// fynelayout's Grid: `columns` to a row, or a flow where the prop is null.
+const component ui.grid[platform](columns, style, children) {
+    Container(
+        spec = Spec{
+            new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewGrid"},
+            args = [Arg{prop="number", raw="0"}],
+            goType = Native{path="fyne.io/fyne/v2", name="*Container"},
+            add = "Add",
+            setters = [Setter{prop="number", fn=Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="SetColumns"}}],
+        },
+        number = columns == null ? 0 : columns,
+        look = lookOf(style),
+    ) {
+        children
+    }
+}
+
 // Fyne has no layered container in the widget set this platform builds from,
 // so a stack is a vertical box: the children are all present and in order,
 // they just do not overlap.
@@ -780,9 +797,9 @@ const component ui.menu[platform](style) {
 
 // --- Data display ---
 //
-// `tree` and `radio` take their contents as a list prop rather than as
-// children, and Fyne's Tree reads its own through callbacks a Spec has no way
-// to spell. Each renders as its container, empty.
+// `tree` takes its contents as a list prop rather than as children, and
+// Fyne's Tree reads its own through callbacks a Spec has no way to spell. It
+// renders as its container, empty.
 
 // A table is a grid of labels a column per heading, the headings first and
 // then each row's cells, so a cell lines up under its heading. Fyne's own
@@ -805,8 +822,45 @@ const component ui.tree[platform](style) {
     VBox(style=style) {}
 }
 
-const component ui.radio[platform](style) {
-    VBox(style=style) {}
+// A radio is a Check per choice, the one holding `value` checked, along
+// `direction`, as gtk4's is a check button per choice: Fyne's RadioGroup
+// knows its options by label and reports one, where a choice's value is of
+// whatever type the choices hold. A choice checked writes its value; one
+// unchecked writes nothing, since a radio's choice is undone only by another.
+const component ui.radio[platform](value, direction, style, @change, options) {
+    // A choice of the option holding `v`, a check's or a test's.
+    func pickValue(v T) {
+        if v != value {
+            value = v
+            change(v)
+        }
+    }
+    if direction == ui.Orientation.horizontal {
+        HBox(style=style) {
+            for var opt = options {
+                Check(text=opt.label, checked=(opt.value == value), @change(on) {
+                    if on {
+                        pickValue(opt.value)
+                    }
+                }) {}
+            }
+        }
+    } else {
+        VBox(style=style) {
+            for var opt = options {
+                Check(text=opt.label, checked=(opt.value == value), @change(on) {
+                    if on {
+                        pickValue(opt.value)
+                    }
+                }) {}
+            }
+        }
+    }
+}
+
+// A test picks the option holding `value` as checking its box does.
+func ui.radio[T].change[platform](value) {
+    pickValue(value)
 }
 
 // --- Text ---
@@ -968,13 +1022,26 @@ const component ui.toggle[platform](label, checked, focusable, style, @change) {
     }) {}
 }
 
+// Selects the choice labeled `label` as a pick does: the widget reports the
+// change through OnChanged, so the select's @change handler runs. A label
+// among none of its choices selects nothing.
+#[go.native("duckfam.us/sngl/pkg/go/fynelayout", "fynelayout.Select.SetSelected", method)]
+func Select.setSelected(label string)
+
 const component ui.select[platform](value, focusable, style, @change, options) {
-    Select(selected=value, options=options.map(func(o) => o.label), focusable=focusable, style=style, @change(v) {
-        if v != value {
-            value = v
-            change(v)
+    Select #sel(selected=ui.choiceLabel(options, value), options=options.map(func(o) => o.label), focusable=focusable, style=style, @change(v) {
+        var at = ui.choiceLabeled(options, v)
+        if at >= 0 && options[at].value != value {
+            value = options[at].value
+            change(options[at].value)
         }
     }) {}
+}
+
+// A test picks the choice holding `value` through the widget, which knows its
+// choices by label.
+func ui.select[T].change[platform](value) {
+    sel.setSelected(ui.choiceLabel(options, value))
 }
 
 // --- Text entry ---

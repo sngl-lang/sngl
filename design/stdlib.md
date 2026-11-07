@@ -296,6 +296,12 @@ function of its own, and the component a test build is rooted at, which
 `Options.RootComponent` names. `testdata/reserved_names.txtar` is the code and
 `cmd/sngl/testdata/reserved_names_runs.txt` runs it on all six.
 
+A component's own var or func that shadows a name the package declares at
+its top level is renamed the same way, since a target holds both in one
+namespace -- Android's test state class, html's state object -- where the
+two were one member (`cmd/sngl/testdata/state_member_shares_a_name_runs.txt`).
+A name the lowering synthesized (`__root`) is left to the lowering.
+
 **A target is its library package.** `sngl:platform/<name>` and `sngl:language/<name>` are `lib/platform/<name>` and `lib/language/<name>`, and the layout is the registration (`codegen/declared.go`), as `lib/x/scheme/<name>` is a scheme's: each directory is a `DeclaredPlatform` or `DeclaredLang`. Its Go, where it has any, is a generator registered by key (`codegen.RegisterNative`) and named by the node's `#[gen.native("html")]`; `LookupPlatform` and `LookupLang` resolve a declared target through that mark, once, and a node naming none generates nothing -- `none`, whose programs the interpreter runs. A package may import a library scheme -- gtk4's imports `gir:`, whose package is the half of the platform derived from the host.
 
 The point is that the checker does not know where a package comes from: a lib/ directory or a scheme's handler. The last is how gtk4's widget set reaches it -- one component declaration per GTK widget class, generated from the host's introspection data -- and the first how the overrides written against it do. `nodeNative` reads `#[gen.native]` off the source rather than the checked package, since `Unavailable` is asked during a check and checking the target to answer would re-enter it.
@@ -490,6 +496,28 @@ SNGL wrapper over `send` because a generic wrapper hands the intrinsic a `Q`
 that names a type parameter on a target that emits generics, and the encoder
 needs the struct.
 
+**A test reaches no network unless it says so.** `send` and `get` take a
+last parameter, `hook`, defaulting to the context `answer`
+(`#[builtin("httpAnswer")]`), an `option[func(r Request) option[Response]]`:
+where it holds a function, each language's codec hands it the request, the
+url spelled with its query, and its answer is the response, a null failing
+the request as `transport` ("no answer for <url>"). passCallDefaults writes
+the default at each call, since a context is read where the call is, though
+an intrinsic with no body is otherwise left as written
+(`fillContextDefaults`). Nothing a program that ships does provides it, so it
+folds to `null` and every codec emits what it did before. A test build starts
+each test as if its first statement were `t.setContext(http.answer, _closed)`
+(`lower.passTestAnswer`, the interpreter's `testAnswer`), `_closed` being the
+`#[builtin("httpClosed")]` function answering null, and a test that means the
+network sets `http.network`, which is `null`. Getting there took a context's
+marks applied (`registerRootContextDecl`), a library function taken as a
+value promoted (passLibFuncs), and a library struct a function type or the
+program's own signature names declared, once per declaration
+(`promoteForeignStructs`). On html a test's setup runs before the page boots,
+and a function it names is a lambda calling it once the page has
+(`deferFuncRefs`). `cmd/sngl/testdata/http_answer_runs.txt` runs it on
+every target.
+
 **What has no wire form is refused at the call** (`checkCodecCall`,
 `ir.CodecProblem`): a function, a unit, a payload enum (not yet), a map keyed
 by anything but a string, two fields written under one name, a query field
@@ -573,8 +601,7 @@ target, as if it were the setting; null says "not yet", which a store that
 answers late (DataStore, a server's cookie) can keep saying as long as it
 takes, and the program chooses what to show meanwhile (Jonathan's call). `kept`, `load` and
 `save` are SNGL over `sngl:json`, which needed a generic body to encode its
-own T (*HTTP and JSON*). The prop is `name` because `key=` is a node's
-identity in a loop.
+own T (*HTTP and JSON*).
 
 **Where a value lives is three intrinsics and a var.** `_read`, `_write` and
 `_persistent` are answered per language: Go by `pkg/go/snglsettings`, Kotlin

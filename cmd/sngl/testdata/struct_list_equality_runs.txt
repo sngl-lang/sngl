@@ -106,7 +106,7 @@ func testAnOptionOfAStructComparesWhatItHolds(t test.Test, c page) {
     t.assert(x == y)
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:a4b2ee27cb2376f2c35576dd40b90d1b
+sha256:1263e62cfc59f67ca7ff6e637c06723a
 {
   "results": [
     {
@@ -132,7 +132,7 @@ sha256:a4b2ee27cb2376f2c35576dd40b90d1b
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:752ae600e7193d3aa8611a7e56fc3360
+sha256:77649efcec3f5ad8750bf86045c43dbe
 {
   "results": [
     {
@@ -158,7 +158,7 @@ sha256:752ae600e7193d3aa8611a7e56fc3360
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:329942ea530e086b922ecc92456e067d
+sha256:e0c135305eab2dc68ead8e0139ae340a
 {
   "results": [
     {
@@ -184,7 +184,7 @@ sha256:329942ea530e086b922ecc92456e067d
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:482cd2c741c6ea68803b7576788b14d8
+sha256:380d85958f54c69acea1d76c6e1b1610
 {
   "results": [
     {
@@ -210,7 +210,7 @@ sha256:482cd2c741c6ea68803b7576788b14d8
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:b7b55ad0b2bf44026c9631a2d8e267c6
+sha256:b0acb13a3edd98de9add44a7de292f60
 {
   "results": [
     {

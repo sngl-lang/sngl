@@ -41,9 +41,19 @@ func stopKey(n *ir.NodeInst) string {
 // markStop wraps resultVar, n's rendered block, in the mark a click finds it
 // by, where n is a focus stop.
 func (vc *irViewContext) markStop(n *ir.NodeInst, resultVar string) {
+	vc.markStopAt(n, resultVar, "")
+}
+
+// markStopAt is markStop with the copy of a loop's stop read from at, where
+// at is not "": a block marked after its stop was drawn reads the copy the
+// stop was, which the loop's position has moved past by then.
+func (vc *irViewContext) markStopAt(n *ir.NodeInst, resultVar, at string) {
 	slot, pos := nodeFocusSlotIdx(n), "0"
 	if lf, ok := nodeLoopFocus(n); ok {
 		slot, pos = lf.slot, lf.pos
+		if at != "" {
+			pos = at
+		}
 	}
 	if slot < 0 {
 		return
@@ -73,10 +83,16 @@ func emitClickFields(b *strings.Builder, info *irAnalysis) {
 	}
 }
 
-// emitClickCase writes Update's case for a mouse click.
-func emitClickCase(b *strings.Builder) {
+// emitClickCase writes Update's case for a mouse click. One on an open
+// float is the widget's it floats over, which forwarding hands it, rather
+// than a press of what the float covers.
+func emitClickCase(b *strings.Builder, info *irAnalysis) {
 	b.WriteString("\tcase tea.MouseClickMsg:\n")
-	b.WriteString("\t\tif msg.Button == tea.MouseLeft {\n")
+	if info.floats {
+		fmt.Fprintf(b, "\t\tif msg.Button == tea.MouseLeft && !m.%s.At(msg.X, msg.Y) {\n", floatsField)
+	} else {
+		b.WriteString("\t\tif msg.Button == tea.MouseLeft {\n")
+	}
 	fmt.Fprintf(b, "\t\t\tif s, ok := m.%s.At(msg.X, msg.Y); ok {\n", clicksField)
 	b.WriteString("\t\t\t\tcmds = append(cmds, m.__press(s))\n")
 	b.WriteString("\t\t\t}\n")
@@ -184,15 +200,84 @@ func dedent(s string, n int) string {
 // overlay is composited over it, since compositing draws cells and keeps no
 // escape a terminal is not sent; then each open overlay's box where it lands,
 // which covers what was found beneath it.
-func emitClickScan(b *strings.Builder, overlays []pendingOverlay) {
-	fmt.Fprintf(b, "\tcontent = m.%s.Scan(content, 0, 0)\n", clicksField)
+//
+// A float's marks are taken out the same way, for Draw to lay each float
+// over everything once the overlays are down (emitFloatsDraw).
+//
+// A scroll's marks are taken out the same way, for the wheel to find the
+// box under it.
+func emitClickScan(b *strings.Builder, overlays []pendingOverlay, info *irAnalysis) {
+	var fields []string
+	if info.hasFocus {
+		fields = append(fields, clicksField)
+	}
+	if info.floats {
+		fields = append(fields, floatsField)
+	}
+	if len(info.scrolls) > 0 {
+		fields = append(fields, scrollsField)
+	}
+	if len(fields) == 0 {
+		return
+	}
+	for _, f := range fields {
+		fmt.Fprintf(b, "\tcontent = m.%s.Scan(content, 0, 0)\n", f)
+	}
 	for _, ov := range overlays {
 		fmt.Fprintf(b, "\tif %s != \"\" {\n", ov.boxVar)
-		fmt.Fprintf(b, "\t\tm.%s.Cover()\n", clicksField)
+		if info.hasFocus {
+			fmt.Fprintf(b, "\t\tm.%s.Cover()\n", clicksField)
+		}
 		fmt.Fprintf(b, "\t\tx, y := tui.OverlayAt(content, %s, %s, m.width, m.height)\n", ov.boxVar, ov.placementExpr)
-		fmt.Fprintf(b, "\t\t%s = m.%s.Scan(%s, x, y)\n", ov.boxVar, clicksField, ov.boxVar)
+		for _, f := range fields {
+			fmt.Fprintf(b, "\t\t%s = m.%s.Scan(%s, x, y)\n", ov.boxVar, f, ov.boxVar)
+		}
 		b.WriteString("\t}\n")
 	}
+}
+
+// floatsField is the modelState field holding the tui.Floats a widget's
+// templates name, which an open select draws its popover through.
+const floatsField = "__floats"
+
+// usesFloats reports whether w's templates hand it the Model's Floats.
+func usesFloats(w widgetInfo) bool {
+	return strings.Contains(w.model.View+w.model.Update, "m."+floatsField)
+}
+
+// emitFloatsDraw writes the view's last step where a float may be open:
+// each laid over the finished view, below the block it floats from.
+func emitFloatsDraw(b *strings.Builder, info *irAnalysis) {
+	if info.floats {
+		fmt.Fprintf(b, "\tcontent = m.%s.Draw(content, m.width, m.height)\n", floatsField)
+	}
+}
+
+// emitFloatsGuard writes what Update does first while a float is open: Esc
+// and a click outside it close it and go no further, so neither goes back a
+// page nor presses what the float covers, and Tab closes it on its way to
+// the next stop.
+func emitFloatsGuard(b *strings.Builder, info *irAnalysis) {
+	if !info.floats {
+		return
+	}
+	fmt.Fprintf(b, "\tif m.%s.Open() {\n", floatsField)
+	b.WriteString("\t\tswitch msg := msg.(type) {\n")
+	b.WriteString("\t\tcase tea.KeyPressMsg:\n")
+	b.WriteString("\t\t\tif msg.Code == tea.KeyEsc {\n")
+	fmt.Fprintf(b, "\t\t\t\tm.%s.Close()\n", floatsField)
+	b.WriteString("\t\t\t\treturn m, nil\n")
+	b.WriteString("\t\t\t}\n")
+	b.WriteString("\t\t\tif msg.Code == tea.KeyTab {\n")
+	fmt.Fprintf(b, "\t\t\t\tm.%s.Close()\n", floatsField)
+	b.WriteString("\t\t\t}\n")
+	b.WriteString("\t\tcase tea.MouseClickMsg:\n")
+	fmt.Fprintf(b, "\t\t\tif !m.%s.At(msg.X, msg.Y) {\n", floatsField)
+	fmt.Fprintf(b, "\t\t\t\tm.%s.Close()\n", floatsField)
+	b.WriteString("\t\t\t\treturn m, nil\n")
+	b.WriteString("\t\t\t}\n")
+	b.WriteString("\t\t}\n")
+	b.WriteString("\t}\n")
 }
 
 // focusedExpr is the Go of a stop's __focused: focus is on it, and, where a

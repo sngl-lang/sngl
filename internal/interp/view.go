@@ -5,6 +5,7 @@ import (
 	"maps"
 	"slices"
 	"strconv"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/lower"
@@ -1069,7 +1070,7 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 	}
 	list, _ := iterVal.([]any)
 
-	keyExpr := loopKeyExpr(f.Body)
+	keyExpr := f.Identity
 	seen := map[string]int{}
 	var out []*Node
 	iters := m.iters
@@ -1098,31 +1099,19 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 	return out, nil
 }
 
-// loopKeyExpr is the `key=` a loop body declares, or nil.
-//
-// Top-level only: `key=` marks the thing being repeated, and a node nested
-// inside the iteration is not that. The checker lifts it off the props into
-// NodeInst.Key, so it is never among them.
-func loopKeyExpr(body []ir.Stmt) ir.Expr {
-	for _, s := range body {
-		if n, ok := s.(*ir.NodeInst); ok && n.Key != nil {
-			return n.Key
-		}
-	}
-	return nil
-}
-
 // iterationID disambiguates a repeated key. Two iterations claiming one
 // identity would collide in the key index and silently drop a node, so the
 // later ones are suffixed. A duplicate key is the author's bug, but losing a
-// node is not the way to report it.
+// node is not the way to report it. A key's own `#`s are doubled, so no
+// suffix spells another iteration's key, as lower's identified does.
 func iterationID(base string, seen map[string]int) string {
+	base = strings.ReplaceAll(base, "#", "##")
 	n := seen[base]
 	seen[base] = n + 1
 	if n == 0 {
 		return base
 	}
-	return fmt.Sprintf("%s~%d", base, n)
+	return fmt.Sprintf("%s#%d", base, n)
 }
 
 // handlersOf collects a node's declared events in declaration order.

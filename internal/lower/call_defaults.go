@@ -35,7 +35,11 @@ func lowerCallDefaults(pkg *ir.Package, _ Features, _ Options) error {
 // call in its own body and is left for passNoImplicitRecv.
 func fillDefaults(c *ir.Call) {
 	fn := c.Func
-	if fn == nil || fn.Intrinsic != "" && len(fn.Block) == 0 || (fn.Foreign.Name != "" && !fn.Foreign.Marked) {
+	if fn != nil && fn.Intrinsic != "" && len(fn.Block) == 0 {
+		fillContextDefaults(c)
+		return
+	}
+	if fn == nil || (fn.Foreign.Name != "" && !fn.Foreign.Marked) {
 		return
 	}
 	var args []ir.CallArg
@@ -56,4 +60,31 @@ func fillDefaults(c *ir.Call) {
 	if filled && next == len(c.Args) {
 		c.Args = args
 	}
+}
+
+// fillContextDefaults writes into a call of an intrinsic with no body each
+// default it omits that reads a context, named for its parameter: the
+// emitter reads the rest by name and answers for an omitted one itself, but
+// a context is read where the call is, which is where passContext finds it.
+// sngl:http's `hook = answer` is one.
+func fillContextDefaults(c *ir.Call) {
+	for _, p := range c.Func.Params {
+		if p.Default == nil || p.Receiver || c.ArgFor(p.Name) != nil || !readsContext(p.Default) {
+			continue
+		}
+		c.Args = append(c.Args, ir.CallArg{Name: p.Name, Value: ir.CloneExprSharingDecls(p.Default)})
+	}
+}
+
+// readsContext reports whether e reads a context.
+func readsContext(e ir.Expr) bool {
+	found := false
+	_ = ir.Walk(e, func(n ir.Node) error {
+		if _, ok := n.(*ir.ContextRead); ok {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }

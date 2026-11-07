@@ -40,6 +40,7 @@ func testOpensOnce(t Test, c tuned) {
 }
 
 func testAChangeRetunesWithoutReopening(t Test, c tuned) {
+    t.assert(c.out.value == "open 1")
     c.period = 2
     t.assert(c.out.value == "open 1,retune 2")
     c.period = 3
@@ -47,12 +48,14 @@ func testAChangeRetunesWithoutReopening(t Test, c tuned) {
 }
 
 func testClosingThePositionClosesTheResource(t Test, c tuned) {
+    t.assert(c.out.value == "open 1")
     c.period = 2
     c.on = false
     t.assert(c.out.value == "open 1,retune 2,close")
 }
 
 func testReopeningReadsTheCurrentSetting(t Test, c tuned) {
+    t.assert(c.out.value == "open 1")
     c.on = false
     c.period = 5
     c.on = true

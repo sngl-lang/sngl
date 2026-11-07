@@ -54,7 +54,7 @@ func testABadgeOfAnOptionIsRead(t test.Test, c held) {
     t.assert(c.inner.kind[1].value == "STONE")
 }
 -- testrun/android/kotlin/app.sngl/held/1 --
-sha256:20f928a0356c08ba2883463b5cb3d474
+sha256:cc7f6284baf48b130f19ebd7910ec610
 {
   "results": [
     {
@@ -64,7 +64,7 @@ sha256:20f928a0356c08ba2883463b5cb3d474
   ]
 }
 -- testrun/bubbletea/go/app.sngl/held/1 --
-sha256:7431df92e0457e9c89b4ee2910aafea5
+sha256:03ac4d83117b1b2f3ae0e54b56397207
 {
   "results": [
     {
@@ -74,7 +74,7 @@ sha256:7431df92e0457e9c89b4ee2910aafea5
   ]
 }
 -- testrun/fyne/go/app.sngl/held/1 --
-sha256:78e8d265d20a9d0d2424ba79629b4387
+sha256:a40f0ead76b22071beac662f057ca00b
 {
   "results": [
     {
@@ -84,7 +84,7 @@ sha256:78e8d265d20a9d0d2424ba79629b4387
   ]
 }
 -- testrun/gtk4/go/app.sngl/held/1 --
-sha256:7d765dad13d5e3a7e9860f4a04b7e7db
+sha256:90f6ad20611a94667fd8745a0693ce78
 {
   "results": [
     {
@@ -94,7 +94,7 @@ sha256:7d765dad13d5e3a7e9860f4a04b7e7db
   ]
 }
 -- testrun/html/none/app.sngl/held/1 --
-sha256:b1af9a85adffb7bfdce82face01b8f80
+sha256:a313ecc9d2482aa665f50d1bac6ad740
 {
   "results": [
     {

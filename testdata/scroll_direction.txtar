@@ -151,12 +151,14 @@ type Model struct {
 type modelState struct {
 	visible__inst0 bool
 
+	__scrolls     *tui.Scrolls
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{&modelState{}}
+	m.__scrolls = tui.NewScrolls()
 	m.visible__inst0 = true
 	return m
 }
@@ -167,26 +169,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
-}
-
-func CellsOf(m__r1 *Measurement) int {
-	var px float64 = PxOf(m__r1)
-	var __lt4 int
-	if px <= 0.0 {
-		__lt4 = 0
-	} else {
-		__lt4 = max(1, (int(px) / 8))
-	}
-	return __lt4
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -226,14 +216,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -255,12 +245,12 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	return l
 }
 
-func PxOf(m__r2 *Measurement) float64 {
+func PxOf(m__r1 *Measurement) float64 {
 	var __lt8 float64
-	if m__r2 == nil {
+	if m__r1 == nil {
 		__lt8 = 0.0
 	} else {
-		__lt8 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+		__lt8 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
 	return __lt8
 }
@@ -297,7 +287,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt10
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt13 *Measurement
 	if own != nil {
 		__lt13 = own
@@ -310,23 +300,45 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt13 = __lt12
 	}
-	return CellsOf(__lt13)
+	return SpaceOf(__lt13, across)
+}
+
+func CellsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
+	} else {
+		__lt14 = max(1, (int(px) / 8))
+	}
+	return __lt14
+}
+
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt15 int
+	if px <= 0.0 {
+		__lt15 = 0
+	} else {
+		__lt15 = max(1, (int(px) / 16))
+	}
+	return __lt15
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
+	var __lt17 int
 	if height__r0 == 0 {
-		__lt15 = lines
+		__lt17 = lines
 	} else {
-		var __lt14 int
+		var __lt16 int
 		if lines == 0 {
-			__lt14 = height__r0
+			__lt16 = height__r0
 		} else {
-			__lt14 = min(height__r0, lines)
+			__lt16 = min(height__r0, lines)
 		}
-		__lt15 = __lt14
+		__lt17 = __lt16
 	}
-	return __lt15
+	return __lt17
 }
 
 func (m Model) Visible__inst0() bool {
@@ -358,6 +370,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseWheelMsg:
+		m.__scrolls.Wheel(msg)
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -368,16 +382,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 			return m, nil
+		case (msg.Code == tea.KeyPgUp || msg.Code == tea.KeyPgDown) && m.__scrolls.Key(msg):
 		}
 	}
 	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() tea.View {
+	m.__scrolls.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
+		content_0Look := tui.Stretch(BoxLook(Style{Height: snglSome(Measurement{Px: 120}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width))
+		content_0W, _ := tui.Inner(content_0Look, tui.Avail(m.width), 0)
 		var content_0Children []string
 		var content_0_0 string
 		var content_0_0Children []string
@@ -386,7 +404,8 @@ func (m Model) View() tea.View {
 		for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
 			_ = i
 			var content_0_0_0Item string
-			content_0_0_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("row " + fmt.Sprint(i))))
+			content_0_0_0ItemText := fmt.Sprint(("row " + fmt.Sprint(i)))
+			content_0_0_0Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0W, content_0_0_0ItemText).Render(content_0_0_0ItemText)
 			content_0_0_0Items = append(content_0_0_0Items, content_0_0_0Item)
 		}
 		content_0_0_0 = tui.Spaced(false, lipgloss.Left, 0, content_0_0_0Items...)
@@ -396,7 +415,10 @@ func (m Model) View() tea.View {
 		content_0_0 = lipgloss.JoinVertical(lipgloss.Left, content_0_0Children...)
 		content_0Children = append(content_0Children, content_0_0)
 		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
-		content_0 = BoxLook(Style{Height: snglSome(Measurement{Px: 120}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0)
+		content_0VW, content_0VH := tui.Inner(content_0Look, tui.Avail(m.width), m.height)
+		content_0Focus, content_0Focused := tui.Box{}, false
+		content_0 = m.__scrolls.View("0", content_0, content_0VW, content_0VH, 0, content_0Focus, content_0Focused, false)
+		content_0 = tui.Paint(content_0Look, content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		var content_1Children []string
@@ -407,7 +429,8 @@ func (m Model) View() tea.View {
 		for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
 			_ = i
 			var content_1_0_0Item string
-			content_1_0_0Item = BoxLook(Style{Width: snglSome(Measurement{Px: 120}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("column " + fmt.Sprint(i))))
+			content_1_0_0ItemText := fmt.Sprint(("column " + fmt.Sprint(i)))
+			content_1_0_0Item = tui.Within(BoxLook(Style{Width: snglSome(Measurement{Px: 120}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1_0_0ItemText).Render(content_1_0_0ItemText)
 			content_1_0_0Items = append(content_1_0_0Items, content_1_0_0Item)
 		}
 		content_1_0_0 = tui.Spaced(true, lipgloss.Top, 1, content_1_0_0Items...)
@@ -417,8 +440,13 @@ func (m Model) View() tea.View {
 		content_1_0 = tui.Spaced(true, lipgloss.Top, 1, content_1_0Children...)
 		content_1Children = append(content_1Children, content_1_0)
 		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+		content_1VW, content_1VH := tui.Inner(lipgloss.NewStyle(), tui.Avail(m.width), m.height)
+		content_1Focus, content_1Focused := tui.Box{}, false
+		content_1 = m.__scrolls.View("1", content_1, content_1VW, content_1VH, 1, content_1Focus, content_1Focused, false)
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
+		content_2Look := tui.Stretch(BoxLook(Style{Height: snglSome(Measurement{Px: 120}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width))
+		content_2W, _ := tui.Inner(content_2Look, tui.Avail(m.width), 0)
 		var content_2Children []string
 		var content_2_0 string
 		var content_2_0Children []string
@@ -427,7 +455,8 @@ func (m Model) View() tea.View {
 		for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
 			_ = i
 			var content_2_0_0Item string
-			content_2_0_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint((("a long line " + fmt.Sprint(i)) + " that runs on past the right edge of a phone's screen")))
+			content_2_0_0ItemText := fmt.Sprint((("a long line " + fmt.Sprint(i)) + " that runs on past the right edge of a phone's screen"))
+			content_2_0_0Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_2W, content_2_0_0ItemText).Render(content_2_0_0ItemText)
 			content_2_0_0Items = append(content_2_0_0Items, content_2_0_0Item)
 		}
 		content_2_0_0 = tui.Spaced(false, lipgloss.Left, 0, content_2_0_0Items...)
@@ -437,10 +466,15 @@ func (m Model) View() tea.View {
 		content_2_0 = lipgloss.JoinVertical(lipgloss.Left, content_2_0Children...)
 		content_2Children = append(content_2Children, content_2_0)
 		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
-		content_2 = BoxLook(Style{Height: snglSome(Measurement{Px: 120}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_2)
+		content_2VW, content_2VH := tui.Inner(content_2Look, tui.Avail(m.width), m.height)
+		content_2Focus, content_2Focused := tui.Box{}, false
+		content_2 = m.__scrolls.View("2", content_2, content_2VW, content_2VH, 2, content_2Focus, content_2Focused, false)
+		content_2 = tui.Paint(content_2Look, content_2)
 		contentChildren = append(contentChildren, content_2)
 		content = tui.Spaced(false, lipgloss.Left, 1, contentChildren...)
 	}
+	content = m.__scrolls.Scan(content, 0, 0)
+	m.__scrolls.Settle()
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -792,6 +826,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.key
 import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -1024,21 +1059,27 @@ fun MainScreen() {
             SnglScroll(modifier = Modifier.testTag("down").then(flexed(styleModifier(Style(height = Measurement(px = 120.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() })), direction = "vertical", onReachEnd = {}) {
                 Column(modifier = Modifier.snglFlexible(false)) {
                     for (i in listOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)) {
-                        Text(text = ("row " + i.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                        key(i.toString()) {
+                            Text(text = ("row " + i.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                        }
                     }
                 }
             }
             SnglScroll(modifier = Modifier.testTag("across"), direction = "horizontal", onReachEnd = {}) {
                 Row(modifier = flexed(styleModifier(Style(gap = Measurement(px = 8.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }).snglFlexible(true), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(8.0f))) {
                     for (i in listOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)) {
-                        Text(text = ("column " + i.toString()), modifier = flexed(styleModifier(Style(width = Measurement(px = 120.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+                        key(i.toString()) {
+                            Text(text = ("column " + i.toString()), modifier = flexed(styleModifier(Style(width = Measurement(px = 120.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxHeight().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+                        }
                     }
                 }
             }
             SnglScroll(modifier = Modifier.testTag("either").then(flexed(styleModifier(Style(height = Measurement(px = 120.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() })), direction = "both", onReachEnd = {}) {
                 Column(modifier = Modifier.snglFlexible(false)) {
                     for (i in listOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)) {
-                        Text(text = (("a long line " + i.toString()) + " that runs on past the right edge of a phone's screen"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                        key(i.toString()) {
+                            Text(text = (("a long line " + i.toString()) + " that runs on past the right edge of a phone's screen"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                        }
                     }
                 }
             }
@@ -1451,12 +1492,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6de189ab929bc1bcc9f221401a49298f
+pass sha256:b46bfed2ffd53b2aed2c15f32389ff49
 -- run/go/fyne --
 pass sha256:ed3ec962c6d353842ac95da6cf4f617e
 -- run/go/gtk4 --
 pass sha256:0233779682de768180d89f8c0d65d8e3
 -- run/kotlin/android --
-pass sha256:e647373e1fe5a270aab190c39466a4fe
+pass sha256:97e558d298093de726189480c09eadfa
 -- run/none/html --
 pass sha256:e71b4f322e027e92f12b43db08828de7

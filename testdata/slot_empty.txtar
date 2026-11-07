@@ -79,6 +79,7 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -92,6 +93,11 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
 }
 
 type Style struct {
@@ -185,7 +191,7 @@ func New() Model {
 	m.started__inst0 = true
 	m.started__inst1 = false
 	m.started__inst2 = !m.shown__inst0
-	m.started__inst3 = !(len(m.xs__inst0) == 0)
+	m.started__inst3 = !(len(__identified0(m.xs__inst0)) == 0)
 	m.__focusID = 0
 	return m
 }
@@ -196,15 +202,34 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
-	} else {
-		__lt3 = max(1, (int(px) / 16))
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
 	}
-	return __lt3
+	return __out
+}
+
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
+	} else {
+		__lt3 = 16.0
+	}
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -244,14 +269,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -315,7 +340,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -328,7 +353,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -342,20 +367,31 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m *Model) __focusNext() {
@@ -545,68 +581,78 @@ func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
-		__lt16 := "empty"
+		__lt17 := "empty"
 		var contentPart_1 string
-		contentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt16))
+		contentPart_1Text := fmt.Sprint(__lt17)
+		contentPart_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_1Text).Render(contentPart_1Text)
 		contentParts = append(contentParts, contentPart_1)
-		var __lt17 string
+		var __lt18 string
 		if m.started__inst0 {
-			__lt17 = "started empty"
+			__lt18 = "started empty"
 		} else {
-			__lt17 = "started with content"
+			__lt18 = "started with content"
 		}
 		var contentPart_4 string
-		contentPart_4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt17))
+		contentPart_4Text := fmt.Sprint(__lt18)
+		contentPart_4 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_4Text).Render(contentPart_4Text)
 		contentParts = append(contentParts, contentPart_4)
 		var contentPart_5 string
-		contentPart_5 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("nothing"))
+		contentPart_5Text := fmt.Sprint("nothing")
+		contentPart_5 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_5Text).Render(contentPart_5Text)
 		contentParts = append(contentParts, contentPart_5)
-		__lt18 := "has content"
+		__lt19 := "has content"
 		var contentPart_7 string
-		contentPart_7 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt18))
+		contentPart_7Text := fmt.Sprint(__lt19)
+		contentPart_7 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_7Text).Render(contentPart_7Text)
 		contentParts = append(contentParts, contentPart_7)
-		var __lt19 string
+		var __lt20 string
 		if m.started__inst1 {
-			__lt19 = "started empty"
+			__lt20 = "started empty"
 		} else {
-			__lt19 = "started with content"
+			__lt20 = "started with content"
 		}
 		var contentPart_10 string
-		contentPart_10 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt19))
+		contentPart_10Text := fmt.Sprint(__lt20)
+		contentPart_10 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_10Text).Render(contentPart_10Text)
 		contentParts = append(contentParts, contentPart_10)
 		var contentPart_11 string
 		var contentPart_11Children []string
 		var contentPart_11_0 string
-		contentPart_11_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("a"))
+		contentPart_11_0Text := fmt.Sprint("a")
+		contentPart_11_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_11_0Text).Render(contentPart_11_0Text)
 		contentPart_11Children = append(contentPart_11Children, contentPart_11_0)
 		contentPart_11 = lipgloss.JoinVertical(lipgloss.Left, contentPart_11Children...)
 		contentParts = append(contentParts, contentPart_11)
-		var __lt20 string
+		var __lt21 string
 		if !m.shown__inst0 {
-			__lt20 = "empty"
+			__lt21 = "empty"
 		} else {
-			__lt20 = "has content"
+			__lt21 = "has content"
 		}
 		var contentPart_14 string
-		contentPart_14 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt20))
+		contentPart_14Text := fmt.Sprint(__lt21)
+		contentPart_14 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_14Text).Render(contentPart_14Text)
 		contentParts = append(contentParts, contentPart_14)
-		var __lt21 string
+		var __lt22 string
 		if m.started__inst2 {
-			__lt21 = "started empty"
+			__lt22 = "started empty"
 		} else {
-			__lt21 = "started with content"
+			__lt22 = "started with content"
 		}
 		var contentPart_17 string
-		contentPart_17 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt21))
+		contentPart_17Text := fmt.Sprint(__lt22)
+		contentPart_17 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_17Text).Render(contentPart_17Text)
 		contentParts = append(contentParts, contentPart_17)
 		var contentPart_18 string
 		if !m.shown__inst0 {
-			contentPart_18 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("nothing"))
+			contentPart_18Text := fmt.Sprint("nothing")
+			contentPart_18 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_18Text).Render(contentPart_18Text)
 		} else {
 			var contentPart_18Children []string
 			var contentPart_18_0 string
 			if m.shown__inst0 {
-				contentPart_18_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("shown"))
+				contentPart_18_0Text := fmt.Sprint("shown")
+				contentPart_18_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_18_0Text).Render(contentPart_18_0Text)
 			}
 			if contentPart_18_0 != "" {
 				contentPart_18Children = append(contentPart_18Children, contentPart_18_0)
@@ -616,32 +662,36 @@ func (m Model) View() tea.View {
 		if contentPart_18 != "" {
 			contentParts = append(contentParts, contentPart_18)
 		}
-		var __lt22 string
-		if !(len(m.xs__inst0) == 0) {
-			__lt22 = "empty"
+		var __lt23 string
+		if !(len(__identified0(m.xs__inst0)) == 0) {
+			__lt23 = "empty"
 		} else {
-			__lt22 = "has content"
+			__lt23 = "has content"
 		}
 		var contentPart_21 string
-		contentPart_21 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt22))
+		contentPart_21Text := fmt.Sprint(__lt23)
+		contentPart_21 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_21Text).Render(contentPart_21Text)
 		contentParts = append(contentParts, contentPart_21)
-		var __lt23 string
+		var __lt24 string
 		if m.started__inst3 {
-			__lt23 = "started empty"
+			__lt24 = "started empty"
 		} else {
-			__lt23 = "started with content"
+			__lt24 = "started with content"
 		}
 		var contentPart_24 string
-		contentPart_24 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt23))
+		contentPart_24Text := fmt.Sprint(__lt24)
+		contentPart_24 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_24Text).Render(contentPart_24Text)
 		contentParts = append(contentParts, contentPart_24)
 		var contentPart_25 string
-		if !(len(m.xs__inst0) == 0) {
-			contentPart_25 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("nothing"))
+		if !(len(__identified0(m.xs__inst0)) == 0) {
+			contentPart_25Text := fmt.Sprint("nothing")
+			contentPart_25 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_25Text).Render(contentPart_25Text)
 		} else {
 			var contentPart_25Children []string
 			var contentPart_25_0 string
-			if len(m.xs__inst0) == 0 {
-				contentPart_25_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("no items"))
+			if len(__identified0(m.xs__inst0)) == 0 {
+				contentPart_25_0Text := fmt.Sprint("no items")
+				contentPart_25_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_25_0Text).Render(contentPart_25_0Text)
 			}
 			if contentPart_25_0 != "" {
 				contentPart_25Children = append(contentPart_25Children, contentPart_25_0)
@@ -657,7 +707,8 @@ func (m Model) View() tea.View {
 		if contentPart_26Focused {
 			contentPart_26Prefix = ">"
 		}
-		contentPart_26 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_26Prefix + " " + fmt.Sprint("show"))
+		contentPart_26Text := contentPart_26Prefix + " " + fmt.Sprint("show")
+		contentPart_26 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), contentPart_26Focused), tui.Avail(m.width), contentPart_26Text).Render(contentPart_26Text)
 		contentPart_26 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_26)
 		contentParts = append(contentParts, contentPart_26)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
@@ -684,12 +735,19 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
+
+type __anon_id_elem_cdfd47 struct {
+	Id   string
+	Elem int
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -736,7 +794,7 @@ func New() *Model {
 	m.started__inst0 = true
 	m.started__inst1 = false
 	m.started__inst2 = !m.shown__inst0
-	m.started__inst3 = !(len(m.xs__inst0) == 0)
+	m.started__inst3 = !(len(__identified0(m.xs__inst0)) == 0)
 	m.__slot2 = nil
 	m.__slot2_at = nil
 	m.__inst0_live = []*__child0Instance{}
@@ -748,6 +806,26 @@ func New() *Model {
 	m.__rendering3 = false
 	m.__renderAgain3 = false
 	return m
+}
+
+func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_cdfd47{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot2(__parent *fyne.Container) {
@@ -823,7 +901,7 @@ func (m *Model) __renderSlot3(__parent *fyne.Container) {
 				m.__slot3_at = fynelayout.SlotAnchor(__parent, m.__slot3_at)
 				__inst1_next := []*__child1Instance{}
 				var __inst1_i int = 0
-				if !(len(m.xs__inst0) == 0) {
+				if !(len(__identified0(m.xs__inst0)) == 0) {
 					__n13 := widget.NewLabel("")
 					__n13.SetText("nothing")
 					fynelayout.InsertBefore(__parent, m.__slot3_at, __n13)
@@ -1011,7 +1089,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.Add(m.__n4)
 	m.__renderSlot2(m.__n0.Container)
 	var __lt16 string
-	if !(len(m.xs__inst0) == 0) {
+	if !(len(__identified0(m.xs__inst0)) == 0) {
 		__lt16 = "empty"
 	} else {
 		__lt16 = "has content"
@@ -1047,12 +1125,6 @@ type __child0Instance struct {
 	__slot0_at     fyne.CanvasObject
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
 	__n8           *fyne.Container
 }
 
@@ -1064,9 +1136,6 @@ func new__child0Instance(__model *Model, __a___p0 bool) *__child0Instance {
 	c.__slot0 = nil
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n8 = fynelayout.NewVBox()
 	c.__renderSlot0(c.__n8)
 	c.Root = c.__n8
@@ -1114,16 +1183,10 @@ type __child1Instance struct {
 	__model        *Model
 	__prop___p0    []int
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__rendering1   bool
 	__renderAgain1 bool
-	__slot2        []fyne.CanvasObject
-	__slot2_at     fyne.CanvasObject
-	__slot3        []fyne.CanvasObject
-	__slot3_at     fyne.CanvasObject
 	__n10          *fyne.Container
 }
 
@@ -1132,12 +1195,9 @@ func new__child1Instance(__model *Model, __a___p0 []int) *__child1Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	c.__slot2 = nil
-	c.__slot3 = nil
 	c.__n10 = fynelayout.NewVBox()
 	c.__renderSlot1(c.__n10)
 	c.Root = c.__n10
@@ -1166,7 +1226,7 @@ func (c *__child1Instance) __renderSlot1(__parent *fyne.Container) {
 				}
 				c.__slot1 = nil
 				c.__slot1_at = fynelayout.SlotAnchor(__parent, c.__slot1_at)
-				if len(c.__prop___p0) == 0 {
+				if len(__identified0(c.__prop___p0)) == 0 {
 					__n9 := widget.NewLabel("")
 					__n9.SetText("no items")
 					fynelayout.InsertBefore(__parent, c.__slot1_at, __n9)
@@ -1212,6 +1272,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 
+data class __anon_id_elem_cdfd47(
+    var id: String = "",
+    var elem: Int = 0
+)
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -1227,7 +1292,7 @@ fun MainScreen() {
     var started__inst0 by remember { mutableStateOf(true) }
     var started__inst1 by remember { mutableStateOf(false) }
     var started__inst2 by remember { mutableStateOf(!shown__inst0) }
-    var started__inst3 by remember { mutableStateOf(!(xs__inst0.size == 0)) }
+    var started__inst3 by remember { mutableStateOf(!(__identified0(xs__inst0).size == 0)) }
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -1257,13 +1322,13 @@ fun MainScreen() {
                     }
                 }
             }
-            Text(text = (if (!(xs__inst0.size == 0)) "empty" else "has content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = (if (!(__identified0(xs__inst0).size == 0)) "empty" else "has content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Text(text = (if (started__inst3) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
-            if (!(xs__inst0.size == 0)) {
+            if (!(__identified0(xs__inst0).size == 0)) {
                 Text(text = "nothing", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             } else {
                 Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
-                    if ((xs__inst0.size == 0)) {
+                    if ((__identified0(xs__inst0).size == 0)) {
                         Text(text = "no items", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                     }
                 }
@@ -1275,6 +1340,21 @@ fun MainScreen() {
             }
         }
     }
+}
+
+fun __identified0(__xs: List<Int>): List<__anon_id_elem_cdfd47> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_cdfd47>()
+    for (__x in __xs) {
+    	var __id = __x.toString().replace("#", "##")
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_cdfd47(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/SnglFlexible.kt --
 package test.sngl.app
@@ -1437,7 +1517,25 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = { xs__inst0: [1], shown__inst0: false, visible__inst0: true, started__inst0: true, started__inst1: false, started__inst2: null, started__inst3: null };
   state.started__inst2 = !state.shown__inst0;
-  state.started__inst3 = !(state.xs__inst0.length === 0);
+  state.started__inst3 = !(__identified0(state.xs__inst0).length === 0);
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
+      ;
+      let __id = String(__x).replaceAll("#", "##");
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
+  }
   function __snglTeardown() {
     for (const [__inst5_live_di, _] of __inst5_live.entries()) {
       ;
@@ -1462,9 +1560,6 @@ body { font-family: system-ui, sans-serif; }
     let __slot0 = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot1 = [];
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __renderSlot0(__slotAnchor_0);
@@ -1525,12 +1620,9 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot0 = [];
     let __slot1 = [];
     let __rendering1 = false;
     let __renderAgain1 = false;
-    let __slot22 = [];
-    let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __renderSlot1(__slotAnchor_1);
@@ -1547,7 +1639,7 @@ body { font-family: system-ui, sans-serif; }
             let __place1_prev = __slot1;
             let __place1_i = 0;
             __slot1 = [];
-            if (__prop___p0.length === 0) {
+            if (__identified0(__prop___p0).length === 0) {
               let __n9 = document.createElement("span");
               __n9.textContent = "no items";
               let __place1_i_ref0 = null;
@@ -1679,7 +1771,7 @@ body { font-family: system-ui, sans-serif; }
           __slot3 = [];
           let __inst5_next = [];
           let __inst5_i = 0;
-          if (!(state.xs__inst0.length === 0)) {
+          if (!(__identified0(state.xs__inst0).length === 0)) {
             let __n13 = document.createElement("span");
             __n13.textContent = "nothing";
             let __place4_i_ref0 = null;
@@ -1736,6 +1828,9 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
+  function String(v) {
+    return "" + v;
+  }
   var $5 = document.getElementById("$5");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
@@ -1757,7 +1852,7 @@ body { font-family: system-ui, sans-serif; }
     __n2.textContent = state.started__inst1 ? "started empty" : "started with content";
     __n3.textContent = !state.shown__inst0 ? "empty" : "has content";
     __n4.textContent = state.started__inst2 ? "started empty" : "started with content";
-    __n5.textContent = !(state.xs__inst0.length === 0) ? "empty" : "has content";
+    __n5.textContent = !(__identified0(state.xs__inst0).length === 0) ? "empty" : "has content";
     __n6.textContent = state.started__inst3 ? "started empty" : "started with content";
   }
   __sngl_init();
@@ -1766,10 +1861,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e153776bc498b51b0f07ee2ba7df5f8f
+pass sha256:40f1c37f725d24a834632bc6433be16a
 -- run/go/fyne --
-pass sha256:82efce39819c8790dc5124c0d9b9b904
+pass sha256:2b54c834fcb5d5f956b614971b3da645
 -- run/kotlin/android --
-pass sha256:721fa1c7a8bae88d91f4c0e2f53716ec
+pass sha256:5451161140e6b94a031521217356d8bf
 -- run/none/html --
-pass sha256:981414522c4e04edc1fc412758e0ed8a
+pass sha256:7ce072e130b07ef278243a4f08efba52

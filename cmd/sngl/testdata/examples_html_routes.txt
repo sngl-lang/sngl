@@ -1,0 +1,23 @@
+# Every example generates for html in route mode, the way the Pokédex README's
+# first command does, which no test did: a `$"…"` placeholder reads the
+# locale a context holds rather than state, and a route refused it as neither
+# literal nor reactive; a measurement literal, a canvas's `width=400px`, was
+# refused as no literal it could spell. Run from the repository, since
+# http-session imports a Go package of its module.
+cd $SNGL_ROOT
+sngl generate --platform html --lang go -o $WORK/out/calculator ./examples/calculator
+exists $WORK/out/calculator/server.go
+sngl generate --platform html --lang go -o $WORK/out/canvas ./examples/canvas
+exists $WORK/out/canvas/server.go
+sngl generate --platform html --lang go -o $WORK/out/hello-i18n ./examples/hello-i18n
+exists $WORK/out/hello-i18n/server.go
+sngl generate --platform html --lang go -o $WORK/out/hello ./examples/hello
+exists $WORK/out/hello/server.go
+sngl generate --platform html --lang go -o $WORK/out/http-session ./examples/http-session
+exists $WORK/out/http-session/server.go
+sngl generate --platform html --lang go -o $WORK/out/pokedex ./examples/pokedex
+exists $WORK/out/pokedex/server.go
+sngl generate --platform html --lang go -o $WORK/out/showcase ./examples/showcase
+exists $WORK/out/showcase/server.go
+sngl generate --platform html --lang go -o $WORK/out/todo ./examples/todo
+exists $WORK/out/todo/server.go

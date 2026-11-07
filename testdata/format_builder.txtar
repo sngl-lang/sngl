@@ -71,6 +71,9 @@ type Tag struct {
 	Name string
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	tag Tag
@@ -83,9 +86,17 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.tag = Tag{Name: "go"}
-	m.n = 3
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["tag"] {
+		m.tag = Tag{Name: "go"}
+	}
+	if !preset["n"] {
+		m.n = 3
+	}
 }
 
 func TagAppendFormat(t Tag, out []byte, upper bool) []byte {
@@ -188,6 +199,7 @@ import (
 func TestBuilt(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((__fmt0(c.tag, c.tag, true, _fill(fmt.Sprint(c.n), 2, " ")) == "#go and #GO,  3")) { t.Errorf("assert failed: %s", "(__fmt0(c.tag, c.tag, true, _fill(fmt.Sprint(c.n), 2, \" \")) == \"#go and #GO,  3\")") }
 	c.renameClick()
 	if !((__fmt0(c.tag, c.tag, true, _fill(fmt.Sprint(c.n), 2, " ")) == "#sngl and #SNGL,  3")) { t.Errorf("assert failed: %s", "(__fmt0(c.tag, c.tag, true, _fill(fmt.Sprint(c.n), 2, \" \")) == \"#sngl and #SNGL,  3\")") }
@@ -200,7 +212,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -230,15 +246,31 @@ data class Tag(
     var name: String = ""
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
+class Builder {
+    override fun equals(other: Any?) = other is Builder
+    override fun hashCode() = 0
+    override fun toString() = "Builder()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var tag by mutableStateOf(Tag(name = "go"))
-    var n by mutableStateOf(3)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var tag by mutableStateOf(__snglPre(__pre, "tag") { Tag(name = "go") })
+    var n by mutableStateOf(__snglPre(__pre, "n") { 3 })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -339,19 +371,22 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { tag: null, n: 3 };
-  state.tag = { name: "go" };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
+  if (!("tag" in __snglPre)) state.tag = { name: "go" };
   state.renameClick = () => $1.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
@@ -400,12 +435,11 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:7d157e06911e3116f07f69853d281e2a
+pass sha256:4ac718e26811c37f3e827dff7d4e942f
 -- run/kotlin/android --
-pass sha256:ded7ddf96c27cf6d8326534e9cad4611
+pass sha256:6dabd5622b896deca90f995eb7e96691
 -- run/none/html --
-pass sha256:03252005d75de9a570da003016a0360d
+pass sha256:08833b04b1fe3711a8359eb264630a19

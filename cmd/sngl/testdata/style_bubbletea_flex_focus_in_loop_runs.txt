@@ -13,7 +13,7 @@ stdout 'ok   1 tests, 0 failures'
 sngl test --platform=bubbletea shown.sngl
 stdout 'ok   1 tests, 0 failures'
 cmp app.sngl.snapshots/shown.ansi shown.sngl.snapshots/shown.ansi
-grep '^> a {32}a! {3}b {31}b! {3}end' app.sngl.snapshots/shown.ansi
+grep '(?m)^┃> a {20,}┃ │  a! │ │  b {20,}│ │  b! │ │  end │' app.sngl.snapshots/shown.ansi
 
 -- app.sngl --
 import test "sngl:test"
@@ -60,7 +60,7 @@ ui.window {
     row
 }
 -- testrun/bubbletea/go/app.sngl/row/1 --
-sha256:696e2022ad063050703f1b9f4f3e9b87
+sha256:3d3a55f97df74e758c7430eb1bd2cd85
 {
   "results": [
     {
@@ -69,11 +69,11 @@ sha256:696e2022ad063050703f1b9f4f3e9b87
     }
   ],
   "snapshots": {
-    "shown.ansi": "PiBhICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBhISAgIGIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgYiEgICBlbmQ="
+    "shown.ansi": "4pSP4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSTIOKVreKUgOKUgOKUgOKUgOKUgOKVriDila3ilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDila4g4pWt4pSA4pSA4pSA4pSA4pSA4pWuIOKVreKUgOKUgOKUgOKUgOKUgOKUgOKVrgrilIM+IGEgICAgICAgICAgICAgICAgICAgICAg4pSDIOKUgiAgYSEg4pSCIOKUgiAgYiAgICAgICAgICAgICAgICAgICAgICDilIIg4pSCICBiISDilIIg4pSCICBlbmQg4pSCCuKUl+KUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUmyDilbDilIDilIDilIDilIDilIDila8g4pWw4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pWvIOKVsOKUgOKUgOKUgOKUgOKUgOKVryDilbDilIDilIDilIDilIDilIDilIDila8="
   }
 }
 -- testrun/bubbletea/go/shown.sngl/row/1 --
-sha256:b2f550cf2f8f13ac962a38815e6e5d84
+sha256:ff96883606e478946c66216a17f17163
 {
   "results": [
     {
@@ -82,6 +82,6 @@ sha256:b2f550cf2f8f13ac962a38815e6e5d84
     }
   ],
   "snapshots": {
-    "shown.ansi": "PiBhICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBhISAgIGIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgYiEgICBlbmQ="
+    "shown.ansi": "4pSP4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSTIOKVreKUgOKUgOKUgOKUgOKUgOKVriDila3ilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDila4g4pWt4pSA4pSA4pSA4pSA4pSA4pWuIOKVreKUgOKUgOKUgOKUgOKUgOKUgOKVrgrilIM+IGEgICAgICAgICAgICAgICAgICAgICAg4pSDIOKUgiAgYSEg4pSCIOKUgiAgYiAgICAgICAgICAgICAgICAgICAgICDilIIg4pSCICBiISDilIIg4pSCICBlbmQg4pSCCuKUl+KUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUmyDilbDilIDilIDilIDilIDilIDila8g4pWw4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pWvIOKVsOKUgOKUgOKUgOKUgOKUgOKVryDilbDilIDilIDilIDilIDilIDilIDila8="
   }
 }

@@ -6,7 +6,7 @@ import ui "sngl:ui"
 // this size, so the list is one request.
 const dexLimit = 50
 
-// How many cards a row holds.
+// How many cards a row of the grid holds.
 const columns = 3
 
 // The Pokédex chosen, by name and as PokéAPI answers it. The window's menu
@@ -16,6 +16,18 @@ const columns = 3
 var dexName option[string] = null
 
 var chosenDex option[poke.PokedexDetail] = null
+
+// How many cards home shows at first, and how many more each time its grid is
+// scrolled to the end.
+const pageSize = 30
+
+// Where home is: how many of the matches it shows, the search, and whether
+// every species' names are asked for. They outlive the page, so coming back
+// from a Pokémon finds the cards it left, and a target that keeps the page's
+// scroll has them to scroll back to.
+var shown = pageSize
+var search = ""
+var namingAll = false
 
 // Chooses the Pokédex named `name`.
 func chooseDex(name string) {
@@ -29,22 +41,8 @@ func chooseDex(name string) {
 // nothing. An entry names its species only by PokéAPI's slug, so a card shown
 // asks for its species' names, where no page has yet; the first search of a
 // dex asks for every one, so it matches what the cards say.
-component homePage(pageSize = 30, @open(name string)) ui.node {
+component homePage(@open(name string)) ui.node {
     var loading = false
-    var failure option[async.Failure] = null
-    // The dex that failed to load, which is not asked for again until the
-    // sign of its failure forgets it, and how many times one has: a retry
-    // that answers as the one before leaves `failure` as it was.
-    var failedDex option[string] = null
-    var dexFailures = 0
-    var shown = pageSize
-    var search = ""
-    var namingAll = false
-    // The species home has asked for the names of, in the order it asked:
-    // only ever added to, so a request keeps its place in the loop below. A
-    // `for` matches its copies by position, so one dropping out of the middle
-    // moved every request after it, and each started again.
-    var asking list[string] = []
 
     // Every entry of the dex.
     func entries() list[poke.PokemonDexNumber] {
@@ -56,7 +54,7 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
 
     // The species' name in the reader's language, its slug until its names
     // have arrived.
-    func label(e poke.PokemonDexNumber) => called(names, `species`, e.pokemonSpecies.name)
+    func label(e poke.PokemonDexNumber) => called(names.answers, `species`, e.pokemonSpecies.name)
 
     // The dex's entries the search matches, all of them: by slug, or by the
     // name a card shows.
@@ -65,47 +63,18 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
         return entries().filter(func(e poke.PokemonDexNumber) => string.contains(e.pokemonSpecies.name, q) || string.contains(string.lower(label(e)), q))
     }
 
-    // The entries whose names are asked for: the cards shown, or every one
-    // once the dex has been searched. Either is a prefix of the dex, so a
-    // request keeps its place as the list grows.
-    func naming() => namingAll ? entries() : visible()
-
-    // Adds to `asking` each entry named nowhere yet.
-    func ask() {
-        for var e = naming() {
-            var slug = e.pokemonSpecies.name
-            if wanted(`species`, slug) && !asking.contains(slug) {
-                asking.push(slug)
-            }
-        }
-    }
-
-    // Asks again for each species asked for that failed before this round,
-    // by asking for it at the end of `asking`: a request already in the list
-    // keeps its place, and asks nothing more.
-    func askAgain() {
-        var again list[string] = []
-        for var slug = asking {
-            if !known(`species`, slug) && failures.contains("species/{slug}") && !failedNow(`species`, slug) && !again.contains(slug) {
-                again.push(slug)
-            }
-        }
-        for var slug = again {
-            asking.push(slug)
-        }
-    }
+    // The species whose names are asked for: the cards shown, or every one
+    // once the dex has been searched.
+    func naming() => (namingAll ? entries() : visible()).map(func(e poke.PokemonDexNumber) => e.pokemonSpecies.name)
 
     // Whether a search is waiting on names still to arrive.
-    func namesPending() => namingAll && entries().filter(func(e poke.PokemonDexNumber) => wanted(`species`, e.pokemonSpecies.name)).length() > 0
+    func namesPending() => namingAll && entries().filter(func(e poke.PokemonDexNumber) => names.wanted("species/{e.pokemonSpecies.name}")).length() > 0
 
     // The matches the grid shows.
     func visible() list[poke.PokemonDexNumber] {
         var all = matching()
         return all.slice(0, int.min(shown, all.length()))
     }
-
-    // The grid, a row of `columns` cards at a time.
-    func grid() => rows(visible(), columns)
 
     // Shows a page more of the matches, where there are more to show.
     func more() {
@@ -123,27 +92,10 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
             namingAll = true
         }
     })
-    if dexName != null && dexName != failedDex {
-        poke.pokedexRetrieve(
-            id = dexName,
-            :value = chosenDex,
-            :pending = loading,
-            :failure = failure,
-            @fail {
-                failedDex = dexName
-                dexFailures += 1
-            },
-        )
-    }
-    // Keyed on what decides how much of the dex `naming` covers, rather than
-    // on `naming` itself, which reads the names through the search.
-    effect(on="{chosenDex != null ? chosenDex.name : ""}/{namingAll}/{shown}", @mount { ask() })
-    // A species that fails is named by its slug until the sign of the
-    // failed lookups asks for it again (askAgain). Each is written here
-    // rather than through `lookup`, under no `if`: a request under one in
-    // this loop kept bubbletea from asking for another dex.
-    for var slug = asking {
-        poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) }, @fail(f) { lookupFailed(`species`, slug, f) })
+    // A request per species, kept by its slug, so one dropping out of the
+    // list leaves every other request where it is.
+    for var slug = naming() {
+        lookup(kind=`species`, slug=slug)
     }
 
     ui.vbox(style={gap=8px, padding=8px, flex=1}) {
@@ -151,29 +103,28 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
             if chosenDex != null {
                 ui.text #about(value=dexLine(chosenDex))
             }
-            lookupsError #namesFailed(@again { askAgain() })
+            lookupsError #namesFailed()
         }
         ui.input #searchBox(placeholder=$"Search this Pokédex", :value=search)
         if namesPending() {
             ui.spinner #namesLoading(label=$"Loading names")
         }
-        if failedDex != null && failedDex == dexName {
-            ui.hbox(style={gap=8px, alignItems=center}) {
-                ui.text(value=couldNotLoadDex(whyOf(failure)))
-                loadError #dexFailed(why=requestFailed(whyOf(failure)), @retry { failedDex = null })
-            }
+        if dexName != null {
+            asked #dexAsk(
+                on = dexName,
+                fetch = func(id string, life async.Lifetime) => poke.pokedexRetrieveCall(id=id, life=life),
+                :value = chosenDex,
+                :pending = loading,
+                say = couldNotLoadDex,
+            )
         }
         if chosenDex == null && loading {
             ui.spinner(label=$"Loading")
         }
         ui.scroll #cards(style={flex=1}, @reachEnd { more() }) {
-            ui.vbox(style={gap=8px}) {
-                for var row = grid() {
-                    ui.hbox(style={gap=8px}) {
-                        for var entry = row {
-                            card(entry=entry, name=label(entry), @open { open(entry.pokemonSpecies.name) })
-                        }
-                    }
+            ui.grid(columns=columns, style={gap=8px}) {
+                for var entry = visible() {
+                    card(entry=entry, name=label(entry), @open { open(entry.pokemonSpecies.name) })
                 }
             }
         }
@@ -184,8 +135,8 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
 // opened by a click anywhere on it. The picture's URL comes from the species
 // id in the entry.
 component card(entry poke.PokemonDexNumber, name string, @open()) ui.node {
-    ui.card(clickable=true, style={width=128px}, @click { open() }) {
-        ui.vbox(style={gap=4px, alignItems=center}) {
+    ui.card(clickable=true, @click { open() }) {
+        ui.vbox(style={gap=4px, alignItems=center, flex=1}) {
             ui.image(alt=entry.pokemonSpecies.name, style={width=96px, height=96px}) {
                 ui.remote(url=artworkOf(artwork, idOf(entry.pokemonSpecies.url)))
             }

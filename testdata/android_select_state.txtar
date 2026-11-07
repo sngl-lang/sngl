@@ -19,17 +19,17 @@ var one = ""
 ui.window {
     ui.vbox {
         ui.select(:value=one) {
-            ui.choice(label="x")
+            ui.choice(label="x", value="x")
         }
         for var i, r = rows {
             ui.select(placeholder=r, @change(v) { picks[i] = v }) {
-                ui.choice(label="x")
-                ui.choice(label="y")
+                ui.choice(label="x", value="x")
+                ui.choice(label="y", value="y")
             }
         }
         if shown {
             ui.select(:value=one) {
-                ui.choice(label="z")
+                ui.choice(label="z", value="z")
             }
         }
         ui.button(text="t", @click { shown = !shown })
@@ -65,6 +65,7 @@ import androidx.compose.material3.Text
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -90,8 +91,14 @@ data class Measurement(
     val rem: Double = 0.0
 )
 
-data class Choice__record(
-    var label: String = ""
+data class Choice__record__string(
+    var label: String = "",
+    var value: String = ""
+)
+
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
 )
 
 data class Style(
@@ -294,10 +301,16 @@ fun MainScreen() {
     var visible__inst0 by remember { mutableStateOf(true) }
 
 
-    fun choose__inst0(v: String) {
+    fun choose__inst0(label: String) {
         open__inst0 = false
-        if (((v != one) && (listOf(Choice__record(label = "x")).map({ o: Choice__record -> o.label }).indexOf(v) >= 0))) {
-        	one = v
+        var at = choiceLabeled__string(listOf(Choice__record__string(label = "x", value = "x")), label)
+        for ((i, o) in listOf(Choice__record__string(label = "x", value = "x")).withIndex()) {
+        	if (((at < 0) && (o.value.toString() == label))) {
+        		at = i
+        	}
+        }
+        if (((at >= 0) && (listOf(Choice__record__string(label = "x", value = "x"))[at].value != one))) {
+        	one = listOf(Choice__record__string(label = "x", value = "x"))[at].value
         }
     }
 
@@ -313,7 +326,7 @@ fun MainScreen() {
             Box(modifier = Modifier.snglChooses({ v: String ->
     choose__inst0(v)
 })) {
-                OutlinedTextField(value = one, readOnly = true, enabled = true, singleLine = true, modifier = Modifier, onValueChange = {}, trailingIcon = {
+                OutlinedTextField(value = choiceLabel__string(listOf(Choice__record__string(label = "x", value = "x")), one), readOnly = true, enabled = true, singleLine = true, modifier = Modifier, onValueChange = {}, trailingIcon = {
                     Text(text = "▾", modifier = Modifier)
                 })
                 Box(modifier = Modifier.matchParentSize().clickable(enabled = true, onClick = {  ->
@@ -323,7 +336,7 @@ fun MainScreen() {
                 DropdownMenu(expanded = open__inst0, onDismissRequest = {
                     open__inst0 = false
                 }) {
-                    for (opt in listOf(Choice__record(label = "x"))) {
+                    for (opt in listOf(Choice__record__string(label = "x", value = "x"))) {
                         DropdownMenuItem(onClick = {
                             choose__inst0(opt.label)
                         }, text = {
@@ -332,13 +345,15 @@ fun MainScreen() {
                     }
                 }
             }
-            for ((i, r) in rows.withIndex()) {
-                __select_state0(placeholder = r, options = listOf(Choice__record(label = "x"), Choice__record(label = "y")), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, onChange = { v ->
-                    picks[i] = v
-                })
+            for ((i, r) in __identified0(rows).withIndex()) {
+                key(r.id) {
+                    __select_state0(placeholder = r.elem, options = listOf(Choice__record__string(label = "x", value = "x"), Choice__record__string(label = "y", value = "y")), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, onChange = { v ->
+                        picks[i] = v
+                    })
+                }
             }
             if (shown) {
-                Select(value = one, options = listOf(Choice__record(label = "z")), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, onValue = { __value ->
+                Select__string(value = one, options = listOf(Choice__record__string(label = "z", value = "z")), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }, onValue = { __value ->
                     one = __value
                 })
             }
@@ -352,21 +367,27 @@ fun MainScreen() {
 }
 
 @Composable
-fun Select(placeholder: String = "", value: String, disabled: Boolean = false, multiple: Boolean = false, focusable: Boolean = true, style: Style = Style(), options: List<Choice__record> = listOf<Choice__record>(), __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShare, slotContent: (@Composable () -> Unit)? = null, onChange: ((String) -> Unit)? = null, onFocus: (() -> Unit)? = null, onBlur: (() -> Unit)? = null, onValue: ((String) -> Unit)? = null, __testTag: String = "") {
+fun Select__string(placeholder: String = "", value: String, disabled: Boolean = false, focusable: Boolean = true, style: Style = Style(), options: List<Choice__record__string> = listOf<Choice__record__string>(), __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShare, slotContent: (@Composable () -> Unit)? = null, onChange: ((String) -> Unit)? = null, onFocus: (() -> Unit)? = null, onBlur: (() -> Unit)? = null, onValue: ((String) -> Unit)? = null, __testTag: String = "") {
     var open by remember { mutableStateOf(false) }
 
-    fun choose(v: String) {
+    fun choose(label: String) {
         open = false
-        if (((v != value) && (options.map({ o: Choice__record -> o.label }).indexOf(v) >= 0))) {
-        	onValue?.invoke(v)
-        	onChange?.invoke(v)
+        var at = choiceLabeled__string(options, label)
+        for ((i, o) in options.withIndex()) {
+        	if (((at < 0) && (o.value.toString() == label))) {
+        		at = i
+        	}
+        }
+        if (((at >= 0) && (options[at].value != value))) {
+        	onValue?.invoke(options[at].value)
+        	onChange?.invoke(options[at].value)
         }
     }
 
     Box(modifier = Modifier.then(if (__testTag.isEmpty()) Modifier else Modifier.testTag(__testTag)).then(flexed((if ((style == Style())) Modifier else styleModifier(style, true)), style.flex, __ctx_flexShare).snglChooses({ v: String ->
     choose(v)
 }))) {
-        OutlinedTextField(value = value, readOnly = true, enabled = (disabled == false), singleLine = true, modifier = (if (focusable) Modifier else Modifier.snglUnfocusable()), onValueChange = {}, label = {
+        OutlinedTextField(value = choiceLabel__string(options, value), readOnly = true, enabled = (disabled == false), singleLine = true, modifier = (if (focusable) Modifier else Modifier.snglUnfocusable()), onValueChange = {}, label = {
             if ((placeholder != "")) {
                 Text(text = placeholder, modifier = Modifier)
             }
@@ -392,22 +413,28 @@ fun Select(placeholder: String = "", value: String, disabled: Boolean = false, m
 }
 
 @Composable
-fun __select_state0(__start_value: String = "", placeholder: String, options: List<Choice__record>, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShare, onChange: ((String) -> Unit)? = null) {
+fun __select_state0(__start_value: String = "", placeholder: String, options: List<Choice__record__string>, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShare, onChange: ((String) -> Unit)? = null) {
     var value by remember { mutableStateOf(__start_value) }
     var open__inst1 by remember { mutableStateOf(false) }
 
-    fun choose__inst1(v: String) {
+    fun choose__inst1(label: String) {
         open__inst1 = false
-        if (((v != value) && (options.map({ o: Choice__record -> o.label }).indexOf(v) >= 0))) {
-        	value = v
-        	onChange?.invoke(v)
+        var at = choiceLabeled__string(options, label)
+        for ((i, o) in options.withIndex()) {
+        	if (((at < 0) && (o.value.toString() == label))) {
+        		at = i
+        	}
+        }
+        if (((at >= 0) && (options[at].value != value))) {
+        	value = options[at].value
+        	onChange?.invoke(options[at].value)
         }
     }
 
     Box(modifier = Modifier.snglChooses({ v: String ->
     choose__inst1(v)
 })) {
-        OutlinedTextField(value = value, readOnly = true, enabled = true, singleLine = true, modifier = Modifier, onValueChange = {}, label = {
+        OutlinedTextField(value = choiceLabel__string(options, value), readOnly = true, enabled = true, singleLine = true, modifier = Modifier, onValueChange = {}, label = {
             if ((placeholder != "")) {
                 Text(text = placeholder, modifier = Modifier)
             }
@@ -430,6 +457,39 @@ fun __select_state0(__start_value: String = "", placeholder: String, options: Li
             }
         }
     }
+}
+
+fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_c6a818>()
+    for (__x in __xs) {
+    	var __id = __x.replace("#", "##")
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_c6a818(id = __id, elem = __x))
+    }
+    return __out
+}
+
+fun choiceLabeled__string(options: List<Choice__record__string>, label: String): Int {
+    for ((i, o) in options.withIndex()) {
+    	if ((o.label == label)) {
+    		return i
+    	}
+    }
+    return -1
+}
+
+fun choiceLabel__string(options: List<Choice__record__string>, value: String): String {
+    for (o in options) {
+    	if ((o.value == value)) {
+    		return o.label
+    	}
+    }
+    return ""
 }
 
 fun focusOf(m: androidx.compose.ui.Modifier, focusable: Boolean): androidx.compose.ui.Modifier = (if (focusable) m else m.snglUnfocusable())
@@ -662,4 +722,4 @@ import androidx.compose.ui.focus.focusProperties
 // lambda with a receiver, which SNGL has no way to write.
 fun Modifier.snglUnfocusable(): Modifier = focusProperties { canFocus = false }
 -- run/kotlin/android --
-pass sha256:b2b81395d7199deec676d90076f10363
+pass sha256:ccb3456491756e82b7137f95773faf50

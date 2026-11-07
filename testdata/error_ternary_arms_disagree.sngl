@@ -1,0 +1,29 @@
+// A ternary's arms are of one type, one assignable to the other's, or one is
+// `null`. A bare name is whatever the scope binds under it, so where a
+// component is named `grid` an arm written `grid` is that component, not the
+// enum member the other arm is: the ternary took the first arm's type and
+// the program read the component where it meant the member.
+
+import ui "sngl:ui"
+
+enum Shape { flex, grid }
+
+component grid ui.node {
+    ui.vbox {}
+}
+
+func shapeOf(n option[int]) Shape {
+    return n == null ? flex : grid // ERROR(check) "ternary branches have mismatched types Shape and grid"
+}
+
+func written(n option[int]) Shape {
+    return n == null ? Shape.flex : Shape.grid
+}
+
+func label(ok bool) string {
+    return ok ? "yes" : 1 // ERROR(check) "ternary branches have mismatched types string and int"
+}
+
+func maybe(ok bool) option[string] {
+    return ok ? null : "set"
+}

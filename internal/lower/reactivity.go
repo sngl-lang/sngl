@@ -52,6 +52,9 @@ type reactivityState struct {
 	reverseLive map[*ir.Var][]liveProp
 	// slotOwners is the body each slot is written in.
 	slotOwners map[string]reactivityOwner
+	// slotFuncs is each slot's render function once one is built, so a block
+	// walked again builds none a second time (buildSlots).
+	slotFuncs map[string]*ir.Func
 	// sites is the instance registry each slot-body instantiation keeps, by
 	// the site, so an updater and the render share one.
 	sites map[*ir.NodeInst]*slotInstance
@@ -224,6 +227,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		reverseSlots: make(map[*ir.Var][]reactiveSlot),
 		reverseLive:  make(map[*ir.Var][]liveProp),
 		slotOwners:   map[string]reactivityOwner{},
+		slotFuncs:    map[string]*ir.Func{},
 		sites:        make(map[*ir.NodeInst]*slotInstance),
 		undriven:     map[string]bool{},
 		intrinsics:   make(map[string]*ir.Func),
@@ -236,6 +240,10 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
 	}
+	for _, comp := range pkg.Components {
+		keyLoopInstances(comp.Stmts, nil)
+	}
+	keyLoopInstances(pkg.Body, nil)
 	if !caps.InlineSlots {
 		for _, comp := range pkg.Components {
 			comp.Stmts = st.slotFlows(comp.Stmts)
@@ -261,10 +269,26 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	// several owners is one body, and the updaters a walk adds are the whole
 	// package's rather than that owner's -- so a second pass over it appends a
 	// second copy of the same patches.
+	//
+	//
+	// Every body's render slots are built, and its reactive structures
+	// rewritten into calls of them, before any update is injected: a handler
+	// of a component built at run time writing the page's state is walked
+	// before the package body, and its re-fire of the page's slot reading it
+	// was dropped for want of the slot's function, or parented to the
+	// instance's own root for want of the slot's parent. A click there wrote
+	// the var and redrew nothing on fyne, gtk4 and html
+	// (cmd/sngl/testdata/instance_writes_page_state_runs.txt).
+	for _, comp := range pkg.Components {
+		st.owner = compOwner{comp}
+		comp.Stmts = st.buildAndRewrite(comp.Stmts)
+	}
+	st.owner = pkgOwner{pkg: pkg, root: ir.AppParent}
+	pkg.Body = st.buildAndRewrite(pkg.Body)
 	injected := map[*ir.Func]bool{}
 	for _, comp := range pkg.Components {
 		st.owner = compOwner{comp}
-		comp.Stmts = st.rewriteAndInject(comp.Stmts)
+		comp.Stmts = st.injectIntoStmts(comp.Stmts)
 		for _, f := range comp.Funcs {
 			if injected[f] || st.setterFuncs[f] {
 				continue
@@ -275,7 +299,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	}
 	// The package body, whose parent is the application.
 	st.owner = pkgOwner{pkg: pkg, root: ir.AppParent}
-	pkg.Body = st.rewriteAndInject(pkg.Body)
+	pkg.Body = st.injectIntoStmts(pkg.Body)
 	// Package-level funcs last, because the walks above are what create most
 	// of them. A reactive `if` or `for` in a window body is lifted into a
 	// synthesized `__renderSlotN` whose Block is the *uninjected* statements,
@@ -341,6 +365,20 @@ func ownedFuncs(pkg *ir.Package) map[*ir.Func]bool {
 // injectIntoStmts for prop-updater injection. Future tasks add slot
 // generator Funcs and structural rewrites.
 func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
+	return st.injectIntoStmts(st.buildAndRewrite(stmts))
+}
+
+// buildAndRewrite builds the render functions of the slots written in stmts
+// and replaces each reactive If/For with a call of its own.
+func (st *reactivityState) buildAndRewrite(stmts []ir.Stmt) []ir.Stmt {
+	st.buildSlots(stmts)
+	return st.rewriteReactiveStructures(stmts, nil)
+}
+
+// buildSlots builds the render function of each slot written in stmts that
+// has none yet, on the owner being walked, and points every slot record at
+// it.
+func (st *reactivityState) buildSlots(stmts []ir.Stmt) {
 	// If any reactive slots exist on this owner, synthesize a __root Var,
 	// the container its top-level slots render into (ownerRootType).
 	// Platforms bind it to their root-container reference at codegen time.
@@ -357,21 +395,18 @@ func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
 	// Build one slot var + Func per unique ID. Sort for deterministic
 	// codegen output: slot vars enter comp.Vars in this order and
 	// propagate downstream (e.g. JS state object field order).
-	// The package body's owner is walked last and holds only the slots
-	// written in it: a slot of a component is that owner's, and
-	// synthesized here too it declared a second `__slotN` on the package.
-	if o, ok := st.owner.(pkgOwner); ok && o.root == ir.AppParent {
-		own := map[string]bool{}
-		for id := range uniqueSlots {
-			if st.buildRenderSlotForProbe(id, stmts) {
-				own[id] = true
-			}
-		}
-		uniqueSlots = own
-		if len(own) == 0 {
-			return st.injectIntoStmts(st.rewriteReactiveStructures(stmts, nil))
+	// Each owner holds only the slots written in the block being walked:
+	// reverseSlots is the package's, and a var for each of them on every
+	// owner gave each of the Pokédex's 70 records on gtk4 all 48 of its
+	// slots, 1.5% of which it rendered -- and the package body a second
+	// `__slotN` of a component's.
+	own := map[string]bool{}
+	for id := range uniqueSlots {
+		if st.buildRenderSlotForProbe(id, stmts) {
+			own[id] = true
 		}
 	}
+	uniqueSlots = own
 	slotIDs := make([]string, 0, len(uniqueSlots))
 	for id := range uniqueSlots {
 		slotIDs = append(slotIDs, id)
@@ -380,10 +415,14 @@ func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
 	built := map[string]*ir.Func{}
 	for _, slotID := range slotIDs {
 		st.synthesizeSlotVar(slotID)
+		if st.slotFuncs[slotID] != nil {
+			continue
+		}
 		fn := st.buildRenderSlotFor(slotID, stmts)
 		if fn != nil {
 			st.owner.addFunc(fn)
 			built[slotID] = fn
+			st.slotFuncs[slotID] = fn
 		}
 	}
 	// Wire GenFunc on every reactiveSlot record so updatersFor can reach the
@@ -403,9 +442,6 @@ func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
 		}
 		st.reverseSlots[v] = slots
 	}
-	// Replace reactive If/For at source position with renderSlot CallStmt.
-	stmts = st.rewriteReactiveStructures(stmts, nil)
-	return st.injectIntoStmts(stmts)
 }
 
 // rewriteReactiveStructures replaces every *ir.If/*ir.For carrying a
@@ -887,6 +923,28 @@ func (st *reactivityState) addLiveDep(v *ir.Var, p liveProp) {
 		}
 	}
 	st.reverseLive[v] = append(st.reverseLive[v], p)
+}
+
+// keyLoopInstances keys each component built at run time under a loop that
+// tells its copies apart by identity (ir.For.Identity) by the copy it is in,
+// so the slot holding the instances keeps each with its copy rather than its
+// position: a list that drops its first element hands every later row its own
+// instance, not the one before it.
+func keyLoopInstances(stmts []ir.Stmt, loops []*ir.For) {
+	for _, s := range stmts {
+		if fs, ok := s.(*ir.For); ok {
+			keyLoopInstances(fs.Body, append(slices.Clip(loops), fs))
+			keyLoopInstances(fs.Else, loops)
+			continue
+		}
+		if n, ok := s.(*ir.NodeInst); ok && n.Key == nil && Keyed(loops) &&
+			n.Component != nil && n.Component.RuntimeInstance && hasRealComponentBody(n.Component) {
+			n.Key = CopyIdentity(loops)
+		}
+		for _, b := range ir.ViewBlocks(s) {
+			keyLoopInstances(*b, loops)
+		}
+	}
 }
 
 // siteInstance is the registry an instantiation in a slot body keeps, made
@@ -1438,9 +1496,11 @@ func (st *reactivityState) reachable(v *ir.Var) ([]reactiveProp, []reactiveSlot,
 	}
 	// A component the page's refresh reaches holds its nodes and slots
 	// itself, so no writer outside it names them, a package func included.
+	// The root of a build rooted at a component is the page, whose nodes and
+	// slots an instance's writer reaches as it reaches the package body's.
 	foreign := func(o reactivityOwner) bool {
 		c, other := o.(compOwner)
-		return other && st.owner != o && (inComp || st.refresh.reaches(c.c, v))
+		return other && st.owner != o && (st.root == nil || c.c != st.root) && (inComp || st.refresh.reaches(c.c, v))
 	}
 	var props []reactiveProp
 	for _, p := range st.reverseDeps[v] {
@@ -2201,6 +2261,7 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 					KeySym:   sx.KeySym,
 					ValueSym: sx.ValueSym,
 					Iter:     sx.Iter,
+					Identity: sx.Identity,
 					ElemType: sx.ElemType,
 					AST:      sx.AST,
 					Body:     emitStmts(sx.Body),
@@ -2231,6 +2292,7 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 			KeySym:   loop.KeySym,
 			ValueSym: loop.ValueSym,
 			Iter:     loop.Iter,
+			Identity: loop.Identity,
 			ElemType: loop.ElemType,
 			AST:      loop.AST,
 			Body:     emitStmts(origBody),

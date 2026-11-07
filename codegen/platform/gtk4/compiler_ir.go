@@ -472,6 +472,7 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 	// Pre-rendered so gc.RequireImport calls from EvalExpr land before
 	// newScaffoldData samples gc.Imports().
 	var buildUIBuf strings.Builder
+	golang.HoldMountsDuring(c.ctx.Pkg, &buildUIBuf, &buildBuf)
 	if appRoot && c.wrapped {
 		first := ""
 		if len(appChildren) > 0 {
@@ -551,6 +552,7 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 
 func (c *compilation) newScaffoldData(widgetFields []widgetField, functionCode string, gc *golang.GoIRContext) (scaffoldData, error) {
 	td := scaffoldData{
+		Tests:             codegen.BuildsTests(gc.Ctx.Pkg),
 		Package:           c.cfg.Package,
 		Main:              c.cfg.Main,
 		FunctionCode:      functionCode,

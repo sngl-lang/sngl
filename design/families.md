@@ -37,12 +37,12 @@ values. `testdata/family_props.sngl`, `family_generic.sngl`,
 `error_family_decl.sngl`.
 
 **A component that names itself as its family is data**
-(`component choice(label string) choice`, `ir.Component.Data`): its own
+(`component choice[T any](label string, value T) choice[T]`, `ir.Component.Data`): its own
 family and the only member of it. Written in a slot of its type it is a record
 of its props, never rendered, and the slot is never inserted: in the
-container's body its name is the list of those records, `options list[choice]` for `options ...component choice`. It is how a widget that takes
+container's body its name is the list of those records, `options list[choice[T]]` for `options ...component choice[T]`. It is how a widget that takes
 its choices as a list is written with them as children --
-`ui.select { ui.choice(label="Apple") … }`, `ui.radio` likewise, a
+`ui.select { ui.choice(label="Apple", value="Apple") … }`, `ui.radio` likewise, a
 `ui.table`'s `ui.tableRow`s, a `ui.tree`'s `ui.treeItem`s and a `ui.tabs`'s
 `ui.tab`s -- and the
 caller's population may
@@ -60,6 +60,18 @@ of records is a field of the record, so a record may be a tree --
 (`testdata/family_data_nested.sngl`). The self-reference is read off the source
 before the signature resolves, where the name finds nothing else: a
 `component node(…) node` in a body that sees `ui.node` returns that.
+
+**A generic data component's record is generic over its parameters**:
+`component pick[T any](label string, value T) pick[T]` declares
+`pick__record[T]`, a slot `...component pick[T]` is read as
+`list[pick__record[T]]`, and `lower.DataFamilies` builds each record at the
+type the container's call site binds (`NodeInst.TypeArgs`), which
+`monomorphizeStructs` then copies -- with no parameters the record's `value`
+was `any` in Go, and the container's write of it did not compile. A
+specialized component's slot points its `Values` at the specialized copy of
+the prop (`specializeComponent`); left on the declaration's, the copy's prop
+read as one of its own and was given its default beside the population
+(`testdata/data_family_generic.sngl`, `data_family_generic.txtar`).
 
 **A component with a body that names a data family composes its records**,
 and is no record itself: `component moveTo(x float, y float) _step { _step(op=PathOp.moveTo, x=x, y=y) }`. A library declaration has to say so,

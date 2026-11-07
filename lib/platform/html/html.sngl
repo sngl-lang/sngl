@@ -33,7 +33,7 @@ func serve(dir string, listen string)
 // rather than rebuilding from the first change. A builder is the string it
 // builds in the page's script, whatever the language holds one as, since a
 // JavaScript engine joins `+=` as a rope.
-#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState, navigation, genericComponents, matches)]
+#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState, navigation, genericComponents, matches, unreadLocals)]
 #[gen.cannot(
     viewStatements,
     viewMatches,
@@ -223,6 +223,34 @@ struct Target {
 // something a read can ask. That the emitter has no way to ask it yet is a
 // separate defect; claiming otherwise here would have a prop read answered
 // with the value the markup was written with.
+// What a target's override of an event does to an element, as a person's
+// input would: a test's `c.pick.change(v)` sets the `<select>`'s value and
+// dispatches `change`, so the listener the page attached runs as it does for
+// a choice, and reads the element as it finds it then.
+// Clicks the element, as a person's press does. Named for the press rather
+// than the event, which a test raises by its own name: `c.go.click()`.
+#[js.native("click", "", method)]
+func element.press()
+
+// Dispatches an event of the type named, which bubbles as the DOM's own
+// input events do.
+#[js.native("_snglFire")]
+func element.fire(event string)
+
+// Sets the text an input, a textarea or a select holds, as typing or choosing
+// does, without an event: fire says what happened.
+#[js.native("_snglSetValue")]
+func element.setValue(value string)
+
+// Checks or clears a checkbox or a radio button, without an event.
+#[js.native("_snglSetChecked")]
+func element.setChecked(checked bool)
+
+// The input at `at` among those under this element, in document order: a
+// radio's buttons, which its loop renders.
+#[js.native("_snglInputAt")]
+func element.inputAt(at int) element
+
 #[gen.renders(identity)]
 #[wildcard("[a-z][a-z0-9]*", "tag")]
 component element(
@@ -334,6 +362,17 @@ const component ui.hbox[platform](style, children) {
         children
     }
 }
+
+// A grid of columns is a CSS grid of that many equal tracks, `minmax(0, 1fr)`
+// so a wide child takes no more than its column; one without is a row that
+// wraps. `grid` here is this override, so the member is written in full.
+const component ui.grid[platform](columns, style, children) {
+    html.div(style=[...css({...style, display=columns == null ? ui.Display.flex : ui.Display.grid}), gridTracks(columns)]) {
+        children
+    }
+}
+
+const func gridTracks(columns option[int]) => columns == null ? Declaration{property="flex-wrap", value="wrap"} : Declaration{property="grid-template-columns", value="repeat({columns}, minmax(0, 1fr))"}
 
 const component ui.stack[platform](style, layers) {
     html.div(style=css({...style, position=relative})) {
@@ -480,16 +519,36 @@ const component ui.checkbox[platform](label, checked, disabled, focusable, style
 // --- Tier 1: Core Input ---
 
 const component ui.radio[platform](value, disabled, direction, style, @change, options) {
-    html.fieldset(style=css({display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0px, ...style})) {
+    // A choice of the option holding `v`, a button's or a test's.
+    func pickValue(v T) {
+        if v != value {
+            value = v
+            change(v)
+        }
+    }
+    html.fieldset #group(style=css({display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0px, ...style})) {
         for var opt = options {
             html.label(style=css({display=inlineFlex, alignItems=center, gap=4px})) {
-                html.input(type="radio", value=opt.label, checked=(opt.label == value), disabled=disabled, @change {
-                    value = opt.label
-                    change(opt.label)
+                html.input(type="radio", value=opt.label, checked=(opt.value == value), disabled=disabled, @change(e) {
+                    var at = ui.choiceLabeled(options, e.currentTarget.value)
+                    if at >= 0 {
+                        pickValue(options[at].value)
+                    }
                 })
                 html.span(textContent=opt.label)
             }
         }
+    }
+}
+
+// A test picks the option holding `value` by checking its button, as a
+// person does: the button's own listener reads the label it holds.
+func ui.radio[T].change[platform](value) {
+    var at = ui.choiceLabeled(options, ui.choiceLabel(options, value))
+    if at >= 0 {
+        var button = group.inputAt(at)
+        button.setChecked(true)
+        button.fire("change")
     }
 }
 
@@ -508,7 +567,15 @@ const component ui.toggle[platform](label, checked, disabled, focusable, style, 
 }
 
 const component ui.select[platform](placeholder, value, disabled, focusable, style, @change, options) {
-    html.select(
+    // A choice of the label `l`, the element's or a test's.
+    func pickLabel(l string) {
+        var at = ui.choiceLabeled(options, l)
+        if at >= 0 && options[at].value != value {
+            value = options[at].value
+            change(options[at].value)
+        }
+    }
+    html.select #sel(
         disabled = disabled,
         attrs = focusable ? {} : {"tabindex"="-1"},
         style = css(style),
@@ -517,18 +584,22 @@ const component ui.select[platform](placeholder, value, disabled, focusable, sty
                 e.preventDefault()
             }
         },
-        @change(e) {
-            value = e.currentTarget.value
-            change(value)
-        },
+        @change(e) { pickLabel(e.currentTarget.value) },
     ) {
         if placeholder != "" {
             html.option(value="", disabled=true, selected=true, textContent=placeholder)
         }
         for var opt = options {
-            html.option(value=opt.label, selected=(opt.label == value), textContent=opt.label)
+            html.option(value=opt.label, selected=(opt.value == value), textContent=opt.label)
         }
     }
+}
+
+// A test picks the choice holding `value` by its label, as a person does:
+// the element's own listener reads the label it now holds.
+func ui.select[T].change[platform](value) {
+    sel.setValue(ui.choiceLabel(options, value))
+    sel.fire("change")
 }
 
 const component ui.textarea[platform](placeholder, readonly, value, disabled, rows, focusable, style, @input, @change) {

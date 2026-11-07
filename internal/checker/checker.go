@@ -317,6 +317,7 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	// which pass2 has finished resolving, and may name anything the program
 	// declares.
 	c.checkPendingFuncOverrides()
+	c.reportUntakenTriggers("")
 	c.verifyRefCoercions(c.pkg)
 	c.analyzeErrors()
 	c.analyzeAsync()
@@ -352,6 +353,9 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// handleLocals is the read of a node by `#id` each local holding one was
+	// initialized with (readsHandleLocal).
+	handleLocals map[*ir.Var]ir.Expr
 	// formatBuilders is the function buildInterpolation declared for each
 	// string it writes with a builder, and formatBuilderCount how many it has
 	// named.
@@ -746,6 +750,9 @@ type checker struct {
 	userOverrides        []*ast.ComponentDecl
 	userFuncOverrides    []*ast.FuncDef
 	pendingFuncOverrides []pendingFuncOverride
+	// pendingTriggers are the overrides of an event collected so far, each
+	// taken by the override of its component it is a method of.
+	pendingTriggers []*pendingTrigger
 	// overrideAt is the override whose body checkComponentBody is reading, or
 	// the zero Pos while it reads a declaration's own.
 	overrideAt ast.Pos
@@ -2240,7 +2247,14 @@ func (c *checker) registerBodyDecl(stmt ast.Stmt, owner string) ir.Symbol {
 		// A component's flat-namespace collision is narrower -- only a
 		// recursion cycle survives inlining under its declared name -- and is
 		// reportBodyComponentCollisions' after pass2.
-		return c.registerComponentDecl(s, true)
+		//
+		// An override written here is reported and registers nothing, and
+		// a nil *Component handed back as a Symbol is no nil: the body's
+		// next declare of it dereferenced it.
+		if comp := c.registerComponentDecl(s, true); comp != nil {
+			return comp
+		}
+		return nil
 	case *ast.StructDef:
 		sd := c.buildStructDef(s)
 		sd.Builtin = c.stampBuiltinKind(s.Attrs)
@@ -4094,7 +4108,7 @@ func (c *checker) finishDeclarations(pkg *ir.Package) {
 	// Same moment, same reason: a narrowing is only sound if nothing in the
 	// branch could have written the value, and what a call writes is not
 	// settled until the fixed point above has run.
-	c.validateNarrowings(narrowVarSet)
+	c.validateNarrowings(pkg, narrowVarSet)
 
 	// Validate deferred const(expr) assertions now that function purities
 	// are known.
@@ -4182,15 +4196,16 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	c.returnType = fn.Return
 	defer func() { c.returnType = prevReturn }()
 
-	// A method on a generic receiver may carry no receiver parameter -- saying
-	// `this` instead -- so bind it for a body that names it,
-	// `func list[T].push(item T) => stdlib.ListPush(this, item)` or a block.
-	// A concrete receiver names itself a parameter and needs none, and so does
-	// a nested method, whose `this` is synthesized into its parameter list.
-	// Only a written body: the bodyless generic stubs never say `this`, and
-	// resolving the receiver here would trip the map-key comparability check
-	// on an abstract key type.
-	if fn.AST != nil && (fn.AST.Body != nil || fn.AST.Block.IsDefined()) && fn.IsMethod() && len(fn.RecvTypeParams) > 0 &&
+	// A method declared outside its type names its receiver as its first
+	// parameter, `func Box[T].get(b Box[T])`, the brackets naming the type's
+	// parameters for the body as an event override's do; one with no such
+	// parameter is static. A component's event override is a method of the
+	// component, and its body reads the instance as the component's does, so
+	// bind `this` for one that names it. Only a written body: resolving the
+	// receiver here would trip the map-key comparability check on an abstract
+	// key type.
+	_, onComponent := fn.RecvDecl().(*ir.Component)
+	if onComponent && fn.AST != nil && (fn.AST.Body != nil || fn.AST.Block.IsDefined()) && fn.IsMethod() && len(fn.RecvTypeParams) > 0 &&
 		!slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.Name == ir.ReceiverParam }) {
 		// Kept on the declaration as well as in the scope: the body names it,
 		// so whoever replaces the body's parameters has to know which symbol
@@ -5154,7 +5169,14 @@ func (c *checker) componentNamed(target string) *ir.Component {
 	}
 	member, ok := ns.Pkg.Symbols.LookupMember(name)
 	if !ok {
-		return nil
+		// `html.button` is the package's wildcard element, whose handle is
+		// one as much as a declared component's is. An ambiguity is the
+		// node's to report.
+		matches := nsScope(ns).WildcardMatches(name)
+		if len(matches) != 1 {
+			return nil
+		}
+		member = matches[0]
 	}
 	comp, _ := member.(*ir.Component)
 	return comp

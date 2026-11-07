@@ -101,6 +101,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -183,12 +186,25 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.idx = 0
-	m.changed = -1
-	m.extra = false
-	m.__focusID = 0
-	m.__focusLoop0_cursor = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["idx"] {
+		m.idx = 0
+	}
+	if !preset["changed"] {
+		m.changed = -1
+	}
+	if !preset["extra"] {
+		m.extra = false
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
+	if !preset["__focusLoop0_cursor"] {
+		m.__focusLoop0_cursor = 0
+	}
 	m.__focusSettle()
 	return m
 }
@@ -236,14 +252,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -307,7 +323,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt5
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt8 *Measurement
 	if own != nil {
 		__lt8 = own
@@ -320,7 +336,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt8 = __lt7
 	}
-	return CellsOf(__lt8)
+	return SpaceOf(__lt8, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
@@ -361,15 +377,25 @@ func LineCap(height__r0 int, lines int) int {
 	return __lt12
 }
 
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt14) + 0.5))
+}
+
 func (m *Model) __focusLoop0_len() int {
 	var __focusCount int = 0
-	var __lt14 []Tab__record
+	var __lt15 []Tab__record
 	if m.extra {
-		__lt14 = []Tab__record{Tab__record{Label: "More", __id: 2}}
+		__lt15 = []Tab__record{Tab__record{Label: "More", __id: 2}}
 	} else {
-		__lt14 = []Tab__record{}
+		__lt15 = []Tab__record{}
 	}
-	for _, t__r0 := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt14) {
+	for _, t__r0 := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt15) {
 		if !t__r0.Disabled {
 			__focusCount = (__focusCount + 1)
 		}
@@ -504,14 +530,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 0 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos0 := 0
-				var __lt15 []Tab__record
-				_ = __lt15
+				var __lt16 []Tab__record
+				_ = __lt16
 				if m.extra {
-					__lt15 = []Tab__record{Tab__record{Label: "More", __id: 2}}
+					__lt16 = []Tab__record{Tab__record{Label: "More", __id: 2}}
 				} else {
-					__lt15 = []Tab__record{}
+					__lt16 = []Tab__record{}
 				}
-				for k, t__r0 := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt15) {
+				for k, t__r0 := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt16) {
 					_ = k
 					_ = t__r0
 					if !t__r0.Disabled {
@@ -565,14 +591,14 @@ func (m *Model) tabs__changeClick() {
 			pos int
 		}
 		__focusPos0 := 0
-		var __lt15 []Tab__record
-		_ = __lt15
+		var __lt16 []Tab__record
+		_ = __lt16
 		if m.extra {
-			__lt15 = []Tab__record{Tab__record{Label: "More", __id: 2}}
+			__lt16 = []Tab__record{Tab__record{Label: "More", __id: 2}}
 		} else {
-			__lt15 = []Tab__record{}
+			__lt16 = []Tab__record{}
 		}
-		for k, t__r0 := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt15) {
+		for k, t__r0 := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt16) {
 			_ = k
 			_ = t__r0
 			if !t__r0.Disabled {
@@ -614,14 +640,14 @@ func (m *Model) tabs__changeClickAt(key string) {
 			pos int
 		}
 		__focusPos0 := 0
-		var __lt15 []Tab__record
-		_ = __lt15
+		var __lt16 []Tab__record
+		_ = __lt16
 		if m.extra {
-			__lt15 = []Tab__record{Tab__record{Label: "More", __id: 2}}
+			__lt16 = []Tab__record{Tab__record{Label: "More", __id: 2}}
 		} else {
-			__lt15 = []Tab__record{}
+			__lt16 = []Tab__record{}
 		}
-		for k, t__r0 := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt15) {
+		for k, t__r0 := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt16) {
 			_ = k
 			_ = t__r0
 			if !t__r0.Disabled {
@@ -664,17 +690,17 @@ func (m Model) View() tea.View {
 	content_0Look := lipgloss.NewStyle()
 	content_0W, _ := tui.Inner(content_0Look, contentW, 0)
 	var content_0Children []tui.Part
-	var __lt15 []Tab__record
+	var __lt16 []Tab__record
 	if m.extra {
-		__lt15 = []Tab__record{Tab__record{Label: "More", __id: 2}}
+		__lt16 = []Tab__record{Tab__record{Label: "More", __id: 2}}
 	} else {
-		__lt15 = []Tab__record{}
+		__lt16 = []Tab__record{}
 	}
 	var content_0_2 string
 	__focusPos0 := 0
 	_ = __focusPos0
 	var content_0_2Items []string
-	for k, t__r0 := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt15) {
+	for k, t__r0 := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt16) {
 		_ = k
 		_ = t__r0
 		var content_0_2Item string
@@ -683,7 +709,7 @@ func (m Model) View() tea.View {
 		if content_0_2ItemFocused {
 			content_0_2ItemPrefix = ">"
 		}
-		content_0_2Item = tui.TabLook((k == m.idx), (k == 0), t__r0.Disabled, "underline").Render(content_0_2ItemPrefix + " " + fmt.Sprint(t__r0.Label))
+		content_0_2Item = tui.Focused(tui.TabLook((k == m.idx), (k == 0), t__r0.Disabled, "underline"), content_0_2ItemFocused).Render(content_0_2ItemPrefix + " " + fmt.Sprint(t__r0.Label))
 		content_0_2Item = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0_2Item)
 		if !t__r0.Disabled {
 			__focusPos0++
@@ -696,41 +722,47 @@ func (m Model) View() tea.View {
 	}
 	content_0Children = append(content_0Children, tui.Grow(1.0, func(content_0_3Cells int) string {
 		var content_0_3 string
-		content_0_3 = tui.Sized(tui.TabGap(), true, content_0_3Cells).Render(fmt.Sprint("\n"))
+		content_0_3Text := fmt.Sprint("\n")
+		content_0_3 = tui.Within(tui.Sized(tui.TabGap(), true, content_0_3Cells), content_0_3Cells, content_0_3Text).Render(content_0_3Text)
 		return content_0_3
 	}))
 	content_0 = tui.Join(true, lipgloss.Top, 0, 0, content_0W, content_0Children)
-	content_0 = content_0Look.Render(content_0)
+	content_0 = tui.Paint(content_0Look, content_0)
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	content_1Look := lipgloss.NewStyle()
-	content_1W, _ := tui.Inner(content_1Look, contentW, 0)
+	content_1W, content_1H := tui.Inner(content_1Look, contentW, 0)
 	var content_1Children []tui.Part
 	content_1Children = append(content_1Children, tui.Grow(1.0, func(content_1_0Cells int) string {
 		var content_1_0 string
+		content_1_0Look := tui.Sized(tui.TabPanel("underline"), true, content_1_0Cells)
+		content_1_0W, _ := tui.Inner(content_1_0Look, content_1_0Cells, content_1H)
 		var content_1_0Children []string
-		var __lt16 []Tab__record
+		var __lt17 []Tab__record
 		if m.extra {
-			__lt16 = []Tab__record{Tab__record{Label: "More", __id: 2}}
+			__lt17 = []Tab__record{Tab__record{Label: "More", __id: 2}}
 		} else {
-			__lt16 = []Tab__record{}
+			__lt17 = []Tab__record{}
 		}
 		var content_1_0_2 string
 		var content_1_0_2Items []string
-		for k, t__r1 := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt16) {
+		for k, t__r1 := range slices.Concat([]Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Off", Disabled: true, __id: 1}}, __lt17) {
 			_ = k
 			_ = t__r1
 			var content_1_0_2Item string
 			var content_1_0_2ItemChildren []string
 			var content_1_0_2Item_0 string
 			if t__r1.__id == 0 {
-				content_1_0_2Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("first panel"))
+				content_1_0_2Item_0Text := fmt.Sprint("first panel")
+				content_1_0_2Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_1_0W, content_1_0_2Item_0Text).Render(content_1_0_2Item_0Text)
 			} else {
 				if t__r1.__id == 1 {
-					content_1_0_2Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("second panel"))
+					content_1_0_2Item_0Text := fmt.Sprint("second panel")
+					content_1_0_2Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_1_0W, content_1_0_2Item_0Text).Render(content_1_0_2Item_0Text)
 				} else {
 					if t__r1.__id == 2 {
-						content_1_0_2Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("more panel"))
+						content_1_0_2Item_0Text := fmt.Sprint("more panel")
+						content_1_0_2Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_1_0W, content_1_0_2Item_0Text).Render(content_1_0_2Item_0Text)
 					}
 				}
 			}
@@ -748,14 +780,14 @@ func (m Model) View() tea.View {
 			content_1_0Children = append(content_1_0Children, content_1_0_2)
 		}
 		content_1_0 = lipgloss.JoinVertical(lipgloss.Left, content_1_0Children...)
-		content_1_0 = tui.Sized(tui.TabPanel("underline"), true, content_1_0Cells).Render(content_1_0)
+		content_1_0 = tui.Paint(content_1_0Look, content_1_0)
 		return content_1_0
 	}))
 	content_1 = tui.Join(true, lipgloss.Top, 0, 0, content_1W, content_1Children)
-	content_1 = content_1Look.Render(content_1)
+	content_1 = tui.Paint(content_1Look, content_1)
 	contentChildren = append(contentChildren, content_1)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = contentLook.Render(content)
+	content = tui.Paint(contentLook, content)
 	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -780,13 +812,20 @@ func TestPressingATabSelectsIt(t *testing.T) {
 	c := newTestComponent()
 	_ = c
 	c.extra = true
+	c = mountTestComponent(c, map[string]bool{"extra": true})
 	c.tabs__changeClickAt("2")
 	if !((c.idx == 2)) { t.Errorf("assert failed: %s", "(c.idx == 2)") }
 	if !((c.changed == 2)) { t.Errorf("assert failed: %s", "(c.changed == 2)") }
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -810,6 +849,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	idx            int
@@ -830,15 +872,35 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.idx = 0
-	m.changed = -1
-	m.extra = false
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["idx"] {
+		m.idx = 0
+	}
+	if !preset["changed"] {
+		m.changed = -1
+	}
+	if !preset["extra"] {
+		m.extra = false
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -986,7 +1048,7 @@ func TestPressingATabSelectsIt(t *testing.T) {
 	c := newTestComponent()
 	_ = c
 	c.extra = true
-	c.__wrote_extra()
+	c = mountTestComponent(c, map[string]bool{"extra": true})
 	c.tabs__changeChangeAt("2")
 	if !((c.idx == 2)) { t.Errorf("assert failed: %s", "(c.idx == 2)") }
 	if !((c.changed == 2)) { t.Errorf("assert failed: %s", "(c.changed == 2)") }
@@ -999,7 +1061,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -1032,6 +1098,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	idx                   int
@@ -1051,15 +1120,35 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.idx = 0
-	m.changed = -1
-	m.extra = false
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["idx"] {
+		m.idx = 0
+	}
+	if !preset["changed"] {
+		m.changed = -1
+	}
+	if !preset["extra"] {
+		m.extra = false
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1198,8 +1287,8 @@ func (m *Model) __list_tabs__change(key string, w gtk4rt.Handle) {
 	m.__copies_tabs__change[key] = w
 }
 -- run/go/bubbletea --
-pass sha256:72dd749440c581744dbf8998ed9e8354
+pass sha256:fb55da9509d8b8fabcb14cf67466fefe
 -- run/go/fyne --
-pass sha256:30357886f247effae48e3510f19807c4
+pass sha256:e30e9bbc54c925d2ba0849a2775250e6
 -- run/go/gtk4 --
-pass sha256:4538b3cf18eea3e805413ed2a50e8d07
+pass sha256:c12623cc7effc28328870a00971bc990

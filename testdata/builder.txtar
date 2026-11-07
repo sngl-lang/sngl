@@ -98,6 +98,9 @@ type Page struct {
 	Body  []byte
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	shown string
@@ -109,8 +112,14 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.shown = ""
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["shown"] {
+		m.shown = ""
+	}
 }
 
 func Lines(names []string) string {
@@ -198,6 +207,7 @@ import "testing"
 func TestBuilds(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.go__r0Click()
 	if !((c.shown == "x\n# T\n|x\n# T\ny!|a\nb\n|one\n|one\ntwo\n")) { t.Errorf("assert failed: %s", "(c.shown == \"x\\n# T\\n|x\\n# T\\ny!|a\\nb\\n|one\\n|one\\ntwo\\n\")") }
 }
@@ -209,7 +219,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -240,14 +254,30 @@ data class Page(
     var body: StringBuilder = StringBuilder()
 )
 
+class Builder {
+    override fun equals(other: Any?) = other is Builder
+    override fun hashCode() = 0
+    override fun toString() = "Builder()"
+}
+
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var shown by mutableStateOf("")
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var shown by mutableStateOf(__snglPre(__pre, "shown") { "" })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -355,18 +385,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { shown: "" };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.goClick = () => $0.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
@@ -418,12 +451,11 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:47d22369e93ddb8adbcd9532b728e70b
+pass sha256:33a9984013154cf65fa33aef44833b5b
 -- run/kotlin/android --
-pass sha256:5cc0b38fba263b2c9ee71cb2ad6e0a7f
+pass sha256:04dea1d69c1526d7e358b46a177ba164
 -- run/none/html --
-pass sha256:fdd27e231db29be79807b2064a1d0a16
+pass sha256:f9e020a53870862ff5c0fbaa6ad918a2

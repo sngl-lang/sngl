@@ -64,11 +64,10 @@ sngl generate --platform=fyne --lang=go --out=fy rooted.sngl
 grep 'func \(m \*Model\) incClick\(\)' fy/model.go
 grep 'm.inc.OnTapped\(\)' fy/model.go
 
-# html only emits invokers under test mode -- an ordinary page carries no test
-# surface at all.
+# bubbletea and html emit invokers only for a test build -- an ordinary
+# program carries no test surface at all.
 sngl generate --platform=bubbletea --lang=go --out=bt rooted.sngl
-grep 'func \(m \*Model\) incClick\(\)' bt/model.go
-grep 'm.Update\(tea.KeyPressMsg{Code: tea.KeyEnter}\)' bt/model.go
+! grep 'incClick' bt/model.go
 
 sngl generate --platform=html --lang=none --opt test=true --out=ht rooted.sngl
 grep 'state.incClick = \(\) =>' ht/index.html
@@ -109,7 +108,7 @@ window {
     counter()
 }
 -- testrun/bubbletea/go/click.sngl/counter/1 --
-sha256:17818b2df7a79a40386ed27f0d834dbc
+sha256:b9d4aad822a04e2d0a9fd2d80946190e
 {
   "results": [
     {
@@ -119,7 +118,7 @@ sha256:17818b2df7a79a40386ed27f0d834dbc
   ]
 }
 -- testrun/fyne/go/click.sngl/counter/1 --
-sha256:fe8ad8a9c948117b059b33d597bcade6
+sha256:7521ea1f673cf40d7144af4cf23dafc8
 {
   "results": [
     {
@@ -129,7 +128,7 @@ sha256:fe8ad8a9c948117b059b33d597bcade6
   ]
 }
 -- testrun/gtk4/go/click.sngl/counter/1 --
-sha256:1e0d41acca6e995617be21e4f13a56bd
+sha256:eed0313a63b85b100b770b18c15f4ffb
 {
   "results": [
     {
@@ -139,7 +138,7 @@ sha256:1e0d41acca6e995617be21e4f13a56bd
   ]
 }
 -- testrun/html/none/click.sngl/counter/1 --
-sha256:f9029259ddbe4ae9a058a19499ffa90c
+sha256:5234d061aebc98f19b8712c7fe10da8c
 {
   "results": [
     {

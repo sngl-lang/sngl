@@ -62,7 +62,10 @@ type slotChildSynth struct {
 	// owned is every func a component owns, which the component it is lifted
 	// out of holds and the lifted one does not.
 	owned map[*ir.Func]bool
-	n     int
+	// heldHandles is the node handles the lifted body holds, a method called
+	// through one of which is the lifted component's own (passHandleBlocks).
+	heldHandles map[*ir.Var]bool
+	n           int
 }
 
 func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error {
@@ -426,6 +429,11 @@ func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 			l.uniq++
 			return &ir.Ident{Name: p.Name, Type: x.ExprType(), Sym: p}, ir.SkipDir
 		case *ir.Call:
+			if len(st.heldHandles) > 0 && x.Func != nil {
+				if h, _ := handleReceiver(x); h != nil && st.heldHandles[h] {
+					return node, nil
+				}
+			}
 			typ := x.ExprType()
 			// A render's raise travels whole too: the boundary that hears it
 			// is the site's, whose state the lifted body does not hold.
@@ -460,9 +468,13 @@ func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 			// rebuilt unmarked html read it off `state`, where nothing is.
 			site := *x
 			p := l.prop("id("+identityOf(x.Sym)+")", x.Type, &site)
-			x.Name = p.Name
-			x.Sym = p
-			return node, nil
+			// A new read, not the one renamed: a two-way prop's binding and
+			// the write-back passPropBindings makes of it share the ident, and
+			// renamed in place the write the site keeps wrote the instance's
+			// `__p0` -- fyne's `__prop___p0 = __value`.
+			read := *x
+			read.Name, read.Sym = p.Name, p
+			return &read, nil
 		}
 		return node, nil
 	})
@@ -531,21 +543,15 @@ func writesFree(lam *ir.Lambda, local map[ir.Symbol]bool) bool {
 	}
 	found := false
 	_ = ir.Walk(lam.Func.Block, func(n ir.Node) error {
-		var target ir.Expr
-		switch x := n.(type) {
-		case *ir.LocalVar:
-			own[x.Sym] = true
-			return nil
-		case *ir.Assign:
-			target = x.Target
-		case *ir.Toggle:
-			target = x.Target
-		default:
+		if lv, ok := n.(*ir.LocalVar); ok {
+			own[lv.Sym] = true
 			return nil
 		}
-		if sym := exprRoot(target); sym != nil && liftableSym(sym) && !local[sym] && !own[sym] {
-			found = true
-			return ir.SkipAll
+		for _, target := range placesWritten(n) {
+			if sym := exprRoot(target); sym != nil && liftableSym(sym) && !local[sym] && !own[sym] {
+				found = true
+				return ir.SkipAll
+			}
 		}
 		return nil
 	})

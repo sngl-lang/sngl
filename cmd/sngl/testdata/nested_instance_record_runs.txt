@@ -74,7 +74,7 @@ func testAChipOfARow(t test.Test, c shelf) {
     t.assert(c.item[0][1] == null)
 }
 -- testrun/android/kotlin/app.sngl/shelf/1 --
-sha256:8c4eade77afefd0f13b1f577980de69b
+sha256:7208470c94826be13ff563e01aef987d
 {
   "results": [
     {
@@ -84,7 +84,7 @@ sha256:8c4eade77afefd0f13b1f577980de69b
   ]
 }
 -- testrun/bubbletea/go/app.sngl/shelf/1 --
-sha256:a961dbd8d947a26a1863442cac0f8b1e
+sha256:e8b96e0382c24bc9fa0402005b3341a3
 {
   "results": [
     {
@@ -94,7 +94,7 @@ sha256:a961dbd8d947a26a1863442cac0f8b1e
   ]
 }
 -- testrun/fyne/go/app.sngl/shelf/1 --
-sha256:8634c30e0d235623c9c632b2450ac06d
+sha256:d04df92ae4ca85ceda9b552d7069dbe5
 {
   "results": [
     {
@@ -104,7 +104,7 @@ sha256:8634c30e0d235623c9c632b2450ac06d
   ]
 }
 -- testrun/gtk4/go/app.sngl/shelf/1 --
-sha256:f77a56c7823a5daf491108ec3d049fc6
+sha256:03d334c08cc9be7c0c31fc30443c4d18
 {
   "results": [
     {
@@ -114,7 +114,7 @@ sha256:f77a56c7823a5daf491108ec3d049fc6
   ]
 }
 -- testrun/html/none/app.sngl/shelf/1 --
-sha256:ea32d4393bfc9a74492398b4e87cec5e
+sha256:546432e813a0c13ce7b9ee544dee86c8
 {
   "results": [
     {

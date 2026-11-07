@@ -26,8 +26,8 @@ component site ui.node {
     var picked = "plain"
 
     ui.select #pick(:value=picked) {
-        ui.choice(label="plain")
-        ui.choice(label="loud")
+        ui.choice(label="plain", value="plain")
+        ui.choice(label="loud", value="loud")
     }
     tone(picked) {
         nav.stack #pages {
@@ -71,6 +71,32 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { picked__inst0: "plain", visible__inst0: true };
+  function pickLabel__inst0(l) {
+    let at = choiceLabeled([{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }], l);
+    if (at >= 0 && [{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }][at].value !== state.picked__inst0) {
+      ;
+      state.picked__inst0 = [{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }][at].value;
+      $1.textContent = state.picked__inst0 === "loud" ? "items!" : "items";
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        ;
+        __inst1_live[__inst1_live_ui].__set___p1(state.picked__inst0);
+      }
+      ;
+    }
+    ;
+  }
+  function choiceLabeled(options, label) {
+    for (const [i, o] of options.entries()) {
+      ;
+      if (o.label === label) {
+        ;
+        return i;
+      }
+      ;
+    }
+    ;
+    return -1;
+  }
   function __snglTeardown() {
     for (const [__inst1_live_di, _] of __inst1_live.entries()) {
       ;
@@ -87,20 +113,19 @@ body { font-family: system-ui, sans-serif; }
     let __p1 = props.__p1;
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.value = __prop___p0.label;
-      __n0.selected = __prop___p0.label === __prop___p1;
+      __n0.selected = __prop___p0.value === __prop___p1;
       __n0.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n0.selected = __prop___p0.label === __prop___p1;
+      __n0.selected = __prop___p0.value === __prop___p1;
     }
     let __n0 = document.createElement("option");
     __n0.value = __prop___p0.label;
-    __n0.selected = __prop___p0.label === __prop___p1;
+    __n0.selected = __prop___p0.value === __prop___p1;
     __n0.textContent = __prop___p0.label;
     __root.appendChild(__n0);
     return {
@@ -129,7 +154,7 @@ body { font-family: system-ui, sans-serif; }
           __slot0 = [];
           let __inst1_next = [];
           let __inst1_i = 0;
-          for (const opt of [{ label: "plain" }, { label: "loud" }]) {
+          for (const opt of [{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }]) {
             let __n2 = null;
             if (__inst1_live.length > __inst1_i) {
               __n2 = __inst1_live[__inst1_i];
@@ -180,13 +205,7 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   $0.addEventListener("change", function(e) {
-    state.picked__inst0 = e.currentTarget.value;
-    $1.textContent = state.picked__inst0 === "loud" ? "items!" : "items";
-    for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
-      ;
-      __inst1_live[__inst1_live_ui].__set___p1(state.picked__inst0);
-    }
-    ;
+    pickLabel__inst0(e.currentTarget.value);
   });
   $2.addEventListener("click", function() {
     location.assign("/item");
@@ -222,6 +241,32 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { picked__inst0: "plain", visible__inst0: true };
+  function pickLabel__inst0(l) {
+    let at = choiceLabeled([{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }], l);
+    if (at >= 0 && [{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }][at].value !== state.picked__inst0) {
+      ;
+      state.picked__inst0 = [{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }][at].value;
+      $1.textContent = state.picked__inst0 === "loud" ? "first!" : "first";
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        ;
+        __inst1_live[__inst1_live_ui].__set___p1(state.picked__inst0);
+      }
+      ;
+    }
+    ;
+  }
+  function choiceLabeled(options, label) {
+    for (const [i, o] of options.entries()) {
+      ;
+      if (o.label === label) {
+        ;
+        return i;
+      }
+      ;
+    }
+    ;
+    return -1;
+  }
   function __snglTeardown() {
     for (const [__inst1_live_di, _] of __inst1_live.entries()) {
       ;
@@ -238,20 +283,19 @@ body { font-family: system-ui, sans-serif; }
     let __p1 = props.__p1;
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
-    let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.value = __prop___p0.label;
-      __n0.selected = __prop___p0.label === __prop___p1;
+      __n0.selected = __prop___p0.value === __prop___p1;
       __n0.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n0.selected = __prop___p0.label === __prop___p1;
+      __n0.selected = __prop___p0.value === __prop___p1;
     }
     let __n0 = document.createElement("option");
     __n0.value = __prop___p0.label;
-    __n0.selected = __prop___p0.label === __prop___p1;
+    __n0.selected = __prop___p0.value === __prop___p1;
     __n0.textContent = __prop___p0.label;
     __root.appendChild(__n0);
     return {
@@ -280,7 +324,7 @@ body { font-family: system-ui, sans-serif; }
           __slot0 = [];
           let __inst1_next = [];
           let __inst1_i = 0;
-          for (const opt of [{ label: "plain" }, { label: "loud" }]) {
+          for (const opt of [{ label: "plain", value: "plain" }, { label: "loud", value: "loud" }]) {
             let __n2 = null;
             if (__inst1_live.length > __inst1_i) {
               __n2 = __inst1_live[__inst1_i];
@@ -330,13 +374,7 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   $0.addEventListener("change", function(e) {
-    state.picked__inst0 = e.currentTarget.value;
-    $1.textContent = state.picked__inst0 === "loud" ? "first!" : "first";
-    for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
-      ;
-      __inst1_live[__inst1_live_ui].__set___p1(state.picked__inst0);
-    }
-    ;
+    pickLabel__inst0(e.currentTarget.value);
   });
   function __sngl_init() {
     $1.textContent = state.picked__inst0 === "loud" ? "first!" : "first";
@@ -347,4 +385,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9c062be6d485369ca6e0c916f908aebd
+pass sha256:0156da175bb510e8841118cecb1b0b68

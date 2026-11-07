@@ -140,8 +140,24 @@ component Layout(
     // Where they sit along it in the free space, as tui.Join's justify.
     justify    int,
     spacing    int,
+    // A grid's: its children `columns` to a row (tui.Grid), or flowing where
+    // it is zero, `rowSpacing` rows apart. A negative count joins them along
+    // `join`, as every other Layout does.
+    columns    int = -1,
+    rowSpacing int = 0,
     // Body text revealed, dim, under the focused trigger this Layout wraps.
     tooltip    string,
+    // Whether a click anywhere in the box presses the first focus stop it
+    // holds, as a clickable card's whole face does.
+    press      bool = false,
+    // The axis the box scrolls along (tui.Scrolls): its content is cut to
+    // the extent it is given there, at the offset the wheel and the paging
+    // keys move. -1 is a box that does not scroll, and so is one whose axis
+    // the build cannot read.
+    scroll     int = -1,
+    // The end of a scrolling box's content coming within half a viewport of
+    // being shown, as ui.scroll's `@reachEnd` says.
+    @reachEnd(),
     children   ...component,
 ) ui.node
 
@@ -166,13 +182,16 @@ component Styled(
 #[gen.renders(identity)]
 #[intrinsic("bubbletea:Widget")]
 component Widget(
-    const model Model,
-    focus       Focus,
-    const binds list[Bind],
-    placeholder string,
-    look        Look,
-    fit         Fit,
-    grow        float,
+    const model  Model,
+    focus        Focus,
+    const binds  list[Bind],
+    // The key a click on the widget presses, as a Styled's: a select's opens
+    // it. A widget given none, a text field, is only focused by one.
+    const events list[Event] = [],
+    placeholder  string,
+    look         Look,
+    fit          Fit,
+    grow         float,
 
     // Operands for the `$\{name\}` tokens in this widget's Model strings. A
     // token names one of these props, so the set grows with the templates
@@ -183,6 +202,11 @@ component Widget(
     rows    list[list[string]],
     value   float,
     max     float,
+    // The label a tui.Select holds, which a select's override converts to
+    // and from its value: the widget knows its choices by label.
+    :choice string = "",
+    // A choice made, by its label.
+    @change(value string),
 ) ui.node
 
 #[gen.renders(identity)]
@@ -242,19 +266,25 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
 // --- Core Layout ---
 
 const component ui.vbox[platform](style, children) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, false)) {
         children
     }
 }
 
 const component ui.hbox[platform](style, children) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, true)) {
+        children
+    }
+}
+
+const component ui.grid[platform](columns, style, children) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), spacing=spaceOf(style.gap, true), columns=columns == null ? 0 : columns, rowSpacing=spaceOf(style.gap, false)) {
         children
     }
 }
 
 const component ui.stack[platform](style, layers) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, false)) {
         layers
     }
 }
@@ -263,9 +293,32 @@ const component ui.spacer[platform](style) {
     Styled(content="", look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex == null ? 1.0 : style.flex, style.display)) {}
 }
 
-const component ui.scroll[platform](style, content) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+// A scroll is a box cut to the extent it is given, which the wheel over it
+// scrolls -- a drag is the terminal's, which selects text -- and PgUp and
+// PgDn page while focus is in it.
+const component ui.scroll[platform](style, direction, @reachEnd, content) {
+    Layout(
+        join = JoinDir.vertical,
+        look = lookOf(style),
+        boxed = drawsBox(style),
+        fit = fitOf(style.whiteSpace, style.display),
+        grow = growOf(style.flex, style.display),
+        align = crossOf(style.alignItems),
+        justify = justifyOf(style.justifyContent),
+        spacing = spaceOf(style.gap, false),
+        scroll = scrollAxis(direction),
+        @reachEnd { reachEnd() },
+    ) {
         content
+    }
+}
+
+// The axis a tui.Scrolls scroll moves along, as its constants number them.
+const func scrollAxis(d ui.ScrollDirection) int {
+    return match d {
+        vertical => 0
+        horizontal => 1
+        both => 2
     }
 }
 
@@ -280,7 +333,7 @@ const component ui.button[platform](text, focusable, style) {
         content = text,
         focus = Focus{enabled=style.display != ui.Display.none, tab=focusable},
         events = [Event{on="click", key="enter"}],
-        look = lookOf(style),
+        look = buttonLook(lookOf(style)),
         fit = fitOf(style.whiteSpace, style.display),
         grow = growOf(style.flex, style.display),
     ) {}
@@ -326,7 +379,7 @@ const component ui.tabs[platform](selected, variant, style, @change, items) {
 // picture a URL names is drawn in half-block cells fitted into a box of
 // `Picture`'s choosing, since a terminal has no size a pixel has.
 const component ui.image[platform](style, src) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, false)) {
         #[family.crosses]
         src
     }
@@ -389,9 +442,46 @@ const component ui.checkbox[platform](label, checked, focusable, style, @change)
 
 // --- Tier 1: Core Input ---
 
-const component ui.radio[platform](style) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+// A radio is a row per choice, `(•)` beside the one holding `value` and
+// `( )` beside the rest, along `direction`; each is focused and chosen as a
+// checkbox is, with space.
+const component ui.radio[platform](value, disabled, direction, style, @change, options) {
+    // A choice of the option holding `v`, a row's or a test's.
+    func pickValue(v T) {
+        if v != value {
+            value = v
+            change(v)
+        }
     }
+    // The axis is the layout's constant, so each is a branch of its own.
+    if direction == ui.Orientation.horizontal {
+        Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, false)) {
+            for var opt = options {
+                Styled(
+                    content = (opt.value == value ? "(•) " : "( ) ") + opt.label,
+                    focus = Focus{enabled=!disabled && style.display != ui.Display.none, tab=true},
+                    events = [Event{on="change", key="space"}],
+                    @change { pickValue(opt.value) },
+                ) {}
+            }
+        }
+    } else {
+        Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, false)) {
+            for var opt = options {
+                Styled(
+                    content = (opt.value == value ? "(•) " : "( ) ") + opt.label,
+                    focus = Focus{enabled=!disabled && style.display != ui.Display.none, tab=true},
+                    events = [Event{on="change", key="space"}],
+                    @change { pickValue(opt.value) },
+                ) {}
+            }
+        }
+    }
+}
+
+// A test picks the option holding `value` as choosing its row does.
+func ui.radio[T].change[platform](value) {
+    pickValue(value)
 }
 
 const component ui.toggle[platform](label, checked, focusable, style, @change) {
@@ -409,26 +499,53 @@ const component ui.toggle[platform](label, checked, focusable, style, @change) {
     ) {}
 }
 
-// A select is tui.Select: a list whose cursor is the choice, holding the
-// value even before a choice carries it. Its choices are handed to every
-// view and update, since they are the program's and may arrive after it
-// starts.
-const component ui.select[platform](focusable, style, options) {
+// A select is tui.Select: a button showing the choice, which Enter or a click
+// opens into a popover of the choices below it (tui.Floats), holding the
+// label of the value even before a choice carries it. Its choices are handed
+// to every view and update, since they are the program's and may arrive after
+// it starts. The widget knows its choices by label, so the override holds the
+// label it shows: the program's value is written to it, and a choice of a
+// label writes the value of the choice labeled so.
+component ui.select[platform](value, focusable, style, @change, options) {
+    var label = ui.choiceLabel(options, value)
+    // A choice of the label `l`, the widget's or a test's: the widget shows
+    // it, and the value of the choice labeled so is the program's.
+    func choose(l string) {
+        label = l
+        var at = ui.choiceLabeled(options, l)
+        if at >= 0 && options[at].value != value {
+            value = options[at].value
+            change(options[at].value)
+        }
+    }
     Widget(
         model = Model{
             type = "tui.Select",
             new = "tui.NewSelect(40, 10)",
-            view = ".View($\{options\})",
-            update = ".Update(msg, $\{options\})",
+            view = ".View($\{options\}, m.__floats)",
+            update = ".Update(msg, $\{options\}, m.__floats)",
             resize = ".SetSize($\{w\}, $\{h\})",
         },
         focus = Focus{enabled=style.display != ui.Display.none, tab=focusable},
-        binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
+        events = [Event{on="open", key="enter"}],
+        binds = [Bind{prop="choice", get=".Value()", set=".SetValue"}],
         options = options.map(func(o) => o.label),
+        :choice = label,
         look = lookOf(style),
         fit = fitOf(style.whiteSpace, style.display),
         grow = growOf(style.flex, style.display),
+        @change(l) { choose(l) },
     ) {}
+    // After the widget, which the call site's `#id` names.
+    effect(on={v=value, labels=options.map(func(o) => o.label).format("\n")}, @mount {
+        label = ui.choiceLabel(options, value)
+    })
+}
+
+// A test picks the choice holding `value` as the widget's choice of its
+// label does.
+func ui.select[T].change[platform](value) {
+    choose(ui.choiceLabel(options, value))
 }
 
 const component ui.textarea[platform](focusable, style) {
@@ -533,20 +650,20 @@ const component ui.divider[platform](style) {
     Styled(content="─", look=lookOf(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display)) {}
 }
 
-// A terminal focuses controls rather than regions, so a clickable card is its
-// content beside a `›` that takes the focus and fires `@click` on enter, as a
-// button's label does.
+// A card is a dark surface, as Material's filled card is. A clickable one is
+// a stop, marked `>` at its left while focused and blank otherwise, and a
+// click anywhere on it presses it.
 const component ui.card[platform](style, clickable, @click, content) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display)) {
+    Layout(join=JoinDir.horizontal, look=cardLook(lookOf(style)), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), press=clickable) {
         if clickable {
             Styled(
-                content = "› ",
+                content = "",
                 focus = Focus{enabled=style.display != ui.Display.none},
                 events = [Event{on="click", key="enter"}],
                 @click { click() },
             ) {}
         }
-        Layout(join=JoinDir.vertical, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
+        Layout(join=JoinDir.vertical, align=crossOf(style.alignItems), spacing=spaceOf(style.gap, false), grow=1.0) {
             content
         }
     }
@@ -588,19 +705,19 @@ const component ui.tooltip[platform](style, text, trigger) {
     // the wrapped trigger is focused. The `tooltip` prop carries the body
     // text to the Layout renderer, which appends it gated on the focusable
     // descendant's focus expression (see renderBlueprint in view_ir.go).
-    Layout(join=JoinDir.vertical, tooltip=text, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, tooltip=text, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, false)) {
         trigger
     }
 }
 
 const component ui.popover[platform](style, content) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, false)) {
         content
     }
 }
 
 const component ui.splitview[platform](style, panes) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, true)) {
         panes
     }
 }
@@ -680,12 +797,12 @@ const component ui.menu[platform](style, open, items) {
 }
 
 const component ui.menubar[platform](style) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, true)) {
     }
 }
 
 const component ui.toolbar[platform](style, controls) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, true)) {
         controls
     }
 }
@@ -865,6 +982,12 @@ const func doubleBorder() Border
 
 #[go.native(_tui, "tui.TabLook")]
 const func tabLook(selected bool, first bool, disabled bool, variant string) Look
+
+#[go.native(_tui, "tui.CardLook")]
+const func cardLook(look Look) Look
+
+#[go.native(_tui, "tui.ButtonLook")]
+const func buttonLook(look Look) Look
 
 #[go.native(_tui, "tui.TabGap")]
 const func tabGap() Look

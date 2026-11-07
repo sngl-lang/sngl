@@ -57,7 +57,7 @@ ui.window {
     cardWithButton
 }
 -- testrun/android/kotlin/app.sngl/cardWithButton/1 --
-sha256:b635f5e1dbda87255d9326a74fd72eae
+sha256:4ff6cf08cad8253160969ab30e885772
 {
   "results": [
     {
@@ -71,7 +71,7 @@ sha256:b635f5e1dbda87255d9326a74fd72eae
   ]
 }
 -- testrun/bubbletea/go/app.sngl/cardWithButton/1 --
-sha256:f0a3975f7946dbf1eb79e3dc4ea13ef7
+sha256:23fd460af8cc6c739730739fb31b4c7a
 {
   "results": [
     {
@@ -85,7 +85,7 @@ sha256:f0a3975f7946dbf1eb79e3dc4ea13ef7
   ]
 }
 -- testrun/fyne/go/app.sngl/cardWithButton/1 --
-sha256:a832d0b0a49227507e4b6ce8c2dc6a5a
+sha256:7e423a9116ca2851d792a023b70f93fe
 {
   "results": [
     {
@@ -99,7 +99,7 @@ sha256:a832d0b0a49227507e4b6ce8c2dc6a5a
   ]
 }
 -- testrun/gtk4/go/app.sngl/cardWithButton/1 --
-sha256:17df95d985a3e6def741da366dbfd0d9
+sha256:e71216253ab12f017ea4593fa3550fad
 {
   "results": [
     {
@@ -113,7 +113,7 @@ sha256:17df95d985a3e6def741da366dbfd0d9
   ]
 }
 -- testrun/html/none/app.sngl/cardWithButton/1 --
-sha256:b0bed764275bc6cd5c56397bd8d794a4
+sha256:5317c9f49e0ec0918f6eee5be24037ac
 {
   "results": [
     {

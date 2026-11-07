@@ -15,7 +15,7 @@ import gen "sngl:x/gen"
 // Compose state directly, so a recomposition already redraws. `navigation`
 // because sngl:ui/nav is a NavHost here (nav.go): each page a destination with
 // a typed route, the back stack Compose's.
-#[gen.can(effects, instanceState, navigation, viewMatches)]
+#[gen.can(effects, instanceState, navigation, viewMatches, valueTriggers)]
 #[gen.cannot(inlineComponents, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, canvas)]
 #[gen.name("android")]
@@ -723,6 +723,20 @@ component SnglScroll(
     children   ...component,
 ) ui.node
 
+// SnglGrid is a grid: its children `columns` to a row, or flowing where that
+// is zero, `gap` apart. Kotlin the platform ships with the app
+// (codegen/platform/android/grid.kt), since Compose's FlowRow makes equal
+// columns of weights, which a short last row stretches across.
+#[gen.renders(identity)]
+#[intrinsic("android:SnglGrid")]
+component SnglGrid(
+    modifier          Modifier,
+    columns           int,
+    gap               Dp,
+    verticalAlignment VerticalAlignment = alignTop,
+    children          ...component,
+) ui.node
+
 // SnglPager is a tabs' panels: a page per tab, swiped between, every one kept
 // composed. Kotlin the platform ships with the app (codegen/platform/android/
 // pager.kt), since which page shows and how far a swipe has gone are state its
@@ -745,6 +759,12 @@ component SnglPager(
 // Compose says it in a lambda with a receiver, which SNGL has no way to write.
 #[kt.native("snglChooses", "", method)]
 const func Modifier.snglChooses(onText func(string)) Modifier
+
+// A value written out as Kotlin writes it, which for an enum is the member as
+// SNGL spells it: what a test raising a typed select's change through the
+// invoker sets the box's text to.
+#[kt.native("toString", "", method)]
+const func spelled[T any](v T) string
 
 // Keeps a control from taking focus, by a key or a press: one written
 // `focusable=false`, whose keys then reach the window. Kotlin the platform

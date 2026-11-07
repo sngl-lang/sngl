@@ -69,6 +69,7 @@ func testEachCopyMountsWithItsOwnName(t test.Test, c names) {
 }
 
 func testARemovedCopyUnmountsWithItsName(t test.Test, c names) {
+    t.assert(log.format(",") == "+a,+b,+c")
     c.names = ["a", "b"]
     t.assert(log.format(",") == "+a,+b,+c,-c")
 }
@@ -84,7 +85,7 @@ func testAnUpdateReadsARenamedCopysNewName(t test.Test, c rows) {
     t.assert(log.format(",") == "z=7")
 }
 -- testrun/android/kotlin/app.sngl/names/1 --
-sha256:1b3fdc30f451b9201d0cb3cce904e5bd
+sha256:00e6a3823366246bed25d47d6e82bf5e
 {
   "results": [
     {
@@ -98,7 +99,7 @@ sha256:1b3fdc30f451b9201d0cb3cce904e5bd
   ]
 }
 -- testrun/android/kotlin/app.sngl/rows/1 --
-sha256:5ceba8b00ff022277f6f0c0493d8fc07
+sha256:205b8aad9d50b927ccd711df3ffb9a1a
 {
   "results": [
     {
@@ -112,7 +113,7 @@ sha256:5ceba8b00ff022277f6f0c0493d8fc07
   ]
 }
 -- testrun/bubbletea/go/app.sngl/names/1 --
-sha256:9953e3c3afe17d8d5f94208fa8cd6e74
+sha256:ffe28fe7eb1d8632b1491adf6d8a07d4
 {
   "results": [
     {
@@ -126,7 +127,7 @@ sha256:9953e3c3afe17d8d5f94208fa8cd6e74
   ]
 }
 -- testrun/bubbletea/go/app.sngl/rows/1 --
-sha256:131c6f8e27a7103b3e439ecf1755d663
+sha256:8b7f64f0fa35e812c71aef72ecb10bf2
 {
   "results": [
     {
@@ -140,7 +141,7 @@ sha256:131c6f8e27a7103b3e439ecf1755d663
   ]
 }
 -- testrun/fyne/go/app.sngl/names/1 --
-sha256:4ee61e271e9a6c53a99934fbc610c6dd
+sha256:00e6a9657d692e476ad5e88bc87d565b
 {
   "results": [
     {
@@ -154,7 +155,7 @@ sha256:4ee61e271e9a6c53a99934fbc610c6dd
   ]
 }
 -- testrun/fyne/go/app.sngl/rows/1 --
-sha256:118dc5130ccc06b3eb44b3e6ca3aa568
+sha256:939661d2937de9d4e7b7b35b3222600d
 {
   "results": [
     {
@@ -168,7 +169,7 @@ sha256:118dc5130ccc06b3eb44b3e6ca3aa568
   ]
 }
 -- testrun/gtk4/go/app.sngl/names/1 --
-sha256:0aeb02dff4f01b3351977ffbf979e511
+sha256:ce2fa380148e977e08e8ff113af4b07e
 {
   "results": [
     {
@@ -182,7 +183,7 @@ sha256:0aeb02dff4f01b3351977ffbf979e511
   ]
 }
 -- testrun/gtk4/go/app.sngl/rows/1 --
-sha256:2bd49b82308321c500ce3be3b29a4edd
+sha256:415a315e934308a5ea0c54b4853040e4
 {
   "results": [
     {
@@ -196,7 +197,7 @@ sha256:2bd49b82308321c500ce3be3b29a4edd
   ]
 }
 -- testrun/html/none/app.sngl/names/1 --
-sha256:9cae8087c3c2b0b91abbb9aea23218c0
+sha256:7fea056cdc16379dd96bc53a362367d0
 {
   "results": [
     {
@@ -210,7 +211,7 @@ sha256:9cae8087c3c2b0b91abbb9aea23218c0
   ]
 }
 -- testrun/html/none/app.sngl/rows/1 --
-sha256:024f2a076c9f7738bc56ff3ccf16685a
+sha256:590c387db7e00982bcfc78b9b37f8579
 {
   "results": [
     {

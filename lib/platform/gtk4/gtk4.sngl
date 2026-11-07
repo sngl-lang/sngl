@@ -440,6 +440,16 @@ const component ui.hbox[platform](style, children) {
     }
 }
 
+// A grid is a GtkBox gtk4rt lays out a row at a time, so its children come
+// and go as a box's do. GtkFlowBox wraps each child in one of its own, which
+// a render slot's anchor is no sibling of, and GtkGrid places each by a
+// position a child append cannot give it.
+const component ui.grid[platform](columns, style, children) {
+    gtk.GtkBox(orientation="horizontal", look=gridLookOf(style, columns)) {
+        children
+    }
+}
+
 const component ui.scroll[platform](style, direction, @reachEnd, content) {
     Scroll(direction=string(direction), look=lookOf(style), @reachEnd { reachEnd() }) {
         content
@@ -655,13 +665,19 @@ const component ui.tree[platform](style, selected, @select, items) {
 }
 
 const component ui.radio[platform](value, disabled, direction, style, @change, options) {
+    // A choice of the option holding `v`, a button's or a test's.
+    func pickValue(v T) {
+        if v != value {
+            value = v
+            change(v)
+        }
+    }
     if direction == ui.Orientation.horizontal {
         gtk.GtkBox(orientation="horizontal", sensitive=(disabled == false), look=boxLookOf(style, 6)) {
             for var opt = options {
-                gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
-                    if checkActive(b) && value != opt.label {
-                        value = opt.label
-                        change(opt.label)
+                gtk.GtkCheckButton(label=opt.label, active=(opt.value == value), @toggled(b) {
+                    if checkActive(b) {
+                        pickValue(opt.value)
                     }
                 }) {}
             }
@@ -669,15 +685,19 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
     } else {
         gtk.GtkBox(orientation="vertical", sensitive=(disabled == false), look=boxLookOf(style, 6)) {
             for var opt = options {
-                gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
-                    if checkActive(b) && value != opt.label {
-                        value = opt.label
-                        change(opt.label)
+                gtk.GtkCheckButton(label=opt.label, active=(opt.value == value), @toggled(b) {
+                    if checkActive(b) {
+                        pickValue(opt.value)
                     }
                 }) {}
             }
         }
     }
+}
+
+// A test picks the option holding `value` as pressing its button does.
+func ui.radio[T].change[platform](value) {
+    pickValue(value)
 }
 
 // Offers a drop-down the labels `labels` joins with newlines, and selects
@@ -688,30 +708,42 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
 #[go.native(_rtPkg, "gtk4rt.DropDownOffer")]
 func offerChoices(d gtk.GtkDropDown, labels string, chosen string)
 
+// Selects the choice labeled `label`, as a pick does: unlike an offer, the
+// drop-down notifies, so its @notifySelected handler runs. A label among none
+// of its choices selects nothing.
+#[go.native(_rtPkg, "gtk4rt.DropDownSelect")]
+func selectLabel(d gtk.GtkDropDown, label string)
+
 // The label a drop-down has selected, or "" where it has none.
 #[marks.intrinsic("gtk4.dropDownLabel")]
 func dropDownLabel(d gtk.GtkDropDown) string
 
 // One drop-down, offered the choices' labels whenever they change and
-// selecting the bound value whenever it does. `placeholder`, `multiple` and
+// selecting the label of the bound value whenever it does. `placeholder` and
 // the focus events have nothing to reach.
 const component ui.select[platform](value, disabled, focusable, style, @change, options) {
     gtk.GtkDropDown #drop(sensitive=(disabled == false), canFocus=focusable, look=lookOf(style), @notifySelected(d) {
-        var v = dropDownLabel(d)
-        if v != "" && v != value {
-            value = v
-            change(v)
+        var at = ui.choiceLabeled(options, dropDownLabel(d))
+        if at >= 0 && options[at].value != value {
+            value = options[at].value
+            change(options[at].value)
         }
     }) {}
     // Keyed on the drop-down as well as its labels, so a render that builds
     // the drop-down afresh offers the new one its choices: an effect whose
     // key reads a node mounts again wherever the node is built.
     effect(on={labels=options.map(func(o) => o.label).format("\n"), drop=drop}, @mount(k) {
-        offerChoices(drop, k.labels, value)
+        offerChoices(drop, k.labels, ui.choiceLabel(options, value))
     })
     effect(on=value, @mount(v) {
-        offerChoices(drop, options.map(func(o) => o.label).format("\n"), v)
+        offerChoices(drop, options.map(func(o) => o.label).format("\n"), ui.choiceLabel(options, v))
     })
+}
+
+// A test picks the choice holding `value` through the drop-down, which
+// knows its choices by label.
+func ui.select[T].change[platform](value) {
+    selectLabel(drop, ui.choiceLabel(options, value))
 }
 
 // A menu's top-level entries, as html shows them; a submenu has nowhere to

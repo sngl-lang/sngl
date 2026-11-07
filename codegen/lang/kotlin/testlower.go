@@ -119,6 +119,17 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 				}
 			}
 		}
+		// A method mutating the component's state through what it is called
+		// on, `c.names.remove(0)`, writes as an assignment does: on the UI
+		// thread, and waited for, so what renders from it has recomposed --
+		// a keyed loop's copies have moved -- before the next assertion.
+		if writesState(s, surf, compRecvs) {
+			lines := []string{"composeTestRule.runOnUiThread {"}
+			for _, l := range surf.translator().EvalStmt(s) {
+				lines = append(lines, "    "+l)
+			}
+			return append(lines, "}", testIdleLine)
+		}
 		// A package func writing state is a write as a test's own is: run
 		// where Compose recomposes, and waited for, so the effects keyed on
 		// what it wrote have run before the next assertion.
@@ -231,6 +242,15 @@ func writesState(s ir.Stmt, surf TestSurface, compRecvs map[string]bool) bool {
 		target = n.Target
 	case *ir.Toggle:
 		target = n.Target
+	case *ir.CallStmt:
+		c := n.Call
+		if c == nil || c.Func == nil || c.Func.Purity != ir.PurityMutates {
+			return false
+		}
+		target = c.Receiver
+		if target == nil && len(c.Args) > 0 {
+			target = c.Args[0].Value
+		}
 	}
 	for {
 		switch n := target.(type) {
@@ -378,7 +398,9 @@ const (
 // now holds, which the node's SetText action puts there in place of what it
 // held, as clickAction runs its OnClick: performTextReplacement asks first
 // that the node be an editable text field, and a select is a read-only one
-// that answers SetText with the choice it names.
+// that answers SetText with the choice it names. A typed select's value is
+// written out as text (its toString, which an enum spells as SNGL does), and
+// the select chooses the choice whose value it spells.
 func composeAction(event string, args []ir.CallArg, lower func(ir.Expr) string) string {
 	switch event {
 	case "click":
@@ -389,6 +411,11 @@ func composeAction(event string, args []ir.CallArg, lower func(ir.Expr) string) 
 		return "performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.RequestFocus)"
 	case "input", "change", "changed":
 		text := extractEventValue(args, lower)
+		if len(args) == 1 {
+			if t := args[0].Value.ExprType(); t != nil && t.Kind != ir.TypeString {
+				text = "(" + text + ").toString()"
+			}
+		}
 		return fmt.Sprintf("performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString(%s)) }", text)
 	case "reachEnd":
 		// A scroll's end is reached by scrolling to it, which SnglScroll's
@@ -703,13 +730,22 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 			// Native mode has no TestModelAccessor; construct the
 			// hoisted state directly. composeRule.setContent mounts
 			// the screen so mutableStateOf-backed fields work.
-			fmt.Fprintf(&b, "        val %s = MainScreenState()\n", recv)
+			block, isurf := spellInstanceReads(codegen.LowerInstanceReads(fn.Block, surf.Pkg), surf.forInstance(recv, fn), compRecvs)
+			setup, block := splitAtMount(block)
+			pre := ""
+			if lines := lowerTestSetup(setup, isurf, compRecvs); len(lines) > 0 {
+				b.WriteString("        val __pre = mutableMapOf<String, Any?>()\n")
+				for _, line := range lines {
+					fmt.Fprintf(&b, "        %s\n", line)
+				}
+				pre = "__pre"
+			}
+			fmt.Fprintf(&b, "        val %s = MainScreenState(%s)\n", recv, pre)
 			// lowerTestStmt emits `composeTestRule`; the native
 			// wrapper names the rule `composeRule`. Bind one to the
 			// other so those per-stmt lowerings resolve.
 			b.WriteString("        @Suppress(\"UNUSED_VARIABLE\") val composeTestRule = composeRule\n")
 			fmt.Fprintf(&b, "        composeRule.setContent { MainScreen(%s) }\n", recv)
-			block, isurf := spellInstanceReads(codegen.LowerInstanceReads(fn.Block, surf.Pkg), surf.forInstance(recv, fn), compRecvs)
 			for _, line := range lowerTestBody(block, isurf, compRecvs, ctxCounts, TestEmitNative) {
 				fmt.Fprintf(&b, "        %s\n", line)
 			}
@@ -720,12 +756,23 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 			// See the Go and JS lowerers: the instance is always built, the
 			// declared name bound only when the test declared one.
 			b.WriteString("    clearCurrentTestModel()\n")
-			b.WriteString("    val " + testInstanceVar + " = newTestComponent()\n")
+			block, isurf := spellInstanceReads(codegen.LowerInstanceReads(fn.Block, surf.Pkg), surf.forInstance(testInstanceVar, fn), compRecvs)
+			// What the test sets up before it needs its component is what
+			// the state is made from, where it mounts (passTestMount).
+			setup, block := splitAtMount(block)
+			pre := ""
+			if lines := lowerTestSetup(setup, isurf, compRecvs); len(lines) > 0 {
+				b.WriteString("    val __pre = mutableMapOf<String, Any?>()\n")
+				for _, line := range lines {
+					b.WriteString("    " + line + "\n")
+				}
+				pre = "__pre"
+			}
+			b.WriteString("    val " + testInstanceVar + " = newTestComponent(" + pre + ")\n")
 			b.WriteString("    setCurrentTestModel(" + testInstanceVar + ")\n")
 			if recv := codegen.TestComponentParam(fn); recv != "" {
 				fmt.Fprintf(&b, "    val %s = %s\n", recv, testInstanceVar)
 			}
-			block, isurf := spellInstanceReads(codegen.LowerInstanceReads(fn.Block, surf.Pkg), surf.forInstance(testInstanceVar, fn), compRecvs)
 			// A test that waits waits where it calls, in a coroutine of its
 			// own the harness's thread blocks on.
 			indent := "    "
@@ -1017,4 +1064,36 @@ func lowerTestWait(c *ir.Call, surf TestSurface, compRecvs map[string]bool) []st
 		"    }",
 		"}",
 	}
+}
+
+// splitAtMount is what a test sets up before it mounts its component, and the
+// rest, without the mount (passTestMount). A test whose block holds no mount
+// mounts first.
+func splitAtMount(block []ir.Stmt) (setup, rest []ir.Stmt) {
+	for i, s := range block {
+		if _, _, ok := codegen.TestMount(s); ok {
+			return block[:i], block[i+1:]
+		}
+	}
+	return nil, block
+}
+
+// lowerTestSetup writes what setup sets into `__pre`, which the state is made
+// from: a context under the name of the var its body reads, a prop or var
+// under its own.
+func lowerTestSetup(setup []ir.Stmt, surf TestSurface, compRecvs map[string]bool) []string {
+	var out []string
+	for _, s := range setup {
+		switch x := s.(type) {
+		case *ir.CallStmt:
+			if name, val, ok := codegen.TestSetContext(x.Call); ok {
+				out = append(out, fmt.Sprintf("__pre[%q] = %s", "__ctx_"+name, lowerTestExpr(val, surf, compRecvs)))
+			}
+		case *ir.Assign:
+			if sel, ok := x.Target.(*ir.Select); ok {
+				out = append(out, fmt.Sprintf("__pre[%q] = %s", sel.Field, lowerTestExpr(x.Value, surf, compRecvs)))
+			}
+		}
+	}
+	return out
 }

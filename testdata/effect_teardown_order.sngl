@@ -57,6 +57,7 @@ component main node {
 }
 
 func testTwoEndingsRunNewestFirst(t Test, c main) {
+    t.assert(c.out.value == "+a,+b,+c")
     c.items = ["a"]
     t.assert(c.out.value == "+a,+b,+c,-c,-b")
 }

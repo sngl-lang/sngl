@@ -39,7 +39,7 @@ func testAStringKeepsWhatItWrote(t test.Test, c receipt) {
     t.assert(string.length("a\x0cb") == 3 && "$cost" != "")
 }
 -- testrun/android/kotlin/app.sngl/receipt/1 --
-sha256:a414e8f001f08d17e67678fb433cf00b
+sha256:8ffe27cf637de37cebd3e13489404c8e
 {
   "results": [
     {
@@ -49,7 +49,7 @@ sha256:a414e8f001f08d17e67678fb433cf00b
   ]
 }
 -- testrun/bubbletea/go/app.sngl/receipt/1 --
-sha256:925ae3584c0a14b27af984e495f51a25
+sha256:bbd55526fcb0607911532a58060f2d18
 {
   "results": [
     {
@@ -59,7 +59,7 @@ sha256:925ae3584c0a14b27af984e495f51a25
   ]
 }
 -- testrun/fyne/go/app.sngl/receipt/1 --
-sha256:f61021b48556912902f5f8b60f046f5a
+sha256:79d2b48d700130a9f9cad16bb644d4a8
 {
   "results": [
     {
@@ -69,7 +69,7 @@ sha256:f61021b48556912902f5f8b60f046f5a
   ]
 }
 -- testrun/gtk4/go/app.sngl/receipt/1 --
-sha256:80623076066974bcc1fb201ba25781bb
+sha256:11a4e6b2c0f6f536bb77ef14bda4f8d1
 {
   "results": [
     {
@@ -79,7 +79,7 @@ sha256:80623076066974bcc1fb201ba25781bb
   ]
 }
 -- testrun/html/none/app.sngl/receipt/1 --
-sha256:5450e2f74a43ae7665f87e21c2a753a2
+sha256:21bb9cd87389d9c253d26407609402b8
 {
   "results": [
     {

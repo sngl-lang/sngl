@@ -145,6 +145,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -227,6 +230,10 @@ type modelState struct {
 	taps__inst0         int
 	__effect0_live      []bool
 	__effect0_desired   []bool
+	__effect0_paths     []string
+	__effect0_livePaths []string
+	__effect0_pathAt    map[string]int
+	__effect0_liveAt    map[string]int
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -242,22 +249,67 @@ type modelState struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.mounts = 0
-	m.idx = 0
-	m.seen = 0
-	m.changes = 0
-	m.hits__inst0 = 0
-	m.taps__inst0 = 0
-	m.__effect0_live = []bool{}
-	m.__effect0_desired = []bool{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
-	m.__focusID = 0
-	m.__focusLoop0_cursor = 0
-	m.__focusLoop1_cursor = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["mounts"] {
+		m.mounts = 0
+	}
+	if !preset["idx"] {
+		m.idx = 0
+	}
+	if !preset["seen"] {
+		m.seen = 0
+	}
+	if !preset["changes"] {
+		m.changes = 0
+	}
+	if !preset["hits__inst0"] {
+		m.hits__inst0 = 0
+	}
+	if !preset["taps__inst0"] {
+		m.taps__inst0 = 0
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []bool{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []bool{}
+	}
+	if !preset["__effect0_paths"] {
+		m.__effect0_paths = []string{}
+	}
+	if !preset["__effect0_livePaths"] {
+		m.__effect0_livePaths = []string{}
+	}
+	if !preset["__effect0_pathAt"] {
+		m.__effect0_pathAt = map[string]int{}
+	}
+	if !preset["__effect0_liveAt"] {
+		m.__effect0_liveAt = map[string]int{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
+	if !preset["__focusLoop0_cursor"] {
+		m.__focusLoop0_cursor = 0
+	}
+	if !preset["__focusLoop1_cursor"] {
+		m.__focusLoop1_cursor = 0
+	}
 	m.__focusSettle()
 	m.__effects0_settle()
 	return m
@@ -306,14 +358,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -377,7 +429,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt5
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt8 *Measurement
 	if own != nil {
 		__lt8 = own
@@ -390,7 +442,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt8 = __lt7
 	}
-	return CellsOf(__lt8)
+	return SpaceOf(__lt8, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
@@ -431,17 +483,31 @@ func LineCap(height__r0 int, lines int) int {
 	return __lt12
 }
 
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt14) + 0.5))
+}
+
 func (m *Model) __effect0_mount() {
 	m.mounts += 1
 }
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []bool{}
-	for _, t__r0 := range []Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Two", __id: 1}, Tab__record{Label: "Three", __id: 2}} {
+	m.__effect0_paths = []string{}
+	m.__effect0_pathAt = map[string]int{}
+	for k, t__r0 := range []Tab__record{Tab__record{Label: "One"}, Tab__record{Label: "Two", __id: 1}, Tab__record{Label: "Three", __id: 2}} {
 		if !(t__r0.__id == 0) {
 			if !(t__r0.__id == 1) {
 				if t__r0.__id == 2 {
 					m.__effect0_desired = append(m.__effect0_desired, true)
+					m.__effect0_pathAt[fmt.Sprint(k)] = len(m.__effect0_paths)
+					m.__effect0_paths = append(m.__effect0_paths, fmt.Sprint(k))
 				}
 			}
 		}
@@ -450,15 +516,23 @@ func (m *Model) __effect0_down() {
 
 func (m *Model) __effect0_up() {
 	for __effect0_i, __effect0_k := range m.__effect0_desired {
-		if __effect0_i >= len(m.__effect0_live) {
+		var __effect0_at int = func() int {
+			if __v, __ok := m.__effect0_liveAt[m.__effect0_paths[__effect0_i]]; __ok {
+				return __v
+			}
+			return -1
+		}()
+		if __effect0_at < 0 {
 			m.__effect0_mount()
 		} else {
-			if m.__effect0_live[__effect0_i] != __effect0_k {
+			if m.__effect0_live[__effect0_at] != __effect0_k {
 				m.__effect0_mount()
 			}
 		}
 	}
 	m.__effect0_live = m.__effect0_desired
+	m.__effect0_livePaths = m.__effect0_paths
+	m.__effect0_liveAt = m.__effect0_pathAt
 }
 
 func (m *Model) __effects0_settle() {
@@ -1025,7 +1099,7 @@ func (m Model) View() tea.View {
 		if part0_0_0ItemFocused {
 			part0_0_0ItemPrefix = ">"
 		}
-		part0_0_0Item = tui.TabLook((k == m.idx), (k == 0), t__r1.Disabled, "underline").Render(part0_0_0ItemPrefix + " " + fmt.Sprint(t__r1.Label))
+		part0_0_0Item = tui.Focused(tui.TabLook((k == m.idx), (k == 0), t__r1.Disabled, "underline"), part0_0_0ItemFocused).Render(part0_0_0ItemPrefix + " " + fmt.Sprint(t__r1.Label))
 		part0_0_0Item = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_0_0Item)
 		if !t__r1.Disabled {
 			__focusPos0++
@@ -1038,15 +1112,16 @@ func (m Model) View() tea.View {
 	}
 	part0_0Children = append(part0_0Children, tui.Grow(1.0, func(part0_0_1Cells int) string {
 		var part0_0_1 string
-		part0_0_1 = tui.Sized(tui.TabGap(), true, part0_0_1Cells).Render(fmt.Sprint("\n"))
+		part0_0_1Text := fmt.Sprint("\n")
+		part0_0_1 = tui.Within(tui.Sized(tui.TabGap(), true, part0_0_1Cells), part0_0_1Cells, part0_0_1Text).Render(part0_0_1Text)
 		return part0_0_1
 	}))
 	part0_0 = tui.Join(true, lipgloss.Top, 0, 0, part0_0W, part0_0Children)
-	part0_0 = part0_0Look.Render(part0_0)
+	part0_0 = tui.Paint(part0_0Look, part0_0)
 	part0Children = append(part0Children, part0_0)
 	var part0_1 string
 	part0_1Look := lipgloss.NewStyle()
-	part0_1W, _ := tui.Inner(part0_1Look, part0W, 0)
+	part0_1W, part0_1H := tui.Inner(part0_1Look, part0W, 0)
 	var part0_1Children []tui.Part
 	__focusPos1 := 0
 	_ = __focusPos1
@@ -1072,6 +1147,8 @@ func (m Model) View() tea.View {
 		__focusPos1 := part0_1_0__focusPos1Base
 		_ = __focusPos1
 		var part0_1_0 string
+		part0_1_0Look := tui.Sized(tui.TabPanel("underline"), true, part0_1_0Cells)
+		part0_1_0W, _ := tui.Inner(part0_1_0Look, part0_1_0Cells, part0_1H)
 		var part0_1_0Children []string
 		var part0_1_0_0 string
 		var part0_1_0_0Items []string
@@ -1087,7 +1164,8 @@ func (m Model) View() tea.View {
 				if part0_1_0_0Item_0Focused {
 					part0_1_0_0Item_0Prefix = ">"
 				}
-				part0_1_0_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1_0_0Item_0Prefix + " " + fmt.Sprint(fmt.Sprint(m.hits__inst0)))
+				part0_1_0_0Item_0Text := part0_1_0_0Item_0Prefix + " " + fmt.Sprint(fmt.Sprint(m.hits__inst0))
+				part0_1_0_0Item_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_1_0_0Item_0Focused), part0_1_0W, part0_1_0_0Item_0Text).Render(part0_1_0_0Item_0Text)
 				part0_1_0_0Item_0 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_1_0_0Item_0)
 				if !(k != m.idx) {
 					__focusPos1++
@@ -1099,14 +1177,16 @@ func (m Model) View() tea.View {
 					if part0_1_0_0Item_0Focused {
 						part0_1_0_0Item_0Prefix = ">"
 					}
-					part0_1_0_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1_0_0Item_0Prefix + " " + fmt.Sprint(fmt.Sprint(m.taps__inst0)))
+					part0_1_0_0Item_0Text := part0_1_0_0Item_0Prefix + " " + fmt.Sprint(fmt.Sprint(m.taps__inst0))
+					part0_1_0_0Item_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_1_0_0Item_0Focused), part0_1_0W, part0_1_0_0Item_0Text).Render(part0_1_0_0Item_0Text)
 					part0_1_0_0Item_0 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_1_0_0Item_0)
 					if !(k != m.idx) {
 						__focusPos1++
 					}
 				} else {
 					if t__r0.__id == 2 {
-						part0_1_0_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("later"))
+						part0_1_0_0Item_0Text := fmt.Sprint("later")
+						part0_1_0_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), part0_1_0W, part0_1_0_0Item_0Text).Render(part0_1_0_0Item_0Text)
 					}
 				}
 			}
@@ -1124,14 +1204,14 @@ func (m Model) View() tea.View {
 			part0_1_0Children = append(part0_1_0Children, part0_1_0_0)
 		}
 		part0_1_0 = lipgloss.JoinVertical(lipgloss.Left, part0_1_0Children...)
-		part0_1_0 = tui.Sized(tui.TabPanel("underline"), true, part0_1_0Cells).Render(part0_1_0)
+		part0_1_0 = tui.Paint(part0_1_0Look, part0_1_0)
 		return part0_1_0
 	}))
 	part0_1 = tui.Join(true, lipgloss.Top, 0, 0, part0_1W, part0_1Children)
-	part0_1 = part0_1Look.Render(part0_1)
+	part0_1 = tui.Paint(part0_1Look, part0_1)
 	part0Children = append(part0Children, part0_1)
 	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
-	part0 = part0Look.Render(part0)
+	part0 = tui.Paint(part0Look, part0)
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	content = m.__clicks.Scan(content, 0, 0)
@@ -1157,6 +1237,7 @@ import "testing"
 func TestAPanelKeepsItsStateAcrossASwitch(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if c.cPresent() {
 		c.pressClick()
 		c.pressClick()
@@ -1172,6 +1253,7 @@ func TestAPanelKeepsItsStateAcrossASwitch(t *testing.T) {
 func TestABlockKeepsItsStateAcrossASwitch(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.strip__changeClickAt("1")
 	if c.tapPresent() {
 		c.tapClick()
@@ -1188,6 +1270,7 @@ func TestABlockKeepsItsStateAcrossASwitch(t *testing.T) {
 func TestEveryPanelMountsWithTheTabs(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.mounts == 1)) { t.Errorf("assert failed: %s", "(c.mounts == 1)") }
 	c.strip__changeClickAt("2")
 	c.strip__changeClickAt("0")
@@ -1196,7 +1279,13 @@ func TestEveryPanelMountsWithTheTabs(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -1223,6 +1312,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	mounts         int
@@ -1235,8 +1327,6 @@ type Model struct {
 	__inst0_live   []*__child0Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 
 	strip                  *fynelayout.Tabs
 	__named_press          *fynelayout.Button
@@ -1250,19 +1340,41 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.mounts = 0
-	m.idx = 0
-	m.seen = 0
-	m.changes = 0
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__inst0_live = []*__child0Instance{}
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["mounts"] {
+		m.mounts = 0
+	}
+	if !preset["idx"] {
+		m.idx = 0
+	}
+	if !preset["seen"] {
+		m.seen = 0
+	}
+	if !preset["changes"] {
+		m.changes = 0
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__inst0_live"] {
+		m.__inst0_live = []*__child0Instance{}
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -1438,26 +1550,52 @@ func (m *Model) SetChanges(v int) {
 	m.changes = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	__snglBuilding++
 	m.strip = fynelayout.NewTabs()
 	m.strip.SetSelected(m.idx)
 	m.__renderSlot0(m.strip.Container)
 	content := fyne.CanvasObject(m.strip)
+	__snglEndBuild()
 	return content
 }
 
 // CounterInstance is one live instance of the counter component.
 type CounterInstance struct {
-	Root       fyne.CanvasObject
-	__model    *Model
-	hits       int
-	__root     *fyne.Container
-	__slot0    []fyne.CanvasObject
-	__slot0_at fyne.CanvasObject
-	__slot1    []fyne.CanvasObject
-	__slot1_at fyne.CanvasObject
-	press      *fynelayout.Button
+	Root    fyne.CanvasObject
+	__model *Model
+	hits    int
+	__root  *fyne.Container
+	press   *fynelayout.Button
 }
 
 func newCounterInstance(__model *Model) *CounterInstance {
@@ -1465,8 +1603,6 @@ func newCounterInstance(__model *Model) *CounterInstance {
 	c.__model = __model
 	c.hits = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.press = fynelayout.NewButton("", nil)
 	c.press.SetText(fmt.Sprint(c.hits))
 	c.press.OnTapped = func() {
@@ -1495,10 +1631,6 @@ type LaterInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
-	__slot0             []fyne.CanvasObject
-	__slot0_at          fyne.CanvasObject
-	__slot1             []fyne.CanvasObject
-	__slot1_at          fyne.CanvasObject
 }
 
 func newLaterInstance(__model *Model) *LaterInstance {
@@ -1511,11 +1643,9 @@ func newLaterInstance(__model *Model) *LaterInstance {
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n3 := widget.NewLabel("")
 	__n3.SetText("later")
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = __n3
 	return c
 }
@@ -1574,10 +1704,6 @@ type __block_state0Instance struct {
 	__prop___on_seen func(int)
 	taps             int
 	__root           *fyne.Container
-	__slot0          []fyne.CanvasObject
-	__slot0_at       fyne.CanvasObject
-	__slot1          []fyne.CanvasObject
-	__slot1_at       fyne.CanvasObject
 	tap              *fynelayout.Button
 }
 
@@ -1588,8 +1714,6 @@ func new__block_state0Instance(__model *Model, __a_seen int, __a___on_seen func(
 	c.__prop___on_seen = __a___on_seen
 	c.taps = 0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.tap = fynelayout.NewButton("", nil)
 	c.tap.SetText(fmt.Sprint(c.taps))
 	c.tap.OnTapped = func() {
@@ -1626,8 +1750,6 @@ type __child0Instance struct {
 	__prop___on0   func()
 	__prop___on1   func(int)
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*CounterInstance
@@ -1647,7 +1769,6 @@ func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a
 	c.__prop___on0 = __a___on0
 	c.__prop___on1 = __a___on1
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*CounterInstance{}
 	c.__inst2_live = []*__block_state0Instance{}
@@ -1852,6 +1973,7 @@ import "testing"
 func TestAPanelKeepsItsStateAcrossASwitch(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if c.c__r0Present() {
 		c.pressClick()
 		c.pressClick()
@@ -1867,6 +1989,7 @@ func TestAPanelKeepsItsStateAcrossASwitch(t *testing.T) {
 func TestABlockKeepsItsStateAcrossASwitch(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.strip__changeChangeAt("1")
 	if c.tapPresent() {
 		c.tapClick()
@@ -1883,6 +2006,7 @@ func TestABlockKeepsItsStateAcrossASwitch(t *testing.T) {
 func TestEveryPanelMountsWithTheTabs(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.mounts == 1)) { t.Errorf("assert failed: %s", "(c.mounts == 1)") }
 	c.strip__changeChangeAt("2")
 	c.strip__changeChangeAt("0")
@@ -1897,7 +2021,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -1939,6 +2067,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	mounts                 int
@@ -1951,8 +2082,6 @@ type Model struct {
 	__inst0_live           []*__child0Instance
 	__rendering0           bool
 	__renderAgain0         bool
-	__slot1                []gtk4rt.Handle
-	__slot1_at             gtk4rt.Handle
 	strip                  gtk4rt.Handle
 	__named_press          gtk4rt.Handle
 	__named_tap            gtk4rt.Handle
@@ -1966,19 +2095,41 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.mounts = 0
-	m.idx = 0
-	m.seen = 0
-	m.changes = 0
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__inst0_live = []*__child0Instance{}
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["mounts"] {
+		m.mounts = 0
+	}
+	if !preset["idx"] {
+		m.idx = 0
+	}
+	if !preset["seen"] {
+		m.seen = 0
+	}
+	if !preset["changes"] {
+		m.changes = 0
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__inst0_live"] {
+		m.__inst0_live = []*__child0Instance{}
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -2062,23 +2213,17 @@ func (m *Model) __snglTeardown() {
 
 // CounterInstance is one live instance of the counter component.
 type CounterInstance struct {
-	Root       gtk4rt.Handle
-	__model    *Model
-	hits       int
-	__root     gtk4rt.Handle
-	__slot0    []gtk4rt.Handle
-	__slot0_at gtk4rt.Handle
-	__slot1    []gtk4rt.Handle
-	__slot1_at gtk4rt.Handle
-	press      gtk4rt.Handle
+	Root    gtk4rt.Handle
+	__model *Model
+	hits    int
+	__root  gtk4rt.Handle
+	press   gtk4rt.Handle
 }
 
 func newCounterInstance(__model *Model) *CounterInstance {
 	c := &CounterInstance{}
 	c.__model = __model
 	c.hits = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.press = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.press, fmt.Sprint(c.hits))
 	gtk4rt.SetBool(c.press, "can-focus", true)
@@ -2100,12 +2245,6 @@ func (c *CounterInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // LaterInstance is one live instance of the later component.
@@ -2119,10 +2258,6 @@ type LaterInstance struct {
 	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
-	__slot0             []gtk4rt.Handle
-	__slot0_at          gtk4rt.Handle
-	__slot1             []gtk4rt.Handle
-	__slot1_at          gtk4rt.Handle
 }
 
 func newLaterInstance(__model *Model) *LaterInstance {
@@ -2134,12 +2269,10 @@ func newLaterInstance(__model *Model) *LaterInstance {
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	__n3 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n3, "later")
 	gtk4rt.LabelSetXAlign(__n3, 0.0)
-	c.__effects0_settle()
+	__snglMountAfterBuild(c.__effects0_settle)
 	c.Root = __n3
 	gtk4rt.Retain(c.Root)
 	return c
@@ -2194,12 +2327,6 @@ func (c *LaterInstance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // __block_state0Instance is one live instance of the __block_state0 component.
@@ -2210,10 +2337,6 @@ type __block_state0Instance struct {
 	__prop___on_seen func(int)
 	taps             int
 	__root           gtk4rt.Handle
-	__slot0          []gtk4rt.Handle
-	__slot0_at       gtk4rt.Handle
-	__slot1          []gtk4rt.Handle
-	__slot1_at       gtk4rt.Handle
 	tap              gtk4rt.Handle
 }
 
@@ -2223,8 +2346,6 @@ func new__block_state0Instance(__model *Model, __a_seen int, __a___on_seen func(
 	c.__prop_seen = __a_seen
 	c.__prop___on_seen = __a___on_seen
 	c.taps = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.tap = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.tap, fmt.Sprint(c.taps))
 	gtk4rt.SetBool(c.tap, "can-focus", true)
@@ -2255,12 +2376,6 @@ func (c *__block_state0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -2273,8 +2388,6 @@ type __child0Instance struct {
 	__prop___on0   func()
 	__prop___on1   func(int)
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*CounterInstance
@@ -2293,7 +2406,6 @@ func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a
 	c.__prop___p2 = __a___p2
 	c.__prop___on0 = __a___on0
 	c.__prop___on1 = __a___on1
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*CounterInstance{}
 	c.__inst2_live = []*__block_state0Instance{}
@@ -2483,9 +2595,6 @@ func (c *__child0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 	if c.__slot1_at != nil {
 		gtk4rt.Release(c.__slot1_at)
 	}
@@ -2523,14 +2632,43 @@ func (m *Model) SetChanges(v int) {
 	m.changes = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	__snglBuilding++
 	m.strip = gtk4rt.TabsNew()
 	gtk4rt.TabsSetSelected(m.strip, m.idx)
 	m.__renderSlot0(m.strip)
+	__snglEndBuild()
 	gtk4rt.BoxAppend(m.__root, m.strip)
 }
 
@@ -2632,6 +2770,12 @@ data class Tab__record(
     var __id: Int = 0
 )
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -2646,14 +2790,18 @@ val SnglInstances = mutableMapOf<String, Map<String, (List<Any?>) -> Any?>>()
 
 lateinit var state: MainScreenState
 
-class MainScreenState {
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
     init { state = this }
     init { SnglPresent.clear() }
     init { SnglInstances.clear() }
-    var mounts by mutableStateOf(0)
-    var idx by mutableStateOf(0)
-    var seen by mutableStateOf(0)
-    var changes by mutableStateOf(0)
+    var mounts by mutableStateOf(__snglPre(__pre, "mounts") { 0 })
+    var idx by mutableStateOf(__snglPre(__pre, "idx") { 0 })
+    var seen by mutableStateOf(__snglPre(__pre, "seen") { 0 })
+    var changes by mutableStateOf(__snglPre(__pre, "changes") { 0 })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -2708,10 +2856,11 @@ fun Counter(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexS
     var hits by remember { mutableStateOf(0) }
 
     DisposableEffect(__sngl) {
-        SnglInstances[__sngl] = mapOf<String, (List<Any?>) -> Any?>(
+        val __entry = mapOf<String, (List<Any?>) -> Any?>(
             "hits" to { _ -> hits },
         )
-        onDispose { SnglInstances.remove(__sngl) }
+        SnglInstances[__sngl] = __entry
+        onDispose { if (SnglInstances[__sngl] === __entry) SnglInstances.remove(__sngl) }
     }
 
     Button(onClick = {
@@ -3037,18 +3186,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { mounts: 0, idx: 0, seen: 0, changes: 0 };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.stripSwipe = (p) => {
     Object.assign(__n6, p);
     __n6.dispatchEvent(Object.assign(new Event("swipe"), p));
@@ -3117,9 +3269,6 @@ window.__sngl_boot = () => {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let hits = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     let press = document.createElement("button");
     press.setAttribute("data-sngl-id", "press");
     press.disabled = false;
@@ -3151,9 +3300,6 @@ window.__sngl_boot = () => {
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __effect0_mount() {
       state.mounts += 1;
     }
@@ -3213,9 +3359,6 @@ window.__sngl_boot = () => {
     let __prop_seen = seen;
     let __prop___on_seen = __on_seen;
     let taps = 0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set_seen(__v) {
       __prop_seen = __v;
     }
@@ -3256,9 +3399,6 @@ window.__sngl_boot = () => {
     let __prop___p1 = __p1;
     let __prop___p2 = __p2;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       strip__change.textContent = __prop___p0.label;
@@ -3317,9 +3457,7 @@ window.__sngl_boot = () => {
     let __prop___p2 = __p2;
     let __prop___p3 = __p3;
     let __prop___on0 = __on0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
+    let __slot2 = [];
     let __inst5_live = [];
     let __inst6_live = [];
     let __inst7_live = [];
@@ -3355,9 +3493,9 @@ window.__sngl_boot = () => {
         try {
           while (__renderAgain2) {
             __renderAgain2 = false;
-            let __place4_prev = __slot22;
+            let __place4_prev = __slot2;
             let __place4_i = 0;
-            __slot22 = [];
+            __slot2 = [];
             let __inst5_next = [];
             let __inst5_i = 0;
             let __inst6_next = [];
@@ -3388,7 +3526,7 @@ window.__sngl_boot = () => {
               } else {
                 parent.insertBefore(c__el, __place4_i_ref0);
               }
-              __slot22.push(c__el);
+              __slot2.push(c__el);
             } else {
               if (__prop___p2.__id === 1) {
                 let __n7 = null;
@@ -3419,7 +3557,7 @@ window.__sngl_boot = () => {
                 } else {
                   parent.insertBefore(__n7__el, __place4_i_ref1);
                 }
-                __slot22.push(__n7__el);
+                __slot2.push(__n7__el);
               } else {
                 if (__prop___p2.__id === 2) {
                   let __n8 = null;
@@ -3444,7 +3582,7 @@ window.__sngl_boot = () => {
                   } else {
                     parent.insertBefore(__n8__el, __place4_i_ref2);
                   }
-                  __slot22.push(__n8__el);
+                  __slot2.push(__n8__el);
                 }
               }
             }
@@ -3470,7 +3608,7 @@ window.__sngl_boot = () => {
             }
             __inst7_live = __inst7_next;
             for (const __place4_prev_e of __place4_prev) {
-              if (__slot22.indexOf(__place4_prev_e) < 0) {
+              if (__slot2.indexOf(__place4_prev_e) < 0) {
                 parent.removeChild(__place4_prev_e);
               }
             }
@@ -3525,7 +3663,6 @@ window.__sngl_boot = () => {
   var __inst3_live = [];
   var __rendering1 = false;
   var __renderAgain1 = false;
-  var __slot2 = [];
   function __renderSlot0(parent) {
     if (__rendering0) {
       __renderAgain0 = true;
@@ -3759,16 +3896,15 @@ window.__sngl_boot = () => {
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:dabbf8b0e403f6699a687bef1fdb8d9f
+pass sha256:4421ef135162069748340f9230ecf99e
 -- run/go/fyne --
-pass sha256:eb46519a37fbd159a94c914cd2a6cc1b
+pass sha256:16bd9a4e2b47fba05bda7d7d7ac3c487
 -- run/go/gtk4 --
-pass sha256:6e10b9318a529447797412491cb81295
+pass sha256:ea7c50d684b6237193d02db00bd96421
 -- run/kotlin/android --
-pass sha256:576ffebf011f79940a343b5742dd3822
+pass sha256:26c9905308a1fc6b5bfeeedc49e9aab9
 -- run/none/html --
-pass sha256:caab378bfb2bfd70fd029f035ce5bb1d
+pass sha256:f65adc8bf86b8cc6bdde94c2272c9ffc
