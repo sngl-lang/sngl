@@ -540,7 +540,7 @@ func (m Model) View() tea.View {
 			content_0Prefix = ">"
 		}
 		content_0Text := content_0Prefix + " " + fmt.Sprint("toggle")
-		content_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0Text).Render(content_0Text)
+		content_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_0Focused), tui.Avail(m.width), content_0Text).Render(content_0Text)
 		content_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0)
 		contentChildren = append(contentChildren, content_0)
 		var __lt19 string
@@ -1206,6 +1206,6 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:e866334993585a20d6949a74b7ffbd70
+pass sha256:5993479fe1e79a1bf779ed73e4a7fa64
 -- run/kotlin/android --
 pass sha256:e0157b4327f81bc7715226a2e197d0d9

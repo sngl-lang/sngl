@@ -682,7 +682,7 @@ func (m Model) View() tea.View {
 			part0Part_0Prefix = ">"
 		}
 		part0Part_0Text := part0Part_0Prefix + " " + fmt.Sprint("add")
-		part0Part_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_0Text).Render(part0Part_0Text)
+		part0Part_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_0Focused), tui.Avail(m.width), part0Part_0Text).Render(part0Part_0Text)
 		part0Part_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_0)
 		part0Parts = append(part0Parts, part0Part_0)
 		var part0Part_1 string
@@ -696,7 +696,7 @@ func (m Model) View() tea.View {
 			part0Part_2Prefix = ">"
 		}
 		part0Part_2Text := part0Part_2Prefix + " " + fmt.Sprint("bump")
-		part0Part_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_2Text).Render(part0Part_2Text)
+		part0Part_2 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_2Focused), tui.Avail(m.width), part0Part_2Text).Render(part0Part_2Text)
 		part0Part_2 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_2)
 		part0Parts = append(part0Parts, part0Part_2)
 		var part0Part_3 string
@@ -1301,7 +1301,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3b2d98670f115d8c6718514ec481d41d
+pass sha256:a63127d0597e099488595ea68409a94f
 -- run/go/fyne --
 pass sha256:71282a5ba201bca767889e93089d8db8
 -- run/kotlin/android --

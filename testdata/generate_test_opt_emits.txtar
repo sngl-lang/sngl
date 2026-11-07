@@ -400,7 +400,7 @@ func (m Model) View() tea.View {
 		part0Prefix = ">"
 	}
 	part0Text := part0Prefix + " " + fmt.Sprint("+")
-	part0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Text).Render(part0Text)
+	part0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Focused), tui.Avail(m.width), part0Text).Render(part0Text)
 	part0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0)
 	parts = append(parts, part0)
 	var part1 string
@@ -444,4 +444,4 @@ func mountTestComponent(m Model, preset map[string]bool) Model {
 	return m
 }
 -- run/go/bubbletea --
-pass sha256:c8c9bc5ac71df6055aa3c8bb4b9bd1de
+pass sha256:a2fd8d3754cea557f2449c468c2613ff

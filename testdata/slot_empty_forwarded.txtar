@@ -986,7 +986,7 @@ func (m Model) View() tea.View {
 				}
 				return 0
 			}()))
-			part0Part_2Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_2Item_0Text).Render(part0Part_2Item_0Text)
+			part0Part_2Item_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_2Item_0Focused), tui.Avail(m.width), part0Part_2Item_0Text).Render(part0Part_2Item_0Text)
 			part0Part_2Item_0 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_2Item_0)
 			__focusPos0++
 			part0Part_2Items = append(part0Part_2Items, part0Part_2Item_0)
@@ -1011,7 +1011,7 @@ func (m Model) View() tea.View {
 					}
 					return 0
 				}()))
-				part0Part_2Item_1Item_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_2Item_1Item_2Text).Render(part0Part_2Item_1Item_2Text)
+				part0Part_2Item_1Item_2 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_2Item_1Item_2Focused), tui.Avail(m.width), part0Part_2Item_1Item_2Text).Render(part0Part_2Item_1Item_2Text)
 				part0Part_2Item_1Item_2 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_2Item_1Item_2)
 				__focusPos0++
 				part0Part_2Item_1Items = append(part0Part_2Item_1Items, part0Part_2Item_1Item_2)
@@ -1032,7 +1032,7 @@ func (m Model) View() tea.View {
 				}
 				return 0
 			}()))
-			part0Part_2Item_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_2Item_2Text).Render(part0Part_2Item_2Text)
+			part0Part_2Item_2 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_2Item_2Focused), tui.Avail(m.width), part0Part_2Item_2Text).Render(part0Part_2Item_2Text)
 			part0Part_2Item_2 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_2Item_2)
 			__focusPos0++
 			part0Part_2Items = append(part0Part_2Items, part0Part_2Item_2)
@@ -1057,7 +1057,7 @@ func (m Model) View() tea.View {
 					}
 					return 0
 				}()))
-				part0Part_2Item_3Item_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_2Item_3Item_2Text).Render(part0Part_2Item_3Item_2Text)
+				part0Part_2Item_3Item_2 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_2Item_3Item_2Focused), tui.Avail(m.width), part0Part_2Item_3Item_2Text).Render(part0Part_2Item_3Item_2Text)
 				part0Part_2Item_3Item_2 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_2Item_3Item_2)
 				__focusPos0++
 				part0Part_2Item_3Items = append(part0Part_2Item_3Items, part0Part_2Item_3Item_2)
@@ -3382,7 +3382,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5bf7b5103f803fc6bdf00c61092f4bb4
+pass sha256:3c63deecfd30c9a2d814dbfd92b0a809
 -- run/go/fyne --
 pass sha256:141555649769aecd71c03b776228fce2
 -- run/kotlin/android --

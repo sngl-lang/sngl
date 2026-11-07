@@ -582,7 +582,7 @@ func (m Model) View() tea.View {
 				part0_1Prefix = ">"
 			}
 			part0_1Text := part0_1Prefix + " " + fmt.Sprint(m.shape)
-			part0_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_1Text).Render(part0_1Text)
+			part0_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_1Focused), tui.Avail(m.width), part0_1Text).Render(part0_1Text)
 			part0_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_1)
 		}
 		if part0_1 != "" {
@@ -1975,7 +1975,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0a37efb50636b2fa1c453ab567e5688b
+pass sha256:70add71f13c603c2f3a11d93c21cde79
 -- run/go/fyne --
 pass sha256:0d536b8fecae7aa50a4aa8014f10817c
 -- run/go/gtk4 --

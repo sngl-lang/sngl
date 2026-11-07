@@ -543,7 +543,7 @@ func (m Model) View() tea.View {
 		if content_0_0ItemFocused {
 			content_0_0ItemPrefix = ">"
 		}
-		content_0_0Item = tui.TabLook((k == m.idx), (k == 0), t__r0.Disabled, "underline").Render(content_0_0ItemPrefix + " " + fmt.Sprint(t__r0.Label))
+		content_0_0Item = tui.Focused(tui.TabLook((k == m.idx), (k == 0), t__r0.Disabled, "underline"), content_0_0ItemFocused).Render(content_0_0ItemPrefix + " " + fmt.Sprint(t__r0.Label))
 		content_0_0Item = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0_0Item)
 		if !t__r0.Disabled {
 			__focusPos0++
@@ -1698,7 +1698,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e94411e17c54cacb013d8ba28ef2f56a
+pass sha256:5462a0330501fc4fa992e93c86b9a629
 -- run/go/fyne --
 pass sha256:fcc32173caaad7df71c8ad1f754d2bd9
 -- run/go/gtk4 --

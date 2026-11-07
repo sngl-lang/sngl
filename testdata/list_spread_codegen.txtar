@@ -691,7 +691,7 @@ func (m Model) View() tea.View {
 		part1Prefix = ">"
 	}
 	part1Text := part1Prefix + " " + fmt.Sprint("scribble")
-	part1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part1Text).Render(part1Text)
+	part1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part1Focused), tui.Avail(m.width), part1Text).Render(part1Text)
 	part1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part1)
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
@@ -1447,7 +1447,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3fe61e2d50ea8382b8379c67f7ddd323
+pass sha256:f2e1d16a68b43e022d4a0e8b5c2a1ad3
 -- run/go/fyne --
 pass sha256:08683520ad34b39effb23aa54903a70d
 -- run/go/gtk4 --

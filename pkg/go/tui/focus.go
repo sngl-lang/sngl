@@ -47,3 +47,13 @@ func ButtonLook(look lipgloss.Style) lipgloss.Style {
 	}
 	return look.Border(lipgloss.RoundedBorder()).PaddingRight(1)
 }
+
+// CardLook is the box a card is drawn in: look, given the dark surface of
+// Material's filled card where it paints no background of its own, as an
+// Android card is.
+func CardLook(look lipgloss.Style) lipgloss.Style {
+	if _, none := look.GetBackground().(lipgloss.NoColor); !none {
+		return look
+	}
+	return look.Background(lipgloss.Color("#2B2930")).PaddingRight(1)
+}

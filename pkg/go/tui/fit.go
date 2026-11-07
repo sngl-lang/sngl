@@ -38,7 +38,7 @@ func Render(look lipgloss.Style, fit Fit, text string) string {
 			text = strings.Join(lines, "\n")
 		}
 	}
-	return look.Render(text)
+	return Paint(look, text)
 }
 
 // Within is look, or look as wide as avail cells where text rendered in it
@@ -51,4 +51,21 @@ func Within(look lipgloss.Style, avail int, text string) lipgloss.Style {
 		return look
 	}
 	return Sized(look, true, avail)
+}
+
+// Paint is look.Render(text) with look's background under all of text: a
+// block styled inside it ends in a reset, which ended the background too, so
+// a card's color stopped after its first name. Each reset in text is followed
+// by the background again.
+func Paint(look lipgloss.Style, text string) string {
+	if _, none := look.GetBackground().(lipgloss.NoColor); none || look.GetBackground() == nil {
+		return look.Render(text)
+	}
+	marked := lipgloss.NewStyle().Background(look.GetBackground()).Render("x")
+	bg := marked[:strings.Index(marked, "x")]
+	if bg != "" {
+		text = strings.ReplaceAll(text, "\x1b[0m", "\x1b[0m"+bg)
+		text = strings.ReplaceAll(text, "\x1b[m", "\x1b[m"+bg)
+	}
+	return look.Render(text)
 }

@@ -1603,7 +1603,7 @@ func (m Model) View() tea.View {
 			part0_0Prefix = ">"
 		}
 		part0_0Text := part0_0Prefix + " " + fmt.Sprint(((fmt.Sprint(m.k__inst0) + " ") + fmt.Sprint(m.f__inst0.Fd)))
-		part0_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_0Text).Render(part0_0Text)
+		part0_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_0Focused), tui.Avail(m.width), part0_0Text).Render(part0_0Text)
 		part0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_0)
 	}
 	if part0_0 != "" {
@@ -1618,7 +1618,7 @@ func (m Model) View() tea.View {
 			part0_1Prefix = ">"
 		}
 		part0_1Text := part0_1Prefix + " " + fmt.Sprint(((fmt.Sprint(m.k__inst1) + " ") + fmt.Sprint(m.f__inst1.Fd)))
-		part0_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_1Text).Render(part0_1Text)
+		part0_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_1Focused), tui.Avail(m.width), part0_1Text).Render(part0_1Text)
 		part0_1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_1)
 	default:
 	}
@@ -1649,7 +1649,7 @@ func (m Model) View() tea.View {
 			}
 			return File{}
 		}().Fd)))
-		part0_2Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_2ItemText).Render(part0_2ItemText)
+		part0_2Item = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_2ItemFocused), tui.Avail(m.width), part0_2ItemText).Render(part0_2ItemText)
 		part0_2Item = m.__clicks.Mark(snglStop{slot: 2, pos: __focusPos2, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_2Item)
 		__focusPos2++
 		part0_2Items = append(part0_2Items, part0_2Item)
@@ -1741,4 +1741,4 @@ func mountTestComponent(m Model, preset map[string]bool) Model {
 	return m
 }
 -- run/go/bubbletea --
-pass sha256:503fb6f758653c8b18db075eab46db91
+pass sha256:c107ef31c108af268ed0f5d3c868a2fd

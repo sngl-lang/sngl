@@ -136,7 +136,7 @@ sha256:20cf0a50c075567d63056b2e656daa30
   ]
 }
 -- testrun/bubbletea/go/focus.sngl/panel/1 --
-sha256:ce94707d8da2ae8de24a3a7d3792a04d
+sha256:71642ca8d25eae2dd12268ef7daef0e0
 {
   "results": [
     {

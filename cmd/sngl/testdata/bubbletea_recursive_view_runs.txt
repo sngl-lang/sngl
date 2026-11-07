@@ -18,7 +18,7 @@
 env SNGL_UPDATE_SNAPSHOTS=1
 sngl test --platform=bubbletea app.sngl
 stdout 'PASS'
-grep '(?s)top *\nlevel 3 *\nlevel 2 *\nlevel 1 *\n> deeper' app.sngl.snapshots/deeper.ansi
+grep '(?s)top *\nlevel 3 *\nlevel 2 *\nlevel 1 *\n┏━+┓ *\n┃> deeper' app.sngl.snapshots/deeper.ansi
 grep -count=3 'ALPHA' app.sngl.snapshots/forwarded.ansi
 
 -- app.sngl --
@@ -87,7 +87,7 @@ window {
     main
 }
 -- testrun/bubbletea/go/app.sngl/forwarded/1 --
-sha256:836c2b398a5c56a541272b3edab45175
+sha256:651de3fa9a9403be2c18c5a6dd92d73b
 {
   "results": [
     {
@@ -100,7 +100,7 @@ sha256:836c2b398a5c56a541272b3edab45175
   }
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:7258a58e4ab10d50b4cfe04701a87a90
+sha256:d34e78883862dbd8a91c9405ea8ebd26
 {
   "results": [
     {
@@ -109,6 +109,6 @@ sha256:7258a58e4ab10d50b4cfe04701a87a90
     }
   ],
   "snapshots": {
-    "deeper.ansi": "dG9wICAgICAKbGV2ZWwgMyAKbGV2ZWwgMiAKbGV2ZWwgMSAKPiBkZWVwZXI="
+    "deeper.ansi": "dG9wICAgICAgICAKbGV2ZWwgMyAgICAKbGV2ZWwgMiAgICAKbGV2ZWwgMSAgICAK4pSP4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSTCuKUgz4gZGVlcGVyIOKUgwrilJfilIHilIHilIHilIHilIHilIHilIHilIHilIHilJs="
   }
 }

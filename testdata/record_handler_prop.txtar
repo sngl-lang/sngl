@@ -601,7 +601,7 @@ func (m Model) View() tea.View {
 				content_1ItemPrefix = ">"
 			}
 			content_1ItemText := content_1ItemPrefix + " " + fmt.Sprint(it.Label)
-			content_1Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1ItemText).Render(content_1ItemText)
+			content_1Item = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_1ItemFocused), tui.Avail(m.width), content_1ItemText).Render(content_1ItemText)
 			content_1Item = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_1Item)
 			__focusPos0++
 			content_1Items = append(content_1Items, content_1Item)
@@ -1437,7 +1437,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:15fff0fdfdacaeccb262378f683eba4d
+pass sha256:9bde2267802b928c2be8ae2e6be580ff
 -- run/go/fyne --
 pass sha256:356307ab58c67c65161a5582dd0c6798
 -- run/go/gtk4 --

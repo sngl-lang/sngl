@@ -522,7 +522,7 @@ func (m Model) View() tea.View {
 			content_0Prefix = ">"
 		}
 		content_0Text := content_0Prefix + " " + fmt.Sprint("tick")
-		content_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0Text).Render(content_0Text)
+		content_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_0Focused), tui.Avail(m.width), content_0Text).Render(content_0Text)
 		content_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
@@ -532,7 +532,7 @@ func (m Model) View() tea.View {
 			content_1Prefix = ">"
 		}
 		content_1Text := content_1Prefix + " " + fmt.Sprint("flip")
-		content_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1Text).Render(content_1Text)
+		content_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_1Focused), tui.Avail(m.width), content_1Text).Render(content_1Text)
 		content_1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_1)
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
@@ -1858,7 +1858,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4b9cd0ab6e8f358d4f2c202723ba916b
+pass sha256:3abbd211a5a661b63dd95f5bef8ba9a2
 -- run/go/fyne --
 pass sha256:b3825ac1493df7e271e668d0bd35797a
 -- run/go/gtk4 --

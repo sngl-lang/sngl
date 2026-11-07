@@ -1267,7 +1267,7 @@ func (m Model) View() tea.View {
 			contentPart_7Prefix = ">"
 		}
 		contentPart_7Text := contentPart_7Prefix + " " + fmt.Sprint("Turn")
-		contentPart_7 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_7Text).Render(contentPart_7Text)
+		contentPart_7 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), contentPart_7Focused), tui.Avail(m.width), contentPart_7Text).Render(contentPart_7Text)
 		contentPart_7 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_7)
 		contentParts = append(contentParts, contentPart_7)
 		var contentPart_8 string
@@ -1282,7 +1282,7 @@ func (m Model) View() tea.View {
 				contentPart_8Prefix = ">"
 			}
 			contentPart_8Text := contentPart_8Prefix + " " + fmt.Sprint("Back")
-			contentPart_8 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_8Text).Render(contentPart_8Text)
+			contentPart_8 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), contentPart_8Focused), tui.Avail(m.width), contentPart_8Text).Render(contentPart_8Text)
 			contentPart_8 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_8)
 		default:
 			contentPart_8Text := fmt.Sprint("east")
@@ -1307,7 +1307,7 @@ func (m Model) View() tea.View {
 					contentPart_9ItemPrefix = ">"
 				}
 				contentPart_9ItemText := contentPart_9ItemPrefix + " " + fmt.Sprint("Up")
-				contentPart_9Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_9ItemText).Render(contentPart_9ItemText)
+				contentPart_9Item = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), contentPart_9ItemFocused), tui.Avail(m.width), contentPart_9ItemText).Render(contentPart_9ItemText)
 				contentPart_9Item = m.__clicks.Mark(snglStop{slot: 2, pos: __focusPos2, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_9Item)
 				__focusPos2++
 			default:
@@ -1340,7 +1340,7 @@ func (m Model) View() tea.View {
 			contentPart_13Prefix = ">"
 		}
 		contentPart_13Text := contentPart_13Prefix + " " + fmt.Sprint("Spin")
-		contentPart_13 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_13Text).Render(contentPart_13Text)
+		contentPart_13 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), contentPart_13Focused), tui.Avail(m.width), contentPart_13Text).Render(contentPart_13Text)
 		contentPart_13 = m.__clicks.Mark(snglStop{slot: 3, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_13)
 		contentParts = append(contentParts, contentPart_13)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
@@ -3248,7 +3248,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e31128c3aefaee06c3ad6bd49514b878
+pass sha256:3ebeb80810f92a0ff48b1f683e6a4f8f
 -- run/go/fyne --
 pass sha256:c9778bfe48f6e81bfb823b6c163062e1
 -- run/go/gtk4 --

@@ -543,7 +543,7 @@ func (m Model) View() tea.View {
 			contentPart_0Prefix = ">"
 		}
 		contentPart_0Text := contentPart_0Prefix + " " + fmt.Sprint("go")
-		contentPart_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_0Text).Render(contentPart_0Text)
+		contentPart_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), contentPart_0Focused), tui.Avail(m.width), contentPart_0Text).Render(contentPart_0Text)
 		contentPart_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_0)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
@@ -868,7 +868,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/bubbletea --
-pass sha256:245b644712213dd3d9d192616ee521b4
+pass sha256:210f4ca860fd0e8f4a03a1b5698f20c9
 -- run/go/fyne --
 pass sha256:f5d994ef9207adb1c764fff0caea2824
 -- run/go/gtk4 --

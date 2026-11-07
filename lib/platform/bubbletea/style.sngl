@@ -59,9 +59,13 @@ const func rowsOf(m option[ui.measurement]) int {
 }
 
 // One side of a margin or a padding: the first of its own field, its axis's
-// and the whole box's that is set, as CSS reads them.
-const func side(all option[ui.measurement], axis option[ui.measurement], own option[ui.measurement]) int {
-    return cellsOf(own != null ? own : axis != null ? axis : all)
+// and the whole box's that is set, as CSS reads them, in cells across or rows
+// down (`across`). A space is the nearest whole number of them, none for a
+// sliver: a badge's 2px above and below its name were a blank row each,
+// three lines to a line of the Pokédex's moves table.
+const func side(all option[ui.measurement], axis option[ui.measurement], own option[ui.measurement], across bool) int {
+    var px = pxOf(own != null ? own : axis != null ? axis : all)
+    return int(px / (across ? 8.0 : 16.0) + 0.5)
 }
 
 // The share of its parent's free space a `flex` child grows into; none where
@@ -166,14 +170,14 @@ const func boxLook(s ui.Style, words bool) Look {
             l = l.borderForeground(hue(s.borderColor))
         }
     }
-    l = l.marginTop(side(s.margin, s.marginY, s.marginTop))
-    l = l.marginRight(side(s.margin, s.marginX, s.marginRight))
-    l = l.marginBottom(side(s.margin, s.marginY, s.marginBottom))
-    l = l.marginLeft(side(s.margin, s.marginX, s.marginLeft))
-    l = l.paddingTop(side(s.padding, s.paddingY, s.paddingTop))
-    l = l.paddingRight(side(s.padding, s.paddingX, s.paddingRight))
-    l = l.paddingBottom(side(s.padding, s.paddingY, s.paddingBottom))
-    l = l.paddingLeft(side(s.padding, s.paddingX, s.paddingLeft))
+    l = l.marginTop(side(s.margin, s.marginY, s.marginTop, false))
+    l = l.marginRight(side(s.margin, s.marginX, s.marginRight, true))
+    l = l.marginBottom(side(s.margin, s.marginY, s.marginBottom, false))
+    l = l.marginLeft(side(s.margin, s.marginX, s.marginLeft, true))
+    l = l.paddingTop(side(s.padding, s.paddingY, s.paddingTop, false))
+    l = l.paddingRight(side(s.padding, s.paddingX, s.paddingRight, true))
+    l = l.paddingBottom(side(s.padding, s.paddingY, s.paddingBottom, false))
+    l = l.paddingLeft(side(s.padding, s.paddingX, s.paddingLeft, true))
     if s.width != null {
         l = l.width(cellsOf(s.width))
     }

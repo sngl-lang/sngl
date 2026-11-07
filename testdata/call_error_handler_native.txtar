@@ -493,7 +493,7 @@ func (m Model) View() tea.View {
 		part0Prefix = ">"
 	}
 	part0Text := part0Prefix + " " + fmt.Sprint("Bad")
-	part0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Text).Render(part0Text)
+	part0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Focused), tui.Avail(m.width), part0Text).Render(part0Text)
 	part0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0)
 	parts = append(parts, part0)
 	var part1 string
@@ -503,7 +503,7 @@ func (m Model) View() tea.View {
 		part1Prefix = ">"
 	}
 	part1Text := part1Prefix + " " + fmt.Sprint("Good")
-	part1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part1Text).Render(part1Text)
+	part1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part1Focused), tui.Avail(m.width), part1Text).Render(part1Text)
 	part1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part1)
 	parts = append(parts, part1)
 	var part2 string
@@ -857,7 +857,7 @@ func (m *Model) goodClick() {
 	gtk4rt.Emit(m.good, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:c2239720cbd6763565a269e9df6bf891
+pass sha256:85864e270d38bed0530e4fdfcad0dad4
 -- run/go/fyne --
 pass sha256:8232bf48a3fd03d2dc9ef46fce42c3d6
 -- run/go/gtk4 --

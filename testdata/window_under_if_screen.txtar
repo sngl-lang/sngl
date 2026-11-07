@@ -541,7 +541,7 @@ func (m Model) View() tea.View {
 				part0Part_1Prefix = ">"
 			}
 			part0Part_1Text := part0Part_1Prefix + " " + fmt.Sprint("+")
-			part0Part_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_1Text).Render(part0Part_1Text)
+			part0Part_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_1Focused), tui.Avail(m.width), part0Part_1Text).Render(part0Part_1Text)
 			part0Part_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_1)
 			part0Parts = append(part0Parts, part0Part_1)
 			part0 = tui.Spaced(false, lipgloss.Left, 0, part0Parts...)
@@ -635,6 +635,6 @@ fun __window_state0(__start_visible: Boolean = true, title: String, slotContent:
     }
 }
 -- run/go/bubbletea --
-pass sha256:1063ea4f371ee1e9fd75852be2c67090
+pass sha256:ec71e56968e293e2720fbe8cd5bb2266
 -- run/kotlin/android --
 pass sha256:1bff852965d6a759da6225f6791086fe

@@ -281,3 +281,12 @@ func Grid(columns int, align lipgloss.Position, gap, rowGap, avail int, parts []
 	}
 	return joinSpaced(false, lipgloss.Left, rowGap, rows)
 }
+
+// Stretch is look as wide as cells, margins included, where it fixes no
+// width of its own: a box stretched across the column it is in.
+func Stretch(look lipgloss.Style, cells int) lipgloss.Style {
+	if look.GetWidth() > 0 {
+		return look
+	}
+	return Sized(look, true, cells)
+}

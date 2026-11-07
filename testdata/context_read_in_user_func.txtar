@@ -925,7 +925,7 @@ func (m Model) View() tea.View {
 		part2Prefix = ">"
 	}
 	part2Text := part2Prefix + " " + fmt.Sprint("tap")
-	part2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part2Text).Render(part2Text)
+	part2 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part2Focused), tui.Avail(m.width), part2Text).Render(part2Text)
 	part2 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part2)
 	parts = append(parts, part2)
 	var part3 string
@@ -935,7 +935,7 @@ func (m Model) View() tea.View {
 		part3Prefix = ">"
 	}
 	part3Text := part3Prefix + " " + fmt.Sprint("wrap")
-	part3 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part3Text).Render(part3Text)
+	part3 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part3Focused), tui.Avail(m.width), part3Text).Render(part3Text)
 	part3 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part3)
 	parts = append(parts, part3)
 	var part4 string
@@ -2238,7 +2238,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:86f62485761c4e39ede933f901c61999
+pass sha256:06a7c3863dd98d9ae56e544559376bff
 -- run/go/fyne --
 pass sha256:4f85b7550e8e9470513ace29d8292193
 -- run/go/gtk4 --

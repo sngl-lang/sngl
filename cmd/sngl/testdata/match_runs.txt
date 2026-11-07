@@ -206,7 +206,7 @@ sha256:1d1d0179905bcdfc6af212fda3d92ade
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:a3866e087f50223c2675481f8bc29a85
+sha256:eee2be865488cd1a76719e247d68f929
 {
   "results": [
     {
@@ -216,7 +216,7 @@ sha256:a3866e087f50223c2675481f8bc29a85
   ]
 }
 -- testrun/bubbletea/go/app.sngl/panel/1 --
-sha256:74790643c4cb8312cce5bd37a4009565
+sha256:15ad9d0e0ace5e62ad961223da10d95d
 {
   "results": [
     {

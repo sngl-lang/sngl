@@ -300,7 +300,9 @@ func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string
 		return
 	}
 	vc.line("var %s string", childVar)
+	vc.stretchAcross(child)
 	vc.renderStmt(child, childVar)
+	vc.sizeTo = nil
 	vc.appendPart(child, childVar, childrenVar)
 }
 
@@ -910,6 +912,19 @@ func (vc *irViewContext) render(n *ir.NodeInst, look, text string) string {
 	return fmt.Sprintf("tui.Render(%s, %s, %s)", look, vc.gc.EvalExpr(codegen.NodeProp(n, "fit")), text)
 }
 
+// paint is render for a box holding blocks styled already: its background
+// goes on under each of them (tui.Paint).
+func (vc *irViewContext) paint(n *ir.NodeInst, look, text string) string {
+	if !vc.fits(n) {
+		if f := codegen.NodeProp(n, "fit"); f != nil {
+			vc.discard(f)
+		}
+		vc.requireImport(tuiImportPath)
+		return fmt.Sprintf("tui.Paint(%s, %s)", look, text)
+	}
+	return vc.render(n, look, text)
+}
+
 // look is the lipgloss style a primitive renders with: what its override built
 // from the node's Style, sized to the share of its parent it grows into.
 func (vc *irViewContext) look(n *ir.NodeInst) string {
@@ -927,16 +942,42 @@ func (vc *irViewContext) look(n *ir.NodeInst) string {
 	}
 	if s := vc.sizeTo; s != nil {
 		vc.sizeTo = nil
+		if s.stretch {
+			if look == plainLook {
+				return look
+			}
+			return fmt.Sprintf("tui.Stretch(%s, %s)", look, s.cells)
+		}
 		look = fmt.Sprintf("tui.Sized(%s, %t, %s)", look, s.horizontal, s.cells)
+		if s.across != "" {
+			look = fmt.Sprintf("tui.Stretch(%s, %s)", look, s.across)
+		}
 	}
 	return look
 }
 
 // growSize is the share of a Layout's free space the primitive rendered next
-// grows into: the Go int holding it, and the axis it is along.
+// grows into: the Go int holding it, and the axis it is along. One that
+// stretches is a box across a column, which keeps a width of its own.
 type growSize struct {
 	horizontal bool
 	cells      string
+	stretch    bool
+	// across is the width a share down a column stretches across, "" for
+	// none.
+	across string
+}
+
+// stretchAcross has the box child renders next stretch across the column
+// it is in, as CSS stretches a flex item across a column whose items it
+// does not align: a card's names were centered in their own width, at its
+// left edge. A box with no look of its own is the size of what it joined.
+func (vc *irViewContext) stretchAcross(child ir.Stmt) {
+	n, ok := child.(*ir.NodeInst)
+	if !ok || !vc.vertical || vc.availW == "" || vc.joinAt != "lipgloss.Left" || btIntrinsic(n) != "Layout" {
+		return
+	}
+	vc.sizeTo = &growSize{horizontal: true, cells: vc.availW, stretch: true}
 }
 
 // grows reports whether n is a primitive its override handed a share of its
@@ -975,6 +1016,14 @@ func growsWithin(s ir.Stmt) bool {
 		return nil
 	})
 	return found
+}
+
+// stretches reports whether s is a box a grid's column stretches to its
+// width, as CSS's grid stretches each item: a card was as wide as its name,
+// in a column padded around it.
+func (vc *irViewContext) stretches(s ir.Stmt) bool {
+	n, ok := s.(*ir.NodeInst)
+	return ok && vc.cells && btIntrinsic(n) == "Layout"
 }
 
 // directlyGrows reports whether s is a child its Layout renders once the
@@ -1241,7 +1290,7 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	}
 	vc.clipScroll(n, resultVar, style, savedW, savedH)
 	if style != plainLook || vc.fits(n) {
-		vc.line(`%s = %s`, resultVar, vc.render(n, style, resultVar))
+		vc.line(`%s = %s`, resultVar, vc.paint(n, style, resultVar))
 	}
 	vc.markPress(n, resultVar, pressAt)
 }
@@ -1376,13 +1425,15 @@ func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, ho
 			return
 		}
 	}
-	if !vc.directlyGrows(child) {
+	if !vc.directlyGrows(child) && !vc.stretches(child) {
 		if !rendersPart(child) {
 			vc.renderStmt(child, "")
 			return
 		}
 		vc.line("var %s string", childVar)
+		vc.stretchAcross(child)
 		vc.renderStmt(child, childVar)
+		vc.sizeTo = nil
 		if vc.mayDrawNothing(child) {
 			vc.line("if %s != \"\" {", childVar)
 			vc.line("\t%s = append(%s, tui.Fixed(%s))", partsVar, partsVar, childVar)
@@ -1395,7 +1446,11 @@ func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, ho
 	n := child.(*ir.NodeInst)
 	bases := vc.countAhead(n, childVar)
 	cells := childVar + "Cells"
-	vc.line("%s = append(%s, tui.Grow(%s, func(%s int) string {", partsVar, partsVar, vc.gc.EvalExpr(codegen.NodeProp(n, "grow")), cells)
+	share := "1.0"
+	if vc.directlyGrows(child) {
+		share = vc.gc.EvalExpr(codegen.NodeProp(n, "grow"))
+	}
+	vc.line("%s = append(%s, tui.Grow(%s, func(%s int) string {", partsVar, partsVar, share, cells)
 	vc.indent++
 	for _, c := range slices.Sorted(maps.Keys(bases)) {
 		vc.line("%s := %s", c, bases[c])
@@ -1408,6 +1463,9 @@ func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, ho
 		vc.availH = cells
 	}
 	vc.sizeTo = &growSize{horizontal: horizontal, cells: cells}
+	if !horizontal && vc.availW != "" && vc.joinAt == "lipgloss.Left" && btIntrinsic(n) == "Layout" {
+		vc.sizeTo.across = vc.availW
+	}
 	vc.line("var %s string", childVar)
 	vc.renderStmt(child, childVar)
 	vc.sizeTo = nil

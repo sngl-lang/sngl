@@ -879,7 +879,7 @@ func (m Model) View() tea.View {
 			part0Part_7Prefix = ">"
 		}
 		part0Part_7Text := part0Part_7Prefix + " " + fmt.Sprint("fig")
-		part0Part_7 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_7Text).Render(part0Part_7Text)
+		part0Part_7 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_7Focused), tui.Avail(m.width), part0Part_7Text).Render(part0Part_7Text)
 		part0Part_7 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_7)
 		part0Parts = append(part0Parts, part0Part_7)
 		var part0Part_8 string
@@ -889,7 +889,7 @@ func (m Model) View() tea.View {
 			part0Part_8Prefix = ">"
 		}
 		part0Part_8Text := part0Part_8Prefix + " " + fmt.Sprint("again")
-		part0Part_8 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_8Text).Render(part0Part_8Text)
+		part0Part_8 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Part_8Focused), tui.Avail(m.width), part0Part_8Text).Render(part0Part_8Text)
 		part0Part_8 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_8)
 		part0Parts = append(part0Parts, part0Part_8)
 		part0 = tui.Spaced(false, lipgloss.Left, 0, part0Parts...)
@@ -936,4 +936,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:23f59b477d9d161f8e5e600777d03972
+pass sha256:b6b95c989e442a33019262cf43713276

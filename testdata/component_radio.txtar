@@ -630,7 +630,7 @@ func (m Model) View() tea.View {
 			content_0ItemPrefix = ">"
 		}
 		content_0ItemText := content_0ItemPrefix + " " + fmt.Sprint((__lt16 + opt.Label))
-		content_0Item = tui.Within(lipgloss.NewStyle(), tui.Avail(m.width), content_0ItemText).Render(content_0ItemText)
+		content_0Item = tui.Within(tui.Focused(lipgloss.NewStyle(), content_0ItemFocused), tui.Avail(m.width), content_0ItemText).Render(content_0ItemText)
 		content_0Item = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_0Item)
 		if true {
 			__focusPos0++
@@ -1537,7 +1537,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d0e9efc211c8a48ba3625eb71b5c5711
+pass sha256:793c5fe29ce0a25038e5312fccc89f0a
 -- run/go/fyne --
 pass sha256:8bb2fa8ff51d704b1d93b78a613542ab
 -- run/kotlin/android --

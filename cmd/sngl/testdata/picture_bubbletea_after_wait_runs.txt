@@ -34,7 +34,7 @@ ui.window {
     picture
 }
 -- testrun/bubbletea/go/app.sngl/picture/1 --
-sha256:852a0932d05f9eb43edfd16981cde55d
+sha256:397dcbfd3acb729684a88dcf43c19c29
 {
   "results": [
     {

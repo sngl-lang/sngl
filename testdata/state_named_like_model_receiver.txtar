@@ -783,7 +783,7 @@ func (m Model) View() tea.View {
 		part0_1Prefix = ">"
 	}
 	part0_1Text := part0_1Prefix + " " + fmt.Sprint("bump")
-	part0_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_1Text).Render(part0_1Text)
+	part0_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_1Focused), tui.Avail(m.width), part0_1Text).Render(part0_1Text)
 	part0_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_1)
 	part0Children = append(part0Children, part0_1)
 	var part0_2 string
@@ -815,7 +815,7 @@ func (m Model) View() tea.View {
 			part0_2Item_1Prefix = ">"
 		}
 		part0_2Item_1Text := part0_2Item_1Prefix + " " + fmt.Sprint("inc")
-		part0_2Item_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_2Item_1Text).Render(part0_2Item_1Text)
+		part0_2Item_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0_2Item_1Focused), tui.Avail(m.width), part0_2Item_1Text).Render(part0_2Item_1Text)
 		part0_2Item_1 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_2Item_1)
 		__focusPos1++
 		part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_1)
@@ -1460,7 +1460,7 @@ func (m *Model) incClick() {
 	gtk4rt.Emit(m.__named_inc, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:09972e31ddfe6c5b0b596a84b749fd97
+pass sha256:f8a32eb018c34c3c2dfbeea2a6ce1476
 -- run/go/fyne --
 pass sha256:818271c8c8169ae075d758600c3c30bb
 -- run/go/gtk4 --

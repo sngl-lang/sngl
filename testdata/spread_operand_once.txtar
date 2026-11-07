@@ -564,7 +564,7 @@ func (m Model) View() tea.View {
 		part0Prefix = ">"
 	}
 	part0Text := part0Prefix + " " + fmt.Sprint("once")
-	part0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Text).Render(part0Text)
+	part0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Focused), tui.Avail(m.width), part0Text).Render(part0Text)
 	part0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0)
 	parts = append(parts, part0)
 	var part1 string
@@ -574,7 +574,7 @@ func (m Model) View() tea.View {
 		part1Prefix = ">"
 	}
 	part1Text := part1Prefix + " " + fmt.Sprint("path")
-	part1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part1Text).Render(part1Text)
+	part1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part1Focused), tui.Avail(m.width), part1Text).Render(part1Text)
 	part1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part1)
 	parts = append(parts, part1)
 	var part2 string
@@ -584,7 +584,7 @@ func (m Model) View() tea.View {
 		part2Prefix = ">"
 	}
 	part2Text := part2Prefix + " " + fmt.Sprint("nested")
-	part2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part2Text).Render(part2Text)
+	part2 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part2Focused), tui.Avail(m.width), part2Text).Render(part2Text)
 	part2 = m.__clicks.Mark(snglStop{slot: 2, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part2)
 	parts = append(parts, part2)
 	var part3 string
@@ -1080,7 +1080,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:02deda76ef9645b6b8fe813448f99944
+pass sha256:293a4e6695df0cee95fe60095c37d30d
 -- run/go/fyne --
 pass sha256:89da5eb9246a156aeaa5599e9e9bdb45
 -- run/kotlin/android --

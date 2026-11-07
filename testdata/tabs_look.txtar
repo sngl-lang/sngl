@@ -699,7 +699,7 @@ func (m Model) View() tea.View {
 		if content_0_2ItemFocused {
 			content_0_2ItemPrefix = ">"
 		}
-		content_0_2Item = tui.TabLook((k == m.idx), (k == 0), t__r0.Disabled, "underline").Render(content_0_2ItemPrefix + " " + fmt.Sprint(t__r0.Label))
+		content_0_2Item = tui.Focused(tui.TabLook((k == m.idx), (k == 0), t__r0.Disabled, "underline"), content_0_2ItemFocused).Render(content_0_2ItemPrefix + " " + fmt.Sprint(t__r0.Label))
 		content_0_2Item = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0_2Item)
 		if !t__r0.Disabled {
 			__focusPos0++
@@ -1277,7 +1277,7 @@ func (m *Model) __list_tabs__change(key string, w gtk4rt.Handle) {
 	m.__copies_tabs__change[key] = w
 }
 -- run/go/bubbletea --
-pass sha256:25c5d9ca4a9a267774ec9a94355ca547
+pass sha256:86c4713362dfba63793b50018e1606cd
 -- run/go/fyne --
 pass sha256:e30e9bbc54c925d2ba0849a2775250e6
 -- run/go/gtk4 --

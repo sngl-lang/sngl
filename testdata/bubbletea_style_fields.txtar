@@ -699,7 +699,7 @@ func (m Model) View() tea.View {
 					content_6Item_0Prefix = ">"
 				}
 				content_6Item_0Text := content_6Item_0Prefix + " " + fmt.Sprint(("wide " + fmt.Sprint(i)))
-				content_6Item_0 = tui.Within(tui.Sized(BoxLook(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), true, content_6Item_0Cells), content_6Item_0Cells, content_6Item_0Text).Render(content_6Item_0Text)
+				content_6Item_0 = tui.Within(tui.Focused(tui.Sized(tui.ButtonLook(BoxLook(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), true, content_6Item_0Cells), content_6Item_0Focused), content_6Item_0Cells, content_6Item_0Text).Render(content_6Item_0Text)
 				content_6Item_0 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_6Item_0)
 				__focusPos1++
 				return content_6Item_0
@@ -710,7 +710,7 @@ func (m Model) View() tea.View {
 			if content_6Item_1Focused {
 				content_6Item_1Prefix = ">"
 			}
-			content_6Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_6Item_1Prefix + " " + fmt.Sprint("narrow"))
+			content_6Item_1 = tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_6Item_1Focused).Render(content_6Item_1Prefix + " " + fmt.Sprint("narrow"))
 			content_6Item_1 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_6Item_1)
 			__focusPos1++
 			content_6ItemChildren = append(content_6ItemChildren, tui.Fixed(content_6Item_1))
@@ -745,4 +745,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:2ad46852ac9122baebebad7a9b03c1ad
+pass sha256:2e03ea6d20182a17fbb80ca3a878a5a1

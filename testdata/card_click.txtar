@@ -610,7 +610,7 @@ func (m Model) View() tea.View {
 			content_0Item_0Prefix = ">"
 		}
 		content_0Item_0Text := content_0Item_0Prefix + " " + fmt.Sprint("› ")
-		content_0Item_0 = tui.Within(lipgloss.NewStyle(), tui.Avail(m.width), content_0Item_0Text).Render(content_0Item_0Text)
+		content_0Item_0 = tui.Within(tui.Focused(lipgloss.NewStyle(), content_0Item_0Focused), tui.Avail(m.width), content_0Item_0Text).Render(content_0Item_0Text)
 		content_0Item_0 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0Item_0)
 		__focusPos0++
 		content_0ItemChildren = append(content_0ItemChildren, content_0Item_0)
@@ -1639,7 +1639,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:76bc6e3c77db45698e4c62d4353d6fb7
+pass sha256:b801715463965321878906bc6182ca56
 -- run/go/fyne --
 pass sha256:a13ba3914fdadb48f05777669afeda04
 -- run/go/gtk4 --

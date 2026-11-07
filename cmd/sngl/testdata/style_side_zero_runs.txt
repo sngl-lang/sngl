@@ -196,7 +196,7 @@ sha256:d702cacd94d3fc8a9895111915bd13d9
   }
 }
 -- testrun/bubbletea/go/app.sngl/fixed/1 --
-sha256:86f82cd957b99e2a41661646e3d4f576
+sha256:3055e184be327aaddee49263e69f9a83
 {
   "results": [
     {
@@ -205,7 +205,7 @@ sha256:86f82cd957b99e2a41661646e3d4f576
     }
   ],
   "snapshots": {
-    "fixed.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAgICAgG1ttICAKG1s0ODsyOzUxOzEwMjsxNTNtIBtbbRtbMzg7MjsyNTU7MjU1OzI1NTs0ODsyOzUxOzEwMjsxNTNta2VwdBtbbRtbNDg7Mjs1MTsxMDI7MTUzbSAbW20gIAobWzQ4OzI7NTE7MTAyOzE1M20gICAgICAbW20gIAo+IHNocmluaw=="
+    "fixed.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAgICAgG1ttICAgICAKG1s0ODsyOzUxOzEwMjsxNTNtIBtbbRtbMzg7MjsyNTU7MjU1OzI1NTs0ODsyOzUxOzEwMjsxNTNta2VwdBtbbRtbNDg7Mjs1MTsxMDI7MTUzbSAbW20gICAgIAobWzQ4OzI7NTE7MTAyOzE1M20gICAgICAbW20gICAgIArilI/ilIHilIHilIHilIHilIHilIHilIHilIHilIHilJMK4pSDPiBzaHJpbmsg4pSDCuKUl+KUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUmw=="
   }
 }
 -- testrun/bubbletea/go/app.sngl/flush/1 --
@@ -222,7 +222,7 @@ sha256:37cd32917b2500139df5ef410baf283a
   }
 }
 -- testrun/bubbletea/go/app.sngl/kept/1 --
-sha256:2754cafa33b6c395884ffeac9ae8171c
+sha256:d493b0d9285622942216af03bdd54d19
 {
   "results": [
     {
@@ -231,7 +231,7 @@ sha256:2754cafa33b6c395884ffeac9ae8171c
     }
   ],
   "snapshots": {
-    "kept.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAgICAgG1ttICAKG1s0ODsyOzUxOzEwMjsxNTNtIBtbbRtbMzg7MjsyNTU7MjU1OzI1NTs0ODsyOzUxOzEwMjsxNTNta2VwdBtbbRtbNDg7Mjs1MTsxMDI7MTUzbSAbW20gIAobWzQ4OzI7NTE7MTAyOzE1M20gICAgICAbW20gIAo+IHNocmluaw=="
+    "kept.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAgICAgG1ttICAgICAKG1s0ODsyOzUxOzEwMjsxNTNtIBtbbRtbMzg7MjsyNTU7MjU1OzI1NTs0ODsyOzUxOzEwMjsxNTNta2VwdBtbbRtbNDg7Mjs1MTsxMDI7MTUzbSAbW20gICAgIAobWzQ4OzI7NTE7MTAyOzE1M20gICAgICAbW20gICAgIArilI/ilIHilIHilIHilIHilIHilIHilIHilIHilIHilJMK4pSDPiBzaHJpbmsg4pSDCuKUl+KUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUmw=="
   }
 }
 -- testrun/bubbletea/go/app.sngl/sides/1 --

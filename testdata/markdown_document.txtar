@@ -822,7 +822,7 @@ func (m Model) View() tea.View {
 							content_0Item_0Item_0Prefix = ">"
 						}
 						content_0Item_0Item_0Text := content_0Item_0Item_0Prefix + " " + fmt.Sprint("")
-						content_0Item_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0ItemW, content_0Item_0Item_0Text).Render(content_0Item_0Item_0Text)
+						content_0Item_0Item_0 = tui.Within(tui.Focused(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_0Focused), content_0ItemW, content_0Item_0Item_0Text).Render(content_0Item_0Item_0Text)
 						content_0Item_0Item_0 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_0Item_0Item_0)
 						__focusPos0++
 					}
@@ -865,7 +865,7 @@ func (m Model) View() tea.View {
 										content_0Item_0Item_1_0Item_0Item_0Prefix = ">"
 									}
 									content_0Item_0Item_1_0Item_0Item_0Text := content_0Item_0Item_1_0Item_0Item_0Prefix + " " + fmt.Sprint("")
-									content_0Item_0Item_1_0Item_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_1_0ItemW, content_0Item_0Item_1_0Item_0Item_0Text).Render(content_0Item_0Item_1_0Item_0Item_0Text)
+									content_0Item_0Item_1_0Item_0Item_0 = tui.Within(tui.Focused(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_1_0Item_0Item_0Focused), content_0Item_0Item_1_0ItemW, content_0Item_0Item_1_0Item_0Item_0Text).Render(content_0Item_0Item_1_0Item_0Item_0Text)
 									content_0Item_0Item_1_0Item_0Item_0 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_0Item_0Item_1_0Item_0Item_0)
 									__focusPos0++
 								}
@@ -908,7 +908,7 @@ func (m Model) View() tea.View {
 													content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Prefix = ">"
 												}
 												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Text := content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Prefix + " " + fmt.Sprint("")
-												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_1_0Item_0Item_1_0ItemW, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Text).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Text)
+												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 = tui.Within(tui.Focused(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Focused), content_0Item_0Item_1_0Item_0Item_1_0ItemW, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Text).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Text)
 												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0)
 												__focusPos0++
 											}
@@ -9800,7 +9800,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:baf0d30943ee039131a187cc62d2198a
+pass sha256:82be6f67fa2698aba0033a029e5bcece
 -- run/go/fyne --
 pass sha256:9e0a06ced8c16ecdbb67b4d29381e683
 -- run/none/html --

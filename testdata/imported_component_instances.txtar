@@ -474,7 +474,7 @@ func (m Model) View() tea.View {
 			content_0_1Prefix = ">"
 		}
 		content_0_1Text := content_0_1Prefix + " " + fmt.Sprint("add")
-		content_0_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0_1Text).Render(content_0_1Text)
+		content_0_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_0_1Focused), tui.Avail(m.width), content_0_1Text).Render(content_0_1Text)
 		content_0_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0_1)
 		content_0Children = append(content_0Children, content_0_1)
 		content_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_0Children...)
@@ -492,7 +492,7 @@ func (m Model) View() tea.View {
 			content_1_1Prefix = ">"
 		}
 		content_1_1Text := content_1_1Prefix + " " + fmt.Sprint("add")
-		content_1_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1_1Text).Render(content_1_1Text)
+		content_1_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_1_1Focused), tui.Avail(m.width), content_1_1Text).Render(content_1_1Text)
 		content_1_1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_1_1)
 		content_1Children = append(content_1Children, content_1_1)
 		content_1 = lipgloss.JoinHorizontal(lipgloss.Top, content_1Children...)
@@ -757,7 +757,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5351f543bcfc8797f00234e5deb20afc
+pass sha256:c0f3fd2ce2693436a15363d3312557bf
 -- run/kotlin/android --
 pass sha256:71385cfea9d081115ce0601ae5ff16af
 -- run/none/html --

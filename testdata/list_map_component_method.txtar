@@ -463,7 +463,7 @@ func (m Model) View() tea.View {
 		part0Prefix = ">"
 	}
 	part0Text := part0Prefix + " " + fmt.Sprint("run")
-	part0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Text).Render(part0Text)
+	part0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), part0Focused), tui.Avail(m.width), part0Text).Render(part0Text)
 	part0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0)
 	parts = append(parts, part0)
 	var part1 string
@@ -789,7 +789,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7e00456aa0dbae4bc7bd0c8e3d18225a
+pass sha256:0950fc63efb95a5027e2fe94dd99cffc
 -- run/go/fyne --
 pass sha256:785e19e11f7eba6111e5d4417a55f88a
 -- run/kotlin/android --

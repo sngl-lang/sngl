@@ -373,7 +373,7 @@ sha256:71f685137821b0f7557006614a52020b
   }
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:c1234f303406f28c93e34ccfd6df3e2d
+sha256:0b109c283c02cacc9900994fe5036658
 {
   "results": [
     {
@@ -386,11 +386,11 @@ sha256:c1234f303406f28c93e34ccfd6df3e2d
     }
   ],
   "snapshots": {
-    "toggled.ansi": "PiB0b2dnbGUKICB0YXAgYSAKYSB0cnVlICAKYSBleHRyYSAKICB0YXAgYiAKYiB0cnVlICAKYiBleHRyYSAKICBmbGlwICA="
+    "toggled.ansi": "4pSP4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSTCuKUgz4gdG9nZ2xlIOKUgwrilJfilIHilIHilIHilIHilIHilIHilIHilIHilIHilJsK4pWt4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pWuIArilIIgIHRhcCBhIOKUgiAK4pWw4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pWvIAphIHRydWUgICAgIAphIGV4dHJhICAgIArila3ilIDilIDilIDilIDilIDilIDilIDilIDila4gCuKUgiAgdGFwIGIg4pSCIArilbDilIDilIDilIDilIDilIDilIDilIDilIDila8gCmIgdHJ1ZSAgICAgCmIgZXh0cmEgICAgCuKVreKUgOKUgOKUgOKUgOKUgOKUgOKUgOKVriAgCuKUgiAgZmxpcCDilIIgIArilbDilIDilIDilIDilIDilIDilIDilIDila8gIA=="
   }
 }
 -- testrun/bubbletea/go/rec.sngl/main/1 --
-sha256:b14f801a5d48c376afc603ef8e250d2c
+sha256:51b85639b1163ab261bf2362cd3caedf
 {
   "results": [
     {
@@ -399,11 +399,11 @@ sha256:b14f801a5d48c376afc603ef8e250d2c
     }
   ],
   "snapshots": {
-    "marked.ansi": "PiBtYXJrICAKbGV2ZWwgMSEKbGV2ZWwgMCE="
+    "marked.ansi": "4pSP4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSTCuKUgz4gbWFyayDilIMK4pSX4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSbCmxldmVsIDEhIApsZXZlbCAwISA="
   }
 }
 -- testrun/bubbletea/go/rec_marked.sngl/main/1 --
-sha256:19c1c83b9f56a31404178fe74ef316cf
+sha256:7089992b30d112b849cc65a70e00bb31
 {
   "results": [
     {
@@ -412,11 +412,11 @@ sha256:19c1c83b9f56a31404178fe74ef316cf
     }
   ],
   "snapshots": {
-    "marked.ansi": "PiBtYXJrICAKbGV2ZWwgMSEKbGV2ZWwgMCE="
+    "marked.ansi": "4pSP4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSTCuKUgz4gbWFyayDilIMK4pSX4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSbCmxldmVsIDEhIApsZXZlbCAwISA="
   }
 }
 -- testrun/bubbletea/go/shown.sngl/main/1 --
-sha256:18090180adb478a460c0e553e18b8269
+sha256:2a960d1f6a95a7bdc831d097f7da005d
 {
   "results": [
     {
@@ -425,7 +425,7 @@ sha256:18090180adb478a460c0e553e18b8269
     }
   ],
   "snapshots": {
-    "toggled.ansi": "PiB0b2dnbGUKICB0YXAgYSAKYSB0cnVlICAKYSBleHRyYSAKICB0YXAgYiAKYiB0cnVlICAKYiBleHRyYSAKICBmbGlwICA="
+    "toggled.ansi": "4pSP4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSB4pSTCuKUgz4gdG9nZ2xlIOKUgwrilJfilIHilIHilIHilIHilIHilIHilIHilIHilIHilJsK4pWt4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pWuIArilIIgIHRhcCBhIOKUgiAK4pWw4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pWvIAphIHRydWUgICAgIAphIGV4dHJhICAgIArila3ilIDilIDilIDilIDilIDilIDilIDilIDila4gCuKUgiAgdGFwIGIg4pSCIArilbDilIDilIDilIDilIDilIDilIDilIDilIDila8gCmIgdHJ1ZSAgICAgCmIgZXh0cmEgICAgCuKVreKUgOKUgOKUgOKUgOKUgOKUgOKUgOKVriAgCuKUgiAgZmxpcCDilIIgIArilbDilIDilIDilIDilIDilIDilIDilIDila8gIA=="
   }
 }
 -- testrun/fyne/go/app.sngl/main/1 --
