@@ -2090,7 +2090,7 @@ sha256:d9d6e88c877424204c4af56d26793e96
   ]
 }
 -- testrun/html/none/app.sngl/detailPage/1 --
-sha256:05e6d23a4e10a0fa3373f0069724eb93
+sha256:d2d168439b5ebdb90becf14fe4126781
 {
   "results": [
     {

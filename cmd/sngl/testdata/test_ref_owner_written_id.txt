@@ -1,5 +1,8 @@
 # main's own `#hit` keeps its id, and badge's is renamed so that `c.hit` finds
 # main's. A lowering diagnostic about badge's names it as the program wrote it.
+# badge's handler writes a place reading its own parameter, which
+# passHandleBlocks cannot raise to the site, so the branch is left as written
+# and its call through `#hit` is refused.
 
 ! sngl test --platform=html app.sngl
 stderr '`hit.reset\(\)` calls a method of the node `#hit`'
@@ -19,10 +22,14 @@ component counter node {
 
 component badge node {
     var open = true
+    var marks = [0, 0]
     vbox {
         if open {
             counter #hit
-            button(text="reset", @click { hit.reset() })
+            checkbox(label="reset", @change(on) {
+                marks[on ? 1 : 0] = 1
+                hit.reset()
+            })
         }
     }
 }
