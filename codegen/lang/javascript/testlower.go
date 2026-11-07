@@ -64,6 +64,7 @@ func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []str
 	b.WriteString("import { Registry } from './testagent/testagent.js';\n")
 	b.WriteString("import { newTestComponent, mountTestComponent, setCurrentTestModel } from './current_model.js';\n\n")
 	b.WriteString("const __snglLoadErrors = (window.__snglErrors ?? []).splice(0);\n\n")
+	b.WriteString(windowOwnBindings(irPkg))
 
 	for i, fn := range fns {
 		suffix := suffixes[i]
@@ -122,9 +123,51 @@ func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool,
 	for _, p := range fn.Params {
 		ctx = ctx.WithLocal(p.Name)
 	}
-	block, fields := codegen.LowerRefNullTests(codegen.LowerInstanceReads(fn.Block, irPkg), ctx.MethodFields)
+	block, fields := codegen.LowerRefNullTests(codegen.LowerInstanceReads(windowOwnReads(fn.Block), irPkg), ctx.MethodFields)
 	ctx.MethodFields = fields
 	return lowerTestStmts(block, NewIRContext(ctx))
+}
+
+// windowOwnBindings binds, in the test module, each of the page's funcs named
+// like a property the browser's window holds as its own, which the page puts
+// on window.__snglOwn (ExposeLine): a module reading `closed` off window read
+// the window's, and the page could not put its own there. Each is looked up
+// when it is called, since the page puts its funcs there as it boots, after
+// the module has loaded; a const is read there where the test reads it
+// (windowOwnReads).
+func windowOwnBindings(pkg *ir.Package) string {
+	if pkg == nil {
+		return ""
+	}
+	var b strings.Builder
+	for _, fn := range pkg.Funcs {
+		if fn != nil && !fn.IsTest && !fn.IsMethod() && WindowOwn[fn.Name] {
+			fmt.Fprintf(&b, "const %s = (...__a) => window.__snglOwn.%s(...__a);\n", fn.Name, fn.Name)
+		}
+	}
+	if b.Len() > 0 {
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// windowOwnReads is stmts with each read of a package const named like a
+// property of the browser's window read off window.__snglOwn, where the page
+// puts it as it boots (ExposeLine).
+func windowOwnReads(stmts []ir.Stmt) []ir.Stmt {
+	out := ir.CloneStmtsSharingDecls(stmts)
+	_ = ir.Rewrite(out, func(n ir.Node) (ir.Node, error) {
+		id, ok := n.(*ir.Ident)
+		if !ok {
+			return n, nil
+		}
+		if v, ok := id.Sym.(*ir.Var); ok && v.IsConst && WindowOwn[id.Name] {
+			own := &ir.Ident{Name: "window.__snglOwn", Synthesized: true}
+			return &ir.Select{Type: id.Type, Operand: own, Field: id.Name}, nil
+		}
+		return n, nil
+	})
+	return out
 }
 
 func lowerTestStmts(stmts []ir.Stmt, jc *JsIRContext) []string {

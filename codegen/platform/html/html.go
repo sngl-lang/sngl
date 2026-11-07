@@ -2272,7 +2272,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// funcs: a test reading a const map -- or a func the optimizer inlined
 	// into one -- read a name nothing declared there.
 	if g.testMode && len(ownConsts) > 0 {
-		fmt.Fprintf(b, "if (typeof window !== 'undefined') { Object.assign(window, { %s }); }\n\n", strings.Join(ownConsts, ", "))
+		b.WriteString(javascript.ExposeLine(ownConsts) + "\n")
 	}
 
 	// A var whose initializer reads other state is emitted as a separate
@@ -2451,7 +2451,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			names = append(names, jsFuncName(fn))
 		}
 		if len(names) > 0 {
-			fmt.Fprintf(b, "if (typeof window !== 'undefined') { Object.assign(window, { %s }); }\n\n", strings.Join(names, ", "))
+			b.WriteString(javascript.ExposeLine(names) + "\n")
 		}
 	}
 
