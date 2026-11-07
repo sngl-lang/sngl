@@ -96,6 +96,9 @@ type Item struct {
 	Name string
 }
 
+type Test struct {
+}
+
 type __anon_e3b0c4 struct {
 }
 
@@ -699,6 +702,9 @@ type Item struct {
 	Name string
 }
 
+type Test struct {
+}
+
 type __anon_e3b0c4 struct {
 }
 
@@ -1091,6 +1097,9 @@ import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 type Item struct {
 	Name string
+}
+
+type Test struct {
 }
 
 type __anon_e3b0c4 struct {
@@ -1609,10 +1618,10 @@ class MainScreenTest {
 
 }
 -- run/go/bubbletea --
-pass sha256:6c024cd7c89af17c5f2115d0231da520
+pass sha256:3a623ee42682ca4eeb4836f8ef57bebe
 -- run/go/fyne --
-pass sha256:e9015feb96f375ee9bb85c3e88669bea
+pass sha256:e2a2f4ee914ce4eee1b294bed41528cd
 -- run/go/gtk4 --
-pass sha256:faf706a47ebda9eb6558ae77bcd67cc5
+pass sha256:f7fd55fc6e9139d988c030fa9224ea38
 -- run/kotlin/android --
 pass sha256:652ad206fad10e2c9cef43e02b5a0014

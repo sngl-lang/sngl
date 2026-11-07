@@ -713,6 +713,53 @@ func comparableEq(left, right *ir.Type) bool {
 	return false
 }
 
+// refuseUnwritableReceiver reports a call handing recv to p, a `ref`
+// receiver, where recv is no place: the call hands it as `&recv` would, and
+// `&` takes no const or call result, whose write would land nowhere.
+func (c *checker) refuseUnwritableReceiver(pos ast.Pos, fn *ir.Func, p *ir.Param, recv ir.Expr) {
+	if p.Type == nil || p.Type.Kind != ir.TypeRef || exprType(recv).Kind == ir.TypeInvalid {
+		return
+	}
+	if writablePlace(recv) || c.isAddressable(recv) && !rootIsConst(recv) {
+		return
+	}
+	c.error(pos, "%s writes its receiver, which is %s, so call it on a var or a field of one", fn.Name, p.Type)
+}
+
+// writablePlace reports whether e is a place rooted in what a `ref`
+// dereferences: the element `for var &t` binds.
+func writablePlace(e ir.Expr) bool {
+	for {
+		switch x := e.(type) {
+		case *ir.Select:
+			e = x.Operand
+		case *ir.Index:
+			e = x.Operand
+		case *ir.Unary:
+			return x.Op == ast.UnaryDeref
+		default:
+			return false
+		}
+	}
+}
+
+// rootIsConst reports whether the place e names is in a const.
+func rootIsConst(e ir.Expr) bool {
+	for {
+		switch x := e.(type) {
+		case *ir.Select:
+			e = x.Operand
+		case *ir.Index:
+			e = x.Operand
+		case *ir.Ident:
+			v, ok := x.Sym.(*ir.Var)
+			return ok && v.IsConst
+		default:
+			return false
+		}
+	}
+}
+
 // receivesOperand reports whether a method's first parameter is the operand
 // it was called on: one the declaration marked as its receiver, or one the
 // operand's type fits. A component method's synthesized `this` names the
@@ -1725,6 +1772,7 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 				TypeParams: sig.TypeParams,
 			}
 			rest := c.checkCallArgs(call.Args, shifted)
+			c.refuseUnwritableReceiver(sel.Pos, fn, sig.Params[0], receiverExpr)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
 			// `this.add(1)` in a component's own body is `add(1)`: the
 			// instance is the one the call is made in, which a call of a
@@ -1895,6 +1943,18 @@ func (c *checker) noteHandleLocal(sym *ir.Var, init ir.Expr) {
 		c.handleLocals = map[*ir.Var]ir.Expr{}
 	}
 	c.handleLocals[sym] = init
+}
+
+// describeHandleRead spells the read a handle local was initialized from,
+// `c.one`.
+func describeHandleRead(e ir.Expr) string {
+	if r := refSelect(e); r != nil {
+		if op, ok := r.Operand.(*ir.Ident); ok {
+			return op.Name + "." + r.Field
+		}
+		return r.Field
+	}
+	return "it was given"
 }
 
 // throughHandleLocal is e with a read of a handle local replaced by a copy of
@@ -2673,6 +2733,10 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		// resolve T correctly.
 		if c.expected != nil && c.expected.Kind == ir.TypeStruct && c.expected.Decl == sd {
 			typ = c.expected
+		} else if len(sd.TypeParams) > 0 && len(x.TypeArgs) == 0 {
+			if t := c.inferStructArgs(x.Pos, sd, fields); t != nil {
+				typ = t
+			}
 		}
 		return &ir.StructLit{AST: x, Type: typ, Def: sd, Fields: fields}
 	}
@@ -2683,6 +2747,49 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	}
 	typ := c.anonStructType(anonFields)
 	return &ir.StructLit{AST: x, Type: typ, Def: typ.Decl.(*ir.StructDef), Fields: fields}
+}
+
+// inferStructArgs is a generic struct's type at the arguments its literal's
+// fields say, `pair{k=1, v="x"}` a pair[int, string], as a generic
+// function's arguments say its own: each parameter a field's value binds,
+// or its default. Nil where one is neither, which leaves the literal its
+// declaration's type. A literal no one typed was a bare `pair`, so a method
+// taking its V bound nothing.
+func (c *checker) inferStructArgs(pos ast.Pos, sd *ir.StructDef, fields []ir.FieldInit) *ir.Type {
+	bindings := map[string]*ir.Type{}
+	for _, f := range fields {
+		if f.Spread || f.Name == "" {
+			continue
+		}
+		field := ir.FieldNamed(sd.Fields, f.Name)
+		vt := exprType(f.Value)
+		if field == nil || vt == nil || vt.Kind == ir.TypeInvalid {
+			continue
+		}
+		ir.BindTypeParams(field.Type, vt, bindings)
+	}
+	elems := make([]*ir.Type, len(sd.TypeParams))
+	params := make([]ir.TypeParam, len(sd.TypeParams))
+	for i, tp := range sd.TypeParams {
+		params[i] = tp
+		params[i].Constraint = c.typeParamConstraint(sd, i)
+		switch b := bindings[tp.Name]; {
+		case b != nil && !b.HasTypeParam() && b.Kind != ir.TypeNull:
+			elems[i] = b
+		case c.typeParamDefault(sd, i) != nil:
+			elems[i] = c.typeParamDefault(sd, i)
+		default:
+			return nil
+		}
+	}
+	all := make(map[string]*ir.Type, len(params))
+	for i, tp := range params {
+		all[tp.Name] = elems[i]
+	}
+	for i := range params {
+		c.checkConstraint(pos, params[i], elems[i], all)
+	}
+	return &ir.Type{Kind: ir.TypeStruct, Decl: sd, Elems: elems}
 }
 
 // checkFieldValue holds a struct literal's field value to the rule every
@@ -3776,6 +3883,12 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
 				if v, ok := sym.(*ir.Var); ok && v.IsConst {
 					c.error(x.Pos, "cannot assign to const %q", ident.Name)
+				}
+				// A trigger through the local fires on the node its
+				// initializer read (throughHandleLocal), which a write would
+				// leave it naming still.
+				if v, ok := sym.(*ir.Var); ok && c.handleLocals[v] != nil {
+					c.error(x.Pos, "cannot assign to %q: it holds the node %s, and a local holding a node holds that one; declare another local for another node", ident.Name, describeHandleRead(c.handleLocals[v]))
 				}
 				// Context names are read-only; assignment would bypass reactivity.
 				if _, ok := sym.(*ir.Context); ok {
@@ -5816,7 +5929,9 @@ func (c *checker) loopIdentity(x *ast.ForStmt, iter, elemType *ir.Type, keySym, 
 	if elemType == nil || elemType.Kind == ir.TypeInvalid {
 		return nil
 	}
-	if fn, _, ok := c.resolveMethod(elemType, "key"); ok && fn != nil && !ir.IsConstraintMethod(fn) {
+	// Only a key taking nothing but the element is its identity; any other
+	// is a method of the name, and the copies are told apart by position.
+	if fn, _, ok := c.resolveMethod(elemType, "key"); ok && fn != nil && !ir.IsConstraintMethod(fn) && takesOnlyReceiver(fn) {
 		var recv ir.Expr = read(elem, elemType)
 		if elemRef {
 			recv = read(elem, ir.RefOf(elemType))
@@ -5841,6 +5956,17 @@ func (c *checker) loopIdentity(x *ast.ForStmt, iter, elemType *ir.Type, keySym, 
 		return nil
 	}
 	return c.identityString(x, elem.Name, read(elem, elemType))
+}
+
+// takesOnlyReceiver reports whether fn takes nothing but what it is called
+// on.
+func takesOnlyReceiver(fn *ir.Func) bool {
+	for _, p := range fn.Params {
+		if !p.Receiver {
+			return false
+		}
+	}
+	return true
 }
 
 // identityString is a loop's identity as the string each target keeps it

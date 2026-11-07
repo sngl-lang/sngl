@@ -74,6 +74,9 @@ import (
 	"os"
 )
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
@@ -430,7 +433,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:a7563a9d24e9ac1ee1168b3712143f0f
+pass sha256:9a7d7392e613aad64342e032db15ab64
 -- run/kotlin/android --
 pass sha256:6f848d77205b6fa940921421d0766ddd
 -- run/none/html --

@@ -1091,6 +1091,9 @@ func exprRoot(e ir.Expr) ir.Symbol {
 			e = x.Operand
 		case *ir.Index:
 			e = x.Operand
+		case *ir.Conversion:
+			// A narrowed option is the place it narrows.
+			e = x.Operand
 		default:
 			return nil
 		}

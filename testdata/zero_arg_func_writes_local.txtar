@@ -75,6 +75,9 @@ type P struct {
 	T string
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -496,6 +499,9 @@ type P struct {
 	T string
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	shown string
@@ -595,6 +601,6 @@ func mountTestComponent(m *Model, preset map[string]bool) *Model {
 	return m
 }
 -- run/go/bubbletea --
-pass sha256:3b341341c066f0156ad9c48dbec39c0e
+pass sha256:f3d2fcf2f05d22fc9fa21bac549af121
 -- run/go/fyne --
-pass sha256:c844c539aa53f0e48b21bedb38a4b31f
+pass sha256:cc8f9adc82393d34630a4833acd15b4d

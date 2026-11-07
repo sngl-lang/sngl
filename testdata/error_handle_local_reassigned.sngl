@@ -1,0 +1,22 @@
+// A local holding a node a test reads by `#id` holds that node: a trigger
+// through it fires on the node its initializer read, so a write giving it
+// another would have the trigger fire on the first.
+
+import test "sngl:test"
+import ui "sngl:ui"
+
+component box ui.node {
+    var last = ""
+
+    ui.vbox {
+        ui.button #one(text="one", @click { last = "one" })
+        ui.button #two(text="two", @click { last = "two" })
+    }
+}
+
+func testReassigned(t test.Test, c box) {
+    var b = c.one
+    b = c.two // ERROR(check) "cannot assign to \"b\": it holds the node c.one, and a local holding a node holds that one; declare another local for another node"
+    b.click()
+    t.assert(c.last == "two")
+}

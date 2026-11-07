@@ -47,7 +47,11 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
+
+type Test struct {
+}
 
 type __anon_id_elem_cdfd47 struct {
 	Id   string
@@ -105,7 +109,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -284,7 +288,11 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
+
+type Test struct {
+}
 
 type __anon_id_elem_cdfd47 struct {
 	Id   string
@@ -342,7 +350,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -472,6 +480,6 @@ func (m *Model) __list_off(key string, w gtk4rt.Handle) {
 	m.__copies_off[key] = w
 }
 -- run/go/fyne --
-pass sha256:0725f4ebc6da2d62eef71bf7e5ef36f7
+pass sha256:5fcb1b84c89ee303cacb55e77bef3774
 -- run/go/gtk4 --
-pass sha256:a9b13f4ff12a5c228849f2aa827a5e2f
+pass sha256:5cd627d08628ea21a8d620db03329304

@@ -78,6 +78,7 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -91,6 +92,9 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type Test struct {
 }
 
 type __anon_id_elem_cdfd47 struct {
@@ -281,7 +285,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -775,11 +779,15 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
 
 type ErrorEvent struct {
 	Message string
 	Kind    string
+}
+
+type Test struct {
 }
 
 type __anon_id_elem_cdfd47 struct {
@@ -840,7 +848,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1180,11 +1188,15 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
 
 type ErrorEvent struct {
 	Message string
 	Kind    string
+}
+
+type Test struct {
 }
 
 type __anon_id_elem_cdfd47 struct {
@@ -1245,7 +1257,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1638,7 +1650,7 @@ fun __identified0(__xs: List<Int>): List<__anon_id_elem_cdfd47> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_cdfd47>()
     for (__x in __xs) {
-    	var __id = __x.toString()
+    	var __id = __x.toString().replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -1874,7 +1886,7 @@ window.__sngl_boot = () => {
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = String(__x);
+      let __id = String(__x).replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -2077,12 +2089,12 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:496586dc289163ebf205caa048377b92
+pass sha256:308d6543d30a5a5063a2db529df0a5bd
 -- run/go/fyne --
-pass sha256:f46c6476b8bce5ce2ab825ec913cb70a
+pass sha256:ebbc64f95576ec64d50e1d28c0a31059
 -- run/go/gtk4 --
-pass sha256:034efece9a57b1289436d97cdb1ae434
+pass sha256:9ba214d2511386dd7111f120823efaf9
 -- run/kotlin/android --
-pass sha256:a22650aea0dee20c5b30bf4c8d6b7d78
+pass sha256:a2695919a590c7102943010dd985710b
 -- run/none/html --
-pass sha256:79e59e8efd40ddfe4062b0902ca1f381
+pass sha256:e3f70b7be803bc298bed146c348322e7

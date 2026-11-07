@@ -63,6 +63,7 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -76,6 +77,9 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type Test struct {
 }
 
 type __anon_id_elem_cdfd47 struct {
@@ -248,7 +252,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -870,7 +874,11 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
+
+type Test struct {
+}
 
 type __anon_id_elem_cdfd47 struct {
 	Id   string
@@ -932,7 +940,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1179,7 +1187,11 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
+
+type Test struct {
+}
 
 type __anon_id_elem_cdfd47 struct {
 	Id   string
@@ -1240,7 +1252,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1444,8 +1456,8 @@ func (m *Model) incClick() {
 	gtk4rt.Emit(m.__named_inc, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:c57c40f04cae1dcccc610fe73678eaf3
+pass sha256:6950b063905ad1c4b8c3cbcd59fab0bc
 -- run/go/fyne --
-pass sha256:56bb4d28f8608eb55db8816fc011d0da
+pass sha256:818271c8c8169ae075d758600c3c30bb
 -- run/go/gtk4 --
-pass sha256:d8c4bb067b2a86e393694715b8186430
+pass sha256:89c6976c709c8b30d4fbf31b2b73bd8d

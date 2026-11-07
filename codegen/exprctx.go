@@ -512,6 +512,31 @@ func TestSetContext(c *ir.Call) (name string, value ir.Expr, ok bool) {
 	return name, c.Args[len(c.Args)-1].Value, true
 }
 
+// TestNamedStructs is the name of each struct the package's tests read or
+// build a value of. A target that drops the library structs its own source
+// does not spell keeps these, since the test module is a file of its own:
+// a test building an `http.Response` did not compile.
+func TestNamedStructs(pkg *ir.Package) map[string]bool {
+	out := map[string]bool{}
+	if pkg == nil {
+		return out
+	}
+	for _, fn := range pkg.Funcs {
+		if fn == nil || !fn.IsTest {
+			continue
+		}
+		_ = ir.WalkExprs(fn.Block, func(e ir.Expr) error {
+			if t := e.ExprType(); t != nil {
+				if sd, ok := t.Decl.(*ir.StructDef); ok && sd != nil {
+					out[sd.Name] = true
+				}
+			}
+			return nil
+		})
+	}
+	return out
+}
+
 // BuildsTests reports whether pkg is built with its tests: a build that
 // ships drops them (build.dropTests), so a package holding one is a test's.
 func BuildsTests(pkg *ir.Package) bool {

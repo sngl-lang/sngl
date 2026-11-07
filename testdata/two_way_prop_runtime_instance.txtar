@@ -57,6 +57,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
 
 type __anon_id_elem_c6a818 struct {
@@ -100,7 +101,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -343,6 +344,7 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
 
 type __anon_id_elem_c6a818 struct {
@@ -386,7 +388,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -649,7 +651,7 @@ body { font-family: system-ui, sans-serif; }
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = __x;
+      let __id = __x.replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -817,8 +819,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:cbd88f5e3ed5f09c77849b127b91b7fb
+pass sha256:4c2b8b20579038781abb8a03b88ee10d
 -- run/go/gtk4 --
-pass sha256:5e509be0056b61540d3a9853d5c82a99
+pass sha256:7cc73ae0d9feda5441050086cfdf6fe0
 -- run/none/html --
-pass sha256:767db46e1a8d24c480513f7a754aef3d
+pass sha256:953b877ffcfccf045d41602d65da1520

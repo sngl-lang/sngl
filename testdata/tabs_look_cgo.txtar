@@ -248,6 +248,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	__rel0                *C.char
@@ -460,4 +463,4 @@ func (m *Model) __list_tabs__change(key string, w *C.GtkBox) {
 	m.__copies_tabs__change[key] = w
 }
 -- run/go/gtk4 --
-pass sha256:17d69503a63326224345f4ad45a77a91
+pass sha256:6882215771a591ffcbb2c19bed8cfc0c

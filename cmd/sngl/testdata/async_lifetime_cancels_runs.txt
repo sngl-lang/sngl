@@ -1,7 +1,8 @@
 # sngl:async's Lifetime on every target: a request handed one that has ended
 # answers `cancelled` without asking, and ending one stops a request in
 # flight, which then answers `cancelled` at once rather than when the server
-# would have (`/status/200?after=3000`). The second half is the pattern
+# would have (`/status/200?after=3000`). A test's answer is asked nothing
+# either: it ignored the lifetime, and answered. The second half is the pattern
 # async.query is -- a lifetime per mount, ended by the unmount -- so moving
 # an effect to another key stops the request for the old one.
 #
@@ -9,6 +10,24 @@
 # so it has none in flight to stop; it runs the first half only. The second
 # ends each lifetime from the program, since android's test waits for the
 # program's requests after each step.
+
+sngl test --platform=none answered.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html answered.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go answered.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go answered.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go answered.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin answered.sngl
+stdout '1 tests, 0 failures'
 
 sngl test --platform=none ended.sngl
 stdout '1 tests, 0 failures'
@@ -71,6 +90,46 @@ component ended ui.node {
 // asking, and `forever` never ends.
 func testAnEndedLifetimeAsksNothing(t test.Test, c ended) {
     t.setContext(http.answer, http.network)
+    c.ask.click()
+    t.wait(func() => c.kind != "", 1500)
+    t.assert(c.before && c.kind == "cancelled" && !async.forever.ended())
+}
+
+ui.window {
+    ended()
+}
+-- answered.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func everything(r http.Request) option[http.Response] {
+    return http.Response{status=200, headers={}, body="answered"}
+}
+
+func kindOf(r async.Result[http.Response]) string {
+    match var got = r {
+        failed { return "{got.kind}" }
+        ok { return "ok" }
+    }
+}
+
+component ended ui.node {
+    var kind = ""
+    var before = false
+    ui.button #ask(text="ask", @click {
+        var life = async.begin()
+        life.end()
+        before = life.ended()
+        kind = kindOf(http.get(url="http://127.0.0.1:47819/status/200", life=life))
+    })
+}
+
+// A test's answer answers in the network's place, and a lifetime already
+// ended answers `cancelled` there as it does on the network.
+func testAnEndedLifetimeAsksNoAnswer(t test.Test, c ended) {
+    t.setContext(http.answer, everything)
     c.ask.click()
     t.wait(func() => c.kind != "", 1500)
     t.assert(c.before && c.kind == "cancelled" && !async.forever.ended())
@@ -149,8 +208,18 @@ func testARekeyCancelsTheOldRequest(t test.Test, c keyed) {
 ui.window {
     manual()
 }
+-- testrun/android/kotlin/answered.sngl/ended/1 --
+sha256:b3051cef74bed57284a7ad0b172c6995
+{
+  "results": [
+    {
+      "Desc": "AnEndedLifetimeAsksNoAnswer",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/android/kotlin/ended.sngl/ended/1 --
-sha256:70ef028ecefd00283b2187dab43df7e2
+sha256:8bc98f949e0eae5b0b63d620a697ee70
 {
   "results": [
     {
@@ -160,7 +229,7 @@ sha256:70ef028ecefd00283b2187dab43df7e2
   ]
 }
 -- testrun/android/kotlin/inflight.sngl/keyed/1 --
-sha256:a33157d82762b13a378dd1e2e05c1a9e
+sha256:e7a85d82ef99a9a218e58ab04427949a
 {
   "results": [
     {
@@ -170,7 +239,7 @@ sha256:a33157d82762b13a378dd1e2e05c1a9e
   ]
 }
 -- testrun/android/kotlin/inflight.sngl/manual/1 --
-sha256:ad66ea52765906ea6dfbaad7ff7c0842
+sha256:7f3f69b2b6353b95d834076d0a807311
 {
   "results": [
     {
@@ -179,8 +248,18 @@ sha256:ad66ea52765906ea6dfbaad7ff7c0842
     }
   ]
 }
+-- testrun/bubbletea/go/answered.sngl/ended/1 --
+sha256:33b94381162a44b953551b2eed408b41
+{
+  "results": [
+    {
+      "Desc": "AnEndedLifetimeAsksNoAnswer",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/bubbletea/go/ended.sngl/ended/1 --
-sha256:634b9f1fb82a3c54566e7b1130010997
+sha256:1bf03e96bdc682d92c10a0ccbec73eb3
 {
   "results": [
     {
@@ -190,7 +269,7 @@ sha256:634b9f1fb82a3c54566e7b1130010997
   ]
 }
 -- testrun/bubbletea/go/inflight.sngl/keyed/1 --
-sha256:967b21c91e52908f55f294f271523e84
+sha256:68d5c7199ede2a35b841825fc03759a6
 {
   "results": [
     {
@@ -200,7 +279,7 @@ sha256:967b21c91e52908f55f294f271523e84
   ]
 }
 -- testrun/bubbletea/go/inflight.sngl/manual/1 --
-sha256:3ebfa4cc47652d46dabd48005a44d493
+sha256:b3a47f964479e12c3037cfd11e6d4d4e
 {
   "results": [
     {
@@ -209,8 +288,18 @@ sha256:3ebfa4cc47652d46dabd48005a44d493
     }
   ]
 }
+-- testrun/fyne/go/answered.sngl/ended/1 --
+sha256:f7f2a56a8b8763b27183aececc4cf70d
+{
+  "results": [
+    {
+      "Desc": "AnEndedLifetimeAsksNoAnswer",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/fyne/go/ended.sngl/ended/1 --
-sha256:42f76d5fd70f625de6d05c0bb8022560
+sha256:f8fd7bdfce9990ed5a86884338251858
 {
   "results": [
     {
@@ -220,7 +309,7 @@ sha256:42f76d5fd70f625de6d05c0bb8022560
   ]
 }
 -- testrun/fyne/go/inflight.sngl/keyed/1 --
-sha256:5e5488d17e902b794627c17fd6d5b773
+sha256:d7c207e80718c14bfee80769226ebed3
 {
   "results": [
     {
@@ -230,7 +319,7 @@ sha256:5e5488d17e902b794627c17fd6d5b773
   ]
 }
 -- testrun/fyne/go/inflight.sngl/manual/1 --
-sha256:ddf2343d03ae73f998ac45e08ea2829d
+sha256:d310914cb37f46b132241cf1431d6ce8
 {
   "results": [
     {
@@ -239,8 +328,18 @@ sha256:ddf2343d03ae73f998ac45e08ea2829d
     }
   ]
 }
+-- testrun/gtk4/go/answered.sngl/ended/1 --
+sha256:34f2da4d92d907e512022b7ee31d9d8b
+{
+  "results": [
+    {
+      "Desc": "AnEndedLifetimeAsksNoAnswer",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/ended.sngl/ended/1 --
-sha256:7bd64ae8b4d21dc8e5af2456aa0253f0
+sha256:6b7be255f13eabf544db8e0e836c07a7
 {
   "results": [
     {
@@ -250,7 +349,7 @@ sha256:7bd64ae8b4d21dc8e5af2456aa0253f0
   ]
 }
 -- testrun/gtk4/go/inflight.sngl/keyed/1 --
-sha256:ee47ceae553f77654193187fdcf89cad
+sha256:5547ea942ce30c6812d3ce296f358919
 {
   "results": [
     {
@@ -260,7 +359,7 @@ sha256:ee47ceae553f77654193187fdcf89cad
   ]
 }
 -- testrun/gtk4/go/inflight.sngl/manual/1 --
-sha256:5c6f888a50f7ab191741d881de29290f
+sha256:1865206c62db560e641726649bd16c9d
 {
   "results": [
     {
@@ -269,8 +368,18 @@ sha256:5c6f888a50f7ab191741d881de29290f
     }
   ]
 }
+-- testrun/html/none/answered.sngl/ended/1 --
+sha256:873fdc0fdc794341ee5d482c184ca885
+{
+  "results": [
+    {
+      "Desc": "AnEndedLifetimeAsksNoAnswer",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/html/none/ended.sngl/ended/1 --
-sha256:5dcd2095dab7ebc2730eec78a6e2d01c
+sha256:fc7f608369398c734eed88f0723ccec2
 {
   "results": [
     {
@@ -280,7 +389,7 @@ sha256:5dcd2095dab7ebc2730eec78a6e2d01c
   ]
 }
 -- testrun/html/none/inflight.sngl/keyed/1 --
-sha256:e0e19b860fdca7b09fcb859a6eb360fc
+sha256:5cc092ec8dee8fa48516767e90033549
 {
   "results": [
     {
@@ -290,7 +399,7 @@ sha256:e0e19b860fdca7b09fcb859a6eb360fc
   ]
 }
 -- testrun/html/none/inflight.sngl/manual/1 --
-sha256:9eb2842799344c1662265069fc092917
+sha256:689b8518e20b8c259473ad77e26fb738
 {
   "results": [
     {

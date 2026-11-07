@@ -39,7 +39,7 @@ func testEachGroupHasItsTable(t test.Test, c groups) {
     t.assert(c.title[1] != null && c.title[1].value == "b")
 }
 -- testrun/android/kotlin/app.sngl/groups/1 --
-sha256:3838c1d075265d4b975beaffa890f953
+sha256:dd2c390564f858c65d7a66142325f599
 {
   "results": [
     {
@@ -49,7 +49,7 @@ sha256:3838c1d075265d4b975beaffa890f953
   ]
 }
 -- testrun/bubbletea/go/app.sngl/groups/1 --
-sha256:f874ad09cb07483ec20cb8b9ddc0cf13
+sha256:f356a29dbefc7eb3e86df9b8586bbc59
 {
   "results": [
     {
@@ -59,7 +59,7 @@ sha256:f874ad09cb07483ec20cb8b9ddc0cf13
   ]
 }
 -- testrun/fyne/go/app.sngl/groups/1 --
-sha256:dec9656af596118b674ec6ba47c67324
+sha256:b688421af0ec38e8968fd733f68e9baf
 {
   "results": [
     {
@@ -69,7 +69,7 @@ sha256:dec9656af596118b674ec6ba47c67324
   ]
 }
 -- testrun/gtk4/go/app.sngl/groups/1 --
-sha256:7f54fc28eef08d73ae2d029a16c7f519
+sha256:4c6b9665db27cc0b0cd69968c7ca3af6
 {
   "results": [
     {
@@ -79,7 +79,7 @@ sha256:7f54fc28eef08d73ae2d029a16c7f519
   ]
 }
 -- testrun/html/none/app.sngl/groups/1 --
-sha256:42d7308f81e9ec181b235313c8d67573
+sha256:cc978f1c8bf8ab2c8373898747eff09f
 {
   "results": [
     {

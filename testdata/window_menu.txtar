@@ -99,6 +99,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type MenuItem__record struct {
 	Label    string
 	Disabled bool
@@ -543,6 +546,9 @@ import (
 
 var sizes []string = []string{"Small", "Medium", "Large"}
 
+type Test struct {
+}
+
 type MenuItem__record struct {
 	Label    string
 	Disabled bool
@@ -873,6 +879,9 @@ import (
 )
 
 var sizes []string = []string{"Small", "Medium", "Large"}
+
+type Test struct {
+}
 
 type MenuItem__record struct {
 	Label    string
@@ -1524,11 +1533,11 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:629e209c488f039b480cdb57038fab4f
+pass sha256:15494c5a1f32aad33b4e5a2de2e9fbdc
 -- run/go/fyne --
-pass sha256:09c235b5742a40db7802573ee185ed88
+pass sha256:4d9bd36ac571f000505018e382023df3
 -- run/go/gtk4 --
-pass sha256:c484bfd388812ddc5cd4b9dfe7e22214
+pass sha256:4227bcc9bb32bd4f15522b5aec2c2a45
 -- run/kotlin/android --
 pass sha256:76edb851cd5031100304b9e3af558cfa
 -- run/none/html --

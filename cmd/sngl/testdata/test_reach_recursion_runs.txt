@@ -256,7 +256,7 @@ sha256:33941d19090053dfff19a115984c7619
   ]
 }
 -- testrun/bubbletea/go/recursion.sngl/main/1 --
-sha256:a610ca528001ce9143954bd0c796c4ba
+sha256:3656668c0e0c6f054f73e630691ca16a
 {
   "results": [
     {
@@ -266,7 +266,7 @@ sha256:a610ca528001ce9143954bd0c796c4ba
   ]
 }
 -- testrun/fyne/go/buttons.sngl/main/1 --
-sha256:0e1d823e57f50ea50b70bb31096bfa9d
+sha256:3564afbca34f5072436663fad99bc740
 {
   "results": [
     {
@@ -276,7 +276,7 @@ sha256:0e1d823e57f50ea50b70bb31096bfa9d
   ]
 }
 -- testrun/fyne/go/counters.sngl/main/1 --
-sha256:a4e68970ea5b31e78e4a948787010613
+sha256:0f6925e880598452a71c970c789257d0
 {
   "results": [
     {
@@ -286,7 +286,7 @@ sha256:a4e68970ea5b31e78e4a948787010613
   ]
 }
 -- testrun/fyne/go/recursion.sngl/main/1 --
-sha256:0293ac1be0142dd1edc983ee6c04e0a7
+sha256:987d61da491696091ba2cf8759231497
 {
   "results": [
     {
@@ -296,7 +296,7 @@ sha256:0293ac1be0142dd1edc983ee6c04e0a7
   ]
 }
 -- testrun/gtk4/go/buttons.sngl/main/1 --
-sha256:1dea1e3073b01cc96f305cbd2c62e98b
+sha256:cded69afaf4e1cd03eaeb2a8649ce465
 {
   "results": [
     {
@@ -306,7 +306,7 @@ sha256:1dea1e3073b01cc96f305cbd2c62e98b
   ]
 }
 -- testrun/gtk4/go/counters.sngl/main/1 --
-sha256:783e7a54cb8f42663f693efecc7f68ec
+sha256:524cdd5cc8f964507278b67c1bcf07dc
 {
   "results": [
     {
@@ -316,7 +316,7 @@ sha256:783e7a54cb8f42663f693efecc7f68ec
   ]
 }
 -- testrun/gtk4/go/recursion.sngl/main/1 --
-sha256:c3c03a6a5a2240e532c2bfb1f9a362e4
+sha256:310c777431a4e7306fce3caa7d3fa0e4
 {
   "results": [
     {

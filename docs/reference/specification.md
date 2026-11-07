@@ -422,12 +422,15 @@ user-defined types.
 
 ### Predeclared types
 
-| Type     | Description                                            |
-|----------|--------------------------------------------------------|
-| `bool`   | `true` or `false`.                                     |
-| `int`    | 64-bit signed integer. Division truncates toward zero. |
-| `float`  | 64-bit IEEE-754 floating point.                        |
-| `string` | Immutable UTF-8 text.                                  |
+| Type     | Description                                                                                                                                     |
+|----------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| `bool`   | `true` or `false`.                                                                                                                              |
+| `int`    | Signed integer of the target's own width: 64 bits on Go and Kotlin, a number on JavaScript, exact within ±2^53. Division truncates toward zero. |
+| `float`  | 64-bit IEEE-754 floating point.                                                                                                                 |
+| `string` | Immutable UTF-8 text.                                                                                                                           |
+
+A value whose width is part of what it means takes a sized numeric instead,
+`int64` or `uint8` and the rest, which every target holds at its width.
 
 `any`, `anyStruct`, `anyFields`, `fieldsOf`, `methodsOf` and `ordered` are predeclared
 beside them and are no type a value may have: they are the constraints a type
@@ -906,8 +909,8 @@ constraint says. `func list[T ordered].sort(this list[T])` is a method of a `lis
 and no method of a `list[bool]`, and a call of it on one is an error. Written
 for one parameter, the list writes one for each, `any` for those it leaves
 alone (`func pair[K any, V ordered].least(this pair[K, V])`), and none takes a default.
-Narrowing a parameter its declaration constrains to anything but `any` is an
-error.
+Writing a parameter its declaration constrains with anything but `any` or
+that same constraint is an error.
 
 In a type position the arguments are written in brackets (`Box[int]`,
 `map[string, int]`). At a call site they may be written the same way, after
@@ -1256,9 +1259,11 @@ struct keeps its meaning, naming parameters by its fields. A variadic parameter
 given no arguments is the empty list, so it takes no default.
 
 A **method** is a function whose name is qualified by a receiver type,
-`func Type.method(…)`, which may be another package's, `func ui.select.m(…)`. Type parameters may appear after the receiver type
-(receiver-level, names only) and after the method name (method-level, each
-naming its constraint); see
+`func Type.method(…)`, which may be another package's, named through its
+import: `func http.Response.fine(…)`. Type parameters may appear after the
+receiver type (receiver-level: its names, or a constraint for each, which
+narrows one the type's declaration leaves `any` and restates any other) and
+after the method name (method-level, each naming its constraint); see
 [Generic type parameters](#generic-type-parameters). A method is dispatched on
 the type of the receiver expression. Declared outside its type, a method
 names its receiver as its first parameter, of the receiver's type or a `ref` to it:
@@ -1266,7 +1271,8 @@ names its receiver as its first parameter, of the receiver's type or a `ref` to 
 `Money.plus(m, 5)`. The receiver is a copy, as any parameter is, whatever it
 is called. One declared `ref[T]` is the caller's cell, so a write to it is a
 write to the value the method was called on: `func Money.add(m ref[Money], cents int)` is called as `m.add(5)`, which hands it `m` as `&m` would, and
-as `Money.add(&m, 5)`. A method with no such parameter is static, called on
+as `Money.add(&m, 5)`. So it is called on a place, as `&` takes one: not on a
+`const` or a call's result, where the write would land nowhere. A method with no such parameter is static, called on
 the type, `Money.zero()`, and its body has no `this`. A `func` written inside a `struct` or
 `enum` body is a method of that type, and its body reads the receiver's fields
 by bare name. A `func` written in a component body is a method of the

@@ -100,6 +100,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type __anon_id_elem_c6a818 struct {
 	Id   string
 	Elem string
@@ -615,6 +618,9 @@ import (
 	"os"
 )
 
+type Test struct {
+}
+
 type __anon_id_elem_c6a818 struct {
 	Id   string
 	Elem string
@@ -892,6 +898,9 @@ import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 )
+
+type Test struct {
+}
 
 type __anon_id_elem_c6a818 struct {
 	Id   string
@@ -1571,11 +1580,11 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8eb67e5b05a605a28e4b0f4aacd3cbbd
+pass sha256:15c2313b9362001efe50bc862b794493
 -- run/go/fyne --
-pass sha256:c41b5ea0e3e04dc5c717bb544491bd3e
+pass sha256:494a18d3def676d6bfbb9f048e4fe5e1
 -- run/go/gtk4 --
-pass sha256:6330bec4731874ce3baa0ab291d79088
+pass sha256:e56892497fdb1a1ce295dd4a9ef75156
 -- run/kotlin/android --
 pass sha256:def9e3220d52cba240831df7c68cefb0
 -- run/none/html --

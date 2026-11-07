@@ -386,6 +386,9 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 		// invariant is about the IR a backend receives.
 		return nil
 	}
+	if err := verifyTriggersReached(pkg); err != nil {
+		return err
+	}
 	return verifyMutationsAreStatements(pkg)
 }
 

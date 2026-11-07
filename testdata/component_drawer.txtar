@@ -68,6 +68,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -423,6 +426,9 @@ import (
 	"os"
 )
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	open bool
@@ -658,9 +664,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c446df93d4c8cc437628072dbc94218c
+pass sha256:9da53796c25ac6e2cb2f94cfc7825adc
 -- run/go/fyne --
-pass sha256:0709c4e1c5acf4799d8c830e6ce9a47f
+pass sha256:b7d983f9d3d6e98717588fd629552720
 -- run/kotlin/android --
 pass sha256:7b2caf34c546fa81d6712f51238f746c
 -- run/none/html --

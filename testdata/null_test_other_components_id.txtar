@@ -77,6 +77,9 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	problem__inst0 string
@@ -417,6 +420,6 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:c153ba962635eaf075b520edb0975c45
+pass sha256:2c07efade92f7f4f7fe9faf38098fa6f
 -- run/none/html --
 pass sha256:c387bfc07e9be6c2796143a7adfd0960

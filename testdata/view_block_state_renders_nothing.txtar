@@ -88,6 +88,7 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -305,7 +306,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -325,7 +326,7 @@ func __identified1(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -345,7 +346,7 @@ func __identified2(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1091,6 +1092,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
 
 type ErrorEvent struct {
@@ -1179,7 +1181,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1199,7 +1201,7 @@ func __identified1(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1219,7 +1221,7 @@ func __identified2(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1887,6 +1889,7 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
 
 type ErrorEvent struct {
@@ -1975,7 +1978,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1995,7 +1998,7 @@ func __identified1(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -2015,7 +2018,7 @@ func __identified2(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -2713,7 +2716,7 @@ body { font-family: system-ui, sans-serif; }
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = String(__x);
+      let __id = String(__x).replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -2731,7 +2734,7 @@ body { font-family: system-ui, sans-serif; }
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = String(__x);
+      let __id = String(__x).replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -2749,7 +2752,7 @@ body { font-family: system-ui, sans-serif; }
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = String(__x);
+      let __id = String(__x).replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -3243,10 +3246,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:12e2ac253cdd31f577844dcfbad58ef8
+pass sha256:048b8cb905373a437d5ad84b8c829f72
 -- run/go/fyne --
-pass sha256:829f5b23748ee5d1c4afaecb1e9fd5c1
+pass sha256:5f5a4b5c171c5a5bc96939f17155f9d2
 -- run/go/gtk4 --
-pass sha256:7f76ce4901370171e58f431ee35699de
+pass sha256:55a9183dc7b01bbcc263e123d6e6a15d
 -- run/none/html --
-pass sha256:9748e06b874754209e73681d0dcbc025
+pass sha256:8181eff1678bd8f3358ba3b112624c72

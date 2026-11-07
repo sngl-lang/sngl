@@ -117,6 +117,9 @@ type Store struct {
 	Place string
 }
 
+type Test struct {
+}
+
 type Failure struct {
 	Kind    string
 	Message string
@@ -789,6 +792,9 @@ type Result__int struct {
 type Store struct {
 	Scope *string
 	Place string
+}
+
+type Test struct {
 }
 
 type Failure struct {
@@ -1579,6 +1585,9 @@ type Result__int struct {
 type Store struct {
 	Scope *string
 	Place string
+}
+
+type Test struct {
 }
 
 type Failure struct {
@@ -2953,7 +2962,9 @@ class SnglCodec<T>(val kind: Int) {
                         if (k != null) hs[k.lowercase()] = vs.joinToString(", ")
                     }
                     conn.disconnect()
-                    if (ended(life)) cancelled() else Response(status, hs, text, false, false, "")
+                    // A response that arrived is the answer, whenever the
+                    // lifetime ended: a failure is only where none did.
+                    Response(status, hs, text, false, false, "")
                 } catch (e: SocketTimeoutException) {
                     if (ended(life)) cancelled() else Response(0, emptyMap(), "", true, true, e.toString())
                 } catch (e: Exception) {
@@ -3594,12 +3605,12 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4b67cc7b54ba82f08b29a5686a05170e
+pass sha256:90500e10b2d9498976150f932322dd09
 -- run/go/fyne --
-pass sha256:bf214178bce832f0aea4e260f3956496
+pass sha256:e1028181e40d69803ac6b3cac168815e
 -- run/go/gtk4 --
-pass sha256:1a3f1d1780232f36414561202cedd0c4
+pass sha256:d7dfb468c381027cdc803cd623f319b6
 -- run/kotlin/android --
-pass sha256:25ccdbd2cea2193524a6cfefaac6cb38
+pass sha256:0ce3833db9257db8a1d1cae28659f3c6
 -- run/none/html --
 pass sha256:001136c7223c91e42d334a391da5b1db

@@ -515,7 +515,11 @@ were one: the Pokédex asks again for a species by pushing its slug a second
 time, and the second copy never asked. `passLoopIdentity` has a keyed loop over
 a list walk records instead, `{id, elem}`, which a function it declares
 (`__identifiedN`) builds in one pass, suffixing the second and later of one
-identity `#1`, `#2`; the element is `rec.elem` and the identity `rec.id`. Built
+identity `#1`, `#2`; the element is `rec.elem` and the identity `rec.id`. An
+identity's own `#`s are doubled first, so no suffix spells another element's:
+undoubled, `["a", "a", "a#1"]` handed out `a#1` twice, and the interpreter,
+which suffixed `~1`, collided on other lists than the targets did
+(`interp.iterationID`). Built
 from the iterable, every walk that evaluates the head -- a settle's rebuilt
 loops, a handler's scan, a test's read -- sees the identities the render did.
 The function is an ordinary one, not synthesized, since fyne and gtk4 emit a

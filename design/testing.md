@@ -259,11 +259,12 @@ These rules keep them agreeing:
   targets; html boots the page from what the test wrote into a plain object
   (`window.__snglPre`), its context vars included, where it booted as the
   page loaded; android makes `MainScreenState(__pre)`. The interpreter mounts
-  on the first read through the instance (`componentValue.settle`), on a
-  `t` method other than `setContext`, `assert` and `must`, and before a
-  statement reading package state, and initializes the instance only then
-  (`interp.BuildTestEnv`): an initializer that ran at construction and again
-  at the mount opened what it owns twice. A page that fetched on mount fetched
+  before the first statement `ir.TestSetup` refuses, by the rule the targets
+  follow, and initializes the instance only then (`interp.BuildTestEnv`): an
+  initializer that ran at construction and again at the mount opened what it
+  owns twice. It had a rule of its own, mounting on the first read through
+  the instance or a `t` method, so a write after `var k = 5` was a preset
+  there and a write after the mount on every target. A page that fetched on mount fetched
   before the body could say where from, so a test pointed at the recording
   server through a provider wrapped in a component of its own -- the Pokédex
   had 26 -- and a test checking a transition now reads the starting state
@@ -541,12 +542,23 @@ around a select under a reactive `if` or in a tab's panel, its effects being
 state -- is called through the instance the Model holds, as a test's
 `c.b.reset()` is (`codegen.LowerInstanceReads`). passImplicitState moved the
 select's `#id` onto the select, so the wrapper's node takes one of its own,
-`<id>__state`, which the call is read through (`nameInstance`). Restored to
-the event instead, the invoker was handed the value where it takes a label,
-and an int did not compile
-(`cmd/sngl/testdata/typed_select_in_built_block_runs.txt`). A copy no one
-instance answers is still restored to the event the test wrote
-(`restoreUnreachedTriggers`).
+`<id>__state`, which the call is read through (`nameInstance`), at the copy
+a loop's index names, `c.pick__state[1]`. Restored to the event instead, the
+invoker was handed the value where it takes a label, and an int did not
+compile (`cmd/sngl/testdata/typed_select_in_built_block_runs.txt`). Each copy
+names the trigger it was copied from (`FuncLowering.CopyOf`), so a test's
+call reaches the root's copy through splices that recorded none by the handle
+it reads: the wrapper around a select with no `:value` is spliced with a
+fresh handle (`keptCopies`). A trigger still unreached -- a copy bubbletea
+spliced into each element of a loop, taking the loop's variables, or a node
+inside an instance a loop builds -- is refused, naming #318
+(`restoreUnreachedTriggers`, and `verifyTriggersReached` at the end of
+Lower): the invoker restoring the event reached is the target's own, and
+took a label where the override takes a value, so the test did not compile
+or chose nothing. A target whose test raises the event with the value itself
+(`valueTriggers`, android's semantics actions) keeps the event, and is refused
+only through one copy of a loop's, which its raise did not reach
+(`cmd/sngl/testdata/typed_select_reach_runs.txt`).
 
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 

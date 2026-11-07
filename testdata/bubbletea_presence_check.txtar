@@ -126,6 +126,7 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -139,6 +140,9 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type Test struct {
 }
 
 type __anon_id_elem_cdfd47 struct {
@@ -359,7 +363,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1098,4 +1102,4 @@ func mountTestComponent(m Model, preset map[string]bool) Model {
 	return m
 }
 -- run/go/bubbletea --
-pass sha256:03dd3f59e5e9037b1fbd17a05c4acf84
+pass sha256:b65eff4d74be96ac567ba2085267be00

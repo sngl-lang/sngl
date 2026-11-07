@@ -77,6 +77,9 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	a                   string
@@ -468,4 +471,4 @@ func (m *Model) cal__1Change(v *time.Time) {
 	gtk4rt.Emit(m.cal__1, "day-selected")
 }
 -- run/go/gtk4 --
-pass sha256:8edd9a450a94f3ac0505f07312d22959
+pass sha256:e38f80e8545f9fda656b6bc898e445d8

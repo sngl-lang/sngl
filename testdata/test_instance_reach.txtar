@@ -127,6 +127,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -742,6 +745,9 @@ import (
 	"os"
 )
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	shown          bool
@@ -1091,6 +1097,9 @@ import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 )
+
+type Test struct {
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -1856,11 +1865,11 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:df5ba1ce53e3c2036053bb5d674573b3
+pass sha256:f3c9b9d986b85060c5b31146883db9e8
 -- run/go/fyne --
-pass sha256:1f7e40892ac36ca4dce8ff036a9e9ef4
+pass sha256:53c9a163ce67325ab826c36628ad94c5
 -- run/go/gtk4 --
-pass sha256:5b086c00d29a26729981e97bc767a77f
+pass sha256:e28b51c8654bf4de168fd4199a02b6f9
 -- run/kotlin/android --
 pass sha256:04e9fd35ba5f1d4b44aa8e5185cd02da
 -- run/none/html --

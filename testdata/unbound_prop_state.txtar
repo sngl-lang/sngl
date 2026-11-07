@@ -59,6 +59,7 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -211,7 +212,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -789,6 +790,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
 
 type __anon_id_elem_c6a818 struct {
@@ -835,7 +837,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1104,6 +1106,7 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
 
 type __anon_id_elem_c6a818 struct {
@@ -1150,7 +1153,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1504,7 +1507,7 @@ fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_c6a818>()
     for (__x in __xs) {
-    	var __id = __x
+    	var __id = __x.replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -1693,7 +1696,7 @@ body { font-family: system-ui, sans-serif; }
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = __x;
+      let __id = __x.replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -1846,12 +1849,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0bf83756a38114f1f1634abe94a37ede
+pass sha256:6f949c2c96d5db520189f3e7f64a8b30
 -- run/go/fyne --
-pass sha256:a7ae19755a6cb74f0bd466f902083588
+pass sha256:0fb91facad5e10bf8609dbdc6774d150
 -- run/go/gtk4 --
-pass sha256:be9cba2b96f5acb06fd9ada4d9e3d599
+pass sha256:619d4c855bb4cfd63cb0caa033094464
 -- run/kotlin/android --
-pass sha256:348b060235b3fba23ce0339be0e0cbab
+pass sha256:ddc65caf1c45c088c67db687554f5fb4
 -- run/none/html --
-pass sha256:39151a0a6009837cfd1b95ecb4a98851
+pass sha256:574024b23f74d8ad1857158a5f18ee76

@@ -37,7 +37,7 @@ func testAFieldNamedLikeAMethod(t test.Test, c page) {
     t.assert(c.label[0][1] != null && c.label[0][1].value == "y")
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:b421d521c5e242246566d8446224676b
+sha256:756be6337499d7e497f54d1dea960ce4
 {
   "results": [
     {

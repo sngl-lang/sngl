@@ -107,6 +107,9 @@ type Pair struct {
 	Y int
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -659,6 +662,9 @@ type Pair struct {
 	Y int
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	n   int
@@ -1070,9 +1076,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2af4e64244706c2739a9140ef5b2f9b3
+pass sha256:4f678107636d1bfda6f06b1488b42683
 -- run/go/fyne --
-pass sha256:132d3ced766c333e2275af21830ecfbc
+pass sha256:89da5eb9246a156aeaa5599e9e9bdb45
 -- run/kotlin/android --
 pass sha256:fbe600fa875f5d96725c434d1e5e4f99
 -- run/none/html --

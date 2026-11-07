@@ -39,6 +39,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
 
 type __anon_id_elem_c6a818 struct {
@@ -77,7 +78,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -181,4 +182,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:318dc9b072b9288572f580cc1b8516c9
+pass sha256:46c11c70754a5a0cebdc8d12eb7f2c11

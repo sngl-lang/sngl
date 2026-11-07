@@ -543,21 +543,15 @@ func writesFree(lam *ir.Lambda, local map[ir.Symbol]bool) bool {
 	}
 	found := false
 	_ = ir.Walk(lam.Func.Block, func(n ir.Node) error {
-		var target ir.Expr
-		switch x := n.(type) {
-		case *ir.LocalVar:
-			own[x.Sym] = true
-			return nil
-		case *ir.Assign:
-			target = x.Target
-		case *ir.Toggle:
-			target = x.Target
-		default:
+		if lv, ok := n.(*ir.LocalVar); ok {
+			own[lv.Sym] = true
 			return nil
 		}
-		if sym := exprRoot(target); sym != nil && liftableSym(sym) && !local[sym] && !own[sym] {
-			found = true
-			return ir.SkipAll
+		for _, target := range placesWritten(n) {
+			if sym := exprRoot(target); sym != nil && liftableSym(sym) && !local[sym] && !own[sym] {
+				found = true
+				return ir.SkipAll
+			}
 		}
 		return nil
 	})

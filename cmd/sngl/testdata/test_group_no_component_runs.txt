@@ -116,7 +116,7 @@ sha256:6a61d95cecdfa74bd2f8ad62a4d7b2a5
   ]
 }
 -- testrun/bubbletea/go/built.sngl/_/1 --
-sha256:21afb998967554ba3cdebe8342015a8d
+sha256:20cf0a50c075567d63056b2e656daa30
 {
   "results": [
     {
@@ -126,7 +126,7 @@ sha256:21afb998967554ba3cdebe8342015a8d
   ]
 }
 -- testrun/bubbletea/go/focus.sngl/_/1 --
-sha256:21afb998967554ba3cdebe8342015a8d
+sha256:20cf0a50c075567d63056b2e656daa30
 {
   "results": [
     {
@@ -136,7 +136,7 @@ sha256:21afb998967554ba3cdebe8342015a8d
   ]
 }
 -- testrun/bubbletea/go/focus.sngl/panel/1 --
-sha256:43e86cb41d7ab466da82f3682df41614
+sha256:d09088e74cea900f27504c1ddba9d799
 {
   "results": [
     {
@@ -146,7 +146,7 @@ sha256:43e86cb41d7ab466da82f3682df41614
   ]
 }
 -- testrun/fyne/go/built.sngl/_/1 --
-sha256:bb82a360e0507808347eea6b07d444f6
+sha256:2ef149c3421ae27d80deb405f0ca4d1e
 {
   "results": [
     {
@@ -156,7 +156,7 @@ sha256:bb82a360e0507808347eea6b07d444f6
   ]
 }
 -- testrun/fyne/go/focus.sngl/_/1 --
-sha256:bb82a360e0507808347eea6b07d444f6
+sha256:2ef149c3421ae27d80deb405f0ca4d1e
 {
   "results": [
     {
@@ -166,7 +166,7 @@ sha256:bb82a360e0507808347eea6b07d444f6
   ]
 }
 -- testrun/fyne/go/focus.sngl/panel/1 --
-sha256:6557d62efca1584e63694003adf47875
+sha256:c2d2cdbb22af981c383de6017b42dcd8
 {
   "results": [
     {
@@ -176,7 +176,7 @@ sha256:6557d62efca1584e63694003adf47875
   ]
 }
 -- testrun/gtk4/go/built.sngl/_/1 --
-sha256:170a896143ac61d6c261d43b82b4e928
+sha256:80de49f4033183d76e46cd37cf9bd394
 {
   "results": [
     {
@@ -186,7 +186,7 @@ sha256:170a896143ac61d6c261d43b82b4e928
   ]
 }
 -- testrun/gtk4/go/focus.sngl/_/1 --
-sha256:170a896143ac61d6c261d43b82b4e928
+sha256:80de49f4033183d76e46cd37cf9bd394
 {
   "results": [
     {
@@ -196,7 +196,7 @@ sha256:170a896143ac61d6c261d43b82b4e928
   ]
 }
 -- testrun/gtk4/go/focus.sngl/panel/1 --
-sha256:11202536bba00295d521181459737c2e
+sha256:251e61f7f555f2776323c09e1e1550f7
 {
   "results": [
     {

@@ -595,8 +595,7 @@ target, as if it were the setting; null says "not yet", which a store that
 answers late (DataStore, a server's cookie) can keep saying as long as it
 takes, and the program chooses what to show meanwhile (Jonathan's call). `kept`, `load` and
 `save` are SNGL over `sngl:json`, which needed a generic body to encode its
-own T (*HTTP and JSON*). The prop is `name` because `key=` is a node's
-identity in a loop.
+own T (*HTTP and JSON*).
 
 **Where a value lives is three intrinsics and a var.** `_read`, `_write` and
 `_persistent` are answered per language: Go by `pkg/go/snglsettings`, Kotlin

@@ -104,6 +104,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Pic struct {
 	N int
 }
@@ -659,6 +662,9 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Test struct {
+}
+
 type Pic struct {
 	N int
 }
@@ -948,6 +954,9 @@ import (
 type ErrorEvent struct {
 	Message string
 	Kind    string
+}
+
+type Test struct {
 }
 
 type Pic struct {
@@ -1316,10 +1325,10 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c18cef5ed5443928a85ef55e01d8db8d
+pass sha256:21edca1c6a70132bdf7f1cdc4b9ce113
 -- run/go/fyne --
-pass sha256:329cf5a739021f349f177d4b17c2ea3e
+pass sha256:bb4d93e48ea4c1a7e66ec620e7c4e6d7
 -- run/go/gtk4 --
-pass sha256:7bd8cb588905a42f8702b1699be0f365
+pass sha256:fa602445aad2c7c648e9890d759ff815
 -- run/none/html --
 pass sha256:b14dd95c5ba3bb4a7ee61987b114bf8f

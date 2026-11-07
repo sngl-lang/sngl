@@ -294,9 +294,14 @@ free reads become props and its other handlers events, as
 handle the block holds -- its own or the one an implicit-state wrapper `Wraps`
 -- stays with the node, a call through such a handle stays unlifted
 (`slotChildSynth.heldHandles`), and a write that handler makes of the owner's
-state is raised to the site, which makes it (`relayWrites`). A write whose
-place reads what the block binds, `rows[i] = x`, cannot be, and leaves the
-block to the refusal. android's callbacks are prop lambdas, so a node's
+state is raised to the site, which makes it (`relayWrites`): an assignment, a
+toggle, or a call mutating its receiver, `log.push(7)`, whose arguments the
+raise hands on -- left as it was, `liftValues` made the receiver a prop and
+the push wrote the copy. A write of a whole var hands on the value it writes,
+held in a local the rest of the handler reads, since the site's write reaches
+the block's prop only when the site renders again, on android at its next
+recomposition. A write whose place reads what the block binds, `rows[i] = x`, cannot be, nor a call writing through a `ref` argument, and leaves the
+block to the refusal (`cmd/sngl/testdata/handle_call_in_built_block_runs.txt`). android's callbacks are prop lambdas, so a node's
 callback props count as its handlers. Under a `for`, a component calling
 through the handle of a node it renders is built per copy whatever state it
 holds itself (`callsOwnNode` in `perCopy`): its state is the wrapper's, so

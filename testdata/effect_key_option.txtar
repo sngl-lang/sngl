@@ -81,6 +81,9 @@ type __anon_limit_name_3fc192 struct {
 	Name  *string
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	limit               *int
@@ -673,7 +676,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:8167d25ac912f76bc00005aa658ec31f
+pass sha256:3a69039b441c5fe749c32dca099d6af1
 -- run/kotlin/android --
 pass sha256:5fc060d9f9340832393e8d62833d3260
 -- run/none/html --

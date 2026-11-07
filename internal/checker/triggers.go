@@ -187,10 +187,11 @@ func (c *checker) triggersOf(base *ir.Component, kind ir.BuiltinKind, platform s
 }
 
 // typeTriggers gives each trigger among fns the event's parameter types,
-// which its declaration did not write, and the event it raises.
+// which its declaration did not write, and the event it raises, which its
+// name says (triggerName): registerNestedMethods declares each anew.
 func typeTriggers(comp *ir.Component, fns []*ir.Func) {
 	for _, fn := range fns {
-		event, ok := strings.CutSuffix(fn.Name, "__trigger")
+		event, ok := strings.CutSuffix(fn.Name, triggerName(""))
 		if !ok {
 			continue
 		}
@@ -226,6 +227,9 @@ func (c *checker) reportUntakenTriggers(libURI string) {
 			continue
 		}
 		pt.taken = true
-		c.error(pt.decl.Pos, "override %q of an event is a method of the override of %s for %q, and there is none", pt.decl.Name, pt.comp.Name, pt.platform)
+		// Said of this package: a target package's override of the
+		// component is checked before a program is, and takes only the
+		// triggers written beside it.
+		c.error(pt.decl.Pos, "override %q of an event is a method of an override of %s for %q written beside it, and this package writes none", pt.decl.Name, pt.comp.Name, pt.platform)
 	}
 }

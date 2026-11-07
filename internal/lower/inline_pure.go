@@ -507,7 +507,10 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 
 	pure := st.isPure(comp) || st.constSubstitutable(comp)
 	strictApplies := isPlatformStdlibComponent(st.pkg, comp)
-	if pure && comp.PkgPath() == "" && (n.Handle != nil && (st.reached[n.Handle] || st.nullTested[n.ID] && !ir.NodeIDRendersWithBody(comp.Stmts)) || st.tested[comp]) {
+	// A wrapper passImplicitState put around a node is reached by the
+	// node's handle, which it carries as Wraps.
+	reached := n.Handle != nil && st.reached[n.Handle] || n.Wraps != nil && st.reached[n.Wraps]
+	if pure && comp.PkgPath() == "" && (reached || n.Handle != nil && st.nullTested[n.ID] && !ir.NodeIDRendersWithBody(comp.Stmts) || st.tested[comp]) {
 		pure = false
 	}
 	if strictApplies && !pure {
@@ -931,11 +934,23 @@ func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
 // copied whole, the literal stood where only one field was read, and a
 // ternary in another of its fields was hoisted by NoTernary into a temp
 // nothing read (`grow=growOf(style.flex)` beside a `fontWeight=on ? …`).
+//
+// A parameter of a function written inside stmts -- a lambda's, a handler's
+// -- is that function's, whatever it is called: `xs.map(func(n int) => n +
+// 1)` in a body whose prop is `n` read the call site's `n`.
 func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
+	if len(bindings) == 0 {
+		return stmts
+	}
+	inner := innerParams(stmts)
+	prop := func(id *ir.Ident) bool {
+		p, isParam := id.Sym.(*ir.Param)
+		return isParam && !inner[p]
+	}
 	w := newExprWalker(func(e ir.Expr) ir.Expr {
 		if sel, ok := e.(*ir.Select); ok {
 			if id, ok := sel.Operand.(*ir.Ident); ok {
-				if _, isParam := id.Sym.(*ir.Param); isParam {
+				if prop(id) {
 					if lit, ok := bindings[id.Name].(*ir.StructLit); ok {
 						if v := literalFieldRead(lit, sel.Field); v != nil {
 							return deepCloneExpr(v)
@@ -945,10 +960,7 @@ func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
 			}
 		}
 		id, ok := e.(*ir.Ident)
-		if !ok {
-			return e
-		}
-		if _, isParam := id.Sym.(*ir.Param); !isParam {
+		if !ok || !prop(id) {
 			return e
 		}
 		if bound, ok := bindings[id.Name]; ok {
@@ -957,6 +969,34 @@ func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
 		return e
 	})
 	return w.stmts(stmts)
+}
+
+// innerParams is each parameter of a function written under stmts.
+func innerParams(stmts []ir.Stmt) map[*ir.Param]bool {
+	out := map[*ir.Param]bool{}
+	add := func(fn *ir.Func) {
+		if fn != nil {
+			for _, p := range fn.Params {
+				out[p] = true
+			}
+		}
+	}
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Lambda:
+			add(x.Func)
+		case *ir.NodeInst:
+			for _, h := range x.Handlers {
+				add(h.Func)
+			}
+		case *ir.ErrorBoundary:
+			if x.Handler != nil {
+				add(x.Handler.Func)
+			}
+		}
+		return nil
+	})
+	return out
 }
 
 // literalFieldRead is what lit holds in field name (ir.StructLit.Field),
@@ -2061,17 +2101,9 @@ func (st *inlinePureState) copyTriggers(comp *ir.Component, typeArgs map[string]
 		if f.Trigger == "" {
 			continue
 		}
-		clone := cloneFuncShallow(f)
-		clone.Block = deepCloneStmts(f.Block)
-		if typeArgs != nil {
-			clone = ir.InstantiateFunc(f, typeArgs)
-			clone.TypeParams = f.TypeParams
-			clone.RecvTypeParams = slices.DeleteFunc(slices.Clone(f.RecvTypeParams), func(tp ir.TypeParam) bool {
-				_, bound := typeArgs[tp.Name]
-				return bound
-			})
-		}
+		clone := spliceCopy(f, typeArgs)
 		clone.Name = st.names.next(f.Name, "inst")
+		clone.Lowered.CopyOf = f
 		if !st.hoistMethods {
 			dropReceiver(clone)
 		}
@@ -2082,14 +2114,41 @@ func (st *inlinePureState) copyTriggers(comp *ir.Component, typeArgs map[string]
 	return out
 }
 
-// unshadowed is bindings without the props fn's parameters shadow.
-func unshadowed(fn *ir.Func, bindings map[string]ir.Expr) map[string]ir.Expr {
-	if !shadowsAProp(fn, bindings) {
-		return bindings
+// spliceCopy is a component method's copy for one splice, at the type
+// arguments the call site bound. The method's own parameters stay; the
+// component's the call bound are bound, and left on the copy the
+// monomorphizer took it for a generic nothing called at bound types and kept
+// its generic callees erased.
+func spliceCopy(f *ir.Func, typeArgs map[string]*ir.Type) *ir.Func {
+	if typeArgs == nil {
+		clone := cloneFuncShallow(f)
+		clone.Block = deepCloneStmts(f.Block)
+		return clone
 	}
-	out := maps.Clone(bindings)
+	clone := ir.InstantiateFunc(f, typeArgs)
+	clone.TypeParams = f.TypeParams
+	clone.RecvTypeParams = slices.DeleteFunc(slices.Clone(f.RecvTypeParams), func(tp ir.TypeParam) bool {
+		_, bound := typeArgs[tp.Name]
+		return bound
+	})
+	return clone
+}
+
+// unshadowed is bindings without the props fn's parameters shadow: a
+// method's parameter of a prop's name is the method's, as select's trigger
+// takes the `value` it is to choose.
+func unshadowed(fn *ir.Func, bindings map[string]ir.Expr) map[string]ir.Expr {
+	var out map[string]ir.Expr
 	for _, p := range fn.Params {
-		delete(out, p.Name)
+		if _, ok := bindings[p.Name]; ok && !p.Receiver {
+			if out == nil {
+				out = maps.Clone(bindings)
+			}
+			delete(out, p.Name)
+		}
+	}
+	if out == nil {
+		return bindings
 	}
 	return out
 }

@@ -76,7 +76,7 @@ body { font-family: system-ui, sans-serif; }
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = __x;
+      let __id = __x.replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -223,4 +223,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:81252e9e88d738c0083d6aa0db3193d6
+pass sha256:301371a0aab19ccca9019df3a0b5e6e5

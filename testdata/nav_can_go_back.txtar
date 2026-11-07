@@ -87,6 +87,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type __anon_e3b0c4 struct {
 }
 
@@ -633,6 +636,9 @@ import (
 	"os"
 )
 
+type Test struct {
+}
+
 type __anon_e3b0c4 struct {
 }
 
@@ -961,6 +967,9 @@ func main() {
 package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
+
+type Test struct {
+}
 
 type __anon_e3b0c4 struct {
 }
@@ -1508,10 +1517,10 @@ class MainScreenTest {
 
 }
 -- run/go/bubbletea --
-pass sha256:3a5b4a6cf6200678a9c7746f12d14dd3
+pass sha256:48b68311ca5a1c628a8546d35d448bd0
 -- run/go/fyne --
-pass sha256:4e0d5b7b4078ea451b15a946d3b137f6
+pass sha256:841fcb8dd5b9127e0c1d0dcb903f6fdd
 -- run/go/gtk4 --
-pass sha256:56e6d202813509e21998d2d0f57e2194
+pass sha256:9b1fbdc366e49d860f3c0e242ae9b6bc
 -- run/kotlin/android --
 pass sha256:fa20068808c94c01b89e4fa11b4d6eeb

@@ -63,7 +63,11 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
+
+type Test struct {
+}
 
 type __anon_id_elem_c6a818 struct {
 	Id   string
@@ -138,7 +142,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -332,7 +336,11 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
+
+type Test struct {
+}
 
 type __anon_id_elem_c6a818 struct {
 	Id   string
@@ -405,7 +413,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -555,6 +563,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:ee2e8d94ad44be130b3e2832de63621c
+pass sha256:6096eb21f97e383f271d3b3cc8f2bb2a
 -- run/go/gtk4 --
-pass sha256:d379f3e6c937b46588e24ab05a38927b
+pass sha256:334419337aadb18a008a83ffc1414f60

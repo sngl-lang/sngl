@@ -388,7 +388,9 @@ class SnglCodec<T>(val kind: Int) {
                         if (k != null) hs[k.lowercase()] = vs.joinToString(", ")
                     }
                     conn.disconnect()
-                    if (ended(life)) cancelled() else Response(status, hs, text, false, false, "")
+                    // A response that arrived is the answer, whenever the
+                    // lifetime ended: a failure is only where none did.
+                    Response(status, hs, text, false, false, "")
                 } catch (e: SocketTimeoutException) {
                     if (ended(life)) cancelled() else Response(0, emptyMap(), "", true, true, e.toString())
                 } catch (e: Exception) {

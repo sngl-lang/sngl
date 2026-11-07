@@ -71,6 +71,9 @@ type Tag struct {
 	Name string
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	tag Tag
@@ -435,7 +438,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:b7b9126b13ba5216a26998867b81c4c8
+pass sha256:4ac718e26811c37f3e827dff7d4e942f
 -- run/kotlin/android --
 pass sha256:6dabd5622b896deca90f995eb7e96691
 -- run/none/html --

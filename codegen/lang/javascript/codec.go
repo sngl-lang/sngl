@@ -107,8 +107,10 @@ func (jc *JsIRContext) codecCall(n *ir.Call) (string, bool) {
 	if hook != nil {
 		none := codegen.HostValue(strconv.Quote(codegen.NoAnswer)+" + __u", str)
 		got := codegen.HostValue("__a", ir.MemberPayload(n.Type, "ok"))
-		call = fmt.Sprintf("(await (async (__u) => { const __h = %s; if (__h != null) { const __a = __h(%s); return __a == null ? %s : %s; } return %s; })(%s))",
-			jc.EvalExpr(hook), jc.EvalExpr(req), jc.EvalExpr(codegen.ResultFailed(n.Type, "transport", none)), jc.EvalExpr(codegen.ResultOK(n.Type, got)), call, url)
+		// A lifetime already ended answers `cancelled`, as the network does.
+		cancelled := jc.EvalExpr(codegen.ResultFailed(n.Type, "cancelled", codegen.HostValue(`"cancelled"`, str)))
+		call = fmt.Sprintf("(await (async (__u) => { const __h = %s; if (__h != null) { if (_snglEnded(%s)) return %s; const __a = __h(%s); return __a == null ? %s : %s; } return %s; })(%s))",
+			jc.EvalExpr(hook), life, cancelled, jc.EvalExpr(req), jc.EvalExpr(codegen.ResultFailed(n.Type, "transport", none)), jc.EvalExpr(codegen.ResultOK(n.Type, got)), call, url)
 	}
 	if n.Detached {
 		// Started rather than awaited: the request runs, and nothing waits

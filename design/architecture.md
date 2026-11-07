@@ -431,8 +431,11 @@ are overrides of an undefined target, and that error suggests `T any`
 names, a default -- is a parse error naming `T any`
 (`typeParamWithoutConstraint` in `internal/parser/parse.go`). Both are
 `testdata/error_type_param_constraint_required_*.sngl`. A **receiver's** list
-restates names only, as Go's does -- `func list[T].map[U any]` -- and in
-`FuncName` it is the `.` after the bracket that says so (`FuncNameBracket`);
+restates names, as Go's does -- `func list[T].map[U any](this list[T], …)` --
+or names a constraint for each, narrowing one the declaration leaves `any`
+and restating any other, `any` included (`inheritReceiverConstraints`,
+`testdata/receiver_narrows_one_param.sngl`); in `FuncName` it is the `.`
+after the bracket that says it is the receiver's (`FuncNameBracket`);
 the target index lives inside `FuncName` too, which keeps `lbracket` out of its
 FOLLOW set.
 

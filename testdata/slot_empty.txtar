@@ -79,6 +79,7 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -205,7 +206,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -715,6 +716,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
 
 type __anon_id_elem_cdfd47 struct {
@@ -785,7 +787,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1319,7 +1321,7 @@ fun __identified0(__xs: List<Int>): List<__anon_id_elem_cdfd47> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_cdfd47>()
     for (__x in __xs) {
-    	var __id = __x.toString()
+    	var __id = __x.toString().replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -1496,7 +1498,7 @@ body { font-family: system-ui, sans-serif; }
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = String(__x);
+      let __id = String(__x).replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -1834,10 +1836,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:abd1d0ba996d639e922412133572f54a
+pass sha256:3945a3b96bf7aef26b99ec80233742c8
 -- run/go/fyne --
-pass sha256:7a1cbe41102a9a7673a84cf6c5807c6a
+pass sha256:2b54c834fcb5d5f956b614971b3da645
 -- run/kotlin/android --
-pass sha256:a0cbd6979fe3affabb14028c6d70ba9a
+pass sha256:5451161140e6b94a031521217356d8bf
 -- run/none/html --
-pass sha256:d3bf27075c0fc66ea8508bf9188307d7
+pass sha256:7ce072e130b07ef278243a4f08efba52

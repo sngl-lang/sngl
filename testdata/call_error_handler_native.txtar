@@ -79,6 +79,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -571,6 +574,9 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	caught string
@@ -740,6 +746,9 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	caught string
@@ -845,8 +854,8 @@ func (m *Model) goodClick() {
 	gtk4rt.Emit(m.good, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:7bfb23a405b21a3f9749db000210faea
+pass sha256:123e343281024fc7a2125f722ecf5992
 -- run/go/fyne --
-pass sha256:dc48dd2b8a9f1e4e92bb6f7df589e0dd
+pass sha256:8232bf48a3fd03d2dc9ef46fce42c3d6
 -- run/go/gtk4 --
-pass sha256:152929f4bc30a022536898779a92f2f6
+pass sha256:8fa08a23c59dde89e00f9f7527966f76

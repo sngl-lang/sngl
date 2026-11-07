@@ -74,7 +74,7 @@ func testAMenuReachesItsNode(t test.Test, c shell) {
     t.assert(c.app.main.menu[0].children[0].checked)
 }
 -- testrun/android/kotlin/app.sngl/shell/1 --
-sha256:9c8480dd150e5984916273fb5ce025bf
+sha256:3dbef21e983e25da76cf7f63e4b2c7d1
 {
   "results": [
     {
@@ -84,7 +84,7 @@ sha256:9c8480dd150e5984916273fb5ce025bf
   ]
 }
 -- testrun/bubbletea/go/app.sngl/shell/1 --
-sha256:c21be4398e2e9b5ff3df7fc691293a90
+sha256:ceb884bd76ae1201ec75b2352cb49ddb
 {
   "results": [
     {
@@ -94,7 +94,7 @@ sha256:c21be4398e2e9b5ff3df7fc691293a90
   ]
 }
 -- testrun/fyne/go/app.sngl/shell/1 --
-sha256:54df0ac58afba659ed6391cecce94e2a
+sha256:b338a89613e6e4fbfc82de08d10961ce
 {
   "results": [
     {
@@ -104,7 +104,7 @@ sha256:54df0ac58afba659ed6391cecce94e2a
   ]
 }
 -- testrun/gtk4/go/app.sngl/shell/1 --
-sha256:168c74e0b2bb9f27c8efea6aa023e1ff
+sha256:0271472b7d24224e7c45c8dcd19611af
 {
   "results": [
     {

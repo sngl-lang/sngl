@@ -91,7 +91,7 @@ func testAWriteOutsideAsksTheQueryAgain(t test.Test, c app) {
     t.assert(asked.format(",") == "0,0,0,1,1,1")
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:0de8eeb8f44cc73e0282dcdb9dce3587
+sha256:138190da1d2ab8a0d5f47b04b13ef6b2
 {
   "results": [
     {
@@ -109,7 +109,7 @@ sha256:0de8eeb8f44cc73e0282dcdb9dce3587
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:16413b2ded1bcbf0ee62dd4b534a000d
+sha256:d02a72c25be14e37e55c61efca24eb12
 {
   "results": [
     {
@@ -127,7 +127,7 @@ sha256:16413b2ded1bcbf0ee62dd4b534a000d
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:7b9e1d561bed98363965aad2e717ce1d
+sha256:3588ec25540ccc7a4691669b7563c208
 {
   "results": [
     {
@@ -145,7 +145,7 @@ sha256:7b9e1d561bed98363965aad2e717ce1d
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:e809ac7d111f8608d85214711b27f5ad
+sha256:798c49b6425696493aaf23b9e138e81b
 {
   "results": [
     {
@@ -163,7 +163,7 @@ sha256:e809ac7d111f8608d85214711b27f5ad
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:46edd302c14b88095d6b2ce461986304
+sha256:806bb470ef2adb54df2a124dfbcfd330
 {
   "results": [
     {

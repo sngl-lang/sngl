@@ -623,12 +623,15 @@ element type binds from the value they are called on:
 <!-- SNGL-nocheck -->
 
 ```sngl
-func list[T].push(this list[T], item T)
+func list[T].push(this ref[list[T]], item T)
 func list[T].reverse(this list[T]) list[T]
 func list[T].indexOf(this list[T], item T) int
 func list[T].filter(this list[T], pred func(T) bool) list[T]
 func list[T].map[U any](this list[T], fn func(T) U) list[U]
 ```
+
+`push` writes the list it is called on, so its receiver is a `ref` and it is
+called on a place: `xs.push(3)`, never `xs.reverse().push(3)`.
 
 Type parameters are inferred at call sites, so you rarely write `[T]` when
 calling a generic method. A method-level parameter such as `map`'s `U`
@@ -1696,7 +1699,7 @@ Each test starts with fresh state. Mutations in one test do not leak to another.
 
 ### When the component mounts
 
-The component a test takes mounts when the test first needs it: at the first statement that reads it, calls one of its methods, fires an event, waits, ticks or snapshots. Until then the test is setting it up. A `t.setContext` sets the value the mount reads, and a write of one of the component's props or vars sets the value it starts from, as a call site would:
+The component a test takes mounts at the first statement that does not set it up. A `t.setContext` sets the value the mount reads, and a plain write of one of the component's props or vars, whose value reads neither the component nor the package's state, sets the value it starts from, as a call site would. Any other statement -- a read, a call, a `var`, an assertion -- mounts it first, on every target:
 
 <!-- SNGL-nocheck -->
 

@@ -125,7 +125,7 @@ func (st *loopIdentityState) loop(fs *ir.For) {
 //	    var __seen map[string, int] = {}
 //	    var __out list[{id string, elem T}] = []
 //	    for var __x = __xs {
-//	        var __id = <the loop's identity of __x>
+//	        var __id = <the loop's identity of __x>.replace("#", "##")
 //	        var __n = __seen.get(__id, 0)
 //	        __seen[__id] = __n + 1
 //	        if __n > 0 { __id = __id + "#" + string(__n) }
@@ -133,6 +133,11 @@ func (st *loopIdentityState) loop(fs *ir.For) {
 //	    }
 //	    return __out
 //	}
+//
+// A repeat is suffixed `#n`, and every identity has its own `#`s doubled
+// first, so no suffix spells another element's identity: undoubled, `["a",
+// "a", "a#1"]` handed out `a#1` twice, and the two copies shared their cells.
+// The interpreter names repeats the same way (interp.iterationID).
 //
 // Its names are the compiler's, so a golden's line about a program's own
 // `n` reads none of them.
@@ -152,7 +157,11 @@ func (st *loopIdentityState) identified(fs *ir.For, elemSym *ir.LoopVar, elemT *
 
 	identity := renameInExpr(deepCloneExpr(fs.Identity), map[ir.Symbol]string{elemSym: x.Name}, map[ir.Symbol]ir.Symbol{elemSym: x})
 	body := []ir.Stmt{
-		&ir.LocalVar{Name: id.Name, Type: ir.TypString, Sym: id, Init: identity},
+		&ir.LocalVar{Name: id.Name, Type: ir.TypString, Sym: id, Init: &ir.Call{
+			Type: ir.TypString,
+			Func: ir.IntrinsicMethod("replace", "string.replace", ir.TypString, ir.TypString),
+			Args: []ir.CallArg{{Value: identity}, {Value: stringLit("#")}, {Value: stringLit("##")}},
+		}},
 		&ir.LocalVar{Name: count.Name, Type: ir.TypInt, Sym: count, Init: callMapGet(varRef(seen), varRef(id), intLiteralLit(0), ir.TypInt)},
 		&ir.Assign{
 			Target: &ir.Index{Type: ir.TypInt, Operand: varRef(seen), Idx: varRef(id)},

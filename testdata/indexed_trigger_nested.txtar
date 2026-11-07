@@ -124,6 +124,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -137,6 +138,9 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type Test struct {
 }
 
 type __anon_id_elem_c6a818 struct {
@@ -335,7 +339,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -355,7 +359,7 @@ func __identified1(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1891,9 +1895,13 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"os"
 	"slices"
+	"strings"
 )
 
 var grid [][]string = [][]string{[]string{"p", "q"}, []string{"r"}}
+
+type Test struct {
+}
 
 type __anon_id_elem_c6a818 struct {
 	Id   string
@@ -2013,7 +2021,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -2033,7 +2041,7 @@ func __identified1(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -2641,9 +2649,13 @@ import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 	"slices"
+	"strings"
 )
 
 var grid [][]string = [][]string{[]string{"p", "q"}, []string{"r"}}
+
+type Test struct {
+}
 
 type __anon_id_elem_c6a818 struct {
 	Id   string
@@ -2760,7 +2772,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -2780,7 +2792,7 @@ func __identified1(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -3467,7 +3479,7 @@ fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_c6a818>()
     for (__x in __xs) {
-    	var __id = __x
+    	var __id = __x.replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -3482,7 +3494,7 @@ fun __identified1(__xs: List<String>): List<__anon_id_elem_c6a818> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_c6a818>()
     for (__x in __xs) {
-    	var __id = __x
+    	var __id = __x.replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -3828,7 +3840,7 @@ window.__sngl_boot = () => {
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = __x;
+      let __id = __x.replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -3846,7 +3858,7 @@ window.__sngl_boot = () => {
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = __x;
+      let __id = __x.replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -4316,12 +4328,12 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d07cf8bfd7599db85b21476c6ce90d9c
+pass sha256:157d34998aa2807880d81cfb886916d6
 -- run/go/fyne --
-pass sha256:a8ce8d4a3fb9642f3de3e39d45a775da
+pass sha256:58711d6de4e0ca13ffd11c02960a846e
 -- run/go/gtk4 --
-pass sha256:1d3017c0dc622b57b95e7746f39ad710
+pass sha256:6eddb6765837195840d9687628e74992
 -- run/kotlin/android --
-pass sha256:52efb6d557a647f3b64e6cf8179f9adf
+pass sha256:719b708d82da33fc9bd8b07cc13d75f3
 -- run/none/html --
-pass sha256:60307c78d3b8619cf3bdebc42d25237e
+pass sha256:1a2280143e1e48b2f1a2efd5b830fc89

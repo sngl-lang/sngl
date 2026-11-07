@@ -54,6 +54,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -439,4 +442,4 @@ func mountTestComponent(m Model, preset map[string]bool) Model {
 	return m
 }
 -- run/go/bubbletea --
-pass sha256:7af91f2b64792cf3a25e1649d729666c
+pass sha256:9f62662911e5782ac4e5975e55529919

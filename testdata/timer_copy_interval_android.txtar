@@ -150,7 +150,7 @@ fun __identified0(__xs: List<Int>): List<__anon_id_elem_cdfd47> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_cdfd47>()
     for (__x in __xs) {
-    	var __id = __x.toString()
+    	var __id = __x.toString().replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -336,4 +336,4 @@ fun SnglPager(
     ) { p -> page(p) }
 }
 -- run/kotlin/android --
-pass sha256:8b99659ab348422a493e0e50dcdc0752
+pass sha256:640462618d2c6a2130bcc8ca9479b92f

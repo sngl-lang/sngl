@@ -85,6 +85,7 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -203,7 +204,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -570,6 +571,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
 
 type __anon_id_elem_c6a818 struct {
@@ -618,7 +620,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -793,6 +795,7 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
 
 type __anon_id_elem_c6a818 struct {
@@ -841,7 +844,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1086,7 +1089,7 @@ fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_c6a818>()
     for (__x in __xs) {
-    	var __id = __x
+    	var __id = __x.replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -1245,7 +1248,7 @@ body { font-family: system-ui, sans-serif; }
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = __x;
+      let __id = __x.replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -1480,12 +1483,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:71559071705b24af1cfb8e90d21d0304
+pass sha256:ee9682f6131788b2b33923692071f1ab
 -- run/go/fyne --
-pass sha256:b3763875217000ab17037862cfdeffe9
+pass sha256:6dccbb07f477c54c4f7a91ec5c787e24
 -- run/go/gtk4 --
-pass sha256:f4a25615b8c83912c3560df5fbb851d1
+pass sha256:bc9cf0cf8f135778b64005c331bc3ae6
 -- run/kotlin/android --
-pass sha256:a1256741abd869652fea94cfed4b0dfe
+pass sha256:02680c4c6116a331c68016a1f36e57ce
 -- run/none/html --
-pass sha256:cc2e92b882ef0975be3df4aa6d4a1d71
+pass sha256:cb52d6219ee05601374950cfe6ef6a44

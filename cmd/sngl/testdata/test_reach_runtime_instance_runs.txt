@@ -246,7 +246,7 @@ window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:8f9e4eeca98b805028a99779e833be99
+sha256:074a73d4fbed4a9b491ca1bdc01a5456
 {
   "results": [
     {
@@ -264,7 +264,7 @@ sha256:8f9e4eeca98b805028a99779e833be99
   ]
 }
 -- testrun/android/kotlin/sites.sngl/main/1 --
-sha256:ea7feedf1817f47e10b297ee3dbaee78
+sha256:585bea72a50e0057d3dd2d8b58271493
 {
   "results": [
     {
@@ -278,7 +278,7 @@ sha256:ea7feedf1817f47e10b297ee3dbaee78
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:4572e774a99413cbcd47d84e5134114a
+sha256:650f6989763b0d4fe943cf864ca90340
 {
   "results": [
     {
@@ -296,7 +296,7 @@ sha256:4572e774a99413cbcd47d84e5134114a
   ]
 }
 -- testrun/bubbletea/go/sites.sngl/main/1 --
-sha256:d5562b62cb21a076f55d9758460d9e16
+sha256:6a8d5decd6b1a18ceec06d298bc94b6e
 {
   "results": [
     {
@@ -310,7 +310,7 @@ sha256:d5562b62cb21a076f55d9758460d9e16
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:9cf48d0904adddfb884535a639e09af0
+sha256:f6f772cffe1a34d2f4dd2591b3237757
 {
   "results": [
     {
@@ -328,7 +328,7 @@ sha256:9cf48d0904adddfb884535a639e09af0
   ]
 }
 -- testrun/fyne/go/sites.sngl/main/1 --
-sha256:82bc042979bdf08d7f5d3fef47b576a0
+sha256:b408181a3a9a5a35528b004a1301c9a0
 {
   "results": [
     {
@@ -342,7 +342,7 @@ sha256:82bc042979bdf08d7f5d3fef47b576a0
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:c70d7206294ebc26c2713d6867cdf2fe
+sha256:524cdcec95c4b2fdeaceae6b1c3db926
 {
   "results": [
     {
@@ -360,7 +360,7 @@ sha256:c70d7206294ebc26c2713d6867cdf2fe
   ]
 }
 -- testrun/gtk4/go/sites.sngl/main/1 --
-sha256:adc4084d36619a748af53ca6dbd0dace
+sha256:a0dc1759aa1090b93758c928c5df98c0
 {
   "results": [
     {
@@ -374,7 +374,7 @@ sha256:adc4084d36619a748af53ca6dbd0dace
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:e77b75e0111495dd38a2ea50d2d262af
+sha256:8f9e39a21c4043b7c6a4f6ca73c5be94
 {
   "results": [
     {
@@ -392,7 +392,7 @@ sha256:e77b75e0111495dd38a2ea50d2d262af
   ]
 }
 -- testrun/html/none/sites.sngl/main/1 --
-sha256:1dfe4a700b9d51d45b82e78d58e048ba
+sha256:4cd38e244eb51d1ad856283ae0950951
 {
   "results": [
     {
@@ -406,7 +406,7 @@ sha256:1dfe4a700b9d51d45b82e78d58e048ba
   ]
 }
 -- testrun/html/none/twice.sngl/main/1 --
-sha256:8ecaacf39c918f36a7a17190d13df4ee
+sha256:c70a6932d9c42ca950c152af21369e33
 {
   "results": [
     {

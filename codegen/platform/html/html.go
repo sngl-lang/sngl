@@ -824,6 +824,9 @@ type htmlGen struct {
 	// that id on the node and names it in the updaters it builds, while the
 	// element itself is emitted as `$N`. See htmlGen.nodeID.
 	refToVar map[string]string
+	// handleVar is the element each node handle names, by the handle's
+	// symbol: two splices of one component name theirs alike.
+	handleVar map[*ir.Var]string
 	// handleReads are the elements a read of a node's handle named (nodeVar),
 	// which the page binds as it does those a handler writes.
 	handleReads map[string]bool
@@ -914,6 +917,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		idToNode:       make(map[string]*ir.NodeInst),
 		refToVar:       make(map[string]string),
 		handleReads:    make(map[string]bool),
+		handleVar:      make(map[*ir.Var]string),
 		loweredRefs:    make(map[string]bool),
 		loweredLocals:  make(map[string]bool),
 		pageSlots:      make(map[string]bool),
@@ -966,9 +970,11 @@ var elementHelpers = []struct{ name, js string }{
 // it from outside that function, and finds it as the invokers do, by the
 // mark OnCreateNode gives it.
 func (g *htmlGen) nodeVar(handle *ir.Ident) (string, bool) {
-	if v, ok := g.refToVar[handle.Name]; ok && v != handle.Name {
-		g.handleReads[v] = true
-		return v, true
+	if h, ok := handle.Sym.(*ir.Var); ok {
+		if v := g.handleVar[h]; v != "" && g.written[v] {
+			g.handleReads[v] = true
+			return v, true
+		}
 	}
 	if !g.inTrigger {
 		return "", false
@@ -1301,6 +1307,11 @@ func (g *htmlGen) nodeID(n *ir.NodeInst) string {
 	}
 	if n != nil {
 		g.idToNode[id] = n
+		for _, h := range []*ir.Var{n.Handle, n.Wraps} {
+			if h != nil {
+				g.handleVar[h] = id
+			}
+		}
 		if n.ID != "" && n.ID != id {
 			g.refToVar[n.ID] = id
 			// Under the op's own name too: OnPropAssign recovers the

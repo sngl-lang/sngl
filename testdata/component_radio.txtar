@@ -68,6 +68,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Choice__record__string struct {
 	Label string
 	Value string
@@ -689,6 +692,9 @@ import (
 	"fyne.io/fyne/v2/container"
 	"os"
 )
+
+type Test struct {
+}
 
 type Choice__record__string struct {
 	Label string
@@ -1530,9 +1536,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e813a5226901507ae53f54a68fd0e7e0
+pass sha256:9538cd6bb93b79efabc9282733e5c853
 -- run/go/fyne --
-pass sha256:c09dcabbcacd3a82417ca99eba095f49
+pass sha256:8bb2fa8ff51d704b1d93b78a613542ab
 -- run/kotlin/android --
 pass sha256:c4024c3e85dfc9b32beb0251c0affb02
 -- run/none/html --

@@ -60,6 +60,9 @@ import (
 	"os"
 )
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	on             bool
@@ -280,6 +283,9 @@ package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	on             bool
@@ -469,6 +475,6 @@ func (m *Model) flipClick() {
 	gtk4rt.Emit(m.flip, "clicked")
 }
 -- run/go/fyne --
-pass sha256:d46e22dfe625229287cb4209bb5a67dc
+pass sha256:684c167ab767050aa8beb778bb8b5007
 -- run/go/gtk4 --
-pass sha256:281aceeeb56d2235c8a2952416b29b7d
+pass sha256:8a35f72fb757f550443b9b9e14f1c763

@@ -276,7 +276,7 @@ func __identified0(__xs []float64) []__anon_id_elem_4ccb28 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_4ccb28{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -812,7 +812,7 @@ body { font-family: system-ui, sans-serif; }
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = String(__x);
+      let __id = String(__x).replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -994,6 +994,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d09a0be6fdd1307e5db2ce3c089764c6
+pass sha256:4d5696353baa0ba591484fd3beff3489
 -- run/none/html --
-pass sha256:2b2d01635961e482962d9fdbb96468fe
+pass sha256:906d81dd7e2171cf72852a8df0ec9f77

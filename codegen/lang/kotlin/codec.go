@@ -98,8 +98,10 @@ func (kc *KtIRContext) codecCall(n *ir.Call) (string, bool) {
 	if hook != nil {
 		none := codegen.HostValue(Quote(codegen.NoAnswer)+" + __u", str)
 		got := codegen.HostValue("__a", ir.MemberPayload(n.Type, "ok"))
-		call = fmt.Sprintf("run { val __u = %s; val __h = %s; if (__h != null) { val __a = __h(%s); if (__a == null) %s else %s } else %s }",
-			url, kc.EvalExpr(hook), kc.EvalExpr(req), kc.EvalExpr(codegen.ResultFailed(n.Type, "transport", none)), kc.EvalExpr(codegen.ResultOK(n.Type, got)), call)
+		// A lifetime already ended answers `cancelled`, as the network does.
+		cancelled := kc.EvalExpr(codegen.ResultFailed(n.Type, "cancelled", codegen.HostValue(`"cancelled"`, str)))
+		call = fmt.Sprintf("run { val __u = %s; val __h = %s; if (__h != null) { if (SnglCodec.ended(%s)) %s else { val __a = __h(%s); if (__a == null) %s else %s } } else %s }",
+			url, kc.EvalExpr(hook), life, cancelled, kc.EvalExpr(req), kc.EvalExpr(codegen.ResultFailed(n.Type, "transport", none)), kc.EvalExpr(codegen.ResultOK(n.Type, got)), call)
 	}
 	return call, true
 }

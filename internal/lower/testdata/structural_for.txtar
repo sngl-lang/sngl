@@ -21,7 +21,7 @@ func __identified0(__xs list[int]) list[struct {
         elem int
     }] = []
     for var __x = __xs {
-        var __id string = __x.format(base=10, width=0, pad=" ")
+        var __id string = __x.format(base=10, width=0, pad=" ").replace("#", "##")
         var __n int = __seen.get(__id, 0)
         __seen[__id] = __n + 1
         if __n > 0 {

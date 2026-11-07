@@ -463,7 +463,7 @@ fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_c6a818>()
     for (__x in __xs) {
-    	var __id = __x
+    	var __id = __x.replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -722,4 +722,4 @@ import androidx.compose.ui.focus.focusProperties
 // lambda with a receiver, which SNGL has no way to write.
 fun Modifier.snglUnfocusable(): Modifier = focusProperties { canFocus = false }
 -- run/kotlin/android --
-pass sha256:376c41a8d257cd89fba206554a8dd9b2
+pass sha256:ccb3456491756e82b7137f95773faf50

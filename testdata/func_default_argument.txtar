@@ -76,6 +76,7 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -248,7 +249,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -937,6 +938,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
 
 type __anon_id_elem_cdfd47 struct {
@@ -1001,7 +1003,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1278,6 +1280,7 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
 
 type __anon_id_elem_cdfd47 struct {
@@ -1342,7 +1345,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1728,7 +1731,7 @@ fun __identified0(__xs: List<Int>): List<__anon_id_elem_cdfd47> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_cdfd47>()
     for (__x in __xs) {
-    	var __id = __x.toString()
+    	var __id = __x.toString().replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -1785,7 +1788,7 @@ body { font-family: system-ui, sans-serif; }
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = String(__x);
+      let __id = String(__x).replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -1944,12 +1947,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3702ed0626660dec19bc4e558bc36c51
+pass sha256:30e85e21d952abf336f591a3630693fa
 -- run/go/fyne --
-pass sha256:7348425469ed260becd37a7d5a4b5655
+pass sha256:65f82ae41e4f1814255c722c7a36f482
 -- run/go/gtk4 --
-pass sha256:05471b3ee80099ab8489faaf6af7c4d1
+pass sha256:e013d1ef5cd549ebf03b9f320ef2fd67
 -- run/kotlin/android --
-pass sha256:e41ec3190d0f19489e9d94e61e267172
+pass sha256:020664f96f0fbc9b18c22e760fc06da3
 -- run/none/html --
-pass sha256:1e1ddec627a51579d7d88a5ef4794076
+pass sha256:9a2045f8322f62e224a2c178dc8ac106

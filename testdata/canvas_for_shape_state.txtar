@@ -110,6 +110,9 @@ type Pic struct {
 	N int
 }
 
+type Test struct {
+}
+
 type __anon_id_elem_4ccb28 struct {
 	Id   string
 	Elem float64
@@ -346,7 +349,7 @@ func __identified0(__xs []float64) []__anon_id_elem_4ccb28 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_4ccb28{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -758,6 +761,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"os"
+	"strings"
 )
 
 type ErrorEvent struct {
@@ -773,6 +777,9 @@ type Measurement struct {
 
 type Pic struct {
 	N int
+}
+
+type Test struct {
 }
 
 type __anon_id_elem_4ccb28 struct {
@@ -967,7 +974,7 @@ func __identified0(__xs []float64) []__anon_id_elem_4ccb28 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_4ccb28{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1553,6 +1560,7 @@ import "C"
 import (
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
+	"strings"
 	"unsafe"
 )
 
@@ -1593,6 +1601,9 @@ type Measurement struct {
 
 type Pic struct {
 	N int
+}
+
+type Test struct {
 }
 
 type __anon_id_elem_4ccb28 struct {
@@ -1787,7 +1798,7 @@ func __identified0(__xs []float64) []__anon_id_elem_4ccb28 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_4ccb28{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -2190,7 +2201,7 @@ window.__sngl_boot = () => {
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = String(__x);
+      let __id = String(__x).replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -2459,10 +2470,10 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:63eb1867e049e18c71da2f666d807732
+pass sha256:182ddc986130d60ba7c588cdbc828251
 -- run/go/fyne --
-pass sha256:ef0259f4d03202cf5abaa16b00c788f0
+pass sha256:fa2ec1ecac46486d478829185ee48e3d
 -- run/go/gtk4 --
-pass sha256:35c85c0d571a6d6fb9f11d52a884f462
+pass sha256:685c2081b14fde7835d0c936315f41cd
 -- run/none/html --
-pass sha256:238f38fdd29fde3238ab1c055421fdef
+pass sha256:f421c9a95ab06abbbce1bd120fb70d21

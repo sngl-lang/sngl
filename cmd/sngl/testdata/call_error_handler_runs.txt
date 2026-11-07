@@ -188,7 +188,7 @@ window {
 }
 
 -- testrun/fyne/go/boundary.sngl/main/1 --
-sha256:0bf534aa0ca1bceea4e0e430cc9c3563
+sha256:ede15b710b1af8f79ea09beb757c0419
 {
   "results": [
     {
@@ -198,7 +198,7 @@ sha256:0bf534aa0ca1bceea4e0e430cc9c3563
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:499c32636207a617e1ffd99b597079f9
+sha256:a8fe0a8faf066192b46632bbd5453c55
 {
   "results": [
     {
@@ -208,7 +208,7 @@ sha256:499c32636207a617e1ffd99b597079f9
   ]
 }
 -- testrun/gtk4/go/boundary.sngl/main/1 --
-sha256:88eee0bed894d2fcd9650c8ec15f459a
+sha256:11658cd738ba25a2e40d8ffbd331f810
 {
   "results": [
     {

@@ -108,17 +108,17 @@ func (w *offLoopWrites) inPlace(s ir.Stmt) {
 	})
 }
 
-// writesState reports whether s writes an owner's state.
+// writesState reports whether s writes an owner's state: assigns it, toggles
+// it, or calls a method mutating it, `log.push(x)`.
 func (w *offLoopWrites) writesState(s ir.Stmt) bool {
-	var target ir.Expr
-	switch x := s.(type) {
-	case *ir.Assign:
-		target = x.Target
-	case *ir.Toggle:
-		target = x.Target
-	default:
-		return false
+	n := ir.Node(s)
+	if cs, ok := s.(*ir.CallStmt); ok {
+		n = cs.Call
 	}
-	v, ok := exprRoot(target).(*ir.Var)
-	return ok && w.state[v]
+	for _, place := range placesWritten(n) {
+		if v, ok := exprRoot(place).(*ir.Var); ok && w.state[v] {
+			return true
+		}
+	}
+	return false
 }

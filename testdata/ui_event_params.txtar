@@ -138,6 +138,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -923,6 +926,9 @@ func mustParseDate(s string) time.Time {
 	return t
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	on             bool
@@ -1297,6 +1303,9 @@ func mustParseDate(s string) time.Time {
 type ErrorEvent struct {
 	Message string
 	Kind    string
+}
+
+type Test struct {
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -2206,11 +2215,11 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4486c911e178fa40613eb1cc08d93241
+pass sha256:e5071944d448c4ec63396b20b97febb6
 -- run/go/fyne --
-pass sha256:23de245d8daa4f00211ddbae6cf4c861
+pass sha256:cde99df0266fd4b31dd5b833933e87ea
 -- run/go/gtk4 --
-pass sha256:5c05536e52656fc3f5bcb9eaa93f92f5
+pass sha256:30a45f344c434c888fcca4d51f2cdbfe
 -- run/kotlin/android --
 pass sha256:07c2198b57ea0611e25cc77908d6b4dd
 -- run/none/html --

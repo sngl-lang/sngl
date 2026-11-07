@@ -54,7 +54,7 @@ ui.window {
     pair
 }
 -- testrun/bubbletea/go/app.sngl/pair/1 --
-sha256:685259ba9dcea4c035ed0f575aaa4caa
+sha256:9849150b7f9db24ea050a6bf36bd6b83
 {
   "results": [
     {
@@ -64,7 +64,7 @@ sha256:685259ba9dcea4c035ed0f575aaa4caa
   ]
 }
 -- testrun/fyne/go/app.sngl/pair/1 --
-sha256:d6187e05b8f211c18cbae7afa000aadb
+sha256:9645d5395c1e49a96cfa7d0d908a76ab
 {
   "results": [
     {
@@ -74,7 +74,7 @@ sha256:d6187e05b8f211c18cbae7afa000aadb
   ]
 }
 -- testrun/gtk4/go/app.sngl/pair/1 --
-sha256:467f5f3fe41c4301a2d855a4a22e639a
+sha256:f39ad1346103e36ca16dd5a9d1e89237
 {
   "results": [
     {

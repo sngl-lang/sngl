@@ -108,10 +108,12 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func, simulate string) *codegen.TestRes
 		body = nil
 	}
 	for _, stmt := range body {
-		// The instance mounts on the first read of it (settle), and on a
-		// read of package state, which goes through no instance.
-		if cVal != nil && cVal.unmounted && readsPackageState(stmt, pkg) {
-			cVal.mount()
+		// The instance mounts at the first statement that is no setup of it
+		// (ir.TestSetup), where a compiled test mounts it (passTestMount).
+		if cVal != nil && cVal.unmounted {
+			if _, setup := ir.TestSetup(stmt, fn.Params[1], pkg); !setup {
+				cVal.mount()
+			}
 		}
 		if cVal != nil && cVal.settleErr != nil {
 			err := cVal.settleErr
@@ -374,23 +376,6 @@ func testAnswer(pkg *ir.Package) (*ir.Context, *ir.Func) {
 		return nil, nil
 	}
 	return visit(pkg)
-}
-
-// readsPackageState reports whether s reads a var of the package's.
-func readsPackageState(s ir.Stmt, pkg *ir.Package) bool {
-	vars := map[ir.Symbol]bool{}
-	for _, v := range pkg.Vars {
-		vars[v] = true
-	}
-	found := false
-	_ = ir.Walk(s, func(n ir.Node) error {
-		if id, ok := n.(*ir.Ident); ok && vars[id.Sym] {
-			found = true
-			return ir.SkipAll
-		}
-		return nil
-	})
-	return found
 }
 
 // errorLine returns the 1-based source line of the failing expression. For

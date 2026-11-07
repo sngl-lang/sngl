@@ -1,0 +1,246 @@
+# A test picks a typed select by the value it holds where the select is no
+# simple node of the component. Without `:value`, passImplicitState wraps the
+# select, and the wrapper's splice copied its trigger with a fresh handle, so
+# test reach did not find the copy, restored the event, and handed fyne's
+# invoker an int where it takes a label: the test did not compile
+# (FuncLowering.CopyOf, keptCopies). One copy of a loop's is reached through
+# the copy's instance, `c.pick__state[1]` (nameInstance). Where a test still
+# cannot reach the node -- a copy bubbletea spliced into each element, a select
+# inside an instance a loop builds -- the build says so, naming #318, where the
+# invoker chose nothing or did not compile. android's test raises the event
+# with the value itself (valueTriggers), so only the nested case, through one
+# copy of a loop's, is refused there.
+
+sngl test --platform=none unbound.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html unbound.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go unbound.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go unbound.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go unbound.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin unbound.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=none loop.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html loop.sngl
+stdout '1 tests, 0 failures'
+
+! sngl test --platform=bubbletea --language=go loop.sngl
+stderr 'loop.sngl:19:21: the test raises `change` through the target''s override of the event.*#318'
+
+sngl test --platform=fyne --language=go loop.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go loop.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin loop.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=none nested.sngl
+stdout '1 tests, 0 failures'
+
+! sngl test --platform=html nested.sngl
+stderr 'nested.sngl:31:21: the test raises `change` through the target''s override of the event.*#318'
+
+! sngl test --platform=bubbletea --language=go nested.sngl
+stderr 'nested.sngl:31:21: the test raises `change` through the target''s override of the event.*#318'
+
+! sngl test --platform=fyne --language=go nested.sngl
+stderr 'nested.sngl:31:21: the test raises `change` through the target''s override of the event.*#318'
+
+! sngl test --platform=gtk4 --language=go nested.sngl
+stderr 'nested.sngl:31:21: the test raises `change` through the target''s override of the event.*#318'
+
+! sngl test --platform=android --language=kotlin nested.sngl
+stderr 'nested.sngl:31:21: the test raises `change` through the target''s override of the event.*#318'
+-- unbound.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var log = ""
+    ui.select #pick(@change(v) { log = "{v}" }) {
+        ui.choice(label="One", value=1)
+        ui.choice(label="Two", value=2)
+    }
+}
+
+func testUnbound(t test.Test, c main) {
+    c.pick.change(2)
+    t.assert(c.log == "2")
+}
+
+ui.window {
+    main()
+}
+-- loop.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var items = ["a", "b"]
+    var log = ""
+    ui.vbox {
+        for var it = items {
+            ui.select #pick(@change(v) { log = "{it}={v}" }) {
+                ui.choice(label="One", value=1)
+                ui.choice(label="Two", value=2)
+            }
+        }
+        ui.text(value=log)
+    }
+}
+
+func testSecondCopy(t test.Test, c main) {
+    c.pick[1].change(2)
+    t.assert(c.log == "b=2")
+}
+
+ui.window {
+    main()
+}
+-- nested.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component branch(label string) ui.node {
+    var on = true
+    var pick = 1
+
+    ui.vbox {
+        ui.text(value=label)
+        if on {
+            ui.select #size(:value=pick) {
+                ui.choice(label="Small", value=1)
+                ui.choice(label="Large", value=2)
+            }
+        }
+    }
+}
+
+component main ui.node {
+    var names = ["a", "b"]
+    for var n = names {
+        branch #row(label=n)
+    }
+}
+
+func testSecondRow(t test.Test, c main) {
+    var r = c.row[1]
+    if r != null {
+        var s = r.size
+        if s != null {
+            s.change(2)
+        }
+        t.assert(r.pick == 2)
+    }
+    var r0 = c.row[0]
+    if r0 != null {
+        t.assert(r0.pick == 1)
+    }
+}
+
+ui.window {
+    main()
+}
+-- testrun/android/kotlin/loop.sngl/main/1 --
+sha256:56e17f752247f2cb747cf989b805b1db
+{
+  "results": [
+    {
+      "Desc": "SecondCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/unbound.sngl/main/1 --
+sha256:28ce2b45bd2fe25a58a4680ab68a50c3
+{
+  "results": [
+    {
+      "Desc": "Unbound",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/unbound.sngl/main/1 --
+sha256:a49ec61e48b11a231fc479f121ba295f
+{
+  "results": [
+    {
+      "Desc": "Unbound",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/loop.sngl/main/1 --
+sha256:cd8f7589c78316916427be5eef2ab135
+{
+  "results": [
+    {
+      "Desc": "SecondCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/unbound.sngl/main/1 --
+sha256:975e56a7f05d68411fd4d625b60fde3f
+{
+  "results": [
+    {
+      "Desc": "Unbound",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/loop.sngl/main/1 --
+sha256:13128a3a5d0703957ab592dc66132502
+{
+  "results": [
+    {
+      "Desc": "SecondCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/unbound.sngl/main/1 --
+sha256:5c08db330523af48b385f7ac974c0b0f
+{
+  "results": [
+    {
+      "Desc": "Unbound",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/loop.sngl/main/1 --
+sha256:fb5de5ac7971acbfec3814d2b103d6e9
+{
+  "results": [
+    {
+      "Desc": "SecondCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/unbound.sngl/main/1 --
+sha256:872440b87e43054c134f85fc68303c30
+{
+  "results": [
+    {
+      "Desc": "Unbound",
+      "Passed": true
+    }
+  ]
+}

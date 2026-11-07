@@ -213,7 +213,7 @@ window.__sngl_boot = () => {
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = __x;
+      let __id = __x.replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -231,7 +231,7 @@ window.__sngl_boot = () => {
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = __x;
+      let __id = __x.replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -673,9 +673,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:f10c115e6620a0c28be2a5ebd19d3db9
+pass sha256:e7670f246ac3c9f213fd7a44a1b46a3c
 -- testrun/html/none/component_browser_instances.sngl/decorated/1 --
-sha256:0c3f05dee41f641f1502c0ee52bd5d44
+sha256:3111017f5761b74aa472ca10e0f42dd0
 {
   "results": [
     {
@@ -695,7 +695,7 @@ sha256:d420e1e7d7cdb2d061f9fcfb67bfd12a
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/funcProp/1 --
-sha256:ce5bd95aa19931963f506518f22bf600
+sha256:04a5af3dadb01cfc1e3f898e356fe167
 {
   "results": [
     {

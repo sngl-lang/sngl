@@ -77,6 +77,7 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -230,7 +231,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -785,6 +786,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
 
 var rows []Row = []Row{Row{Name: "a", Cols: []string{"1", "2"}}, Row{Name: "b", Cols: []string{"3"}}}
@@ -870,7 +872,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1315,6 +1317,7 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
 
 var rows []Row = []Row{Row{Name: "a", Cols: []string{"1", "2"}}, Row{Name: "b", Cols: []string{"3"}}}
@@ -1400,7 +1403,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -2013,7 +2016,7 @@ fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_c6a818>()
     for (__x in __xs) {
-    	var __id = __x
+    	var __id = __x.replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -2024,10 +2027,10 @@ fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
     return __out
 }
 -- run/go/bubbletea --
-pass sha256:f4400b6d3d24997a1c3e3c8a96a30702
+pass sha256:c5410edbb9464250197082b57045b7b4
 -- run/go/fyne --
-pass sha256:178b1660dd4af07132ff549507c27571
+pass sha256:31190a65fe668ae797b40957b625d890
 -- run/go/gtk4 --
-pass sha256:ce943cb0c8056866ff1f55ed4f4afc17
+pass sha256:19467c8ea411d1c614f3ff1436dbe716
 -- run/kotlin/android --
-pass sha256:1463afc166c1d5f628fdd85a6e0523f8
+pass sha256:809fe68da24f4f90ae5a726a36919015

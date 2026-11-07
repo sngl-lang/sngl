@@ -96,6 +96,9 @@ type Slot struct {
 	Key int
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	n int
@@ -435,7 +438,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:7d94086b25ad6b1b45cad9811466b05b
+pass sha256:bcc39e27a2f8f0c27d82894677f50eca
 -- run/kotlin/android --
 pass sha256:77412d9c4b4b8dbc1959413ed2fb08d1
 -- run/none/html --

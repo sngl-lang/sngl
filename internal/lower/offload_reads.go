@@ -116,7 +116,7 @@ func offloadedReads(block []ir.Stmt, shared func(ir.Symbol) bool) ([]ir.Symbol, 
 		}
 		switch x := n.(type) {
 		case *ir.Assign:
-			if sym := assignedSymbol(x.Target); sym != nil {
+			if sym := exprRoot(x.Target); sym != nil {
 				written[sym] = true
 			}
 		case *ir.Ident:
@@ -145,25 +145,6 @@ func readCopies(block []ir.Stmt, copies map[ir.Symbol]*ir.Var) []ir.Stmt {
 		return nil
 	})
 	return block
-}
-
-// assignedSymbol is the cell a write to target lands in: `a.b[0] = v`
-// writes `a`.
-func assignedSymbol(target ir.Expr) ir.Symbol {
-	for {
-		switch t := target.(type) {
-		case *ir.Select:
-			target = t.Operand
-		case *ir.Index:
-			target = t.Operand
-		case *ir.Conversion:
-			target = t.Operand
-		case *ir.Ident:
-			return t.Sym
-		default:
-			return nil
-		}
-	}
 }
 
 // copiedWhole reports whether a value of t is copied whole by the

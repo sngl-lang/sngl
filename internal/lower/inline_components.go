@@ -2,7 +2,6 @@ package lower
 
 import (
 	"fmt"
-	"maps"
 	"slices"
 	"strconv"
 
@@ -77,7 +76,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	if opts.splices != nil {
 		spliced = *opts.splices
 	}
-	return repointTestReaches(pkg, st.reach, append(spliced, st.insts...), opts.triggers)
+	return repointTestReaches(pkg, st.reach, append(spliced, st.insts...), opts.triggers, feats.ValueTriggers)
 }
 
 // unreachedCycles is every recursive component nothing the program renders
@@ -1382,21 +1381,11 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	}
 	funcStart := len(*hoist.funcs)
 	for _, f := range comp.Funcs {
-		clone := cloneFuncShallow(f)
-		clone.Block = deepCloneStmts(f.Block)
-		if typeArgs != nil {
-			clone = ir.InstantiateFunc(f, typeArgs)
-			// The method's own parameters stay; the component's the call
-			// bound are bound, and left on the copy the monomorphizer took it
-			// for a generic nothing called at bound types and kept its
-			// generic callees erased.
-			clone.TypeParams = f.TypeParams
-			clone.RecvTypeParams = slices.DeleteFunc(slices.Clone(f.RecvTypeParams), func(tp ir.TypeParam) bool {
-				_, bound := typeArgs[tp.Name]
-				return bound
-			})
-		}
+		clone := spliceCopy(f, typeArgs)
 		clone.Name = st.names.next(f.Name, "inst")
+		if f.Trigger != "" {
+			clone.Lowered.CopyOf = f
+		}
 		// A clone of a node's method this component's body already spliced
 		// is the node's method again, in the owner this splice lands in.
 		if m, ok := st.methodOf[f]; ok {
@@ -1410,8 +1399,13 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		}
 		carryPointsTo(st.pkg, ir.SlotReturnKey(f), ir.SlotReturnKey(clone))
 		*hoist.funcs = append(*hoist.funcs, clone)
-		if n.Handle != nil {
-			st.recordMethod(n.Handle, f, clone, hoist.funcs)
+		// A wrapper passImplicitState put around a node is reached by the
+		// node's handle (Wraps), and a test's trigger of the node's event is
+		// a method the wrapper's splice copies.
+		for _, h := range []*ir.Var{n.Handle, n.Wraps} {
+			if h != nil {
+				st.recordMethod(h, f, clone, hoist.funcs)
+			}
 		}
 	}
 
@@ -1498,13 +1492,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		// A prop is substituted by name, and a method's parameter of the
 		// prop's name is the method's: select's trigger takes the `value`
 		// it is to choose, and read as the prop it chose the bound one.
-		bindings := bindings
-		if shadowsAProp(fn, bindings) {
-			bindings = maps.Clone(bindings)
-			for _, p := range fn.Params {
-				delete(bindings, p.Name)
-			}
-		}
+		bindings := unshadowed(fn, bindings)
 		fn.Block = substituteParams(fn.Block, bindings)
 		fn.Reads = withSubstitutedReads(fn.Reads, fn.Block, bindings)
 		fn.Block = substituteVars(fn.Block, provided)
@@ -2000,17 +1988,6 @@ func rendersFocusStop(c *ir.Component, seen map[*ir.Component]bool) bool {
 		return !found
 	})
 	return found
-}
-
-// shadowsAProp reports whether one of fn's parameters has the name of a prop
-// bindings substitutes.
-func shadowsAProp(fn *ir.Func, bindings map[string]ir.Expr) bool {
-	for _, p := range fn.Params {
-		if _, ok := bindings[p.Name]; ok && !p.Receiver {
-			return true
-		}
-	}
-	return false
 }
 
 // handleRead reports whether an identifier in the package reads h.

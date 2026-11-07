@@ -93,6 +93,9 @@ type Box__int struct {
 	Value int
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	p     Point
@@ -459,7 +462,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:795af3403e6b2b92343e9e6a2f520ef1
+pass sha256:373229ce263d3d5d963ea27a0068ec10
 -- run/kotlin/android --
 pass sha256:5568c65bb010d8802b8f1b8b3fc60c00
 -- run/none/html --

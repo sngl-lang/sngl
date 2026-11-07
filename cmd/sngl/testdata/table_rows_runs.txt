@@ -124,7 +124,7 @@ func testThePanelHoldsTheTable(t test.Test, c main) {
     t.assert(c.crewTable != null)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:489319e7f1c4c5322b11cef78e492acb
+sha256:e4081f11a6559289383ee03d66bac5de
 {
   "results": [
     {
@@ -138,7 +138,7 @@ sha256:489319e7f1c4c5322b11cef78e492acb
   }
 }
 -- testrun/android/kotlin/panel.sngl/main/1 --
-sha256:92636d0fd06d7880c66eec5395b31e9d
+sha256:e8c03c32a2559664fb5c5edbbb3f9677
 {
   "results": [
     {
@@ -148,7 +148,7 @@ sha256:92636d0fd06d7880c66eec5395b31e9d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:c28081f5dda81306b1a64562f8c1ef4f
+sha256:234c357a5344d7a8fa9f2277aaae3037
 {
   "results": [
     {
@@ -162,7 +162,7 @@ sha256:c28081f5dda81306b1a64562f8c1ef4f
   }
 }
 -- testrun/bubbletea/go/panel.sngl/main/1 --
-sha256:f8df4e4d4a250b9e77df5577a4f0e96a
+sha256:9dd60b3ac82c2e28feedc1ac67ee669a
 {
   "results": [
     {
@@ -172,7 +172,7 @@ sha256:f8df4e4d4a250b9e77df5577a4f0e96a
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:e5dd41e8e72334d89be2554bfcc58238
+sha256:61c43ed8235ef989ab99fe515d5e0b6b
 {
   "results": [
     {
@@ -186,7 +186,7 @@ sha256:e5dd41e8e72334d89be2554bfcc58238
   }
 }
 -- testrun/fyne/go/panel.sngl/main/1 --
-sha256:59bae70a7bfa6f569bf7a59e6a025e50
+sha256:15e5e72a46b28081eb4553d64dc9a4f5
 {
   "results": [
     {
@@ -196,7 +196,7 @@ sha256:59bae70a7bfa6f569bf7a59e6a025e50
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:e8e039563323fd3dca609c1efd437fc0
+sha256:88f5b3afb98b1345c4253a3ed7a8649f
 {
   "results": [
     {
@@ -210,7 +210,7 @@ sha256:e8e039563323fd3dca609c1efd437fc0
   }
 }
 -- testrun/gtk4/go/panel.sngl/main/1 --
-sha256:540c8ffa3bc9a14028e376b582712e00
+sha256:71adc0f5f69983f45a86f416b7b0d72d
 {
   "results": [
     {

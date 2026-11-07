@@ -89,8 +89,13 @@ func (gc *GoIRContext) codecCall(n *ir.Call) (string, bool) {
 	if hook, req := codegen.HTTPHook(n, codegen.HostValue("__snglURL", str)); hook != nil {
 		got := codegen.HostValue("(*__snglA)", ir.MemberPayload(n.Type, "ok"))
 		none := codegen.HostValue(strconv.Quote(codegen.NoAnswer)+" + __snglURL", str)
-		answer = fmt.Sprintf("__snglURL := %s; if __snglH := %s; __snglH != nil { __snglA := (*__snglH)(%s); if __snglA == nil { return %s }; return %s }; ",
-			url, gc.EvalExpr(hook), gc.EvalExpr(req), gc.EvalExpr(codegen.ResultFailed(n.Type, "transport", none)), gc.EvalExpr(codegen.ResultOK(n.Type, got)))
+		// A lifetime already ended answers `cancelled`, as the network does.
+		ended := ""
+		if id := codegen.LifetimeID(n); id != nil {
+			ended = fmt.Sprintf("if snglasync.Ended(%s) { return %s }; ", gc.EvalExpr(id), gc.EvalExpr(codegen.ResultFailed(n.Type, "cancelled", codegen.HostValue(`"cancelled"`, str))))
+		}
+		answer = fmt.Sprintf("__snglURL := %s; if __snglH := %s; __snglH != nil { %s__snglA := (*__snglH)(%s); if __snglA == nil { return %s }; return %s }; ",
+			url, gc.EvalExpr(hook), ended, gc.EvalExpr(req), gc.EvalExpr(codegen.ResultFailed(n.Type, "transport", none)), gc.EvalExpr(codegen.ResultOK(n.Type, got)))
 		url = "__snglURL"
 	}
 	st, ht, bt := codegen.ResponseFieldTypes(n.Type)

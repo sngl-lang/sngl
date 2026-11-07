@@ -5,6 +5,7 @@ import (
 	"maps"
 	"slices"
 	"strconv"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/lower"
@@ -1101,14 +1102,16 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 // iterationID disambiguates a repeated key. Two iterations claiming one
 // identity would collide in the key index and silently drop a node, so the
 // later ones are suffixed. A duplicate key is the author's bug, but losing a
-// node is not the way to report it.
+// node is not the way to report it. A key's own `#`s are doubled, so no
+// suffix spells another iteration's key, as lower's identified does.
 func iterationID(base string, seen map[string]int) string {
+	base = strings.ReplaceAll(base, "#", "##")
 	n := seen[base]
 	seen[base] = n + 1
 	if n == 0 {
 		return base
 	}
-	return fmt.Sprintf("%s~%d", base, n)
+	return fmt.Sprintf("%s#%d", base, n)
 }
 
 // handlersOf collects a node's declared events in declaration order.

@@ -819,8 +819,11 @@ named for the act, since `click` is the element's event a test raises by
 that name. `componentNamed` finds the wildcard `html.button` resolves to, so
 the handle is typed as one; it was invalid, so `b.click()` checked as nothing
 and was emitted `b()`. A read is spelled as the element's `$N`
-(`ExprCtx.NodeVar`), and an element whose handle is read is written with an
-id to bind it by, a listener or no (`readHandles`). One built at run time is
+(`ExprCtx.NodeVar`), found by the handle's symbol (`handleVar`) and only for
+an element written into the page's markup: by name, a second splice's method
+pressed the first splice's button, and a component built at run time pressed
+the page's element of its handle's name. An element whose handle is read is
+written with an id to bind it by, a listener or no (`readHandles`). One built at run time is
 a local of the function building it, named for the handle, which a read
 beside it spells; a trigger html writes on the page reads it from outside, and
 finds it by `data-sngl-id` as the invokers do

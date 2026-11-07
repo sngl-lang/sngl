@@ -73,6 +73,9 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	shown               bool
@@ -308,4 +311,4 @@ func (m *Model) calPresent() bool {
 	return m.cal != nil
 }
 -- run/go/gtk4 --
-pass sha256:0d2c1305949e137095ece127e2c34397
+pass sha256:be4d8d5e0faa6c88a94f6abb7d483572

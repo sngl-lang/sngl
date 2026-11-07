@@ -92,7 +92,7 @@ window {
     form()
 }
 -- testrun/gtk4/go/app.sngl/form/1 --
-sha256:797e0c33b4205ebb81c041bcd3017919
+sha256:94f28d5ff03e3542561c5e7ac0372752
 {
   "results": [
     {

@@ -29,7 +29,7 @@ func testFormatFolds(t test.Test) {
     t.assert(langs("ja").format(",") == "ja,ja-hrkt,en" && langs("pt").format(",") == "en")
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:530f5a4c99a6a5acab167a20d9ebdc96
+sha256:d803e3a76606ceb60cc5b3243de00deb
 {
   "results": [
     {

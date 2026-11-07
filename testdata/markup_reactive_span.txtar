@@ -74,6 +74,9 @@ import (
 	"os"
 )
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	loud           bool
@@ -248,6 +251,9 @@ func main() {
 package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
+
+type Test struct {
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -477,8 +483,8 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:b5ce77b728535816fb80ee2d02318921
+pass sha256:1a8da2581f3355e85a5c4da8982ec75e
 -- run/go/gtk4 --
-pass sha256:f231655132b3d1f933fe1296454c3013
+pass sha256:ff535d376ba2125cd4ac33515d1adb65
 -- run/none/html --
 pass sha256:c7cfab655e9f2a36df0882c9a8a9fc55

@@ -35,6 +35,8 @@ type instance struct {
 }
 
 type monomorph struct {
+	// pkg is the build's copy of the package, which notes PastInstances.
+	pkg *ir.Package
 	// lib is where a library generic copy says to copy is declared, nil where
 	// a library's are left alone.
 	lib       *[]*ir.Func
@@ -72,7 +74,7 @@ var passMonomorphizeCodecs = pass{
 	apply: func(pkg *ir.Package, c Features, _ Options) error {
 		var reach ir.CodecReach
 		monomorphizeFuncs(pkg, func(fn *ir.Func) bool {
-			return (!c.GenericFuncs && !fn.Lowered.PastInstances) || len(reach.GenericCodecs(fn)) > 0
+			return (!c.GenericFuncs && !pkg.PastInstances[fn]) || len(reach.GenericCodecs(fn)) > 0
 		}, false)
 		if !c.GenericFuncs && pkg != nil {
 			names := declNames(pkg)
@@ -118,6 +120,7 @@ func monomorphizeFuncs(pkg *ir.Package, copy func(*ir.Func) bool, types bool) {
 		return
 	}
 	m := &monomorph{
+		pkg:       pkg,
 		copy:      copy,
 		slot:      map[*ir.Func]*[]*ir.Func{},
 		instances: map[*ir.Func][]instance{},
@@ -296,7 +299,10 @@ func (m *monomorph) instance(fn *ir.Func, b map[string]*ir.Type) *ir.Func {
 	}
 	if len(m.instances[fn]) >= maxInstances {
 		m.kept[fn] = true
-		fn.Lowered.PastInstances = true
+		if m.pkg.PastInstances == nil {
+			m.pkg.PastInstances = map[*ir.Func]bool{}
+		}
+		m.pkg.PastInstances[fn] = true
 		return nil
 	}
 	inst := ir.InstantiateFunc(fn, b)

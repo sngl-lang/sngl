@@ -109,7 +109,7 @@ fun __identified0(__xs: List<Int>): List<__anon_id_elem_cdfd47> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_cdfd47>()
     for (__x in __xs) {
-    	var __id = __x.toString()
+    	var __id = __x.toString().replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -239,4 +239,4 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/kotlin/android --
-pass sha256:3ee0d77cbf8d9e169144caff20c5674a
+pass sha256:1ed9f66e7aa3f27a452e7e2546ee69b2

@@ -90,6 +90,9 @@ type About struct {
 	Habitat *Place
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	asked               []string
@@ -543,7 +546,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:ffb1e7e688c2eb8d8c9b738581f87dc1
+pass sha256:018dc1faf58534e3e6822e619e97aa72
 -- run/kotlin/android --
 pass sha256:82d8064a0443483e566e34a9fad6074f
 -- run/none/html --

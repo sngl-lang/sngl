@@ -75,7 +75,7 @@ sha256:d5b628e320a4d402d86f97f765426458
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:27cb598eb0d2cef7f9082cea0b8932c2
+sha256:2534720f80b108b2a234e733dcea630a
 {
   "results": [
     {
@@ -85,7 +85,7 @@ sha256:27cb598eb0d2cef7f9082cea0b8932c2
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:5a9f1ccb4a2f672c99155ab0b5b6c035
+sha256:480e163bbfd34f1434250369ee4b4c72
 {
   "results": [
     {
@@ -95,7 +95,7 @@ sha256:5a9f1ccb4a2f672c99155ab0b5b6c035
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:cfd77661e1f401bcdee750c0779d9f97
+sha256:b8e1bbf8992bbb05f1013082c21e2bf8
 {
   "results": [
     {

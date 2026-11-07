@@ -2,6 +2,7 @@ package checker
 
 import (
 	"errors"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -85,7 +86,10 @@ func (c *checker) memberOf(decl any, name string) (*ir.Func, bool) {
 // every check reading the declaration's package shares -- except an override's
 // helper, which belongs to that override's own copy of the table.
 func (c *checker) attachMethod(name string, fn *ir.Func) error {
-	sym, found := c.scope.Lookup(name)
+	sym, found := c.lookupReceiver(name)
+	if !found && fn.Receiver != nil {
+		sym, found = fn.Receiver.Decl.(ir.Symbol)
+	}
 	if ov := c.installedOverride; found && ov != nil && (sym == c.overriddenBase || sym == ov) {
 		if prev, ok := ov.Methods[fn.Name]; ok {
 			if prev != fn {
@@ -131,7 +135,11 @@ func (c *checker) declareMethod(pos ast.Pos, fn *ir.Func) *ir.Func {
 	// table is found on -- in this scope, which a body-local type's method
 	// is attached in.
 	name := fn.RecvName()
-	fn.Receiver = c.receiverType(name)
+	// One buildFunc resolved through an import, `http.Response`, is named
+	// by its bare declaration, which this scope does not bind.
+	if r := fn.Receiver; r == nil || r.Decl == nil || r.Kind == ir.TypeInvalid {
+		fn.Receiver = c.receiverType(name)
+	}
 	// An alias's method is held by the declaration it names.
 	if sym, ok := c.scope.Lookup(name); ok {
 		if a, isAlias := sym.(*ir.Alias); isAlias {
@@ -307,8 +315,26 @@ type typeParamKey struct {
 // declaration name resolves to here. A name that resolves to nothing, or to
 // something that is no type, keeps a stand-in for its name, and attaching
 // reports it.
+// lookupReceiver is the declaration a method's receiver names: a name in
+// scope, or another package's through its import, `http.Response`.
+func (c *checker) lookupReceiver(name string) (ir.Symbol, bool) {
+	ns, member, qualified := strings.Cut(name, ".")
+	if !qualified {
+		return c.scope.Lookup(name)
+	}
+	sym, ok := c.scope.Lookup(ns)
+	if !ok {
+		return nil, false
+	}
+	n, isNS := sym.(*ir.Namespace)
+	if !isNS || n.Pkg == nil || n.Pkg.Symbols == nil {
+		return nil, false
+	}
+	return n.Pkg.Symbols.LookupMember(member)
+}
+
 func (c *checker) receiverType(name string) *ir.Type {
-	sym, ok := c.scope.Lookup(name)
+	sym, ok := c.lookupReceiver(name)
 	if !ok {
 		return ir.ReceiverNamed(name)
 	}

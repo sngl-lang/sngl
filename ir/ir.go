@@ -216,6 +216,13 @@ type Package struct {
 	// the record where it draws something (lower.NameRecordPresses).
 	RecordPicks map[*Call]*RecordPick `json:"-"`
 
+	// PastInstances are the generics passMonomorphize made as many copies of
+	// as it makes of one, a polymorphic recursion, and kept the original of
+	// for every binding past them, which no later copying may grow again.
+	// Kept here rather than on the function, which may be the library's,
+	// shared by every build and frozen.
+	PastInstances map[*Func]bool `json:"-"`
+
 	// Run is the build's function for the target's `@run` handler: it takes
 	// the command line and the host's `run`, and the host's own entry point
 	// calls it before anything the program renders exists. Nil where the
@@ -861,10 +868,10 @@ func (p *NodeProtocol) Op(op ProtocolOp) *Func {
 // either. A value rather than a pointer, so a Func copied to give it a
 // receiver carries its own.
 type FuncLowering struct {
-	// PastInstances says passMonomorphize made as many copies of this generic
-	// as it makes of one, a polymorphic recursion, and kept the original for
-	// every binding past them, which no later copying may grow again.
-	PastInstances bool
+	// CopyOf is the trigger a splice copied this one from, onto the owner it
+	// landed in: a test's call of the trigger follows the copies down to the
+	// one the build keeps, through splices that recorded none.
+	CopyOf *Func
 	// SlotRender says this is a reactive slot's __renderSlot<N>: a body of
 	// node operations that renders into the `parent` its one parameter names.
 	// Synthesized does not answer that -- an effect's settle halves and the

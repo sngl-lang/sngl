@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
 )
 
@@ -122,7 +123,7 @@ func StringToNumberHelper(n *ir.Conversion) string {
 // the model's, and import what they use.
 func HelpersNeeded(pkg *ir.Package) HelperSet {
 	h := helpersNeeded(pkg)
-	if pkg == nil || !slices.ContainsFunc(pkg.Funcs, func(f *ir.Func) bool { return f.IsTest }) {
+	if !codegen.BuildsTests(pkg) {
 		return h
 	}
 	app := *pkg

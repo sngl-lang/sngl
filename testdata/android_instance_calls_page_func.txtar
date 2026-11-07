@@ -96,6 +96,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -1068,7 +1071,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:19a99f948332ffea18d04bc767f7a940
+pass sha256:fdca19f9207370d892f14dd2a853c900
 -- run/kotlin/android --
 pass sha256:6d3ea9a3859bf99a909c779eb5244533
 -- run/none/html --

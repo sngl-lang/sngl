@@ -126,6 +126,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -309,7 +310,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1070,6 +1071,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"os"
 	"slices"
+	"strings"
 )
 
 type Item struct {
@@ -1147,7 +1149,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1442,6 +1444,7 @@ import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 	"slices"
+	"strings"
 )
 
 type Item struct {
@@ -1519,7 +1522,7 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_cdfd47{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1918,7 +1921,7 @@ fun __identified0(__xs: List<Int>): List<__anon_id_elem_cdfd47> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_cdfd47>()
     for (__x in __xs) {
-    	var __id = __x.toString()
+    	var __id = __x.toString().replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -2116,7 +2119,7 @@ body { font-family: system-ui, sans-serif; }
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = String(__x);
+      let __id = String(__x).replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -2266,12 +2269,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ab52263eba470f91fe8bb9be98c3a8f3
+pass sha256:2d9943664894d59597855d66b25669e6
 -- run/go/fyne --
-pass sha256:ea3f5fbf75973cadda1685811652466b
+pass sha256:84cd231f5f5ccf64f6103a303866085e
 -- run/go/gtk4 --
-pass sha256:0c74f8c88acfef1294c6c49b6ad72d06
+pass sha256:e142810aacc4bc52faa97930dafedd54
 -- run/kotlin/android --
-pass sha256:7ae453c3c148546223d8f9a1e0bfa99d
+pass sha256:4a50ab40ead2aa32828dbabb1800059e
 -- run/none/html --
-pass sha256:116b98e9cfdb7be6fdc1aef81fc2a842
+pass sha256:d9cd27afb19971aeb311db49aa5a2c32

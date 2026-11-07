@@ -16,16 +16,6 @@ import (
 
 // CallMethod dispatches method calls on the Test value.
 func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (any, error) {
-	// Setting a context sets up what the mount reads, and an assertion
-	// reads what its argument read; anything else the test asks of time or
-	// the tree needs it mounted.
-	switch method {
-	case "setContext", "setLocale", "assert", "must":
-	default:
-		if tv.comp != nil {
-			tv.comp.mount()
-		}
-	}
 	switch method {
 	case "assert":
 		if len(args) != 1 {

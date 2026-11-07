@@ -1,6 +1,7 @@
 package interp
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"reflect"
@@ -3170,7 +3171,13 @@ func Equal(a, b any) (eq, ok bool) {
 	}
 	if af, isNum := numberOf(a); isNum {
 		bf, isNum := numberOf(b)
-		return af == bf, isNum
+		if !isNum {
+			return false, false
+		}
+		if c, ints := sameIntegers(a, b); ints {
+			return c == 0, true
+		}
+		return af == bf, true
 	}
 	switch a.(type) {
 	case string, bool:
@@ -3255,12 +3262,17 @@ func orderable(a, b any) error {
 
 // compareOrdered orders two values `<` may compare: numbers and units by
 // magnitude, strings byte by byte as Go and the constant folder do. Read as
-// numbers, every string was 0 and none came before another.
+// numbers, every string was 0 and none came before another. Two ints compare
+// as ints: through float64, 2^53 and 2^53+1 were equal, where every target
+// orders them.
 func compareOrdered(a, b any) int {
 	if sa, ok := a.(string); ok {
 		if sb, ok := b.(string); ok {
 			return strings.Compare(sa, sb)
 		}
+	}
+	if c, ints := sameIntegers(a, b); ints {
+		return c
 	}
 	fa, fb := toFloat(a), toFloat(b)
 	if fa < fb {
@@ -3270,6 +3282,22 @@ func compareOrdered(a, b any) int {
 		return 1
 	}
 	return 0
+}
+
+// sameIntegers orders a and b where both are integers of one width, and says
+// whether they are: a float64 holds no int past 2^53 exactly.
+func sameIntegers(a, b any) (int, bool) {
+	switch x := a.(type) {
+	case int:
+		if y, ok := b.(int); ok {
+			return cmp.Compare(x, y), true
+		}
+	case uint64:
+		if y, ok := b.(uint64); ok {
+			return cmp.Compare(x, y), true
+		}
+	}
+	return 0, false
 }
 
 func runtimeTypeName(v any) string {

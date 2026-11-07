@@ -147,7 +147,7 @@ fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_c6a818>()
     for (__x in __xs) {
-    	var __id = __x
+    	var __id = __x.replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -335,4 +335,4 @@ class MainScreenTest {
 
 }
 -- run/kotlin/android --
-pass sha256:d1f7af941b11e8e89c804be94689b938
+pass sha256:d678036535221a9e031f337fda31c6fc

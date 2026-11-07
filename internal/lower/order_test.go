@@ -277,6 +277,9 @@ var soleGate = map[string][]string{
 
 	"StringBuilders": {"StringBuilders"},
 	"UnreadLocals":   {"UnreadLocals"},
+	// Read inside passNoInlineComponents, where a test's trigger that
+	// reaches no override is refused or kept.
+	"ValueTriggers": nil,
 
 	// The pass and the field are named for opposite sides of the same fact:
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the

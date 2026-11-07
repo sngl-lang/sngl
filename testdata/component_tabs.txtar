@@ -85,6 +85,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -665,6 +668,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	idx     int
@@ -814,6 +820,9 @@ type Tab__record struct {
 	Label    string
 	Disabled bool
 	__id     int
+}
+
+type Test struct {
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -1683,11 +1692,11 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:fd4547fc420b44a5744b6e10cd7f72ea
+pass sha256:5e1c98dc9a77c5c45ec92ddfdb06648f
 -- run/go/fyne --
-pass sha256:7a508df5e73f11912af2b989198f3a71
+pass sha256:fcc32173caaad7df71c8ad1f754d2bd9
 -- run/go/gtk4 --
-pass sha256:959968db683e0b46f3d56ac34b2aebda
+pass sha256:062dc729f7c3b52da738836cbc01365f
 -- run/kotlin/android --
 pass sha256:7dbae4deeee32d2ad9dbc994085a6a66
 -- run/none/html --

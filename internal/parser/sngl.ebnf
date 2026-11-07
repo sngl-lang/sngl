@@ -379,9 +379,10 @@ FuncBodyTail =
 # last `dot` is the receiver's parameters, one after the last name is the
 # function's own parameters and then the target it overrides.
 #
-# A receiver's list restates the receiver's names and no constraints, as Go's
-# does, while a function's own list names one for each. A target is a name or
-# a qualified one. So all three open `lbracket ident`, and the token after
+# A receiver's list restates the receiver's names, as Go's does, or names a
+# constraint for each, which narrows one its declaration leaves `any` and
+# restates any other; a function's own list names one for each. A target is a
+# name or a qualified one. So all three open `lbracket ident`, and the token after
 # that ident decides: `comma` is a receiver's list, a Type is the function's
 # own, `dot` is a qualified target, and `rbracket` is a bare target or a
 # receiver's single name -- a `dot` after the bracket says which. Neither

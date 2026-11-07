@@ -82,6 +82,9 @@ func snglSome[T any](v T) *T {
 	return &v
 }
 
+type Test struct {
+}
+
 type __anon_base_width_pad_d16e3f struct {
 	Base  int
 	Width int
@@ -822,7 +825,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:5a51687bba9be4d670512a0f5ec2ed28
+pass sha256:de56efe038f56d1868bc4be319628839
 -- run/kotlin/android --
 pass sha256:9422efdfc57305b33e7cd1a47eb94e20
 -- run/none/html --

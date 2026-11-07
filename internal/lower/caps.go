@@ -165,6 +165,15 @@ type Features struct {
 	// JavaScript and Kotlin do. Withheld, passUnreadLocals makes such a
 	// local the call it was bound to, or drops it: Go refuses one.
 	UnreadLocals bool
+	// ValueTriggers says a test build raises an event the target overrides
+	// with the value the test hands it, wherever the trigger does not reach
+	// the override: android's semantics action writes a typed select's value
+	// out as the text its control chooses by. Withheld, such a trigger is
+	// refused (restoreUnreachedTriggers), since the invoker it would fall
+	// back to takes what the control takes, a label, and the test did not
+	// compile or chose nothing. Held, one through a copy a loop renders is
+	// refused still: android's raise of it chose nothing.
+	ValueTriggers bool
 
 	// The six below are requests rather than capabilities, which is the split
 	// `sngl:x/gen` spells as `#[gen.wants]`: each asks for a pass the target
@@ -252,6 +261,7 @@ func NoLowering() Features {
 		OptionMatch:       true,
 		StringBuilders:    true,
 		UnreadLocals:      true,
+		ValueTriggers:     true,
 	}
 }
 
@@ -313,6 +323,7 @@ func (f Features) String() string {
 		{"OptionMatch", f.OptionMatch},
 		{"StringBuilders", f.StringBuilders},
 		{"UnreadLocals", f.UnreadLocals},
+		{"ValueTriggers", f.ValueTriggers},
 		{"StructComponents", f.StructComponents},
 		{"StdlibContextParam", f.StdlibContextParam},
 		{"FocusOrder", f.FocusOrder},

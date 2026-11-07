@@ -486,21 +486,33 @@ func (c *checker) inheritReceiverConstraints(recv *ir.Type, written []ast.TypePa
 	}
 	for i, p := range written {
 		con := constraint(i).Substitute(renamed)
+		sym := c.typeParamSym(p.Name, p.Pos)
 		if p.Constraint != nil {
 			// A constraint written narrows one that says nothing, and
 			// resolveTypeParams gives it; narrowing one that says something
-			// would ask for both, which no constraint spells.
+			// would ask for both, which no constraint spells. `any`, or the
+			// declaration's own, leaves the parameter as it is: a list
+			// narrowing one parameter writes one for each.
 			if con == nil || con.Kind == ir.TypeAny {
 				continue
 			}
-			c.error(p.Pos, "%s's %s is already constrained by its declaration, to %s; a method narrows only a parameter constrained to any", recv.Decl.SymName(), p.Name, con)
-		}
-		if con != nil {
-			if sym := c.typeParamSym(p.Name, p.Pos); sym.Constraint == nil {
-				sym.Constraint = con
+			if !writesAny(p.Constraint) && !c.resolveConstraint(p.Constraint, sym.SymType()).Equal(con) {
+				c.error(p.Pos, "%s's %s is already constrained by its declaration, to %s; a method narrows only a parameter constrained to any", recv.Decl.SymName(), p.Name, con)
+				continue
 			}
+			sym.Constraint = con
+			continue
+		}
+		if con != nil && sym.Constraint == nil {
+			sym.Constraint = con
 		}
 	}
+}
+
+// writesAny reports whether a constraint is written `any`.
+func writesAny(t ast.TypeExpr) bool {
+	n, ok := t.(*ast.NamedType)
+	return ok && n.Name == "any" && n.Package == "" && len(n.TypeArgs) == 0
 }
 
 // typeParamShells records the names before any other declaration exists. A

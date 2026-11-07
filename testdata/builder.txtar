@@ -98,6 +98,9 @@ type Page struct {
 	Body  []byte
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	shown string
@@ -451,7 +454,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:02b6e5aacb9354387dc61f4ad1502ea7
+pass sha256:33a9984013154cf65fa33aef44833b5b
 -- run/kotlin/android --
 pass sha256:04dea1d69c1526d7e358b46a177ba164
 -- run/none/html --

@@ -68,6 +68,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -422,6 +425,9 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
+
+type Test struct {
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -936,9 +942,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e72ec2477438d3df9b44e1508406f5de
+pass sha256:df0554004762a632a4ff1821cb74ebd6
 -- run/go/fyne --
-pass sha256:80d049c847a1dc864fbf1e2b2ab2ca24
+pass sha256:ecce21b67c3507190315597fb413800f
 -- run/kotlin/android --
 pass sha256:bf144d9c09496c8f6f626dc3f5410325
 -- run/none/html --

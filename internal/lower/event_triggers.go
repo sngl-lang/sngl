@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"fmt"
+
 	"duckfam.us/sngl/ir"
 )
 
@@ -73,4 +75,30 @@ func rewriteEventTrigger(call *ir.Call, opts Options) {
 		}
 	}
 	call.Func, call.Args, call.Event, call.Receiver = trig, args, "", nil
+}
+
+// verifyTriggersReached refuses a test's call of a trigger that hands it
+// fewer arguments than it takes: a copy a loop's body was spliced into once
+// per element takes the loop's variables, which a test's `c.pick[1]` does
+// not say, and bubbletea's build did not compile. An assertion at the end of
+// Lower, as verifyMutationsAreStatements is.
+func verifyTriggersReached(pkg *ir.Package) error {
+	var bad error
+	for _, fn := range pkg.Funcs {
+		if fn == nil || !fn.IsTest {
+			continue
+		}
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			c, ok := n.(*ir.Call)
+			if !ok || c.Func == nil || c.Func.Trigger == "" || len(c.Args) >= len(c.Func.Params) {
+				return nil
+			}
+			bad = fmt.Errorf("%s: %s", exprPos(c), unreachedTrigger(c.Func.Trigger))
+			return ir.SkipAll
+		})
+		if bad != nil {
+			return bad
+		}
+	}
+	return nil
 }

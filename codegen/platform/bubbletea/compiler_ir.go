@@ -320,7 +320,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
 		gc:             gc,
-		tests:          slices.ContainsFunc(ctx.Pkg.Funcs, func(f *ir.Func) bool { return f != nil && f.IsTest }),
+		tests:          codegen.BuildsTests(ctx.Pkg),
 	}
 	pkg := ctx.Pkg
 	screen, err := codegen.SoleScreen(viewStmts(ctx), "bubbletea:Screen", "bubbletea", screenPos)

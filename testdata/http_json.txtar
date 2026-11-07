@@ -1199,7 +1199,9 @@ class SnglCodec<T>(val kind: Int) {
                         if (k != null) hs[k.lowercase()] = vs.joinToString(", ")
                     }
                     conn.disconnect()
-                    if (ended(life)) cancelled() else Response(status, hs, text, false, false, "")
+                    // A response that arrived is the answer, whenever the
+                    // lifetime ended: a failure is only where none did.
+                    Response(status, hs, text, false, false, "")
                 } catch (e: SocketTimeoutException) {
                     if (ended(life)) cancelled() else Response(0, emptyMap(), "", true, true, e.toString())
                 } catch (e: Exception) {
@@ -1662,6 +1664,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:4e647ae627ca47089e53b52582210ae2
 -- run/kotlin/android --
-pass sha256:1067ae5093a1450d7db0c3d879263a3c
+pass sha256:5969ed96d847ffdf182dbef5284cceec
 -- run/none/html --
 pass sha256:facbee83df944c125f52097e4326b054

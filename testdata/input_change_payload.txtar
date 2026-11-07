@@ -65,7 +65,11 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
+
+type Test struct {
+}
 
 type __anon_id_elem_c6a818 struct {
 	Id   string
@@ -130,7 +134,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -407,11 +411,15 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
 
 type ErrorEvent struct {
 	Message string
 	Kind    string
+}
+
+type Test struct {
 }
 
 type __anon_id_elem_c6a818 struct {
@@ -506,7 +514,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -943,6 +951,6 @@ func (m *Model) entry__1Change(v string) {
 	gtk4rt.Emit(m.__named_entry__1, "activate")
 }
 -- run/go/fyne --
-pass sha256:2ebbd3f1951351f45673b1d1f7f7ae4d
+pass sha256:3bfd0816bc63ad6a67eec7f23bacd4f3
 -- run/go/gtk4 --
-pass sha256:1566136e7290b8085b5b7adcb00887f0
+pass sha256:2cfb3366bec3d653c97066b2268b6589

@@ -110,6 +110,9 @@ type Point struct {
 	First int
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -589,6 +592,9 @@ type Point struct {
 	First int
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	more      []int
@@ -767,6 +773,9 @@ import (
 
 type Point struct {
 	First int
+}
+
+type Test struct {
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -1227,11 +1236,11 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9eb9648a3e6a1dfe9b2ce166d511c41a
+pass sha256:6c164929a3a6fe862d958157f95543a1
 -- run/go/fyne --
-pass sha256:80713d7c86b62a4303b46204e1fe3730
+pass sha256:b0fe26bd84bb3588e8ef84f70d367fd0
 -- run/go/gtk4 --
-pass sha256:aa43be5f0459307c98d353aaf36880c7
+pass sha256:4c8ffbc1c80ef2fef32a0bcf12200c04
 -- run/kotlin/android --
 pass sha256:6dbabfa4ab21ab75ad33ada86e7754e3
 -- run/none/html --

@@ -1,0 +1,101 @@
+# A generic struct's literal takes the type arguments its fields say, on every
+# target: `pair{k=1, v=3}` is a pair[int, int], as a generic function's
+# arguments bind its own. It was a bare `pair`, so assigning it to a
+# `pair[int, string]` was refused and a method taking its V, `larger(other=5)`,
+# bound nothing: "cannot pass int as V".
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct pair[K any, V any] {
+    k K
+    v V
+}
+
+func pair[K any, V ordered].larger(this pair[K, V], other V) V {
+    return this.v < other ? other : this.v
+}
+
+component page ui.node {
+    ui.text("page")
+}
+
+func testALiteralBindsItsArguments(t test.Test, c page) {
+    var p = pair{k=1, v=3}
+    t.assert(p.larger(other=5) == 5)
+    var q pair[string, string] = pair{k="a", v="b"}
+    t.assert(q.v == "b")
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:885023ed53b83bce5a6df3f6b539ee45
+{
+  "results": [
+    {
+      "Desc": "ALiteralBindsItsArguments",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:f6b1c2b344d2c94e68de378936abfb28
+{
+  "results": [
+    {
+      "Desc": "ALiteralBindsItsArguments",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:80cc46b6e6d463730c96ddc11ac3686b
+{
+  "results": [
+    {
+      "Desc": "ALiteralBindsItsArguments",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:344e35b110f3b4281587e6649168465a
+{
+  "results": [
+    {
+      "Desc": "ALiteralBindsItsArguments",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:5caea18ebb05bc09f372d2de0c0c7a57
+{
+  "results": [
+    {
+      "Desc": "ALiteralBindsItsArguments",
+      "Passed": true
+    }
+  ]
+}

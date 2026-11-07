@@ -30,7 +30,7 @@ component knob(@turn(by int)) ui.node {
     ui.vbox {}
 }
 
-func knob.turn[none.platform](by) { // ERROR(check) "override \"knob.turn\" of an event is a method of the override of knob for \"none\", and there is none"
+func knob.turn[none.platform](by) { // ERROR(check) "override \"knob.turn\" of an event is a method of an override of knob for \"none\" written beside it, and this package writes none"
 }
 
 ui.window {

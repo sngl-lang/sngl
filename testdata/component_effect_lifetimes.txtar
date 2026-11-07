@@ -181,6 +181,9 @@ type Pair struct {
 	B string
 }
 
+type Test struct {
+}
+
 type __anon_id_elem_c6a818 struct {
 	Id   string
 	Elem string
@@ -449,7 +452,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1689,6 +1692,9 @@ type Pair struct {
 	B string
 }
 
+type Test struct {
+}
+
 type __anon_id_elem_c6a818 struct {
 	Id   string
 	Elem string
@@ -1888,7 +1894,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -2719,6 +2725,9 @@ type Pair struct {
 	B string
 }
 
+type Test struct {
+}
+
 type __anon_id_elem_c6a818 struct {
 	Id   string
 	Elem string
@@ -2918,7 +2927,7 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_c6a818{}
 	for _, __x := range __xs {
-		__id := __x
+		__id := strings.ReplaceAll(__x, "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -3815,7 +3824,7 @@ fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_c6a818>()
     for (__x in __xs) {
-    	var __id = __x
+    	var __id = __x.replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -4001,7 +4010,7 @@ window.__sngl_boot = () => {
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = __x;
+      let __id = __x.replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -4478,15 +4487,15 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ee996d778bf67aee6b9168fbad9de164
+pass sha256:4a2c29f8301ed0215ece9a861968ce2b
 -- run/go/fyne --
-pass sha256:88f53a3619ad0f5054425450d77227c4
+pass sha256:49d059845d57a48a21677476915e7e9c
 -- run/go/gtk4 --
-pass sha256:e2613250c2a54f665aae60f0713d7b0a
+pass sha256:b636ecbbd801d76e504ee57e5197f24e
 -- run/kotlin/android --
-pass sha256:cb291613531727abbee423358f3b8271
+pass sha256:f0d50dd9083976a1902b9fb0059e2a8d
 -- run/none/html --
-pass sha256:9b99a877056da2516942c67a176bb575
+pass sha256:e09ec06079f8e6866b988692dca53a1e
 -- testrun/html/none/component_effect_lifetimes.sngl/branch/1 --
 sha256:0533c3b1c4213fac875b26910acc67d4
 {
@@ -4512,7 +4521,7 @@ sha256:e603ddf762c598fb887bb751f6b1ba35
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/perElement/1 --
-sha256:f5a291d17b2f17573b4ac0c024a64e9b
+sha256:629a5e33aba0d58cfb6adb1a08711b6b
 {
   "results": [
     {

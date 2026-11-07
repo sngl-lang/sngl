@@ -55,7 +55,7 @@ func testPresentInAPanel(t test.Test, c panes) {
     t.assert(c.mark[2] != null && c.mark[2].value == "c")
 }
 -- testrun/android/kotlin/app.sngl/panes/1 --
-sha256:a6463ddb2fa3c313eea7a756c9ead1c7
+sha256:5f914764c72d46518ad832e474e0648f
 {
   "results": [
     {
@@ -65,7 +65,7 @@ sha256:a6463ddb2fa3c313eea7a756c9ead1c7
   ]
 }
 -- testrun/bubbletea/go/app.sngl/panes/1 --
-sha256:910ea5c3c68a6fcbcd6057035c08173b
+sha256:442d8175955c70247c42d03fcc0bcfd0
 {
   "results": [
     {
@@ -75,7 +75,7 @@ sha256:910ea5c3c68a6fcbcd6057035c08173b
   ]
 }
 -- testrun/fyne/go/app.sngl/panes/1 --
-sha256:414e2e23ce46033b8e7de1d43022cb44
+sha256:1d953cb4d966b15e7df609198d71ad8b
 {
   "results": [
     {
@@ -85,7 +85,7 @@ sha256:414e2e23ce46033b8e7de1d43022cb44
   ]
 }
 -- testrun/gtk4/go/app.sngl/panes/1 --
-sha256:5d7b7e9a73c6e424e15e1e45b84ae136
+sha256:9d5069acdd7de975b74aa96e9ed9482e
 {
   "results": [
     {
@@ -95,7 +95,7 @@ sha256:5d7b7e9a73c6e424e15e1e45b84ae136
   ]
 }
 -- testrun/html/none/app.sngl/panes/1 --
-sha256:af2e5ca28fce455edd304bf4070ca0c1
+sha256:9726b8214f1c1666f8695e2cadf5680d
 {
   "results": [
     {

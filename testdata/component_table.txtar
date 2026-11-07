@@ -66,6 +66,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type TableRow__record struct {
 	Cells []string
 }
@@ -486,6 +489,9 @@ import (
 	"os"
 )
 
+type Test struct {
+}
+
 type TableRow__record struct {
 	Cells []string
 }
@@ -608,6 +614,9 @@ func main() {
 package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
+
+type Test struct {
+}
 
 type TableRow__record struct {
 	Cells []string
@@ -966,7 +975,7 @@ fun __identified1(__xs: List<String>): List<__anon_id_elem_c6a818> {
     var __seen = mapOf<String, Int>()
     var __out = mutableListOf<__anon_id_elem_c6a818>()
     for (__x in __xs) {
-    	var __id = __x
+    	var __id = __x.replace("#", "##")
     	var __n = __seen.getOrDefault(__id, 0)
     	__seen = __seen + (__id to (__n + 1))
     	if ((__n > 0)) {
@@ -1075,13 +1084,13 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0ace99bd66454c5334e881d11d775456
+pass sha256:d2be0bc640eae0560d596e6a92897ff0
 -- run/go/fyne --
-pass sha256:b576f7c52fc6649d5ebd5200963eb69f
+pass sha256:b53d42ebc05e54d244e10ff88239ff71
 -- run/go/gtk4 --
-pass sha256:46f0176cd530fff49f387efc7ef71058
+pass sha256:0cd8395bcdd0196e05c2bc4aceddc42c
 -- run/kotlin/android --
-pass sha256:d8fd7921b1483f083a7d26888892be92
+pass sha256:6f0c6b92e9db9093c588d597be6a4660
 -- run/none/html --
 pass sha256:73768087c6c6406002f0a763fec4f5bc
 -- testrun/html/none/component_table.sngl/main/1 --

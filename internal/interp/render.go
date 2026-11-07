@@ -58,12 +58,25 @@ func (env *Env) ResolveElementRef(id string) (any, error) {
 // where the cell starts. So it is bound on the first mount, from the argument,
 // the default or the type's zero, and skipped on every mount after -- where
 // rebinding it would put back what the call site wrote over what the user did.
+// boundType is t with comp's type parameters as inst bound them: a select's
+// `:value T` holding ints starts from 0.
+func boundType(t *ir.Type, comp *ir.Component, inst *ir.NodeInst) *ir.Type {
+	if len(comp.TypeParams) == 0 || len(inst.TypeArgs) != len(comp.TypeParams) {
+		return t
+	}
+	bindings := make(map[string]*ir.Type, len(comp.TypeParams))
+	for i, tp := range comp.TypeParams {
+		bindings[tp.Name] = inst.TypeArgs[i]
+	}
+	return t.Substitute(bindings)
+}
+
 func bindProps(caller, child *Env, comp *ir.Component, inst *ir.NodeInst, first bool) {
 	cells := map[string]bool{}
 	for _, p := range ir.UnboundProps(comp, inst.Bindings) {
 		cells[p.Name] = true
 		if first && p.Default == nil && p.Sym != nil {
-			if z := ir.ZeroExpr(p.Type); z != nil {
+			if z := ir.ZeroExpr(boundType(p.Type, comp, inst)); z != nil {
 				child.Set(p.Sym, evalInit(child, z))
 			}
 		}

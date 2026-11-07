@@ -1,0 +1,205 @@
+# A lambda's parameter named like a prop of the component it is written in
+# is the lambda's, on every target. picker's handler writes its two-way
+# `value` and then maps a list with `func(value string)`: PropBindings read
+# the parameter as the value just written, matching the prop by name
+# (`propRef`). adder's method maps with `func(n int)` beside its prop `n`:
+# the splice substituted the call site's `n` for the parameter
+# (`substituteParams`, `innerParams`).
+
+sngl test --platform=none picker.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html picker.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go picker.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go picker.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go picker.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin picker.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=none adder.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html adder.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go adder.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go adder.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go adder.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin adder.sngl
+stdout '1 tests, 0 failures'
+-- picker.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component picker(:value string = "", @change(v string)) ui.node {
+    var taps = 0
+
+    ui.button #pick(text="pick", @click {
+        taps += 1
+        value = "b"
+        var xs list[string] = ["x"]
+        change(xs.map(func(value string) => value + "!")[0])
+    })
+}
+
+component page ui.node {
+    var chosen = "a"
+    var heard = ""
+    var on = true
+
+    if on {
+        picker #p(:value=chosen, @change(v) { heard = v })
+    }
+}
+
+func testTheLambdaReadsItsOwnParam(t test.Test, c page) {
+    var p = c.p
+    if p != null {
+        p.pick.click()
+    }
+    t.assert(c.chosen == "b")
+    t.assert(c.heard == "x!")
+}
+
+ui.window {
+    page
+}
+-- adder.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component adder(n int) ui.node {
+    var total = 0
+    func bump() {
+        var xs list[int] = [10, 20]
+        total = xs.map(func(n int) => n + 1)[0]
+    }
+    ui.button #b(text="{total}", @click { bump() })
+}
+
+component page ui.node {
+    adder #a(n=5)
+}
+
+func testLambdaParamNotProp(t test.Test, c page) {
+    c.a.b.click()
+    t.assert(c.a.b.text == "11")
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/adder.sngl/page/1 --
+sha256:ac0f1bc698e1b225c32c23d0679d6d63
+{
+  "results": [
+    {
+      "Desc": "LambdaParamNotProp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/picker.sngl/page/1 --
+sha256:e1099019b8e39ebc6c70c3a7990acbb6
+{
+  "results": [
+    {
+      "Desc": "TheLambdaReadsItsOwnParam",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/adder.sngl/page/1 --
+sha256:3395649af54b37b77a553cd343163a24
+{
+  "results": [
+    {
+      "Desc": "LambdaParamNotProp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/picker.sngl/page/1 --
+sha256:deee0fe64b783ebebb81636da80d0a0e
+{
+  "results": [
+    {
+      "Desc": "TheLambdaReadsItsOwnParam",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/adder.sngl/page/1 --
+sha256:f6f9c1b4950a5f41a3011e1fb0c006b9
+{
+  "results": [
+    {
+      "Desc": "LambdaParamNotProp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/picker.sngl/page/1 --
+sha256:e45ff1e2f2a6b58498846361eaf182b2
+{
+  "results": [
+    {
+      "Desc": "TheLambdaReadsItsOwnParam",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/adder.sngl/page/1 --
+sha256:f6343cd0f7763be594fdd8528b7d178b
+{
+  "results": [
+    {
+      "Desc": "LambdaParamNotProp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/picker.sngl/page/1 --
+sha256:f3fde98600e0c1f8982fba7eb8cedc5d
+{
+  "results": [
+    {
+      "Desc": "TheLambdaReadsItsOwnParam",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/adder.sngl/page/1 --
+sha256:093950baeb7d463a71aac6575321ea2a
+{
+  "results": [
+    {
+      "Desc": "LambdaParamNotProp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/picker.sngl/page/1 --
+sha256:f8260ebc7282a8312a63e4a442de17d8
+{
+  "results": [
+    {
+      "Desc": "TheLambdaReadsItsOwnParam",
+      "Passed": true
+    }
+  ]
+}

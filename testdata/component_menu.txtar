@@ -74,6 +74,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type MenuItem__record struct {
 	Label    string
 	Disabled bool
@@ -556,6 +559,9 @@ import (
 	"os"
 )
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	open bool
@@ -832,9 +838,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9cd8f103310ecfe03bb97698ba9b0555
+pass sha256:da3c464360da4b4f06bbfe753745d348
 -- run/go/fyne --
-pass sha256:e0b99b152c9d115fe2349951a8cc9a46
+pass sha256:475bac35a9ae3f0c06e89f433a4d43b3
 -- run/kotlin/android --
 pass sha256:2dc3be1b448dc3d9b8530f07d03528ca
 -- run/none/html --

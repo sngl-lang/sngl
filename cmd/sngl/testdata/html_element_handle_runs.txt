@@ -8,11 +8,21 @@
 # `plain` has no listener of its own, and its press is heard by the box
 # around it.
 # Beside the element, in a render slot, the handle is the slot's own local.
+# A handle is the element its own splice or instance wrote, by symbol: a
+# second splice's method pressed the first's button, and an instance's
+# handler the page's element of the same name, when the element was looked up
+# by the handle's name.
 
 sngl test --platform=html static.sngl
 stdout '1 tests, 0 failures'
 
 sngl test --platform=html slot.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html splices.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html instances.sngl
 stdout '1 tests, 0 failures'
 
 sngl generate --platform=html -o out static.sngl
@@ -82,12 +92,98 @@ func testTwicePressesGoTwice(t test.Test, c main) {
     }
     t.assert(c.n == 2)
 }
+-- splices.sngl --
+import html "sngl:platform/html"
+import test "sngl:test"
+import ui "sngl:ui"
+
+component pad ui.node {
+    var n = 0
+    func drive() {
+        go.press()
+    }
+    html.div {
+        html.button #go(textContent="go", @click { n += 1 })
+    }
+}
+
+component main ui.node {
+    pad #a()
+    pad #b()
+    func both() {
+        b.drive()
+    }
+}
+
+func testSecond(t test.Test, c main) {
+    c.both()
+    t.assert(c.b.n == 1)
+    t.assert(c.a.n == 0)
+}
+
+ui.window {
+    main()
+}
+-- instances.sngl --
+import html "sngl:platform/html"
+import test "sngl:test"
+import ui "sngl:ui"
+
+component pad(label string) ui.node {
+    var n = 0
+    html.div {
+        html.button #go(textContent=label, @click { n += 1 })
+        ui.button #twice(text="twice", @click { go.press() })
+    }
+}
+
+component main ui.node {
+    var pageHits = 0
+    var names = ["a", "b"]
+    html.button #go(textContent="page", @click { pageHits += 1 })
+    for var nm = names {
+        pad #row(label=nm)
+    }
+}
+
+func testInstanceHandle(t test.Test, c main) {
+    var r = c.row[1]
+    if r != null {
+        r.twice.click()
+        t.assert(r.n == 1)
+    }
+    t.assert(c.pageHits == 0)
+}
+
+ui.window {
+    main()
+}
+-- testrun/html/none/instances.sngl/main/1 --
+sha256:d49d52430eaa6352bd97637741287cc7
+{
+  "results": [
+    {
+      "Desc": "InstanceHandle",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/html/none/slot.sngl/main/1 --
 sha256:f3b8ef5e7e5235dad81b7efa10e228d7
 {
   "results": [
     {
       "Desc": "TwicePressesGoTwice",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/splices.sngl/main/1 --
+sha256:4f9358de8f2465e4f609999695fa1ae4
+{
+  "results": [
+    {
+      "Desc": "Second",
       "Passed": true
     }
   ]

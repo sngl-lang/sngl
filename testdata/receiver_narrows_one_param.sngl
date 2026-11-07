@@ -1,0 +1,30 @@
+// A method's receiver list writes one parameter for each of its type's, and
+// narrows the ones it constrains: `any`, or the constraint the declaration
+// already gives, leaves a parameter as the declaration has it. Either was
+// refused as narrowing a parameter already constrained, so a type whose first
+// parameter is constrained could have no method narrowing its second.
+
+import test "sngl:test"
+
+struct pair[K anyStruct, V any] {
+    k K
+    v V
+}
+
+struct box {
+    n int
+}
+
+func pair[K any, V ordered].larger(this pair[K, V], other V) V {
+    return this.v < other ? other : this.v
+}
+
+func pair[K anyStruct, V ordered].smaller(this pair[K, V], other V) V {
+    return this.v < other ? this.v : other
+}
+
+func testEitherSpellingLeavesKAlone(t test.Test) {
+    var p = pair[box, int]{k=box{n=1}, v=3}
+    t.assert(p.larger(other=5) == 5)
+    t.assert(p.smaller(other=5) == 3)
+}

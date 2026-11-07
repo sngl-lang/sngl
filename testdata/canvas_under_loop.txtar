@@ -72,12 +72,16 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"os"
+	"strings"
 )
 
 type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type Test struct {
 }
 
 type __anon_id_elem_4ccb28 struct {
@@ -168,7 +172,7 @@ func __identified0(__xs []float64) []__anon_id_elem_4ccb28 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_4ccb28{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -776,6 +780,7 @@ import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
+	"strings"
 	"unsafe"
 )
 
@@ -807,6 +812,9 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type Test struct {
 }
 
 type __anon_id_elem_4ccb28 struct {
@@ -897,7 +905,7 @@ func __identified0(__xs []float64) []__anon_id_elem_4ccb28 {
 	__seen := map[string]int{}
 	__out := []__anon_id_elem_4ccb28{}
 	for _, __x := range __xs {
-		__id := fmt.Sprint(__x)
+		__id := strings.ReplaceAll(fmt.Sprint(__x), "#", "##")
 		var __n int = func() int {
 			if __v, __ok := __seen[__id]; __ok {
 				return __v
@@ -1335,7 +1343,7 @@ window.__sngl_boot = () => {
     let __out = [];
     for (const __x of __xs) {
       ;
-      let __id = String(__x);
+      let __id = String(__x).replaceAll("#", "##");
       let __n = __seen.has(__id) ? __seen.get(__id) : 0;
       __seen.set(__id, __n + 1);
       if (__n > 0) {
@@ -1650,8 +1658,8 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:6d3b6ed89f9f6678e26a6a338b429d8a
+pass sha256:f7df9ebecc86926ce04e4cc7aa483841
 -- run/go/gtk4 --
-pass sha256:bcddc66113a6e5621c2af5dde848f443
+pass sha256:204f35b21ed6bb4be8365e4d02b160cb
 -- run/none/html --
-pass sha256:ccf404c18c2f83c16e1008a272591909
+pass sha256:b82ec3d76435bba3da78133f9b9e4699

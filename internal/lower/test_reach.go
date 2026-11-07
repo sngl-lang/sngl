@@ -274,7 +274,7 @@ func (r *resolver) instance(e ir.Expr) *ir.Ident {
 	}
 }
 
-func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice, triggers map[*ir.Call]ir.Call) error {
+func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice, triggers map[*ir.Call]ir.Call, valueTriggers bool) error {
 	if len(reach.params) == 0 {
 		return nil
 	}
@@ -347,7 +347,7 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice, tri
 			return n, nil
 		})
 	}
-	restoreUnreachedTriggers(pkg, reach.root, triggers, receivers)
+	restoreUnreachedTriggers(pkg, reach.root, triggers, receivers, valueTriggers, fail)
 	return bad
 }
 
@@ -364,7 +364,11 @@ func (r *resolver) repointCall(c *ir.Call, fail func(ir.Expr, string, ...any)) {
 			// splice copied onto chooser, and chooser's splice onto what
 			// renders it -- where the test names the node itself, as one
 			// flattened onto the root: the one copy of the copy.
-			if next := r.copies()[c.Func]; len(next) == 1 && c.Func != nil {
+			next := r.copies()[c.Func]
+			if len(next) != 1 && c.Func != nil && c.Func.Trigger != "" {
+				next = r.keptCopies(c.Func)
+			}
+			if len(next) == 1 && c.Func != nil {
 				if r.onModel(next[0]) {
 					r.onInstance(c)
 				}
@@ -374,6 +378,32 @@ func (r *resolver) repointCall(c *ir.Call, fail func(ir.Expr, string, ...any)) {
 			return
 		}
 	}
+}
+
+// keptCopies is each trigger of the root or the package copied from fn,
+// through any number of splices (FuncLowering.CopyOf), where fn itself is in
+// no component the build keeps: a select's trigger copied onto the wrapper
+// passImplicitState put around it, and the wrapper's onto the root, by
+// splices whose handles were made fresh, so neither recorded the copy by the
+// handle the test reads.
+func (r *resolver) keptCopies(fn *ir.Func) []*ir.Func {
+	if r.onModel(fn) || slices.ContainsFunc(r.pkg.Components, func(c *ir.Component) bool { return slices.Contains(c.Funcs, fn) }) {
+		return nil
+	}
+	var out []*ir.Func
+	var kept []*ir.Func
+	if r.root != nil {
+		kept = r.root.Funcs
+	}
+	for _, k := range slices.Concat(kept, r.pkg.Funcs) {
+		for f := k.Lowered.CopyOf; f != nil; f = f.Lowered.CopyOf {
+			if f == fn {
+				out = append(out, k)
+				break
+			}
+		}
+	}
+	return out
 }
 
 // onModel reports whether fn is a function of the root or of the package,
@@ -588,6 +618,10 @@ func exprPos(e ir.Expr) string {
 		if x.AST != nil {
 			return x.AST.Pos.String()
 		}
+	case *ir.Call:
+		if x.AST != nil {
+			return x.AST.Pos.String()
+		}
 	}
 	return "<unknown>"
 }
@@ -638,12 +672,6 @@ func isNullLit(e ir.Expr) bool {
 	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
 }
 
-// restoreUnreachedTriggers gives back the event a test wrote for each
-// trigger call whose copy is no method of the component the test is rooted
-// at, nor a function of the package: a select gtk4 holds in a block's state
-// instance has its trigger there, which a test has no route to. The event is
-// then raised as every event a target does not override is, through the
-// target's invoker.
 // instanceReceiver is recv read through the instance fn is a method of, where
 // fn is a method of a component built at run time (nameInstance), or nil.
 func instanceReceiver(pkg *ir.Package, fn *ir.Func, recv ir.Expr) ir.Expr {
@@ -663,7 +691,18 @@ func instanceReceiver(pkg *ir.Package, fn *ir.Func, recv ir.Expr) ir.Expr {
 // so no Model field held it for a test to call through. Its own, because the
 // select's is its widget's: gtk4 holds that as `__named_<id>` too.
 func nameInstance(pkg *ir.Package, fn *ir.Func, recv ir.Expr) ir.Expr {
-	sel, ok := unnarrowed(recv).(*ir.Select)
+	// One copy a loop renders, `c.pick[1]`, is that copy of the instances.
+	var at []*ir.Index
+	e := unnarrowed(recv)
+	for {
+		ix, ok := e.(*ir.Index)
+		if !ok {
+			break
+		}
+		at = append(at, ix)
+		e = unnarrowed(ix.Operand)
+	}
+	sel, ok := e.(*ir.Select)
 	if !ok {
 		return nil
 	}
@@ -681,11 +720,49 @@ func nameInstance(pkg *ir.Package, fn *ir.Func, recv ir.Expr) ir.Expr {
 	sites[0].ID = id
 	read := *sel
 	read.Field = id
-	read.Type = sites[0].Component.SymType()
-	return &read
+	t := sites[0].Component.SymType()
+	for range at {
+		t = ir.ListOf(t)
+	}
+	read.Type = t
+	out := ir.Expr(&read)
+	for _, a := range slices.Backward(at) {
+		ix := *a
+		ix.Operand = out
+		t = t.Elems[0]
+		ix.Type = t
+		out = &ix
+	}
+	return out
 }
 
-func restoreUnreachedTriggers(pkg *ir.Package, root *ir.Component, triggers map[*ir.Call]ir.Call, receivers map[*ir.Call]ir.Expr) {
+// throughCopy reports whether e reads one copy of what a loop renders.
+func throughCopy(e ir.Expr) bool {
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if _, ok := x.(*ir.Index); ok {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
+// unreachedTrigger says a test's raise of event, which the target overrides,
+// reaches no node: there is no invoker to fall back to that takes what the
+// override takes.
+func unreachedTrigger(event string) string {
+	return fmt.Sprintf("the test raises `%s` through the target's override of the event, which a test reaches on this target only where no loop repeats the node, nor an instance built at run time holds it inside another (#318)", event)
+}
+
+// restoreUnreachedTriggers handles each trigger call whose copy is no method
+// of the component the test is rooted at, nor a function of the package. One
+// a component built at run time holds -- the wrapper gtk4 puts a select in
+// under a reactive `if` -- is called through the instance the Model holds.
+// Any other is refused (unreachedTrigger), and given back the event the test
+// wrote so the rest of the build reads as written.
+func restoreUnreachedTriggers(pkg *ir.Package, root *ir.Component, triggers map[*ir.Call]ir.Call, receivers map[*ir.Call]ir.Expr, valueTriggers bool, fail func(ir.Expr, string, ...any)) {
 	for call, was := range triggers {
 		fn := call.Func
 		if fn == nil || fn.Trigger == "" || slices.Contains(pkg.Funcs, fn) || root != nil && slices.Contains(root.Funcs, fn) {
@@ -702,6 +779,17 @@ func restoreUnreachedTriggers(pkg *ir.Package, root *ir.Component, triggers map[
 				call.Receiver = r
 			}
 			continue
+		}
+		// The target overrides the event, and its invoker, which the event
+		// restored would reach, takes what the target's control takes: a
+		// typed select's took its value as a label, and the test did not
+		// compile, or chose nothing.
+		// A target whose test raises the event with the value itself
+		// (ValueTriggers) reaches the node the event names, but not one
+		// copy of the ones a loop renders: android's raise of `c.row[1]`'s
+		// select chose nothing.
+		if !valueTriggers || throughCopy(receivers[call]) {
+			fail(call, "%s", unreachedTrigger(fn.Trigger))
 		}
 		*call = was
 		if r, ok := receivers[call]; ok {

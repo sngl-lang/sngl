@@ -138,6 +138,9 @@ type P struct {
 	A int
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -770,6 +773,9 @@ type P struct {
 	A int
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	folded    []int
@@ -1031,6 +1037,9 @@ var folded []int = []int{0, 1, 2, 3}
 
 type P struct {
 	A int
+}
+
+type Test struct {
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -1436,11 +1445,11 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:54e08f3c062c3d3e60f189c5f4ce419d
+pass sha256:11b49ec94eb3606c0799540359eba09b
 -- run/go/fyne --
-pass sha256:08d327bc60b7661362f7e5467211e89f
+pass sha256:08683520ad34b39effb23aa54903a70d
 -- run/go/gtk4 --
-pass sha256:7fd7abd4f9efc14921844d6671e4a6d4
+pass sha256:b3c51e4dd956b163fe1abd742b1e47ab
 -- run/kotlin/android --
 pass sha256:2832fa17f3995c64bba4add79053358a
 -- run/none/html --

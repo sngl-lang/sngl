@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -279,21 +280,27 @@ func blockFamily(stmts []ir.Stmt) *ir.Component {
 
 // relayable reports whether each write fn makes of what the block does not
 // declare can be raised to the site to make: one whose place names nothing
-// the block or fn binds, `failure = null` and not `rows[i] = x`.
+// the block or fn binds, `failure = null` and not `rows[i] = x`, made by an
+// assignment, a toggle or a call mutating its receiver (`log.push(7)`). A
+// call writing a place through a `ref` argument is none of those, and the
+// block is left as it is.
 func relayable(fn *ir.Func, local map[ir.Symbol]bool) bool {
-	bound := maps.Clone(local)
-	maps.Copy(bound, declaredWithin(fn.Block))
-	for _, p := range fn.Params {
-		bound[p] = true
-	}
+	bound := boundIn(fn, local)
 	ok := true
 	_ = ir.Walk(fn.Block, func(n ir.Node) error {
-		target := placeWritten(n)
-		if target == nil {
-			return nil
+		for _, place := range placesWritten(n) {
+			if relayed(place, bound) && readsAny(place, bound) {
+				ok = false
+			}
 		}
-		if sym := exprRoot(target); sym != nil && liftableSym(sym) && !bound[sym] && readsAny(target, bound) {
-			ok = false
+		if c, isCall := n.(*ir.Call); isCall && mutatingCallReceiver(c) == nil {
+			for _, a := range c.Args {
+				if u, isRef := a.Value.(*ir.Unary); isRef && u.Op == ast.UnaryAddr && relayed(u.Operand, bound) {
+					ok = false
+				}
+			}
+		}
+		if !ok {
 			return ir.SkipAll
 		}
 		return nil
@@ -301,42 +308,143 @@ func relayable(fn *ir.Func, local map[ir.Symbol]bool) bool {
 	return ok
 }
 
-// relayWrites makes each write fn makes of what local does not declare a
-// raise of an event of the lifted component, whose handler at the site makes
-// it: the write lands where it was written, after what fn did before it and
-// before what fn does next, since a raise runs its handler then and there.
-func relayWrites(fn *ir.Func, l *lift, local map[ir.Symbol]bool) {
+// boundIn is what fn's body binds beside what the block declares.
+func boundIn(fn *ir.Func, local map[ir.Symbol]bool) map[ir.Symbol]bool {
 	bound := maps.Clone(local)
 	maps.Copy(bound, declaredWithin(fn.Block))
 	for _, p := range fn.Params {
 		bound[p] = true
 	}
+	return bound
+}
+
+// relayed reports whether a write of place is one relayWrites raises: of
+// state the block does not bind.
+func relayed(place ir.Expr, bound map[ir.Symbol]bool) bool {
+	sym := exprRoot(place)
+	return sym != nil && liftableSym(sym) && !bound[sym]
+}
+
+// relayWrites makes each write fn makes of what local does not declare a
+// raise of an event of the lifted component, whose handler at the site makes
+// it: the write lands where it was written, after what fn did before it and
+// before what fn does next, since a raise runs its handler then and there.
+//
+// What the raise hands on is evaluated in the block, so a write of a whole
+// var hands on the value it writes, held in a local the rest of the block
+// reads: the site's write reaches the block's prop only when the site renders
+// again, which on android is its next recomposition, so `tries += 1; seen =
+// tries` read the value before. A call mutating its receiver hands on its
+// arguments, and the site makes the call.
+func relayWrites(fn *ir.Func, l *lift, local map[ir.Symbol]bool) {
+	bound := boundIn(fn, local)
 	fn.Block = ir.RewriteBlocks(fn.Block, func(stmts []ir.Stmt) []ir.Stmt {
-		for i, s := range stmts {
-			target := placeWritten(s)
-			if target == nil {
+		wrote := map[ir.Symbol]*ir.Var{}
+		out := make([]ir.Stmt, 0, len(stmts))
+		for _, s := range stmts {
+			readWrote(s, wrote)
+			raise := func(params []*ir.Param, site []ir.Stmt, args []ir.CallArg) *ir.Emit {
+				name := "__on" + strconv.Itoa(l.events)
+				l.events++
+				l.comp.Events = append(l.comp.Events, &ir.EventDecl{Name: name, Params: params})
+				l.inst.Handlers = append(l.inst.Handlers, ir.EventHandler{Name: name, Func: &ir.Func{Params: params, Block: site}})
+				return &ir.Emit{Name: name, Args: args}
+			}
+			param := func(name string, t *ir.Type) (*ir.Param, *ir.Ident) {
+				p := &ir.Param{Name: name, Type: t}
+				return p, &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}
+			}
+			switch x := s.(type) {
+			case *ir.Assign:
+				if !relayed(x.Target, bound) {
+					break
+				}
+				name := "__on" + strconv.Itoa(l.events)
+				p, read := param(name+"_v", x.Target.ExprType())
+				id, whole := x.Target.(*ir.Ident)
+				if !whole {
+					out = append(out, raise([]*ir.Param{p}, []ir.Stmt{&ir.Assign{AST: x.AST, Target: x.Target, Op: x.Op, Value: read}}, []ir.CallArg{{Value: x.Value}}))
+					delete(wrote, exprRoot(x.Target))
+					continue
+				}
+				cur := ir.Expr(id)
+				if w := wrote[id.Sym]; w != nil {
+					cur = &ir.Ident{Name: w.Name, Type: w.Type, Sym: w, Synthesized: true}
+				}
+				tmp := &ir.Var{Name: name + wroteMark, Type: p.Type, Synthesized: true}
+				out = append(out,
+					&ir.LocalVar{Name: tmp.Name, Type: tmp.Type, Init: computeAssignNewVal(cur, x.Op, x.Value, p.Type), Sym: tmp},
+					raise([]*ir.Param{p}, []ir.Stmt{&ir.Assign{AST: x.AST, Target: x.Target, Value: read}}, []ir.CallArg{{Value: &ir.Ident{Name: tmp.Name, Type: tmp.Type, Sym: tmp, Synthesized: true}}}))
+				wrote[id.Sym] = tmp
+				continue
+			case *ir.Toggle:
+				if !relayed(x.Target, bound) {
+					break
+				}
+				out = append(out, raise(nil, []ir.Stmt{s}, nil))
+				delete(wrote, exprRoot(x.Target))
+				continue
+			case *ir.CallStmt:
+				recv := mutatingCallReceiver(x.Call)
+				if recv == nil || !relayed(recv, bound) {
+					break
+				}
+				call := *x.Call
+				call.Args = slices.Clone(call.Args)
+				var params []*ir.Param
+				var args []ir.CallArg
+				for i := 1; i < len(call.Args); i++ {
+					p, read := param("__on"+strconv.Itoa(l.events)+"_"+strconv.Itoa(i), call.Args[i].Value.ExprType())
+					params = append(params, p)
+					args = append(args, ir.CallArg{Value: call.Args[i].Value})
+					call.Args[i].Value = read
+				}
+				out = append(out, raise(params, []ir.Stmt{&ir.CallStmt{Call: &call}}, args))
+				delete(wrote, exprRoot(recv))
 				continue
 			}
-			sym := exprRoot(target)
-			if sym == nil || !liftableSym(sym) || bound[sym] {
-				continue
-			}
-			name := "__on" + strconv.Itoa(l.events)
-			l.events++
-			site := &ir.Func{Block: []ir.Stmt{s}}
-			emit := &ir.Emit{Name: name}
-			if a, ok := s.(*ir.Assign); ok {
-				p := &ir.Param{Name: name + "_v", Type: a.Target.ExprType()}
-				site.Params = []*ir.Param{p}
-				site.Block = []ir.Stmt{&ir.Assign{AST: a.AST, Target: a.Target, Op: a.Op, Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}}}
-				emit.Args = []ir.CallArg{{Value: a.Value}}
-			}
-			l.comp.Events = append(l.comp.Events, &ir.EventDecl{Name: name, Params: site.Params})
-			l.inst.Handlers = append(l.inst.Handlers, ir.EventHandler{Name: name, Func: site})
-			stmts[i] = emit
+			out = append(out, s)
 		}
-		return stmts
+		return out
 	})
+}
+
+// readWrote points s's reads of each var wrote holds a local for at that
+// local. A write's place is no read.
+func readWrote(s ir.Stmt, wrote map[ir.Symbol]*ir.Var) {
+	if len(wrote) == 0 {
+		return
+	}
+	targets := map[ir.Expr]bool{}
+	_ = ir.Walk(s, func(n ir.Node) error {
+		for _, t := range placesWritten(n) {
+			targets[t] = true
+		}
+		return nil
+	})
+	_ = ir.Walk(s, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok && !targets[id] {
+			if w := wrote[id.Sym]; w != nil {
+				id.Name, id.Sym, id.Synthesized = w.Name, w, true
+			}
+		}
+		return nil
+	})
+}
+
+// placesWritten is each place n writes: an assignment's or a toggle's
+// target, or the receiver of a call mutating it.
+func placesWritten(n any) []ir.Expr {
+	if c, ok := n.(*ir.Call); ok {
+		if r := mutatingCallReceiver(c); r != nil {
+			return []ir.Expr{r}
+		}
+		return nil
+	}
+	if t := placeWritten(n); t != nil {
+		return []ir.Expr{t}
+	}
+	return nil
 }
 
 // placeWritten is the place n writes, or nil where it writes none.

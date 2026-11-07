@@ -101,6 +101,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -830,6 +833,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	idx            int
@@ -1076,6 +1082,9 @@ type Tab__record struct {
 	__id     int
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	idx                   int
@@ -1262,8 +1271,8 @@ func (m *Model) __list_tabs__change(key string, w gtk4rt.Handle) {
 	m.__copies_tabs__change[key] = w
 }
 -- run/go/bubbletea --
-pass sha256:0f7e55259cb5a0362270cc5e8aa0e486
+pass sha256:4132ca2ba9b31ba2a00799bd56cff19f
 -- run/go/fyne --
-pass sha256:a07630b0641442898a246f5f9866bc12
+pass sha256:e30e9bbc54c925d2ba0849a2775250e6
 -- run/go/gtk4 --
-pass sha256:f1894de5306846c8f3a6696a53ff8b4c
+pass sha256:c12623cc7effc28328870a00971bc990

@@ -64,6 +64,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -479,6 +482,9 @@ import (
 	"os"
 )
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	total int
@@ -575,6 +581,6 @@ func mountTestComponent(m *Model, preset map[string]bool) *Model {
 	return m
 }
 -- run/go/bubbletea --
-pass sha256:93238d08d6effd429b47ff5c8151d1c9
+pass sha256:d5561f37b085d232b0d7c4fe3260177a
 -- run/go/fyne --
-pass sha256:1536decd9a36d2193e8aee924501ce90
+pass sha256:7025a405d75ad89b9370815b6e56a4a2

@@ -63,6 +63,9 @@ func snglSome[T any](v T) *T {
 	return &v
 }
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	__ctx_locale string
@@ -1377,7 +1380,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:f30bba4e2430e64659f51d4d4c841fd9
+pass sha256:b62a404bd3c747a2602f891415cb3785
 -- run/kotlin/android --
 pass sha256:998eeebae9bf580c4639431ce0d4592c
 -- run/none/html --

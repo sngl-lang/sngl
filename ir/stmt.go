@@ -89,7 +89,10 @@ type NodeInst struct {
 	// its copy a handle of its own here, and the wrapper's splice gives the
 	// node the same one.
 	Wraps *Var `json:"-"`
-	Key   Expr // key expression for list diffing (nil → implicit index)
+	// Key is the copy a component built at run time under a loop is kept by,
+	// where the loop tells its copies apart by identity
+	// (lower.keyLoopInstances); nil keeps it by position.
+	Key Expr
 	// TypeArgs is what the call site bound the component's type parameters
 	// to, in declaration order, where it is generic: a handle to the node
 	// carries them, a generic family's slot reads them off its children, and

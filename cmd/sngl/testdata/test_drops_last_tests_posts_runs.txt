@@ -77,7 +77,7 @@ ui.window {
     page()
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:e274e9afe4251ea4fe9ebc4e3bbc62bc
+sha256:b82ddb3a4645846e249414bbff13e631
 {
   "results": [
     {
