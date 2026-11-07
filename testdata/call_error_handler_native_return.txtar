@@ -468,11 +468,13 @@ func (m Model) View() tea.View {
 	if part0Focused {
 		part0Prefix = ">"
 	}
-	part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Prefix + " " + fmt.Sprint("Bad"))
+	part0Text := part0Prefix + " " + fmt.Sprint("Bad")
+	part0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Text).Render(part0Text)
 	part0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0)
 	parts = append(parts, part0)
 	var part1 string
-	part1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((m.caught + "|") + m.after)))
+	part1Text := fmt.Sprint(((m.caught + "|") + m.after))
+	part1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part1Text).Render(part1Text)
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	content = m.__clicks.Scan(content, 0, 0)
@@ -772,7 +774,7 @@ func (m *Model) badClick() {
 	gtk4rt.Emit(m.bad, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:feab0485ea47466b860d0eefa0ec77ae
+pass sha256:e2f668071d86a2fede2ce7ea29fe9fc8
 -- run/go/fyne --
 pass sha256:e887d53597d0ae4d067880cbbe510d1f
 -- run/go/gtk4 --

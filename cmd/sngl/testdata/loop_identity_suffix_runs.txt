@@ -117,7 +117,7 @@ sha256:4aca41af49e18005316466313e6ecd18
   ]
 }
 -- testrun/bubbletea/go/hash.sngl/page/1 --
-sha256:e317dfd4eaaff0d7cfeff3c720b77847
+sha256:168cb8d99ebdde470cc299964d05c82e
 {
   "results": [
     {
@@ -127,7 +127,7 @@ sha256:e317dfd4eaaff0d7cfeff3c720b77847
   ]
 }
 -- testrun/bubbletea/go/tilde.sngl/page/1 --
-sha256:00bc03ed24f87628cf0a3c4641889ab5
+sha256:9dad157751717ad8374ff18dc322373b
 {
   "results": [
     {

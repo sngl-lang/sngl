@@ -216,7 +216,8 @@ func Sized(look lipgloss.Style, horizontal bool, cells int) lipgloss.Style {
 // Grid lays parts out a row at a time, gap cells apart within a row and
 // rowGap rows apart between two. With columns above zero, a row holds that
 // many, each padded to an equal share of avail cells less the gaps, which a
-// growing part fills, or to the widest part's width where avail is zero, a
+// growing part fills, but no narrower than its widest part that does not
+// grow, or to the widest part's width where avail is zero, a
 // box whose extent nothing knows. With none, parts flow at their own widths
 // and a row ends where the next would pass avail; at zero they are a single
 // row. align places a part within its row's height, as a horizontal Join's
@@ -225,6 +226,14 @@ func Grid(columns int, align lipgloss.Position, gap, rowGap, avail int, parts []
 	column := 0
 	if columns > 0 && avail > 0 {
 		column = max((avail-gap*(columns-1))/columns, 1)
+		// A column is never narrower than a part that cannot shrink, as a
+		// CSS grid's is never narrower than its content: the row spills past
+		// avail, where a scroll moving across shows it.
+		for _, p := range parts {
+			if p.render == nil {
+				column = max(column, lipgloss.Width(p.text))
+			}
+		}
 	}
 	texts := make([]string, 0, len(parts))
 	for _, p := range parts {

@@ -526,7 +526,8 @@ func (m Model) View() tea.View {
 	var parts []string
 	var part0 string
 	if m.visible__inst0 {
-		part0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint((snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0))))
+		part0Text := fmt.Sprint((snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
+		part0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Text).Render(part0Text)
 	}
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
@@ -937,7 +938,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/bubbletea --
-pass sha256:7f5549e6c10a7eb68bc7e246fb7f38d2
+pass sha256:b8569adb30c59b96bacc2c675821caaf
 -- run/go/fyne --
 pass sha256:ff418aeaa8afb0e960949253f0383ae7
 -- run/go/gtk4 --

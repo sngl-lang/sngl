@@ -1060,7 +1060,8 @@ func (m Model) View() tea.View {
 		part0_0 = lipgloss.JoinVertical(lipgloss.Left, part0_0Children...)
 		part0Children = append(part0Children, part0_0)
 		var part0_1 string
-		part0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(m.total)))
+		part0_1Text := fmt.Sprint(fmt.Sprint(m.total))
+		part0_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_1Text).Render(part0_1Text)
 		part0Children = append(part0Children, part0_1)
 		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
 	}
@@ -3246,7 +3247,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:048b8cb905373a437d5ad84b8c829f72
+pass sha256:53d4c6c8840acff121772474e1ff4a68
 -- run/go/fyne --
 pass sha256:5f5a4b5c171c5a5bc96939f17155f9d2
 -- run/go/gtk4 --

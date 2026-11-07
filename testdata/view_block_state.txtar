@@ -782,11 +782,13 @@ func (m Model) View() tea.View {
 		if part0_0Focused {
 			part0_0Prefix = ">"
 		}
-		part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint("open"))
+		part0_0Text := part0_0Prefix + " " + fmt.Sprint("open")
+		part0_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_0Text).Render(part0_0Text)
 		part0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_0)
 		part0Children = append(part0Children, part0_0)
 		var part0_1 string
-		part0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits))))
+		part0_1Text := fmt.Sprint(((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
+		part0_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_1Text).Render(part0_1Text)
 		part0Children = append(part0Children, part0_1)
 		var part0_2 string
 		__focusPos1 := 0
@@ -802,17 +804,19 @@ func (m Model) View() tea.View {
 			if part0_2Item_0Focused {
 				part0_2Item_0Prefix = ">"
 			}
-			part0_2Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_2Item_0Prefix + " " + fmt.Sprint(it.Elem))
+			part0_2Item_0Text := part0_2Item_0Prefix + " " + fmt.Sprint(it.Elem)
+			part0_2Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_2Item_0Text).Render(part0_2Item_0Text)
 			part0_2Item_0 = m.__clicks.Mark(snglStop{slot: 1, pos: __focusPos1, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_2Item_0)
 			__focusPos1++
 			part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_0)
 			var part0_2Item_1 string
-			part0_2Item_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((it.Elem + " ") + fmt.Sprint(func() int {
+			part0_2Item_1Text := fmt.Sprint(((it.Elem + " ") + fmt.Sprint(func() int {
 				if __v, __ok := m.n__inst0[it.Id]; __ok {
 					return __v
 				}
 				return 0
-			}()))))
+			}())))
+			part0_2Item_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_2Item_1Text).Render(part0_2Item_1Text)
 			part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_1)
 			part0_2Item = lipgloss.JoinHorizontal(lipgloss.Top, part0_2ItemChildren...)
 			part0_2Items = append(part0_2Items, part0_2Item)
@@ -822,7 +826,8 @@ func (m Model) View() tea.View {
 			part0Children = append(part0Children, part0_2)
 		}
 		var part0_3 string
-		part0_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("total " + fmt.Sprint(m.total__inst0))))
+		part0_3Text := fmt.Sprint(("total " + fmt.Sprint(m.total__inst0)))
+		part0_3 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_3Text).Render(part0_3Text)
 		part0Children = append(part0Children, part0_3)
 		var part0_4 string
 		if m.pages__current.Id == 0 {
@@ -833,16 +838,19 @@ func (m Model) View() tea.View {
 			if part0_4Part_0Focused {
 				part0_4Part_0Prefix = ">"
 			}
-			part0_4Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_4Part_0Prefix + " " + fmt.Sprint("hit"))
+			part0_4Part_0Text := part0_4Part_0Prefix + " " + fmt.Sprint("hit")
+			part0_4Part_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_4Part_0Text).Render(part0_4Part_0Text)
 			part0_4Part_0 = m.__clicks.Mark(snglStop{slot: 2, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_4Part_0)
 			part0_4Parts = append(part0_4Parts, part0_4Part_0)
 			var part0_4Part_1 string
-			part0_4Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("hits " + fmt.Sprint(m.hits__inst0))))
+			part0_4Part_1Text := fmt.Sprint(("hits " + fmt.Sprint(m.hits__inst0)))
+			part0_4Part_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_4Part_1Text).Render(part0_4Part_1Text)
 			part0_4Parts = append(part0_4Parts, part0_4Part_1)
 			part0_4 = tui.Spaced(false, lipgloss.Left, 0, part0_4Parts...)
 		} else {
 			if m.pages__current.Id == 1 {
-				part0_4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("about"))
+				part0_4Text := fmt.Sprint("about")
+				part0_4 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_4Text).Render(part0_4Text)
 			}
 		}
 		if part0_4 != "" {
@@ -854,7 +862,8 @@ func (m Model) View() tea.View {
 		if part0_5Focused {
 			part0_5Prefix = ">"
 		}
-		part0_5 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_5Prefix + " " + fmt.Sprint("about"))
+		part0_5Text := part0_5Prefix + " " + fmt.Sprint("about")
+		part0_5 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_5Text).Render(part0_5Text)
 		part0_5 = m.__clicks.Mark(snglStop{slot: 3, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_5)
 		part0Children = append(part0Children, part0_5)
 		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
@@ -2641,7 +2650,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:937be20e76c0bec4c7bbd2d0c09e912b
+pass sha256:c609fce1b2294a21d0d28f8c5d59abd7
 -- run/go/fyne --
 pass sha256:c5549cdfb2c44d4c4646604db6c3649d
 -- run/go/gtk4 --

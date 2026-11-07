@@ -604,16 +604,20 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var part0Parts []string
 		var part0Part_0 string
-		part0Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(m.total__inst0)))
+		part0Part_0Text := fmt.Sprint(fmt.Sprint(m.total__inst0))
+		part0Part_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_0Text).Render(part0Part_0Text)
 		part0Parts = append(part0Parts, part0Part_0)
 		var part0Part_1 string
-		part0Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(m.pair__inst0.A)))
+		part0Part_1Text := fmt.Sprint(fmt.Sprint(m.pair__inst0.A))
+		part0Part_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_1Text).Render(part0Part_1Text)
 		part0Parts = append(part0Parts, part0Part_1)
 		var part0Part_2 string
-		part0Part_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(((m.pair__inst0.A + m.pair__inst0.B) + 0))))
+		part0Part_2Text := fmt.Sprint(fmt.Sprint(((m.pair__inst0.A + m.pair__inst0.B) + 0)))
+		part0Part_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_2Text).Render(part0Part_2Text)
 		part0Parts = append(part0Parts, part0Part_2)
 		var part0Part_3 string
-		part0Part_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(m.mounts__inst0)))
+		part0Part_3Text := fmt.Sprint(fmt.Sprint(m.mounts__inst0))
+		part0Part_3 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_3Text).Render(part0Part_3Text)
 		part0Parts = append(part0Parts, part0Part_3)
 		part0 = tui.Spaced(false, lipgloss.Left, 0, part0Parts...)
 	}
@@ -804,7 +808,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d5da32fe1fa6e0d7aba10bec1c705c7d
+pass sha256:039f0d3cf1a00a8f8f644d14d67bc187
 -- run/kotlin/android --
 pass sha256:b7d2f7d4738182c22594c03ce87b31d4
 -- run/none/html --

@@ -716,7 +716,8 @@ func (m Model) View() tea.View {
 		if part0_0Focused {
 			part0_0Prefix = ">"
 		}
-		part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint("alone"))
+		part0_0Text := part0_0Prefix + " " + fmt.Sprint("alone")
+		part0_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_0Text).Render(part0_0Text)
 		part0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, part0_0)
 		part0Children = append(part0Children, part0_0)
 		var __lt16 string
@@ -726,7 +727,8 @@ func (m Model) View() tea.View {
 			__lt16 = "off"
 		}
 		var part0_3 string
-		part0_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt16))
+		part0_3Text := fmt.Sprint(__lt16)
+		part0_3 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_3Text).Render(part0_3Text)
 		part0Children = append(part0Children, part0_3)
 		var part0_4 string
 		part0_4Focused := (m.__focusID == 1) && m.__focusShown()
@@ -734,7 +736,8 @@ func (m Model) View() tea.View {
 		if part0_4Focused {
 			part0_4Prefix = ">"
 		}
-		part0_4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_4Prefix + " " + fmt.Sprint("starts on"))
+		part0_4Text := part0_4Prefix + " " + fmt.Sprint("starts on")
+		part0_4 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_4Text).Render(part0_4Text)
 		part0_4 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, part0_4)
 		part0Children = append(part0Children, part0_4)
 		var part0_5 string
@@ -749,7 +752,8 @@ func (m Model) View() tea.View {
 			if part0_5ItemFocused {
 				part0_5ItemPrefix = ">"
 			}
-			part0_5Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_5ItemPrefix + " " + fmt.Sprint(it.Elem))
+			part0_5ItemText := part0_5ItemPrefix + " " + fmt.Sprint(it.Elem)
+			part0_5Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_5ItemText).Render(part0_5ItemText)
 			part0_5Item = m.__clicks.Mark(snglStop{slot: 2, pos: __focusPos2, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, part0_5Item)
 			__focusPos2++
 			part0_5Items = append(part0_5Items, part0_5Item)
@@ -1849,7 +1853,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6f949c2c96d5db520189f3e7f64a8b30
+pass sha256:5790cdd58878ba5aa587abd13356b667
 -- run/go/fyne --
 pass sha256:0fb91facad5e10bf8609dbdc6774d150
 -- run/go/gtk4 --

@@ -438,7 +438,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((((fmt.Sprint(m.ratio__inst0()) + "/") + fmt.Sprint(m.fraction__inst0())) + "/") + snglStrDuration(m.half__inst0()))))
+		contentText := fmt.Sprint(((((fmt.Sprint(m.ratio__inst0()) + "/") + fmt.Sprint(m.fraction__inst0())) + "/") + snglStrDuration(m.half__inst0())))
+		content = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentText).Render(contentText)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -542,7 +543,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:09d038555d76fe3626987fdecf654b6e
+pass sha256:e46142acdca099acc554faa7e3df166c
 -- run/kotlin/android --
 pass sha256:25c9b9ae90cada192f091091e4c7a466
 -- run/none/html --

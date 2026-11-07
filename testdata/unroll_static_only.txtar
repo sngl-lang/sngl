@@ -369,7 +369,8 @@ func (m Model) View() tea.View {
 		for _, row := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "alpha", Elem: "alpha"}, __anon_id_elem_c6a818{Id: "beta", Elem: "beta"}, __anon_id_elem_c6a818{Id: "gamma", Elem: "gamma"}} {
 			_ = row
 			var content_0Item string
-			content_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(row.Elem))
+			content_0ItemText := fmt.Sprint(row.Elem)
+			content_0Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0ItemText).Render(content_0ItemText)
 			content_0Items = append(content_0Items, content_0Item)
 		}
 		content_0 = tui.Spaced(false, lipgloss.Left, 0, content_0Items...)
@@ -671,7 +672,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:aa43abb362c1de69b27137efbb736246
+pass sha256:3e495d6545d6cd11efac9276b1bf220e
 -- run/go/fyne --
 pass sha256:d1ac520963fc7fdf9bbf5f4912570f63
 -- run/kotlin/android --

@@ -376,7 +376,8 @@ func (m Model) View() tea.View {
 		var content_0 string
 		var content_0Children []string
 		var content_0_0 string
-		content_0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("d=1"))
+		content_0_0Text := fmt.Sprint("d=1")
+		content_0_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0_0Text).Render(content_0_0Text)
 		content_0Children = append(content_0Children, content_0_0)
 		var content_0_1 string
 		var content_0_1Children []string
@@ -385,7 +386,8 @@ func (m Model) View() tea.View {
 		var content_0_1_0_0 string
 		var content_0_1_0_0Children []string
 		var content_0_1_0_0_0 string
-		content_0_1_0_0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("d=2"))
+		content_0_1_0_0_0Text := fmt.Sprint("d=2")
+		content_0_1_0_0_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0_1_0_0_0Text).Render(content_0_1_0_0_0Text)
 		content_0_1_0_0Children = append(content_0_1_0_0Children, content_0_1_0_0_0)
 		var content_0_1_0_0_1 string
 		var content_0_1_0_0_1Children []string
@@ -451,6 +453,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:77b9dfe461cbe09562323c5452f0565a
+pass sha256:bd1cfa1918d2068342b65cdcfc44b173
 -- run/none/html --
 pass sha256:f0ec107732c0f5dbce0e6a683c63f6ac

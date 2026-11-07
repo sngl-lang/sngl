@@ -521,7 +521,8 @@ func (m Model) View() tea.View {
 		if part0_1Focused {
 			part0_1Prefix = ">"
 		}
-		part0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1Prefix + " " + fmt.Sprint("flip"))
+		part0_1Text := part0_1Prefix + " " + fmt.Sprint("flip")
+		part0_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_1Text).Render(part0_1Text)
 		part0_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_1)
 		part0Children = append(part0Children, part0_1)
 		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
@@ -1066,7 +1067,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/bubbletea --
-pass sha256:4f35ae3eccd96fdb9b8ae61db7ddc2f1
+pass sha256:8db88c184f73610246a62283165f730c
 -- run/go/fyne --
 pass sha256:9957022f7adf394391b657ea22ad973f
 -- run/go/gtk4 --

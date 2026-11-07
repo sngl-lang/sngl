@@ -364,7 +364,8 @@ func (m Model) View() tea.View {
 		__lt14 = "none"
 	}
 	var part2 string
-	part2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt14))
+	part2Text := fmt.Sprint(__lt14)
+	part2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part2Text).Render(part2Text)
 	parts = append(parts, part2)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -706,7 +707,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e6b2218f38d6da79eda39974f8aab90d
+pass sha256:b529aa54cfbbeaa946079956163ab0db
 -- run/go/fyne --
 pass sha256:fe7b14bdbdbad9663ab83a08684a863e
 -- run/go/gtk4 --

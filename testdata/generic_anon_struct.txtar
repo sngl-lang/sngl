@@ -743,7 +743,8 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
-		contentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((((((((((((((fmt.Sprint((m.unwrap__int(__anon_v_853006{V: 1}) + 1)) + " ") + m.unwrap__string(m.wrap__string("w"))) + " ") + fmt.Sprint(Box__intGet__int(m.box, &m))) + " ") + fmt.Sprint(m.box.All[0].V)) + " ") + fmt.Sprint(m.outer.O.V)) + " ") + fmt.Sprint(snglOptEq(m.opt.V, 3))) + " ") + fmt.Sprint((m.absent.V == nil))) + " ") + fmt.Sprint(len(m.nums.V)))))
+		contentPart_0Text := fmt.Sprint(((((((((((((((fmt.Sprint((m.unwrap__int(__anon_v_853006{V: 1}) + 1)) + " ") + m.unwrap__string(m.wrap__string("w"))) + " ") + fmt.Sprint(Box__intGet__int(m.box, &m))) + " ") + fmt.Sprint(m.box.All[0].V)) + " ") + fmt.Sprint(m.outer.O.V)) + " ") + fmt.Sprint(snglOptEq(m.opt.V, 3))) + " ") + fmt.Sprint((m.absent.V == nil))) + " ") + fmt.Sprint(len(m.nums.V))))
+		contentPart_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_0Text).Render(contentPart_0Text)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1Focused := (m.__focusID == 0)
@@ -751,7 +752,8 @@ func (m Model) View() tea.View {
 		if contentPart_1Focused {
 			contentPart_1Prefix = ">"
 		}
-		contentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("pick"))
+		contentPart_1Text := contentPart_1Prefix + " " + fmt.Sprint("pick")
+		contentPart_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_1Text).Render(contentPart_1Text)
 		contentPart_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_1)
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
@@ -760,7 +762,8 @@ func (m Model) View() tea.View {
 		if contentPart_2Focused {
 			contentPart_2Prefix = ">"
 		}
-		contentPart_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_2Prefix + " " + fmt.Sprint("go"))
+		contentPart_2Text := contentPart_2Prefix + " " + fmt.Sprint("go")
+		contentPart_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_2Text).Render(contentPart_2Text)
 		contentPart_2 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_2)
 		contentParts = append(contentParts, contentPart_2)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
@@ -1016,7 +1019,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:104dd4ab7fdd45d8d9f65c38cee9fc54
+pass sha256:a8d7cc3a431da030bbfa68fe7d811c29
 -- run/kotlin/android --
 pass sha256:366faf4aea0ac59931c1de7eea1409a6
 -- run/none/html --

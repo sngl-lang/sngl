@@ -458,7 +458,8 @@ func (m Model) View() tea.View {
 		if contentFocused {
 			contentPrefix = ">"
 		}
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPrefix + " " + fmt.Sprint("Check"))
+		contentText := contentPrefix + " " + fmt.Sprint("Check")
+		content = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentText).Render(contentText)
 		content = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content)
 	}
 	content = m.__clicks.Scan(content, 0, 0)
@@ -638,7 +639,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:64cbc13639748dfc64cfac78d5acf827
+pass sha256:ed91647378cd512afe4fe74a0571b4fa
 -- run/go/fyne --
 pass sha256:cb88971048f6c7ede11acb4fe5f9424a
 -- run/none/html --

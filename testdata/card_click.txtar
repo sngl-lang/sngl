@@ -609,14 +609,16 @@ func (m Model) View() tea.View {
 		if content_0Item_0Focused {
 			content_0Item_0Prefix = ">"
 		}
-		content_0Item_0 = lipgloss.NewStyle().Render(content_0Item_0Prefix + " " + fmt.Sprint("› "))
+		content_0Item_0Text := content_0Item_0Prefix + " " + fmt.Sprint("› ")
+		content_0Item_0 = tui.Within(lipgloss.NewStyle(), tui.Avail(m.width), content_0Item_0Text).Render(content_0Item_0Text)
 		content_0Item_0 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0Item_0)
 		__focusPos0++
 		content_0ItemChildren = append(content_0ItemChildren, content_0Item_0)
 		var content_0Item_1 string
 		var content_0Item_1Children []string
 		var content_0Item_1_0 string
-		content_0Item_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(name.Elem))
+		content_0Item_1_0Text := fmt.Sprint(name.Elem)
+		content_0Item_1_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0Item_1_0Text).Render(content_0Item_1_0Text)
 		content_0Item_1Children = append(content_0Item_1Children, content_0Item_1_0)
 		content_0Item_1 = lipgloss.JoinVertical(lipgloss.Left, content_0Item_1Children...)
 		content_0ItemChildren = append(content_0ItemChildren, content_0Item_1)
@@ -634,7 +636,8 @@ func (m Model) View() tea.View {
 	var content_1_0Children []string
 	var content_1_0_0 string
 	if m.opened != "" {
-		content_1_0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("opened " + m.opened)))
+		content_1_0_0Text := fmt.Sprint(("opened " + m.opened))
+		content_1_0_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1_0_0Text).Render(content_1_0_0Text)
 	}
 	if content_1_0_0 != "" {
 		content_1_0Children = append(content_1_0Children, content_1_0_0)
@@ -1636,7 +1639,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:44bf07887b48f9b7b80ba4f618d409fd
+pass sha256:76bc6e3c77db45698e4c62d4353d6fb7
 -- run/go/fyne --
 pass sha256:a13ba3914fdadb48f05777669afeda04
 -- run/go/gtk4 --

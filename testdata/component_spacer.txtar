@@ -370,7 +370,8 @@ func (m Model) View() tea.View {
 		__lt16 := snglSome(1.0)
 		contentChildren = append(contentChildren, tui.Grow(GrowOf(__lt16, "unset"), func(content_2Cells int) string {
 			var content_2 string
-			content_2 = tui.Sized(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), true, content_2Cells).Render(fmt.Sprint(""))
+			content_2Text := fmt.Sprint("")
+			content_2 = tui.Within(tui.Sized(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), true, content_2Cells), content_2Cells, content_2Text).Render(content_2Text)
 			return content_2
 		}))
 		var content_3 string
@@ -1019,7 +1020,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ad3dc19cdd574441283c1717f77aae1f
+pass sha256:f7cfbf623c2d777136866bffabd90edf
 -- run/go/fyne --
 pass sha256:08f3756a805716a6b504b604a06f65e7
 -- run/go/gtk4 --

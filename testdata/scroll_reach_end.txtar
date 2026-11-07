@@ -429,7 +429,8 @@ func (m Model) View() tea.View {
 	for i := range m.shown {
 		_ = i
 		var content_0_0Item string
-		content_0_0Item = BoxLook(Style{Height: snglSome(Measurement{Px: 48}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("row " + fmt.Sprint(i))))
+		content_0_0ItemText := fmt.Sprint(("row " + fmt.Sprint(i)))
+		content_0_0Item = tui.Within(BoxLook(Style{Height: snglSome(Measurement{Px: 48}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0_0ItemText).Render(content_0_0ItemText)
 		content_0_0Items = append(content_0_0Items, content_0_0Item)
 	}
 	content_0_0 = tui.Spaced(false, lipgloss.Left, 0, content_0_0Items...)
@@ -1554,7 +1555,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:bffcac45df38e05a3c172dfc6d676b90
+pass sha256:ba51c733c90f39d5895b3b03514f0945
 -- run/go/fyne --
 pass sha256:0d9758631027613ea989befecc162950
 -- run/go/gtk4 --

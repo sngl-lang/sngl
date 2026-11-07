@@ -360,7 +360,8 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
-		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("entry content"))
+		content_0Text := fmt.Sprint("entry content")
+		content_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0Text).Render(content_0Text)
 		contentChildren = append(contentChildren, content_0)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
@@ -402,6 +403,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e55202c3437bd306bd01820cae4c683a
+pass sha256:2bb216a4fc9c40ccf1d54e312e04ce34
 -- run/none/html --
 pass sha256:7216f8152b6978ceb0d0d409f520a79e

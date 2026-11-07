@@ -403,7 +403,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("n is " + fmt.Sprint(m.n__inst0))))
+		contentText := fmt.Sprint(("n is " + fmt.Sprint(m.n__inst0)))
+		content = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentText).Render(contentText)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -463,6 +464,6 @@ fun MainScreen() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:8f0a6f01f90da05e564d231fbbf79893
+pass sha256:355ab52b0cc13502715a0ea4848f060e
 -- run/kotlin/android --
 pass sha256:1317e651ee5060d3f5109f1917d60d8d

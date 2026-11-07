@@ -541,10 +541,12 @@ func (m Model) View() tea.View {
 		var contentContentParts []string
 		var contentContentPart_0 string
 		if m.pages__current.Id == 0 {
-			contentContentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("home"))
+			contentContentPart_0Text := fmt.Sprint("home")
+			contentContentPart_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentContentPart_0Text).Render(contentContentPart_0Text)
 		} else {
 			if m.pages__current.Id == 1 {
-				contentContentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("about"))
+				contentContentPart_0Text := fmt.Sprint("about")
+				contentContentPart_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentContentPart_0Text).Render(contentContentPart_0Text)
 			}
 		}
 		if contentContentPart_0 != "" {
@@ -556,7 +558,8 @@ func (m Model) View() tea.View {
 		if contentContentPart_1Focused {
 			contentContentPart_1Prefix = ">"
 		}
-		contentContentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentContentPart_1Prefix + " " + fmt.Sprint("About"))
+		contentContentPart_1Text := contentContentPart_1Prefix + " " + fmt.Sprint("About")
+		contentContentPart_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentContentPart_1Text).Render(contentContentPart_1Text)
 		contentContentPart_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentContentPart_1)
 		contentContentParts = append(contentContentParts, contentContentPart_1)
 		contentContent = tui.Spaced(false, lipgloss.Left, 0, contentContentParts...)
@@ -1517,7 +1520,7 @@ class MainScreenTest {
 
 }
 -- run/go/bubbletea --
-pass sha256:48b68311ca5a1c628a8546d35d448bd0
+pass sha256:67b4560b2ed2c08149b1d44ab6021b7c
 -- run/go/fyne --
 pass sha256:841fcb8dd5b9127e0c1d0dcb903f6fdd
 -- run/go/gtk4 --

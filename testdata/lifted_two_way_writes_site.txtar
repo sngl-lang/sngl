@@ -571,7 +571,8 @@ func (m Model) View() tea.View {
 	if m.on {
 		var part0Children []string
 		var part0_0 string
-		part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.shape))
+		part0_0Text := fmt.Sprint(m.shape)
+		part0_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_0Text).Render(part0_0Text)
 		part0Children = append(part0Children, part0_0)
 		var part0_1 string
 		if m.shown__inst0 {
@@ -580,7 +581,8 @@ func (m Model) View() tea.View {
 			if part0_1Focused {
 				part0_1Prefix = ">"
 			}
-			part0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_1Prefix + " " + fmt.Sprint(m.shape))
+			part0_1Text := part0_1Prefix + " " + fmt.Sprint(m.shape)
+			part0_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_1Text).Render(part0_1Text)
 			part0_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_1)
 		}
 		if part0_1 != "" {
@@ -1973,7 +1975,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8eae67606c07fd232a8639a5f74d9b78
+pass sha256:0a37efb50636b2fa1c453ab567e5688b
 -- run/go/fyne --
 pass sha256:0d536b8fecae7aa50a4aa8014f10817c
 -- run/go/gtk4 --

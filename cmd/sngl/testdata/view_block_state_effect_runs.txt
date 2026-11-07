@@ -56,7 +56,7 @@ func testANewCopyMountsAlone(t test.Test, c counter) {
     t.assert(c.total == 4)
 }
 -- testrun/bubbletea/go/app.sngl/counter/1 --
-sha256:843615130b94f8eb436a591b75ee18a3
+sha256:d8453cee9d7cba4caba38082c912fafd
 {
   "results": [
     {

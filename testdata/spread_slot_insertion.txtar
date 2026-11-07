@@ -480,7 +480,8 @@ func (m Model) View() tea.View {
 	if part0_0Focused {
 		part0_0Prefix = ">"
 	}
-	part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0Prefix + " " + fmt.Sprint("row"))
+	part0_0Text := part0_0Prefix + " " + fmt.Sprint("row")
+	part0_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_0Text).Render(part0_0Text)
 	part0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_0)
 	part0Children = append(part0Children, part0_0)
 	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
@@ -493,7 +494,8 @@ func (m Model) View() tea.View {
 	if part1_0Focused {
 		part1_0Prefix = ">"
 	}
-	part1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part1_0Prefix + " " + fmt.Sprint("part"))
+	part1_0Text := part1_0Prefix + " " + fmt.Sprint("part")
+	part1_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part1_0Text).Render(part1_0Text)
 	part1_0 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part1_0)
 	part1Children = append(part1Children, part1_0)
 	part1 = lipgloss.JoinVertical(lipgloss.Left, part1Children...)
@@ -1071,7 +1073,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ffdfd6f6b39eff6534b218117a1a554a
+pass sha256:ef8cb203c4b30dadd8303413eb63b11b
 -- run/go/fyne --
 pass sha256:cf1192c52bca9372cfd52492350a4ecd
 -- run/go/gtk4 --

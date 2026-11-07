@@ -221,9 +221,17 @@ target with no way to say a field is meant for one.
   select's, forwarded, rather than a press of the stop it covers.
 
   A scroll is a Layout given a `scroll` axis, its content laid out unbounded
-  along it and cut to the extent the box is given at the offset the Model's
+  down it and cut to the extent the box is given at the offset the Model's
   `tui.Scrolls` keeps, keyed by the node and the copy of each loop around it
-  (`scroll.go`). Its block is marked as a click's is, so the wheel scrolls the
+  (`scroll.go`). Across, the content is given the scroll's width, as CSS
+  gives a block: a column that grows fills it, so a table's lines line up,
+  and what cannot shrink to it spills past it, where a scroll moving across
+  shows it; a grid's column is never narrower than its widest part that does
+  not grow. Laid out unbounded, each line of the Pokédex's moves table was
+  its own width (`wrap_run_test.go`). A text breaks its lines at the width of
+  the column it is in (`tui.Within`), which a column with a frame gives as
+  the width inside it; a text run past it was broken again by the box around
+  it, its padding on the first line only. Its block is marked as a click's is, so the wheel scrolls the
   smallest box under it moving along the wheel's axis; PgUp and PgDn page the
   one focus was drawn in, and Tab brings the stop it lands on into view,
   which the scroll finds in its content before cutting it

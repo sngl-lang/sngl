@@ -585,7 +585,8 @@ func (m Model) View() tea.View {
 		if contentPart_0Focused {
 			contentPart_0Prefix = ">"
 		}
-		contentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_0Prefix + " " + fmt.Sprint("swap"))
+		contentPart_0Text := contentPart_0Prefix + " " + fmt.Sprint("swap")
+		contentPart_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_0Text).Render(contentPart_0Text)
 		contentPart_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_0)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
@@ -594,11 +595,13 @@ func (m Model) View() tea.View {
 		if contentPart_1Focused {
 			contentPart_1Prefix = ">"
 		}
-		contentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("tint"))
+		contentPart_1Text := contentPart_1Prefix + " " + fmt.Sprint("tint")
+		contentPart_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_1Text).Render(contentPart_1Text)
 		contentPart_1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_1)
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
-		contentPart_2 = tui.Render(BoxLook(m.s, true), tui.Fit{Wrap: WrapOf(m.s.WhiteSpace), Hidden: (m.s.Display == "none")}, fmt.Sprint("styled"))
+		contentPart_2Text := fmt.Sprint("styled")
+		contentPart_2 = tui.Render(tui.Within(BoxLook(m.s, true), tui.Avail(m.width), contentPart_2Text), tui.Fit{Wrap: WrapOf(m.s.WhiteSpace), Hidden: (m.s.Display == "none")}, contentPart_2Text)
 		if contentPart_2 != "" {
 			contentParts = append(contentParts, contentPart_2)
 		}
@@ -635,12 +638,14 @@ func (m Model) View() tea.View {
 		var contentPart_13 string
 		_ = __lt17
 		_ = __lt18
-		contentPart_13 = tui.Render(BoxLook(__lt14, true), tui.Fit{Wrap: WrapOf(__lt15.WhiteSpace), Hidden: (__lt16.Display == "none")}, fmt.Sprint("picked"))
+		contentPart_13Text := fmt.Sprint("picked")
+		contentPart_13 = tui.Render(tui.Within(BoxLook(__lt14, true), tui.Avail(m.width), contentPart_13Text), tui.Fit{Wrap: WrapOf(__lt15.WhiteSpace), Hidden: (__lt16.Display == "none")}, contentPart_13Text)
 		if contentPart_13 != "" {
 			contentParts = append(contentParts, contentPart_13)
 		}
 		var contentPart_14 string
-		contentPart_14 = tui.Render(BoxLook(m.kept[0], true), tui.Fit{Wrap: WrapOf(m.kept[0].WhiteSpace), Hidden: (m.kept[0].Display == "none")}, fmt.Sprint("kept"))
+		contentPart_14Text := fmt.Sprint("kept")
+		contentPart_14 = tui.Render(tui.Within(BoxLook(m.kept[0], true), tui.Avail(m.width), contentPart_14Text), tui.Fit{Wrap: WrapOf(m.kept[0].WhiteSpace), Hidden: (m.kept[0].Display == "none")}, contentPart_14Text)
 		if contentPart_14 != "" {
 			contentParts = append(contentParts, contentPart_14)
 		}
@@ -649,7 +654,8 @@ func (m Model) View() tea.View {
 		for _, r := range __identified0(m.rows) {
 			_ = r
 			var contentPart_15Item string
-			contentPart_15Item = tui.Render(BoxLook(m.s, true), tui.Fit{Wrap: WrapOf(m.s.WhiteSpace), Hidden: (m.s.Display == "none")}, fmt.Sprint(r.Elem))
+			contentPart_15ItemText := fmt.Sprint(r.Elem)
+			contentPart_15Item = tui.Render(tui.Within(BoxLook(m.s, true), tui.Avail(m.width), contentPart_15ItemText), tui.Fit{Wrap: WrapOf(m.s.WhiteSpace), Hidden: (m.s.Display == "none")}, contentPart_15ItemText)
 			if contentPart_15Item != "" {
 				contentPart_15Items = append(contentPart_15Items, contentPart_15Item)
 			}
@@ -2565,7 +2571,7 @@ body { display: flex; flex-direction: column; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ff8c307fb037d6a59a5932f41d7ea3e9
+pass sha256:e5f849e9156fa9e041031d6c7e06c557
 -- run/go/fyne --
 pass sha256:034a4bf0fa2629cdbe0859f026e848d3
 -- run/go/gtk4 --

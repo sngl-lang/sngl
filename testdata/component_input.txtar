@@ -451,7 +451,8 @@ func (m Model) View() tea.View {
 	content_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: false, key: tea.KeyPressMsg{}}, content_0)
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
-	content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint((("Hello, " + m.name) + "!")))
+	content_1Text := fmt.Sprint((("Hello, " + m.name) + "!"))
+	content_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1Text).Render(content_1Text)
 	contentChildren = append(contentChildren, content_1)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	content = m.__clicks.Scan(content, 0, 0)
@@ -1115,7 +1116,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6226e61c117028ad61061c11de2406ee
+pass sha256:a313354a12544e306713aeaec02d2aa0
 -- run/go/fyne --
 pass sha256:8f31c74406f51fbf62a1768ff4ff10dd
 -- run/go/gtk4 --

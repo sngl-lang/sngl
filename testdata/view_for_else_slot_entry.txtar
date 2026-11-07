@@ -404,13 +404,15 @@ func (m Model) View() tea.View {
 		var contentChildren []string
 		var content_0 string
 		if len(__identified0(m.xs__inst0)) == 0 {
-			content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("nothing here"))
+			content_0Text := fmt.Sprint("nothing here")
+			content_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0Text).Render(content_0Text)
 		} else {
 			var content_0Items []string
 			for _, i := range __identified0(m.xs__inst0) {
 				_ = i
 				var content_0Item string
-				content_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(i.Elem)))
+				content_0ItemText := fmt.Sprint(fmt.Sprint(i.Elem))
+				content_0Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0ItemText).Render(content_0ItemText)
 				content_0Items = append(content_0Items, content_0Item)
 			}
 			content_0 = tui.Spaced(false, lipgloss.Left, 0, content_0Items...)
@@ -753,7 +755,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d6e40c5dd733304aec4932cde9600f89
+pass sha256:7101728f90c6b0370c8aa88c19993f73
 -- run/go/gtk4 --
 pass sha256:90f507bfbba4489867d26656ca8e10da
 -- run/none/html --

@@ -659,7 +659,8 @@ func (m Model) View() tea.View {
 			if part0_0ItemFocused {
 				part0_0ItemPrefix = ">"
 			}
-			part0_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0_0ItemPrefix + " " + fmt.Sprint(m.describe__inst0(it.Id, it)))
+			part0_0ItemText := part0_0ItemPrefix + " " + fmt.Sprint(m.describe__inst0(it.Id, it))
+			part0_0Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_0ItemText).Render(part0_0ItemText)
 			part0_0Item = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0_0Item)
 			__focusPos0++
 			part0_0Items = append(part0_0Items, part0_0Item)
@@ -842,6 +843,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:706bc4701d640eb62641f4d063e1e7d3
+pass sha256:696cde7c84ad528789bdbd72fa9d53c6
 -- run/none/html --
 pass sha256:896de2d5426c178cf5930f9170373e61

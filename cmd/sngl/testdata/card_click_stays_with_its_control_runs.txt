@@ -71,7 +71,7 @@ sha256:4ff6cf08cad8253160969ab30e885772
   ]
 }
 -- testrun/bubbletea/go/app.sngl/cardWithButton/1 --
-sha256:247e30cf0a0d5e551ef1e607cab1d64c
+sha256:8ed4c9b5ea63e7fcd61fcf8df0d8ed2d
 {
   "results": [
     {

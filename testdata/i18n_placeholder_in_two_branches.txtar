@@ -379,7 +379,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(i18n.Translate(m.__ctx_locale__inst0, "{count, plural, one{# request failed: {why}} other{# requests failed, the first: {why}}}", "{count, plural, one{# request failed: {why}} other{# requests failed, the first: {why}}}", map[string]any{"count": m.count__inst0, "why": m.why__inst0})))
+		contentText := fmt.Sprint(i18n.Translate(m.__ctx_locale__inst0, "{count, plural, one{# request failed: {why}} other{# requests failed, the first: {why}}}", "{count, plural, one{# request failed: {why}} other{# requests failed, the first: {why}}}", map[string]any{"count": m.count__inst0, "why": m.why__inst0}))
+		content = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentText).Render(contentText)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -395,4 +396,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:ed600c00b504ca937c88714f30a685cb
+pass sha256:c4c7d49831bd40365fe1b9a692a97a5e

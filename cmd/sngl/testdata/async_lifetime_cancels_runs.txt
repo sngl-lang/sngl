@@ -249,7 +249,7 @@ sha256:7f3f69b2b6353b95d834076d0a807311
   ]
 }
 -- testrun/bubbletea/go/answered.sngl/ended/1 --
-sha256:33b94381162a44b953551b2eed408b41
+sha256:50aa896225f7608adc27d2c1e50ae811
 {
   "results": [
     {
@@ -259,7 +259,7 @@ sha256:33b94381162a44b953551b2eed408b41
   ]
 }
 -- testrun/bubbletea/go/ended.sngl/ended/1 --
-sha256:1bf03e96bdc682d92c10a0ccbec73eb3
+sha256:c7e660b3e9d7aab40f99d0960defcbe9
 {
   "results": [
     {

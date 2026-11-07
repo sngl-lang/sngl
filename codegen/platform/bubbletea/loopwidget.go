@@ -198,10 +198,12 @@ func walkSlot(b *strings.Builder, w widgetInfo, gc *golang.GoIRContext, indent i
 	}
 	vw := &viewWalk{b: b, indent: indent, wants: isLoopFocus}
 	vw.visit = func(vw *viewWalk, n *ir.NodeInst, gc *golang.GoIRContext) {
-		if n == w.node {
-			at(vw, gc)
-		}
-		vw.line("%s++", w.loop.lf.pos)
+		vw.counted(n, gc, func() {
+			if n == w.node {
+				at(vw, gc)
+			}
+			vw.line("%s++", w.loop.lf.pos)
+		})
 	}
 	vw.line("%s := 0", w.loop.lf.pos)
 	vw.line("_ = %s", w.loop.lf.pos)

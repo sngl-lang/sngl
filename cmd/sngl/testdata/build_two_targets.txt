@@ -23,7 +23,7 @@ ui.window {
     ui.text(value="hi")
 }
 -- testrun/build/bubbletea/go/app.sngl/1 --
-sha256:0cb852f6a1a02ee6ba59f293f5ade171
+sha256:9707960bbb4690e9ae441920e96a8301
 {}
 -- testrun/build/gtk4/go/app.sngl/1 --
 sha256:75be04083ba20a2a56b28c1899644dab

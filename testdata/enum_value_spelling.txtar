@@ -711,11 +711,13 @@ func (m Model) View() tea.View {
 		if part0Part_0Focused {
 			part0Part_0Prefix = ">"
 		}
-		part0Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_0Prefix + " " + fmt.Sprint("next"))
+		part0Part_0Text := part0Part_0Prefix + " " + fmt.Sprint("next")
+		part0Part_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_0Text).Render(part0Part_0Text)
 		part0Part_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_0)
 		part0Parts = append(part0Parts, part0Part_0)
 		var part0Part_1 string
-		part0Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((((((((m.mood + " ") + m.mood) + " ") + m.w) + " ") + m.look.Weight) + " ") + Shape(len(m.none)))))
+		part0Part_1Text := fmt.Sprint(((((((((m.mood + " ") + m.mood) + " ") + m.w) + " ") + m.look.Weight) + " ") + Shape(len(m.none))))
+		part0Part_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_1Text).Render(part0Part_1Text)
 		part0Parts = append(part0Parts, part0Part_1)
 		var part0Part_2 string
 		if m.open {
@@ -726,11 +728,13 @@ func (m Model) View() tea.View {
 			if part0Part_2Part_0Focused {
 				part0Part_2Part_0Prefix = ">"
 			}
-			part0Part_2Part_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(part0Part_2Part_0Prefix + " " + fmt.Sprint(fmt.Sprint(m.taps__inst0)))
+			part0Part_2Part_0Text := part0Part_2Part_0Prefix + " " + fmt.Sprint(fmt.Sprint(m.taps__inst0))
+			part0Part_2Part_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_2Part_0Text).Render(part0Part_2Part_0Text)
 			part0Part_2Part_0 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, part0Part_2Part_0)
 			part0Part_2Parts = append(part0Part_2Parts, part0Part_2Part_0)
 			var part0Part_2Part_1 string
-			part0Part_2Part_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("left"))
+			part0Part_2Part_1Text := fmt.Sprint("left")
+			part0Part_2Part_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_2Part_1Text).Render(part0Part_2Part_1Text)
 			part0Part_2Parts = append(part0Part_2Parts, part0Part_2Part_1)
 			part0Part_2 = tui.Spaced(false, lipgloss.Left, 0, part0Part_2Parts...)
 		}
@@ -1078,7 +1082,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0e658f59e262114112d2fbfe40727f41
+pass sha256:897048f9c5b6116191260571f304dda0
 -- run/kotlin/android --
 pass sha256:b76b7e56a1f1e5f7b154456c1244dbcf
 -- run/none/html --

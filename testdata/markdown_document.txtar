@@ -795,6 +795,8 @@ func (m Model) View() tea.View {
 			_ = b
 			var content_0Item string
 			if b.Kind == "list" {
+				content_0ItemLook := BoxLook(Style{PaddingLeft: snglSome(Measurement{Px: 20}), Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
+				content_0ItemW, _ := tui.Inner(content_0ItemLook, tui.Avail(m.width), m.height)
 				var content_0ItemChildren []string
 				var content_0Item_0 string
 				var content_0Item_0Items []string
@@ -811,14 +813,16 @@ func (m Model) View() tea.View {
 						} else {
 							__lt19 = it.Marker
 						}
-						content_0Item_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt19))
+						content_0Item_0Item_0Text := fmt.Sprint(__lt19)
+						content_0Item_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0ItemW, content_0Item_0Item_0Text).Render(content_0Item_0Item_0Text)
 					} else {
 						content_0Item_0Item_0Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0)) && m.__focusShown()
 						content_0Item_0Item_0Prefix := " "
 						if content_0Item_0Item_0Focused {
 							content_0Item_0Item_0Prefix = ">"
 						}
-						content_0Item_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_0Prefix + " " + fmt.Sprint(""))
+						content_0Item_0Item_0Text := content_0Item_0Item_0Prefix + " " + fmt.Sprint("")
+						content_0Item_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0ItemW, content_0Item_0Item_0Text).Render(content_0Item_0Item_0Text)
 						content_0Item_0Item_0 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_0Item_0Item_0)
 						__focusPos0++
 					}
@@ -834,6 +838,8 @@ func (m Model) View() tea.View {
 						_ = inner
 						var content_0Item_0Item_1_0Item string
 						if inner.Kind == "list" {
+							content_0Item_0Item_1_0ItemLook := BoxLook(Style{PaddingLeft: snglSome(Measurement{Px: 20}), Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
+							content_0Item_0Item_1_0ItemW, _ := tui.Inner(content_0Item_0Item_1_0ItemLook, content_0ItemW, 0)
 							var content_0Item_0Item_1_0ItemChildren []string
 							var content_0Item_0Item_1_0Item_0 string
 							var content_0Item_0Item_1_0Item_0Items []string
@@ -850,14 +856,16 @@ func (m Model) View() tea.View {
 									} else {
 										__lt20 = it.Marker
 									}
-									content_0Item_0Item_1_0Item_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt20))
+									content_0Item_0Item_1_0Item_0Item_0Text := fmt.Sprint(__lt20)
+									content_0Item_0Item_1_0Item_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_1_0ItemW, content_0Item_0Item_1_0Item_0Item_0Text).Render(content_0Item_0Item_1_0Item_0Item_0Text)
 								} else {
 									content_0Item_0Item_1_0Item_0Item_0Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0)) && m.__focusShown()
 									content_0Item_0Item_1_0Item_0Item_0Prefix := " "
 									if content_0Item_0Item_1_0Item_0Item_0Focused {
 										content_0Item_0Item_1_0Item_0Item_0Prefix = ">"
 									}
-									content_0Item_0Item_1_0Item_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item_0Prefix + " " + fmt.Sprint(""))
+									content_0Item_0Item_1_0Item_0Item_0Text := content_0Item_0Item_1_0Item_0Item_0Prefix + " " + fmt.Sprint("")
+									content_0Item_0Item_1_0Item_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_1_0ItemW, content_0Item_0Item_1_0Item_0Item_0Text).Render(content_0Item_0Item_1_0Item_0Item_0Text)
 									content_0Item_0Item_1_0Item_0Item_0 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_0Item_0Item_1_0Item_0Item_0)
 									__focusPos0++
 								}
@@ -873,6 +881,8 @@ func (m Model) View() tea.View {
 									_ = inner
 									var content_0Item_0Item_1_0Item_0Item_1_0Item string
 									if inner.Kind == "list" {
+										content_0Item_0Item_1_0Item_0Item_1_0ItemLook := BoxLook(Style{PaddingLeft: snglSome(Measurement{Px: 20}), Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
+										content_0Item_0Item_1_0Item_0Item_1_0ItemW, _ := tui.Inner(content_0Item_0Item_1_0Item_0Item_1_0ItemLook, content_0Item_0Item_1_0ItemW, 0)
 										var content_0Item_0Item_1_0Item_0Item_1_0ItemChildren []string
 										var content_0Item_0Item_1_0Item_0Item_1_0Item_0 string
 										var content_0Item_0Item_1_0Item_0Item_1_0Item_0Items []string
@@ -889,14 +899,16 @@ func (m Model) View() tea.View {
 												} else {
 													__lt21 = it.Marker
 												}
-												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt21))
+												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Text := fmt.Sprint(__lt21)
+												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_1_0Item_0Item_1_0ItemW, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Text).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Text)
 											} else {
 												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0)) && m.__focusShown()
 												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Prefix := " "
 												if content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Focused {
 													content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Prefix = ">"
 												}
-												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Prefix + " " + fmt.Sprint(""))
+												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Text := content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Prefix + " " + fmt.Sprint("")
+												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_1_0Item_0Item_1_0ItemW, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Text).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Text)
 												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0)
 												__focusPos0++
 											}
@@ -1678,7 +1690,8 @@ func (m Model) View() tea.View {
 																					content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item = BoxLook(Style{Padding: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 245, G: 245, B: 245, A: 255}), BorderRadius: snglSome(Measurement{Px: 4}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, false).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item)
 																				} else {
 																					if inner.Kind == "rule" {
-																						content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("─"))
+																						content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0ItemText := fmt.Sprint("─")
+																						content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_1_0Item_0Item_1_0ItemW, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0ItemText).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0ItemText)
 																					} else {
 																						if inner.Kind == "table" {
 																							var content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0ItemChildren []string
@@ -1689,7 +1702,8 @@ func (m Model) View() tea.View {
 																							for _, cell := range __identified0(inner.Columns) {
 																								_ = cell
 																								var content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0_0Item string
-																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0_0Item = BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(cell.Elem))
+																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0_0ItemText := fmt.Sprint(cell.Elem)
+																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0_0Item = tui.Within(BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_1_0Item_0Item_1_0ItemW, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0_0ItemText).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0_0ItemText)
 																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0_0Items = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0_0Items, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0_0Item)
 																							}
 																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0_0 = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_0_0Items...)
@@ -1709,7 +1723,8 @@ func (m Model) View() tea.View {
 																								for _, cell := range __identified1(r) {
 																									_ = cell
 																									var content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0Item string
-																									content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0Item = BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(cell.Elem))
+																									content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0ItemText := fmt.Sprint(cell.Elem)
+																									content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0Item = tui.Within(BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_1_0Item_0Item_1_0ItemW, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0ItemText).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0ItemText)
 																									content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0Items = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0Items, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0Item)
 																								}
 																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0 = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0Items...)
@@ -1753,7 +1768,7 @@ func (m Model) View() tea.View {
 											content_0Item_0Item_1_0Item_0Item_1_0ItemChildren = append(content_0Item_0Item_1_0Item_0Item_1_0ItemChildren, content_0Item_0Item_1_0Item_0Item_1_0Item_0)
 										}
 										content_0Item_0Item_1_0Item_0Item_1_0Item = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0Item_0Item_1_0ItemChildren...)
-										content_0Item_0Item_1_0Item_0Item_1_0Item = BoxLook(Style{PaddingLeft: snglSome(Measurement{Px: 20}), Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item_0Item_1_0Item)
+										content_0Item_0Item_1_0Item_0Item_1_0Item = content_0Item_0Item_1_0Item_0Item_1_0ItemLook.Render(content_0Item_0Item_1_0Item_0Item_1_0Item)
 									} else {
 										if inner.Kind == "paragraph" {
 											content_0Item_0Item_1_0Item_0Item_1_0Item = ""
@@ -2523,7 +2538,8 @@ func (m Model) View() tea.View {
 																			content_0Item_0Item_1_0Item_0Item_1_0Item = BoxLook(Style{Padding: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 245, G: 245, B: 245, A: 255}), BorderRadius: snglSome(Measurement{Px: 4}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, false).Render(content_0Item_0Item_1_0Item_0Item_1_0Item)
 																		} else {
 																			if inner.Kind == "rule" {
-																				content_0Item_0Item_1_0Item_0Item_1_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("─"))
+																				content_0Item_0Item_1_0Item_0Item_1_0ItemText := fmt.Sprint("─")
+																				content_0Item_0Item_1_0Item_0Item_1_0Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_1_0ItemW, content_0Item_0Item_1_0Item_0Item_1_0ItemText).Render(content_0Item_0Item_1_0Item_0Item_1_0ItemText)
 																			} else {
 																				if inner.Kind == "table" {
 																					var content_0Item_0Item_1_0Item_0Item_1_0ItemChildren []string
@@ -2534,7 +2550,8 @@ func (m Model) View() tea.View {
 																					for _, cell := range __identified0(inner.Columns) {
 																						_ = cell
 																						var content_0Item_0Item_1_0Item_0Item_1_0Item_0_0Item string
-																						content_0Item_0Item_1_0Item_0Item_1_0Item_0_0Item = BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(cell.Elem))
+																						content_0Item_0Item_1_0Item_0Item_1_0Item_0_0ItemText := fmt.Sprint(cell.Elem)
+																						content_0Item_0Item_1_0Item_0Item_1_0Item_0_0Item = tui.Within(BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_1_0ItemW, content_0Item_0Item_1_0Item_0Item_1_0Item_0_0ItemText).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0_0ItemText)
 																						content_0Item_0Item_1_0Item_0Item_1_0Item_0_0Items = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0_0Items, content_0Item_0Item_1_0Item_0Item_1_0Item_0_0Item)
 																					}
 																					content_0Item_0Item_1_0Item_0Item_1_0Item_0_0 = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_0Item_1_0Item_0_0Items...)
@@ -2554,7 +2571,8 @@ func (m Model) View() tea.View {
 																						for _, cell := range __identified1(r) {
 																							_ = cell
 																							var content_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0Item string
-																							content_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0Item = BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(cell.Elem))
+																							content_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0ItemText := fmt.Sprint(cell.Elem)
+																							content_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0Item = tui.Within(BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0Item_0Item_1_0ItemW, content_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0ItemText).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0ItemText)
 																							content_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0Items = append(content_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0Items, content_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0Item)
 																						}
 																						content_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0 = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_0Item_1_0Item_1Item_0Items...)
@@ -2599,7 +2617,7 @@ func (m Model) View() tea.View {
 								content_0Item_0Item_1_0ItemChildren = append(content_0Item_0Item_1_0ItemChildren, content_0Item_0Item_1_0Item_0)
 							}
 							content_0Item_0Item_1_0Item = tui.Spaced(false, lipgloss.Left, 1, content_0Item_0Item_1_0ItemChildren...)
-							content_0Item_0Item_1_0Item = BoxLook(Style{PaddingLeft: snglSome(Measurement{Px: 20}), Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item_0Item_1_0Item)
+							content_0Item_0Item_1_0Item = content_0Item_0Item_1_0ItemLook.Render(content_0Item_0Item_1_0Item)
 						} else {
 							if inner.Kind == "paragraph" {
 								content_0Item_0Item_1_0Item = ""
@@ -3369,7 +3387,8 @@ func (m Model) View() tea.View {
 																content_0Item_0Item_1_0Item = BoxLook(Style{Padding: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 245, G: 245, B: 245, A: 255}), BorderRadius: snglSome(Measurement{Px: 4}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, false).Render(content_0Item_0Item_1_0Item)
 															} else {
 																if inner.Kind == "rule" {
-																	content_0Item_0Item_1_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("─"))
+																	content_0Item_0Item_1_0ItemText := fmt.Sprint("─")
+																	content_0Item_0Item_1_0Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0ItemW, content_0Item_0Item_1_0ItemText).Render(content_0Item_0Item_1_0ItemText)
 																} else {
 																	if inner.Kind == "table" {
 																		var content_0Item_0Item_1_0ItemChildren []string
@@ -3380,7 +3399,8 @@ func (m Model) View() tea.View {
 																		for _, cell := range __identified0(inner.Columns) {
 																			_ = cell
 																			var content_0Item_0Item_1_0Item_0_0Item string
-																			content_0Item_0Item_1_0Item_0_0Item = BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(cell.Elem))
+																			content_0Item_0Item_1_0Item_0_0ItemText := fmt.Sprint(cell.Elem)
+																			content_0Item_0Item_1_0Item_0_0Item = tui.Within(BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0ItemW, content_0Item_0Item_1_0Item_0_0ItemText).Render(content_0Item_0Item_1_0Item_0_0ItemText)
 																			content_0Item_0Item_1_0Item_0_0Items = append(content_0Item_0Item_1_0Item_0_0Items, content_0Item_0Item_1_0Item_0_0Item)
 																		}
 																		content_0Item_0Item_1_0Item_0_0 = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_0_0Items...)
@@ -3400,7 +3420,8 @@ func (m Model) View() tea.View {
 																			for _, cell := range __identified1(r) {
 																				_ = cell
 																				var content_0Item_0Item_1_0Item_1Item_0Item string
-																				content_0Item_0Item_1_0Item_1Item_0Item = BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(cell.Elem))
+																				content_0Item_0Item_1_0Item_1Item_0ItemText := fmt.Sprint(cell.Elem)
+																				content_0Item_0Item_1_0Item_1Item_0Item = tui.Within(BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_0ItemW, content_0Item_0Item_1_0Item_1Item_0ItemText).Render(content_0Item_0Item_1_0Item_1Item_0ItemText)
 																				content_0Item_0Item_1_0Item_1Item_0Items = append(content_0Item_0Item_1_0Item_1Item_0Items, content_0Item_0Item_1_0Item_1Item_0Item)
 																			}
 																			content_0Item_0Item_1_0Item_1Item_0 = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0Item_1_0Item_1Item_0Items...)
@@ -3445,7 +3466,7 @@ func (m Model) View() tea.View {
 					content_0ItemChildren = append(content_0ItemChildren, content_0Item_0)
 				}
 				content_0Item = tui.Spaced(false, lipgloss.Left, 1, content_0ItemChildren...)
-				content_0Item = BoxLook(Style{PaddingLeft: snglSome(Measurement{Px: 20}), Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Item)
+				content_0Item = content_0ItemLook.Render(content_0Item)
 			} else {
 				if b.Kind == "paragraph" {
 					content_0Item = ""
@@ -4215,7 +4236,8 @@ func (m Model) View() tea.View {
 													content_0Item = BoxLook(Style{Padding: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 245, G: 245, B: 245, A: 255}), BorderRadius: snglSome(Measurement{Px: 4}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, false).Render(content_0Item)
 												} else {
 													if b.Kind == "rule" {
-														content_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("─"))
+														content_0ItemText := fmt.Sprint("─")
+														content_0Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0ItemText).Render(content_0ItemText)
 													} else {
 														if b.Kind == "table" {
 															var content_0ItemChildren []string
@@ -4226,7 +4248,8 @@ func (m Model) View() tea.View {
 															for _, cell := range __identified0(b.Columns) {
 																_ = cell
 																var content_0Item_0_0Item string
-																content_0Item_0_0Item = BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(cell.Elem))
+																content_0Item_0_0ItemText := fmt.Sprint(cell.Elem)
+																content_0Item_0_0Item = tui.Within(BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0Item_0_0ItemText).Render(content_0Item_0_0ItemText)
 																content_0Item_0_0Items = append(content_0Item_0_0Items, content_0Item_0_0Item)
 															}
 															content_0Item_0_0 = tui.Spaced(true, lipgloss.Top, 2, content_0Item_0_0Items...)
@@ -4246,7 +4269,8 @@ func (m Model) View() tea.View {
 																for _, cell := range __identified1(r) {
 																	_ = cell
 																	var content_0Item_1Item_0Item string
-																	content_0Item_1Item_0Item = BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(cell.Elem))
+																	content_0Item_1Item_0ItemText := fmt.Sprint(cell.Elem)
+																	content_0Item_1Item_0Item = tui.Within(BoxLook(Style{MinWidth: snglSome(Measurement{Px: 80}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0Item_1Item_0ItemText).Render(content_0Item_1Item_0ItemText)
 																	content_0Item_1Item_0Items = append(content_0Item_1Item_0Items, content_0Item_1Item_0Item)
 																}
 																content_0Item_1Item_0 = tui.Spaced(true, lipgloss.Top, 2, content_0Item_1Item_0Items...)
@@ -9776,7 +9800,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b54f8152925e8246120d755aa0e4ccd2
+pass sha256:baf0d30943ee039131a187cc62d2198a
 -- run/go/fyne --
 pass sha256:9e0a06ced8c16ecdbb67b4d29381e683
 -- run/none/html --

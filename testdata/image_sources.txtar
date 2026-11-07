@@ -646,8 +646,10 @@ func (m Model) View() tea.View {
 		contentChildren = append(contentChildren, content_2)
 		var content_3 string
 		if m.failed__inst0 || !m.hasPhoto__inst0 {
-			content_3 = BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 20}), BorderStyle: "unset", Display: "inlineFlex", ListStyleType: "unset"}, true).Render(fmt.Sprint("JD"))
+			content_3Text := fmt.Sprint("JD")
+			content_3 = tui.Within(BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 20}), BorderStyle: "unset", Display: "inlineFlex", ListStyleType: "unset"}, true), tui.Avail(m.width), content_3Text).Render(content_3Text)
 		} else {
+			content_3Look := BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderRadius: snglSome(Measurement{Px: 20}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
 			var content_3Children []string
 			var content_3_0 string
 			if m.hasPhoto__inst0 {
@@ -657,7 +659,7 @@ func (m Model) View() tea.View {
 				content_3Children = append(content_3Children, content_3_0)
 			}
 			content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
-			content_3 = BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderRadius: snglSome(Measurement{Px: 20}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_3)
+			content_3 = content_3Look.Render(content_3)
 		}
 		if content_3 != "" {
 			contentChildren = append(contentChildren, content_3)
@@ -681,7 +683,8 @@ func (m Model) View() tea.View {
 		if content_6Focused {
 			content_6Prefix = ">"
 		}
-		content_6 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_6Prefix + " " + fmt.Sprint("grow"))
+		content_6Text := content_6Prefix + " " + fmt.Sprint("grow")
+		content_6 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_6Text).Render(content_6Text)
 		content_6 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_6)
 		contentChildren = append(contentChildren, content_6)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
@@ -3252,7 +3255,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:90e83063ffa8768195474e917c45778d
+pass sha256:89df2276a65e683e74557699627aed5d
 -- run/go/fyne --
 pass sha256:46b0d9c399a635f8e566000346768e50
 -- run/go/gtk4 --

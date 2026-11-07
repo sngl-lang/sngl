@@ -162,7 +162,7 @@ window {
     main
 }
 -- testrun/bubbletea/go/setctx.sngl/main/1 --
-sha256:a1febd615ffe7a42192bec8074735185
+sha256:c7f86cc415140add8dc19d99669c8b1d
 {
   "results": [
     {

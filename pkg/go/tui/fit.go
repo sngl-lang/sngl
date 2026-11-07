@@ -40,3 +40,15 @@ func Render(look lipgloss.Style, fit Fit, text string) string {
 	}
 	return look.Render(text)
 }
+
+// Within is look, or look as wide as avail cells where text rendered in it
+// would be wider: a text breaks its lines at the width of the box it is in,
+// as CSS's does, where it would otherwise run past it and the box around it
+// would break the lines it had padded. A look fixing its own width, and an
+// avail of zero, a box whose extent nothing knows, leave it as it is.
+func Within(look lipgloss.Style, avail int, text string) lipgloss.Style {
+	if avail <= 0 || look.GetWidth() > 0 || lipgloss.Width(look.Render(text)) <= avail {
+		return look
+	}
+	return Sized(look, true, avail)
+}

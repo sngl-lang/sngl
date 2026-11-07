@@ -430,12 +430,13 @@ func (m Model) View() tea.View {
 		for _, p := range []__anon_id_elem_0cec9d{__anon_id_elem_0cec9d{Id: "100", Elem: (time.Duration(100) * time.Millisecond)}, __anon_id_elem_0cec9d{Id: "250", Elem: (time.Duration(250) * time.Millisecond)}} {
 			_ = p
 			var contentItem string
-			contentItem = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((snglStrDuration(p.Elem) + ": ") + fmt.Sprint(func() int {
+			contentItemText := fmt.Sprint(((snglStrDuration(p.Elem) + ": ") + fmt.Sprint(func() int {
 				if __v, __ok := m.ticks__inst0[p.Id]; __ok {
 					return __v
 				}
 				return 0
-			}()))))
+			}())))
+			contentItem = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentItemText).Render(contentItemText)
 			contentItems = append(contentItems, contentItem)
 		}
 		content = tui.Spaced(false, lipgloss.Left, 0, contentItems...)
@@ -1387,7 +1388,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b0f7ae1a23caf9f5f5ab0c356d38d2c8
+pass sha256:56ddeda6a2e505b53797c3859defc2d3
 -- run/go/fyne --
 pass sha256:f4548e6a05b5f29f23971d54d8f055c7
 -- run/go/gtk4 --

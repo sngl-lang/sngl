@@ -399,7 +399,8 @@ func (m Model) View() tea.View {
 		var content_0 string
 		content_0_label := func(d int) string {
 			var result string
-			result = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("level " + fmt.Sprint(d))))
+			resultText := fmt.Sprint(("level " + fmt.Sprint(d)))
+			result = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), resultText).Render(resultText)
 			return result
 		}
 		content_0 = m.renderFrame(m.depth, 0, content_0_label)
@@ -1563,7 +1564,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:59d54c46b953bc7d120f9f95ee989352
+pass sha256:299e09bd11b6b6136cf7102d7b12065d
 -- run/go/fyne --
 pass sha256:b42d497dd15000858ddb9cb5d1b5650f
 -- run/go/gtk4 --

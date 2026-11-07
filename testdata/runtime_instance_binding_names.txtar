@@ -425,7 +425,8 @@ func (m Model) View() tea.View {
 	var content_0 string
 	content_0_part := func(m__r3 int) string {
 		var result string
-		result = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("level " + fmt.Sprint(m__r3)) + " ") + m.mark)))
+		resultText := fmt.Sprint(((("level " + fmt.Sprint(m__r3)) + " ") + m.mark))
+		result = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), resultText).Render(resultText)
 		return result
 	}
 	content_0 = m.renderFrame(m.depth, "top", 0, content_0_part)
@@ -435,7 +436,8 @@ func (m Model) View() tea.View {
 	var content_1 string
 	content_1_part := func(result_ int) string {
 		var result string
-		result = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("r " + fmt.Sprint(result_)) + " ") + m.mark)))
+		resultText := fmt.Sprint(((("r " + fmt.Sprint(result_)) + " ") + m.mark))
+		result = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), resultText).Render(resultText)
 		return result
 	}
 	content_1 = m.renderFrame((m.depth - 1), "second", 0, content_1_part)
@@ -445,7 +447,8 @@ func (m Model) View() tea.View {
 	var content_2 string
 	content_2_part := func(in int) string {
 		var result string
-		result = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("in " + fmt.Sprint(in)) + " ") + m.mark)))
+		resultText := fmt.Sprint(((("in " + fmt.Sprint(in)) + " ") + m.mark))
+		result = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), resultText).Render(resultText)
 		return result
 	}
 	content_2 = m.renderFrame((m.depth - 2), "third", 0, content_2_part)
@@ -3555,7 +3558,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8faa6b25b80d483690005b52be0ea1eb
+pass sha256:8f3e398b4458c6a3f3a2b9f9799b005e
 -- run/go/fyne --
 pass sha256:52013fe79c71b41556726b249a521b15
 -- run/go/gtk4 --

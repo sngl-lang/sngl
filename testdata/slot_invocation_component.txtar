@@ -412,12 +412,14 @@ func (m Model) View() tea.View {
 		var content_0 string
 		var content_0Children []string
 		var content_0_0 string
-		content_0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("One"))
+		content_0_0Text := fmt.Sprint("One")
+		content_0_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0_0Text).Render(content_0_0Text)
 		content_0Children = append(content_0Children, content_0_0)
 		var content_0_1 string
 		var content_0_1Children []string
 		var content_0_1_0 string
-		content_0_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint((("first of " + fmt.Sprint(m.pages__inst0)) + " pages")))
+		content_0_1_0Text := fmt.Sprint((("first of " + fmt.Sprint(m.pages__inst0)) + " pages"))
+		content_0_1_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0_1_0Text).Render(content_0_1_0Text)
 		content_0_1Children = append(content_0_1Children, content_0_1_0)
 		content_0_1 = lipgloss.JoinVertical(lipgloss.Left, content_0_1Children...)
 		content_0Children = append(content_0Children, content_0_1)
@@ -426,12 +428,14 @@ func (m Model) View() tea.View {
 		var content_1 string
 		var content_1Children []string
 		var content_1_0 string
-		content_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Two"))
+		content_1_0Text := fmt.Sprint("Two")
+		content_1_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1_0Text).Render(content_1_0Text)
 		content_1Children = append(content_1Children, content_1_0)
 		var content_1_1 string
 		var content_1_1Children []string
 		var content_1_1_0 string
-		content_1_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("no content supplied"))
+		content_1_1_0Text := fmt.Sprint("no content supplied")
+		content_1_1_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1_1_0Text).Render(content_1_1_0Text)
 		content_1_1Children = append(content_1_1Children, content_1_1_0)
 		content_1_1 = lipgloss.JoinVertical(lipgloss.Left, content_1_1Children...)
 		content_1Children = append(content_1Children, content_1_1)
@@ -673,7 +677,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:03db77af3ae9eeb7982a886088528c95
+pass sha256:9d4dde35feff2ed4613fc19c31310169
 -- run/kotlin/android --
 pass sha256:418f36808f36ed12275602f603e150cb
 -- run/none/html --

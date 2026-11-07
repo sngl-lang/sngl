@@ -19,5 +19,5 @@ window {
     main
 }
 -- testrun/build/bubbletea/go/app.sngl/1 --
-sha256:55aefcc7ef8e1f0dddf19b63e372eb11
+sha256:1b7c7d0a9bf5443013853f84ce72069c
 {}

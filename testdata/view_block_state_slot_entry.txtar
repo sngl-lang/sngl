@@ -433,11 +433,13 @@ func (m Model) View() tea.View {
 		if content_0_0Focused {
 			content_0_0Prefix = ">"
 		}
-		content_0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0_0Prefix + " " + fmt.Sprint("tap"))
+		content_0_0Text := content_0_0Prefix + " " + fmt.Sprint("tap")
+		content_0_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0_0Text).Render(content_0_0Text)
 		content_0_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0_0)
 		content_0Children = append(content_0Children, content_0_0)
 		var content_0_1 string
-		content_0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("taps " + fmt.Sprint(m.taps__inst0))))
+		content_0_1Text := fmt.Sprint(("taps " + fmt.Sprint(m.taps__inst0)))
+		content_0_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0_1Text).Render(content_0_1Text)
 		content_0Children = append(content_0Children, content_0_1)
 		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
 		contentChildren = append(contentChildren, content_0)
@@ -614,7 +616,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:19f59060de50b80a25dc4c66bb252ef3
+pass sha256:a0bc370654a0eb6c6ad570b2b7f52739
 -- run/go/gtk4 --
 pass sha256:da828e365b0f120447fb40fb845da029
 -- run/none/html --

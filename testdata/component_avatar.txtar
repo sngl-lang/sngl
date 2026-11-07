@@ -375,11 +375,13 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
-		content_0 = BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 20}), BorderStyle: "unset", Display: "inlineFlex", ListStyleType: "unset"}, true).Render(fmt.Sprint("JD"))
+		content_0Text := fmt.Sprint("JD")
+		content_0 = tui.Within(BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 20}), BorderStyle: "unset", Display: "inlineFlex", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0Text).Render(content_0Text)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		if m.failed__inst1 {
-			content_1 = BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 4}), BorderStyle: "unset", Display: "inlineFlex", ListStyleType: "unset"}, true).Render(fmt.Sprint("AB"))
+			content_1Text := fmt.Sprint("AB")
+			content_1 = tui.Within(BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 4}), BorderStyle: "unset", Display: "inlineFlex", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1Text).Render(content_1Text)
 		} else {
 			content_1Look := BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderRadius: snglSome(Measurement{Px: 4}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
 			var content_1Children []string
@@ -394,7 +396,8 @@ func (m Model) View() tea.View {
 			contentChildren = append(contentChildren, content_1)
 		}
 		var content_2 string
-		content_2 = BoxLook(Style{Width: snglSome(Measurement{Px: 64}), Height: snglSome(Measurement{Px: 64}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 32}), BorderStyle: "unset", Display: "inlineFlex", ListStyleType: "unset"}, true).Render(fmt.Sprint("XY"))
+		content_2Text := fmt.Sprint("XY")
+		content_2 = tui.Within(BoxLook(Style{Width: snglSome(Measurement{Px: 64}), Height: snglSome(Measurement{Px: 64}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 32}), BorderStyle: "unset", Display: "inlineFlex", ListStyleType: "unset"}, true), tui.Avail(m.width), content_2Text).Render(content_2Text)
 		contentChildren = append(contentChildren, content_2)
 		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
 	}
@@ -1400,7 +1403,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:dfdc3a0d71d29be933f842e095e2c842
+pass sha256:0b236664107600d8c50297a333edeb5c
 -- run/go/fyne --
 pass sha256:8f1fadb6118b5dddfe43288cb0f3b310
 -- run/kotlin/android --

@@ -480,7 +480,8 @@ func (m Model) View() tea.View {
 		for _, e := range m.entries {
 			_ = e
 			var content_0Item string
-			content_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(e.Title))
+			content_0ItemText := fmt.Sprint(e.Title)
+			content_0Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0ItemText).Render(content_0ItemText)
 			content_0Items = append(content_0Items, content_0Item)
 		}
 		content_0 = tui.Spaced(false, lipgloss.Left, 0, content_0Items...)
@@ -488,15 +489,17 @@ func (m Model) View() tea.View {
 			contentChildren = append(contentChildren, content_0)
 		}
 		var content_1 string
-		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.entries[m.pick].Title))
+		content_1Text := fmt.Sprint(m.entries[m.pick].Title)
+		content_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1Text).Render(content_1Text)
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
-		content_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(func() string {
+		content_2Text := fmt.Sprint(func() string {
 			if __v, __ok := m.labels[m.key]; __ok {
 				return __v
 			}
 			return "?"
-		}()))
+		}())
+		content_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_2Text).Render(content_2Text)
 		contentChildren = append(contentChildren, content_2)
 		var content_3 string
 		content_3Focused := (m.__focusID == 0)
@@ -504,7 +507,8 @@ func (m Model) View() tea.View {
 		if content_3Focused {
 			content_3Prefix = ">"
 		}
-		content_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_3Prefix + " " + fmt.Sprint("next"))
+		content_3Text := content_3Prefix + " " + fmt.Sprint("next")
+		content_3 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_3Text).Render(content_3Text)
 		content_3 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_3)
 		contentChildren = append(contentChildren, content_3)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
@@ -871,7 +875,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d50069ed407d4c228841d67f50aa7832
+pass sha256:23b2ccf8fe3deb1737a44b8796c69b76
 -- run/go/fyne --
 pass sha256:5789e9263f9a3b6167f98e484e4f1900
 -- run/go/gtk4 --

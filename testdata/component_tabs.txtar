@@ -556,7 +556,8 @@ func (m Model) View() tea.View {
 	}
 	content_0Children = append(content_0Children, tui.Grow(1.0, func(content_0_1Cells int) string {
 		var content_0_1 string
-		content_0_1 = tui.Sized(tui.TabGap(), true, content_0_1Cells).Render(fmt.Sprint("\n"))
+		content_0_1Text := fmt.Sprint("\n")
+		content_0_1 = tui.Within(tui.Sized(tui.TabGap(), true, content_0_1Cells), content_0_1Cells, content_0_1Text).Render(content_0_1Text)
 		return content_0_1
 	}))
 	content_0 = tui.Join(true, lipgloss.Top, 0, 0, content_0W, content_0Children)
@@ -564,10 +565,12 @@ func (m Model) View() tea.View {
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	content_1Look := lipgloss.NewStyle()
-	content_1W, _ := tui.Inner(content_1Look, contentW, 0)
+	content_1W, content_1H := tui.Inner(content_1Look, contentW, 0)
 	var content_1Children []tui.Part
 	content_1Children = append(content_1Children, tui.Grow(1.0, func(content_1_0Cells int) string {
 		var content_1_0 string
+		content_1_0Look := tui.Sized(tui.TabPanel("underline"), true, content_1_0Cells)
+		content_1_0W, _ := tui.Inner(content_1_0Look, content_1_0Cells, content_1H)
 		var content_1_0Children []string
 		var content_1_0_0 string
 		var content_1_0_0Items []string
@@ -578,13 +581,16 @@ func (m Model) View() tea.View {
 			var content_1_0_0ItemChildren []string
 			var content_1_0_0Item_0 string
 			if t__r1.__id == 0 {
-				content_1_0_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Overview content"))
+				content_1_0_0Item_0Text := fmt.Sprint("Overview content")
+				content_1_0_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_1_0W, content_1_0_0Item_0Text).Render(content_1_0_0Item_0Text)
 			} else {
 				if t__r1.__id == 1 {
-					content_1_0_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Detail content"))
+					content_1_0_0Item_0Text := fmt.Sprint("Detail content")
+					content_1_0_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_1_0W, content_1_0_0Item_0Text).Render(content_1_0_0Item_0Text)
 				} else {
 					if t__r1.__id == 2 {
-						content_1_0_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Settings content"))
+						content_1_0_0Item_0Text := fmt.Sprint("Settings content")
+						content_1_0_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), content_1_0W, content_1_0_0Item_0Text).Render(content_1_0_0Item_0Text)
 					}
 				}
 			}
@@ -602,7 +608,7 @@ func (m Model) View() tea.View {
 			content_1_0Children = append(content_1_0Children, content_1_0_0)
 		}
 		content_1_0 = lipgloss.JoinVertical(lipgloss.Left, content_1_0Children...)
-		content_1_0 = tui.Sized(tui.TabPanel("underline"), true, content_1_0Cells).Render(content_1_0)
+		content_1_0 = content_1_0Look.Render(content_1_0)
 		return content_1_0
 	}))
 	content_1 = tui.Join(true, lipgloss.Top, 0, 0, content_1W, content_1Children)
@@ -1692,7 +1698,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5e1c98dc9a77c5c45ec92ddfdb06648f
+pass sha256:e94411e17c54cacb013d8ba28ef2f56a
 -- run/go/fyne --
 pass sha256:fcc32173caaad7df71c8ad1f754d2bd9
 -- run/go/gtk4 --

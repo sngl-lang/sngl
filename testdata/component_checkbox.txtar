@@ -409,7 +409,8 @@ func (m Model) View() tea.View {
 	if contentFocused {
 		contentPrefix = ">"
 	}
-	content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPrefix + " " + fmt.Sprint("Enable"))
+	contentText := contentPrefix + " " + fmt.Sprint("Enable")
+	content = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentText).Render(contentText)
 	content = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content)
 	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
@@ -789,7 +790,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ee932589d6ed490582aa98db4d888cf6
+pass sha256:a2980186d6a40b28a39563c03a64f907
 -- run/go/fyne --
 pass sha256:d01d23ce7ee6d633586812a839ca6a22
 -- run/go/gtk4 --

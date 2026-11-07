@@ -448,12 +448,14 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
-		contentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(m.count__inst0)))
+		contentPart_0Text := fmt.Sprint(fmt.Sprint(m.count__inst0))
+		contentPart_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_0Text).Render(contentPart_0Text)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		var contentPart_1Children []string
 		var contentPart_1_0 string
-		contentPart_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("Clicks"))
+		contentPart_1_0Text := fmt.Sprint("Clicks")
+		contentPart_1_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_1_0Text).Render(contentPart_1_0Text)
 		contentPart_1Children = append(contentPart_1Children, contentPart_1_0)
 		var contentPart_1_1 string
 		contentPart_1_1Focused := (m.__focusID == 0)
@@ -461,7 +463,8 @@ func (m Model) View() tea.View {
 		if contentPart_1_1Focused {
 			contentPart_1_1Prefix = ">"
 		}
-		contentPart_1_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1_1Prefix + " " + fmt.Sprint("+"))
+		contentPart_1_1Text := contentPart_1_1Prefix + " " + fmt.Sprint("+")
+		contentPart_1_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_1_1Text).Render(contentPart_1_1Text)
 		contentPart_1_1 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_1_1)
 		contentPart_1Children = append(contentPart_1Children, contentPart_1_1)
 		contentPart_1 = lipgloss.JoinHorizontal(lipgloss.Top, contentPart_1Children...)
@@ -930,7 +933,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e37b9d70dfb28d7ba09f57be9e9651bc
+pass sha256:6ad9ebb90cf387b9925aa307fdcad361
 -- run/go/fyne --
 pass sha256:823964457fb9a65e3d107fdf9484f1d6
 -- run/go/gtk4 --

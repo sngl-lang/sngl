@@ -541,7 +541,7 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
-		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(strings.Join(func() []string {
+		content_0Text := fmt.Sprint(strings.Join(func() []string {
 			__out := make([]string, len(slices.Concat(func() []MenuItem__record {
 				__out := make([]MenuItem__record, len(m.languages))
 				for __i, __item := range m.languages {
@@ -575,7 +575,8 @@ func (m Model) View() tea.View {
 				}(__item)
 			}
 			return __out
-		}(), " ")))
+		}(), " "))
+		content_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0Text).Render(content_0Text)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		__focusPos0 := 0
@@ -599,7 +600,8 @@ func (m Model) View() tea.View {
 			if content_1ItemFocused {
 				content_1ItemPrefix = ">"
 			}
-			content_1Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_1ItemPrefix + " " + fmt.Sprint(it.Label))
+			content_1ItemText := content_1ItemPrefix + " " + fmt.Sprint(it.Label)
+			content_1Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1ItemText).Render(content_1ItemText)
 			content_1Item = m.__clicks.Mark(snglStop{slot: 0, pos: __focusPos0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_1Item)
 			__focusPos0++
 			content_1Items = append(content_1Items, content_1Item)
@@ -1435,7 +1437,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d1485e58f72b1596d77fcaf1f758c880
+pass sha256:15fff0fdfdacaeccb262378f683eba4d
 -- run/go/fyne --
 pass sha256:356307ab58c67c65161a5582dd0c6798
 -- run/go/gtk4 --

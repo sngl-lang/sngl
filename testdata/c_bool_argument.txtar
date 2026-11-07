@@ -448,7 +448,8 @@ func (m Model) View() tea.View {
 		if contentFocused {
 			contentPrefix = ">"
 		}
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPrefix + " " + fmt.Sprint(fmt.Sprint(m.v__r0)))
+		contentText := contentPrefix + " " + fmt.Sprint(fmt.Sprint(m.v__r0))
+		content = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentText).Render(contentText)
 		content = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content)
 	}
 	content = m.__clicks.Scan(content, 0, 0)
@@ -840,7 +841,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/bubbletea --
-pass sha256:927f5f0d08e048c1376c11eab6abe31d
+pass sha256:f6e39cef79b65b39dfb33b600acdac4d
 -- run/go/fyne --
 pass sha256:c07e299dfd96987889d4b637e082ced9
 -- run/go/gtk4 --

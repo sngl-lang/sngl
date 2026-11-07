@@ -409,7 +409,8 @@ func (m Model) View() tea.View {
 		for _, l := range __identified0(m.locales__inst0) {
 			_ = l
 			var contentItem string
-			contentItem = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(i18n.NumberInt(l.Elem, m.n__inst0, "decimal")))
+			contentItemText := fmt.Sprint(i18n.NumberInt(l.Elem, m.n__inst0, "decimal"))
+			contentItem = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentItemText).Render(contentItemText)
 			contentItems = append(contentItems, contentItem)
 		}
 		content = tui.Spaced(false, lipgloss.Left, 0, contentItems...)
@@ -428,4 +429,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:255a03c9de4e37fdc951443666acc4ea
+pass sha256:a79d66289588ca2173f83b4397de5949

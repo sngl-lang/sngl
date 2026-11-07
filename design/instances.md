@@ -711,7 +711,8 @@ branch around it, reads one is refused (`refuseFocusReadingSlotArgs`,
 that draws nothing is passed over.** passFocusOrder asks of each stop what
 says it is drawn -- the branches around it and its `Focus` record's `enabled`
 (`style.display != none` in every bubbletea override), and of a loop slot
-that its loop renders a stop -- and where any stop may not be, builds
+that the branches around the loop are taken and it renders a stop -- and
+where any stop may not be, builds
 `__focusShown`: Tab steps again while the stop reached is not shown, at most
 once per other stop, and New and every Update end by settling focus off a stop
 that stopped being shown, telling the widgets only when it moved, since a
@@ -726,8 +727,14 @@ through the `fitOf` call the optimizer leaves standing where an argument is a
 ternary), and a stop a loop renders is one only while its own record is
 enabled and no box between it and the loop hides it: passFocusOrder puts that
 condition on the node (`__focusCounted`), and the loop's count, the view's
-ordinal and Update's walk each number the stop only while it holds. Before,
-both were stops with nothing drawn (`TestFocusPassesOverHiddenStopsInLoopsAndBoxes`). A canvas under a loop is the same shape: its
+ordinal and Update's walks each number the stop only while it holds. Before,
+both were stops with nothing drawn (`TestFocusPassesOverHiddenStopsInLoopsAndBoxes`).
+A loop slot asked only its length was drawn on every page: Tab on the
+Pokédex's detail page reached the list's cards, and Enter opened Bulbasaur
+(`click_run_test.go`'s `TestTabStaysOnThePageDrawn`). The walk handing a
+looped widget its keys numbered every tab's stops where the view numbered the
+shown tab's, so a click on the Moves tab's select pressed a stop of the
+Evolution tab (`TestATabbedSelectTakesItsValue`). A canvas under a loop is the same shape: its
 drawing reads the iteration's variables, so it is written inline as the
 rasterizer View hands tui rather than as a `_canvasDrawN` method, with a
 surface and a kitty image ID per copy, and the transmit reaches each copy

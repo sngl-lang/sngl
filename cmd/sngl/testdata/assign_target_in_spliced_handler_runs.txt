@@ -54,7 +54,7 @@ ui.window {
     pair
 }
 -- testrun/bubbletea/go/app.sngl/pair/1 --
-sha256:9849150b7f9db24ea050a6bf36bd6b83
+sha256:2ab823e4eeb2817ec6f6a48438ab04c7
 {
   "results": [
     {

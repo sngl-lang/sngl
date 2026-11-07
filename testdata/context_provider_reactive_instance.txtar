@@ -482,7 +482,8 @@ func (m Model) View() tea.View {
 		if content_0Focused {
 			content_0Prefix = ">"
 		}
-		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("flip"))
+		content_0Text := content_0Prefix + " " + fmt.Sprint("flip")
+		content_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_0Text).Render(content_0Text)
 		content_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
@@ -490,7 +491,8 @@ func (m Model) View() tea.View {
 		for _, x := range __identified0(m.xs) {
 			_ = x
 			var content_1Item string
-			content_1Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((m.txt + " ") + fmt.Sprint(x.Elem))))
+			content_1ItemText := fmt.Sprint(((m.txt + " ") + fmt.Sprint(x.Elem)))
+			content_1Item = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1ItemText).Render(content_1ItemText)
 			content_1Items = append(content_1Items, content_1Item)
 		}
 		content_1 = tui.Spaced(false, lipgloss.Left, 0, content_1Items...)
@@ -1443,7 +1445,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4979a4496563a62511eb8a89e74c2927
+pass sha256:410fbab25fec7b8e23018494ccf811db
 -- run/go/fyne --
 pass sha256:afe9b389e60c3a4d5cff786adc3011b8
 -- run/go/gtk4 --

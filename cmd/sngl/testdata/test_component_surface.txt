@@ -198,7 +198,7 @@ window {
     comp
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:32a09372cc16a7822cf9a44a893d3e50
+sha256:135c55acac585cf421e55e2ba02f71d6
 {
   "results": [
     {
@@ -208,7 +208,7 @@ sha256:32a09372cc16a7822cf9a44a893d3e50
   ]
 }
 -- testrun/bubbletea/go/app.sngl/comp/1 --
-sha256:cc4de672618200214e5036672b136e4a
+sha256:86ae785fb37ee7d0e507db5adab1c7a3
 {
   "results": [
     {

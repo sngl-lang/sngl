@@ -622,12 +622,13 @@ func (m Model) View() tea.View {
 		var part0_0Item string
 		var part0_0ItemChildren []string
 		var part0_0Item_0 string
-		part0_0Item_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((fmt.Sprint(i.Elem) + " ") + fmt.Sprint(func() int {
+		part0_0Item_0Text := fmt.Sprint(((fmt.Sprint(i.Elem) + " ") + fmt.Sprint(func() int {
 			if __v, __ok := m.hits__inst0[i.Id]; __ok {
 				return __v
 			}
 			return 0
-		}()))))
+		}())))
+		part0_0Item_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0_0Item_0Text).Render(part0_0Item_0Text)
 		part0_0ItemChildren = append(part0_0ItemChildren, part0_0Item_0)
 		part0_0Item = lipgloss.JoinVertical(lipgloss.Left, part0_0ItemChildren...)
 		part0_0Items = append(part0_0Items, part0_0Item)
@@ -1904,7 +1905,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:01454feb488493e741a3e5d7dc130cdc
+pass sha256:886401e65d4a90248f8456b8d39bc980
 -- run/go/fyne --
 pass sha256:d0600180d9cb656d3510c6891f492fc4
 -- run/go/gtk4 --

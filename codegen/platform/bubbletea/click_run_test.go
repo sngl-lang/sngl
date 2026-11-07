@@ -312,7 +312,8 @@ func TestASelectOpensAPopover(t *testing.T) {
 }
 
 // tabbedSelectRunSrc is the Pokédex's moves select: typed, bound two-way,
-// in a tab's panel, which a loop over the tabs renders.
+// in a tab's panel, which a loop over the tabs renders, behind a tab with a
+// stop of its own, in a scroll taller than the window.
 const tabbedSelectRunSrc = `
 import ui "sngl:ui"
 
@@ -322,20 +323,27 @@ ui.window {
     var tab = 0
     var method = Method.level
 
-    ui.vbox {
-        ui.tabs(:selected=tab) {
-            ui.tab(label="About") {
-                ui.text(value="about")
-            }
-            ui.tab(label="Moves") {
-                ui.select #pick(:value=method) {
-                    for var m = Method {
-                        ui.choice(label="by {m}", value=m)
+    ui.vbox(style={flex=1}) {
+        ui.text(value="method {method}")
+        ui.scroll(style={flex=1}) {
+            ui.tabs(:selected=tab) {
+                ui.tab(label="About") {
+                    ui.button(text="about", @click { method = Method.machine })
+                }
+                ui.tab(label="Moves") {
+                    ui.vbox {
+                        ui.select #pick(:value=method) {
+                            for var m = Method {
+                                ui.choice(label="by {m}", value=m)
+                            }
+                        }
+                        for var n = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30] {
+                            ui.text(value="row {n}")
+                        }
                     }
                 }
             }
         }
-        ui.text(value="method {method}")
     }
 }
 `
@@ -388,4 +396,56 @@ func TestATabbedSelectShowsAndChooses(t *testing.T) {
 
 func TestATabbedSelectTakesItsValue(t *testing.T) {
 	runEmittedProgram(t, tabbedSelectRunSrc, tabbedSelectRunDriver)
+}
+
+// pagedFocusRunSrc is the Pokédex's two pages: a list a loop renders, and a
+// page with a button of its own, only one of them drawn at a time.
+const pagedFocusRunSrc = `
+import ui "sngl:ui"
+
+ui.window {
+    var page = 1
+    var pressed = ""
+
+    ui.vbox {
+        if page == 0 {
+            for var k = ["bulbasaur", "ivysaur"] {
+                ui.button(text=k, @click { pressed = k })
+            }
+        } else {
+            ui.button(text="back", @click { pressed = "back" })
+        }
+        ui.text(value="pressed {pressed}")
+    }
+}
+`
+
+const pagedFocusRunDriver = `package ui
+
+import (
+	"testing"
+
+	"charm.land/bubbletea/v2"
+)
+
+func send(m Model, msg tea.Msg) Model {
+	next, _ := m.Update(msg)
+	return next.(Model)
+}
+
+// Tab never reaches the stops of the page not drawn.
+func TestTabStaysOnThePageDrawn(t *testing.T) {
+	m := send(New(), tea.WindowSizeMsg{Width: 60, Height: 20})
+	for range 3 {
+		m = send(m, tea.KeyPressMsg{Code: tea.KeyTab})
+		m = send(m, tea.KeyPressMsg{Code: tea.KeyEnter})
+		if m.pressed != "back" {
+			t.Fatalf("Enter after Tab pressed %q, a button of the page not drawn", m.pressed)
+		}
+	}
+}
+`
+
+func TestTabStaysOnThePageDrawn(t *testing.T) {
+	runEmittedProgram(t, pagedFocusRunSrc, pagedFocusRunDriver)
 }

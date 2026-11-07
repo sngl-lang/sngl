@@ -459,7 +459,8 @@ func (m Model) View() tea.View {
 		contentPart_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0Children...)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
-		contentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("hello " + m.name)))
+		contentPart_1Text := fmt.Sprint(("hello " + m.name))
+		contentPart_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_1Text).Render(contentPart_1Text)
 		contentParts = append(contentParts, contentPart_1)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
@@ -821,7 +822,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:acea703562e6fc08a4fb413091da77e8
+pass sha256:a54df37a9ec95d6559d3867a496e84f4
 -- run/go/fyne --
 pass sha256:23ae43cba8f25a2f213cc1a58690ba82
 -- run/go/gtk4 --

@@ -822,14 +822,24 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 			content = vc.gc.EvalExpr(bp.Content)
 		}
 		vc.requireImport("fmt")
-		if fp := codegen.NodeProp(n, "__focused"); fp != nil {
+		text := "fmt.Sprint(" + content + ")"
+		fp := codegen.NodeProp(n, "__focused")
+		if fp != nil {
 			vc.line(`%sFocused := %s`, resultVar, vc.focusedExpr(fp))
 			vc.line(`%sPrefix := " "`, resultVar)
 			vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
-			vc.line(`%s = %s`, resultVar, vc.render(n, style, resultVar+`Prefix + " " + fmt.Sprint(`+content+`)`))
+			text = resultVar + `Prefix + " " + ` + text
+		}
+		// Text breaks its lines at the width of the box it is in.
+		if vc.availW != "" {
+			vc.requireImport(tuiImportPath)
+			vc.line(`%sText := %s`, resultVar, text)
+			text = resultVar + "Text"
+			style = fmt.Sprintf("tui.Within(%s, %s, %s)", style, vc.availW, text)
+		}
+		vc.line(`%s = %s`, resultVar, vc.render(n, style, text))
+		if fp != nil {
 			vc.markStop(n, resultVar)
-		} else {
-			vc.line(`%s = %s`, resultVar, vc.render(n, style, "fmt.Sprint("+content+")"))
 		}
 
 	case bpWidget:
@@ -1060,15 +1070,13 @@ func (vc *irViewContext) growsAsPart(s ir.Stmt) bool {
 func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, style string) {
 	horizontal := bp.Join != joinVertical
 	savedW, savedH := vc.availW, vc.availH
-	// A scroll's content is as long as it comes out along the axis it
-	// scrolls, and cut to the extent it is given after (clipScroll).
-	if axis, ok := scrollAxisOf(n); ok {
-		if axis != 1 {
-			vc.availH = ""
-		}
-		if axis != 0 {
-			vc.availW = ""
-		}
+	// A scroll's content is as long as it comes out down a scroll moving
+	// along it, and cut to the extent it is given after (clipScroll). Across,
+	// it is given the scroll's width, as CSS gives a block's: what grows
+	// fills it, and what cannot shrink to it spills past it, which a scroll
+	// moving across shows by scrolling.
+	if axis, ok := scrollAxisOf(n); ok && axis != 1 {
+		vc.availH = ""
 	}
 	inner := ""
 	outer := vc.buf
@@ -1087,7 +1095,9 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	// A box placing its children along it needs its extent, as one whose
 	// child grows does: what they leave of it is what it places them in. A
 	// grid fits its rows to it.
-	if columns != "" || justify != "0" || slices.ContainsFunc(n.Children, growsWithin) {
+	// A column whose look has a frame gives its children the width inside
+	// it, which a text breaks its lines at.
+	if columns != "" || justify != "0" || slices.ContainsFunc(n.Children, growsWithin) || !horizontal && vc.availW != "" && style != plainLook {
 		vc.requireImport(tuiImportPath)
 		look := resultVar + "Look"
 		vc.line("%s := %s", look, style)
