@@ -1,3 +1,4 @@
+import ir "sngl:internal/ir"
 import marks "sngl:internal/marks"
 import macro "sngl:macro"
 
@@ -63,6 +64,19 @@ const func cbool(b bool) => cint(b ? 1 : 0)
 // C's `void *`, which `free` takes.
 #[macro.cnative("void *")]
 struct pointer {}
+
+// Marks the `void *` a `#[cnative]` function hands back to the callback it
+// takes, the shape GLib's signals, `qsort_r` and `EnumWindows` share: C cannot
+// call a closure, so it calls a function the compiler writes, which finds the
+// closure through this. The parameter is a `pointer`, written where C writes
+// it, and no caller passes it.
+//
+// The callback is the function's one `func` parameter, and C hands the
+// context to it as its last argument, after the ones its type declares: a
+// `func(int) int` is C's `int (*)(int, void *)`. Each parameter and the result
+// is an `int`, `float`, `bool` or `#[cnative]` struct. Unmarked, the callback
+// is held for the call; `#[macro.retains]`, for the rest of the program.
+func context() ir.Macro
 
 #[macro.cnative("void *", cast)]
 const func pointerTo(s str) pointer

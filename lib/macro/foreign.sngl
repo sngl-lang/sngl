@@ -50,6 +50,10 @@ func foreign(path string = "", name string = "", flags list[ir.ForeignFlag] = []
 // to `UINT` rather than as a C `int`. An alias of `string` names a pointer to
 // 16-bit units, which the string crosses as UTF-16: `sngl:x/c`'s `utf16`.
 //
+// A function's `func` parameter is a callback, which C calls through a
+// function pointer and the `void *` it hands back: the parameter
+// `sngl:x/c`'s `#[context]` marks, which no caller passes.
+//
 // Struct, function and alias are the forms that carry it.
 func cnative(name string, flags list[CNativeFlag] = []) ir.Macro
 

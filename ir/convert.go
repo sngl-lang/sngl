@@ -916,6 +916,9 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 		// Printed as the call of the cast it was written through, or the
 		// conversion to the alias its parameter was written as, which is
 		// the one source spelling it has.
+		if e.Kind == CConvertCallback || e.Kind == CConvertContext {
+			return c.convertExpr(e.Operand)
+		}
 		if e.Via == nil && e.Alias != nil {
 			return &ast.CallExpr{Func: &ast.IdentExpr{Name: e.Alias.Name}, Args: ast.ArgList{Args: []ast.ArgOrEventHandler{ast.Arg{Value: c.convertExpr(e.Operand)}}}}
 		}

@@ -243,9 +243,21 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
    its C function. A library's sources are read from `lib.FS`, whose
    `go:embed` holds only `.sngl` until the first platform ships one: add the
    pattern with it.
-4. **Callbacks** (design item 5). A fixture over a C function taking a
-   callback and a context, its source shipped through `sources`, run on Go.
-   Then move gtk4's `Connect` onto it, and gtk4rt's trampolines out of Go.
+4. **Callbacks** (design item 5). Done for any `#[cnative]` function:
+   `testdata/c_callback_argument.txtar` runs a held and a retained callback
+   through shipped C, and `error_c_callback.sngl`,
+   `error_c_context_mark.sngl` and `error_c_context_argument.sngl` hold the
+   rules. The context is a parameter marked `#[c.context]`, typed
+   `c.pointer`, which no caller passes. A `#[retains]` callback is never
+   released yet; tie it to the node that connected it
+   (`design/ownership.md`'s node lifetime) as an owned value is.
+   - **gtk4's `Connect` did not move.** On wrapped mode a connect that calls
+     C puts every program with a handler on the cgo path, which is what the
+     mode exists to avoid (`design/architecture.md`, *Which file a program
+     gets*: a warm build of 0.85s against 6.2s). Only `gtk4(cgo=true)` could
+     take it, and its connect is the same `gtk4.sngl` protocol, so it needs a
+     protocol per mode. Decide whether that is worth it, or whether gtk4rt's
+     trampolines leave Go only with item 7's C runtime.
 5. **Structs and `ref` out-parameters** (design item 6). A fixture over
    a shipped C function filling a struct.
 6. **Docs.**
@@ -259,8 +271,6 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
 
 ### Open questions
 
-- Where the callback's context parameter is named: a parameter mark, or an
-  argument to `cnative`.
 - Whether a struct crossing by value is converted at every call or kept in
   C's layout in the program. Go can hold a `C.RECT` directly, which saves a
   copy per call and ties a SNGL struct to cgo's type.

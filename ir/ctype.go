@@ -175,6 +175,16 @@ const (
 	// pointer to a 16-bit unit To names, valid for the call: an argument
 	// written `c.utf16`, which is how Win32 takes a string.
 	CConvertUTF16
+	// CConvertCallback is a closure handed to C as the function pointer a
+	// `func` parameter of a C function declares. Operand is the closure and
+	// Type its func type; the translator writes the C function C calls,
+	// which finds the closure through the context the call hands over.
+	CConvertCallback
+	// CConvertContext is the `void *` a `#[c.context]` parameter is handed:
+	// what the callback the same call converts finds its closure by. It
+	// has no operand of its own; the translator writes it from the
+	// callback's, and Operand is the placeholder the parameter defaults to.
+	CConvertContext
 )
 
 // CConvert is a value converted to a C type, the conversion a call of a C

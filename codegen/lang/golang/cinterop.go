@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -52,6 +53,14 @@ func (gc *GoIRContext) CType(t *ir.CType) string {
 // `unsafe.Pointer`, since cgo converts no C pointer to another. One that is
 // `void *` already, or becomes it, needs only the one conversion.
 func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
+	switch x.Kind {
+	case ir.CConvertCallback:
+		// The closure: CCall makes it the context, and hands C the
+		// dispatcher for its type in its place.
+		return gc.EvalExpr(x.Operand)
+	case ir.CConvertContext:
+		return "nil"
+	}
 	operand := gc.EvalExpr(x.Operand)
 	switch x.Kind {
 	case ir.CConvertString:
@@ -77,7 +86,34 @@ func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
 // number comes back as cgo's type for it, which a Go int or float64 is not
 // assignable from, so it is converted back: the arguments went the other way
 // in lower.CMarshal.
+//
+// A callback crosses as the dispatcher cgo exports for its type (ccallback.go)
+// and the closure as the context, registered for as long as the callback is
+// held: for the call, or for the rest of the program where the parameter is
+// `#[retains]`.
 func (gc *GoIRContext) CCall(fn *ir.Func, args []string) string {
+	off := len(args) - len(fn.Params)
+	cb := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return !p.CContext && p.Type != nil && p.Type.Kind == ir.TypeFunc })
+	ctx := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CContext })
+	if off < 0 || cb < 0 || ctx < 0 {
+		return gc.cCall(fn, args)
+	}
+	args = slices.Clone(args)
+	closure := args[off+cb]
+	args[off+cb] = callbackName(fn.Params[cb].Type.Sig) + "Ptr()"
+	if fn.Params[cb].Transfer == ir.TransferRetains {
+		args[off+ctx] = "snglContext(" + closure + ")"
+		return gc.cCall(fn, args)
+	}
+	args[off+ctx] = "__snglCtx"
+	hold := "__snglCtx := snglContext(" + closure + "); defer snglRelease(__snglCtx); "
+	if fn.Return == nil || fn.Return.Kind == ir.TypeVoid {
+		return "func() { " + hold + gc.cCall(fn, args) + " }()"
+	}
+	return "func() " + gc.goType(fn.Return) + " { " + hold + "return " + gc.cCall(fn, args) + " }()"
+}
+
+func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 	call := "C." + fn.Foreign.Name + "(" + strings.Join(args, ", ") + ")"
 	if fn.Return != nil {
 		switch fn.Return.Kind {

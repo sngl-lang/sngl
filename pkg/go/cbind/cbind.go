@@ -26,7 +26,7 @@ type Handle unsafe.Pointer
 var (
 	mu    sync.Mutex
 	next  int
-	slots = map[int]func(){}
+	slots = map[int]any{}
 )
 
 // Register stores fn and returns its dispatch index. Indices are stable and
@@ -47,7 +47,11 @@ var (
 // safe only once a stray callback can be told from a live one -- a generation
 // in the high bits. Not built here; named so the next caller to register in a
 // hot loop knows what it is spending.
-func Register(fn func()) int {
+//
+// fn is any func: a closure handed to a C function taking a callback is the
+// func type its parameter declares, which the generated dispatcher asserts
+// back (Lookup). Dispatch calls only a func().
+func Register(fn any) int {
 	mu.Lock()
 	defer mu.Unlock()
 	idx := next
@@ -74,11 +78,18 @@ func Release(idx int) {
 // without cbind's lock held, so a handler may itself Register more callbacks.
 func Dispatch(idx int) {
 	mu.Lock()
-	fn := slots[idx]
+	fn, _ := slots[idx].(func())
 	mu.Unlock()
 	if fn != nil {
 		fn()
 	}
+}
+
+// Lookup is the closure registered at idx, nil once it is Released.
+func Lookup(idx int) any {
+	mu.Lock()
+	defer mu.Unlock()
+	return slots[idx]
 }
 
 // DispatchOnce is Dispatch for a callback C will not call again: the fn runs
@@ -86,7 +97,7 @@ func Dispatch(idx int) {
 // otherwise retain every closure it ever scheduled.
 func DispatchOnce(idx int) {
 	mu.Lock()
-	fn := slots[idx]
+	fn, _ := slots[idx].(func())
 	delete(slots, idx)
 	mu.Unlock()
 	if fn != nil {

@@ -1,0 +1,11 @@
+// `#[c.context]` marks a parameter the compiler passes, so it has no default,
+// and only a function with no body has one: a body says what it does with
+// its parameters itself.
+import macro "sngl:macro"
+import c "sngl:x/c"
+
+#[macro.cnative("defaulted")]
+func defaulted(f func(), #[c.context] data c.pointer = c.pointer{}) // ERROR(check) "parameter \"data\" is a callback's context, which the compiler passes, so it takes no default"
+
+func bodied(f func(), #[c.context] data c.pointer) { // ERROR(check) "#[c.context] cannot mark a parameter of a function with a body"
+}

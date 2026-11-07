@@ -570,6 +570,37 @@ func ReachedCLinks(pkg *Package) []*CLink {
 	return out
 }
 
+// ReachedCCallbacks is the type of each callback a C function pkg or a
+// package it imports declares takes, each type once, in the order an import
+// first reaches it: what a translator writes a dispatcher for.
+func ReachedCCallbacks(pkg *Package) []*FuncSig {
+	var out []*FuncSig
+	seen := map[*Package]bool{}
+	var walk func(p *Package)
+	walk = func(p *Package) {
+		if p == nil || seen[p] {
+			return
+		}
+		seen[p] = true
+		for _, fn := range p.Funcs {
+			if fn.Foreign.Path != CPath || fn.IsCCast() || !slices.ContainsFunc(fn.Params, func(p *Param) bool { return p.CContext }) {
+				continue
+			}
+			for _, p := range fn.Params {
+				if t := p.Type; !p.CContext && t != nil && t.Kind == TypeFunc && t.Sig != nil &&
+					!slices.ContainsFunc(out, func(s *FuncSig) bool { return FuncOf(s.Params, s.Return).Equal(t) }) {
+					out = append(out, t.Sig)
+				}
+			}
+		}
+		for _, imp := range p.Imports {
+			walk(imp.Pkg)
+		}
+	}
+	walk(pkg)
+	return out
+}
+
 func (i *Import) SymName() string { return i.Alias }
 func (i *Import) SymType() *Type  { return nil }
 
@@ -1510,6 +1541,10 @@ type Param struct {
 	// by every clone (ClonePackage): its mark may run after the parameter is
 	// built, so the C type is read from it, not copied.
 	CAlias *Alias `json:",omitempty"`
+	// CContext marks the `void *` a `#[cnative]` function hands back to the
+	// callback it takes, written `#[c.context]`. No caller passes it: the
+	// translator does, from the closure the call converts.
+	CContext bool `json:",omitempty"`
 }
 
 // Transfer is what a callee does with an owned argument once it returns.

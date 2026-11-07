@@ -559,3 +559,87 @@ func (c *checker) checkCCasts() {
 		}
 	}
 }
+
+// checkCCallbacks judges each function taking a callback or marking a
+// context (sngl:x/c's #[context]). A C function calls a function pointer and
+// cannot call a closure, so one taking a `func` hands a `void *` back to it,
+// which the translator fills with what finds the closure: the function marks
+// that parameter, takes one callback for it, and the callback's every
+// parameter and result is a value C has a type for.
+func (c *checker) checkCCallbacks() {
+	for _, fn := range c.pkg.Funcs {
+		if fn.AST == nil {
+			continue
+		}
+		skip := len(fn.Params) - len(fn.AST.Params.Params)
+		pos := func(i int) ast.Pos {
+			if j := i - skip; j >= 0 && j < len(fn.AST.Params.Params) {
+				return fn.AST.Params.Params[j].Pos
+			}
+			return fn.AST.Pos
+		}
+		var callbacks, contexts []int
+		for i, p := range fn.Params {
+			switch {
+			case p.CContext:
+				contexts = append(contexts, i)
+			case p.Type != nil && p.Type.Kind == ir.TypeFunc:
+				callbacks = append(callbacks, i)
+			}
+		}
+		if fn.Foreign.Path != ir.CPath || fn.IsCCast() {
+			for _, i := range contexts {
+				c.error(pos(i), "#[c.context] marks what a #[cnative] function hands its callback, and %s is not a C function", fn.Name)
+			}
+			continue
+		}
+		for _, i := range contexts {
+			if p := fn.Params[i]; !ir.CTypeOf(p.Type).IsVoidPointer() {
+				c.error(pos(i), "parameter %q is a callback's context, which C spells `void *`: declare it c.pointer, not %s", p.Name, p.Type)
+			}
+		}
+		switch {
+		case len(callbacks) == 0 && len(contexts) > 0:
+			c.error(pos(contexts[0]), "parameter %q is a callback's context, and %s takes no func for it to be handed to", fn.Params[contexts[0]].Name, fn.Name)
+		case len(callbacks) > 0 && len(contexts) == 0:
+			c.error(pos(callbacks[0]), "C function %q takes %q, a func, which C can call only through a function handed the closure back: mark the `void *` it hands its callback #[c.context]", fn.Foreign.Name, fn.Params[callbacks[0]].Name)
+		case len(callbacks) > 1:
+			c.error(pos(callbacks[1]), "C function %q takes a second func, %q, and C hands its one context to one callback", fn.Foreign.Name, fn.Params[callbacks[1]].Name)
+		case len(contexts) > 1:
+			c.error(pos(contexts[1]), "C function %q marks a second context, %q, and takes one callback to hand one to", fn.Foreign.Name, fn.Params[contexts[1]].Name)
+		}
+		for _, i := range callbacks {
+			p := fn.Params[i]
+			if why := cCallbackRefusal(p.Type.Sig); why != "" {
+				c.error(pos(i), "callback %q %s: a callback crosses an int, float, bool or #[cnative] struct, which C has a type for", p.Name, why)
+			}
+		}
+	}
+}
+
+// cCallbackRefusal says what in sig no C callback can carry, or "".
+func cCallbackRefusal(sig *ir.FuncSig) string {
+	if sig.Color == ir.ColorAsync {
+		return "is async, and C waits for its callback to return"
+	}
+	for _, p := range sig.Params {
+		if !cCallbackValue(p.Type) {
+			return fmt.Sprintf("takes a %s", p.Type)
+		}
+	}
+	if r := sig.Return; r != nil && r.Kind != ir.TypeVoid && !cCallbackValue(r) {
+		return fmt.Sprintf("answers a %s", r)
+	}
+	return ""
+}
+
+func cCallbackValue(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Kind {
+	case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+		return true
+	}
+	return ir.CTypeOf(t) != nil
+}

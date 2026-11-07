@@ -1,0 +1,16 @@
+// No caller passes a callback's context: the compiler does, from the closure
+// the call hands the callback. A positional argument goes to the parameter
+// after it.
+import macro "sngl:macro"
+import c "sngl:x/c"
+
+c.link(include="calls.h")
+
+#[macro.cnative("each")]
+func each(f func(int), #[c.context] data c.pointer, n int)
+
+func call() {
+    each(func(i int) {}, 3)
+    each(func(i int) {}, data=c.pointer{}, n=3) // ERROR(check) "parameter \"data\" is the context C hands its callback, which the compiler passes"
+    each(func(i int) {}, 3, 4)                  // ERROR(check) "too many arguments"
+}

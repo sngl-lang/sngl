@@ -335,6 +335,7 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	c.checkOwnedDerived()
 	c.checkRetainsOutsideNode()
 	c.checkCCasts()
+	c.checkCCallbacks()
 	c.pkg.Symbols = c.symtab
 	// Last, because it needs every lib package loaded and every target's
 	// overrides merged.

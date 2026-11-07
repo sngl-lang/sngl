@@ -161,6 +161,29 @@ declaration itself. Two things about the name that are easy to get wrong:
   compiles into the program: Go writes them beside the generated package,
   where cgo compiles every `.c` (`codegen.CCompiler.CSources`). That is how a
   platform's runtime is C rather than one language's.
+  A `func` parameter is a callback: C calls a function pointer and hands it
+  back a `void *`, which the declaration marks `#[c.context]` (`sngl:x/c`) and
+  no caller passes. The mark gives the parameter a placeholder default, so the
+  call checker binds past it, a positional argument going to the parameter
+  after it, and `CMarshal` writes it in (`insertCContext`), since
+  `CallDefaults` leaves a native's arity alone. The callback argument becomes
+  a `CConvertCallback` holding the closure and the context a
+  `CConvertContext`, which the translator writes from that closure: the
+  context is what finds it, and both arguments naming one closure would
+  render it twice. The context is the callback's last argument, after those
+  its type declares, the shape GLib's signals, glibc's `qsort_r` and
+  `EnumWindows` share. Go exports a dispatcher per callback type, named for
+  it (`snglCallback_int__int`), in `sngl_callbacks.go`
+  (`codegen/lang/golang/ccallback.go`), which finds the closure through
+  `cbind`'s registry by the index the context holds, one past it so that none
+  is NULL. They sit in a file of their own because a Go file that exports to
+  C may define nothing in its preamble that another unit links, and a
+  platform's preamble may. An unmarked callback is held for the call, a
+  `#[retains]` one for the rest of the program
+  (`testdata/c_callback_argument.txtar`, `error_c_callback.sngl`,
+  `error_c_context_mark.sngl`, `error_c_context_argument.sngl`). gtk4 still
+  connects through `gtk4rt.Connect`, because a `C.` in every program with a
+  handler is what wrapped mode exists to avoid (`design/architecture.md`).
 - **A component may be one, on Kotlin.** `#[kt.native("Card", "androidx.compose.material3.Card")]` on a bodyless component names a
   composable: android calls it with the props as arguments by name and the rest
   slot as the trailing lambda (`renderIntrinsic`), and adds the import unless a

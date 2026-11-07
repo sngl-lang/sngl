@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 
 	"duckfam.us/sngl/ir"
 )
@@ -169,11 +170,18 @@ func (m *cMarshal) call(c *ir.Call) error {
 		return nil
 	}
 	m.done[c] = true
+	insertCContext(c)
 	off := len(c.Args) - len(fn.Params)
 	if off < 0 {
 		return nil
 	}
 	for i, p := range fn.Params {
+		if arg := &c.Args[off+i]; p.CContext || p.Type != nil && p.Type.Kind == ir.TypeFunc {
+			if _, done := arg.Value.(*ir.CConvert); !done {
+				arg.Value = callbackArg(p, arg.Value)
+			}
+			continue
+		}
 		if p.CAlias != nil && p.CAlias.C != nil {
 			if err := m.aliasArg(fn, p, &c.Args[off+i]); err != nil {
 				return err
@@ -207,6 +215,36 @@ func (m *cMarshal) call(c *ir.Call) error {
 		arg.Value = convertArg(conv, arg.Value)
 	}
 	return nil
+}
+
+// insertCContext writes into c the argument for its callee's #[c.context]
+// parameter, which no caller passes and CallDefaults leaves to a native:
+// the placeholder the parameter defaults to, which callbackArg makes the
+// context the translator writes.
+func insertCContext(c *ir.Call) {
+	k := slices.IndexFunc(c.Func.Params, func(p *ir.Param) bool { return p.CContext })
+	if k < 0 {
+		return
+	}
+	p := c.Func.Params[k]
+	if c.ArgFor(p.Name) != nil {
+		return
+	}
+	at := len(c.Args) - (len(c.Func.Params) - 1) + k
+	if at < 0 {
+		return
+	}
+	c.Args = slices.Insert(c.Args, at, ir.CallArg{Name: p.Name, Value: ir.CloneExprSharingDecls(p.Default)})
+}
+
+// callbackArg is v, the argument for p, as it crosses to C: a closure as the
+// callback a C function pointer calls, and a context as the `void *` the
+// translator writes from it.
+func callbackArg(p *ir.Param, v ir.Expr) ir.Expr {
+	if p.CContext {
+		return &ir.CConvert{Kind: ir.CConvertContext, To: ir.CTypeOf(p.Type), Operand: v, Type: p.Type}
+	}
+	return &ir.CConvert{Kind: ir.CConvertCallback, Operand: v, Type: p.Type}
 }
 
 // aliasArg converts arg for p, a parameter written with a `#[cnative]`

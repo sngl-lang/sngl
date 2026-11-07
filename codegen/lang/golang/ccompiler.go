@@ -68,8 +68,10 @@ func CPreambleLines(links []*ir.CLink) string {
 
 // CSources implements codegen.CCompiler: cgo compiles every .c file in the
 // package's directory, and the preamble includes a header there by its name,
-// so each source sits beside the generated Go under its own.
-func (t *Translator) CSources(links []*ir.CLink) (map[string][]byte, error) {
+// so each source sits beside the generated Go under its own. The dispatchers
+// a C function's callback crosses through join them (ccallback.go).
+func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map[string][]byte, error) {
+	links := ir.ReachedCLinks(pkg)
 	var out map[string][]byte
 	for _, l := range links {
 		for _, src := range l.Sources {
@@ -84,6 +86,19 @@ func (t *Translator) CSources(links []*ir.CLink) (map[string][]byte, error) {
 			}
 			out[src.Name] = []byte(src.Text)
 		}
+	}
+	if sigs := ir.ReachedCCallbacks(pkg); len(sigs) > 0 {
+		name, err := generatedPackage(generated)
+		if err != nil {
+			return nil, err
+		}
+		if _, dup := out[callbacksFile]; dup {
+			return nil, fmt.Errorf("a c.link ships %s, which holds the program's C callbacks", callbacksFile)
+		}
+		if out == nil {
+			out = map[string][]byte{}
+		}
+		out[callbacksFile] = callbacksSource(name, links, sigs)
 	}
 	return out, nil
 }

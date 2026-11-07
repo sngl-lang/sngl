@@ -1,0 +1,37 @@
+// A C function calls a function pointer, not a closure, so one taking a
+// `func` hands a `void *` back to it, which the declaration marks
+// `#[c.context]` and the compiler passes. It takes one callback for the one
+// context, and the callback's parameters and result are values C has a type
+// for.
+import macro "sngl:macro"
+import c "sngl:x/c"
+import go "sngl:language/go"
+
+c.link(include="calls.h")
+
+#[macro.cnative("no_context")]
+func noContext(f func()) // ERROR(check) "a func, which C can call only through a function handed the closure back: mark the `void *` it hands its callback #[c.context]"
+
+#[macro.cnative("bad_context")]
+func badContext(f func(), #[c.context] data int) // ERROR(check) "parameter \"data\" is a callback's context, which C spells `void *`: declare it c.pointer, not int"
+
+#[macro.cnative("lone_context")]
+func loneContext(#[c.context] data c.pointer) // ERROR(check) "and loneContext takes no func for it to be handed to"
+
+#[macro.cnative("two_callbacks")]
+func twoCallbacks(f func(), g func(), #[c.context] data c.pointer) // ERROR(check) "takes a second func, \"g\", and C hands its one context to one callback"
+
+#[macro.cnative("takes_string")]
+func takesString(f func(s string), #[c.context] data c.pointer) // ERROR(check) "callback \"f\" takes a string: a callback crosses an int, float, bool or #[cnative] struct"
+
+#[macro.cnative("answers_list")]
+func answersList(f func() list[int], #[c.context] data c.pointer) // ERROR(check) "callback \"f\" answers a list[int]"
+
+#[go.native("strings", "Repeat")]
+func goNative(f func(), #[c.context] data c.pointer) // ERROR(check) "and goNative is not a C function"
+
+#[macro.cnative("good")]
+func good(f func(int) bool, p c.pointer, #[c.context] data c.pointer)
+
+#[macro.cnative("two_contexts")]
+func twoContexts(f func(), #[c.context] a c.pointer, #[c.context] b c.pointer) // ERROR(check) "marks a second context, \"b\""

@@ -133,6 +133,7 @@ func markTransfer(m *mark, t ir.Transfer, name string) error {
 var funcParamMarks = map[markKey]bool{
 	{"macro", "retains"}: true,
 	{"macro", "moves"}:   true,
+	{"x/c", "context"}:   true,
 }
 
 // applyFuncParamMarks runs the marks written on a declared function's
@@ -259,4 +260,26 @@ func isStateRead(sym ir.Symbol) bool {
 		return true
 	}
 	return false
+}
+
+// markCContext implements sngl:x/c's #[context]: the parameter is the
+// `void *` a C function hands back to its callback, which the translator
+// passes and no caller does. Its default is a placeholder that says so to
+// the call checker; checkCCallbacks judges the function once its own marks
+// say whether it is C's.
+func markCContext(m *mark) error {
+	fp, ok := m.sym.(funcParam)
+	if !ok || fp.bodied {
+		what := "a parameter of a function with a body"
+		if !ok {
+			what = ast.DeclFormName(m.decl)
+		}
+		return fmt.Errorf("#[c.context] cannot mark %s; only a parameter of a #[cnative] function", what)
+	}
+	if fp.param.Default != nil {
+		return fmt.Errorf("parameter %q is a callback's context, which the compiler passes, so it takes no default", fp.param.Name)
+	}
+	fp.param.CContext = true
+	fp.param.Default = ir.ZeroExpr(fp.param.Type)
+	return nil
 }

@@ -285,7 +285,7 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 	}
 	files := mem.Files()
 	if cc, ok := lang.(codegen.CCompiler); ok {
-		srcs, err := cc.CSources(ir.ReachedCLinks(pkg))
+		srcs, err := cc.CSources(pkg, files)
 		if err != nil {
 			return nil, nil, fmt.Errorf("%s: %w", o.Name, err)
 		}
