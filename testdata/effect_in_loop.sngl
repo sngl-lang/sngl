@@ -45,6 +45,7 @@ func testAddingAnItemMountsOnlyIt(t Test, c main) {
 
 // The removed element's bracket ends, and nothing else does.
 func testRemovingAnItemUnmountsOnlyIt(t Test, c main) {
+    t.assert(c.out.value == "+a,+b")
     c.items = ["a"]
     t.assert(c.out.value == "+a,+b,-b")
 }

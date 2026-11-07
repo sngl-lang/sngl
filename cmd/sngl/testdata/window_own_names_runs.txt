@@ -1,0 +1,64 @@
+# A program's func or const named like a property the browser's window holds
+# as its own -- `closed`, `top`, `status` -- reaches a test on html. The page
+# put each name a test may read on window, and `closed` and `top` have only a
+# getter there, so the page raised as it booted; `status` took the value as a
+# string; `onerror` would have become the window's error handler. Those go on
+# window.__snglOwn, which the test module reads them from
+# (javascript.WindowOwn).
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+const status list[int] = [5, 6]
+
+func closed(n int) int {
+    return n + 1
+}
+
+func top(n int) int {
+    return n + 2
+}
+
+func name(n int) int {
+    return n + 3
+}
+
+func onerror(n int) int {
+    return n + 4
+}
+
+component page ui.node {
+    var n = 1
+
+    ui.text("{closed(n)} {top(n)} {name(n)}")
+}
+
+func testAFuncNamedLikeAWindowProperty(t test.Test, c page) {
+    t.assert(closed(c.n) == 2 && top(c.n) == 3 && name(c.n) == 4)
+    var f = closed
+    var g = top
+    t.assert(f(c.n) == 2 && g(c.n) == 3)
+    t.assert(status[c.n] == 6)
+    t.assert(onerror(c.n) == 5)
+}
+
+ui.window {
+    page()
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:c7f4cb73dd6fabd43e49240ab8aa9453
+{
+  "results": [
+    {
+      "Desc": "AFuncNamedLikeAWindowProperty",
+      "Passed": true
+    }
+  ]
+}

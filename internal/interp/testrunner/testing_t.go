@@ -425,6 +425,10 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 	if sym == nil {
 		return fmt.Errorf("cannot assign to undefined component field %q", field)
 	}
+	// A compound write reads what it writes.
+	if cv.unmounted && op != ast.AssignSet {
+		cv.mount()
+	}
 	cur, _ := cv.Env.Value(sym)
 	// Component-field values are dynamically typed in the test harness, so the
 	// declared width is not available here; ApplyOp falls back to inferring the
@@ -434,6 +438,10 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 		return err
 	}
 	cv.Env.Set(sym, nv)
+	if cv.unmounted {
+		cv.preset[sym] = true
+		return nil
+	}
 	cv.Env.NoteReplace(sym)
 	// A two-way prop's cell is the var its call site bound, where it bound one.
 	if err := cv.Env.WriteBound(sym, nv); err != nil {
@@ -469,7 +477,16 @@ func (cv *componentValue) declaresEvent(name string) bool {
 // when the method is not defined on the component; the caller falls back to
 // other dispatch paths in that case.
 func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir.CallArg) (any, bool, error) {
+	cv.mount()
 	if len(method) > 0 && method[0] == '@' {
+		// The target's override of the event says how a test raises it.
+		if cv.comp != nil {
+			for _, fn := range cv.comp.Funcs {
+				if fn.Trigger == method[1:] {
+					return cv.InvokeMethod(env, fn.Name, args)
+				}
+			}
+		}
 		evalArgs := func() ([]any, error) {
 			vals := make([]any, 0, len(args))
 			for _, a := range args {
@@ -617,6 +634,7 @@ func (cv *componentValue) Toggle(field string) error {
 }
 
 func (cv *componentValue) WriteBackList(field string, list []any) error {
+	cv.mount()
 	sym, err := cv.writableFieldSym(field)
 	if err != nil {
 		return err

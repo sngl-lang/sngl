@@ -229,6 +229,9 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []ast.TypePa
 			Const: n.Const,
 		}
 		fn := c.buildFunc(synthetic)
+		if len(fn.Params) > 0 {
+			fn.Params[0].Ambient = true
+		}
 		c.applyMarks(synthetic, fn)
 		if prev := c.declareMethod(n.Pos, fn); prev != nil {
 			noun := "type"

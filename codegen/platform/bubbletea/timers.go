@@ -39,7 +39,7 @@ func timerKey(loops []*ir.For) ir.Expr {
 	if len(loops) == 0 {
 		return &ir.Literal{Type: ir.TypString, Value: ""}
 	}
-	return lower.CopyKey(loops)
+	return lower.CopyIdentity(loops)
 }
 
 func emitTimerTypes(b *strings.Builder, timers []codegen.LoopTimer) {
@@ -139,16 +139,22 @@ func timerTick(i int, t codegen.LoopTimer, gc *golang.GoIRContext, key, gen stri
 }
 
 // emitTimerHeads opens the loops a timer is under, binding in each only
-// the variables what follows reads -- the copy key reads every index, and
-// reads and body say what else is -- and returns the indent inside them and
-// a context their variables are locals of.
+// the variables what follows reads -- the copy key reads every identity or
+// index, and reads and body say what else is -- and returns the indent inside
+// them and a context their variables are locals of.
 func emitTimerHeads(b *strings.Builder, loops []*ir.For, reads []ir.Expr, body []ir.Stmt, gc *golang.GoIRContext) (string, *golang.GoIRContext) {
 	indent := "\t"
 	lgc := gc
 	for i, f := range loops {
 		// What decides which variables the head declares is its body, so the
 		// copy handed to ForHead is given one reading everything below.
-		used := []ir.Stmt{&ir.Return{Value: &ir.Ident{Name: f.Key}}}
+		// The copy key reads the loop's identity where it has one
+		// (lower.CopyIdentity), and its index where it has none.
+		var key ir.Expr = &ir.Ident{Name: f.Key}
+		if f.Identity != nil {
+			key = f.Identity
+		}
+		used := []ir.Stmt{&ir.Return{Value: key}}
 		for _, e := range reads {
 			used = append(used, &ir.Return{Value: e})
 		}

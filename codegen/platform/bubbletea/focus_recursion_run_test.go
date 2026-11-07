@@ -71,10 +71,11 @@ func key(m Model, code rune) Model {
 	return next.(Model)
 }
 
+// marked is the label of each stop drawn focused, in a button's bold edge.
 func marked(m Model) []string {
 	var out []string
 	for _, l := range strings.Split(m.View().Content, "\n") {
-		if f := strings.Fields(l); len(f) >= 2 && f[0] == ">" {
+		if f := strings.Fields(strings.Trim(l, "┃│ ")); len(f) >= 2 && f[0] == ">" {
 			out = append(out, f[1])
 		}
 	}

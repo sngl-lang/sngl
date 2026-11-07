@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Addr is fixed, since the address is in the program and a recorded run's
@@ -32,7 +33,8 @@ const Addr = "127.0.0.1:47819"
 //
 //	/books/{title}          a book from testBooks, or a 404
 //	/echo                   what the request was: method, query, body, X-Sngl header
-//	/status/{code}          that status, with "status {code}" as the body
+//	/status/{code}          that status, with "status {code}" as the body, `after`
+//	                        milliseconds late where the query says so
 //	/dot.png                a 2x2 PNG, for an image a program fetches
 //	/api/v1/pets/           a page of names, `limit` (default 20) from `offset`
 //	/api/v1/pets/{name}/    a pet as the petstore of openapi_runs.txt declares one, or a 404
@@ -116,6 +118,15 @@ func serve(examples fs.FS, w http.ResponseWriter, r *http.Request) {
 		code, err := strconv.Atoi(strings.TrimPrefix(path, "/status/"))
 		if err != nil {
 			code = http.StatusBadRequest
+		}
+		// An answer held back, so a test can have one request outlive
+		// another's.
+		if ms, err := strconv.Atoi(r.URL.Query().Get("after")); err == nil && ms > 0 {
+			select {
+			case <-time.After(time.Duration(ms) * time.Millisecond):
+			case <-r.Context().Done():
+				return
+			}
 		}
 		w.WriteHeader(code)
 		io.WriteString(w, "status "+strconv.Itoa(code))

@@ -50,7 +50,7 @@ func TestACopysModalOpensAndCloses(t *testing.T) {
 	m := New()
 	m = key(m, tea.KeyTab)
 	m = key(m, tea.KeyEnter)
-	if !m.open__inst0["1"] || m.open__inst0["0"] {
+	if !m.open__inst0["b"] || m.open__inst0["a"] {
 		t.Fatalf("Enter on the second copy opened %v", m.open__inst0)
 	}
 	cursor := m.__focusLoop0_cursor
@@ -59,7 +59,7 @@ func TestACopysModalOpensAndCloses(t *testing.T) {
 		t.Fatal("Tab moved focus behind an open modal")
 	}
 	m = key(m, tea.KeyEsc)
-	if m.open__inst0["1"] {
+	if m.open__inst0["b"] {
 		t.Fatalf("Escape left the modal open: %v", m.open__inst0)
 	}
 	m = key(m, tea.KeyTab)

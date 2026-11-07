@@ -138,6 +138,9 @@ func emitTarget(pkg *ir.Package, target Target, evalCache *optimize.EvalCache, o
 	// into what, so the isolation has to be in place before anything moves.
 	root := codegen.OptionString(target.Options, "rootComponent")
 	IsolateRootComponent(tpkg, root)
+	if !optionBool(target.Options, "test") && !IsInterpreted(target) {
+		dropTests(tpkg)
+	}
 	installRun(tpkg, target)
 
 	// Ahead of the optimizer, which has no reason to keep a bodyless host it
@@ -219,6 +222,7 @@ func emitTarget(pkg *ir.Package, target Target, evalCache *optimize.EvalCache, o
 	if err := refuseBuildOnlyCalls(tpkg, codegen.PlatformRendersViewStatically(target.Platform, target.Lang)); err != nil {
 		return Result{}, err
 	}
+	lower.SnapshotOffloadedReads(tpkg)
 	slog.Info("optimize2", "dir", o.Dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
 	var fileAssets []codegen.FileAsset
@@ -380,4 +384,12 @@ func rendersItself(comp *ir.Component) bool {
 		}
 	}
 	return false
+}
+
+// dropTests takes a build's test functions out of a package built to ship.
+// No target emits one, but each was a root of the optimizer's shake, so what
+// only a test called -- the Pokédex's `tackleAndGrowl`, its `lineOf` -- was
+// emitted beside the program.
+func dropTests(pkg *ir.Package) {
+	pkg.Funcs = slices.DeleteFunc(pkg.Funcs, func(f *ir.Func) bool { return f != nil && f.IsTest })
 }

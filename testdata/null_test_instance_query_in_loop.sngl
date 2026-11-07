@@ -9,7 +9,7 @@ import . "sngl:ui"
 
 var seen list[string] = []
 
-func lookup(name string) async.Result[int] {
+func lookup(name string, life async.Lifetime) async.Result[int] {
     return {ok=name.length()}
 }
 

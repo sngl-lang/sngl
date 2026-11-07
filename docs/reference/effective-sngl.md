@@ -623,12 +623,15 @@ element type binds from the value they are called on:
 <!-- SNGL-nocheck -->
 
 ```sngl
-func list[T].push(item T)
-func list[T].reverse() list[T]
-func list[T].indexOf(item T) int
-func list[T].filter(pred func(T) bool) list[T]
-func list[T].map[U any](fn func(T) U) list[U]
+func list[T].push(this ref[list[T]], item T)
+func list[T].reverse(this list[T]) list[T]
+func list[T].indexOf(this list[T], item T) int
+func list[T].filter(this list[T], pred func(T) bool) list[T]
+func list[T].map[U any](this list[T], fn func(T) U) list[U]
 ```
+
+`push` writes the list it is called on, so its receiver is a `ref` and it is
+called on a place: `xs.push(3)`, never `xs.reverse().push(3)`.
 
 Type parameters are inferred at call sites, so you rarely write `[T]` when
 calling a generic method. A method-level parameter such as `map`'s `U`
@@ -655,7 +658,7 @@ struct Pair[A any, B any] {
     second B
 }
 
-func Pair[A, B].left() => this.first
+func Pair[A, B].left(this Pair[A, B]) => this.first
 
 func firstOr[T any](xs list[T], fallback T) T {
     if xs.length == 0 {
@@ -1091,11 +1094,28 @@ for var item = items {
     ui.text(value=item)
 }
 for var idx, todo = todos {
-    ui.text(value="{idx}: {todo.text}", key=todo.id)
+    ui.text(value="{idx}: {todo.text}")
 }
 ```
 
-Use `key` for stable identity across re-renders when the list changes. Key by something that belongs to the element, like an id; the index changes whenever an element is inserted or removed ahead of it, which is exactly when a key has to hold still.
+Each copy of a loop's body keeps its state and its effects for as long as the
+list holds its element. A string, a number or an enum is its own element;
+a struct says what makes it the same element by declaring `key`, which a loop
+over it then reads:
+
+```sngl
+struct Todo {
+    id   int
+    text string
+
+    const func key() => id
+}
+```
+
+Key by something that belongs to the element, like an id. A struct with no
+`key` is matched by position, as is an element bound with `&`, whose copy a
+write would otherwise make another: a row inserted ahead of the others hands
+each of them the state of the row before it.
 
 `var` is what makes the head a declaration. Without it the loop binds nothing
 and what follows `for` is the iterable itself, which is the form to reach for
@@ -1253,7 +1273,7 @@ ui.button(text="Toggle", @click { active!! })
 
 ### List mutations
 
-`push` and `remove` change a list in place, and so does assigning through an index; observers are notified as they would be for any assignment. `filter`, `map`, `reverse` and `slice` return a new list and leave the receiver alone:
+`push`, `insert`, `remove`, `clear`, `sort` and `sortBy` change a list in place, and so does assigning through an index; observers are notified as they would be for any assignment. `filter`, `map`, `reverse` and `slice` return a new list and leave the receiver alone:
 
 <!-- SNGL-component -->
 
@@ -1262,9 +1282,13 @@ var items = [1, 2, 3]
 ui.button(text="Add", @click { items.push(4) })
 ui.button(text="Remove first", @click { items.remove(0) })
 ui.button(text="Evens", @click { items = items.filter(func(x) => x % 2 == 0) })
+ui.button(text="Sort", @click { items.sort() })
+ui.button(text="Largest first", @click { items.sortBy(func(a, b) => a > b) })
 ```
 
 `push` returns nothing, so `items = items.push(4)` is an error rather than a second way to say the same thing.
+
+`sort()` orders by `<`, so only a list of numbers, strings or a single-base unit has it; any other list, a list of structs, says how with `sortBy`, whose function is true where its first argument goes ahead of its second: `moves.sortBy(func(a, b) => a.level < b.level)`. Both are stable, so moves of one level keep the order they came in.
 
 ### Component events
 
@@ -1673,6 +1697,40 @@ Read props: `c.display.value`. Fire events: `c.inc.click()`. A ref inside a `for
 
 Each test starts with fresh state. Mutations in one test do not leak to another.
 
+### When the component mounts
+
+The component a test takes mounts at the first statement that does not set it up. A `t.setContext` sets the value the mount reads, and a plain write of one of the component's props or vars, whose value reads neither the component nor the package's state, sets the value it starts from, as a call site would. Any other statement -- a read, a call, a `var`, an assertion -- mounts it first, on every target:
+
+<!-- SNGL-nocheck -->
+
+```sngl
+func testShowsTheNameItWasGiven(t test.Test, c Greeting) {
+    t.setContext(i18n.locale, "fr-FR")
+    c.name = "Ada"
+    t.assert(c.label.value == "Bonjour, Ada")
+}
+```
+
+A test makes no request unless it says so: each fails, "no answer for" its url, until the test sets `http.answer`, to a function answering the requests it means to, or to `http.network` to reach the network:
+
+<!-- SNGL-nocheck -->
+
+```sngl
+func greet(r http.Request) option[http.Response] {
+    if r.url.endsWith("/hi") {
+        return http.Response{status=200, headers={}, body="hello"}
+    }
+    return null
+}
+
+func testGreets(t test.Test, c Greeter) {
+    t.setContext(http.answer, greet)
+    t.assert(c.reply.value == "hello")
+}
+```
+
+Nothing it renders, fetches or runs on mount has happened before that, so a page that asks for its data as it mounts asks once, with what the test set up. A test checking what a change does reads the starting state first, which mounts it, and then writes. A test that never needs the component still mounts it, at its end.
+
 ### Timers in tests
 
 Time does not pass on its own in a test. `t.tick()` advances to the next timer deadline and fires what is due; a timer whose `enabled` is false does not fire:
@@ -1769,6 +1827,8 @@ struct Todo {
     id   int = 0
     text string = ""
     done bool = false
+
+    const func key() => id
 }
 
 ui.window(title="Todos") {
@@ -1787,7 +1847,7 @@ ui.window(title="Todos") {
             })
         }
         for var idx, todo = todos {
-            ui.hbox(key=todo.id, style={gap=8px}) {
+            ui.hbox(style={gap=8px}) {
                 ui.checkbox(checked=todo.done, @change { todos[idx].done!! })
                 ui.text(value=todo.text)
                 ui.button(text="x", @click { todos.remove(idx) })
@@ -1874,6 +1934,8 @@ struct Todo {
     id   int = 0
     text string = ""
     done bool = false
+
+    const func key() => id
 }
 
 ui.window {
@@ -1883,7 +1945,7 @@ ui.window {
     ui.vbox(style={padding=16px, gap=8px}) {
         ui.text(value="{activeCount} remaining")
         for var idx, todo = todos {
-            ui.checkbox(key=todo.id, checked=todo.done, label=todo.text, @change { todos[idx].done!! })
+            ui.checkbox(checked=todo.done, label=todo.text, @change { todos[idx].done!! })
         }
     }
 }

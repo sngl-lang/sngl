@@ -101,7 +101,7 @@ func TestEachRowsEffectSettlesOnItsOwn(t *testing.T) {
 	if got := len(m.__inst0_live); got != 2 {
 		t.Fatalf("expected 2 live instances, got %d", got)
 	}
-	first, second := m.__inst0_live[0], m.__inst0_live[1]
+	first, second := m.__inst0_live["a"], m.__inst0_live["b"]
 	if got := first.log; len(got) != 1 || got[0] != "mount a" {
 		t.Fatalf("first row log = %v, want [mount a]", got)
 	}

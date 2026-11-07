@@ -57,7 +57,7 @@ func TestAConstructPropRebuildsTheRowItBuilt(t *testing.T) {
 	if got := len(m.__inst0_live); got != 2 {
 		t.Fatalf("expected 2 live instances, got %d", got)
 	}
-	first := m.__inst0_live[0]
+	first := m.__inst0_live["a"]
 	first.__n0.OnTapped()
 	if first.clicks != 1 {
 		t.Fatalf("first row clicks = %d, want 1", first.clicks)
@@ -65,19 +65,19 @@ func TestAConstructPropRebuildsTheRowItBuilt(t *testing.T) {
 
 	// A render describing the same seed keeps the row, counter and all.
 	m.__renderSlot0(m.__n1.Container)
-	if m.__inst0_live[0] != first {
+	if m.__inst0_live["a"] != first {
 		t.Error("an unchanged construct prop should keep the instance")
 	}
-	if got := m.__inst0_live[0].clicks; got != 1 {
+	if got := m.__inst0_live["a"].clicks; got != 1 {
 		t.Errorf("kept row clicks = %d, want 1", got)
 	}
 
 	// Changing it rebuilds: the initializer runs again, from the new value.
 	m.__n3_click_handler()
-	if m.__inst0_live[0] == first {
+	if m.__inst0_live["a"] == first {
 		t.Fatal("a changed construct prop should rebuild the instance")
 	}
-	if got := m.__inst0_live[0].clicks; got != 10 {
+	if got := m.__inst0_live["a"].clicks; got != 10 {
 		t.Errorf("rebuilt row clicks = %d, want 10 -- the new seed", got)
 	}
 	if got := len(m.__inst0_live); got != 2 {

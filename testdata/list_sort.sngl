@@ -1,0 +1,89 @@
+// A list sorts in place: `sort()` in the order `<` gives, which only a list of
+// a type `<` orders has, and `sortBy(before)` in the order a function gives,
+// for any list. Both are stable.
+
+import test "sngl:test"
+import time "sngl:time"
+
+struct Move {
+    name  string = ""
+    level int = 0
+}
+
+// A generic body may sort a list of a parameter `ordered` constrains, and
+// compare two of its values.
+func least[T ordered](xs list[T]) option[T] {
+    if xs.length() == 0 {
+        return null
+    }
+    var sorted = xs
+    sorted.sort()
+    return sorted[0]
+}
+
+func larger[T ordered](a T, b T) => a < b ? b : a
+
+func testSortNumbers(t test.Test) {
+    var xs = [3, 1, 2, -5, 1]
+    xs.sort()
+    t.assert(xs == [-5, 1, 1, 2, 3])
+    var fs = [2.5, -1.0, 0.5]
+    fs.sort()
+    t.assert(fs == [-1.0, 0.5, 2.5])
+}
+
+func testSortStrings(t test.Test) {
+    var words = ["pear", "apple", "pears", "fig", "Zebra"]
+    words.sort()
+    t.assert(words == ["Zebra", "apple", "fig", "pear", "pears"])
+}
+
+func testSortUnits(t test.Test) {
+    var waits list[time.duration] = [2s, 500ms, 1s]
+    var want list[time.duration] = [500ms, 1s, 2s]
+    waits.sort()
+    t.assert(waits == want)
+}
+
+func testSortEmpty(t test.Test) {
+    var none list[int] = []
+    none.sort()
+    t.assert(none.length() == 0)
+    none.sortBy(func(a int, b int) => a > b)
+    t.assert(none.length() == 0)
+}
+
+func testSortByIsStable(t test.Test) {
+    var moves = [
+        Move{name="growl", level=1},
+        Move{name="vine whip", level=3},
+        Move{name="tackle", level=1},
+        Move{name="leech seed", level=3},
+        Move{name="sleep powder", level=2},
+    ]
+    moves.sortBy(func(a Move, b Move) => a.level < b.level)
+    t.assert(moves.map(func(m Move) => m.name) == ["growl", "tackle", "sleep powder", "vine whip", "leech seed"])
+}
+
+func testSortByReverses(t test.Test) {
+    var xs = [1, 3, 2]
+    xs.sortBy(func(a, b) => a > b)
+    t.assert(xs == [3, 2, 1])
+}
+
+func testSortLeavesACopyAlone(t test.Test) {
+    var xs = [3, 1, 2]
+    var kept = xs
+    xs.sort()
+    t.assert(xs == [1, 2, 3])
+    t.assert(kept == [3, 1, 2])
+}
+
+func testOrderedGeneric(t test.Test) {
+    var xs = [3, 1, 2]
+    t.assert(least(xs) == 1)
+    t.assert(xs == [3, 1, 2])
+    t.assert(least(["b", "a"]) == "a")
+    t.assert(larger(2, 7) == 7)
+    t.assert(larger("b", "a") == "b")
+}

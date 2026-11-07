@@ -391,7 +391,7 @@ fun MainScreen() {
                 Text(text = golib.Golib.Fib(k__inst0).toString(), modifier = modifierOf(Style(), snglFlexShare).safeDrawingPadding(), style = LocalTextStyle.current.merge(textStyle(Style())), overflow = clampOverflow(null), softWrap = softWrapOf(SnglWhiteSpace.UNSET), maxLines = linesOf(null))
                 Button(onClick = {
                     k__inst0 = (k__inst0 + 1)
-                }, modifier = surfaceModifierOf(Style(), snglFlexShare).safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = colorOf(null), contentColor = colorOf(null)), shape = buttonShapeOf(Style())) {
+                }, modifier = focusOf(surfaceModifierOf(Style(), snglFlexShare), true).safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = colorOf(null), contentColor = colorOf(null)), shape = buttonShapeOf(Style())) {
                     Text(text = "+", modifier = Modifier)
                 }
             }
@@ -452,258 +452,268 @@ fun linesOf(lines: Int?): Int {
     return __lt4
 }
 
-fun surfaceModifierOf(s: Style, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier {
+fun focusOf(m__r0: androidx.compose.ui.Modifier, focusable: Boolean): androidx.compose.ui.Modifier {
     var __lt5: androidx.compose.ui.Modifier
-    if ((s == Style())) {
-    	__lt5 = Modifier
+    if (focusable) {
+    	__lt5 = m__r0
     } else {
-    	__lt5 = styleModifier(s, false)
+    	__lt5 = m__r0.snglUnfocusable()
     }
-    return flexed(__lt5, s.flex, share)
+    return __lt5
+}
+
+fun surfaceModifierOf(s: Style, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier {
+    var __lt6: androidx.compose.ui.Modifier
+    if ((s == Style())) {
+    	__lt6 = Modifier
+    } else {
+    	__lt6 = styleModifier(s, false)
+    }
+    return flexed(__lt6, s.flex, share)
 }
 
 fun colorOf(c: Color?): androidx.compose.ui.graphics.Color {
-    var __lt6: androidx.compose.ui.graphics.Color
+    var __lt7: androidx.compose.ui.graphics.Color
     if ((c == null)) {
-    	__lt6 = androidx.compose.ui.graphics.Color.Unspecified
+    	__lt7 = androidx.compose.ui.graphics.Color.Unspecified
     } else {
-    	__lt6 = androidx.compose.ui.graphics.Color(red = c!!.r.toInt(), green = c!!.g.toInt(), blue = c!!.b.toInt(), alpha = c!!.a.toInt())
-    }
-    return __lt6
-}
-
-fun buttonShapeOf(s: Style): androidx.compose.ui.graphics.Shape {
-    var __lt7: androidx.compose.ui.graphics.Shape
-    if ((s.borderRadius == null)) {
-    	__lt7 = CircleShape
-    } else {
-    	__lt7 = RoundedCornerShape(Dp((s.borderRadius!!.px + (16.0 * (s.borderRadius!!.em + s.borderRadius!!.rem))).toFloat()))
+    	__lt7 = androidx.compose.ui.graphics.Color(red = c!!.r.toInt(), green = c!!.g.toInt(), blue = c!!.b.toInt(), alpha = c!!.a.toInt())
     }
     return __lt7
 }
 
-fun flexed(m__r0: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier {
-    var __lt8: androidx.compose.ui.Modifier
-    if (((flex == null) || (flex!! <= 0.0))) {
-    	__lt8 = m__r0
+fun buttonShapeOf(s: Style): androidx.compose.ui.graphics.Shape {
+    var __lt8: androidx.compose.ui.graphics.Shape
+    if ((s.borderRadius == null)) {
+    	__lt8 = CircleShape
     } else {
-    	__lt8 = m__r0.then(share(flex!!.toFloat()))
+    	__lt8 = RoundedCornerShape(Dp((s.borderRadius!!.px + (16.0 * (s.borderRadius!!.em + s.borderRadius!!.rem))).toFloat()))
     }
     return __lt8
 }
 
+fun flexed(m__r1: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier {
+    var __lt9: androidx.compose.ui.Modifier
+    if (((flex == null) || (flex!! <= 0.0))) {
+    	__lt9 = m__r1
+    } else {
+    	__lt9 = m__r1.then(share(flex!!.toFloat()))
+    }
+    return __lt9
+}
+
 fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
-    var m__r5: androidx.compose.ui.Modifier = Modifier
+    var m__r6: androidx.compose.ui.Modifier = Modifier
     var top = side(s.margin, s.marginY, s.marginTop)
     var right = side(s.margin, s.marginX, s.marginRight)
     var bottom = side(s.margin, s.marginY, s.marginBottom)
     var left = side(s.margin, s.marginX, s.marginLeft)
     if (((((top != null) || (right != null)) || (bottom != null)) || (left != null))) {
-    	m__r5 = m__r5.padding(inset(left, 0.0), inset(top, 0.0), inset(right, 0.0), inset(bottom, 0.0))
+    	m__r6 = m__r6.padding(inset(left, 0.0), inset(top, 0.0), inset(right, 0.0), inset(bottom, 0.0))
     }
     if ((s.zIndex != null)) {
-    	m__r5 = m__r5.zIndex(s.zIndex!!.toFloat())
+    	m__r6 = m__r6.zIndex(s.zIndex!!.toFloat())
     }
     if (((s.minWidth != null) || (s.maxWidth != null))) {
-    	var __lt9: androidx.compose.ui.unit.Dp
-    	if ((s.minWidth != null)) {
-    		__lt9 = Dp((s.minWidth!!.px + (16.0 * (s.minWidth!!.em + s.minWidth!!.rem))).toFloat())
-    	} else {
-    		__lt9 = Dp.Unspecified
-    	}
     	var __lt10: androidx.compose.ui.unit.Dp
-    	if ((s.maxWidth != null)) {
-    		__lt10 = Dp((s.maxWidth!!.px + (16.0 * (s.maxWidth!!.em + s.maxWidth!!.rem))).toFloat())
+    	if ((s.minWidth != null)) {
+    		__lt10 = Dp((s.minWidth!!.px + (16.0 * (s.minWidth!!.em + s.minWidth!!.rem))).toFloat())
     	} else {
     		__lt10 = Dp.Unspecified
     	}
-    	m__r5 = m__r5.widthIn(__lt9, __lt10)
+    	var __lt11: androidx.compose.ui.unit.Dp
+    	if ((s.maxWidth != null)) {
+    		__lt11 = Dp((s.maxWidth!!.px + (16.0 * (s.maxWidth!!.em + s.maxWidth!!.rem))).toFloat())
+    	} else {
+    		__lt11 = Dp.Unspecified
+    	}
+    	m__r6 = m__r6.widthIn(__lt10, __lt11)
     }
     if ((s.maxHeight != null)) {
-    	m__r5 = m__r5.heightIn(Dp.Unspecified, Dp((s.maxHeight!!.px + (16.0 * (s.maxHeight!!.em + s.maxHeight!!.rem))).toFloat()))
+    	m__r6 = m__r6.heightIn(Dp.Unspecified, Dp((s.maxHeight!!.px + (16.0 * (s.maxHeight!!.em + s.maxHeight!!.rem))).toFloat()))
     }
     if ((s.width != null)) {
-    	m__r5 = m__r5.width(Dp((s.width!!.px + (16.0 * (s.width!!.em + s.width!!.rem))).toFloat()))
+    	m__r6 = m__r6.width(Dp((s.width!!.px + (16.0 * (s.width!!.em + s.width!!.rem))).toFloat()))
     }
     if ((s.height != null)) {
-    	m__r5 = m__r5.height(Dp((s.height!!.px + (16.0 * (s.height!!.em + s.height!!.rem))).toFloat()))
+    	m__r6 = m__r6.height(Dp((s.height!!.px + (16.0 * (s.height!!.em + s.height!!.rem))).toFloat()))
     }
     if ((s.opacity != null)) {
-    	m__r5 = m__r5.alpha(s.opacity!!.toFloat())
+    	m__r6 = m__r6.alpha(s.opacity!!.toFloat())
     }
     var shape: androidx.compose.ui.graphics.Shape = shapeOf(s)
     if ((s.borderRadius != null)) {
-    	m__r5 = m__r5.clip(shape)
+    	m__r6 = m__r6.clip(shape)
     }
     var edge = 0.0
     if ((s.borderWidth != null)) {
     	edge = (s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem)))
-    	var __lt12: Color
+    	var __lt13: Color
     	if ((s.borderColor != null)) {
-    		__lt12 = s.borderColor!!
+    		__lt13 = s.borderColor!!
     	} else {
-    		var __lt11: Color
+    		var __lt12: Color
     		if ((s.color != null)) {
-    			__lt11 = s.color!!
+    			__lt12 = s.color!!
     		} else {
-    			__lt11 = Color()
+    			__lt12 = Color()
     		}
-    		__lt12 = __lt11
+    		__lt13 = __lt12
     	}
-    	m__r5 = m__r5.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = __lt12.r.toInt(), green = __lt12.g.toInt(), blue = __lt12.b.toInt(), alpha = __lt12.a.toInt()), shape)
+    	m__r6 = m__r6.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = __lt13.r.toInt(), green = __lt13.g.toInt(), blue = __lt13.b.toInt(), alpha = __lt13.a.toInt()), shape)
     }
     if ((paints && (s.background != null))) {
-    	m__r5 = m__r5.background(androidx.compose.ui.graphics.Color(red = s.background!!.r.toInt(), green = s.background!!.g.toInt(), blue = s.background!!.b.toInt(), alpha = s.background!!.a.toInt()), shape)
+    	m__r6 = m__r6.background(androidx.compose.ui.graphics.Color(red = s.background!!.r.toInt(), green = s.background!!.g.toInt(), blue = s.background!!.b.toInt(), alpha = s.background!!.a.toInt()), shape)
     }
     top = side(s.padding, s.paddingY, s.paddingTop)
     right = side(s.padding, s.paddingX, s.paddingRight)
     bottom = side(s.padding, s.paddingY, s.paddingBottom)
     left = side(s.padding, s.paddingX, s.paddingLeft)
     if ((((((edge != 0.0) || (top != null)) || (right != null)) || (bottom != null)) || (left != null))) {
-    	m__r5 = m__r5.padding(inset(left, edge), inset(top, edge), inset(right, edge), inset(bottom, edge))
+    	m__r6 = m__r6.padding(inset(left, edge), inset(top, edge), inset(right, edge), inset(bottom, edge))
     }
-    return m__r5
+    return m__r6
 }
 
-fun fontSizeOf(m__r1: Measurement?): androidx.compose.ui.unit.TextUnit {
-    var __lt13: androidx.compose.ui.unit.TextUnit
-    if ((m__r1 == null)) {
-    	__lt13 = TextUnit.Unspecified
+fun fontSizeOf(m__r2: Measurement?): androidx.compose.ui.unit.TextUnit {
+    var __lt14: androidx.compose.ui.unit.TextUnit
+    if ((m__r2 == null)) {
+    	__lt14 = TextUnit.Unspecified
     } else {
-    	__lt13 = TextUnit((m__r1!!.px + (16.0 * (m__r1!!.em + m__r1!!.rem))).toFloat(), TextUnitType.Sp)
-    }
-    return __lt13
-}
-
-fun fontWeightOf(w: SnglFontWeight): androidx.compose.ui.text.font.FontWeight? {
-    var __lt14: androidx.compose.ui.text.font.FontWeight?
-    when (w) {
-    	SnglFontWeight.UNSET -> {
-    		__lt14 = null
-    	}
-    	SnglFontWeight.NORMAL -> {
-    		__lt14 = FontWeight.Normal
-    	}
-    	SnglFontWeight.BOLD -> {
-    		__lt14 = FontWeight.Bold
-    	}
-    	SnglFontWeight.LIGHTER -> {
-    		__lt14 = FontWeight.Light
-    	}
-    	SnglFontWeight.BOLDER -> {
-    		__lt14 = FontWeight.ExtraBold
-    	}
+    	__lt14 = TextUnit((m__r2!!.px + (16.0 * (m__r2!!.em + m__r2!!.rem))).toFloat(), TextUnitType.Sp)
     }
     return __lt14
 }
 
-fun fontStyleOf(st: SnglFontStyle): androidx.compose.ui.text.font.FontStyle? {
-    var __lt15: androidx.compose.ui.text.font.FontStyle?
-    when (st) {
-    	SnglFontStyle.UNSET -> {
+fun fontWeightOf(w: SnglFontWeight): androidx.compose.ui.text.font.FontWeight? {
+    var __lt15: androidx.compose.ui.text.font.FontWeight?
+    when (w) {
+    	SnglFontWeight.UNSET -> {
     		__lt15 = null
     	}
-    	SnglFontStyle.NORMAL -> {
-    		__lt15 = FontStyle.Normal
+    	SnglFontWeight.NORMAL -> {
+    		__lt15 = FontWeight.Normal
     	}
-    	SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> {
-    		__lt15 = FontStyle.Italic
+    	SnglFontWeight.BOLD -> {
+    		__lt15 = FontWeight.Bold
+    	}
+    	SnglFontWeight.LIGHTER -> {
+    		__lt15 = FontWeight.Light
+    	}
+    	SnglFontWeight.BOLDER -> {
+    		__lt15 = FontWeight.ExtraBold
     	}
     }
     return __lt15
 }
 
-fun fontFamilyOf(name: String): androidx.compose.ui.text.font.FontFamily? {
-    var __lt16: androidx.compose.ui.text.font.FontFamily?
-    when (name) {
-    	"" -> {
+fun fontStyleOf(st: SnglFontStyle): androidx.compose.ui.text.font.FontStyle? {
+    var __lt16: androidx.compose.ui.text.font.FontStyle?
+    when (st) {
+    	SnglFontStyle.UNSET -> {
     		__lt16 = null
     	}
-    	"monospace" -> {
-    		__lt16 = FontFamily.Monospace
+    	SnglFontStyle.NORMAL -> {
+    		__lt16 = FontStyle.Normal
     	}
-    	"serif" -> {
-    		__lt16 = FontFamily.Serif
-    	}
-    	"sans-serif" -> {
-    		__lt16 = FontFamily.SansSerif
-    	}
-    	"cursive" -> {
-    		__lt16 = FontFamily.Cursive
-    	}
-    	else -> {
-    		__lt16 = FontFamily.Default
+    	SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> {
+    		__lt16 = FontStyle.Italic
     	}
     }
     return __lt16
 }
 
-fun textAlignOf(a: SnglTextAlign): androidx.compose.ui.text.style.TextAlign {
-    var __lt17: androidx.compose.ui.text.style.TextAlign
-    when (a) {
-    	SnglTextAlign.UNSET -> {
-    		__lt17 = TextAlign.Unspecified
+fun fontFamilyOf(name: String): androidx.compose.ui.text.font.FontFamily? {
+    var __lt17: androidx.compose.ui.text.font.FontFamily?
+    when (name) {
+    	"" -> {
+    		__lt17 = null
     	}
-    	SnglTextAlign.LEFT -> {
-    		__lt17 = TextAlign.Start
+    	"monospace" -> {
+    		__lt17 = FontFamily.Monospace
     	}
-    	SnglTextAlign.CENTER -> {
-    		__lt17 = TextAlign.Center
+    	"serif" -> {
+    		__lt17 = FontFamily.Serif
     	}
-    	SnglTextAlign.RIGHT -> {
-    		__lt17 = TextAlign.End
+    	"sans-serif" -> {
+    		__lt17 = FontFamily.SansSerif
     	}
-    	SnglTextAlign.JUSTIFY -> {
-    		__lt17 = TextAlign.Justify
+    	"cursive" -> {
+    		__lt17 = FontFamily.Cursive
+    	}
+    	else -> {
+    		__lt17 = FontFamily.Default
     	}
     }
     return __lt17
 }
 
-fun side(all: Measurement?, axis: Measurement?, own: Measurement?): Measurement? {
-    var __lt19: Measurement?
-    if ((own != null)) {
-    	__lt19 = own
-    } else {
-    	var __lt18: Measurement?
-    	if ((axis != null)) {
-    		__lt18 = axis
-    	} else {
-    		__lt18 = all
+fun textAlignOf(a: SnglTextAlign): androidx.compose.ui.text.style.TextAlign {
+    var __lt18: androidx.compose.ui.text.style.TextAlign
+    when (a) {
+    	SnglTextAlign.UNSET -> {
+    		__lt18 = TextAlign.Unspecified
     	}
-    	__lt19 = __lt18
+    	SnglTextAlign.LEFT -> {
+    		__lt18 = TextAlign.Start
+    	}
+    	SnglTextAlign.CENTER -> {
+    		__lt18 = TextAlign.Center
+    	}
+    	SnglTextAlign.RIGHT -> {
+    		__lt18 = TextAlign.End
+    	}
+    	SnglTextAlign.JUSTIFY -> {
+    		__lt18 = TextAlign.Justify
+    	}
     }
-    return __lt19
+    return __lt18
 }
 
-fun inset(m__r3: Measurement?, extra: Double): androidx.compose.ui.unit.Dp {
-    var __lt20: Double
-    if ((m__r3 == null)) {
-    	__lt20 = 0.0
+fun side(all: Measurement?, axis: Measurement?, own: Measurement?): Measurement? {
+    var __lt20: Measurement?
+    if ((own != null)) {
+    	__lt20 = own
     } else {
-    	__lt20 = (m__r3!!.px + (16.0 * (m__r3!!.em + m__r3!!.rem)))
+    	var __lt19: Measurement?
+    	if ((axis != null)) {
+    		__lt19 = axis
+    	} else {
+    		__lt19 = all
+    	}
+    	__lt20 = __lt19
     }
-    return Dp((nonNegative(__lt20) + extra).toFloat())
+    return __lt20
+}
+
+fun inset(m__r4: Measurement?, extra: Double): androidx.compose.ui.unit.Dp {
+    var __lt21: Double
+    if ((m__r4 == null)) {
+    	__lt21 = 0.0
+    } else {
+    	__lt21 = (m__r4!!.px + (16.0 * (m__r4!!.em + m__r4!!.rem)))
+    }
+    return Dp((nonNegative(__lt21) + extra).toFloat())
 }
 
 fun shapeOf(s: Style): androidx.compose.ui.graphics.Shape {
-    var __lt21: androidx.compose.ui.graphics.Shape
+    var __lt22: androidx.compose.ui.graphics.Shape
     if ((s.borderRadius == null)) {
-    	__lt21 = RectangleShape
+    	__lt22 = RectangleShape
     } else {
-    	__lt21 = RoundedCornerShape(Dp((s.borderRadius!!.px + (16.0 * (s.borderRadius!!.em + s.borderRadius!!.rem))).toFloat()))
+    	__lt22 = RoundedCornerShape(Dp((s.borderRadius!!.px + (16.0 * (s.borderRadius!!.em + s.borderRadius!!.rem))).toFloat()))
     }
-    return __lt21
+    return __lt22
 }
 
 fun nonNegative(v: Double): Double {
-    var __lt22: Double
+    var __lt23: Double
     if ((v < 0.0)) {
-    	__lt22 = 0.0
+    	__lt23 = 0.0
     } else {
-    	__lt22 = v
+    	__lt23 = v
     }
-    return __lt22
+    return __lt23
 }
 -- out/go/android/app/src/main/java/test/sngl/app/ui/theme/Theme.kt --
 package test.sngl.app.ui.theme

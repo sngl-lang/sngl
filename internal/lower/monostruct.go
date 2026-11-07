@@ -27,6 +27,13 @@ func monomorphizeStructs(pkg *ir.Package, names map[string]bool) {
 		return
 	}
 	ms := &monoStructs{pkg: pkg, generic: generic, names: names, copies: map[*ir.StructDef][]structInstance{}, copyOf: map[*ir.StructDef]*ir.StructDef{}}
+	// A copying before this one -- ahead of the splice -- made what it made.
+	for _, sd := range pkg.Structs {
+		if generic[sd.InstanceOf] {
+			ms.copies[sd.InstanceOf] = append(ms.copies[sd.InstanceOf], structInstance{sd.InstanceArgs, sd})
+			ms.copyOf[sd] = sd.InstanceOf
+		}
+	}
 	ir.RewriteTypes(pkg, ms.rewrite)
 	if len(ms.copies) == 0 {
 		return
@@ -123,6 +130,7 @@ func (ms *monoStructs) instance(sd *ir.StructDef, args []*ir.Type) *ir.StructDef
 	}
 	cp := *sd
 	cp.TypeParams = nil
+	cp.InstanceOf, cp.InstanceArgs = sd, args
 	cp.Name = freshName(ms.names, sd.Name+"__"+strings.Join(key, "_"))
 	cp.Fields = make([]*ir.StructField, len(sd.Fields))
 	cp.Methods = nil

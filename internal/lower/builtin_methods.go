@@ -51,7 +51,7 @@ func lowerBuiltinMethods(pkg *ir.Package, _ Features, _ Options) error {
 	// is the bound type's own only once there is one.
 	var reach ir.BoundReach
 	monomorphizeFuncs(pkg, func(fn *ir.Func) bool {
-		return reach.Reaches(fn) && !(ir.ReceiverOutsideParams(fn) && len(fn.RecvTypeParams) > 0)
+		return reach.Reaches(fn) && genericBuiltinReceiver(fn) == nil
 	}, false)
 	for _, fn := range pkg.Funcs {
 		b.names[fn.Name] = true
@@ -137,14 +137,34 @@ func (b *builtinMethods) rewrite(e ir.Expr) (ir.Expr, error) {
 	return e, nil
 }
 
+// genericBuiltinReceiver is the receiver parameter of fn, a method declared
+// on a generic type with its receiver's parameters in brackets -- the first
+// parameter it names, `func list[T].format(this list[T], …)`, or one held
+// outside the parameters -- and nil for any other function.
+func genericBuiltinReceiver(fn *ir.Func) *ir.Param {
+	if fn == nil || len(fn.RecvTypeParams) == 0 {
+		return nil
+	}
+	if ir.ReceiverOutsideParams(fn) {
+		return fn.RecvParam
+	}
+	// A component's method carries its instance as a synthesized first
+	// parameter too, and is the component's to splice, never a copy's.
+	if len(fn.Params) > 0 && fn.Params[0].Receiver && !fn.OnComponent() {
+		return fn.Params[0]
+	}
+	return nil
+}
+
 // instance is the copy of call's method on a generic builtin at the types its
 // receiver binds, made the first time one is asked for; nil for any other
 // call, and for one whose receiver is still generic.
 func (b *builtinMethods) instance(call *ir.Call) *ir.Func {
 	fn := call.Func
-	if fn == nil || !ir.ReceiverOutsideParams(fn) || len(fn.RecvTypeParams) == 0 || len(fn.TypeParams) > 0 ||
+	recvParam := genericBuiltinReceiver(fn)
+	if recvParam == nil || len(fn.TypeParams) > 0 ||
 		fn.PkgPath() == "" || fn.Intrinsic != "" || fn.Foreign.Path != "" || len(fn.Block) == 0 ||
-		len(call.Args) == 0 || !call.ReceiverArg {
+		len(call.Args) == 0 || fn.RecvParam != nil && !call.ReceiverArg {
 		return nil
 	}
 	recv := call.Args[0].Value.ExprType()
@@ -157,10 +177,12 @@ func (b *builtinMethods) instance(call *ir.Call) *ir.Func {
 		}
 	}
 	bind := map[string]*ir.Type{}
-	ir.BindTypeParams(fn.RecvParam.Type, recv, bind)
+	ir.BindTypeParams(recvParam.Type, recv, bind)
 	cp := ir.InstantiateFunc(fn, bind)
-	cp.Params = append([]*ir.Param{cp.RecvParam}, cp.Params...)
-	cp.RecvParam = nil
+	if cp.RecvParam != nil {
+		cp.Params = append([]*ir.Param{cp.RecvParam}, cp.Params...)
+		cp.RecvParam = nil
+	}
 	cp.Receiver = nil
 	// The program's, from here: every pass after this one writes it.
 	cp.Frozen = false

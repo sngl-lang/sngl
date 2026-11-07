@@ -1,0 +1,198 @@
+# Copies of a keyed loop keep apart where an element's identity already reads
+# like a repeat's suffix, on every target. `["a", "a", "a#1"]` handed out
+# `a#1` twice, and on bubbletea the second and third rows shared their count;
+# the interpreter suffixed `~1` instead, so `["a", "a", "a~1"]` collided there.
+# Each identity has its `#`s doubled before a repeat is suffixed `#n`, in
+# lower's __identified and the interpreter's iterationID alike.
+
+sngl test --platform=none hash.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html hash.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go hash.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go hash.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go hash.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin hash.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=none tilde.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html tilde.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go tilde.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go tilde.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go tilde.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin tilde.sngl
+stdout '1 tests, 0 failures'
+-- hash.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component row(label string) ui.node {
+    var n = 0
+    ui.button #b(text="{label}:{n}", @click { n += 1 })
+}
+
+component page ui.node {
+    var names list[string] = ["a", "a", "a#1"]
+    ui.vbox {
+        for var name = names {
+            row #r(label=name)
+        }
+    }
+}
+
+func testCopiesApart(t test.Test, c page) {
+    t.assert(c.r[2].b.text == "a#1:0")
+    c.r[1].b.click()
+    t.assert(c.r[1].b.text == "a:1")
+    t.assert(c.r[2].b.text == "a#1:0")
+}
+
+ui.window {
+    page()
+}
+-- tilde.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component row(label string) ui.node {
+    var n = 0
+    ui.button #b(text="{label}:{n}", @click { n += 1 })
+}
+
+component page ui.node {
+    var names list[string] = ["a", "a", "a~1"]
+    ui.vbox {
+        for var name = names {
+            row #r(label=name)
+        }
+    }
+}
+
+func testCopiesApart(t test.Test, c page) {
+    t.assert(c.r[2].b.text == "a~1:0")
+    c.r[1].b.click()
+    t.assert(c.r[1].b.text == "a:1")
+    t.assert(c.r[2].b.text == "a~1:0")
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/hash.sngl/page/1 --
+sha256:5cd03dc3164b522d5ecf9266a43965d9
+{
+  "results": [
+    {
+      "Desc": "CopiesApart",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/tilde.sngl/page/1 --
+sha256:4aca41af49e18005316466313e6ecd18
+{
+  "results": [
+    {
+      "Desc": "CopiesApart",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/hash.sngl/page/1 --
+sha256:e5504bb817c53c34eb222756aca965d6
+{
+  "results": [
+    {
+      "Desc": "CopiesApart",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/tilde.sngl/page/1 --
+sha256:213021202cdd7f172ed067345e94dcd7
+{
+  "results": [
+    {
+      "Desc": "CopiesApart",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/hash.sngl/page/1 --
+sha256:6b59302c2dc72e034678b27003cf7b50
+{
+  "results": [
+    {
+      "Desc": "CopiesApart",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/tilde.sngl/page/1 --
+sha256:1f2b1abe7a8301c335b8411725dd3c24
+{
+  "results": [
+    {
+      "Desc": "CopiesApart",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/hash.sngl/page/1 --
+sha256:7e0e1dd012dbe9abbda9499d4b1b1380
+{
+  "results": [
+    {
+      "Desc": "CopiesApart",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/tilde.sngl/page/1 --
+sha256:278b7ff004ffc037f09569c922913717
+{
+  "results": [
+    {
+      "Desc": "CopiesApart",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/hash.sngl/page/1 --
+sha256:73970c51ef3c457fe22e3c7ae48b34e5
+{
+  "results": [
+    {
+      "Desc": "CopiesApart",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/tilde.sngl/page/1 --
+sha256:5b0823b5f1d9ffdd13478f1da30f65c4
+{
+  "results": [
+    {
+      "Desc": "CopiesApart",
+      "Passed": true
+    }
+  ]
+}

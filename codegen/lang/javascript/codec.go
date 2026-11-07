@@ -16,7 +16,7 @@ import (
 const CodecHelper = "sngl:codec"
 
 func init() {
-	codegen.DeclareLangImplements(langJS, ir.JSONDecodeIntrinsic, ir.JSONEncodeIntrinsic, ir.HTTPSendIntrinsic, ir.HTTPGetIntrinsic)
+	codegen.DeclareLangImplements(langJS, ir.JSONDecodeIntrinsic, ir.JSONEncodeIntrinsic, ir.HTTPSendIntrinsic, ir.HTTPGetIntrinsic, "async.begin", "async.end", "async.ended")
 	codegen.RegisterIntrinsic(langJS, "http.pathEscape", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		return jsEscape(tr(args[0])), nil
 	})
@@ -26,6 +26,33 @@ func init() {
 // encodeURIComponent with the five marks it leaves alone encoded too.
 func jsEscape(s string) string {
 	return "encodeURIComponent(" + s + `).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase())`
+}
+
+// lifetimeCall renders a call of sngl:async's lifetime ids over
+// CodecHelperJS, which holds each live lifetime's AbortController.
+func (jc *JsIRContext) lifetimeCall(n *ir.Call) (string, bool) {
+	if n.Func == nil {
+		return "", false
+	}
+	var fn string
+	switch n.Func.Intrinsic {
+	case "async.begin":
+		return jc.useCodec("_snglBegin()"), true
+	case "async.end":
+		fn = "_snglEnd"
+	case "async.ended":
+		fn = "_snglEnded"
+	default:
+		return "", false
+	}
+	return jc.useCodec(fn + "(" + jc.EvalExpr(n.Args[0].Value) + ")"), true
+}
+
+func (jc *JsIRContext) useCodec(s string) string {
+	if jc.Ctx != nil && jc.Ctx.Helpers != nil {
+		jc.Ctx.Helpers[CodecHelper] = true
+	}
+	return s
 }
 
 // codecCall renders a call of a codec intrinsic over CodecHelperJS.
@@ -61,12 +88,30 @@ func (jc *JsIRContext) codecCall(n *ir.Call) (string, bool) {
 		url = fmt.Sprintf("_snglWithQuery(%s, %s, %s)", url, arg("query"), jsCodec(ir.PlanCodec(t, format)))
 	}
 	headers, body := arg("headers"), arg("body")
+	life := "0"
+	if id := codegen.LifetimeID(n); id != nil {
+		life = jc.EvalExpr(id)
+	}
 	st, ht, bt := codegen.ResponseFieldTypes(n.Type)
 	msg := codegen.HostValue("__r.m", str)
 	resp := codegen.CodecResponse(n.Type, codegen.HostValue("__r.s", st), codegen.HostValue("__r.h", ht), codegen.HostValue("__r.b", bt))
-	call := fmt.Sprintf("((__r) => __r.f ? (__r.t ? %s : %s) : %s)(await _snglHTTPSend(%s, %s, %s, %s))",
-		jc.EvalExpr(codegen.ResultFailed(n.Type, "timeout", msg)), jc.EvalExpr(codegen.ResultFailed(n.Type, "transport", msg)),
-		jc.EvalExpr(codegen.ResultOK(n.Type, resp)), method, url, headers, body)
+	// A test's answer, where one is set, answers in the network's place.
+	hook, req := codegen.HTTPHook(n, codegen.HostValue("__u", str))
+	sendURL := url
+	if hook != nil {
+		sendURL = "__u"
+	}
+	call := fmt.Sprintf("((__r) => __r.f ? (__r.c ? %s : __r.t ? %s : %s) : %s)(await _snglHTTPSend(%s, %s, %s, %s, %s))",
+		jc.EvalExpr(codegen.ResultFailed(n.Type, "cancelled", msg)), jc.EvalExpr(codegen.ResultFailed(n.Type, "timeout", msg)), jc.EvalExpr(codegen.ResultFailed(n.Type, "transport", msg)),
+		jc.EvalExpr(codegen.ResultOK(n.Type, resp)), method, sendURL, headers, body, life)
+	if hook != nil {
+		none := codegen.HostValue(strconv.Quote(codegen.NoAnswer)+" + __u", str)
+		got := codegen.HostValue("__a", ir.MemberPayload(n.Type, "ok"))
+		// A lifetime already ended answers `cancelled`, as the network does.
+		cancelled := jc.EvalExpr(codegen.ResultFailed(n.Type, "cancelled", codegen.HostValue(`"cancelled"`, str)))
+		call = fmt.Sprintf("(await (async (__u) => { const __h = %s; if (__h != null) { if (_snglEnded(%s)) return %s; const __a = __h(%s); return __a == null ? %s : %s; } return %s; })(%s))",
+			jc.EvalExpr(hook), life, cancelled, jc.EvalExpr(req), jc.EvalExpr(codegen.ResultFailed(n.Type, "transport", none)), jc.EvalExpr(codegen.ResultOK(n.Type, got)), call, url)
+	}
 	if n.Detached {
 		// Started rather than awaited: the request runs, and nothing waits
 		// for what it answers.
@@ -243,15 +288,23 @@ function _snglWithQuery(url, q, c) {
   if (parts.length === 0) return url;
   return url + (url.includes("?") ? "&" : "?") + parts.join("&");
 }
-async function _snglHTTPSend(method, url, headers, body) {
+const _snglLives = {n: 0, m: new Map()};
+function _snglBegin() { const id = ++_snglLives.n; _snglLives.m.set(id, new AbortController()); return id; }
+function _snglEnd(id) { const c = _snglLives.m.get(id); if (c) { _snglLives.m.delete(id); c.abort(); } }
+function _snglEnded(id) { return id !== 0 && !_snglLives.m.has(id); }
+async function _snglHTTPSend(method, url, headers, body, life) {
+  if (_snglEnded(life)) return {f: true, c: true, m: "cancelled"};
   const init = {method: String(method).toUpperCase(), headers: {}};
   if (headers) for (const [k, v] of headers) init.headers[k] = v;
   if (body !== null && body !== undefined) init.body = body;
+  const c = _snglLives.m.get(life);
+  if (c) init.signal = c.signal;
   let resp, text;
   try {
     resp = await fetch(url, init);
     text = await resp.text();
   } catch (e) {
+    if (_snglEnded(life)) return {f: true, c: true, m: "cancelled"};
     return {f: true, t: !!e && e.name === "TimeoutError", m: String((e && e.message) || e)};
   }
   const h = new Map();

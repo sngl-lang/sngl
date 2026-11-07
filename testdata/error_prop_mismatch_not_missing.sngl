@@ -1,0 +1,13 @@
+// A prop written with a value of the wrong type is an error of its own, and
+// the prop is still written: the call is not also missing it.
+
+import async "sngl:async"
+import ui "sngl:ui"
+
+func lookup(name string) async.Result[int] {
+    return {ok=name.length()}
+}
+
+component page ui.node {
+    async.query(on="a", fetch=lookup) // ERROR(check) "cannot use func(string) Result[int] as func(string, Lifetime) Result[int] for prop \"fetch\" on component query"
+}

@@ -92,8 +92,6 @@ body { font-family: system-ui, sans-serif; }
     let __p1 = props.__p1;
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set___p1(__v) {
       __prop___p1 = __v;
       if (__prop___p1) {
@@ -132,8 +130,6 @@ body { font-family: system-ui, sans-serif; }
     let __p1 = props.__p1;
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
-    let __slot02 = [];
-    let __slot12 = [];
     function __set___p1(__v) {
       __prop___p1 = __v;
       if (__prop___p1.ordered) {
@@ -316,4 +312,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:7351c8e979dfddaf7d9f5746186fe74a
+pass sha256:5570e35444fc9265933b9851eb865ab1

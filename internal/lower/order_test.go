@@ -96,10 +96,19 @@ var alwaysOn = []string{
 	"ErrorCatch",
 	// Where a raise lands is the render tree's answer, not a target's.
 	"ErrorScope",
+	// A test raises an event the target overrides through that override,
+	// on every target.
+	"EventTriggers",
+	// A write held in a local only the write reads is put back, whatever
+	// the target.
+	"FoldWrites",
 	"ForElse",
 	"ForeignPrimitive",
 	// A function writing a prop through the handle it is handed is inlined
 	// on every target: no target writes a prop through a handle.
+	// Read off InstanceState inside the pass: a block a target builds at run
+	// time holds the node its handler calls on every target that builds one.
+	"HandleBlocks",
 	"HandleParams",
 	"HoistBodyTypes",
 	"HoistState",
@@ -112,6 +121,9 @@ var alwaysOn = []string{
 	// in pkg.Funcs for any target, because that is what every backend emits
 	// from.
 	"LibFuncs",
+	// Every target keeps a copy's state under its identity, so two copies of
+	// one are told apart on every target.
+	"LoopIdentity",
 	// A match a target cannot emit as one is the if chain on every target;
 	// which matches those are is what Matches and ViewMatches decide.
 	"Match",
@@ -161,9 +173,16 @@ var alwaysOn = []string{
 	"SlotEmptyProps",
 	"SpreadOnce",
 	"StampUsage",
+	// No test reaches the network unless it says so, on any target.
+	"TestAnswer",
 	"TestInstanceReach",
+	// Where a test mounts what it takes is the test's answer, not a
+	// target's.
+	"TestMount",
 	"TestReach",
 	"TestRefOwner",
+	// A test's root has no call site on any target, so nothing hears it.
+	"TestRootEvents",
 	// A context nothing provides is folded to its default on every target: the
 	// ones that lower contexts to state, and the ones that keep them.
 	"UnprovidedContext",
@@ -212,7 +231,7 @@ var soleGate = map[string][]string{
 	"AsyncReactive": {"NoAsyncReactive"},
 	"Computed":      {"NoComputed"},
 	"ListLambdas":   {"NoListLambdas"},
-	"AsyncCalls":    {"NoAsyncCalls"},
+	"AsyncCalls":    {"NoAsyncCalls", "OffLoopWrites"},
 
 	// Both context flags request the one pass: a target asking for either a
 	// component receiver or a threaded stdlib param needs the context rewrite,
@@ -257,6 +276,10 @@ var soleGate = map[string][]string{
 	"OptionMatch": nil,
 
 	"StringBuilders": {"StringBuilders"},
+	"UnreadLocals":   {"UnreadLocals"},
+	// Read inside passNoInlineComponents, where a test's trigger that
+	// reaches no override is refused or kept.
+	"ValueTriggers": nil,
 
 	// The pass and the field are named for opposite sides of the same fact:
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the

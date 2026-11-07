@@ -1,0 +1,23 @@
+// A method written in a component's body is declared there, so it shadows a
+// package declaration of its name as a var written there would: `shown()` in
+// `page` is the method, not the package's `shown`, which the checker used to
+// find first and refuse to call.
+
+import test "sngl:test"
+import ui "sngl:ui"
+
+var shown = 3
+
+component page ui.node {
+    func shown() => "kept"
+    func label() => shown() + " {shown()}"
+    ui.text #line(value=label())
+}
+
+func testBodyMethodShadowsPackageVar(t test.Test, c page) {
+    t.assert(c.line.value == "kept kept")
+}
+
+ui.window {
+    page()
+}

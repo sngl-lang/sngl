@@ -19,6 +19,7 @@ const (
 	postsVar    = "__snglPosts"
 	postMsgType = "__snglPostMsg"
 	awaitPost   = "__snglAwaitPost"
+	drainPosts  = "__snglDrainPosts"
 	// settleVar is what a waiting test calls each turn to run the commands
 	// the Model it holds asks for (settleModel): a no-op until a test build
 	// points it at that Model (emitSettleHook).
@@ -78,6 +79,19 @@ type ` + postMsgType + ` func()
 
 // ` + awaitPost + ` waits for the next posted closure.
 func ` + awaitPost + `() tea.Msg { return ` + postMsgType + `(<-` + postsVar + `) }
+
+// ` + drainPosts + ` runs the closures already posted, as many as were waiting
+// when it began, so the answers that arrive together are drawn once.
+func ` + drainPosts + `() {
+	for range len(` + postsVar + `) {
+		select {
+		case f := <-` + postsVar + `:
+			f()
+		default:
+			return
+		}
+	}
+}
 
 // ` + golang.RunPostsFunc + ` runs what was posted within d, for a test, which
 // owns the Model as Update does.

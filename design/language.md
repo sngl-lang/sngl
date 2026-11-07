@@ -471,6 +471,74 @@ JavaScript it spread `async` from the arrow up through the settle. The closure's
 own `ir.Func` is colored in its own right, which is what makes the descent
 redundant as well as wrong.
 
+### A copy's identity
+
+A view loop matched its copies by position, so a list that dropped an element
+from its middle handed every later copy the state and the lifetimes of the one
+before it: the Pokédex kept its list of species to ask for append-only, since
+each request after one that left was ended and asked again. A `key=` prop on
+the body's node was the old answer, and named the identity at every node
+rather than once for the element's type.
+
+`ir.For.Identity` is the identity now: the checker sets it on a view loop
+(`loopIdentity`) to the element's `key()`, or to the element where it is a
+scalar or an enum carrying no payload, in either case as the string its format
+writes, since every target keeps a copy's state in a map keyed by string. An
+expression on the loop rather than a decl pointer, so every walk, clone and
+rename the loop's variables go through reaches it, and the reach analyses keep
+a `key` method nothing else calls. A pass that rebuilds a loop around new
+statements carries it over (`positionBlock`, `shape_draw`, the slot render).
+
+`lower.CopyIdentity(loops)` is the copy's key as its state and lifetimes know
+it: each loop's identity, or its index where it has none, joined by
+`IdentitySep` (`\x1f`, since an identity is a string the program wrote and
+may hold the `/` a test's path is joined by). `lower.CopyKey` stays the
+position, which is what a test's `c.row[1]` and the copy props a test finds a
+node by count. What each target keys by identity:
+
+- the interpreter's mounted path (`iterations` in `view.go`), whose duplicate
+  identities are suffixed `~n`;
+- a component built at run time under a keyed loop: `keyLoopInstances` gives
+  its site the loops' identity as its `NodeInst.Key`, which puts the slot's
+  registry in its keyed mode, whose duplicate identities `claimKey` suffixes;
+- bubbletea's cells per copy (`perCopyCells`), its loop widgets and timers, and
+  the copy key a handler is handed, found again by scanning the loop for the
+  element whose identity it is (`loopVarsFrom`) -- and a test's read of a cell
+  computes the identity of the copy at its index (`cellRead`);
+- an effect's paths and keys under a loop (`copyPaths`, `keysReportBlock`);
+- Compose's `key(…)` around each copy's body.
+
+Copies sharing one identity are told apart by their order among themselves.
+The interpreter and an instance slot count them as they render, but bubbletea's
+cells and an effect's paths key by the identity alone, and two copies of `"a"`
+were one: the Pokédex asks again for a species by pushing its slug a second
+time, and the second copy never asked. `passLoopIdentity` has a keyed loop over
+a list walk records instead, `{id, elem}`, which a function it declares
+(`__identifiedN`) builds in one pass, suffixing the second and later of one
+identity `#1`, `#2`; the element is `rec.elem` and the identity `rec.id`. An
+identity's own `#`s are doubled first, so no suffix spells another element's:
+undoubled, `["a", "a", "a#1"]` handed out `a#1` twice, and the interpreter,
+which suffixed `~1`, collided on other lists than the targets did
+(`interp.iterationID`). Built
+from the iterable, every walk that evaluates the head -- a settle's rebuilt
+loops, a handler's scan, a test's read -- sees the identities the render did.
+The function is an ordinary one, not synthesized, since fyne and gtk4 emit a
+synthesized package func as a render slot's.
+
+An instance a slot keeps under a node of its body (`nestedInstance`) is kept
+whether or not it is keyed: the keep skipped a keyed one, which nothing wrote
+before a loop keyed its copies, and the Pokédex's move requests under its table
+were built afresh on every render, each asking again and each answer rendering
+again, until the test agent held gigabytes.
+
+`testdata/loop_identity.sngl` is the language,
+`testdata/error_loop_identity.sngl` the key a target cannot keep, and
+`cmd/sngl/testdata/loop_identity_runs.txt` every target. A Kotlin test's
+mutating call on state, `c.names.remove(0)`, now waits for the composition as
+an assignment does, and an instance's test registration is removed only while
+it is the copy's own: a copy a keyed loop moved registers under the name the
+leaving copy disposes.
+
 ## Match
 
 `match [subject] { arms }` is a statement and an expression, and an arm takes
@@ -657,8 +725,33 @@ re-keying the effect on a counter beside `on`. `fetch` answers
 `async.Result[T]`, the payload enum `{ ok T, failed Failure }`; a failure is a
 value, never a raise, and `Failure` is `kind` (`async.FailureKind`), `message`
 and the adapter's own `code`. **The latest attempt wins**: each mount numbers
-its attempt, an unmount bumps the number, and an answer whose number is stale
-writes nothing.
+its attempt, an unmount bumps the number, and an answer whose number is stale,
+or whose key is not the query's `on` and refresh count as the answer arrives,
+writes nothing. The number alone leaned on the unmount having run first,
+which nothing orders against an answer: android's comes at the next
+recomposition, so a request answering between an answer that moved `on` and
+that recomposition still counted as the latest. The Pokédex marked the form
+it had just asked for as the one that failed, and never asked for it
+(`cmd/sngl/testdata/async_query_stale_key_runs.txt`).
+**A request belongs to a `Lifetime`** (`lib/async/async.sngl`), which a
+program begins and ends itself, as JavaScript's `AbortController`: the
+query's mount begins one, hands it to `fetch` beside the key, and its unmount
+ends it, so a fetch that hands it on to `http.get` stops the request for a
+key the query no longer wants, which answers `cancelled` and is dropped as
+any stale answer is. It is a struct holding the number each runtime keeps
+the lifetime by, so a copy is the same lifetime: `pkg/go/snglasync` for Go
+and the interpreter (a `context` per lifetime, which `snglhttp.Send` takes),
+an `AbortController` per number in the JavaScript codec helper, and
+SnglCodec's table of each request's disconnect on android. It is explicit
+rather than threaded: a context binds a function value where it is taken,
+which for `fetch=lookup` is the component body and no mount. The interpreter
+makes a request where it is called, so it has none in flight to stop
+(`cmd/sngl/testdata/async_lifetime_cancels_runs.txt`).
+A mount of another key clears `failure` before it asks, and a `refresh`
+keeps it until its answer: a page showed the last key's failure beside the
+spinner of the next, so the Pokédex kept, per request, the key that failed
+and mounted the request only while it was not that one
+(`testdata/async_query.sngl`'s `testAnotherKeyClearsTheFailure`).
 
 The general things it needed, each of its own:
 
@@ -671,6 +764,11 @@ The general things it needed, each of its own:
   landed first and an unmounted query's answer landed at all
   (`testdata/component_async_query.txtar`, run in Chromium, fails all three of
   its tests without it).
+- **A handler that waits binds its key at entry** (`handlerFunc`): the
+  parameter is otherwise read from the bracket's key var, which a settle
+  overwrites with the next lifetime's while the mount waits, and html read
+  that one after the wait
+  (`cmd/sngl/testdata/async_query_stale_key_runs.txt`).
 - **A blocking call's arguments are read on the drawing thread**
   (`offloadState.bindArgs`): passAsyncOffload binds each argument of the first
   waiting statement's waiting calls to an `__async_argN` ahead of the
@@ -683,7 +781,12 @@ The general things it needed, each of its own:
   prop as a call made by the render. Points-to binds no library component's
   prop, so `fetch`'s signature is never colored: it is every check's
   declaration, and the call through it is a direct or a literal call by the
-  time it is emitted.
+  time it is emitted. A literal the checker saw only as a prop's argument
+  carries no flag, so one called where it stands waits as its body does too:
+  `fetch=func(k) => fetch()` in a component given `fetch=func() => lookup(w)`
+  typed the query's fetch as one that does not wait, and Kotlin called a
+  suspend function from a lambda that is not one
+  (`cmd/sngl/testdata/fetch_lambda_through_prop_runs.txt`).
 - **A query built at run time waits as its fetch does** (`passAsyncProps`): a
   query written straight under a `for` is the instance itself, so `fetch`
   stays its prop, which nothing colored. A func-typed prop of a component
@@ -710,6 +813,15 @@ The general things it needed, each of its own:
   the brackets the teardown had let go of wanted and mounted them again: a
   second request, and a render into the box the destroy had freed, which
   crashed gtk4 (`cmd/sngl/testdata/async_query_destroyed_instance_runs.txt`).
+- **A bracket under a `for` is its copy's** (`copyPaths`): beside the keys a
+  settle describes, the lowering keeps the loops' indices of the copy each is
+  the bracket of, and matches the last pass's to this one's by that, as the
+  interpreter's mounted path does. By place in the list, a copy whose `if`
+  turned false moved every copy after it, and each was ended and begun again:
+  the Pokédex asked again for every species after one that answered, a test
+  of choosing another dex took seconds on bubbletea, and the example wrote
+  its requests out under no `if` to get around it
+  (`cmd/sngl/testdata/effect_copy_dropped_by_if_runs.txt`).
 
 On bubbletea the mount's tail is posted back through Update like any other
 `async.do` (see the bubbletea platform), so a fetch that waits runs there too

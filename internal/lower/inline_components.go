@@ -51,15 +51,16 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	if err := repointCellReads(pkg, cellOwners, st.cells); err != nil {
 		return err
 	}
-	if err := repointHandleCalls(pkg, st.methods, st.methodOwner); err != nil {
-		return err
-	}
+	ambiguous := repointHandleCalls(pkg, st.methods, st.methodOwner)
 	clearDemotedReceivers(pkg, st.demoted)
 	for c := range unreachedCycles(pkg, main, cycles) {
 		delete(st.keep, c)
 	}
 	dropNestedMethods(pkg, st.keep)
 	pkg.Components = retainComponents(pkg.Components, st.keep)
+	if err := refuseAmbiguousHandleCalls(pkg, ambiguous); err != nil {
+		return err
+	}
 	if err := refuseUnsplicedHandleCalls(pkg); err != nil {
 		return err
 	}
@@ -75,7 +76,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	if opts.splices != nil {
 		spliced = *opts.splices
 	}
-	return repointTestReaches(pkg, st.reach, append(spliced, st.insts...))
+	return repointTestReaches(pkg, st.reach, append(spliced, st.insts...), opts.triggers, feats.ValueTriggers)
 }
 
 // unreachedCycles is every recursive component nothing the program renders
@@ -349,6 +350,13 @@ func identPos(id *ir.Ident) string {
 type inlineCompState struct {
 	pkg  *ir.Package
 	main *ir.Component
+	// carried is each node a splice's body renders with the splice's own
+	// handle, the call site's id an override's root took: a splice of it is
+	// the same instance's, and recorded once.
+	carried map[*ir.NodeInst]bool
+	// readHandles is every node handle an identifier in the package reads,
+	// gathered the first time handleRead asks.
+	readHandles map[*ir.Var]bool
 	// readAbroad is every handle read outside the component that declares it,
 	// which a splice leaves shared (handlesReadAbroad).
 	readAbroad map[*ir.Var]bool
@@ -949,7 +957,41 @@ type reactiveCtx struct {
 // would splice, which nothing builds at run time in its place.
 func (rc reactiveCtx) perCopy(n *ir.NodeInst) bool {
 	c := n.Component
-	return rc.in || rc.repeated && c != nil && (ownsState(n) || holdsLifetime(c.Stmts) || splicesLibraryState(c.Stmts))
+	return rc.in || rc.repeated && c != nil && (ownsState(n) || holdsLifetime(c.Stmts) || splicesLibraryState(c.Stmts) || callsOwnNode(c))
+}
+
+// callsOwnNode reports whether c calls a method through the `#id` of a node it
+// renders, a wrapper's among them. Spliced under a `for`, every copy's call
+// names the one handle, and the node is each copy's: a query in a tab's
+// panel with the sign that asks again beside it, whose state is the query
+// wrapper's and none of the panel's own
+// (cmd/sngl/testdata/handle_call_in_built_block_runs.txt).
+func callsOwnNode(c *ir.Component) bool {
+	handles := map[*ir.Var]bool{}
+	ir.WalkView(c.Stmts, func(s ir.Stmt) bool {
+		if n, ok := s.(*ir.NodeInst); ok {
+			for _, h := range []*ir.Var{n.Handle, n.Wraps} {
+				if h != nil {
+					handles[h] = true
+				}
+			}
+		}
+		return true
+	})
+	if len(handles) == 0 {
+		return false
+	}
+	found := false
+	_ = ir.Walk(c, func(n ir.Node) error {
+		if call, ok := n.(*ir.Call); ok && call.Func != nil {
+			if h, _ := handleReceiver(call); h != nil && handles[h] {
+				found = true
+				return ir.SkipAll
+			}
+		}
+		return nil
+	})
+	return found
 }
 
 // ownsState reports whether n's component keeps state of its own there. A
@@ -967,7 +1009,7 @@ func ownsState(n *ir.NodeInst) bool {
 		if i := slices.IndexFunc(n.Props, func(a ir.Arg) bool { return a.Name == v.Name }); i >= 0 {
 			val = n.Props[i].Value
 		}
-		return !rereadable(val)
+		return !substitutable(v, val)
 	})
 }
 
@@ -1339,13 +1381,11 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	}
 	funcStart := len(*hoist.funcs)
 	for _, f := range comp.Funcs {
-		clone := cloneFuncShallow(f)
-		clone.Block = deepCloneStmts(f.Block)
-		if typeArgs != nil {
-			clone = ir.InstantiateFunc(f, typeArgs)
-			clone.TypeParams, clone.RecvTypeParams = f.TypeParams, f.RecvTypeParams
-		}
+		clone := spliceCopy(f, typeArgs)
 		clone.Name = st.names.next(f.Name, "inst")
+		if f.Trigger != "" {
+			clone.Lowered.CopyOf = f
+		}
 		// A clone of a node's method this component's body already spliced
 		// is the node's method again, in the owner this splice lands in.
 		if m, ok := st.methodOf[f]; ok {
@@ -1359,22 +1399,36 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		}
 		carryPointsTo(st.pkg, ir.SlotReturnKey(f), ir.SlotReturnKey(clone))
 		*hoist.funcs = append(*hoist.funcs, clone)
-		if n.Handle != nil {
-			st.recordMethod(n.Handle, f, clone, hoist.funcs)
+		// A wrapper passImplicitState put around a node is reached by the
+		// node's handle (Wraps), and a test's trigger of the node's event is
+		// a method the wrapper's splice copies.
+		for _, h := range []*ir.Var{n.Handle, n.Wraps} {
+			if h != nil {
+				st.recordMethod(h, f, clone, hoist.funcs)
+			}
 		}
 	}
 
+	// The node a wrapper renders takes the handle the call site's splice gave
+	// the wrapper (Wraps): the wrapper is written per call site, and its node
+	// is the one the call site's component calls through the handle.
+	if inner := wrappedNode(n); inner != nil && inner.Handle != nil && inner.Handle != n.Wraps {
+		symRenames[inner.Handle] = n.Wraps
+	}
 	// A handle the body declares and calls a method through, and nothing
 	// outside it reads, is the copy's own, as its state is: the checker
 	// declares one per body, so every copy shared it, and a method of the
 	// copy's calling through it -- an openapi adapter's `refresh` calling its
-	// query's -- could not say which copy's node it meant. One a component
-	// outside reads -- a node passImplicitState moved into a wrapper of its
-	// own, which the body around the wrapper calls -- stays shared, since the
+	// query's -- could not say which copy's node it meant. A node
+	// passImplicitState moved into a wrapper is the body's still, through the
+	// wrapper's Wraps. One a component outside reads stays shared, since the
 	// reads of it are not in this splice, and so does one only a test
 	// reaches, which the test's reach is pointed through as it was.
 	called := handlesCalledIn(comp)
 	for _, h := range ownNodeHandles(comp) {
+		if _, ok := symRenames[h]; ok {
+			continue
+		}
 		if called[h] && !st.readAbroad[h] {
 			clone := *h
 			symRenames[h] = &clone
@@ -1435,6 +1489,10 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		fn := (*hoist.funcs)[i]
+		// A prop is substituted by name, and a method's parameter of the
+		// prop's name is the method's: select's trigger takes the `value`
+		// it is to choose, and read as the prop it chose the bound one.
+		bindings := unshadowed(fn, bindings)
 		fn.Block = substituteParams(fn.Block, bindings)
 		fn.Reads = withSubstitutedReads(fn.Reads, fn.Block, bindings)
 		fn.Block = substituteVars(fn.Block, provided)
@@ -1465,10 +1523,21 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		ir.AttachNodeSite(body, n)
 	}
 	// An override's body renders the node the id names, as passInlinePure
-	// splices one; an override reading a context is spliced here instead.
+	// splices one; an override reading a context is spliced here instead. So
+	// does a library component's whose handle something reads: fyne's own
+	// Select, rendered by a select override this pass splices, is the widget
+	// a trigger's `sel.setSelected(…)` names, and left on the Select the id
+	// named a field nothing built. One nothing reads stays where it was, and
+	// so does one with methods of its own: its handle is the instance a call
+	// of one is made on (an openapi adapter's `query.refresh()`).
 	override := comp.PkgPath() != "" && comp.SpecializedFor != ""
-	if override && n.ID != "" {
-		if was, ok := ir.AttachNodeIDFrom(body, n.ID, n.Handle); ok && was != "" && was != n.ID {
+	carry := override || (comp.PkgPath() != "" && len(comp.Funcs) == 0 && st.handleRead(n.Handle))
+	if carry && n.ID != "" {
+		var methods []any
+		for _, fn := range (*hoist.funcs)[funcStart:] {
+			methods = append(methods, fn)
+		}
+		if was, ok := ir.AttachNodeIDFrom(body, n.ID, n.Handle, methods...); ok && was != "" && was != n.ID {
 			followTestNodeID(st.pkg, was, n.ID)
 		}
 	}
@@ -1483,8 +1552,22 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 			}
 		}
 	}
-	if n.ID != "" || st.reach.takes(comp) {
+	// A node an enclosing splice handed its id to -- an override's root,
+	// carrying the call site's `#pick` -- is that instance's, and a second
+	// record of the handle read as the program rendering it twice.
+	if (n.ID != "" || st.reach.takes(comp)) && !st.carried[n] {
 		st.recordInstance(n, symRenames, body)
+		if n.Handle != nil {
+			_ = ir.Walk(body, func(x ir.Node) error {
+				if ni, ok := x.(*ir.NodeInst); ok && ni.Handle == n.Handle {
+					if st.carried == nil {
+						st.carried = map[*ir.NodeInst]bool{}
+					}
+					st.carried[ni] = true
+				}
+				return nil
+			})
+		}
 	}
 
 	return body, nil
@@ -1562,9 +1645,15 @@ func ownNodeHandles(comp *ir.Component) []*ir.Var {
 	var out []*ir.Var
 	seen := map[*ir.Var]bool{}
 	_ = ir.Walk(comp.Stmts, func(node ir.Node) error {
-		if n, ok := node.(*ir.NodeInst); ok && n.Handle != nil && !seen[n.Handle] {
-			seen[n.Handle] = true
-			out = append(out, n.Handle)
+		n, ok := node.(*ir.NodeInst)
+		if !ok {
+			return nil
+		}
+		for _, h := range []*ir.Var{n.Handle, n.Wraps} {
+			if h != nil && !seen[h] {
+				seen[h] = true
+				out = append(out, h)
+			}
 		}
 		return nil
 	})
@@ -1626,9 +1715,12 @@ func handlesReadAbroad(pkg *ir.Package) map[*ir.Var]bool {
 // handle symRenames made, as renameIdents points the reads of it.
 func repointNodeHandles(body []ir.Stmt, symRenames map[ir.Symbol]ir.Symbol) {
 	_ = ir.Walk(body, func(node ir.Node) error {
-		if n, ok := node.(*ir.NodeInst); ok && n.Handle != nil {
-			if h, ok := symRenames[n.Handle].(*ir.Var); ok {
+		if n, ok := node.(*ir.NodeInst); ok {
+			if h, ok := symRenames[n.Handle].(*ir.Var); ok && n.Handle != nil {
 				n.Handle = h
+			}
+			if h, ok := symRenames[n.Wraps].(*ir.Var); ok && n.Wraps != nil {
+				n.Wraps = h
 			}
 		}
 		return nil
@@ -1858,7 +1950,7 @@ func (st *inlineCompState) restartOnEntry(vars []*ir.Var, loops []*ir.For) *ir.N
 		{Name: ir.EffectMount, Func: &ir.Func{Pkg: st.pkg, Block: block}},
 	}}
 	if len(loops) > 0 {
-		n.Props = []ir.Arg{{Name: ir.EffectOn, Value: CopyKey(loops)}}
+		n.Props = []ir.Arg{{Name: ir.EffectOn, Value: CopyIdentity(loops)}}
 	}
 	return n
 }
@@ -1896,4 +1988,23 @@ func rendersFocusStop(c *ir.Component, seen map[*ir.Component]bool) bool {
 		return !found
 	})
 	return found
+}
+
+// handleRead reports whether an identifier in the package reads h.
+func (st *inlineCompState) handleRead(h *ir.Var) bool {
+	if h == nil {
+		return false
+	}
+	if st.readHandles == nil {
+		st.readHandles = map[*ir.Var]bool{}
+		_ = ir.Walk(st.pkg, func(n ir.Node) error {
+			if id, ok := n.(*ir.Ident); ok {
+				if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle {
+					st.readHandles[v] = true
+				}
+			}
+			return nil
+		})
+	}
+	return st.readHandles[h]
 }

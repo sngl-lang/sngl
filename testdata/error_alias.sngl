@@ -31,7 +31,7 @@ func f1(v Formattable) => 1 // ERROR(check) "`Formattable` is an alias of a cons
 
 struct Count = int
 
-func f5[T Count](v T) => v // ERROR(check) "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]`, `methodsOf[S]` or an alias of one"
+func f5[T Count](v T) => v // ERROR(check) "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]`, `methodsOf[S]`, `ordered` or an alias of one"
 
 // Nor is it a value.
 func f6() => Formattable // ERROR(check) "Formattable names a constraint, which is not a value"

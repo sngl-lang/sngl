@@ -46,6 +46,18 @@
 // on android, as they did. A window shows a stack of pages with
 // `canGoBack=pages.canGoBack(), @back { pages.back() }`; what going back means
 // is the program's, so `@back` may do more than a pop, or something else.
+//
+// `@key` is each key pressed in the window, before anything in it hears the
+// key: before a focused field types it, a focused button's Enter or space
+// presses it, Tab moves focus, or Escape goes back or closes an overlay. A
+// handler that calls `stop` keeps the key from going further, and one that
+// does not leaves it to go where it would have gone. So a shortcut stops what
+// it answers and nothing else -- and asks `e.editing` first, or the field the
+// user is typing in never sees the letter the shortcut is bound to. A key the
+// system or the target keeps for itself -- Control+W in a browser, ctrl+c on
+// bubbletea, android's Home -- never reaches the window. On android it is a
+// hardware keyboard's: the on-screen keyboard types into the field and
+// presses no key the window could hear.
 component window(
     title     string = "",
     :visible  bool = true,
@@ -53,10 +65,28 @@ component window(
     @error(e error),
     @closed(),
     @back(),
+    @key(e KeyPress, stop func()),
     content   ...component node,
     favicon   option[component option[imageSource]],
     menu      component menuItem,
 ) root
+
+// A key pressed in a window, as its `@key` hears it. `key` is named as a
+// browser names it: the character the key types -- `"7"`, `"+"`, `"a"`, and
+// `"A"` with Shift held -- or one of `"Enter"`, `"Tab"`, `"Escape"`,
+// `"Backspace"`, `"Delete"`, `"Insert"`, `"ArrowUp"`, `"ArrowDown"`,
+// `"ArrowLeft"`, `"ArrowRight"`, `"Home"`, `"End"`, `"PageUp"`, `"PageDown"`
+// and `"F1"` to `"F12"`; `" "` is the space bar. With Control, Alt or Meta held
+// it is the key's own character, `"s"` for Control+S. `editing` says focus is
+// in a field that takes typing, where a key that types is the field's.
+struct KeyPress {
+    key     string
+    ctrl    bool = false
+    alt     bool = false
+    shift   bool = false
+    meta    bool = false
+    editing bool = false
+}
 
 // Puts the window on screen: `visible = true`, which is no change to a window
 // already there, so it does not raise one. Reached through the window's `#id`

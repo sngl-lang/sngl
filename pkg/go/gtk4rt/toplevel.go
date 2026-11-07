@@ -67,7 +67,9 @@ type toplevel struct {
 	win       *C.GtkWindow
 	onVisible func(bool)
 	onClosed  func()
-	gone      int
+	// onKey is the window's `@key` (keys.go).
+	onKey func(key string, ctrl, alt, shift, meta, editing bool, stop func())
+	gone  int
 	// icon is the image source a `ui.window`'s favicon is.
 	icon *source
 	// bar is the header bar holding the back button and the menu button,
@@ -225,6 +227,7 @@ func ToplevelWindow(app, h Handle) Handle {
 	}
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), widget(t.box))
 	t.win = (*C.GtkWindow)(unsafe.Pointer(win))
+	t.watchKeys(win)
 	// A harness makes a window per snapshot and destroys it after, taking
 	// the bar with it: the next window decides its own.
 	gone := cbind.Register(func() {
@@ -242,14 +245,20 @@ func ToplevelWindow(app, h Handle) Handle {
 	return Handle(unsafe.Pointer(win))
 }
 
-// ToplevelTitleWindow gives win the title h was given, for the inline-cgo
-// scaffold, which makes the one window itself around a box holding h's.
+// ToplevelTitleWindow gives win the title h was given and its keys, for the
+// inline-cgo scaffold, which makes the one window itself around a box holding
+// h's.
 func ToplevelTitleWindow(win, h Handle) {
-	if t := topOf(h); t != nil && t.title != "" {
+	t := topOf(h)
+	if t == nil {
+		return
+	}
+	if t.title != "" {
 		cs := C.CString(t.title)
 		C.gtk_window_set_title((*C.GtkWindow)(p(win)), cs)
 		C.free(unsafe.Pointer(cs))
 	}
+	t.watchKeys(widget(win))
 }
 
 // RequestClose closes the window the way the window manager's close button
@@ -277,6 +286,7 @@ func (t *toplevel) create() {
 		C.free(unsafe.Pointer(cs))
 	}
 	C.gtk_window_set_child(t.win, widget(t.box))
+	t.watchKeys((*C.GtkWidget)(unsafe.Pointer(t.win)))
 	idx := cbind.Register(t.closeRequested)
 	C.sngl_top_connect_close(t.win, C.int(idx))
 	t.applyIcon()

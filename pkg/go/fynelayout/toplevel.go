@@ -9,7 +9,6 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 )
 
 // Toplevel is what a `ui.window` is on fyne: a node holding its content in a
@@ -33,12 +32,21 @@ type Toplevel struct {
 	// OnClosed is the window's `@closed`, run after a window manager's close
 	// has been reported as `visible = false`.
 	OnClosed func()
+	// OnKey is the window's `@key` (HearKeys): each key pressed in it, before
+	// anything in it hears the key, reporting whether it stopped the key.
+	OnKey func(e KeyPress) (stopped bool)
+	// muted is a key being delivered that OnKey has heard already (PressKey).
+	muted bool
+	// heard is a key OnKey heard ahead of the step that delivers it, and
+	// heardStopped its verdict (key.go).
+	heard        string
+	heardStopped bool
 	// icon is the image source a `ui.window`'s favicon is.
 	icon *ImageSource
 	// back is the button over the content a Back among it shows, made the
 	// first time one does, so a window that never goes back lays out as it
 	// did.
-	back *widget.Button
+	back *Button
 }
 
 // App is the parent a node at the root of the package body is attached to.
@@ -158,6 +166,7 @@ func (t *Toplevel) create() {
 	t.w.SetContent(t.Container)
 	t.w.Resize(fyne.NewSize(480, 640))
 	t.w.SetCloseIntercept(t.closeRequested)
+	t.hearKeys()
 	t.applyIcon()
 	t.applyMenu()
 }

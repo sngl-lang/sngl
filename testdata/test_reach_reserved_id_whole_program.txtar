@@ -75,6 +75,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -129,6 +132,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -141,16 +152,28 @@ type modelState struct {
 	visible__inst0 bool
 	__focusID      int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.closed__inst0 = 0
-	m.n__inst0 = 0
-	m.visible__inst0 = true
-	m.__focusID = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["closed__inst0"] {
+		m.closed__inst0 = 0
+	}
+	if !preset["n__inst0"] {
+		m.n__inst0 = 0
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
 	return m
 }
 
@@ -197,14 +220,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -268,7 +291,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt6
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt9 *Measurement
 	if own != nil {
 		__lt9 = own
@@ -281,7 +304,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt9 = __lt8
 	}
-	return CellsOf(__lt9)
+	return SpaceOf(__lt9, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
@@ -320,6 +343,16 @@ func LineCap(height__r0 int, lines int) int {
 		__lt13 = __lt12
 	}
 	return __lt13
+}
+
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt14) + 0.5))
 }
 
 func (m *Model) __focusNext() {
@@ -405,6 +438,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -426,6 +465,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, tea.Batch(cmds...)
+}
+
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
 }
 
 // close__r0Click activates the #close__r0 widget the way a keypress does; for tests.
@@ -451,6 +502,7 @@ func (m *Model) incClick() {
 }
 
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
@@ -460,7 +512,9 @@ func (m Model) View() tea.View {
 		if contentPart_0Focused {
 			contentPart_0Prefix = ">"
 		}
-		contentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_0Prefix + " " + fmt.Sprint(("x" + fmt.Sprint(m.closed__inst0))))
+		contentPart_0Text := contentPart_0Prefix + " " + fmt.Sprint(("x" + fmt.Sprint(m.closed__inst0)))
+		contentPart_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), contentPart_0Focused), tui.Avail(m.width), contentPart_0Text).Render(contentPart_0Text)
+		contentPart_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_0)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1Focused := (m.__focusID == 1)
@@ -468,12 +522,16 @@ func (m Model) View() tea.View {
 		if contentPart_1Focused {
 			contentPart_1Prefix = ">"
 		}
-		contentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPart_1Prefix + " " + fmt.Sprint(fmt.Sprint(m.n__inst0)))
+		contentPart_1Text := contentPart_1Prefix + " " + fmt.Sprint(fmt.Sprint(m.n__inst0))
+		contentPart_1 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), contentPart_1Focused), tui.Avail(m.width), contentPart_1Text).Render(contentPart_1Text)
+		contentPart_1 = m.__clicks.Mark(snglStop{slot: 1, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, contentPart_1)
 		contentParts = append(contentParts, contentPart_1)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -493,6 +551,7 @@ import "testing"
 func TestClose(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.close__r0Click()
 	if !((c.closed__inst0 == 1)) { t.Errorf("assert failed: %s", "(c.closed__inst0 == 1)") }
 }
@@ -500,12 +559,19 @@ func TestClose(t *testing.T) {
 func TestOther(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.incClick()
 	if !((c.n__inst0 == 1)) { t.Errorf("assert failed: %s", "(c.n__inst0 == 1)") }
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -516,9 +582,11 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
+
+type Test struct {
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -527,18 +595,28 @@ type Model struct {
 	visible__inst0 bool
 
 	__n0      *fynelayout.Toplevel
-	close__r0 *widget.Button
-	inc       *widget.Button
+	close__r0 *fynelayout.Button
+	inc       *fynelayout.Button
 	__built   bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.closed__inst0 = 0
-	m.n__inst0 = 0
-	m.visible__inst0 = true
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["closed__inst0"] {
+		m.closed__inst0 = 0
+	}
+	if !preset["n__inst0"] {
+		m.n__inst0 = 0
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -607,11 +685,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.close__r0 = widget.NewButton("", nil)
+	m.close__r0 = fynelayout.NewButton("", nil)
 	m.close__r0.SetText(("x" + fmt.Sprint(m.closed__inst0)))
 	m.close__r0.OnTapped = m.close__r0_click_handler
 	m.__n0.Add(m.close__r0)
-	m.inc = widget.NewButton("", nil)
+	m.inc = fynelayout.NewButton("", nil)
 	m.inc.SetText(fmt.Sprint(m.n__inst0))
 	m.inc.OnTapped = m.inc_click_handler
 	m.__n0.Add(m.inc)
@@ -634,6 +712,7 @@ import "testing"
 func TestClose(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.close__r0Click()
 	if !((c.closed__inst0 == 1)) { t.Errorf("assert failed: %s", "(c.closed__inst0 == 1)") }
 }
@@ -641,6 +720,7 @@ func TestClose(t *testing.T) {
 func TestOther(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.incClick()
 	if !((c.n__inst0 == 1)) { t.Errorf("assert failed: %s", "(c.n__inst0 == 1)") }
 }
@@ -652,7 +732,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -679,6 +763,9 @@ import (
 	"fmt"
 )
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	closed__inst0  int
@@ -694,13 +781,26 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.closed__inst0 = 0
-	m.n__inst0 = 0
-	m.visible__inst0 = true
+	m.__init(nil)
 	return m
 }
 
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["closed__inst0"] {
+		m.closed__inst0 = 0
+	}
+	if !preset["n__inst0"] {
+		m.n__inst0 = 0
+	}
+	if !preset["visible__inst0"] {
+		m.visible__inst0 = true
+	}
+}
+
 func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
@@ -750,13 +850,16 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.close__r0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.close__r0, ("x" + fmt.Sprint(m.closed__inst0)))
+	gtk4rt.SetBool(m.close__r0, "can-focus", true)
 	gtk4rt.Connect(m.close__r0, "clicked", m.close__r0_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.close__r0)
 	m.inc = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.inc, fmt.Sprint(m.n__inst0))
+	gtk4rt.SetBool(m.inc, "can-focus", true)
 	gtk4rt.Connect(m.inc, "clicked", m.inc_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.inc)
 	gtk4rt.AppAttach(m.__n0)
@@ -801,16 +904,26 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var closed__inst0 by mutableStateOf(0)
-    var n__inst0 by mutableStateOf(0)
-    var visible__inst0 by mutableStateOf(true)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var closed__inst0 by mutableStateOf(__snglPre(__pre, "closed__inst0") { 0 })
+    var n__inst0 by mutableStateOf(__snglPre(__pre, "n__inst0") { 0 })
+    var visible__inst0 by mutableStateOf(__snglPre(__pre, "visible__inst0") { true })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -907,18 +1020,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { closed__inst0: 0, n__inst0: 0, visible__inst0: true };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   state.closeClick = () => $0.click();
   state.incClick = () => $1.click();
   if (typeof window !== "undefined") {
@@ -946,16 +1062,15 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ec0be99f0da638a65a5bb0c4a59eff86
+pass sha256:75bbe76a55baea580150d78b976c664c
 -- run/go/fyne --
-pass sha256:854d78c6ab51384c68650cddd473c78e
+pass sha256:936a952bfd721b15c164fba5a56ca323
 -- run/go/gtk4 --
-pass sha256:520c4971b642ce01b811d57319001e95
+pass sha256:45d580d91ce0bd9789dcc85729c17e31
 -- run/kotlin/android --
-pass sha256:55499403b01f5e9b292730dc63592865
+pass sha256:1a50e4e73decd35ef592049a5042c8dc
 -- run/none/html --
-pass sha256:e2321ce07b0a07894704c15e1147f708
+pass sha256:0fe247f472eac8af2cf3f6a900d2b57a

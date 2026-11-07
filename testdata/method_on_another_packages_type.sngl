@@ -1,0 +1,14 @@
+// A program adds a method to another package's type by naming it through the
+// import, `http.Response`: the receiver resolves through the namespace as a
+// node's component does. It was looked up as a name in scope, which no import
+// binds, and refused as no type to declare a method on.
+
+import http "sngl:http"
+import test "sngl:test"
+
+func http.Response.fine(r http.Response) => r.status == 200
+
+func testAMethodOfAnImportedType(t test.Test) {
+    var r = http.Response{status=200, headers={}, body=""}
+    t.assert(r.fine())
+}

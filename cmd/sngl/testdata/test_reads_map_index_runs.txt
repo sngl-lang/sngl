@@ -35,7 +35,7 @@ ui.window {
     retry
 }
 -- testrun/android/kotlin/app.sngl/retry/1 --
-sha256:817f745cba6c0bfb0077e2d155c46314
+sha256:48ff0926cb046e7635bc02ce4dc1f52a
 {
   "results": [
     {

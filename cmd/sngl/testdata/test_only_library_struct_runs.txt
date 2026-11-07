@@ -1,0 +1,93 @@
+# A library struct only a test names reaches the test on every target. The Go
+# targets drop each library struct the Model's source does not spell
+# (golang.PruneStructDecls), and the test module is a file of its own, so a
+# test building an `http.Response` did not compile: `undefined: Response`. A
+# program's method on the imported type, `http.Response.fine`, reaches it too.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func http.Response.fine(r http.Response) => r.status == 200
+
+component page ui.node {
+    ui.text("page")
+}
+
+func testATestBuildsALibraryStruct(t test.Test, c page) {
+    var r = http.Response{status=200, headers={}, body=""}
+    t.assert(r.fine())
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:0ad30e05559fda366ceae535625faea0
+{
+  "results": [
+    {
+      "Desc": "ATestBuildsALibraryStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:7edf225aed6f9f29c3ce98f68006e1f8
+{
+  "results": [
+    {
+      "Desc": "ATestBuildsALibraryStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:6f6956ffb8a9dc6a9f130743c55c1b47
+{
+  "results": [
+    {
+      "Desc": "ATestBuildsALibraryStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:b6960555ed892287eab769c83e49c34f
+{
+  "results": [
+    {
+      "Desc": "ATestBuildsALibraryStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:6fc0c2bfa8ed49d2292f895412c42ea6
+{
+  "results": [
+    {
+      "Desc": "ATestBuildsALibraryStruct",
+      "Passed": true
+    }
+  ]
+}

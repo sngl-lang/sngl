@@ -99,10 +99,14 @@ func dropDetachedHandlers(pkg *ir.Package) {
 // would shadow the thing it names.
 func promoteForeignStructs(pkg *ir.Package) error {
 	have := map[*ir.StructDef]bool{}
+	haveDecl := map[string]bool{}
 	byName := map[string]*ir.StructDef{}
 	for _, sd := range pkg.Structs {
 		have[sd] = true
 		byName[sd.Name] = sd
+		if sd.PkgPath() != "" {
+			haveDecl[declKey(sd)] = true
+		}
 	}
 	var added []*ir.StructDef
 	haveEnum := map[*ir.EnumDef]bool{}
@@ -131,6 +135,19 @@ func promoteForeignStructs(pkg *ir.Package) error {
 			}
 			return
 		}
+		// And so does a function's: sngl:http's answer is a
+		// `func(r Request) option[Response]`, which a test hands in.
+		if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil {
+			for _, p := range t.Sig.Params {
+				if p != nil && !namesBuiltinStruct(p.Type) {
+					want(p.Type)
+				}
+			}
+			if !namesBuiltinStruct(t.Sig.Return) {
+				want(t.Sig.Return)
+			}
+			return
+		}
 		if t != nil && t.Kind == ir.TypeEnum {
 			// Kotlin emits an enum as a class of its own, so a helper taking
 			// `markup.Token` named a type the file never declared.
@@ -149,6 +166,12 @@ func promoteForeignStructs(pkg *ir.Package) error {
 			return
 		}
 		have[sd] = true
+		// A declaration is its package and name (sameDecl): a copy of one
+		// reached through another path is the same struct, declared once.
+		if haveDecl[declKey(sd)] {
+			return
+		}
+		haveDecl[declKey(sd)] = true
 		added = append(added, sd)
 		// A promoted struct's declaration names its fields' types, which
 		// have to be declared beside it: `_Item` holds `list[_Block]`. A
@@ -182,8 +205,13 @@ func promoteForeignStructs(pkg *ir.Package) error {
 			}
 		}
 	}
+	for _, ctx := range pkg.Contexts {
+		if ctx != nil && !namesBuiltinStruct(ctx.Typ) {
+			want(ctx.Typ)
+		}
+	}
 	for _, fn := range pkg.Funcs {
-		if fn == nil || fn.PkgPath() == "" {
+		if fn == nil {
 			continue
 		}
 		for _, p := range fn.Params {
@@ -832,3 +860,6 @@ func identRune(r rune) rune {
 func fromLibrary(sd *ir.StructDef) bool {
 	return strings.HasPrefix(sd.PkgPath(), "sngl:") && !sd.Frozen
 }
+
+// declKey is a library struct's identity, its package and name.
+func declKey(sd *ir.StructDef) string { return sd.PkgPath() + "." + sd.Name }

@@ -36,6 +36,7 @@ type pass struct {
 // pass wherever the stated requirements allow; if it has a requirement not yet
 // stated, state it there rather than leaving it to position.
 var passes = []pass{
+	passEventTriggers,
 	passEnumReads,
 	passMatch,
 	passTestInstanceReach,
@@ -45,6 +46,7 @@ var passes = []pass{
 	passHoistState,
 	passBuiltinMethods,
 	passStringBuilders,
+	passUnreadLocals,
 	// Before every pass that writes a store of its own: what it copies is
 	// what the program wrote. After passHoistState, which turns a view block's
 	// local into a var whose initializer it reaches.
@@ -58,6 +60,9 @@ var passes = []pass{
 	// declaration does.
 	passReceiverParam,
 	passCallDefaults,
+	// After passCallDefaults, whose reads of sngl:http's answer it finds the
+	// context by; before passUnprovidedContext and passContext.
+	passTestAnswer,
 	passMonomorphize,
 	passNavigation,
 	passHandleParams,
@@ -68,6 +73,9 @@ var passes = []pass{
 	// whose props the read is answered from.
 	passNodePropReads,
 	passPropBindings,
+	// Before passRefLoop, which makes an `&` loop's element a place this
+	// leaves alone, and before anything copies a loop out of its body.
+	passLoopIdentity,
 	passRefLoop,
 	// After passRefLoop, so an element bound with `&` is a place by now.
 	passRefParams,
@@ -89,6 +97,10 @@ var passes = []pass{
 	passUnprovidedContext,
 	passContext,
 	passInlinePure,
+	// After InlinePure, which splices a component whose node and caller a
+	// branch then holds; before NoInlineComponents, which builds the block
+	// at run time or splices it.
+	passHandleBlocks,
 	passNoInlineComponents,
 	passMonomorphizeCodecs,
 	// Once the inliners have settled every node's ID, before anything copies one.
@@ -122,6 +134,10 @@ var passes = []pass{
 	passEffect,
 	passSlotChildInstances,
 	passInstanceEvents,
+	// After passInstanceEvents, which leaves only the root's raises, and
+	// before the temps passConditionalTemps and passTernary bind for what a
+	// raise is handed.
+	passTestRootEvents,
 	passComponentProps,
 	passReactivity,
 	passFocusOrder,
@@ -138,11 +154,19 @@ var passes = []pass{
 	// and all. Before the three always-on passes below, which reach a lambda
 	// body and so still see inside the two closures it leaves.
 	passAsyncOffload,
+	// After AsyncOffload, which starts the work whose writes it posts.
+	passOffLoopWrites,
 	passIndexedIter,
 	passForElse,
 	passRenderCatch,
 	passErrorCatch,
 	passReleaseTemps,
+	// After passReactivity's redraws and passEffect's settles, which it drops
+	// from what a test sets up before its component mounts.
+	passTestMount,
+	// After everything that splices a handler or drops an emit, so what
+	// reads a write's local is what the build keeps.
+	passFoldWrites,
 	// Last: it reads every body the passes above finished rewriting.
 	passMutatedVars,
 	passCSE,
@@ -221,6 +245,11 @@ type Options struct {
 	// an id. Set by Lower.
 	splices *[]splice
 
+	// triggers is each test call passEventTriggers made a call of a trigger,
+	// as the test wrote it, for repointTestReaches to restore where the
+	// trigger's copy is no method the test can call. Set by Lower.
+	triggers map[*ir.Call]ir.Call
+
 	// blockReads is each read of a view block's var passTestReach answered a
 	// test's prop read with, for passHoistState to say where the var lives.
 	// Set by Lower.
@@ -265,6 +294,7 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 	}
 	opts.names = renamer{}
 	opts.splices = &[]splice{}
+	opts.triggers = map[*ir.Call]ir.Call{}
 	opts.blockReads = blockReads{}
 	if opts.StopAfter != "" {
 		known := false
@@ -355,6 +385,9 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 		// A dump stopped mid-pipeline is deliberately half-lowered; the
 		// invariant is about the IR a backend receives.
 		return nil
+	}
+	if err := verifyTriggersReached(pkg); err != nil {
+		return err
 	}
 	return verifyMutationsAreStatements(pkg)
 }

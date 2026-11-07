@@ -1,0 +1,35 @@
+// `sort()` is a method of a list only where `<` orders its items, and a
+// method narrows only a receiver's parameter its declaration leaves
+// unconstrained.
+
+struct Move {
+    level int = 0
+}
+
+struct Box[T anyStruct] {
+    v T
+}
+
+func Box[T ordered].least(this Box[T]) {} // ERROR(check) "already constrained by its declaration"
+
+func sortMoves(moves list[Move]) {
+    moves.sort() // ERROR(check) "sort needs its receiver's T to satisfy ordered, and Move does not"
+}
+
+func sortAny[T any](xs list[T]) {
+    xs.sort() // ERROR(check) "its constraint does not say `<` orders it"
+}
+
+func lessAny[T any](a T, b T) => a < b // ERROR(check) "operator < not defined"
+
+func lessMoves(a Move, b Move) => a < b // ERROR(check) "operator < not defined"
+
+func sortBools(xs list[bool]) {
+    xs.sort() // ERROR(check) "`<` does not order it"
+}
+
+func notOrdered[T ordered](v T) {}
+
+func useNotOrdered() {
+    notOrdered(true) // ERROR(check) "bool does not satisfy ordered"
+}

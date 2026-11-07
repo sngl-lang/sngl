@@ -6,7 +6,7 @@
 # html runs each component a test takes as a page of its own, so an example
 # whose window is served in route mode is tested as a static page there too.
 #
-# 87 is every example's tests together, so one dropping out of the walk fails.
+# 90 is every example's tests together, so one dropping out of the walk fails.
 #
 # A test that sets no locale reads the process's, and the examples' tests that
 # set none read English.
@@ -15,32 +15,40 @@ env LC_ALL=en_US.UTF-8
 exec cp -r $SNGL_ROOT/examples .
 
 sngl test --platform=none ./examples/...
-stdout '^ok +87 tests, 0 failures$'
+stdout '^ok +90 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=html ./examples/...
-stdout '^ok +87 tests, 0 failures$'
+stdout '^ok +90 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=fyne --language=go ./examples/...
-stdout '^ok +87 tests, 0 failures$'
+stdout '^ok +90 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=gtk4 --language=go ./examples/...
-stdout '^ok +87 tests, 0 failures$'
+stdout '^ok +90 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=bubbletea --language=go ./examples/...
-stdout '^ok +87 tests, 0 failures$'
+stdout '^ok +90 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=android --language=kotlin ./examples/...
-stdout '^ok +87 tests, 0 failures$'
+stdout '^ok +90 tests, 0 failures$'
 ! stdout SKIP
 -- testrun/android/kotlin/app.sngl/Calculator/1 --
-sha256:3bfce7a0fbbf086f4a02c2aac3017f9f
+sha256:0705d6def39280361d1daf6fe6084ea8
 {
   "results": [
+    {
+      "Desc": "KeyboardShortcutsPressTheKeys",
+      "Passed": true
+    },
+    {
+      "Desc": "OtherKeysGoOn",
+      "Passed": true
+    },
     {
       "Desc": "PressingKeysDrivesTheCalculator",
       "Passed": true
@@ -48,7 +56,7 @@ sha256:3bfce7a0fbbf086f4a02c2aac3017f9f
   ]
 }
 -- testrun/android/kotlin/app.sngl/Tour/1 --
-sha256:4aab061950a2afddbeeeed8ac17bc26c
+sha256:3d76a3f8f6f51a874055fb49eb9f25b1
 {
   "results": [
     {
@@ -62,7 +70,7 @@ sha256:4aab061950a2afddbeeeed8ac17bc26c
   ]
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:8ce9ac9f4596d0a115478c4cf029179c
+sha256:c414d5f912cbb11da8ffaeb3dc1a76e4
 {
   "results": [
     {
@@ -111,6 +119,10 @@ sha256:8ce9ac9f4596d0a115478c4cf029179c
     },
     {
       "Desc": "EqualsRepeatsTheLastOperation",
+      "Passed": true
+    },
+    {
+      "Desc": "EveryKeyHasItsOwnShortcut",
       "Passed": true
     },
     {
@@ -152,7 +164,7 @@ sha256:8ce9ac9f4596d0a115478c4cf029179c
   ]
 }
 -- testrun/android/kotlin/app.sngl/_/2 --
-sha256:c1795d368fd208a4cfc4798b0e9b5730
+sha256:280bc896975a43dece3e7ac149983b41
 {
   "results": [
     {
@@ -161,22 +173,8 @@ sha256:c1795d368fd208a4cfc4798b0e9b5730
     }
   ]
 }
--- testrun/android/kotlin/app.sngl/alolan/1 --
-sha256:ff1b70d28aa3ebd80d0f24061a988944
-{
-  "results": [
-    {
-      "Desc": "AFormsMovesAreItsOwn",
-      "Passed": true
-    },
-    {
-      "Desc": "AFormsPageIsTheForm",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/android/kotlin/app.sngl/back/1 --
-sha256:6d429b9cb915f838e30efc816eb7694f
+sha256:ada37f9f796fbd02ec6d0cc6f7bf43d6
 {
   "results": [
     {
@@ -185,18 +183,8 @@ sha256:6d429b9cb915f838e30efc816eb7694f
     }
   ]
 }
--- testrun/android/kotlin/app.sngl/bud/1 --
-sha256:dbb9b34e0c21613a1e70f5e93c45803e
-{
-  "results": [
-    {
-      "Desc": "StatsGiveEveryEffort",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/android/kotlin/app.sngl/chains/1 --
-sha256:49c43b8d50befbe0ee1c0b44e834dcc7
+sha256:f589eedc520daa66de1b8ca576d248f9
 {
   "results": [
     {
@@ -205,154 +193,24 @@ sha256:49c43b8d50befbe0ee1c0b44e834dcc7
     }
   ]
 }
--- testrun/android/kotlin/app.sngl/dexes/1 --
-sha256:d31f21e5e08e5fefa08c761ce935dca8
-{
-  "results": [
-    {
-      "Desc": "EveryDexDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/android/kotlin/app.sngl/flame/1 --
-sha256:4605ec4ee7b1f2dcc67b4113bf25035f
-{
-  "results": [
-    {
-      "Desc": "EvolutionIsEachSpeciesChain",
-      "Passed": true
-    }
-  ]
-}
--- testrun/android/kotlin/app.sngl/fluff/1 --
-sha256:d8b1556f03099bfef293855d129f79b6
+-- testrun/android/kotlin/app.sngl/detailPage/1 --
+sha256:3a6db7ed4b140dbca3db85b7023c4a4d
 {
   "results": [
     {
       "Desc": "ABranchingChainIsRows",
       "Passed": true
-    }
-  ]
-}
--- testrun/android/kotlin/app.sngl/fox/1 --
-sha256:b8dc2a3fe64c183acb42c88dc6b41f41
-{
-  "results": [
-    {
-      "Desc": "EvolutionShowsAFormFromAForm",
-      "Passed": true
     },
-    {
-      "Desc": "EvolutionShowsTheFirstDefaultDetail",
-      "Passed": true
-    }
-  ]
-}
--- testrun/android/kotlin/app.sngl/home/1 --
-sha256:a063b509efc4833afb776db0f012376e
-{
-  "results": [
-    {
-      "Desc": "ACardNamesItsSpeciesInTheReadersLanguage",
-      "Passed": true
-    },
-    {
-      "Desc": "ADexThatFailsAsksAgain",
-      "Passed": true
-    },
-    {
-      "Desc": "ASearchAsksForEveryName",
-      "Passed": true
-    },
-    {
-      "Desc": "ChoosingADexStartsTheGridAgain",
-      "Passed": true
-    },
-    {
-      "Desc": "HomeStartsAtTheNationalDex",
-      "Passed": true
-    },
-    {
-      "Desc": "Names",
-      "Passed": true
-    },
-    {
-      "Desc": "TheEndOfTheGridAddsTheRest",
-      "Passed": true
-    },
-    {
-      "Desc": "TheGridIsRowsOfThree",
-      "Passed": true
-    },
-    {
-      "Desc": "TheSearchCoversTheWholeDex",
-      "Passed": true
-    }
-  ]
-}
--- testrun/android/kotlin/app.sngl/mons/1 --
-sha256:81baac060d3daa20ede30a23b7e90759
-{
-  "results": [
-    {
-      "Desc": "EveryMonDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/android/kotlin/app.sngl/mouse/1 --
-sha256:5c2195ef1e29d174e71865a2b6e554a6
-{
-  "results": [
-    {
-      "Desc": "AboutIsEachSpecies",
-      "Passed": true
-    },
-    {
-      "Desc": "EvolutionByFriendshipAndStone",
-      "Passed": true
-    },
-    {
-      "Desc": "EvolutionShowsTheAlolanForms",
-      "Passed": true
-    },
-    {
-      "Desc": "SpritesLabelEveryPicture",
-      "Passed": true
-    },
-    {
-      "Desc": "SpritesListTheForms",
-      "Passed": true
-    }
-  ]
-}
--- testrun/android/kotlin/app.sngl/named/1 --
-sha256:5ddb77c34ce095902c11422b5d50f48f
-{
-  "results": [
-    {
-      "Desc": "EveryNameDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/android/kotlin/app.sngl/roam/1 --
-sha256:e1a52c234ee978b65b8b8a99d6d5fda7
-{
-  "results": [
-    {
-      "Desc": "TappingAFormOpensIt",
-      "Passed": true
-    }
-  ]
-}
--- testrun/android/kotlin/app.sngl/seed/1 --
-sha256:4ee404ef14b55318ceaeddd1fa7d8d17
-{
-  "results": [
     {
       "Desc": "ADecimalCommaInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsMovesAreItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsPageIsTheForm",
       "Passed": true
     },
     {
@@ -396,6 +254,10 @@ sha256:4ee404ef14b55318ceaeddd1fa7d8d17
       "Passed": true
     },
     {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    },
+    {
       "Desc": "AboutMarksTheHiddenAbility",
       "Passed": true
     },
@@ -404,7 +266,27 @@ sha256:4ee404ef14b55318ceaeddd1fa7d8d17
       "Passed": true
     },
     {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    },
+    {
       "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsAFormFromAForm",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheAlolanForms",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
       "Passed": true
     },
     {
@@ -424,7 +306,19 @@ sha256:4ee404ef14b55318ceaeddd1fa7d8d17
       "Passed": true
     },
     {
+      "Desc": "SpritesLabelEveryPicture",
+      "Passed": true
+    },
+    {
       "Desc": "SpritesLeaveOutAFemaleTheyLack",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesListTheForms",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsGiveEveryEffort",
       "Passed": true
     },
     {
@@ -453,8 +347,90 @@ sha256:4ee404ef14b55318ceaeddd1fa7d8d17
     }
   ]
 }
+-- testrun/android/kotlin/app.sngl/dexes/1 --
+sha256:b99ad754ef12ad84d3b7b57154587bed
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/home/1 --
+sha256:e74e54f9f51ed0f4ee64f627d8ad0ac3
+{
+  "results": [
+    {
+      "Desc": "ACardNamesItsSpeciesInTheReadersLanguage",
+      "Passed": true
+    },
+    {
+      "Desc": "ADexThatFailsAsksAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "ASearchAsksForEveryName",
+      "Passed": true
+    },
+    {
+      "Desc": "ChoosingADexStartsTheGridAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
+    {
+      "Desc": "Names",
+      "Passed": true
+    },
+    {
+      "Desc": "TheEndOfTheGridAddsTheRest",
+      "Passed": true
+    },
+    {
+      "Desc": "TheGridIsInDexOrder",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/mons/1 --
+sha256:844963288aa0bdf22914ee6cd7cef8bf
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/named/1 --
+sha256:340fe62778b5d6e453f1c3ee0c5a1a1f
+{
+  "results": [
+    {
+      "Desc": "EveryNameDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/roam/1 --
+sha256:54337203d4b911ce266e0f57f56dadbb
+{
+  "results": [
+    {
+      "Desc": "TappingAFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/android/kotlin/app.sngl/shapes/1 --
-sha256:84035f9f7f0575fcbc4620dbb8028504
+sha256:801026a133c061f5c91320403a3d5c9d
 {
   "results": [
     {
@@ -464,7 +440,7 @@ sha256:84035f9f7f0575fcbc4620dbb8028504
   ]
 }
 -- testrun/android/kotlin/app.sngl/shell/1 --
-sha256:3c34b5f051cf330d5061b6117926ca37
+sha256:f3e1cdce02dde2637843d4655903b103
 {
   "results": [
     {
@@ -486,7 +462,7 @@ sha256:3c34b5f051cf330d5061b6117926ca37
   ]
 }
 -- testrun/android/kotlin/app.sngl/spark/1 --
-sha256:2fd1d8e5cccff54ba02523f50153294c
+sha256:5bb98060ec0fbeed837a63488b0a3242
 {
   "results": [
     {
@@ -496,7 +472,7 @@ sha256:2fd1d8e5cccff54ba02523f50153294c
   ]
 }
 -- testrun/android/kotlin/app.sngl/species/1 --
-sha256:f5de73bbf364f5bcaa71ac46d4182404
+sha256:ae0c201dd00d2e1fd6a2854944cca6b5
 {
   "results": [
     {
@@ -506,7 +482,7 @@ sha256:f5de73bbf364f5bcaa71ac46d4182404
   ]
 }
 -- testrun/android/kotlin/app.sngl/spray/1 --
-sha256:3e6168f42e252c835e4f97bece67c36f
+sha256:5744a3b4e619781a723d75451619dd8e
 {
   "results": [
     {
@@ -516,7 +492,7 @@ sha256:3e6168f42e252c835e4f97bece67c36f
   ]
 }
 -- testrun/android/kotlin/app.sngl/trip/1 --
-sha256:bc10c031bd5bda22b3452b47c30d56b2
+sha256:68156096fdf1f4dd9aa2041555fa27cb
 {
   "results": [
     {
@@ -526,7 +502,7 @@ sha256:bc10c031bd5bda22b3452b47c30d56b2
   ]
 }
 -- testrun/android/kotlin/app.sngl/walk/1 --
-sha256:17f32c825f924ada6d94ec26d632df3f
+sha256:3c6eab743df4fd8a1649a354c8287f9e
 {
   "results": [
     {
@@ -536,9 +512,17 @@ sha256:17f32c825f924ada6d94ec26d632df3f
   ]
 }
 -- testrun/bubbletea/go/app.sngl/Calculator/1 --
-sha256:b1755d267ada1ae3d259ad5547eaf346
+sha256:65ccd1827e081ac2d3dba4f34c0ef9c5
 {
   "results": [
+    {
+      "Desc": "KeyboardShortcutsPressTheKeys",
+      "Passed": true
+    },
+    {
+      "Desc": "OtherKeysGoOn",
+      "Passed": true
+    },
     {
       "Desc": "PressingKeysDrivesTheCalculator",
       "Passed": true
@@ -546,7 +530,7 @@ sha256:b1755d267ada1ae3d259ad5547eaf346
   ]
 }
 -- testrun/bubbletea/go/app.sngl/Tour/1 --
-sha256:80101ea47ca94dce82358eca8332b235
+sha256:a8076e6bd3dbe344093e1dedc152b1b9
 {
   "results": [
     {
@@ -560,7 +544,7 @@ sha256:80101ea47ca94dce82358eca8332b235
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:b69bd80161a41b979fe648ca9837e704
+sha256:11b35dacae1800e32ce8183eaa9b66e1
 {
   "results": [
     {
@@ -609,6 +593,10 @@ sha256:b69bd80161a41b979fe648ca9837e704
     },
     {
       "Desc": "EqualsRepeatsTheLastOperation",
+      "Passed": true
+    },
+    {
+      "Desc": "EveryKeyHasItsOwnShortcut",
       "Passed": true
     },
     {
@@ -650,7 +638,7 @@ sha256:b69bd80161a41b979fe648ca9837e704
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/2 --
-sha256:e3c4804b445e6dcfe1cfd5d4a587fa2e
+sha256:263f23fc655458015d779b5d86081e54
 {
   "results": [
     {
@@ -659,22 +647,8 @@ sha256:e3c4804b445e6dcfe1cfd5d4a587fa2e
     }
   ]
 }
--- testrun/bubbletea/go/app.sngl/alolan/1 --
-sha256:d757c79824a386a226aa913876cf8b22
-{
-  "results": [
-    {
-      "Desc": "AFormsMovesAreItsOwn",
-      "Passed": true
-    },
-    {
-      "Desc": "AFormsPageIsTheForm",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/bubbletea/go/app.sngl/back/1 --
-sha256:96376d266848320ab2d73e1c129d2764
+sha256:e7aab5a9430af174c3a121996c17722f
 {
   "results": [
     {
@@ -683,18 +657,8 @@ sha256:96376d266848320ab2d73e1c129d2764
     }
   ]
 }
--- testrun/bubbletea/go/app.sngl/bud/1 --
-sha256:b0a6806e24c014953f378d810752e6d4
-{
-  "results": [
-    {
-      "Desc": "StatsGiveEveryEffort",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/bubbletea/go/app.sngl/chains/1 --
-sha256:77ca88ad6a50acd29a919a872e95a07b
+sha256:eadf7190c645385fbe2b91b846acee1b
 {
   "results": [
     {
@@ -703,154 +667,24 @@ sha256:77ca88ad6a50acd29a919a872e95a07b
     }
   ]
 }
--- testrun/bubbletea/go/app.sngl/dexes/1 --
-sha256:b91ef980ed2e3275a9d26616f3c5475d
-{
-  "results": [
-    {
-      "Desc": "EveryDexDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/bubbletea/go/app.sngl/flame/1 --
-sha256:ebd9dc6782f9c7883af6e5e8e2b4254f
-{
-  "results": [
-    {
-      "Desc": "EvolutionIsEachSpeciesChain",
-      "Passed": true
-    }
-  ]
-}
--- testrun/bubbletea/go/app.sngl/fluff/1 --
-sha256:5e2fbc82c8d379aa3bbe7d6b10cf2131
+-- testrun/bubbletea/go/app.sngl/detailPage/1 --
+sha256:d292261ede54ed73aedbd7fbeeba41e5
 {
   "results": [
     {
       "Desc": "ABranchingChainIsRows",
       "Passed": true
-    }
-  ]
-}
--- testrun/bubbletea/go/app.sngl/fox/1 --
-sha256:1bc4cafa7932357f2d057eed6da53141
-{
-  "results": [
-    {
-      "Desc": "EvolutionShowsAFormFromAForm",
-      "Passed": true
     },
-    {
-      "Desc": "EvolutionShowsTheFirstDefaultDetail",
-      "Passed": true
-    }
-  ]
-}
--- testrun/bubbletea/go/app.sngl/home/1 --
-sha256:5aee8c49a4b404c6406dd97091ff3f09
-{
-  "results": [
-    {
-      "Desc": "ACardNamesItsSpeciesInTheReadersLanguage",
-      "Passed": true
-    },
-    {
-      "Desc": "ADexThatFailsAsksAgain",
-      "Passed": true
-    },
-    {
-      "Desc": "ASearchAsksForEveryName",
-      "Passed": true
-    },
-    {
-      "Desc": "ChoosingADexStartsTheGridAgain",
-      "Passed": true
-    },
-    {
-      "Desc": "HomeStartsAtTheNationalDex",
-      "Passed": true
-    },
-    {
-      "Desc": "Names",
-      "Passed": true
-    },
-    {
-      "Desc": "TheEndOfTheGridAddsTheRest",
-      "Passed": true
-    },
-    {
-      "Desc": "TheGridIsRowsOfThree",
-      "Passed": true
-    },
-    {
-      "Desc": "TheSearchCoversTheWholeDex",
-      "Passed": true
-    }
-  ]
-}
--- testrun/bubbletea/go/app.sngl/mons/1 --
-sha256:eb94c3cb36ca3351cbc2f3296a4d1a82
-{
-  "results": [
-    {
-      "Desc": "EveryMonDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/bubbletea/go/app.sngl/mouse/1 --
-sha256:91b6d2c8961ed1e2060cf85af568192e
-{
-  "results": [
-    {
-      "Desc": "AboutIsEachSpecies",
-      "Passed": true
-    },
-    {
-      "Desc": "EvolutionByFriendshipAndStone",
-      "Passed": true
-    },
-    {
-      "Desc": "EvolutionShowsTheAlolanForms",
-      "Passed": true
-    },
-    {
-      "Desc": "SpritesLabelEveryPicture",
-      "Passed": true
-    },
-    {
-      "Desc": "SpritesListTheForms",
-      "Passed": true
-    }
-  ]
-}
--- testrun/bubbletea/go/app.sngl/named/1 --
-sha256:da7b3d82f4b50a5922668ca32a7df906
-{
-  "results": [
-    {
-      "Desc": "EveryNameDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/bubbletea/go/app.sngl/roam/1 --
-sha256:bce65d27d86bcd31f6faebc922ee0d06
-{
-  "results": [
-    {
-      "Desc": "TappingAFormOpensIt",
-      "Passed": true
-    }
-  ]
-}
--- testrun/bubbletea/go/app.sngl/seed/1 --
-sha256:9dc28421418dc09a96f9e7a2afa1ab89
-{
-  "results": [
     {
       "Desc": "ADecimalCommaInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsMovesAreItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsPageIsTheForm",
       "Passed": true
     },
     {
@@ -894,6 +728,10 @@ sha256:9dc28421418dc09a96f9e7a2afa1ab89
       "Passed": true
     },
     {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    },
+    {
       "Desc": "AboutMarksTheHiddenAbility",
       "Passed": true
     },
@@ -902,7 +740,27 @@ sha256:9dc28421418dc09a96f9e7a2afa1ab89
       "Passed": true
     },
     {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    },
+    {
       "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsAFormFromAForm",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheAlolanForms",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
       "Passed": true
     },
     {
@@ -922,7 +780,19 @@ sha256:9dc28421418dc09a96f9e7a2afa1ab89
       "Passed": true
     },
     {
+      "Desc": "SpritesLabelEveryPicture",
+      "Passed": true
+    },
+    {
       "Desc": "SpritesLeaveOutAFemaleTheyLack",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesListTheForms",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsGiveEveryEffort",
       "Passed": true
     },
     {
@@ -951,8 +821,90 @@ sha256:9dc28421418dc09a96f9e7a2afa1ab89
     }
   ]
 }
+-- testrun/bubbletea/go/app.sngl/dexes/1 --
+sha256:b13aee2a5f8a307e3cd17e0f178fb820
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/home/1 --
+sha256:06fa39c509a81382adedca84966e1f0e
+{
+  "results": [
+    {
+      "Desc": "ACardNamesItsSpeciesInTheReadersLanguage",
+      "Passed": true
+    },
+    {
+      "Desc": "ADexThatFailsAsksAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "ASearchAsksForEveryName",
+      "Passed": true
+    },
+    {
+      "Desc": "ChoosingADexStartsTheGridAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
+    {
+      "Desc": "Names",
+      "Passed": true
+    },
+    {
+      "Desc": "TheEndOfTheGridAddsTheRest",
+      "Passed": true
+    },
+    {
+      "Desc": "TheGridIsInDexOrder",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/mons/1 --
+sha256:e7ca0052c3b23e6dd3ca75be604f1d17
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/named/1 --
+sha256:6ea06f0a76e4dea42e97091d720b291f
+{
+  "results": [
+    {
+      "Desc": "EveryNameDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/roam/1 --
+sha256:294d363f4ddaeef3e7c664a22af87618
+{
+  "results": [
+    {
+      "Desc": "TappingAFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/bubbletea/go/app.sngl/shapes/1 --
-sha256:f6bfde2f8e3b49918303d1a5a3974696
+sha256:4ee8addc847df73de045d11cbac14568
 {
   "results": [
     {
@@ -962,7 +914,7 @@ sha256:f6bfde2f8e3b49918303d1a5a3974696
   ]
 }
 -- testrun/bubbletea/go/app.sngl/shell/1 --
-sha256:6c5f83c3f3e0fbeb2f9e1d56190fe42c
+sha256:c2199500b56f20a88e13714172fd13a0
 {
   "results": [
     {
@@ -984,7 +936,7 @@ sha256:6c5f83c3f3e0fbeb2f9e1d56190fe42c
   ]
 }
 -- testrun/bubbletea/go/app.sngl/spark/1 --
-sha256:603c5050f0b700824ba09e06253aeb22
+sha256:e37f3eb51fced6408ea53b19b2ae8bce
 {
   "results": [
     {
@@ -994,7 +946,7 @@ sha256:603c5050f0b700824ba09e06253aeb22
   ]
 }
 -- testrun/bubbletea/go/app.sngl/species/1 --
-sha256:32f788d5b8b6331360ab7ebca820fd89
+sha256:17f1b1b18f7002265e62b1a570c651c4
 {
   "results": [
     {
@@ -1004,7 +956,7 @@ sha256:32f788d5b8b6331360ab7ebca820fd89
   ]
 }
 -- testrun/bubbletea/go/app.sngl/spray/1 --
-sha256:29f7a04d509fb8ef4b98cd5bd2078c04
+sha256:635742c6f086738fd0b7511eb7fc8e94
 {
   "results": [
     {
@@ -1014,7 +966,7 @@ sha256:29f7a04d509fb8ef4b98cd5bd2078c04
   ]
 }
 -- testrun/bubbletea/go/app.sngl/trip/1 --
-sha256:90298a1325b2292635f4955e9a4e676d
+sha256:28cdd1bf06871ca820eb757264a5ca09
 {
   "results": [
     {
@@ -1024,7 +976,7 @@ sha256:90298a1325b2292635f4955e9a4e676d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/walk/1 --
-sha256:918452c0acdae261589a1869ba9c4a64
+sha256:e0033f8fef592f918f574e46829b314d
 {
   "results": [
     {
@@ -1034,9 +986,17 @@ sha256:918452c0acdae261589a1869ba9c4a64
   ]
 }
 -- testrun/fyne/go/app.sngl/Calculator/1 --
-sha256:bc5cb1f6135960cc2f10e3a568672fc2
+sha256:1ab2788cf5621b45a8bff7be97eb4825
 {
   "results": [
+    {
+      "Desc": "KeyboardShortcutsPressTheKeys",
+      "Passed": true
+    },
+    {
+      "Desc": "OtherKeysGoOn",
+      "Passed": true
+    },
     {
       "Desc": "PressingKeysDrivesTheCalculator",
       "Passed": true
@@ -1044,7 +1004,7 @@ sha256:bc5cb1f6135960cc2f10e3a568672fc2
   ]
 }
 -- testrun/fyne/go/app.sngl/Tour/1 --
-sha256:220953ca21727f3ed3946ab6915d776c
+sha256:3ec24044eed73ae80b09385358ffd19c
 {
   "results": [
     {
@@ -1058,7 +1018,7 @@ sha256:220953ca21727f3ed3946ab6915d776c
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:535f3342a336c48b563176a1f39301f2
+sha256:e13fdc9abc545a56f87492f03a7aac3e
 {
   "results": [
     {
@@ -1107,6 +1067,10 @@ sha256:535f3342a336c48b563176a1f39301f2
     },
     {
       "Desc": "EqualsRepeatsTheLastOperation",
+      "Passed": true
+    },
+    {
+      "Desc": "EveryKeyHasItsOwnShortcut",
       "Passed": true
     },
     {
@@ -1148,7 +1112,7 @@ sha256:535f3342a336c48b563176a1f39301f2
   ]
 }
 -- testrun/fyne/go/app.sngl/_/2 --
-sha256:76097d428af8c619fa1cf21a0427b678
+sha256:6befcc8c1be6ce1b082aa746ad8336f5
 {
   "results": [
     {
@@ -1157,22 +1121,8 @@ sha256:76097d428af8c619fa1cf21a0427b678
     }
   ]
 }
--- testrun/fyne/go/app.sngl/alolan/1 --
-sha256:2fcc5b346e713680dd6c9e17b2b00efc
-{
-  "results": [
-    {
-      "Desc": "AFormsMovesAreItsOwn",
-      "Passed": true
-    },
-    {
-      "Desc": "AFormsPageIsTheForm",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/fyne/go/app.sngl/back/1 --
-sha256:d3cfa30c73aa991668a28f89f19ece93
+sha256:d4ead0efb04140262b10cfc12baad14d
 {
   "results": [
     {
@@ -1181,18 +1131,8 @@ sha256:d3cfa30c73aa991668a28f89f19ece93
     }
   ]
 }
--- testrun/fyne/go/app.sngl/bud/1 --
-sha256:19dde5af586b9267e6592f91c6252d79
-{
-  "results": [
-    {
-      "Desc": "StatsGiveEveryEffort",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/fyne/go/app.sngl/chains/1 --
-sha256:7aae27fff2904d90b3c76b1689379d4f
+sha256:475100d826504df576c89710a7f8bdaf
 {
   "results": [
     {
@@ -1201,154 +1141,24 @@ sha256:7aae27fff2904d90b3c76b1689379d4f
     }
   ]
 }
--- testrun/fyne/go/app.sngl/dexes/1 --
-sha256:6104013c92a1cc1559c007531ea55b59
-{
-  "results": [
-    {
-      "Desc": "EveryDexDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/fyne/go/app.sngl/flame/1 --
-sha256:5e2be87da1a9ffdf19c792d2d11bda0a
-{
-  "results": [
-    {
-      "Desc": "EvolutionIsEachSpeciesChain",
-      "Passed": true
-    }
-  ]
-}
--- testrun/fyne/go/app.sngl/fluff/1 --
-sha256:f8ce9868915aa7de6468fd36fac1325f
+-- testrun/fyne/go/app.sngl/detailPage/1 --
+sha256:d3fc46f8895804ccc4f0f30e03216222
 {
   "results": [
     {
       "Desc": "ABranchingChainIsRows",
       "Passed": true
-    }
-  ]
-}
--- testrun/fyne/go/app.sngl/fox/1 --
-sha256:7716076793bea3d6b077e860be14b571
-{
-  "results": [
-    {
-      "Desc": "EvolutionShowsAFormFromAForm",
-      "Passed": true
     },
-    {
-      "Desc": "EvolutionShowsTheFirstDefaultDetail",
-      "Passed": true
-    }
-  ]
-}
--- testrun/fyne/go/app.sngl/home/1 --
-sha256:9bc99eb49e144000adb22f9b0847e580
-{
-  "results": [
-    {
-      "Desc": "ACardNamesItsSpeciesInTheReadersLanguage",
-      "Passed": true
-    },
-    {
-      "Desc": "ADexThatFailsAsksAgain",
-      "Passed": true
-    },
-    {
-      "Desc": "ASearchAsksForEveryName",
-      "Passed": true
-    },
-    {
-      "Desc": "ChoosingADexStartsTheGridAgain",
-      "Passed": true
-    },
-    {
-      "Desc": "HomeStartsAtTheNationalDex",
-      "Passed": true
-    },
-    {
-      "Desc": "Names",
-      "Passed": true
-    },
-    {
-      "Desc": "TheEndOfTheGridAddsTheRest",
-      "Passed": true
-    },
-    {
-      "Desc": "TheGridIsRowsOfThree",
-      "Passed": true
-    },
-    {
-      "Desc": "TheSearchCoversTheWholeDex",
-      "Passed": true
-    }
-  ]
-}
--- testrun/fyne/go/app.sngl/mons/1 --
-sha256:b68fd7d28ff14f647eaaa111a5d1d9ad
-{
-  "results": [
-    {
-      "Desc": "EveryMonDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/fyne/go/app.sngl/mouse/1 --
-sha256:e09da9179b8a96e47af1628665e2d7ba
-{
-  "results": [
-    {
-      "Desc": "AboutIsEachSpecies",
-      "Passed": true
-    },
-    {
-      "Desc": "EvolutionByFriendshipAndStone",
-      "Passed": true
-    },
-    {
-      "Desc": "EvolutionShowsTheAlolanForms",
-      "Passed": true
-    },
-    {
-      "Desc": "SpritesLabelEveryPicture",
-      "Passed": true
-    },
-    {
-      "Desc": "SpritesListTheForms",
-      "Passed": true
-    }
-  ]
-}
--- testrun/fyne/go/app.sngl/named/1 --
-sha256:2c598a6aeb0d3b26c995982c18443a49
-{
-  "results": [
-    {
-      "Desc": "EveryNameDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/fyne/go/app.sngl/roam/1 --
-sha256:12a4ff68515006fbc224ab5fc9edda78
-{
-  "results": [
-    {
-      "Desc": "TappingAFormOpensIt",
-      "Passed": true
-    }
-  ]
-}
--- testrun/fyne/go/app.sngl/seed/1 --
-sha256:4e7049062b1f2e0044be968e851d9efc
-{
-  "results": [
     {
       "Desc": "ADecimalCommaInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsMovesAreItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsPageIsTheForm",
       "Passed": true
     },
     {
@@ -1392,6 +1202,10 @@ sha256:4e7049062b1f2e0044be968e851d9efc
       "Passed": true
     },
     {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    },
+    {
       "Desc": "AboutMarksTheHiddenAbility",
       "Passed": true
     },
@@ -1400,7 +1214,27 @@ sha256:4e7049062b1f2e0044be968e851d9efc
       "Passed": true
     },
     {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    },
+    {
       "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsAFormFromAForm",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheAlolanForms",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
       "Passed": true
     },
     {
@@ -1420,7 +1254,19 @@ sha256:4e7049062b1f2e0044be968e851d9efc
       "Passed": true
     },
     {
+      "Desc": "SpritesLabelEveryPicture",
+      "Passed": true
+    },
+    {
       "Desc": "SpritesLeaveOutAFemaleTheyLack",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesListTheForms",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsGiveEveryEffort",
       "Passed": true
     },
     {
@@ -1449,8 +1295,90 @@ sha256:4e7049062b1f2e0044be968e851d9efc
     }
   ]
 }
+-- testrun/fyne/go/app.sngl/dexes/1 --
+sha256:0943891d00310809afe794daab8debdd
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/home/1 --
+sha256:ae888d2b39c171228908279091a3e3d6
+{
+  "results": [
+    {
+      "Desc": "ACardNamesItsSpeciesInTheReadersLanguage",
+      "Passed": true
+    },
+    {
+      "Desc": "ADexThatFailsAsksAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "ASearchAsksForEveryName",
+      "Passed": true
+    },
+    {
+      "Desc": "ChoosingADexStartsTheGridAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
+    {
+      "Desc": "Names",
+      "Passed": true
+    },
+    {
+      "Desc": "TheEndOfTheGridAddsTheRest",
+      "Passed": true
+    },
+    {
+      "Desc": "TheGridIsInDexOrder",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/mons/1 --
+sha256:ac5e502b444e1b40bc9a8d2ab4f1b80e
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/named/1 --
+sha256:26c62f26fb5299c01d3cef7e6e61cab5
+{
+  "results": [
+    {
+      "Desc": "EveryNameDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/roam/1 --
+sha256:40e2217fe5bbf002a93575fa856463cc
+{
+  "results": [
+    {
+      "Desc": "TappingAFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/fyne/go/app.sngl/shapes/1 --
-sha256:ff49a6fcccc37017ff68491d9b700df2
+sha256:fcd740b54c6324f2d44122d960309dcc
 {
   "results": [
     {
@@ -1460,7 +1388,7 @@ sha256:ff49a6fcccc37017ff68491d9b700df2
   ]
 }
 -- testrun/fyne/go/app.sngl/shell/1 --
-sha256:302061b802fb002eb95c73ec95eb8052
+sha256:f1dceb69a1f8706eba8f28f79f02d257
 {
   "results": [
     {
@@ -1482,7 +1410,7 @@ sha256:302061b802fb002eb95c73ec95eb8052
   ]
 }
 -- testrun/fyne/go/app.sngl/spark/1 --
-sha256:cb2475ed5b37eb1d20c69d0514468629
+sha256:8633386f30a3d9732348038abb067f2c
 {
   "results": [
     {
@@ -1492,7 +1420,7 @@ sha256:cb2475ed5b37eb1d20c69d0514468629
   ]
 }
 -- testrun/fyne/go/app.sngl/species/1 --
-sha256:7517e0747c4a95681d153a3e3af149b2
+sha256:a661bf62d05da455aad73d18e3717f4b
 {
   "results": [
     {
@@ -1502,7 +1430,7 @@ sha256:7517e0747c4a95681d153a3e3af149b2
   ]
 }
 -- testrun/fyne/go/app.sngl/spray/1 --
-sha256:2a9121caa563401d713fa55f97bc24aa
+sha256:c2a7d4bb2227029d060dca2649e060f2
 {
   "results": [
     {
@@ -1512,7 +1440,7 @@ sha256:2a9121caa563401d713fa55f97bc24aa
   ]
 }
 -- testrun/fyne/go/app.sngl/trip/1 --
-sha256:84faeccfd62b4e5c66e223558aef1523
+sha256:9ed918903a695f725783a599ec3d438e
 {
   "results": [
     {
@@ -1522,7 +1450,7 @@ sha256:84faeccfd62b4e5c66e223558aef1523
   ]
 }
 -- testrun/fyne/go/app.sngl/walk/1 --
-sha256:e0fd5f07899aa89d288cabab3d98d4f4
+sha256:b96e9263b1b2a5acdb0bda5fcd9728a3
 {
   "results": [
     {
@@ -1532,9 +1460,17 @@ sha256:e0fd5f07899aa89d288cabab3d98d4f4
   ]
 }
 -- testrun/gtk4/go/app.sngl/Calculator/1 --
-sha256:15036e875b45968b04b66e74b3255866
+sha256:f3b95bf4e8bfc9691cb251aee9700de9
 {
   "results": [
+    {
+      "Desc": "KeyboardShortcutsPressTheKeys",
+      "Passed": true
+    },
+    {
+      "Desc": "OtherKeysGoOn",
+      "Passed": true
+    },
     {
       "Desc": "PressingKeysDrivesTheCalculator",
       "Passed": true
@@ -1542,7 +1478,7 @@ sha256:15036e875b45968b04b66e74b3255866
   ]
 }
 -- testrun/gtk4/go/app.sngl/Tour/1 --
-sha256:3d05ecbf9636b09f8fa2acb332ed705e
+sha256:b4d990104e8b9ca120aa8e756e0ce7b3
 {
   "results": [
     {
@@ -1556,7 +1492,7 @@ sha256:3d05ecbf9636b09f8fa2acb332ed705e
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:878e179beba31e0a1334b28619ccfb03
+sha256:280963099b910c717320afaab680db98
 {
   "results": [
     {
@@ -1605,6 +1541,10 @@ sha256:878e179beba31e0a1334b28619ccfb03
     },
     {
       "Desc": "EqualsRepeatsTheLastOperation",
+      "Passed": true
+    },
+    {
+      "Desc": "EveryKeyHasItsOwnShortcut",
       "Passed": true
     },
     {
@@ -1646,7 +1586,7 @@ sha256:878e179beba31e0a1334b28619ccfb03
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/2 --
-sha256:d1e5a82d903e4eb52bc31acff57eba3d
+sha256:9bc0f7291232575b7526cb03bee90c5d
 {
   "results": [
     {
@@ -1655,22 +1595,8 @@ sha256:d1e5a82d903e4eb52bc31acff57eba3d
     }
   ]
 }
--- testrun/gtk4/go/app.sngl/alolan/1 --
-sha256:11ed0fae6b0d8d74325a7bafd0d4afd2
-{
-  "results": [
-    {
-      "Desc": "AFormsMovesAreItsOwn",
-      "Passed": true
-    },
-    {
-      "Desc": "AFormsPageIsTheForm",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/gtk4/go/app.sngl/back/1 --
-sha256:a3101360ece3fc5c516f180adee8dd7f
+sha256:675535184b9c5383827470097c3ab72a
 {
   "results": [
     {
@@ -1679,18 +1605,8 @@ sha256:a3101360ece3fc5c516f180adee8dd7f
     }
   ]
 }
--- testrun/gtk4/go/app.sngl/bud/1 --
-sha256:382503de5e18b3f3502514c80553a143
-{
-  "results": [
-    {
-      "Desc": "StatsGiveEveryEffort",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/gtk4/go/app.sngl/chains/1 --
-sha256:1561520b4e1bdedd8db0dffdb361d5be
+sha256:8dc6fbd54117d46595125a99770a5b0b
 {
   "results": [
     {
@@ -1699,154 +1615,24 @@ sha256:1561520b4e1bdedd8db0dffdb361d5be
     }
   ]
 }
--- testrun/gtk4/go/app.sngl/dexes/1 --
-sha256:8bd7249a250cf6c5cb114d6338a8c029
-{
-  "results": [
-    {
-      "Desc": "EveryDexDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4/go/app.sngl/flame/1 --
-sha256:ccd22d02a12ce440eb0c08b6682cc027
-{
-  "results": [
-    {
-      "Desc": "EvolutionIsEachSpeciesChain",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4/go/app.sngl/fluff/1 --
-sha256:ef5d8511727f9e29c08c795fe007d8b6
+-- testrun/gtk4/go/app.sngl/detailPage/1 --
+sha256:7d8de3890e4385d31d5403de30a7eedf
 {
   "results": [
     {
       "Desc": "ABranchingChainIsRows",
       "Passed": true
-    }
-  ]
-}
--- testrun/gtk4/go/app.sngl/fox/1 --
-sha256:a5726786ac271a22e571028be0e65cd8
-{
-  "results": [
-    {
-      "Desc": "EvolutionShowsAFormFromAForm",
-      "Passed": true
     },
-    {
-      "Desc": "EvolutionShowsTheFirstDefaultDetail",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4/go/app.sngl/home/1 --
-sha256:c806f28e999ec3e05524b05d77ad3844
-{
-  "results": [
-    {
-      "Desc": "ACardNamesItsSpeciesInTheReadersLanguage",
-      "Passed": true
-    },
-    {
-      "Desc": "ADexThatFailsAsksAgain",
-      "Passed": true
-    },
-    {
-      "Desc": "ASearchAsksForEveryName",
-      "Passed": true
-    },
-    {
-      "Desc": "ChoosingADexStartsTheGridAgain",
-      "Passed": true
-    },
-    {
-      "Desc": "HomeStartsAtTheNationalDex",
-      "Passed": true
-    },
-    {
-      "Desc": "Names",
-      "Passed": true
-    },
-    {
-      "Desc": "TheEndOfTheGridAddsTheRest",
-      "Passed": true
-    },
-    {
-      "Desc": "TheGridIsRowsOfThree",
-      "Passed": true
-    },
-    {
-      "Desc": "TheSearchCoversTheWholeDex",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4/go/app.sngl/mons/1 --
-sha256:9617fbd631853462897e970eecab0636
-{
-  "results": [
-    {
-      "Desc": "EveryMonDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4/go/app.sngl/mouse/1 --
-sha256:1bae4247a691262294159d6e4b3748e9
-{
-  "results": [
-    {
-      "Desc": "AboutIsEachSpecies",
-      "Passed": true
-    },
-    {
-      "Desc": "EvolutionByFriendshipAndStone",
-      "Passed": true
-    },
-    {
-      "Desc": "EvolutionShowsTheAlolanForms",
-      "Passed": true
-    },
-    {
-      "Desc": "SpritesLabelEveryPicture",
-      "Passed": true
-    },
-    {
-      "Desc": "SpritesListTheForms",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4/go/app.sngl/named/1 --
-sha256:7d4a085b8cf5d8a8d8f05291428edd05
-{
-  "results": [
-    {
-      "Desc": "EveryNameDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4/go/app.sngl/roam/1 --
-sha256:818d107611dd872cde675152c612486d
-{
-  "results": [
-    {
-      "Desc": "TappingAFormOpensIt",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4/go/app.sngl/seed/1 --
-sha256:d749a50ad5a7fbacd0f3dfb605908fde
-{
-  "results": [
     {
       "Desc": "ADecimalCommaInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsMovesAreItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsPageIsTheForm",
       "Passed": true
     },
     {
@@ -1890,6 +1676,10 @@ sha256:d749a50ad5a7fbacd0f3dfb605908fde
       "Passed": true
     },
     {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    },
+    {
       "Desc": "AboutMarksTheHiddenAbility",
       "Passed": true
     },
@@ -1898,7 +1688,27 @@ sha256:d749a50ad5a7fbacd0f3dfb605908fde
       "Passed": true
     },
     {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    },
+    {
       "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsAFormFromAForm",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheAlolanForms",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
       "Passed": true
     },
     {
@@ -1918,7 +1728,19 @@ sha256:d749a50ad5a7fbacd0f3dfb605908fde
       "Passed": true
     },
     {
+      "Desc": "SpritesLabelEveryPicture",
+      "Passed": true
+    },
+    {
       "Desc": "SpritesLeaveOutAFemaleTheyLack",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesListTheForms",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsGiveEveryEffort",
       "Passed": true
     },
     {
@@ -1947,8 +1769,90 @@ sha256:d749a50ad5a7fbacd0f3dfb605908fde
     }
   ]
 }
+-- testrun/gtk4/go/app.sngl/dexes/1 --
+sha256:2e064327fe2c864aaa61ed5ed1f2fa91
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/home/1 --
+sha256:463dc71c35c10ec9b16f8063ec7764ee
+{
+  "results": [
+    {
+      "Desc": "ACardNamesItsSpeciesInTheReadersLanguage",
+      "Passed": true
+    },
+    {
+      "Desc": "ADexThatFailsAsksAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "ASearchAsksForEveryName",
+      "Passed": true
+    },
+    {
+      "Desc": "ChoosingADexStartsTheGridAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
+    {
+      "Desc": "Names",
+      "Passed": true
+    },
+    {
+      "Desc": "TheEndOfTheGridAddsTheRest",
+      "Passed": true
+    },
+    {
+      "Desc": "TheGridIsInDexOrder",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/mons/1 --
+sha256:9e22384278807c16c9b3d531d376247f
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/named/1 --
+sha256:4c6c6c093070341af45e91805f8806c2
+{
+  "results": [
+    {
+      "Desc": "EveryNameDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/roam/1 --
+sha256:098420863b8e764f1dc131d7ef162495
+{
+  "results": [
+    {
+      "Desc": "TappingAFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/shapes/1 --
-sha256:ae4c115efaff1267f8948cdc053aa720
+sha256:64a7e583e5ad7e8b1227983625e9e1aa
 {
   "results": [
     {
@@ -1958,7 +1862,7 @@ sha256:ae4c115efaff1267f8948cdc053aa720
   ]
 }
 -- testrun/gtk4/go/app.sngl/shell/1 --
-sha256:7385e783be3bf512204cd3856a2cf4ff
+sha256:49dc5f5c214c72c6341a5fd6d6f1832b
 {
   "results": [
     {
@@ -1980,7 +1884,7 @@ sha256:7385e783be3bf512204cd3856a2cf4ff
   ]
 }
 -- testrun/gtk4/go/app.sngl/spark/1 --
-sha256:89584c59d0fcd6eaa68af30322dde479
+sha256:50b441bdbfa787227ff3407c4f2a1ad0
 {
   "results": [
     {
@@ -1990,7 +1894,7 @@ sha256:89584c59d0fcd6eaa68af30322dde479
   ]
 }
 -- testrun/gtk4/go/app.sngl/species/1 --
-sha256:0200dbb05046291acbfcf1980241e077
+sha256:767c0db293aa7be8e698d704c4b6b900
 {
   "results": [
     {
@@ -2000,7 +1904,7 @@ sha256:0200dbb05046291acbfcf1980241e077
   ]
 }
 -- testrun/gtk4/go/app.sngl/spray/1 --
-sha256:427f4573335054a54eae2dd4ff395010
+sha256:645e41ddf52c5a41cd344b7ee6b95b62
 {
   "results": [
     {
@@ -2010,7 +1914,7 @@ sha256:427f4573335054a54eae2dd4ff395010
   ]
 }
 -- testrun/gtk4/go/app.sngl/trip/1 --
-sha256:57c4b5ef54e651635433e748e0f29029
+sha256:226e5e92dcc09de06db01aa6f530dfe8
 {
   "results": [
     {
@@ -2020,7 +1924,7 @@ sha256:57c4b5ef54e651635433e748e0f29029
   ]
 }
 -- testrun/gtk4/go/app.sngl/walk/1 --
-sha256:cb3fa5e03e8a1208b559f2780e598f55
+sha256:5c449d8d97672c59b4a18b1fb655b867
 {
   "results": [
     {
@@ -2030,9 +1934,17 @@ sha256:cb3fa5e03e8a1208b559f2780e598f55
   ]
 }
 -- testrun/html/none/app.sngl/Calculator/1 --
-sha256:c40839863c89f431e1a089a618ecd138
+sha256:e7e6ab322e71a102e8b14419011ce7ba
 {
   "results": [
+    {
+      "Desc": "KeyboardShortcutsPressTheKeys",
+      "Passed": true
+    },
+    {
+      "Desc": "OtherKeysGoOn",
+      "Passed": true
+    },
     {
       "Desc": "PressingKeysDrivesTheCalculator",
       "Passed": true
@@ -2040,7 +1952,7 @@ sha256:c40839863c89f431e1a089a618ecd138
   ]
 }
 -- testrun/html/none/app.sngl/Tour/1 --
-sha256:19a4a2123d0edaa802d6aa750481ff14
+sha256:898d566e543f841d6e756424119e81f4
 {
   "results": [
     {
@@ -2054,7 +1966,7 @@ sha256:19a4a2123d0edaa802d6aa750481ff14
   ]
 }
 -- testrun/html/none/app.sngl/_/1 --
-sha256:1a008b79955e6cd3e64134601beaf056
+sha256:e9919d09082f8ee9c894b3ba04f4ab65
 {
   "results": [
     {
@@ -2106,6 +2018,10 @@ sha256:1a008b79955e6cd3e64134601beaf056
       "Passed": true
     },
     {
+      "Desc": "EveryKeyHasItsOwnShortcut",
+      "Passed": true
+    },
+    {
       "Desc": "GlyphSegments",
       "Passed": true
     },
@@ -2144,7 +2060,7 @@ sha256:1a008b79955e6cd3e64134601beaf056
   ]
 }
 -- testrun/html/none/app.sngl/_/2 --
-sha256:d939e21f60600e2d4ca439045baa7de9
+sha256:27b69cecf20a8ed98b9556d887e7499e
 {
   "results": [
     {
@@ -2153,22 +2069,8 @@ sha256:d939e21f60600e2d4ca439045baa7de9
     }
   ]
 }
--- testrun/html/none/app.sngl/alolan/1 --
-sha256:5c8aff7846bcf1f755fc5a8cea4981b3
-{
-  "results": [
-    {
-      "Desc": "AFormsMovesAreItsOwn",
-      "Passed": true
-    },
-    {
-      "Desc": "AFormsPageIsTheForm",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/html/none/app.sngl/back/1 --
-sha256:364956b67dac3624454b3f1a1ab7c349
+sha256:6364aa83c48e28f72016462fb85b0a12
 {
   "results": [
     {
@@ -2177,18 +2079,8 @@ sha256:364956b67dac3624454b3f1a1ab7c349
     }
   ]
 }
--- testrun/html/none/app.sngl/bud/1 --
-sha256:b7edf0a2557bd56e228c1925d0ca6867
-{
-  "results": [
-    {
-      "Desc": "StatsGiveEveryEffort",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/html/none/app.sngl/chains/1 --
-sha256:aaf68665caa09fb65f058cbb0d4dea10
+sha256:80f070f4aa9028587286557c63f1342f
 {
   "results": [
     {
@@ -2197,154 +2089,24 @@ sha256:aaf68665caa09fb65f058cbb0d4dea10
     }
   ]
 }
--- testrun/html/none/app.sngl/dexes/1 --
-sha256:c4d6e8f24268ba678bbb7f93da689195
-{
-  "results": [
-    {
-      "Desc": "EveryDexDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/html/none/app.sngl/flame/1 --
-sha256:319d91d02695e582275b2ea111a7b9a5
-{
-  "results": [
-    {
-      "Desc": "EvolutionIsEachSpeciesChain",
-      "Passed": true
-    }
-  ]
-}
--- testrun/html/none/app.sngl/fluff/1 --
-sha256:62a53b6e47203b26725817c505a1d11c
+-- testrun/html/none/app.sngl/detailPage/1 --
+sha256:4fe8435a58c11f2a30a61e18b25aac6f
 {
   "results": [
     {
       "Desc": "ABranchingChainIsRows",
       "Passed": true
-    }
-  ]
-}
--- testrun/html/none/app.sngl/fox/1 --
-sha256:3638c4a471681ca5fdbed52cfbd06164
-{
-  "results": [
-    {
-      "Desc": "EvolutionShowsAFormFromAForm",
-      "Passed": true
     },
-    {
-      "Desc": "EvolutionShowsTheFirstDefaultDetail",
-      "Passed": true
-    }
-  ]
-}
--- testrun/html/none/app.sngl/home/1 --
-sha256:33bcd00cb07e448ab66ba072db7fb7ee
-{
-  "results": [
-    {
-      "Desc": "ACardNamesItsSpeciesInTheReadersLanguage",
-      "Passed": true
-    },
-    {
-      "Desc": "ADexThatFailsAsksAgain",
-      "Passed": true
-    },
-    {
-      "Desc": "ASearchAsksForEveryName",
-      "Passed": true
-    },
-    {
-      "Desc": "ChoosingADexStartsTheGridAgain",
-      "Passed": true
-    },
-    {
-      "Desc": "HomeStartsAtTheNationalDex",
-      "Passed": true
-    },
-    {
-      "Desc": "Names",
-      "Passed": true
-    },
-    {
-      "Desc": "TheEndOfTheGridAddsTheRest",
-      "Passed": true
-    },
-    {
-      "Desc": "TheGridIsRowsOfThree",
-      "Passed": true
-    },
-    {
-      "Desc": "TheSearchCoversTheWholeDex",
-      "Passed": true
-    }
-  ]
-}
--- testrun/html/none/app.sngl/mons/1 --
-sha256:8cc0e51a707eddb5121e47f546176ee1
-{
-  "results": [
-    {
-      "Desc": "EveryMonDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/html/none/app.sngl/mouse/1 --
-sha256:362bb68fd314e25717c190fa71943711
-{
-  "results": [
-    {
-      "Desc": "AboutIsEachSpecies",
-      "Passed": true
-    },
-    {
-      "Desc": "EvolutionByFriendshipAndStone",
-      "Passed": true
-    },
-    {
-      "Desc": "EvolutionShowsTheAlolanForms",
-      "Passed": true
-    },
-    {
-      "Desc": "SpritesLabelEveryPicture",
-      "Passed": true
-    },
-    {
-      "Desc": "SpritesListTheForms",
-      "Passed": true
-    }
-  ]
-}
--- testrun/html/none/app.sngl/named/1 --
-sha256:faf764910036def1f718fda3b631fb34
-{
-  "results": [
-    {
-      "Desc": "EveryNameDecodes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/html/none/app.sngl/roam/1 --
-sha256:8fc471689a862f3773111ca075b4a30b
-{
-  "results": [
-    {
-      "Desc": "TappingAFormOpensIt",
-      "Passed": true
-    }
-  ]
-}
--- testrun/html/none/app.sngl/seed/1 --
-sha256:7c681a105f79fb7384ccca5c6a134935
-{
-  "results": [
     {
       "Desc": "ADecimalCommaInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsMovesAreItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsPageIsTheForm",
       "Passed": true
     },
     {
@@ -2388,6 +2150,10 @@ sha256:7c681a105f79fb7384ccca5c6a134935
       "Passed": true
     },
     {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    },
+    {
       "Desc": "AboutMarksTheHiddenAbility",
       "Passed": true
     },
@@ -2396,7 +2162,27 @@ sha256:7c681a105f79fb7384ccca5c6a134935
       "Passed": true
     },
     {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    },
+    {
       "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsAFormFromAForm",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheAlolanForms",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
       "Passed": true
     },
     {
@@ -2416,7 +2202,19 @@ sha256:7c681a105f79fb7384ccca5c6a134935
       "Passed": true
     },
     {
+      "Desc": "SpritesLabelEveryPicture",
+      "Passed": true
+    },
+    {
       "Desc": "SpritesLeaveOutAFemaleTheyLack",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesListTheForms",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsGiveEveryEffort",
       "Passed": true
     },
     {
@@ -2445,8 +2243,90 @@ sha256:7c681a105f79fb7384ccca5c6a134935
     }
   ]
 }
+-- testrun/html/none/app.sngl/dexes/1 --
+sha256:85029a7a899c500ee34c757a30c92b42
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/home/1 --
+sha256:d4f680223fff9c8d805129fe4108a13c
+{
+  "results": [
+    {
+      "Desc": "ACardNamesItsSpeciesInTheReadersLanguage",
+      "Passed": true
+    },
+    {
+      "Desc": "ADexThatFailsAsksAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "ASearchAsksForEveryName",
+      "Passed": true
+    },
+    {
+      "Desc": "ChoosingADexStartsTheGridAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
+    {
+      "Desc": "Names",
+      "Passed": true
+    },
+    {
+      "Desc": "TheEndOfTheGridAddsTheRest",
+      "Passed": true
+    },
+    {
+      "Desc": "TheGridIsInDexOrder",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/mons/1 --
+sha256:bfb22ee049beabf823f09457469f7190
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/named/1 --
+sha256:f4af727b8871d7fb795020b26f83e7b9
+{
+  "results": [
+    {
+      "Desc": "EveryNameDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/roam/1 --
+sha256:0ebeb6e4b5726ced5b7976422999c497
+{
+  "results": [
+    {
+      "Desc": "TappingAFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/html/none/app.sngl/shapes/1 --
-sha256:83e120934814541918fc4fdaf90bb16d
+sha256:f38886f737675c379e619dc9dfc9a196
 {
   "results": [
     {
@@ -2456,7 +2336,7 @@ sha256:83e120934814541918fc4fdaf90bb16d
   ]
 }
 -- testrun/html/none/app.sngl/shell/1 --
-sha256:231473ed3ca67372b03b0769140d3f59
+sha256:edcd34c10f9f8546ab13398bbf793019
 {
   "results": [
     {
@@ -2478,7 +2358,7 @@ sha256:231473ed3ca67372b03b0769140d3f59
   ]
 }
 -- testrun/html/none/app.sngl/spark/1 --
-sha256:7fbfb3395507b448a57506f63ae25474
+sha256:f6808b90ffb5707fd1edb06d13e6c708
 {
   "results": [
     {
@@ -2488,7 +2368,7 @@ sha256:7fbfb3395507b448a57506f63ae25474
   ]
 }
 -- testrun/html/none/app.sngl/species/1 --
-sha256:30b51e773c5bd812a3a58434d046b5a5
+sha256:90340b3a37ffc84195d93d7570810dd0
 {
   "results": [
     {
@@ -2498,7 +2378,7 @@ sha256:30b51e773c5bd812a3a58434d046b5a5
   ]
 }
 -- testrun/html/none/app.sngl/spray/1 --
-sha256:766a483402756266b6f8f6d4fa5561ca
+sha256:dbf294aee321084f7f335934e907c6ad
 {
   "results": [
     {
@@ -2508,7 +2388,7 @@ sha256:766a483402756266b6f8f6d4fa5561ca
   ]
 }
 -- testrun/html/none/app.sngl/trip/1 --
-sha256:02ac58ba71d25178d7ab40d71fdf3268
+sha256:5fe39ddb3d050292dc990e645e9654c9
 {
   "results": [
     {
@@ -2518,7 +2398,7 @@ sha256:02ac58ba71d25178d7ab40d71fdf3268
   ]
 }
 -- testrun/html/none/app.sngl/walk/1 --
-sha256:49077f43c8f6e18a01c652fedd041517
+sha256:f3da2e42aa503547e645baff7d48d2e8
 {
   "results": [
     {

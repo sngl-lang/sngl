@@ -472,7 +472,14 @@ and is spliced whole elsewhere too: a call is pointed at the clone in its
 own owner, and one a splice copied at that splice's own copy
 (`pointSpliceCalls`). Each was the Pokédex's retries, an openapi adapter's
 `refresh` calling its query's
-(`cmd/sngl/testdata/handle_call_in_spliced_copies_runs.txt`).
+(`cmd/sngl/testdata/handle_call_in_spliced_copies_runs.txt`). A node
+passImplicitState moved into a wrapper is the body's still: the node standing
+for the wrapper carries the handle (`ir.NodeInst.Wraps`), a splice of the body
+copies it there, the wrapper's splice gives its node that copy, and the
+wrapper's methods are its node's (`nodeMethods`). Read abroad, it was shared,
+and bubbletea refused a query's `refresh` called by a card under a `for`
+unless the card bound `pending` and `failure` too (that script's
+`unbound.sngl`).
 
 The host reports a window manager's close as `visible = false` and then fires
 `@closed` -- renamed from `@close`, which clashed with the `close` method --

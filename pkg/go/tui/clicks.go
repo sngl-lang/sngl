@@ -1,0 +1,143 @@
+package tui
+
+import (
+	"strconv"
+	"strings"
+
+	"github.com/charmbracelet/x/ansi"
+)
+
+// Clicks is where a view drew what a click can press. A view marks each
+// pressable block as it renders it, which wraps the block's text in two
+// escape sequences no terminal is sent; once the view is whole, Scan takes
+// them out and keeps the box between them, and At answers a click with the
+// block under it.
+//
+// The marks are zero-width to everything that measures a rendered string --
+// lipgloss joins and pads around them as it does around a color -- so a
+// block is found where its layout put it, however the layout got there.
+type Clicks[T any] struct {
+	marked []T
+	boxes  []clickBox
+	// opens and closes are the final bytes of a mark's two halves: z and {
+	// where they are zero, and another pair for marks of another kind drawn
+	// into the same view (Floats).
+	opens, closes byte
+}
+
+func (c *Clicks[T]) finals() (byte, byte) {
+	if c.opens == 0 {
+		return 'z', '{'
+	}
+	return c.opens, c.closes
+}
+
+type clickBox struct {
+	x0, y0, x1, y1 int // x1 and y1 inclusive
+	i              int
+}
+
+// Reset forgets what the last view drew; a view calls it before it marks.
+func (c *Clicks[T]) Reset() {
+	c.marked = c.marked[:0]
+	c.boxes = c.boxes[:0]
+}
+
+// Mark is s, a block a click on presses v.
+func (c *Clicks[T]) Mark(v T, s string) string {
+	if s == "" {
+		return s
+	}
+	i := len(c.marked)
+	c.marked = append(c.marked, v)
+	n := strconv.Itoa(i)
+	opens, closes := c.finals()
+	return "\x1b[" + n + string(opens) + s + "\x1b[" + n + string(closes)
+}
+
+// Cover forgets every box found so far: what an overlay is drawn over takes
+// no click while it is open.
+func (c *Clicks[T]) Cover() {
+	c.boxes = c.boxes[:0]
+}
+
+// Scan is s without its marks, keeping the box each marked block covers, with
+// s's top left corner at column x, row y. A block's box runs from its first
+// cell to its last, across every row between them, which is the block a
+// lipgloss style renders. A mark whose other half was cut away marks nothing.
+func (c *Clicks[T]) Scan(s string, x, y int) string {
+	if !strings.Contains(s, "\x1b[") {
+		return s
+	}
+	type open struct{ x, y int }
+	opened := map[int]open{}
+	var out strings.Builder
+	out.Grow(len(s))
+	col, row := x, y
+	opens, closes := c.finals()
+	var state byte
+	for len(s) > 0 {
+		seq, width, n, next := ansi.DecodeSequence(s, state, nil)
+		state = next
+		s = s[n:]
+		if final := seq[len(seq)-1]; len(seq) > 3 && seq[0] == ansi.ESC && seq[1] == '[' && (final == opens || final == closes) {
+			if i, err := strconv.Atoi(seq[2 : len(seq)-1]); err == nil && i >= 0 && i < len(c.marked) {
+				if final == opens {
+					opened[i] = open{col, row}
+				} else if o, ok := opened[i]; ok {
+					delete(opened, i)
+					c.boxes = append(c.boxes, clickBox{x0: o.x, y0: o.y, x1: max(col-1, o.x), y1: row, i: i})
+				}
+				continue
+			}
+		}
+		out.WriteString(seq)
+		if seq == "\n" {
+			col, row = x, row+1
+			continue
+		}
+		col += width
+	}
+	return out.String()
+}
+
+// At is what a click at column x, row y presses: the smallest box holding it,
+// which is the innermost of blocks drawn one inside another.
+func (c *Clicks[T]) At(x, y int) (T, bool) { return c.AtWhere(x, y, nil) }
+
+// AtWhere is At among the blocks whose mark pick takes, every one where pick
+// is nil: the wheel scrolls the innermost scroll moving along its axis.
+func (c *Clicks[T]) AtWhere(x, y int, pick func(T) bool) (T, bool) {
+	best := -1
+	area := 0
+	for k, b := range c.boxes {
+		if x < b.x0 || x > b.x1 || y < b.y0 || y > b.y1 || pick != nil && !pick(c.marked[b.i]) {
+			continue
+		}
+		if a := (b.x1 - b.x0 + 1) * (b.y1 - b.y0 + 1); best < 0 || a < area {
+			best, area = k, a
+		}
+	}
+	if best < 0 {
+		var zero T
+		return zero, false
+	}
+	return c.marked[c.boxes[best].i], true
+}
+
+// Box is the cells a block covers, its corners inclusive.
+type Box struct{ X0, Y0, X1, Y1 int }
+
+// Find is where in s, its top left corner the origin, the first block whose
+// mark pick takes was drawn, leaving c as it was: a scroll asks where the
+// stop focus is on lies in its content before it cuts the content.
+func (c *Clicks[T]) Find(s string, pick func(T) bool) (Box, bool) {
+	scratch := Clicks[T]{marked: c.marked, opens: c.opens, closes: c.closes}
+	scratch.Scan(s, 0, 0)
+	for _, b := range scratch.boxes {
+		if pick(c.marked[b.i]) {
+			return Box{b.x0, b.y0, b.x1, b.y1}, true
+		}
+	}
+	return Box{}, false
+}

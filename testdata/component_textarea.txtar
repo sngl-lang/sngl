@@ -66,6 +66,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -120,6 +123,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -132,14 +143,22 @@ type modelState struct {
 
 	widget0 textarea.Model
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.text = ""
-	m.__focusID = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["text"] {
+		m.text = ""
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
 	m.widget0 = textarea.New()
 	m.widget0.SetValue(m.text)
 	m.widget0.Focus()
@@ -196,14 +215,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -267,7 +286,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt6
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt9 *Measurement
 	if own != nil {
 		__lt9 = own
@@ -280,7 +299,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt9 = __lt8
 	}
-	return CellsOf(__lt9)
+	return SpaceOf(__lt9, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
@@ -319,6 +338,16 @@ func LineCap(height__r0 int, lines int) int {
 		__lt13 = __lt12
 	}
 	return __lt13
+}
+
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt14) + 0.5))
 }
 
 func (m *Model) __focusNext() {
@@ -364,6 +393,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.resizeWidgets()
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -392,11 +427,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	if m.__focusID == 0 {
+		m.widget0.Focus()
+	} else {
+		m.widget0.Blur()
+	}
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(m.widget0.View())
+	content = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: false, key: tea.KeyPressMsg{}}, content)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -416,6 +472,7 @@ import "testing"
 func TestTextareaValueMutates(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.text == "")) { t.Errorf("assert failed: %s", "(c.text == \"\")") }
 	c.text = "hello"
 	if !((c.text == "hello")) { t.Errorf("assert failed: %s", "(c.text == \"hello\")") }
@@ -424,31 +481,46 @@ func TestTextareaValueMutates(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from component_textarea.sngl; DO NOT EDIT.
 
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
+
+type Test struct {
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
 	text string
 
-	__n0 *widget.Entry
+	__n0 *fynelayout.Entry
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.text = ""
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["text"] {
+		m.text = ""
+	}
 }
 
 func (m *Model) __wrote_text() {
@@ -477,7 +549,7 @@ func (m *Model) SetText(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = widget.NewMultiLineEntry()
+	m.__n0 = fynelayout.NewMultiLineEntry()
 	m.__n0.SetText(m.text)
 	m.__n0.SetPlaceHolder("Notes")
 	m.__n0.SetMinRowsVisible(4)
@@ -504,6 +576,7 @@ import "testing"
 func TestTextareaValueMutates(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.text == "")) { t.Errorf("assert failed: %s", "(c.text == \"\")") }
 	c.text = "hello"
 	c.__wrote_text()
@@ -520,7 +593,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -548,6 +625,9 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	text                string
@@ -566,15 +646,35 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.text = ""
-	m.__effect0_key = ""
-	m.__effect0_live = []string{}
-	m.__effect0_desired = []string{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["text"] {
+		m.text = ""
+	}
+	if !preset["__effect0_key"] {
+		m.__effect0_key = ""
+	}
+	if !preset["__effect0_live"] {
+		m.__effect0_live = []string{}
+	}
+	if !preset["__effect0_desired"] {
+		m.__effect0_desired = []string{}
+	}
+	if !preset["__effects0_settling"] {
+		m.__effects0_settling = false
+	}
+	if !preset["__effects0_pending"] {
+		m.__effects0_pending = false
+	}
+	if !preset["__effects0_torn"] {
+		m.__effects0_torn = false
+	}
+	if !preset["__effects0_steps"] {
+		m.__effects0_steps = 0
+	}
 }
 
 func (m *Model) __effect0_mount() {
@@ -651,6 +751,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.entry = gtk4rt.New("GtkEntry")
+	gtk4rt.SetBool(m.entry, "can-focus", true)
 	gtk4rt.Connect(m.entry, "changed", m.entry_changed_handler)
 	gtk4rt.Connect(m.entry, "activate", m.entry_activate_handler)
 	m.__effects0_settle()
@@ -692,14 +793,24 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var text by mutableStateOf("")
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var text by mutableStateOf(__snglPre(__pre, "text") { "" })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -770,18 +881,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { text: "" };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -794,21 +908,20 @@ window.__sngl_boot = () => {
   });
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:de7bc5e4fce11b5aa46e8d3bd8bb525f
+pass sha256:7a6a147de577c2fd62464256a92fedff
 -- run/go/fyne --
-pass sha256:953d245c65e4cc7301f66bfe1ee64589
+pass sha256:99858d36f3aa8ccc36962e3491674516
 -- run/go/gtk4 --
-pass sha256:9c73ec919b725a1e442503c08f4bab86
+pass sha256:72261c7299cb914b5306de1e7bb1ce51
 -- run/kotlin/android --
-pass sha256:4fc59473cd8e4ffafbbc01656bf49036
+pass sha256:983e90438a8bf2381fa4d91ef1b985d0
 -- run/none/html --
-pass sha256:9b69b71c0efd09f934030dfb060ecba7
+pass sha256:df5432f42bd8b109b957c1aca95738ad
 -- testrun/html/none/component_textarea.sngl/main/1 --
-sha256:fbfbc89bf9ea7cbe1a670bf0390a297a
+sha256:33284e517bdadc1430e2ed983e718509
 {
   "results": [
     {

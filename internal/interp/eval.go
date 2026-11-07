@@ -1,6 +1,7 @@
 package interp
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"reflect"
@@ -2073,6 +2074,9 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 			if result, handled, err := env.runClockIntrinsic(call.Func, args); handled {
 				return result, err
 			}
+			if result, handled, err := runLifetimeIntrinsic(call.Func, args); handled {
+				return result, err
+			}
 			if _, ok := intrinsics[call.Func.Intrinsic]; ok {
 				result, _, err := runIntrinsic(call.Func.Intrinsic, args)
 				return result, err
@@ -2185,6 +2189,9 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	}
 
 	if result, handled, err := env.runClockIntrinsic(call.Func, evalArgs); handled {
+		return result, err
+	}
+	if result, handled, err := runLifetimeIntrinsic(call.Func, evalArgs); handled {
 		return result, err
 	}
 
@@ -2451,6 +2458,46 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 		if _, ok := recv.([]any); ok && len(rest) == 0 {
 			return env.writeBackList(recvExpr, []any{}, writeClear, 0, nil)
 		}
+	case "sort":
+		if list, ok := recv.([]any); ok && len(rest) == 0 {
+			sorted := slices.Clone(list)
+			slices.SortStableFunc(sorted, compareOrdered)
+			return env.writeBackList(recvExpr, sorted, writeReplace, 0, nil)
+		}
+	case "sortBy":
+		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			lv, ok := rest[0].(*LambdaValue)
+			if !ok {
+				return nil, fmt.Errorf("sortBy requires a lambda, got %T", rest[0])
+			}
+			sorted := slices.Clone(list)
+			var failed error
+			before := func(a, b any) bool {
+				if failed != nil {
+					return false
+				}
+				v, err := lv.Call([]any{a, b})
+				if err != nil {
+					failed = err
+					return false
+				}
+				yes, _ := v.(bool)
+				return yes
+			}
+			slices.SortStableFunc(sorted, func(a, b any) int {
+				if before(a, b) {
+					return -1
+				}
+				if before(b, a) {
+					return 1
+				}
+				return 0
+			})
+			if failed != nil {
+				return nil, failed
+			}
+			return env.writeBackList(recvExpr, sorted, writeReplace, 0, nil)
+		}
 	case "contains":
 		if s, ok := recv.(string); ok && len(rest) == 1 {
 			return strings.Contains(s, fmt.Sprintf("%v", rest[0])), nil
@@ -2467,7 +2514,7 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 // write their receiver back rather than returning a new list.
 func isListMutation(method string) bool {
 	switch method {
-	case "push", "remove", "insert", "clear":
+	case "push", "remove", "insert", "clear", "sort", "sortBy":
 		return true
 	}
 	return false
@@ -2495,90 +2542,14 @@ func methodNameFromCall(call *ir.Call) string {
 	return ""
 }
 
+// evalBuiltinMethod is evalBuiltinMethodFromRecv on call's receiver, the
+// first of evalArgs.
 func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) (any, error) {
-	recv := evalArgs[0]
-	rest := evalArgs[1:]
-	var recvType *ir.Type
-	if len(call.Args) > 0 && call.Args[0].Value != nil {
-		recvType = call.Args[0].Value.ExprType()
+	var recvExpr ir.Expr
+	if len(call.Args) > 0 {
+		recvExpr = call.Args[0].Value
 	}
-	switch method {
-	case "filter":
-		if list, ok := recv.([]any); ok && len(rest) == 1 {
-			lv, ok := rest[0].(*LambdaValue)
-			if !ok {
-				return nil, fmt.Errorf("filter requires a lambda, got %T", rest[0])
-			}
-			var out []any
-			for _, item := range list {
-				v, err := lv.Call([]any{item})
-				if err != nil {
-					return nil, err
-				}
-				if b, ok := v.(bool); ok && b {
-					out = append(out, item)
-				}
-			}
-			if out == nil {
-				out = []any{}
-			}
-			return out, nil
-		}
-	case "map":
-		if list, ok := recv.([]any); ok && len(rest) == 1 {
-			lv, ok := rest[0].(*LambdaValue)
-			if !ok {
-				return nil, fmt.Errorf("map requires a lambda, got %T", rest[0])
-			}
-			out := make([]any, len(list))
-			for i, item := range list {
-				v, err := lv.Call([]any{item})
-				if err != nil {
-					return nil, err
-				}
-				out[i] = v
-			}
-			return out, nil
-		}
-	case "push":
-		if list, ok := recv.([]any); ok && len(rest) == 1 {
-			rest[0] = copyOf(rest[0], elemType(recvType))
-			newList := append(list, rest[0])
-			return env.writeBackList(call.Args[0].Value, newList, writeInsert, len(list), rest[0])
-		}
-	case "remove":
-		if list, ok := recv.([]any); ok && len(rest) == 1 {
-			idx := ToInt(rest[0])
-			if idx < 0 || idx >= len(list) {
-				return list, nil // documented: out of range leaves the list unchanged
-			}
-			removed := list[idx]
-			newList := append(list[:idx], list[idx+1:]...)
-			return env.writeBackList(call.Args[0].Value, newList, writeRemove, idx, removed)
-		}
-	case "insert":
-		if list, ok := recv.([]any); ok && len(rest) == 2 {
-			rest[1] = copyOf(rest[1], elemType(recvType))
-			idx := ToInt(rest[0])
-			if idx < 0 || idx > len(list) {
-				return list, nil // documented: out of range leaves the list unchanged
-			}
-			return env.writeBackList(call.Args[0].Value, slices.Insert(slices.Clone(list), idx, rest[1]), writeInsert, idx, rest[1])
-		}
-	case "clear":
-		if _, ok := recv.([]any); ok && len(rest) == 0 {
-			return env.writeBackList(call.Args[0].Value, []any{}, writeClear, 0, nil)
-		}
-	case "contains":
-		if s, ok := recv.(string); ok && len(rest) == 1 {
-			return strings.Contains(s, fmt.Sprintf("%v", rest[0])), nil
-		}
-	}
-	// --- Map methods ---
-	if m, ok := recv.(map[string]any); ok {
-		return mapMethodResult(method, m, rest)
-	}
-	return nil, fmt.Errorf("unsupported method %q on %T", method, recv)
+	return env.evalBuiltinMethodFromRecv(recvExpr, method, evalArgs[0], evalArgs[1:])
 }
 
 // writeBackList applies a mutated list back to its originating variable.
@@ -3200,7 +3171,13 @@ func Equal(a, b any) (eq, ok bool) {
 	}
 	if af, isNum := numberOf(a); isNum {
 		bf, isNum := numberOf(b)
-		return af == bf, isNum
+		if !isNum {
+			return false, false
+		}
+		if c, ints := sameIntegers(a, b); ints {
+			return c == 0, true
+		}
+		return af == bf, true
 	}
 	switch a.(type) {
 	case string, bool:
@@ -3285,12 +3262,17 @@ func orderable(a, b any) error {
 
 // compareOrdered orders two values `<` may compare: numbers and units by
 // magnitude, strings byte by byte as Go and the constant folder do. Read as
-// numbers, every string was 0 and none came before another.
+// numbers, every string was 0 and none came before another. Two ints compare
+// as ints: through float64, 2^53 and 2^53+1 were equal, where every target
+// orders them.
 func compareOrdered(a, b any) int {
 	if sa, ok := a.(string); ok {
 		if sb, ok := b.(string); ok {
 			return strings.Compare(sa, sb)
 		}
+	}
+	if c, ints := sameIntegers(a, b); ints {
+		return c
 	}
 	fa, fb := toFloat(a), toFloat(b)
 	if fa < fb {
@@ -3300,6 +3282,22 @@ func compareOrdered(a, b any) int {
 		return 1
 	}
 	return 0
+}
+
+// sameIntegers orders a and b where both are integers of one width, and says
+// whether they are: a float64 holds no int past 2^53 exactly.
+func sameIntegers(a, b any) (int, bool) {
+	switch x := a.(type) {
+	case int:
+		if y, ok := b.(int); ok {
+			return cmp.Compare(x, y), true
+		}
+	case uint64:
+		if y, ok := b.(uint64); ok {
+			return cmp.Compare(x, y), true
+		}
+	}
+	return 0, false
 }
 
 func runtimeTypeName(v any) string {
@@ -3436,6 +3434,9 @@ func (env *Env) underHandler(vals map[*ir.Context]any, fn func() (any, error)) (
 // with the test's arguments, as every compiled target does.
 func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() ([]any, error)) (any, bool, error) {
 	n, _ := m["__node"].(*Node)
+	if fn := triggerOf(n, event); fn != nil {
+		return env.runTrigger(m, n, fn, args)
+	}
 	_, handled := m["@"+event].(*ir.Func)
 	if programComponent(n) && handled {
 		return env.runElementHandler(m, event, args)
@@ -3455,6 +3456,64 @@ func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() (
 		return env.InvokeElementEvent(d.Map(), event, args)
 	}
 	return env.runElementHandler(m, event, args)
+}
+
+// triggerOf is the target's override of event on the component n
+// instantiates -- how a test raises it there -- or nil.
+func triggerOf(n *Node, event string) *ir.Func {
+	if n == nil || n.Component == nil {
+		return nil
+	}
+	for _, fn := range n.Component.Funcs {
+		if fn.Trigger == event {
+			return fn
+		}
+	}
+	return nil
+}
+
+// runTrigger runs fn, the override of an event, as a method of the instance
+// m is: in the component's own scope, so its body reads the props and nodes
+// the override has, and what it writes lands where the instance's writes do.
+func (env *Env) runTrigger(m map[string]any, n *Node, fn *ir.Func, args func() ([]any, error)) (any, bool, error) {
+	ce, _ := m["__compEnv"].(*Env)
+	if ce == nil {
+		ce = n.CompEnv
+	}
+	if ce == nil {
+		return nil, true, fmt.Errorf("@%s: the instance's scope is gone", fn.Trigger)
+	}
+	vals, err := args()
+	if err != nil {
+		return nil, true, err
+	}
+	params := fn.Params
+	run := ce.Snapshot()
+	if len(params) > 0 && params[0].Receiver {
+		params = params[1:]
+		run.SetReceiver(m)
+	}
+	// The test hands the event's arguments, by position; the override
+	// selected some of the event's parameters, by name.
+	at := map[string]int{}
+	for _, e := range n.Component.Events {
+		if e.Name == fn.Trigger {
+			for i, p := range e.Params {
+				at[p.Name] = i
+			}
+		}
+	}
+	in := make([]any, len(params))
+	for i, p := range params {
+		if j, ok := at[p.Name]; ok && j < len(vals) {
+			in[i] = vals[j]
+		}
+	}
+	CopyDepth(env, run)
+	res, err := run.EvalUserFuncWithValues(fn, in)
+	CopyDepth(run, env)
+	ce.RebindFrom(run)
+	return res, true, err
 }
 
 // programComponent reports whether n is an instance of a component the

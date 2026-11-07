@@ -95,7 +95,6 @@ body { font-family: system-ui, sans-serif; }
     let __effects0_pending = false;
     let __effects0_torn = false;
     let __effects0_steps = 0;
-    let __slot02 = [];
     function __effect0_mount() {
       handle__inst0 = setInterval(() => {
         n += 1;
@@ -254,4 +253,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:39b43eb151a8486d4db2770236c915c4
+pass sha256:b125af87eed82e1a3fcdb7c2222c8a6e

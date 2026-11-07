@@ -1,0 +1,128 @@
+# A method called through the `#id` of a node a reactive `if` holds reaches
+# it where the call is in the branch too: the branch is a component of its own
+# holding both (passHandleBlocks). Rendered twice, the component's own body
+# still held the call when the inliner asked which copy it meant, and the
+# build was refused as a node rendered more than once, though the component
+# was spliced into each place and its own body was dropped after.
+sngl generate --platform gtk4 --lang go -o out p.sngl
+! stderr 'rendered more than once'
+
+# A handler that calls it and writes the page's state as well moves into the
+# branch's component with it, its write raised to the page, which makes it.
+sngl generate --platform gtk4 --lang go -o writes writes.sngl
+
+# bubbletea keeps a run-time instance's state where a call reaches it.
+sngl generate --platform bubbletea --lang go -o tea p.sngl
+
+# A component whose body calls a method of its own node, spliced twice, gives
+# each copy its own `#ask`, or both calls name one node rendered twice.
+# twice.sngl's constant props once let the optimizer splice it, both copies
+# holding the node's one handle; such a body is now the lowering's to splice.
+# named.sngl is spliced by passInlinePure, which gave each copy a handle of its
+# own but not the one a wrapper of passImplicitState holds for the query it
+# moved (Wraps).
+sngl generate --platform gtk4 --lang go -o twice twice.sngl
+sngl generate --platform html --lang go -o twice-html twice.sngl
+sngl generate --platform gtk4 --lang go -o named named.sngl
+
+-- p.sngl --
+import async "sngl:async"
+import ui "sngl:ui"
+
+func look(k string, life async.Lifetime) async.Result[int] {
+    return {ok=k.length()}
+}
+
+component page(name string) ui.node {
+    var got option[int] = null
+    var on = true
+
+    if on {
+        async.query #ask(on=name, fetch=look, :value=got)
+        ui.button #again(text="Again", @click { ask.refresh() })
+    }
+}
+
+component both ui.node {
+    page(name="a")
+    page(name="bb")
+}
+
+ui.window {
+    both
+}
+
+-- writes.sngl --
+import async "sngl:async"
+import ui "sngl:ui"
+
+func look(k string, life async.Lifetime) async.Result[int] {
+    return {ok=k.length()}
+}
+
+component page(name string) ui.node {
+    var got option[int] = null
+    var on = true
+
+    if on {
+        async.query #ask(on=name, fetch=look, :value=got)
+        ui.button #again(text="Again", @click {
+            got = null
+            ask.refresh()
+        })
+    }
+}
+
+ui.window {
+    page(name="a")
+}
+
+-- twice.sngl --
+import async "sngl:async"
+import ui "sngl:ui"
+
+func look(k string, life async.Lifetime) async.Result[int] {
+    return {ok=k.length()}
+}
+
+component asked(on string, :value option[int] = null) ui.node {
+    async.query #ask(on=on, fetch=look, :value=value)
+    ui.button #again(text="Again {on}", @click { ask.refresh() })
+}
+
+component both ui.node {
+    var n option[int] = null
+    var m option[int] = null
+
+    asked(on="a", :value=n)
+    asked(on="bb", :value=m)
+}
+
+ui.window {
+    both
+}
+
+-- named.sngl --
+import async "sngl:async"
+import ui "sngl:ui"
+
+func look(k string, life async.Lifetime) async.Result[int] {
+    return {ok=k.length()}
+}
+
+component asked(on string, :value option[int] = null) ui.node {
+    async.query #ask(on=on, fetch=look, :value=value)
+    ui.button #again(text="Again {on}", @click { ask.refresh() })
+}
+
+component both ui.node {
+    var n option[int] = null
+    var m option[int] = null
+
+    asked #first(on="a", :value=n)
+    asked #second(on="bb", :value=m)
+}
+
+ui.window {
+    both
+}

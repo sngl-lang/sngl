@@ -32,12 +32,15 @@ func (c Config) withDefaults() Config {
 
 // scaffoldData is what model.go's and callbacks.go's heads are written from.
 type scaffoldData struct {
-	Package        string
-	Main           bool
-	UnitDecls      string // pre-rendered `type X float64 / struct {...}` decls
-	LangHelpers    string // pre-rendered must-parse / runtime helpers
-	Structs        []structData
-	Binds          []bindData
+	Package     string
+	Main        bool
+	UnitDecls   string // pre-rendered `type X float64 / struct {...}` decls
+	LangHelpers string // pre-rendered must-parse / runtime helpers
+	Structs     []structData
+	Binds       []bindData
+	// Tests says the build carries its tests, whose Model is initialized
+	// where a test mounts it (mountTestComponent).
+	Tests          bool
 	Computeds      []computedData
 	WidgetFields   []widgetFieldData
 	FunctionCode   string

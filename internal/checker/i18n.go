@@ -252,8 +252,10 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 // ICU placeholder types/cases. G1 synthesizes the ICU template. G2
 // (this code) emits the call.
 func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
-	// F1: static-text warning.
-	if !hasStaticText(x.Parts) {
+	// F1: static-text warning. Two placeholders and nothing else still give
+	// a translator their order: "{count} {stat}" is "{stat} : {count}" in
+	// another language.
+	if !hasStaticText(x.Parts) && placeholderCount(x.Parts) < 2 {
 		c.warn(x.Pos, "translatable string contains no static text; translators will have nothing to translate")
 	}
 
@@ -411,6 +413,16 @@ func hasStaticText(parts []ast.Expr) bool {
 		}
 	}
 	return false
+}
+
+func placeholderCount(parts []ast.Expr) int {
+	n := 0
+	for _, p := range parts {
+		if _, ok := p.(*ast.I18nPlaceholderExpr); ok {
+			n++
+		}
+	}
+	return n
 }
 
 func hasNonWhitespace(s string) bool {

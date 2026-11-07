@@ -9,6 +9,11 @@ import (
 
 const reactiveStyleRunSrc = `
 import ui "sngl:ui"
+import sngltest "sngl:test"
+
+// The Go driver below is this program's test, and drives it through the
+// invokers a program emits only where it holds a test of its own.
+func testDrivenFromGo(t sngltest.Test) {}
 import markup "sngl:ui/markup"
 
 ui.window {

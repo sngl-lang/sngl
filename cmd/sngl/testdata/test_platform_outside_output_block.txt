@@ -30,7 +30,7 @@ func testGreeterRenders(t Test, c greeter) {
 window {
 }
 -- testrun/gtk4/go/app.sngl/greeter/1 --
-sha256:188f39a63ef945e62ead876f18bad363
+sha256:6f3c4ed74c20c0b910ef2713cb8729ac
 {
   "results": [
     {

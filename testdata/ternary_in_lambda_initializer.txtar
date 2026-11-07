@@ -199,14 +199,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -270,7 +270,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt7
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt10 *Measurement
 	if own != nil {
 		__lt10 = own
@@ -283,7 +283,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt10 = __lt9
 	}
-	return CellsOf(__lt10)
+	return SpaceOf(__lt10, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
@@ -322,6 +322,16 @@ func LineCap(height__r0 int, lines int) int {
 		__lt14 = __lt13
 	}
 	return __lt14
+}
+
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt15 float64
+	if across {
+		__lt15 = 8.0
+	} else {
+		__lt15 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt15) + 0.5))
 }
 
 func (m Model) Flag() bool {
@@ -422,7 +432,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(len(m.ys))))
+		contentText := fmt.Sprint(fmt.Sprint(len(m.ys)))
+		content = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentText).Render(contentText)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -470,6 +481,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:be506303031d420b97fba62d641dd4e8
+pass sha256:a592441fac55415a4835501a953749ca
 -- run/none/html --
 pass sha256:23fa9738549eca441c9fafad570916ea

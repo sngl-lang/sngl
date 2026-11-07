@@ -156,8 +156,8 @@ func TestClickingTheWidgetRunsTheSNGLHandler(t *testing.T) {
 
 	incKey := s.View().Find("inc")[0].Key
 	btn, _ := h.Object(incKey)
-	if _, ok := btn.(*widget.Button); !ok {
-		t.Fatalf("#inc is a %T, want a *widget.Button", btn)
+	if _, ok := btn.(*fynelayout.Button); !ok {
+		t.Fatalf("#inc is a %T, want a *fynelayout.Button", btn)
 	}
 
 	// Fire the widget's own callback, not a synthetic path around it.
@@ -186,7 +186,7 @@ func TestAnUnregisteredElementIsReportedNotDropped(t *testing.T) {
 		t.Fatalf("NewSession: %v", err)
 	}
 	ctors := fynehost.Ctors()
-	delete(ctors, "fyne.io/fyne/v2/widget.NewButton")
+	delete(ctors, "duckfam.us/sngl/pkg/go/fynelayout.NewButton")
 	h := fynehost.New(ctors)
 	if err := s.Attach(h); err != nil {
 		t.Fatalf("Attach: %v", err)

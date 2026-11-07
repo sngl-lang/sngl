@@ -84,12 +84,13 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
@@ -101,7 +102,9 @@ window.__sngl_boot = () => {
 
   // sngl-entry.js
   var state = { greeting__inst0: "before", handler__inst0: null, greeting__inst1: "before", visible__inst0: true };
-  state.handler__inst0 = fetchHello;
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
+  if (!("handler__inst0" in __snglPre)) state.handler__inst0 = fetchHello;
   state.goClick = () => $1.click();
   state.go__own0Click = () => $3.click();
   if (typeof window !== "undefined") {
@@ -126,13 +129,12 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:cf4060965c3daee357cddeba4014fed8
+pass sha256:1baa7934373c39a2f75890956bf38bb3
 -- testrun/html/none/component_browser_async.sngl/direct/1 --
-sha256:3d69527d5b00bbac3cbc2b6ddc0c1ced
+sha256:93488a91855fe88914c8b95546fac3ea
 {
   "results": [
     {
@@ -142,7 +144,7 @@ sha256:3d69527d5b00bbac3cbc2b6ddc0c1ced
   ]
 }
 -- testrun/html/none/component_browser_async.sngl/stored/1 --
-sha256:cd531695b5028ee667353f8a28335117
+sha256:6ecc70961e34ef613ebac7723b5bebbe
 {
   "results": [
     {

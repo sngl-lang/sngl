@@ -47,6 +47,18 @@ type fyneArg struct {
 type fyneHandler struct {
 	Field     string
 	Signature string
+	// Set is the function a handler is attached through, handed the widget
+	// and the handler, where the callback is no field the handler's Go type
+	// can be assigned to: a window's key, which hears the program's own
+	// KeyPress. Field is still what detaching clears. Empty has the handler
+	// assigned to Field.
+	Set fyneNative
+	// Press is the function a test's trigger of the event calls, handed the
+	// widget and the event's arguments, where the event has a route into the
+	// widget the way a user's input takes it: a window's key, heard by the
+	// window and then delivered to what is focused. Empty has the trigger run
+	// Field.
+	Press fyneNative
 }
 
 // fyneSpec is one widget's construction, decoded from the SNGL `Spec` record

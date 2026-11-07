@@ -7,7 +7,7 @@ import "charm.land/lipgloss/v2"
 // is open onto its panel and the rest closed, and the first's left corner is
 // the panel's. A pills bar is labels, the selected one reversed.
 func TabLook(selected, first, disabled bool, variant string) lipgloss.Style {
-	look := lipgloss.NewStyle().Padding(0, 1).Faint(disabled)
+	look := lipgloss.NewStyle().PaddingRight(1).Faint(disabled)
 	if variant == "pills" {
 		return look.Reverse(selected)
 	}

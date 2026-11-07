@@ -109,6 +109,7 @@ component branch ui.node {
 }
 
 func testAPropRekeys(t test.Test, c branch) {
+    t.assert(opened == [10])
     c.n = 2
     t.assert(opened == [10, 20])
     t.assert(closed == [10])
@@ -117,6 +118,7 @@ func testAPropRekeys(t test.Test, c branch) {
 // Coming back is a new instance with a value of its own: had it kept the one
 // released on leaving, the second leave would release it twice.
 func testLeavingTheBranchReleases(t test.Test, c branch) {
+    t.assert(closed.length() == 0)
     c.on = false
     t.assert(closed == [10])
     c.on = true
@@ -132,11 +134,12 @@ component rows ui.node {
     }
 }
 
-// Rows are keyed by position, so removing the second of three rekeys the
-// second row onto the third's value and unmounts the third.
+// A number is its own row's identity, so removing the second of three
+// releases its value alone, and the third row keeps its own.
 func testRemovingARowReleasesIt(t test.Test, c rows) {
+    t.assert(closed.length() == 0)
     c.ns = [1, 3]
-    t.assert(closed == [20, 30])
+    t.assert(closed == [20])
 }
 
 component block ui.node {
@@ -189,6 +192,7 @@ component windows root {
 }
 
 func testClosingTheWindowReleases(t test.Test, c windows) {
+    t.assert(closed.length() == 0)
     c.open = false
     t.assert(closed == [1])
 }

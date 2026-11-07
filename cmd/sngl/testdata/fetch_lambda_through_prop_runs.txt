@@ -1,0 +1,115 @@
+# A component handed its fetch as a lambda, `fetch=func() => lookup(w)`,
+# which its query calls through a lambda of its own,
+# `fetch=func(k string) => fetch()`, under a `for`. The splice calls the
+# caller's lambda where the query's stands, and neither literal carried the
+# checker's async flag, so the query's fetch prop was typed as one that does
+# not wait: Kotlin called a suspend function from a lambda that is not one.
+#
+# The fetch waits on the script harness's server.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+// The length of `name`, asked of the script harness's server.
+func lookup(name string) async.Result[int] {
+    match var r = http.get(url="http://127.0.0.1:47819/status/200") {
+        failed { return {failed=r} }
+        ok { return {ok=name.length()} }
+    }
+}
+
+var lengths map[string, int] = {}
+
+// Asks through the fetch its caller hands it.
+component asker(key string, fetch func() async.Result[int]) ui.node {
+    async.query(on=key, fetch=func(k string, life async.Lifetime) => fetch(), @load(got) { lengths[key] = got })
+}
+
+component many ui.node {
+    ui.vbox {
+        for var w = ["one", "three"] {
+            asker(key=w, fetch=func() => lookup(w))
+        }
+    }
+}
+
+func testEachAnswerIsKept(t test.Test, c many) {
+    t.setContext(http.answer, http.network)
+    t.wait(func() => lengths.length() == 2, 5000)
+    t.assert(lengths["three"] == 5)
+}
+
+ui.window {
+    many()
+}
+-- testrun/android/kotlin/app.sngl/many/1 --
+sha256:92aff86b737cbd48e400fb399f190c64
+{
+  "results": [
+    {
+      "Desc": "EachAnswerIsKept",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/many/1 --
+sha256:6149e1bff59b6da76e44f123ecdd056e
+{
+  "results": [
+    {
+      "Desc": "EachAnswerIsKept",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/many/1 --
+sha256:0a031c1795e54038262832690d186b61
+{
+  "results": [
+    {
+      "Desc": "EachAnswerIsKept",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/many/1 --
+sha256:3219dd8aea4b6f7944aa2dcbc26bf2f7
+{
+  "results": [
+    {
+      "Desc": "EachAnswerIsKept",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/many/1 --
+sha256:0ec6a57c5516ebd7d9d30946ee9ac7a2
+{
+  "results": [
+    {
+      "Desc": "EachAnswerIsKept",
+      "Passed": true
+    }
+  ]
+}

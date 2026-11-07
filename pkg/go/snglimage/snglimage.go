@@ -49,9 +49,18 @@ type fetch struct {
 	waiting []func([]byte, error)
 }
 
+// decoded is a picture Load has decoded once, which it answers every later
+// Load of the same url with: a terminal draws its view again on every
+// message, and decoding a PNG each time was most of drawing it.
+type decoded struct {
+	img image.Image
+	err error
+}
+
 var (
 	mu      sync.Mutex
 	fetches = map[string]*fetch{}
+	images  = map[string]decoded{}
 )
 
 // Carried is the bytes of a file the program carries: an asset's path, read
@@ -123,6 +132,22 @@ func get(url string) ([]byte, error) {
 // fetched answers ErrPending and starts the fetch, so a drawing that paints it
 // shows it the next time it repaints.
 func Load(url string) (image.Image, error) {
+	mu.Lock()
+	d, ok := images[url]
+	mu.Unlock()
+	if ok {
+		return d.img, d.err
+	}
+	img, err := load(url)
+	if err != ErrPending {
+		mu.Lock()
+		images[url] = decoded{img, err}
+		mu.Unlock()
+	}
+	return img, err
+}
+
+func load(url string) (image.Image, error) {
 	if !IsRemote(url) {
 		data, err := Carried(url)
 		if err != nil {

@@ -42,6 +42,9 @@ func rewriteStmtExprs(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 			}
 		case *ir.For:
 			n.Iter = rewrite(n.Iter)
+			if n.Identity != nil {
+				n.Identity = rewrite(n.Identity)
+			}
 			n.Body = rewriteStmtExprs(n.Body, rewrite)
 			n.Else = rewriteStmtExprs(n.Else, rewrite)
 		case *ir.NodeInst:

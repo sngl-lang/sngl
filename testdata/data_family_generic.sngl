@@ -1,0 +1,40 @@
+import test "sngl:test"
+import ui "sngl:ui"
+
+// A generic data component's record is generic over the same parameters, so
+// the container reads a field typed by one as the type the call site bound it
+// to: `o.value` here is a Method, written back to the Method `value` holds.
+// A handle on the container keeps the slot read as its list of records.
+enum Method { levelUp, machine, egg }
+
+component pick[T any](label string, value T) pick[T]
+
+component chooser[T any](:value T, @change(value T), options ...component pick[T]) ui.node {
+    for var o = options {
+        ui.button #opt(text=o.label, @click {
+            value = o.value
+            change(o.value)
+        })
+    }
+}
+
+component page ui.node {
+    var m = Method.levelUp
+    var changed list[Method] = []
+
+    chooser #ch(:value=m, @change(v) { changed.push(v) }) {
+        for var x = Method {
+            pick(label="{x}", value=x)
+        }
+    }
+}
+
+func testThePickIsTyped(t test.Test, c page) {
+    c.ch.opt[1].click()
+    t.assert(c.m == Method.machine)
+    t.assert(c.changed.length() == 1 && c.changed[0] == Method.machine)
+}
+
+ui.window {
+    page
+}

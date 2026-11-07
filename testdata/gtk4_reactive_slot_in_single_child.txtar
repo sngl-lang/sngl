@@ -60,6 +60,9 @@ import (
 	"os"
 )
 
+type Test struct {
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	on             bool
@@ -77,23 +80,47 @@ type Model struct {
 	__n2     *fyne.Container
 	__n3     *fynelayout.ReachScroll
 	__n3_box *fyne.Container
-	flip     *widget.Button
+	flip     *fynelayout.Button
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.on = true
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__rendering1 = false
-	m.__renderAgain1 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["on"] {
+		m.on = true
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -191,7 +218,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.Content = m.__n3_box
 	m.__renderSlot1(m.__n3_box)
 	m.__n4.Add(m.__n3)
-	m.flip = widget.NewButton("", nil)
+	m.flip = fynelayout.NewButton("", nil)
 	m.flip.SetText("flip")
 	m.flip.OnTapped = m.flip_click_handler
 	m.__n4.Add(m.flip)
@@ -216,6 +243,7 @@ import "testing"
 func TestFlip(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.flipClick()
 	c.flipClick()
 	if !(c.on) { t.Errorf("assert failed: %s", "c.on") }
@@ -228,7 +256,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -250,6 +282,9 @@ func main() {
 package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
+
+type Test struct {
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -274,17 +309,41 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.on = true
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
-	m.__slot1 = nil
-	m.__slot1_at = nil
-	m.__rendering1 = false
-	m.__renderAgain1 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["on"] {
+		m.on = true
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
+	if !preset["__slot1"] {
+		m.__slot1 = nil
+	}
+	if !preset["__slot1_at"] {
+		m.__slot1_at = nil
+	}
+	if !preset["__rendering1"] {
+		m.__rendering1 = false
+	}
+	if !preset["__renderAgain1"] {
+		m.__renderAgain1 = false
+	}
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -396,6 +455,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(__n4, m.__n3)
 	m.flip = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.flip, "flip")
+	gtk4rt.SetBool(m.flip, "can-focus", true)
 	gtk4rt.Connect(m.flip, "clicked", m.flip_clicked_handler)
 	gtk4rt.BoxAppend(__n4, m.flip)
 	gtk4rt.BoxAppend(m.__root, __n4)
@@ -415,6 +475,6 @@ func (m *Model) flipClick() {
 	gtk4rt.Emit(m.flip, "clicked")
 }
 -- run/go/fyne --
-pass sha256:f65812f5003493ffadaca7411f0315d5
+pass sha256:684c167ab767050aa8beb778bb8b5007
 -- run/go/gtk4 --
-pass sha256:a1803a4eb4199e09235013fcfa5e38ee
+pass sha256:8a35f72fb757f550443b9b9e14f1c763

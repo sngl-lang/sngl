@@ -52,7 +52,7 @@ type Model struct {
 	__renderAgain0 bool
 
 	__n0    *fynelayout.Toplevel
-	__n3    *widget.Button
+	__n3    *fynelayout.Button
 	__n1    *fyne.Container
 	__built bool
 }
@@ -139,7 +139,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n3 = widget.NewButton("", nil)
+	m.__n3 = fynelayout.NewButton("", nil)
 	m.__n3.SetText("more")
 	m.__n3.OnTapped = m.__n3_click_handler
 	m.__n0.Add(m.__n3)
@@ -159,4 +159,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:ce583f088352373121a76e942b352df4
+pass sha256:b1c92b116d0997f65a984dc1c5df49db

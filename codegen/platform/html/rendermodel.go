@@ -189,7 +189,9 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst) {
 	}
 	rb.writeRaw("<" + tag)
 
-	// Attribute-style props (non-content) referencing state → HoleAttr.
+	// Attribute-style props (non-content) that are no literal → HoleAttr: one
+	// reading state, and one reading what the render is handed otherwise --
+	// a `$"…"` reads the locale its context holds, and was refused here.
 	//
 	// Which props are content comes from contentProp, the same question the
 	// client render answers: `innerHTML` used to be written as an attribute of
@@ -221,7 +223,7 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst) {
 			continue
 		}
 		val := p.Value
-		if rb.exprIsReactive(val) {
+		if !isLiteral(val) {
 			rb.writeRaw(" " + p.Name + `="`)
 			rb.pushHole(codegen.RouteHole{Kind: codegen.HoleAttr, Expr: val, Attr: p.Name})
 			rb.writeRaw(`"`)
@@ -239,10 +241,17 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst) {
 			rb.writeRaw(" " + p.Name + `="` + s + `"`)
 			continue
 		}
-		// Not reactive and not a literal: there is nothing to write and no hole
-		// to write it into. Dropping it silently is how a bound `value` left an
-		// <input> with no value at all.
-		rb.fail("prop %q cannot be rendered server-side: its value is neither a literal nor a state-dependent expression", p.Name)
+		// A number is written as its digits, a measurement's without its
+		// unit -- a canvas's `width=400px` is the attribute `width="400"`,
+		// which is what the client writes of it too.
+		if lit, ok := val.(*ir.Literal); ok && lit.Type != nil && (lit.Type.IsNumeric() || lit.Suffix != "") {
+			rb.writeRaw(" " + p.Name + `="` + lit.Value + `"`)
+			continue
+		}
+		// A literal no attribute spells -- null -- has nothing to write.
+		// Dropping it silently is how a bound `value` left an <input> with no
+		// value at all.
+		rb.fail("prop %q cannot be rendered server-side: its literal value is no attribute's", p.Name)
 		return
 	}
 	rb.writeRaw(">")
@@ -258,7 +267,7 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst) {
 
 	// Text-content binding (e.g. text(value=...)) → HoleText or literal.
 	if textBinding != nil {
-		if rb.exprIsReactive(textBinding.Value) {
+		if !isLiteral(textBinding.Value) {
 			rb.pushHole(codegen.RouteHole{Kind: codegen.HoleText, Expr: textBinding.Value})
 		} else if s, ok := codegen.IRLiteralString(textBinding.Value); ok {
 			rb.writeRaw(s)
@@ -430,4 +439,11 @@ func routeVars(pkg *ir.Package, win *codegen.ViewCtx) []*ir.Var {
 		add(win.Vars)
 	}
 	return out
+}
+
+// isLiteral reports whether e is written as it stands, with nothing to
+// evaluate when the route renders.
+func isLiteral(e ir.Expr) bool {
+	_, ok := e.(*ir.Literal)
+	return ok
 }

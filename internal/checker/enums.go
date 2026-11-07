@@ -124,6 +124,29 @@ func namesEnumType(e ir.Expr, ed *ir.EnumDef) bool {
 	return ok && id.Member == "" && id.Sym == ir.Symbol(ed)
 }
 
+// enumMembers is the list of ed's members a `for` over its name walks, in the
+// order the type declares them, leaving out a member another package keeps to
+// itself. A member carrying a payload is no value without one, so an enum
+// with such a member has no such list.
+func (c *checker) enumMembers(pos ast.Pos, typ *ir.Type, ed *ir.EnumDef) ir.Expr {
+	if ed.Carries() {
+		c.error(pos, "enum %s carries a payload, so it has no list of members to walk; iterate a list of its values", ed.Name)
+		return &ir.Literal{Type: TypInvalid}
+	}
+	if len(ed.TypeParams) > 0 {
+		c.error(pos, "generic enum %s has no list of members to walk until its type arguments are given", ed.Name)
+		return &ir.Literal{Type: TypInvalid}
+	}
+	list := &ir.ListLit{Type: c.listOf(typ)}
+	for _, m := range ed.Members {
+		if c.foreign[ed] && !isExportedMemberName(m.Name) {
+			continue
+		}
+		list.Elems = append(list.Elems, &ir.Ident{Type: typ, Name: m.Name, Member: m.Name, Sym: ed})
+	}
+	return list
+}
+
 // enumMemberRead checks `v.member`, a read off a value of an enum: whether it
 // holds the member, for one with no payload, and otherwise the payload as an
 // option, present only where the member is the one held -- which the null

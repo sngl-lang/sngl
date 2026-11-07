@@ -206,6 +206,7 @@ func (w *walker) stmt(s Stmt) {
 		}
 	case *For:
 		w.expr(n.Iter)
+		w.expr(n.Identity)
 		w.stmts(n.Body)
 		w.stmts(n.Else)
 	case *SlotInst:

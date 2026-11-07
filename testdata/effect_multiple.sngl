@@ -32,6 +32,7 @@ func testEachBracketMountsOnce(t Test, c main) {
 }
 
 func testOneKeyChangingLeavesTheOthersAlone(t Test, c main) {
+    t.assert(c.out.value == "1:1:1")
     c.a = 1
     t.assert(c.out.value == "2:1:1")
     c.b = 1

@@ -86,6 +86,15 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	if len(comp.Vars) > 0 || len(comp.Funcs) > 0 {
 		return nil
 	}
+	// A body calling a method of one of its own nodes keeps its boundary.
+	// Spliced, the node and the call land in whatever block holds the call
+	// site, and a target that builds that block at run time -- a tab on gtk4,
+	// a reactive `if` -- reaches no node's method there; as an instance the
+	// component splices the node into its own body, where the call reaches
+	// it. passNoInlineComponents still splices it wherever it can.
+	if callsNodeMethod(comp.Stmts) {
+		return nil
+	}
 	// An instance something reads through is left to passNoInlineComponents,
 	// which records what its splice made of the instance's members.
 	if n.Handle != nil && comp.PkgPath() == "" && ctx.reachedThrough()[n.Handle] {
@@ -657,4 +666,28 @@ func (ctx *evalCtx) reachedThrough() map[*ir.Var]bool {
 		ctx.reachedIDs = ir.ReachedHandles(ctx.pkg)
 	}
 	return ctx.reachedIDs
+}
+
+// callsNodeMethod reports whether stmts call a method through a node's
+// handle: `ask.refresh()`, written as a call taking the handle as its
+// receiver or its first argument.
+func callsNodeMethod(stmts []ir.Stmt) bool {
+	found := false
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		call, ok := e.(*ir.Call)
+		if !ok || call.Func == nil || found {
+			return nil
+		}
+		recv := call.Receiver
+		if recv == nil && len(call.Args) > 0 && len(call.Func.Params) > 0 && call.Func.Params[0].Receiver {
+			recv = call.Args[0].Value
+		}
+		if id, ok := recv.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle {
+				found = true
+			}
+		}
+		return nil
+	})
+	return found
 }

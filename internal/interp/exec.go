@@ -760,6 +760,14 @@ func (env *Env) writeBound(sym ir.Symbol, val any) error {
 		env.parent.Set(tmp, val)
 		err := env.parent.execAssign(&ir.Assign{Target: b.Target, Op: ast.AssignSet, Value: &ir.Ident{Name: tmp.Name, Sym: tmp}})
 		delete(env.parent.vals, tmp)
+		// The scope the node was mounted from may be a loop iteration's copy
+		// of the caller's, which the write landed in. A handler's emit
+		// carries what it wrote back (runHandler), and so does this: an
+		// effect's mount writing the prop, rebound onto the root after it
+		// ran, found the var there only where the caller was the root, and
+		// a query under a `for` or a tab in any other component answered
+		// nothing.
+		env.parent.writeBackMountCopies()
 		return err
 	}
 	if env.inst.Handle != nil {

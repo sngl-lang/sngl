@@ -28,7 +28,7 @@ component %[1]s() ui.node {
         ui.text(value=t)
     }
     ui.select {
-        ui.choice(label="a")
+        ui.choice(label="a", value="a")
     }
 }
 

@@ -28,7 +28,7 @@ func testIncrementWorks(t Test, c counter) {
 window {
 }
 -- testrun/bubbletea/go/app.sngl/counter/1 --
-sha256:8acb9c7699439f4e9749fa15306f33f9
+sha256:1469c150bbb61e4f0511fc6a64ff2cc0
 {
   "results": [
     {

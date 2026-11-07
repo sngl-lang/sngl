@@ -149,12 +149,16 @@ func (w *writer) call(op Operation) {
 	if op.Body != nil {
 		params = append(params, op.BodyName+" "+spell(*op.Body))
 	}
+	// The lifetime the request belongs to: a query's adapter hands its
+	// attempt's, which ends when the query no longer wants the answer.
+	params = append(params, "life async.Lifetime = async.forever")
 	result := spell(op.Result)
 	w.line("func %s(%s) async.Result[%s] {", op.Func, strings.Join(params, ", "), result)
 	args := []string{"url=" + url(op)}
 	if hasQuery(op.Params) {
 		args = append(args, "query="+query(op))
 	}
+	args = append(args, "life=life")
 	request := "http.get(" + strings.Join(args, ", ") + ")"
 	if op.Method != "get" {
 		sent := append([]string{"method=http.Method." + op.Method}, args...)
@@ -205,7 +209,7 @@ func (w *writer) adapter(op Operation) {
 	switch len(op.Params) {
 	case 0:
 		w.line("on=0,")
-		w.line("fetch=func(k int) => %s(),", op.Func)
+		w.line("fetch=func(k int, life async.Lifetime) => %s(life=life),", op.Func)
 	case 1:
 		w.line("on=%s,", op.Params[0].Name)
 		w.line("fetch=%s,", op.Func)
@@ -217,7 +221,7 @@ func (w *writer) adapter(op Operation) {
 			passed = append(passed, p.Name+"=k."+p.Name)
 		}
 		w.line("on={%s},", strings.Join(on, ", "))
-		w.line("fetch=func(k struct { %s }) => %s(%s),", strings.Join(fields, "; "), op.Func, strings.Join(passed, ", "))
+		w.line("fetch=func(k struct { %s }, life async.Lifetime) => %s(%s, life=life),", strings.Join(fields, "; "), op.Func, strings.Join(passed, ", "))
 	}
 	w.line(":value=value,")
 	w.line(":pending=pending,")

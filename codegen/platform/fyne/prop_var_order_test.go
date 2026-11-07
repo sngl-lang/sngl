@@ -43,7 +43,7 @@ func TestAVarReadsThePropItWasInitializedFrom(t *testing.T) {
 		t.Fatalf("expected 2 live instances, got %d", got)
 	}
 	for i, want := range []string{"hi ann", "hi bob"} {
-		if got := m.__inst0_live[i].greeting; got != want {
+		if got := m.__inst0_live[[]string{"ann", "bob"}[i]].greeting; got != want {
 			t.Errorf("row %d greeting = %q, want %q", i, got, want)
 		}
 	}

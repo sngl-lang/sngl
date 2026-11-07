@@ -37,12 +37,12 @@ component Mirror(:text string, :on bool, :pick string, @fired()) ui.node {
         ui.checkbox(:checked=on, label="c", @change(c) { fired() })
         ui.toggle(:checked=on, @change(c) { fired() })
         ui.radio(:value=pick, @change(v) { fired() }) {
-            ui.choice(label="a")
-            ui.choice(label="b")
+            ui.choice(label="a", value="a")
+            ui.choice(label="b", value="b")
         }
         ui.select(:value=pick, @change(v) { fired() }) {
-            ui.choice(label="a")
-            ui.choice(label="b")
+            ui.choice(label="a", value="a")
+            ui.choice(label="b", value="b")
         }
     }
 }
@@ -57,8 +57,8 @@ component main ui.node {
         ui.input #field(:value=text, @input(v) { events += 1 })
         ui.checkbox #box(:checked=on, label="c", @change(c) { events += 1 })
         ui.radio(:value=pick, @change(v) { events += 1 }) {
-            ui.choice(label="a")
-            ui.choice(label="b")
+            ui.choice(label="a", value="a")
+            ui.choice(label="b", value="b")
         }
         ui.button #set(text="set", @click {
             text = "abc"
@@ -95,7 +95,7 @@ ui.window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:0b10cf59187e2f61ffe5adf99369302d
+sha256:4ff6cb7e44868cad05d0e3a7d0811145
 {
   "results": [
     {
@@ -113,7 +113,7 @@ sha256:0b10cf59187e2f61ffe5adf99369302d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:a0991f8a35fdf82dd8cc1c2ab0a1b569
+sha256:37310d5cc5f6e011371bed9f694f6c14
 {
   "results": [
     {
@@ -131,7 +131,7 @@ sha256:a0991f8a35fdf82dd8cc1c2ab0a1b569
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:e64b581cf2237ca0c20e0e93bb14e2a3
+sha256:2d8a8256cbfb5cc4684de681f70e56e4
 {
   "results": [
     {
@@ -149,7 +149,7 @@ sha256:e64b581cf2237ca0c20e0e93bb14e2a3
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:f444cfcebd382f74c310c974cbd6b8f0
+sha256:6ab5727a81c2adbd4392c88d25e5d6b3
 {
   "results": [
     {
@@ -167,7 +167,7 @@ sha256:f444cfcebd382f74c310c974cbd6b8f0
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:3ddb721e160cb9f62bb948a256b230a5
+sha256:6f8460a6bba597e4e819e0178d178458
 {
   "results": [
     {

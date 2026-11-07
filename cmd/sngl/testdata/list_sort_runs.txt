@@ -1,0 +1,197 @@
+# A list sorts in place on every language: `sort()` by `<` -- numbers, strings
+# and a unit -- and `sortBy(before)` stably by a function. A list copied into
+# another binding keeps its order and its items when the first one is sorted,
+# pushed to or cleared: Kotlin dropped the copy of a binding nothing wrote,
+# whatever wrote the list it was copied from. testdata/list_sort.sngl is the
+# interpreter's half.
+
+sngl test --platform=none app.sngl
+stdout '7 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '7 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '7 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '7 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import time "sngl:time"
+
+struct Move {
+    name string = ""
+    level int = 0
+}
+
+func least[T ordered](xs list[T]) option[T] {
+    if xs.length() == 0 {
+        return null
+    }
+    var sorted = xs
+    sorted.sort()
+    return sorted[0]
+}
+
+func testSort(t test.Test) {
+    var xs = [3, 1, 2, -5, 1]
+    xs.sort()
+    t.assert(xs == [-5, 1, 1, 2, 3])
+    var words = ["pear", "apple", "pears", "fig", "Zebra"]
+    words.sort()
+    t.assert(words == ["Zebra", "apple", "fig", "pear", "pears"])
+    var waits list[time.duration] = [2s, 500ms, 1s]
+    var want list[time.duration] = [500ms, 1s, 2s]
+    waits.sort()
+    t.assert(waits == want)
+}
+
+func testSortByIsStable(t test.Test) {
+    var moves = [
+        Move{name="growl", level=1},
+        Move{name="vine whip", level=3},
+        Move{name="tackle", level=1},
+        Move{name="leech seed", level=3},
+        Move{name="sleep powder", level=2},
+    ]
+    moves.sortBy(func(a Move, b Move) => a.level < b.level)
+    t.assert(moves.map(func(m Move) => m.name) == ["growl", "tackle", "sleep powder", "vine whip", "leech seed"])
+}
+
+func testOrderedGeneric(t test.Test) {
+    var xs = [3, 1, 2]
+    t.assert(least(xs) == 1)
+    t.assert(xs == [3, 1, 2])
+}
+
+func testSortLeavesACopyAlone(t test.Test) {
+    var xs = [3, 1, 2]
+    var kept = xs
+    xs.sort()
+    t.assert(kept == [3, 1, 2])
+}
+
+func testSortByLeavesACopyAlone(t test.Test) {
+    var xs = [3, 1, 2]
+    var kept = xs
+    xs.sortBy(func(a int, b int) => a < b)
+    t.assert(kept == [3, 1, 2])
+}
+
+func testPushLeavesACopyAlone(t test.Test) {
+    var xs = [3, 1, 2]
+    var kept = xs
+    xs.push(4)
+    t.assert(kept == [3, 1, 2])
+}
+
+func testClearLeavesACopyAlone(t test.Test) {
+    var xs = [3, 1, 2]
+    var kept = xs
+    xs.clear()
+    t.assert(kept == [3, 1, 2])
+}
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:058404cb8bfb79d144927630871cf93c
+{
+  "results": [
+    {
+      "Desc": "ClearLeavesACopyAlone",
+      "Passed": true
+    },
+    {
+      "Desc": "OrderedGeneric",
+      "Passed": true
+    },
+    {
+      "Desc": "PushLeavesACopyAlone",
+      "Passed": true
+    },
+    {
+      "Desc": "Sort",
+      "Passed": true
+    },
+    {
+      "Desc": "SortByIsStable",
+      "Passed": true
+    },
+    {
+      "Desc": "SortByLeavesACopyAlone",
+      "Passed": true
+    },
+    {
+      "Desc": "SortLeavesACopyAlone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:bb92d3425129ca19e9c1daadc40d620a
+{
+  "results": [
+    {
+      "Desc": "ClearLeavesACopyAlone",
+      "Passed": true
+    },
+    {
+      "Desc": "OrderedGeneric",
+      "Passed": true
+    },
+    {
+      "Desc": "PushLeavesACopyAlone",
+      "Passed": true
+    },
+    {
+      "Desc": "Sort",
+      "Passed": true
+    },
+    {
+      "Desc": "SortByIsStable",
+      "Passed": true
+    },
+    {
+      "Desc": "SortByLeavesACopyAlone",
+      "Passed": true
+    },
+    {
+      "Desc": "SortLeavesACopyAlone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:5127a5320503ff5e9010264f177426db
+{
+  "results": [
+    {
+      "Desc": "ClearLeavesACopyAlone",
+      "Passed": true
+    },
+    {
+      "Desc": "OrderedGeneric",
+      "Passed": true
+    },
+    {
+      "Desc": "PushLeavesACopyAlone",
+      "Passed": true
+    },
+    {
+      "Desc": "Sort",
+      "Passed": true
+    },
+    {
+      "Desc": "SortByIsStable",
+      "Passed": true
+    },
+    {
+      "Desc": "SortByLeavesACopyAlone",
+      "Passed": true
+    },
+    {
+      "Desc": "SortLeavesACopyAlone",
+      "Passed": true
+    }
+  ]
+}

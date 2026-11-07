@@ -17,9 +17,9 @@ func nameOf[T fieldsOf[struct {
 }]](v T) => v.name
 
 // A constraint is one sngl:builtin declares.
-func f1[T int](v T) => v // ERROR(check) "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]`, `methodsOf[S]` or an alias of one"
+func f1[T int](v T) => v // ERROR(check) "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]`, `methodsOf[S]`, `ordered` or an alias of one"
 
-func f2[T User](v T) => v // ERROR(check) "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]`, `methodsOf[S]` or an alias of one"
+func f2[T User](v T) => v // ERROR(check) "a type parameter's constraint is `any`, `anyStruct`, `anyFields`, `fieldsOf[S]`, `methodsOf[S]`, `ordered` or an alias of one"
 
 // A struct names no constraint: what it asks is written with one that does.
 func s1[T struct {}](v T) => v // ERROR(check) "a struct is no constraint: `anyStruct` asks for a struct, and `anyFields` for a type with fields"

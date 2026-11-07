@@ -50,9 +50,11 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
+
+type Test struct {
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -64,19 +66,35 @@ type Model struct {
 	__renderAgain0 bool
 
 	__n2 *fyne.Container
-	flip *widget.Button
+	flip *fynelayout.Button
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.on = true
-	m.__root = container.NewVBox()
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["on"] {
+		m.on = true
+	}
+	if !preset["__root"] {
+		m.__root = container.NewVBox()
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -133,7 +151,7 @@ func (m *Model) SetOn(v bool) {
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n2)
-	m.flip = widget.NewButton("", nil)
+	m.flip = fynelayout.NewButton("", nil)
 	m.flip.SetText("flip")
 	m.flip.OnTapped = m.flip_click_handler
 	m.__n2.Add(m.flip)
@@ -158,6 +176,7 @@ import "testing"
 func TestFlip(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	c.flipClick()
 	if !(!c.on) { t.Errorf("assert failed: %s", "!c.on") }
 }
@@ -169,7 +188,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -192,6 +215,9 @@ package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	on             bool
@@ -208,13 +234,29 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.on = true
-	m.__root = nil
-	m.__slot0 = nil
-	m.__slot0_at = nil
-	m.__rendering0 = false
-	m.__renderAgain0 = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["on"] {
+		m.on = true
+	}
+	if !preset["__root"] {
+		m.__root = nil
+	}
+	if !preset["__slot0"] {
+		m.__slot0 = nil
+	}
+	if !preset["__slot0_at"] {
+		m.__slot0_at = nil
+	}
+	if !preset["__rendering0"] {
+		m.__rendering0 = false
+	}
+	if !preset["__renderAgain0"] {
+		m.__renderAgain0 = false
+	}
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -269,6 +311,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n2)
 	m.flip = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.flip, "flip")
+	gtk4rt.SetBool(m.flip, "can-focus", true)
 	gtk4rt.Connect(m.flip, "clicked", m.flip_clicked_handler)
 	gtk4rt.BoxAppend(m.__n2, m.flip)
 	gtk4rt.BoxAppend(m.__root, m.__n2)
@@ -288,6 +331,6 @@ func (m *Model) flipClick() {
 	gtk4rt.Emit(m.flip, "clicked")
 }
 -- run/go/fyne --
-pass sha256:4950356c3f5a85cfdddb2d853f3ac5c2
+pass sha256:5f675abb8e1bc6869c3c2845c6ddfb69
 -- run/go/gtk4 --
-pass sha256:e90ad30e23481e13a0a3d90367c522ba
+pass sha256:2a10e5f1995dbf0cc7f5ef8b29c04b27

@@ -1,0 +1,127 @@
+# A test's component mounts at the first statement that is not setting it up
+# (ir.TestSetup), on the interpreter as on every target. `var k = 5` and
+# `t.assert(true)` are no setup, so the write after them is a write of the
+# mounted component, which the effect hears. The interpreter mounted at the
+# first read through the instance instead, so it took the write for the
+# starting value and the effect heard nothing.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '2 tests, 0 failures'
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component box ui.node {
+    var count = 0
+    var saved = 0
+
+    ui.effect(
+        on = count,
+        @update(n) {
+            saved += 1
+        },
+    )
+
+    ui.text #out(value="{saved}")
+}
+
+func testLocalFirst(t test.Test, c box) {
+    var k = 5
+    c.count = k
+    t.assert(c.saved == 1)
+}
+
+func testAssertFirst(t test.Test, c box) {
+    t.assert(true)
+    c.count = 5
+    t.assert(c.saved == 1)
+}
+
+ui.window {
+    box()
+}
+-- testrun/android/kotlin/app.sngl/box/1 --
+sha256:15b2ad03b3d15c1f9808e3d6d93a63ab
+{
+  "results": [
+    {
+      "Desc": "AssertFirst",
+      "Passed": true
+    },
+    {
+      "Desc": "LocalFirst",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/box/1 --
+sha256:95681bb7856aa12903acf48fe15741be
+{
+  "results": [
+    {
+      "Desc": "AssertFirst",
+      "Passed": true
+    },
+    {
+      "Desc": "LocalFirst",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/box/1 --
+sha256:03bbfc1527fb2c0355463bf68cf06f7e
+{
+  "results": [
+    {
+      "Desc": "AssertFirst",
+      "Passed": true
+    },
+    {
+      "Desc": "LocalFirst",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/box/1 --
+sha256:026c4e05fd23712ebb43c53b64ca738b
+{
+  "results": [
+    {
+      "Desc": "AssertFirst",
+      "Passed": true
+    },
+    {
+      "Desc": "LocalFirst",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/box/1 --
+sha256:7c13fe591832b0b291f5e93111bf8810
+{
+  "results": [
+    {
+      "Desc": "AssertFirst",
+      "Passed": true
+    },
+    {
+      "Desc": "LocalFirst",
+      "Passed": true
+    }
+  ]
+}

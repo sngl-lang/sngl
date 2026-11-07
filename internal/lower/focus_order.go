@@ -168,10 +168,17 @@ func focusShownExprs(stmts []ir.Stmt, slots []focusSlot) []ir.Expr {
 		return ok
 	}
 	static := map[*ir.NodeInst]int{}
+	loops := map[*ir.For]int{}
 	shown := make([]ir.Expr, len(slots))
 	for i, s := range slots {
 		if s.isLoop {
 			shown[i] = &ir.Binary{Type: ir.TypBool, Op: ast.BinGt, Left: callLoopLen(s.loop), Right: intLiteralLit(0)}
+			// A loop's copies are one stop to Tab, so Tab passes over the
+			// loop where it passes over every copy, and reaches it otherwise.
+			if tabsPast(slices.Concat(s.loop.forStmt.Body, s.loop.forStmt.Else)) {
+				shown[i] = &ir.Literal{Type: ir.TypBool, Value: "false"}
+			}
+			loops[s.loop.forStmt] = i
 		} else {
 			static[s.node] = i
 		}
@@ -186,6 +193,13 @@ func focusShownExprs(stmts []ir.Stmt, slots []focusSlot) []ir.Expr {
 					if e := focusEnabledField(n); e != nil {
 						if _, known := foldedBool(e.Value); !known && readable(e.Value) {
 							own = append(slices.Clip(conds), e.Value)
+						}
+					}
+					if e := focusTabField(n); e != nil {
+						if on, known := foldedBool(e.Value); known && !on {
+							own = []ir.Expr{&ir.Literal{Type: ir.TypBool, Value: "false"}}
+						} else if !known && readable(e.Value) {
+							own = append(slices.Clip(own), e.Value)
 						}
 					}
 					if len(own) > 0 {
@@ -207,6 +221,12 @@ func focusShownExprs(stmts []ir.Stmt, slots []focusSlot) []ir.Expr {
 				}
 				walk(n.Body, append(slices.Clip(conds), deepCloneExpr(n.Cond)))
 				walk(n.Else, append(slices.Clip(conds), notExpr(deepCloneExpr(n.Cond))))
+			case *ir.For:
+				// A loop's stops are drawn where the branches around the
+				// loop are taken, which its length does not ask.
+				if i, ok := loops[n]; ok && len(conds) > 0 {
+					shown[i] = andAll(append(slices.Clip(conds), shown[i]))
+				}
 			case *ir.Match:
 				for _, b := range ir.TransparentBlocks(n) {
 					walk(*b, conds)
@@ -224,7 +244,10 @@ func focusShownExprs(stmts []ir.Stmt, slots []focusSlot) []ir.Expr {
 	// none, which is the loop's to answer.
 	_ = ir.Walk(stmts, func(node ir.Node) error {
 		if n, ok := node.(*ir.NodeInst); ok {
-			if e := focusEnabledField(n); e != nil {
+			for _, e := range []*ir.FieldInit{focusEnabledField(n), focusTabField(n)} {
+				if e == nil {
+					continue
+				}
 				if _, known := foldedBool(e.Value); !known {
 					e.Value = &ir.Literal{Type: ir.TypBool, Value: "true"}
 				}
@@ -1003,19 +1026,48 @@ func recordField(e ir.Expr, name string) ir.Expr {
 // focusEnabledField is the `enabled` field of n's `focus` record, nil where n
 // carries none or its record is not a literal.
 func focusEnabledField(n *ir.NodeInst) *ir.FieldInit {
+	return focusField(n, "enabled")
+}
+
+// focusTabField is the `tab` field of n's `focus` record: whether Tab reaches
+// the stop, nil where the record leaves it at its default, which is that it
+// does.
+func focusTabField(n *ir.NodeInst) *ir.FieldInit {
+	return focusField(n, "tab")
+}
+
+func focusField(n *ir.NodeInst, name string) *ir.FieldInit {
 	for _, p := range n.Props {
 		if p.Name != "focus" {
 			continue
 		}
 		if sl, ok := p.Value.(*ir.StructLit); ok {
 			for i := range sl.Fields {
-				if sl.Fields[i].Name == "enabled" {
+				if sl.Fields[i].Name == name {
 					return &sl.Fields[i]
 				}
 			}
 		}
 	}
 	return nil
+}
+
+// tabsPast is whether Tab passes over every stop under stmts: each one's
+// `tab` the build reads as false.
+func tabsPast(stmts []ir.Stmt) bool {
+	stops, past := 0, 0
+	_ = ir.Walk(stmts, func(node ir.Node) error {
+		if n, ok := node.(*ir.NodeInst); ok && nodeEffectiveFocusable(n) {
+			stops++
+			if e := focusTabField(n); e != nil {
+				if on, known := foldedBool(e.Value); known && !on {
+					past++
+				}
+			}
+		}
+		return nil
+	})
+	return stops > 0 && past == stops
 }
 
 // foldedBool is what e says where the build can read it here: a literal, the

@@ -117,6 +117,14 @@ func (c *checker) coerce(written ast.Expr, val ir.Expr, want *ir.Type, s slot) i
 		return val
 	}
 	if s.later && (want.HasTypeParam() || got.Kind == ir.TypeTypeParam) {
+		// Left to the specialization, which binds what the parameters
+		// stand for -- but nothing a binding does makes a func of one
+		// parameter a func of two, and a generic component's fetch of the
+		// wrong arity passed its own T straight through.
+		if s.mismatch != nil && shapeMismatch(got, want) {
+			w, g := ir.Contrast(want, got)
+			c.error(pos, "%s", s.mismatch(w, g))
+		}
 		return val
 	}
 	if !got.IsAssignableTo(want) {
@@ -144,6 +152,35 @@ func (c *checker) coerce(written ast.Expr, val ir.Expr, want *ir.Type, s slot) i
 	}
 	c.validateStringDomainLiteral(pos, want, val)
 	return c.shape(val, want, s)
+}
+
+// shapeMismatch reports whether got differs from want in a way no binding of
+// want's type parameters could mend: a func of another arity, or a list or
+// map whose element does. Anything less certain is left to the
+// specialization.
+func shapeMismatch(got, want *ir.Type) bool {
+	if got == nil || want == nil || got.Kind == ir.TypeTypeParam || want.Kind == ir.TypeTypeParam {
+		return false
+	}
+	switch {
+	case got.Kind == ir.TypeFunc && want.Kind == ir.TypeFunc && got.Sig != nil && want.Sig != nil:
+		if len(got.Sig.Params) != len(want.Sig.Params) {
+			return true
+		}
+		for i, p := range want.Sig.Params {
+			if p != nil && got.Sig.Params[i] != nil && shapeMismatch(got.Sig.Params[i].Type, p.Type) {
+				return true
+			}
+		}
+		return shapeMismatch(got.Sig.Return, want.Sig.Return)
+	case got.Kind == want.Kind && (got.Kind == ir.TypeList || got.Kind == ir.TypeMap) && len(got.Elems) == len(want.Elems):
+		for i := range want.Elems {
+			if shapeMismatch(got.Elems[i], want.Elems[i]) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // shape is the conversion a value that reached want is wrapped in, if any.

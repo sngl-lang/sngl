@@ -49,6 +49,7 @@ func testMadeOncePerCopy(t test.Test, c page) {
 }
 
 func testRekeyedCopyReleasesItsOldValue(t test.Test, c page) {
+    t.assert(opened == 2)
     c.ws = [3.0, 2.0]
     t.assert(opened == 3)
     t.assert(closed == 1)
@@ -56,6 +57,7 @@ func testRekeyedCopyReleasesItsOldValue(t test.Test, c page) {
 }
 
 func testLeavingCopyReleases(t test.Test, c page) {
+    t.assert(closed == 0)
     c.ws = [1.0]
     t.assert(closed == 1)
     t.assert(lastClosed == 2)

@@ -80,10 +80,10 @@ type Model struct {
 
 	main    *fynelayout.Toplevel
 	__n0    *widget.Label
-	__n3    *widget.Button
+	__n3    *fynelayout.Button
 	log     *fynelayout.Toplevel
 	__n1    *widget.Label
-	__n4    *widget.Button
+	__n4    *fynelayout.Button
 	__built bool
 }
 
@@ -230,7 +230,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText((("closed the log " + fmt.Sprint(m.closes)) + " times"))
 	m.main.Add(m.__n0)
-	m.__n3 = widget.NewButton("", nil)
+	m.__n3 = fynelayout.NewButton("", nil)
 	m.__n3.SetText("Log")
 	m.__n3.OnTapped = m.__n3_click_handler
 	m.main.Add(m.__n3)
@@ -244,7 +244,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetText(fmt.Sprint(m.closes))
 	m.log.Add(m.__n1)
 	m.__renderSlot0(m.log.Container)
-	m.__n4 = widget.NewButton("", nil)
+	m.__n4 = fynelayout.NewButton("", nil)
 	m.__n4.SetText("Hide main")
 	m.__n4.OnTapped = m.__n4_click_handler
 	m.log.Add(m.__n4)
@@ -346,6 +346,9 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 func (m *Model) main_closed_handler() {
 }
 
+func (m *Model) main_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
@@ -363,6 +366,9 @@ func (m *Model) log_closed_handler() {
 	m.__renderSlot0(m.log)
 	m.visible__inst1 = false
 	gtk4rt.ToplevelSetVisible(m.log, m.visible__inst1)
+}
+
+func (m *Model) log_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 }
 
 func (m *Model) log_visible_handler(__visible bool) {
@@ -408,6 +414,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.main, "Main")
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
+	gtk4rt.ToplevelOnKey(m.main, m.main_key_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, (("closed the log " + fmt.Sprint(m.closes)) + " times"))
@@ -415,6 +422,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.main, m.__n0)
 	m.__n3 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n3, "Log")
+	gtk4rt.SetBool(m.__n3, "can-focus", true)
 	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
 	gtk4rt.BoxAppend(m.main, m.__n3)
 	gtk4rt.AppAttach(m.main)
@@ -422,6 +430,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetTitle(m.log, "Log")
 	gtk4rt.ToplevelSetVisible(m.log, m.visible__inst1)
 	gtk4rt.ToplevelOnClosed(m.log, m.log_closed_handler)
+	gtk4rt.ToplevelOnKey(m.log, m.log_key_handler)
 	gtk4rt.ToplevelOnVisible(m.log, m.log_visible_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.closes))
@@ -430,6 +439,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.log)
 	m.__n4 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n4, "Hide main")
+	gtk4rt.SetBool(m.__n4, "can-focus", true)
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
 	gtk4rt.BoxAppend(m.log, m.__n4)
 	gtk4rt.AppAttach(m.log)
@@ -558,8 +568,8 @@ dialog { margin: auto; padding: 1em; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:e6d3cb60fada9138842ded1506670da8
+pass sha256:54467dcd39bfaf8b4c5a2f51f1493ef2
 -- run/go/gtk4 --
-pass sha256:7070aa6ac08394a6b96c0a0efef27371
+pass sha256:a075f34cf3a47828b18712f6ea82c24b
 -- run/none/html --
 pass sha256:eb69bbba75cc3d919148c25658558724

@@ -25,6 +25,18 @@ func BuildEnv(pkg *ir.Package, compName string, clock Clock) (*Env, error) {
 // handle where it returns an owned type, and does with its arguments what the
 // declaration says. Set before the initializers run, for the reason clock is.
 func BuildSimulatedEnv(pkg *ir.Package, compName string, clock Clock, platform string) (*Env, error) {
+	return buildEnv(pkg, compName, clock, platform, true)
+}
+
+// BuildTestEnv is BuildSimulatedEnv for the component a test takes, whose
+// props and vars are left for the test's mount to initialize
+// (InitComponentState): what the test sets up first is what they start
+// from, and an initializer run twice would open what it owns twice.
+func BuildTestEnv(pkg *ir.Package, compName string, clock Clock, platform string) (*Env, error) {
+	return buildEnv(pkg, compName, clock, platform, false)
+}
+
+func buildEnv(pkg *ir.Package, compName string, clock Clock, platform string, initState bool) (*Env, error) {
 	env := newPackageEnv(pkg)
 	env.Clock = clock
 	env.owned().simulated = platform
@@ -44,9 +56,23 @@ func BuildSimulatedEnv(pkg *ir.Package, compName string, clock Clock, platform s
 	// separately rather than overwriting.
 	seedPackageState(env, pkg)
 
-	// Rendered with no call site, so a prop nothing supplies starts from its
-	// type's zero, as an unbound two-way prop's cell does.
+	if initState {
+		InitComponentState(env, comp, nil)
+	}
+	env.Comp = comp
+	env.BodyStmts = comp.Stmts
+	return env, nil
+}
+
+// InitComponentState binds comp's props and vars in env, in order, each to
+// what it starts from, but for those preset holds: a test's write ahead of
+// the mount set them. Rendered with no call site, so a prop nothing supplies
+// starts from its type's zero, as an unbound two-way prop's cell does.
+func InitComponentState(env *Env, comp *ir.Component, preset map[ir.Symbol]bool) {
 	for _, p := range comp.Props {
+		if preset[p.Sym] {
+			continue
+		}
 		init := p.Default
 		if init == nil {
 			init = ir.ZeroExpr(p.Type)
@@ -54,11 +80,11 @@ func BuildSimulatedEnv(pkg *ir.Package, compName string, clock Clock, platform s
 		env.Set(p.Sym, evalInit(env, init))
 	}
 	for _, v := range comp.Vars {
+		if preset[v] {
+			continue
+		}
 		env.Set(v, evalInit(env, v.Init))
 	}
-	env.Comp = comp
-	env.BodyStmts = comp.Stmts
-	return env, nil
 }
 
 // BuildProgramEnv creates an Env for running pkg as a program: its package

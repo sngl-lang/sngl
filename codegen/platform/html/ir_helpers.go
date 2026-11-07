@@ -88,7 +88,24 @@ func (g *htmlGen) nodeIsReactive(n *ir.NodeInst) bool {
 	if len(n.Handlers) > 0 {
 		return true
 	}
-	return false
+	return n.ID != "" && g.shared.readHandles(g.pkg)[n.ID]
+}
+
+// readHandles is the name of each node handle the package reads as a value,
+// `el.click()`: the element it names is one a script holds.
+func (s *windowShared) readHandles(pkg *ir.Package) map[string]bool {
+	if s.handlesRead == nil {
+		s.handlesRead = map[string]bool{}
+		_ = ir.Walk(pkg, func(n ir.Node) error {
+			if id, ok := n.(*ir.Ident); ok {
+				if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle {
+					s.handlesRead[id.Name] = true
+				}
+			}
+			return nil
+		})
+	}
+	return s.handlesRead
 }
 
 // exprLiteralAnyIR extracts a literal Go value from an IR expression.

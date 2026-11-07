@@ -212,14 +212,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -283,7 +283,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt6
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt9 *Measurement
 	if own != nil {
 		__lt9 = own
@@ -296,7 +296,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt9 = __lt8
 	}
-	return CellsOf(__lt9)
+	return SpaceOf(__lt9, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
@@ -335,6 +335,16 @@ func LineCap(height__r0 int, lines int) int {
 		__lt13 = __lt12
 	}
 	return __lt13
+}
+
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt14) + 0.5))
 }
 
 func (m Model) D__inst0() time.Duration {
@@ -454,25 +464,32 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
-		contentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("i " + fmt.Sprint(int(m.d__inst0/time.Millisecond)))))
+		contentPart_0Text := fmt.Sprint(("i " + fmt.Sprint(int(m.d__inst0/time.Millisecond))))
+		contentPart_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_0Text).Render(contentPart_0Text)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
-		contentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("f " + fmt.Sprint(float64(m.d__inst0)/float64(time.Millisecond)))))
+		contentPart_1Text := fmt.Sprint(("f " + fmt.Sprint(float64(m.d__inst0)/float64(time.Millisecond))))
+		contentPart_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_1Text).Render(contentPart_1Text)
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
-		contentPart_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("sum " + fmt.Sprint(int((m.d__inst0+(time.Duration(100)*time.Millisecond))/time.Millisecond)))))
+		contentPart_2Text := fmt.Sprint(("sum " + fmt.Sprint(int((m.d__inst0+(time.Duration(100)*time.Millisecond))/time.Millisecond))))
+		contentPart_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_2Text).Render(contentPart_2Text)
 		contentParts = append(contentParts, contentPart_2)
 		var contentPart_3 string
-		contentPart_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("secs " + fmt.Sprint(int((m.d__inst0+(time.Duration(1000)*time.Millisecond))/time.Millisecond)))))
+		contentPart_3Text := fmt.Sprint(("secs " + fmt.Sprint(int((m.d__inst0+(time.Duration(1000)*time.Millisecond))/time.Millisecond))))
+		contentPart_3 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_3Text).Render(contentPart_3Text)
 		contentParts = append(contentParts, contentPart_3)
 		var contentPart_4 string
-		contentPart_4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("scaled " + fmt.Sprint(int((m.d__inst0*2)/time.Millisecond)))))
+		contentPart_4Text := fmt.Sprint(("scaled " + fmt.Sprint(int((m.d__inst0*2)/time.Millisecond))))
+		contentPart_4 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_4Text).Render(contentPart_4Text)
 		contentParts = append(contentParts, contentPart_4)
 		var contentPart_5 string
-		contentPart_5 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(("built " + fmt.Sprint(int((m.one__inst0*time.Duration(m.n__inst0))/time.Millisecond)))))
+		contentPart_5Text := fmt.Sprint(("built " + fmt.Sprint(int((m.one__inst0*time.Duration(m.n__inst0))/time.Millisecond))))
+		contentPart_5 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_5Text).Render(contentPart_5Text)
 		contentParts = append(contentParts, contentPart_5)
 		var contentPart_6 string
-		contentPart_6 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("halved " + fmt.Sprint(float64(time.Duration(float64(m.one__inst0)*m.half__inst0))/float64(time.Millisecond))) + " ") + fmt.Sprint(float64(time.Duration(float64(m.d__inst0)*1.5))/float64(time.Millisecond)))))
+		contentPart_6Text := fmt.Sprint(((("halved " + fmt.Sprint(float64(time.Duration(float64(m.one__inst0)*m.half__inst0))/float64(time.Millisecond))) + " ") + fmt.Sprint(float64(time.Duration(float64(m.d__inst0)*1.5))/float64(time.Millisecond))))
+		contentPart_6 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_6Text).Render(contentPart_6Text)
 		contentParts = append(contentParts, contentPart_6)
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
@@ -600,7 +617,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4a481df0e5f9318e275818cc8eafd141
+pass sha256:54a2a67c999d2890cddee23b00ac2a8f
 -- run/kotlin/android --
 pass sha256:0d4de492ebffa51b1ff53af2966e169a
 -- run/none/html --

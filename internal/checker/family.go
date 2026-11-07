@@ -41,6 +41,9 @@ func (c *checker) bindFamily(decl *ast.ComponentDecl, comp *ir.Component, pkg *i
 	// family and the only member of it.
 	if named.Kind == ir.TypeComponent && named.Decl == comp {
 		comp.Family, comp.Data = comp, true
+		// `choice[T any](…) choice[T]` is a member at the arguments it was
+		// called with, which is what a container's slot binds its T from.
+		comp.FamilyTypeArgs = familyArgsWritten(comp, named.Elems)
 		return named
 	}
 	if f := ir.TypeFamily(named); f != nil {

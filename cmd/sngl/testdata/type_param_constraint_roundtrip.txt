@@ -2,8 +2,8 @@
 # `fieldsOf` naming another parameter of its list, `methodsOf`, a method on a generic struct, and an anonymous struct
 # naming a type parameter back so the dump checks again and is a fixed point.
 #
-# A method's receiver list was dropped, `func Box.get()`, which named no type
-# and left `this` undefined in the dump.
+# A method's receiver list was dropped, `func Box.get(this Box[T])`, which
+# named no type for the receiver to be one of.
 
 sngl dump --stage checked app.sngl
 cp stdout first.sngl
@@ -12,8 +12,8 @@ sngl dump --stage checked first.sngl
 cp stdout second.sngl
 cmp first.sngl second.sngl
 
-grep 'func Box\[T\]\.get\(\)' first.sngl
-grep 'func Keyed\[A, B\]\.keyOf\(\)' first.sngl
+grep 'func Box\[T\]\.get\(this Box\[T\]\)' first.sngl
+grep 'func Keyed\[A, B\]\.keyOf\(this Keyed\[A, B\]\)' first.sngl
 grep 'func valueOf\[T any, U fieldsOf\[struct \{' first.sngl
 grep 'func hex\[T methodsOf\[struct \{' first.sngl
 grep 'func record\[Q anyStruct\]' first.sngl
@@ -28,7 +28,7 @@ struct Box[T any] {
     value T
 }
 
-func Box[T].get() => this.value
+func Box[T].get(this Box[T]) => this.value
 
 struct Cell {
     value int
@@ -48,7 +48,7 @@ struct Keyed[K any, V fieldsOf[struct {
     item V
 }
 
-func Keyed[A, B].keyOf() => this.item.key
+func Keyed[A, B].keyOf(this Keyed[A, B]) => this.item.key
 
 func hex[T methodsOf[struct {
     const func format(base int) string

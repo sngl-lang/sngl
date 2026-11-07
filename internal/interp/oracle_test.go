@@ -30,7 +30,7 @@ component main node {
     var items = ["a", "b", "c"]
     vbox {
         for var it = items {
-            text(value=it, key=it)
+            text(value=it)
         }
     }
 }

@@ -52,7 +52,7 @@ func testAPanelReadsTheLocale(t test.Test, c page) {
     t.assert(c.lang != null && c.lang.value == "fr")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:f58771942a1cfcddb7a1415037a3018a
+sha256:d93b219c5b0581d1a117aa38e8446654
 {
   "results": [
     {
@@ -62,7 +62,7 @@ sha256:f58771942a1cfcddb7a1415037a3018a
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:c7dfccdc0956d0f2976058fabe910577
+sha256:04e33b0fe7a666bc0062927f6e3a7783
 {
   "results": [
     {
@@ -72,7 +72,7 @@ sha256:c7dfccdc0956d0f2976058fabe910577
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:8c636e53d0a632c9132efd6d0557a2ac
+sha256:a77ebcc28027db15564bcb2e457bcf0b
 {
   "results": [
     {
@@ -82,7 +82,7 @@ sha256:8c636e53d0a632c9132efd6d0557a2ac
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:7c1d9fdd72781021b98b68d701f90000
+sha256:66a578a01753606543705e62ffae243d
 {
   "results": [
     {
@@ -92,7 +92,7 @@ sha256:7c1d9fdd72781021b98b68d701f90000
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:fc48b059f184cf69eb8c630f3eddd117
+sha256:3957aa4d396c063f144016905b055014
 {
   "results": [
     {

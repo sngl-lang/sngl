@@ -80,6 +80,10 @@ type ExprCtx struct {
 	// IdentRewrites remaps bare identifiers regardless of scope, applied
 	// first in identifier translation.
 	IdentRewrites map[string]string
+	// NodeVar spells a read of a node's handle, `#el`, as the variable the
+	// platform emitted the node as, where it emitted one: html's elements are
+	// `$N`, which the handle's name is not.
+	NodeVar func(handle *ir.Ident) (string, bool)
 	// FreeFuncs names the user functions a host emits as free package-level
 	// functions rather than as methods on its receiver, so a call to one
 	// renders under its exported name from any scope.
@@ -382,6 +386,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		RawFieldAccess:  maps.Clone(ctx.RawFieldAccess),
 		MethodFields:    maps.Clone(ctx.MethodFields),
 		IdentRewrites:   maps.Clone(ctx.IdentRewrites),
+		NodeVar:         ctx.NodeVar,
 		FreeFuncs:       ctx.FreeFuncs,       // shared — one decision for the whole build
 		ModelParamFuncs: ctx.ModelParamFuncs, // shared, for the same reason
 		StateReceiver:   ctx.StateReceiver,
@@ -505,6 +510,56 @@ func TestSetContext(c *ir.Call) (name string, value ir.Expr, ok bool) {
 		return "", nil, false
 	}
 	return name, c.Args[len(c.Args)-1].Value, true
+}
+
+// TestNamedStructs is the name of each struct the package's tests read or
+// build a value of. A target that drops the library structs its own source
+// does not spell keeps these, since the test module is a file of its own:
+// a test building an `http.Response` did not compile.
+func TestNamedStructs(pkg *ir.Package) map[string]bool {
+	out := map[string]bool{}
+	if pkg == nil {
+		return out
+	}
+	for _, fn := range pkg.Funcs {
+		if fn == nil || !fn.IsTest {
+			continue
+		}
+		_ = ir.WalkExprs(fn.Block, func(e ir.Expr) error {
+			if t := e.ExprType(); t != nil {
+				if sd, ok := t.Decl.(*ir.StructDef); ok && sd != nil {
+					out[sd.Name] = true
+				}
+			}
+			return nil
+		})
+	}
+	return out
+}
+
+// BuildsTests reports whether pkg is built with its tests: a build that
+// ships drops them (build.dropTests), so a package holding one is a test's.
+func BuildsTests(pkg *ir.Package) bool {
+	return pkg != nil && slices.ContainsFunc(pkg.Funcs, func(f *ir.Func) bool { return f != nil && f.IsTest })
+}
+
+// TestMount reads the call passTestMount puts where a test mounts its
+// component: the name the test gave it, and the names of the fields the test
+// set up ahead of it, which the mount's initializers leave as they are.
+func TestMount(s ir.Stmt) (recv string, preset []string, ok bool) {
+	cs, isCall := s.(*ir.CallStmt)
+	if !isCall || !ir.IsTestCall(cs.Call, ir.TestMountID) {
+		return "", nil, false
+	}
+	if id, isIdent := cs.Call.Args[0].Value.(*ir.Ident); isIdent {
+		recv = id.Name
+	}
+	for _, a := range cs.Call.Args[1:] {
+		if lit, isLit := a.Value.(*ir.Literal); isLit {
+			preset = append(preset, lit.Value)
+		}
+	}
+	return recv, preset, true
 }
 
 func CollectTestFuncs(pkg *ir.Package) (fns []*ir.Func, suffixes []string, methodFields map[string]bool) {

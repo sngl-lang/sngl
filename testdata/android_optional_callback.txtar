@@ -55,10 +55,16 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.key
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
+
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -82,15 +88,32 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
-            for (it in items__inst0) {
-                Checkbox(checked = false, onCheckedChange = { __e0: Boolean ->
-    log__inst0 = (it + "!")
+            for (it in __identified0(items__inst0)) {
+                key(it.id) {
+                    Checkbox(checked = false, onCheckedChange = { __e0: Boolean ->
+    log__inst0 = (it.elem + "!")
 })
+                }
             }
             Checkbox(checked = true, onCheckedChange = null)
             Text(text = log__inst0, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
+}
+
+fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
+    var __seen = mapOf<String, Int>()
+    var __out = mutableListOf<__anon_id_elem_c6a818>()
+    for (__x in __xs) {
+    	var __id = __x.replace("#", "##")
+    	var __n = __seen.getOrDefault(__id, 0)
+    	__seen = __seen + (__id to (__n + 1))
+    	if ((__n > 0)) {
+    		__id = ((__id + "#") + __n.toString())
+    	}
+    	__out.add(__anon_id_elem_c6a818(id = __id, elem = __x))
+    }
+    return __out
 }
 -- out/kotlin/android/SnglFlexible.kt --
 package test.sngl.app
@@ -212,4 +235,4 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/kotlin/android --
-pass sha256:869d97b7df91a513c0808e227416613e
+pass sha256:87595eb14a8131c1ec3837b3d5dcdc5b

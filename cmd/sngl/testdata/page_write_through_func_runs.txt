@@ -88,7 +88,7 @@ func testATestsWriteReachesThePage(t test.Test, c back) {
     t.assert(resets == before + 1)
 }
 -- testrun/android/kotlin/app.sngl/back/1 --
-sha256:2c187aa042aa44a91dcc40d045d4b42d
+sha256:f7578e003378424faab4b0387f42478f
 {
   "results": [
     {
@@ -110,7 +110,7 @@ sha256:2c187aa042aa44a91dcc40d045d4b42d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/back/1 --
-sha256:92a3653d31625546591f1ba88ec26f1a
+sha256:61202b54af15de178c22f0a616cbd8d3
 {
   "results": [
     {
@@ -132,7 +132,7 @@ sha256:92a3653d31625546591f1ba88ec26f1a
   ]
 }
 -- testrun/fyne/go/app.sngl/back/1 --
-sha256:c14bb32a43001c71630a435b2b65b4b8
+sha256:6b140fe03e766f5b50a61e46b696158c
 {
   "results": [
     {
@@ -154,7 +154,7 @@ sha256:c14bb32a43001c71630a435b2b65b4b8
   ]
 }
 -- testrun/gtk4/go/app.sngl/back/1 --
-sha256:99cbc1d3c3d8a2d4e2cb687f308ee58b
+sha256:1832d9c72dca44a794930247ae27598b
 {
   "results": [
     {
@@ -176,7 +176,7 @@ sha256:99cbc1d3c3d8a2d4e2cb687f308ee58b
   ]
 }
 -- testrun/html/none/app.sngl/back/1 --
-sha256:a8bbd01ec605012b7489db9b077be9ce
+sha256:27b3ccde50a7b729189c793d417de715
 {
   "results": [
     {

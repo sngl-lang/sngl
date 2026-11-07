@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/pkg/go/snglasync"
 	"duckfam.us/sngl/pkg/go/snglhttp"
 	"duckfam.us/sngl/pkg/go/sngljson"
 )
@@ -94,10 +95,22 @@ func (env *Env) evalCodecCall(call *ir.Call) (any, bool, error) {
 	if s, ok := arg("body").(string); ok {
 		body = &s
 	}
-	resp, fail := snglhttp.Send(method, url, headers, body)
+	// A test's answer, where one is set, answers in the network's place.
+	if hook := arg("hook"); hook != nil {
+		// A request handed a lifetime already ended answers `cancelled`,
+		// whatever answers in the network's place.
+		if snglasync.Ended(lifetimeID(arg("life"))) {
+			return resultFailed(call.Type, "cancelled", "cancelled", ""), true, nil
+		}
+		return env.answerRequest(call, hook, method, url, arg("headers"), arg("body"))
+	}
+	resp, fail := snglhttp.Send(snglasync.Context(lifetimeID(arg("life"))), method, url, headers, body)
 	if fail != nil {
 		kind := "transport"
-		if fail.Timeout {
+		switch {
+		case fail.Cancelled:
+			kind = "cancelled"
+		case fail.Timeout:
 			kind = "timeout"
 		}
 		return resultFailed(call.Type, kind, fail.Message, ""), true, nil
@@ -109,6 +122,42 @@ func (env *Env) evalCodecCall(call *ir.Call) (any, bool, error) {
 	}
 	r := newStructOf(rt, map[string]any{"status": resp.Status, "headers": hs, "body": resp.Body})
 	return EnumValue{Type: call.Type, Member: "ok", Payload: r}, true, nil
+}
+
+// answerRequest is what hook, sngl:http's answer, answers a request with:
+// the response it gives, or a `transport` failure where it gives none.
+func (env *Env) answerRequest(call *ir.Call, hook any, method, url string, headers, body any) (any, bool, error) {
+	var hp *ir.Param
+	for _, p := range call.Func.Params {
+		if p.Name == "hook" {
+			hp = p
+		}
+	}
+	ht := hp.Type
+	if ht.Kind == ir.TypeOption && len(ht.Elems) == 1 {
+		ht = ht.Elems[0]
+	}
+	if headers == nil {
+		headers = map[string]any{}
+	}
+	req := newStructOf(ht.Sig.Params[0].Type, map[string]any{"method": method, "url": url, "headers": headers, "body": body})
+	var got any
+	var err error
+	switch fn := hook.(type) {
+	case *LambdaValue:
+		got, err = fn.Call([]any{req})
+	case *ir.Func:
+		got, err = env.CallUserFuncValues(fn, []any{req})
+	default:
+		return nil, true, fmt.Errorf("http: an answer of %T is no function", hook)
+	}
+	if err != nil {
+		return nil, true, err
+	}
+	if got == nil {
+		return resultFailed(call.Type, "transport", ir.HTTPNoAnswer+url, ""), true, nil
+	}
+	return EnumValue{Type: call.Type, Member: "ok", Payload: got}, true, nil
 }
 
 // resultFailed is an async.Result of type t holding a Failure.

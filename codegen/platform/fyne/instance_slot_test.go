@@ -53,13 +53,14 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
+	"duckfam.us/sngl/pkg/go/fynelayout"
 )
 
 func texts(o fyne.CanvasObject, out *[]string) {
 	switch w := o.(type) {
 	case *widget.Label:
 		*out = append(*out, w.Text)
-	case *widget.Button:
+	case *fynelayout.Button:
 		*out = append(*out, w.Text)
 	case *fyne.Container:
 		for _, c := range w.Objects {
@@ -77,7 +78,7 @@ func TestTheSlotSubtreeIsReachableFromTheInstanceRoot(t *testing.T) {
 		t.Fatalf("expected 2 live instances, got %d", got)
 	}
 	var got []string
-	texts(m.__inst1_live[0].Root, &got)
+	texts(m.__inst1_live["a"].Root, &got)
 	want := []string{"a", "body of a"}
 	if len(got) != len(want) {
 		t.Fatalf("instance tree = %v, want %v", got, want)

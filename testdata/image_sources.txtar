@@ -207,6 +207,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -221,6 +229,7 @@ type modelState struct {
 	failed__inst0   bool
 	__focusID       int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -285,15 +294,14 @@ func (m Model) __canvasTransmit() tea.Cmd {
 	return tea.Raw(__ctb.String())
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func ApplyStyle(ctx *snglcanvas.Context, style Style__draw) {
@@ -341,14 +349,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -412,7 +420,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt12
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt15 *Measurement
 	if own != nil {
 		__lt15 = own
@@ -425,7 +433,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt15 = __lt14
 	}
-	return CellsOf(__lt15)
+	return SpaceOf(__lt15, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -439,20 +447,31 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt16
 }
 
-func LineCapFunc(height__r0 int, lines int) int {
-	var __lt18 int
-	if height__r0 == 0 {
-		__lt18 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt17 int
+	if px <= 0.0 {
+		__lt17 = 0
 	} else {
-		var __lt17 int
-		if lines == 0 {
-			__lt17 = height__r0
-		} else {
-			__lt17 = min(height__r0, lines)
-		}
-		__lt18 = __lt17
+		__lt17 = max(1, (int(px) / 16))
 	}
-	return __lt18
+	return __lt17
+}
+
+func LineCapFunc(height__r0 int, lines int) int {
+	var __lt19 int
+	if height__r0 == 0 {
+		__lt19 = lines
+	} else {
+		var __lt18 int
+		if lines == 0 {
+			__lt18 = height__r0
+		} else {
+			__lt18 = min(height__r0, lines)
+		}
+		__lt19 = __lt18
+	}
+	return __lt19
 }
 
 func (m *Model) __focusNext() {
@@ -564,6 +583,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -587,29 +612,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
-		content_0Look := BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
 		var content_0Children []string
 		var content_0_0 string
-		content_0_0Cols, content_0_0Rows := tui.PictureBox(content_0Look, 24, 12)
-		content_0_0 = tui.Picture("logo.svg", content_0_0Cols, content_0_0Rows)
+		content_0_0 = tui.Picture("logo.svg", 24, 12)
 		content_0Children = append(content_0Children, content_0_0)
 		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
-		content_0 = content_0Look.Render(content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
-		content_1Look := BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
 		var content_1Children []string
 		var content_1_0 string
-		content_1_0Cols, content_1_0Rows := tui.PictureBox(content_1Look, 24, 12)
-		content_1_0 = tui.Picture(m.url__inst0, content_1_0Cols, content_1_0Rows)
+		content_1_0 = tui.Picture(m.url__inst0, 24, 12)
 		content_1Children = append(content_1Children, content_1_0)
 		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
-		content_1 = content_1Look.Render(content_1)
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
 		var content_2Children []string
@@ -621,12 +653,13 @@ func (m Model) View() tea.View {
 		})
 		content_2Children = append(content_2Children, content_2_0)
 		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
-		content_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_2)
 		contentChildren = append(contentChildren, content_2)
 		var content_3 string
 		if m.failed__inst0 || !m.hasPhoto__inst0 {
-			content_3 = BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 20}), BorderStyle: "unset", Display: "inlineFlex", ListStyleType: "unset"}, true).Render(fmt.Sprint("JD"))
+			content_3Text := fmt.Sprint("JD")
+			content_3 = tui.Within(BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 20}), BorderStyle: "unset", Display: "inlineFlex", ListStyleType: "unset"}, true), tui.Avail(m.width), content_3Text).Render(content_3Text)
 		} else {
+			content_3Look := BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderRadius: snglSome(Measurement{Px: 20}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)
 			var content_3Children []string
 			var content_3_0 string
 			if m.hasPhoto__inst0 {
@@ -636,7 +669,7 @@ func (m Model) View() tea.View {
 				content_3Children = append(content_3Children, content_3_0)
 			}
 			content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
-			content_3 = BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderRadius: snglSome(Measurement{Px: 20}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_3)
+			content_3 = tui.Paint(content_3Look, content_3)
 		}
 		if content_3 != "" {
 			contentChildren = append(contentChildren, content_3)
@@ -660,13 +693,16 @@ func (m Model) View() tea.View {
 		if content_6Focused {
 			content_6Prefix = ">"
 		}
-		content_6 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_6Prefix + " " + fmt.Sprint("grow"))
+		content_6Text := content_6Prefix + " " + fmt.Sprint("grow")
+		content_6 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_6Focused), tui.Avail(m.width), content_6Text).Render(content_6Text)
+		content_6 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_6)
 		contentChildren = append(contentChildren, content_6)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -740,7 +776,7 @@ type Model struct {
 	__n13    *fynetext.Flow
 	__n14    *fynetext.Span
 	__n15    *fynetext.Span
-	__n16    *widget.Button
+	__n16    *fynelayout.Button
 	__n17    *fynelayout.ImageSource
 	__n17Ctx *snglcanvas.Context
 	__built  bool
@@ -1011,7 +1047,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n15.SetText("[logo]")
 	m.__n13.Add(m.__n15)
 	m.__n6.Add(m.__n13)
-	m.__n16 = widget.NewButton("", nil)
+	m.__n16 = fynelayout.NewButton("", nil)
 	m.__n16.SetText("grow")
 	m.__n16.OnTapped = m.__n16_click_handler
 	m.__n6.Add(m.__n16)
@@ -1037,8 +1073,6 @@ type __child0Instance struct {
 	__slot0_at     fyne.CanvasObject
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 	__n3           *fynelayout.Image
 	__n3__box      *fynelayout.Box
 }
@@ -1053,7 +1087,6 @@ func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___o
 	c.__slot0 = nil
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n3 = fynelayout.NewImage()
 	c.__n3__box = fynelayout.NewBox(c.__n3)
 	c.__n3.SetFit("cover")
@@ -1710,6 +1743,9 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 func (m *Model) __n1_closed_handler() {
 }
 
+func (m *Model) __n1_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.visible__inst0)
@@ -1796,10 +1832,6 @@ type __remote_state1Instance struct {
 	__effects1_torn     bool
 	__effects1_steps    int
 	__root              *C.GtkBox
-	__slot0             []*C.GtkWidget
-	__slot0_at          *C.GtkWidget
-	__slot1             []*C.GtkWidget
-	__slot1_at          *C.GtkWidget
 	__n0                *C.GtkPicture
 }
 
@@ -1816,11 +1848,9 @@ func new__remote_state1Instance(__model *Model, __a_url string) *__remote_state1
 	c.__effects1_pending = false
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
-	c.__slot0 = nil
-	c.__slot1 = nil
 	c.__n0 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.picture__inst4)
-	c.__effects1_settle()
+	__snglMountAfterBuild(c.__effects1_settle)
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
 	return c
@@ -1910,12 +1940,6 @@ func (c *__remote_state1Instance) Destroy() {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
-	}
-	if c.__slot1_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot1_at)))
-	}
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -1931,8 +1955,6 @@ type __child0Instance struct {
 	__inst0_live   []*__remote_state1Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []*C.GtkWidget
-	__slot1_at     *C.GtkWidget
 	__n5           *C.GtkBox
 }
 
@@ -1946,7 +1968,6 @@ func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___o
 	c.__inst0_live = []*__remote_state1Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n5 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
 	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(c.__n5)), "cover")
 	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(c.__n5)), gtk4rt.Look{Css: "border-radius: 20px; ", Width: 40.0, Height: 40.0})
@@ -2045,9 +2066,6 @@ func (c *__child0Instance) Destroy() {
 	if c.__slot0_at != nil {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
 	}
-	if c.__slot1_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot1_at)))
-	}
 }
 
 func (m *Model) Radius__inst0() float64 {
@@ -2114,15 +2132,44 @@ func (m *Model) SetFailed__inst0(v bool) {
 	m.failed__inst0 = v
 }
 
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// __snglMountAfterBuild runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func __snglMountAfterBuild(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	__snglBuilding++
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
 	gtk4rt.ToplevelSetTitle(gtk4rt.Handle(unsafe.Pointer(m.__n1)), "Images")
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.__n1_closed_handler)
+	gtk4rt.ToplevelOnKey(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.__n1_key_handler)
 	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.__n1_visible_handler)
 	m.__n8 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
 	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n8)), 1)
@@ -2171,6 +2218,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n8)), gtk4rt.Handle(unsafe.Pointer(m.__n14)))
 	m.__n17 = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
 	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n17)), "grow")
+	gtk4rt.SetBool(gtk4rt.Handle(unsafe.Pointer(m.__n17)), "can-focus", true)
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n17)), "clicked", m.__n17_clicked_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n8)), gtk4rt.Handle(unsafe.Pointer(m.__n17)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n8)))
@@ -2179,6 +2227,7 @@ func (m *Model) buildWidgetTree() {
 		m._canvasDraw2((*C.cairo_t)(unsafe.Pointer(cr)))
 	})
 	m.__effects0_settle()
+	__snglEndBuild()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n18)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 }
@@ -2906,6 +2955,9 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { radius__inst0: 4, url__inst0: "https://example.com/a.png", hasPhoto__inst0: false, visible__inst0: true, failed__inst0: false };
+  function error(message, kind) {
+    return { message, kind };
+  }
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -2933,7 +2985,6 @@ body { font-family: system-ui, sans-serif; }
     let __slot0 = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __renderSlot0(__slotAnchor_0);
@@ -3214,12 +3265,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9df615da339adbe5ea335403250cd36e
+pass sha256:de50de046fa35ea9a2c763a8fbea5b84
 -- run/go/fyne --
-pass sha256:2563620906e743238de6a9528035fb45
+pass sha256:46b0d9c399a635f8e566000346768e50
 -- run/go/gtk4 --
-pass sha256:82a4495ac6f0c097ad8f7baa6cdc47b4
+pass sha256:0d5645853c04ea32eeed6da054d0cb5f
 -- run/kotlin/android --
 pass sha256:9164c4affdd04c825ec35937d1b533d2
 -- run/none/html --
-pass sha256:491c8320eab3e882774d35c4c6925147
+pass sha256:fd9e756d36c2819f6f8fc6903b8f159c

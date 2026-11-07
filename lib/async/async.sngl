@@ -20,3 +20,50 @@ func start(f func())
 // gtk4 onto a GLib idle tick.
 #[marks.intrinsic("async.do")]
 func do(f func())
+
+// A span of time requests belong to. A request handed one stops when it ends,
+// and answers a `Failure` of kind `cancelled`: what to do with that is the
+// caller's, as with any other failure. `begin` makes one and `end` ends it,
+// and copies share it, so a lifetime kept in a var and ended from another
+// handler is the one each request was handed:
+//
+//	var search = async.forever
+//	ui.input(:value=text, @change(v) {
+//	    search.end()
+//	    search = async.begin()
+//	    var r = find(v, search)
+//	})
+//
+// A lifetime begun and never ended is held by the runtime until the program
+// exits, so whatever begins one ends it.
+struct Lifetime {
+    _id int = 0
+}
+
+// The lifetime that never ends: what a request is handed when nothing says
+// otherwise.
+const forever = Lifetime{}
+
+// A new lifetime, not yet ended.
+func begin() => Lifetime{_id=_begin()}
+
+// Ends the lifetime: each request handed it that is still waiting stops and
+// answers `cancelled`, and so does each one handed it from now on. Ending one
+// already ended, or `forever`, does nothing.
+func Lifetime.end(life Lifetime) {
+    _end(life._id)
+}
+
+// Whether the lifetime has ended.
+func Lifetime.ended(life Lifetime) => _ended(life._id)
+
+// What each target answers: the runtime holds a lifetime by a number, 0 for
+// `forever`, so a copy of the struct is the same lifetime.
+#[marks.intrinsic("async.begin", mutates)]
+func _begin() int
+
+#[marks.intrinsic("async.end", mutates)]
+func _end(id int)
+
+#[marks.intrinsic("async.ended", readonly)]
+func _ended(id int) bool

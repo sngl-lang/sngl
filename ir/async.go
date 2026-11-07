@@ -260,18 +260,21 @@ func ExprHasAsyncCall(e Expr) bool {
 //
 // A function literal called where it stands -- a func-typed prop's argument
 // substituted for the parameter its component calls -- waits where its own
-// function does.
+// function does, or where its body does: a literal the checker saw only as a
+// prop's argument carries no flag, and `fetch = func(k) => fetch()` in a
+// component given `fetch=func() => lookup(w)` was a Kotlin lambda calling a
+// suspend function from one that is not.
 func CallsAsyncValue(call *Call) bool {
 	if call.Func != nil || call.Callee == nil {
 		return false
 	}
 	switch x := call.Callee.(type) {
 	case *Lambda:
-		if x.Func != nil && x.Func.IsAsync {
+		if x.Func != nil && (x.Func.IsAsync || BlockHasAsyncCall(x.Func.Block)) {
 			return true
 		}
 	case *Closure:
-		if x.Func != nil && x.Func.IsAsync {
+		if x.Func != nil && (x.Func.IsAsync || BlockHasAsyncCall(x.Func.Block)) {
 			return true
 		}
 	}

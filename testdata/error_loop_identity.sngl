@@ -1,0 +1,38 @@
+// A struct's `key()` is what tells one copy of a loop over it from another,
+// so it answers a value that compares alike on every target and that a
+// target can keep as a string.
+
+import ui "sngl:ui"
+
+struct tagged {
+    tags list[string]
+
+    const func key() => tags
+}
+
+struct pair {
+    a int
+    b int
+}
+
+struct paired {
+    p pair
+
+    const func key() => p
+}
+
+component page ui.node {
+    var ts = [tagged{tags=["a"]}]
+    var ps = [paired{p=pair{a=1, b=2}}]
+
+    for var t = ts { // ERROR(check) "list[string] does not"
+        ui.text(value="{t.tags.length()}")
+    }
+    for var p = ps { // ERROR(check) "pair has no format method"
+        ui.text(value="{p.p.a}")
+    }
+}
+
+ui.window {
+    page
+}

@@ -214,8 +214,19 @@ func (cc *irComposeContext) renderFor(s *ir.For) {
 
 	cc.line("%s", cc.kc.ForHead(s, iterExpr))
 	cc.indent++
+	// A loop that tells its copies apart by identity keys each in the
+	// composition, whose state is otherwise its position's.
+	if s.Identity != nil {
+		cc.kc.RequireImport("androidx.compose.runtime.key")
+		cc.line("key(%s) {", cc.kc.EvalExpr(s.Identity))
+		cc.indent++
+	}
 	for _, child := range s.Body {
 		cc.renderStmt(child)
+	}
+	if s.Identity != nil {
+		cc.indent--
+		cc.line("}")
 	}
 	cc.indent--
 	cc.line("%s", cc.kc.BlockEnd())
@@ -580,7 +591,14 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 		switch {
 		case p.Name == "then":
 		case p.Name == "modifier":
-			args = append(args, "modifier = "+cc.intrinsicModifier(n))
+			// A modifier the declaration defaults is left to Compose where
+			// it is the empty chain, as a control rendered beside its label
+			// mostly is.
+			m := cc.intrinsicModifier(n)
+			if p.Default != nil && m == cc.kc.Name(ktModifier) {
+				continue
+			}
+			args = append(args, "modifier = "+m)
 		default:
 			v := codegen.NodeProp(n, p.Name)
 			// An argument that is the declaration's default -- Compose's own,

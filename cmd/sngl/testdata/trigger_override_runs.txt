@@ -1,0 +1,181 @@
+# A test raises an event through the target's override of it, on every
+# target: dial's own trigger presses its button, which counts one, and each
+# target's `func dial.change[platform](to)` sets the count it was handed and
+# emits the event, so a count of 3 is the override's. testdata/trigger_override.sngl
+# is the interpreter's half.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import bubbletea "sngl:platform/bubbletea"
+import android "sngl:platform/android"
+import gtk4 "sngl:platform/gtk4"
+import none "sngl:platform/none"
+import html "sngl:platform/html"
+import fyne "sngl:platform/fyne"
+import test "sngl:test"
+import ui "sngl:ui"
+
+component dial(:value int, @change(to int)) ui.node {
+    ui.button #up(text="{value}", @click {
+        value += 1
+        change(value)
+    })
+}
+
+component dial[html.platform](value, @change) {
+    ui.button #up(text="{value}", @click {
+        value += 1
+        change(value)
+    })
+}
+
+func dial.change[html.platform](to) {
+    value = to
+    change(to)
+}
+
+component dial[fyne.platform](value, @change) {
+    ui.button #up(text="{value}", @click {
+        value += 1
+        change(value)
+    })
+}
+
+func dial.change[fyne.platform](to) {
+    value = to
+    change(to)
+}
+
+component dial[bubbletea.platform](value, @change) {
+    ui.button #up(text="{value}", @click {
+        value += 1
+        change(value)
+    })
+}
+
+func dial.change[bubbletea.platform](to) {
+    value = to
+    change(to)
+}
+
+component dial[android.platform](value, @change) {
+    ui.button #up(text="{value}", @click {
+        value += 1
+        change(value)
+    })
+}
+
+func dial.change[android.platform](to) {
+    value = to
+    change(to)
+}
+
+component dial[gtk4.platform](value, @change) {
+    ui.button #up(text="{value}", @click {
+        value += 1
+        change(value)
+    })
+}
+
+func dial.change[gtk4.platform](to) {
+    value = to
+    change(to)
+}
+
+component dial[none.platform](value, @change) {
+    ui.button #up(text="{value}", @click {
+        value += 1
+        change(value)
+    })
+}
+
+func dial.change[none.platform](to) {
+    value = to
+    change(to)
+}
+
+component main ui.node {
+    var n = 0
+    var seen list[int] = []
+
+    dial #d(:value=n, @change(v) { seen.push(v) })
+    ui.text #shown(value="{n}")
+}
+
+func testATriggerRaisesTheEventThroughItsOverride(t test.Test, c main) {
+    c.d.change(3)
+    t.assert(c.n == 3)
+    t.assert(c.seen.length() == 1 && c.seen[0] == 3)
+    t.assert(c.shown.value == "3")
+}
+
+ui.window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:c76c9c7dbcc4ebfccc310dc0ca231f0c
+{
+  "results": [
+    {
+      "Desc": "ATriggerRaisesTheEventThroughItsOverride",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:63121eb1d9595bc9b443e13717ce97da
+{
+  "results": [
+    {
+      "Desc": "ATriggerRaisesTheEventThroughItsOverride",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:7a706d3bd06247dda14201abd1725958
+{
+  "results": [
+    {
+      "Desc": "ATriggerRaisesTheEventThroughItsOverride",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:1930ebe8a77a4cdd800838804e83e586
+{
+  "results": [
+    {
+      "Desc": "ATriggerRaisesTheEventThroughItsOverride",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:76534de0587d883a7c750ce2934367c5
+{
+  "results": [
+    {
+      "Desc": "ATriggerRaisesTheEventThroughItsOverride",
+      "Passed": true
+    }
+  ]
+}

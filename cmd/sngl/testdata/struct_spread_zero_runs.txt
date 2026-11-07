@@ -84,7 +84,7 @@ ui.window {
     ui.text(value="{over(held).w}")
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:81988ff0a83c187f2b93b220de85c9f2
+sha256:c274eac885c6e9d1be5f53905782b201
 {
   "results": [
     {
@@ -110,7 +110,7 @@ sha256:81988ff0a83c187f2b93b220de85c9f2
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:b733295237a908a9f465313e6eae99f9
+sha256:4d28f8e8e26a229e1047c99e1da3f853
 {
   "results": [
     {
@@ -136,7 +136,7 @@ sha256:b733295237a908a9f465313e6eae99f9
   ]
 }
 -- testrun/html/none/app.sngl/_/1 --
-sha256:fdd5816b34c2e41ed29ee9197c339318
+sha256:ecda8a4f15d4ef7c4059bf92413fbb67
 {
   "results": [
     {

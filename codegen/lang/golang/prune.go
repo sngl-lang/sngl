@@ -4,16 +4,19 @@ import (
 	"regexp"
 	"strings"
 
+	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
 )
 
 // PayloadPruneCandidates are the library structs the shake declared in pkg
 // because a handler or a test names one as an event's parameter, less those a
-// test file constructs. Whether the emitted Go reads one is the emitter's
-// answer: a handler that never reads its parameter leaves the type it names
-// read by nothing.
+// test file constructs or reads. Whether the emitted Go reads one is the
+// emitter's answer: a handler that never reads its parameter leaves the type
+// it names read by nothing. The test file is a file of its own, which the
+// prune does not read, so a struct only a test names -- `http.Response{…}`
+// built as a test's answer -- was dropped and the test did not compile.
 func PayloadPruneCandidates(pkg *ir.Package, testArgs map[string][]*ir.Type) []string {
-	keep := map[string]bool{}
+	keep := codegen.TestNamedStructs(pkg)
 	for _, ts := range testArgs {
 		for _, t := range ts {
 			if sd, ok := t.Decl.(*ir.StructDef); ok && sd != nil {

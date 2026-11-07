@@ -8,19 +8,24 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
+// Two placeholders and no text still give a translator their order.
 func TestI18nValidNoWarning(t *testing.T) {
-	src := `var name = "world"; var x = $"Hello {name}!"`
-	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	_, diags := checker.Check(doc, &checker.Config{IsMain: true})
-	for _, d := range diags {
-		if d.Severity == ir.Warning && contains(d.Msg, "no static text") {
-			t.Errorf("unexpected no-static-text warning: %s", d.Error())
+	for _, src := range []string{
+		`var name = "world"; var x = $"Hello {name}!"`,
+		`var n = 1; var stat = "Speed"; var x = $"{n} {stat}"`,
+	} {
+		doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
+		if err != nil {
+			t.Fatalf("parse: %v", err)
 		}
-		if d.Severity == ir.Error {
-			t.Errorf("unexpected error: %s", d.Error())
+		_, diags := checker.Check(doc, &checker.Config{IsMain: true})
+		for _, d := range diags {
+			if d.Severity == ir.Warning && contains(d.Msg, "no static text") {
+				t.Errorf("%s: unexpected no-static-text warning: %s", src, d.Error())
+			}
+			if d.Severity == ir.Error {
+				t.Errorf("%s: unexpected error: %s", src, d.Error())
+			}
 		}
 	}
 }

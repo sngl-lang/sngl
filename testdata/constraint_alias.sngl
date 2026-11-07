@@ -50,7 +50,7 @@ struct Index[T Keyed[int]] {
     item T
 }
 
-func Index[T].key() => this.item.key
+func Index[T].key(this Index[T]) => this.item.key
 
 func testAlias(t Test) {
     t.assert(show(Point{x=1, y=2}) == "<(1, 2)>")

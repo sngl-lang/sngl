@@ -61,11 +61,11 @@ func CopyValue(v any) any {
 }
 
 // bindArg is v as parameter p receives it: a copy, since a parameter is
-// passed by value, except a method's ambient `this`, which is the receiver's
-// own value. A program the interpreter prepares has that written back by the
+// passed by value, except the ambient `this` of a method written in its
+// type's body, which is the receiver's own value. A program the interpreter prepares has that written back by the
 // call (lower.RefParams); one it folds unlowered relies on the sharing.
 func bindArg(v any, p *ir.Param) any {
-	if p != nil && p.Receiver && p.Name == ir.ReceiverParam {
+	if p != nil && p.Receiver && p.Ambient {
 		return v
 	}
 	if p == nil {

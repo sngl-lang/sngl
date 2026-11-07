@@ -964,7 +964,7 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 					// left to mergeFuncOverride, which would resolve them in
 					// the program's scope: the name a target package overrides
 					// comes from its own imports.
-					if fd.Target != nil {
+					if fd.Target != nil && !c.collectTrigger(fd, aliases, pkgName) {
 						if base := c.libFuncOverrideBase(fd, aliases); base != nil {
 							c.mergeFuncOverride(fd, base, pkgName)
 						}
@@ -1054,6 +1054,7 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 	c.inTargetLoad(pkgName, func() {
 		c.checkExtensions(own)
 		c.checkFuncOverrides(ownFuncs)
+		c.reportUntakenTriggers(pkgName)
 	})
 }
 
@@ -1438,7 +1439,9 @@ func (c *checker) checkOverride(pe pendingExtension, libBodyScope *ir.Scope) {
 	funcDefs = c.reportOverrideFuncShadows(pe, known, funcDefs)
 	funcDefs = c.reportOverrideFuncUnreachableReceiver(pe, funcDefs)
 	c.overriddenBase, c.installedOverride = base, ov
-	overrideFuncs := c.registerNestedMethods(base.Name, ov.AST.TypeParams, funcDefs)
+	triggers := c.registerNestedMethods(base.Name, ov.AST.TypeParams, c.triggersOf(base, pe.kind, pe.platform))
+	typeTriggers(base, triggers)
+	overrideFuncs := append(c.registerNestedMethods(base.Name, ov.AST.TypeParams, funcDefs), triggers...)
 	ov.Funcs = append(slices.Clip(base.Funcs), overrideFuncs...)
 	c.popScope()
 	// checkComponentBody checks comp.Funcs in the component's own

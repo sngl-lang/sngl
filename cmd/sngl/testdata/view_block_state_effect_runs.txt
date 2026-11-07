@@ -56,7 +56,7 @@ func testANewCopyMountsAlone(t test.Test, c counter) {
     t.assert(c.total == 4)
 }
 -- testrun/bubbletea/go/app.sngl/counter/1 --
-sha256:a88f71ac52d11cd9f15aa8050af5a27b
+sha256:21ea3fd9ab222825d8f71aa6500f7b74
 {
   "results": [
     {
@@ -70,7 +70,7 @@ sha256:a88f71ac52d11cd9f15aa8050af5a27b
   ]
 }
 -- testrun/fyne/go/app.sngl/counter/1 --
-sha256:30e5e353742c054f9fa7fed7860d618c
+sha256:8a53282d4b17084220d1b8545780e3fb
 {
   "results": [
     {
@@ -84,7 +84,7 @@ sha256:30e5e353742c054f9fa7fed7860d618c
   ]
 }
 -- testrun/gtk4/go/app.sngl/counter/1 --
-sha256:76acebc418899ec3e38009e273738c55
+sha256:7414c6b002a9211db26d4dde7bdc8877
 {
   "results": [
     {
@@ -98,7 +98,7 @@ sha256:76acebc418899ec3e38009e273738c55
   ]
 }
 -- testrun/html/none/app.sngl/counter/1 --
-sha256:785c54971df7a5ba40dcb649639dbc27
+sha256:46b32b3f45eee9aaa29f729a15ab33b3
 {
   "results": [
     {

@@ -51,7 +51,13 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -66,7 +72,7 @@ type Model struct {
 
 	__n0    *fynelayout.Toplevel
 	__n4    *fyne.Container
-	bump    *widget.Button
+	bump    *fynelayout.Button
 	__built bool
 }
 
@@ -82,6 +88,26 @@ func New() *Model {
 	m.__rendering1 = false
 	m.__renderAgain1 = false
 	return m
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot1(__parent *fyne.Container) {
@@ -199,7 +225,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n4 = fynelayout.NewVBox()
-	m.bump = widget.NewButton("", nil)
+	m.bump = fynelayout.NewButton("", nil)
 	m.bump.SetText("bump")
 	m.bump.OnTapped = m.bump_click_handler
 	m.__n4.Add(m.bump)
@@ -220,8 +246,6 @@ type __child0Instance struct {
 	__slot0_at     fyne.CanvasObject
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 	__n2           *fyne.Container
 }
 
@@ -234,7 +258,6 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 int) *__chi
 	c.__slot0 = nil
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n2 = fynelayout.NewHBox()
 	c.__renderSlot0(c.__n2)
 	c.Root = c.__n2
@@ -268,9 +291,9 @@ func (c *__child0Instance) __renderSlot0(__parent *fyne.Container) {
 				}
 				c.__slot0 = nil
 				c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
-				for _, cell := range c.__prop___p0 {
+				for _, cell := range __identified0(c.__prop___p0) {
 					__n1 := widget.NewLabel("")
-					__n1.SetText(((cell + " ") + fmt.Sprint(c.__prop___p1)))
+					__n1.SetText(((cell.Elem + " ") + fmt.Sprint(c.__prop___p1)))
 					fynelayout.InsertBefore(__parent, c.__slot0_at, __n1)
 					c.__slot0 = append(c.__slot0, __n1)
 				}
@@ -311,7 +334,13 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
+	"strings"
 )
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -342,6 +371,26 @@ func New() *Model {
 	m.__rendering1 = false
 	m.__renderAgain1 = false
 	return m
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
@@ -405,6 +454,9 @@ func (m *Model) __snglTeardown() {
 func (m *Model) __n0_closed_handler() {
 }
 
+func (m *Model) __n0_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -428,8 +480,6 @@ type __child0Instance struct {
 	__slot0_at     gtk4rt.Handle
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
 	__n2           gtk4rt.Handle
 }
 
@@ -441,7 +491,6 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 int) *__chi
 	c.__slot0 = nil
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n2 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n2, 0)
 	gtk4rt.SetLook(c.__n2, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -478,9 +527,9 @@ func (c *__child0Instance) __renderSlot0(parent gtk4rt.Handle) {
 				}
 				c.__slot0 = nil
 				c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
-				for _, cell := range c.__prop___p0 {
+				for _, cell := range __identified0(c.__prop___p0) {
 					__n1 := gtk4rt.New("GtkLabel")
-					gtk4rt.LabelSetLabel(__n1, ((cell + " ") + fmt.Sprint(c.__prop___p1)))
+					gtk4rt.LabelSetLabel(__n1, ((cell.Elem + " ") + fmt.Sprint(c.__prop___p1)))
 					gtk4rt.LabelSetXAlign(__n1, 0.0)
 					gtk4rt.InsertBefore(parent, c.__slot0_at, __n1)
 					c.__slot0 = append(c.__slot0, __n1)
@@ -497,9 +546,6 @@ func (c *__child0Instance) Destroy() {
 	}
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -535,12 +581,14 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n0, m.__n0_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n4, 1)
 	gtk4rt.SetLook(m.__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.bump = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.bump, "bump")
+	gtk4rt.SetBool(m.bump, "can-focus", true)
 	gtk4rt.Connect(m.bump, "clicked", m.bump_clicked_handler)
 	gtk4rt.BoxAppend(m.__n4, m.bump)
 	m.__renderSlot1(m.__n4)
@@ -583,6 +631,24 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { tick__inst0: 0, rows__inst0: [["a", "b"], ["c", "d"]], visible__inst0: true };
+  function __identified0(__xs) {
+    let __seen = /* @__PURE__ */ new Map([]);
+    let __out = [];
+    for (const __x of __xs) {
+      ;
+      let __id = __x.replaceAll("#", "##");
+      let __n = __seen.has(__id) ? __seen.get(__id) : 0;
+      __seen.set(__id, __n + 1);
+      if (__n > 0) {
+        ;
+        __id = __id + "#" + String(__n);
+      }
+      ;
+      __out.push({ id: __id, elem: __x });
+    }
+    ;
+    return __out;
+  }
   function __snglTeardown() {
     for (const [__inst2_live_di, _] of __inst2_live.entries()) {
       ;
@@ -602,7 +668,6 @@ body { font-family: system-ui, sans-serif; }
     let __slot0 = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __renderSlot0(__slotAnchor_0);
@@ -623,9 +688,9 @@ body { font-family: system-ui, sans-serif; }
             let __place0_prev = __slot0;
             let __place0_i = 0;
             __slot0 = [];
-            for (const cell of __prop___p0) {
+            for (const cell of __identified0(__prop___p0)) {
               let __n1 = document.createElement("span");
-              __n1.textContent = cell + " " + String(__prop___p1);
+              __n1.textContent = cell.elem + " " + String(__prop___p1);
               let __place0_i_ref0 = null;
               if (__place0_i < __place0_prev.length) {
                 __place0_i_ref0 = __place0_prev[__place0_i];
@@ -745,8 +810,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:f72547735f4874faa52e10ec51f96072
+pass sha256:5245d0a56213d8d0c15e4d3448d53556
 -- run/go/gtk4 --
-pass sha256:1ba16e1466526d55b37e60ec356cc3de
+pass sha256:e6f99ce39c5aa080b3cfc7b74c35a4f4
 -- run/none/html --
-pass sha256:ba732a6b4c34f18e1a9acc75c933fae6
+pass sha256:9def130cfee7d53badffdfa0cb2c12d1

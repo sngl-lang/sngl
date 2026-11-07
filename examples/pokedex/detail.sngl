@@ -22,25 +22,13 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
     var shape option[poke.PokemonFormDetail] = null
     var loading = false
     var failure option[async.Failure] = null
-    var monFailure option[async.Failure] = null
     var evolution option[poke.EvolutionChainDetail] = null
-    var chainFailure option[async.Failure] = null
-    var shapeFailure option[async.Failure] = null
-    // What each of the three requests below asked for when it last failed, ""
-    // where it has not: a request is mounted unless what it would ask for is
-    // what failed, so asking for something else asks at once, a failure
-    // arriving late for what it asked before marks nothing, and the sign of a
-    // failure asks again by forgetting it.
-    var monFailedFor = ""
-    var chainFailedFor = ""
-    var shapeFailedFor = ""
     var tab = 0
     // Whether the Moves tab has been shown: its rows ask for a move each, and
     // their types, so they wait for it, where every other panel asks as the
     // page opens. Its panel is mounted all the same and keeps what it got.
     var movesShown = false
-    var method = "level-up"
-    var methodLabel = $"Level"
+    var method LearnMethod = levelUp
     var moveFacts map[string, MoveFact] = {}
 
     // The Pokémon the page shows: the form asked for, or the species' default.
@@ -81,7 +69,7 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
     // The moves the Pokémon learns the way PokéAPI names `method`, in the
     // latest game of the dex chosen on home that it learns any in.
     func moveRows() list[MoveRow] {
-        return mon != null ? movesOf(mon.moves, latestGroup(dexGroups(chosenDex), mon.moves), method, moveFacts, names) : []
+        return mon != null ? movesOf(mon.moves, latestGroup(dexGroups(chosenDex), mon.moves), method, moveFacts, names.answers) : []
     }
 
     // The moves the Moves tab shows, each once.
@@ -98,20 +86,10 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
 
     // The species' evolution chain, a row for each line through it.
     func chainRows() list[list[Stage]] {
-        return evolution != null ? evolutionRows(evolution.chain, names) : []
+        return evolution != null ? evolutionRows(evolution.chain, names.answers) : []
     }
 
-    poke.pokemonSpeciesRetrieve #aboutAsk(id=name, :value=about, :pending=loading, :failure=failure, @load(got) { names["species/{got.name}"] = speciesNamed(got.names) })
-
-    if about != null && shown() != monFailedFor {
-        poke.pokemonRetrieve(id=shown(), :value=mon, :failure=monFailure, @fail { monFailedFor = shown() })
-    }
-    if chainId() != "" && chainId() != chainFailedFor {
-        poke.evolutionChainRetrieve(id=chainId(), :value=evolution, :failure=chainFailure, @fail { chainFailedFor = chainId() })
-    }
-    if shapeName() != "" && shapeName() != shapeFailedFor {
-        poke.pokemonFormRetrieve(id=shapeName(), :value=shape, :failure=shapeFailure, @fail { shapeFailedFor = shapeName() })
-    }
+    poke.pokemonSpeciesRetrieve #aboutAsk(id=name, :value=about, :pending=loading, :failure=failure, @load(got) { names.answers["species/{got.name}"] = localNames(got.names) })
 
     ui.vbox(style={gap=8px, padding=8px, flex=1}) {
         ui.scroll(style={flex=1}) {
@@ -126,11 +104,16 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                     }
                 }
                 if about != null {
-                    if monFailedFor != "" && monFailedFor == shown() {
-                        ui.hbox(style={gap=8px, alignItems=center}) {
-                            ui.text(value=couldNotLoadMon(display(name), whyOf(monFailure)))
-                            loadError(why=requestFailed(whyOf(monFailure)), @retry { monFailedFor = "" })
-                        }
+                    // The Pokémon is asked for once the species has said which.
+                    asked(
+                        on = shown(),
+                        fetch = func(id string, life async.Lifetime) => poke.pokemonRetrieveCall(id=id, life=life),
+                        :value = mon,
+                        say = func(why string) => couldNotLoadMon(display(name), why),
+                    )
+                    // And the form it shows, for the title's name.
+                    if shapeName() != "" {
+                        asked(on=shapeName(), fetch=func(id string, life async.Lifetime) => poke.pokemonFormRetrieveCall(id=id, life=life), :value=shape)
                     }
                     ui.hbox(style={gap=16px, alignItems=center}) {
                         ui.image(alt=about.name, style={width=192px, height=192px}) {
@@ -139,9 +122,6 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                         ui.vbox(style={gap=4px}) {
                             ui.hbox(style={gap=8px, alignItems=center}) {
                                 ui.text #title(value=heading(), style={fontSize=28px, fontWeight=bold})
-                                if shapeFailedFor != "" && shapeFailedFor == shapeName() {
-                                    loadError(why=requestFailed(whyOf(shapeFailure)), @retry { shapeFailedFor = "" })
-                                }
                                 lookupsError()
                             }
                             ui.text #nationalNo(value=number(about.id))
@@ -150,7 +130,7 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                                 ui.hbox(style={gap=4px}) {
                                     for var t = mon.types {
                                         lookup(kind=`type`, slug=t.type.name)
-                                        typeBadge #types(kind=t.type.name, value=called(names, `type`, t.type.name))
+                                        typeBadge #types(kind=t.type.name, value=called(names.answers, `type`, t.type.name))
                                     }
                                 }
                             }
@@ -175,7 +155,7 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                                         ui.text #weight(value=mon.weight != null ? weightText(weightOf(mon.weight)) : $"Unknown")
                                     }
                                     fact(label=$"Abilities") {
-                                        ui.text #abilities(value=abilitiesOf(mon.abilities, names))
+                                        ui.text #abilities(value=abilitiesOf(mon.abilities, names.answers))
                                     }
                                 }
                                 if about.habitat != null {
@@ -185,10 +165,10 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                                     lookup(kind=`egg-group`, slug=g.name)
                                 }
                                 fact(label=$"Habitat") {
-                                    ui.text #habitat(value=about.habitat != null ? called(names, `habitat`, about.habitat.name) : $"Unknown")
+                                    ui.text #habitat(value=about.habitat != null ? called(names.answers, `habitat`, about.habitat.name) : $"Unknown")
                                 }
                                 fact(label=$"Egg groups") {
-                                    ui.text #eggGroups(value=namesOf(`egg-group`, about.eggGroups.map(func(g poke.EggGroupSummary) => g.name), names))
+                                    ui.text #eggGroups(value=namesOf(`egg-group`, about.eggGroups.map(func(g poke.EggGroupSummary) => g.name), names.answers))
                                 }
                                 fact(label=$"Gender") {
                                     ui.text #gender(value=about.genderRate != null ? genderOf(about.genderRate) : $"Unknown")
@@ -204,28 +184,30 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                                     for var s = mon.stats {
                                         lookup(kind=`stat`, slug=s.stat.name)
                                         ui.hbox(style={gap=8px, alignItems=center}) {
-                                            ui.text #statName(value=statLabel(s.stat.name, names), style={width=120px})
+                                            ui.text #statName(value=statLabel(s.stat.name, names.answers), style={width=120px})
                                             ui.text #base(value="{s.baseStat}", style={width=40px})
-                                            ui.progress(value=float(s.baseStat), max=float(maxStat), label=statLabel(s.stat.name, names), style={flex=1, color=statColor(s.baseStat)})
+                                            ui.progress(value=float(s.baseStat), max=float(maxStat), label=statLabel(s.stat.name, names.answers), style={flex=1, color=statColor(s.baseStat)})
                                         }
                                     }
                                     fact(label=$"Total") {
                                         ui.text #total(value="{statTotal(mon.stats)}")
                                     }
                                     fact(label=$"EVs given") {
-                                        ui.text #effort(value=effortOf(mon.stats, names))
+                                        ui.text #effort(value=effortOf(mon.stats, names.answers))
                                     }
                                 }
                             }
                         }
                         ui.tab(label=$"Evolution") {
                             ui.vbox(style={gap=12px, padding=8px}) {
-                                if chainFailedFor != "" && chainFailedFor == chainId() {
-                                    ui.hbox(style={gap=8px, alignItems=center}) {
-                                        ui.text(value=couldNotLoadChain(whyOf(chainFailure)))
-                                        loadError(why=requestFailed(whyOf(chainFailure)), @retry { chainFailedFor = "" })
-                                    }
-                                }
+                                // Asked for as the page opens, since every
+                                // tab's panel is mounted then.
+                                asked(
+                                    on = chainId(),
+                                    fetch = func(id string, life async.Lifetime) => poke.evolutionChainRetrieveCall(id=id, life=life),
+                                    :value = evolution,
+                                    say = couldNotLoadChain,
+                                )
                                 for var slug = chainSlugs(`item`) {
                                     lookup(kind=`item`, slug=slug)
                                 }
@@ -252,7 +234,7 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                                                                     ui.text #trigger(value=stage.trigger)
                                                                 }
                                                             }
-                                                            stageCard #step(stage=stage, label=called(names, `species`, stage.name), @open { open(stage.name, "") })
+                                                            stageCard #step(stage=stage, label=called(names.answers, `species`, stage.name), @open { open(stage.name, "") })
                                                         }
                                                         for var f = stage.forms {
                                                             ui.hbox(style={gap=8px, alignItems=center}) {
@@ -274,17 +256,13 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                         ui.tab(label=$"Sprites") {
                             ui.vbox(style={gap=8px, padding=8px}) {
                                 ui.scroll(direction=horizontal) {
-                                    ui.vbox(style={gap=8px}) {
-                                        for var row = rows(pictures(), 4) {
-                                            ui.hbox(style={gap=8px}) {
-                                                for var p = row {
-                                                    ui.vbox(style={gap=4px, alignItems=center, width=112px}) {
-                                                        ui.image(alt=p.label, style={width=96px, height=96px}) {
-                                                            ui.remote(url=p.url)
-                                                        }
-                                                        ui.text #spriteLabel(value=p.label)
-                                                    }
+                                    ui.grid(columns=4, style={gap=8px}) {
+                                        for var p = pictures() {
+                                            ui.vbox(style={gap=4px, alignItems=center, width=112px}) {
+                                                ui.image(alt=p.label, style={width=96px, height=96px}) {
+                                                    ui.remote(url=p.url)
                                                 }
+                                                ui.text #spriteLabel(value=p.label)
                                             }
                                         }
                                     }
@@ -305,33 +283,21 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                             ui.vbox(style={gap=8px, padding=8px}) {
                                 if movesShown {
                                     for var slug = moveSlugs() {
-                                        // A failure is written here, and a retry
-                                        // below, rather than through
-                                        // `lookupFailed` and `retry`: the checker
-                                        // takes a call in this branch to reach
-                                        // `about`, and the null test on it.
-                                        if !failedNow(`move`, slug) {
-                                            poke.moveRetrieve(
-                                                id = slug,
-                                                @load(got) {
-                                                    names["move/{got.name}"] = moveNamed(got.names)
-                                                    moveFacts[got.name] = moveFactOf(got)
-                                                },
-                                                @fail(f) { failures["move/{slug}"] = Failed{why=f.message, round=round} },
-                                            )
-                                        }
+                                        cached(
+                                            key = "move/{slug}",
+                                            fetch = func(life async.Lifetime) => poke.moveRetrieveCall(id=slug, life=life),
+                                            keep = func(got poke.MoveDetail) => localNames(got.names),
+                                            :cache = names,
+                                            @load(got) { moveFacts[got.name] = moveFactOf(got) },
+                                        )
                                     }
                                     for var slug = moveTypes() {
                                         lookup(kind=`type`, slug=slug)
                                     }
                                 }
-                                // The way is PokéAPI's name, and the select
-                                // shows its label in the reader's language,
-                                // written again as the language changes.
-                                effect(on=i18n.locale, @mount(l) { methodLabel = methodLabeled(method) })
-                                ui.select #methodPick(:value=methodLabel, @change(v) { method = methodNamed(v) }) {
-                                    for var m = learnMethods() {
-                                        ui.choice(label=m.label)
+                                ui.select #methodPick(:value=method) {
+                                    for var m = LearnMethod {
+                                        ui.choice(label=methodLabel(m), value=m)
                                     }
                                 }
                                 ui.scroll(direction=horizontal) {
@@ -344,8 +310,8 @@ component detailPage(name string, form = "", @open(name string, form string)) ui
                                             moveLine(level=r.level, name=r.name, power=r.power, accuracy=r.accuracy) {
                                                 if r.kind != "" {
                                                     typeBadge(kind=r.kindSlug, value=r.kind)
-                                                } else if failedNow(`move`, r.move) {
-                                                    loadError(why=requestFailed(whyFailed(`move`, r.move)), @retry { round += 1 })
+                                                } else if names.failedNow("move/{r.move}") {
+                                                    loadError(why=requestFailed(names.whyFailed("move/{r.move}")), @retry { names.retry() })
                                                 }
                                             }
                                         }

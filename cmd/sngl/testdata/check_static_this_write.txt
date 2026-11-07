@@ -1,0 +1,22 @@
+# An assignment's target is checked with narrowing off, and the hint for an
+# undefined `this` loads the libraries the program has not: their bodies
+# are checked with narrowing on, so the error is the program's own and not
+# sngl:settings' `s.scope != null ? s.scope : ""`.
+! sngl check main.sngl
+stderr 'main.sngl:8:5: undefined: this — box.set takes no box, so it is static'
+! stderr 'settings.sngl'
+
+-- main.sngl --
+import ui "sngl:ui"
+
+component box(:value string = "a") ui.node {
+    ui.text(value)
+}
+
+func box.set(v string) {
+    this.value = v
+}
+
+component main ui.node {
+    box()
+}

@@ -52,6 +52,10 @@ type widgetInfo struct {
 	// (loopwidget.go); its binds then name no target, and every path written
 	// for one model skips it.
 	loop *loopWidget
+	// sleeper numbers a widget that ticks itself -- its init is a method of
+	// its own, a spinner's Tick -- among the model's others, and is -1 for
+	// one that does not (sleep.go).
+	sleeper int
 }
 
 // widgetBind pairs a two-way bound model field with the user var it syncs to.
@@ -241,12 +245,27 @@ func emitSnapshotMethods(info *irAnalysis) (string, []string) {
 
 type irAnalysis struct {
 	*codegen.CommonAnalysis
+	// tests is whether the package holds a test, whose invokers are its own:
+	// a build to ship holds none, and writes none of them.
+	tests     bool
 	binds     []irBind
 	externs   []irExtern
 	computeds []irComputed
 	widgets   []widgetInfo
 	overlays  []overlayInfo
 	hasFocus  bool // true when __focusOrder pass injected __focusID/__focusNext/__focusPrev
+	// floats is true where a widget's templates hand it the Model's
+	// tui.Floats, which an open select draws its popover through.
+	floats bool
+	// scrolls is each scroll a view draws, and reaches whether one has an
+	// `@reachEnd` Update runs (scroll.go).
+	scrolls map[*ir.NodeInst]*scrollInfo
+	reaches bool
+	// sleepers counts the widgets that tick themselves (sleep.go).
+	sleepers int
+	// keyType is the Go type of the KeyPress the window's `@key` hears, ""
+	// where nothing reads one (windowKeyType).
+	keyType string
 	// settles is true where passFocusOrder declared __focusSettle: some stop
 	// may draw nothing, and focus is moved off one once Update has run.
 	settles bool
@@ -308,6 +327,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
 		gc:             gc,
+		tests:          codegen.BuildsTests(ctx.Pkg),
 	}
 	pkg := ctx.Pkg
 	screen, err := codegen.SoleScreen(viewStmts(ctx), "bubbletea:Screen", "bubbletea", screenPos)
@@ -437,6 +457,11 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			placeholder: placeholder,
 			focusExpr:   nodeStaticFocusExpr(n, gc),
 			node:        n,
+			sleeper:     -1,
+		}
+		if strings.Contains(bp.Model.Init, "${self}") {
+			wi.sleeper = info.sleepers
+			info.sleepers++
 		}
 		if loops := loopsOf[n]; len(loops) > 0 && len(bp.Binds) > 0 {
 			if lw := newLoopWidget(n, loops, bp.Binds[0].Prop); lw != nil {
@@ -459,6 +484,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			break
 		}
 	}
+	info.floats = slices.ContainsFunc(info.widgets, usesFloats)
+	collectScrolls(view, ctx.Pkg, info)
 	info.settles = info.hasFocus && slices.ContainsFunc(ctx.AllFuncs(), func(f *ir.Func) bool { return f.Name == "__focusSettle" })
 
 	if info.NeedsToast {
@@ -521,6 +548,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 
 	emitTimerTypes(&b, info.timers)
 
+	if info.hasFocus {
+		emitClickDecls(&b)
+	}
+
 	if info.NeedsToast {
 		b.WriteString("type snglToast struct {\n\tmessage string\n\tvariant string\n}\n\n")
 		b.WriteString("type toastDismissMsg struct{}\n\n")
@@ -557,16 +588,46 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	if info.NeedsToast {
 		b.WriteString("\ttoasts []snglToast\n")
 	}
+	if info.hasFocus {
+		gc.RequireImport(tuiImportPath)
+		emitClickFields(&b, info)
+	}
+	if info.floats {
+		fmt.Fprintf(&b, "\t%s *tui.Floats\n", floatsField)
+	}
+	emitScrollFields(&b, info)
+	emitSleepFields(&b, info)
+	if screenKeyHandler(info) != nil {
+		fmt.Fprintf(&b, "\t%s bool\n", unheardField)
+	}
 	b.WriteString("\twidth, height int\n")
 	b.WriteString("}\n\n")
 
 	// Binds are initialized sequentially so a later init can read an earlier
 	// field as `m.<name>`; a struct-literal init leaves `m` undefined.
 	b.WriteString("// New creates a Model with default bind values.\n")
-	b.WriteString("func New() Model {\n")
-	b.WriteString("\tm := Model{&modelState{}}\n")
+	if info.tests {
+		// A test mounts its Model where it first needs it, and what it set
+		// up ahead of that keeps the value it set (mountTestComponent).
+		b.WriteString("func New() Model {\n\treturn Model{&modelState{}}.__mount(nil)\n}\n\n")
+		b.WriteString("func (m Model) __mount(preset map[string]bool) Model {\n")
+	} else {
+		b.WriteString("func New() Model {\n")
+		b.WriteString("\tm := Model{&modelState{}}\n")
+	}
+	if info.wakes() {
+		fmt.Fprintf(&b, "\tm.%s = make(chan struct{}, 1)\n", wakeField)
+	}
 	emitTimerInits(&b, info.timers)
+	if info.floats {
+		fmt.Fprintf(&b, "\tm.%s = tui.NewFloats()\n", floatsField)
+	}
+	emitScrollInit(&b, info)
 	for _, bind := range info.binds {
+		if info.tests {
+			fmt.Fprintf(&b, "\tif !preset[%q] {\n\t\tm.%s = %s\n\t}\n", bind.name, bind.name, bind.init)
+			continue
+		}
 		fmt.Fprintf(&b, "\tm.%s = %s\n", bind.name, bind.init)
 	}
 	firstFocusable := true
@@ -742,6 +803,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		emitPostDecls(&b)
 		widgetInits = append(widgetInits, awaitPost)
 	}
+	if info.wakes() {
+		emitSleepDecls(&b)
+		widgetInits = append(widgetInits, awaitWake)
+	}
 
 	b.WriteString("func (m Model) Init() tea.Cmd {\n")
 	if len(info.timers) > 0 {
@@ -775,7 +840,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	emitIRUpdate(&b, info, ctx, gc, cfg, func(inv btEventInvoker) {
 		eventInvokers = append(eventInvokers, inv)
 	})
-	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerArgs(ctx.Pkg), usesPosts(ctx.Pkg))
+	// A test's own, so a package with no test to call them, as a build to
+	// ship has none, emits none: the Pokédex shipped twenty-six of them,
+	// some two hundred lines each.
+	if info.tests {
+		emitBtEventInvokers(&b, eventInvokers, codegen.TriggerArgs(ctx.Pkg), usesPosts(ctx.Pkg), info.settles)
+	}
 	emitBtDirectInvokers(&b, viewStmts(ctx), eventInvokers, info, gc, codegen.TriggeredEvents(ctx.Pkg))
 	presentIDs, keyedPresent := codegen.NullTestedRefs(ctx.Pkg)
 	emitPresenceChecks(&b, ctx.Pkg, viewStmts(ctx), presentIDs, gc)
@@ -786,7 +856,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	emitIRView(&b, info, ctx, gc, cfg)
 
 	for _, cc := range ctx.NonRootComponents() {
-		emitIRComponentMethod(&b, cc, ctx, gc, cfg)
+		emitIRComponentMethod(&b, cc, ctx, gc, cfg, info.settles, info)
 	}
 
 	if cfg.Main {
@@ -995,6 +1065,8 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("\tvar cmds []tea.Cmd\n")
 	b.WriteString("\tvar cmd tea.Cmd\n")
 	b.WriteString("\t_ = cmd\n")
+	info.keyType = windowKeyType(info, ctx.Pkg)
+	emitScreenKeyFirst(b, info)
 
 	// Overlay focus capture: while any modal/drawer overlay is open, the
 	// background UI is frozen — its Tab focus-nav, key-activation handlers, and
@@ -1017,6 +1089,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		b.WriteString("\t_ = overlayOpen\n")
 	}
 
+	emitFloatsGuard(b, info)
 	b.WriteString("\tswitch msg := msg.(type) {\n")
 
 	// Set messages — consts have no setter, skip them. Synthesized
@@ -1030,13 +1103,16 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		fmt.Fprintf(b, "\t\tm = m.Set%s(msg.value)\n", getter)
 	}
 
-	// A closure posted back to the loop, and the wait for the next.
+	// A closure posted back to the loop, the ones posted behind it, and the
+	// wait for the next: each message is a draw, and a thousand answers
+	// arriving together were a thousand draws.
 	if usesPosts(ctx.Pkg) {
-		fmt.Fprintf(b, "\tcase %s:\n\t\tmsg()\n\t\tcmds = append(cmds, %s)\n", postMsgType, awaitPost)
+		fmt.Fprintf(b, "\tcase %s:\n\t\tmsg()\n\t\t%s()\n\t\tcmds = append(cmds, %s)\n", postMsgType, drainPosts, awaitPost)
 	}
 
 	// Timer ticks
 	emitTimerCases(b, info.timers, gc)
+	emitWakeCase(b, info, gc)
 
 	// Toast dismiss
 	if info.NeedsToast {
@@ -1056,6 +1132,11 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	if widgetsHaveResize(info.widgets) {
 		b.WriteString("\t\tm.resizeWidgets()\n")
 	}
+
+	if info.hasFocus {
+		emitClickCase(b, info)
+	}
+	emitScrollWheel(b, info)
 
 	// KeyPressMsg
 	b.WriteString("\tcase tea.KeyPressMsg:\n")
@@ -1099,9 +1180,11 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	if info.hasFocus {
 		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyTab && msg.Mod == 0%s:\n", caseGuard)
 		b.WriteString("\t\t\tm.__focusNext()\n")
+		emitScrollFollow(b, info, "\t\t\t")
 		emitIRFocusSync(b, info.widgets)
 		fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyTab && msg.Mod == tea.ModShift%s:\n", caseGuard)
 		b.WriteString("\t\t\tm.__focusPrev()\n")
+		emitScrollFollow(b, info, "\t\t\t")
 		emitIRFocusSync(b, info.widgets)
 	}
 
@@ -1113,6 +1196,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		info.owners = triggerOwners(viewStmts(ctx), codegen.TriggeredEvents(ctx.Pkg))
 	}
 	emitIRButtonHandlers(b, viewStmts(ctx), info, gc, caseGuard, invokerSink)
+	emitScrollKeys(b, info)
 
 	b.WriteString("\t\t}\n") // end switch
 	b.WriteString("\t}\n")   // end type switch
@@ -1151,7 +1235,11 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 			fmt.Fprintf(b, "%s\t__prev := %s\n", fwdIndent, bindReadBack(w.fieldName, get))
 		}
 		fmt.Fprintf(b, "%s\tm.%s, cmd = m.%s%s\n", fwdIndent, w.fieldName, w.fieldName, w.model.Update)
-		fmt.Fprintf(b, "%s\tcmds = append(cmds, cmd)\n", fwdIndent)
+		if w.sleeper >= 0 {
+			emitSleeperCmd(b, w, fwdIndent+"\t")
+		} else {
+			fmt.Fprintf(b, "%s\tcmds = append(cmds, cmd)\n", fwdIndent)
+		}
 		for _, bd := range w.binds {
 			if bindTargetSyncs(info.binds, bd.target) {
 				b.WriteString(writeBack(w, bd, info.binds, fwdIndent+"\t"))
@@ -1203,6 +1291,12 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	}
 	b.WriteString("\treturn m, tea.Batch(cmds...)\n")
 	b.WriteString("}\n\n")
+	if info.hasFocus {
+		emitPress(b, info)
+	}
+	emitIsFocused(b, info)
+	emitScreenKeyMethod(b, info, gc)
+	emitDrawnMethods(b, info)
 }
 
 // emitIRButtonHandlers emits the KeyEnter/etc activation cases for the window
@@ -1229,6 +1323,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, temps map[*ir
 	if inOverlay {
 		overlayGuard = ""
 	}
+	overlayGuard += pressGuard(info)
 	emitNodeCase := func(n *ir.NodeInst, keyGuard string, block []ir.Stmt) {
 		slotIdx := nodeFocusSlotIdx(n)
 		if slotIdx < 0 {
@@ -1396,7 +1491,10 @@ func teaKeyMsg(key string) string {
 // returns run as a waiting test runs the Model's (keepCmd): a click that
 // added a copy armed that copy's tick, and dropping the command left the
 // schedule marked live with nothing to tick it.
-func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map[string][]*ir.Type, posts bool) {
+//
+// A widget Tab passes over takes its key from an invoker as from a click,
+// which says so in pressing, where the model has stops that may not be shown.
+func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map[string][]*ir.Type, posts, pressing bool) {
 	seen := map[string]bool{}
 	for _, inv := range invokers {
 		name := inv.IDLabel + golang.ExportName(inv.SnglEvent)
@@ -1409,19 +1507,30 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map
 			params = append(params, "_ "+golang.IRTypeToGo(t))
 		}
 		if inv.Cursor != "" {
-			emitBtLoopInvokers(b, inv, name, params, posts)
+			emitBtLoopInvokers(b, inv, name, params, posts, pressing)
 			continue
 		}
 		fmt.Fprintf(b, "// %s activates the #%s widget the way a keypress does; for tests.\n", name, inv.IDLabel)
 		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(params, ", "))
 		fmt.Fprintf(b, "\tprev := m.__focusID\n")
 		fmt.Fprintf(b, "\tm.__focusID = %d\n", inv.SlotIdx)
-		fmt.Fprintf(b, "\tnm, cmd := m.Update(%s)\n", inv.KeyExpr)
-		fmt.Fprintf(b, "\t*m = nm.(Model)\n")
+		invokerUpdate(b, inv.KeyExpr, pressing)
 		fmt.Fprintf(b, "\tm.__focusID = prev\n")
 		drawAfterUpdate(b)
 		keepCmd(b, posts)
 		b.WriteString("}\n\n")
+	}
+}
+
+// invokerUpdate sends an invoker's key through Update.
+func invokerUpdate(b *strings.Builder, key string, pressing bool) {
+	if pressing {
+		fmt.Fprintf(b, "\tm.%s = true\n", pressingField)
+	}
+	fmt.Fprintf(b, "\tnm, cmd := m.Update(%s)\n", key)
+	b.WriteString("\t*m = nm.(Model)\n")
+	if pressing {
+		fmt.Fprintf(b, "\tm.%s = false\n", pressingField)
 	}
 }
 
@@ -1451,6 +1560,29 @@ func emitBtDirectInvokers(b *strings.Builder, stmts []ir.Stmt, keyed []btEventIn
 			b.WriteString("\t*m = nm.(Model)\n")
 			drawAfterUpdate(b)
 			b.WriteString("}\n\n")
+		}
+		// A key is pressed, as the terminal would press it: the window's
+		// handler hears the test's own KeyPress, and the key goes on through
+		// Update unless it stopped it, which the test's stop is told of.
+		if ok && programID(n) && btIntrinsic(n) == "Screen" && triggered[n.ID+".key"] && !done[n.ID+".key"] && info.keyType != "" {
+			done[n.ID+".key"] = true
+			name := n.ID + "Key"
+			gc.RequireImport(tuiImportPath)
+			fmt.Fprintf(b, "// %s presses the key e names in the #%s window; for tests.\n", name, n.ID)
+			fmt.Fprintf(b, "func (m *Model) %s(e %s, stop func()) {\n", name, info.keyType)
+			if screenKeyHandler(info) != nil {
+				fmt.Fprintf(b, "\tif m.%s(e) {\n\t\tstop()\n\t\treturn\n\t}\n", screenKeyMethod)
+				fmt.Fprintf(b, "\tm.%s = true\n", unheardField)
+			}
+			b.WriteString("\tnm, _ := m.Update(tui.KeyPress(e.Key, e.Ctrl, e.Alt, e.Shift, e.Meta))\n")
+			if screenKeyHandler(info) != nil {
+				fmt.Fprintf(b, "\tm.%s = false\n", unheardField)
+			}
+			b.WriteString("\t*m = nm.(Model)\n")
+			drawAfterUpdate(b)
+			b.WriteString("}\n\n")
+		}
+		if ok && programID(n) && btIntrinsic(n) == "Screen" {
 			return true
 		}
 		// A layout takes no input, so nothing else answers its events; a
@@ -1487,7 +1619,7 @@ func emitBtDirectInvokers(b *strings.Builder, stmts []ir.Stmt, keyed []btEventIn
 // put under a loop, a tab's panel -- and the `At` one, for a node a test
 // indexes, the copy with a key. What a test passes is taken and not read, as
 // every invoker here takes it: the key press is the input.
-func emitBtLoopInvokers(b *strings.Builder, inv btEventInvoker, name string, params []string, posts bool) {
+func emitBtLoopInvokers(b *strings.Builder, inv btEventInvoker, name string, params []string, posts, pressing bool) {
 	drive := func(method string, lead []string, find string) {
 		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", method, strings.Join(append(lead, params...), ", "))
 		fmt.Fprintf(b, "\tcopies := %s\n\tpos := -1\n", inv.Copies)
@@ -1495,8 +1627,7 @@ func emitBtLoopInvokers(b *strings.Builder, inv btEventInvoker, name string, par
 		b.WriteString("\tif pos < 0 {\n\t\treturn\n\t}\n")
 		fmt.Fprintf(b, "\tprev, prevAt := m.__focusID, m.%s\n", inv.Cursor)
 		fmt.Fprintf(b, "\tm.__focusID, m.%s = %d, pos\n", inv.Cursor, inv.SlotIdx)
-		fmt.Fprintf(b, "\tnm, cmd := m.Update(%s)\n", inv.KeyExpr)
-		b.WriteString("\t*m = nm.(Model)\n")
+		invokerUpdate(b, inv.KeyExpr, pressing)
 		fmt.Fprintf(b, "\tm.__focusID, m.%s = prev, prevAt\n", inv.Cursor)
 		drawAfterUpdate(b)
 		keepCmd(b, posts)
@@ -1623,7 +1754,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			{"input", get != "" && !hasInput && val.goType == "string" && !choosesOnMove(w)},
 			{"change", get != "" && !hasChange && commits(w)},
 		} {
-			if !ev.want || !named {
+			if !ev.want || !named || !info.tests {
 				continue
 			}
 			fmt.Fprintf(b, "// %s%s puts v in the #%s widget; for tests.\n", w.node.ID, golang.ExportName(ev.name), w.node.ID)
@@ -1659,7 +1790,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
 			drawAfterUpdate(b)
 			b.WriteString("}\n\n")
-			if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") {
+			if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") || !info.tests {
 				continue
 			}
 			fmt.Fprintf(b, "// %s%s types v into the #%s widget and runs its @%s; for tests.\n", w.node.ID, golang.ExportName(ev.name), w.node.ID, ev.name)
@@ -1720,14 +1851,15 @@ func emitIRFocusSync(b *strings.Builder, widgets []widgetInfo) {
 // modelHasFocusMethods reports whether a bubbles model type exposes
 // Focus()/Blur() methods. textinput and textarea track an internal focus flag
 // (and only blink/accept keys while focused); the SNGL focus machinery drives
-// that via explicit Focus()/Blur() calls. list-backed widgets (menu/tree/
-// select) have no such methods — they always accept navigation messages and
+// that via explicit Focus()/Blur() calls, and a tui.Select draws its button so
+// and closes its popover on Blur. list-backed widgets (menu/tree) have no
+// such methods — they always accept navigation messages and
 // are gated purely by the focus-conditioned Update forwarding — so emitting
 // Focus()/Blur() against them would not compile. Widgets absent from this set
 // still participate in focus routing; they just skip the method calls.
 func modelHasFocusMethods(modelType string) bool {
 	switch modelType {
-	case "textinput.Model", "textarea.Model":
+	case "textinput.Model", "textarea.Model", "tui.Select":
 		return true
 	default:
 		return false
@@ -1887,6 +2019,138 @@ func emitScreenBack(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext
 		}
 	}
 	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+}
+
+// screenKeyMethod is the Model method running the window's `@key`.
+const screenKeyMethod = "__windowKey"
+
+// screenKeyHandler is the window's `@key`, nil where it handles none.
+func screenKeyHandler(info *irAnalysis) *ir.EventHandler {
+	if info.screen == nil {
+		return nil
+	}
+	h := codegen.NodeHandler(info.screen.Node, "key")
+	if h == nil || h.Func == nil || len(h.Func.Block) == 0 {
+		return nil
+	}
+	return h
+}
+
+// unheardField says the key Update is sent is no key the window hears: a
+// click's pressing a stop, which pressed none, or a test's the window's
+// handler already heard (emitBtDirectInvokers).
+const unheardField = "__unheard"
+
+// windowKeyType is the Go type of the KeyPress the window's `@key` hears:
+// its handler's parameter's, else the one a test hands the trigger, else ""
+// where neither names it and so nothing reads one.
+func windowKeyType(info *irAnalysis, pkg *ir.Package) string {
+	h := screenKeyHandler(info)
+	if h == nil {
+		return ""
+	}
+	if ps := h.Func.Params; len(ps) > 0 {
+		return golang.IRTypeToGo(ps[0].Type)
+	}
+	for k, ts := range codegen.TriggerArgs(pkg) {
+		if strings.HasSuffix(k, ".key") && len(ts) > 0 {
+			return golang.IRTypeToGo(ts[0])
+		}
+	}
+	return ""
+}
+
+// emitScreenKeyFirst writes what Update does with a key before anything else
+// sees it: the window's `@key` hears it, and a handler that called stop leaves
+// msg nil, so no case of the switch and no widget it is forwarded to takes it.
+// ctrl+c, the close, is no key the window hears (tui.KeyName).
+func emitScreenKeyFirst(b *strings.Builder, info *irAnalysis) {
+	if screenKeyHandler(info) == nil {
+		return
+	}
+	var typing []string
+	for _, w := range info.widgets {
+		if !typingStop(w.node) {
+			continue
+		}
+		if w.loop != nil {
+			if lf, ok := nodeLoopFocus(w.node); ok {
+				typing = append(typing, fmt.Sprintf("m.__focusID == %d", lf.slot))
+			}
+		} else if w.focusExpr != "" {
+			typing = append(typing, w.focusExpr)
+		}
+	}
+	editing := "false"
+	if len(typing) > 0 {
+		editing = strings.Join(typing, " || ")
+	}
+	arg := ""
+	if info.keyType != "" {
+		arg = fmt.Sprintf("%s{\n", info.keyType) +
+			"\t\t\tKey:     __k,\n" +
+			"\t\t\tCtrl:    __kp.Mod&tea.ModCtrl != 0,\n" +
+			"\t\t\tAlt:     __kp.Mod&tea.ModAlt != 0,\n" +
+			"\t\t\tShift:   __kp.Mod&tea.ModShift != 0,\n" +
+			"\t\t\tMeta:    __kp.Mod&(tea.ModMeta|tea.ModSuper) != 0,\n" +
+			"\t\t\tEditing: " + editing + ",\n" +
+			"\t\t}"
+	}
+	info.gc.RequireImport(tuiImportPath)
+	fmt.Fprintf(b, "\tif __kp, ok := msg.(tea.KeyPressMsg); ok && !m.%s {\n", unheardField)
+	fmt.Fprintf(b, "\t\tif __k := tui.KeyName(__kp); __k != \"\" && m.%s(%s) {\n", screenKeyMethod, arg)
+	b.WriteString("\t\t\tmsg = nil\n")
+	b.WriteString("\t\t}\n")
+	b.WriteString("\t}\n")
+}
+
+// typingStop says the focus stop n takes what is typed (`Focus.typing`).
+func typingStop(n *ir.NodeInst) bool {
+	sl, ok := codegen.NodeProp(n, "focus").(*ir.StructLit)
+	if !ok {
+		return false
+	}
+	b, _ := codegen.IRLiteralBool(structField(sl, "typing"))
+	return b
+}
+
+// emitScreenKeyMethod writes the method running the window's `@key`, which
+// reports whether the handler stopped the key.
+func emitScreenKeyMethod(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext) {
+	h := screenKeyHandler(info)
+	if h == nil {
+		return
+	}
+	hgc := gc
+	ps := h.Func.Params
+	param := ""
+	if info.keyType != "" {
+		name := "_"
+		if len(ps) > 0 {
+			name = ps[0].Name
+			hgc = hgc.WithLocal(name)
+		}
+		param = name + " " + info.keyType
+	}
+	fmt.Fprintf(b, "// %s runs the window's @key, before anything in it hears the key.\n", screenKeyMethod)
+	fmt.Fprintf(b, "func (m *Model) %s(%s) bool {\n", screenKeyMethod, param)
+	b.WriteString("\t__stopped := false\n")
+	if len(ps) > 1 {
+		hgc = hgc.WithLocal(ps[1].Name)
+		fmt.Fprintf(b, "\t%s := func() { __stopped = true }\n", ps[1].Name)
+	}
+	// The body is a closure's, so a return in it ends the handler and not
+	// the method, which answers whether it stopped the key.
+	b.WriteString("\tfunc() {\n")
+	for _, stmt := range h.Func.Block {
+		for _, line := range hgc.EvalStmt(stmt) {
+			fmt.Fprintf(b, "\t\t%s\n", line)
+		}
+	}
+	b.WriteString("\t}()\n")
+	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+	b.WriteString("\treturn __stopped\n")
+	b.WriteString("}\n\n")
 }
 
 func emitScreenClosedHandler(b *strings.Builder, n *ir.NodeInst, info *irAnalysis, gc *golang.GoIRContext, indent string) {

@@ -2,6 +2,7 @@ package golang
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -449,3 +450,96 @@ func ZeroValueGo(hint string) string {
 // fyne or gtk4 emitted a panic naming a type nothing declared, and the program
 // did not build. Emit it when Package.UsesErrorHandling.
 const ErrorEventDecl = "type ErrorEvent struct {\n\tMessage string\n\tKind    string\n}\n\n"
+
+// MountAfterBuildFunc is what a Go target's instance built at run time hands
+// its first settle to (DefersInstanceMounts): run at once, or, while the page
+// is being built, once it is. Built inside the page's first build, a mount
+// answering at once patched a node of the page the build had not made yet --
+// a label after the loop holding the instance, which fyne dereferenced nil
+// and gtk4 handed GTK as a null widget.
+const MountAfterBuildFunc = "__snglMountAfterBuild"
+
+// DefersInstanceMounts reports whether some component built at run time
+// settles when it is built, and so whether the page's build must hold its
+// mounts until it ends.
+func DefersInstanceMounts(pkg *ir.Package) bool {
+	if pkg == nil {
+		return false
+	}
+	for _, c := range pkg.Components {
+		if c == nil || !c.RuntimeInstance {
+			continue
+		}
+		for _, s := range c.Stmts {
+			if IsFirstSettle(pkg, s) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// IsFirstSettle reports whether s is the call of a scope's settle the effect
+// lowering appends to its body (ir.Package.Mounts).
+func IsFirstSettle(pkg *ir.Package, s ir.Stmt) bool {
+	cs, ok := s.(*ir.CallStmt)
+	return ok && cs.Call != nil && cs.Call.Func != nil && len(cs.Call.Args) == 0 && slices.Contains(pkg.Mounts, cs.Call.Func)
+}
+
+// DeferredMountLine spells line, a call `c.__effects0_settle()`, as the
+// settle handed to MountAfterBuildFunc.
+func DeferredMountLine(line string) string {
+	if f, ok := strings.CutSuffix(line, "()"); ok {
+		return MountAfterBuildFunc + "(" + f + ")"
+	}
+	return line
+}
+
+// EmitMountAfterBuild declares MountAfterBuildFunc, and the build depth and
+// queue it reads.
+func EmitMountAfterBuild(b *strings.Builder) {
+	b.WriteString(`
+// __snglBuilding is how deep the page's builds are, and __snglAfterBuild the
+// mounts an instance built meanwhile handed over.
+var __snglBuilding int
+var __snglAfterBuild []func()
+
+// ` + MountAfterBuildFunc + ` runs an instance's first settle, or holds it until
+// the page's build has made every node a mount may patch.
+func ` + MountAfterBuildFunc + `(f func()) {
+	if __snglBuilding > 0 {
+		__snglAfterBuild = append(__snglAfterBuild, f)
+		return
+	}
+	f()
+}
+
+// __snglEndBuild ends a build, running what it held once the outermost ends.
+func __snglEndBuild() {
+	__snglBuilding--
+	if __snglBuilding > 0 {
+		return
+	}
+	for len(__snglAfterBuild) > 0 {
+		f := __snglAfterBuild[0]
+		__snglAfterBuild = __snglAfterBuild[1:]
+		f()
+	}
+}
+`)
+}
+
+// HoldMountsDuring wraps build, the statements of a page's first build, in
+// the depth MountAfterBuildFunc reads, and declares what it calls: a no-op
+// unless some instance built at run time settles when it is built.
+func HoldMountsDuring(pkg *ir.Package, decls, build *strings.Builder) {
+	if build.Len() == 0 || !DefersInstanceMounts(pkg) {
+		return
+	}
+	body := build.String()
+	build.Reset()
+	build.WriteString("\t__snglBuilding++\n")
+	build.WriteString(body)
+	build.WriteString("\t__snglEndBuild()\n")
+	EmitMountAfterBuild(decls)
+}

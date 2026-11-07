@@ -49,7 +49,7 @@ func TestTheParentHandlerRepaintsTheModelsWidget(t *testing.T) {
 	if got := len(m.__inst0_live); got != 2 {
 		t.Fatalf("expected 2 live instances, got %d", got)
 	}
-	m.__inst0_live[1].__n0.OnTapped()
+	m.__inst0_live["b"].__n0.OnTapped()
 
 	if m.picked != "b" {
 		t.Errorf("picked = %q, want %q", m.picked, "b")

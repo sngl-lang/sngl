@@ -159,6 +159,14 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -171,6 +179,7 @@ type modelState struct {
 	visible__inst0 bool
 	__focusID      int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -194,15 +203,14 @@ func (m *Model) describe(d int) string {
 	return (fmt.Sprint(d) + m.mark)
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -242,14 +250,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -313,7 +321,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -326,7 +334,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -340,20 +348,31 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m *Model) __focusNext() {
@@ -431,6 +450,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -452,7 +477,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentChildren []string
@@ -462,12 +500,15 @@ func (m Model) View() tea.View {
 		if content_0Focused {
 			content_0Prefix = ">"
 		}
-		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("deeper"))
+		content_0Text := content_0Prefix + " " + fmt.Sprint("deeper")
+		content_0 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_0Focused), tui.Avail(m.width), content_0Text).Render(content_0Text)
+		content_0 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		content_1_label := func(d int) string {
 			var result string
-			result = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((("level " + m.describe(d)) + " of ") + fmt.Sprint(m.depth))))
+			resultText := fmt.Sprint(((("level " + m.describe(d)) + " of ") + fmt.Sprint(m.depth)))
+			result = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), resultText).Render(resultText)
 			return result
 		}
 		content_1 = m.renderFrame(m.depth, 0, content_1_label)
@@ -475,10 +516,11 @@ func (m Model) View() tea.View {
 			contentChildren = append(contentChildren, content_1)
 		}
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -508,7 +550,6 @@ func (m Model) renderFrame(n int, __depth int, label func(int) string) string {
 		resultChildren = append(resultChildren, result_1)
 	}
 	result = lipgloss.JoinVertical(lipgloss.Left, resultChildren...)
-	result = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(result)
 	return result
 }
 
@@ -548,7 +589,7 @@ type Model struct {
 
 	__n2     *fynelayout.Toplevel
 	__n8     *fyne.Container
-	__n9     *widget.Button
+	__n9     *fynelayout.Button
 	__n3     *Frame__slot0Instance
 	__n3__el fyne.CanvasObject
 	__built  bool
@@ -620,7 +661,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.OnClosed = m.__n2_closed_handler
 	m.__n2.OnVisible = m.__n2_visible_handler
 	m.__n8 = fynelayout.NewVBox()
-	m.__n9 = widget.NewButton("", nil)
+	m.__n9 = fynelayout.NewButton("", nil)
 	m.__n9.SetText("deeper")
 	m.__n9.OnTapped = m.__n9_click_handler
 	m.__n8.Add(m.__n9)
@@ -645,8 +686,6 @@ type Frame__slot2Instance struct {
 	__inst0_live   []*Frame__slot2Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []fyne.CanvasObject
-	__slot1_at     fyne.CanvasObject
 	__n5           *fyne.Container
 	__n0           *widget.Label
 }
@@ -662,7 +701,6 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n5 = fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
@@ -769,8 +807,6 @@ type Frame__slot0Instance struct {
 	__prop___depth int
 	__prop___p0    int
 	__root         *fyne.Container
-	__slot0        []fyne.CanvasObject
-	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*Frame__slot2Instance
@@ -787,7 +823,6 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
 	c.__rendering1 = false
@@ -959,6 +994,9 @@ func (m *Model) __refreshPage_mark() {
 func (m *Model) __n2_closed_handler() {
 }
 
+func (m *Model) __n2_key_handler(k string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+}
+
 func (m *Model) __n2_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
@@ -983,8 +1021,6 @@ type Frame__slot2Instance struct {
 	__inst0_live   []*Frame__slot2Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
 	__n5           gtk4rt.Handle
 	__n0           gtk4rt.Handle
 }
@@ -999,7 +1035,6 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
-	c.__slot1 = nil
 	c.__n5 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n5, 1)
 	gtk4rt.SetLook(c.__n5, gtk4rt.Look{Spaced: true, Spacing: 6})
@@ -1111,9 +1146,6 @@ func (c *Frame__slot2Instance) Destroy() {
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
 	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
 }
 
 // Frame__slot0Instance is one live instance of the frame__slot0 component.
@@ -1124,8 +1156,6 @@ type Frame__slot0Instance struct {
 	__prop___depth int
 	__prop___p0    int
 	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*Frame__slot2Instance
@@ -1141,7 +1171,6 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__prop_n = __a_n
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
 	c.__rendering1 = false
@@ -1254,9 +1283,6 @@ func (c *Frame__slot0Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
 	if c.__slot1_at != nil {
 		gtk4rt.Release(c.__slot1_at)
 	}
@@ -1294,12 +1320,14 @@ func (m *Model) buildWidgetTree() {
 	m.__n2 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n2, m.__n2_closed_handler)
+	gtk4rt.ToplevelOnKey(m.__n2, m.__n2_key_handler)
 	gtk4rt.ToplevelOnVisible(m.__n2, m.__n2_visible_handler)
 	m.__n8 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n8, 1)
 	gtk4rt.SetLook(m.__n8, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n9 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n9, "deeper")
+	gtk4rt.SetBool(m.__n9, "can-focus", true)
 	gtk4rt.Connect(m.__n9, "clicked", m.__n9_clicked_handler)
 	gtk4rt.BoxAppend(m.__n8, m.__n9)
 	m.__n3 = newFrame__slot0Instance(m, m.depth, 0, m.depth)
@@ -1578,7 +1606,6 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_live = [];
     let __rendering0 = false;
     let __renderAgain0 = false;
-    let __slot1 = [];
     function __set_n(__v) {
       __prop_n = __v;
       __n0.textContent = "level " + describe(__prop_n) + " of " + String(__prop___p0);
@@ -1702,7 +1729,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop_n = n;
     let __prop___depth = __depth;
     let __prop___p0 = __p0;
-    let __slot0 = [];
     let __slot1 = [];
     let __inst3_live = [];
     let __rendering1 = false;
@@ -1837,12 +1863,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a209402a3f7b0076de8fff848688e264
+pass sha256:abd6a1f28106fa200510e38faae6022c
 -- run/go/fyne --
-pass sha256:1f7611f9db26efd2fd581142ea501495
+pass sha256:1113d8fc9dd68d91c8ad2c43a3dad38a
 -- run/go/gtk4 --
-pass sha256:7ac93d3f79dd42162a9ace8386fdb3a4
+pass sha256:abb355ed270ff0ea59af61f96ee948d1
 -- run/kotlin/android --
 pass sha256:33fbf6898dafef51c8c8441b077e3afb
 -- run/none/html --
-pass sha256:e992fc0269d0743693213bd5dfba38cc
+pass sha256:63539669641cdb795776b515e6c4e886

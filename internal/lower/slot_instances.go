@@ -73,8 +73,8 @@ type ctorProp struct {
 func (si *slotInstance) keyed() bool { return si.key != nil }
 
 // newSlotInstance allocates the state the instantiation site n needs: its
-// `key=` decides how identity is looked up, and the component it instantiates
-// decides what the registry holds.
+// Key, the copy of an identified loop it is in, decides how identity is looked
+// up, and the component it instantiates decides what the registry holds.
 //
 // One site instantiates one component, so the registry is typed: a host with
 // no runtime types does not care, and Go cannot call a setter through `any`.

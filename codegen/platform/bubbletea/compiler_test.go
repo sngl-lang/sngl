@@ -192,11 +192,12 @@ ui.window {
 		t.Errorf("background button not frozen\n\ngenerated:\n%s", code)
 	}
 	// Overlay-content handlers stay live: the modal's `count += 1` button and the
-	// drawer's `showDrawer = false` button each follow an unguarded activation
-	// case (focusID 1 and 2 in source order).
+	// drawer's `showDrawer = false` button each follow an activation case the
+	// overlay does not freeze (focusID 1 and 2 in source order), which takes
+	// the key while the stop is shown, as each is under its overlay's `if open`.
 	for _, want := range []string{
-		"case msg.Code == tea.KeyEnter && m.__focusID == 1:\n\t\t\tm.count += 1",
-		"case msg.Code == tea.KeyEnter && m.__focusID == 2:\n\t\t\tm.showDrawer = false",
+		"case msg.Code == tea.KeyEnter && m.__focusID == 1 && (m.__pressing || m.__focusShown()):\n\t\t\tm.count += 1",
+		"case msg.Code == tea.KeyEnter && m.__focusID == 2 && (m.__pressing || m.__focusShown()):\n\t\t\tm.showDrawer = false",
 	} {
 		if !strings.Contains(code, want) {
 			t.Errorf("overlay-content handler missing or wrongly frozen: %q\n\ngenerated:\n%s", want, code)

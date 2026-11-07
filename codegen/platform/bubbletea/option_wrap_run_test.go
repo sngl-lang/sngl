@@ -21,6 +21,11 @@ import (
 // case the unwrap's parenthesization decides.
 const optionWrapRunSrc = `
 import . "sngl:ui"
+import sngltest "sngl:test"
+
+// The Go driver below is this program's test, and drives it through the
+// invokers a program emits only where it holds a test of its own.
+func testDrivenFromGo(t sngltest.Test) {}
 
 struct Box {
     value int = 0

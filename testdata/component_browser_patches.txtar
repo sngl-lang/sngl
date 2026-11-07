@@ -14,9 +14,9 @@ component picker node {
     var fruit = "apple"
     text #shown(value="picked: {fruit}")
     select #s(:value=fruit) {
-        choice(label="apple")
-        choice(label="banana")
-        choice(label="cherry")
+        choice(label="apple", value="apple")
+        choice(label="banana", value="banana")
+        choice(label="cherry", value="cherry")
     }
 }
 
@@ -284,19 +284,22 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { base: 3, fruit__inst0: "apple", n__inst0: 0, handle__inst0: 0, maybe__inst0: null, a__inst0: 0, visible__inst0: true, on__inst0: true, on__inst1: false, n__inst1: 0, visible__inst1: true };
-  state.maybe__inst0 = 3;
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
+  if (!("maybe__inst0" in __snglPre)) state.maybe__inst0 = 3;
   state.doubled = () => doubled();
   state.blocky = () => blocky();
   state.sChange = (p) => {
@@ -324,6 +327,48 @@ window.__sngl_boot = () => {
   function blocky() {
     let x = state.base + 1;
     return x * 3;
+  }
+  function pickLabel__inst0(l) {
+    let at = choiceLabeled([{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }], l);
+    if (at >= 0 && [{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }][at].value !== state.fruit__inst0) {
+      ;
+      state.fruit__inst0 = [{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }][at].value;
+      $0.textContent = "picked: " + state.fruit__inst0;
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        ;
+        __inst1_live[__inst1_live_ui].__set___p1(state.fruit__inst0);
+      }
+      ;
+    }
+    ;
+  }
+  function change__trigger__inst0(value) {
+    _snglSetValue($1, choiceLabel([{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }], value));
+    _snglFire($1, "change");
+  }
+  function choiceLabeled(options, label) {
+    for (const [i, o] of options.entries()) {
+      ;
+      if (o.label === label) {
+        ;
+        return i;
+      }
+      ;
+    }
+    ;
+    return -1;
+  }
+  function choiceLabel(options, value) {
+    for (const o of options) {
+      ;
+      if (o.value === value) {
+        ;
+        return o.label;
+      }
+      ;
+    }
+    ;
+    return "";
   }
   function __snglTeardown() {
     for (const [__inst8_live_di, _] of __inst8_live.entries()) {
@@ -356,7 +401,7 @@ window.__sngl_boot = () => {
     __inst1_live = [];
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { run, doubled, blocky, __snglTeardown });
+    Object.assign(window, { run, doubled, blocky, pickLabel__inst0, change__trigger__inst0, choiceLabeled, choiceLabel, __snglTeardown });
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
@@ -365,27 +410,19 @@ window.__sngl_boot = () => {
     let __p1 = props.__p1;
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.value = __prop___p0.label;
-      __n0.selected = __prop___p0.label === __prop___p1;
+      __n0.selected = __prop___p0.value === __prop___p1;
       __n0.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n0.selected = __prop___p0.label === __prop___p1;
+      __n0.selected = __prop___p0.value === __prop___p1;
     }
     let __n0 = document.createElement("option");
     __n0.value = __prop___p0.label;
-    __n0.selected = __prop___p0.label === __prop___p1;
+    __n0.selected = __prop___p0.value === __prop___p1;
     __n0.textContent = __prop___p0.label;
     __root.appendChild(__n0);
     return {
@@ -401,14 +438,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.textContent = "[" + String(__prop___p0 * 2) + "]";
@@ -428,14 +457,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n2.textContent = "[" + String(__prop___p0 + 1) + "]";
@@ -455,14 +476,6 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    let __slot32 = [];
-    let __slot42 = [];
-    let __slot52 = [];
-    let __slot62 = [];
-    let __slot72 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n3.textContent = "N=" + String(__prop___p0);
@@ -519,7 +532,7 @@ window.__sngl_boot = () => {
           __slot0 = [];
           let __inst1_next = [];
           let __inst1_i = 0;
-          for (const opt of [{ label: "apple" }, { label: "banana" }, { label: "cherry" }]) {
+          for (const opt of [{ label: "apple", value: "apple" }, { label: "banana", value: "banana" }, { label: "cherry", value: "cherry" }]) {
             let __n6 = null;
             if (__inst1_live.length > __inst1_i) {
               __n6 = __inst1_live[__inst1_i];
@@ -903,6 +916,12 @@ window.__sngl_boot = () => {
   function String(v) {
     return "" + v;
   }
+  function _snglFire(el, type) {
+    el.dispatchEvent(new Event(type, { bubbles: true }));
+  }
+  function _snglSetValue(el, v) {
+    el.value = v;
+  }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
   var $11 = document.getElementById("$11");
@@ -934,13 +953,7 @@ window.__sngl_boot = () => {
   var __slotAnchor_7 = document.querySelector('[data-sngl-slot="7"]');
   __renderSlot7(__slotAnchor_7);
   $1.addEventListener("change", function(e) {
-    state.fruit__inst0 = e.currentTarget.value;
-    $0.textContent = "picked: " + state.fruit__inst0;
-    for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
-      ;
-      __inst1_live[__inst1_live_ui].__set___p1(state.fruit__inst0);
-    }
-    ;
+    pickLabel__inst0(e.currentTarget.value);
   });
   $2.addEventListener("click", function() {
     state.handle__inst0 = run(() => {
@@ -990,13 +1003,12 @@ window.__sngl_boot = () => {
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:35b579ed0cabd32107cd257fa334264d
+pass sha256:2c432cc4d3c12955a0f8edc8cde3406d
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
-sha256:d0361f3ceb5732edd48b4c0a983cbaf4
+sha256:5dcbcf9d144b8421aa259727771a523a
 {
   "results": [
     {
@@ -1006,7 +1018,7 @@ sha256:d0361f3ceb5732edd48b4c0a983cbaf4
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/callback/1 --
-sha256:075fb1f54ad16dc1ee3980182642c2da
+sha256:87cfaa0685f023922c4d515628e7e666
 {
   "results": [
     {
@@ -1016,7 +1028,7 @@ sha256:075fb1f54ad16dc1ee3980182642c2da
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/carousel/1 --
-sha256:52707a3fcf396d1ab4423b4195722bcd
+sha256:b2ac4371a4dae4e1b8161864f240bd40
 {
   "results": [
     {
@@ -1026,7 +1038,7 @@ sha256:52707a3fcf396d1ab4423b4195722bcd
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/computed/1 --
-sha256:a3f3e5ac3a48b43944bc9b7bbf78400e
+sha256:72feb40224f0772807fc4de6c20e1b2f
 {
   "results": [
     {
@@ -1036,7 +1048,7 @@ sha256:a3f3e5ac3a48b43944bc9b7bbf78400e
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/narrowed/1 --
-sha256:c5590a0169d81d5f4d1e670d512478c7
+sha256:ce48baafae9652b330c696c86c3a492d
 {
   "results": [
     {
@@ -1046,7 +1058,7 @@ sha256:c5590a0169d81d5f4d1e670d512478c7
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/picker/1 --
-sha256:d1daf6907eb9b5f2016ec382f119278b
+sha256:6e4b200475d6ec4bba2da319a06ccd7c
 {
   "results": [
     {
@@ -1056,7 +1068,7 @@ sha256:d1daf6907eb9b5f2016ec382f119278b
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/slots/1 --
-sha256:5d613e64be78c805c004bbd7c58f70d0
+sha256:a3265dbdd91c07f1f781bccf80e665b1
 {
   "results": [
     {

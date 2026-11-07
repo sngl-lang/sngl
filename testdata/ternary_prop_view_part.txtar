@@ -116,6 +116,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -128,6 +136,7 @@ type modelState struct {
 	visible__inst0 bool
 	__focusID      int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
@@ -147,15 +156,14 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt3 int
-	if px <= 0.0 {
-		__lt3 = 0
+func SpaceOf(m__r0 *Measurement, across bool) int {
+	var __lt3 float64
+	if across {
+		__lt3 = 8.0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt3 = 16.0
 	}
-	return __lt3
+	return int(((PxOf(m__r0) / __lt3) + 0.5))
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -195,14 +203,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -266,7 +274,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -279,7 +287,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	return SpaceOf(__lt12, across)
 }
 
 func CellsOf(m__r2 *Measurement) int {
@@ -293,20 +301,31 @@ func CellsOf(m__r2 *Measurement) int {
 	return __lt13
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
-	if height__r0 == 0 {
-		__lt15 = lines
+func RowsOf(m__r3 *Measurement) int {
+	var px float64 = PxOf(m__r3)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		var __lt14 int
-		if lines == 0 {
-			__lt14 = height__r0
-		} else {
-			__lt14 = min(height__r0, lines)
-		}
-		__lt15 = __lt14
+		__lt14 = max(1, (int(px) / 16))
 	}
-	return __lt15
+	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m *Model) __focusNext() {
@@ -384,6 +403,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -405,18 +430,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	if m.visible__inst0 {
 		var contentChildren []string
-		var __lt16 string
+		var __lt17 string
 		if m.on__inst0 {
-			__lt16 = "yes"
+			__lt17 = "yes"
 		} else {
-			__lt16 = "no"
+			__lt17 = "no"
 		}
 		var content_2 string
-		content_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt16))
+		content_2Text := fmt.Sprint(__lt17)
+		content_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_2Text).Render(content_2Text)
 		contentChildren = append(contentChildren, content_2)
 		var content_3 string
 		content_3Focused := (m.__focusID == 0)
@@ -424,16 +463,20 @@ func (m Model) View() tea.View {
 		if content_3Focused {
 			content_3Prefix = ">"
 		}
-		content_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content_3Prefix + " " + fmt.Sprint("toggle"))
+		content_3Text := content_3Prefix + " " + fmt.Sprint("toggle")
+		content_3 = tui.Within(tui.Focused(tui.ButtonLook(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true)), content_3Focused), tui.Avail(m.width), content_3Text).Render(content_3Text)
+		content_3 = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeyEnter}}, content_3)
 		contentChildren = append(contentChildren, content_3)
 		var content_4 string
-		content_4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.label__inst0))
+		content_4Text := fmt.Sprint(m.label__inst0)
+		content_4 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_4Text).Render(content_4Text)
 		contentChildren = append(contentChildren, content_4)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -446,4 +489,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:f646b4bd778ad712cf90f677ac31c2f5
+pass sha256:9ec3a4ff09e853309f0bed22e43e678d

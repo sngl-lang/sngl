@@ -1,0 +1,19 @@
+import ui "sngl:ui"
+
+// A member carrying a payload is no value without one, so an enum that has
+// such a member has no list of values to walk.
+enum Shape {
+    circle float
+    square
+}
+
+func count() int {
+    var n = 0
+    for var s = Shape { // ERROR(check) "enum Shape carries a payload"
+        n += 1
+    }
+    return n
+}
+
+ui.window {
+}

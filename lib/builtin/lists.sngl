@@ -10,11 +10,11 @@ struct list[T any] {}
 // writes, `1, 2, 3`. A named argument the list does not declare is each
 // element's: `"{xs, sep="; ", base=16}"` writes `a; b; c` of 10, 11, 12. Only
 // a list of a type that declares a format has one.
-const func list[T].format(sep string = ", ", _item _formatArgs[T]) => this.map(func(x T) => _format(x, _item))._join(sep)
+const func list[T].format(this list[T], sep string = ", ", _item _formatArgs[T]) => this.map(func(x T) => _format(x, _item))._join(sep)
 
 // Puts the list's format on the end of out, each element by its own
 // appendFormat.
-func list[T].appendFormat(out ref[builder], sep string = ", ", _item _formatArgs[T]) {
+func list[T].appendFormat(this list[T], out ref[builder], sep string = ", ", _item _formatArgs[T]) {
     for var i, x = this {
         if i > 0 {
             out.add(sep)
@@ -26,7 +26,7 @@ func list[T].appendFormat(out ref[builder], sep string = ", ", _item _formatArgs
 // Number of items in l.
 
 #[_intrinsic("list.length")]
-const func list[T].length() int
+const func list[T].length(this list[T]) int
 
 // Appends item to the receiver list (`this`), in place. Index assignment
 // (`l[i] = x`) and the mutating methods modify the list directly, and observers
@@ -41,7 +41,7 @@ const func list[T].length() int
 // append returns a new slice rather than mutating, so the two halves had to be
 // emitted separately and no single expression said both.
 #[_intrinsic("list.push", mutates, mutatesReceiver)]
-func list[T].push(item T)
+func list[T].push(this ref[list[T]], item T)
 
 // Removes the item at index from the receiver list (`this`) in place.
 // Out-of-range indices leave the list unchanged.
@@ -50,52 +50,67 @@ func list[T].push(item T)
 // receiver and also returns it invites `l = l.remove(i)`, which performs the
 // removal once and reads as though it performed it twice.
 #[_intrinsic("list.remove", mutates, mutatesReceiver)]
-func list[T].remove(index int)
+func list[T].remove(this ref[list[T]], index int)
 
 // Inserts item at index in the receiver list, in place, shifting what was at
 // index and after it one place along. An index equal to the length appends; an
 // index outside [0, length] leaves the list unchanged, as remove's does.
 #[_intrinsic("list.insert", mutates, mutatesReceiver)]
-func list[T].insert(index int, item T)
+func list[T].insert(this ref[list[T]], index int, item T)
 
 // Removes every item from the receiver list, in place. Not `l = []`: that
 // replaces the list, and an effect keyed on it is told so with `@update`
 // rather than `@clear`.
 #[_intrinsic("list.clear", mutates, mutatesReceiver)]
-func list[T].clear()
+func list[T].clear(this ref[list[T]])
+
+// Puts the receiver list's items in increasing order, in place: a's ahead of
+// b's where `a < b`. Only a list of a type `<` orders has one; sortBy orders
+// any other. The sort is stable, which only a list of floats can tell, with
+// its 0 and -0.
+#[_intrinsic("list.sort", mutates, mutatesReceiver)]
+func list[T ordered].sort(this ref[list[T]])
+
+// Puts the receiver list's items in the order before says, in place:
+// `before(a, b)` is true where a goes ahead of b. The sort is stable, so two
+// items before puts neither ahead of the other keep the order they had:
+// `moves.sortBy(func(a, b) => a.level < b.level)` keeps the moves
+// of one level in the order they came.
+#[_intrinsic("list.sortBy", mutates, mutatesReceiver)]
+func list[T].sortBy(this ref[list[T]], before func(T, T) bool)
 
 // Index of the first occurrence of item in l (by equality), or -1 if
 // absent.
 #[_intrinsic("list.indexOf")]
-const func list[T].indexOf(item T) int
+const func list[T].indexOf(this list[T], item T) int
 
 // The strings of a list of strings, sep between them: what format is written
 // over, once each item is its format.
 #[_intrinsic("list.join")]
-const func list[T]._join(sep string) string
+const func list[T]._join(this list[T], sep string) string
 
 // Returns a copy of l with items in reverse order.
 #[_intrinsic("list.reverse")]
-const func list[T].reverse() list[T]
+const func list[T].reverse(this list[T]) list[T]
 
 // Returns a new list containing items from start (inclusive) to end
 // (exclusive). Bounds are clamped to [0, length(l)].
 #[_intrinsic("list.slice")]
-const func list[T].slice(start int, end int) list[T]
+const func list[T].slice(this list[T], start int, end int) list[T]
 
 // Returns a new list containing the items of l for which pred returns
 // true. Item order is preserved.
 #[_intrinsic("list.filter")]
-const func list[T].filter(pred func(T) bool) list[T]
+const func list[T].filter(this list[T], pred func(T) bool) list[T]
 
 // Returns a new list built by applying fn to each item of l. The
 // result's length equals the input's.
 #[_intrinsic("list.map")]
-const func list[T].map[U any](fn func(T) U) list[U]
+const func list[T].map[U any](this list[T], fn func(T) U) list[U]
 
 // True if item appears in l (by equality). Equivalent to
 // `list.indexOf(l, item) >= 0`.
-const func list[T].contains(item T) => this.indexOf(item) >= 0
+const func list[T].contains(this list[T], item T) => this.indexOf(item) >= 0
 
 // Generic iterator. list[T] and map[K, V] implicitly convert when passed
 // to a context expecting iter[T] (or iter<(K, V)> for map). For-loops

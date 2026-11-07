@@ -131,7 +131,10 @@ func sampleAt(img image.Image, fx, fy float64) (r, g, b, a uint8) {
 
 // halfBlock downsamples img to cols x rows cells. Each cell is ▀ with
 // foreground = the top sub-pixel and background = the bottom sub-pixel, so one
-// character cell shows two vertically-stacked colored pixels.
+// character cell shows two vertically-stacked colored pixels. A color is set
+// where it changes along the row, not on every cell: every box the picture is
+// joined into measures its text again, and a picture's broad runs of one color
+// were most of the escapes in it.
 func halfBlock(img image.Image, cols, rows int) string {
 	if cols < 1 {
 		cols = 1
@@ -141,13 +144,22 @@ func halfBlock(img image.Image, cols, rows int) string {
 	}
 	var b strings.Builder
 	for row := 0; row < rows; row++ {
+		var top, bot [3]uint8
 		for col := 0; col < cols; col++ {
 			fx := (float64(col) + 0.5) / float64(cols)
 			topFy := (float64(row*2) + 0.5) / float64(rows*2)
 			botFy := (float64(row*2+1) + 0.5) / float64(rows*2)
 			tr, tg, tb, _ := sampleAt(img, fx, topFy)
 			br, bg, bb, _ := sampleAt(img, fx, botFy)
-			fmt.Fprintf(&b, "\x1b[38;2;%d;%d;%dm\x1b[48;2;%d;%d;%dm▀", tr, tg, tb, br, bg, bb)
+			if t := [3]uint8{tr, tg, tb}; col == 0 || t != top {
+				top = t
+				fmt.Fprintf(&b, "\x1b[38;2;%d;%d;%dm", tr, tg, tb)
+			}
+			if c := [3]uint8{br, bg, bb}; col == 0 || c != bot {
+				bot = c
+				fmt.Fprintf(&b, "\x1b[48;2;%d;%d;%dm", br, bg, bb)
+			}
+			b.WriteString("▀")
 		}
 		b.WriteString("\x1b[0m")
 		if row < rows-1 {

@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 
+	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
 )
 
@@ -11,11 +12,14 @@ import (
 // pkg that nothing else in src spells. The shake declares a payload struct for
 // every handler that names one, and a Compose callback hands its handler the
 // host's own value instead, so on android most of them are read by nothing.
+// One a test names is kept: the test file is a file of its own, which src is
+// not (codegen.TestNamedStructs).
 func PruneLibraryDataClasses(src string, pkg *ir.Package) string {
+	keep := codegen.TestNamedStructs(pkg)
 	for changed := true; changed; {
 		changed = false
 		for _, sd := range pkg.Structs {
-			if sd == nil || sd.PkgPath() == "" {
+			if sd == nil || sd.PkgPath() == "" || keep[sd.Name] {
 				continue
 			}
 			if out, ok := dropDecl(src, "data class "+exportName(sd.Name)+"(", "\n)\n", exportName(sd.Name)); ok {

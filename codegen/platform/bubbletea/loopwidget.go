@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/codegen/lang/golang"
 	"duckfam.us/sngl/internal/lower"
@@ -91,6 +92,22 @@ func newLoopWidget(n *ir.NodeInst, loops []*ir.For, bindProp string) *loopWidget
 			}
 			return nil
 		})
+		// A write-back that assigns one var every copy shares -- a select
+		// whose label is the override's own state, not a cell per copy --
+		// sets each copy from that var. Without it the copy was never set,
+		// and the Pokédex's moves select drew no choice.
+		if lw.cell == nil {
+			for _, st := range h.Func.Block {
+				if as, ok := st.(*ir.Assign); ok && as.Op == ast.AssignSet {
+					if id, ok := as.Target.(*ir.Ident); ok {
+						if _, isVar := id.Sym.(*ir.Var); isVar {
+							lw.cell = id
+							break
+						}
+					}
+				}
+			}
+		}
 	}
 	return lw
 }
@@ -118,7 +135,7 @@ func copyTakesValue(w widgetInfo) bool {
 
 // copyCall is the copy of w the loop variables in gc name.
 func copyCall(w widgetInfo, gc *golang.GoIRContext) string {
-	key := gc.EvalExpr(lower.CopyKey(w.loop.loops))
+	key := gc.EvalExpr(lower.CopyIdentity(w.loop.loops))
 	if !copyTakesValue(w) {
 		return fmt.Sprintf("m.%s(%s)", loopCopyMethod(w), key)
 	}
@@ -161,7 +178,7 @@ func emitLoopWidgetMethods(b *strings.Builder, w widgetInfo, gc *golang.GoIRCont
 		fmt.Fprintf(b, "\tif m.__focusID == %d {\n\t\tfunc() {\n", w.loop.lf.slot)
 		walkSlot(b, w, gc, 3, func(vw *viewWalk, gc *golang.GoIRContext) {
 			vw.line("if m.%s == %s {", w.loop.lf.cursor, w.loop.lf.pos)
-			vw.line("\tfocused = %s", gc.EvalExpr(lower.CopyKey(w.loop.loops)))
+			vw.line("\tfocused = %s", gc.EvalExpr(lower.CopyIdentity(w.loop.loops)))
 			vw.line("\treturn")
 			vw.line("}")
 		})
@@ -181,10 +198,12 @@ func walkSlot(b *strings.Builder, w widgetInfo, gc *golang.GoIRContext, indent i
 	}
 	vw := &viewWalk{b: b, indent: indent, wants: isLoopFocus}
 	vw.visit = func(vw *viewWalk, n *ir.NodeInst, gc *golang.GoIRContext) {
-		if n == w.node {
-			at(vw, gc)
-		}
-		vw.line("%s++", w.loop.lf.pos)
+		vw.counted(n, gc, func() {
+			if n == w.node {
+				at(vw, gc)
+			}
+			vw.line("%s++", w.loop.lf.pos)
+		})
 	}
 	vw.line("%s := 0", w.loop.lf.pos)
 	vw.line("_ = %s", w.loop.lf.pos)
@@ -237,7 +256,7 @@ func emitLoopWidgetForward(b *strings.Builder, w widgetInfo, info *irAnalysis, g
 	walkSlot(b, w, gc, depth+2, func(vw *viewWalk, gc *golang.GoIRContext) {
 		vw.line("if m.%s == %s {", w.loop.lf.cursor, w.loop.lf.pos)
 		vw.indent++
-		key := gc.EvalExpr(lower.CopyKey(w.loop.loops))
+		key := gc.EvalExpr(lower.CopyIdentity(w.loop.loops))
 		vw.line("__key := %s", key)
 		vw.line("w := %s", copyCall(w, gc))
 		if modelHasFocusMethods(w.model.Type) {
@@ -285,7 +304,7 @@ func emitLoopWidgetForward(b *strings.Builder, w widgetInfo, info *irAnalysis, g
 // handler, as Update does when the user types. The plain one drives the last
 // copy, and the `At` one, for an id a test indexes, the copy with a key.
 func emitLoopWidgetInvokers(b *strings.Builder, w widgetInfo, info *irAnalysis, gc *golang.GoIRContext) {
-	if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") {
+	if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") || !info.tests {
 		return
 	}
 	val, _, _ := widgetPayloadEvents(w)
@@ -309,7 +328,7 @@ func emitLoopWidgetInvokers(b *strings.Builder, w widgetInfo, info *irAnalysis, 
 				}
 				vw.line("if %s {", cond)
 				vw.indent++
-				vw.line("__key := %s", gc.EvalExpr(lower.CopyKey(w.loop.loops)))
+				vw.line("__key := %s", gc.EvalExpr(lower.CopyIdentity(w.loop.loops)))
 				vw.line("w := %s", copyCall(w, gc))
 				vw.line("w%s(v)", val.set)
 				vw.line("m.%s[__key] = w", w.fieldName)

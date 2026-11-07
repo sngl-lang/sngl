@@ -297,7 +297,7 @@ func first[T any](xs list[T]) T {
     return xs[0]
 }
 
-func map[K, V].pick[A any](a A) A {
+func map[K, V].pick[A any](this map[K, V], a A) A {
     return a
 }
 
@@ -396,7 +396,7 @@ component ui.vbox[platform] {
 func f[html.platform]() {
 }
 
-func list[T].second[html.platform]() {
+func list[T].second[html.platform](this list[T]) {
 }
 
 ---

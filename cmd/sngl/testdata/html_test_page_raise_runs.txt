@@ -6,8 +6,10 @@
 ! sngl test --platform=none load.sngl
 stdout 'raised: boom \(on mount\)'
 
+# A test page mounts where its test first needs it, so a raise as it mounts
+# is the test's own.
 ! sngl test --platform=html load.sngl
-stdout 'the page raised while it loaded: Uncaught Error: boom'
+stdout 'exception: boom'
 
 ! sngl test --platform=none click.sngl
 stdout 'raised: boom \(on tick\)'
@@ -60,7 +62,7 @@ ui.window {
     main
 }
 -- testrun/html/none/click.sngl/main/1 --
-sha256:77fac0f261782077a2d63cd19f484e61
+sha256:38d55ea40044600b94d53c29af9bb887
 {
   "results": [
     {
@@ -78,19 +80,19 @@ sha256:77fac0f261782077a2d63cd19f484e61
   ]
 }
 -- testrun/html/none/load.sngl/main/1 --
-sha256:73dbb20d7f9ed35769aeb987b63ca41e
+sha256:ce8041eb5ade65cf3ea9ff5c34791661
 {
   "results": [
     {
       "Desc": "AfterALoadThatRaised",
-      "Error": "the page raised while it loaded: Uncaught Error: boom",
+      "Error": "exception: boom",
       "Failures": [
         {
-          "Message": "the page raised while it loaded: Uncaught Error: boom"
+          "Message": "exception: boom"
         }
       ],
       "Log": [
-        "the page raised while it loaded: Uncaught Error: boom"
+        "exception: boom"
       ]
     }
   ]

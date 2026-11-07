@@ -1,0 +1,127 @@
+# A write the waiting part of a fetch makes lands on the page, and rekeys
+# what the page keys on it, on every target. The fetch runs on a goroutine on
+# the Go targets: bubbletea's reads a snapshot of the Model, so `mon = "b"`
+# wrote the copy, which nothing showed and nothing rekeyed, and fyne and gtk4
+# wrote the Model off the thread that draws it. Each such write is now posted
+# back to the loop (passOffLoopWrites), a call mutating it, `seen.push(k)`,
+# as an assignment is. The request is bound to a local
+# nothing reads, which Go refuses to declare until passUnreadLocals makes it
+# the call -- a request's intrinsic among the calls it does.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func answer(r http.Request) option[http.Response] {
+    return http.Response{status=200, headers={}, body=r.url}
+}
+
+component page ui.node {
+    var mon = "a"
+    var got option[string] = null
+    var shape option[string] = null
+    var seen list[string] = []
+
+    async.query(
+        on = "k",
+        fetch = func(k string, life async.Lifetime) async.Result[string] {
+            var r = http.get("http://dex/{k}")
+            mon = "b"
+            seen.push(k)
+            return {ok=k}
+        },
+        :value = got,
+    )
+    async.query(
+        on = mon,
+        fetch = func(m string, life async.Lifetime) async.Result[string] {
+            return {ok="form of {m}"}
+        },
+        :value = shape,
+    )
+    ui.text(mon)
+}
+
+// A write the waiting part of a fetch makes lands on the page, and moves
+// what the page keys on it.
+func testAWaitingWriteLands(t test.Test, c page) {
+    t.setContext(http.answer, answer)
+    t.wait(func() => c.got != null, 2000)
+    t.wait(func() => c.shape == "form of b", 2000)
+    t.assert(c.mon == "b")
+    t.assert(c.seen == ["k"])
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:5fc1b384a7afc5977ab7dc4d038d71b4
+{
+  "results": [
+    {
+      "Desc": "AWaitingWriteLands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:325241eb32443de4a1469b1d136a7677
+{
+  "results": [
+    {
+      "Desc": "AWaitingWriteLands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:16d9d2ca5cd9cb7f5c4d1defd6fa7161
+{
+  "results": [
+    {
+      "Desc": "AWaitingWriteLands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:7fc5e7f663afba96e066257cd9b95abb
+{
+  "results": [
+    {
+      "Desc": "AWaitingWriteLands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:58163ad54d5a8ac25c1a38c3c0ad5521
+{
+  "results": [
+    {
+      "Desc": "AWaitingWriteLands",
+      "Passed": true
+    }
+  ]
+}

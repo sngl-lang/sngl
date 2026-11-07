@@ -386,7 +386,7 @@ func (gc *GoIRContext) Index(_ *ir.Index, operand, idx string) string {
 func (gc *GoIRContext) ListLit(n *ir.ListLit, elems []string) string {
 	elemType := "any"
 	if n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) > 0 {
-		elemType = IRTypeToGo(n.Type.Elems[0])
+		elemType = gc.goType(n.Type.Elems[0])
 	}
 	if !slices.ContainsFunc(n.Elems, isSpread) {
 		return "[]" + elemType + "{" + strings.Join(elems, ", ") + "}"
@@ -444,8 +444,8 @@ func (gc *GoIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 	keyType := "any"
 	valType := "any"
 	if n.Type != nil && n.Type.Kind == ir.TypeMap && len(n.Type.Elems) == 2 {
-		keyType = IRTypeToGo(n.Type.Elems[0])
-		valType = IRTypeToGo(n.Type.Elems[1])
+		keyType = gc.goType(n.Type.Elems[0])
+		valType = gc.goType(n.Type.Elems[1])
 	}
 	parts := make([]string, len(keys))
 	for i := range keys {
@@ -566,6 +566,8 @@ func (gc *GoIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 // symbol, so spelling a widget handle's type is what tips a program out of its
 // cgo-free mode.
 func (gc *GoIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
+	// Spelled only where the declaration is written with its type: `:=`
+	// names no package, and requiring one there left it imported and unused.
 	goType := "any"
 	if n.Type != nil {
 		goType = IRTypeToGo(n.Type)
@@ -576,9 +578,11 @@ func (gc *GoIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 	// opens each position that way: `var <id> <Comp> = null`, then one branch
 	// or the other binds it.
 	if n.Init == nil || initStr == "nil" {
+		gc.requireTypeImports(n.Type)
 		return "var " + n.Name + " " + goType
 	}
 	if n.Type != nil && n.Type.IsNumeric() {
+		gc.requireTypeImports(n.Type)
 		return "var " + n.Name + " " + goType + " = " + initStr
 	}
 	return n.Name + " := " + initStr
@@ -767,7 +771,7 @@ func (gc *GoIRContext) modelField(n *ir.Select) (string, bool) {
 	case nil, *ir.Component, *codegen.Receiver:
 		// A synthesized receiver read carries no symbol.
 	case *ir.Param:
-		if !sym.Receiver && sym.Name != ir.ReceiverParam {
+		if !sym.Receiver {
 			return "", false
 		}
 	default:
@@ -851,6 +855,7 @@ func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
 		return "nil"
 	case ir.TypeUnit:
 		if out, ok := LowerUnitLiteralGo(n); ok {
+			gc.requireTypeImports(n.Type)
 			return out
 		}
 		return n.Value
@@ -976,7 +981,7 @@ func (gc *GoIRContext) maybeWrapErrorReturn(n *ir.Call, raw string) string {
 	if n.Func == nil || !n.Func.HasErrorReturn || n.Func.Return == nil {
 		return raw
 	}
-	rt := IRTypeToGo(n.Func.Return)
+	rt := gc.goType(n.Func.Return)
 	return fmt.Sprintf("func() %s { v, _ := %s; return v }()", rt, raw)
 }
 
@@ -1371,7 +1376,10 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		if len(args) >= 1 && (args[0] == gc.RecvName() || gc.rawFieldAccess(n.Args[0].Value)) {
 			return args[0] + "." + name + "(" + strings.Join(args[1:], ", ") + ")"
 		}
-		return gc.RecvName() + "." + name + "(" + strings.Join(args, ", ") + ")"
+		// Inside a component instance record, a method the component does
+		// not declare is the Model's: a write there updating the page calls
+		// the root's functions through what holds the record.
+		return gc.recvFor(n.Func) + "." + name + "(" + strings.Join(args, ", ") + ")"
 	}
 
 	// In a test body the component instance is a local — `c := newTestComponent()`
@@ -1654,9 +1662,9 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 			if ref.Name == "" {
 				return "unsafe.Pointer(" + gc.EvalExpr(n.Operand) + ")"
 			}
-			return "(" + IRTypeToGo(n.Type) + ")(unsafe.Pointer(" + gc.EvalExpr(n.Operand) + "))"
+			return "(" + gc.goType(n.Type) + ")(unsafe.Pointer(" + gc.EvalExpr(n.Operand) + "))"
 		}
-		return IRTypeToGo(n.Type) + "(" + gc.EvalExpr(n.Operand) + ")"
+		return gc.goType(n.Type) + "(" + gc.EvalExpr(n.Operand) + ")"
 	}
 	// Go's `time.Time("...")` cast does not compile, so route a temporal
 	// conversion through the parse helpers.
@@ -1717,7 +1725,8 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
 	if src, dst, ok := ir.NumericListConversion(n); ok {
-		srcGo, elemGo := IRTypeToGo(src), IRTypeToGo(dst.Elems[0])
+		gc.requireTypeImports(n.Type)
+		srcGo, elemGo := gc.goType(src), gc.goType(dst.Elems[0])
 		return "func(s " + srcGo + ") " + goType + " { out := make(" + goType + ", len(s)); " +
 			"for i, v := range s { out[i] = " + elemGo + "(v) }; return out }(" + operand + ")"
 	}
@@ -1766,6 +1775,7 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 		return helper + "(" + operand + ")"
 	}
 	// `*T(x)` is invalid; `(*T)(x)` is the valid form.
+	gc.requireTypeImports(n.Type)
 	if strings.HasPrefix(goType, "*") || strings.HasPrefix(goType, "[") || strings.HasPrefix(goType, "map[") {
 		return "(" + goType + ")(" + operand + ")"
 	}
@@ -1982,7 +1992,7 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 		}
 		params := make([]string, len(n.Func.Params))
 		for i, p := range n.Func.Params {
-			params[i] = p.Name + " " + IRTypeToGo(p.Type)
+			params[i] = p.Name + " " + gc.goType(p.Type)
 		}
 		ft := "func(" + strings.Join(params, ", ") + ")" + goReturnType(n.Func.Return)
 		m := codegen.ModelReceiver
@@ -1999,7 +2009,7 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 	for i, p := range n.Func.Params {
 		goType := "any"
 		if p.Type != nil {
-			goType = IRTypeToGo(p.Type)
+			goType = gc.goType(p.Type)
 		}
 		params[i] = p.Name + " " + goType
 	}
@@ -2082,6 +2092,21 @@ func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 		OffLoop:            gc.OffLoop,
 		LiveModel:          gc.LiveModel,
 		imports:            gc.imports, // shared so child writes propagate
+	}
+}
+
+// goType is IRTypeToGo(t), with each package that spelling names required
+// of the file gc writes.
+func (gc *GoIRContext) goType(t *ir.Type) string {
+	gc.requireTypeImports(t)
+	return IRTypeToGo(t)
+}
+
+// requireTypeImports requires of the file gc writes each package
+// IRTypeToGo's spelling of t names, where the output spells it.
+func (gc *GoIRContext) requireTypeImports(t *ir.Type) {
+	for _, p := range TypeImports(t) {
+		gc.RequireImport(p)
 	}
 }
 
@@ -2501,7 +2526,7 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 
 	params := make([]string, len(fn.Params))
 	for i, p := range fn.Params {
-		params[i] = p.Name + " " + IRTypeToGo(p.Type)
+		params[i] = p.Name + " " + gc.goType(p.Type)
 	}
 	extra := gc.ExtraParam
 	retType := goReturnType(fn.Return)
@@ -2614,7 +2639,17 @@ func loopReadNames(n *ir.For) map[string]bool {
 func WithUnreadVarsDropped(n *ir.For) *ir.For {
 	read := loopReadNames(n)
 	if n.KeyRead {
-		read[n.Key] = true
+		// The copy key, written as text, reads the loop's identity where it
+		// has one, and its index where it has none.
+		if n.Identity == nil {
+			read[n.Key] = true
+		}
+		_ = ir.Walk(n.Identity, func(nd ir.Node) error {
+			if id, ok := nd.(*ir.Ident); ok {
+				read[id.Name] = true
+			}
+			return nil
+		})
 	}
 	// A counted loop's variable is read by its own condition, which ForHead
 	// names __i when the body does not name one.

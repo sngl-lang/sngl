@@ -160,6 +160,13 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 	if len(args) != len(fn.Params) {
 		return nil, false
 	}
+	// A method on a generic type reads its receiver's parameters, and a body
+	// interpreted here runs with none bound: `list.format` formatted each
+	// element by a `_format` at an unbound T and folded `"{xs}"` to nonsense.
+	// The folder answers such a method by its own implementation instead.
+	if len(fn.RecvTypeParams) > 0 {
+		return nil, false
+	}
 	for i, a := range args {
 		if s, ok := a.(*interp.Struct); ok {
 			completeStruct(s, expectedStructDef(fn.Params[i].Type), ctx)

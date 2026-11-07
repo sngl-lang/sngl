@@ -472,6 +472,7 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 	// Pre-rendered so gc.RequireImport calls from EvalExpr land before
 	// newScaffoldData samples gc.Imports().
 	var buildUIBuf strings.Builder
+	golang.HoldMountsDuring(c.ctx.Pkg, &buildUIBuf, &buildBuf)
 	if appRoot && c.wrapped {
 		first := ""
 		if len(appChildren) > 0 {
@@ -551,6 +552,7 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 
 func (c *compilation) newScaffoldData(widgetFields []widgetField, functionCode string, gc *golang.GoIRContext) (scaffoldData, error) {
 	td := scaffoldData{
+		Tests:             codegen.BuildsTests(gc.Ctx.Pkg),
 		Package:           c.cfg.Package,
 		Main:              c.cfg.Main,
 		FunctionCode:      functionCode,
@@ -1576,6 +1578,10 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 			preFire = fmt.Sprintf("gtk4rt.DropDownSelect(gtk4rt.Handle(unsafe.Pointer(%s)), v)", w)
 		}
 	}
+	fireArg := ""
+	if ps, args := inv.rtFireValue(); ps != "" {
+		valueParam, fireArg = ps, args
+	}
 	params := func(p string) string {
 		if lead == "" {
 			return p
@@ -1608,9 +1614,9 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 	}
 	switch prop, notify := strings.CutPrefix(inv.GTKSignal, "notify::"); {
 	case inv.RtFire != "" && wrapped:
-		fmt.Fprintf(b, "\tgtk4rt.%s(%s)\n", inv.RtFire, w)
+		fmt.Fprintf(b, "\tgtk4rt.%s(%s%s)\n", inv.RtFire, w, fireArg)
 	case inv.RtFire != "":
-		fmt.Fprintf(b, "\tgtk4rt.%s(gtk4rt.Handle(unsafe.Pointer(%s)))\n", inv.RtFire, w)
+		fmt.Fprintf(b, "\tgtk4rt.%s(gtk4rt.Handle(unsafe.Pointer(%s))%s)\n", inv.RtFire, w, fireArg)
 	case inv.GTKSignal == "pressed":
 		fmt.Fprintf(b, "\tC.sngl_emit_pressed(unsafe.Pointer(%s))\n", w)
 	case notify && wrapped:

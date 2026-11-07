@@ -84,6 +84,8 @@ type dataFamilies struct {
 	forwards map[*ir.Component]bool
 	// loops is the `for`s among records around the member being read.
 	loops []*ir.For
+	// rec is the record type of the data slot being read.
+	rec *ir.Type
 }
 
 // recordContent is what one record was written with, and its number.
@@ -190,11 +192,22 @@ func (d *dataFamilies) slotList(n *ir.NodeInst, slot *ir.SlotDecl, depth int) ir
 		}
 		return nil
 	}
+	outer := d.rec
+	d.rec = slot.Values.Type.Elems[0]
+	if len(n.TypeArgs) == len(n.Component.TypeParams) && len(n.TypeArgs) > 0 {
+		bindings := make(map[string]*ir.Type, len(n.TypeArgs))
+		for i, tp := range n.Component.TypeParams {
+			bindings[tp.Name] = n.TypeArgs[i]
+		}
+		d.rec = d.rec.Substitute(bindings)
+	}
 	elems := d.elems(ir.TypeFamily(slot.Content), pop, depth)
+	rec := d.rec
+	d.rec = outer
 	if d.err != nil {
 		return nil
 	}
-	return &ir.ListLit{Type: slot.Values.Type, Elems: elems}
+	return &ir.ListLit{Type: ir.ListOf(rec), Elems: elems}
 }
 
 // maxComposeDepth bounds a composition of members that renders a composition,
@@ -205,7 +218,7 @@ const maxComposeDepth = 16
 // a spread for what an `if`, a `for` or a forwarded data slot renders.
 func (d *dataFamilies) elems(fam *ir.Component, stmts []ir.Stmt, depth int) []ir.Expr {
 	var out []ir.Expr
-	list := ir.ListOf(recordType(fam))
+	list := ir.ListOf(d.recordType(fam))
 	for _, s := range stmts {
 		if d.err != nil {
 			return nil
@@ -279,7 +292,7 @@ func (d *dataFamilies) elems(fam *ir.Component, stmts []ir.Stmt, depth int) []ir
 // filter before it where the body is a member under an `if`. A body of more
 // than one member would map to a list of lists, which nothing flattens yet.
 func (d *dataFamilies) loop(fam *ir.Component, fs *ir.For, depth int) ir.Expr {
-	list := ir.ListOf(recordType(fam))
+	list := ir.ListOf(d.recordType(fam))
 	if fs.Iter == nil || fs.Iter.ExprType() == nil || fs.Iter.ExprType().Kind != ir.TypeList ||
 		fs.Value != "" || len(fs.Else) > 0 {
 		d.fail(fs, "a `for` among the records of %s walks a list with one variable and no else", fam.Name)
@@ -315,7 +328,7 @@ func (d *dataFamilies) loop(fam *ir.Component, fs *ir.For, depth int) ir.Expr {
 	if cond != nil {
 		iter = d.method(iter, "filter", fs.Iter.ExprType(), d.lambda(fs, cond, ir.TypBool))
 	}
-	return &ir.Spread{Type: list, Operand: d.method(iter, "map", list, d.lambda(fs, body[0], recordType(fam)))}
+	return &ir.Spread{Type: list, Operand: d.method(iter, "map", list, d.lambda(fs, body[0], d.recordType(fam)))}
 }
 
 // lambda is `func(<loop variable>) => e`, e reading the loop's variable
@@ -355,7 +368,7 @@ func (d *dataFamilies) method(recv ir.Expr, name string, ret *ir.Type, fn *ir.La
 // wrote it or as its default, and each of its data slots, the list its
 // population renders.
 func (d *dataFamilies) record(fam *ir.Component, n *ir.NodeInst, depth int) ir.Expr {
-	lit := &ir.StructLit{Type: recordType(fam), Def: fam.Record}
+	lit := &ir.StructLit{Type: d.recordType(fam), Def: fam.Record}
 	for _, fp := range fam.Props {
 		if slot := fam.DataSlotOf(fp); slot != nil {
 			if list := d.slotList(n, slot, depth+1); list != nil {
@@ -449,7 +462,12 @@ func (d *dataFamilies) eventFunc(e *ir.EventDecl, n *ir.NodeInst) *ir.Lambda {
 	return &ir.Lambda{Type: typ, Func: fn}
 }
 
-func recordType(fam *ir.Component) *ir.Type {
+// recordType is the type of a record of fam in the slot being read: the
+// slot's, which binds a generic record's parameters.
+func (d *dataFamilies) recordType(fam *ir.Component) *ir.Type {
+	if d.rec != nil && d.rec.Decl == ir.Symbol(fam.Record) {
+		return d.rec
+	}
 	return &ir.Type{Kind: ir.TypeStruct, Decl: fam.Record}
 }
 

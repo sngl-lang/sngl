@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/codegen/lang/golang"
 )
 
@@ -67,10 +68,21 @@ func emitFyneModel(b *strings.Builder, td *templateData, gc *golang.GoIRContext)
 
 	// New() — sequential field init so later inits can read earlier fields.
 	b.WriteString("// New creates a Model with default values.\nfunc New() *Model {\n\tm := &Model{}\n")
-	for _, bd := range td.Binds {
-		fmt.Fprintf(b, "\tm.%s = %s\n", bd.Name, bd.InitVal)
+	if codegen.BuildsTests(gc.Ctx.Pkg) {
+		// A test mounts its Model where it first needs it, and what it set
+		// up ahead of that keeps the value it set (mountTestComponent).
+		b.WriteString("\tm.__init(nil)\n\treturn m\n}\n\n")
+		b.WriteString("func (m *Model) __init(preset map[string]bool) {\n")
+		for _, bd := range td.Binds {
+			fmt.Fprintf(b, "\tif !preset[%q] {\n\t\tm.%s = %s\n\t}\n", bd.Name, bd.Name, bd.InitVal)
+		}
+		b.WriteString("}\n\n")
+	} else {
+		for _, bd := range td.Binds {
+			fmt.Fprintf(b, "\tm.%s = %s\n", bd.Name, bd.InitVal)
+		}
+		b.WriteString("\treturn m\n}\n\n")
 	}
-	b.WriteString("\treturn m\n}\n\n")
 
 	if usesPosts(gc.Ctx.Pkg) {
 		emitPostDecls(b, gc)

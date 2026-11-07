@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
 	"duckfam.us/sngl/ir"
 )
 
@@ -167,6 +168,23 @@ func (t *gtk4Translator) recordScrollInvoker(node ir.Expr, event string, handler
 func (t *gtk4Translator) recordRtInvoker(node ir.Expr, event string, handler ir.Expr, cType, fire string) {
 	if id := codegen.IdentBareName(node); t.invokerSink != nil && !strings.HasPrefix(id, "__n") {
 		t.invokerSink(gtkEventInvoker{IDLabel: id, SnglEvent: codegen.TriggerEventName(handler, event), FieldName: id, WidgetType: cType, RtFire: fire, List: t.indexed[id]})
+	}
+}
+
+// recordKeyInvoker records the test invoker that presses a key in a window,
+// which a test hands a ui.KeyPress. The window's handler takes the press's
+// fields, so the struct is the one the build declared for the test that
+// builds one; a build that declared none has no test pressing a key.
+func (t *gtk4Translator) recordKeyInvoker(node ir.Expr, event string, handler ir.Expr) {
+	id := codegen.IdentBareName(node)
+	if t.invokerSink == nil || strings.HasPrefix(id, "__n") || t.pkg == nil {
+		return
+	}
+	for _, sd := range t.pkg.Structs {
+		if sd.Name == "KeyPress" && sd.PkgPath() == "sngl:ui" {
+			t.invokerSink(gtkEventInvoker{IDLabel: id, SnglEvent: codegen.TriggerEventName(handler, event), FieldName: id, WidgetType: "GtkBox", RtFire: "ToplevelKey", KeyType: golang.IRTypeToGo(&ir.Type{Kind: ir.TypeStruct, Decl: sd}), List: t.indexed[id]})
+			return
+		}
 	}
 }
 

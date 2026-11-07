@@ -1,0 +1,32 @@
+import test "sngl:test"
+import ui "sngl:ui"
+
+// What failed, which a package func records. A component's var is named by
+// that component's code alone, so a call of this one in a branch testing one
+// leaves the test standing.
+var failures list[string] = []
+
+func failed(what string) {
+    failures.push(what)
+}
+
+component page ui.node {
+    var about option[string] = "bulbasaur"
+
+    if about != null {
+        ui.button #report(text="Report", @click { failed("bulbasaur") })
+        ui.text #name(value=about)
+    }
+}
+
+func testAPackageCallLeavesTheTest(t test.Test, c page) {
+    t.assert(c.name != null && c.name.value == "bulbasaur")
+    if c.report != null {
+        c.report.click()
+    }
+    t.assert(failures.length() == 1 && failures[0] == "bulbasaur")
+}
+
+ui.window {
+    page
+}

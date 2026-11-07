@@ -31,8 +31,8 @@ stdout 'ok'
 # The same, as an ordinary build: the emitted field and every reference to it
 # agree on one name.
 sngl generate --platform=fyne --lang=go --out=fy tagged.sngl
-grep 'inc  *\*widget.Button' fy/model.go
-grep 'm\.inc = widget\.NewButton' fy/model.go
+grep 'inc  *\*fynelayout.Button' fy/model.go
+grep 'm\.inc = fynelayout\.NewButton' fy/model.go
 grep 'm\.inc\.OnTapped = m\.inc_click_handler' fy/model.go
 ! grep 'm\.Inc' fy/model.go
 
@@ -56,7 +56,7 @@ window {
     counter
 }
 -- testrun/bubbletea/go/tagged.sngl/counter/1 --
-sha256:68b022f233964ffd99f351d32b93e616
+sha256:9bb3873aea2a076b8ec86d93a8a2bf27
 {
   "results": [
     {
@@ -66,7 +66,7 @@ sha256:68b022f233964ffd99f351d32b93e616
   ]
 }
 -- testrun/fyne/go/tagged.sngl/counter/1 --
-sha256:54c662015283ef7a1cb0a602185b7f60
+sha256:1b10037dac67c78f861e958779b61e77
 {
   "results": [
     {
@@ -76,7 +76,7 @@ sha256:54c662015283ef7a1cb0a602185b7f60
   ]
 }
 -- testrun/gtk4/go/tagged.sngl/counter/1 --
-sha256:bda78fcab73a323aa3c7168bf4ad780e
+sha256:a78e75697d60c03552b0d4f235cddcea
 {
   "results": [
     {
@@ -86,7 +86,7 @@ sha256:bda78fcab73a323aa3c7168bf4ad780e
   ]
 }
 -- testrun/html/none/tagged.sngl/counter/1 --
-sha256:a799b87aa6ba3e640b186f79dfbb5c71
+sha256:b593322a8e9e088c4d46c5d3f389e7a1
 {
   "results": [
     {

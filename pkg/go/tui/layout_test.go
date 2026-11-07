@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
@@ -71,5 +72,35 @@ func TestJoinJustifies(t *testing.T) {
 	}
 	if got, want := Join(false, lipgloss.Left, 2, 0, 4, parts), " \n \na\nb"; got != want {
 		t.Errorf("a column's end = %q, want %q", got, want)
+	}
+}
+
+// A grid of columns pads each to its share of the width; one with none
+// flows, a row ending where the next text would pass the width. Each line
+// is as wide as the widest, as a column of lipgloss joins is.
+func TestGridRowsAtATime(t *testing.T) {
+	var texts []Part
+	for _, t := range []string{"a", "bb", "", "c", "dddd", "e"} {
+		texts = append(texts, Fixed(t))
+	}
+	if got, want := Grid(2, lipgloss.Top, 1, 0, 9, texts), "a    bb  \nc    dddd\ne        "; got != want {
+		t.Errorf("Grid(2, avail 9) = %q, want %q", got, want)
+	}
+	if got, want := Grid(3, lipgloss.Top, 1, 1, 0, texts), "a    bb   c   \n              \ndddd e        "; got != want {
+		t.Errorf("Grid(3, avail 0) = %q, want %q", got, want)
+	}
+	if got, want := Grid(0, lipgloss.Top, 1, 0, 6, texts), "a bb c\ndddd e"; got != want {
+		t.Errorf("Grid(0, avail 6) = %q, want %q", got, want)
+	}
+	if got, want := Grid(0, lipgloss.Top, 1, 0, 0, texts), "a bb c dddd e"; got != want {
+		t.Errorf("Grid(0, avail 0) = %q, want %q", got, want)
+	}
+}
+
+// A growing part in a grid of columns fills its column.
+func TestGridGrowerFillsItsColumn(t *testing.T) {
+	grow := Grow(1, func(cells int) string { return strings.Repeat("x", cells) })
+	if got, want := Grid(2, lipgloss.Top, 1, 0, 9, []Part{Fixed("a"), grow}), "a    xxxx"; got != want {
+		t.Errorf("Grid = %q, want %q", got, want)
 	}
 }

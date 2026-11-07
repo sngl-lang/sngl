@@ -57,13 +57,13 @@ cmp stdout fyne.txt
 # parameter, while a page script is JavaScript, which does -- which is why
 # GenericComponents is held: a component built at run time is the page's.
 sngl dump --stage lowered --lang go --platform html --list main.sngl
-stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,InlineSlots,Navigation,GenericComponents,Match,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas,NavigationHrefs$'
+stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,InlineSlots,Navigation,GenericComponents,Match,UnreadLocals,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas,NavigationHrefs$'
 stdout ' → SlotChildInstances → '
-stdout ' → CallDefaults → Monomorphize → '
+stdout ' → CallDefaults → TestAnswer → Monomorphize → '
 
 sngl dump --stage lowered --lang none --platform html --list main.sngl
 stdout ' → SlotChildInstances → '
-stdout ' → CallDefaults → Navigation → '
+stdout ' → CallDefaults → TestAnswer → Navigation → '
 
 # android holds Effects: Compose brackets a keyed lifetime itself, so the
 # Effect pass, which runs on every target, lowers only an effect's reports
@@ -72,7 +72,7 @@ stdout ' → CallDefaults → Navigation → '
 # target, and on one holding the capability lowers only the stacks in a surface
 # other than the document, which android renders none of.
 sngl dump --stage lowered --lang kotlin --platform android --list main.sngl
-stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncReactive,AsyncCalls,Computed,ListLambdas,Reactivity,Declarative,ImplicitRecv,ViewStatements,InstanceState,Effects,Navigation,Match,MatchValue,ViewMatch,OptionMatch,StringBuilders,StructComponents,StdlibContextParam,Canvas$'
+stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncReactive,AsyncCalls,Computed,ListLambdas,Reactivity,Declarative,ImplicitRecv,ViewStatements,InstanceState,Effects,Navigation,Match,MatchValue,ViewMatch,OptionMatch,StringBuilders,UnreadLocals,ValueTriggers,StructComponents,StdlibContextParam,Canvas$'
 stdout ' → Effect → '
 stdout ' → Navigation → '
 

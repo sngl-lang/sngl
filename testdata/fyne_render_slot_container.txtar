@@ -34,11 +34,18 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"strings"
 )
+
+type __anon_id_elem_c6a818 struct {
+	Id   string
+	Elem string
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -51,7 +58,7 @@ type Model struct {
 
 	__n0    *fynelayout.Toplevel
 	__n3    *fyne.Container
-	__n4    *widget.Button
+	__n4    *fynelayout.Button
 	__built bool
 }
 
@@ -65,6 +72,26 @@ func New() *Model {
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
+}
+
+func __identified0(__xs []string) []__anon_id_elem_c6a818 {
+	__seen := map[string]int{}
+	__out := []__anon_id_elem_c6a818{}
+	for _, __x := range __xs {
+		__id := strings.ReplaceAll(__x, "#", "##")
+		var __n int = func() int {
+			if __v, __ok := __seen[__id]; __ok {
+				return __v
+			}
+			return 0
+		}()
+		__seen[__id] = (__n + 1)
+		if __n > 0 {
+			__id = ((__id + "#") + fmt.Sprint(__n))
+		}
+		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
+	}
+	return __out
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -84,10 +111,10 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				}
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-				for _, it := range m.items {
+				for _, it := range __identified0(m.items) {
 					__n1 := fynelayout.NewHBox()
 					__n2 := widget.NewLabel("")
-					__n2.SetText(("row " + it))
+					__n2.SetText(("row " + it.Elem))
 					__n1.Add(__n2)
 					fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
 					m.__slot0 = append(m.__slot0, __n1)
@@ -137,7 +164,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n3 = fynelayout.NewVBox()
-	m.__n4 = widget.NewButton("", nil)
+	m.__n4 = fynelayout.NewButton("", nil)
 	m.__n4.SetText("add")
 	m.__n4.OnTapped = m.__n4_click_handler
 	m.__n3.Add(m.__n4)
@@ -155,4 +182,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:e5d304a4076e0a53261f702547b85ca9
+pass sha256:46c11c70754a5a0cebdc8d12eb7f2c11

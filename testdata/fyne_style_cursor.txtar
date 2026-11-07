@@ -106,7 +106,7 @@ type Model struct {
 	__n3      *fyne.Container
 	__n3__box *fynelayout.Box
 	__n4      *widget.Label
-	__n1      *widget.Entry
+	__n1      *fynelayout.Entry
 	__n1__box *fynelayout.Box
 	__n5      *widget.Label
 	__n5__box *fynelayout.Box
@@ -316,7 +316,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n4 = widget.NewLabel("")
 	m.__n4.SetText("open")
 	m.__n3.Add(m.__n4)
-	m.__n1 = widget.NewEntry()
+	m.__n1 = fynelayout.NewEntry()
 	m.__n1__box = fynelayout.NewBox(m.__n1)
 	m.__n1.SetText(m.value__inst0)
 	m.__n1.SetPlaceHolder("")
@@ -353,4 +353,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:530d696abfa06ba6092bad479f9cb7f6
+pass sha256:758af73e8d88f0bce95272683848ac06

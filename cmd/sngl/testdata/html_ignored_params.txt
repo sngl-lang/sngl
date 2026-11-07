@@ -1,0 +1,29 @@
+# A func prop given no default is the zero func of its type, whose parameters
+# nothing reads and are all named `_`. Go and Kotlin bind the name any number
+# of times in one list; JavaScript binds it once, so the bundle of a component
+# html builds at run time refused `props.pick ?? ((_, _) => …)` until the
+# second was named `_1`.
+sngl generate --platform html --lang go -o out p.sngl
+exists out/server.go
+
+-- p.sngl --
+import ui "sngl:ui"
+
+component show(pick func(string, int) int) ui.node {
+    var taps = 0
+
+    ui.button(text="{pick("a", taps)}", @click { taps += 1 })
+}
+
+component page ui.node {
+    var on = false
+
+    ui.button(text="Show", @click { on = !on })
+    if on {
+        show(pick=func(s string, n int) => n)
+    }
+}
+
+ui.window {
+    page
+}

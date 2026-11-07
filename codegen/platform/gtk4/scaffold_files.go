@@ -119,10 +119,20 @@ func boolToInt(b bool) int {
 // sequentially so later inits can reference earlier `+"`m.<name>`"+` fields.
 func New() *Model {
 	m := &Model{}`)
-	for _, bd := range d.Binds {
-		fmt.Fprintf(w, "\n\tm.%s = %s", bd.Name, bd.InitVal)
+	if d.Tests {
+		// A test mounts its Model where it first needs it, and what it set
+		// up ahead of that keeps the value it set.
+		io.WriteString(w, "\n\tm.__init(nil)\n\treturn m\n}\n\nfunc (m *Model) __init(preset map[string]bool) {")
+		for _, bd := range d.Binds {
+			fmt.Fprintf(w, "\n\tif !preset[%q] {\n\t\tm.%s = %s\n\t}", bd.Name, bd.Name, bd.InitVal)
+		}
+		io.WriteString(w, "\n}\n\n")
+	} else {
+		for _, bd := range d.Binds {
+			fmt.Fprintf(w, "\n\tm.%s = %s", bd.Name, bd.InitVal)
+		}
+		io.WriteString(w, "\n\treturn m\n}\n\n")
 	}
-	io.WriteString(w, "\n\treturn m\n}\n\n")
 	for _, c := range d.Computeds {
 		fmt.Fprintf(w, "\nfunc (m *Model) %s() %s {\n%s\n}\n\n", c.Name, c.GoType, c.Body)
 	}

@@ -14,7 +14,7 @@ window {
     vbox {
         select(value=pick) {
             for var o = opts {
-                choice(label=o)
+                choice(label=o, value=o)
             }
         }
         button(text="more", @click { opts = ["a", "b", "c"] })

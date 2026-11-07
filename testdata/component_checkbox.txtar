@@ -65,6 +65,9 @@ type Measurement struct {
 	Rem float64
 }
 
+type Test struct {
+}
+
 type Style struct {
 	Padding        *Measurement
 	PaddingTop     *Measurement
@@ -119,6 +122,14 @@ type Style struct {
 	ListStyleType  string
 }
 
+// snglStop is a focus stop a click presses: the slot and copy focus moves to,
+// and the key that presses it there, where press says it has one.
+type snglStop struct {
+	slot, pos int
+	press     bool
+	key       tea.KeyPressMsg
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -129,14 +140,22 @@ type modelState struct {
 	on        bool
 	__focusID int
 
+	__clicks      tui.Clicks[snglStop]
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{&modelState{}}
-	m.on = false
-	m.__focusID = 0
+	return Model{&modelState{}}.__mount(nil)
+}
+
+func (m Model) __mount(preset map[string]bool) Model {
+	if !preset["on"] {
+		m.on = false
+	}
+	if !preset["__focusID"] {
+		m.__focusID = 0
+	}
 	return m
 }
 
@@ -183,14 +202,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -254,7 +273,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt6
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt9 *Measurement
 	if own != nil {
 		__lt9 = own
@@ -267,7 +286,7 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt9 = __lt8
 	}
-	return CellsOf(__lt9)
+	return SpaceOf(__lt9, across)
 }
 
 func CellsOf(m__r1 *Measurement) int {
@@ -306,6 +325,16 @@ func LineCap(height__r0 int, lines int) int {
 		__lt13 = __lt12
 	}
 	return __lt13
+}
+
+func SpaceOf(m__r3 *Measurement, across bool) int {
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((PxOf(m__r3) / __lt14) + 0.5))
 }
 
 func (m *Model) __focusNext() {
@@ -349,6 +378,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if s, ok := m.__clicks.At(msg.X, msg.Y); ok {
+				cmds = append(cmds, m.__press(s))
+			}
+		}
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -364,16 +399,33 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// __press is a click on s: focus moves to it and s's key is pressed there,
+// as a key pressed on the stop Tab reached is. A stop Tab passes over gives
+// focus back once it is pressed.
+func (m Model) __press(s snglStop) tea.Cmd {
+	m.__focusID = s.slot
+	var cmd tea.Cmd
+	if s.press {
+		_, cmd = m.Update(s.key)
+	}
+	return cmd
+}
+
 func (m Model) View() tea.View {
+	m.__clicks.Reset()
 	var content string
 	contentFocused := (m.__focusID == 0)
 	contentPrefix := " "
 	if contentFocused {
 		contentPrefix = ">"
 	}
-	content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true).Render(contentPrefix + " " + fmt.Sprint("Enable"))
+	contentText := contentPrefix + " " + fmt.Sprint("Enable")
+	content = tui.Within(tui.Focused(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentFocused), tui.Avail(m.width), contentText).Render(contentText)
+	content = m.__clicks.Mark(snglStop{slot: 0, pos: 0, press: true, key: tea.KeyPressMsg{Code: tea.KeySpace}}, content)
+	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 
@@ -393,6 +445,7 @@ import "testing"
 func TestCheckboxToggles(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.on == false)) { t.Errorf("assert failed: %s", "(c.on == false)") }
 	c.on = true
 	if !((c.on == true)) { t.Errorf("assert failed: %s", "(c.on == true)") }
@@ -401,31 +454,46 @@ func TestCheckboxToggles(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return Model{&modelState{}} }
+
+func mountTestComponent(m Model, preset map[string]bool) Model {
+	m = m.__mount(preset)
+	_ = m.View()
+	return m
+}
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from component_checkbox.sngl; DO NOT EDIT.
 
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
 	"os"
 )
+
+type Test struct {
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
 	on bool
 
-	__n0 *widget.Check
+	__n0 *fynelayout.Check
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.on = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["on"] {
+		m.on = false
+	}
 }
 
 func (m *Model) __wrote_on() {
@@ -449,7 +517,7 @@ func (m *Model) SetOn(v bool) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = widget.NewCheck("", nil)
+	m.__n0 = fynelayout.NewCheck("", nil)
 	m.__n0.SetText("Enable")
 	m.__n0.SetChecked(m.on)
 	m.__n0.OnChanged = m.__n0_toggle_handler
@@ -474,6 +542,7 @@ import "testing"
 func TestCheckboxToggles(t *testing.T) {
 	c := newTestComponent()
 	_ = c
+	c = mountTestComponent(c, nil)
 	if !((c.on == false)) { t.Errorf("assert failed: %s", "(c.on == false)") }
 	c.on = true
 	c.__wrote_on()
@@ -490,7 +559,11 @@ import "fyne.io/fyne/v2/test"
 
 func newTestComponent() *Model {
 	test.NewApp()
-	m := New()
+	return &Model{}
+}
+
+func mountTestComponent(m *Model, preset map[string]bool) *Model {
+	m.__init(preset)
 	m.BuildUI()
 	return m
 }
@@ -513,6 +586,9 @@ package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
 
+type Test struct {
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	on     bool
@@ -524,8 +600,14 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.on = false
+	m.__init(nil)
 	return m
+}
+
+func (m *Model) __init(preset map[string]bool) {
+	if !preset["on"] {
+		m.on = false
+	}
 }
 
 func (m *Model) __wrote_on() {
@@ -555,6 +637,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(m.__n0, "Enable")
 	gtk4rt.CheckButtonSetActive(m.__n0, m.on)
+	gtk4rt.SetBool(m.__n0, "can-focus", true)
 	gtk4rt.Connect(m.__n0, "toggled", m.__n0_toggled_handler)
 	gtk4rt.BoxAppend(m.__root, m.__n0)
 }
@@ -585,14 +668,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 
+class Test {
+    override fun equals(other: Any?) = other is Test
+    override fun hashCode() = 0
+    override fun toString() = "Test()"
+}
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-class MainScreenState {
-    var on by mutableStateOf(false)
+@Suppress("UNCHECKED_CAST")
+private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T =
+    if (key in pre) pre[key] as T else init()
+
+class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
+    var on by mutableStateOf(__snglPre(__pre, "on") { false })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -669,18 +762,21 @@ addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
-window.__sngl_reset = () => {
+window.__sngl_reset = (pre) => {
   for (const n of Array.from(document.body.childNodes)) {
     if (n.nodeName !== "SCRIPT") n.remove();
   }
   const first = document.body.firstChild;
   for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__snglPre = pre ?? null;
   window.__sngl_boot();
 };
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { on: false };
+  var __snglPre = window.__snglPre ?? {};
+  Object.assign(state, __snglPre);
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -701,21 +797,20 @@ window.__sngl_boot = () => {
   __sngl_init();
 })();
 };
-window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3dc45989dade7469d10cdd689f3db742
+pass sha256:6a5be4885017a591dba0c2b480b9b83d
 -- run/go/fyne --
-pass sha256:ba29360fe1f36414e9068ab3371b26e4
+pass sha256:d01d23ce7ee6d633586812a839ca6a22
 -- run/go/gtk4 --
-pass sha256:b302b93f12ff040bec11a0c5a1e8fb2f
+pass sha256:3939e4a6baa52b2835afef24a3a4e0ab
 -- run/kotlin/android --
-pass sha256:3e757561cff086399b65237dc5bc76fa
+pass sha256:ac3d279199e71b4ea2a1d27cd5aff984
 -- run/none/html --
-pass sha256:4d99677a35452864d1da76d5634dd482
+pass sha256:a70a1e3e5136f6dfd84e55eea0c00d68
 -- testrun/html/none/component_checkbox.sngl/main/1 --
-sha256:9941b67c7574e42e78bb43328df98845
+sha256:893c35d9bc927efc3292ba9444da104f
 {
   "results": [
     {

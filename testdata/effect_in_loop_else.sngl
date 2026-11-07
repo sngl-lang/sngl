@@ -48,6 +48,7 @@ func testEmptyingTheListMountsOnce(t Test, c main) {
 }
 
 func testRefillingTheListUnmountsIt(t Test, c main) {
+    t.assert(c.out.value == "")
     c.items = []
     c.items = ["a"]
     t.assert(c.out.value == "+none,-none")

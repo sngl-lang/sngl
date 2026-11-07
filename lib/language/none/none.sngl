@@ -29,6 +29,7 @@ import gen "sngl:x/gen"
     viewMatches,
     optionMatches,
     stringBuilders,
+    unreadLocals,
 )]
 #[gen.name("none")]
 component language(const platforms ...component build.platform) build.language

@@ -3,6 +3,7 @@
 // number one would produce, and that is `calc/`'s business alone.
 
 import test "sngl:test"
+import ui "sngl:ui"
 import "./calc"
 import "./keypad"
 import "./readout"
@@ -179,4 +180,47 @@ func testPressingKeysDrivesTheCalculator(t test.Test, c Calculator) {
     c.press(keypad.digitKey("6"))
     c.press(keypad.Key{label="=", action=keypad.Action.equals})
     t.assert(c.state.entry == "24")
+}
+
+// A keyboard's key presses the keypad's key it is a shortcut of, and goes no
+// further: the character on the key, `*` for the times key, Enter for `=` and
+// Escape for clear.
+func testKeyboardShortcutsPressTheKeys(t test.Test, c Calculator) {
+    var stopped = 0
+    for var name = ["1", "2", "*", "3", "Enter"] {
+        c.calculator.key(ui.KeyPress{key=name}, func() { stopped += 1 })
+    }
+    t.assert(c.state.entry == "36")
+    t.assert(stopped == 5)
+    c.calculator.key(ui.KeyPress{key="Backspace"}, func() {})
+    t.assert(c.state.entry == "36")
+    c.calculator.key(ui.KeyPress{key="Escape"}, func() {})
+    t.assert(c.state.entry == "0")
+}
+
+// A key no keypad key answers, and one held with Control, goes on to
+// whatever would have had it.
+func testOtherKeysGoOn(t test.Test, c Calculator) {
+    var stopped = false
+    c.calculator.key(ui.KeyPress{key="q"}, func() { stopped = true })
+    c.calculator.key(ui.KeyPress{key="c", ctrl=true}, func() { stopped = true })
+    c.calculator.key(ui.KeyPress{key="Tab"}, func() { stopped = true })
+    t.assert(c.state.entry == "0")
+    t.assert(!stopped)
+}
+
+// Every key on the keypad has a shortcut, and no two share one.
+func testEveryKeyHasItsOwnShortcut(t test.Test) {
+    var seen list[string] = []
+    for var row = keypad.rows() {
+        for var k = row {
+            t.assert(k.shortcuts.length() > 0)
+            for var s = k.shortcuts {
+                t.assert(!seen.contains(s))
+                var found = keypad.keyFor(s)
+                t.assert(found != null && found.label == k.label)
+                seen.push(s)
+            }
+        }
+    }
 }

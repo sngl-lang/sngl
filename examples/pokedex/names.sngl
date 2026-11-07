@@ -1,15 +1,15 @@
 import async "sngl:async"
 import i18n "sngl:i18n"
-import seq "sngl:seq"
 import poke "openapi:./pokeapi.yml"
 import ui "sngl:ui"
 
 // The last segment of a PokéAPI resource URL, which is the resource's id:
 // "https://pokeapi.co/api/v2/evolution-chain/1/" is "1". A summary names
 // what it points at by URL alone, and an id is what the next request asks.
+// A URL with no segment, "" among them, has no id, and is "".
 func idOf(url string) string {
     var parts = string.split(url, "/").filter(func(p string) => p != "")
-    return parts[parts.length() - 1]
+    return parts.length() > 0 ? parts[parts.length() - 1] : ""
 }
 
 // A name as the games print it: "mr-mime" is "Mr Mime".
@@ -305,14 +305,25 @@ func pokeLanguages(locale string) list[string] {
     }
 }
 
+// An entry PokéAPI gives in one language, whatever it holds: a name, a genus,
+// a game's description.
+struct Localized = fieldsOf[struct {
+    language poke.LanguageSummary
+}]
+
+// A name PokéAPI gives in one language, whichever resource it names.
+struct LocalName = fieldsOf[struct {
+    language poke.LanguageSummary
+    name     string
+}]
+
 // What PokéAPI gives in the reader's language out of `entries`, one per
-// language or more -- a name, a genus, a game's description -- `text` of the
-// last entry `language` says is in the first of the reader's languages that
-// has one, then in English, or `otherwise` where neither has. Every name or
-// text the app shows from PokéAPI is picked here.
-func inLanguage[T any](entries list[T], language func(T) string, text func(T) string, otherwise string) string {
+// language or more, `text` of the last entry in the first of the reader's
+// languages that has one, then in English, or `otherwise` where neither has.
+// Every name or text the app shows from PokéAPI is picked here.
+func inLanguage[T Localized](entries list[T], text func(T) string, otherwise string) string {
     for var want = pokeLanguages(i18n.locale) {
-        var found = entries.filter(func(e T) => language(e) == want)
+        var found = entries.filter(func(e T) => e.language.name == want)
         if found.length() > 0 {
             return text(found[found.length() - 1])
         }
@@ -320,81 +331,107 @@ func inLanguage[T any](entries list[T], language func(T) string, text func(T) st
     return otherwise
 }
 
+// The name in the reader's language out of `names`, or `otherwise`.
+func nameIn[T LocalName](names list[T], otherwise string) => inLanguage(names, func(n T) => n.name, otherwise)
+
 // One name of a resource in one language, whichever resource it names: what
 // a page keeps of a type, an ability or a move it asked for.
 struct Named {
-    language string
+    language poke.LanguageSummary
     name     string
 }
 
-// Every name asked for, keyed "kind/slug" and shared by every page, so a name
-// one page asked for is not asked for again.
-var names map[string, list[Named]] = {}
+// `names` as a page keeps them.
+func localNames[T LocalName](names list[T]) => names.map(func(n T) => Named{language=n.language, name=n.name})
 
-// Whether the names of `slug` of `kind` have been answered.
-func known(kind string, slug string) => names.contains("{kind}/{slug}")
-
-// A lookup that failed: why, and in which round of asking.
+// A key a cache asked for that failed: why, and in which round of asking.
 struct Failed {
     why   string
     round int
 }
 
-// Every lookup that failed, keyed as `names` is. A failure holds for the
-// round it failed in, so the lookup is not asked again in a loop; `retry`
-// starts the next round, and every lookup that failed asks again.
-var failures map[string, Failed] = {}
-
-// The round of asking.
-var round = 0
-
-// Records that the lookup of `slug` of `kind` failed this round.
-func lookupFailed(kind string, slug string, f async.Failure) {
-    failures["{kind}/{slug}"] = Failed{why=f.message, round=round}
+// Answers kept by key and shared by everything that holds the cache, so what
+// one page asked for is not asked for again, and the keys that failed. A
+// failure holds for the round it failed in, so a key is not asked again in a
+// loop; `retry` starts the next round, and every key that failed asks again.
+struct Cache[V any] {
+    answers  map[string, V]
+    failures map[string, Failed]
+    round    int
 }
 
-// Whether the lookup of `slug` of `kind` failed this round.
-func failedNow(kind string, slug string) => failures.get("{kind}/{slug}", Failed{why="", round=-1}).round == round
+// Whether `key` has been answered.
+func Cache[V].known(this Cache[V], key string) => this.answers.contains(key)
 
-// Whether to ask for the names of `slug` of `kind`: not answered, and not
-// failed this round.
-func wanted(kind string, slug string) => !known(kind, slug) && !failedNow(kind, slug)
+// Whether `key` failed this round.
+func Cache[V].failedNow(this Cache[V], key string) => this.failures.get(key, Failed{why="", round=-1}).round == this.round
 
-// Why the lookup of `slug` of `kind` failed this round, "" where it did not.
-func whyFailed(kind string, slug string) => failedNow(kind, slug) ? failures["{kind}/{slug}"].why : ""
+// Whether to ask for `key`: not answered, and not failed this round.
+func Cache[V].wanted(this Cache[V], key string) => !this.known(key) && !this.failedNow(key)
 
-// The lookups that failed this round.
-func failing() => failures.values().filter(func(f Failed) => f.round == round)
+// Why `key` failed this round, "" where it did not.
+func Cache[V].whyFailed(this Cache[V], key string) => this.failedNow(key) ? this.failures[key].why : ""
 
-// Asks again for every lookup that failed.
-func retry() {
-    round += 1
+// The keys that failed this round.
+func Cache[V].failing(this Cache[V]) => this.failures.values().filter(func(f Failed) => f.round == this.round)
+
+// Asks again for every key that failed.
+func Cache[V].retry(this ref[Cache[V]]) {
+    this.round += 1
 }
+
+// Keeps `answer` as what `key` answered.
+func Cache[V].keep(this ref[Cache[V]], key string, answer V) {
+    this.answers[key] = answer
+}
+
+// Records that `key` failed this round, and why.
+func Cache[V].fail(this ref[Cache[V]], key string, f async.Failure) {
+    this.failures[key] = Failed{why=f.message, round=this.round}
+}
+
+// Asks for `key` where `cache` wants it, keeping what `keep` makes of the
+// answer or why it failed. It renders nothing, so it goes wherever the answer
+// is shown, as many times as it is: once answered, none asks again. `load`
+// hands on the whole answer, for a caller that keeps more of it.
+component cached[T any, V any, F any](key string, fetch func(async.Lifetime) async.Result[T], keep func(T) V, :cache Cache[V], @load(got T)) F {
+    if cache.wanted(key) {
+        async.query(
+            on = key,
+            fetch = func(k string, life async.Lifetime) => fetch(life),
+            @load(got) {
+                cache.keep(key, keep(got))
+                load(got)
+            },
+            @fail(f) { cache.fail(key, f) },
+        )
+    }
+}
+
+// Every name asked for, keyed "kind/slug" and shared by every page.
+var names = Cache[list[Named]]{answers={}, failures={}, round=0}
 
 // Asks for the names of `slug` of `kind` where no page has, keeping them in
-// `names`, or that the lookup failed in `failures`. It renders nothing, so it
-// goes wherever the name is shown.
+// `names`.
 component lookup(kind string, slug string) ui.node {
-    if wanted(kind, slug) {
-        if kind == `species` {
-            poke.pokemonSpeciesRetrieve(id=slug, @load(got) { names["species/{slug}"] = speciesNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `type` {
-            poke.typeRetrieve(id=slug, @load(got) { names["type/{slug}"] = typeNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `ability` {
-            poke.abilityRetrieve(id=slug, @load(got) { names["ability/{slug}"] = abilityNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `stat` {
-            poke.statRetrieve(id=slug, @load(got) { names["stat/{slug}"] = statNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `egg-group` {
-            poke.eggGroupRetrieve(id=slug, @load(got) { names["egg-group/{slug}"] = eggGroupNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `habitat` {
-            poke.pokemonHabitatRetrieve(id=slug, @load(got) { names["habitat/{slug}"] = habitatNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `item` {
-            poke.itemRetrieve(id=slug, @load(got) { names["item/{slug}"] = itemNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `trigger` {
-            poke.evolutionTriggerRetrieve(id=slug, @load(got) { names["trigger/{slug}"] = triggerNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        } else if kind == `move` {
-            poke.moveRetrieve(id=slug, @load(got) { names["move/{slug}"] = moveNamed(got.names) }, @fail(f) { lookupFailed(kind, slug, f) })
-        }
+    if kind == `species` {
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.pokemonSpeciesRetrieveCall(id=slug, life=life), keep=func(got poke.PokemonSpeciesDetail) => localNames(got.names), :cache=names)
+    } else if kind == `type` {
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.typeRetrieveCall(id=slug, life=life), keep=func(got poke.TypeDetail) => localNames(got.names), :cache=names)
+    } else if kind == `ability` {
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.abilityRetrieveCall(id=slug, life=life), keep=func(got poke.AbilityDetail) => localNames(got.names), :cache=names)
+    } else if kind == `stat` {
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.statRetrieveCall(id=slug, life=life), keep=func(got poke.StatDetail) => localNames(got.names), :cache=names)
+    } else if kind == `egg-group` {
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.eggGroupRetrieveCall(id=slug, life=life), keep=func(got poke.EggGroupDetail) => localNames(got.names), :cache=names)
+    } else if kind == `habitat` {
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.pokemonHabitatRetrieveCall(id=slug, life=life), keep=func(got poke.PokemonHabitatDetail) => localNames(got.names), :cache=names)
+    } else if kind == `item` {
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.itemRetrieveCall(id=slug, life=life), keep=func(got poke.ItemDetail) => localNames(got.names), :cache=names)
+    } else if kind == `trigger` {
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.evolutionTriggerRetrieveCall(id=slug, life=life), keep=func(got poke.EvolutionTriggerDetail) => localNames(got.names), :cache=names)
+    } else if kind == `move` {
+        cached(key="{kind}/{slug}", fetch=func(life async.Lifetime) => poke.moveRetrieveCall(id=slug, life=life), keep=func(got poke.MoveDetail) => localNames(got.names), :cache=names)
     }
 }
 
@@ -406,29 +443,43 @@ component loadError(why string, @retry()) ui.node {
     }
 }
 
-// The lookups that failed this round, as one sign that asks for every one
-// again: a name is shown by its slug until its own arrives, so a failed one
-// is no hole on the page, only a word in the wrong language. `again` fires
-// once the next round has started, for a page that asks in a way of its own.
-component lookupsError(@again()) ui.node {
-    if failing().length() > 0 {
-        loadError #lookupsSign(why=lookupsFailed(failing().length(), failing()[0].why), @retry {
-            retry()
-            again()
-        })
+// A request a page makes once it knows what to ask, and where the request
+// failed, what `say` makes of why beside a sign that asks again, the sign
+// alone where it makes "".
+component asked[K any, T any](
+    on     K,
+    fetch  func(K, async.Lifetime) async.Result[T],
+    :value option[T] = null,
+    :pending = false,
+    say    func(string) string = func(why string) => "",
+) ui.node {
+    var failure option[async.Failure] = null
+
+    async.query #ask(on=on, fetch=fetch, :value=value, :pending=pending, :failure=failure)
+    if failure != null {
+        ui.hbox(style={gap=8px, alignItems=center}) {
+            if say(failure.message) != "" {
+                ui.text #said(value=say(failure.message))
+            }
+            loadError #problem(why=requestFailed(failure.message), @retry { ask.refresh() })
+        }
     }
 }
 
-// `entries` as a page keeps them.
-func namedIn[T any](entries list[T], language func(T) string, name func(T) string) list[Named] {
-    return entries.map(func(e T) => Named{language=language(e), name=name(e)})
+// The lookups that failed this round, as one sign that asks for every one
+// again: a name is shown by its slug until its own arrives, so a failed one
+// is no hole on the page, only a word in the wrong language.
+component lookupsError ui.node {
+    if names.failing().length() > 0 {
+        loadError #lookupsSign(why=lookupsFailed(names.failing().length(), names.failing()[0].why), @retry { names.retry() })
+    }
 }
 
 // The name of the resource `slug` of `kind` in the reader's language, out of
 // what a page has asked for, keyed "kind/slug"; `slug` made readable until
 // its answer arrives, or where it gives none.
 func called(store map[string, list[Named]], kind string, slug string) string {
-    return inLanguage(store.get("{kind}/{slug}", []), func(n Named) => n.language, func(n Named) => n.name, display(slug))
+    return nameIn(store.get("{kind}/{slug}", []), display(slug))
 }
 
 // The slugs of `kind` among `keys`, each once, in the order they come.
@@ -438,7 +489,7 @@ func slugsOf(keys list[string], kind string) list[string] {
     for var k = keys {
         if string.startsWith(k, prefix) {
             var slug = string.substring(k, string.length(prefix), string.length(k))
-            if out.filter(func(s string) => s == slug).length() == 0 {
+            if !out.contains(slug) {
                 out.push(slug)
             }
         }
@@ -447,17 +498,7 @@ func slugsOf(keys list[string], kind string) list[string] {
 }
 
 // A dex's name, or its own name made readable where it has none.
-func dexTitle(names list[poke.PokedexName], name string) => inLanguage(names, func(n poke.PokedexName) => n.language.name, func(n poke.PokedexName) => n.name, display(name))
-
-// `items` in rows of `width`, the last holding what is left: a grid, since a
-// `Style` neither wraps a row nor lays out columns.
-func rows[T any](items list[T], width int) list[list[T]] {
-    var out list[list[T]] = []
-    for var start = seq.step(0, items.length(), width) {
-        out.push(items.slice(start, int.min(start + width, items.length())))
-    }
-    return out
-}
+func dexTitle(names list[poke.PokedexName], name string) => nameIn(names, display(name))
 
 // The Pokémon a species' page shows: its default variety, whose name is not
 // always the species' -- the species deoxys is the Pokémon deoxys-normal.
@@ -472,7 +513,7 @@ func defaultVariety(varieties list[poke.PokemonSpeciesVariety], species string) 
 
 // A form's name -- "Alolan Vulpix" -- or `otherwise` where PokéAPI gives it
 // none, as for a species' default form.
-func formName(names list[poke.PokemonFormName], otherwise string) => inLanguage(names, func(n poke.PokemonFormName) => n.language.name, func(n poke.PokemonFormName) => n.name, otherwise)
+func formName(names list[poke.PokemonFormName], otherwise string) => nameIn(names, otherwise)
 
 // The varieties of a species other than `shown`, the one a page shows: the
 // forms its Sprites tab lists.
@@ -527,15 +568,15 @@ func gallery(s poke.PokemonSprites) list[Sprite] {
 func orNone(url option[string]) => url != null ? url : ""
 
 // A species' name, or its own name made readable where it has none.
-func speciesName(names list[poke.PokemonSpeciesName], name string) => inLanguage(names, func(n poke.PokemonSpeciesName) => n.language.name, func(n poke.PokemonSpeciesName) => n.name, display(name))
+func speciesName(names list[poke.PokemonSpeciesName], name string) => nameIn(names, display(name))
 
 // What kind of Pokémon a species is: "Seed Pokémon".
-func genusOf(genera list[poke.PokemonSpeciesGenus]) => inLanguage(genera, func(g poke.PokemonSpeciesGenus) => g.language.name, func(g poke.PokemonSpeciesGenus) => g.genus, "")
+func genusOf(genera list[poke.PokemonSpeciesGenus]) => inLanguage(genera, func(g poke.PokemonSpeciesGenus) => g.genus, "")
 
 // A species' last description, the newest game's, on one line: the games
 // break a description where their text box did, with newlines and form
 // feeds.
-func latestFlavor(entries list[poke.PokemonSpeciesFlavorText]) => oneLine(inLanguage(entries, func(e poke.PokemonSpeciesFlavorText) => e.language.name, func(e poke.PokemonSpeciesFlavorText) => e.flavorText, ""))
+func latestFlavor(entries list[poke.PokemonSpeciesFlavorText]) => oneLine(inLanguage(entries, func(e poke.PokemonSpeciesFlavorText) => e.flavorText, ""))
 
 // `s` with every run of whitespace a single space, and none at either end.
 func oneLine(s string) string {
@@ -743,42 +784,24 @@ func dexGroups(dex option[poke.PokedexDetail]) list[string] {
     return dex != null ? dex.versionGroups.map(func(g poke.VersionGroupSummary) => g.name) : []
 }
 
-// A way a Pokémon learns a move, as the Moves tab offers it: its label, and
-// PokéAPI's name for it.
-struct LearnMethod {
-    label string
-    name  string
+// A way a Pokémon learns a move, as the Moves tab offers them, by level
+// first.
+enum LearnMethod { levelUp, machine, egg, tutor }
+
+// PokéAPI's name for the way `m`.
+func methodSlug(m LearnMethod) => match m {
+    levelUp => "level-up"
+    machine => "machine"
+    egg => "egg"
+    tutor => "tutor"
 }
 
-// The ways the Moves tab offers, by level first.
-func learnMethods() list[LearnMethod] {
-    return [
-        LearnMethod{label=$"Level", name="level-up"},
-        LearnMethod{label=$"Machine", name="machine"},
-        LearnMethod{label=$"Egg", name="egg"},
-        LearnMethod{label=$"Tutor", name="tutor"},
-    ]
-}
-
-// PokéAPI's name for the way labeled `label`, by level where none is.
-func methodNamed(label string) string {
-    for var m = learnMethods() {
-        if m.label == label {
-            return m.name
-        }
-    }
-    return "level-up"
-}
-
-// The label of the way PokéAPI names `name`, by level's where it is none of
-// them.
-func methodLabeled(name string) string {
-    for var m = learnMethods() {
-        if m.name == name {
-            return m.label
-        }
-    }
-    return learnMethods()[0].label
+// What the Moves tab's select calls the way `m`, in the reader's language.
+func methodLabel(m LearnMethod) => match m {
+    levelUp => $"Level"
+    machine => $"Machine"
+    egg => $"Egg"
+    tutor => $"Tutor"
 }
 
 // One row of the Moves tab: the level a move is learned at, "" for a way
@@ -833,22 +856,19 @@ func before(a learned, b learned) bool {
 
 // The moves a Pokémon learns by `method` in `group`, as the Moves tab's rows,
 // in the order `before` says, each with what `facts` holds of it.
-func movesOf(moves list[poke.PokemonMove], group string, method string, facts map[string, MoveFact], store map[string, list[Named]]) list[MoveRow] {
+func movesOf(moves list[poke.PokemonMove], group string, method LearnMethod, facts map[string, MoveFact], store map[string, list[Named]]) list[MoveRow] {
+    var slug = methodSlug(method)
     var sorted list[learned] = []
     for var m = moves {
         for var d = m.versionGroupDetails {
-            if d.versionGroup.name == group && d.moveLearnMethod.name == method {
+            if d.versionGroup.name == group && d.moveLearnMethod.name == slug {
                 var order = d.order
-                var it = learned{level=d.levelLearnedAt, order=order != null ? order : 0, name=called(store, `move`, m.move.name), move=m.move.name}
-                var at = sorted.length()
-                for at > 0 && before(it, sorted[at - 1]) {
-                    at -= 1
-                }
-                sorted.insert(at, it)
+                sorted.push(learned{level=d.levelLearnedAt, order=order != null ? order : 0, name=called(store, `move`, m.move.name), move=m.move.name})
             }
         }
     }
-    return sorted.map(func(l learned) => moveRow(l, method == "level-up" ? "{l.level}" : "", facts, store))
+    sorted.sortBy(before)
+    return sorted.map(func(l learned) => moveRow(l, method == levelUp ? "{l.level}" : "", facts, store))
 }
 
 // `l`'s row, at `level`, with what `facts` holds of it.
@@ -866,25 +886,6 @@ func movesNote(count int) => $"{count, plural, =0{It learns no moves this way.} 
 
 // How many Pokémon a dex holds: "1 Pokémon", "40 Pokémon".
 func dexCount(count int) => $"{count, plural, one{# Pokémon} other{# Pokémon}}"
-
-// What a page keeps of each kind of resource it asks a name of.
-func speciesNamed(names list[poke.PokemonSpeciesName]) => namedIn(names, func(n poke.PokemonSpeciesName) => n.language.name, func(n poke.PokemonSpeciesName) => n.name)
-
-func typeNamed(names list[poke.TypeName]) => namedIn(names, func(n poke.TypeName) => n.language.name, func(n poke.TypeName) => n.name)
-
-func abilityNamed(names list[poke.AbilityName]) => namedIn(names, func(n poke.AbilityName) => n.language.name, func(n poke.AbilityName) => n.name)
-
-func statNamed(names list[poke.StatName]) => namedIn(names, func(n poke.StatName) => n.language.name, func(n poke.StatName) => n.name)
-
-func eggGroupNamed(names list[poke.EggGroupName]) => namedIn(names, func(n poke.EggGroupName) => n.language.name, func(n poke.EggGroupName) => n.name)
-
-func habitatNamed(names list[poke.PokemonHabitatName]) => namedIn(names, func(n poke.PokemonHabitatName) => n.language.name, func(n poke.PokemonHabitatName) => n.name)
-
-func itemNamed(names list[poke.ItemName]) => namedIn(names, func(n poke.ItemName) => n.language.name, func(n poke.ItemName) => n.name)
-
-func triggerNamed(names list[poke.EvolutionTriggerName]) => namedIn(names, func(n poke.EvolutionTriggerName) => n.language.name, func(n poke.EvolutionTriggerName) => n.name)
-
-func moveNamed(names list[poke.MoveName]) => namedIn(names, func(n poke.MoveName) => n.language.name, func(n poke.MoveName) => n.name)
 
 // What a page says while it waits for `name`.
 func loadingName(name string) => $"Loading {name}"

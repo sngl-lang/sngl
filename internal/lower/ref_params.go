@@ -106,8 +106,10 @@ func (rp *refParams) funcs() []*ir.Func {
 	return out
 }
 
-// byRef reports whether a call passes p by reference: a method's ambient
-// `this`, or a `ref[T]`. A component's `this` is its instance and no value.
+// byRef reports whether a call passes p by reference: a `ref[T]`, or the
+// ambient `this` of a method written in its type's body. A receiver a
+// declaration names is a value like any other parameter, and a component's
+// `this` is its instance and no value.
 func byRef(p *ir.Param) bool {
 	if p == nil || p.Type == nil {
 		return false
@@ -115,7 +117,7 @@ func byRef(p *ir.Param) bool {
 	if p.Type.Kind == ir.TypeRef {
 		return true
 	}
-	if !p.Receiver || p.Name != ir.ReceiverParam {
+	if !p.Receiver || !p.Ambient {
 		return false
 	}
 	switch p.Type.Kind {

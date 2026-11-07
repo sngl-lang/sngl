@@ -432,7 +432,8 @@ fun CurrentTestScreen() {
     __snglCurrentModel.value?.let { key(it) { MainScreen(it) } }
 }
 
-fun newTestComponent(): MainScreenState = MainScreenState()
+// Made where a test mounts it, from what the test set up ahead of that.
+fun newTestComponent(pre: Map<String, Any?> = emptyMap()): MainScreenState = MainScreenState(pre)
 `)
 	if err := writeAndroidSourceFile(sink, prefix+"TestModelAccessor.kt", req.Lang, ktOpts, accessor); err != nil {
 		return err
@@ -482,7 +483,11 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 // A program that waits on a request has a test's wait for idle wait for the
 // work each runtime counts as well -- the bodies SnglCodec.start began, the
 // pictures SnglAssets is fetching -- so a test reads what an answer wrote
-// rather than what was there before it arrived.
+// rather than what was there before it arrived. Compose recomposes on each
+// turn of that wait, as an app draws frames while a request is in flight: a
+// write an answer makes rekeys an effect then, and the effect's unmount can
+// end the lifetime of a request still waiting
+// (cmd/sngl/testdata/async_lifetime_cancels_runs.txt).
 //
 // A program that translates loads its manifest before the screen mounts, as
 // MainActivity.onCreate does: the test never runs MainActivity, and every
@@ -524,7 +529,7 @@ func robolectricAgentTestKotlin(pkg string, counters []string, i18n bool) []byte
                 while ((` + running + `) && System.currentTimeMillis() < deadline) {
                     shadowOf(Looper.getMainLooper()).idle()
                     Thread.sleep(1)
-                    if (!(` + running + `)) composeRule.waitForIdle()
+                    composeRule.waitForIdle()
                 }
             }
         }`

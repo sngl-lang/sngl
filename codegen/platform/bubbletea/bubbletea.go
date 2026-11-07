@@ -72,10 +72,11 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 				// the one a snapshot renders are copies of the instance, and a
 				// value would snapshot the state the test began with.
 				//
-				// Drawn as the program draws it on starting, so what the view
-				// does as it renders -- a picture starting its fetch, a raise
-				// a boundary hears -- has happened before the test looks.
-				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"duckfam.us/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() *Model { m := New(); _ = m.View(); return &m }\n\nfunc main() { testagent.Main() }\n")
+				// Bare until the test mounts it, and then drawn as the program
+				// draws it on starting, so what the view does as it renders --
+				// a picture starting its fetch, a raise a boundary hears -- has
+				// happened before the test looks.
+				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"duckfam.us/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() *Model { return &Model{&modelState{}} }\n\nfunc mountTestComponent(m *Model, preset map[string]bool) *Model {\n\t*m = m.__mount(preset)\n\t_ = m.View()\n\treturn m\n}\n\nfunc main() { testagent.Main() }\n")
 				if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
 					return err
 				}
@@ -110,9 +111,9 @@ func init() {
 			} else {
 				src := golang.LowerTestFile(c.cfg.Package, "bubbletea", req.Pkg, testFns, suffixes, methodFields, golang.TestEmitNative)
 				// newTestComponent helper: bubbletea's Model is a value
-				// type, so just call New() and let Go's local-addressability
-				// handle `c.field = …`.
-				helper := []byte("\nfunc newTestComponent() Model { m := New(); _ = m.View(); return m }\n")
+				// type over a pointer to its state, so `c.field = …` writes
+				// the state the mount then initializes around.
+				helper := []byte("\nfunc newTestComponent() Model { return Model{&modelState{}} }\n\nfunc mountTestComponent(m Model, preset map[string]bool) Model {\n\tm = m.__mount(preset)\n\t_ = m.View()\n\treturn m\n}\n")
 				if err := writeRawFile(sink, "model_test.go", append([]byte(src), helper...)); err != nil {
 					return err
 				}

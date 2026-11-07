@@ -59,6 +59,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text as Text_2
@@ -68,6 +69,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card as Card_2
+
+data class __anon_id_elem_c6a818(
+    var id: String = "",
+    var elem: String = ""
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -88,11 +94,13 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        for (l in listOf("a", "b")) {
-            Card(__ctx_flexShare = snglFlexShare, content = {
-                Text(label = l, __ctx_flexShare = { w: Float -> Modifier.fillMaxSize() })
-                Text_2(text = "Material's", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
-            })
+        for (l in listOf(__anon_id_elem_c6a818(id = "a", elem = "a"), __anon_id_elem_c6a818(id = "b", elem = "b"))) {
+            key(l.id) {
+                Card(__ctx_flexShare = snglFlexShare, content = {
+                    Text(label = l.elem, __ctx_flexShare = { w: Float -> Modifier.fillMaxSize() })
+                    Text_2(text = "Material's", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                })
+            }
         }
     }
 }
@@ -143,4 +151,4 @@ val snglFlexShare: (Float) -> Modifier = { w ->
     Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
 }
 -- run/kotlin/android --
-pass sha256:267cc327bb51ce556475b30b56b6adfc
+pass sha256:a35e7a7b8dfb0572a8dbbfbe16b0777f

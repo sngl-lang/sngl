@@ -1,0 +1,17 @@
+// Two ints compare as ints: the interpreter compared them through float64,
+// which holds no int past 2^53 exactly, so 2^53 and 2^53 + 1 were equal and
+// neither came before the other, where the Go and Kotlin targets, whose int
+// is 64 bits, order them. An int is the target's own width, and JavaScript's
+// holds neither exactly: a value whose width matters is an `int64`.
+
+import test "sngl:test"
+
+func testIntsPastTwoToTheFiftyThree(t test.Test) {
+    var a = 9007199254740992
+    var b = 9007199254740993
+    t.assert(a < b)
+    t.assert(a != b)
+    var xs = [b, a]
+    xs.sort()
+    t.assert(xs[0] == a)
+}

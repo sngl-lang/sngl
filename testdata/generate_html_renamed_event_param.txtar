@@ -44,9 +44,10 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   __n1.addEventListener("input", function(e) {
-    state.value__inst0 = e.currentTarget.value;
+    let __input_value_wrote0 = e.currentTarget.value;
+    state.value__inst0 = __input_value_wrote0;
     __n1.value = state.value__inst0;
-    state.name__inst0 = state.value__inst0;
+    state.name__inst0 = __input_value_wrote0;
     __n2.textContent = state.name__inst0;
   });
   __n1.addEventListener("change", function(e) {
@@ -62,4 +63,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:04d844de3b8310e6544c0986dd7723dc
+pass sha256:dbe2520a8bd6455346c373f22c1e4449

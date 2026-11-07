@@ -1,0 +1,102 @@
+// A copy of a view loop's body is told from the others by its element's
+// identity, and keeps its state while the list holds it, wherever it moves:
+// a string, a number or an enum is its own identity, and a struct's is its
+// `key()`. A struct with no `key`, and an element bound by `&`, are matched by
+// position, and copies sharing one identity by their order among themselves.
+
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct todo {
+    id    int
+    title string
+
+    const func key() => id
+}
+
+struct point {
+    x int
+}
+
+enum shade { light, dark }
+
+component counter(label string) ui.node {
+    var taps = 0
+
+    ui.button #b(text="{label} {taps}", @click { taps += 1 })
+}
+
+component page ui.node {
+    var names = ["a", "b", "c"]
+    var todos = [todo{id=1, title="x"}, todo{id=2, title="y"}]
+    var points = [point{x=1}, point{x=2}]
+    var shades = [shade.light, shade.dark]
+    var words = ["p", "q"]
+    var twins = ["a", "a", "b"]
+
+    ui.vbox {
+        for var n = names {
+            counter #row(label=n)
+        }
+        for var t = todos {
+            counter #item(label=t.title)
+        }
+        for var p = points {
+            counter #spot(label="{p.x}")
+        }
+        for var s = shades {
+            counter #tint(label="{s}")
+        }
+        for var &w = words {
+            counter #word(label=w)
+        }
+        for var n = twins {
+            counter #twin(label=n)
+        }
+    }
+}
+
+func testACopyFollowsItsString(t test.Test, c page) {
+    c.row[1].b.click()
+    c.names.remove(0)
+    t.assert(c.row[0].taps == 1)
+    t.assert(c.row[1].taps == 0)
+}
+
+func testACopyFollowsItsKey(t test.Test, c page) {
+    c.item[0].b.click()
+    c.todos.insert(0, todo{id=3, title="z"})
+    t.assert(c.item[0].taps == 0)
+    t.assert(c.item[1].taps == 1)
+}
+
+func testAKeylessStructIsItsPosition(t test.Test, c page) {
+    c.spot[0].b.click()
+    c.points.insert(0, point{x=3})
+    t.assert(c.spot[0].taps == 1)
+    t.assert(c.spot[1].taps == 0)
+}
+
+func testACopyFollowsItsMember(t test.Test, c page) {
+    c.tint[1].b.click()
+    c.shades.remove(0)
+    t.assert(c.tint[0].taps == 1)
+}
+
+func testTwoCopiesOfOneIdentityAreTwo(t test.Test, c page) {
+    c.twin[1].b.click()
+    t.assert(c.twin[0].taps == 0)
+    t.assert(c.twin[1].taps == 1)
+    c.twins.push("a")
+    t.assert(c.twin[3].taps == 0)
+}
+
+func testARefElementIsItsPosition(t test.Test, c page) {
+    c.word[0].b.click()
+    c.words.insert(0, "o")
+    t.assert(c.word[0].taps == 1)
+}
+
+ui.window {
+    page
+}

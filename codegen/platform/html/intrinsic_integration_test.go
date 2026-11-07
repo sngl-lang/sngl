@@ -87,7 +87,7 @@ window {
 		"function __renderSlot0",
 		"__slot0 = []",
 		"for (const __place0_prev_e of __place0_prev)",
-		"for (const item of state.items)",
+		"for (const item of __identified0(state.items))",
 		"__slot0.push(",
 		"__renderSlot0(",
 	} {
