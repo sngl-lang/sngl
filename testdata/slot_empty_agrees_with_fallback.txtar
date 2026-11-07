@@ -279,14 +279,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -350,7 +350,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -363,34 +363,41 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	var px float64 = PxOf(__lt12)
+	var __lt13 float64
+	if across {
+		__lt13 = 8.0
+	} else {
+		__lt13 = 16.0
+	}
+	return int(((px / __lt13) + 0.5))
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
-	var __lt13 int
+	var __lt14 int
 	if px <= 0.0 {
-		__lt13 = 0
+		__lt14 = 0
 	} else {
-		__lt13 = max(1, (int(px) / 8))
+		__lt14 = max(1, (int(px) / 8))
 	}
-	return __lt13
+	return __lt14
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
+	var __lt16 int
 	if height__r0 == 0 {
-		__lt15 = lines
+		__lt16 = lines
 	} else {
-		var __lt14 int
+		var __lt15 int
 		if lines == 0 {
-			__lt14 = height__r0
+			__lt15 = height__r0
 		} else {
-			__lt14 = min(height__r0, lines)
+			__lt15 = min(height__r0, lines)
 		}
-		__lt15 = __lt14
+		__lt16 = __lt15
 	}
-	return __lt15
+	return __lt16
 }
 
 func (m *Model) __effect0_mount() {
@@ -592,14 +599,14 @@ func (m Model) View() tea.View {
 	var part0 string
 	if m.visible__inst0 {
 		var part0Parts []string
-		var __lt16 string
+		var __lt17 string
 		if !m.a__inst0 && !m.b__inst0 {
-			__lt16 = "asks: empty"
+			__lt17 = "asks: empty"
 		} else {
-			__lt16 = "asks: full"
+			__lt17 = "asks: full"
 		}
 		var part0Part_2 string
-		part0Part_2Text := fmt.Sprint(__lt16)
+		part0Part_2Text := fmt.Sprint(__lt17)
 		part0Part_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_2Text).Render(part0Part_2Text)
 		part0Parts = append(part0Parts, part0Part_2)
 		var part0Part_3 string
@@ -630,14 +637,14 @@ func (m Model) View() tea.View {
 		}
 		part0Part_3 = lipgloss.JoinVertical(lipgloss.Left, part0Part_3Children...)
 		part0Parts = append(part0Parts, part0Part_3)
-		var __lt17 string
+		var __lt18 string
 		if len(__identified0(m.xs__inst0)) == 0 {
-			__lt17 = "asks: empty"
+			__lt18 = "asks: empty"
 		} else {
-			__lt17 = "asks: full"
+			__lt18 = "asks: full"
 		}
 		var part0Part_6 string
-		part0Part_6Text := fmt.Sprint(__lt17)
+		part0Part_6Text := fmt.Sprint(__lt18)
 		part0Part_6 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_6Text).Render(part0Part_6Text)
 		part0Parts = append(part0Parts, part0Part_6)
 		var part0Part_7 string
@@ -665,9 +672,9 @@ func (m Model) View() tea.View {
 		}
 		part0Part_7 = lipgloss.JoinVertical(lipgloss.Left, part0Part_7Children...)
 		part0Parts = append(part0Parts, part0Part_7)
-		__lt18 := "asks: empty"
+		__lt19 := "asks: empty"
 		var part0Part_9 string
-		part0Part_9Text := fmt.Sprint(__lt18)
+		part0Part_9Text := fmt.Sprint(__lt19)
 		part0Part_9 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_9Text).Render(part0Part_9Text)
 		part0Parts = append(part0Parts, part0Part_9)
 		var part0Part_10 string
@@ -2280,7 +2287,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8e3440eef3e6ad6def5dfe6336e3120c
+pass sha256:390cb17d05342a849c56eb48bc70baea
 -- run/go/fyne --
 pass sha256:6db927765f95ba8bacd266748e9b0894
 -- run/go/gtk4 --

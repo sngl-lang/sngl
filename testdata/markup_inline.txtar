@@ -393,14 +393,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -464,7 +464,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt12
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt15 *Measurement
 	if own != nil {
 		__lt15 = own
@@ -477,34 +477,41 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt15 = __lt14
 	}
-	return CellsOf(__lt15)
+	var px float64 = PxOf(__lt15)
+	var __lt16 float64
+	if across {
+		__lt16 = 8.0
+	} else {
+		__lt16 = 16.0
+	}
+	return int(((px / __lt16) + 0.5))
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
-	var __lt16 int
+	var __lt17 int
 	if px <= 0.0 {
-		__lt16 = 0
+		__lt17 = 0
 	} else {
-		__lt16 = max(1, (int(px) / 8))
+		__lt17 = max(1, (int(px) / 8))
 	}
-	return __lt16
+	return __lt17
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt18 int
+	var __lt19 int
 	if height__r0 == 0 {
-		__lt18 = lines
+		__lt19 = lines
 	} else {
-		var __lt17 int
+		var __lt18 int
 		if lines == 0 {
-			__lt17 = height__r0
+			__lt18 = height__r0
 		} else {
-			__lt17 = min(height__r0, lines)
+			__lt18 = min(height__r0, lines)
 		}
-		__lt18 = __lt17
+		__lt19 = __lt18
 	}
-	return __lt18
+	return __lt19
 }
 
 func (m Model) Visible__inst0() bool {
@@ -1546,7 +1553,7 @@ and a newline</span></p>
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d458201c37a55ff98e028ff3c546256d
+pass sha256:e7729638b2c8139c9905aa661e8edd4d
 -- run/go/fyne --
 pass sha256:df897aaadae788893c50d9ac94ca8e8a
 -- run/go/gtk4 --

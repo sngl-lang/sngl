@@ -270,14 +270,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -341,7 +341,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -354,34 +354,41 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	var px float64 = PxOf(__lt12)
+	var __lt13 float64
+	if across {
+		__lt13 = 8.0
+	} else {
+		__lt13 = 16.0
+	}
+	return int(((px / __lt13) + 0.5))
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
-	var __lt13 int
+	var __lt14 int
 	if px <= 0.0 {
-		__lt13 = 0
+		__lt14 = 0
 	} else {
-		__lt13 = max(1, (int(px) / 8))
+		__lt14 = max(1, (int(px) / 8))
 	}
-	return __lt13
+	return __lt14
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
+	var __lt16 int
 	if height__r0 == 0 {
-		__lt15 = lines
+		__lt16 = lines
 	} else {
-		var __lt14 int
+		var __lt15 int
 		if lines == 0 {
-			__lt14 = height__r0
+			__lt15 = height__r0
 		} else {
-			__lt14 = min(height__r0, lines)
+			__lt15 = min(height__r0, lines)
 		}
-		__lt15 = __lt14
+		__lt16 = __lt15
 	}
-	return __lt15
+	return __lt16
 }
 
 func (m *Model) __focusNext() {
@@ -571,38 +578,38 @@ func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
-		__lt16 := "empty"
+		__lt17 := "empty"
 		var contentPart_1 string
-		contentPart_1Text := fmt.Sprint(__lt16)
+		contentPart_1Text := fmt.Sprint(__lt17)
 		contentPart_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_1Text).Render(contentPart_1Text)
 		contentParts = append(contentParts, contentPart_1)
-		var __lt17 string
+		var __lt18 string
 		if m.started__inst0 {
-			__lt17 = "started empty"
+			__lt18 = "started empty"
 		} else {
-			__lt17 = "started with content"
+			__lt18 = "started with content"
 		}
 		var contentPart_4 string
-		contentPart_4Text := fmt.Sprint(__lt17)
+		contentPart_4Text := fmt.Sprint(__lt18)
 		contentPart_4 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_4Text).Render(contentPart_4Text)
 		contentParts = append(contentParts, contentPart_4)
 		var contentPart_5 string
 		contentPart_5Text := fmt.Sprint("nothing")
 		contentPart_5 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_5Text).Render(contentPart_5Text)
 		contentParts = append(contentParts, contentPart_5)
-		__lt18 := "has content"
+		__lt19 := "has content"
 		var contentPart_7 string
-		contentPart_7Text := fmt.Sprint(__lt18)
+		contentPart_7Text := fmt.Sprint(__lt19)
 		contentPart_7 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_7Text).Render(contentPart_7Text)
 		contentParts = append(contentParts, contentPart_7)
-		var __lt19 string
+		var __lt20 string
 		if m.started__inst1 {
-			__lt19 = "started empty"
+			__lt20 = "started empty"
 		} else {
-			__lt19 = "started with content"
+			__lt20 = "started with content"
 		}
 		var contentPart_10 string
-		contentPart_10Text := fmt.Sprint(__lt19)
+		contentPart_10Text := fmt.Sprint(__lt20)
 		contentPart_10 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_10Text).Render(contentPart_10Text)
 		contentParts = append(contentParts, contentPart_10)
 		var contentPart_11 string
@@ -613,24 +620,24 @@ func (m Model) View() tea.View {
 		contentPart_11Children = append(contentPart_11Children, contentPart_11_0)
 		contentPart_11 = lipgloss.JoinVertical(lipgloss.Left, contentPart_11Children...)
 		contentParts = append(contentParts, contentPart_11)
-		var __lt20 string
+		var __lt21 string
 		if !m.shown__inst0 {
-			__lt20 = "empty"
+			__lt21 = "empty"
 		} else {
-			__lt20 = "has content"
+			__lt21 = "has content"
 		}
 		var contentPart_14 string
-		contentPart_14Text := fmt.Sprint(__lt20)
+		contentPart_14Text := fmt.Sprint(__lt21)
 		contentPart_14 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_14Text).Render(contentPart_14Text)
 		contentParts = append(contentParts, contentPart_14)
-		var __lt21 string
+		var __lt22 string
 		if m.started__inst2 {
-			__lt21 = "started empty"
+			__lt22 = "started empty"
 		} else {
-			__lt21 = "started with content"
+			__lt22 = "started with content"
 		}
 		var contentPart_17 string
-		contentPart_17Text := fmt.Sprint(__lt21)
+		contentPart_17Text := fmt.Sprint(__lt22)
 		contentPart_17 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_17Text).Render(contentPart_17Text)
 		contentParts = append(contentParts, contentPart_17)
 		var contentPart_18 string
@@ -652,24 +659,24 @@ func (m Model) View() tea.View {
 		if contentPart_18 != "" {
 			contentParts = append(contentParts, contentPart_18)
 		}
-		var __lt22 string
+		var __lt23 string
 		if !(len(__identified0(m.xs__inst0)) == 0) {
-			__lt22 = "empty"
+			__lt23 = "empty"
 		} else {
-			__lt22 = "has content"
+			__lt23 = "has content"
 		}
 		var contentPart_21 string
-		contentPart_21Text := fmt.Sprint(__lt22)
+		contentPart_21Text := fmt.Sprint(__lt23)
 		contentPart_21 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_21Text).Render(contentPart_21Text)
 		contentParts = append(contentParts, contentPart_21)
-		var __lt23 string
+		var __lt24 string
 		if m.started__inst3 {
-			__lt23 = "started empty"
+			__lt24 = "started empty"
 		} else {
-			__lt23 = "started with content"
+			__lt24 = "started with content"
 		}
 		var contentPart_24 string
-		contentPart_24Text := fmt.Sprint(__lt23)
+		contentPart_24Text := fmt.Sprint(__lt24)
 		contentPart_24 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_24Text).Render(contentPart_24Text)
 		contentParts = append(contentParts, contentPart_24)
 		var contentPart_25 string
@@ -1851,7 +1858,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b9bc75a66aa7843772e0db4dff4a996e
+pass sha256:c51db2a1e4dd500dc6395cc5f301e2ab
 -- run/go/fyne --
 pass sha256:2b54c834fcb5d5f956b614971b3da645
 -- run/kotlin/android --

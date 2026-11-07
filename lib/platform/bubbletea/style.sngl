@@ -58,14 +58,18 @@ const func rowsOf(m option[ui.measurement]) int {
     return px <= 0.0 ? 0 : int.max(1, int(px) / 16)
 }
 
+// A space -- a gap, a margin, a padding -- in cells across or rows down
+// (`across`): the nearest whole number of them, none for a sliver. A badge's
+// 2px above and below its name were a blank row each, and the moves table's
+// 4px between its lines another, five lines to one of the Pokédex's moves.
+const func spaceOf(m option[ui.measurement], across bool) int {
+    return int(pxOf(m) / (across ? 8.0 : 16.0) + 0.5)
+}
+
 // One side of a margin or a padding: the first of its own field, its axis's
-// and the whole box's that is set, as CSS reads them, in cells across or rows
-// down (`across`). A space is the nearest whole number of them, none for a
-// sliver: a badge's 2px above and below its name were a blank row each,
-// three lines to a line of the Pokédex's moves table.
+// and the whole box's that is set, as CSS reads them.
 const func side(all option[ui.measurement], axis option[ui.measurement], own option[ui.measurement], across bool) int {
-    var px = pxOf(own != null ? own : axis != null ? axis : all)
-    return int(px / (across ? 8.0 : 16.0) + 0.5)
+    return spaceOf(own != null ? own : axis != null ? axis : all, across)
 }
 
 // The share of its parent's free space a `flex` child grows into; none where

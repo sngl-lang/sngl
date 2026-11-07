@@ -225,14 +225,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -296,7 +296,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt10
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt13 *Measurement
 	if own != nil {
 		__lt13 = own
@@ -309,34 +309,41 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt13 = __lt12
 	}
-	return CellsOf(__lt13)
+	var px float64 = PxOf(__lt13)
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((px / __lt14) + 0.5))
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
-	var __lt14 int
+	var __lt15 int
 	if px <= 0.0 {
-		__lt14 = 0
+		__lt15 = 0
 	} else {
-		__lt14 = max(1, (int(px) / 8))
+		__lt15 = max(1, (int(px) / 8))
 	}
-	return __lt14
+	return __lt15
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt16 int
+	var __lt17 int
 	if height__r0 == 0 {
-		__lt16 = lines
+		__lt17 = lines
 	} else {
-		var __lt15 int
+		var __lt16 int
 		if lines == 0 {
-			__lt15 = height__r0
+			__lt16 = height__r0
 		} else {
-			__lt15 = min(height__r0, lines)
+			__lt16 = min(height__r0, lines)
 		}
-		__lt16 = __lt15
+		__lt17 = __lt16
 	}
-	return __lt16
+	return __lt17
 }
 
 func (m *Model) __focusNext() {
@@ -489,14 +496,14 @@ func (m Model) View() tea.View {
 		content_1Text := fmt.Sprint(m.greeting)
 		content_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_1Text).Render(content_1Text)
 		contentChildren = append(contentChildren, content_1)
-		var __lt17 string
+		var __lt18 string
 		if m.on {
-			__lt17 = "x"
+			__lt18 = "x"
 		} else {
-			__lt17 = "y"
+			__lt18 = "y"
 		}
 		var content_4 string
-		content_4Text := fmt.Sprint(__lt17)
+		content_4Text := fmt.Sprint(__lt18)
 		content_4 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), content_4Text).Render(content_4Text)
 		contentChildren = append(contentChildren, content_4)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
@@ -828,7 +835,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- run/go/bubbletea --
-pass sha256:568291effb273fcb0bbf35979bf4ad08
+pass sha256:bb64d01184ca67ae2447269286a76735
 -- run/go/fyne --
 pass sha256:86ff6c6a7d8fd6a0fd49808bd956716d
 -- run/go/gtk4 --

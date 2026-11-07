@@ -266,25 +266,25 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
 // --- Core Layout ---
 
 const component ui.vbox[platform](style, children) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, false)) {
         children
     }
 }
 
 const component ui.hbox[platform](style, children) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, true)) {
         children
     }
 }
 
 const component ui.grid[platform](columns, style, children) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), spacing=cellsOf(style.gap), columns=columns == null ? 0 : columns, rowSpacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), spacing=spaceOf(style.gap, true), columns=columns == null ? 0 : columns, rowSpacing=spaceOf(style.gap, false)) {
         children
     }
 }
 
 const component ui.stack[platform](style, layers) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, false)) {
         layers
     }
 }
@@ -305,7 +305,7 @@ const component ui.scroll[platform](style, direction, @reachEnd, content) {
         grow = growOf(style.flex, style.display),
         align = crossOf(style.alignItems),
         justify = justifyOf(style.justifyContent),
-        spacing = rowsOf(style.gap),
+        spacing = spaceOf(style.gap, false),
         scroll = scrollAxis(direction),
         @reachEnd { reachEnd() },
     ) {
@@ -379,7 +379,7 @@ const component ui.tabs[platform](selected, variant, style, @change, items) {
 // picture a URL names is drawn in half-block cells fitted into a box of
 // `Picture`'s choosing, since a terminal has no size a pixel has.
 const component ui.image[platform](style, src) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, false)) {
         #[family.crosses]
         src
     }
@@ -455,7 +455,7 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
     }
     // The axis is the layout's constant, so each is a branch of its own.
     if direction == ui.Orientation.horizontal {
-        Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+        Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, false)) {
             for var opt = options {
                 Styled(
                     content = (opt.value == value ? "(•) " : "( ) ") + opt.label,
@@ -466,7 +466,7 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
             }
         }
     } else {
-        Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+        Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, false)) {
             for var opt = options {
                 Styled(
                     content = (opt.value == value ? "(•) " : "( ) ") + opt.label,
@@ -663,7 +663,7 @@ const component ui.card[platform](style, clickable, @click, content) {
                 @click { click() },
             ) {}
         }
-        Layout(join=JoinDir.vertical, align=crossOf(style.alignItems), spacing=rowsOf(style.gap), grow=1.0) {
+        Layout(join=JoinDir.vertical, align=crossOf(style.alignItems), spacing=spaceOf(style.gap, false), grow=1.0) {
             content
         }
     }
@@ -705,19 +705,19 @@ const component ui.tooltip[platform](style, text, trigger) {
     // the wrapped trigger is focused. The `tooltip` prop carries the body
     // text to the Layout renderer, which appends it gated on the focusable
     // descendant's focus expression (see renderBlueprint in view_ir.go).
-    Layout(join=JoinDir.vertical, tooltip=text, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, tooltip=text, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, false)) {
         trigger
     }
 }
 
 const component ui.popover[platform](style, content) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, false)) {
         content
     }
 }
 
 const component ui.splitview[platform](style, panes) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, true)) {
         panes
     }
 }
@@ -797,12 +797,12 @@ const component ui.menu[platform](style, open, items) {
 }
 
 const component ui.menubar[platform](style) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, true)) {
     }
 }
 
 const component ui.toolbar[platform](style, controls) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), boxed=drawsBox(style), fit=fitOf(style.whiteSpace, style.display), grow=growOf(style.flex, style.display), align=crossOf(style.alignItems), justify=justifyOf(style.justifyContent), spacing=spaceOf(style.gap, true)) {
         controls
     }
 }

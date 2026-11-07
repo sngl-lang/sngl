@@ -224,10 +224,11 @@ target with no way to say a field is meant for one.
   was a `›` beside the content. As in CSS, a box stretches across the column
   it is in unless it has a width of its own or its column aligns it
   (`tui.Stretch`), and across a grid's column (`stretches`): a card was as
-  wide as its name and its names centered in that width. A padding or a
-  margin is the nearest whole number of cells across (8px) or rows down
+  wide as its name and its names centered in that width. A gap, a padding
+  or a margin is the nearest whole number of cells across (8px) or rows down
   (16px), none for a sliver; down, it was counted in cells, and a badge's
-  2px above and below its name were a blank row each.
+  2px above and below its name were a blank row each, and the moves
+  table's 4px gap a third.
 
   A select is a button, and an open one's choices float below it over the
   view (`tui.Floats`, the Model's `__floats`): its view marks its block and

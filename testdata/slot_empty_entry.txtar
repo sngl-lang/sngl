@@ -224,14 +224,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -295,7 +295,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt6
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt9 *Measurement
 	if own != nil {
 		__lt9 = own
@@ -308,45 +308,52 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt9 = __lt8
 	}
-	return CellsOf(__lt9)
+	var px float64 = PxOf(__lt9)
+	var __lt10 float64
+	if across {
+		__lt10 = 8.0
+	} else {
+		__lt10 = 16.0
+	}
+	return int(((px / __lt10) + 0.5))
 }
 
 func CellsOf(m__r1 *Measurement) int {
 	var px float64 = PxOf(m__r1)
-	var __lt10 int
-	if px <= 0.0 {
-		__lt10 = 0
-	} else {
-		__lt10 = max(1, (int(px) / 8))
-	}
-	return __lt10
-}
-
-func RowsOf(m__r2 *Measurement) int {
-	var px float64 = PxOf(m__r2)
 	var __lt11 int
 	if px <= 0.0 {
 		__lt11 = 0
 	} else {
-		__lt11 = max(1, (int(px) / 16))
+		__lt11 = max(1, (int(px) / 8))
 	}
 	return __lt11
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt13 int
-	if height__r0 == 0 {
-		__lt13 = lines
+func RowsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt12 int
+	if px <= 0.0 {
+		__lt12 = 0
 	} else {
-		var __lt12 int
-		if lines == 0 {
-			__lt12 = height__r0
-		} else {
-			__lt12 = min(height__r0, lines)
-		}
-		__lt13 = __lt12
+		__lt12 = max(1, (int(px) / 16))
 	}
-	return __lt13
+	return __lt12
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt14 int
+	if height__r0 == 0 {
+		__lt14 = lines
+	} else {
+		var __lt13 int
+		if lines == 0 {
+			__lt13 = height__r0
+		} else {
+			__lt13 = min(height__r0, lines)
+		}
+		__lt14 = __lt13
+	}
+	return __lt14
 }
 
 func (m *Model) __focusNext() {
@@ -451,23 +458,23 @@ func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
-		__lt14 := "boxed full"
+		__lt15 := "boxed full"
 		var contentPart_1 string
-		contentPart_1Text := fmt.Sprint(__lt14)
+		contentPart_1Text := fmt.Sprint(__lt15)
 		contentPart_1 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_1Text).Render(contentPart_1Text)
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
 		contentPart_2Text := fmt.Sprint("inner")
 		contentPart_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_2Text).Render(contentPart_2Text)
 		contentParts = append(contentParts, contentPart_2)
-		var __lt15 string
+		var __lt16 string
 		if !m.shown__inst0 {
-			__lt15 = "boxed empty"
+			__lt16 = "boxed empty"
 		} else {
-			__lt15 = "boxed full"
+			__lt16 = "boxed full"
 		}
 		var contentPart_5 string
-		contentPart_5Text := fmt.Sprint(__lt15)
+		contentPart_5Text := fmt.Sprint(__lt16)
 		contentPart_5 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_5Text).Render(contentPart_5Text)
 		contentParts = append(contentParts, contentPart_5)
 		var contentPart_6 string
@@ -969,7 +976,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ed2400147dee440056e7f4a80b884b57
+pass sha256:e0b7e9048ab3ad4a03b84dd74e459ad0
 -- run/go/fyne --
 pass sha256:9870d70a99e268b6e5ffd5df24c2a02e
 -- run/go/gtk4 --

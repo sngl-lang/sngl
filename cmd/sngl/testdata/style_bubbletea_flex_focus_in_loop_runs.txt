@@ -60,7 +60,7 @@ ui.window {
     row
 }
 -- testrun/bubbletea/go/app.sngl/row/1 --
-sha256:ade3ce07436390e5b94ef0f36df89390
+sha256:3d3a55f97df74e758c7430eb1bd2cd85
 {
   "results": [
     {
@@ -73,7 +73,7 @@ sha256:ade3ce07436390e5b94ef0f36df89390
   }
 }
 -- testrun/bubbletea/go/shown.sngl/row/1 --
-sha256:bfdd6d7fce91ae42016b27357257c0ec
+sha256:ff96883606e478946c66216a17f17163
 {
   "results": [
     {

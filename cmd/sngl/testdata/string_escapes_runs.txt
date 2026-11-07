@@ -49,7 +49,7 @@ sha256:8ffe27cf637de37cebd3e13489404c8e
   ]
 }
 -- testrun/bubbletea/go/app.sngl/receipt/1 --
-sha256:85b419d48df6ebcacc37cbbc9f4f0ad8
+sha256:57654de921bcaffc4783a2badc0ffe2a
 {
   "results": [
     {

@@ -196,7 +196,7 @@ sha256:d702cacd94d3fc8a9895111915bd13d9
   }
 }
 -- testrun/bubbletea/go/app.sngl/fixed/1 --
-sha256:3055e184be327aaddee49263e69f9a83
+sha256:9cbcf9ea17adece7af23962a590152ab
 {
   "results": [
     {
@@ -205,11 +205,11 @@ sha256:3055e184be327aaddee49263e69f9a83
     }
   ],
   "snapshots": {
-    "fixed.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAgICAgG1ttICAgICAKG1s0ODsyOzUxOzEwMjsxNTNtIBtbbRtbMzg7MjsyNTU7MjU1OzI1NTs0ODsyOzUxOzEwMjsxNTNta2VwdBtbbRtbNDg7Mjs1MTsxMDI7MTUzbSAbW20gICAgIAobWzQ4OzI7NTE7MTAyOzE1M20gICAgICAbW20gICAgIArilI/ilIHilIHilIHilIHilIHilIHilIHilIHilIHilJMK4pSDPiBzaHJpbmsg4pSDCuKUl+KUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUmw=="
+    "fixed.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtIBtbbRtbMzg7MjsyNTU7MjU1OzI1NTs0ODsyOzUxOzEwMjsxNTNta2VwdBtbbRtbNDg7Mjs1MTsxMDI7MTUzbSAbW20gICAgIAobWzQ4OzI7NTE7MTAyOzE1M20gICAgICAbW20gICAgIArilI/ilIHilIHilIHilIHilIHilIHilIHilIHilIHilJMK4pSDPiBzaHJpbmsg4pSDCuKUl+KUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUmw=="
   }
 }
 -- testrun/bubbletea/go/app.sngl/flush/1 --
-sha256:37cd32917b2500139df5ef410baf283a
+sha256:c23884bf5c53b94e45fe01ef63abd415
 {
   "results": [
     {
@@ -218,11 +218,11 @@ sha256:37cd32917b2500139df5ef410baf283a
     }
   ],
   "snapshots": {
-    "flush.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAbW20bWzM4OzI7MjU1OzI1NTsyNTU7NDg7Mjs1MTsxMDI7MTUzbWZsdXNoG1ttG1s0ODsyOzUxOzEwMjsxNTNtICAbW20KG1s0ODsyOzUxOzEwMjsxNTNtICAgICAgICAgG1ttChtbNDg7Mjs1MTsxMDI7MTUzbSAgICAgICAgIBtbbQ=="
+    "flush.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAbW20bWzM4OzI7MjU1OzI1NTsyNTU7NDg7Mjs1MTsxMDI7MTUzbWZsdXNoG1ttG1s0ODsyOzUxOzEwMjsxNTNtICAbW20KG1s0ODsyOzUxOzEwMjsxNTNtICAgICAgICAgG1tt"
   }
 }
 -- testrun/bubbletea/go/app.sngl/kept/1 --
-sha256:d493b0d9285622942216af03bdd54d19
+sha256:f02cbd0be79f885cc54d79992f7df96e
 {
   "results": [
     {
@@ -231,11 +231,11 @@ sha256:d493b0d9285622942216af03bdd54d19
     }
   ],
   "snapshots": {
-    "kept.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAgICAgG1ttICAgICAKG1s0ODsyOzUxOzEwMjsxNTNtIBtbbRtbMzg7MjsyNTU7MjU1OzI1NTs0ODsyOzUxOzEwMjsxNTNta2VwdBtbbRtbNDg7Mjs1MTsxMDI7MTUzbSAbW20gICAgIAobWzQ4OzI7NTE7MTAyOzE1M20gICAgICAbW20gICAgIArilI/ilIHilIHilIHilIHilIHilIHilIHilIHilIHilJMK4pSDPiBzaHJpbmsg4pSDCuKUl+KUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUmw=="
+    "kept.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtIBtbbRtbMzg7MjsyNTU7MjU1OzI1NTs0ODsyOzUxOzEwMjsxNTNta2VwdBtbbRtbNDg7Mjs1MTsxMDI7MTUzbSAbW20gICAgIAobWzQ4OzI7NTE7MTAyOzE1M20gICAgICAbW20gICAgIArilI/ilIHilIHilIHilIHilIHilIHilIHilIHilIHilJMK4pSDPiBzaHJpbmsg4pSDCuKUl+KUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUmw=="
   }
 }
 -- testrun/bubbletea/go/app.sngl/sides/1 --
-sha256:c918804182293e23364c4fe7cdb84c1a
+sha256:f899d8282c6e1b9ece63cd871f11fd61
 {
   "results": [
     {
@@ -244,7 +244,7 @@ sha256:c918804182293e23364c4fe7cdb84c1a
     }
   ],
   "snapshots": {
-    "sides.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAbW20bWzM4OzI7MjU1OzI1NTsyNTU7NDg7Mjs1MTsxMDI7MTUzbWZsdXNoG1ttG1s0ODsyOzUxOzEwMjsxNTNtICAbW20KG1s0ODsyOzUxOzEwMjsxNTNtICAgICAgICAgG1ttChtbNDg7Mjs1MTsxMDI7MTUzbSAgICAgICAgIBtbbQ=="
+    "sides.ansi": "G1s0ODsyOzUxOzEwMjsxNTNtICAbW20bWzM4OzI7MjU1OzI1NTsyNTU7NDg7Mjs1MTsxMDI7MTUzbWZsdXNoG1ttG1s0ODsyOzUxOzEwMjsxNTNtICAbW20KG1s0ODsyOzUxOzEwMjsxNTNtICAgICAgICAgG1tt"
   }
 }
 -- testrun/fyne/go/app.sngl/fixed/1 --

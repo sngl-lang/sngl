@@ -267,14 +267,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -351,7 +351,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt10
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt13 *Measurement
 	if own != nil {
 		__lt13 = own
@@ -364,23 +364,30 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt13 = __lt12
 	}
-	return CellsOf(__lt13)
+	var px float64 = PxOf(__lt13)
+	var __lt14 float64
+	if across {
+		__lt14 = 8.0
+	} else {
+		__lt14 = 16.0
+	}
+	return int(((px / __lt14) + 0.5))
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
+	var __lt16 int
 	if height__r0 == 0 {
-		__lt15 = lines
+		__lt16 = lines
 	} else {
-		var __lt14 int
+		var __lt15 int
 		if lines == 0 {
-			__lt14 = height__r0
+			__lt15 = height__r0
 		} else {
-			__lt14 = min(height__r0, lines)
+			__lt15 = min(height__r0, lines)
 		}
-		__lt15 = __lt14
+		__lt16 = __lt15
 	}
-	return __lt15
+	return __lt16
 }
 
 func (m *Model) __focusLoop1_len() int {
@@ -660,7 +667,7 @@ func (m Model) View() tea.View {
 			return content_4_1
 		}))
 		content_4 = tui.Join(true, lipgloss.Top, 0, 0, content_4W, content_4Children)
-		content_4 = content_4Look.Render(content_4)
+		content_4 = tui.Paint(content_4Look, content_4)
 		contentChildren = append(contentChildren, tui.Fixed(content_4))
 		var content_5 string
 		content_5Look := lipgloss.NewStyle()
@@ -673,7 +680,7 @@ func (m Model) View() tea.View {
 			return content_5_0
 		}))
 		content_5 = tui.Join(false, lipgloss.Left, 0, 0, content_5H, content_5Children)
-		content_5 = content_5Look.Render(content_5)
+		content_5 = tui.Paint(content_5Look, content_5)
 		contentChildren = append(contentChildren, tui.Fixed(content_5))
 		var content_6 string
 		__focusPos1 := 0
@@ -715,7 +722,7 @@ func (m Model) View() tea.View {
 			__focusPos1++
 			content_6ItemChildren = append(content_6ItemChildren, tui.Fixed(content_6Item_1))
 			content_6Item = tui.Join(true, lipgloss.Top, 0, 0, content_6ItemW, content_6ItemChildren)
-			content_6Item = content_6ItemLook.Render(content_6Item)
+			content_6Item = tui.Paint(content_6ItemLook, content_6Item)
 			content_6Items = append(content_6Items, content_6Item)
 		}
 		content_6 = tui.Spaced(false, lipgloss.Left, 0, content_6Items...)
@@ -727,7 +734,7 @@ func (m Model) View() tea.View {
 		content_7 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", MaxLines: snglSome(2), WhiteSpace: "unset", BorderWidth: snglSome(Measurement{Px: 1}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), contentW, content_7Text).Render(content_7Text)
 		contentChildren = append(contentChildren, tui.Fixed(content_7))
 		content = tui.Join(false, lipgloss.Left, 0, 0, contentH, contentChildren)
-		content = contentLook.Render(content)
+		content = tui.Paint(contentLook, content)
 	}
 	content = m.__clicks.Scan(content, 0, 0)
 	v := tea.NewView(content)
@@ -745,4 +752,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:2e03ea6d20182a17fbb80ca3a878a5a1
+pass sha256:7a3992fbc37e40d157b227ff61bb564d

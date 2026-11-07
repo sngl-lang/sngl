@@ -284,14 +284,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -355,7 +355,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt9
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt12 *Measurement
 	if own != nil {
 		__lt12 = own
@@ -368,45 +368,52 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt12 = __lt11
 	}
-	return CellsOf(__lt12)
+	var px float64 = PxOf(__lt12)
+	var __lt13 float64
+	if across {
+		__lt13 = 8.0
+	} else {
+		__lt13 = 16.0
+	}
+	return int(((px / __lt13) + 0.5))
 }
 
 func CellsOf(m__r1 *Measurement) int {
 	var px float64 = PxOf(m__r1)
-	var __lt13 int
-	if px <= 0.0 {
-		__lt13 = 0
-	} else {
-		__lt13 = max(1, (int(px) / 8))
-	}
-	return __lt13
-}
-
-func RowsOf(m__r2 *Measurement) int {
-	var px float64 = PxOf(m__r2)
 	var __lt14 int
 	if px <= 0.0 {
 		__lt14 = 0
 	} else {
-		__lt14 = max(1, (int(px) / 16))
+		__lt14 = max(1, (int(px) / 8))
 	}
 	return __lt14
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt16 int
-	if height__r0 == 0 {
-		__lt16 = lines
+func RowsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt15 int
+	if px <= 0.0 {
+		__lt15 = 0
 	} else {
-		var __lt15 int
-		if lines == 0 {
-			__lt15 = height__r0
-		} else {
-			__lt15 = min(height__r0, lines)
-		}
-		__lt16 = __lt15
+		__lt15 = max(1, (int(px) / 16))
 	}
-	return __lt16
+	return __lt15
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt17 int
+	if height__r0 == 0 {
+		__lt17 = lines
+	} else {
+		var __lt16 int
+		if lines == 0 {
+			__lt16 = height__r0
+		} else {
+			__lt16 = min(height__r0, lines)
+		}
+		__lt17 = __lt16
+	}
+	return __lt17
 }
 
 func (m *Model) __focusLoop0_len() int {
@@ -606,23 +613,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						_ = __copy1
 						_ = c
 						if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-							var __lt17 string
-							_ = __lt17
+							var __lt18 string
+							_ = __lt18
 							if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-								__lt17 = "showing"
+								__lt18 = "showing"
 							} else {
-								__lt17 = "hidden"
+								__lt18 = "hidden"
 							}
 							if m.__focusLoop0_cursor == __focusPos0 {
 								m.pages__history__inst0 = append(m.pages__history__inst0, Pages__entry{Page: m.pages__current__inst0, Cell: m.cell__params__inst0})
 								m.cell__params__inst0 = Sel{Pick: "x"}
-								var __lt18 string
+								var __lt19 string
 								if c.Elem == "3" {
-									__lt18 = "/"
+									__lt19 = "/"
 								} else {
-									__lt18 = ((("/" + r.Name) + "/") + c.Elem)
+									__lt19 = ((("/" + r.Name) + "/") + c.Elem)
 								}
-								m.pages__current__inst0 = _page__value{Href: __lt18, Title: (r.Name + c.Elem), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
+								m.pages__current__inst0 = _page__value{Href: __lt19, Title: (r.Name + c.Elem), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
 								return
 							}
 							__focusPos0++
@@ -695,14 +702,14 @@ func (m Model) View() tea.View {
 					contentPart_0ItemItemPart_0Text := fmt.Sprint(((((r.Name + " ") + c.Elem) + " picked ") + m.cell__params__inst0.Pick))
 					contentPart_0ItemItemPart_0 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_0ItemItemPart_0Text).Render(contentPart_0ItemItemPart_0Text)
 					contentPart_0ItemItemParts = append(contentPart_0ItemItemParts, contentPart_0ItemItemPart_0)
-					var __lt17 string
+					var __lt18 string
 					if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-						__lt17 = "showing"
+						__lt18 = "showing"
 					} else {
-						__lt17 = "hidden"
+						__lt18 = "hidden"
 					}
 					var contentPart_0ItemItemPart_3 string
-					contentPart_0ItemItemPart_3Text := fmt.Sprint(__lt17)
+					contentPart_0ItemItemPart_3Text := fmt.Sprint(__lt18)
 					contentPart_0ItemItemPart_3 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), contentPart_0ItemItemPart_3Text).Render(contentPart_0ItemItemPart_3Text)
 					contentPart_0ItemItemParts = append(contentPart_0ItemItemParts, contentPart_0ItemItemPart_3)
 					var contentPart_0ItemItemPart_4 string
@@ -2034,7 +2041,7 @@ fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
     return __out
 }
 -- run/go/bubbletea --
-pass sha256:ad638474003f435c5434328e3e5fee92
+pass sha256:7e7d7e18dc93e60251f59076237ec2a0
 -- run/go/fyne --
 pass sha256:31190a65fe668ae797b40957b625d890
 -- run/go/gtk4 --

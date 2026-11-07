@@ -134,7 +134,7 @@ ui.window {
     pair
 }
 -- testrun/bubbletea/go/app.sngl/pair/1 --
-sha256:cecbddf9d1ef28bb4b15533e623a0f09
+sha256:5f0c2af9e4545b834521d83e1b736cc4
 {
   "results": [
     {
@@ -144,7 +144,7 @@ sha256:cecbddf9d1ef28bb4b15533e623a0f09
   ]
 }
 -- testrun/bubbletea/go/unbound.sngl/pair/1 --
-sha256:c945aeb2fe611915597196f0f6cd9d26
+sha256:c3110fe44a7df1fbd2bcdc654ffe7f0f
 {
   "results": [
     {

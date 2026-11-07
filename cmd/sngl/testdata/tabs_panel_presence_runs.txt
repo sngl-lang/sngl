@@ -65,7 +65,7 @@ sha256:5f914764c72d46518ad832e474e0648f
   ]
 }
 -- testrun/bubbletea/go/app.sngl/panes/1 --
-sha256:1c1421523ab9087bae53939e8939f5d1
+sha256:a0bd4de51ad34d58f9cd8913a7f87583
 {
   "results": [
     {

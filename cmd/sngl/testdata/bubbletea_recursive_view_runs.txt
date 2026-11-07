@@ -87,7 +87,7 @@ window {
     main
 }
 -- testrun/bubbletea/go/app.sngl/forwarded/1 --
-sha256:651de3fa9a9403be2c18c5a6dd92d73b
+sha256:d8d7a25cd5b2015d03e4baee036c4320
 {
   "results": [
     {
@@ -100,7 +100,7 @@ sha256:651de3fa9a9403be2c18c5a6dd92d73b
   }
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:d34e78883862dbd8a91c9405ea8ebd26
+sha256:efa96c9b6ba9a47180a539dcdc4af415
 {
   "results": [
     {

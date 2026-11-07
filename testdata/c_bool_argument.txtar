@@ -193,14 +193,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -264,7 +264,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt6
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt9 *Measurement
 	if own != nil {
 		__lt9 = own
@@ -277,45 +277,52 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt9 = __lt8
 	}
-	return CellsOf(__lt9)
+	var px float64 = PxOf(__lt9)
+	var __lt10 float64
+	if across {
+		__lt10 = 8.0
+	} else {
+		__lt10 = 16.0
+	}
+	return int(((px / __lt10) + 0.5))
 }
 
 func CellsOf(m__r1 *Measurement) int {
 	var px float64 = PxOf(m__r1)
-	var __lt10 int
-	if px <= 0.0 {
-		__lt10 = 0
-	} else {
-		__lt10 = max(1, (int(px) / 8))
-	}
-	return __lt10
-}
-
-func RowsOf(m__r2 *Measurement) int {
-	var px float64 = PxOf(m__r2)
 	var __lt11 int
 	if px <= 0.0 {
 		__lt11 = 0
 	} else {
-		__lt11 = max(1, (int(px) / 16))
+		__lt11 = max(1, (int(px) / 8))
 	}
 	return __lt11
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt13 int
-	if height__r0 == 0 {
-		__lt13 = lines
+func RowsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt12 int
+	if px <= 0.0 {
+		__lt12 = 0
 	} else {
-		var __lt12 int
-		if lines == 0 {
-			__lt12 = height__r0
-		} else {
-			__lt12 = min(height__r0, lines)
-		}
-		__lt13 = __lt12
+		__lt12 = max(1, (int(px) / 16))
 	}
-	return __lt13
+	return __lt12
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt14 int
+	if height__r0 == 0 {
+		__lt14 = lines
+	} else {
+		var __lt13 int
+		if lines == 0 {
+			__lt13 = height__r0
+		} else {
+			__lt13 = min(height__r0, lines)
+		}
+		__lt14 = __lt13
+	}
+	return __lt14
 }
 
 func (m *Model) __focusNext() {
@@ -415,13 +422,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.on = !m.on
-			var __lt14 int
+			var __lt15 int
 			if m.on {
-				__lt14 = 1
+				__lt15 = 1
 			} else {
-				__lt14 = 0
+				__lt15 = 0
 			}
-			m.v__r0 = int(C.abs(C.int(__lt14)))
+			m.v__r0 = int(C.abs(C.int(__lt15)))
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -841,7 +848,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/bubbletea --
-pass sha256:f7759f01ad7398e714e8d9ca12245ed7
+pass sha256:7c69ee2ecbcba37a0d6aa524216ea4f8
 -- run/go/fyne --
 pass sha256:c07e299dfd96987889d4b637e082ced9
 -- run/go/gtk4 --

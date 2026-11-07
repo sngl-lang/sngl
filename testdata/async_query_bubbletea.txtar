@@ -283,14 +283,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
-	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
-	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
-	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
-	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
-	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
-	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
-	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop, false))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight, true))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom, false))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft, true))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop, false))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight, true))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom, false))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft, true))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -354,7 +354,7 @@ func BorderOf(s Style) lipgloss.Border {
 	return __lt6
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+func Side(all *Measurement, axis *Measurement, own *Measurement, across bool) int {
 	var __lt9 *Measurement
 	if own != nil {
 		__lt9 = own
@@ -367,45 +367,52 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		}
 		__lt9 = __lt8
 	}
-	return CellsOf(__lt9)
+	var px float64 = PxOf(__lt9)
+	var __lt10 float64
+	if across {
+		__lt10 = 8.0
+	} else {
+		__lt10 = 16.0
+	}
+	return int(((px / __lt10) + 0.5))
 }
 
 func CellsOf(m__r1 *Measurement) int {
 	var px float64 = PxOf(m__r1)
-	var __lt10 int
-	if px <= 0.0 {
-		__lt10 = 0
-	} else {
-		__lt10 = max(1, (int(px) / 8))
-	}
-	return __lt10
-}
-
-func RowsOf(m__r2 *Measurement) int {
-	var px float64 = PxOf(m__r2)
 	var __lt11 int
 	if px <= 0.0 {
 		__lt11 = 0
 	} else {
-		__lt11 = max(1, (int(px) / 16))
+		__lt11 = max(1, (int(px) / 8))
 	}
 	return __lt11
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt13 int
-	if height__r0 == 0 {
-		__lt13 = lines
+func RowsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt12 int
+	if px <= 0.0 {
+		__lt12 = 0
 	} else {
-		var __lt12 int
-		if lines == 0 {
-			__lt12 = height__r0
-		} else {
-			__lt12 = min(height__r0, lines)
-		}
-		__lt13 = __lt12
+		__lt12 = max(1, (int(px) / 16))
 	}
-	return __lt13
+	return __lt12
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt14 int
+	if height__r0 == 0 {
+		__lt14 = lines
+	} else {
+		var __lt13 int
+		if lines == 0 {
+			__lt13 = height__r0
+		} else {
+			__lt13 = min(height__r0, lines)
+		}
+		__lt14 = __lt13
+	}
+	return __lt14
 }
 
 func (m *Model) __effect0_mount() {
@@ -848,28 +855,28 @@ func (m Model) View() tea.View {
 	var part0 string
 	if m.visible__inst0 {
 		var part0Parts []string
-		var __lt14 string
+		var __lt15 string
 		if m.length__inst0 != nil {
-			__lt14 = fmt.Sprint((*(m.length__inst0)))
+			__lt15 = fmt.Sprint((*(m.length__inst0)))
 		} else {
-			__lt14 = "-"
+			__lt15 = "-"
 		}
 		var part0Part_2 string
-		part0Part_2Text := fmt.Sprint(__lt14)
+		part0Part_2Text := fmt.Sprint(__lt15)
 		part0Part_2 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_2Text).Render(part0Part_2Text)
 		part0Parts = append(part0Parts, part0Part_2)
 		var part0Part_3 string
 		part0Part_3Text := fmt.Sprint(fmt.Sprint(m.loading__inst0))
 		part0Part_3 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_3Text).Render(part0Part_3Text)
 		part0Parts = append(part0Parts, part0Part_3)
-		var __lt15 string
+		var __lt16 string
 		if m.failure__inst0 != nil {
-			__lt15 = (*(m.failure__inst0)).Message
+			__lt16 = (*(m.failure__inst0)).Message
 		} else {
-			__lt15 = ""
+			__lt16 = ""
 		}
 		var part0Part_6 string
-		part0Part_6Text := fmt.Sprint(__lt15)
+		part0Part_6Text := fmt.Sprint(__lt16)
 		part0Part_6 = tui.Within(BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, true), tui.Avail(m.width), part0Part_6Text).Render(part0Part_6Text)
 		part0Parts = append(part0Parts, part0Part_6)
 		var part0Part_7 string
@@ -936,4 +943,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:b6b95c989e442a33019262cf43713276
+pass sha256:46e19ac851d6fb9715f0c0f0342db249

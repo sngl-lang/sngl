@@ -60,7 +60,7 @@ func testContinueMeansTheBodyRan(t Test, c box) {
 window {
 }
 -- testrun/bubbletea/go/app.sngl/box/1 --
-sha256:701be443b94306731fe1d5024c8cd6a5
+sha256:cab68615e04c2b7805d77bfb6b670e2a
 {
   "results": [
     {
