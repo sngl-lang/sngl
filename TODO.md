@@ -30,11 +30,6 @@ language is a locale. What is left:
     trigger is restored to the event (`restoreUnreachedTriggers`) and the
     invoker is handed the value: right for a string select, wrong for a
     typed one.
-11. **fyne's test agent cannot reach a node a window's menu calls.** A
-    `poke.pokedexList #dexesAsk(…)` in the window whose menu item's
-    `@select` calls `dexesAsk.refresh()` builds a test agent reading
-    `c.dexesAsk`, which the model does not hold. The window keeps asking
-    again by forgetting the failure.
 
 ## Generated code
 
