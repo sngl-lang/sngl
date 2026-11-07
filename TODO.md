@@ -118,11 +118,11 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
      operation they stand for. They lose their `#[cnative]` spellings.
    - The translator renders the operation:
 
-     | Operation          | Go                                    | C                                          | Python (cffi)             |
-     |--------------------|---------------------------------------|--------------------------------------------|---------------------------|
-     | string to `char *` | `C.CString(s)`                        | the arena's NUL-terminated string, no copy | `s.encode()`              |
-     | string to UTF-16   | `cbind.UTF16(s)` cast to `*C.wchar_t` | a converter in the C runtime               | `ffi.new("wchar_t[]", s)` |
-     | pointer cast       | `(*C.T)(unsafe.Pointer(p))`           | `(T *)p`                                   | `ffi.cast`                |
+     | Operation          | Go                                   | C                                          | Python (cffi)           |
+     |--------------------|--------------------------------------|--------------------------------------------|-------------------------|
+     | string to `char *` | `C.CString(s)`                       | the arena's NUL-terminated string, no copy | `s.encode()`            |
+     | string to UTF-16   | `cbind.UTF16(s)` cast to `*C.ushort` | a converter in the C runtime               | `s.encode("utf-16-le")` |
+     | pointer cast       | `(*C.T)(unsafe.Pointer(p))`          | `(T *)p`                                   | `ffi.cast`              |
 
    - gtk4's hand-written casts (`toLineCap`) and declgen's `_to_` and `_as_`
      functions become this operation.
@@ -131,9 +131,13 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
      typedef SNGL spells as an `int`. A caller passes an `int`, since an
      alias is what it names (spec, *Aliases*). A C function's parameter
      written with the alias crosses through a cast to it, not as a C `int`.
-   - **Wide strings:** `sngl:x/c` declares `struct utf16 = string` as the
+   - **Wide strings:** `sngl:x/c` declares
+     `#[cnative("const unsigned short *")] struct utf16 = string` as the
      spelling of a parameter that crosses as UTF-16, and `option[c.utf16]`
-     as one that may be NULL.
+     as one that may be NULL. `unsigned short` rather than `wchar_t`, which
+     is 32 bits off Windows and needs a header: cgo makes a typedef an alias,
+     so `*C.ushort` is what `LPCWSTR` takes (checked on Linux with a
+     stand-in typedef; MinGW is not on this container).
    - The checker expands an alias where it is written (`expandAlias`), so the
      parameter has to remember it. `buildParams`
      (`internal/checker/resolve.go:800`) records a new
@@ -227,15 +231,18 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
      `c_bool_argument.txtar`, `gir_transfer_full.txtar` and gtk4's
      `cgo=true` goldens. They are the refactor's proof. Deny `C.` and
      `unsafe.` in `lib/` source with a test over every `#[cnative]` name.
-2. **Typed scalars and UTF-16** (design item 3).
-   - Fixtures first: `testdata/c_alias_argument.txtar` (a `UINT` argument is
-     a cast to it; deny a C `int`), `testdata/c_utf16_argument.txtar`, and
-     `testdata/error_cnative_alias.sngl` (an alias of a struct or a list is
-     refused).
-   - Revert the change and confirm each golden fails.
-3. **`c.link` gains `library` and `sources`** (design items 4 and 7). The
-   `c:` scheme fills `library` from pkg-config. A fixture's program ships a
-   `.c` file and calls it from Go.
+2. **Typed scalars and UTF-16** (design item 3). Done:
+   `testdata/c_alias_argument.txtar` (`towupper`'s `wint_t`),
+   `testdata/c_utf16_argument.txtar`, `testdata/error_cnative_alias.sngl`.
+   An alias takes `#[cnative]` and no other mark. The alias's kind is
+   checked once it resolves (`checkCAlias`), since a mark calling into
+   resolution makes an initialization cycle through `markImpls`.
+3. **`c.link` gains `library` and `sources`** (design items 4 and 7). Done:
+   the c: scheme writes `library` from the first `-l`
+   (`cmd/sngl/testdata/c_pkgconfig.txt`), and `c_utf16_argument.txtar` ships
+   its C function. A library's sources are read from `lib.FS`, whose
+   `go:embed` holds only `.sngl` until the first platform ships one: add the
+   pattern with it.
 4. **Callbacks** (design item 5). A fixture over a C function taking a
    callback and a context, its source shipped through `sources`, run on Go.
    Then move gtk4's `Connect` onto it, and gtk4rt's trampolines out of Go.

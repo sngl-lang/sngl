@@ -11,6 +11,7 @@ package cbind
 
 import (
 	"sync"
+	"unicode/utf16"
 	"unsafe"
 )
 
@@ -91,4 +92,14 @@ func DispatchOnce(idx int) {
 	if fn != nil {
 		fn()
 	}
+}
+
+// UTF16 is s encoded as NUL-terminated UTF-16, the address of its first
+// unit: the string a C function taking `const unsigned short *` (Win32's
+// `LPCWSTR`) reads. It is Go memory holding no Go pointer, so cgo lets the
+// call have it for as long as the call lasts, and a callee keeping it past
+// that copies it.
+func UTF16(s string) *uint16 {
+	u := append(utf16.Encode([]rune(s)), 0)
+	return &u[0]
 }

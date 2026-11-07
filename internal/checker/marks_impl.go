@@ -331,9 +331,34 @@ func markCNative(m *mark) error {
 		if err := claimForeign(&d.Foreign, fm, name); err != nil {
 			return err
 		}
+	case *ir.Alias:
+		return markCAlias(d, name, cast)
 	default:
 		return fmt.Errorf("#[cnative] cannot mark %s; only a function or a struct names a C identifier", ast.DeclFormName(m.decl))
 	}
+	return nil
+}
+
+// markCAlias implements #[cnative] on an alias: a C typedef of a scalar SNGL
+// spells as the type the alias names. `#[cnative("UINT")] struct UINT = int`
+// is an `int` wherever it is written, and a C function's argument for a
+// parameter written with it crosses as a `UINT` rather than a C `int`. What
+// the alias may name is checkCAlias's, once it is resolved.
+func markCAlias(a *ir.Alias, name string, cast bool) error {
+	if cast {
+		return fmt.Errorf("#[cnative(%q)] carries cast, which describes a conversion; an alias is a C type", name)
+	}
+	if len(a.WrittenParams) > 0 {
+		return fmt.Errorf("#[cnative(%q)] names one C type, so the alias takes no type parameters", name)
+	}
+	t, err := ir.ParseCType(name)
+	if err != nil {
+		return fmt.Errorf("#[cnative(%q)]: %w", name, err)
+	}
+	if a.C != nil {
+		return fmt.Errorf("#[cnative(%q)]: the alias already spells %s", name, a.C)
+	}
+	a.C = t
 	return nil
 }
 

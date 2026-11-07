@@ -566,6 +566,10 @@ type CCompiler interface {
 	// for the headers the program's c.link directives name. Called once per
 	// output file. Returns empty string when links is empty.
 	EmitCHeader(links []*ir.CLink) string
+	// CSources is the files a program's c.links ship, as the language
+	// compiles them into the program, keyed by the path relative to the
+	// output directory.
+	CSources(links []*ir.CLink) (map[string][]byte, error)
 }
 
 // MutationModelEmitter is optionally implemented by platforms that emit a

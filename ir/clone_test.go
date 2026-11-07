@@ -56,3 +56,35 @@ func TestCloneForATargetKeepsItsOverrides(t *testing.T) {
 		}
 	}
 }
+
+// A parameter's C alias is shared by a clone, and a conversion's with it: the
+// alias may be the library's, and copying it would copy its package. A walk
+// rewriting types in place goes no further into it than the clone does,
+// since the package behind it is the checked one.
+func TestCloneSharesACParametersAlias(t *testing.T) {
+	lib := &Package{Path: "sngl:x/c", Library: true}
+	ints := &Type{Kind: TypeList, Elems: []*Type{TypInt}}
+	lib.Vars = []*Var{{Name: "held", Type: ints}}
+	a := &Alias{Name: "UINT", Pkg: lib, Type: TypInt, C: &CType{Name: "UINT"}}
+	param := &Param{Name: "n", Type: TypInt, CAlias: a}
+	conv := &CConvert{Kind: CConvertNumber, To: a.C, Operand: &Ident{Name: "n", Sym: param}, Type: TypInt, Alias: a}
+	p := &Package{Funcs: []*Func{{Name: "f", Params: []*Param{param}, Block: []Stmt{&Return{Value: conv}}}}}
+
+	cp := ClonePackage(p)
+	if cp.Funcs[0].Params[0].CAlias != a {
+		t.Error("the parameter's alias was copied")
+	}
+	if cp.Funcs[0].Block[0].(*Return).Value.(*CConvert).Alias != a {
+		t.Error("the conversion's alias was copied")
+	}
+
+	RewriteTypes(cp, func(t *Type) *Type {
+		if t.Kind == TypeList {
+			return TypString
+		}
+		return nil
+	})
+	if lib.Vars[0].Type != ints {
+		t.Error("rewriting the clone's types wrote the library behind its alias")
+	}
+}

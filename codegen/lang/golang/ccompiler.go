@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 
@@ -63,4 +64,26 @@ func CPreambleLines(links []*ir.CLink) string {
 		b.WriteString("#include " + inc + "\n")
 	}
 	return b.String()
+}
+
+// CSources implements codegen.CCompiler: cgo compiles every .c file in the
+// package's directory, and the preamble includes a header there by its name,
+// so each source sits beside the generated Go under its own.
+func (t *Translator) CSources(links []*ir.CLink) (map[string][]byte, error) {
+	var out map[string][]byte
+	for _, l := range links {
+		for _, src := range l.Sources {
+			if prev, ok := out[src.Name]; ok {
+				if string(prev) != src.Text {
+					return nil, fmt.Errorf("two c.links ship a source named %s, and one directory holds them all", src.Name)
+				}
+				continue
+			}
+			if out == nil {
+				out = map[string][]byte{}
+			}
+			out[src.Name] = []byte(src.Text)
+		}
+	}
+	return out, nil
 }

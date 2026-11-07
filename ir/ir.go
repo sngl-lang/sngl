@@ -534,6 +534,20 @@ type CLink struct {
 	System  bool
 	CFlags  []string
 	LDFlags []string
+	// Library is the shared library the header declares, as a linker names
+	// it (`gtk-4`): what a language loading C at run time opens.
+	Library string `json:",omitempty"`
+	// Sources are the C files the link ships, read where it was checked,
+	// which each language compiles into the program.
+	Sources []CSource `json:",omitempty"`
+}
+
+// CSource is a C file a c.link ships: its name, which is the file's own
+// without the directory it sat in, since a header beside it is included by
+// that name, and what it holds.
+type CSource struct {
+	Name string
+	Text string `json:"-"`
 }
 
 // ReachedCLinks is every c.link pkg and the packages it imports carry, each
@@ -1489,6 +1503,13 @@ type Param struct {
 	// Transfer is what a native function does with the argument past the
 	// call, written `#[retains]` or `#[moves]`.
 	Transfer Transfer `json:",omitempty"`
+	// CAlias is the `#[cnative]` alias the parameter's type was written as,
+	// itself or as an option's element: `c.utf16`, `UINT`. Its type is
+	// expanded where it is written, so this is what remembers that the
+	// argument crosses as the C type the alias spells. The alias is shared
+	// by every clone (ClonePackage): its mark may run after the parameter is
+	// built, so the C type is read from it, not copied.
+	CAlias *Alias `json:",omitempty"`
 }
 
 // Transfer is what a callee does with an owned argument once it returns.

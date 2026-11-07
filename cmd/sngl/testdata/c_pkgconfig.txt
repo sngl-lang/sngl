@@ -25,6 +25,9 @@ grep '^#cgo CFLAGS: .*-I/[^ ]*gtk-4' out/model.go
 grep '^#cgo LDFLAGS: .*-lgtk-4' out/model.go
 grep '^#include <gtk/gtk.h>$' out/model.go
 grep 'm.v = int\(C.gtk_get_major_version\(\)\)' out/model.go
+# The link names the library the header belongs to, the first pkg-config
+# gives, for a language that opens one at run time rather than linking it.
+exec grep -rq 'library="gtk-4"' $WORK/store
 ! stderr 'gencache hit" req="sngl.scheme'
 
 # The package the plugin wrote is stored, behind the .pc file pkg-config read:

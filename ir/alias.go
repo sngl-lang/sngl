@@ -5,8 +5,9 @@ import "duckfam.us/sngl/ast"
 // Alias is `struct Name[…] = Type`, or `enum` or `unit` in place of
 // `struct`: Type under another name, the same type wherever it is written
 // rather than a new one. It names a type or a constraint, and the checker
-// replaces it with what it names wherever it is written, so nothing after the
-// check meets one.
+// replaces it with what it names wherever it is written. The one place one
+// survives the check is a C function's parameter (Param.CAlias), since an
+// alias `#[cnative]` marks is a C typedef the argument crosses as.
 type Alias struct {
 	Name string
 	Pos  ast.Pos
@@ -31,6 +32,10 @@ type Alias struct {
 	Type       *Type         `json:"-"`
 	Constraint *Type         `json:"-"`
 	Self       *TypeParamSym `json:"-"`
+	// C is the C typedef a `#[cnative]` mark says the alias spells, which a
+	// C function's argument written with it is converted to: `UINT` for
+	// `#[cnative("UINT")] struct UINT = int`.
+	C *CType `json:",omitempty"`
 }
 
 func (a *Alias) SymName() string  { return a.Name }

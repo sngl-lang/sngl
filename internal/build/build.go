@@ -283,7 +283,20 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 	if err := plat.Generate(req, mem); err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", o.Name, err)
 	}
-	return mem.Files(), mem.Boilerplate(), nil
+	files := mem.Files()
+	if cc, ok := lang.(codegen.CCompiler); ok {
+		srcs, err := cc.CSources(ir.ReachedCLinks(pkg))
+		if err != nil {
+			return nil, nil, fmt.Errorf("%s: %w", o.Name, err)
+		}
+		for name, data := range srcs {
+			if _, dup := files[name]; dup {
+				return nil, nil, fmt.Errorf("%s: a c.link ships %s, which the %s platform also generates", o.Name, name, target.Platform)
+			}
+			files[name] = data
+		}
+	}
+	return files, mem.Boilerplate(), nil
 }
 
 // IsolateRootComponent makes comp the program's only entry point, and is what

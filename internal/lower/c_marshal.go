@@ -174,6 +174,12 @@ func (m *cMarshal) call(c *ir.Call) error {
 		return nil
 	}
 	for i, p := range fn.Params {
+		if p.CAlias != nil && p.CAlias.C != nil {
+			if err := m.aliasArg(fn, p, &c.Args[off+i]); err != nil {
+				return err
+			}
+			continue
+		}
 		kind := marshalKind(p.Type)
 		if kind == ir.BuiltinNone {
 			s, err := optionString(fn, p.Type, c.Args[off+i].Value)
@@ -200,6 +206,37 @@ func (m *cMarshal) call(c *ir.Call) error {
 		}
 		arg.Value = convertArg(conv, arg.Value)
 	}
+	return nil
+}
+
+// aliasArg converts arg for p, a parameter written with a `#[cnative]`
+// alias, to the C typedef the alias spells: a number cast to it, a bool made
+// 0 or 1 first, and a string encoded as UTF-16. A `null` for an option of
+// one is the NULL it already is.
+func (m *cMarshal) aliasArg(fn *ir.Func, p *ir.Param, arg *ir.CallArg) error {
+	if _, done := arg.Value.(*ir.CConvert); done {
+		return nil
+	}
+	a := p.CAlias
+	v := arg.Value
+	switch a.Type.Kind {
+	case ir.TypeString:
+		if p.Type.Kind == ir.TypeOption {
+			s, err := optionString(fn, p.Type, v)
+			if err != nil || s == nil {
+				return err
+			}
+			v = s
+		}
+	case ir.TypeBool:
+		m.index(fn.Pkg)
+		conv := m.conv[ir.BuiltinCBool]
+		if conv == nil {
+			return fmt.Errorf("C function %q takes a %s, a bool, and no package it or the program imports declares #[builtin(%q)], which sngl:x/c does", fn.Foreign.Name, a.Name, string(ir.BuiltinCBool))
+		}
+		v = convertArg(conv, v)
+	}
+	arg.Value = ir.NewCAliasConvert(a, v)
 	return nil
 }
 

@@ -46,8 +46,9 @@ func (gc *GoIRContext) CType(t *ir.CType) string {
 	return s
 }
 
-// CConvert is x as cgo writes it: a string is copied with `C.CString`, a
-// number converted to its C type, and a pointer converted through
+// CConvert is x as cgo writes it: a string is copied with `C.CString`, or
+// encoded by cbind.UTF16 into Go memory valid for the call, a number
+// converted to its C type, and a pointer converted through
 // `unsafe.Pointer`, since cgo converts no C pointer to another. One that is
 // `void *` already, or becomes it, needs only the one conversion.
 func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
@@ -57,6 +58,10 @@ func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
 		return "C.CString(" + operand + ")"
 	case ir.CConvertNumber:
 		return gc.CType(x.To) + "(" + operand + ")"
+	case ir.CConvertUTF16:
+		gc.RequireImport("duckfam.us/sngl/pkg/go/cbind")
+		gc.RequireImport("unsafe")
+		return "(" + gc.CType(x.To) + ")(unsafe.Pointer(cbind.UTF16(" + operand + ")))"
 	}
 	gc.RequireImport("unsafe")
 	if x.To.IsVoidPointer() {

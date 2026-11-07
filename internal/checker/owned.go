@@ -148,7 +148,7 @@ func (c *checker) applyFuncParamMarks(f *ast.FuncDef, fn *ir.Func) {
 		marked, fp := p, funcParam{param: fn.Params[skip+i], bodied: bodied}
 		c.afterMarks(func() {
 			for _, attr := range marked.MacroAttrs() {
-				c.applyMark(attr, marked, fp, funcParamMarks)
+				c.applyMark(attr, marked, fp, funcParamMarks, "a parameter")
 			}
 		})
 	}

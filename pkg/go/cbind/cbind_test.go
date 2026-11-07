@@ -1,6 +1,10 @@
 package cbind
 
-import "testing"
+import (
+	"slices"
+	"testing"
+	"unsafe"
+)
 
 func TestRegisterDispatch(t *testing.T) {
 	var a, b int
@@ -73,5 +77,14 @@ func TestDispatchOnceDropsTheSlot(t *testing.T) {
 	}
 	if _, held := slots[idx]; held {
 		t.Fatal("DispatchOnce left the slot registered")
+	}
+}
+
+func TestUTF16EncodesSurrogatesAndEnds(t *testing.T) {
+	p := UTF16("a\U0001F600")
+	got := unsafe.Slice(p, 4)
+	want := []uint16{'a', 0xD83D, 0xDE00, 0}
+	if !slices.Equal(got, want) {
+		t.Errorf("UTF16 = %x, want %x", got, want)
 	}
 }

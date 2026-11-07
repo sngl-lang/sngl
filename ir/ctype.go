@@ -129,6 +129,15 @@ func (t *CType) IsCharPointer() bool {
 	return t != nil && t.Name == "char" && t.Ptr == 1
 }
 
+// IsUTF16Pointer reports whether t points to a 16-bit unit, which a `string`
+// written as an alias of t crosses as UTF-16. `unsigned short` is the one
+// spelling every C compiler has without a header; Win32's `WCHAR` names it.
+func (t *CType) IsUTF16Pointer() bool {
+	return t != nil && t.Ptr == 1 && utf16Units[t.Name]
+}
+
+var utf16Units = map[string]bool{"unsigned short": true, "char16_t": true, "uint16_t": true, "WCHAR": true}
+
 // CTypeOf is the C type a SNGL type is declared as: a `#[cnative]` struct's,
 // nil for anything else.
 func CTypeOf(t *Type) *CType {
@@ -162,23 +171,30 @@ const (
 	CConvertNumber
 	// CConvertPointer is a pointer, or a node, as the pointer type To names.
 	CConvertPointer
+	// CConvertUTF16 encodes a `string` as the NUL-terminated UTF-16 a
+	// pointer to a 16-bit unit To names, valid for the call: an argument
+	// written `c.utf16`, which is how Win32 takes a string.
+	CConvertUTF16
 )
 
 // CConvert is a value converted to a C type, the conversion a call of a C
 // function makes of its argument. lower.CMarshal writes one for each
-// argument whose parameter's type names a sngl:x/c conversion, and for each
-// call of a `#[cnative(…, cast)]` function. A translator renders it as its
+// argument whose parameter's type names a sngl:x/c conversion or a
+// `#[cnative]` alias, and for each call of a `#[cnative(…, cast)]` function. A translator renders it as its
 // language converts to C (codegen.CInterop).
 type CConvert struct {
 	Kind    CConvertKind
 	To      *CType
 	Operand Expr
 	// Type is the SNGL type the value has once converted: the `#[cnative]`
-	// struct To declares.
+	// struct To declares, or the type an alias names, which is what the
+	// argument is in SNGL.
 	Type *Type
-	// Via is the cast declaration the conversion was written through, which
-	// is how a dump prints it back.
-	Via *Func
+	// Via is the cast declaration the conversion was written through, and
+	// Alias the parameter's alias where there is none. Either is how a dump
+	// prints it back.
+	Via   *Func
+	Alias *Alias `json:",omitempty"`
 }
 
 func (*CConvert) exprNode()         {}
@@ -197,4 +213,15 @@ func NewCConvert(cast *Func, operand Expr) *CConvert {
 		kind = CConvertNumber
 	}
 	return &CConvert{Kind: kind, To: to, Operand: operand, Type: cast.Return, Via: cast}
+}
+
+// NewCAliasConvert is operand converted to the C typedef a, as a parameter
+// written with a declares: a number or a 0-or-1 `int` cast to it, and a
+// string encoded as UTF-16.
+func NewCAliasConvert(a *Alias, operand Expr) *CConvert {
+	kind := CConvertNumber
+	if a.C.IsUTF16Pointer() {
+		kind = CConvertUTF16
+	}
+	return &CConvert{Kind: kind, To: a.C, Operand: operand, Type: a.Type, Alias: a}
 }

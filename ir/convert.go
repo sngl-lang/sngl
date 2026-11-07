@@ -913,8 +913,12 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 	case *Conversion:
 		return c.convertConversion(e)
 	case *CConvert:
-		// Printed as the call of the cast it was written through, which is
+		// Printed as the call of the cast it was written through, or the
+		// conversion to the alias its parameter was written as, which is
 		// the one source spelling it has.
+		if e.Via == nil && e.Alias != nil {
+			return &ast.CallExpr{Func: &ast.IdentExpr{Name: e.Alias.Name}, Args: ast.ArgList{Args: []ast.ArgOrEventHandler{ast.Arg{Value: c.convertExpr(e.Operand)}}}}
+		}
 		return c.convertCallExpr(&Call{Type: e.Type, Func: e.Via, Args: []CallArg{{Value: e.Operand}}})
 	case *Select:
 		// A node a population declares is read through the node it populates.

@@ -868,8 +868,39 @@ func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 			Variadic: variadic,
 			Doc:      p.Doc(),
 		}
+		if !variadic {
+			params[i].CAlias = c.cAliasOf(p.Type, typ)
+		}
 	}
 	return params
+}
+
+// cAliasOf is the `#[cnative]` alias te was written as, itself or as the
+// element of an option, which typ is te resolved: the alias is expanded
+// there, and a C function's argument crosses as the C type it spells. Nil
+// for any other type. The mark may not have run yet, so an alias written
+// with any mark is the one recorded; an alias takes no other.
+func (c *checker) cAliasOf(te ast.TypeExpr, typ *ir.Type) *ir.Alias {
+	nt, ok := te.(*ast.NamedType)
+	if ok && typ != nil && typ.Kind == ir.TypeOption && len(nt.TypeArgs) == 1 {
+		nt, ok = nt.TypeArgs[0].(*ast.NamedType)
+	}
+	if !ok || len(nt.TypeArgs) > 0 {
+		return nil
+	}
+	var a *ir.Alias
+	if nt.Package != "" {
+		a = c.qualifiedAlias(nt)
+	} else if sym, found := c.scope.Lookup(nt.Name); found {
+		a, _ = sym.(*ir.Alias)
+	}
+	if a == nil {
+		return nil
+	}
+	if marked, ok := a.Decl.(ast.Attributed); a.C == nil && (!ok || len(marked.MacroAttrs()) == 0) {
+		return nil
+	}
+	return a
 }
 
 // funcHasBody reports whether a declaration was written with a body, either

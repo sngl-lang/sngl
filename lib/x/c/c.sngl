@@ -8,8 +8,15 @@ import macro "sngl:macro"
 // `include` is the header as an #include names it, and `system` says it is
 // found on the include path (`<gtk/gtk.h>`) rather than beside the program
 // (`"lib/math.h"`).
+//
+// `library` is the shared library the header declares, by the name a linker
+// takes (`gtk-4`, `user32`): a language that opens one at run time rather
+// than linking it reads that. `sources` are C files beside the file writing
+// the link, a header among them where `include` names it, which every
+// language compiles into the program: a platform's runtime written in C, so
+// that it serves every language that can call C.
 #[marks.builtin("cLink")]
-component link(const include string, const system bool = false, const cflags list[string] = [], const ldflags list[string] = []) root {}
+component link(const include string, const system bool = false, const cflags list[string] = [], const ldflags list[string] = [], const library string = "", const sources list[string] = []) root {}
 
 // A C string: a NUL-terminated copy of a `string` the program allocated, which
 // `free` gives back.
@@ -23,6 +30,14 @@ struct integer {}
 
 #[macro.cnative("double")]
 struct double {}
+
+// A string a C function reads as NUL-terminated UTF-16, the way Win32 takes
+// one (`LPCWSTR`). An argument for a parameter written with it is the string
+// encoded, valid for the call, and an `option[utf16]` one takes `null` as
+// NULL. It is a `string` wherever it is written; only the call reads the
+// alias.
+#[macro.cnative("const unsigned short *")]
+struct utf16 = string
 
 // The conversions a call of a C function makes of each argument, chosen by
 // the parameter's type. Nothing calls them by name: the compiler finds each by

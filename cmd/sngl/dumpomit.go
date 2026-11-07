@@ -458,6 +458,11 @@ func (d *dumper) declPkg(v reflect.Value) *ir.Package {
 		pkg, _ := info.FieldByName("Pkg").Interface().(*ir.Package)
 		return pkg
 	}
+	// An alias records its package beside its name: a parameter's C alias
+	// is often the library's, `c.utf16`.
+	if a, ok := v.Interface().(*ir.Alias); ok {
+		return a.Pkg
+	}
 	return nil
 }
 

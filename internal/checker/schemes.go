@@ -2,6 +2,8 @@ package checker
 
 import (
 	"fmt"
+	"io/fs"
+	"path"
 	"slices"
 	"strings"
 	"sync"
@@ -9,6 +11,7 @@ import (
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/imports"
 	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/lib"
 )
 
 // An import scheme is served three ways: by an importer compiled into the
@@ -456,6 +459,21 @@ func (c *checker) checkCLinks() {
 				link.CFlags = strs(p.Value)
 			case "ldflags":
 				link.LDFlags = strs(p.Value)
+			case "library":
+				if l, ok := p.Value.(*ir.Literal); ok {
+					link.Library = l.Value
+				} else {
+					bad = true
+				}
+			case "sources":
+				for _, name := range strs(p.Value) {
+					src, err := c.readCSource(vn.Pos, name)
+					if err != nil {
+						c.error(vn.Pos, "c.link source %q: %v", name, err)
+						continue
+					}
+					link.Sources = append(link.Sources, src)
+				}
 			}
 		}
 		if bad {
@@ -468,6 +486,33 @@ func (c *checker) checkCLinks() {
 		}
 		c.pkg.CLinks = append(c.pkg.CLinks, link)
 	}
+}
+
+// readCSource reads a C file a c.link at pos ships, named relative to the
+// file the link is written in: the program's own, through the filesystem its
+// imports are read from, or a library package's, from the library. It is
+// kept by its own name, since a language compiles every one into one
+// directory, where a header among them is included by that name.
+func (c *checker) readCSource(pos ast.Pos, name string) (ir.CSource, error) {
+	clean := path.Clean(name)
+	if path.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, "../") {
+		return ir.CSource{}, fmt.Errorf("a source sits beside the file naming it, or below it")
+	}
+	if ext := path.Ext(clean); ext != ".c" && ext != ".h" {
+		return ir.CSource{}, fmt.Errorf("a source is a C file or a header, .c or .h")
+	}
+	fsys, full := c.cfg.FS, path.Join(c.cfg.PkgPath, clean)
+	if c.inLibSource() {
+		fsys, full = lib.FS, path.Join(path.Dir(pos.File), clean)
+	}
+	if fsys == nil {
+		return ir.CSource{}, fmt.Errorf("this check reads no files")
+	}
+	data, err := fs.ReadFile(fsys, full)
+	if err != nil {
+		return ir.CSource{}, err
+	}
+	return ir.CSource{Name: path.Base(clean), Text: string(data)}, nil
 }
 
 // reportUnlinkedCNativeCalls refuses a call of a program's `#[cnative]`

@@ -55,7 +55,7 @@ func (c *checker) applyMarks(decl ast.Stmt, sym any) {
 	}
 	c.afterMarks(func() {
 		for _, attr := range a.MacroAttrs() {
-			c.applyMark(attr, a, sym, nil)
+			c.applyMark(attr, a, sym, nil, "")
 		}
 	})
 }
@@ -118,20 +118,20 @@ func (c *checker) applyParamMarks(p ast.Param, prop *ir.Prop) {
 	marked := p
 	c.afterMarks(func() {
 		for _, attr := range marked.MacroAttrs() {
-			c.applyMark(attr, marked, prop, paramMarks)
+			c.applyMark(attr, marked, prop, paramMarks, "a parameter")
 		}
 	})
 }
 
-// applyMark runs one mark. allowed is what a parameter list admits, nil for a
-// declaration.
-func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, allowed map[markKey]bool) {
+// applyMark runs one mark. allowed is what site, a position that admits only
+// some marks, admits, nil for a declaration.
+func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, allowed map[markKey]bool, site string) {
 	uri, fn, ok := c.resolveMacro(attr)
 	if !ok {
 		return
 	}
 	if allowed != nil && !allowed[markKey{uri, attr.Name}] {
-		c.error(attr.Pos, "#[%s] cannot mark a parameter", attr.MacroName())
+		c.error(attr.Pos, "#[%s] cannot mark %s", attr.MacroName(), site)
 		return
 	}
 	args, err := markArgsFor(fn, attr.Args, c.markConstValue)

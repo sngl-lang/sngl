@@ -1,0 +1,12 @@
+// A c.link's sources are C files beside the file writing it, which each
+// language compiles into the program: a C file or a header, never one above
+// the package.
+import c "sngl:x/c"
+
+c.link(include="a.h", sources=["../escape.c"]) // ERROR(check) "c.link source \"../escape.c\": a source sits beside the file naming it, or below it"
+
+c.link(include="b.h", sources=["notes.txt"]) // ERROR(check) "a source is a C file or a header, .c or .h"
+
+c.link(include="c.h", sources=["missing.c"]) // ERROR(check) "c.link source \"missing.c\""
+
+const v = 1

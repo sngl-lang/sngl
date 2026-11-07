@@ -24,13 +24,49 @@ func (c *checker) registerAlias(decl ast.Stmt, keyword, name string, pos ast.Pos
 		c.error(pos, "an alias names what it stands for: `%s Name = Type`", keyword)
 		return a
 	}
-	if len(attrs) > 0 {
-		c.error(attrs[0].Pos, "an alias takes no marks: it is what it names")
-	}
 	claimed := c.claimTopLevel(name, pos, bindDecl, "")
 	c.declPkg().Aliases = append(c.declPkg().Aliases, a)
 	c.bindDeclared(claimed, a)
+	if len(attrs) > 0 {
+		marked := decl.(markTarget)
+		c.afterMarks(func() {
+			for _, attr := range attrs {
+				c.applyMark(attr, marked, a, aliasMarks, "an alias: it is what it names, and only #[cnative] says more, the C typedef it spells")
+			}
+			if a.C != nil {
+				c.resolveAlias(a)
+				c.checkCAlias(a, attrs[0].Pos)
+			}
+		})
+	}
 	return a
+}
+
+// checkCAlias holds a `#[cnative]` alias to what a C typedef SNGL can spell
+// names: a number or a bool, which crosses cast to it, or a string, which
+// crosses as UTF-16 through a pointer to 16-bit units. Anything else C
+// declares is a `#[cnative]` struct.
+func (c *checker) checkCAlias(a *ir.Alias, pos ast.Pos) {
+	switch t := a.Type; {
+	case t == nil:
+	case t.Kind == ir.TypeString:
+		if !a.C.IsUTF16Pointer() {
+			c.error(pos, "#[cnative(%q)] marks an alias of string, which crosses as UTF-16 through a pointer to 16-bit units (`const unsigned short *`); a `char *` is what a string crosses as already", a.C)
+		}
+	case t.Kind == ir.TypeInt || t.Kind == ir.TypeFloat || t.Kind == ir.TypeBool:
+		if a.C.Ptr > 0 {
+			c.error(pos, "#[cnative(%q)] marks an alias of %s, so it names a C scalar and no pointer", a.C, t)
+		}
+	default:
+		c.error(pos, "#[cnative(%q)] marks an alias of %s; an alias spells a C typedef of int, float, bool or string, and any other C type is a #[cnative] struct", a.C, t)
+	}
+}
+
+// aliasMarks are the marks an alias takes. It is what it names, so a mark
+// saying something of its own is refused, but a C function's parameter
+// written with one crosses as the C typedef `#[cnative]` names (Param.CAlias).
+var aliasMarks = map[markKey]bool{
+	{"macro", "cnative"}: true,
 }
 
 // registerAliasDecl registers stmt where it is an alias, reporting whether it

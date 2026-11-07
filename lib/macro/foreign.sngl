@@ -44,7 +44,13 @@ func foreign(path string = "", name string = "", flags list[ir.ForeignFlag] = []
 // its return type declares. `#[cnative("cairo_line_cap_t", cast)] const func toLineCap(v int) LineCap` makes a number one, and a pointer type makes a
 // pointer, or a node, one.
 //
-// Struct and function are the forms that carry it, as `#[foreign]`'s are.
+// An alias carries it too, naming a C typedef of a type SNGL has:
+// `#[cnative("UINT")] struct UINT = int` is an `int` wherever it is written,
+// and an argument for a C function's parameter written with it crosses cast
+// to `UINT` rather than as a C `int`. An alias of `string` names a pointer to
+// 16-bit units, which the string crosses as UTF-16: `sngl:x/c`'s `utf16`.
+//
+// Struct, function and alias are the forms that carry it.
 func cnative(name string, flags list[CNativeFlag] = []) ir.Macro
 
 // What a `#[cnative]` function is beyond its name.

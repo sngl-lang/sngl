@@ -54,8 +54,9 @@ func (w *typeRewriter) walk(v reflect.Value) {
 			if !v.Type().Field(i).IsExported() {
 				continue
 			}
-			// A declaration's package is where it came from, not part of it.
-			if v.Type() == declInfoType && v.Type().Field(i).Name == "Pkg" {
+			// A declaration's package is where it came from, not part of it,
+			// and a reference the cloner shares is no clone's to write.
+			if kind := planOf(v.Type())[i]; kind == fieldDeclPkg || kind == fieldShare {
 				continue
 			}
 			w.slot(fv)

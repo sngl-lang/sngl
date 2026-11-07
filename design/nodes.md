@@ -135,7 +135,17 @@ declaration itself. Two things about the name that are easy to get wrong:
   before any backend sees the call, by `lower.CMarshal`, through the
   `sngl:x/c` conversion its parameter's type names (`cstring`, `cint`,
   `cdouble`, `cbool`), so a C string is an owned `c.str` in the IR rather than
-  a `C.CString` only the printed Go held (`testdata/c_bool_argument.txtar`). Which
+  a `C.CString` only the printed Go held (`testdata/c_bool_argument.txtar`).
+  A parameter written with a `#[cnative]` alias -- a C typedef of a scalar,
+  `#[cnative("UINT")] struct UINT = int` -- crosses cast to the typedef, which
+  cgo needs, since it refuses a `C.int` for an unsigned one
+  (`testdata/c_alias_argument.txtar`); a string alias crosses as UTF-16
+  (`c.utf16`, `testdata/c_utf16_argument.txtar`). The alias is expanded where
+  it is written, so `ir.Param.CAlias` remembers it. It records the alias
+  rather than its C type because the alias's mark may run after the parameter
+  is built, and it is shared by every clone, its package being the library's
+  where it is `c.utf16`: `ir.RewriteTypes` reached the checked package through
+  a copied one's `Pkg` and wrote a library override's struct literal. Which
   header declares one is the program's `c.link` (`sngl:x/c`), and every Go target writes the links the program
   reaches (`ir.ReachedCLinks`) into its cgo preamble: fyne and bubbletea as a
   preamble of their own, gtk4 inside the one inline mode already has, which a
@@ -146,7 +156,11 @@ declaration itself. Two things about the name that are easy to get wrong:
   it used to reach the Go toolchain as `undefined: C`. A library's is exempt
   (`ir.Package.Library`, set for a `sngl:` package and what a library plugin
   writes), since gtk4's preamble includes the headers its cairo and `gir:`
-  declarations name.
+  declarations name. A `c.link`'s `sources` are C files beside the file
+  writing it, read at the check into `ir.CLink.Sources`, which a language
+  compiles into the program: Go writes them beside the generated package,
+  where cgo compiles every `.c` (`codegen.CCompiler.CSources`). That is how a
+  platform's runtime is C rather than one language's.
 - **A component may be one, on Kotlin.** `#[kt.native("Card", "androidx.compose.material3.Card")]` on a bodyless component names a
   composable: android calls it with the props as arguments by name and the rest
   slot as the trailing lambda (`renderIntrinsic`), and adds the import unless a
