@@ -54,6 +54,7 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	e.ctx.Types = e.types
 	e.ctx.Native = e.native
 	e.ctx.Closures = e.closure
+	e.canvases(pkg)
 
 	// What is built is the package body, or the body of the component a
 	// test harness isolated, whose state is then the program's.
@@ -95,6 +96,7 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	for _, fn := range written {
 		fe.Func(fn)
 	}
+	e.draws(nil)
 	// The program's state is set apart from the tree its build makes, since
 	// a test writes state before it mounts, as Go's does between making the
 	// Model and building it.
@@ -187,6 +189,9 @@ type cInvoker struct {
 	// notify says the signal is a property's notification, which a test
 	// fires only by setting the property first.
 	notify bool
+	// press says the event is a canvas's click, which a gesture reports
+	// rather than a signal of the widget's (canvasClick).
+	press bool
 }
 
 // tests writes each test as a function of the agent's, and main serving
@@ -335,6 +340,9 @@ func (e *cEmitter) trigger(id string, c *ir.Call) []string {
 		e.fail("a test's %s.%s() carrying a value", id, c.Event)
 		return nil
 	}
+	if inv.press {
+		return []string{"sngl_canvas_click(GTK_WIDGET(" + e.ctx.EvalExpr(inv.node) + "));"}
+	}
 	return []string{"g_signal_emit_by_name((gpointer)(" + e.ctx.EvalExpr(inv.node) + "), " + e.ctx.EvalExpr(inv.signal) + ");"}
 }
 
@@ -362,8 +370,11 @@ type cEmitter struct {
 	scope *cRecord
 	// recordClosures are each record's closures (closureFuncs).
 	recordClosures map[*ir.Component][]*ir.Func
-	seq            int
-	err            error
+	// canvasByID and canvasByNode are the program's drawings (canvases).
+	canvasByID   map[string]*codegen.Canvas
+	canvasByNode map[*ir.NodeInst]*codegen.Canvas
+	seq          int
+	err          error
 }
 
 func (e *cEmitter) fail(format string, args ...any) []ir.Stmt {
@@ -472,12 +483,20 @@ func (e *cEmitter) registryClass(tag string) (string, bool) {
 }
 
 func (e *cEmitter) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
+	if tag == "canvas" {
+		return e.canvasCreate(id)
+	}
 	return e.fail("a %s made without a declared create", tag)
 }
 
 func (e *cEmitter) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
 	if prop == lookPropName {
 		return []ir.Stmt{&ir.CallStmt{Call: rtCall("SetLook", ir.TypVoid, node, value)}}
+	}
+	// A canvas's own props, which its drawing was sized and scaled by when
+	// canvasCreate made it.
+	if e.canvasByID[codegen.IdentBareName(node)] != nil && setterOf(node, prop) == nil {
+		return nil
 	}
 	call, ok := value.(*ir.Call)
 	if !ok {
@@ -568,6 +587,9 @@ func (e *cEmitter) OnConnectThrough(ctx context.Context, node ir.Expr, event str
 }
 
 func (e *cEmitter) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
+	if e.canvasByID[codegen.IdentBareName(node)] != nil && event == "click" {
+		return e.canvasClick(node, handler)
+	}
 	return e.fail("@%s without its class's connect", event)
 }
 
@@ -610,6 +632,9 @@ func (e *cEmitter) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr
 func (e *cEmitter) OnIter(ctx context.Context, iter ir.Expr) ir.Expr { return iter }
 func (e *cEmitter) OnCond(ctx context.Context, cond ir.Expr) ir.Expr { return cond }
 func (e *cEmitter) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
+	if n, ok := stmt.(*ir.CanvasRedrawStmt); ok {
+		return e.canvasRedraw(n)
+	}
 	return []ir.Stmt{stmt}
 }
 
@@ -678,6 +703,13 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 		return "sngl_box_insert_before(" + widget(0) + ", " + anchorOf(n.Args[2].Value) + ", " + widget(1) + ")", true
 	case "AppAttach":
 		return "sngl_app_attach(" + widget(0) + ")", true
+	case "CanvasNew":
+		return e.canvasNew(n.Args[0].Value), true
+	case "CanvasOnClick":
+		fn, ctx := c.Callback(n.Args[1].Value.ExprType().Sig, n.Args[1].Value)
+		return "sngl_canvas_on_click(" + widget(0) + ", (SnglFn)" + fn + ", " + ctx + ", (GDestroyNotify)sngl_release)", true
+	case "QueueDraw":
+		return "gtk_widget_queue_draw(" + widget(0) + ")", true
 	case "Every":
 		fn, ctx := c.Callback(n.Func.Params[1].Type.Sig, n.Args[1].Value)
 		return "sngl_every((int)(" + arg(0) + "), (SnglFn)" + fn + ", " + ctx + ", (GDestroyNotify)sngl_release)", true

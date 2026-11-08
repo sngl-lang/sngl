@@ -84,7 +84,6 @@ var passes = []pass{
 	passViewForElse,
 	passBoundaryFailed,
 	passUnit,
-	passEnum,
 	// Before passAsyncOffload, which synthesizes calls to the two ids this
 	// reads, and before anything rewrites a body out from under a position.
 	passAsyncCapable,
@@ -124,6 +123,9 @@ var passes = []pass{
 	// After passShapeDraw: the call it promotes may be inside a drawing, which
 	// is a shape override's handler body by the time that pass has run.
 	passLibFuncs,
+	// After every pass that splices a library body -- the inliners, ShapeDraw,
+	// LibFuncs -- each of which brings its enum members with it.
+	passEnum,
 	// After LibFuncs, so that a library helper's spread is lowered with the
 	// program's.
 	passFlattenStructSpread,

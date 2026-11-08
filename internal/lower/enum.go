@@ -134,6 +134,9 @@ func rewriteEnumExpr(e ir.Expr, memberOrdinal func(*ir.EnumDef, string) (int, bo
 				return rewriteEnumExpr(e, memberOrdinal)
 			})
 		}
+	case *ir.Closure:
+		// Its function is one of the package's, which the walk reaches.
+		rewriteEnumExpr(x.State, memberOrdinal)
 	case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no enum member to rewrite.
 	default:

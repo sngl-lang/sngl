@@ -384,6 +384,11 @@ func (r *refRewriter) rewriteStmt(s ir.Stmt) {
 	case *ir.LocalVar:
 		n.Init = r.rewriteExpr(n.Init)
 		n.Type = r.rewriteType(n.Type)
+		// A flattened canvas keeps the statements that paint it, which read
+		// state as the body does.
+		if n.CanvasNode != nil {
+			r.rewriteStmts(n.CanvasNode.Children)
+		}
 	case *ir.Return:
 		n.Value = r.rewriteExpr(n.Value)
 	case *ir.If:
@@ -566,6 +571,11 @@ func seedAddressedVarsInStmt(s ir.Stmt, set map[*ir.Var]bool) {
 		seedAddressedVarsInExpr(n.Value, set)
 	case *ir.LocalVar:
 		seedAddressedVarsInExpr(n.Init, set)
+		if n.CanvasNode != nil {
+			for _, t := range n.CanvasNode.Children {
+				seedAddressedVarsInStmt(t, set)
+			}
+		}
 	case *ir.Return:
 		seedAddressedVarsInExpr(n.Value, set)
 	case *ir.If:

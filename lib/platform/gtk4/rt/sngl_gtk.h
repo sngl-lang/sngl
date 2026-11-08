@@ -43,6 +43,20 @@ GtkWidget *sngl_slot_anchor(GtkWidget *box, GtkWidget *anchor);
 void sngl_box_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child);
 void sngl_box_remove(GtkWidget *box, GtkWidget *child);
 
+/* A canvas is a GtkDrawingArea of w by h, whose drawing draw paints with
+ * data. Where the area GTK lays it out in is another size, mode says what the
+ * drawing's coordinates are scaled by: "stretch" each axis to fit, "fill"
+ * the larger scale on both, and else the smaller, which "" leaves alone. A
+ * canvas that scales other than "center" expands to take the room. */
+typedef void (*SnglDrawFn)(cairo_t *cr, void *data);
+GtkWidget *sngl_canvas_new(int w, int h, const char *mode, SnglDrawFn draw, void *data);
+/* sngl_canvas_on_click runs fn with ctx on a press of w, which a drawing
+ * area has no signal of its own for: a GtkGestureClick's, which releases
+ * ctx with the gesture. */
+void sngl_canvas_on_click(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release);
+/* sngl_canvas_click is a press of w, as a test makes one. */
+void sngl_canvas_click(GtkWidget *w);
+
 /* A timer's schedule: fn runs with ctx every ms milliseconds, on the main
  * loop's thread, until sngl_schedule_cancel removes it, which releases ctx.
  * A period of 0 or less arms nothing and answers NULL, which cancels as a

@@ -24,6 +24,12 @@ stdout 'ok +1 tests, 0 failures'
 sngl test --platform=gtk4 --language=c timer.sngl
 stdout 'ok +2 tests, 0 failures'
 
+# A canvas's click is a GtkGestureClick's press, which a test makes through
+# the handler rt keeps on the drawing area (testdata/gtk4_c_canvas.txtar).
+
+sngl test --platform=gtk4 --language=c canvas.sngl
+stdout 'ok +1 tests, 0 failures'
+
 -- app.sngl --
 import ui "sngl:ui"
 import c "sngl:language/c"
@@ -129,8 +135,56 @@ func testTheGateStopsTheTimer(t test.Test, c main) {
     t.wait(func() => c.beats > 0, 300)
     t.assert(c.beats == 0)
 }
+-- canvas.sngl --
+import ui "sngl:ui"
+import c "sngl:language/c"
+import test "sngl:test"
+import draw "sngl:ui/draw"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+component dot(r float) ui.node {
+    var n = 0
+    ui.vbox {
+        draw.canvas(width=40px, height=40px) {
+            draw.circle(cx=20.0, cy=20.0, r=r + float(n))
+        }
+        ui.button(text="grow", @click {
+            n += 1
+        })
+    }
+}
+
+component main ui.node {
+    var hits = 0
+    var rs = [4.0, 8.0]
+    ui.vbox {
+        draw.canvas #board(width=40px, height=40px, scalingMode=draw.ScalingMode.fit, @click {
+            hits += 1
+        }) {
+            draw.rect(x=0.0, y=0.0, w=float(hits), h=10.0, style=draw.Style{lineCap=draw.LineCap.round})
+        }
+        for var r = rs {
+            dot(r=r)
+        }
+    }
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testClickRedraws(t test.Test, c main) {
+    c.board.click()
+    c.board.click()
+    t.assert(c.hits == 2)
+}
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:6e224038e4045d32ee314ae0e2a35544
+sha256:24d198a2aa418bf2872ce779bd3c319f
 {
   "results": [
     {
@@ -139,8 +193,18 @@ sha256:6e224038e4045d32ee314ae0e2a35544
     }
   ]
 }
+-- testrun/gtk4/c/canvas.sngl/main/1 --
+sha256:55ce7f167ee982818451093d6e73a86f
+{
+  "results": [
+    {
+      "Desc": "ClickRedraws",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/c/slots.sngl/card/1 --
-sha256:de238a4b5f60035df4d759c7a9bb0efd
+sha256:dfa425a749fd5677abe538a339474c22
 {
   "results": [
     {
@@ -150,7 +214,7 @@ sha256:de238a4b5f60035df4d759c7a9bb0efd
   ]
 }
 -- testrun/gtk4/c/timer.sngl/main/1 --
-sha256:a6bc10676891a1c1d2e4cdb4e5261a33
+sha256:a11753d82f923ece29048b6c315f274a
 {
   "results": [
     {

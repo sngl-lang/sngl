@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"fmt"
+	"strconv"
 
 	"duckfam.us/sngl/ir"
 )
@@ -214,10 +215,35 @@ func nodeEnumProp(n *ir.NodeInst, name string) string {
 			return id.Member
 		}
 		if lit, ok := p.Value.(*ir.Literal); ok {
+			// On a target NoEnum ran for, the member is its ordinal, which the
+			// prop's declared enum names.
+			if m, ok := enumMemberAt(n, name, lit); ok {
+				return m
+			}
 			return lit.Value
 		}
 	}
 	return ""
+}
+
+// enumMemberAt is the member of the enum n's prop name is declared as that
+// lit is the ordinal of.
+func enumMemberAt(n *ir.NodeInst, name string, lit *ir.Literal) (string, bool) {
+	if n.Component == nil || lit.Type == nil || lit.Type.Kind != ir.TypeInt {
+		return "", false
+	}
+	for _, p := range n.Component.Props {
+		if p.Name != name || p.Type == nil || p.Type.Kind != ir.TypeEnum {
+			continue
+		}
+		ed, ok := p.Type.Decl.(*ir.EnumDef)
+		i, err := strconv.Atoi(lit.Value)
+		if !ok || err != nil || i < 0 || i >= len(ed.Members) {
+			return "", false
+		}
+		return ed.Members[i].Name, true
+	}
+	return "", false
 }
 
 // nodeIntProp is a numeric or measurement prop as an int, or 0 when absent.

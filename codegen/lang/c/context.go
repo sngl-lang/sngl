@@ -249,6 +249,15 @@ func (c *Context) Ident(n *ir.Ident) string {
 		return c.funcValue(sym, n.Type)
 	}
 	if n.Member != "" {
+		// A member a value is made of after NoEnum ran -- a prop's zero value
+		// a record's constructor fills in -- is the ordinal NoEnum makes one.
+		if ed, ok := n.Type.Decl.(*ir.EnumDef); ok && n.Type.Kind == ir.TypeEnum && ir.PayloadEnum(n.Type) == nil {
+			for i, m := range ed.Members {
+				if m.Name == n.Member {
+					return strconv.Itoa(i)
+				}
+			}
+		}
 		return c.fail("an enum member (%s)", n.Member)
 	}
 	if c.State != nil {

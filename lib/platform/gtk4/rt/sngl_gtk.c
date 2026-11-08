@@ -1,5 +1,7 @@
 #include "sngl_gtk.h"
 
+#include <string.h>
+
 /* A toplevel's state, held on its box. */
 typedef struct {
     GtkWidget *box;
@@ -149,6 +151,84 @@ int sngl_app_run(void (*build)(void)) {
     int status = g_application_run(G_APPLICATION(sngl_app), 0, NULL);
     g_object_unref(sngl_app);
     return status;
+}
+
+typedef struct {
+    int w, h;
+    const char *mode;
+    SnglDrawFn draw;
+    void *data;
+} SnglCanvas;
+
+/* The drawing's own coordinate space mapped onto the size GTK is drawing
+ * at, so the shapes are rasterized where they land rather than drawn at one
+ * size and stretched from it, as gtk4rt's _snglCairoScale does. */
+static void sngl_canvas_draw(GtkDrawingArea *area, cairo_t *cr, int pw, int ph, gpointer p) {
+    SnglCanvas *c = p;
+    if (c->w > 0 && c->h > 0 && c->mode[0] != '\0') {
+        double sx = (double)pw / c->w, sy = (double)ph / c->h;
+        if (strcmp(c->mode, "stretch") == 0) {
+        } else if (strcmp(c->mode, "fill") == 0) {
+            if (sy > sx) sx = sy;
+            sy = sx;
+        } else {
+            if (sy < sx) sx = sy;
+            sy = sx;
+        }
+        cairo_scale(cr, sx, sy);
+    }
+    c->draw(cr, c->data);
+}
+
+GtkWidget *sngl_canvas_new(int w, int h, const char *mode, SnglDrawFn draw, void *data) {
+    GtkWidget *a = gtk_drawing_area_new();
+    gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(a), w);
+    gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(a), h);
+    if (mode[0] != '\0' && strcmp(mode, "center") != 0) {
+        gtk_widget_set_hexpand(a, TRUE);
+        gtk_widget_set_vexpand(a, TRUE);
+    }
+    SnglCanvas *c = g_new0(SnglCanvas, 1);
+    c->w = w;
+    c->h = h;
+    c->mode = mode;
+    c->draw = draw;
+    c->data = data;
+    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(a), sngl_canvas_draw, c, g_free);
+    return a;
+}
+
+typedef struct {
+    SnglFn fn;
+    void *ctx;
+    GDestroyNotify release;
+} SnglHandler;
+
+static void sngl_handler_free(gpointer data, GClosure *closure) {
+    SnglHandler *h = data;
+    if (h->release) h->release(h->ctx);
+    g_free(h);
+}
+
+static void sngl_click_pressed(GtkGestureClick *g, int n, double x, double y, gpointer data) {
+    SnglHandler *h = data;
+    h->fn(h->ctx);
+}
+
+void sngl_canvas_on_click(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release) {
+    GtkGesture *g = gtk_gesture_click_new();
+    SnglHandler *h = g_new0(SnglHandler, 1);
+    h->fn = fn;
+    h->ctx = ctx;
+    h->release = release;
+    g_signal_connect_data(g, "pressed", G_CALLBACK(sngl_click_pressed), h, sngl_handler_free, 0);
+    gtk_widget_add_controller(w, GTK_EVENT_CONTROLLER(g));
+    g_object_set_data(G_OBJECT(w), "sngl-click", h);
+}
+
+void sngl_canvas_click(GtkWidget *w) {
+    SnglHandler *h = g_object_get_data(G_OBJECT(w), "sngl-click");
+    if (h) h->fn(h->ctx);
 }
 
 struct SnglSchedule {

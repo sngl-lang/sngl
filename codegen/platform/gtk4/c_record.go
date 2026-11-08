@@ -162,6 +162,7 @@ func (e *cEmitter) record(comp *ir.Component) {
 			teardown = "\t" + recordFunc(comp, fn.Name) + "(" + selfName + ");\n"
 		}
 	}
+	e.draws(comp)
 	var destroy strings.Builder
 	io := e.fe
 	fmt.Fprintf(io, "%s", ctor.String())
