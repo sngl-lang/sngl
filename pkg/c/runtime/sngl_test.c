@@ -89,10 +89,19 @@ static void sngl_test_panicked(const char *msg) {
 	longjmp(t->abort, 1);
 }
 
+/* sngl_now_ms is the wall clock in milliseconds: a test that waits on the
+ * program's loop takes the time it waited, which clock(), the processor's
+ * time, does not count. */
+static long long sngl_now_ms(void) {
+	struct timespec ts;
+	timespec_get(&ts, TIME_UTC);
+	return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
 static const char *sngl_run_one(const sngl_test *test) {
 	sngl_t t = {.name = test->name};
 	sngl_notify_test("testStart", test->name, "");
-	clock_t start = clock();
+	long long start = sngl_now_ms();
 	if (setjmp(t.abort) == 0) {
 		sngl_running = &t;
 		test->fn(&t);
@@ -101,8 +110,8 @@ static const char *sngl_run_one(const sngl_test *test) {
 	sngl_turn_end();
 	const char *status = t.failed ? "fail" : "pass";
 	char rest[96];
-	snprintf(rest, sizeof rest, ",\"status\":\"%s\",\"durationMs\":%ld", status,
-		(long)((clock() - start) * 1000 / CLOCKS_PER_SEC));
+	snprintf(rest, sizeof rest, ",\"status\":\"%s\",\"durationMs\":%lld", status,
+		sngl_now_ms() - start);
 	sngl_notify_test("testEnd", test->name, rest);
 	return status;
 }

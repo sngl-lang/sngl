@@ -146,10 +146,13 @@ static void s_x_c__free(char * s) {
 	free((void *)(s));
 }
 
-static void sngl_build(void) {
+static void sngl_init(void) {
 	s_n__inst0 = ((s___ref_int *)sngl_heap_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)));
 	s_visible__inst0 = ((s___ref_bool *)sngl_heap_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
 	s___rel2 = sngl_cstring(SNGL_STR("clicked"));
+}
+
+static void sngl_build(void) {
 	s___n0 = (GtkWidget *)(sngl_toplevel_new());
 	sngl_toplevel_set_title(GTK_WIDGET(s___n0), (SNGL_STR("t")).ptr);
 	sngl_toplevel_set_visible(GTK_WIDGET(s___n0), s_visible__inst0->value);
@@ -169,8 +172,13 @@ static void sngl_build(void) {
 	sngl_app_attach(GTK_WIDGET(s___n0));
 }
 
+static void sngl_start(void) {
+	sngl_init();
+	sngl_build();
+}
+
 int main(void) {
-	int status = sngl_app_run(sngl_build);
+	int status = sngl_app_run(sngl_start);
 	s___snglTeardown();
 	return status;
 }
@@ -184,4 +192,4 @@ static void sngl_lambda1(void *env_, void * self) {
 # What this program links, which `sngl build` reads.
 pkg-config gtk4
 -- run/c/gtk4 --
-pass sha256:516fcf200c0c5032243e4b086f8b0646
+pass sha256:f2066fac8f25bf7457df20010060c52d

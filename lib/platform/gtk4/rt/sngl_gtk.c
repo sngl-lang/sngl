@@ -151,6 +151,44 @@ int sngl_app_run(void (*build)(void)) {
     return status;
 }
 
+struct SnglSchedule {
+    guint id;
+    SnglFn fn;
+    void *ctx;
+    GDestroyNotify release;
+};
+
+static gboolean sngl_tick(gpointer data) {
+    SnglSchedule *s = data;
+    s->fn(s->ctx);
+    return G_SOURCE_CONTINUE;
+}
+
+/* The source's own release, once it is removed: the callback's context,
+ * then the schedule. */
+static void sngl_schedule_free(gpointer data) {
+    SnglSchedule *s = data;
+    if (s->release) s->release(s->ctx);
+    g_free(s);
+}
+
+SnglSchedule *sngl_every(int ms, SnglFn fn, void *ctx, GDestroyNotify release) {
+    if (ms <= 0) {
+        if (release) release(ctx);
+        return NULL;
+    }
+    SnglSchedule *s = g_new0(SnglSchedule, 1);
+    s->fn = fn;
+    s->ctx = ctx;
+    s->release = release;
+    s->id = g_timeout_add_full(G_PRIORITY_DEFAULT, (guint)ms, sngl_tick, s, sngl_schedule_free);
+    return s;
+}
+
+void sngl_schedule_cancel(SnglSchedule *s) {
+    if (s) g_source_remove(s->id);
+}
+
 /* sngl_app_detach takes a toplevel off the application, its window
  * destroyed: a slot at the package's root no longer renders it. */
 void sngl_app_detach(GtkWidget *box) {

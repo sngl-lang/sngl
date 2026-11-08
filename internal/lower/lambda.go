@@ -261,6 +261,11 @@ func lowerLambda(pkg *ir.Package, _ Features, _ Options) error {
 		stmts: func(stmts []ir.Stmt) []ir.Stmt {
 			return liftLambdasInStmts(stmts, l)
 		},
+		// A test's lambdas read the component it takes, which each target's
+		// test writer points at the program's state; lifted first, those
+		// reads sit behind a capture of a component no test holds. What is
+		// left the target lifts, as it does a lambda that emits.
+		skip: func(f *ir.Func) bool { return f.IsTest },
 	})
 
 	if err := assertNoLambdaSurvives(pkg); err != nil {
@@ -276,6 +281,14 @@ func liftLambdas(e ir.Expr, l *lifter) ir.Expr {
 	case nil:
 		return nil
 	case *ir.Lambda:
+		// A lambda that emits is left to the inliner, which answers the emit
+		// with the handler each call site wrote only in a body it splices:
+		// lifted, the emit would sit in one function every instance shares,
+		// answered by none. What is left once the emit is answered, the
+		// target lifts as it does the handlers InstanceEvents makes lambdas.
+		if emits(x.Func) {
+			return x
+		}
 		// Lift directly. l.Lift pushes its frame and rewrites the body via
 		// rewriteStmts/rewriteExpr — those encounter nested *ir.Lambda nodes
 		// and lift them inline (with the outer frame on the stack), so that
@@ -417,8 +430,10 @@ func liftLambdasInStmt(s ir.Stmt, l *lifter) {
 	}
 }
 
-// assertNoLambdaSurvives walks pkg verifying that no *ir.Lambda remains.
-// Cheap (one extra walk); failure here means the pass missed a position.
+// assertNoLambdaSurvives walks pkg's declarations verifying that no
+// *ir.Lambda remains in an initializer or a default, where nothing after this
+// pass answers one. Cheap (one extra walk); failure here means the pass
+// missed a position.
 func assertNoLambdaSurvives(pkg *ir.Package) error {
 	var found bool
 	walkPackage(pkg, walkFuncs{
@@ -785,7 +800,9 @@ func (l *lifter) rewriteExpr(e ir.Expr, captureField map[ir.Symbol]ir.Expr, capt
 	case *ir.Lambda:
 		// Inner lambda. Lift inline so its caps-init runs while the enclosing
 		// frame is still on l.enclosing; outerCaptureAccess can then return
-		// the outer's bare Select for any Sym both lambdas capture.
+		// the outer's bare Select for any Sym both lambdas capture. An outer
+		// lambda holding one that emits emits too, so is never lifted with
+		// this one inside it.
 		return l.Lift(x.Func.Block, x.Func.Params, x.Func.Return, x.AST)
 	case *ir.Closure:
 		// Already lifted; do not descend.
@@ -822,4 +839,21 @@ func cloneExpr(e ir.Expr) ir.Expr {
 		return &cp
 	}
 	return e
+}
+
+// emits reports whether f's body emits an event, in a lambda nested in it
+// included: the component it is written in answers that emit only where the
+// inliner splices it.
+func emits(f *ir.Func) bool {
+	found := false
+	for _, s := range f.Block {
+		_ = ir.Walk(s, func(n ir.Node) error {
+			if _, ok := n.(*ir.Emit); ok {
+				found = true
+				return ir.SkipAll
+			}
+			return nil
+		})
+	}
+	return found
 }

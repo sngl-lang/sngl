@@ -43,6 +43,14 @@ GtkWidget *sngl_slot_anchor(GtkWidget *box, GtkWidget *anchor);
 void sngl_box_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child);
 void sngl_box_remove(GtkWidget *box, GtkWidget *child);
 
+/* A timer's schedule: fn runs with ctx every ms milliseconds, on the main
+ * loop's thread, until sngl_schedule_cancel removes it, which releases ctx.
+ * A period of 0 or less arms nothing and answers NULL, which cancels as a
+ * no-op, as does a schedule never armed. */
+typedef struct SnglSchedule SnglSchedule;
+SnglSchedule *sngl_every(int ms, SnglFn fn, void *ctx, GDestroyNotify release);
+void sngl_schedule_cancel(SnglSchedule *s);
+
 /* sngl_app_run runs the application: build makes the program's tree, its
  * toplevels attached, once GTK is up, and the windows of the visible ones
  * are put on screen. The status is the application's. */

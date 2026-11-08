@@ -95,14 +95,18 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	for _, fn := range written {
 		fe.Func(fn)
 	}
+	// The program's state is set apart from the tree its build makes, since
+	// a test writes state before it mounts, as Go's does between making the
+	// Model and building it.
 	var build strings.Builder
-	build.WriteString("\nstatic void sngl_build(void) {\n")
+	build.WriteString("\nstatic void sngl_init(void) {\n")
 	for _, v := range vars {
 		if v.Init == nil {
 			continue
 		}
 		fmt.Fprintf(&build, "\t%s = %s;\n", e.globals[v], e.ctx.EvalExpr(v.Init))
 	}
+	build.WriteString("}\n\nstatic void sngl_build(void) {\n")
 	for _, l := range e.ctx.EvalBlock(body) {
 		build.WriteString("\t" + l + "\n")
 	}
@@ -122,14 +126,15 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	}
 	fe.Prepend("\n" + globals.String())
 	io.WriteString(fe, build.String())
+	teardown := ""
+	if pkg.Teardown != nil {
+		teardown = "\t" + clang.Decl(&pkg.Teardown.DeclInfo) + "();\n"
+	}
 	if agent {
-		io.WriteString(fe, e.tests(tests))
+		io.WriteString(fe, e.tests(tests, teardown))
 	} else {
-		teardown := ""
-		if pkg.Teardown != nil {
-			teardown = "\t" + clang.Decl(&pkg.Teardown.DeclInfo) + "();\n"
-		}
-		io.WriteString(fe, "\nint main(void) {\n\tint status = sngl_app_run(sngl_build);\n"+teardown+"\treturn status;\n}\n")
+		io.WriteString(fe, "\nstatic void sngl_start(void) {\n\tsngl_init();\n\tsngl_build();\n}\n")
+		io.WriteString(fe, "\nint main(void) {\n\tint status = sngl_app_run(sngl_start);\n"+teardown+"\treturn status;\n}\n")
 	}
 	if e.err != nil {
 		return e.err
@@ -186,10 +191,13 @@ type cInvoker struct {
 
 // tests writes each test as a function of the agent's, and main serving
 // them. A test builds the program where it mounts its component, or first
-// where it takes none; the program's state and widgets are the file's, so a
-// build starts it over.
-func (e *cEmitter) tests(fns []*ir.Func) string {
+// where it takes none. The program's state and widgets are the file's, so
+// each test starts by tearing down the one before -- what it armed, a
+// timer, would otherwise run into this one's state -- and setting the state
+// afresh.
+func (e *cEmitter) tests(fns []*ir.Func, teardown string) string {
 	var b strings.Builder
+	b.WriteString("\nstatic void sngl_reset(void) {\n\tstatic bool run;\n\tif (run) {\n\t" + teardown + "\t}\n\trun = true;\n\tsngl_init();\n}\n")
 	var table []string
 	for _, fn := range fns {
 		name := "sngl_" + fn.Name
@@ -201,6 +209,7 @@ func (e *cEmitter) tests(fns []*ir.Func) string {
 			}
 		}
 		fmt.Fprintf(&b, "\nstatic void %s(sngl_t *%s) {\n", name, clang.Local(tName))
+		b.WriteString("\tsngl_reset();\n")
 		if comp == "" {
 			b.WriteString("\tsngl_build();\n")
 		}
@@ -247,6 +256,19 @@ func (e *cEmitter) testStmt(s ir.Stmt, tName, comp string) []string {
 				fail, word = "sngl_test_fail_now", "must"
 			}
 			return []string{"if (!(" + cond + ")) {", "\t" + fail + "(" + clang.Local(tName) + ", " + clang.StringLiteral(word+" failed: "+cond) + ");", "}"}
+		case ir.IsTestCall(c, ir.TestWaitID):
+			// The test runs on the loop's own thread, so it runs the loop
+			// while it waits, as gtk4rt.PumpFor does for Go.
+			pred := c.Args[1].Value
+			return []string{
+				"{",
+				"\t" + e.ctx.TypeName(pred.ExprType()) + " __wait = " + e.ctx.EvalExpr(pred) + ";",
+				"\tgint64 __end = g_get_monotonic_time() + (gint64)(" + e.ctx.EvalExpr(c.Args[2].Value) + ") * 1000;",
+				"\twhile (!__wait.fn(__wait.env) && g_get_monotonic_time() < __end) {",
+				"\t\tif (!g_main_context_iteration(NULL, FALSE)) g_usleep(1000);",
+				"\t}",
+				"}",
+			}
 		}
 		if ir.IsTestMethodCall(c) {
 			e.fail("a test's t.%s", c.Func.Name)
@@ -382,6 +404,10 @@ func (e *cEmitter) state(n *ir.Ident, local bool) (string, bool) {
 // types names a widget as the GObject pointer it is: its class's where it is
 // one of GIR's, and GtkWidget's for any node else.
 func (e *cEmitter) types(t *ir.Type) (string, bool) {
+	// A timer's schedule, which rt's sngl_every arms.
+	if sd, ok := t.Decl.(*ir.StructDef); ok && t.Kind == ir.TypeStruct && sd.Foreign.Path == gtk4rtPkg && sd.Foreign.Name == "*gtk4rt.Schedule" {
+		return "SnglSchedule *", true
+	}
 	if t.Kind != ir.TypeComponent && t.Kind != ir.TypeInstance {
 		return "", false
 	}
@@ -652,6 +678,11 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 		return "sngl_box_insert_before(" + widget(0) + ", " + anchorOf(n.Args[2].Value) + ", " + widget(1) + ")", true
 	case "AppAttach":
 		return "sngl_app_attach(" + widget(0) + ")", true
+	case "Every":
+		fn, ctx := c.Callback(n.Func.Params[1].Type.Sig, n.Args[1].Value)
+		return "sngl_every((int)(" + arg(0) + "), (SnglFn)" + fn + ", " + ctx + ", (GDestroyNotify)sngl_release)", true
+	case "Schedule.Cancel":
+		return "sngl_schedule_cancel(" + arg(0) + ")", true
 	case "SetLook":
 		return e.setLook(c, widget(0), n.Args[1].Value), true
 	}

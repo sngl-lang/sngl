@@ -129,6 +129,9 @@ type walkFuncs struct {
 	// expr is invoked for every Expr appearing as a leaf of a declaration
 	// (var initializers, prop defaults, function return values, etc.).
 	expr func(ir.Expr) ir.Expr
+
+	// skip, when set, names a function whose block stmts is not handed.
+	skip func(*ir.Func) bool
 }
 
 // walkPackage applies the callbacks in fns to every relevant location in
@@ -153,7 +156,7 @@ func walkPackage(pkg *ir.Package, fns walkFuncs) {
 		walkVar(v, fns)
 	}
 	for _, f := range pkg.Funcs {
-		if fns.stmts != nil {
+		if fns.stmts != nil && (fns.skip == nil || !fns.skip(f)) {
 			f.Block = fns.stmts(f.Block)
 		}
 	}

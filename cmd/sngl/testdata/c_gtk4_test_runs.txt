@@ -15,6 +15,15 @@ stdout 'ok +1 tests, 0 failures'
 sngl test --platform=gtk4 --language=c slots.sngl
 stdout 'ok +1 tests, 0 failures'
 
+# A timer is a GLib timeout armed with the closure its effect mounts, whose
+# body is the program's @tick handler: NoLambda leaves a lambda that emits
+# to the inliner that answers the emit. A test's wait runs GTK's loop, and
+# each test tears down the one before, so its timer ticks no later test's
+# state.
+
+sngl test --platform=gtk4 --language=c timer.sngl
+stdout 'ok +2 tests, 0 failures'
+
 -- app.sngl --
 import ui "sngl:ui"
 import c "sngl:language/c"
@@ -83,8 +92,45 @@ func testToggleRemovesAndRestoresTheBody(t test.Test, c card) {
     c.toggle.click()
     t.assert(c.open)
 }
+-- timer.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+import c "sngl:language/c"
+import test "sngl:test"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+component main ui.node {
+    var (
+        beats = 0
+        running = true
+    )
+    time.timer(interval=100ms, enabled=running, @tick {
+        beats += 1
+    })
+    ui.text(value="{beats}")
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testTheTimerRunsTheHandler(t test.Test, c main) {
+    t.wait(func() => c.beats >= 2, 2000)
+    t.assert(c.beats >= 2)
+}
+
+func testTheGateStopsTheTimer(t test.Test, c main) {
+    c.running = false
+    t.wait(func() => c.beats > 0, 300)
+    t.assert(c.beats == 0)
+}
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:2d49702e610c6f4dcb3cad31c1418931
+sha256:6e224038e4045d32ee314ae0e2a35544
 {
   "results": [
     {
@@ -94,11 +140,25 @@ sha256:2d49702e610c6f4dcb3cad31c1418931
   ]
 }
 -- testrun/gtk4/c/slots.sngl/card/1 --
-sha256:6baa7778c74edac42f25b234a5a98bb9
+sha256:de238a4b5f60035df4d759c7a9bb0efd
 {
   "results": [
     {
       "Desc": "ToggleRemovesAndRestoresTheBody",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/timer.sngl/main/1 --
+sha256:a6bc10676891a1c1d2e4cdb4e5261a33
+{
+  "results": [
+    {
+      "Desc": "TheTimerRunsTheHandler",
+      "Passed": true
+    },
+    {
+      "Desc": "TheGateStopsTheTimer",
       "Passed": true
     }
   ]
