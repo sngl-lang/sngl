@@ -14,6 +14,7 @@ import (
 	clang "duckfam.us/sngl/codegen/lang/c"
 	"duckfam.us/sngl/internal/checker"
 	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
 	"duckfam.us/sngl/internal/parser"
 	"duckfam.us/sngl/ir"
 )
@@ -84,11 +85,32 @@ func translate(t *testing.T, src []byte) []byte {
 		}
 	}
 	pkg = ir.ClonePackageFor(pkg, "none", "c")
+	// main.c calls the fixture's functions, which the IR cannot see, so a
+	// test calling each stands for it: a test is a root the shake keeps
+	// what it reaches from, and is itself never written.
+	keep := &ir.Func{Name: "testKeep", IsTest: true, Synthesized: true}
+	for _, fn := range pkg.Funcs {
+		args := make([]ir.CallArg, len(fn.Params))
+		for i, p := range fn.Params {
+			args[i] = ir.CallArg{Value: ir.ZeroExpr(p.Type)}
+		}
+		keep.Block = append(keep.Block, &ir.CallStmt{Call: &ir.Call{Func: fn, Type: fn.Return, Args: args}})
+	}
+	pkg.Funcs = append(pkg.Funcs, keep)
 	feats, err := codegen.CapsFor("c", "none")
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Optimized either side of lowering, as a build's target is
+	// (internal/build): the inliner is what spells a builtin's method out.
+	opt := &optimize.Config{Platform: "none", Language: "c"}
+	if err := optimize.Optimize(pkg, opt); err != nil {
+		t.Fatal(err)
+	}
 	if err := lower.Lower(pkg, feats, lower.Options{Platform: "none", Language: "c"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := optimize.Optimize(pkg, opt); err != nil {
 		t.Fatal(err)
 	}
 	sink := codegen.NewMemSink()

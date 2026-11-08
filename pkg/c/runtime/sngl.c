@@ -173,3 +173,196 @@ int64_t sngl_mod(int64_t a, int64_t b) {
 	}
 	return a % b;
 }
+
+/* sngl_decode is the code point at s[*i], moving *i past it. A byte that
+ * begins no code point is one of its own. */
+static uint32_t sngl_decode(sngl_string s, size_t *i) {
+	unsigned char c = (unsigned char)s.ptr[*i];
+	int n = c < 0x80 ? 0 : c >= 0xf0 ? 3 : c >= 0xe0 ? 2 : c >= 0xc0 ? 1 : 0;
+	if (*i + (size_t)n >= s.len + 1) {
+		/* A sequence the string ends inside is its bytes. */
+		n = 0;
+	}
+	uint32_t r = n == 0 ? c : n == 1 ? (uint32_t)(c & 0x1f) : n == 2 ? (uint32_t)(c & 0x0f) : (uint32_t)(c & 0x07);
+	(*i)++;
+	for (int k = 0; k < n && *i < s.len; k++) {
+		r = r << 6 | ((unsigned char)s.ptr[*i] & 0x3f);
+		(*i)++;
+	}
+	return r;
+}
+
+/* sngl_encode writes r into buf as UTF-8, and is how many bytes it took. */
+static size_t sngl_encode(char *buf, uint32_t r) {
+	if (r < 0x80) {
+		buf[0] = (char)r;
+		return 1;
+	}
+	if (r < 0x800) {
+		buf[0] = (char)(0xc0 | r >> 6);
+		buf[1] = (char)(0x80 | (r & 0x3f));
+		return 2;
+	}
+	if (r < 0x10000) {
+		buf[0] = (char)(0xe0 | r >> 12);
+		buf[1] = (char)(0x80 | (r >> 6 & 0x3f));
+		buf[2] = (char)(0x80 | (r & 0x3f));
+		return 3;
+	}
+	buf[0] = (char)(0xf0 | r >> 18);
+	buf[1] = (char)(0x80 | (r >> 12 & 0x3f));
+	buf[2] = (char)(0x80 | (r >> 6 & 0x3f));
+	buf[3] = (char)(0x80 | (r & 0x3f));
+	return 4;
+}
+
+int64_t sngl_string_length(sngl_string s) {
+	int64_t n = 0;
+	for (size_t i = 0; i < s.len;) {
+		sngl_decode(s, &i);
+		n++;
+	}
+	return n;
+}
+
+int64_t sngl_string_find(sngl_string s, sngl_string sub, int64_t from) {
+	if (sub.len == 0) {
+		return from <= (int64_t)s.len ? from : -1;
+	}
+	for (size_t i = (size_t)from; i + sub.len <= s.len; i++) {
+		if (memcmp(s.ptr + i, sub.ptr, sub.len) == 0) {
+			return (int64_t)i;
+		}
+	}
+	return -1;
+}
+
+int64_t sngl_string_index_of(sngl_string s, sngl_string sub) {
+	int64_t at = sngl_string_find(s, sub, 0);
+	if (at < 0) {
+		return -1;
+	}
+	int64_t n = 0;
+	for (size_t i = 0; i < (size_t)at;) {
+		sngl_decode(s, &i);
+		n++;
+	}
+	return n;
+}
+
+sngl_string sngl_string_substring(sngl_string s, int64_t start, int64_t end) {
+	int64_t n = sngl_string_length(s);
+	if (start < 0) {
+		start = 0;
+	}
+	if (end > n) {
+		end = n;
+	}
+	if (start > n) {
+		start = n;
+	}
+	if (end < start) {
+		end = start;
+	}
+	size_t from = 0, to = 0, i = 0;
+	for (int64_t k = 0; i <= s.len; k++) {
+		if (k == start) {
+			from = i;
+		}
+		if (k == end) {
+			to = i;
+			break;
+		}
+		if (i == s.len) {
+			break;
+		}
+		sngl_decode(s, &i);
+	}
+	return sngl_bytes(s.ptr + from, to - from);
+}
+
+static uint32_t sngl_upper(uint32_t r) {
+	if ((r >= 'a' && r <= 'z') || (r >= 0xe0 && r <= 0xfe && r != 0xf7) || (r >= 0x3b1 && r <= 0x3c9 && r != 0x3c2) || (r >= 0x430 && r <= 0x44f)) {
+		return r - 0x20;
+	}
+	if (r >= 0x450 && r <= 0x45f) {
+		return r - 0x50;
+	}
+	return r;
+}
+
+static uint32_t sngl_lower(uint32_t r) {
+	if ((r >= 'A' && r <= 'Z') || (r >= 0xc0 && r <= 0xde && r != 0xd7) || (r >= 0x391 && r <= 0x3a9 && r != 0x3a2) || (r >= 0x410 && r <= 0x42f)) {
+		return r + 0x20;
+	}
+	if (r >= 0x400 && r <= 0x40f) {
+		return r + 0x50;
+	}
+	return r;
+}
+
+static sngl_string sngl_map_runes(sngl_string s, uint32_t (*f)(uint32_t)) {
+	char *out = sngl_alloc(s.len * 2 + 1);
+	size_t n = 0;
+	for (size_t i = 0; i < s.len;) {
+		n += sngl_encode(out + n, f(sngl_decode(s, &i)));
+	}
+	out[n] = '\0';
+	return (sngl_string){out, n};
+}
+
+sngl_string sngl_string_upper(sngl_string s) { return sngl_map_runes(s, sngl_upper); }
+sngl_string sngl_string_lower(sngl_string s) { return sngl_map_runes(s, sngl_lower); }
+
+static bool sngl_space(uint32_t r) {
+	return r == ' ' || (r >= '\t' && r <= '\r') || r == 0x85 || r == 0xa0 || r == 0x1680 || (r >= 0x2000 && r <= 0x200a) ||
+	       r == 0x2028 || r == 0x2029 || r == 0x202f || r == 0x205f || r == 0x3000;
+}
+
+sngl_string sngl_string_trim(sngl_string s) {
+	size_t from = s.len, to = 0;
+	for (size_t i = 0; i < s.len;) {
+		size_t at = i;
+		if (!sngl_space(sngl_decode(s, &i))) {
+			if (from == s.len) {
+				from = at;
+			}
+			to = i;
+		}
+	}
+	if (from >= to) {
+		return SNGL_STR("");
+	}
+	return sngl_bytes(s.ptr + from, to - from);
+}
+
+sngl_string sngl_string_replace(sngl_string s, sngl_string old, sngl_string new_) {
+	if (old.len == 0) {
+		/* As Go's ReplaceAll: new before each character and at the end. */
+		sngl_string out = new_;
+		for (size_t i = 0; i < s.len;) {
+			size_t at = i;
+			sngl_decode(s, &i);
+			out = sngl_concat(out, sngl_concat(sngl_bytes(s.ptr + at, i - at), new_));
+		}
+		return out;
+	}
+	sngl_string out = SNGL_STR("");
+	int64_t from = 0;
+	for (;;) {
+		int64_t at = sngl_string_find(s, old, from);
+		if (at < 0) {
+			break;
+		}
+		out = sngl_concat(out, sngl_concat(sngl_bytes(s.ptr + from, (size_t)(at - from)), new_));
+		from = at + (int64_t)old.len;
+	}
+	return sngl_concat(out, sngl_bytes(s.ptr + from, s.len - (size_t)from));
+}
+
+int64_t sngl_int_parse(sngl_string s, int64_t base) {
+	char *c = sngl_cstring(s);
+	int64_t v = (int64_t)strtoll(c, NULL, (int)base);
+	free(c);
+	return v;
+}

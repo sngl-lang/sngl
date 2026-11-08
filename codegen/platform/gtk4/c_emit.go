@@ -87,7 +87,6 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	for _, id := range e.order {
 		fmt.Fprintf(&globals, "static %s *%s;\n", e.nodes[id], clang.Global(id))
 	}
-	io.WriteString(fe, "\n"+globals.String())
 	var tests []*ir.Func
 	for _, fn := range funcs {
 		if fn.IsTest {
@@ -98,12 +97,17 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 			continue
 		}
 		// A handler writes its widgets as the body does.
+		e.anchor = ""
 		fn.Block = codegen.WalkLowered(context.Background(), fn.Block, e)
 		fe.Func(fn)
 	}
 	if e.err != nil {
 		return e.err
 	}
+	for _, a := range e.anchors {
+		fmt.Fprintf(&globals, "static GtkWidget *%s;\n", a)
+	}
+	fe.Prepend("\n" + globals.String())
 	io.WriteString(fe, build.String())
 	if agent {
 		io.WriteString(fe, e.tests(tests))
@@ -304,8 +308,12 @@ type cEmitter struct {
 	// invokers are how a test fires each event a handler is connected to,
 	// by "<id>.<event>" as the test names it.
 	invokers map[string]cInvoker
-	seq      int
-	err      error
+	// anchor is the anchor of the slot the function being walked renders,
+	// once it has reset the slot, and anchors every slot's.
+	anchor  string
+	anchors []string
+	seq     int
+	err     error
 }
 
 func (e *cEmitter) fail(format string, args ...any) []ir.Stmt {
@@ -398,7 +406,12 @@ func (e *cEmitter) OnAppendChild(ctx context.Context, parent, child ir.Expr) []i
 	return e.fail("appending to %s without its class's append", codegen.IdentBareName(parent))
 }
 
+// OnAppendThrough is the class's append, or where a slot's render puts a
+// child in the box it renders into, a place before the slot's anchor.
 func (e *cEmitter) OnAppendThrough(ctx context.Context, parent, child, call ir.Expr) []ir.Stmt {
+	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" && e.anchor != "" {
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("InsertBefore", ir.TypVoid, parent, child)}}
+	}
 	return []ir.Stmt{&ir.CallStmt{Call: call.(*ir.Call)}}
 }
 
@@ -474,12 +487,29 @@ func (e *cEmitter) OnDestroyComponent(ctx context.Context, inst ir.Expr) []ir.St
 	return e.fail("a component built at run time")
 }
 
+// OnSlotReset starts a slot's render over: its list of widgets emptied, and
+// its anchor made in the box it renders into where it is not there already.
 func (e *cEmitter) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
-	return e.fail("a reactive slot")
+	e.anchor = clang.Global(slot.Name) + "__anchor"
+	if !slices.Contains(e.anchors, e.anchor) {
+		e.anchors = append(e.anchors, e.anchor)
+	}
+	ref := &ir.Ident{Name: slot.Name, Sym: slot, Type: slot.Type}
+	return []ir.Stmt{
+		&ir.Assign{Target: ref, Op: ast.AssignSet, Value: &ir.ListLit{Type: slot.Type}},
+		&ir.CallStmt{Call: rtCall("SlotAnchor", ir.TypVoid, &ir.Ident{Name: "parent", Type: ir.NativePointerOf("GtkWidget")})},
+	}
 }
 
+// OnSlotAppend records a widget the slot rendered, which its next render
+// removes.
 func (e *cEmitter) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
-	return e.fail("a reactive slot")
+	ref := &ir.Ident{Name: slot.Name, Sym: slot, Type: slot.Type}
+	push := &ir.Func{Name: "push", Intrinsic: "list.push"}
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: push, Type: ir.TypVoid, Args: []ir.CallArg{
+		{Value: ref},
+		{Value: &ir.Conversion{Type: slot.Type.Elems[0], Operand: child}},
+	}}}}
 }
 
 func (e *cEmitter) OnIter(ctx context.Context, iter ir.Expr) ir.Expr { return iter }
@@ -517,6 +547,12 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 		return "(void)0", true
 	case "BoxAppend":
 		return "gtk_box_append(GTK_BOX(" + arg(0) + "), " + widget(1) + ")", true
+	case "BoxRemove":
+		return "gtk_box_remove(GTK_BOX(" + arg(0) + "), " + widget(1) + ")", true
+	case "SlotAnchor":
+		return e.anchor + " = sngl_slot_anchor(" + widget(0) + ", " + e.anchor + ")", true
+	case "InsertBefore":
+		return "sngl_box_insert_before(" + widget(0) + ", " + e.anchor + ", " + widget(1) + ")", true
 	case "AppAttach":
 		return "sngl_app_attach(" + widget(0) + ")", true
 	case "SetLook":

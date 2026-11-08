@@ -35,6 +35,8 @@ type Context struct {
 	file *file
 	// locals is what the scope declares that shadows the package.
 	locals map[string]bool
+	// ret is the return type of the function being written.
+	ret *ir.Type
 }
 
 var (
@@ -76,6 +78,8 @@ func (c *Context) typeName(t *ir.Type) string {
 			return c.listType(t)
 		case ir.TypeOption:
 			return c.optType(t)
+		case ir.TypeMap:
+			return c.mapType(t)
 		case ir.TypeStruct:
 			// A box is shared by every copy of it, so it is held through a
 			// pointer to the one on the heap.
@@ -105,6 +109,13 @@ func (c *Context) typeName(t *ir.Type) string {
 		return c.fail("%v", err)
 	}
 	return s
+}
+
+// WithReturn is c writing a function returning t.
+func (c *Context) WithReturn(t *ir.Type) *Context {
+	cc := *c
+	cc.ret = t
+	return &cc
 }
 
 // WithLocal is c with name declared in its scope.
@@ -359,10 +370,6 @@ func (c *Context) isPointer(t *ir.Type) bool {
 	return strings.HasSuffix(c.typeName(t), "*")
 }
 
-func (c *Context) MapLit(n *ir.MapLitIR, _, _ []string) string {
-	return c.fail("a map literal")
-}
-
 // StructLit is a compound literal naming each field it sets; one it leaves
 // out is C's zero, which is SNGL's for every type C writes.
 func (c *Context) StructLit(n *ir.StructLit, fields []string) string {
@@ -433,6 +440,14 @@ func (c *Context) Call(n *ir.Call) string {
 	}
 	if out, ok := c.listIntrinsic(n); ok {
 		return out
+	}
+	if out, ok := c.stringIntrinsic(n); ok {
+		return out
+	}
+	if strings.HasPrefix(n.Func.Intrinsic, "map.") && len(n.Args) > 0 {
+		if t := n.Args[0].Value.ExprType(); t != nil && t.Kind == ir.TypeMap {
+			return c.mapIntrinsic(n, t, c.EvalExpr(n.Args[0].Value))
+		}
 	}
 	if n.Func.Intrinsic == ir.ValueCopyIntrinsic && len(n.Args) == 1 {
 		return c.copyValue(n.Args[0].Value.ExprType(), c.EvalExpr(n.Args[0].Value))
@@ -526,7 +541,7 @@ func (c *Context) AssignText(n *ir.Assign, target, value string) string {
 	t := n.Target.ExprType()
 	op := n.Op
 	if op == ast.AssignSet {
-		return target + " = " + value + ";"
+		return target + " = " + c.nullAs(t, n.Value, value) + ";"
 	}
 	if t != nil && (t.Kind == ir.TypeString || t.Kind == ir.TypeInt && (op == ast.AssignDiv || op == ast.AssignMod)) {
 		bin := map[ast.AssignOp]ast.BinaryOp{ast.AssignAdd: ast.BinAdd, ast.AssignDiv: ast.BinDiv, ast.AssignMod: ast.BinMod}[op]
@@ -564,7 +579,7 @@ func (c *Context) LocalVarText(n *ir.LocalVar, init string) string {
 	if init == "" {
 		return decl + " = " + zero(t, c) + ";"
 	}
-	return decl + " = " + init + ";"
+	return decl + " = " + c.nullAs(t, n.Init, init) + ";"
 }
 
 // zero is t's zero value, which C's `{0}` is for every type C writes.
@@ -583,11 +598,24 @@ func zero(t *ir.Type, c *Context) string {
 	return "(" + c.typeName(t) + "){0}"
 }
 
-func (c *Context) ReturnText(_ *ir.Return, value string) string {
+func (c *Context) ReturnText(n *ir.Return, value string) string {
 	if value == "" {
 		return "return;"
 	}
-	return "return " + value + ";"
+	return "return " + c.nullAs(c.ret, n.Value, value) + ";"
+}
+
+// nullAs is v, the rendering of e, where a value of t is wanted: a null
+// literal is t's zero, which is a struct on C for an option, a list, a map
+// and a function.
+func (c *Context) nullAs(t *ir.Type, e ir.Expr, v string) string {
+	if t != nil && ir.IsNullLiteral(e) {
+		switch t.Kind {
+		case ir.TypeOption, ir.TypeList, ir.TypeMap, ir.TypeFunc:
+			return "((" + c.typeName(t) + "){0})"
+		}
+	}
+	return v
 }
 
 func (c *Context) BreakText(n *ir.Break) string {
@@ -609,6 +637,8 @@ func (c *Context) ForHead(n *ir.For, iter string) string {
 		return c.countedHead(n)
 	case ir.IterElement, ir.IterIndexed:
 		return c.listLoop(n)
+	case ir.IterMapEntries:
+		return c.mapLoop(n)
 	}
 	return c.fail("a loop over a %s", n.Iter.ExprType()) + "; {"
 }

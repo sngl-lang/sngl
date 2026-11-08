@@ -120,6 +120,9 @@ func (c *Context) listAt(t *ir.Type, xs, i string) string {
 
 func (c *Context) Index(n *ir.Index, operand, idx string) string {
 	t := n.Operand.ExprType()
+	if t != nil && t.Kind == ir.TypeMap {
+		return c.mapIndex(t, operand, idx)
+	}
 	if t == nil || t.Kind != ir.TypeList {
 		return c.fail("indexing a %s", t)
 	}
@@ -128,6 +131,9 @@ func (c *Context) Index(n *ir.Index, operand, idx string) string {
 
 // MutTargetIndex is an element written, through the pointer listAt gives.
 func (c *Context) MutTargetIndex(n *ir.Index, operand, idx string) string {
+	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
+		return "(*" + c.mapSlot(t) + "(&(" + operand + "), " + idx + "))"
+	}
 	return c.Index(n, operand, idx)
 }
 
@@ -321,7 +327,7 @@ func (c *Context) option(n *ir.Conversion) (string, bool) {
 	}
 	if lit, ok := n.Operand.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull && n.Type != nil {
 		switch n.Type.Kind {
-		case ir.TypeOption, ir.TypeList, ir.TypeFunc:
+		case ir.TypeOption, ir.TypeList, ir.TypeMap, ir.TypeFunc:
 			return "((" + c.typeName(n.Type) + "){0})", true
 		}
 	}
@@ -372,6 +378,15 @@ func (c *Context) copyValue(t *ir.Type, v string) string {
 	}
 	return out;
 `) + "(" + v + ")"
+	case ir.TypeMap:
+		kc, vc := c.copyValue(t.Elems[0], "m.keys[i]"), c.copyValue(t.Elems[1], "m.vals[i]")
+		return c.mapOp(t, "copy", "M NAME(M m)", `	M out = {malloc(sizeof(K) * (size_t)(m.len + 1)), malloc(sizeof(V) * (size_t)(m.len + 1)), m.len, m.len};
+	for (int64_t i = 0; i < m.len; i++) {
+		out.keys[i] = `+kc+`;
+		out.vals[i] = `+vc+`;
+	}
+	return out;
+`) + "(" + v + ")"
 	case ir.TypeOption:
 		ot := c.optType(t)
 		name := ot + "_copy"
@@ -399,4 +414,177 @@ func (c *Context) copyValue(t *ir.Type, v string) string {
 		return name + "(" + v + ")"
 	}
 	return c.fail("copying a %s", t)
+}
+
+// A map is a struct per key and value type, `sngl_map_<key>__<value>`: its
+// keys and values side by side in the order first set, found by the keys'
+// equality. A loop walks it in that order, where Go's walks it in none.
+
+// mapType names map[k, v]'s C struct, defined in the file.
+func (c *Context) mapType(t *ir.Type) string {
+	kt, vt := c.typeName(t.Elems[0]), c.typeName(t.Elems[1])
+	name := "sngl_map_" + typeToken(t.Elems[0]) + "__" + typeToken(t.Elems[1])
+	c.file.define(name, fmt.Sprintf("typedef struct %s {\n\t%s *keys;\n\t%s *vals;\n\tint64_t len;\n\tint64_t cap;\n} %s;\n", name, kt, vt, name),
+		strings.TrimSuffix(kt, " *"), strings.TrimSuffix(vt, " *"))
+	return name
+}
+
+// mapOp is the function op of map type t, as listOp is a list's: its body
+// reads the map type as M, the key type as K and the value type as V.
+func (c *Context) mapOp(t *ir.Type, op, sig, body string) string {
+	m := c.mapType(t)
+	kt, vt := c.typeName(t.Elems[0]), c.typeName(t.Elems[1])
+	name := m + "_" + op
+	text := mapPlaceholder.ReplaceAllStringFunc("static "+sig+" {\n"+body+"}\n", func(w string) string {
+		return map[string]string{"M": m, "K": kt, "V": vt, "NAME": name}[w]
+	})
+	c.file.include("stdlib.h", true)
+	c.file.include("string.h", true)
+	c.file.helper(name, text)
+	return name
+}
+
+var mapPlaceholder = regexp.MustCompile(`\b(M|K|V|NAME)\b`)
+
+// mapFind is the function finding a key's place in a map of t, -1 where it
+// has none.
+func (c *Context) mapFind(t *ir.Type) string {
+	eq := c.equal(t.Elems[0], "m.keys[i]", "k")
+	return c.mapOp(t, "find", "int64_t NAME(M m, K k)", "\tfor (int64_t i = 0; i < m.len; i++) {\n\t\tif ("+eq+") {\n\t\t\treturn i;\n\t\t}\n\t}\n\treturn -1;\n")
+}
+
+// mapSlot is the function answering where a key's value is in a map of t,
+// a place made for it, holding V's zero, where it has none.
+func (c *Context) mapSlot(t *ir.Type) string {
+	find := c.mapFind(t)
+	return c.mapOp(t, "slot", "V *NAME(M *m, K k)", `	int64_t i = `+find+`(*m, k);
+	if (i >= 0) {
+		return &m->vals[i];
+	}
+	if (m->len == m->cap) {
+		int64_t cap = m->cap < 4 ? 4 : m->cap * 2;
+		K *keys = malloc(sizeof(K) * (size_t)cap);
+		V *vals = malloc(sizeof(V) * (size_t)cap);
+		if (keys == NULL || vals == NULL) {
+			sngl_panic("out of memory");
+		}
+		if (m->len > 0) {
+			memcpy(keys, m->keys, sizeof(K) * (size_t)m->len);
+			memcpy(vals, m->vals, sizeof(V) * (size_t)m->len);
+		}
+		m->keys = keys;
+		m->vals = vals;
+		m->cap = cap;
+	}
+	m->keys[m->len] = k;
+	memset(&m->vals[m->len], 0, sizeof(V));
+	return &m->vals[m->len++];
+`)
+}
+
+func (c *Context) MapLit(n *ir.MapLitIR, keys, vals []string) string {
+	if n.Type == nil || n.Type.Kind != ir.TypeMap {
+		return c.fail("a map literal of %s", n.Type)
+	}
+	m := c.mapType(n.Type)
+	if len(keys) == 0 {
+		return "((" + m + "){0})"
+	}
+	slot := c.mapSlot(n.Type)
+	kt, vt := c.typeName(n.Type.Elems[0]), c.typeName(n.Type.Elems[1])
+	of := c.mapOp(n.Type, "of", "M NAME(int64_t n, const K *ks, const V *vs)", "\tM m = {0};\n\tfor (int64_t i = 0; i < n; i++) {\n\t\t*"+slot+"(&m, ks[i]) = vs[i];\n\t}\n\treturn m;\n")
+	return of + "(" + fmt.Sprint(len(keys)) + ", (" + kt + "[]){" + strings.Join(keys, ", ") + "}, (" + vt + "[]){" + strings.Join(vals, ", ") + "})"
+}
+
+// mapIndex is m[k] read, V's zero where m holds no k, as Go reads it.
+func (c *Context) mapIndex(t *ir.Type, m, k string) string {
+	find := c.mapFind(t)
+	at := c.mapOp(t, "at", "V NAME(M m, K k)", "\tint64_t i = "+find+"(m, k);\n\tif (i < 0) {\n\t\tV zero;\n\t\tmemset(&zero, 0, sizeof zero);\n\t\treturn zero;\n\t}\n\treturn m.vals[i];\n")
+	return at + "(" + m + ", " + k + ")"
+}
+
+// mapIntrinsic renders a call of one of sngl:builtin's map methods.
+func (c *Context) mapIntrinsic(n *ir.Call, t *ir.Type, m string) string {
+	arg := func(i int) string { return c.EvalExpr(n.Args[i].Value) }
+	switch n.Func.Intrinsic {
+	case "map.length":
+		return "(" + m + ").len"
+	case "map.contains":
+		return "(" + c.mapFind(t) + "(" + m + ", " + arg(1) + ") >= 0)"
+	case "map.get":
+		find := c.mapFind(t)
+		get := c.mapOp(t, "get", "V NAME(M m, K k, V otherwise)", "\tint64_t i = "+find+"(m, k);\n\treturn i < 0 ? otherwise : m.vals[i];\n")
+		if len(n.Args) < 3 {
+			return c.mapIndex(t, m, arg(1))
+		}
+		return get + "(" + m + ", " + arg(1) + ", " + arg(2) + ")"
+	case "map.keys", "map.values":
+		part, elem := "keys", t.Elems[0]
+		if n.Func.Intrinsic == "map.values" {
+			part, elem = "vals", t.Elems[1]
+		}
+		l := c.listType(ir.ListOf(elem))
+		et := c.typeName(elem)
+		name := c.mapType(t) + "_" + part
+		c.file.helper(name, fmt.Sprintf("static %s %s(%s m) {\n\t%s l = {malloc(sizeof(%s) * (size_t)(m.len + 1)), m.len, m.len};\n\tif (m.len > 0) {\n\t\tmemcpy(l.data, m.%s, sizeof(%s) * (size_t)m.len);\n\t}\n\treturn l;\n}\n", l, name, c.mapType(t), l, et, part, et))
+		return name + "(" + m + ")"
+	}
+	return c.fail("the intrinsic %s", n.Func.Intrinsic)
+}
+
+// mapLoop is the head of a loop over a map, its key and value bound in the
+// order they were first set.
+func (c *Context) mapLoop(n *ir.For) string {
+	t := n.Iter.ExprType()
+	m := c.mapType(t)
+	v := fmt.Sprintf("__loop%d", c.file.next())
+	head := "for (struct { " + m + " m; int64_t i; } " + v + " = {" + c.EvalExpr(n.Iter) + ", 0}; " + v + ".i < " + v + ".m.len; " + v + ".i++) {"
+	if n.Key != "" {
+		head += " " + c.typeName(t.Elems[0]) + " " + Local(n.Key) + " = " + v + ".m.keys[" + v + ".i];"
+	}
+	if n.Value != "" {
+		head += " " + c.typeName(t.Elems[1]) + " " + Local(n.Value) + " = " + v + ".m.vals[" + v + ".i];"
+	}
+	return head
+}
+
+// stringIntrinsic renders a call of one of sngl:builtin's string methods,
+// most of them the runtime's.
+func (c *Context) stringIntrinsic(n *ir.Call) (string, bool) {
+	runtime := map[string]string{
+		"string.length":    "sngl_string_length",
+		"string.indexOf":   "sngl_string_index_of",
+		"string.substring": "sngl_string_substring",
+		"string.upper":     "sngl_string_upper",
+		"string.lower":     "sngl_string_lower",
+		"string.trim":      "sngl_string_trim",
+		"string.replace":   "sngl_string_replace",
+		"int.parse":        "sngl_int_parse",
+	}
+	args := make([]string, len(n.Args))
+	for i, a := range n.Args {
+		args[i] = c.EvalExpr(a.Value)
+	}
+	if fn, ok := runtime[n.Func.Intrinsic]; ok {
+		return fn + "(" + strings.Join(args, ", ") + ")", true
+	}
+	if n.Func.Intrinsic != "string.split" {
+		return "", false
+	}
+	t := ir.ListOf(ir.TypString)
+	grow := c.listGrow(t)
+	split := c.listOp(t, "split", "L NAME(sngl_string s, sngl_string sep)", `	L out = {0};
+	int64_t from = 0;
+	for (;;) {
+		int64_t at = sep.len == 0 ? -1 : sngl_string_find(s, sep, from);
+		`+grow+`(&out, 1);
+		if (at < 0) {
+			out.data[out.len++] = sngl_string_substring((sngl_string){s.ptr + from, s.len - (size_t)from}, 0, INT64_MAX);
+			return out;
+		}
+		out.data[out.len++] = (sngl_string){s.ptr + from, (size_t)(at - from)};
+		from = at + (int64_t)sep.len;
+	}
+`)
+	return split + "(" + strings.Join(args, ", ") + ")", true
 }

@@ -160,7 +160,7 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 		return nil
 	})
 	var fields, inits []string
-	inner := &Context{Ctx: c.Ctx, State: c.State, Native: c.Native, Types: c.Types, file: c.file, locals: map[string]bool{}}
+	inner := &Context{Ctx: c.Ctx, State: c.State, Native: c.Native, Types: c.Types, file: c.file, locals: map[string]bool{}, ret: n.Type.Sig.Return}
 	for _, name := range caps {
 		t := c.localType(n.Func.Block, name)
 		fields = append(fields, "\t"+c.typeName(t)+" "+Local(name)+";")

@@ -150,3 +150,15 @@ int sngl_app_run(void (*build)(void)) {
     g_object_unref(sngl_app);
     return status;
 }
+
+GtkWidget *sngl_slot_anchor(GtkWidget *box, GtkWidget *anchor) {
+    if (anchor != NULL && gtk_widget_get_parent(anchor) == box) return anchor;
+    GtkWidget *w = gtk_label_new(NULL);
+    gtk_widget_set_visible(w, FALSE);
+    gtk_box_append(GTK_BOX(box), w);
+    return w;
+}
+
+void sngl_box_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child) {
+    gtk_box_insert_child_after(GTK_BOX(box), child, gtk_widget_get_prev_sibling(anchor));
+}

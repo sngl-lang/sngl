@@ -43,6 +43,22 @@ sngl_string sngl_concat(sngl_string a, sngl_string b);
 bool sngl_string_eq(sngl_string a, sngl_string b);
 int sngl_string_cmp(sngl_string a, sngl_string b);
 
+/* The string operations sngl:builtin declares, by character -- a Unicode
+ * code point -- where they index, as every target counts. Case mapping is
+ * C's own: ASCII, Latin-1, Greek and Cyrillic, which needs no table. */
+int64_t sngl_string_length(sngl_string s);
+int64_t sngl_string_index_of(sngl_string s, sngl_string sub);
+sngl_string sngl_string_substring(sngl_string s, int64_t start, int64_t end);
+sngl_string sngl_string_upper(sngl_string s);
+sngl_string sngl_string_lower(sngl_string s);
+sngl_string sngl_string_trim(sngl_string s);
+sngl_string sngl_string_replace(sngl_string s, sngl_string old, sngl_string new_);
+int64_t sngl_int_parse(sngl_string s, int64_t base);
+
+/* sngl_string_find is the byte offset of the first sub in s at or after
+ * from, or -1. */
+int64_t sngl_string_find(sngl_string s, sngl_string sub, int64_t from);
+
 /* A value's format, as `{x}` writes it and every target writes it. */
 sngl_string sngl_int_format(int64_t v);
 sngl_string sngl_float_format(double v);

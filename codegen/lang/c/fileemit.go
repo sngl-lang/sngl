@@ -49,6 +49,15 @@ func (fe *FileEmitter) Write(p []byte) (int, error) {
 	return fe.body.Write(p)
 }
 
+// Prepend writes text ahead of everything written so far: the statics a
+// platform declares once it knows them all, which its functions read.
+func (fe *FileEmitter) Prepend(text string) {
+	rest := append([]byte(nil), fe.body.Bytes()...)
+	fe.body.Reset()
+	fe.body.WriteString(text)
+	fe.body.Write(rest)
+}
+
 func (fe *FileEmitter) EvalExpr(e ir.Expr) string   { return fe.ctx.EvalExpr(e) }
 func (fe *FileEmitter) EvalStmt(s ir.Stmt) []string { return fe.ctx.EvalStmt(s) }
 
@@ -71,7 +80,7 @@ func (fe *FileEmitter) Struct(sd *ir.StructDef) { fe.ctx.defineStruct(sd) }
 func (fe *FileEmitter) Func(fn *ir.Func) {
 	sig := fe.signature(fn)
 	fe.ctx.file.protos = append(fe.ctx.file.protos, "static "+sig+";")
-	ctx := fe.ctx
+	ctx := fe.ctx.WithReturn(fn.Return)
 	for _, p := range fn.Params {
 		ctx = ctx.WithLocal(p.Name)
 	}
