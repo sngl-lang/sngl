@@ -1,0 +1,84 @@
+Lists and options: a literal, push, insert, remove, an index read and
+written, loops by element and by index, the list methods taking closures,
+sorting, and an option tested against null and narrowed.
+
+-- app.sngl --
+struct P {
+    name string
+    age  int
+}
+
+func total(xs list[int]) int {
+    var t = 0
+    for var x = xs {
+        t += x
+    }
+    return t
+}
+
+func built() string {
+    var xs list[int] = [3, 1, 2]
+    xs.push(5)
+    xs.insert(0, 9)
+    xs.remove(2)
+    xs[0] = 4
+    var out = ""
+    for var i, x = xs {
+        out += "{i}:{x} "
+    }
+    return out + "len {xs.length()} total {total(xs)} at {xs[1]}"
+}
+
+func names(ps list[P]) string {
+    var old = ps.filter(func(p P) => p.age > 30)
+    var ns = old.map(func(p P) => p.name)
+    return ns._join("+")
+}
+
+func sorted() string {
+    var xs list[string] = ["pear", "apple", "fig"]
+    xs.sort()
+    var ps list[P] = [P{name="a", age=3}, P{name="b", age=1}, P{name="c", age=3}]
+    ps.sortBy(func(a P, b P) => a.age < b.age)
+    return xs._join(",") + " " + ps.map(func(p P) => p.name)._join(",") + " {xs.indexOf("fig")} {xs.contains("kiwi")}"
+}
+
+func maybe(n int) option[int] {
+    if n > 0 {
+        return n * 10
+    }
+    return null
+}
+
+func describe(n int) string {
+    var m = maybe(n)
+    if m != null {
+        return "some {m + 1}"
+    }
+    return "none"
+}
+
+func outOfRange() int {
+    var xs list[int] = [1]
+    return xs[3]
+}
+-- main.c --
+#include "program.c"
+#include <stdio.h>
+
+static void print(sngl_string s) { printf("%.*s\n", (int)s.len, s.ptr); }
+
+int main(void) {
+	print(s_built());
+	print(s_names(sngl_list_P_of(3, (s_P[]){{SNGL_STR("ann"), 40}, {SNGL_STR("bo"), 20}, {SNGL_STR("cy"), 31}})));
+	print(s_sorted());
+	print(s_describe(2));
+	print(s_describe(-1));
+	return 0;
+}
+-- want --
+0:4 1:3 2:2 3:5 len 4 total 14 at 3
+ann+cy
+apple,fig,pear b,a,c 1 false
+some 21
+none

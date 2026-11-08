@@ -17,6 +17,7 @@ type file struct {
 	// program's is: a struct's equality. Each is defined once, by name, after
 	// every type.
 	helpers     []string
+	helperOrder []string
 	helperNames map[string]bool
 	// protos are every function's prototype, which C wants ahead of a call,
 	// and lifted the definitions of the functions the renderer lifts out of
@@ -58,6 +59,18 @@ func (f *file) define(name, text string, deps ...string) {
 	f.types = append(f.types, &typeDef{name: name, text: text, deps: deps})
 }
 
+// setHelper gives the helper name, reserved by an empty definition while a
+// helper it calls was defined, its text. It keeps its place, after the helper
+// it calls.
+func (f *file) setHelper(name, text string) {
+	for i, h := range f.helpers {
+		if h == "" && f.helperOrder[i] == name {
+			f.helpers[i] = text
+			return
+		}
+	}
+}
+
 // defined reports whether a type of name has a definition.
 func (f *file) defined(name string) bool {
 	return slices.ContainsFunc(f.types, func(d *typeDef) bool { return d.name == name })
@@ -82,6 +95,7 @@ func (f *file) helper(name, text string) {
 	}
 	f.helperNames[name] = true
 	f.helpers = append(f.helpers, text)
+	f.helperOrder = append(f.helperOrder, name)
 }
 
 // typeSection is every type definition, each after what it holds by value:

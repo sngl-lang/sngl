@@ -72,6 +72,10 @@ func (c *Context) typeName(t *ir.Type) string {
 		switch t.Kind {
 		case ir.TypeFunc:
 			return c.fnType(t)
+		case ir.TypeList:
+			return c.listType(t)
+		case ir.TypeOption:
+			return c.optType(t)
 		case ir.TypeStruct:
 			// A box is shared by every copy of it, so it is held through a
 			// pointer to the one on the heap.
@@ -247,6 +251,9 @@ func (c *Context) isPackageVar(v *ir.Var) bool {
 // --- Composites ---
 
 func (c *Context) Binary(n *ir.Binary, left, right string) string {
+	if out, ok := c.optionCompare(n, left, right); ok {
+		return out
+	}
 	lt := n.Left.ExprType()
 	if lt != nil && lt.Kind == ir.TypeString {
 		switch n.Op {
@@ -352,14 +359,6 @@ func (c *Context) isPointer(t *ir.Type) bool {
 	return strings.HasSuffix(c.typeName(t), "*")
 }
 
-func (c *Context) Index(n *ir.Index, _, _ string) string {
-	return c.fail("indexing a %s", n.Operand.ExprType())
-}
-
-func (c *Context) ListLit(n *ir.ListLit, _ []string) string {
-	return c.fail("a list literal")
-}
-
 func (c *Context) MapLit(n *ir.MapLitIR, _, _ []string) string {
 	return c.fail("a map literal")
 }
@@ -432,6 +431,12 @@ func (c *Context) Call(n *ir.Call) string {
 	if n.Func.IsCCast() && len(n.Args) == 1 {
 		return c.CConvert(ir.NewCConvert(n.Func, n.Args[0].Value))
 	}
+	if out, ok := c.listIntrinsic(n); ok {
+		return out
+	}
+	if n.Func.Intrinsic == ir.ValueCopyIntrinsic && len(n.Args) == 1 {
+		return c.copyValue(n.Args[0].Value.ExprType(), c.EvalExpr(n.Args[0].Value))
+	}
 	if out, _, ok := codegen.EmitIntrinsicCall(langC, c.platform(), n, c.EvalExpr); ok {
 		return out
 	}
@@ -472,7 +477,14 @@ func funcName(fn *ir.Func) string {
 
 // Conversion converts between SNGL's scalars, and writes a scalar's text.
 func (c *Context) Conversion(n *ir.Conversion) string {
+	if out, ok := c.option(n); ok {
+		return out
+	}
 	from, to := n.Operand.ExprType(), n.Type
+	if to != nil && to.Kind == ir.TypeIter && from != nil && from.Kind == ir.TypeList {
+		// A list where an iter is read is the list: a loop walks either.
+		return c.EvalExpr(n.Operand)
+	}
 	operand := c.EvalExpr(n.Operand)
 	if from == nil || to == nil {
 		return c.fail("a conversion of an untyped value")
@@ -565,6 +577,9 @@ func zero(t *ir.Type, c *Context) string {
 	case ir.TypeFloat:
 		return "0.0"
 	}
+	if strings.HasSuffix(c.typeName(t), "*") {
+		return "NULL"
+	}
 	return "(" + c.typeName(t) + "){0}"
 }
 
@@ -592,6 +607,8 @@ func (c *Context) ForHead(n *ir.For, iter string) string {
 		return "for (;;) {"
 	case ir.IterCounted:
 		return c.countedHead(n)
+	case ir.IterElement, ir.IterIndexed:
+		return c.listLoop(n)
 	}
 	return c.fail("a loop over a %s", n.Iter.ExprType()) + "; {"
 }

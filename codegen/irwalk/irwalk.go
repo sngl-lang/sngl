@@ -342,6 +342,11 @@ func EvalMutTarget(r Renderer, e ir.Expr) string {
 		}
 		return EvalMutTarget(r, n.Operand) + "." + r.MutTargetField(n)
 	case *ir.Index:
+		if x, ok := r.(interface {
+			MutTargetIndex(n *ir.Index, operand, idx string) string
+		}); ok {
+			return x.MutTargetIndex(n, EvalMutTarget(r, n.Operand), EvalExpr(r, n.Idx))
+		}
 		return EvalMutTarget(r, n.Operand) + "[" + EvalExpr(r, n.Idx) + "]"
 	default:
 		return EvalExpr(r, e)
