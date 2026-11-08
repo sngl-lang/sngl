@@ -266,14 +266,10 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
    rules are `error_c_struct.sngl` and `error_c_struct_mark.sngl`. A struct
    is converted at each call rather than held in C's layout, since cgo's
    field types would reach every SNGL expression reading a field.
-6. **Docs.**
-   - `lib/macro/foreign.sngl`'s `cnative` doc: C spellings, aliases.
-   - `lib/x/c/doc.sngl`.
-   - The `#[cnative]` bullet in `design/nodes.md` and the `c:` scheme in
-     `design/import-schemes.md`.
-   - `design/ownership.md`'s C target section, where it names cgo.
-   - A new design note on `CInterop`, in `design/architecture.md` beside the
-     codegen registry.
+6. **Docs.** Done: `cnative`'s doc in `lib/macro/foreign.sngl`,
+   `lib/x/c/doc.sngl`, the `#[cnative]` bullet in `design/nodes.md`, the
+   `CInterop` note in `design/architecture.md`, and `design/ownership.md`'s
+   C target, where `CMarshal` still runs for what no caller passes.
 
 ### Open questions
 

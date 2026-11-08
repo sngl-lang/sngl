@@ -924,11 +924,14 @@ today's targets the pass wraps a `string` argument of a C call in `cstring`,
 which allocates a NUL-terminated copy the program frees. On the C target the
 program's string already is one: the representation keeps its length beside
 the bytes and a NUL after them, one byte per string, so handing it to a
-`char *` parameter is a pointer to the bytes and no allocation. The target
-writes `CMarshal` in `#[gen.can]`, so the pass does not run: `cstring`,
+`char *` parameter is a pointer to the bytes and no allocation. `cstring`,
 `cint`, `cdouble` and `cbool` are all identities or casts there, and the
 reason the conversions live in the IR -- that an allocation must be where a
-pass can see it -- holds for none of them. A string holding a NUL byte is
+pass can see it -- holds for none of them, so the target's `CInterop` renders
+each as the operand itself. The pass still runs: it also writes the
+arguments no caller passes, a callback's `#[c.context]` and `#[c.release]`,
+and marks a callback and a C struct for the translator, which the C target
+renders as directly as Go does through cgo. A string holding a NUL byte is
 truncated at the C boundary, as `C.CString` truncates it today. A `#[moves]`
 `char *` parameter gets the heap copy above; a `#[retains]` one gets the
 node's, released when the node hands the native its next value or unmounts.

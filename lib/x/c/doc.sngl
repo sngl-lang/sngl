@@ -7,7 +7,21 @@
 // includes `"lib/math.h"` -- and the program declares the functions it calls
 // beside it with `#[cnative]`. A package may also write one by hand.
 //
+// A link may name the shared library a language opens at run time
+// (`library`), and C sources beside the file writing it (`sources`), which
+// every language compiles into the program: a platform's runtime written once
+// in C.
+//
 // It also declares how a SNGL value crosses to C. An argument of a C function
 // is converted by its parameter's type: a `string` to a `str` the program owns
 // and gives back with `free`, an `int` or a `bool` to a C `int`, a `float` to
-// a `double`.
+// a `double`. A parameter written with a `#[cnative]` alias crosses as the
+// typedef it spells, and `utf16` crosses a string as the NUL-terminated
+// UTF-16 Win32 reads.
+//
+// A `func` parameter is a callback: C calls a function pointer and hands it a
+// `void *` back, the parameter `#[context]` marks, and a function taking one
+// may mark the parameter it is handed its release by `#[release]`. Neither is
+// passed by a caller. A `#[cnative]` struct declaring fields is a C struct,
+// converted field by field, and a `ref` parameter is a pointer C fills, which
+// the call writes back to the variable `&x` named.
