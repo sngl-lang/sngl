@@ -514,52 +514,60 @@ static void s___renderSlot0(GtkBox * parent) {
 		s___rendering0 = true;
 		s___renderAgain0 = true;
 		{
-			while (s___renderAgain0) {
-				s___renderAgain0 = false;
-				for (struct { sngl_list_node l; int64_t i; } __loop3 = {s___slot0, 0}; __loop3.i < __loop3.l.len; __loop3.i++) { GtkWidget * __entry = __loop3.l.data[__loop3.i];
-					gtk_box_remove((GtkBox *)((void *)(parent)), (GtkWidget *)((void *)(__entry)));
-				}
-				s___slot0 = ((sngl_list_node){0});
-				s___slot0__anchor = sngl_slot_anchor(GTK_WIDGET(parent), s___slot0__anchor);
-				sngl_map_string__instance_dot_ __inst0_next = ((sngl_map_string__instance_dot_){0});
-				sngl_map_string__int __inst0_seen = ((sngl_map_string__int){0});
-				for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop4 = {s___identified0(s_rs), 0}; __loop4.i < __loop4.l.len; __loop4.i++) { s___anon_id_elem_4ccb28 r = __loop4.l.data[__loop4.i];
-					s_dot__inst * __n0 = NULL;
-					sngl_string __key1 = r.id;
-					int64_t __key1_n = sngl_map_string__int_get(__inst0_seen, __key1, 0);
-					(*sngl_map_string__int_slot(&(__inst0_seen), __key1)) = (__key1_n + 1);
-					if ((__key1_n > 0)) {
-						__key1 = sngl_concat(sngl_concat(__key1, SNGL_STR("#")), sngl_int_format((int64_t)(__key1_n)));
+			sngl_catch __finally6 = {.up = sngl_catching};
+			sngl_catching = &__finally6;
+			if (setjmp(__finally6.at) == 0) {
+				while (s___renderAgain0) {
+					s___renderAgain0 = false;
+					for (struct { sngl_list_node l; int64_t i; } __loop3 = {s___slot0, 0}; __loop3.i < __loop3.l.len; __loop3.i++) { GtkWidget * __entry = __loop3.l.data[__loop3.i];
+						gtk_box_remove((GtkBox *)((void *)(parent)), (GtkWidget *)((void *)(__entry)));
 					}
-					if ((sngl_map_string__instance_dot__find(s___inst0_live, __key1) >= 0)) {
-						__n0 = sngl_map_string__instance_dot__get(s___inst0_live, __key1, NULL);
-						s_dot___set_r(__n0, r.elem);
-					} else {
-						if ((sngl_map_string__instance_dot__find(s___inst0_live, __key1) >= 0)) {
-							s_dot__destroy(sngl_map_string__instance_dot__get(s___inst0_live, __key1, NULL));
+					s___slot0 = ((sngl_list_node){0});
+					s___slot0__anchor = sngl_slot_anchor(GTK_WIDGET(parent), s___slot0__anchor);
+					sngl_map_string__instance_dot_ __inst0_next = ((sngl_map_string__instance_dot_){0});
+					sngl_map_string__int __inst0_seen = ((sngl_map_string__int){0});
+					for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop4 = {s___identified0(s_rs), 0}; __loop4.i < __loop4.l.len; __loop4.i++) { s___anon_id_elem_4ccb28 r = __loop4.l.data[__loop4.i];
+						s_dot__inst * __n0 = NULL;
+						sngl_string __key1 = r.id;
+						int64_t __key1_n = sngl_map_string__int_get(__inst0_seen, __key1, 0);
+						(*sngl_map_string__int_slot(&(__inst0_seen), __key1)) = (__key1_n + 1);
+						if ((__key1_n > 0)) {
+							__key1 = sngl_concat(sngl_concat(__key1, SNGL_STR("#")), sngl_int_format((int64_t)(__key1_n)));
 						}
-						s___n0__new = s_dot__new(r.elem);
-						__n0 = s___n0__new;
+						if ((sngl_map_string__instance_dot__find(s___inst0_live, __key1) >= 0)) {
+							__n0 = sngl_map_string__instance_dot__get(s___inst0_live, __key1, NULL);
+							s_dot___set_r(__n0, r.elem);
+						} else {
+							if ((sngl_map_string__instance_dot__find(s___inst0_live, __key1) >= 0)) {
+								s_dot__destroy(sngl_map_string__instance_dot__get(s___inst0_live, __key1, NULL));
+							}
+							s___n0__new = s_dot__new(r.elem);
+							__n0 = s___n0__new;
+						}
+						(*sngl_map_string__instance_dot__slot(&(__inst0_next), __key1)) = __n0;
+						GtkWidget * __n0__el = __n0->__root;
+						sngl_box_insert_before(GTK_WIDGET(parent), s___slot0__anchor, GTK_WIDGET(__n0__el));
+						sngl_list_node_push(&(s___slot0), (GtkWidget *)(__n0__el));
 					}
-					(*sngl_map_string__instance_dot__slot(&(__inst0_next), __key1)) = __n0;
-					GtkWidget * __n0__el = __n0->__root;
-					sngl_box_insert_before(GTK_WIDGET(parent), s___slot0__anchor, GTK_WIDGET(__n0__el));
-					sngl_list_node_push(&(s___slot0), (GtkWidget *)(__n0__el));
-				}
-				for (struct { sngl_map_string__instance_dot_ m; int64_t i; } __loop5 = {s___inst0_live, 0}; __loop5.i < __loop5.m.len; __loop5.i++) { sngl_string __inst0_live_k = __loop5.m.keys[__loop5.i]; s_dot__inst * __inst0_live_v = __loop5.m.vals[__loop5.i];
-					if (!(sngl_map_string__instance_dot__find(__inst0_next, __inst0_live_k) >= 0)) {
-						s_dot__destroy(__inst0_live_v);
+					for (struct { sngl_map_string__instance_dot_ m; int64_t i; } __loop5 = {s___inst0_live, 0}; __loop5.i < __loop5.m.len; __loop5.i++) { sngl_string __inst0_live_k = __loop5.m.keys[__loop5.i]; s_dot__inst * __inst0_live_v = __loop5.m.vals[__loop5.i];
+						if (!(sngl_map_string__instance_dot__find(__inst0_next, __inst0_live_k) >= 0)) {
+							s_dot__destroy(__inst0_live_v);
+						}
 					}
+					s___inst0_live = __inst0_next;
 				}
-				s___inst0_live = __inst0_next;
+				sngl_catching = __finally6.up;
+				s___rendering0 = false;
+			} else {
+				s___rendering0 = false;
+				sngl_raise(__finally6.message, __finally6.kind);
 			}
-			s___rendering0 = false;
 		}
 	}
 }
 
 static void s___snglTeardown(void) {
-	for (struct { sngl_map_string__instance_dot_ m; int64_t i; } __loop6 = {s___inst0_live, 0}; __loop6.i < __loop6.m.len; __loop6.i++) { sngl_string __inst0_live_dk = __loop6.m.keys[__loop6.i]; s_dot__inst * __inst0_live_dv = __loop6.m.vals[__loop6.i];
+	for (struct { sngl_map_string__instance_dot_ m; int64_t i; } __loop7 = {s___inst0_live, 0}; __loop7.i < __loop7.m.len; __loop7.i++) { sngl_string __inst0_live_dk = __loop7.m.keys[__loop7.i]; s_dot__inst * __inst0_live_dv = __loop7.m.vals[__loop7.i];
 		s_dot__destroy(__inst0_live_dv);
 	}
 	s___inst0_live = ((sngl_map_string__instance_dot_){0});
@@ -616,4 +624,4 @@ static void sngl_lambda1(void *env_, void * self) {
 # What this program links, which `sngl build` reads.
 pkg-config gtk4
 -- run/c/gtk4 --
-pass sha256:dedccba02439f7b871181df7de9026c3
+pass sha256:39f7b3c49d9e3a6ff36e49c3201795e2

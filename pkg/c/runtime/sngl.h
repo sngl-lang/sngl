@@ -4,6 +4,7 @@
 #ifndef SNGL_H
 #define SNGL_H
 
+#include <setjmp.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -39,6 +40,31 @@ sngl_string sngl_string_copy(const char *s);
 
 /* The program stops, writing msg, as a raise nothing catches does. */
 _Noreturn void sngl_panic(const char *msg);
+
+/* A catch point: a block whose raise the program answers, a boundary's or a
+ * window's @error. sngl_catching is the innermost one, each pointing up to
+ * the one around it. A block pushes its own before it runs and takes it off
+ * however it leaves; a raise takes it off on its way to `at`, and leaves the
+ * error in message and kind. */
+typedef struct sngl_catch {
+	jmp_buf at;
+	struct sngl_catch *up;
+	sngl_string message;
+	sngl_string kind;
+} sngl_catch;
+extern sngl_catch *sngl_catching;
+
+/* A handler reads nothing the block it catches for wrote: the block's
+ * locals are out of its scope and a parameter is never written. So no value
+ * a longjmp could have clobbered is read after one, which GCC cannot see,
+ * and warns of for every temporary the block makes. */
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wclobbered"
+#endif
+
+/* sngl_raise jumps to the innermost catch point with the error, or ends the
+ * program, as a panic, where there is none. */
+_Noreturn void sngl_raise(sngl_string message, sngl_string kind);
 
 /* sngl_panic_hook, where set, is called with a panic's message first: the
  * test agent fails the test running and goes on to the next. */

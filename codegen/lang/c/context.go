@@ -631,10 +631,72 @@ func (c *Context) ToggleText(_ *ir.Toggle, target string) string {
 }
 
 func (c *Context) CallStmtLines(n *ir.CallStmt) []string {
-	if ir.IsErrorRaiseFunc(n.Call.Func) && len(n.Call.Args) > 0 {
-		return []string{"sngl_panic(" + c.EvalExpr(n.Call.Args[0].Value) + ".ptr);"}
+	call := n.Call
+	if ir.IsErrorRaiseFunc(call.Func) && len(call.Args) > 0 {
+		return c.raise(call)
 	}
-	return []string{c.EvalExpr(n.Call) + ";"}
+	if h := ir.CatchingHandler(call); h != nil && h.Func != nil {
+		at := fmt.Sprintf("__catch%d", c.file.next())
+		lines := c.guard(at, []string{c.EvalExpr(call) + ";"})
+		lines = append(lines, "\t\tsngl_catching = "+at+".up;", "\t} else {")
+		lines = append(lines, irwalk.IndentLines("\t\t", c.handle(h, at+".message", at+".kind"))...)
+		return append(lines, "\t}", "}")
+	}
+	return []string{c.EvalExpr(call) + ";"}
+}
+
+// raise is error.raise: a jump to the catch point around it, or the handler
+// it resolved to run in its place where it raises with nothing between to
+// unwind -- its own @error, or a boundary's around a view body.
+func (c *Context) raise(call *ir.Call) []string {
+	msg, kind := c.EvalExpr(call.Args[0].Value), "SNGL_STR(\"\")"
+	if len(call.Args) > 1 {
+		kind = c.EvalExpr(call.Args[1].Value)
+	}
+	var h *ir.EventHandler
+	switch call.ErrorMode {
+	case ir.ErrorPerCall:
+		if call.ErrorHandler == nil || call.ErrorHandler.Func == nil {
+			return []string{"(void)" + msg + ";", "(void)" + kind + ";"}
+		}
+		h = call.ErrorHandler
+	case ir.ErrorInvokeAndTerminate:
+		h = call.ResolvedHandler
+	}
+	if h == nil || h.Func == nil {
+		return []string{"sngl_raise(" + msg + ", " + kind + ");"}
+	}
+	return c.handle(h, msg, kind)
+}
+
+// handle is h's body run on the error msg and kind, as a block of its own
+// whose return ends the handler alone: it goes to the end of the block.
+func (c *Context) handle(h *ir.EventHandler, msg, kind string) []string {
+	lines := []string{"{"}
+	r := c
+	if len(h.Func.Params) > 0 {
+		p := h.Func.Params[0]
+		name := Local(p.Name)
+		lines = append(lines,
+			"\t"+c.typeName(p.Type)+" "+name+" = {."+Local("message")+" = "+msg+", ."+Local("kind")+" = "+kind+"};",
+			"\t(void)"+name+";")
+		r = c.WithLocal(p.Name)
+	}
+	end := ""
+	for _, l := range r.EvalBlock(h.Func.Block) {
+		if t := strings.TrimLeft(l, "\t"); t == "return;" {
+			if end == "" {
+				end = fmt.Sprintf("__handled%d", c.file.next())
+			}
+			l = l[:len(l)-len(t)] + "goto " + end + ";"
+		}
+		lines = append(lines, "\t"+l)
+	}
+	lines = append(lines, "}")
+	if end != "" {
+		lines = append(lines, end+":;")
+	}
+	return lines
 }
 
 func (c *Context) EmitText(n *ir.Emit, _ []string) string {
@@ -747,15 +809,52 @@ func (c *Context) ElseHead() string                    { return "} else {" }
 func (c *Context) BlockEnd() string                    { return "}" }
 func (c *Context) Indent() string                      { return "\t" }
 
-func (c *Context) Catch(*ir.If, []string) []string {
-	return []string{c.fail("catching a raise") + ";"}
+// Catch is body under a catch point (sngl_catch), which a raise in it jumps
+// back to with the error: the point is off the stack by then, and the handler
+// runs in its place and the block ends. Body is the whole of a handler's
+// body, so nothing leaves it but a return, which takes the point off first.
+func (c *Context) Catch(n *ir.If, body []string) []string {
+	h := n.Catch
+	at := fmt.Sprintf("__catch%d", c.file.next())
+	lines := c.guard(at, body)
+	lines = append(lines, "\t\tsngl_catching = "+at+".up;", "\t} else {")
+	if h.Func != nil {
+		lines = append(lines, irwalk.IndentLines("\t\t", c.handle(h, at+".message", at+".kind"))...)
+	}
+	return append(lines, "\t}", "}")
 }
 
-// Finally is body and then finally, which is how body ends while a raise
-// ends the program, since C does not yet catch one (Catch): when it does, a
-// raise must run finally on its way out.
+// Finally is body and then finally, under a catch point as Catch's is: a
+// raise in body runs finally and raises again, on to the point around it.
+// Body holds no return (ir.If.Finally).
 func (c *Context) Finally(_ *ir.If, body, finally []string) []string {
-	return append(append([]string{"{"}, irwalk.IndentLines("\t", body)...), append(irwalk.IndentLines("\t", finally), "}")...)
+	at := fmt.Sprintf("__finally%d", c.file.next())
+	lines := c.guard(at, body)
+	lines = append(lines, "\t\t"+"sngl_catching = "+at+".up;")
+	lines = append(lines, irwalk.IndentLines("\t\t", finally)...)
+	lines = append(lines, "\t} else {")
+	lines = append(lines, irwalk.IndentLines("\t\t", finally)...)
+	return append(lines, "\t\tsngl_raise("+at+".message, "+at+".kind);", "\t}", "}")
+}
+
+// guard opens a block pushing the catch point at and running body until it
+// raises, with each return in body taking the point off before it leaves.
+// A return is a line of its own, and the point it takes off is the innermost
+// one, so a nested guard's lines come first.
+func (c *Context) guard(at string, body []string) []string {
+	lines := []string{
+		"{",
+		"\tsngl_catch " + at + " = {.up = sngl_catching};",
+		"\tsngl_catching = &" + at + ";",
+		"\tif (setjmp(" + at + ".at) == 0) {",
+	}
+	for _, l := range body {
+		if t := strings.TrimLeft(l, "\t"); t == "return;" || strings.HasPrefix(t, "return ") {
+			lines = append(lines, "\t\t"+l[:len(l)-len(t)]+"sngl_catching = "+at+".up;")
+		}
+		lines = append(lines, "\t\t"+l)
+	}
+	return lines
 }
 
 // Match is nil, which asks for the if chain: a C switch takes integers

@@ -1,7 +1,7 @@
-# A call's own @error, run rather than read, on the three runners the golden
-# (testdata/call_error_handler.txtar) does not execute: the interpreter, gtk4,
-# and html in a real Chromium. The golden's record runs the same program's tests
-# on bubbletea, fyne and android.
+# A call's own @error, run rather than read, on the runners the golden
+# (testdata/call_error_handler.txtar) does not execute: the interpreter, gtk4
+# in Go and in C, and html in a real Chromium. The golden's record runs the
+# same program's tests on bubbletea, fyne and android.
 #
 # One test clicks all four buttons because the html agent shares one state
 # object across a session, so four tests would each see the ones before it.
@@ -45,6 +45,17 @@ sngl test --platform=gtk4 --language=go app.sngl
 stdout '1 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go boundary.sngl
+stdout '1 tests, 0 failures'
+
+# In C, a handler's own body inlined where the call is, its return a goto past
+# it; a component's func a test reaches is boxed once (lower's walkPackage).
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c boundary.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c return.sngl
 stdout '1 tests, 0 failures'
 
 -- app.sngl --
@@ -193,6 +204,36 @@ sha256:ede15b710b1af8f79ea09beb757c0419
   "results": [
     {
       "Desc": "BoundaryAndLambdaCatch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/main/1 --
+sha256:d508c0485d2fed14fd8dd9941f88547e
+{
+  "results": [
+    {
+      "Desc": "EachCallCatchesItsOwnRaise",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/boundary.sngl/main/1 --
+sha256:5b55dee815819f2bec25f003e913c9e7
+{
+  "results": [
+    {
+      "Desc": "BoundaryAndLambdaCatch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/return.sngl/main/1 --
+sha256:8e4ff87b6a1086501ed7c9a39bed3c24
+{
+  "results": [
+    {
+      "Desc": "ReturnEndsOnlyTheHandler",
       "Passed": true
     }
   ]

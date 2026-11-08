@@ -495,8 +495,11 @@ instantiations of one component catch separately.
 **A raise unwinds to the handler that resolved it, and what that handler
 answers for decides what runs after it.** Inside a callee a raise is the host's
 native throw — a panic of `ErrorEvent` on Go, `SnglRaise` on Kotlin, an `Error`
-with a `kind` on JavaScript — and it passes through every fallible function
-between with no signature change. Where it stops has two shapes:
+with a `kind` on JavaScript, a `longjmp` to the innermost catch point
+(`sngl_catch`, a `setjmp` each catch block pushes) on C — and it passes through
+every fallible function between with no signature change. C has no closure to
+wrap a handler in, so a `return` in a caught body takes its catch point off
+before it leaves, and one in a handler inlined at its call is a `goto` past it. Where it stops has two shapes:
 
 - **A call's own `@error`** (`ErrorPerCall`) answers for that call alone: the
   handler runs and the statement after the call runs next. Each language's

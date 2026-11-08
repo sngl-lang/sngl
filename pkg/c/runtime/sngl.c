@@ -89,6 +89,19 @@ _Noreturn void sngl_panic(const char *msg) {
 	abort();
 }
 
+sngl_catch *sngl_catching;
+
+_Noreturn void sngl_raise(sngl_string message, sngl_string kind) {
+	sngl_catch *c = sngl_catching;
+	if (c == NULL) {
+		sngl_panic(message.ptr);
+	}
+	sngl_catching = c->up;
+	c->message = message;
+	c->kind = kind;
+	longjmp(c->at, 1);
+}
+
 /* sngl_bytes is a string of the n bytes at p, copied into the arena. */
 static sngl_string sngl_bytes(const char *p, size_t n) {
 	char *b = sngl_alloc(n + 1);

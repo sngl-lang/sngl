@@ -107,6 +107,9 @@ static const char *sngl_run_one(const sngl_test *test) {
 		test->fn(&t);
 	}
 	sngl_running = NULL;
+	/* A failure or a panic leaves the handler it stopped without taking its
+	 * catch points off. */
+	sngl_catching = NULL;
 	sngl_turn_end();
 	const char *status = t.failed ? "fail" : "pass";
 	char rest[96];

@@ -35,7 +35,7 @@ func lowerNoRef(pkg *ir.Package, _ Features, _ Options) error {
 	seedAddressedVars(pkg)
 
 	reg := newBoxRegistry(pkg)
-	rw := &refRewriter{pkg: pkg, reg: reg}
+	rw := &refRewriter{pkg: pkg, reg: reg, handlers: map[*ir.Func]bool{}}
 
 	// Step 1: rewrite addressed Var declarations and their initializers.
 	for _, v := range collectAllVars(pkg) {
@@ -182,6 +182,10 @@ func collectAllVars(pkg *ir.Package) []*ir.Var {
 type refRewriter struct {
 	pkg *ir.Package
 	reg *boxRegistry
+	// handlers is each call's @error rewritten: a lifted lambda's call is
+	// reached from where it was written and from the func it became, and
+	// rewriting a handler twice reads .value of the value.
+	handlers map[*ir.Func]bool
 }
 
 // rewriteType replaces ref[T] with the corresponding __ref_T struct type.
@@ -298,6 +302,12 @@ func (r *refRewriter) rewriteExpr(e ir.Expr) ir.Expr {
 		x.Callee = r.rewriteExpr(x.Callee)
 		for i := range x.Args {
 			x.Args[i].Value = r.rewriteExpr(x.Args[i].Value)
+		}
+		// The call's own @error is its own, where a resolved handler is an
+		// alias of one rewritten where it is declared.
+		if h := x.ErrorHandler; h != nil && h.Func != nil && !r.handlers[h.Func] {
+			r.handlers[h.Func] = true
+			r.rewriteStmts(h.Func.Block)
 		}
 		return x
 	case *ir.Conversion:
@@ -515,6 +525,11 @@ func seedAddressedVarsInExpr(e ir.Expr, set map[*ir.Var]bool) {
 		seedAddressedVarsInExpr(x.Callee, set)
 		for i := range x.Args {
 			seedAddressedVarsInExpr(x.Args[i].Value, set)
+		}
+		if x.ErrorHandler != nil && x.ErrorHandler.Func != nil {
+			for _, s := range x.ErrorHandler.Func.Block {
+				seedAddressedVarsInStmt(s, set)
+			}
 		}
 	case *ir.Conversion:
 		seedAddressedVarsInExpr(x.Operand, set)

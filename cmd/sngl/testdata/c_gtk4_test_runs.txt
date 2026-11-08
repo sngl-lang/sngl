@@ -428,7 +428,7 @@ func testADirectionIsItsName(t test.Test, c main) {
     t.assert("{c.way}" == "both")
 }
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:67f1487d1cf2b1d9dbbc47952e95bdea
+sha256:eac6fd63a993e53554a0deedec6ebc08
 {
   "results": [
     {
@@ -438,7 +438,7 @@ sha256:67f1487d1cf2b1d9dbbc47952e95bdea
   ]
 }
 -- testrun/gtk4/c/bare.sngl/main/1 --
-sha256:8dfd670842ea498e4814816d969dd63f
+sha256:84e20d062efd4752f50ce75a31237592
 {
   "results": [
     {
@@ -448,7 +448,7 @@ sha256:8dfd670842ea498e4814816d969dd63f
   ]
 }
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:5d769b4fe643a91159cb41cccf6e29d8
+sha256:75b233ee9994d1131dec642f763a3c40
 {
   "results": [
     {
@@ -458,7 +458,7 @@ sha256:5d769b4fe643a91159cb41cccf6e29d8
   ]
 }
 -- testrun/gtk4/c/controls.sngl/main/1 --
-sha256:f9986cd9142ca59d18c9848d125a02b6
+sha256:d66d2d77d07e07dc1645a66b6dfe8039
 {
   "results": [
     {
@@ -468,7 +468,7 @@ sha256:f9986cd9142ca59d18c9848d125a02b6
   ]
 }
 -- testrun/gtk4/c/keys.sngl/app/1 --
-sha256:84673d719682aa1383a26885c52e0d66
+sha256:b9e1a52e99ae97794fd7aacbe21f25da
 {
   "results": [
     {
@@ -478,7 +478,7 @@ sha256:84673d719682aa1383a26885c52e0d66
   ]
 }
 -- testrun/gtk4/c/scroll.sngl/main/1 --
-sha256:a3d51d199efdfca3c0ac89f8e87ad4a1
+sha256:1c2c66c85663eff79e88a685471c81da
 {
   "results": [
     {
@@ -492,7 +492,7 @@ sha256:a3d51d199efdfca3c0ac89f8e87ad4a1
   ]
 }
 -- testrun/gtk4/c/slots.sngl/card/1 --
-sha256:a4f2e527509ad2b6b19a77603022f725
+sha256:a731e1d3a0b41e7f725facf99aafe0f1
 {
   "results": [
     {
@@ -502,7 +502,7 @@ sha256:a4f2e527509ad2b6b19a77603022f725
   ]
 }
 -- testrun/gtk4/c/timer.sngl/main/1 --
-sha256:8cbd87203b26a60b376b85b21c662ad7
+sha256:ca48271bc4f6a81e588500450ff40b00
 {
   "results": [
     {
@@ -516,7 +516,7 @@ sha256:8cbd87203b26a60b376b85b21c662ad7
   ]
 }
 -- testrun/gtk4/c/units.sngl/app/1 --
-sha256:c3abcd7143aa3253d07f16709170abcb
+sha256:8daa536f96447656c57de1799133e10f
 {
   "results": [
     {

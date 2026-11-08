@@ -155,13 +155,17 @@ func walkPackage(pkg *ir.Package, fns walkFuncs) {
 	for _, v := range pkg.Vars {
 		walkVar(v, fns)
 	}
+	// A component's func a test calls is the package's too, and a pass that
+	// is not idempotent -- NoRef's .value -- must see its body once.
+	done := make(map[*ir.Func]bool, len(pkg.Funcs))
 	for _, f := range pkg.Funcs {
 		if fns.stmts != nil && (fns.skip == nil || !fns.skip(f)) {
+			done[f] = true
 			f.Block = fns.stmts(f.Block)
 		}
 	}
 	for _, comp := range pkg.Components {
-		walkComponent(comp, fns)
+		walkComponent(comp, fns, done)
 	}
 	// The package's own body is a view body like a component's: a window under
 	// a top-level `for` is a statement in it and reaches these passes nowhere
@@ -177,7 +181,7 @@ func walkVar(v *ir.Var, fns walkFuncs) {
 	}
 }
 
-func walkComponent(c *ir.Component, fns walkFuncs) {
+func walkComponent(c *ir.Component, fns walkFuncs, done map[*ir.Func]bool) {
 	for _, p := range c.Props {
 		if fns.expr != nil && p.Default != nil {
 			p.Default = fns.expr(p.Default)
@@ -187,7 +191,7 @@ func walkComponent(c *ir.Component, fns walkFuncs) {
 		walkVar(v, fns)
 	}
 	for _, f := range c.Funcs {
-		if fns.stmts != nil {
+		if fns.stmts != nil && !done[f] {
 			f.Block = fns.stmts(f.Block)
 		}
 	}

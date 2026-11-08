@@ -594,6 +594,11 @@ func (st *releaseTemps) eventType() *ir.Type {
 		}
 	}
 	visit(st.pkg)
+	// A program that reaches no boundary still raises a sngl:builtin
+	// `error`, which error.raise is declared on.
+	if def := ir.LookupIntrinsic("error.raise"); st.event == nil && def != nil {
+		st.event = def.Receiver
+	}
 	return st.event
 }
 
