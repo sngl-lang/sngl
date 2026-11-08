@@ -190,7 +190,7 @@ func launchOneGroup(ctx context.Context, cfg Config, launcher codegen.TestLaunch
 		FileAssets: assets,
 		ProjectFS:  build.ProjectFS(cfg.Dir),
 	}
-	if err := plat.Generate(req, codegen.NewDirSink(tmpDir)); err != nil {
+	if err := codegen.Generate(plat, req, codegen.NewDirSink(tmpDir)); err != nil {
 		return nil, fmt.Errorf("generate: %w", err)
 	}
 

@@ -101,11 +101,19 @@ func (gc *GoIRContext) CCall(fn *ir.Func, args []string) string {
 	args = slices.Clone(args)
 	closure := args[off+cb]
 	args[off+cb] = callbackName(fn.Params[cb].Type.Sig) + "Ptr()"
+	// A context the C function spells otherwise than `void *` -- GLib's
+	// gpointer -- is a type of cgo's own.
+	asContext := func(v string) string {
+		if t := ir.CTypeOf(fn.Params[ctx].Type); !t.IsVoidPointer() {
+			return gc.CType(t) + "(" + v + ")"
+		}
+		return v
+	}
 	if fn.Params[cb].Transfer == ir.TransferRetains {
-		args[off+ctx] = "snglContext(" + closure + ")"
+		args[off+ctx] = asContext("snglContext(" + closure + ")")
 		return gc.cCall(fn, args)
 	}
-	args[off+ctx] = "__snglCtx"
+	args[off+ctx] = asContext("__snglCtx")
 	hold := "__snglCtx := snglContext(" + closure + "); defer snglRelease(__snglCtx); "
 	if fn.Return == nil || fn.Return.Kind == ir.TypeVoid {
 		return "func() { " + hold + gc.cCall(fn, args) + " }()"

@@ -181,9 +181,13 @@ declaration itself. Two things about the name that are easy to get wrong:
   platform's preamble may. An unmarked callback is held for the call, a
   `#[retains]` one for the rest of the program
   (`testdata/c_callback_argument.txtar`, `error_c_callback.sngl`,
-  `error_c_context_mark.sngl`, `error_c_context_argument.sngl`). gtk4 still
-  connects through `gtk4rt.Connect`, because a `C.` in every program with a
-  handler is what wrapped mode exists to avoid (`design/architecture.md`).
+  `error_c_context_mark.sngl`, `error_c_context_argument.sngl`). gtk4's
+  `cgo=true` connects every handler this way; its default build keeps
+  `gtk4rt.Connect`, because a `C.` in every program with a handler is what
+  wrapped mode exists to avoid (`design/architecture.md`). The C files a
+  language adds -- a link's sources, the dispatchers -- are written by
+  `codegen.Generate`, which a build, a test's launch and a dump all call:
+  `sngl test` called the platform alone and built without them.
 - **A component may be one, on Kotlin.** `#[kt.native("Card", "androidx.compose.material3.Card")]` on a bodyless component names a
   composable: android calls it with the props as arguments by name and the rest
   slot as the trailing lambda (`renderIntrinsic`), and adds the import unless a

@@ -13,7 +13,7 @@ c.link(include="calls.h")
 func noContext(f func()) // ERROR(check) "a func, which C can call only through a function handed the closure back: mark the `void *` it hands its callback #[c.context]"
 
 #[macro.cnative("bad_context")]
-func badContext(f func(), #[c.context] data int) // ERROR(check) "parameter \"data\" is a callback's context, which C spells `void *`: declare it c.pointer, not int"
+func badContext(f func(), #[c.context] data int) // ERROR(check) "parameter \"data\" is a callback's context, a C pointer: declare it c.pointer, or a #[cnative] struct naming the C function's own spelling of one, not int"
 
 #[macro.cnative("lone_context")]
 func loneContext(#[c.context] data c.pointer) // ERROR(check) "and loneContext takes no func for it to be handed to"

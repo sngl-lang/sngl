@@ -570,9 +570,35 @@ func ReachedCLinks(pkg *Package) []*CLink {
 	return out
 }
 
-// ReachedCCallbacks is the type of each callback a C function pkg or a
-// package it imports declares takes, each type once, in the order an import
-// first reaches it: what a translator writes a dispatcher for.
+// TargetPackages is each package the target overrides pkg installs call
+// into: the platform's and language's packages as the program's check loaded
+// them, which the program imports none of. A target is loaded under the
+// program's options -- gtk4's cgo -- so it is this load, not the library's
+// own, whose declarations the program's code calls.
+func TargetPackages(pkg *Package) []*Package {
+	var out []*Package
+	for _, o := range pkg.Targets.Overrides {
+		for _, ovs := range []map[string]Override{o.Platform, o.Language} {
+			for _, ov := range ovs {
+				for _, st := range ov.Stmts {
+					_ = Walk(st, func(n Node) error {
+						if c, ok := n.(*Call); ok && c.Func != nil && c.Func.Pkg != nil && !slices.Contains(out, c.Func.Pkg) {
+							out = append(out, c.Func.Pkg)
+						}
+						return nil
+					})
+				}
+			}
+		}
+	}
+	slices.SortFunc(out, func(a, b *Package) int { return strings.Compare(a.Path, b.Path) })
+	return out
+}
+
+// ReachedCCallbacks is the type of each callback a C function pkg, a package
+// it imports or a target package of it (TargetPackages) declares takes, each
+// type once, in the order an import first reaches it: what a translator
+// writes a dispatcher for.
 func ReachedCCallbacks(pkg *Package) []*FuncSig {
 	var out []*FuncSig
 	seen := map[*Package]bool{}
@@ -598,6 +624,9 @@ func ReachedCCallbacks(pkg *Package) []*FuncSig {
 		}
 	}
 	walk(pkg)
+	for _, p := range TargetPackages(pkg) {
+		walk(p)
+	}
 	return out
 }
 

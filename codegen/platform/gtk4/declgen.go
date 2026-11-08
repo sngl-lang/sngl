@@ -138,10 +138,12 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 			events[n] = true
 			writeEvent(&b, n, s.Name, info.CType)
 		}
+		var notifies [][2]string
 		for _, prop := range notifyProps[info.CType] {
 			if n, ok := snglName("notify-" + prop); ok && !events[n] {
 				events[n] = true
 				writeEvent(&b, n, "notify::"+prop, info.CType)
+				notifies = append(notifies, [2]string{n, "notify::" + prop})
 			}
 		}
 		// GIR does not say which widgets accept children, and declaring a
@@ -152,6 +154,11 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 		// an #[intrinsic] component.
 		fmt.Fprintf(&b, "    %s ...component ui.node,\n) ui.node\n", restSlotName)
 		writeCreate(&b, reg, info, casts, cgo)
+		if cgo {
+			for _, nf := range notifies {
+				writeNotifyOn(&b, info.CType, nf[0], nf[1])
+			}
+		}
 		children.write(&b, info)
 		children.writeSets(&b, reg, info, props, casts)
 		// Each action is a method reached through a `#id` on the widget,
@@ -169,6 +176,7 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 		}
 	}
 	children.writeCasts(&b)
+	writeConnect(&b, cgo)
 	castTypes := make([]string, 0, len(casts))
 	for cType := range casts {
 		castTypes = append(castTypes, cType)
@@ -179,6 +187,64 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 		fmt.Fprintf(&b, "\n#[macro.cnative(%q, cast)]\nconst func %s(v %s) %s\n", cType, castFunc(cType), casts[cType], castType(cType))
 	}
 	return []byte(b.String())
+}
+
+// writeConnect declares signalConnect, which gtk4.sngl's connect protocol
+// calls with every handler a program writes on a widget.
+//
+// By default it is gtk4rt's Connect, which copies the signal into C and
+// connects through gtk4rt's trampolines itself, so a program connecting a
+// handler has no cgo of its own and wrapped mode's cached build stands. With
+// cgo it is GLib's g_signal_connect_data, the handler crossing as a callback
+// sngl:x/c's #[context] hands back: the program is cgo already. GLib calls a
+// handler with the instance, a property notification's with the GParamSpec
+// after it, and the context last, so each shape is a declaration of its own.
+func writeConnect(b *strings.Builder, cgo bool) {
+	if !cgo {
+		b.WriteString(connectWrapped)
+		return
+	}
+	b.WriteString(connectCgo)
+}
+
+const connectWrapped = `
+// Connects handler to w's signal, as gtk4's connect protocol does.
+#[go.native("duckfam.us/sngl/pkg/go/gtk4rt", "gtk4rt.Connect")]
+func signalConnect(w ui.node, signal string, handler func())
+`
+
+const connectCgo = `
+#[macro.cnative("GConnectFlags")]
+struct _ConnectFlags = int
+
+// GLib's untyped pointer, which cgo spells as a type of its own.
+#[macro.cnative("gpointer")]
+struct _gpointer {}
+
+#[macro.cnative("gpointer", cast)]
+const func _instance(w ui.node) _gpointer
+
+#[macro.cnative("g_signal_connect_data")]
+func _signalConnect(instance _gpointer, signal string, #[macro.retains] handler func(self c.pointer), #[c.context] data _gpointer, destroy option[c.pointer], flags _ConnectFlags)
+
+#[macro.cnative("g_signal_connect_data")]
+func _notifyConnect(instance _gpointer, signal string, #[macro.retains] handler func(self c.pointer, pspec c.pointer), #[c.context] data _gpointer, destroy option[c.pointer], flags _ConnectFlags)
+
+// Connects handler to w's signal, as gtk4's connect protocol does. A property
+// notification is its event's own protocol (writeNotifyOn).
+func signalConnect(w ui.node, signal string, handler func()) {
+    _signalConnect(_instance(w), signal, func(self c.pointer) {
+        handler()
+    }, null, 0)
+}
+`
+
+// writeNotifyOn declares, with the cgo option, how cType's event n, GTK's
+// signal, is connected: GLib hands a property notification's handler the
+// GParamSpec before the context, which the one connect does not take.
+func writeNotifyOn(b *strings.Builder, cType, n, signal string) {
+	fmt.Fprintf(b, "\n#[macro.cnative(\"gpointer\", cast)]\nconst func _instance_%s_%s(w %s) _gpointer\n", cType, n, cType)
+	fmt.Fprintf(b, "\n#[gen.protocol(on)]\nfunc _on_%s_%s(w %s, %s func()) {\n    _notifyConnect(_instance_%s_%s(w), %q, func(self c.pointer, pspec c.pointer) {\n        %s()\n    }, null, 0)\n}\n", cType, n, cType, n, cType, n, signal, n)
 }
 
 // writeEvent declares the event n, which GTK knows as signal: the name the

@@ -251,13 +251,15 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
    `c.pointer`, which no caller passes. A `#[retains]` callback is never
    released yet; tie it to the node that connected it
    (`design/ownership.md`'s node lifetime) as an owned value is.
-   - **gtk4's `Connect` did not move.** On wrapped mode a connect that calls
-     C puts every program with a handler on the cgo path, which is what the
-     mode exists to avoid (`design/architecture.md`, *Which file a program
-     gets*: a warm build of 0.85s against 6.2s). Only `gtk4(cgo=true)` could
-     take it, and its connect is the same `gtk4.sngl` protocol, so it needs a
-     protocol per mode. Decide whether that is worth it, or whether gtk4rt's
-     trampolines leave Go only with item 7's C runtime.
+   - **gtk4 under `cgo=true` connects through it**: declgen's
+     `signalConnect` is `g_signal_connect_data`, and a `notify::` event its
+     own `on` protocol (`testdata/gtk4_cgo_connect.txtar`,
+     `cmd/sngl/testdata/gtk4_cgo_connect_runs.txt`). The default build keeps
+     `gtk4rt.Connect`: a connect calling C there puts every program with a
+     handler on the cgo path (`design/architecture.md`, *Which file a
+     program gets*). Next: hand `destroy` a function releasing the closure,
+     which GLib calls when the handler goes, so a retained callback is
+     released with its widget.
 5. **Structs and `ref` out-parameters** (design item 6). A fixture over
    a shipped C function filling a struct.
 6. **Docs.**

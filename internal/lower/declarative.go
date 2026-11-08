@@ -83,7 +83,7 @@ type declarativeState struct {
 }
 
 func newDeclarativeState(pkg *ir.Package, caps Features) *declarativeState {
-	st := &declarativeState{liftHandlers: !caps.Lambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}, connect: caps.connect}
+	st := &declarativeState{liftHandlers: !caps.Lambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}, connect: programConnect(pkg, caps.connect)}
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
 	}
@@ -91,6 +91,32 @@ func newDeclarativeState(pkg *ir.Package, caps Features) *declarativeState {
 		st.lifter = newLifter(pkg)
 	}
 	return st
+}
+
+// programConnect is connect, the platform's connect as the capabilities read
+// it (codegen.CapsFor, from the library as loaded with no program's options),
+// as the program's own load of the platform declares it (ir.TargetPackages).
+// The two are one declaration unless the program loaded its library under
+// options of its own -- gtk4's cgo -- and a splice must call into the
+// program's: the C conversions its body makes are the ones the program
+// emits, and the other load's sngl:x/c emitted a second `free`.
+func programConnect(pkg *ir.Package, connect *ir.Func) *ir.Func {
+	if pkg == nil || connect == nil {
+		return connect
+	}
+	for _, p := range ir.TargetPackages(pkg) {
+		if p.Path != connect.PkgPath() || p == connect.Pkg {
+			continue
+		}
+		for _, c := range p.Components {
+			if c.Gen != nil && c.Gen.TargetName != "" {
+				if fn := c.Protocol.Op(ir.ProtocolConnect); fn != nil {
+					return fn
+				}
+			}
+		}
+	}
+	return connect
 }
 
 // capturesPerIteration reports whether a handler body reads a binding that
@@ -472,16 +498,43 @@ func (st *declarativeState) connected(n *ir.NodeInst, event string, node ir.Expr
 // by the platform, since whether it is a method or a closure is the shape of
 // the code it writes, and a copy here would be a second body every pass
 // after this one rewrites.
+//
+// A body calling a function of one call or return is that function's body in
+// turn, which is how a platform's protocol delegates to the package it
+// imports: gtk4's connect to the widget package's signalConnect, which is a
+// native or a C call by the package's option.
 func protocolSplice(fn *ir.Func, args []ir.Expr) (ir.Expr, error) {
-	body := exprBody(fn)
-	if body == nil && len(fn.Block) == 1 {
-		if cs, ok := fn.Block[0].(*ir.CallStmt); ok {
-			body = cs.Call
-		}
-	}
+	body := spliceBody(fn)
 	if body == nil {
 		return nil, fmt.Errorf("#[gen.protocol(%s)] %s is spliced where its op is made, so its body is one return or one call", fn.Protocol, fn.Name)
 	}
+	spliced := bindSplice(fn, body, args)
+	if c, ok := spliced.(*ir.Call); ok && c.Func != nil && c.Func.Foreign.Name == "" && c.Func.Intrinsic == "" && spliceBody(c.Func) != nil && len(c.Args) == len(c.Func.Params) {
+		inner := make([]ir.Expr, len(c.Args))
+		for i, a := range c.Args {
+			inner[i] = a.Value
+		}
+		spliced = bindSplice(c.Func, spliceBody(c.Func), inner)
+	}
+	return marshalSpliced(spliced)
+}
+
+// spliceBody is fn's one return value or one call, or nil.
+func spliceBody(fn *ir.Func) ir.Expr {
+	if body := exprBody(fn); body != nil {
+		return body
+	}
+	if len(fn.Block) == 1 {
+		if cs, ok := fn.Block[0].(*ir.CallStmt); ok {
+			return cs.Call
+		}
+	}
+	return nil
+}
+
+// bindSplice is a copy of body, fn's, with each of fn's parameters args
+// reaches bound to its argument.
+func bindSplice(fn *ir.Func, body ir.Expr, args []ir.Expr) ir.Expr {
 	bound := map[ir.Symbol]ir.Expr{}
 	for i, arg := range args {
 		bound[fn.Params[i]] = arg
@@ -500,7 +553,7 @@ func protocolSplice(fn *ir.Func, args []ir.Expr) (ir.Expr, error) {
 		}
 		return n, nil
 	})
-	return marshalSpliced(spliced)
+	return spliced
 }
 
 // childOp is the node op intrinsic (AppendChild, RemoveChild) of child under

@@ -280,22 +280,10 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 	}
 	req.Fold = func() codegen.Fold { return optimize.NewFold(pkg, optCfg) }
 	mem := codegen.NewMemSink()
-	if err := plat.Generate(req, mem); err != nil {
+	if err := codegen.Generate(plat, req, mem); err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", o.Name, err)
 	}
 	files := mem.Files()
-	if cc, ok := lang.(codegen.CCompiler); ok {
-		srcs, err := cc.CSources(pkg, files)
-		if err != nil {
-			return nil, nil, fmt.Errorf("%s: %w", o.Name, err)
-		}
-		for name, data := range srcs {
-			if _, dup := files[name]; dup {
-				return nil, nil, fmt.Errorf("%s: a c.link ships %s, which the %s platform also generates", o.Name, name, target.Platform)
-			}
-			files[name] = data
-		}
-	}
 	return files, mem.Boilerplate(), nil
 }
 

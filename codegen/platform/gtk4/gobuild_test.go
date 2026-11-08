@@ -47,46 +47,12 @@ func genRequest(pkg *ir.Package, lang codegen.LangTranslator) *codegen.Request {
 // library structs and consts only the optimizer declares.
 func generateGTK4ModelBuilt(t *testing.T, src string) string {
 	t.Helper()
-	doc, err := parser.Parse("t.sngl", []byte(src))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	lang := codegen.LookupLang("go")
-	if lang == nil {
-		t.Fatal("go lang not registered")
-	}
-	pkg, diags := checker.Check(doc, &checker.Config{
-		IsMain:    true,
-		Platforms: codegen.CollectPlatforms(),
-		Languages: []ir.Language{lang},
-		Targets:   []ir.StaticTarget{{Platform: "gtk4", Language: "go"}},
-	})
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			t.Fatalf("check diag: %s: %s", d.Pos, d.Msg)
-		}
-	}
-	pkg = ir.ClonePackageFor(pkg, "gtk4", "go")
-	optCfg := &optimize.Config{Platform: "gtk4", Language: "go"}
-	if err := optimize.Optimize(pkg, optCfg); err != nil {
-		t.Fatalf("optimize: %v", err)
-	}
-	g := &Generator{}
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
-		t.Fatalf("lower: %v", err)
-	}
-	if err := optimize.Optimize(pkg, optCfg); err != nil {
-		t.Fatalf("optimize2: %v", err)
-	}
-	mem := codegen.NewMemSink()
-	if err := g.Generate(genRequest(pkg, lang), mem); err != nil {
-		t.Fatalf("generate: %v", err)
-	}
-	modelSrc, ok := mem.Files()["model.go"]
+	files := generateGTK4FilesBuilt(t, src)
+	modelSrc, ok := files["model.go"]
 	if !ok {
-		t.Fatalf("model.go not among generated files %v", mem.Files())
+		t.Fatalf("model.go not among generated files %v", files)
 	}
-	return string(modelSrc)
+	return modelSrc
 }
 
 // generateGTK4FilesBuilt is generateGTK4ModelBuilt keeping every emitted file.
@@ -125,8 +91,10 @@ func generateGTK4FilesBuilt(t *testing.T, src string) map[string]string {
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize2: %v", err)
 	}
+	// codegen.Generate, as the build does: a C callback's dispatchers are
+	// the language's file beside the platform's.
 	mem := codegen.NewMemSink()
-	if err := g.Generate(genRequest(pkg, lang), mem); err != nil {
+	if err := codegen.Generate(g, genRequest(pkg, lang), mem); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	out := map[string]string{}

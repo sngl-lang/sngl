@@ -369,7 +369,7 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 	req.Fold = func() codegen.Fold { return optimize.NewFold(pkg, optCfg) }
 	mem := codegen.NewMemSink()
 	start = time.Now()
-	if err := plat.Generate(req, mem); err != nil {
+	if err := codegen.Generate(plat, req, mem); err != nil {
 		return err
 	}
 	slog.Info("codegen", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))

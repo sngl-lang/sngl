@@ -1,0 +1,50 @@
+# With the cgo option, gtk4 connects a handler through GLib's
+# g_signal_connect_data, the handler crossing as a C callback: the test's
+# clicks are GTK's "clicked", which reaches the closure through the
+# dispatcher sngl_callbacks.go exports, and a switch's notify::active is
+# connected through the GParamSpec-taking shape of its own.
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import go "sngl:language/go"
+import test "sngl:test"
+
+output {
+    go {
+        gtk4(gir="builtin", cgo=true)
+    }
+}
+
+component main ui.node {
+    var n = 0
+    var on = false
+    ui.vbox {
+        ui.button #count(text="{n}", @click {
+            n += 1
+        })
+        ui.toggle(:checked=on, label="on")
+    }
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testClickReachesTheClosure(t test.Test, c main) {
+    c.count.click()
+    c.count.click()
+    t.assert(c.n == 2)
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:d42d82eff0c67d3b523d0ebca13e6883
+{
+  "results": [
+    {
+      "Desc": "ClickReachesTheClosure",
+      "Passed": true
+    }
+  ]
+}

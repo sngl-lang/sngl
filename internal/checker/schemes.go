@@ -594,8 +594,8 @@ func (c *checker) checkCCallbacks() {
 			continue
 		}
 		for _, i := range contexts {
-			if p := fn.Params[i]; !ir.CTypeOf(p.Type).IsVoidPointer() {
-				c.error(pos(i), "parameter %q is a callback's context, which C spells `void *`: declare it c.pointer, not %s", p.Name, p.Type)
+			if p := fn.Params[i]; ir.CTypeOf(p.Type) == nil {
+				c.error(pos(i), "parameter %q is a callback's context, a C pointer: declare it c.pointer, or a #[cnative] struct naming the C function's own spelling of one, not %s", p.Name, p.Type)
 			}
 		}
 		switch {
