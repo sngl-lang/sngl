@@ -2529,12 +2529,22 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 	if len(x.Indices) != 1 {
 		c.error(x.Pos, "an index takes one value")
 	}
-	var indexExpr ir.Expr = &ir.Literal{Type: TypInvalid}
-	if len(x.Indices) > 0 {
-		indexExpr = c.checkExpr(x.Indices[0])
-	}
 	operand := exprType(operandExpr)
 	operandExpr, operand = callComputedOperand(operandExpr, operand)
+	// The index is expected to be what the operand is indexed by, not what
+	// the indexing is expected to be: `return xs[0]` in a func returning a
+	// float typed its 0 a float.
+	var want *ir.Type
+	switch {
+	case operand != nil && operand.Kind == ir.TypeList:
+		want = TypInt
+	case operand != nil && operand.Kind == ir.TypeMap && len(operand.Elems) == 2:
+		want = operand.Elems[0]
+	}
+	var indexExpr ir.Expr = &ir.Literal{Type: TypInvalid}
+	if len(x.Indices) > 0 {
+		indexExpr = c.checkExprExpecting(x.Indices[0], want)
+	}
 
 	// An index on nothing: `xs.push(v)[0]` reaches here with a void operand,
 	// and the fallback below would hand it back as invalid, which assigns to

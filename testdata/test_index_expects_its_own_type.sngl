@@ -1,0 +1,32 @@
+// An index is expected to be what its operand is indexed by, whatever the
+// indexing is expected to be: the 0 in a float function's `return xs[0]` is
+// an int, and so is a map's int key in the same place.
+
+import . "sngl:ui"
+import . "sngl:test"
+
+func first(xs list[float]) float {
+    return xs[0]
+}
+
+func second(m map[int, float]) float {
+    return m[1]
+}
+
+component indexed node {
+    var xs = [1.5, 2.5]
+    var weights map[int, float] = {}
+    var a = first(xs)
+    text(value="{a}")
+}
+
+func testListIndexInAFloatReturn(t Test, c indexed) {
+    t.assert(first(c.xs) == 1.5)
+}
+
+func testMapIndexInAFloatReturn(t Test, c indexed) {
+    t.assert(second(c.weights) == 0.0)
+}
+
+window {
+}
