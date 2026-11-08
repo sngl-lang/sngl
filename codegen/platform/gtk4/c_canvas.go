@@ -131,7 +131,7 @@ func (e *cEmitter) canvasClick(node, handler ir.Expr) []ir.Stmt {
 		return e.fail("a canvas's @click carrying a value")
 	}
 	if id, ok := node.(*ir.Ident); ok {
-		e.invokers[id.Name+"."+codegen.TriggerEventName(handler, "click")] = cInvoker{node: node, press: true}
+		e.invokers[id.Name+"."+codegen.TriggerEventName(handler, "click")] = cInvoker{node: node, fire: "sngl_canvas_click"}
 	}
 	return []ir.Stmt{&ir.CallStmt{Call: rtCall("CanvasOnClick", ir.TypVoid, node, handler)}}
 }

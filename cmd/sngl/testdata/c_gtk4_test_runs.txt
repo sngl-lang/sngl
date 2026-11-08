@@ -38,6 +38,14 @@ stdout 'ok +1 tests, 0 failures'
 sngl test --platform=gtk4 --language=c controls.sngl
 stdout 'ok +1 tests, 0 failures'
 
+# A scroll's end arriving is no signal: rt's scroll.c reads it off the
+# adjustments, and a test fires the handler rt keeps. Its direction is the
+# member's name, which NoEnum writes in place of the ordinal a string of an
+# enum would otherwise format as.
+
+sngl test --platform=gtk4 --language=c scroll.sngl
+stdout 'ok +2 tests, 0 failures'
+
 -- app.sngl --
 import ui "sngl:ui"
 import c "sngl:language/c"
@@ -235,8 +243,53 @@ func testValuesReachTheHandlers(t test.Test, c main) {
     c.field.input("bee")
     t.assert(c.name == "bee")
 }
+-- scroll.sngl --
+import ui "sngl:ui"
+import c "sngl:language/c"
+import test "sngl:test"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+component main ui.node {
+    var rows = [1, 2, 3]
+    var asked = 0
+    var way = ui.ScrollDirection.vertical
+    ui.vbox {
+        ui.text #label(value="{way}")
+        ui.scroll #list(direction=way, @reachEnd {
+            asked += 1
+            rows.push(asked + 3)
+        }) {
+            ui.vbox {
+                for var r = rows {
+                    ui.text(value="row {r}")
+                }
+            }
+        }
+    }
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testTheEndAsksForMore(t test.Test, c main) {
+    c.list.reachEnd()
+    t.assert(c.asked == 1)
+}
+
+func testADirectionIsItsName(t test.Test, c main) {
+    t.assert(string(c.way) == "vertical")
+    c.way = ui.ScrollDirection.both
+    t.assert(string(c.way) == "both")
+    t.assert("{c.way}" == "both")
+}
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:c176d76f668ad4dbc0f1385c3228545b
+sha256:a9fa6f0ee41e5482b4e621f90e634764
 {
   "results": [
     {
@@ -246,7 +299,7 @@ sha256:c176d76f668ad4dbc0f1385c3228545b
   ]
 }
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:e245551caf3666a3c1672fb0f2763717
+sha256:816cae7607602806f3efb8b592daa32e
 {
   "results": [
     {
@@ -256,7 +309,7 @@ sha256:e245551caf3666a3c1672fb0f2763717
   ]
 }
 -- testrun/gtk4/c/controls.sngl/main/1 --
-sha256:1c639b93ae9af4dbe0bc911118e585a4
+sha256:d41e1ecfca6f78d5da01505408bfb2ed
 {
   "results": [
     {
@@ -265,8 +318,22 @@ sha256:1c639b93ae9af4dbe0bc911118e585a4
     }
   ]
 }
+-- testrun/gtk4/c/scroll.sngl/main/1 --
+sha256:3c0f3228ab437336ce3c8edc0421c16a
+{
+  "results": [
+    {
+      "Desc": "TheEndAsksForMore",
+      "Passed": true
+    },
+    {
+      "Desc": "ADirectionIsItsName",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/c/slots.sngl/card/1 --
-sha256:ed0d69bff4880a3b25ccc0cdfb0d709b
+sha256:375af530e510469eb9860e88ca9989db
 {
   "results": [
     {
@@ -276,7 +343,7 @@ sha256:ed0d69bff4880a3b25ccc0cdfb0d709b
   ]
 }
 -- testrun/gtk4/c/timer.sngl/main/1 --
-sha256:9df305559ccea5be5df0b3992e3827c1
+sha256:5404a0b36e998d1d42b59758de3a4917
 {
   "results": [
     {

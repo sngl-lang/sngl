@@ -7,8 +7,6 @@
 #include <gtk/gtk.h>
 #include <stdbool.h>
 
-#include "sngl.h"
-
 /* The function types a callback crosses as: the closure's dispatcher, which
  * finds it through ctx. */
 typedef void (*SnglFn)(void *ctx);
@@ -67,9 +65,18 @@ typedef struct SnglSchedule SnglSchedule;
 SnglSchedule *sngl_every(int ms, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_schedule_cancel(SnglSchedule *s);
 
-/* sngl_editable_text is the text an entry shows, copied into the turn's
- * arena: GTK's own is the entry's to change on its next edit. */
-sngl_string sngl_editable_text(GtkWidget *e);
+/* A scroll is a GtkScrolledWindow moving along a direction, "horizontal",
+ * "both" or else vertical, that runs its reach-end handler as the end of
+ * its content comes within half a viewport of showing (scroll.c). Its
+ * content is set through sngl_scroll_set_child, which leaves content it
+ * already holds where it is. sngl_scroll_reach_end runs the handler, as a
+ * test does. */
+GtkWidget *sngl_scroll_new(void);
+void sngl_scroll_set_child(GtkWidget *sw, GtkWidget *child);
+void sngl_scroll_set_direction(GtkWidget *sw, const char *dir);
+void sngl_scroll_on_reach_end(GtkWidget *sw, SnglFn fn, void *ctx, GDestroyNotify release);
+void sngl_scroll_reach_end(GtkWidget *sw);
+
 /* sngl_editable_set_text_quiet writes an entry's text with its "changed"
  * blocked, which an override does when the program's value moves, so the
  * write does not report itself back as an edit. */

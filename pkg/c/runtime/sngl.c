@@ -67,6 +67,16 @@ char *sngl_cstring(sngl_string s) {
 	return c;
 }
 
+sngl_string sngl_string_copy(const char *s) {
+	size_t n = s == NULL ? 0 : strlen(s);
+	char *p = sngl_alloc(n + 1);
+	if (n > 0) {
+		memcpy(p, s, n);
+	}
+	p[n] = '\0';
+	return (sngl_string){p, n};
+}
+
 void (*sngl_panic_hook)(const char *msg);
 
 _Noreturn void sngl_panic(const char *msg) {

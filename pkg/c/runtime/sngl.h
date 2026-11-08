@@ -32,6 +32,11 @@ void *sngl_heap_copy(const void *p, size_t n);
  * as Go's C.CString makes one. */
 char *sngl_cstring(sngl_string s);
 
+/* sngl_string_copy is the C string s as a string, copied into the turn's
+ * arena: what a library hands back is its own to change or free. NULL is
+ * the empty string. */
+sngl_string sngl_string_copy(const char *s);
+
 /* The program stops, writing msg, as a raise nothing catches does. */
 _Noreturn void sngl_panic(const char *msg);
 

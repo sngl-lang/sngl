@@ -30,7 +30,7 @@ import (
 // holds them but the file.
 
 // rtFiles are gtk4's runtime sources, written beside main.c.
-var rtFiles = []string{"sngl_gtk.h", "sngl_gtk.c", "look.c"}
+var rtFiles = []string{"sngl_gtk.h", "sngl_gtk.c", "look.c", "scroll.c"}
 
 // generateC writes req's program as C: built for `sngl test`, its tests and
 // the agent running them in place of the application.
@@ -194,9 +194,17 @@ type cInvoker struct {
 	// fires with g_object_notify: emitting one wants the GParamSpec it
 	// carries.
 	notify string
-	// press says the event is a canvas's click, which a gesture reports
-	// rather than a signal of the widget's (canvasClick).
-	press bool
+	// fire is the rt function a test fires an event no signal of the
+	// widget's reports through, handed the widget: a canvas's click, which a
+	// gesture reports (canvasClick), and a scroll's end arriving, which rt
+	// reads off its adjustments.
+	fire string
+}
+
+// rtFires are the rt functions a test fires an event with that a gtk4rt
+// native connects rather than a signal, by the native.
+var rtFires = map[string]string{
+	"gtk4rt.ScrollOnReachEnd": "sngl_scroll_reach_end",
 }
 
 // tests writes each test as a function of the agent's, and main serving
@@ -342,8 +350,8 @@ func (e *cEmitter) trigger(id string, c *ir.Call) []string {
 		return nil
 	}
 	w := e.ctx.EvalExpr(inv.node)
-	if inv.press && len(c.Args) == 0 {
-		return []string{"sngl_canvas_click(GTK_WIDGET(" + w + "));"}
+	if inv.fire != "" && len(c.Args) == 0 {
+		return []string{inv.fire + "(GTK_WIDGET(" + w + "));"}
 	}
 	fire := "g_signal_emit_by_name((gpointer)(" + w + "), " + e.ctx.EvalExpr(inv.signal) + ");"
 	if inv.notify != "" {
@@ -590,13 +598,21 @@ func (e *cEmitter) OnConnectThrough(ctx context.Context, node ir.Expr, event str
 		return nil
 	}
 	id, _ := node.(*ir.Ident)
-	if id != nil && !e.connects(id.Name, event) {
+	// A gtk4rt native connects what no signal reports -- a scroll's end
+	// arriving -- on a widget of its own, whatever class the node is held as.
+	viaRt := false
+	if c, ok := call.(*ir.Call); ok && c.Func != nil {
+		viaRt = c.Func.Foreign.Path == gtk4rtPkg
+	}
+	if id != nil && !viaRt && !e.connects(id.Name, event) {
 		// An event the node's class has no signal for -- a component's own,
 		// on the box its instance renders as -- reaches its handler as a
 		// call, and nothing connects.
 		return nil
 	}
-	if id != nil {
+	// A signal hands its handler the widget it fired on; a native hands it
+	// the values it declares, a window's visibility.
+	if id != nil && !viaRt {
 		handler = handlerOn(handler, node)
 	}
 	e.seq++
@@ -625,6 +641,8 @@ func (e *cEmitter) OnConnectThrough(ctx context.Context, node ir.Expr, event str
 				cType:  cType,
 				notify: prop,
 			}
+		} else if fire := rtFires[c.Func.Foreign.Name]; fire != "" {
+			e.invokers[id.Name+"."+codegen.TriggerEventName(handler, event)] = cInvoker{node: node, fire: fire}
 		}
 	}
 	return []ir.Stmt{
@@ -723,7 +741,7 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 	case "gtk4.switchActive":
 		return "gtk_switch_get_active(GTK_SWITCH(" + arg(0) + "))", true
 	case "gtk4.entryText":
-		return "sngl_editable_text(" + widget(0) + ")", true
+		return "sngl_string_copy(gtk_editable_get_text(GTK_EDITABLE(" + arg(0) + ")))", true
 	}
 	if n.Func.Foreign.Path != gtk4rtPkg {
 		return "", false
@@ -765,6 +783,15 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 	case "CanvasOnClick":
 		fn, ctx := c.Callback(n.Args[1].Value.ExprType().Sig, n.Args[1].Value)
 		return "sngl_canvas_on_click(" + widget(0) + ", (SnglFn)" + fn + ", " + ctx + ", (GDestroyNotify)sngl_release)", true
+	case "ScrollNew":
+		return "sngl_scroll_new()", true
+	case "ScrolledWindowSetChild":
+		return "sngl_scroll_set_child(" + widget(0) + ", " + widget(1) + ")", true
+	case "ScrollSetDirection":
+		return "sngl_scroll_set_direction(" + widget(0) + ", (" + arg(1) + ").ptr)", true
+	case "ScrollOnReachEnd":
+		fn, ctx := c.Callback(n.Func.Params[1].Type.Sig, n.Args[1].Value)
+		return "sngl_scroll_on_reach_end(" + widget(0) + ", (SnglFn)" + fn + ", " + ctx + ", (GDestroyNotify)sngl_release)", true
 	case "QueueDraw":
 		return "gtk_widget_queue_draw(" + widget(0) + ")", true
 	case "Every":
