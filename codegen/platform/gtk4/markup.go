@@ -262,7 +262,7 @@ func (t *gtk4Translator) emitFlowMarkup(flow string) []ir.Stmt {
 		panic(fmt.Sprintf("gtk4: flow %s has no #[gen.protocol(set)] for its markup", flow))
 	}
 	node := &ir.Ident{Name: flow, IsElementRef: true}
-	return t.callStmt(boundCall(set, node, t.markupExpr(flow)))
+	return t.callStmt(boundCall(set, node, t.markupTrees().markupExpr(flow, t.shared.fail)))
 }
 
 // boundCall is the one call fn, a #[gen.protocol] function, makes, with its
@@ -294,12 +294,12 @@ func boundCall(fn *ir.Func, args ...ir.Expr) *ir.Call {
 	return call
 }
 
-// markupExpr is the Pango markup one flow renders, as a Go string expression.
-func (t *gtk4Translator) markupExpr(flow string) ir.Expr {
+// markupExpr is the Pango markup one flow renders, as a string expression
+// either language renders: fail is told of a span it cannot hold.
+func (mt *markupTrees) markupExpr(flow string, fail func(error)) ir.Expr {
 	var parts []ir.Expr
-	mt := t.markupTrees()
 	for _, root := range mt.roots[flow] {
-		parts = append(parts, t.spanParts(root, mt.flowGuards[flow], mt.flowLoops[flow])...)
+		parts = append(parts, mt.spanParts(root, mt.flowGuards[flow], mt.flowLoops[flow], fail)...)
 	}
 	return concat(parts)
 }
@@ -307,13 +307,13 @@ func (t *gtk4Translator) markupExpr(flow string) ir.Expr {
 // spanParts is one span's markup: its own tags around its words and the spans
 // written inside it, guarded by the `if`s between it and the span or flow it
 // was written in.
-func (t *gtk4Translator) spanParts(id string, outerGuards, outerLoops int) []ir.Expr {
-	sp := t.markupTrees().spans[id]
+func (mt *markupTrees) spanParts(id string, outerGuards, outerLoops int, fail func(error)) []ir.Expr {
+	sp := mt.spans[id]
 	if sp == nil {
 		return nil
 	}
 	if sp.loops > outerLoops {
-		t.shared.fail(fmt.Errorf("gtk4: a `for` among a flow's spans cannot be rendered: a flow is one label whose markup is a single expression"))
+		fail(fmt.Errorf("gtk4: a `for` among a flow's spans cannot be rendered: a flow is one label whose markup is a single expression"))
 		return nil
 	}
 	open, close := spanTags(sp.props)
@@ -322,7 +322,7 @@ func (t *gtk4Translator) spanParts(id string, outerGuards, outerLoops int) []ir.
 		parts = append(parts, escaped(text))
 	}
 	for _, k := range sp.kids {
-		parts = append(parts, t.spanParts(k, len(sp.guards), sp.loops)...)
+		parts = append(parts, mt.spanParts(k, len(sp.guards), sp.loops, fail)...)
 	}
 	parts = append(parts, strLit(close))
 	guards := sp.guards[min(outerGuards, len(sp.guards)):]

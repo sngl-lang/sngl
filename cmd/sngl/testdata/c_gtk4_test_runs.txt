@@ -82,6 +82,39 @@ stdout 'ok +1 tests, 0 failures'
 sngl test --platform=gtk4 --language=c rows.sngl
 stdout 'ok +1 tests, 0 failures'
 
+# A window's menu is rt's: each entry a hidden box among the window's
+# content, from which menu.c builds the header bar's GMenu, and a test picks
+# one copy of an entry a loop renders by its key (sngl_copy_put). A window's
+# way back is a hidden widget the bar's back button presses, as an Escape
+# nothing took does.
+
+sngl test --platform=gtk4 --language=c menus.sngl
+stdout 'ok +2 tests, 0 failures'
+
+# A tabs is rt's box of a GtkNotebook (tabs.c), whose page a test chooses as
+# a click does. A test's day is written into the calendar unreported, and
+# its choice selected on the drop-down, which reports it; a date is its text.
+
+sngl test --platform=gtk4 --language=c choose.sngl
+stdout 'ok +3 tests, 0 failures'
+
+# A flow is one label whose spans' words are its Pango markup, set again
+# from the same expression wherever a span's prop is written. A payload enum
+# is a tag and a field per member carrying one, and one a call the build
+# folds returns is the literal naming its member. A widget a branch took away
+# reads null, through the weak pointer rt holds it by.
+
+sngl test --platform=gtk4 --language=c flow.sngl
+stdout 'ok +2 tests, 0 failures'
+
+# A callback's strings are made in the arena, which it gives back as it
+# returns, so what a handler stores is kept: copied out to the heap, a list's
+# elements, a map's keys and values and a struct's fields with it, and what
+# the holder held before given back as the turn ends.
+
+sngl test --platform=gtk4 --language=c keep.sngl
+stdout 'ok +1 tests, 0 failures'
+
 -- app.sngl --
 import ui "sngl:ui"
 import c "sngl:language/c"
@@ -496,8 +529,249 @@ func testADirectionIsItsName(t test.Test, c main) {
     t.assert(string(c.way) == "both")
     t.assert("{c.way}" == "both")
 }
+-- menus.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+import "sngl:test"
+
+const sizes = ["Small", "Medium", "Large"]
+
+component app root {
+    var size = "Medium"
+    var saved = 0
+    var backs = 0
+
+    ui.window #main(title=pages.current.title, canGoBack=pages.canGoBack(), @back {
+        backs += 1
+        pages.back()
+    }) {
+        component menu {
+            ui.menuItem(label="File") {
+                ui.menuItem(label="Save", @select { saved += 1 })
+                ui.menuItem(label="Close", disabled=true)
+            }
+            ui.menuItem(label="Size") {
+                for var s = sizes {
+                    ui.menuItem(label=s, checked=s == size, @select { size = s })
+                }
+            }
+        }
+        nav.stack #pages {
+            nav.page #home(href="/", title="Home") {
+                ui.text(value="home")
+            }
+            nav.page #about(href="/about", title="About") {
+                ui.text(value="about")
+            }
+        }
+        ui.button #toAbout(text="About", @click { pages.go(about) })
+        ui.text #shown(value=size)
+    }
+}
+
+app()
+
+func testPickingAnEntryChecksIt(t test.Test, c app) {
+    t.assert(c.main.menu[1].children[1].checked)
+    c.main.menu[1].children[2].select()
+    t.assert(c.shown.value == "Large")
+    c.main.menu[0].children[0].select()
+    t.assert(c.saved == 1)
+}
+
+func testTheWindowsBackReturns(t test.Test, c app) {
+    t.assert(!c.main.canGoBack)
+    c.toAbout.click()
+    t.assert(c.main.canGoBack)
+    c.main.back()
+    t.assert(c.backs == 1)
+    t.assert(c.main.title == "Home")
+}
+-- choose.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+import time "sngl:time"
+
+component strip ui.node {
+    var idx = 0
+    var changed = -1
+    var extra = false
+    var picked option[time.date] = null
+    var seen = "none"
+    var fruit = "Apple"
+
+    ui.vbox {
+        ui.tabs #tabs(:selected=idx, @change(i) {
+            changed = i
+        }) {
+            ui.tab(label="One") {
+                ui.text(value="first panel")
+            }
+            ui.tab(label="Off", disabled=true) {
+                ui.text(value="second panel")
+            }
+            if extra {
+                ui.tab(label="More") {
+                    ui.text(value="more panel")
+                }
+            }
+        }
+        ui.datepicker #day(:value=picked, @change(value) { seen = value == null ? "no day" : "day" })
+        ui.select #fruits(:value=fruit) {
+            ui.choice(label="Apple", value="Apple")
+            ui.choice(label="Banana", value="Banana")
+        }
+    }
+}
+
+func testPressingATabSelectsIt(t test.Test, c strip) {
+    c.extra = true
+    c.tabs.change(2)
+    t.assert(c.idx == 2)
+    t.assert(c.changed == 2)
+}
+
+func testADayIsChosen(t test.Test, c strip) {
+    var d time.date = "2024-03-05"
+    c.day.change(d)
+    t.assert(c.picked == d)
+    t.assert(c.seen == "day")
+}
+
+func testAChoiceIsPicked(t test.Test, c strip) {
+    c.fruits.change("Banana")
+    t.assert(c.fruit == "Banana")
+}
+
+ui.window(title="t") {
+    strip
+}
+-- flow.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import md "sngl:ui/markup"
+
+enum Shape {
+    round  float
+    square float
+    empty
+}
+
+func area(s Shape) float {
+    match var v = s {
+        round {
+            return 3.0 * v * v
+        }
+        square {
+            return v * v
+        }
+        empty {
+            return 0.0
+        }
+    }
+}
+
+// A call the build folds is written back as the literal naming its member.
+func first(side float) Shape {
+    if side > 2.0 {
+        return {square=side}
+    }
+    return Shape.empty
+}
+
+component main node {
+    var loud = true
+    var shape Shape = {round=1.0}
+    var picked = first(3.0)
+    var shown = true
+
+    vbox {
+        md.paragraph {
+            md.text(value="quiet ")
+            if loud {
+                md.bold {
+                    md.text(value="LOUD")
+                }
+            } else {
+                md.italic {
+                    md.text(value="soft")
+                }
+            }
+            md.text(value=" end")
+        }
+        button #flip(text="flip", @click {
+            loud = !loud
+            shape = {square=2.0}
+            picked = Shape.empty
+        })
+        button #toggle(text="t", @click { shown = !shown })
+        text(value="{area(shape)}")
+        if shown {
+            text #label(value="shown")
+        }
+    }
+}
+
+func testFlip(t Test, c main) {
+    c.flip.click()
+    t.assert(!c.loud)
+    t.assert(c.shape == Shape{square=2.0})
+    t.assert(area(c.shape) == 4.0)
+    t.assert(c.picked == Shape.empty)
+}
+
+func testNullTestsFollowTheBranch(t Test, c main) {
+    t.assert(c.picked == Shape{square=3.0})
+    t.assert(c.label != null)
+    c.toggle.click()
+    t.assert(c.label == null)
+    c.toggle.click()
+    t.assert(c.label != null)
+}
+
+window {
+    main
+}
+-- keep.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+
+struct Entry {
+    name string
+    tags list[string]
+}
+
+component ticker ui.node {
+    var n = 0
+    var last = "none"
+    var seen list[string] = []
+    var names map[string, string] = {}
+    var entry = Entry{name="", tags=[]}
+
+    ui.button #tick(text="tick", @click {
+        n += 1
+        last = "tick {n}"
+        seen.push("t{n}")
+        names["k{n}"] = "v{n}"
+        entry = {name="e{n}", tags=["a{n}", "b{n}"]}
+    })
+    ui.text(value=last)
+}
+
+func testWhatAHandlerStoresOutlivesIt(t test.Test, c ticker) {
+    c.tick.click()
+    c.tick.click()
+    t.assert(c.last == "tick 2")
+    t.assert(c.seen.format(",") == "t1,t2")
+    t.assert(c.names["k1"] == "v1" && c.names["k2"] == "v2")
+    t.assert(c.entry.name == "e2" && c.entry.tags.format(",") == "a2,b2")
+}
+
+ui.window(title="t") {
+    ticker
+}
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:eac6fd63a993e53554a0deedec6ebc08
+sha256:4b8473da0a5b4a909b53e3b8b3cad86d
 {
   "results": [
     {
@@ -507,7 +781,7 @@ sha256:eac6fd63a993e53554a0deedec6ebc08
   ]
 }
 -- testrun/gtk4/c/bare.sngl/main/1 --
-sha256:84e20d062efd4752f50ce75a31237592
+sha256:6c407d8ae2f58ecd755d50c2f6c648b2
 {
   "results": [
     {
@@ -517,7 +791,7 @@ sha256:84e20d062efd4752f50ce75a31237592
   ]
 }
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:75b233ee9994d1131dec642f763a3c40
+sha256:0a664aad7937b43e28d93e7d5aadfa74
 {
   "results": [
     {
@@ -526,8 +800,26 @@ sha256:75b233ee9994d1131dec642f763a3c40
     }
   ]
 }
+-- testrun/gtk4/c/choose.sngl/strip/1 --
+sha256:44555b66165db8c2ad095c5a77500ae0
+{
+  "results": [
+    {
+      "Desc": "PressingATabSelectsIt",
+      "Passed": true
+    },
+    {
+      "Desc": "ADayIsChosen",
+      "Passed": true
+    },
+    {
+      "Desc": "AChoiceIsPicked",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/c/controls.sngl/main/1 --
-sha256:d66d2d77d07e07dc1645a66b6dfe8039
+sha256:01aef61c26ed02e9e2dd3a9e5f259ea4
 {
   "results": [
     {
@@ -536,8 +828,32 @@ sha256:d66d2d77d07e07dc1645a66b6dfe8039
     }
   ]
 }
+-- testrun/gtk4/c/flow.sngl/main/1 --
+sha256:33fd5c514df44f0ba458dbaeaf2133f6
+{
+  "results": [
+    {
+      "Desc": "Flip",
+      "Passed": true
+    },
+    {
+      "Desc": "NullTestsFollowTheBranch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/keep.sngl/ticker/1 --
+sha256:a55c822f5084efaafc5d7acb6432c029
+{
+  "results": [
+    {
+      "Desc": "WhatAHandlerStoresOutlivesIt",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/c/keys.sngl/app/1 --
-sha256:b9e1a52e99ae97794fd7aacbe21f25da
+sha256:0776645e99c207ff8c9c2abe7b798fe2
 {
   "results": [
     {
@@ -546,8 +862,22 @@ sha256:b9e1a52e99ae97794fd7aacbe21f25da
     }
   ]
 }
+-- testrun/gtk4/c/menus.sngl/app/1 --
+sha256:c3f3de0f8378da560ba1afa70d259419
+{
+  "results": [
+    {
+      "Desc": "PickingAnEntryChecksIt",
+      "Passed": true
+    },
+    {
+      "Desc": "TheWindowsBackReturns",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/c/rows.sngl/main/1 --
-sha256:373642e82c5e5300dbce57b2656f4209
+sha256:146c3f6194f06a20a693db69198a33f3
 {
   "results": [
     {
@@ -557,7 +887,7 @@ sha256:373642e82c5e5300dbce57b2656f4209
   ]
 }
 -- testrun/gtk4/c/scroll.sngl/main/1 --
-sha256:1c2c66c85663eff79e88a685471c81da
+sha256:83fce4131e7d903bda80a7a39b1a5bc7
 {
   "results": [
     {
@@ -571,7 +901,7 @@ sha256:1c2c66c85663eff79e88a685471c81da
   ]
 }
 -- testrun/gtk4/c/slots.sngl/card/1 --
-sha256:a731e1d3a0b41e7f725facf99aafe0f1
+sha256:a3184ff3a5c7cc5d11085746125b9cdb
 {
   "results": [
     {
@@ -581,7 +911,7 @@ sha256:a731e1d3a0b41e7f725facf99aafe0f1
   ]
 }
 -- testrun/gtk4/c/timer.sngl/main/1 --
-sha256:ca48271bc4f6a81e588500450ff40b00
+sha256:ae078b5c2cb968b161cb2da4c545ffac
 {
   "results": [
     {
@@ -595,7 +925,7 @@ sha256:ca48271bc4f6a81e588500450ff40b00
   ]
 }
 -- testrun/gtk4/c/units.sngl/app/1 --
-sha256:8daa536f96447656c57de1799133e10f
+sha256:e062a871422f289440c227afddc1e07e
 {
   "results": [
     {

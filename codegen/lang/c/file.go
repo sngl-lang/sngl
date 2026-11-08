@@ -3,6 +3,8 @@ package c
 import (
 	"slices"
 	"strings"
+
+	"duckfam.us/sngl/ir"
 )
 
 // file is what a C file needs ahead of the code a renderer writes into it:
@@ -27,7 +29,10 @@ type file struct {
 	// seq numbers what the renderer names: each lifted function, each
 	// temporary.
 	seq int
-	err error
+	// localVars are the vars the program's `var` statements declare
+	// (isLocalVar).
+	localVars map[*ir.Var]bool
+	err       error
 }
 
 // typeDef is one type definition: its name, the text that defines it, and

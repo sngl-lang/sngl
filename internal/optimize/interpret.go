@@ -52,6 +52,25 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 	switch v := val.(type) {
 	case nil:
 		return &ir.Literal{Type: ir.TypNull, Value: "null"}
+	case interp.EnumValue:
+		// A payload enum's value is the literal naming its member, as it is
+		// written: `{ok=2}`, or the member's Ident where it carries nothing.
+		t := typ
+		if ir.PayloadEnum(t) == nil {
+			t = v.Type
+		}
+		if ir.PayloadEnum(t) == nil {
+			return nil
+		}
+		pt := ir.MemberPayload(t, v.Member)
+		if pt == nil {
+			return &ir.Ident{Type: t, Name: v.Member, Member: v.Member}
+		}
+		payload := irFromValue(v.Payload, pt)
+		if payload == nil {
+			return nil
+		}
+		return &ir.StructLit{Type: t, Fields: []ir.FieldInit{{Name: v.Member, Value: payload}}}
 	case bool, int, uint64, float64, string:
 		if lit := irLiteral(v, typ); lit != nil {
 			return lit
@@ -80,9 +99,14 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 					ft = d.Type
 				}
 			}
+			fv := irFromValue(f.Value, ft)
+			if fv == nil {
+				// A field no literal writes leaves the struct unwritten too.
+				return nil
+			}
 			fields = append(fields, ir.FieldInit{
 				Name:  f.Name,
-				Value: irFromValue(f.Value, ft),
+				Value: fv,
 			})
 		}
 		// The literal holds what the value sets: a field at what it would

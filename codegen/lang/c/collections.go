@@ -33,6 +33,11 @@ func (c *Context) listType(t *ir.Type) string {
 func (c *Context) optType(t *ir.Type) string {
 	elem := t.Elems[0]
 	et := c.typeName(elem)
+	// An option of what C holds by pointer -- a widget, a record, a C
+	// object -- is the pointer, NULL where it holds none.
+	if strings.HasSuffix(et, "*") {
+		return et
+	}
 	name := "sngl_opt_" + typeToken(elem)
 	c.file.define(name, fmt.Sprintf("typedef struct %s {\n\tbool ok;\n\t%s value;\n} %s;\n", name, et, name), et)
 	return name
@@ -77,12 +82,51 @@ func (c *Context) ListLit(n *ir.ListLit, elems []string) string {
 	if n.Type == nil || n.Type.Kind != ir.TypeList {
 		return c.fail("a list literal of %s", n.Type)
 	}
-	for _, e := range n.Elems {
-		if _, ok := e.(*ir.Spread); ok {
-			return c.fail("a spread into a list")
+	// A spread joins the list it reads to what is written around it, each
+	// run of elements a list of its own.
+	var parts, run []string
+	for i, e := range n.Elems {
+		sp, ok := e.(*ir.Spread)
+		if !ok {
+			run = append(run, elems[i])
+			continue
+		}
+		if st := sp.Operand.ExprType(); st == nil || st.Kind != ir.TypeList || !st.Elems[0].Equal(n.Type.Elems[0]) {
+			return c.fail("a spread of %s into %s", st, n.Type)
+		}
+		if len(run) > 0 {
+			parts = append(parts, c.listOf(n.Type, run))
+			run = nil
+		}
+		parts = append(parts, elems[i])
+	}
+	if len(parts) == 0 {
+		return c.listOf(n.Type, elems)
+	}
+	if len(run) > 0 {
+		parts = append(parts, c.listOf(n.Type, run))
+	}
+	cat := c.listOp(n.Type, "cat", "L NAME(L a, L b)", `	L l = {malloc(sizeof(T) * (size_t)(a.len + b.len + 1)), a.len + b.len, a.len + b.len};
+	if (l.data == NULL) {
+		sngl_panic("out of memory");
+	}
+	if (a.len > 0) {
+		memcpy(l.data, a.data, sizeof(T) * (size_t)a.len);
+	}
+	if (b.len > 0) {
+		memcpy(l.data + a.len, b.data, sizeof(T) * (size_t)b.len);
+	}
+	return l;
+`)
+	// A spread alone is a copy, which a list written into must be.
+	out := cat + "(" + parts[0] + ", " + c.listOf(n.Type, nil) + ")"
+	if len(parts) > 1 {
+		out = parts[0]
+		for _, p := range parts[1:] {
+			out = cat + "(" + out + ", " + p + ")"
 		}
 	}
-	return c.listOf(n.Type, elems)
+	return out
 }
 
 func (c *Context) listGrow(t *ir.Type) string {
@@ -131,8 +175,12 @@ func (c *Context) Index(n *ir.Index, operand, idx string) string {
 }
 
 // MutTargetIndex is an element written, through the pointer listAt gives.
+// A key a holder's map takes is kept with it.
 func (c *Context) MutTargetIndex(n *ir.Index, operand, idx string) string {
 	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
+		if c.holder(n.Operand) && owns(t.Elems[0]) {
+			return "(*" + c.mapSlotKept(t) + "(&(" + operand + "), " + idx + "))"
+		}
 		return "(*" + c.mapSlot(t) + "(&(" + operand + "), " + idx + "))"
 	}
 	return c.Index(n, operand, idx)
@@ -164,7 +212,7 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 	case "list.push":
 		grow := c.listGrow(t)
 		push := c.listOp(t, "push", "void NAME(L *l, T v)", "\t"+grow+"(l, 1);\n\tl->data[l->len++] = v;\n")
-		return push + "(&(" + xs + "), " + arg(1) + ")", true
+		return push + "(&(" + xs + "), " + c.keptArg(t, recv, arg(1)) + ")", true
 	case "list.clear":
 		return "((" + xs + ").len = 0)", true
 	case "list.remove":
@@ -185,7 +233,7 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 	l->data[i] = v;
 	l->len++;
 `)
-		return ins + "(&(" + xs + "), " + arg(1) + ", " + arg(2) + ")", true
+		return ins + "(&(" + xs + "), " + arg(1) + ", " + c.keptArg(t, recv, arg(2)) + ")", true
 	case "list.reverse":
 		rev := c.listOp(t, "reverse", "L NAME(L l)", `	L out = {malloc(sizeof(T) * (size_t)(l.len + 1)), l.len, l.len};
 	for (int64_t i = 0; i < l.len; i++) {
@@ -322,11 +370,20 @@ func (c *Context) listLoop(n *ir.For) string {
 func (c *Context) option(n *ir.Conversion) (string, bool) {
 	switch {
 	case ir.IsOptionUnwrap(n):
+		if c.ptrOption(n.Operand.ExprType()) {
+			return c.EvalExpr(n.Operand), true
+		}
 		return "(" + c.EvalExpr(n.Operand) + ").value", true
 	case ir.IsOptionWrap(n):
+		if c.ptrOption(n.Type) {
+			return c.EvalExpr(n.Operand), true
+		}
 		return "((" + c.optType(n.Type) + "){true, " + c.EvalExpr(n.Operand) + "})", true
 	}
 	if lit, ok := n.Operand.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull && n.Type != nil {
+		if c.ptrOption(n.Type) {
+			return "NULL", true
+		}
 		switch n.Type.Kind {
 		case ir.TypeOption, ir.TypeList, ir.TypeMap, ir.TypeFunc:
 			return "((" + c.typeName(n.Type) + "){0})", true
@@ -347,6 +404,12 @@ func (c *Context) optionCompare(n *ir.Binary, left, right string) (string, bool)
 	}
 	lt, rt := n.Left.ExprType(), n.Right.ExprType()
 	switch {
+	case ir.IsNullLiteral(n.Right) && c.ptrOption(lt):
+		return "(" + left + " " + n.Op.String() + " NULL)", true
+	case ir.IsNullLiteral(n.Left) && c.ptrOption(rt):
+		return "(" + right + " " + n.Op.String() + " NULL)", true
+	case c.ptrOption(lt) || c.ptrOption(rt):
+		return "(" + left + " " + n.Op.String() + " " + right + ")", true
 	case ir.IsNullLiteral(n.Right) && lt != nil && lt.Kind == ir.TypeOption:
 		return not + "(" + left + ").ok", true
 	case ir.IsNullLiteral(n.Left) && rt != nil && rt.Kind == ir.TypeOption:
@@ -388,7 +451,15 @@ func (c *Context) copyValue(t *ir.Type, v string) string {
 	}
 	return out;
 `) + "(" + v + ")"
+	case ir.TypeEnum:
+		if ed := ir.PayloadEnum(t); ed != nil {
+			return c.enumCopy(t, ed, v)
+		}
+		return v
 	case ir.TypeOption:
+		if c.ptrOption(t) {
+			return v
+		}
 		ot := c.optType(t)
 		name := ot + "_copy"
 		c.file.helper(name, "static "+ot+" "+name+"("+ot+" o) {\n\tif (o.ok) {\n\t\to.value = "+c.copyValue(t.Elems[0], "o.value")+";\n\t}\n\treturn o;\n}\n")
@@ -458,9 +529,16 @@ func (c *Context) mapFind(t *ir.Type) string {
 
 // mapSlot is the function answering where a key's value is in a map of t,
 // a place made for it, holding V's zero, where it has none.
-func (c *Context) mapSlot(t *ir.Type) string {
+func (c *Context) mapSlot(t *ir.Type) string { return c.mapSlotAs(t, "slot", "k") }
+
+// mapSlotKept is mapSlot for a holder's map, which keeps a key it takes.
+func (c *Context) mapSlotKept(t *ir.Type) string {
+	return c.mapSlotAs(t, "slot_kept", c.keep(t.Elems[0], "k"))
+}
+
+func (c *Context) mapSlotAs(t *ir.Type, op, key string) string {
 	find := c.mapFind(t)
-	return c.mapOp(t, "slot", "V *NAME(M *m, K k)", `	int64_t i = `+find+`(*m, k);
+	return c.mapOp(t, op, "V *NAME(M *m, K k)", `	int64_t i = `+find+`(*m, k);
 	if (i >= 0) {
 		return &m->vals[i];
 	}
@@ -479,7 +557,7 @@ func (c *Context) mapSlot(t *ir.Type) string {
 		m->vals = vals;
 		m->cap = cap;
 	}
-	m->keys[m->len] = k;
+	m->keys[m->len] = `+key+`;
 	memset(&m->vals[m->len], 0, sizeof(V));
 	return &m->vals[m->len++];
 `)
@@ -669,4 +747,19 @@ func (c *Context) numberIntrinsic(n *ir.Call) (string, bool) {
 		return name + "(" + arg(0) + ", " + arg(1) + ", " + arg(2) + ")", true
 	}
 	return "", false
+}
+
+// ptrOption reports whether t is an option C holds as the pointer it is
+// (optType).
+func (c *Context) ptrOption(t *ir.Type) bool {
+	return t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 && c.isPointer(t.Elems[0])
+}
+
+// keptArg is v, an element pushed into recv, a list of type t, as recv keeps
+// it where recv is a holder's.
+func (c *Context) keptArg(t *ir.Type, recv ir.Expr, v string) string {
+	if c.holder(recv) {
+		return c.keep(t.Elems[0], v)
+	}
+	return v
 }

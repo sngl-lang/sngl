@@ -79,7 +79,12 @@ func writtenVars(pkg *ir.Package) map[*ir.Var]bool {
 		case *ir.Toggle:
 			mark(s.Target)
 		case *ir.Call:
-			if s.Func == nil || !s.Func.MutatesReceiver {
+			if s.Func == nil {
+				return nil
+			}
+			// A pass's call of an intrinsic (ir.IntrinsicMethod) carries no
+			// marks: the intrinsic's own says whether it writes.
+			if def := ir.LookupIntrinsic(s.Func.Intrinsic); !s.Func.MutatesReceiver && (def == nil || !def.MutatesReceiver) {
 				return nil
 			}
 			// The declaration says this call writes through its argument,

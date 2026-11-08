@@ -233,3 +233,13 @@ checked ahead, each in the scope its body check gives it, and an override's
 restatement waits for them (`afterPropDefaults`)
 (`testdata/prop_default_typed_call_site.sngl`,
 `error_override_restates_default_type.sngl`).
+
+## Units on C
+
+A single-base unit is a `double` of its base, and a duration one of
+milliseconds. A unit of several bases is a struct of a `double` per base,
+which C adds, subtracts, scales and compares through functions the file
+defines (`codegen/lang/c/units.go`). Its text is the sum the interpreter
+prints (`unitValue.String`): each base it holds a magnitude in, joined by
+`ir.UnitTermSep`, or its zero in the first base, each term written by the
+runtime's `sngl_unit_term` as `ir.FormatUnitTerm` writes one.

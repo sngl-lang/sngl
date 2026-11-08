@@ -6,6 +6,8 @@ import (
 	"io"
 	"io/fs"
 	"maps"
+	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -30,7 +32,7 @@ import (
 // holds them but the file.
 
 // rtFiles are gtk4's runtime sources, written beside main.c.
-var rtFiles = []string{"sngl_gtk.h", "sngl_gtk.c", "look.c", "scroll.c", "keys.c"}
+var rtFiles = []string{"sngl_gtk.h", "sngl_gtk.c", "look.c", "scroll.c", "keys.c", "choose.c", "tabs.c", "menu.c", "image.c"}
 
 // generateC writes req's program as C: built for `sngl test`, its tests and
 // the agent running them in place of the application.
@@ -50,12 +52,13 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	if err != nil {
 		return err
 	}
-	e := &cEmitter{fe: fe, ctx: fe.Context(), pkg: pkg, reg: reg, globals: map[*ir.Var]string{}, nodes: map[string]string{}, invokers: map[string]cInvoker{}}
+	e := &cEmitter{fe: fe, ctx: fe.Context(), pkg: pkg, reg: reg, globals: map[*ir.Var]string{}, nodes: map[string]string{}, invokers: map[string]cInvoker{}, images: map[string]string{}}
 	e.ctx.State = e.state
 	e.ctx.Types = e.types
 	e.ctx.Native = e.native
 	e.ctx.Closures = e.closure
 	e.canvases(pkg)
+	e.markup = collectMarkup(pkg)
 
 	// What is built is the package body, or the body of the component a
 	// test harness isolated, whose state is then the program's.
@@ -89,6 +92,31 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 		fn.Block = codegen.WalkLowered(context.Background(), fn.Block, e)
 		written = append(written, fn)
 	}
+	// A closure whose function no declaration holds -- a lambda lifted in
+	// a component the inliner spliced away -- is the file's.
+	known := map[*ir.Func]bool{}
+	for _, fn := range funcs {
+		known[fn] = true
+	}
+	var stray func(root any)
+	stray = func(root any) {
+		_ = ir.Walk(root, func(n ir.Node) error {
+			cl, ok := n.(*ir.Closure)
+			if !ok || cl.Func == nil || known[cl.Func] || clang.Bodiless(cl.Func) || e.closureOwner(cl.Func) != nil {
+				return nil
+			}
+			known[cl.Func] = true
+			e.anchor = ""
+			cl.Func.Block = codegen.WalkLowered(context.Background(), cl.Func.Block, e)
+			written = append(written, cl.Func)
+			stray(cl.Func.Block)
+			return nil
+		})
+	}
+	stray(body)
+	for _, fn := range slices.Clone(written) {
+		stray(fn.Block)
+	}
 	for _, comp := range pkg.Components {
 		if isInstanceComponent(comp) {
 			e.record(comp)
@@ -103,13 +131,18 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	// Model and building it.
 	var build strings.Builder
 	build.WriteString("\nstatic void sngl_init(void) {\n")
+	// A test builds the program afresh, whose copies the last one's were
+	// not.
+	for _, id := range e.copies {
+		fmt.Fprintf(&build, "\tif (%s) {\n\t\tg_hash_table_remove_all(%s);\n\t}\n", copiesName(id), copiesName(id))
+	}
 	for _, v := range vars {
 		if v.Init == nil {
 			continue
 		}
 		// A null is the zero of the var's type, which is a struct for an
 		// option, a list, a map and a function.
-		value := e.ctx.EvalExpr(v.Init)
+		value := e.ctx.Keep(v.Type, e.ctx.EvalExpr(v.Init))
 		if ir.IsNullLiteral(v.Init) {
 			value = "(" + e.ctx.TypeName(v.Type) + "){0}"
 		}
@@ -133,6 +166,9 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	for _, a := range e.anchors {
 		fmt.Fprintf(&globals, "static GtkWidget *%s;\n", a)
 	}
+	for _, id := range e.copies {
+		fmt.Fprintf(&globals, "static GHashTable *%s;\n", copiesName(id))
+	}
 	fe.Prepend("\n" + globals.String())
 	io.WriteString(fe, build.String())
 	teardown := ""
@@ -142,7 +178,7 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	if agent {
 		io.WriteString(fe, e.tests(tests, teardown))
 	} else {
-		io.WriteString(fe, "\nstatic void sngl_start(void) {\n\tsngl_init();\n\tsngl_build();\n}\n")
+		io.WriteString(fe, "\nstatic void sngl_start(void) {\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n}\n")
 		io.WriteString(fe, "\nint main(void) {\n\tint status = sngl_app_run(sngl_start);\n"+teardown+"\treturn status;\n}\n")
 	}
 	if e.err != nil {
@@ -157,6 +193,13 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 		return fmt.Errorf("gtk4: %w", err)
 	}
 	if err := writeRawFile(sink, clang.BuildFile, clang.Manifest(links, "gtk4")); err != nil {
+		return err
+	}
+	assets, err := cAssets(req.FileAssets)
+	if err != nil {
+		return err
+	}
+	if err := writeRawFile(sink, "sngl_assets.c", assets); err != nil {
 		return err
 	}
 	for name, data := range sources {
@@ -210,8 +253,12 @@ type cInvoker struct {
 // rtFires are the rt functions a test fires an event with that a gtk4rt
 // native connects rather than a signal, by the native.
 var rtFires = map[string]string{
-	"gtk4rt.ScrollOnReachEnd": "sngl_scroll_reach_end",
-	"gtk4rt.ToplevelOnKey":    "sngl_toplevel_key",
+	"gtk4rt.ScrollOnReachEnd":  "sngl_scroll_reach_end",
+	"gtk4rt.ToplevelOnKey":     "sngl_toplevel_key",
+	"gtk4rt.TabPageOnShown":    "sngl_tab_page_show",
+	"gtk4rt.MenuEntryOnSelect": "sngl_menu_entry_select",
+	"gtk4rt.BackOnPress":       "sngl_back_press",
+	"gtk4rt.ImageFrameOnClick": "sngl_image_click",
 }
 
 // tests writes each test as a function of the agent's, and main serving
@@ -234,14 +281,15 @@ func (e *cEmitter) tests(fns []*ir.Func, teardown string) string {
 			}
 		}
 		fmt.Fprintf(&b, "\nstatic void %s(sngl_t *%s) {\n", name, clang.Local(tName))
-		b.WriteString("\tsngl_reset();\n")
+		// A test is a turn; one a failure leaves, the agent ends.
+		b.WriteString("\tsngl_turn_enter();\n\tsngl_reset();\n")
 		if comp == "" {
 			b.WriteString("\tsngl_build();\n")
 		}
 		for _, l := range e.testBlock(fn.Block, tName, comp) {
 			b.WriteString("\t" + l + "\n")
 		}
-		b.WriteString("}\n")
+		b.WriteString("\tsngl_turn_leave();\n}\n")
 		table = append(table, fmt.Sprintf("\t{%q, %s},", strings.TrimPrefix(fn.Name, "test"), name))
 	}
 	b.WriteString("\nstatic const sngl_test sngl_tests[] = {\n" + strings.Join(table, "\n") + "\n};\n")
@@ -265,7 +313,7 @@ func (e *cEmitter) testBlock(stmts []ir.Stmt, tName, comp string) []string {
 
 // testCall is n as the test being written does it, or false where n is no
 // call only a test makes.
-func (e *cEmitter) testCall(n *ir.Call) (string, bool) {
+func (e *cEmitter) testCall(ctx *clang.Context, n *ir.Call) (string, bool) {
 	if e.testT == "" {
 		return "", false
 	}
@@ -273,11 +321,11 @@ func (e *cEmitter) testCall(n *ir.Call) (string, bool) {
 		return "sngl_build()", true
 	}
 	if tt, ok := codegen.EventTriggerTarget(n); ok {
-		return e.trigger(tt.ID, n), true
+		return e.trigger(ctx, tt, n), true
 	}
 	switch {
 	case ir.IsTestCall(n, ir.TestAssertID), ir.IsTestCall(n, ir.TestMustID):
-		cond := e.ctx.EvalExpr(n.Args[1].Value)
+		cond := ctx.EvalExpr(n.Args[1].Value)
 		fail, word := "sngl_test_fail", "assert"
 		if ir.IsTestCall(n, ir.TestMustID) {
 			fail, word = "sngl_test_fail_now", "must"
@@ -287,10 +335,10 @@ func (e *cEmitter) testCall(n *ir.Call) (string, bool) {
 		// The test runs on the loop's own thread, so it runs the loop while
 		// it waits, as gtk4rt.PumpFor does for Go.
 		pred := n.Args[1].Value
-		fnT := e.ctx.TypeName(pred.ExprType())
+		fnT := ctx.TypeName(pred.ExprType())
 		name := fnT + "_wait"
-		e.ctx.Helper(name, "static void "+name+"("+fnT+" p, int64_t ms) {\n\tgint64 end = g_get_monotonic_time() + (gint64)ms * 1000;\n\twhile (!p.fn(p.env) && g_get_monotonic_time() < end) {\n\t\tif (!g_main_context_iteration(NULL, FALSE)) {\n\t\t\tg_usleep(1000);\n\t\t}\n\t}\n}\n")
-		return name + "(" + e.ctx.EvalExpr(pred) + ", " + e.ctx.EvalExpr(n.Args[2].Value) + ")", true
+		ctx.Helper(name, "static void "+name+"("+fnT+" p, int64_t ms) {\n\tgint64 end = g_get_monotonic_time() + (gint64)ms * 1000;\n\twhile (!p.fn(p.env) && g_get_monotonic_time() < end) {\n\t\tif (!g_main_context_iteration(NULL, FALSE)) {\n\t\t\tg_usleep(1000);\n\t\t}\n\t}\n}\n")
+		return name + "(" + ctx.EvalExpr(pred) + ", " + ctx.EvalExpr(n.Args[2].Value) + ")", true
 	}
 	if ir.IsTestMethodCall(n) {
 		e.fail("a test's t.%s", n.Func.Name)
@@ -314,6 +362,14 @@ func (e *cEmitter) componentReads(s ir.Stmt, comp string) ir.Stmt {
 				return n, ir.SkipDir
 			}
 		}
+		// The component itself, handed a method lowering wrote for it as
+		// its `this`: its state is the file's, so the method reads none of
+		// it through the receiver.
+		if id, ok := n.(*ir.Ident); ok && id.Name == comp {
+			if _, param := id.Sym.(*ir.Param); param && e.recordOf(id.Type) == nil {
+				return &ir.Literal{Type: ir.TypNull, Value: "null"}, ir.SkipDir
+			}
+		}
 		sel, ok := n.(*ir.Select)
 		if !ok {
 			return n, nil
@@ -333,21 +389,80 @@ func (e *cEmitter) componentReads(s ir.Stmt, comp string) ir.Stmt {
 			}
 			return ref, ir.SkipDir
 		}
-		return &ir.Ident{Name: sel.Field, Type: sel.Type}, ir.SkipDir
+		if _, ok := e.nodes[sel.Field]; ok {
+			return &ir.Ident{Name: sel.Field, Type: sel.Type}, ir.SkipDir
+		}
+		// A copy's state, or a component's built at run time, is its
+		// record's, which a test reaches through no name of the file's.
+		e.fail("a test reading %s.%s, which the program holds in no var or widget of its own", comp, sel.Field)
+		return n, ir.SkipDir
 	})
+	e.unreached(s, comp)
 	return s
+}
+
+// unreached refuses what a test reaches other than through the component it
+// takes: an alias of it, a helper handed it, a ref it read off it, each of
+// which C would name as a value it never declared.
+func (e *cEmitter) unreached(s ir.Stmt, comp string) {
+	_ = ir.Walk(s, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Call:
+			if tt, ok := codegen.EventTriggerTarget(x); ok {
+				if tt.Recv != comp {
+					e.fail("a test's trigger through %s", tt.Recv)
+				}
+				return ir.SkipDir
+			}
+			if ir.IsTestCall(x, ir.TestMountID) || ir.IsTestMethodCall(x) {
+				return nil
+			}
+			for _, a := range x.Args {
+				// A widget the test read off the component is the file's.
+				if id, ok := a.Value.(*ir.Ident); ok {
+					if _, held := e.nodes[id.Name]; held {
+						continue
+					}
+				}
+				if t := a.Value.ExprType(); t != nil && (t.Kind == ir.TypeComponent || t.Kind == ir.TypeInstance) {
+					e.fail("a test handing %s a component", x.Func.Name)
+				}
+			}
+		case *ir.Select:
+			if t := x.Operand.ExprType(); t != nil && (t.Kind == ir.TypeComponent || t.Kind == ir.TypeInstance) {
+				e.fail("a test reading %s off a component other than the one it takes", x.Field)
+			}
+		case *ir.LocalVar:
+			if t := x.Type; t != nil && (t.Kind == ir.TypeComponent || t.Kind == ir.TypeInstance) {
+				e.fail("a test holding a component in %s", x.Name)
+			}
+		}
+		return nil
+	})
 }
 
 // trigger fires the event c names on the widget id, as GTK does: its signal
 // emitted, which reaches the program's handler through the connection the
 // program made.
-func (e *cEmitter) trigger(id string, c *ir.Call) string {
+func (e *cEmitter) trigger(ctx *clang.Context, tt codegen.EventTrigger, c *ir.Call) string {
+	id := tt.ID
 	inv, ok := e.invokers[id+"."+c.Event]
 	if !ok {
 		e.fail("a test's %s.%s(), which nothing connects", id, c.Event)
 		return "(void)0"
 	}
-	w := e.ctx.EvalExpr(inv.node)
+	w := ctx.EvalExpr(inv.node)
+	// One copy of a node loops render is the widget its key holds, and a
+	// test reaching one not rendered fails.
+	if key := tt.Key(); key != nil {
+		cType := e.widgetType(id)
+		if cType == "" {
+			cType = "GtkWidget"
+		}
+		at := "sngl_copy_at"
+		ctx.Helper(at, "static GtkWidget *"+at+"(sngl_t *t, GHashTable *copies, sngl_string key) {\n\tGtkWidget *w = sngl_copy_get(copies, key.ptr);\n\tif (w == NULL) {\n\t\tsngl_test_fail_now(t, sngl_concat(SNGL_STR(\"no copy rendered at \"), key));\n\t}\n\treturn w;\n}\n")
+		w = "((" + cType + " *)" + at + "(" + clang.Local(e.testT) + ", " + copiesName(id) + ", " + ctx.EvalExpr(key) + "))"
+	}
 	if inv.fire != "" && len(c.Args) == 0 {
 		return inv.fire + "(GTK_WIDGET(" + w + "))"
 	}
@@ -355,13 +470,13 @@ func (e *cEmitter) trigger(id string, c *ir.Call) string {
 		// A window's key is the press, field by field, and the stop its
 		// handler calls: a function of the file's takes the press apart.
 		press, stop := c.Args[0].Value, c.Args[1].Value
-		fn, ctx := e.ctx.Callback(stop.ExprType().Sig, stop)
-		pt := e.ctx.TypeName(press.ExprType())
+		fn, env := ctx.Callback(stop.ExprType().Sig, stop)
+		pt := ctx.TypeName(press.ExprType())
 		name := pt + "_press"
-		e.ctx.Helper(name, "static void "+name+"(GtkWidget *w, "+pt+" p, SnglFn stop, void *ctx) {\n\tsngl_toplevel_key(w, p.key.ptr, p.ctrl, p.alt, p.shift, p.meta, p.editing, stop, ctx, (GDestroyNotify)sngl_release);\n}\n")
-		return name + "(GTK_WIDGET(" + w + "), " + e.ctx.EvalExpr(press) + ", (SnglFn)" + fn + ", " + ctx + ")"
+		ctx.Helper(name, "static void "+name+"(GtkWidget *w, "+pt+" p, SnglFn stop, void *ctx) {\n\tsngl_toplevel_key(w, p.key.ptr, p.ctrl, p.alt, p.shift, p.meta, p.editing, stop, ctx, (GDestroyNotify)sngl_release);\n}\n")
+		return name + "(GTK_WIDGET(" + w + "), " + ctx.EvalExpr(press) + ", (SnglFn)" + fn + ", " + env + ")"
 	}
-	signal, prop := e.ctx.EvalExpr(inv.signal), "NULL"
+	signal, prop := ctx.EvalExpr(inv.signal), "NULL"
 	fire := "g_signal_emit_by_name((gpointer)(" + w + "), " + signal + ")"
 	if inv.notify != "" {
 		prop = strconv.Quote(inv.notify)
@@ -370,7 +485,7 @@ func (e *cEmitter) trigger(id string, c *ir.Call) string {
 	if len(c.Args) == 0 {
 		return fire
 	}
-	v := e.ctx.EvalExpr(c.Args[0].Value)
+	v := ctx.EvalExpr(c.Args[0].Value)
 	switch {
 	case len(c.Args) > 1:
 	case inv.cType == "GtkCheckButton" || inv.cType == "GtkSwitch":
@@ -381,6 +496,18 @@ func (e *cEmitter) trigger(id string, c *ir.Call) string {
 		// An entry's events carry its text, which the handler reads back off
 		// the widget: the test puts it there first.
 		return "(sngl_editable_set_text_quiet(GTK_WIDGET(" + w + "), (" + v + ").ptr), " + fire + ")"
+	case inv.cType == "GtkCalendar":
+		// A day is selected unreported, as the user's click selects it, and
+		// the test fires the selection; none selects nothing.
+		day := v
+		if t := c.Args[0].Value.ExprType(); t != nil && t.Kind == ir.TypeOption {
+			return "((" + v + ").ok ? sngl_calendar_select_day(GTK_CALENDAR(" + w + "), (" + v + ").value.ptr) : (void)0, " + fire + ")"
+		}
+		return "(sngl_calendar_select_day(GTK_CALENDAR(" + w + "), (" + day + ").ptr), " + fire + ")"
+	case inv.cType == "GtkDropDown":
+		// The choice labeled with the value, selected as a click does, which
+		// reports itself.
+		return "sngl_drop_down_select(GTK_DROP_DOWN(" + w + "), (" + v + ").ptr)"
 	}
 	e.fail("a test's %s.%s() carrying a value", id, c.Event)
 	return "(void)0"
@@ -425,6 +552,14 @@ type cEmitter struct {
 	// canvasByID and canvasByNode are the program's drawings (canvases).
 	canvasByID   map[string]*codegen.Canvas
 	canvasByNode map[*ir.NodeInst]*codegen.Canvas
+	// images are the tag of each image primitive the body makes, by its id.
+	images map[string]string
+	// markup is the program's flows and the spans in each, whose words a
+	// flow's label is set to as Pango markup.
+	markup *markupTrees
+	// copies are the ids of the nodes loops render that a test reaches one
+	// copy of, each held by its key (copiesName).
+	copies []string
 	// testT is the name of the test's sngl_t while a test is written
 	// (testBlock), and "" otherwise.
 	testT string
@@ -446,6 +581,10 @@ func (e *cEmitter) state(n *ir.Ident, local bool) (string, bool) {
 	// the runtime's box calls answer for it, as gtk4rt's do for App.
 	if ir.IsAppParent(n) {
 		return "SNGL_APP", true
+	}
+	// A component handed as a method's `this` is the record being written.
+	if comp, ok := n.Sym.(*ir.Component); ok && e.scope != nil && e.scope.comp == comp {
+		return selfName, true
 	}
 	if v, ok := n.Sym.(*ir.Var); ok {
 		if s, ok := e.globals[v]; ok {
@@ -470,9 +609,24 @@ func (e *cEmitter) state(n *ir.Ident, local bool) (string, bool) {
 // types names a widget as the GObject pointer it is: its class's where it is
 // one of GIR's, and GtkWidget's for any node else.
 func (e *cEmitter) types(t *ir.Type) (string, bool) {
-	// A timer's schedule, which rt's sngl_every arms.
-	if sd, ok := t.Decl.(*ir.StructDef); ok && t.Kind == ir.TypeStruct && sd.Foreign.Path == gtk4rtPkg && sd.Foreign.Name == "*gtk4rt.Schedule" {
-		return "SnglSchedule *", true
+	// A timer's schedule, which rt's sngl_every arms, and a picture.
+	if sd, ok := t.Decl.(*ir.StructDef); ok && t.Kind == ir.TypeStruct && sd.Foreign.Path == gtk4rtPkg {
+		switch sd.Foreign.Name {
+		case "*gtk4rt.Schedule":
+			return "SnglSchedule *", true
+		case "*gtk4rt.Picture":
+			return "SnglPicture *", true
+		}
+	}
+	// A component's family parameter nothing bound, as a timer in a loop
+	// leaves it: the node its body renders, which is none.
+	if t.Kind == ir.TypeTypeParam {
+		for _, comp := range e.pkg.Components {
+			if comp.FamilyParam != nil && comp.FamilyParam.ParamName == t.ParamName {
+				return "GtkWidget *", true
+			}
+		}
+		return "", false
 	}
 	if t.Kind != ir.TypeComponent && t.Kind != ir.TypeInstance {
 		return "", false
@@ -508,11 +662,45 @@ func (e *cEmitter) OnMakeNode(ctx context.Context, id, tag string, made ir.Expr)
 	}
 	e.hold(id, cType+" *")
 	v := &ir.Var{Name: id, Type: ir.NativePointerOf(cType)}
-	return []ir.Stmt{&ir.Assign{
-		Target: &ir.Ident{Name: id, Sym: v, Type: v.Type},
+	ref := &ir.Ident{Name: id, Sym: v, Type: v.Type}
+	out := []ir.Stmt{&ir.Assign{
+		Target: ref,
 		Op:     ast.AssignSet,
 		Value:  &ir.Conversion{Type: v.Type, Operand: made},
 	}}
+	// A widget the file holds reads NULL once a branch took it away and
+	// GTK let it go, which is what a test's null test asks.
+	if e.scope == nil {
+		out = []ir.Stmt{&ir.CallStmt{Call: rtCall("Hold", ir.TypVoid, ref, &ir.Conversion{Type: v.Type, Operand: made})}}
+	}
+	if imagePrimitive(tag) {
+		e.images[id] = tag
+	}
+	if tag == flowTag {
+		out = append(out, e.flowMarkup(id, ref)...)
+	}
+	// A drawn source's picture, painted once as it is made: its shapes are
+	// a canvas's drawing, which the file's draw function paints.
+	if cv := e.canvasByID[id]; tag == imageDrawingTag && cv != nil {
+		out = append(out, &ir.CallStmt{Call: rtCall("ImagePaint", ir.TypVoid, ref, &ir.Literal{Type: ir.TypString, Value: id})})
+	}
+	return out
+}
+
+// imagePaint is the native hook's ImagePaint: the drawn source the literal
+// names painted by its drawing's function, at the drawing's size.
+func (e *cEmitter) imagePaint(id ir.Expr, w string) string {
+	lit, _ := id.(*ir.Literal)
+	if lit == nil || e.canvasByID[lit.Value] == nil {
+		e.fail("painting a drawing no canvas is found for")
+		return "(void)0"
+	}
+	cv := e.canvasByID[lit.Value]
+	data := "NULL"
+	if canvasOwner(cv) != nil {
+		data = selfName
+	}
+	return fmt.Sprintf("sngl_image_paint(GTK_WIDGET(%s), %d, %d, %s, %s)", w, cv.Width, cv.Height, drawName(cv), data)
 }
 
 // hold makes id, a widget or a record the code builds, something the
@@ -541,10 +729,22 @@ func (e *cEmitter) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
 	if tag == "canvas" {
 		return e.canvasCreate(id)
 	}
+	// A span is no widget: its words are its flow's markup.
+	if tag == spanTag {
+		return nil
+	}
 	return e.fail("a %s made without a declared create", tag)
 }
 
 func (e *cEmitter) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
+	// A span's prop is read off the tree into its flow's markup, which is
+	// set again from the same expression: the whole of a flow's reactivity.
+	if flow := e.markup.ownerOf[codegen.IdentBareName(node)]; flow != "" {
+		return e.flowMarkup(flow, &ir.Ident{Name: flow, IsElementRef: true, Type: ir.NativePointerOf("GtkLabel")})
+	}
+	if _, ok := e.markup.spans[codegen.IdentBareName(node)]; ok {
+		return nil
+	}
 	if prop == lookPropName {
 		return []ir.Stmt{&ir.CallStmt{Call: rtCall("SetLook", ir.TypVoid, node, value)}}
 	}
@@ -553,8 +753,24 @@ func (e *cEmitter) OnPropAssign(ctx context.Context, node ir.Expr, prop string, 
 	if e.canvasByID[codegen.IdentBareName(node)] != nil && setterOf(node, prop) == nil {
 		return nil
 	}
+	// The key of a copy loops rendered, which the node is held by for a
+	// test reaching that copy.
 	if prop == ir.CopyProp {
-		return e.fail("a test reaching one copy of %s", codegen.IdentBareName(node))
+		id := codegen.IdentBareName(node)
+		if !slices.Contains(e.copies, id) {
+			e.copies = append(e.copies, id)
+		}
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("CopyPut", ir.TypVoid, &ir.Literal{Type: ir.TypString, Value: id}, value, node)}}
+	}
+	// What a source says it shows rather than what it shows, and a
+	// drawing's size, which its paint read off the drawing.
+	switch e.images[codegen.IdentBareName(node)] {
+	case imageURLTag:
+		if prop == ir.ImageSourceURL {
+			return nil
+		}
+	case imageDrawingTag:
+		return nil
 	}
 	call, ok := value.(*ir.Call)
 	if !ok {
@@ -564,6 +780,9 @@ func (e *cEmitter) OnPropAssign(ctx context.Context, node ir.Expr, prop string, 
 }
 
 func (e *cEmitter) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	if _, ok := e.markup.spans[codegen.IdentBareName(child)]; ok {
+		return nil
+	}
 	if ir.IsAppParent(parent) {
 		return []ir.Stmt{&ir.CallStmt{Call: rtCall("AppAttach", ir.TypVoid, child)}}
 	}
@@ -581,6 +800,9 @@ func (e *cEmitter) OnAppendChild(ctx context.Context, parent, child ir.Expr) []i
 // OnAppendThrough is the class's append, or where a slot's render puts a
 // child in the box it renders into, a place before the slot's anchor.
 func (e *cEmitter) OnAppendThrough(ctx context.Context, parent, child, call ir.Expr) []ir.Stmt {
+	if _, ok := e.markup.spans[codegen.IdentBareName(child)]; ok {
+		return nil
+	}
 	if id, ok := child.(*ir.Ident); ok && e.scope != nil {
 		e.scope.appended[id.Name] = true
 	}
@@ -712,7 +934,7 @@ func (e *cEmitter) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
 // cNatives are the gtk4rt calls a cgo build still makes, as rt's C writes
 // each: its name, or what it writes in its place given its arguments.
 func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
-	if out, ok := e.testCall(n); ok {
+	if out, ok := e.testCall(c, n); ok {
 		return out, true
 	}
 	if n.Func == nil {
@@ -761,6 +983,25 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 		return "gtk_switch_get_active(GTK_SWITCH(" + arg(0) + "))", true
 	case "gtk4.entryText":
 		return "sngl_string_copy(gtk_editable_get_text(GTK_EDITABLE(" + arg(0) + ")))", true
+	case "async.start", "async.do":
+		// C has no thread of its own to start work on: the work runs on the
+		// loop's, once the turn that started it is done, and its `do` the
+		// same way.
+		if len(n.Args) != 1 {
+			e.fail("%s of %d arguments", n.Func.Intrinsic, len(n.Args))
+			return "(void)0", true
+		}
+		fn, ctx := c.Callback(ir.FuncOf(nil, ir.TypVoid).Sig, n.Args[0].Value)
+		return "sngl_idle((SnglFn)" + fn + ", " + ctx + ", (GDestroyNotify)sngl_release)", true
+	case "gtk4.calendarDate":
+		// A calendar always has a day selected, which rt writes as a date's
+		// text.
+		opt := c.TypeName(n.Type)
+		fn := "sngl_gtk_calendar_date"
+		c.Helper(fn, "static "+opt+" "+fn+"(GtkWidget *w) {\n\tchar day[11];\n\tsngl_calendar_date(GTK_CALENDAR(w), day);\n\treturn ("+opt+"){.ok = true, .value = sngl_string_copy(day)};\n}\n")
+		return fn + "(" + widget(0) + ")", true
+	case "gtk4.dropDownLabel":
+		return "sngl_string_copy(sngl_drop_down_label(GTK_DROP_DOWN(" + arg(0) + ")))", true
 	}
 	if n.Func.Foreign.Path != gtk4rtPkg {
 		return "", false
@@ -793,7 +1034,7 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 			adapter, fn, c.TypeName(sig.Params[6].Type)))
 		return "sngl_toplevel_on_key(" + widget(0) + ", " + adapter + ", " + ctx + ", (GDestroyNotify)sngl_release)", true
 	case "BoxAppend":
-		return "gtk_box_append(GTK_BOX(" + arg(0) + "), " + widget(1) + ")", true
+		return "sngl_box_append(" + widget(0) + ", " + widget(1) + ")", true
 	case "BoxRemove":
 		return "sngl_box_remove(" + widget(0) + ", " + widget(1) + ")", true
 	case "SlotAnchor":
@@ -819,6 +1060,75 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 		return "sngl_scroll_on_reach_end(" + widget(0) + ", (SnglFn)" + fn + ", " + ctx + ", (GDestroyNotify)sngl_release)", true
 	case "QueueDraw":
 		return "gtk_widget_queue_draw(" + widget(0) + ")", true
+	case "TabsNew", "TabPageNew", "MenuEntryNew", "BackNew", "ImageFrameNew", "ImageSourceNew":
+		return map[string]string{
+			"TabsNew":        "sngl_tabs_new()",
+			"TabPageNew":     "sngl_tab_page_new()",
+			"MenuEntryNew":   "sngl_menu_entry_new()",
+			"BackNew":        "sngl_back_new()",
+			"ImageFrameNew":  "sngl_image_new()",
+			"ImageSourceNew": "sngl_image_source_new()",
+		}[name], true
+	case "TabsSetSelected":
+		return "sngl_tabs_set_selected(" + widget(0) + ", (int)(" + arg(1) + "))", true
+	case "TabPageSetTitle", "MenuEntrySetLabel", "ImageFrameSetFit":
+		set := map[string]string{"TabPageSetTitle": "sngl_tab_page_set_title", "MenuEntrySetLabel": "sngl_menu_entry_set_label", "ImageFrameSetFit": "sngl_image_set_fit"}[name]
+		return set + "(" + widget(0) + ", (" + arg(1) + ").ptr)", true
+	case "TabPageSetDisabled", "MenuEntrySetDisabled", "MenuEntrySetChecked":
+		set := map[string]string{"TabPageSetDisabled": "sngl_tab_page_set_disabled", "MenuEntrySetDisabled": "sngl_menu_entry_set_disabled", "MenuEntrySetChecked": "sngl_menu_entry_set_checked"}[name]
+		return set + "(" + widget(0) + ", " + arg(1) + ")", true
+	case "TabPageOnShown", "MenuEntryOnSelect", "BackOnPress", "ImageFrameOnClick", "ImageFrameOnLoad":
+		on := map[string]string{"TabPageOnShown": "sngl_tab_page_on_shown", "MenuEntryOnSelect": "sngl_menu_entry_on_select", "BackOnPress": "sngl_back_on_press", "ImageFrameOnClick": "sngl_image_on_click", "ImageFrameOnLoad": "sngl_image_on_load"}[name]
+		fn, ctx := c.Callback(n.Func.Params[1].Type.Sig, n.Args[1].Value)
+		return on + "(" + widget(0) + ", (SnglFn)" + fn + ", " + ctx + ", (GDestroyNotify)sngl_release)", true
+	case "ImageFrameOnError":
+		// rt reports the message as C has it, which an adapter hands the
+		// handler as the program's string.
+		fn, ctx := c.Callback(n.Func.Params[1].Type.Sig, n.Args[1].Value)
+		adapter := fn + "_str"
+		c.Helper(adapter, fmt.Sprintf("static void %s(const char *s, void *ctx) {\n\t%s(sngl_string_copy(s), ctx);\n}\n", adapter, fn))
+		return "sngl_image_on_error(" + widget(0) + ", " + adapter + ", " + ctx + ", (GDestroyNotify)sngl_release)", true
+	case "ImageSourceSetPicture":
+		return "sngl_image_source_set_picture(" + widget(0) + ", " + arg(1) + ")", true
+	case "LoadPicture":
+		return "sngl_picture_load((" + arg(0) + ").ptr)", true
+	case "RefPicture":
+		return "sngl_picture_ref(" + arg(0) + ")", true
+	case "UnrefPicture":
+		return "sngl_picture_unref(" + arg(0) + ")", true
+	case "CairoPaintPicture":
+		return "sngl_picture_paint(" + arg(0) + ", " + arg(1) + ", " + arg(2) + ", " + arg(3) + ", " + arg(4) + ", " + arg(5) + ")", true
+	case "ImagePaint":
+		return e.imagePaint(n.Args[1].Value, arg(0)), true
+	case "Hold":
+		return "sngl_hold((GtkWidget **)&" + arg(0) + ", GTK_WIDGET(" + arg(1) + "))", true
+	case "FlowNew":
+		return "sngl_flow_new()", true
+	case "LabelSetMarkup":
+		return "gtk_label_set_markup(GTK_LABEL(" + arg(0) + "), (" + arg(1) + ").ptr)", true
+	case "When":
+		return "((" + arg(0) + ") ? (" + arg(1) + ") : SNGL_STR(\"\"))", true
+	case "Escape":
+		c.Helper("sngl_markup_escape", "static sngl_string sngl_markup_escape(sngl_string s) {\n\tgchar *escaped = g_markup_escape_text(s.ptr, (gssize)s.len);\n\tsngl_string out = sngl_string_copy(escaped);\n\tg_free(escaped);\n\treturn out;\n}\n")
+		return "sngl_markup_escape(" + arg(0) + ")", true
+	case "Foreground":
+		t := c.TypeName(n.Args[0].Value.ExprType())
+		fn := t + "_foreground"
+		c.Helper(fn, "static sngl_string "+fn+"("+t+" c) {\n\tif (c.a == 0) {\n\t\treturn SNGL_STR(\"\");\n\t}\n\tchar buf[32];\n\tg_snprintf(buf, sizeof buf, \" foreground=\\\"#%02X%02X%02X\\\"\", (unsigned)c.r, (unsigned)c.g, (unsigned)c.b);\n\treturn sngl_string_copy(buf);\n}\n")
+		return fn + "(" + arg(0) + ")", true
+	case "CopyPut":
+		lit, _ := n.Args[0].Value.(*ir.Literal)
+		return "sngl_copy_put(&" + copiesName(lit.Value) + ", (" + arg(1) + ").ptr, " + widget(2) + ")", true
+	case "CalendarSelectDay":
+		return "sngl_calendar_select(GTK_CALENDAR(" + arg(0) + "), (int)(" + arg(1) + "), (int)(" + arg(2) + "), (int)(" + arg(3) + "))", true
+	case "DropDownNew":
+		return "gtk_drop_down_new(NULL, NULL)", true
+	case "DropDownOffer":
+		return "sngl_drop_down_offer(GTK_DROP_DOWN(" + arg(0) + "), (" + arg(1) + ").ptr, (" + arg(2) + ").ptr)", true
+	case "DropDownLabel":
+		return "sngl_string_copy(sngl_drop_down_label(GTK_DROP_DOWN(" + arg(0) + ")))", true
+	case "DropDownSelect":
+		return "sngl_drop_down_select(GTK_DROP_DOWN(" + arg(0) + "), (" + arg(1) + ").ptr)", true
 	case "Every":
 		fn, ctx := c.Callback(n.Func.Params[1].Type.Sig, n.Args[1].Value)
 		return "sngl_every((int)(" + arg(0) + "), (SnglFn)" + fn + ", " + ctx + ", (GDestroyNotify)sngl_release)", true
@@ -933,4 +1243,53 @@ func (e *cEmitter) funcOwner(fn *ir.Func) *ir.Component {
 		}
 	}
 	return nil
+}
+
+// cAssets is sngl_assets.c, the `file:` assets the build copied, carried in
+// the program as rt's sngl_assets: each by the path the build gave it, which
+// an image's URL names.
+func cAssets(assets []codegen.FileAsset) ([]byte, error) {
+	var b strings.Builder
+	b.WriteString("/* Code generated by sngl. DO NOT EDIT. */\n#include \"sngl_gtk.h\"\n")
+	var table []string
+	for i, fa := range assets {
+		data := fa.Data
+		if data == nil {
+			d, err := os.ReadFile(fa.SrcPath)
+			if err != nil {
+				return nil, err
+			}
+			data = d
+		}
+		fmt.Fprintf(&b, "\nstatic const unsigned char sngl_asset%d[] = {", i)
+		for j, c := range data {
+			if j%16 == 0 {
+				b.WriteString("\n\t")
+			} else {
+				b.WriteString(" ")
+			}
+			fmt.Fprintf(&b, "0x%02x,", c)
+		}
+		b.WriteString("\n};\n")
+		table = append(table, fmt.Sprintf("\t{%s, sngl_asset%d, %d},\n", strconv.Quote(filepath.ToSlash(fa.OutPath)), i, len(data)))
+	}
+	b.WriteString("\nconst SnglAsset sngl_assets[] = {\n" + strings.Join(table, "") + "\t{NULL, NULL, 0},\n};\n")
+	return []byte(b.String()), nil
+}
+
+// copiesName is the table the copies of the node id names are held in.
+func copiesName(id string) string { return clang.Global(id) + "__copies" }
+
+// flowMarkup sets the label flow is to the markup its spans make, through the
+// set gtk4.sngl declares for it.
+func (e *cEmitter) flowMarkup(flow string, node ir.Expr) []ir.Stmt {
+	set := e.markup.setMarkup[flow]
+	if set == nil {
+		return e.fail("a flow with no set of its markup")
+	}
+	return []ir.Stmt{&ir.CallStmt{Call: boundCall(set, node, e.markup.markupExpr(flow, func(err error) {
+		if e.err == nil {
+			e.err = err
+		}
+	}))}}
 }

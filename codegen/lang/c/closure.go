@@ -97,11 +97,19 @@ func (c *Context) Closure(n *ir.Closure) string {
 	}
 	ret := c.typeName(sig.Return)
 	body := funcName(n.Func) + "(" + strings.Join(args, ", ") + ")"
-	if ret != "void" {
+	if Bodiless(n.Func) {
+		// A handler lowering attached where the program wrote none, which
+		// no file declares: its thunk does nothing.
+		if ret != "void" {
+			return c.fail("a closure of %s, which has no body", n.Func.Name)
+		}
+		body = "(void)env"
+	} else if ret != "void" {
 		body = "return " + body
 	}
 	c.file.helper(thunk, fmt.Sprintf("static %s %s(%s) {\n\t%s;\n}\n", ret, thunk, strings.Join(params, ", "), body))
-	env := c.heapCopy(stateT, c.EvalExpr(n.State))
+	// What a closure captures lives as long as the closure: it is kept.
+	env := c.heapCopy(stateT, c.keep(state.Type, c.EvalExpr(n.State)))
 	return "((" + fnT + "){" + thunk + ", " + env + "})"
 }
 
@@ -189,7 +197,11 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 			inner.refs[name] = true
 		}
 		fields = append(fields, "\t"+c.typeName(t)+" "+ref+Local(name)+";")
-		inits = append(inits, "."+Local(name)+" = "+addr+c.Ident(&ir.Ident{Name: name, Sym: c.localSym(n.Func.Block, name), Type: t}))
+		capture := c.Ident(&ir.Ident{Name: name, Sym: c.localSym(n.Func.Block, name), Type: t})
+		if addr == "" {
+			capture = c.keep(t, capture)
+		}
+		inits = append(inits, "."+Local(name)+" = "+addr+capture)
 		inner.locals[name] = true
 	}
 	// The record the code is written in, which the body reads what it holds
@@ -310,12 +322,25 @@ func (c *Context) cCallback(sig *ir.FuncSig, value string, valueType *ir.Type) (
 	}
 	params = append(params, "void *ctx")
 	ret := c.typeName(sig.Return)
-	call := "f->fn(" + strings.Join(append([]string{"f->env"}, args...), ", ") + ")"
+	// What C calls back is a turn of the program's, or part of the one
+	// running where the program's own call made C call back, which gives
+	// back the arena it used either way.
+	call := "f->fn(" + strings.Join(append([]string{"f->env"}, args...), ", ") + ");\n\tsngl_call_leave(m)"
 	if ret != "void" {
-		call = "return " + call
+		call = ret + " r = " + call + ";\n\treturn r"
 	}
-	c.file.helper(name, fmt.Sprintf("static %s %s(%s) {\n\t%s *f = ctx;\n\t%s;\n}\n", ret, name, strings.Join(params, ", "), fnT, call))
+	c.file.helper(name, fmt.Sprintf("static %s %s(%s) {\n\t%s *f = ctx;\n\tsngl_mark m = sngl_call_enter();\n\t%s;\n}\n", ret, name, strings.Join(params, ", "), fnT, call))
 	c.file.helper("sngl_release", "static void sngl_release(void *ctx) {\n\tfree(ctx);\n}\n")
 	c.file.include("stdlib.h", true)
 	return name, c.heapCopy(fnT, value)
+}
+
+// Bodiless reports whether fn is a function with no body and nothing else
+// behind it -- a handler lowering attached where the program wrote none --
+// which no file declares.
+func Bodiless(fn *ir.Func) bool {
+	if len(fn.Block) > 0 || fn.Foreign.Path != "" || fn.Intrinsic != "" {
+		return false
+	}
+	return fn.AST == nil || fn.AST.Body == nil && !fn.AST.Block.IsDefined()
 }

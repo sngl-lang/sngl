@@ -808,7 +808,8 @@ a test and both are a page of code the note above describes.
 
 ## A C language target
 
-Decided ahead of the target, with no code until one exists to need it. On
+Decided ahead of the target; *What the C target builds* below says how
+much of it the target holds and how. On
 every target today a `string` is the host's: Go, Kotlin and JavaScript
 collect it, and the only string the program gives back is the `c.str` a C
 call makes of one. In C a `string` is an allocation, every concatenation,
@@ -945,3 +946,57 @@ leaks only what no lifetime can hold, which is a `#[retains]` call no
 component encloses, and the checker refuses that before any code is written.
 A C target declares its widget protocol as `#[gen.protocol]` functions, as
 gtk4 does, so every call to the toolkit is IR before the passes run.
+
+### What the C target builds
+
+**The arena and the turn are the runtime's** (`pkg/c/runtime/sngl.c`). A
+string a statement makes is `sngl_alloc`ed from the arena. A turn is
+bracketed by `sngl_turn_enter` and `sngl_turn_leave`: the program's start
+(`sngl_start`), each test function, each canvas draw (`c_canvas.go`'s
+`draws`). The outermost leave ends the turn: it frees what was dropped and
+resets the arena, overwriting what the turn made (0x5a) so that a value read
+past its turn reads as garbage rather than as what it was. Every callback C
+makes into the program goes through the dispatcher `cCallback` defines for its
+C signature, which brackets it with `sngl_call_enter` and `sngl_call_leave`:
+a signal's handler, a timer's tick, an idle. These give the arena back to
+where it stood when the callback was entered, at any depth. So a handler a
+test fires runs as its own allocation scope inside the test's turn, and a
+test sees a store that was not kept as garbage, which
+`cmd/sngl/testdata/c_gtk4_test_runs.txt`'s `keep.sngl` holds. A depth left
+nonzero by a test's failure is reset by the agent, which ends the turn after
+every test.
+
+**A store keeps, in the renderer and not in a lowering step.** The design
+above placed the copy at the store in a `#[gen.can]` lowering step. The
+renderer is where both halves of the question are answered: whether a target
+is a holder (`holder` in `codegen/lang/c/keep.go`: a package var, a record's
+field through the platform's `State`, a box, or an element or field of one)
+and what the value's C type is. So `AssignText` writes a store into a holder
+as a slot whose old value is dropped and whose new one is kept. The same
+applies to a box's first value, a closure's environment (the caps struct,
+field by field), a lambda C lifts, a record's vars as its constructor sets
+them, the package's vars in `sngl_init`, an element `push` or `insert` puts
+in a holder's list, and a key a holder's map takes (`mapSlotKept`). Keeping
+is deep: a list's buffer is copied and each element kept, and likewise a
+map's keys and values, a struct's fields, an option's value, and a payload
+enum's payload by its tag. `owns` says which types have anything to keep.
+
+**A drop waits for the turn's end, and is a no-op for what was never kept.**
+A local of the turn may still be reading what a holder held when the holder
+is overwritten (`var s = label; label = "x"; use(s)`). So `sngl_drop` only
+queues the block. The runtime keeps the set of blocks `sngl_keep_alloc` made,
+and a block outside it is left alone: a literal, the zero a var starts at, a
+value some path stored without keeping. A store the renderer misses
+therefore leaks, or at worst reads freed memory, and never frees what it does
+not own.
+
+**Not yet, each a leak rather than a fault:**
+
+- A kept list that grows (`listGrow`) moves to an untracked buffer, so it is
+  never dropped.
+- `remove` and `clear` drop nothing they take out.
+- A closure's environment is freed only where C releases a callback's
+  context.
+- A record's destroy frees the record, not what its fields keep.
+- `CMarshal`'s `cstring` is still a copy the program frees (`CConvert`),
+  where the design above made it the identity.

@@ -22,6 +22,9 @@
 // A `func` parameter is a callback: C calls a function pointer and hands it a
 // `void *` back, the parameter `#[context]` marks, and a function taking one
 // may mark the parameter it is handed its release by `#[release]`. Neither is
-// passed by a caller. A `#[cnative]` struct declaring fields is a C struct,
+// passed by a caller. Where the C function declares the pointer as a typedef
+// of its own, as GLib's `GCallback` is, `#[type]` names it, which a program
+// written in C needs and Go does not. A `#[cnative]` struct declaring fields
+// is a C struct,
 // converted field by field, and a `ref` parameter is a pointer C fills, which
 // the call writes back to the variable `&x` named.

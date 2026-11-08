@@ -13,7 +13,7 @@ import (
 // struct of a double per base, which its fields are read off by name
 // (`m.px`). A literal is reduced to its base, and C, which adds no struct,
 // adds and scales one through functions the file defines for the unit.
-// A duration is not yet written.
+// A duration is one of a single base, its milliseconds.
 
 // unitDef is t's unit where C writes it, or nil.
 func unitDef(t *ir.Type) *ir.UnitDef {
@@ -32,9 +32,6 @@ func multiBase(t *ir.Type) bool {
 
 // unitType is t, a unit, as C names it.
 func (c *Context) unitType(ud *ir.UnitDef) string {
-	if ud.Builtin == ir.BuiltinDuration {
-		return c.fail("a duration")
-	}
 	if ud.IsSingleBase() {
 		return "double"
 	}
@@ -128,4 +125,28 @@ func (c *Context) unitFunc(ud *ir.UnitDef, op string) string {
 	}
 	c.file.helper(name, text)
 	return name
+}
+
+// unitText is v, a value of ud, as it is displayed: each base it holds a
+// magnitude in, joined as the sum the source would write, and a value holding
+// none its zero in the first base.
+func (c *Context) unitText(ud *ir.UnitDef, v string) string {
+	bases := ud.Bases()
+	if len(bases) == 0 {
+		return c.fail("the text of a unit with no base")
+	}
+	if ud.IsSingleBase() {
+		return fmt.Sprintf("sngl_unit_term(%s, SNGL_STR(%q))", v, bases[0].Name)
+	}
+	t := c.unitType(ud)
+	name := t + "_text"
+	var b strings.Builder
+	fmt.Fprintf(&b, "static sngl_string %s(%s v) {\n\tsngl_string s = SNGL_STR(\"\");\n", name, t)
+	for _, base := range bases {
+		f := Local(base.Name)
+		fmt.Fprintf(&b, "\tif (v.%s != 0) {\n\t\tif (s.len != 0) {\n\t\t\ts = sngl_concat(s, SNGL_STR(%q));\n\t\t}\n\t\ts = sngl_concat(s, sngl_unit_term(v.%s, SNGL_STR(%q)));\n\t}\n", f, ir.UnitTermSep, f, base.Name)
+	}
+	fmt.Fprintf(&b, "\treturn s.len != 0 ? s : SNGL_STR(%q);\n}\n", ir.FormatUnitZero(ud))
+	c.file.helper(name, b.String())
+	return name + "(" + v + ")"
 }

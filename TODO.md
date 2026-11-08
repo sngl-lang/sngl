@@ -360,10 +360,19 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
    string formatting and units, `async`. Each construct C does not yet write
    is refused by name at generation, never written as C that fails to
    compile.
+   Done: of the gtk4 programs among the goldens, every one C refuses
+   names what it needs, and what it refuses is a Go native (`fmt`, `os`,
+   `time.sleep`, a family emitter written for Go), `sngl:http`,
+   `sngl:json`, `sngl:settings`, a loop over an `iter`, and a test reaching
+   a runtime instance's state. Ownership is built as
+   `design/ownership.md`'s *What the C target builds* says, with the leaks
+   it lists.
 5. **The rest of gtk4**: styles, images, scrolls, menus, tabs, toplevels and
-   canvases, moving what each needs out of gtk4rt into C.
+   canvases, moving what each needs out of gtk4rt into C. Done:
+   `lib/platform/gtk4/rt/` (`design/architecture.md`, *gtk4 in C*), held by
+   `cmd/sngl/testdata/c_gtk4_test_runs.txt`.
 6. **Docs**: the spec's `int` row, `design/architecture.md`'s per-language
-   notes, and `design/ownership.md`'s C target as built.
+   notes, and `design/ownership.md`'s C target as built. Done.
 
 ### Open questions
 

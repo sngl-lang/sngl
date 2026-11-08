@@ -38,13 +38,145 @@ void *sngl_alloc(size_t n) {
 	return p;
 }
 
+/* The kept blocks, an open-addressed set of their addresses, and those
+ * dropped this turn, freed as it ends. */
+static uintptr_t *sngl_kept;
+static size_t sngl_kept_cap, sngl_kept_len;
+static void **sngl_dropped;
+static size_t sngl_dropped_len, sngl_dropped_cap;
+static int sngl_depth;
+
+/* A slot whose block was taken out, which a probe goes past. */
+#define SNGL_TOMB ((uintptr_t)1)
+
+static size_t sngl_slot(uintptr_t p) {
+	uintptr_t h = p;
+	h ^= h >> 17;
+	h *= UINT64_C(0xed5ad4bb);
+	return (size_t)h & (sngl_kept_cap - 1);
+}
+
+static void sngl_track(uintptr_t p) {
+	if ((sngl_kept_len + 1) * 2 > sngl_kept_cap) {
+		uintptr_t *old = sngl_kept;
+		size_t old_cap = sngl_kept_cap;
+		sngl_kept_cap = old_cap == 0 ? 64 : old_cap * 2;
+		sngl_kept = calloc(sngl_kept_cap, sizeof *sngl_kept);
+		if (sngl_kept == NULL) {
+			sngl_panic("out of memory");
+		}
+		sngl_kept_len = 0;
+		for (size_t i = 0; i < old_cap; i++) {
+			if (old[i] != 0 && old[i] != SNGL_TOMB) {
+				sngl_track(old[i]);
+			}
+		}
+		free(old);
+	}
+	size_t i = sngl_slot(p);
+	while (sngl_kept[i] != 0 && sngl_kept[i] != SNGL_TOMB) {
+		i = (i + 1) & (sngl_kept_cap - 1);
+	}
+	sngl_kept[i] = p;
+	sngl_kept_len++;
+}
+
+/* sngl_untrack takes p out of the kept set, and is whether it was there. */
+static bool sngl_untrack(uintptr_t p) {
+	if (sngl_kept_cap == 0 || p == 0) {
+		return false;
+	}
+	for (size_t i = sngl_slot(p); sngl_kept[i] != 0; i = (i + 1) & (sngl_kept_cap - 1)) {
+		if (sngl_kept[i] == p) {
+			sngl_kept[i] = SNGL_TOMB;
+			return true;
+		}
+	}
+	return false;
+}
+
+void *sngl_keep_alloc(size_t n) {
+	void *p = malloc(n == 0 ? 1 : n);
+	if (p == NULL) {
+		sngl_panic("out of memory");
+	}
+	sngl_track((uintptr_t)p);
+	return p;
+}
+
+sngl_string sngl_string_keep(sngl_string s) {
+	if (s.len == 0) {
+		return SNGL_STR("");
+	}
+	char *p = sngl_keep_alloc(s.len + 1);
+	memcpy(p, s.ptr, s.len);
+	p[s.len] = '\0';
+	return (sngl_string){p, s.len};
+}
+
+void sngl_drop(const void *p) {
+	if (!sngl_untrack((uintptr_t)p)) {
+		return;
+	}
+	if (sngl_dropped_len == sngl_dropped_cap) {
+		size_t cap = sngl_dropped_cap == 0 ? 16 : sngl_dropped_cap * 2;
+		void **grown = realloc(sngl_dropped, cap * sizeof *grown);
+		if (grown == NULL) {
+			sngl_panic("out of memory");
+		}
+		sngl_dropped = grown;
+		sngl_dropped_cap = cap;
+	}
+	sngl_dropped[sngl_dropped_len++] = (void *)p;
+}
+
+sngl_mark sngl_call_enter(void) {
+	sngl_mark m = {sngl_arena, sngl_arena == NULL ? 0 : sngl_arena->used};
+	sngl_turn_enter();
+	return m;
+}
+
+void sngl_call_leave(sngl_mark m) {
+	if (sngl_depth > 1) {
+		while (sngl_arena != NULL && (void *)sngl_arena != m.chunk) {
+			sngl_chunk *next = sngl_arena->next;
+			free(sngl_arena);
+			sngl_arena = next;
+		}
+		if (sngl_arena != NULL) {
+			memset((char *)sngl_arena->data + m.used, 0x5a, sngl_arena->used - m.used);
+			sngl_arena->used = m.used;
+		}
+	}
+	sngl_turn_leave();
+}
+
+void sngl_turn_enter(void) {
+	sngl_depth++;
+}
+
+void sngl_turn_leave(void) {
+	if (sngl_depth > 0 && --sngl_depth == 0) {
+		sngl_turn_end();
+	}
+}
+
 void sngl_turn_end(void) {
+	sngl_depth = 0;
+	for (size_t i = 0; i < sngl_dropped_len; i++) {
+		free(sngl_dropped[i]);
+	}
+	sngl_dropped_len = 0;
 	while (sngl_arena != NULL && sngl_arena->next != NULL) {
 		sngl_chunk *next = sngl_arena->next;
 		free(sngl_arena);
 		sngl_arena = next;
 	}
 	if (sngl_arena != NULL) {
+		/* What the turn made is overwritten, so a value a holder read
+		 * without keeping it reads as the garbage it is rather than as
+		 * what it was, until the arena is next written. */
+		memset(sngl_arena->data, 0x5a, sngl_arena->used);
 		sngl_arena->used = 0;
 	}
 }
@@ -236,8 +368,43 @@ sngl_string sngl_color_hex(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 	return sngl_bytes(buf, (size_t)n);
 }
 
+sngl_string sngl_unit_term(double mag, sngl_string base) {
+	if (mag == (double)(int64_t)mag) {
+		return sngl_concat(sngl_int_format((int64_t)mag), base);
+	}
+	return sngl_concat(sngl_float_format(mag), base);
+}
+
 sngl_string sngl_bool_format(bool v) {
 	return v ? SNGL_STR("true") : SNGL_STR("false");
+}
+
+/* Each lifetime begun, by its number less one: whether it has ended. */
+static bool *sngl_lifetimes;
+static int64_t sngl_lifetimes_len, sngl_lifetimes_cap;
+
+int64_t sngl_async_begin(void) {
+	if (sngl_lifetimes_len == sngl_lifetimes_cap) {
+		int64_t cap = sngl_lifetimes_cap < 16 ? 16 : sngl_lifetimes_cap * 2;
+		bool *grown = realloc(sngl_lifetimes, sizeof(bool) * (size_t)cap);
+		if (grown == NULL) {
+			sngl_panic("out of memory");
+		}
+		sngl_lifetimes = grown;
+		sngl_lifetimes_cap = cap;
+	}
+	sngl_lifetimes[sngl_lifetimes_len++] = false;
+	return sngl_lifetimes_len;
+}
+
+void sngl_async_end(int64_t id) {
+	if (id > 0 && id <= sngl_lifetimes_len) {
+		sngl_lifetimes[id - 1] = true;
+	}
+}
+
+bool sngl_async_ended(int64_t id) {
+	return id > 0 && id <= sngl_lifetimes_len && sngl_lifetimes[id - 1];
 }
 
 int64_t sngl_div(int64_t a, int64_t b) {

@@ -247,7 +247,7 @@ func New() Model {
 	m := Model{&modelState{}}
 	m.held = Shape{tag: 0}
 	m.shape__inst0 = Shape{tag: 0}
-	m.result__inst0 = Half(4)
+	m.result__inst0 = Result__int{tag: 0, Ok: 2}
 	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
@@ -271,13 +271,6 @@ func Area(s Shape) float64 {
 		return (v__r1.W * v__r1.H)
 	}
 	return 0.0
-}
-
-func Half(n int) Result__int {
-	if (n % 2) != 0 {
-		return Result__int{tag: 1, Failed: Failure{Message: "odd", Code: n}}
-	}
-	return Result__int{tag: 0, Ok: (n / 2)}
 }
 
 func OrZero(r Result__int) int {
@@ -591,7 +584,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.shape__inst0 = __lt18
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
-			m.result__inst0 = Half(3)
+			m.result__inst0 = Result__int{tag: 1, Failed: Failure{Message: "odd", Code: 3}}
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -762,7 +755,7 @@ func New() *Model {
 	m := &Model{}
 	m.held = Shape{tag: 0}
 	m.shape__inst0 = Shape{tag: 0}
-	m.result__inst0 = Half(4)
+	m.result__inst0 = Result__int{tag: 0, Ok: 2}
 	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
@@ -784,13 +777,6 @@ func Area(s Shape) float64 {
 		return (v.W * v.H)
 	}
 	return 0.0
-}
-
-func Half(n int) Result__int {
-	if (n % 2) != 0 {
-		return Result__int{tag: 1, Failed: Failure{Message: "odd", Code: n}}
-	}
-	return Result__int{tag: 0, Ok: (n / 2)}
 }
 
 func OrZero(r Result__int) int {
@@ -895,7 +881,7 @@ func (m *Model) grow_click_handler() {
 }
 
 func (m *Model) odd_click_handler() {
-	m.result__inst0 = Half(3)
+	m.result__inst0 = Result__int{tag: 1, Failed: Failure{Message: "odd", Code: 3}}
 	var __lt16 string
 	if m.result__inst0.tag == 0 {
 		__lt16 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
@@ -1119,7 +1105,7 @@ func New() *Model {
 	m := &Model{}
 	m.held = Shape{tag: 0}
 	m.shape__inst0 = Shape{tag: 0}
-	m.result__inst0 = Half(4)
+	m.result__inst0 = Result__int{tag: 0, Ok: 2}
 	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
@@ -1141,13 +1127,6 @@ func Area(s Shape) float64 {
 		return (v.W * v.H)
 	}
 	return 0.0
-}
-
-func Half(n int) Result__int {
-	if (n % 2) != 0 {
-		return Result__int{tag: 1, Failed: Failure{Message: "odd", Code: n}}
-	}
-	return Result__int{tag: 0, Ok: (n / 2)}
 }
 
 func OrZero(r Result__int) int {
@@ -1255,7 +1234,7 @@ func (m *Model) grow_clicked_handler() {
 }
 
 func (m *Model) odd_clicked_handler() {
-	m.result__inst0 = Half(3)
+	m.result__inst0 = Result__int{tag: 1, Failed: Failure{Message: "odd", Code: 3}}
 	var __lt23 string
 	if m.result__inst0.tag == 0 {
 		__lt23 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
@@ -1468,7 +1447,7 @@ sealed class Shape {
 fun MainScreen() {
     var held by remember { mutableStateOf<Shape>(Shape.Empty) }
     var shape__inst0 by remember { mutableStateOf<Shape>(Shape.Empty) }
-    var result__inst0 by remember { mutableStateOf<Result__int>(half(4)) }
+    var result__inst0 by remember { mutableStateOf<Result__int>(Result__int.Ok(2)) }
     var visible__inst0 by remember { mutableStateOf(true) }
 
     if (visible__inst0) {
@@ -1497,7 +1476,7 @@ fun MainScreen() {
                 Text(text = "Grow", modifier = Modifier)
             }
             Button(onClick = {
-                result__inst0 = half(3)
+                result__inst0 = Result__int.Failed(Failure(message = "odd", code = 3))
             }, modifier = Modifier.testTag("odd").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Odd", modifier = Modifier)
             }
@@ -1520,13 +1499,6 @@ fun area(s: Shape): Double {
     	}
     }
     return 0.0
-}
-
-fun half(n: Int): Result__int {
-    if (((n % 2) != 0)) {
-    	return Result__int.Failed(Failure(message = "odd", code = n))
-    }
-    return Result__int.Ok((n / 2))
 }
 
 fun orZero(r: Result__int): Int {
@@ -1570,7 +1542,7 @@ body { font-family: system-ui, sans-serif; }
   var state = { held: null, shape__inst0: null, result__inst0: null, visible__inst0: true };
   state.held = { tag: "empty" };
   state.shape__inst0 = { tag: "empty" };
-  state.result__inst0 = half(4);
+  state.result__inst0 = { tag: "ok", value: 2 };
   function area(s) {
     if (s.tag === "empty") {
       ;
@@ -1590,14 +1562,6 @@ body { font-family: system-ui, sans-serif; }
     }
     ;
     return 0;
-  }
-  function half(n) {
-    if (n % 2 !== 0) {
-      ;
-      return { tag: "failed", value: { message: "odd", code: n } };
-    }
-    ;
-    return { tag: "ok", value: Math.trunc(n / 2) };
   }
   function orZero(r) {
     if (r.tag === "ok") {
@@ -1717,7 +1681,7 @@ body { font-family: system-ui, sans-serif; }
     __renderSlot0(__slotAnchor_0);
   });
   $5.addEventListener("click", function() {
-    state.result__inst0 = half(3);
+    state.result__inst0 = { tag: "failed", value: { message: "odd", code: 3 } };
     $1.textContent = state.result__inst0.tag === "ok" ? "ok " + String(state.result__inst0.value) : "failed: " + state.result__inst0.value.message;
     $2.textContent = String(area(state.held)) + " " + String(orZero(state.result__inst0)) + " " + (state.shape__inst0.tag === "circle" ? "round" : "not round") + " " + String(((a, b) => a == null || b == null ? a === b : a.tag === b.tag && (a.tag === "ok" ? a.value === b.value : a.tag === "failed" ? a.value.message === b.value.message && a.value.code === b.value.code : true))(state.result__inst0, { tag: "ok", value: 2 }));
   });
@@ -1733,12 +1697,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:11eba19448cc5ea973d9040e1df8c1f5
+pass sha256:16104e60b32cf3745942e5f9bd7f6030
 -- run/go/fyne --
-pass sha256:9f41255fdb64e063fa19fdc172b572a1
+pass sha256:c43a66400c16999fa18d1e4cd51064f7
 -- run/go/gtk4 --
-pass sha256:70df53e69e5a311bf07a5f9de025b088
+pass sha256:6637b629735bc5fe6bdbf9a5c89627f0
 -- run/kotlin/android --
-pass sha256:ca61db144d85b2ab45d50f4f92b85c5e
+pass sha256:07c971f96ecee13b813de0f3ca3e2bed
 -- run/none/html --
-pass sha256:ed57fa843b774f0fd5cf8cef5d198079
+pass sha256:948412e8551da9f0700e463c71e89b40

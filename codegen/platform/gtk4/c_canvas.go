@@ -115,10 +115,12 @@ func (e *cEmitter) draws(comp *ir.Component) {
 		if comp != nil {
 			fmt.Fprintf(&b, "\t%s *%s = data;\n", recordType(comp), selfName)
 		}
+		// A draw GTK asks for is a turn.
+		b.WriteString("\tsngl_turn_enter();\n")
 		for _, l := range e.ctx.WithLocal("ctx").EvalBlock(body) {
 			b.WriteString("\t" + l + "\n")
 		}
-		b.WriteString("}\n")
+		b.WriteString("\tsngl_turn_leave();\n}\n")
 		e.fe.Prototype(fmt.Sprintf("static void %s(cairo_t *ctx, void *data);", name))
 		fmt.Fprint(e.fe, b.String())
 	}

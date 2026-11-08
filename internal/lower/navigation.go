@@ -1440,7 +1440,7 @@ func (nv *navigation) copyOfExpr(e ir.Expr) ir.Expr {
 			out = x
 		}
 	}
-	return &ir.Select{Type: ir.TypInt, Operand: out, Field: "copy"}
+	return &ir.Select{Type: ir.ListOf(ir.TypInt), Operand: out, Field: "copy"}
 }
 
 // navFamilyOf is the lowered family a navigator or page type is a value of.

@@ -115,6 +115,12 @@ static gboolean sngl_close_request(GtkWindow *win, gpointer data) {
 
 static bool sngl_top_hear(const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing, void *data);
 
+/* An Escape nothing took goes back while the window can. */
+static bool sngl_top_back(void *data) {
+    SnglToplevel *t = data;
+    return sngl_window_back(t->box);
+}
+
 static void sngl_toplevel_create(SnglToplevel *t) {
     if (t->win) return;
     t->win = GTK_WINDOW(gtk_application_window_new(sngl_app));
@@ -122,7 +128,14 @@ static void sngl_toplevel_create(SnglToplevel *t) {
     if (t->title) gtk_window_set_title(t->win, t->title);
     gtk_window_set_child(t->win, t->box);
     g_signal_connect(t->win, "close-request", G_CALLBACK(sngl_close_request), t);
-    sngl_keys_watch(GTK_WIDGET(t->win), sngl_top_hear, NULL, t);
+    sngl_keys_watch(GTK_WIDGET(t->win), sngl_top_hear, sngl_top_back, t);
+    sngl_menu_apply(t->box);
+    sngl_toplevel_icon_refresh(t->box);
+}
+
+GtkWindow *sngl_toplevel_window(GtkWidget *box) {
+    SnglToplevel *t = sngl_top(box);
+    return t ? t->win : NULL;
 }
 
 void sngl_app_attach(GtkWidget *box) {
@@ -238,6 +251,26 @@ void sngl_canvas_click(GtkWidget *w) {
     if (h) h->fn(h->ctx);
 }
 
+static gboolean sngl_idle_run(gpointer data) {
+    SnglHandler *h = data;
+    h->fn(h->ctx);
+    return G_SOURCE_REMOVE;
+}
+
+static void sngl_idle_free(gpointer data) {
+    SnglHandler *h = data;
+    if (h->release) h->release(h->ctx);
+    g_free(h);
+}
+
+void sngl_idle(SnglFn fn, void *ctx, GDestroyNotify release) {
+    SnglHandler *h = g_new0(SnglHandler, 1);
+    h->fn = fn;
+    h->ctx = ctx;
+    h->release = release;
+    g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, sngl_idle_run, h, sngl_idle_free);
+}
+
 struct SnglSchedule {
     guint id;
     SnglFn fn;
@@ -291,6 +324,7 @@ void sngl_app_detach(GtkWidget *box) {
         g_object_ref(box);
         gtk_window_set_child(win, NULL);
         gtk_window_destroy(win);
+        sngl_bar_forget(box);
         g_object_unref(box);
     }
 }
@@ -304,22 +338,67 @@ GtkWidget *sngl_slot_anchor(GtkWidget *box, GtkWidget *anchor) {
     return w;
 }
 
-void sngl_box_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child) {
+void sngl_box_append(GtkWidget *box, GtkWidget *child) {
     if (box == SNGL_APP) {
         sngl_app_attach(child);
-    } else if (anchor == NULL || gtk_widget_get_parent(anchor) != box) {
-        gtk_box_append(GTK_BOX(box), child);
-    } else {
-        gtk_box_insert_child_after(GTK_BOX(box), child, gtk_widget_get_prev_sibling(anchor));
+        return;
     }
+    if (sngl_tabs_add(box, child) || sngl_image_adopt(box, child)) return;
+    gtk_box_append(GTK_BOX(box), child);
+    sngl_menu_moved(box, child);
+}
+
+void sngl_box_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child) {
+    if (box == SNGL_APP || anchor == NULL || gtk_widget_get_parent(anchor) != box) {
+        sngl_box_append(box, child);
+        return;
+    }
+    if (sngl_tabs_add(box, child) || sngl_image_adopt(box, child)) return;
+    gtk_box_insert_child_after(GTK_BOX(box), child, gtk_widget_get_prev_sibling(anchor));
+    sngl_menu_moved(box, child);
 }
 
 void sngl_box_remove(GtkWidget *box, GtkWidget *child) {
     if (box == SNGL_APP) {
         sngl_app_detach(child);
-    } else {
-        gtk_box_remove(GTK_BOX(box), child);
+        return;
     }
+    if (sngl_tabs_remove(box, child) || sngl_image_unadopt(box, child)) return;
+    /* What the box let go of may be gone once it has, and the bar asks
+     * what it was. */
+    g_object_ref(child);
+    gtk_box_remove(GTK_BOX(box), child);
+    sngl_menu_moved(box, child);
+    g_object_unref(child);
+}
+
+void sngl_hold(GtkWidget **slot, GtkWidget *w) {
+    if (*slot == w) return;
+    if (*slot) g_object_remove_weak_pointer(G_OBJECT(*slot), (gpointer *)slot);
+    *slot = w;
+    if (w) g_object_add_weak_pointer(G_OBJECT(w), (gpointer *)slot);
+}
+
+void sngl_copy_put(GHashTable **copies, const char *key, GtkWidget *w) {
+    if (*copies == NULL) *copies = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+    GHashTableIter it;
+    gpointer k, v;
+    g_hash_table_iter_init(&it, *copies);
+    while (g_hash_table_iter_next(&it, &k, &v)) {
+        if (v == w) g_hash_table_iter_remove(&it);
+    }
+    g_hash_table_insert(*copies, g_strdup(key), w);
+}
+
+GtkWidget *sngl_copy_get(GHashTable *copies, const char *key) {
+    return copies ? g_hash_table_lookup(copies, key) : NULL;
+}
+
+GtkWidget *sngl_flow_new(void) {
+    GtkWidget *l = gtk_label_new("");
+    gtk_label_set_wrap(GTK_LABEL(l), TRUE);
+    gtk_label_set_xalign(GTK_LABEL(l), 0);
+    return l;
 }
 
 void sngl_editable_set_text_quiet(GtkWidget *e, const char *t) {
@@ -369,14 +448,18 @@ void sngl_toplevel_on_key(GtkWidget *box, SnglKeyFn fn, void *ctx, GDestroyNotif
     t->key_release = release;
 }
 
-/* A window has no way back in C yet, so an Escape nothing stopped goes
- * nowhere. */
+/* An Escape the handler leaves goes back while the window can. */
 void sngl_toplevel_key(GtkWidget *box, const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing,
         SnglFn stop, void *stop_ctx, GDestroyNotify stop_release) {
     SnglToplevel *t = sngl_top(box);
     bool stopped = sngl_hear(t, key, ctrl, alt, shift, meta, editing, stop, stop_ctx);
     if (stop_release) stop_release(stop_ctx);
-    if (stopped || !t || !t->win || ctrl || alt || meta || strcmp(key, "Escape") == 0) return;
+    if (stopped || !t || ctrl || alt || meta) return;
+    if (strcmp(key, "Escape") == 0) {
+        sngl_window_back(box);
+        return;
+    }
+    if (!t->win) return;
     sngl_keys_go_on(t->win, key, shift);
 }
 

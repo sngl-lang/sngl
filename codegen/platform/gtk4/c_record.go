@@ -101,7 +101,7 @@ func (e *cEmitter) record(comp *ir.Component) {
 	}
 	for _, v := range comp.Vars {
 		if v.Init != nil {
-			fmt.Fprintf(&ctor, "\t%s->%s = %s;\n", selfName, clang.Local(v.Name), ctx.EvalExpr(v.Init))
+			fmt.Fprintf(&ctor, "\t%s->%s = %s;\n", selfName, clang.Local(v.Name), ctx.Keep(v.Type, ctx.EvalExpr(v.Init)))
 		}
 	}
 	for _, l := range ctx.EvalBlock(body) {
@@ -323,11 +323,17 @@ func (e *cEmitter) closure(c *clang.Context, n *ir.Closure) (string, bool) {
 	}
 	ret := c.TypeName(n.Type.Sig.Return)
 	body := name + "(" + strings.Join(args, ", ") + ")"
-	if ret != "void" {
+	if clang.Bodiless(n.Func) {
+		if ret != "void" {
+			e.fail("a closure of %s, which has no body", n.Func.Name)
+			return "0", true
+		}
+		body = "(void)env"
+	} else if ret != "void" {
 		body = "return " + body
 	}
 	c.Helper(name+"__fn", fmt.Sprintf("static %s %s__fn(%s) {\n\t%s;\n}\n", ret, name, strings.Join(params, ", "), body))
-	env := "sngl_heap_copy(&(" + envT + "[]){{" + c.EvalExpr(n.State) + ", " + selfName + "}}, sizeof(" + envT + "))"
+	env := "sngl_heap_copy(&(" + envT + "[]){{" + c.Keep(n.Func.Params[0].Type, c.EvalExpr(n.State)) + ", " + selfName + "}}, sizeof(" + envT + "))"
 	return "((" + fnT + "){" + name + "__fn, " + env + "})", true
 }
 

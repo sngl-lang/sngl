@@ -17,6 +17,9 @@ func cTypeName(t *ir.Type) (string, error) {
 	if t == nil {
 		return "void", nil
 	}
+	if textual(t) {
+		return "sngl_string", nil
+	}
 	if ct := ir.CTypeOf(t); ct != nil && !isProgramStruct(t) {
 		return ct.String(), nil
 	}
@@ -65,4 +68,11 @@ func isProgramStruct(t *ir.Type) bool {
 	}
 	sd, ok := t.Decl.(*ir.StructDef)
 	return ok && (sd.Foreign.C == nil || sd.IsCStruct())
+}
+
+// textual reports whether t is a date, a time or a datetime, which C holds as
+// the text each is: what its `format` answers, and what sngl:time's bodies
+// read it as.
+func textual(t *ir.Type) bool {
+	return t != nil && (ir.IsDateStruct(t) || ir.IsTimeStruct(t) || ir.IsDateTimeStruct(t))
 }

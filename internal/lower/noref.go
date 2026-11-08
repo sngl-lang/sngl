@@ -35,7 +35,7 @@ func lowerNoRef(pkg *ir.Package, _ Features, _ Options) error {
 	seedAddressedVars(pkg)
 
 	reg := newBoxRegistry(pkg)
-	rw := &refRewriter{pkg: pkg, reg: reg, handlers: map[*ir.Func]bool{}}
+	rw := &refRewriter{pkg: pkg, reg: reg, handlers: map[*ir.Func]bool{}, done: map[ir.Expr]ir.Expr{}}
 
 	// Step 1: rewrite addressed Var declarations and their initializers.
 	for _, v := range collectAllVars(pkg) {
@@ -186,6 +186,10 @@ type refRewriter struct {
 	// reached from where it was written and from the func it became, and
 	// rewriting a handler twice reads .value of the value.
 	handlers map[*ir.Func]bool
+	// done is each expression rewritten, and what it became: one reached
+	// twice -- an update a pass placed in two bodies sharing it -- would
+	// otherwise read .value of a read, or of a box its `&` became.
+	done map[ir.Expr]ir.Expr
 }
 
 // rewriteType replaces ref[T] with the corresponding __ref_T struct type.
@@ -232,6 +236,15 @@ func (r *refRewriter) rewriteExpr(e ir.Expr) ir.Expr {
 	if e == nil {
 		return nil
 	}
+	if out, ok := r.done[e]; ok {
+		return out
+	}
+	out := r.rewriteExpr1(e)
+	r.done[e], r.done[out] = out, out
+	return out
+}
+
+func (r *refRewriter) rewriteExpr1(e ir.Expr) ir.Expr {
 	switch x := e.(type) {
 	case *ir.Unary:
 		switch x.Op {

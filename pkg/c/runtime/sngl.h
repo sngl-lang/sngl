@@ -21,9 +21,39 @@ typedef struct sngl_string {
 #define SNGL_STR(lit) ((sngl_string){(lit), sizeof(lit) - 1})
 
 /* sngl_alloc is n bytes from the turn's arena, which sngl_turn_end gives
- * back all at once. A value that outlives the turn is copied out of it. */
+ * back all at once. A value that outlives the turn is copied out of it.
+ *
+ * A turn is one pass through the event loop: start-up, a handler, a draw, a
+ * timer's tick, a test. Each is bracketed by sngl_turn_enter and
+ * sngl_turn_leave, which nest, as a handler a signal runs inside another
+ * does; the outermost leave ends the turn. sngl_turn_end ends it whatever
+ * the depth, as the test agent does after a test a failure left. */
 void *sngl_alloc(size_t n);
+void sngl_turn_enter(void);
+void sngl_turn_leave(void);
 void sngl_turn_end(void);
+
+/* A callback C makes into the program -- a signal, a timer, an idle -- gives
+ * back what it made of the arena as it returns, whatever turn it ran in:
+ * sngl_call_enter marks where the arena stands and enters a turn, and
+ * sngl_call_leave leaves it and gives back what was made since the mark.
+ * What it stored was kept, and it returns nothing the arena holds. */
+typedef struct sngl_mark {
+	void *chunk;
+	size_t used;
+} sngl_mark;
+sngl_mark sngl_call_enter(void);
+void sngl_call_leave(sngl_mark m);
+
+/* What a holder keeps -- a var, a field, an element, a closure's
+ * environment -- outlives the turn, so it is copied out of the arena as it
+ * is stored. sngl_keep_alloc is n bytes of the heap, kept; sngl_string_keep
+ * is s copied there. sngl_drop gives a kept block back once the turn ends,
+ * since a local of the turn may still read what a holder held; a block not
+ * kept, or dropped already, is left alone. */
+void *sngl_keep_alloc(size_t n);
+sngl_string sngl_string_keep(sngl_string s);
+void sngl_drop(const void *p);
 
 /* sngl_heap_copy is a copy of the n bytes at p on the heap, which outlives
  * every turn: a closure's environment, a box a `ref` became. */
@@ -94,6 +124,10 @@ int64_t sngl_string_find(sngl_string s, sngl_string sub, int64_t from);
 sngl_string sngl_int_format(int64_t v);
 sngl_string sngl_float_format(double v);
 
+/* One base's magnitude of a unit as it is displayed, `3px`: whole as an
+ * integer, otherwise as a float writes. */
+sngl_string sngl_unit_term(double mag, sngl_string base);
+
 /* color.hex: `#rrggbb`, or `#rrggbbaa` where the color is not opaque. */
 sngl_string sngl_color_hex(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
@@ -106,6 +140,13 @@ sngl_string sngl_bool_format(bool v);
 
 /* Integer division and remainder, raising on a zero divisor as every target
  * does, rather than C's undefined behavior. */
+/* An async lifetime is held by its number, 0 for `forever`, which never
+ * ends: sngl_async_begin makes one, sngl_async_end ends it, and
+ * sngl_async_ended asks. */
+int64_t sngl_async_begin(void);
+void sngl_async_end(int64_t id);
+bool sngl_async_ended(int64_t id);
+
 int64_t sngl_div(int64_t a, int64_t b);
 int64_t sngl_mod(int64_t a, int64_t b);
 

@@ -52,6 +52,9 @@ func (c *Context) merge(n *ir.Call, args []string) (string, bool) {
 func (c *Context) notZero(t *ir.Type, v string) string {
 	switch t.Kind {
 	case ir.TypeOption:
+		if c.ptrOption(t) {
+			return "(" + v + ") != NULL"
+		}
 		return "(" + v + ").ok"
 	case ir.TypeList, ir.TypeMap:
 		return "(" + v + ").len > 0"

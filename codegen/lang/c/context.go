@@ -97,7 +97,14 @@ func (c *Context) typeName(t *ir.Type) string {
 			}
 		case ir.TypeMap:
 			return c.mapType(t)
+		case ir.TypeEnum:
+			if ed := ir.PayloadEnum(t); ed != nil {
+				return c.enumType(t, ed)
+			}
 		case ir.TypeStruct:
+			if textual(t) {
+				return "sngl_string"
+			}
 			// A box is shared by every copy of it, so it is held through a
 			// pointer to the one on the heap.
 			if sd, ok := t.Decl.(*ir.StructDef); ok && sd.RefBox {
@@ -167,6 +174,9 @@ func (c *Context) Literal(n *ir.Literal) string {
 func literal(n *ir.Literal) string {
 	if n.Type == nil {
 		return n.Value
+	}
+	if textual(n.Type) {
+		return stringLiteral(n.Value)
 	}
 	switch n.Type.Kind {
 	case ir.TypeString:
@@ -256,12 +266,32 @@ func (c *Context) Ident(n *ir.Ident) string {
 		if c.isPackageVar(sym) {
 			return Decl(&sym.DeclInfo)
 		}
+		// A var no scope of the file's declares: a component's, read where
+		// the build put none of it -- the handler of a boundary inlined
+		// away, reached from a lambda lifted before it was.
+		if ir.IsHostValue(sym) {
+			return c.fail("%s, which is %s's", n.Name, sym.Foreign.Path)
+		}
+		if c.State != nil && !c.isLocalVar(sym) {
+			return c.fail("reading %s, which no scope of the program holds here", n.Name)
+		}
 		return Local(n.Name)
 	case *ir.Func:
 		if n.Type == nil || n.Type.Kind != ir.TypeFunc {
 			return c.fail("the function %s used as a value of type %s", n.Name, n.Type)
 		}
 		return c.funcValue(sym, n.Type)
+	case *ir.Component:
+		// The record a platform writes the component as, where it is one.
+		if c.State != nil {
+			if s, ok := c.State(n, false); ok {
+				return s
+			}
+		}
+		return c.fail("the component %s as a value outside its own record", n.Name)
+	}
+	if n.Member != "" && ir.PayloadEnum(n.Type) != nil {
+		return c.enumLit(n.Type, n.Member, "")
 	}
 	if n.Member != "" {
 		// A member a value is made of after NoEnum ran -- a prop's zero value
@@ -305,7 +335,7 @@ func (c *Context) Binary(n *ir.Binary, left, right string) string {
 		return out
 	}
 	lt := n.Left.ExprType()
-	if lt != nil && lt.Kind == ir.TypeString {
+	if lt != nil && (lt.Kind == ir.TypeString || textual(lt)) {
 		switch n.Op {
 		case ast.BinAdd:
 			return "sngl_concat(" + left + ", " + right + ")"
@@ -317,7 +347,7 @@ func (c *Context) Binary(n *ir.Binary, left, right string) string {
 			return "(sngl_string_cmp(" + left + ", " + right + ") " + n.Op.String() + " 0)"
 		}
 	}
-	if lt != nil && lt.Kind == ir.TypeStruct && (n.Op == ast.BinEq || n.Op == ast.BinNeq) {
+	if lt != nil && (lt.Kind == ir.TypeStruct || ir.PayloadEnum(lt) != nil) && (n.Op == ast.BinEq || n.Op == ast.BinNeq) {
 		eq := c.equal(lt, left, right)
 		if n.Op == ast.BinNeq {
 			return "!" + eq
@@ -343,6 +373,12 @@ func (c *Context) Binary(n *ir.Binary, left, right string) string {
 // fields each, through a function the file defines for it, since C compares
 // no struct.
 func (c *Context) equal(t *ir.Type, a, b string) string {
+	if textual(t) {
+		return "sngl_string_eq(" + a + ", " + b + ")"
+	}
+	if ed := ir.PayloadEnum(t); ed != nil {
+		return c.enumEqual(t, ed, a, b)
+	}
 	switch t.Kind {
 	case ir.TypeString:
 		return "sngl_string_eq(" + a + ", " + b + ")"
@@ -394,6 +430,12 @@ func (c *Context) Select(n *ir.Select, operand string) string {
 	if t != nil && t.Kind == ir.TypeRef && n.Field == "value" {
 		return operand + "->value"
 	}
+	if n.Field == "length" && t != nil && ir.HasLength(t) {
+		if t.Kind == ir.TypeString {
+			return "sngl_string_length(" + operand + ")"
+		}
+		return "(" + operand + ").len"
+	}
 	if t != nil && c.isPointer(t) {
 		// A box, a C pointer, a record a platform holds by pointer.
 		return operand + "->" + Local(n.Field)
@@ -422,6 +464,14 @@ func (c *Context) isPointer(t *ir.Type) bool {
 // StructLit is a compound literal naming each field it sets; one it leaves
 // out is C's zero, which is SNGL's for every type C writes.
 func (c *Context) StructLit(n *ir.StructLit, fields []string) string {
+	// A value a platform holds by pointer, a gtk4rt picture: its zero is
+	// none.
+	if len(n.Fields) == 0 && c.isPointer(n.Type) {
+		return "NULL"
+	}
+	if ir.PayloadEnum(n.Type) != nil && len(n.Fields) == 1 {
+		return c.enumLit(n.Type, n.Fields[0].Name, fields[0])
+	}
 	if !isProgramStruct(n.Type) {
 		// A C type SNGL holds opaquely has one literal, its zero: what a
 		// parameter the compiler passes defaults to.
@@ -433,19 +483,33 @@ func (c *Context) StructLit(n *ir.StructLit, fields []string) string {
 	if sd, ok := n.Type.Decl.(*ir.StructDef); ok && sd.RefBox {
 		name := Decl(&sd.DeclInfo)
 		c.Box(sd)
-		return "((" + name + " *)" + c.heapCopy(name, c.structLit(n, fields)) + ")"
+		// A box is a holder: what it starts holding is kept.
+		kept := slices.Clone(fields)
+		for i, f := range n.Fields {
+			if i < len(kept) {
+				kept[i] = c.keep(sd.Fields[0].Type, c.nullAs(sd.Fields[0].Type, f.Value, kept[i]))
+			}
+		}
+		return "((" + name + " *)" + c.heapCopy(name, c.structLit(n, kept)) + ")"
 	}
 	return c.structLit(n, fields)
 }
 
 func (c *Context) structLit(n *ir.StructLit, fields []string) string {
-	name := Decl(&n.Type.Decl.(*ir.StructDef).DeclInfo)
+	sd := n.Type.Decl.(*ir.StructDef)
+	name := Decl(&sd.DeclInfo)
 	var parts []string
 	for i, f := range n.Fields {
 		if f.Spread || f.Name == "" {
 			return c.fail("a spread into %s", n.Type)
 		}
-		parts = append(parts, "."+Local(f.Name)+" = "+fields[i])
+		v := fields[i]
+		for _, sf := range sd.Fields {
+			if sf.Name == f.Name {
+				v = c.nullAs(sf.Type, f.Value, v)
+			}
+		}
+		parts = append(parts, "."+Local(f.Name)+" = "+v)
 	}
 	if len(parts) == 0 {
 		return "(" + name + "){0}"
@@ -460,7 +524,14 @@ func (c *Context) Box(sd *ir.StructDef) {
 	c.file.define(name, "typedef struct "+name+" {\n\t"+elem+" value;\n} "+name+";\n", elem)
 }
 
-func (c *Context) Spread(*ir.Spread, string) string { return c.fail("a spread") }
+// Spread is the list a spread reads, which the list literal it is in joins
+// (ListLit); a spread anywhere else is refused there.
+func (c *Context) Spread(n *ir.Spread, operand string) string {
+	if t := n.Operand.ExprType(); t == nil || t.Kind != ir.TypeList {
+		return c.fail("a spread of %s", t)
+	}
+	return operand
+}
 
 func (c *Context) MatchExpr(n *ir.MatchExpr) string {
 	return c.EvalExpr(n.TernaryChain())
@@ -497,6 +568,17 @@ func (c *Context) Call(n *ir.Call) string {
 	}
 	if out, ok := c.numberIntrinsic(n); ok {
 		return out
+	}
+	if out, ok := c.enumIntrinsic(n); ok {
+		return out
+	}
+	switch n.Func.Intrinsic {
+	case "async.begin":
+		return "sngl_async_begin()"
+	case "async.end", "async.ended":
+		if len(n.Args) == 1 {
+			return "sngl_" + strings.ReplaceAll(n.Func.Intrinsic, ".", "_") + "(" + c.EvalExpr(n.Args[0].Value) + ")"
+		}
 	}
 	if strings.HasPrefix(n.Func.Intrinsic, "map.") && len(n.Args) > 0 {
 		if t := n.Args[0].Value.ExprType(); t != nil && t.Kind == ir.TypeMap {
@@ -572,6 +654,10 @@ func (c *Context) Conversion(n *ir.Conversion) string {
 	if c.isPointer(to) && (c.isPointer(from) || from.Kind == ir.TypeComponent) {
 		return "(" + c.typeName(to) + ")(" + operand + ")"
 	}
+	// A date, a time and a datetime are their text.
+	if textual(from) && (to.Kind == ir.TypeString || textual(to)) || textual(to) && from.Kind == ir.TypeString {
+		return operand
+	}
 	if to.Kind == ir.TypeString {
 		switch from.Kind {
 		case ir.TypeString:
@@ -582,6 +668,10 @@ func (c *Context) Conversion(n *ir.Conversion) string {
 			return "sngl_float_format(" + operand + ")"
 		case ir.TypeBool:
 			return "sngl_bool_format(" + operand + ")"
+		case ir.TypeUnit:
+			if ud := unitDef(from); ud != nil {
+				return c.unitText(ud, operand)
+			}
 		}
 		return c.fail("the text of a %s", from)
 	}
@@ -616,11 +706,19 @@ func (c *Context) AssignText(n *ir.Assign, target, value string) string {
 	t := n.Target.ExprType()
 	op := n.Op
 	if op == ast.AssignSet {
-		return target + " = " + c.nullAs(t, n.Value, value) + ";"
+		value = c.nullAs(t, n.Value, value)
+		if c.holder(n.Target) && owns(t) {
+			return c.store(t, target, value)
+		}
+		return target + " = " + value + ";"
 	}
 	if t != nil && (t.Kind == ir.TypeString || t.Kind == ir.TypeInt && (op == ast.AssignDiv || op == ast.AssignMod)) {
 		bin := map[ast.AssignOp]ast.BinaryOp{ast.AssignAdd: ast.BinAdd, ast.AssignDiv: ast.BinDiv, ast.AssignMod: ast.BinMod}[op]
-		return target + " = " + c.Binary(&ir.Binary{Op: bin, Left: n.Target, Right: n.Value, Type: t}, target, value) + ";"
+		value = c.Binary(&ir.Binary{Op: bin, Left: n.Target, Right: n.Value, Type: t}, target, value)
+		if c.holder(n.Target) && owns(t) {
+			return c.store(t, target, value)
+		}
+		return target + " = " + value + ";"
 	}
 	if t != nil && t.Kind == ir.TypeFloat && op == ast.AssignMod {
 		c.file.include("math.h", true)
@@ -751,6 +849,12 @@ func (c *Context) ReturnText(n *ir.Return, value string) string {
 // and a function.
 func (c *Context) nullAs(t *ir.Type, e ir.Expr, v string) string {
 	if t != nil && ir.IsNullLiteral(e) {
+		if c.ptrOption(t) {
+			return "NULL"
+		}
+		if ir.PayloadEnum(t) != nil {
+			return "((" + c.typeName(t) + "){0})"
+		}
 		switch t.Kind {
 		case ir.TypeOption, ir.TypeList, ir.TypeMap, ir.TypeFunc:
 			return "((" + c.typeName(t) + "){0})"
@@ -1025,5 +1129,28 @@ func (c *Context) Include(name string, system bool) { c.file.include(name, syste
 // and the context it hands back, the closure on the heap; sngl_release, which
 // the file defines, frees it.
 func (c *Context) Callback(sig *ir.FuncSig, value ir.Expr) (fn, ctx string) {
-	return c.cCallback(sig, c.EvalExpr(value), value.ExprType())
+	t := value.ExprType()
+	if t == nil || t.Sig == nil {
+		// A value a pass made untyped -- a closure handed an intrinsic --
+		// is of the type the callee takes.
+		t = &ir.Type{Kind: ir.TypeFunc, Sig: sig}
+	}
+	return c.cCallback(sig, c.EvalExpr(value), t)
+}
+
+// isLocalVar reports whether v is declared by a `var` statement somewhere in
+// the program, which C writes as a local of the function it is in.
+func (c *Context) isLocalVar(v *ir.Var) bool {
+	if c.file.localVars == nil {
+		c.file.localVars = map[*ir.Var]bool{}
+		if c.Ctx != nil && c.Ctx.Pkg != nil {
+			_ = ir.Walk(c.Ctx.Pkg, func(n ir.Node) error {
+				if lv, ok := n.(*ir.LocalVar); ok && lv.Sym != nil {
+					c.file.localVars[lv.Sym] = true
+				}
+				return nil
+			})
+		}
+	}
+	return c.file.localVars[v]
 }
