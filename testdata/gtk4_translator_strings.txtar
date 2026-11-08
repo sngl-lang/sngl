@@ -317,6 +317,8 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
 	gtk4rt.ToplevelTitleWindow(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
+	C.gtk_widget_set_hexpand((*C.GtkWidget)(unsafe.Pointer(m.__n0)), 1)
+	C.gtk_widget_set_vexpand((*C.GtkWidget)(unsafe.Pointer(m.__n0)), 1)
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
@@ -382,4 +384,4 @@ func snglCallback_void_p_void_p__void(a0 unsafe.Pointer, a1 unsafe.Pointer, ctx 
 // snglCallback_void_p_void_p__voidPtr is snglCallback_void_p_void_p__void as the function pointer C calls.
 func snglCallback_void_p_void_p__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_void_p_void_p__void) }
 -- run/go/gtk4 --
-pass sha256:ff954682797c6f98a0a1032926e43cae
+pass sha256:4987cd9a92e3c9e55d24ca9078895e6e

@@ -619,6 +619,8 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
 	gtk4rt.ToplevelTitleWindow(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
+	C.gtk_widget_set_hexpand((*C.GtkWidget)(unsafe.Pointer(m.__n0)), 1)
+	C.gtk_widget_set_vexpand((*C.GtkWidget)(unsafe.Pointer(m.__n0)), 1)
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
@@ -731,6 +733,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:e7aa3c103e2b58ec9e6b76cd406fa230
 -- run/go/gtk4 --
-pass sha256:de5607f631d99c61818f99dc2b4519af
+pass sha256:cdff76eb4f023ecf5bd6631fc1b0f27e
 -- run/none/html --
 pass sha256:d8153d2510526fe79a9754b1d26539d5

@@ -1392,6 +1392,23 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 		for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setTitle}) {
 			fmt.Fprintf(b, "\t%s\n", line)
 		}
+		// The window's box is __root's child here, where gtk4rt makes it
+		// the window's: a box's child takes its natural height, so a
+		// program's flex=1 grew in a window it no longer filled.
+		for _, set := range []string{"gtk_widget_set_hexpand", "gtk_widget_set_vexpand"} {
+			expand := &ir.Call{
+				Type:     ir.TypVoid,
+				Receiver: &ir.Ident{Name: "C"},
+				Func:     nativeFunc(set),
+				Args: []ir.CallArg{
+					{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: buildRef(window, fields)}},
+					{Value: &ir.Literal{Type: ir.TypInt, Value: "1"}},
+				},
+			}
+			for _, line := range gc.EvalStmt(&ir.CallStmt{Call: expand}) {
+				fmt.Fprintf(b, "\t%s\n", line)
+			}
+		}
 	}
 	setChildCall := &ir.Call{
 		Type:     ir.TypVoid,

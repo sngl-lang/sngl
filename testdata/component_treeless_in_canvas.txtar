@@ -1435,6 +1435,8 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
 	gtk4rt.ToplevelTitleWindow(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
+	C.gtk_widget_set_hexpand((*C.GtkWidget)(unsafe.Pointer(m.__n0)), 1)
+	C.gtk_widget_set_vexpand((*C.GtkWidget)(unsafe.Pointer(m.__n0)), 1)
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
@@ -2024,7 +2026,7 @@ pass sha256:4050baaf343b3789637964efbf3dbf2e
 -- run/go/fyne --
 pass sha256:4a19961ae5f2c22c86eb5adb5bdb5ae8
 -- run/go/gtk4 --
-pass sha256:87855f5a4fe3ee6b32536707b87fadaa
+pass sha256:bcd0684895ca359d4214dfd0dc796863
 -- run/kotlin/android --
 pass sha256:82b9eaaea22806d0fd821929fc92067a
 -- run/none/html --

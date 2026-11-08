@@ -1460,7 +1460,7 @@ sha256:b96e9263b1b2a5acdb0bda5fcd9728a3
   ]
 }
 -- testrun/gtk4/go/app.sngl/Calculator/1 --
-sha256:f3b95bf4e8bfc9691cb251aee9700de9
+sha256:53241aeb2353f355ea38d57acb368268
 {
   "results": [
     {
@@ -1492,7 +1492,7 @@ sha256:b4d990104e8b9ca120aa8e756e0ce7b3
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:280963099b910c717320afaab680db98
+sha256:4a931997d900005e4ad8190955509e69
 {
   "results": [
     {
