@@ -1165,7 +1165,7 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	}
 	args := gc.evalCallArgs(n.Args)
 	if n.Func.Foreign.Path == ir.CPath {
-		return gc.CCall(n.Func, args), true
+		return gc.CCall(n, args), true
 	}
 	name := n.Func.Foreign.Name
 	gc.RequireImport(n.Func.Foreign.Path)
@@ -2164,7 +2164,9 @@ func IRTypeToGo(t *ir.Type) string {
 			return colorGoType
 		}
 		if sd, ok := t.Decl.(*ir.StructDef); ok {
-			if sd.Foreign.C != nil {
+			// A C struct with fields is the program's own, declared below
+			// and converted at the call (CInterop).
+			if sd.Foreign.C != nil && !sd.IsCStruct() {
 				return CTypeToGo(sd.Foreign.C)
 			}
 			// A mark names a type this file also declares, so using the mark's

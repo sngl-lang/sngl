@@ -1695,6 +1695,10 @@ type StructField struct {
 	// its SNGL name in the IR and on every host.
 	JSON string `json:",omitempty"`
 	HTTP string `json:",omitempty"`
+	// CAlias is the `#[cnative]` alias the field's type was written as, which
+	// a C struct's field (StructDef.IsCStruct) crosses as: Param.CAlias's
+	// rule, for the same reason.
+	CAlias *Alias `json:",omitempty"`
 }
 
 // EnumDef is a resolved enum type declaration.

@@ -89,6 +89,8 @@ type refParams struct {
 	result map[*ir.Func]*ir.StructDef
 	done   map[*ir.Call]bool
 	temps  int
+	// cSeen is each C function cOuts has made the outs of.
+	cSeen map[*ir.Func]bool
 }
 
 func (rp *refParams) funcs() []*ir.Func {
@@ -396,7 +398,32 @@ func (rp *refParams) stmt(s ir.Stmt) (pre, repl []ir.Stmt, err error) {
 }
 
 func (rp *refParams) writesBack(c *ir.Call) bool {
-	return c != nil && c.Func != nil && len(rp.outs[c.Func]) > 0 && !rp.done[c]
+	if c == nil || c.Func == nil {
+		return false
+	}
+	rp.cOuts(c.Func)
+	return len(rp.outs[c.Func]) > 0 && !rp.done[c]
+}
+
+// cOuts makes each by-reference parameter of f an out where f is a C
+// function, which has no body to say what it writes: a pointer a C function
+// takes is one it fills, `GetClientRect(hwnd, &r)`. The call hands back what
+// C wrote, as a function with a body hands back what it wrote, and the
+// translator writes the C temp the pointer is to (codegen.CInterop.CCall).
+func (rp *refParams) cOuts(f *ir.Func) {
+	if f.Foreign.Path != ir.CPath || f.IsCCast() || rp.cSeen[f] {
+		return
+	}
+	if rp.cSeen == nil {
+		rp.cSeen = map[*ir.Func]bool{}
+	}
+	rp.cSeen[f] = true
+	for i, p := range f.Params {
+		if byRef(p) {
+			rp.outs[f] = append(rp.outs[f], i)
+		}
+	}
+	rp.declareResult(f)
 }
 
 // refHoister rewrites the expressions of one statement.
@@ -655,6 +682,11 @@ func (rp *refParams) refuseUnrewritten() error {
 // one reads it, and each it writes is bound to a copy at entry that the body
 // names and every return hands back.
 func (rp *refParams) rewriteBody(f *ir.Func) {
+	// A C function keeps its signature: its pointers are the translator's to
+	// write, from the outs cOuts made of them.
+	if f.Foreign.Path == ir.CPath {
+		return
+	}
 	own := map[*ir.Param]*ir.Var{}
 	var prelude []ir.Stmt
 	for _, k := range rp.outs[f] {

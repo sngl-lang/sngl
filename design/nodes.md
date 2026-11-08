@@ -161,6 +161,19 @@ declaration itself. Two things about the name that are easy to get wrong:
   compiles into the program: Go writes them beside the generated package,
   where cgo compiles every `.c` (`codegen.CCompiler.CSources`). That is how a
   platform's runtime is C rather than one language's.
+  A `#[cnative]` struct declaring fields is a C struct
+  (`ir.StructDef.IsCStruct`): the program's own struct, `Foreign.Marked`
+  so a backend declares it, converted field by field where a call takes one
+  (`CConvertStruct`) or returns one, each field as its alias
+  (`StructField.CAlias`) or scalar. Held as cgo's type instead, its fields
+  would be `C.int` in every SNGL expression reading one. A C function's
+  `ref` parameter is a pointer it fills: `passRefParams` makes it an out
+  (`cOuts`), so the call hands back what C wrote and the caller's variable
+  is assigned as a bodied function's write-back is -- an assignment every
+  later pass sees -- and the translator hands C the address of a C temp
+  (`CInterop.CCall`). `rewriteBody` leaves a C function's signature alone,
+  since its pointers are the translator's (`testdata/c_struct_argument.txtar`,
+  `error_c_struct.sngl`, `error_c_struct_mark.sngl`).
   A `func` parameter is a callback: C calls a function pointer and hands it
   back a `void *`, which the declaration marks `#[c.context]` (`sngl:x/c`) and
   no caller passes. The mark gives the parameter a placeholder default, so the

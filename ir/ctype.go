@@ -153,6 +153,26 @@ func CTypeOf(t *Type) *CType {
 // CPath is the Foreign.Path every `#[cnative]` declaration carries.
 const CPath = "C"
 
+// IsCStruct reports whether sd is a C struct the program holds: a
+// `#[cnative]` struct declaring fields, which is a SNGL struct with a C
+// layout, converted field by field where a C call takes or fills one. One
+// declaring none is a C type SNGL holds opaquely, as the C type itself.
+func (sd *StructDef) IsCStruct() bool {
+	return sd != nil && sd.Foreign.Path == CPath && len(sd.Fields) > 0
+}
+
+// CStructOf is t's declaration where t is a C struct (IsCStruct), nil for
+// anything else.
+func CStructOf(t *Type) *StructDef {
+	if t == nil || t.Kind != TypeStruct {
+		return nil
+	}
+	if sd, ok := t.Decl.(*StructDef); ok && sd.IsCStruct() {
+		return sd
+	}
+	return nil
+}
+
 // IsCCast reports whether fn is a `#[cnative(…, cast)]` function: a
 // conversion to the C type its name spells rather than a C function to call.
 func (fn *Func) IsCCast() bool {
@@ -189,6 +209,10 @@ const (
 	// which C calls with the context to let the closure go. Operand is the
 	// parameter's placeholder.
 	CConvertRelease
+	// CConvertStruct is a C struct (StructDef.IsCStruct) written field by
+	// field as the C struct To names, each field as its alias or the scalar
+	// it is.
+	CConvertStruct
 )
 
 // CConvert is a value converted to a C type, the conversion a call of a C

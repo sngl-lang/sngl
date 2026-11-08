@@ -330,6 +330,14 @@ func markCNative(m *mark) error {
 		if fm.C, err = ir.ParseCType(name); err != nil {
 			return fmt.Errorf("#[cnative(%q)]: %w", name, err)
 		}
+		// One with fields is the program's own struct with a C layout,
+		// which a backend declares as it does any other (Foreign.Marked).
+		if len(d.Fields) > 0 {
+			if fm.C.Ptr > 0 {
+				return fmt.Errorf("#[cnative(%q)] declares fields, so it names a C struct, held by value: a pointer to one is a ref[%s] parameter", name, d.Name)
+			}
+			fm.Marked = true
+		}
 		if err := claimForeign(&d.Foreign, fm, name); err != nil {
 			return err
 		}

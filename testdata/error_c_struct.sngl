@@ -1,0 +1,29 @@
+// A C struct's fields, and what a C function's `ref` fills, are values C has
+// a type for that hold no memory either side owns: a scalar, a typedef's alias
+// of one, or a C struct. A C struct crosses by value, so a callback, which
+// hands C's values over as they are, takes none.
+import macro "sngl:macro"
+import c "sngl:x/c"
+
+c.link(include="calls.h")
+
+#[macro.cnative("NAMED")]
+struct Named {
+    name string // ERROR(check) "field \"name\" of Named, the C struct NAMED, is a string"
+    n    int
+}
+
+#[macro.cnative("POINT")]
+struct Point {
+    x int
+    y int
+}
+
+#[macro.cnative("fill_name")]
+func fillName(s ref[string]) // ERROR(check) "parameter \"s\" is a ref[string], and a ref a C function fills is to an int, float or bool"
+
+#[macro.cnative("fill_point")]
+func fillPoint(p ref[Point])
+
+#[macro.cnative("each_point")]
+func eachPoint(f func(p Point), #[c.context] data c.pointer) // ERROR(check) "callback \"f\" takes a Point"

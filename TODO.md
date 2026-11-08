@@ -260,8 +260,12 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
      handler on the cgo path (`design/architecture.md`, *Which file a
      program gets*). GLib releases each handler through `destroy`, marked
      `#[c.release]`, so a handler goes with its widget.
-5. **Structs and `ref` out-parameters** (design item 6). A fixture over
-   a shipped C function filling a struct.
+5. **Structs and `ref` out-parameters** (design item 6). Done:
+   `testdata/c_struct_argument.txtar` passes a struct by value, has C fill
+   one and two `ref[int]`s, and a field written with a typedef's alias; the
+   rules are `error_c_struct.sngl` and `error_c_struct_mark.sngl`. A struct
+   is converted at each call rather than held in C's layout, since cgo's
+   field types would reach every SNGL expression reading a field.
 6. **Docs.**
    - `lib/macro/foreign.sngl`'s `cnative` doc: C spellings, aliases.
    - `lib/x/c/doc.sngl`.
@@ -273,9 +277,6 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
 
 ### Open questions
 
-- Whether a struct crossing by value is converted at every call or kept in
-  C's layout in the program. Go can hold a `C.RECT` directly, which saves a
-  copy per call and ties a SNGL struct to cgo's type.
 - How much of gtk4rt moves to C in this part. The trampolines must, since
   item 5 replaces them, and so must the layout manager, which is C already.
   The rest (toplevels, images, menus, tabs) is ordinary GTK calls a SNGL

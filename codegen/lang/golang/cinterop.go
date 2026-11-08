@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 
@@ -60,6 +61,8 @@ func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
 		return gc.EvalExpr(x.Operand)
 	case ir.CConvertContext, ir.CConvertRelease:
 		return "nil"
+	case ir.CConvertStruct:
+		return gc.cValueIn(x.Type, nil, gc.EvalExpr(x.Operand))
 	}
 	operand := gc.EvalExpr(x.Operand)
 	switch x.Kind {
@@ -82,49 +85,101 @@ func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
 	return "(" + gc.CType(x.To) + ")(" + operand + ")"
 }
 
-// CCall is a call of the C function fn with args rendered. A C function's
-// number comes back as cgo's type for it, which a Go int or float64 is not
-// assignable from, so it is converted back: the arguments went the other way
-// in lower.CMarshal.
+// CCall is c, a call of a C function, with its arguments rendered. A C
+// function's number comes back as cgo's type for it, which a Go int or
+// float64 is not assignable from, so it is converted back, and a C struct
+// field by field: the arguments went the other way in lower.CMarshal.
 //
 // A callback crosses as the dispatcher cgo exports for its type (ccallback.go)
 // and the closure as the context, registered for as long as the callback is
 // held: for the call, until C calls the release a `#[c.release]` parameter is
 // handed, or for the rest of the program where the parameter is `#[retains]`.
-func (gc *GoIRContext) CCall(fn *ir.Func, args []string) string {
+//
+// A `ref` C fills is a C temp the call is handed the address of, which the
+// call hands back as lower.RefParams made it: the one value, or the record of
+// the result and each one.
+func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
+	fn := c.Func
 	off := len(args) - len(fn.Params)
-	cb := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return !p.CompilerPassed() && p.Type != nil && p.Type.Kind == ir.TypeFunc })
-	ctx := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CContext })
-	rel := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CRelease })
-	if off < 0 || cb < 0 || ctx < 0 {
+	if off < 0 {
 		return gc.cCall(fn, args)
 	}
 	args = slices.Clone(args)
-	closure := args[off+cb]
-	args[off+cb] = callbackName(fn.Params[cb].Type.Sig) + "Ptr()"
-	// A context the C function spells otherwise than `void *` -- GLib's
-	// gpointer -- is a type of cgo's own.
-	asContext := func(v string) string {
-		if t := ir.CTypeOf(fn.Params[ctx].Type); !t.IsVoidPointer() {
-			return gc.CType(t) + "(" + v + ")"
+	var body []string
+	var outs []string
+	for i, p := range fn.Params {
+		if p.Type == nil || p.Type.Kind != ir.TypeRef {
+			continue
 		}
-		return v
+		tmp := fmt.Sprintf("__snglOut%d", i)
+		elem := p.Type.Elems[0]
+		body = append(body, tmp+" := "+gc.cValueIn(elem, p.CAlias, args[off+i]))
+		args[off+i] = "&" + tmp
+		outs = append(outs, gc.cValueOut(elem, p.CAlias, tmp))
 	}
-	// A function pointer is cgo's *[0]byte, which any C function pointer
-	// type is assignable from: GClosureNotify takes it as it is.
-	if rel >= 0 {
-		args[off+rel] = "snglReleasePtr()"
+	cb := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return !p.CompilerPassed() && p.Type != nil && p.Type.Kind == ir.TypeFunc })
+	ctx := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CContext })
+	rel := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CRelease })
+	if cb >= 0 && ctx >= 0 {
+		closure := args[off+cb]
+		args[off+cb] = callbackName(fn.Params[cb].Type.Sig) + "Ptr()"
+		// A context the C function spells otherwise than `void *` -- GLib's
+		// gpointer -- is a type of cgo's own.
+		asContext := func(v string) string {
+			if t := ir.CTypeOf(fn.Params[ctx].Type); !t.IsVoidPointer() {
+				return gc.CType(t) + "(" + v + ")"
+			}
+			return v
+		}
+		// A function pointer is cgo's *[0]byte, which any C function
+		// pointer type is assignable from: GClosureNotify takes it as it is.
+		if rel >= 0 {
+			args[off+rel] = "snglReleasePtr()"
+		}
+		if rel >= 0 || fn.Params[cb].Transfer == ir.TransferRetains {
+			args[off+ctx] = asContext("snglContext(" + closure + ")")
+		} else {
+			args[off+ctx] = asContext("__snglCtx")
+			body = append([]string{"__snglCtx := snglContext(" + closure + ")", "defer snglRelease(__snglCtx)"}, body...)
+		}
 	}
-	if rel >= 0 || fn.Params[cb].Transfer == ir.TransferRetains {
-		args[off+ctx] = asContext("snglContext(" + closure + ")")
-		return gc.cCall(fn, args)
+	call := gc.cCall(fn, args)
+	if len(body) == 0 {
+		return call
 	}
-	args[off+ctx] = asContext("__snglCtx")
-	hold := "__snglCtx := snglContext(" + closure + "); defer snglRelease(__snglCtx); "
-	if fn.Return == nil || fn.Return.Kind == ir.TypeVoid {
-		return "func() { " + hold + gc.cCall(fn, args) + " }()"
+	void := fn.Return == nil || fn.Return.Kind == ir.TypeVoid
+	var ret string
+	switch {
+	case len(outs) == 0 && void:
+		body = append(body, call)
+	case len(outs) == 0:
+		ret = call
+	case void && len(outs) == 1:
+		body = append(body, call)
+		ret = outs[0]
+	default:
+		// The record lower.RefParams declared: the result, then each out.
+		def, _ := c.Type.Decl.(*ir.StructDef)
+		var fields []string
+		k := 0
+		for _, f := range def.Fields {
+			if f.Name == "result" {
+				body = append(body, "__snglResult := "+call)
+				fields = append(fields, ExportName(f.Name)+": __snglResult")
+				continue
+			}
+			fields = append(fields, ExportName(f.Name)+": "+outs[k])
+			k++
+		}
+		if void {
+			body = append(body, call)
+		}
+		ret = gc.goType(c.Type) + "{" + strings.Join(fields, ", ") + "}"
 	}
-	return "func() " + gc.goType(fn.Return) + " { " + hold + "return " + gc.cCall(fn, args) + " }()"
+	if ret == "" {
+		return "func() { " + strings.Join(body, "; ") + " }()"
+	}
+	return "func() " + gc.goType(c.Type) + " { " + strings.Join(body, "; ") + "; return " + ret + " }()"
 }
 
 func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
@@ -135,7 +190,59 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 			call = "int(" + call + ")"
 		case ir.TypeFloat:
 			call = "float64(" + call + ")"
+		case ir.TypeStruct:
+			if ir.CStructOf(fn.Return) != nil {
+				call = gc.cValueOut(fn.Return, nil, call)
+			}
 		}
 	}
 	return call
+}
+
+// cScalar is the C type a SNGL scalar t crosses as, written with alias where
+// the declaration names one: a bool is C's `int`, as c.cbool makes one.
+func cScalar(t *ir.Type, alias *ir.Alias) *ir.CType {
+	if alias != nil && alias.C != nil {
+		return alias.C
+	}
+	if t.Kind == ir.TypeFloat {
+		return &ir.CType{Name: "double"}
+	}
+	return &ir.CType{Name: "int"}
+}
+
+// cValueIn is v, a SNGL scalar or C struct of type t, as the C value it
+// crosses as: a struct field by field, through a function so v is read once.
+func (gc *GoIRContext) cValueIn(t *ir.Type, alias *ir.Alias, v string) string {
+	if sd := ir.CStructOf(t); sd != nil {
+		var fields []string
+		for _, f := range sd.Fields {
+			fields = append(fields, f.Name+": "+gc.cValueIn(f.Type, f.CAlias, "v."+ExportName(f.Name)))
+		}
+		return "func(v " + gc.goType(t) + ") " + gc.CType(sd.Foreign.C) + " { return " + gc.CType(sd.Foreign.C) + "{" + strings.Join(fields, ", ") + "} }(" + v + ")"
+	}
+	ct := gc.CType(cScalar(t, alias))
+	if t.Kind == ir.TypeBool {
+		return "func(b bool) " + ct + " { if b { return 1 }; return 0 }(" + v + ")"
+	}
+	return ct + "(" + v + ")"
+}
+
+// cValueOut is v, a C value, as the SNGL scalar or C struct of type t it
+// crosses back as.
+func (gc *GoIRContext) cValueOut(t *ir.Type, alias *ir.Alias, v string) string {
+	if sd := ir.CStructOf(t); sd != nil {
+		var fields []string
+		for _, f := range sd.Fields {
+			fields = append(fields, ExportName(f.Name)+": "+gc.cValueOut(f.Type, f.CAlias, "c."+f.Name))
+		}
+		return "func(c " + gc.CType(sd.Foreign.C) + ") " + gc.goType(t) + " { return " + gc.goType(t) + "{" + strings.Join(fields, ", ") + "} }(" + v + ")"
+	}
+	switch t.Kind {
+	case ir.TypeBool:
+		return "(" + v + " != 0)"
+	case ir.TypeFloat:
+		return "float64(" + v + ")"
+	}
+	return "int(" + v + ")"
 }

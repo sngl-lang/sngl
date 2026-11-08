@@ -182,6 +182,17 @@ func (m *cMarshal) call(c *ir.Call) error {
 			}
 			continue
 		}
+		if sd := ir.CStructOf(p.Type); sd != nil {
+			if arg := &c.Args[off+i]; !isCConvert(arg.Value) {
+				arg.Value = &ir.CConvert{Kind: ir.CConvertStruct, To: sd.Foreign.C, Operand: arg.Value, Type: p.Type}
+			}
+			continue
+		}
+		// What a `ref` C fills crosses as the C temp the translator hands
+		// the address of (codegen.CInterop.CCall).
+		if p.Type != nil && p.Type.Kind == ir.TypeRef {
+			continue
+		}
 		if p.CAlias != nil && p.CAlias.C != nil {
 			if err := m.aliasArg(fn, p, &c.Args[off+i]); err != nil {
 				return err
@@ -215,6 +226,11 @@ func (m *cMarshal) call(c *ir.Call) error {
 		arg.Value = convertArg(conv, arg.Value)
 	}
 	return nil
+}
+
+func isCConvert(e ir.Expr) bool {
+	_, ok := e.(*ir.CConvert)
+	return ok
 }
 
 // insertCContext writes into c the arguments for its callee's #[c.context]

@@ -69,9 +69,10 @@ type CInterop interface {
 	CType(t *ir.CType) string
 	// CConvert renders a conversion to a C type.
 	CConvert(x *ir.CConvert) string
-	// CCall renders a call of the C function fn with its arguments rendered,
-	// and converts a number it returns back to SNGL's.
-	CCall(fn *ir.Func, args []string) string
+	// CCall renders c, a call of a C function, with its arguments rendered,
+	// and converts what it returns back to SNGL's: a number, a C struct, and
+	// what each `ref` it fills hands back (lower.RefParams).
+	CCall(c *ir.Call, args []string) string
 }
 
 // UnimplementedFileEmitter is returned by languages that have not migrated to

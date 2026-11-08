@@ -346,7 +346,7 @@ func fieldKindOf(t reflect.Type, name string) fieldKind {
 		return fieldFuncBody
 	case name == "Pkg" && t == declInfoType:
 		return fieldDeclPkg
-	case name == "CAlias" && t == reflect.TypeFor[Param](), name == "Alias" && t == reflect.TypeFor[CConvert]():
+	case name == "CAlias" && (t == reflect.TypeFor[Param]() || t == reflect.TypeFor[StructField]()), name == "Alias" && t == reflect.TypeFor[CConvert]():
 		return fieldShare
 	case carriesOverrides(t) && (name == "PlatformOverrides" || name == "Platform"):
 		return fieldPlatformOverrides

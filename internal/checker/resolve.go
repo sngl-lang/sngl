@@ -593,7 +593,7 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 				// Placeholder; actual default checked later when scope is ready.
 				def = &ir.Literal{Type: typ}
 			}
-			fld := &ir.StructField{Name: name, Type: typ, Default: def, DefaultWritten: f.Default != nil}
+			fld := &ir.StructField{Name: name, Type: typ, Default: def, DefaultWritten: f.Default != nil, CAlias: c.cAliasOf(f.Type, typ)}
 			if first == nil {
 				first = fld
 			}
@@ -882,7 +882,7 @@ func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 // with any mark is the one recorded; an alias takes no other.
 func (c *checker) cAliasOf(te ast.TypeExpr, typ *ir.Type) *ir.Alias {
 	nt, ok := te.(*ast.NamedType)
-	if ok && typ != nil && typ.Kind == ir.TypeOption && len(nt.TypeArgs) == 1 {
+	if ok && typ != nil && (typ.Kind == ir.TypeOption || typ.Kind == ir.TypeRef) && len(nt.TypeArgs) == 1 {
 		nt, ok = nt.TypeArgs[0].(*ast.NamedType)
 	}
 	if !ok || len(nt.TypeArgs) > 0 {

@@ -601,7 +601,7 @@ func (c *checker) checkCCallbacks() {
 		for _, i := range releases {
 			p := fn.Params[i]
 			switch {
-			case ir.CTypeOf(p.Type) == nil:
+			case ir.CTypeOf(p.Type) == nil || ir.CStructOf(p.Type) != nil:
 				c.error(pos(i), "parameter %q takes a C function: declare it c.pointer, or a #[cnative] struct naming the C function's own spelling of one, not %s", p.Name, p.Type)
 			case len(contexts) == 0:
 				c.error(pos(i), "parameter %q releases a callback's context, and %s marks no #[c.context]", p.Name, fn.Name)
@@ -616,8 +616,13 @@ func (c *checker) checkCCallbacks() {
 				}
 			}
 		}
+		for i, p := range fn.Params {
+			if p.Type != nil && p.Type.Kind == ir.TypeRef && !cFieldValue(p.Type.Elems[0], p.CAlias) {
+				c.error(pos(i), "parameter %q is a %s, and a ref a C function fills is to an int, float or bool, a #[cnative] alias of one, or a C struct", p.Name, p.Type)
+			}
+		}
 		for _, i := range contexts {
-			if p := fn.Params[i]; ir.CTypeOf(p.Type) == nil {
+			if p := fn.Params[i]; ir.CTypeOf(p.Type) == nil || ir.CStructOf(p.Type) != nil {
 				c.error(pos(i), "parameter %q is a callback's context, a C pointer: declare it c.pointer, or a #[cnative] struct naming the C function's own spelling of one, not %s", p.Name, p.Type)
 			}
 		}
@@ -664,5 +669,47 @@ func cCallbackValue(t *ir.Type) bool {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
 		return true
 	}
-	return ir.CTypeOf(t) != nil
+	return ir.CTypeOf(t) != nil && ir.CStructOf(t) == nil
+}
+
+// cFieldValue reports whether a C struct's field, or what a C function's
+// `ref` fills, may be t: a scalar, as itself or a typedef's alias, or a C
+// struct in turn.
+func cFieldValue(t *ir.Type, alias *ir.Alias) bool {
+	if t == nil {
+		return false
+	}
+	if alias != nil && alias.C != nil && alias.C.Ptr > 0 {
+		return false
+	}
+	switch t.Kind {
+	case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+		return true
+	}
+	return ir.CStructOf(t) != nil
+}
+
+// checkCStructs refuses a C struct's field (ir.StructDef.IsCStruct) holding
+// what is not a C scalar or a C struct: a string, a list or a pointer would
+// cross as memory one side owns, which a platform's C runtime handles.
+func (c *checker) checkCStructs() {
+	for _, sd := range c.pkg.Structs {
+		if !sd.IsCStruct() || sd.AST == nil {
+			continue
+		}
+		pos := map[string]ast.Pos{}
+		for _, f := range sd.AST.Fields() {
+			for i, n := range f.Names {
+				pos[n] = f.Pos
+				if i < len(f.NamePositions) {
+					pos[n] = f.NamePositions[i]
+				}
+			}
+		}
+		for _, f := range sd.Fields {
+			if !cFieldValue(f.Type, f.CAlias) {
+				c.error(pos[f.Name], "field %q of %s, the C struct %s, is a %s: a C struct's field is an int, float or bool, a #[cnative] alias of one, or a C struct", f.Name, sd.Name, sd.Foreign.C, f.Type)
+			}
+		}
+	}
 }
