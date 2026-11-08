@@ -107,7 +107,13 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 		if v.Init == nil {
 			continue
 		}
-		fmt.Fprintf(&build, "\t%s = %s;\n", e.globals[v], e.ctx.EvalExpr(v.Init))
+		// A null is the zero of the var's type, which is a struct for an
+		// option, a list, a map and a function.
+		value := e.ctx.EvalExpr(v.Init)
+		if ir.IsNullLiteral(v.Init) {
+			value = "(" + e.ctx.TypeName(v.Type) + "){0}"
+		}
+		fmt.Fprintf(&build, "\t%s = %s;\n", e.globals[v], value)
 	}
 	build.WriteString("}\n\nstatic void sngl_build(void) {\n")
 	for _, l := range e.ctx.EvalBlock(body) {
@@ -243,70 +249,54 @@ func (e *cEmitter) tests(fns []*ir.Func, teardown string) string {
 	return b.String()
 }
 
-// testBlock renders a test's statements: its asserts, its triggers and its
-// mount as the agent and the widgets take them, and the rest as the program's
-// own, the component it takes read as the program's state.
+// testBlock renders a test's statements as the program's own, the component
+// it takes read as the program's state. What only a test does -- an assert, a
+// wait, a trigger, its mount -- is a call the native hook answers (testCall)
+// wherever the test writes it, a loop's body as well as its own.
 func (e *cEmitter) testBlock(stmts []ir.Stmt, tName, comp string) []string {
+	e.testT = tName
+	defer func() { e.testT = "" }()
 	var lines []string
 	for _, s := range stmts {
-		lines = append(lines, e.testStmt(s, tName, comp)...)
+		lines = append(lines, e.ctx.EvalStmt(e.componentReads(s, comp))...)
 	}
 	return lines
 }
 
-func (e *cEmitter) testStmt(s ir.Stmt, tName, comp string) []string {
-	if _, _, ok := codegen.TestMount(s); ok {
-		return []string{"sngl_build();"}
+// testCall is n as the test being written does it, or false where n is no
+// call only a test makes.
+func (e *cEmitter) testCall(n *ir.Call) (string, bool) {
+	if e.testT == "" {
+		return "", false
 	}
-	if cs, ok := s.(*ir.CallStmt); ok {
-		if tt, ok := codegen.EventTriggerTarget(cs.Call); ok {
-			return e.trigger(tt.ID, cs.Call)
-		}
+	if ir.IsTestCall(n, ir.TestMountID) {
+		return "sngl_build()", true
 	}
-	s = e.componentReads(s, comp)
-	switch n := s.(type) {
-	case *ir.CallStmt:
-		c := n.Call
-		switch {
-		case ir.IsTestCall(c, ir.TestAssertID), ir.IsTestCall(c, ir.TestMustID):
-			cond := e.ctx.EvalExpr(c.Args[1].Value)
-			fail, word := "sngl_test_fail", "assert"
-			if ir.IsTestCall(c, ir.TestMustID) {
-				fail, word = "sngl_test_fail_now", "must"
-			}
-			return []string{"if (!(" + cond + ")) {", "\t" + fail + "(" + clang.Local(tName) + ", " + clang.StringLiteral(word+" failed: "+cond) + ");", "}"}
-		case ir.IsTestCall(c, ir.TestWaitID):
-			// The test runs on the loop's own thread, so it runs the loop
-			// while it waits, as gtk4rt.PumpFor does for Go.
-			pred := c.Args[1].Value
-			return []string{
-				"{",
-				"\t" + e.ctx.TypeName(pred.ExprType()) + " __wait = " + e.ctx.EvalExpr(pred) + ";",
-				"\tgint64 __end = g_get_monotonic_time() + (gint64)(" + e.ctx.EvalExpr(c.Args[2].Value) + ") * 1000;",
-				"\twhile (!__wait.fn(__wait.env) && g_get_monotonic_time() < __end) {",
-				"\t\tif (!g_main_context_iteration(NULL, FALSE)) g_usleep(1000);",
-				"\t}",
-				"}",
-			}
-		}
-		if ir.IsTestMethodCall(c) {
-			e.fail("a test's t.%s", c.Func.Name)
-			return nil
-		}
-	case *ir.If:
-		lines := []string{"if (" + e.ctx.EvalExpr(n.Cond) + ") {"}
-		for _, l := range e.testBlock(n.Body, tName, comp) {
-			lines = append(lines, "\t"+l)
-		}
-		if len(n.Else) > 0 {
-			lines = append(lines, "} else {")
-			for _, l := range e.testBlock(n.Else, tName, comp) {
-				lines = append(lines, "\t"+l)
-			}
-		}
-		return append(lines, "}")
+	if tt, ok := codegen.EventTriggerTarget(n); ok {
+		return e.trigger(tt.ID, n), true
 	}
-	return e.ctx.EvalStmt(s)
+	switch {
+	case ir.IsTestCall(n, ir.TestAssertID), ir.IsTestCall(n, ir.TestMustID):
+		cond := e.ctx.EvalExpr(n.Args[1].Value)
+		fail, word := "sngl_test_fail", "assert"
+		if ir.IsTestCall(n, ir.TestMustID) {
+			fail, word = "sngl_test_fail_now", "must"
+		}
+		return "((" + cond + ") ? (void)0 : " + fail + "(" + clang.Local(e.testT) + ", " + clang.StringLiteral(word+" failed: "+cond) + "))", true
+	case ir.IsTestCall(n, ir.TestWaitID):
+		// The test runs on the loop's own thread, so it runs the loop while
+		// it waits, as gtk4rt.PumpFor does for Go.
+		pred := n.Args[1].Value
+		fnT := e.ctx.TypeName(pred.ExprType())
+		name := fnT + "_wait"
+		e.ctx.Helper(name, "static void "+name+"("+fnT+" p, int64_t ms) {\n\tgint64 end = g_get_monotonic_time() + (gint64)ms * 1000;\n\twhile (!p.fn(p.env) && g_get_monotonic_time() < end) {\n\t\tif (!g_main_context_iteration(NULL, FALSE)) {\n\t\t\tg_usleep(1000);\n\t\t}\n\t}\n}\n")
+		return name + "(" + e.ctx.EvalExpr(pred) + ", " + e.ctx.EvalExpr(n.Args[2].Value) + ")", true
+	}
+	if ir.IsTestMethodCall(n) {
+		e.fail("a test's t.%s", n.Func.Name)
+		return "(void)0", true
+	}
+	return "", false
 }
 
 // componentReads is s with each read of the component a test takes, `c.n`,
@@ -317,6 +307,13 @@ func (e *cEmitter) componentReads(s ir.Stmt, comp string) ir.Stmt {
 	}
 	s = ir.CloneStmtsSharingDecls([]ir.Stmt{s})[0]
 	_ = ir.Rewrite(s, func(n ir.Node) (ir.Node, error) {
+		// A trigger names its widget through the component, which is how
+		// testCall finds the invoker.
+		if call, ok := n.(*ir.Call); ok {
+			if _, ok := codegen.EventTriggerTarget(call); ok {
+				return n, ir.SkipDir
+			}
+		}
 		sel, ok := n.(*ir.Select)
 		if !ok {
 			return n, nil
@@ -344,36 +341,34 @@ func (e *cEmitter) componentReads(s ir.Stmt, comp string) ir.Stmt {
 // trigger fires the event c names on the widget id, as GTK does: its signal
 // emitted, which reaches the program's handler through the connection the
 // program made.
-func (e *cEmitter) trigger(id string, c *ir.Call) []string {
+func (e *cEmitter) trigger(id string, c *ir.Call) string {
 	inv, ok := e.invokers[id+"."+c.Event]
 	if !ok {
 		e.fail("a test's %s.%s(), which nothing connects", id, c.Event)
-		return nil
+		return "(void)0"
 	}
 	w := e.ctx.EvalExpr(inv.node)
 	if inv.fire != "" && len(c.Args) == 0 {
-		return []string{inv.fire + "(GTK_WIDGET(" + w + "));"}
+		return inv.fire + "(GTK_WIDGET(" + w + "))"
 	}
 	if inv.fire == "sngl_toplevel_key" && len(c.Args) == 2 {
 		// A window's key is the press, field by field, and the stop its
-		// handler calls.
-		press := c.Args[0].Value
-		stop := c.Args[1].Value
+		// handler calls: a function of the file's takes the press apart.
+		press, stop := c.Args[0].Value, c.Args[1].Value
 		fn, ctx := e.ctx.Callback(stop.ExprType().Sig, stop)
-		p := "__press"
-		return []string{
-			"{",
-			"\t" + e.ctx.TypeName(press.ExprType()) + " " + p + " = " + e.ctx.EvalExpr(press) + ";",
-			"\tsngl_toplevel_key(GTK_WIDGET(" + w + "), " + p + ".key.ptr, " + p + ".ctrl, " + p + ".alt, " + p + ".shift, " + p + ".meta, " + p + ".editing, (SnglFn)" + fn + ", " + ctx + ", (GDestroyNotify)sngl_release);",
-			"}",
-		}
+		pt := e.ctx.TypeName(press.ExprType())
+		name := pt + "_press"
+		e.ctx.Helper(name, "static void "+name+"(GtkWidget *w, "+pt+" p, SnglFn stop, void *ctx) {\n\tsngl_toplevel_key(w, p.key.ptr, p.ctrl, p.alt, p.shift, p.meta, p.editing, stop, ctx, (GDestroyNotify)sngl_release);\n}\n")
+		return name + "(GTK_WIDGET(" + w + "), " + e.ctx.EvalExpr(press) + ", (SnglFn)" + fn + ", " + ctx + ")"
 	}
-	fire := "g_signal_emit_by_name((gpointer)(" + w + "), " + e.ctx.EvalExpr(inv.signal) + ");"
+	signal, prop := e.ctx.EvalExpr(inv.signal), "NULL"
+	fire := "g_signal_emit_by_name((gpointer)(" + w + "), " + signal + ")"
 	if inv.notify != "" {
-		fire = "g_object_notify(G_OBJECT(" + w + "), " + strconv.Quote(inv.notify) + ");"
+		prop = strconv.Quote(inv.notify)
+		fire = "g_object_notify(G_OBJECT(" + w + "), " + prop + ")"
 	}
 	if len(c.Args) == 0 {
-		return []string{fire}
+		return fire
 	}
 	v := e.ctx.EvalExpr(c.Args[0].Value)
 	switch {
@@ -381,24 +376,14 @@ func (e *cEmitter) trigger(id string, c *ir.Call) []string {
 	case inv.cType == "GtkCheckButton" || inv.cType == "GtkSwitch":
 		// A flip is the state written, which fires the signal; state the
 		// widget already holds fires nothing, so the test fires it itself.
-		get, set, cast := "gtk_check_button_get_active", "gtk_check_button_set_active", "GTK_CHECK_BUTTON"
-		if inv.cType == "GtkSwitch" {
-			get, set, cast = "gtk_switch_get_active", "gtk_switch_set_active", "GTK_SWITCH"
-		}
-		return []string{
-			"if (!" + get + "(" + cast + "(" + w + ")) != !(" + v + ")) {",
-			"\t" + set + "(" + cast + "(" + w + "), " + v + ");",
-			"} else {",
-			"\t" + fire,
-			"}",
-		}
+		return "sngl_flip(GTK_WIDGET(" + w + "), " + v + ", " + signal + ", " + prop + ")"
 	case inv.cType == "GtkEntry":
 		// An entry's events carry its text, which the handler reads back off
 		// the widget: the test puts it there first.
-		return []string{"sngl_editable_set_text_quiet(GTK_WIDGET(" + w + "), (" + v + ").ptr);", fire}
+		return "(sngl_editable_set_text_quiet(GTK_WIDGET(" + w + "), (" + v + ").ptr), " + fire + ")"
 	}
 	e.fail("a test's %s.%s() carrying a value", id, c.Event)
-	return nil
+	return "(void)0"
 }
 
 // widgetType is the class of the widget id names, in the record being
@@ -440,8 +425,11 @@ type cEmitter struct {
 	// canvasByID and canvasByNode are the program's drawings (canvases).
 	canvasByID   map[string]*codegen.Canvas
 	canvasByNode map[*ir.NodeInst]*codegen.Canvas
-	seq          int
-	err          error
+	// testT is the name of the test's sngl_t while a test is written
+	// (testBlock), and "" otherwise.
+	testT string
+	seq   int
+	err   error
 }
 
 func (e *cEmitter) fail(format string, args ...any) []ir.Stmt {
@@ -721,6 +709,9 @@ func (e *cEmitter) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
 // cNatives are the gtk4rt calls a cgo build still makes, as rt's C writes
 // each: its name, or what it writes in its place given its arguments.
 func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
+	if out, ok := e.testCall(n); ok {
+		return out, true
+	}
 	if n.Func == nil {
 		return "", false
 	}
@@ -747,6 +738,16 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 			args = append([]string{selfName}, args...)
 		}
 		return recordFunc(r.comp, n.Func.Name) + "(" + strings.Join(args, ", ") + ")", true
+	}
+	// A function of a component no record is made of -- the root a test
+	// mounts, which reaches its functions as methods -- reads the file's
+	// state, and is handed no component, which C has no value for.
+	if comp := e.funcOwner(n.Func); comp != nil && !isInstanceComponent(comp) && takesRecord(n.Func, comp) && len(n.Args) > 0 {
+		args := []string{"NULL"}
+		for _, a := range n.Args[1:] {
+			args = append(args, c.EvalExpr(a.Value))
+		}
+		return clang.FuncName(n.Func) + "(" + strings.Join(args, ", ") + ")", true
 	}
 	arg := func(i int) string { return c.EvalExpr(n.Args[i].Value) }
 	widget := func(i int) string { return "GTK_WIDGET(" + arg(i) + ")" }
@@ -916,4 +917,17 @@ func handlerOn(handler, node ir.Expr) ir.Expr {
 // where the program wrote none.
 func hasBody(fn *ir.Func) bool {
 	return len(fn.Block) > 0 || fn.AST != nil && (fn.AST.Body != nil || fn.AST.Block.IsDefined())
+}
+
+// funcOwner is the component fn is a function of, or nil.
+func (e *cEmitter) funcOwner(fn *ir.Func) *ir.Component {
+	if e.pkg == nil || fn == nil {
+		return nil
+	}
+	for _, comp := range e.pkg.Components {
+		if comp != nil && slices.Contains(comp.Funcs, fn) {
+			return comp
+		}
+	}
+	return nil
 }

@@ -290,8 +290,11 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 		// `output` block happens to name: a platform absent from the block
 		// would otherwise never have its platform package merged, and every
 		// stdlib component it renders through an override would report itself
-		// unimplemented.
-		pkg, err := checkDoc(doc, u.dir, true, nil, build.SelectedTargets(testlaunch.LangIdent(lang), plat.PlatformIdentifier())...)
+		// unimplemented. The language is configured too, as a build's is:
+		// gtk4 declares the widgets a C program calls only when told it is
+		// one, which a block naming no C target never says.
+		langIdent := testlaunch.LangIdent(lang)
+		pkg, err := checkDoc(doc, u.dir, true, map[string]string{build.LangOption: langIdent}, build.SelectedTargets(langIdent, plat.PlatformIdentifier())...)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", u.name, err)
 			totalFail++

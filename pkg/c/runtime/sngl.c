@@ -216,6 +216,13 @@ int64_t sngl_int_of(sngl_string s) {
 	return whole ? (int64_t)v : 0;
 }
 
+sngl_string sngl_color_hex(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+	char buf[10];
+	int n = a == 255 ? snprintf(buf, sizeof buf, "#%02x%02x%02x", r, g, b)
+	                 : snprintf(buf, sizeof buf, "#%02x%02x%02x%02x", r, g, b, a);
+	return sngl_bytes(buf, (size_t)n);
+}
+
 sngl_string sngl_bool_format(bool v) {
 	return v ? SNGL_STR("true") : SNGL_STR("false");
 }

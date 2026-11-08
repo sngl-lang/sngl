@@ -55,6 +55,25 @@ stdout 'ok +2 tests, 0 failures'
 sngl test --platform=gtk4 --language=c keys.sngl
 stdout 'ok +1 tests, 0 failures'
 
+# A unit of several bases is a struct of a double per base, which C adds,
+# scales and compares through functions the file defines: a style built as
+# the program runs holds them, and gtk4's look reads their fields. The
+# numeric builtins are math.h's and the list's, a color's text is the
+# runtime's, a string split by "" is its characters, a root's function a
+# test calls is handed no component, and an assert in a loop is the test's.
+# A struct copied out of a list copies its list after the list's copy is
+# defined, and an option a root's var starts null is the option's zero.
+
+sngl test --platform=gtk4 --language=c units.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A program whose output block names no C target is tested in C all the
+# same: the test configures gtk4 for the language it runs in, which is what
+# declares the widgets a C program calls.
+
+sngl test --platform=gtk4 --language=c bare.sngl
+stdout 'ok +1 tests, 0 failures'
+
 -- app.sngl --
 import ui "sngl:ui"
 import c "sngl:language/c"
@@ -295,6 +314,74 @@ func testKeysReachTheWindow(t test.Test, c app) {
     t.assert(c.total == 9.5)
     t.assert(c.count == 7)
 }
+-- bare.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+component main ui.node {
+    var n = 0
+    ui.button #b(text="{n}", @click {
+        n += 1
+    })
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testClicks(t test.Test, c main) {
+    c.b.click()
+    t.assert(c.n == 1)
+}
+-- units.sngl --
+import ui "sngl:ui"
+import c "sngl:language/c"
+import test "sngl:test"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+struct key {
+    label string
+    tags  list[string] = []
+}
+
+component app root {
+    var span = 1
+    var pad ui.measurement = 4px
+    var shade color = #15171c
+    var picked option[key] = null
+
+    func grow() {
+        span += 1
+        pad = pad * 2 + 1em
+        var keys = [key{label="a", tags=["x", "y"]}]
+        picked = keys[0]
+    }
+
+    ui.window(title="t") {
+        ui.text(value="x", style={flex=span, padding=pad, margin=pad - 2px, background=shade})
+    }
+}
+
+app()
+
+func testUnitsAndNumbers(t test.Test, c app) {
+    c.grow()
+    t.assert(c.span == 2)
+    t.assert(c.picked != null && c.picked.tags.length() == 2)
+    t.assert(c.pad == 8px + 1em)
+    t.assert(c.pad.px == 8.0 && c.pad.em == 1.0)
+    t.assert(string(c.shade) == "#15171c")
+    t.assert(float.max(1.5, 2.5, 0.5) == 2.5 && int.min(3, 1, 2) == 1)
+    t.assert(float.round(2.5) == 3.0 && float.abs(-2.0) == 2.0 && int.clamp(9, 0, 5) == 5)
+    for var ch = string.split("héllo", "") {
+        t.assert(string.length(ch) == 1)
+    }
+}
 -- scroll.sngl --
 import ui "sngl:ui"
 import c "sngl:language/c"
@@ -341,7 +428,7 @@ func testADirectionIsItsName(t test.Test, c main) {
     t.assert("{c.way}" == "both")
 }
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:734081a98bde3ce88c67b702308b9122
+sha256:67f1487d1cf2b1d9dbbc47952e95bdea
 {
   "results": [
     {
@@ -350,8 +437,18 @@ sha256:734081a98bde3ce88c67b702308b9122
     }
   ]
 }
+-- testrun/gtk4/c/bare.sngl/main/1 --
+sha256:8dfd670842ea498e4814816d969dd63f
+{
+  "results": [
+    {
+      "Desc": "Clicks",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:6cf3a702f441984e839c12253c0d42a0
+sha256:5d769b4fe643a91159cb41cccf6e29d8
 {
   "results": [
     {
@@ -361,7 +458,7 @@ sha256:6cf3a702f441984e839c12253c0d42a0
   ]
 }
 -- testrun/gtk4/c/controls.sngl/main/1 --
-sha256:81fe1c3e77a3e60114846a1159c20b88
+sha256:f9986cd9142ca59d18c9848d125a02b6
 {
   "results": [
     {
@@ -371,7 +468,7 @@ sha256:81fe1c3e77a3e60114846a1159c20b88
   ]
 }
 -- testrun/gtk4/c/keys.sngl/app/1 --
-sha256:491b6527e1633a853fad4f513395a242
+sha256:84673d719682aa1383a26885c52e0d66
 {
   "results": [
     {
@@ -381,7 +478,7 @@ sha256:491b6527e1633a853fad4f513395a242
   ]
 }
 -- testrun/gtk4/c/scroll.sngl/main/1 --
-sha256:64bfbd1452618980aaae5b391260dcb0
+sha256:a3d51d199efdfca3c0ac89f8e87ad4a1
 {
   "results": [
     {
@@ -395,7 +492,7 @@ sha256:64bfbd1452618980aaae5b391260dcb0
   ]
 }
 -- testrun/gtk4/c/slots.sngl/card/1 --
-sha256:850ff3afcc0a3fbd56090e223c8879cc
+sha256:a4f2e527509ad2b6b19a77603022f725
 {
   "results": [
     {
@@ -405,7 +502,7 @@ sha256:850ff3afcc0a3fbd56090e223c8879cc
   ]
 }
 -- testrun/gtk4/c/timer.sngl/main/1 --
-sha256:081c6d87747156e504ae68a88b04b87f
+sha256:8cbd87203b26a60b376b85b21c662ad7
 {
   "results": [
     {
@@ -414,6 +511,16 @@ sha256:081c6d87747156e504ae68a88b04b87f
     },
     {
       "Desc": "TheGateStopsTheTimer",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/units.sngl/app/1 --
+sha256:c3abcd7143aa3253d07f16709170abcb
+{
+  "results": [
+    {
+      "Desc": "UnitsAndNumbers",
       "Passed": true
     }
   ]

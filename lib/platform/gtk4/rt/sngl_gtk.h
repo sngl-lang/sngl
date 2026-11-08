@@ -110,6 +110,12 @@ const char *sngl_key_name(guint keyval, GdkModifierType state, char buf[8]);
 void sngl_keys_watch(GtkWidget *win, SnglKeyHear hear, SnglKeyBack back, void *data);
 void sngl_keys_go_on(GtkWindow *win, const char *key, bool shift);
 
+/* sngl_flip is a test flipping w, a check button or a switch, to v, as a
+ * user's flip does: the state written, which fires what reports it. State w
+ * already holds fires nothing, so then it fires signal itself, or notifies
+ * prop where that is what reports it. */
+void sngl_flip(GtkWidget *w, bool v, const char *signal, const char *prop);
+
 /* sngl_editable_set_text_quiet writes an entry's text with its "changed"
  * blocked, which an override does when the program's value moves, so the
  * write does not report itself back as an edit. */

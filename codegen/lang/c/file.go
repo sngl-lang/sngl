@@ -63,13 +63,15 @@ func (f *file) define(name, text string, deps ...string) {
 	f.types = append(f.types, &typeDef{name: name, text: text, deps: deps})
 }
 
-// setHelper gives the helper name, reserved by an empty definition while a
-// helper it calls was defined, its text. It keeps its place, after the helper
-// it calls.
+// setHelper gives the helper name, reserved by an empty definition while the
+// helpers it calls were defined, its text, and moves it after them: they
+// were added after the reservation. One that calls itself through them is
+// declared ahead by its caller.
 func (f *file) setHelper(name, text string) {
 	for i, h := range f.helpers {
 		if h == "" && f.helperOrder[i] == name {
-			f.helpers[i] = text
+			f.helpers = append(slices.Delete(f.helpers, i, i+1), text)
+			f.helperOrder = append(slices.Delete(f.helperOrder, i, i+1), name)
 			return
 		}
 	}

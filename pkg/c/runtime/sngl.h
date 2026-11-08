@@ -68,6 +68,9 @@ int64_t sngl_string_find(sngl_string s, sngl_string sub, int64_t from);
 sngl_string sngl_int_format(int64_t v);
 sngl_string sngl_float_format(double v);
 
+/* color.hex: `#rrggbb`, or `#rrggbbaa` where the color is not opaque. */
+sngl_string sngl_color_hex(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+
 /* int(s) and float(s): the number the whole of s writes, in decimal with a
  * dot whatever the locale, or 0 where it writes none, as Go's strconv.Atoi
  * and ParseFloat answer. */

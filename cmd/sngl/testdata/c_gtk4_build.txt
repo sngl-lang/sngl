@@ -23,5 +23,5 @@ ui.window(title="count") {
     counter()
 }
 -- testrun/build/gtk4/c/app.sngl/1 --
-sha256:5a5d6bd3048e92db26c60b2f400a0fd8
+sha256:4d63d2f10f4562adc951d525228f7ab7
 {}

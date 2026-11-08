@@ -401,7 +401,10 @@ func (c *Context) copyValue(t *ir.Type, v string) string {
 		st := c.typeName(t)
 		name := st + "__copy"
 		if !c.file.helperNames[name] {
+			// Its fields' copies are defined after the slot it holds, which
+			// a recursive struct needs before them: it is declared ahead.
 			c.file.helper(name, "")
+			c.file.protos = append(c.file.protos, fmt.Sprintf("static %s %s(%s s);", st, name, st))
 			var b strings.Builder
 			fmt.Fprintf(&b, "static %s %s(%s s) {\n", st, name, st)
 			for _, f := range sd.Fields {
@@ -561,6 +564,14 @@ func (c *Context) stringIntrinsic(n *ir.Call) (string, bool) {
 		"string.replace":   "sngl_string_replace",
 		"int.parse":        "sngl_int_parse",
 	}
+	if n.Func.Intrinsic == "color.hex" && len(n.Args) == 1 {
+		// The color is the program's struct, which the runtime does not
+		// know: a function of the file hands it its channels.
+		t := c.typeName(n.Args[0].Value.ExprType())
+		name := t + "_hex"
+		c.file.helper(name, "static sngl_string "+name+"("+t+" c) {\n\treturn sngl_color_hex(c.r, c.g, c.b, c.a);\n}\n")
+		return name + "(" + c.EvalExpr(n.Args[0].Value) + ")", true
+	}
 	fn, ok := runtime[n.Func.Intrinsic]
 	if !ok && n.Func.Intrinsic != "string.split" {
 		return "", false
@@ -575,7 +586,23 @@ func (c *Context) stringIntrinsic(n *ir.Call) (string, bool) {
 	}
 	t := ir.ListOf(ir.TypString)
 	grow := c.listGrow(t)
+	// An empty separator splits s into its characters, each of the bytes of
+	// its UTF-8 sequence, as Go's strings.Split does; a byte no sequence
+	// starts is one of its own.
 	split := c.listOp(t, "split", "L NAME(sngl_string s, sngl_string sep)", `	L out = {0};
+	if (sep.len == 0) {
+		for (size_t i = 0; i < s.len;) {
+			unsigned char b = (unsigned char)s.ptr[i];
+			size_t n = b < 0x80 ? 1 : (b >> 5) == 6 ? 2 : (b >> 4) == 14 ? 3 : (b >> 3) == 30 ? 4 : 1;
+			if (n > s.len - i) {
+				n = 1;
+			}
+			`+grow+`(&out, 1);
+			out.data[out.len++] = (sngl_string){s.ptr + i, n};
+			i += n;
+		}
+		return out;
+	}
 	int64_t from = 0;
 	for (;;) {
 		int64_t at = sep.len == 0 ? -1 : sngl_string_find(s, sep, from);
@@ -589,4 +616,57 @@ func (c *Context) stringIntrinsic(n *ir.Call) (string, bool) {
 	}
 `)
 	return split + "(" + strings.Join(args, ", ") + ")", true
+}
+
+// numberIntrinsic is n, a call of a numeric builtin sngl:builtin answers in
+// SNGL and every language answers natively, as C answers it: math.h's, and
+// the least or greatest of a value and the rest of the list it is handed,
+// through a function of the list's.
+func (c *Context) numberIntrinsic(n *ir.Call) (string, bool) {
+	id := n.Func.Intrinsic
+	if !strings.HasPrefix(id, "int.") && !strings.HasPrefix(id, "float.") {
+		return "", false
+	}
+	arg := func(i int) string { return c.EvalExpr(n.Args[i].Value) }
+	math := func(fn string) string {
+		c.file.include("math.h", true)
+		return fn + "(" + arg(0) + ")"
+	}
+	switch id {
+	case "float.floor":
+		return math("floor"), true
+	case "float.ceil":
+		return math("ceil"), true
+	case "float.round":
+		// C's round, as Go's math.Round, rounds half away from zero.
+		return math("round"), true
+	case "float.abs":
+		return math("fabs"), true
+	case "int.abs":
+		c.file.helper("sngl_int_abs", "static int64_t sngl_int_abs(int64_t x) {\n\treturn x < 0 ? -x : x;\n}\n")
+		return "sngl_int_abs(" + arg(0) + ")", true
+	case "int.min", "float.min", "int.max", "float.max":
+		if len(n.Args) != 2 {
+			return "", false
+		}
+		cmp := "<"
+		if strings.HasSuffix(id, "max") {
+			cmp = ">"
+		}
+		op := strings.TrimPrefix(strings.TrimPrefix(id, "int."), "float.")
+		fn := c.listOp(n.Args[1].Value.ExprType(), op, "T NAME(T m, L l)", `	for (int64_t i = 0; i < l.len; i++) {
+		if (l.data[i] `+cmp+` m) {
+			m = l.data[i];
+		}
+	}
+	return m;
+`)
+		return fn + "(" + arg(0) + ", " + arg(1) + ")", true
+	case "int.clamp", "float.clamp":
+		t := c.typeName(n.Type)
+		name := "sngl_" + strings.ReplaceAll(id, ".", "_")
+		c.file.helper(name, "static "+t+" "+name+"("+t+" x, "+t+" lo, "+t+" hi) {\n\tif (x > hi) {\n\t\tx = hi;\n\t}\n\treturn x < lo ? lo : x;\n}\n")
+		return name + "(" + arg(0) + ", " + arg(1) + ", " + arg(2) + ")", true
+	}
+	return "", false
 }

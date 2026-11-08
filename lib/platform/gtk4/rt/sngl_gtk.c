@@ -379,3 +379,18 @@ void sngl_toplevel_key(GtkWidget *box, const char *key, bool ctrl, bool alt, boo
     if (stopped || !t || !t->win || ctrl || alt || meta || strcmp(key, "Escape") == 0) return;
     sngl_keys_go_on(t->win, key, shift);
 }
+
+void sngl_flip(GtkWidget *w, bool v, const char *signal, const char *prop) {
+    bool on = GTK_IS_SWITCH(w) ? gtk_switch_get_active(GTK_SWITCH(w)) : gtk_check_button_get_active(GTK_CHECK_BUTTON(w));
+    if (on != v) {
+        if (GTK_IS_SWITCH(w)) {
+            gtk_switch_set_active(GTK_SWITCH(w), v);
+        } else {
+            gtk_check_button_set_active(GTK_CHECK_BUTTON(w), v);
+        }
+    } else if (prop != NULL) {
+        g_object_notify(G_OBJECT(w), prop);
+    } else {
+        g_signal_emit_by_name(w, signal);
+    }
+}

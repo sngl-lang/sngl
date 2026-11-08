@@ -91,6 +91,10 @@ func (c *Context) typeName(t *ir.Type) string {
 			return c.listType(t)
 		case ir.TypeOption:
 			return c.optType(t)
+		case ir.TypeUnit:
+			if ud := unitDef(t); ud != nil {
+				return c.unitType(ud)
+			}
 		case ir.TypeMap:
 			return c.mapType(t)
 		case ir.TypeStruct:
@@ -153,7 +157,12 @@ func (c *Context) EvalStmt(s ir.Stmt) []string        { return irwalk.EvalStmt(c
 
 func (c *Context) NilExpr() string { return "NULL" }
 
-func (c *Context) Literal(n *ir.Literal) string { return literal(n) }
+func (c *Context) Literal(n *ir.Literal) string {
+	if out, ok := c.unitLiteral(n); ok {
+		return out
+	}
+	return literal(n)
+}
 
 func literal(n *ir.Literal) string {
 	if n.Type == nil {
@@ -292,6 +301,9 @@ func (c *Context) Binary(n *ir.Binary, left, right string) string {
 	if out, ok := c.optionCompare(n, left, right); ok {
 		return out
 	}
+	if out, ok := c.unitBinary(n, left, right); ok {
+		return out
+	}
 	lt := n.Left.ExprType()
 	if lt != nil && lt.Kind == ir.TypeString {
 		switch n.Op {
@@ -386,7 +398,7 @@ func (c *Context) Select(n *ir.Select, operand string) string {
 		// A box, a C pointer, a record a platform holds by pointer.
 		return operand + "->" + Local(n.Field)
 	}
-	if t == nil || t.Kind != ir.TypeStruct {
+	if t == nil || (t.Kind != ir.TypeStruct && !multiBase(t)) {
 		return c.fail("selecting %s of %s", n.Field, t)
 	}
 	return operand + "." + Local(n.Field)
@@ -457,6 +469,13 @@ func (c *Context) MatchExpr(n *ir.MatchExpr) string {
 // --- Calls ---
 
 func (c *Context) Call(n *ir.Call) string {
+	// The platform first: a test's trigger of a widget's event resolves to
+	// no function, and is the platform's to fire.
+	if c.Native != nil {
+		if out, ok := c.Native(c, n); ok {
+			return out
+		}
+	}
 	if n.Func == nil {
 		if n.Callee == nil {
 			return c.fail("a call of nothing")
@@ -467,11 +486,6 @@ func (c *Context) Call(n *ir.Call) string {
 		}
 		return c.callValue(c.EvalExpr(n.Callee), args)
 	}
-	if c.Native != nil {
-		if out, ok := c.Native(c, n); ok {
-			return out
-		}
-	}
 	if n.Func.IsCCast() && len(n.Args) == 1 {
 		return c.CConvert(ir.NewCConvert(n.Func, n.Args[0].Value))
 	}
@@ -479,6 +493,9 @@ func (c *Context) Call(n *ir.Call) string {
 		return out
 	}
 	if out, ok := c.stringIntrinsic(n); ok {
+		return out
+	}
+	if out, ok := c.numberIntrinsic(n); ok {
 		return out
 	}
 	if strings.HasPrefix(n.Func.Intrinsic, "map.") && len(n.Args) > 0 {
@@ -520,6 +537,9 @@ func (c *Context) platform() string {
 
 // funcName is fn as the program declares it in C: a method of a type its
 // receiver's name and its own.
+// FuncName is what the file calls fn.
+func FuncName(fn *ir.Func) string { return funcName(fn) }
+
 func funcName(fn *ir.Func) string {
 	if fn.IsMethod() {
 		name := Method(fn.RecvName(), fn.Name)
@@ -567,6 +587,11 @@ func (c *Context) Conversion(n *ir.Conversion) string {
 		switch from.Kind {
 		case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeEnum:
 			return "(" + c.typeName(to) + ")(" + operand + ")"
+		case ir.TypeUnit:
+			// The magnitude of a single-base unit, which is its double.
+			if !multiBase(from) {
+				return "(" + c.typeName(to) + ")(" + operand + ")"
+			}
 		case ir.TypeString:
 			parse := "sngl_int_of"
 			if to.Kind == ir.TypeFloat {
@@ -638,6 +663,10 @@ func zero(t *ir.Type, c *Context) string {
 		return "0"
 	case ir.TypeFloat:
 		return "0.0"
+	case ir.TypeUnit:
+		if !multiBase(t) {
+			return "0.0"
+		}
 	}
 	if strings.HasSuffix(c.typeName(t), "*") {
 		return "NULL"
