@@ -314,3 +314,19 @@ void sngl_box_remove(GtkWidget *box, GtkWidget *child) {
         gtk_box_remove(GTK_BOX(box), child);
     }
 }
+
+sngl_string sngl_editable_text(GtkWidget *e) {
+    const char *t = gtk_editable_get_text(GTK_EDITABLE(e));
+    size_t n = t == NULL ? 0 : strlen(t);
+    char *p = sngl_alloc(n + 1);
+    if (n > 0) memcpy(p, t, n);
+    p[n] = '\0';
+    return (sngl_string){p, n};
+}
+
+void sngl_editable_set_text_quiet(GtkWidget *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    gtk_editable_set_text(GTK_EDITABLE(e), t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+}

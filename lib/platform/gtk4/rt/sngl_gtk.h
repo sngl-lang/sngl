@@ -7,6 +7,8 @@
 #include <gtk/gtk.h>
 #include <stdbool.h>
 
+#include "sngl.h"
+
 /* The function types a callback crosses as: the closure's dispatcher, which
  * finds it through ctx. */
 typedef void (*SnglFn)(void *ctx);
@@ -64,6 +66,14 @@ void sngl_canvas_click(GtkWidget *w);
 typedef struct SnglSchedule SnglSchedule;
 SnglSchedule *sngl_every(int ms, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_schedule_cancel(SnglSchedule *s);
+
+/* sngl_editable_text is the text an entry shows, copied into the turn's
+ * arena: GTK's own is the entry's to change on its next edit. */
+sngl_string sngl_editable_text(GtkWidget *e);
+/* sngl_editable_set_text_quiet writes an entry's text with its "changed"
+ * blocked, which an override does when the program's value moves, so the
+ * write does not report itself back as an edit. */
+void sngl_editable_set_text_quiet(GtkWidget *e, const char *t);
 
 /* sngl_app_run runs the application: build makes the program's tree, its
  * toplevels attached, once GTK is up, and the windows of the visible ones

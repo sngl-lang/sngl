@@ -30,6 +30,14 @@ stdout 'ok +2 tests, 0 failures'
 sngl test --platform=gtk4 --language=c canvas.sngl
 stdout 'ok +1 tests, 0 failures'
 
+# A test's value is written into the widget as a user's edit would: a flip's
+# state set, which fires the signal, and an entry's text put there with its
+# "changed" blocked before the test fires it. A switch reports through
+# notify::active, which connects like any signal.
+
+sngl test --platform=gtk4 --language=c controls.sngl
+stdout 'ok +1 tests, 0 failures'
+
 -- app.sngl --
 import ui "sngl:ui"
 import c "sngl:language/c"
@@ -183,8 +191,52 @@ func testClickRedraws(t test.Test, c main) {
     c.board.click()
     t.assert(c.hits == 2)
 }
+-- controls.sngl --
+import ui "sngl:ui"
+import c "sngl:language/c"
+import test "sngl:test"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+component main ui.node {
+    var on = false
+    var dark = false
+    var name = "a"
+    var changes = 0
+    ui.vbox {
+        ui.checkbox #box(label="x", checked=on, @change(v) {
+            on = v
+            changes += 1
+        })
+        ui.toggle #flip(checked=dark, @change(v) {
+            dark = v
+        })
+        ui.input #field(value=name, @input(v) {
+            name = v
+        })
+        ui.text(value="{name} {on}")
+    }
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testValuesReachTheHandlers(t test.Test, c main) {
+    c.box.change(true)
+    t.assert(c.on)
+    t.assert(c.changes == 1)
+    c.flip.change(true)
+    t.assert(c.dark)
+    c.field.input("bee")
+    t.assert(c.name == "bee")
+}
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:24d198a2aa418bf2872ce779bd3c319f
+sha256:c176d76f668ad4dbc0f1385c3228545b
 {
   "results": [
     {
@@ -194,7 +246,7 @@ sha256:24d198a2aa418bf2872ce779bd3c319f
   ]
 }
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:55ce7f167ee982818451093d6e73a86f
+sha256:e245551caf3666a3c1672fb0f2763717
 {
   "results": [
     {
@@ -203,8 +255,18 @@ sha256:55ce7f167ee982818451093d6e73a86f
     }
   ]
 }
+-- testrun/gtk4/c/controls.sngl/main/1 --
+sha256:1c639b93ae9af4dbe0bc911118e585a4
+{
+  "results": [
+    {
+      "Desc": "ValuesReachTheHandlers",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/c/slots.sngl/card/1 --
-sha256:dfa425a749fd5677abe538a339474c22
+sha256:ed0d69bff4880a3b25ccc0cdfb0d709b
 {
   "results": [
     {
@@ -214,7 +276,7 @@ sha256:dfa425a749fd5677abe538a339474c22
   ]
 }
 -- testrun/gtk4/c/timer.sngl/main/1 --
-sha256:a11753d82f923ece29048b6c315f274a
+sha256:9df305559ccea5be5df0b3992e3827c1
 {
   "results": [
     {

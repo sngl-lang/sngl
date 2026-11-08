@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -186,9 +187,13 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 // program's handler is connected to, emitted on the widget as GTK would.
 type cInvoker struct {
 	node, signal ir.Expr
-	// notify says the signal is a property's notification, which a test
-	// fires only by setting the property first.
-	notify bool
+	// cType is the widget's class, which says what a value the test passes
+	// is written into before the signal fires.
+	cType string
+	// notify is the property a notification signal reports, which a test
+	// fires with g_object_notify: emitting one wants the GParamSpec it
+	// carries.
+	notify string
 	// press says the event is a canvas's click, which a gesture reports
 	// rather than a signal of the widget's (canvasClick).
 	press bool
@@ -336,14 +341,53 @@ func (e *cEmitter) trigger(id string, c *ir.Call) []string {
 		e.fail("a test's %s.%s(), which nothing connects", id, c.Event)
 		return nil
 	}
-	if inv.notify || len(c.Args) > 0 {
-		e.fail("a test's %s.%s() carrying a value", id, c.Event)
-		return nil
+	w := e.ctx.EvalExpr(inv.node)
+	if inv.press && len(c.Args) == 0 {
+		return []string{"sngl_canvas_click(GTK_WIDGET(" + w + "));"}
 	}
-	if inv.press {
-		return []string{"sngl_canvas_click(GTK_WIDGET(" + e.ctx.EvalExpr(inv.node) + "));"}
+	fire := "g_signal_emit_by_name((gpointer)(" + w + "), " + e.ctx.EvalExpr(inv.signal) + ");"
+	if inv.notify != "" {
+		fire = "g_object_notify(G_OBJECT(" + w + "), " + strconv.Quote(inv.notify) + ");"
 	}
-	return []string{"g_signal_emit_by_name((gpointer)(" + e.ctx.EvalExpr(inv.node) + "), " + e.ctx.EvalExpr(inv.signal) + ");"}
+	if len(c.Args) == 0 {
+		return []string{fire}
+	}
+	v := e.ctx.EvalExpr(c.Args[0].Value)
+	switch {
+	case len(c.Args) > 1:
+	case inv.cType == "GtkCheckButton" || inv.cType == "GtkSwitch":
+		// A flip is the state written, which fires the signal; state the
+		// widget already holds fires nothing, so the test fires it itself.
+		get, set, cast := "gtk_check_button_get_active", "gtk_check_button_set_active", "GTK_CHECK_BUTTON"
+		if inv.cType == "GtkSwitch" {
+			get, set, cast = "gtk_switch_get_active", "gtk_switch_set_active", "GTK_SWITCH"
+		}
+		return []string{
+			"if (!" + get + "(" + cast + "(" + w + ")) != !(" + v + ")) {",
+			"\t" + set + "(" + cast + "(" + w + "), " + v + ");",
+			"} else {",
+			"\t" + fire,
+			"}",
+		}
+	case inv.cType == "GtkEntry":
+		// An entry's events carry its text, which the handler reads back off
+		// the widget: the test puts it there first.
+		return []string{"sngl_editable_set_text_quiet(GTK_WIDGET(" + w + "), (" + v + ").ptr);", fire}
+	}
+	e.fail("a test's %s.%s() carrying a value", id, c.Event)
+	return nil
+}
+
+// widgetType is the class of the widget id names, in the record being
+// written or the file.
+func (e *cEmitter) widgetType(id string) string {
+	cType := e.nodes[id]
+	if r := e.scope; r != nil {
+		if t, held := r.nodes[id]; held {
+			cType = t
+		}
+	}
+	return strings.TrimSuffix(cType, " *")
 }
 
 // cEmitter translates the lowered tree's node operations into the C calls
@@ -573,10 +617,13 @@ func (e *cEmitter) OnConnectThrough(ctx context.Context, node ir.Expr, event str
 	})
 	if id != nil {
 		if i := slices.IndexFunc(c.Func.Params, func(p *ir.Param) bool { return p.Name == "signal" }); i >= 0 && i < len(c.Args) {
+			cType := e.widgetType(id.Name)
+			prop, _ := strings.CutPrefix(notifySignal(cType, event), "notify::")
 			e.invokers[id.Name+"."+codegen.TriggerEventName(handler, event)] = cInvoker{
 				node:   node,
 				signal: c.Args[i].Value,
-				notify: strings.HasPrefix(event, "notify"),
+				cType:  cType,
+				notify: prop,
 			}
 		}
 	}
@@ -668,13 +715,23 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 		}
 		return recordFunc(r.comp, n.Func.Name) + "(" + strings.Join(args, ", ") + ")", true
 	}
+	arg := func(i int) string { return c.EvalExpr(n.Args[i].Value) }
+	widget := func(i int) string { return "GTK_WIDGET(" + arg(i) + ")" }
+	switch n.Func.Intrinsic {
+	case "gtk4.checkActive":
+		return "gtk_check_button_get_active(GTK_CHECK_BUTTON(" + arg(0) + "))", true
+	case "gtk4.switchActive":
+		return "gtk_switch_get_active(GTK_SWITCH(" + arg(0) + "))", true
+	case "gtk4.entryText":
+		return "sngl_editable_text(" + widget(0) + ")", true
+	}
 	if n.Func.Foreign.Path != gtk4rtPkg {
 		return "", false
 	}
 	name := strings.TrimPrefix(n.Func.Foreign.Name, "gtk4rt.")
-	arg := func(i int) string { return c.EvalExpr(n.Args[i].Value) }
-	widget := func(i int) string { return "GTK_WIDGET(" + arg(i) + ")" }
 	switch name {
+	case "EditableSetTextQuiet":
+		return "sngl_editable_set_text_quiet(" + widget(0) + ", (" + arg(1) + ").ptr)", true
 	case "ToplevelNew":
 		return "sngl_toplevel_new()", true
 	case "ToplevelSetTitle":
@@ -760,17 +817,11 @@ func anchorOf(e ir.Expr) string {
 // A widget gtk4.sngl makes of its own, and a name no widget holds, connect
 // through their own protocols.
 func (e *cEmitter) connects(id, event string) bool {
-	cType, ok := e.nodes[id]
-	if r := e.scope; r != nil {
-		if t, held := r.nodes[id]; held {
-			cType, ok = t, true
-		}
-	}
-	cType = strings.TrimSuffix(cType, " *")
-	if !ok || !strings.HasPrefix(cType, "Gtk") || e.reg == nil {
+	cType := e.widgetType(id)
+	if !strings.HasPrefix(cType, "Gtk") || e.reg == nil {
 		return true
 	}
-	if strings.HasPrefix(event, "notify::") {
+	if strings.HasPrefix(event, "notify::") || notifySignal(cType, event) != "" {
 		return true
 	}
 	info := e.reg.ByCType[cType]
