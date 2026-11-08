@@ -67,6 +67,12 @@ int64_t sngl_string_find(sngl_string s, sngl_string sub, int64_t from);
 /* A value's format, as `{x}` writes it and every target writes it. */
 sngl_string sngl_int_format(int64_t v);
 sngl_string sngl_float_format(double v);
+
+/* int(s) and float(s): the number the whole of s writes, in decimal with a
+ * dot whatever the locale, or 0 where it writes none, as Go's strconv.Atoi
+ * and ParseFloat answer. */
+int64_t sngl_int_of(sngl_string s);
+double sngl_float_of(sngl_string s);
 sngl_string sngl_bool_format(bool v);
 
 /* Integer division and remainder, raising on a zero divisor as every target

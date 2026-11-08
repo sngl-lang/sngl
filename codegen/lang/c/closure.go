@@ -131,9 +131,11 @@ func (c *Context) funcValue(fn *ir.Func, t *ir.Type) string {
 }
 
 // Lambda lifts a lambda the passes never lifted to a function of the file,
-// its environment what its body reads of the locals in scope, copied: a
-// template's lambda reads only what was spliced into it, and writes nothing
-// of its scope's.
+// its environment what its body reads of the locals in scope. A template's
+// lambda reads only what was spliced into it, which is copied. A test's
+// lambda -- a stop a key's handler calls, a wait's predicate -- may write a
+// local of the test's, which it reaches through the local's address: each
+// runs while the test does, which is the local's whole life.
 func (c *Context) Lambda(n *ir.Lambda) string {
 	if n.Type == nil || n.Type.Sig == nil {
 		n = &ir.Lambda{AST: n.AST, Func: n.Func, Type: ir.FuncOf(n.Func.Params, n.Func.Return)}
@@ -147,13 +149,28 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 		own[p.Name] = true
 	}
 	var caps []string
-	seen := map[string]bool{}
+	seen, written := map[string]bool{}, map[string]bool{}
 	ir.Walk(n.Func.Block, func(node ir.Node) error {
 		switch x := node.(type) {
 		case *ir.LocalVar:
 			own[x.Name] = true
+		case *ir.For:
+			own[x.Key] = true
+			own[x.Value] = true
+		case *ir.Lambda:
+			for _, p := range x.Func.Params {
+				own[p.Name] = true
+			}
+		case *ir.Assign:
+			if id, ok := x.Target.(*ir.Ident); ok {
+				written[id.Name] = true
+			}
+		case *ir.Toggle:
+			if id, ok := x.Target.(*ir.Ident); ok {
+				written[id.Name] = true
+			}
 		case *ir.Ident:
-			if c.locals[x.Name] && !own[x.Name] && !seen[x.Name] {
+			if c.captures(x) && !own[x.Name] && !seen[x.Name] {
 				seen[x.Name] = true
 				caps = append(caps, x.Name)
 			}
@@ -161,13 +178,18 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 		return nil
 	})
 	var fields, inits []string
-	inner := &Context{Ctx: c.Ctx, State: c.State, Native: c.Native, Types: c.Types, Closures: c.Closures, file: c.file, locals: map[string]bool{}, ret: n.Type.Sig.Return}
+	inner := &Context{Ctx: c.Ctx, State: c.State, Native: c.Native, Types: c.Types, Closures: c.Closures, file: c.file, locals: map[string]bool{}, refs: map[string]bool{}, ret: n.Type.Sig.Return}
 	var deps []string
 	for _, name := range caps {
 		t := c.localType(n.Func.Block, name)
 		deps = append(deps, c.typeName(t))
-		fields = append(fields, "\t"+c.typeName(t)+" "+Local(name)+";")
-		inits = append(inits, "."+Local(name)+" = "+Local(name))
+		ref, addr := "", ""
+		if written[name] {
+			ref, addr = "*", "&"
+			inner.refs[name] = true
+		}
+		fields = append(fields, "\t"+c.typeName(t)+" "+ref+Local(name)+";")
+		inits = append(inits, "."+Local(name)+" = "+addr+c.Ident(&ir.Ident{Name: name, Sym: c.localSym(n.Func.Block, name), Type: t}))
 		inner.locals[name] = true
 	}
 	// The record the code is written in, which the body reads what it holds
@@ -197,7 +219,11 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 	if len(caps) > 0 || self != "" {
 		fmt.Fprintf(&b, "\t%s *env = env_;\n", envT)
 		for _, name := range caps {
-			fmt.Fprintf(&b, "\t%s %s = env->%s;\n", c.typeName(c.localType(n.Func.Block, name)), Local(name), Local(name))
+			ref := ""
+			if inner.refs[name] {
+				ref = "*"
+			}
+			fmt.Fprintf(&b, "\t%s %s%s = env->%s;\n", c.typeName(c.localType(n.Func.Block, name)), ref, Local(name), Local(name))
 		}
 		if self != "" {
 			fmt.Fprintf(&b, "\t%s = env->%s;\n", c.Self, self)
@@ -213,6 +239,42 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 		env = c.heapCopy(envT, "{"+strings.Join(inits, ", ")+"}")
 	}
 	return "((" + fnT + "){" + name + ", " + env + "})"
+}
+
+// captures reports whether a lambda reading id reads it from the scope it is
+// made in: a parameter or loop variable, or a var neither the package nor
+// the platform holds.
+func (c *Context) captures(id *ir.Ident) bool {
+	if c.locals[id.Name] {
+		return true
+	}
+	switch sym := id.Sym.(type) {
+	case *ir.Param, *ir.LoopVar:
+		return true
+	case *ir.Var:
+		if c.isPackageVar(sym) {
+			return false
+		}
+		if c.State != nil {
+			if _, held := c.State(id, false); held {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+// localSym is the declaration block reads as the local name.
+func (c *Context) localSym(block []ir.Stmt, name string) ir.Symbol {
+	var sym ir.Symbol
+	ir.Walk(block, func(node ir.Node) error {
+		if id, ok := node.(*ir.Ident); ok && id.Name == name && sym == nil {
+			sym = id.Sym
+		}
+		return nil
+	})
+	return sym
 }
 
 // localType is the type of what block reads as the local name.

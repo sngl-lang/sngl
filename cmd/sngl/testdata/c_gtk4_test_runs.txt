@@ -46,6 +46,15 @@ stdout 'ok +1 tests, 0 failures'
 sngl test --platform=gtk4 --language=c scroll.sngl
 stdout 'ok +2 tests, 0 failures'
 
+# A window's @key hears a key a test presses through rt's toplevel, as the
+# program's handler takes it: the name a string, and rt's stop a closure the
+# handler calls. The test's stop writes a local of the test's, which the
+# lambda C lifts reaches through its address. int(s) and float(s) read the
+# whole of s, and are 0 where it is no number.
+
+sngl test --platform=gtk4 --language=c keys.sngl
+stdout 'ok +1 tests, 0 failures'
+
 -- app.sngl --
 import ui "sngl:ui"
 import c "sngl:language/c"
@@ -243,6 +252,49 @@ func testValuesReachTheHandlers(t test.Test, c main) {
     c.field.input("bee")
     t.assert(c.name == "bee")
 }
+-- keys.sngl --
+import ui "sngl:ui"
+import c "sngl:language/c"
+import test "sngl:test"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+component app root {
+    var typed = ""
+    var total = 0.0
+    var count = 0
+    ui.window #win(title="t", @key(e, stop) {
+        if e.ctrl {
+            return
+        }
+        typed = typed + e.key
+        total += float(e.key)
+        count += int(e.key)
+        if e.key == "x" {
+            stop()
+        }
+    }) {
+        ui.text(value=typed)
+    }
+}
+
+app()
+
+func testKeysReachTheWindow(t test.Test, c app) {
+    var stopped = 0
+    c.win.key(ui.KeyPress{key="7"}, func() { stopped += 1 })
+    c.win.key(ui.KeyPress{key="x"}, func() { stopped += 1 })
+    c.win.key(ui.KeyPress{key="s", ctrl=true}, func() { stopped += 1 })
+    c.win.key(ui.KeyPress{key="2.5"}, func() { stopped += 1 })
+    t.assert(c.typed == "7x2.5")
+    t.assert(stopped == 1)
+    t.assert(c.total == 9.5)
+    t.assert(c.count == 7)
+}
 -- scroll.sngl --
 import ui "sngl:ui"
 import c "sngl:language/c"
@@ -289,7 +341,7 @@ func testADirectionIsItsName(t test.Test, c main) {
     t.assert("{c.way}" == "both")
 }
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:a9fa6f0ee41e5482b4e621f90e634764
+sha256:734081a98bde3ce88c67b702308b9122
 {
   "results": [
     {
@@ -299,7 +351,7 @@ sha256:a9fa6f0ee41e5482b4e621f90e634764
   ]
 }
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:816cae7607602806f3efb8b592daa32e
+sha256:6cf3a702f441984e839c12253c0d42a0
 {
   "results": [
     {
@@ -309,7 +361,7 @@ sha256:816cae7607602806f3efb8b592daa32e
   ]
 }
 -- testrun/gtk4/c/controls.sngl/main/1 --
-sha256:d41e1ecfca6f78d5da01505408bfb2ed
+sha256:81fe1c3e77a3e60114846a1159c20b88
 {
   "results": [
     {
@@ -318,8 +370,18 @@ sha256:d41e1ecfca6f78d5da01505408bfb2ed
     }
   ]
 }
+-- testrun/gtk4/c/keys.sngl/app/1 --
+sha256:491b6527e1633a853fad4f513395a242
+{
+  "results": [
+    {
+      "Desc": "KeysReachTheWindow",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/c/scroll.sngl/main/1 --
-sha256:3c0f3228ab437336ce3c8edc0421c16a
+sha256:64bfbd1452618980aaae5b391260dcb0
 {
   "results": [
     {
@@ -333,7 +395,7 @@ sha256:3c0f3228ab437336ce3c8edc0421c16a
   ]
 }
 -- testrun/gtk4/c/slots.sngl/card/1 --
-sha256:375af530e510469eb9860e88ca9989db
+sha256:850ff3afcc0a3fbd56090e223c8879cc
 {
   "results": [
     {
@@ -343,7 +405,7 @@ sha256:375af530e510469eb9860e88ca9989db
   ]
 }
 -- testrun/gtk4/c/timer.sngl/main/1 --
-sha256:5404a0b36e998d1d42b59758de3a4917
+sha256:081c6d87747156e504ae68a88b04b87f
 {
   "results": [
     {

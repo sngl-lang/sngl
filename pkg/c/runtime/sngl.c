@@ -1,6 +1,7 @@
 #include "sngl.h"
 
 #include <inttypes.h>
+#include <locale.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -130,6 +131,13 @@ sngl_string sngl_int_format(int64_t v) {
 	return sngl_bytes(buf, (size_t)n);
 }
 
+/* The point the C library writes and reads in a number under the program's
+ * locale, which a string SNGL makes or reads has as a dot. */
+static char sngl_point(void) {
+	const char *p = localeconv()->decimal_point;
+	return p != NULL && p[0] != '\0' && p[1] == '\0' ? p[0] : '.';
+}
+
 /* The shortest digits that read back as v, written as Go's strconv writes
  * them with 'g' and no precision, which the interpreter and every Go target
  * print: an exponent below -4 or from 6 up is written as one. */
@@ -157,7 +165,55 @@ sngl_string sngl_float_format(double v) {
 		int places = digits - 1 - exp;
 		n = snprintf(buf, sizeof buf, "%.*f", places > 0 ? places : 0, v);
 	}
+	char *p = strchr(buf, sngl_point());
+	if (p != NULL) {
+		*p = '.';
+	}
 	return sngl_bytes(buf, (size_t)n);
+}
+
+/* sngl_number is s, a number written with a dot, as the C library reads it
+ * under the program's locale -- GTK sets the locale from the environment,
+ * and a German one reads a comma -- or NULL where s is not one: empty,
+ * beginning with a space the library would skip, or holding the locale's own
+ * point. The program frees it. */
+static char *sngl_number(sngl_string s) {
+	char point = sngl_point();
+	if (s.len == 0 || s.ptr[0] == ' ' || (s.ptr[0] >= '\t' && s.ptr[0] <= '\r') ||
+	    (point != '.' && memchr(s.ptr, point, s.len) != NULL)) {
+		return NULL;
+	}
+	char *c = sngl_cstring(s);
+	char *dot = strchr(c, '.');
+	if (dot != NULL) {
+		*dot = point;
+	}
+	return c;
+}
+
+double sngl_float_of(sngl_string s) {
+	char *c = sngl_number(s);
+	if (c == NULL) {
+		return 0;
+	}
+	char *end;
+	double v = strtod(c, &end);
+	bool whole = *end == '\0';
+	free(c);
+	return whole ? v : 0;
+}
+
+int64_t sngl_int_of(sngl_string s) {
+	char *c = sngl_number(s);
+	if (c == NULL || strchr(c, sngl_point()) != NULL) {
+		free(c);
+		return 0;
+	}
+	char *end;
+	long long v = strtoll(c, &end, 10);
+	bool whole = *end == '\0';
+	free(c);
+	return whole ? (int64_t)v : 0;
 }
 
 sngl_string sngl_bool_format(bool v) {

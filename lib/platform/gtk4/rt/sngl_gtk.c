@@ -15,6 +15,9 @@ typedef struct {
     SnglBoolFn on_visible;
     void *visible_ctx;
     GDestroyNotify visible_release;
+    SnglKeyFn on_key;
+    void *key_ctx;
+    GDestroyNotify key_release;
 } SnglToplevel;
 
 static GtkApplication *sngl_app;
@@ -25,6 +28,7 @@ static void sngl_toplevel_free(gpointer data) {
     SnglToplevel *t = data;
     if (t->closed_release) t->closed_release(t->closed_ctx);
     if (t->visible_release) t->visible_release(t->visible_ctx);
+    if (t->key_release) t->key_release(t->key_ctx);
     if (sngl_attached) g_ptr_array_remove(sngl_attached, t);
     g_free(t->title);
     g_free(t);
@@ -109,6 +113,8 @@ static gboolean sngl_close_request(GtkWindow *win, gpointer data) {
     return TRUE;
 }
 
+static bool sngl_top_hear(const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing, void *data);
+
 static void sngl_toplevel_create(SnglToplevel *t) {
     if (t->win) return;
     t->win = GTK_WINDOW(gtk_application_window_new(sngl_app));
@@ -116,6 +122,7 @@ static void sngl_toplevel_create(SnglToplevel *t) {
     if (t->title) gtk_window_set_title(t->win, t->title);
     gtk_window_set_child(t->win, t->box);
     g_signal_connect(t->win, "close-request", G_CALLBACK(sngl_close_request), t);
+    sngl_keys_watch(GTK_WIDGET(t->win), sngl_top_hear, NULL, t);
 }
 
 void sngl_app_attach(GtkWidget *box) {
@@ -320,4 +327,55 @@ void sngl_editable_set_text_quiet(GtkWidget *e, const char *t) {
     g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     gtk_editable_set_text(GTK_EDITABLE(e), t);
     g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+}
+
+/* What a stop the handler calls does: notes the key stopped, and calls the
+ * test's own stop where a test pressed it. */
+typedef struct {
+    bool stopped;
+    SnglFn then;
+    void *then_ctx;
+} SnglStop;
+
+static void sngl_stop(void *data) {
+    SnglStop *s = data;
+    s->stopped = true;
+    if (s->then) s->then(s->then_ctx);
+}
+
+/* sngl_hear runs the window's `@key`, and is whether its handler stopped the
+ * key. */
+static bool sngl_hear(SnglToplevel *t, const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing,
+        SnglFn then, void *then_ctx) {
+    if (!t || !t->on_key) return false;
+    SnglStop s = {false, then, then_ctx};
+    t->on_key(key, ctrl, alt, shift, meta, editing, sngl_stop, &s, t->key_ctx);
+    return s.stopped;
+}
+
+static bool sngl_top_hear(const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing, void *data) {
+    return sngl_hear(data, key, ctrl, alt, shift, meta, editing, NULL, NULL);
+}
+
+void sngl_toplevel_on_key(GtkWidget *box, SnglKeyFn fn, void *ctx, GDestroyNotify release) {
+    SnglToplevel *t = sngl_top(box);
+    if (!t) {
+        if (release) release(ctx);
+        return;
+    }
+    if (t->key_release) t->key_release(t->key_ctx);
+    t->on_key = fn;
+    t->key_ctx = ctx;
+    t->key_release = release;
+}
+
+/* A window has no way back in C yet, so an Escape nothing stopped goes
+ * nowhere. */
+void sngl_toplevel_key(GtkWidget *box, const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing,
+        SnglFn stop, void *stop_ctx, GDestroyNotify stop_release) {
+    SnglToplevel *t = sngl_top(box);
+    bool stopped = sngl_hear(t, key, ctrl, alt, shift, meta, editing, stop, stop_ctx);
+    if (stop_release) stop_release(stop_ctx);
+    if (stopped || !t || !t->win || ctrl || alt || meta || strcmp(key, "Escape") == 0) return;
+    sngl_keys_go_on(t->win, key, shift);
 }

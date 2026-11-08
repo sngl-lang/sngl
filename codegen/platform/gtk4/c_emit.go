@@ -30,7 +30,7 @@ import (
 // holds them but the file.
 
 // rtFiles are gtk4's runtime sources, written beside main.c.
-var rtFiles = []string{"sngl_gtk.h", "sngl_gtk.c", "look.c", "scroll.c"}
+var rtFiles = []string{"sngl_gtk.h", "sngl_gtk.c", "look.c", "scroll.c", "keys.c"}
 
 // generateC writes req's program as C: built for `sngl test`, its tests and
 // the agent running them in place of the application.
@@ -205,6 +205,7 @@ type cInvoker struct {
 // native connects rather than a signal, by the native.
 var rtFires = map[string]string{
 	"gtk4rt.ScrollOnReachEnd": "sngl_scroll_reach_end",
+	"gtk4rt.ToplevelOnKey":    "sngl_toplevel_key",
 }
 
 // tests writes each test as a function of the agent's, and main serving
@@ -352,6 +353,20 @@ func (e *cEmitter) trigger(id string, c *ir.Call) []string {
 	w := e.ctx.EvalExpr(inv.node)
 	if inv.fire != "" && len(c.Args) == 0 {
 		return []string{inv.fire + "(GTK_WIDGET(" + w + "));"}
+	}
+	if inv.fire == "sngl_toplevel_key" && len(c.Args) == 2 {
+		// A window's key is the press, field by field, and the stop its
+		// handler calls.
+		press := c.Args[0].Value
+		stop := c.Args[1].Value
+		fn, ctx := e.ctx.Callback(stop.ExprType().Sig, stop)
+		p := "__press"
+		return []string{
+			"{",
+			"\t" + e.ctx.TypeName(press.ExprType()) + " " + p + " = " + e.ctx.EvalExpr(press) + ";",
+			"\tsngl_toplevel_key(GTK_WIDGET(" + w + "), " + p + ".key.ptr, " + p + ".ctrl, " + p + ".alt, " + p + ".shift, " + p + ".meta, " + p + ".editing, (SnglFn)" + fn + ", " + ctx + ", (GDestroyNotify)sngl_release);",
+			"}",
+		}
 	}
 	fire := "g_signal_emit_by_name((gpointer)(" + w + "), " + e.ctx.EvalExpr(inv.signal) + ");"
 	if inv.notify != "" {
@@ -765,8 +780,14 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 		}
 		return set + "(" + widget(0) + ", (" + cast + ")" + fn + ", " + ctx + ", (GDestroyNotify)sngl_release)", true
 	case "ToplevelOnKey":
-		e.fail("a window's @key")
-		return "(void)0", true
+		// rt hears a key as C has it, which an adapter hands the handler as
+		// the program's: the name a string, and rt's stop a closure.
+		sig := n.Func.Params[1].Type.Sig
+		fn, ctx := c.Callback(sig, n.Args[1].Value)
+		adapter := fn + "_key"
+		c.Helper(adapter, fmt.Sprintf("static void %s(const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing, SnglFn stop, void *stop_ctx, void *ctx) {\n\t%s(sngl_string_copy(key), ctrl, alt, shift, meta, editing, (%s){stop, stop_ctx}, ctx);\n}\n",
+			adapter, fn, c.TypeName(sig.Params[6].Type)))
+		return "sngl_toplevel_on_key(" + widget(0) + ", " + adapter + ", " + ctx + ", (GDestroyNotify)sngl_release)", true
 	case "BoxAppend":
 		return "gtk_box_append(GTK_BOX(" + arg(0) + "), " + widget(1) + ")", true
 	case "BoxRemove":

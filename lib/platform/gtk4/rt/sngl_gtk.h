@@ -26,6 +26,18 @@ void sngl_toplevel_set_visible(GtkWidget *box, bool visible);
 void sngl_toplevel_on_closed(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_toplevel_on_visible(GtkWidget *box, SnglBoolFn fn, void *ctx, GDestroyNotify release);
 void sngl_toplevel_append(GtkWidget *box, GtkWidget *child);
+
+/* A window's `@key`: fn hears each key pressed in the window before
+ * anything in it (keys.c), with the stop that keeps the key from going
+ * further, which it calls with stop_ctx. sngl_toplevel_key presses a key as
+ * a test describes it: fn hears it, stop is called with stop_ctx by the
+ * handler's stop and released after, and a key the handler leaves goes on
+ * where it would have gone. */
+typedef void (*SnglKeyFn)(const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing,
+                          SnglFn stop, void *stop_ctx, void *ctx);
+void sngl_toplevel_on_key(GtkWidget *box, SnglKeyFn fn, void *ctx, GDestroyNotify release);
+void sngl_toplevel_key(GtkWidget *box, const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing,
+                       SnglFn stop, void *stop_ctx, GDestroyNotify stop_release);
 void sngl_app_attach(GtkWidget *box);
 
 void sngl_app_detach(GtkWidget *box);
@@ -76,6 +88,27 @@ void sngl_scroll_set_child(GtkWidget *sw, GtkWidget *child);
 void sngl_scroll_set_direction(GtkWidget *sw, const char *dir);
 void sngl_scroll_on_reach_end(GtkWidget *sw, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_scroll_reach_end(GtkWidget *sw);
+
+/* A window's keys (keys.c). sngl_key_name is what a window's `@key` calls
+ * the key keyval is with state held -- a name, or the character it types,
+ * written into buf -- or NULL for one it does not report: a modifier on its
+ * own, a control character, a key no browser names. With a shortcut's
+ * modifier held a letter is the key's own, lowercase unless Shift is held.
+ *
+ * sngl_keys_watch gives win the controllers that hear its keys: hear, with
+ * data, on each key pressed in it before anything in it, which is whether
+ * the handler stopped the key; and back on an Escape nothing took, which is
+ * whether it went back. back may be NULL.
+ *
+ * sngl_keys_go_on is a key nothing stopped going where it would have gone,
+ * as a keyboard's would, for a test pressing it by name: typed into a
+ * focused field, pressing a focused button, or moving focus. The caller
+ * answers Escape, and a key held with a shortcut's modifier. */
+typedef bool (*SnglKeyHear)(const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing, void *data);
+typedef bool (*SnglKeyBack)(void *data);
+const char *sngl_key_name(guint keyval, GdkModifierType state, char buf[8]);
+void sngl_keys_watch(GtkWidget *win, SnglKeyHear hear, SnglKeyBack back, void *data);
+void sngl_keys_go_on(GtkWindow *win, const char *key, bool shift);
 
 /* sngl_editable_set_text_quiet writes an entry's text with its "changed"
  * blocked, which an override does when the program's value moves, so the

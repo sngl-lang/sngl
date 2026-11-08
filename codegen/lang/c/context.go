@@ -41,6 +41,9 @@ type Context struct {
 	file *file
 	// locals is what the scope declares that shadows the package.
 	locals map[string]bool
+	// refs are the locals a lifted lambda reaches through their address,
+	// since it writes them (Lambda).
+	refs map[string]bool
 	// ret is the return type of the function being written.
 	ret *ir.Type
 	// Self, where set, is the parameter the code being written reads a
@@ -224,6 +227,9 @@ func cQuote(s string) string {
 }
 
 func (c *Context) Ident(n *ir.Ident) string {
+	if c.refs[n.Name] {
+		return "(*" + Local(n.Name) + ")"
+	}
 	switch sym := n.Sym.(type) {
 	case *ir.Param, *ir.LoopVar:
 		return Local(n.Name)
@@ -561,6 +567,12 @@ func (c *Context) Conversion(n *ir.Conversion) string {
 		switch from.Kind {
 		case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeEnum:
 			return "(" + c.typeName(to) + ")(" + operand + ")"
+		case ir.TypeString:
+			parse := "sngl_int_of"
+			if to.Kind == ir.TypeFloat {
+				parse = "sngl_float_of"
+			}
+			return "(" + c.typeName(to) + ")(" + parse + "(" + operand + "))"
 		}
 	case ir.TypeBool:
 		if from.Kind == ir.TypeBool {
