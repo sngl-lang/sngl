@@ -481,7 +481,7 @@ func (e *cEmitter) types(t *ir.Type) (string, bool) {
 	if cType := widgetCType(comp); strings.HasPrefix(cType, "Gtk") {
 		return cType + " *", true
 	}
-	if comp := recordOf(t); comp != nil {
+	if comp := e.recordOf(t); comp != nil {
 		return recordType(comp) + " *", true
 	}
 	// gtk4.sngl's own primitives and any node else are a GtkWidget.
@@ -552,6 +552,9 @@ func (e *cEmitter) OnPropAssign(ctx context.Context, node ir.Expr, prop string, 
 	// canvasCreate made it.
 	if e.canvasByID[codegen.IdentBareName(node)] != nil && setterOf(node, prop) == nil {
 		return nil
+	}
+	if prop == ir.CopyProp {
+		return e.fail("a test reaching one copy of %s", codegen.IdentBareName(node))
 	}
 	call, ok := value.(*ir.Call)
 	if !ok {

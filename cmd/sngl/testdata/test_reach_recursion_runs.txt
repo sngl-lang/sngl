@@ -336,7 +336,7 @@ sha256:905482c273d1735c2804eb3482df09cb
   ]
 }
 -- testrun/html/none/counters.sngl/main/1 --
-sha256:3dc0337845e1efc6ac2fafa006241d9a
+sha256:e3ebc46b0ff55ee4e888173b2f8466f5
 {
   "results": [
     {

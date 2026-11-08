@@ -74,6 +74,14 @@ stdout 'ok +1 tests, 0 failures'
 sngl test --platform=gtk4 --language=c bare.sngl
 stdout 'ok +1 tests, 0 failures'
 
+# A row a slot population copies keeps its methods, which name the copy as
+# their receiver; a checkbox's and an input's change handlers are boxed as
+# two types; a spread the build cannot read is merged by a helper the file
+# defines; and a scroll a slot holds is the widget its create made.
+
+sngl test --platform=gtk4 --language=c rows.sngl
+stdout 'ok +1 tests, 0 failures'
+
 -- app.sngl --
 import ui "sngl:ui"
 import c "sngl:language/c"
@@ -382,6 +390,67 @@ func testUnitsAndNumbers(t test.Test, c app) {
         t.assert(string.length(ch) == 1)
     }
 }
+-- rows.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+component tag(label string, style ui.Style = ui.Style{}) ui.node {
+    ui.text(value=label, style={...style, padding=4px})
+}
+
+component row(label string, foot component(v int) ui.node) ui.node {
+    var marks = 0
+
+    func mark(n int) {
+        marks = marks + n
+    }
+
+    func summary() string {
+        return "{label}={marks}"
+    }
+
+    ui.vbox {
+        ui.text(value=summary())
+        foot(marks)
+        ui.effect(@mount { mark(2) })
+    }
+}
+
+component main ui.node {
+    var items = ["a", "b"]
+    var log = ""
+    var shown = true
+    var look = ui.Style{}
+    ui.vbox {
+        ui.button #hide(text="hide", @click { shown = false })
+        for var it = items {
+            row(label=it) {
+                component foot(v) {
+                    ui.text(value="foot {it} {v}")
+                }
+            }
+            ui.checkbox(label=it, @change(on) { log = "{it} {on}" })
+            ui.input(value=it, @change(v) { log = "{it}={v}" })
+            tag(label=it, style=look)
+        }
+        if shown {
+            ui.scroll {
+                ui.text(value="maybe")
+            }
+        }
+        ui.text(value=log)
+    }
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testRows(t test.Test, c main) {
+    t.assert(c.log == "")
+    c.hide.click()
+    t.assert(!c.shown)
+}
 -- scroll.sngl --
 import ui "sngl:ui"
 import c "sngl:language/c"
@@ -473,6 +542,16 @@ sha256:b9e1a52e99ae97794fd7aacbe21f25da
   "results": [
     {
       "Desc": "KeysReachTheWindow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/rows.sngl/main/1 --
+sha256:373642e82c5e5300dbce57b2656f4209
+{
+  "results": [
+    {
+      "Desc": "Rows",
       "Passed": true
     }
   ]

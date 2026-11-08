@@ -172,13 +172,15 @@ func (e *cEmitter) record(comp *ir.Component) {
 	e.fe.Prototype(fmt.Sprintf("static void %s(%s *%s);", recordFunc(comp, "_destroy"), typ, selfName))
 }
 
-// recordOf is the component a value of t is a record of, where it is one.
-func recordOf(t *ir.Type) *ir.Component {
+// recordOf is the component a value of t is a record of, where it is one:
+// one of the program's, which record writes. A target's own component -- a
+// scroll a slot holds -- is the widget its create made.
+func (e *cEmitter) recordOf(t *ir.Type) *ir.Component {
 	if t == nil || t.Kind != ir.TypeComponent && t.Kind != ir.TypeInstance {
 		return nil
 	}
 	comp, _ := t.Decl.(*ir.Component)
-	if !isInstanceComponent(comp) {
+	if !isInstanceComponent(comp) || !slices.Contains(e.pkg.Components, comp) {
 		return nil
 	}
 	return comp
@@ -223,7 +225,7 @@ func (e *cEmitter) OnComponentRoot(ctx context.Context, id string, inst, key ir.
 }
 
 func (e *cEmitter) OnUpdateComponent(ctx context.Context, inst ir.Expr, prop string, value ir.Expr) []ir.Stmt {
-	comp := recordOf(inst.ExprType())
+	comp := e.recordOf(inst.ExprType())
 	if comp == nil {
 		return e.fail("updating a %s at run time", inst.ExprType())
 	}
@@ -235,7 +237,7 @@ func (e *cEmitter) OnUpdateComponent(ctx context.Context, inst ir.Expr, prop str
 }
 
 func (e *cEmitter) OnDestroyComponent(ctx context.Context, inst ir.Expr) []ir.Stmt {
-	comp := recordOf(inst.ExprType())
+	comp := e.recordOf(inst.ExprType())
 	if comp == nil {
 		return e.fail("destroying a %s", inst.ExprType())
 	}

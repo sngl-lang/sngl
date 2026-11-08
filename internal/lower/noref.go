@@ -762,7 +762,27 @@ func canonicalTypeName(t *ir.Type) string {
 		}
 		return "option_" + canonicalTypeName(elem)
 	case ir.TypeFunc:
-		return "func"
+		// A func() keeps its plain name; any other signature is spelled out,
+		// since two func types boxed under one name were one C struct.
+		name := "func"
+		if t.Sig == nil {
+			return name
+		}
+		for _, p := range t.Sig.Params {
+			name += "_" + canonicalTypeName(p.Type)
+		}
+		if t.Sig.Return != nil && t.Sig.Return.Kind != ir.TypeVoid {
+			name += "__" + canonicalTypeName(t.Sig.Return)
+		}
+		return name
+	case ir.TypeMap:
+		if len(t.Elems) == 2 {
+			return "map_" + canonicalTypeName(t.Elems[0]) + "_" + canonicalTypeName(t.Elems[1])
+		}
+	case ir.TypeEnum:
+		if t.Decl != nil {
+			return t.Decl.SymName()
+		}
 	}
 	return t.Kind.String()
 }

@@ -516,6 +516,9 @@ func (c *Context) Call(n *ir.Call) string {
 	if n.Func.Foreign.Path == ir.CPath && !n.Func.Foreign.Marked {
 		return c.CCall(n, args)
 	}
+	if out, ok := c.merge(n, args); ok {
+		return out
+	}
 	if n.Func.Foreign.Path != "" {
 		return c.fail("calling %s, which is %s's", n.Func.Name, n.Func.Foreign.Path)
 	}
