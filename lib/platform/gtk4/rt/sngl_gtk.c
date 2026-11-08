@@ -151,7 +151,27 @@ int sngl_app_run(void (*build)(void)) {
     return status;
 }
 
+/* sngl_app_detach takes a toplevel off the application, its window
+ * destroyed: a slot at the package's root no longer renders it. */
+void sngl_app_detach(GtkWidget *box) {
+    SnglToplevel *t = sngl_top(box);
+    if (!t || !t->attached) return;
+    t->attached = false;
+    g_ptr_array_remove(sngl_attached, t);
+    if (t->win) {
+        GtkWindow *win = t->win;
+        t->win = NULL;
+        /* A reference across the unparent, so the box is freed by its last
+         * holder rather than mid-call. */
+        g_object_ref(box);
+        gtk_window_set_child(win, NULL);
+        gtk_window_destroy(win);
+        g_object_unref(box);
+    }
+}
+
 GtkWidget *sngl_slot_anchor(GtkWidget *box, GtkWidget *anchor) {
+    if (box == SNGL_APP) return NULL;
     if (anchor != NULL && gtk_widget_get_parent(anchor) == box) return anchor;
     GtkWidget *w = gtk_label_new(NULL);
     gtk_widget_set_visible(w, FALSE);
@@ -160,5 +180,19 @@ GtkWidget *sngl_slot_anchor(GtkWidget *box, GtkWidget *anchor) {
 }
 
 void sngl_box_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child) {
-    gtk_box_insert_child_after(GTK_BOX(box), child, gtk_widget_get_prev_sibling(anchor));
+    if (box == SNGL_APP) {
+        sngl_app_attach(child);
+    } else if (anchor == NULL || gtk_widget_get_parent(anchor) != box) {
+        gtk_box_append(GTK_BOX(box), child);
+    } else {
+        gtk_box_insert_child_after(GTK_BOX(box), child, gtk_widget_get_prev_sibling(anchor));
+    }
+}
+
+void sngl_box_remove(GtkWidget *box, GtkWidget *child) {
+    if (box == SNGL_APP) {
+        sngl_app_detach(child);
+    } else {
+        gtk_box_remove(GTK_BOX(box), child);
+    }
 }

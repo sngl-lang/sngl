@@ -28,12 +28,20 @@ void sngl_toplevel_on_visible(GtkWidget *box, SnglBoolFn fn, void *ctx, GDestroy
 void sngl_toplevel_append(GtkWidget *box, GtkWidget *child);
 void sngl_app_attach(GtkWidget *box);
 
+void sngl_app_detach(GtkWidget *box);
+
+/* SNGL_APP is the application as a box: a slot at the package's root
+ * renders its windows into it, which the box calls below attach and
+ * detach, in no order a window shows. */
+#define SNGL_APP ((GtkWidget *)NULL)
+
 /* A slot's children sit in its parent box before its anchor, a hidden
  * widget sngl_slot_anchor makes there once and answers again while it is
  * still the box's: what keeps a slot's children in their place among the
  * box's others as it renders again. */
 GtkWidget *sngl_slot_anchor(GtkWidget *box, GtkWidget *anchor);
 void sngl_box_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child);
+void sngl_box_remove(GtkWidget *box, GtkWidget *child);
 
 /* sngl_app_run runs the application: build makes the program's tree, its
  * toplevels attached, once GTK is up, and the windows of the visible ones

@@ -354,6 +354,11 @@ func (e *cEmitter) fail(format string, args ...any) []ir.Stmt {
 // state renders a package var and a record's, by the declaration, and a
 // widget or record the code holds, by its name where no local takes it.
 func (e *cEmitter) state(n *ir.Ident, local bool) (string, bool) {
+	// The application, as a slot at the package's root takes its parent:
+	// the runtime's box calls answer for it, as gtk4rt's do for App.
+	if ir.IsAppParent(n) {
+		return "SNGL_APP", true
+	}
 	if v, ok := n.Sym.(*ir.Var); ok {
 		if s, ok := e.globals[v]; ok {
 			return s, true
@@ -459,7 +464,15 @@ func (e *cEmitter) OnAppendChild(ctx context.Context, parent, child ir.Expr) []i
 	if ir.IsAppParent(parent) {
 		return []ir.Stmt{&ir.CallStmt{Call: rtCall("AppAttach", ir.TypVoid, child)}}
 	}
-	return e.fail("appending to %s without its class's append", codegen.IdentBareName(parent))
+	if id, ok := child.(*ir.Ident); ok && e.scope != nil {
+		e.scope.appended[id.Name] = true
+	}
+	// A slot's entry into the box it renders into, as OnRemoveChild takes
+	// it out.
+	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" && e.anchor != "" {
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("InsertBefore", ir.TypVoid, parent, child, anchorName(e.anchor))}}
+	}
+	return []ir.Stmt{&ir.CallStmt{Call: rtCall("BoxAppend", ir.TypVoid, parent, child)}}
 }
 
 // OnAppendThrough is the class's append, or where a slot's render puts a
@@ -536,8 +549,11 @@ func (e *cEmitter) OnDetachHandler(ctx context.Context, node ir.Expr, event stri
 	return e.fail("taking @%s off", event)
 }
 
+// OnRemoveChild takes a slot's entry out of the box it rendered into, which
+// is a GtkBox wherever no class declared the remove: a slot renders into
+// the box its body made or the record's root.
 func (e *cEmitter) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
-	return e.fail("removing a child without its class's remove")
+	return []ir.Stmt{&ir.CallStmt{Call: rtCall("BoxRemove", ir.TypVoid, parent, child)}}
 }
 
 // OnSlotReset starts a slot's render over: its list of widgets emptied, and
@@ -628,7 +644,7 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 	case "BoxAppend":
 		return "gtk_box_append(GTK_BOX(" + arg(0) + "), " + widget(1) + ")", true
 	case "BoxRemove":
-		return "gtk_box_remove(GTK_BOX(" + arg(0) + "), " + widget(1) + ")", true
+		return "sngl_box_remove(" + widget(0) + ", " + widget(1) + ")", true
 	case "SlotAnchor":
 		a := anchorOf(n.Args[1].Value)
 		return a + " = sngl_slot_anchor(" + widget(0) + ", " + a + ")", true
