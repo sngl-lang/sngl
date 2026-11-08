@@ -555,14 +555,10 @@ func cgoCast(typeName string, expr ir.Expr) ir.Expr {
 	}
 }
 
-// cScalar is the cgo conversion `C.<cType>(v)`, a value of that C type.
-func cScalar(cType string, v ir.Expr) *ir.Call {
-	return nativeCall(cType, ir.NativeGoNamed("C."+cType), v)
-}
-
-// cString is `C.CString(v)`, the C copy of a Go string.
-func cString(v ir.Expr) *ir.Call {
-	return nativeCall("CString", ir.NativePointerOf("char"), v)
+// cScalar is v converted to the C scalar type cType: `C.int(v)` in Go,
+// `(int)(v)` in C.
+func cScalar(cType string, v ir.Expr) *ir.CConvert {
+	return &ir.CConvert{Kind: ir.CConvertNumber, To: &ir.CType{Name: cType}, Operand: v, Type: ir.NativeGoNamed("C." + cType)}
 }
 
 // boolToGoInt exists because cgo cannot convert a bool to a named C integer

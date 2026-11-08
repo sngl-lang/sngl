@@ -80,3 +80,66 @@ func WriteRuntime(dir string) error {
 	}
 	return nil
 }
+
+// BuildFile names the manifest a C program is written with, which says what
+// it links beyond the C library: one `pkg-config <name>` per line, each a
+// library pkg-config gives the flags of. A line beginning with `#` is a
+// comment.
+const BuildFile = "sngl.build"
+
+// Manifest is the BuildFile for a program linking the pkg-config packages
+// named.
+func Manifest(pkgConfig ...string) []byte {
+	var b strings.Builder
+	b.WriteString("# What this program links, which `sngl build` reads.\n")
+	for _, p := range pkgConfig {
+		b.WriteString("pkg-config " + p + "\n")
+	}
+	return []byte(b.String())
+}
+
+// BuildDir compiles the program written in dir into out under std: every .c
+// file there is a translation unit, and its BuildFile says what it links.
+func (c Compiler) BuildDir(dir, out, std string) (string, error) {
+	sources, err := filepath.Glob(filepath.Join(dir, "*.c"))
+	if err != nil || len(sources) == 0 {
+		return "", fmt.Errorf("no C sources in %s", dir)
+	}
+	for i, s := range sources {
+		sources[i] = filepath.Base(s)
+	}
+	var extra []string
+	if data, err := os.ReadFile(filepath.Join(dir, BuildFile)); err == nil {
+		for line := range strings.SplitSeq(string(data), "\n") {
+			line = strings.TrimSpace(line)
+			name, ok := strings.CutPrefix(line, "pkg-config ")
+			if !ok {
+				continue
+			}
+			flags, err := exec.Command("pkg-config", "--cflags", "--libs", strings.TrimSpace(name)).Output()
+			if err != nil {
+				return "", fmt.Errorf("pkg-config %s: %w", name, err)
+			}
+			extra = append(extra, strings.Fields(string(flags))...)
+		}
+	}
+	if err := c.Build(dir, sources, out, std, extra...); err != nil {
+		return "", err
+	}
+	return "", nil
+}
+
+// Host is the compiler a build runs where none is named: $CC, or cc.
+func Host(cc string) Compiler {
+	if cc == "" {
+		cc = os.Getenv("CC")
+	}
+	if cc == "" {
+		cc = "cc"
+	}
+	p, err := exec.LookPath(cc)
+	if err != nil {
+		p = cc
+	}
+	return Compiler{Name: filepath.Base(cc), Path: p, Windows: strings.Contains(cc, "mingw")}
+}

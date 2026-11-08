@@ -38,6 +38,7 @@ import (
 	"time"
 
 	"duckfam.us/sngl/codegen"
+	clang "duckfam.us/sngl/codegen/lang/c"
 	"duckfam.us/sngl/internal/androidtc"
 	"duckfam.us/sngl/internal/gradle"
 	"duckfam.us/sngl/internal/headless"
@@ -65,7 +66,11 @@ func Unavailable(lang, platform string) string {
 		}
 		return ""
 	case "gtk4":
-		if reason := needGo(); reason != "" {
+		if lang == "c" {
+			if len(clang.Compilers()) == 0 {
+				return "no C compiler on PATH"
+			}
+		} else if reason := needGo(); reason != "" {
 			return reason
 		}
 		if _, err := exec.LookPath("pkg-config"); err != nil {
@@ -162,6 +167,9 @@ func Build(ctx context.Context, files map[string][]byte, lang, platform string) 
 	}
 	defer token()
 
+	if lang == "c" {
+		return cBuild(dir)
+	}
 	switch platform {
 	case "bubbletea", "fyne", "gtk4":
 		return goTest(ctx, dir)
@@ -177,6 +185,27 @@ func Build(ctx context.Context, files map[string][]byte, lang, platform string) 
 		return gradleTest(ctx, dir)
 	}
 	return "", fmt.Errorf("no host toolchain wired for platform %s", platform)
+}
+
+// cBuild compiles a C program with every compiler on the host that builds for
+// it, under each standard its output holds to.
+func cBuild(dir string) (string, error) {
+	var out strings.Builder
+	for _, cc := range clang.Compilers() {
+		if cc.Windows {
+			// A Windows compiler builds a Windows program, which links no
+			// host library.
+			continue
+		}
+		for _, std := range clang.Standards {
+			o, err := cc.BuildDir(dir, filepath.Join(dir, "app-"+cc.Name+"-"+std), std)
+			out.WriteString(o)
+			if err != nil {
+				return out.String(), err
+			}
+		}
+	}
+	return out.String(), nil
 }
 
 // directMu serializes gradle-free builds: they share the toolchain cache's

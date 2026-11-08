@@ -721,7 +721,9 @@ func walkNames(root any, walk func(ir.Symbol)) {
 				walk(x.Ref)
 			}
 		case *ir.Closure:
-			walkFunc(x.Func, nil, walk)
+			// The lifted function is the program's, emitted beside it: the
+			// closure is what names it.
+			walk(x.Func)
 		case *ir.LocalVar:
 			walkType(x.Type, nil, walk)
 		case *ir.If:

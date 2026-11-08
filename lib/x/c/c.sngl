@@ -86,6 +86,14 @@ func context() ir.Macro
 // passes it.
 func release() ir.Macro
 
+// Names the C type a `#[cnative]` function's callback or `#[release]`
+// parameter is: the function-pointer typedef its header declares, as GLib's
+// `GCallback` and `GClosureNotify` are. A language passing a function of its
+// own writes it at that type, which the parameter's SNGL type does not say;
+// C refuses a function of another type. Go needs none, since cgo takes any
+// function there.
+func type(name string) ir.Macro
+
 #[macro.cnative("void *", cast)]
 const func pointerTo(s str) pointer
 

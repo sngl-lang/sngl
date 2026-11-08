@@ -24,6 +24,14 @@ typedef struct sngl_string {
 void *sngl_alloc(size_t n);
 void sngl_turn_end(void);
 
+/* sngl_heap_copy is a copy of the n bytes at p on the heap, which outlives
+ * every turn: a closure's environment, a box a `ref` became. */
+void *sngl_heap_copy(const void *p, size_t n);
+
+/* sngl_cstring is s as a C string the callee may keep and the program frees,
+ * as Go's C.CString makes one. */
+char *sngl_cstring(sngl_string s);
+
 /* The program stops, writing msg, as a raise nothing catches does. */
 _Noreturn void sngl_panic(const char *msg);
 

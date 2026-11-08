@@ -331,6 +331,20 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
    a program makes move to `lib/platform/gtk4/rt/`, and callbacks cross as the
    C translator's closures. Golden `out/c/gtk4`, and a script test that
    builds and runs it under cage.
+   Done for that program: `testdata/gtk4_c_counter.txtar` (built with every
+   compiler under both standards) and `cmd/sngl/testdata/c_gtk4_build.txt`.
+   - Under C, gtk4 runs its cgo declarations whatever the option says: a
+     platform's Configure is handed the language (`build.LangOption`).
+   - What a cgo build still calls in gtk4rt -- a window, a box's append, a
+     look -- is rt's C under the name `c_emit.go`'s `native` gives it, and
+     anything else there is refused by name. Those calls should become
+     `#[cnative]` declarations of rt's C, which the Go cgo build calls too.
+   - `rt/look.c` is the one copy of the look's C: gtk4rt includes it.
+   - A function pointer a C function takes is cast to the type
+     `#[c.type("GCallback")]` names, which C needs and cgo does not.
+   - Not yet: no closure's environment is freed but a callback's, which C
+     releases, and the arena is never reset, since nothing copies a stored
+     string out of it yet (step 4's ownership).
 3. **`sngl test` on C.** The test agent's JSON-RPC (`pkg/go/testagent`) in
    C, and the test lowering, so a test function clicks, asserts and reads
    state. `run/c/gtk4` is recorded as `run/go/gtk4` is.

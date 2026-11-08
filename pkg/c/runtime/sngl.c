@@ -48,6 +48,25 @@ void sngl_turn_end(void) {
 	}
 }
 
+void *sngl_heap_copy(const void *p, size_t n) {
+	void *q = malloc(n == 0 ? 1 : n);
+	if (q == NULL) {
+		sngl_panic("out of memory");
+	}
+	memcpy(q, p, n);
+	return q;
+}
+
+char *sngl_cstring(sngl_string s) {
+	char *c = malloc(s.len + 1);
+	if (c == NULL) {
+		sngl_panic("out of memory");
+	}
+	memcpy(c, s.ptr, s.len);
+	c[s.len] = '\0';
+	return c;
+}
+
 _Noreturn void sngl_panic(const char *msg) {
 	fprintf(stderr, "panic: %s\n", msg);
 	fflush(stderr);

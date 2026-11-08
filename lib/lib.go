@@ -41,7 +41,7 @@ import (
 	"strings"
 )
 
-//go:embed */*.sngl */*/*.sngl */*/*/*.sngl
+//go:embed */*.sngl */*/*.sngl */*/*/*.sngl platform/gtk4/rt
 var FS embed.FS
 
 // Packages returns the embedded package paths, sorted. A directory holding

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -39,10 +40,20 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		return err
 	}
 
+	// What configures a platform is the options it is built with and the
+	// language it is built in, which no target takes as an option.
+	configOpts := p.cliOpts
+	if cliLang != "" {
+		configOpts = maps.Clone(p.cliOpts)
+		if configOpts == nil {
+			configOpts = map[string]string{}
+		}
+		configOpts[build.LangOption] = cliLang
+	}
 	for _, name := range codegen.Platforms() {
 		pl := codegen.LookupPlatform(name)
 		if cfg, ok := pl.(codegen.OptionConfigurable); ok {
-			if err := cfg.Configure(p.cliOpts); err != nil {
+			if err := cfg.Configure(configOpts); err != nil {
 				return fmt.Errorf("configure platform %s: %w", name, err)
 			}
 		}
@@ -94,7 +105,7 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		slog.Info("parse", "unit", u.name, "duration", time.Since(start))
 
 		start = time.Now()
-		pkg, err := checkDoc(doc, u.dir, true, p.cliOpts, build.SelectedTargets(cliLang, cliPlat)...)
+		pkg, err := checkDoc(doc, u.dir, true, configOpts, build.SelectedTargets(cliLang, cliPlat)...)
 		if err != nil {
 			return fmt.Errorf("%s: %w", u.name, err)
 		}

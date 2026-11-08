@@ -137,6 +137,10 @@ func configurePlatforms(doc *ast.Document, cliOpts map[string]string) error {
 	return nil
 }
 
+// LangOption is the key under which a platform's Configure is handed the
+// language it is built in, beside the options the program wrote.
+const LangOption = "lang"
+
 // declaredPlatformOptions is the literal options the first `output` block
 // naming platform gives it, read from the AST because the check has not run.
 func declaredPlatformOptions(doc *ast.Document, platform string) map[string]string {
@@ -159,6 +163,9 @@ func declaredPlatformOptions(doc *ast.Document, platform string) map[string]stri
 				if id, ok := call.Call.Func.(*ast.IdentExpr); !ok || id.Name != platform {
 					continue
 				}
+				// The language the platform is built in, which decides what
+				// some platforms declare: gtk4's widgets call C directly in C.
+				opts[LangOption] = langNode.TargetName()
 				for _, a := range call.Call.Args.Args {
 					if arg, ok := a.(ast.Arg); ok && arg.Name != "" {
 						if v, ok := literalOption(arg.Value); ok {

@@ -20,10 +20,17 @@ import (
 // placeholder, and Err answers it, which the emitter returns from Close.
 type Context struct {
 	Ctx *codegen.ExprCtx
-	// State, where set, renders a read of a var the platform holds -- a
-	// component's state, which gtk4 keeps in its Model -- and reports
-	// whether v was one.
-	State func(v *ir.Var) (string, bool)
+	// State, where set, renders a name the platform holds rather than the
+	// scope -- a package var, a widget the package body made, which gtk4
+	// keeps as statics of the file -- and reports whether n was one.
+	State func(n *ir.Ident) (string, bool)
+	// Native, where set, renders a call the platform answers itself -- one
+	// of a runtime the platform has in C under another name -- and reports
+	// whether it was one.
+	Native func(c *Context, n *ir.Call) (string, bool)
+	// Types, where set, names a type the platform holds as a C type of its
+	// own: a widget, which gtk4 holds as the GObject pointer it is.
+	Types func(t *ir.Type) (string, bool)
 	// file is what the rendering needs declared ahead of it.
 	file *file
 	// locals is what the scope declares that shadows the package.
@@ -52,7 +59,43 @@ func (c *Context) fail(format string, args ...any) string {
 	return "/* unsupported */ 0"
 }
 
+// TypeName is t as C declares a value of it.
+func (c *Context) TypeName(t *ir.Type) string { return c.typeName(t) }
+
 func (c *Context) typeName(t *ir.Type) string {
+	if t != nil && c.Types != nil {
+		if s, ok := c.Types(t); ok {
+			return s
+		}
+	}
+	if t != nil {
+		switch t.Kind {
+		case ir.TypeFunc:
+			return c.fnType(t)
+		case ir.TypeStruct:
+			// A box is shared by every copy of it, so it is held through a
+			// pointer to the one on the heap.
+			if sd, ok := t.Decl.(*ir.StructDef); ok && sd.RefBox {
+				c.Box(sd)
+				return Global(sd.Name) + " *"
+			}
+			if sd, ok := t.Decl.(*ir.StructDef); ok && isProgramStruct(t) {
+				c.defineStruct(sd)
+				return Global(sd.Name)
+			}
+		case ir.TypeNative:
+			if ref, ok := t.Meta.(ir.NativeTypeRef); ok {
+				name := strings.TrimPrefix(ref.Name, "C.")
+				switch {
+				case ref.Bare:
+					return name
+				case name == "":
+					return "void *"
+				}
+				return name + " *"
+			}
+		}
+	}
 	s, err := cTypeName(t)
 	if err != nil {
 		return c.fail("%v", err)
@@ -71,8 +114,12 @@ func (c *Context) WithLocal(name string) *Context {
 	return &cc
 }
 
-func (c *Context) EvalExpr(e ir.Expr) string   { return irwalk.EvalExpr(c, e) }
-func (c *Context) EvalStmt(s ir.Stmt) []string { return irwalk.EvalStmt(c, s) }
+func (c *Context) EvalExpr(e ir.Expr) string { return irwalk.EvalExpr(c, e) }
+
+// EvalBlock renders stmts in order, each local one declares in scope from
+// its declaration on.
+func (c *Context) EvalBlock(stmts []ir.Stmt) []string { return irwalk.EvalBlock(c, stmts) }
+func (c *Context) EvalStmt(s ir.Stmt) []string        { return irwalk.EvalStmt(c, s) }
 
 // --- Leaves ---
 
@@ -157,7 +204,7 @@ func (c *Context) Ident(n *ir.Ident) string {
 			return Local(n.Name)
 		}
 		if c.State != nil {
-			if s, ok := c.State(sym); ok {
+			if s, ok := c.State(n); ok {
 				return s
 			}
 		}
@@ -166,10 +213,18 @@ func (c *Context) Ident(n *ir.Ident) string {
 		}
 		return Local(n.Name)
 	case *ir.Func:
-		return c.fail("a function used as a value (%s)", n.Name)
+		if n.Type == nil || n.Type.Kind != ir.TypeFunc {
+			return c.fail("the function %s used as a value of type %s", n.Name, n.Type)
+		}
+		return c.funcValue(sym, n.Type)
 	}
 	if n.Member != "" {
 		return c.fail("an enum member (%s)", n.Member)
+	}
+	if c.State != nil && !c.locals[n.Name] {
+		if s, ok := c.State(n); ok {
+			return s
+		}
 	}
 	return Local(n.Name)
 }
@@ -266,10 +321,32 @@ func (c *Context) Ternary(_ *ir.Ternary, cond, then, els string) string {
 }
 
 func (c *Context) Select(n *ir.Select, operand string) string {
-	if t := n.Operand.ExprType(); t == nil || t.Kind != ir.TypeStruct {
+	t := n.Operand.ExprType()
+	// lower.NoRef reboxes a var and the reads it rewrites, and leaves an
+	// identifier it did not visit typed as the value: the var says what it
+	// holds.
+	if id, ok := n.Operand.(*ir.Ident); ok && (t == nil || t.Kind != ir.TypeStruct) {
+		if v, ok := id.Sym.(*ir.Var); ok && v.Type != nil {
+			t = v.Type
+		}
+	}
+	// A ref NoRef boxed, read where the type left on it is still the ref's.
+	if t != nil && t.Kind == ir.TypeRef && n.Field == "value" {
+		return operand + "->value"
+	}
+	if t == nil || t.Kind != ir.TypeStruct && t.Kind != ir.TypeNative {
 		return c.fail("selecting %s of %s", n.Field, t)
 	}
+	if c.isPointer(t) {
+		return operand + "->" + Local(n.Field)
+	}
 	return operand + "." + Local(n.Field)
+}
+
+// isPointer reports whether a value of t is held through a pointer, which a
+// field is selected through with `->`.
+func (c *Context) isPointer(t *ir.Type) bool {
+	return strings.HasSuffix(c.typeName(t), "*")
 }
 
 func (c *Context) Index(n *ir.Index, _, _ string) string {
@@ -288,8 +365,23 @@ func (c *Context) MapLit(n *ir.MapLitIR, _, _ []string) string {
 // out is C's zero, which is SNGL's for every type C writes.
 func (c *Context) StructLit(n *ir.StructLit, fields []string) string {
 	if !isProgramStruct(n.Type) {
+		// A C type SNGL holds opaquely has one literal, its zero: what a
+		// parameter the compiler passes defaults to.
+		if ct := ir.CTypeOf(n.Type); ct != nil && len(n.Fields) == 0 {
+			return "(" + ct.String() + ")0"
+		}
 		return c.fail("a literal of %s", n.Type)
 	}
+	if sd, ok := n.Type.Decl.(*ir.StructDef); ok && sd.RefBox {
+		name := Global(sd.Name)
+		c.Box(sd)
+		return "((" + name + " *)" + c.heapCopy(name, c.structLit(n, fields)) + ")"
+	}
+	return c.structLit(n, fields)
+}
+
+func (c *Context) structLit(n *ir.StructLit, fields []string) string {
+	name := Global(n.Type.Decl.(*ir.StructDef).Name)
 	var parts []string
 	for i, f := range n.Fields {
 		if f.Spread || f.Name == "" {
@@ -298,14 +390,19 @@ func (c *Context) StructLit(n *ir.StructLit, fields []string) string {
 		parts = append(parts, "."+Local(f.Name)+" = "+fields[i])
 	}
 	if len(parts) == 0 {
-		return "(" + c.typeName(n.Type) + "){0}"
+		return "(" + name + "){0}"
 	}
-	return "(" + c.typeName(n.Type) + "){" + strings.Join(parts, ", ") + "}"
+	return "(" + name + "){" + strings.Join(parts, ", ") + "}"
+}
+
+// Box defines sd, a box lower.NoRef made, as the struct it is.
+func (c *Context) Box(sd *ir.StructDef) {
+	name := Global(sd.Name)
+	elem := c.typeName(sd.Fields[0].Type)
+	c.file.define(name, "typedef struct "+name+" {\n\t"+elem+" value;\n} "+name+";\n", elem)
 }
 
 func (c *Context) Spread(*ir.Spread, string) string { return c.fail("a spread") }
-
-func (c *Context) Lambda(*ir.Lambda) string { return c.fail("a lambda") }
 
 func (c *Context) MatchExpr(n *ir.MatchExpr) string {
 	return c.EvalExpr(n.TernaryChain())
@@ -315,7 +412,19 @@ func (c *Context) MatchExpr(n *ir.MatchExpr) string {
 
 func (c *Context) Call(n *ir.Call) string {
 	if n.Func == nil {
-		return c.fail("calling a function value")
+		if n.Callee == nil {
+			return c.fail("a call of nothing")
+		}
+		args := make([]string, len(n.Args))
+		for i, a := range n.Args {
+			args[i] = c.EvalExpr(a.Value)
+		}
+		return c.callValue(c.EvalExpr(n.Callee), args)
+	}
+	if c.Native != nil {
+		if out, ok := c.Native(c, n); ok {
+			return out
+		}
 	}
 	if n.Func.IsCCast() && len(n.Args) == 1 {
 		return c.CConvert(ir.NewCConvert(n.Func, n.Args[0].Value))
@@ -364,6 +473,10 @@ func (c *Context) Conversion(n *ir.Conversion) string {
 	operand := c.EvalExpr(n.Operand)
 	if from == nil || to == nil {
 		return c.fail("a conversion of an untyped value")
+	}
+	// A widget, a C pointer: the cast C writes between two of them.
+	if c.isPointer(to) && (c.isPointer(from) || from.Kind == ir.TypeComponent) {
+		return "(" + c.typeName(to) + ")(" + operand + ")"
 	}
 	if to.Kind == ir.TypeString {
 		switch from.Kind {
@@ -521,6 +634,12 @@ func (c *Context) MutTargetField(n *ir.Select) string {
 	return Local(n.Field)
 }
 
+// MutTargetSelect is a field written: through `->` where what holds it is a
+// pointer, as a read is (Select).
+func (c *Context) MutTargetSelect(n *ir.Select, operand string) string {
+	return c.Select(n, operand)
+}
+
 func (c *Context) StmtPrefix(ir.Stmt) []string { return nil }
 
 func (c *Context) Scoped(name string) irwalk.Renderer { return c.WithLocal(name) }
@@ -536,23 +655,70 @@ func (c *Context) CConvert(x *ir.CConvert) string {
 	operand := c.EvalExpr(x.Operand)
 	switch x.Kind {
 	case ir.CConvertString:
-		return "(" + x.To.String() + ")" + operand + ".ptr"
+		// A copy the callee may keep, which the program frees as it frees
+		// Go's C.CString: CMarshal and ReleaseTemps hold it as an owned
+		// c.str. A copy the arena could stand in for is an optimization
+		// that waits for strings to be owned on C (design/ownership.md).
+		return "sngl_cstring(" + operand + ")"
 	case ir.CConvertNumber, ir.CConvertPointer:
 		return "(" + x.To.String() + ")(" + operand + ")"
+	case ir.CConvertCallback, ir.CConvertContext, ir.CConvertRelease:
+		// CCall writes all three from the closure.
+		return operand
 	}
 	return c.fail("crossing to %s", x.To)
 }
 
 // CCall is a call of the C function c names, whose number comes back as the
-// SNGL number it is.
+// SNGL number it is. A callback is the dispatcher for its C signature, handed
+// the closure on the heap as its context: released by C through the
+// `#[c.release]` parameter, kept for good where the parameter is
+// `#[retains]`, and freed after the call otherwise.
 func (c *Context) CCall(n *ir.Call, args []string) string {
 	fn := n.Func
+	off := len(args) - len(fn.Params)
 	for _, p := range fn.Params {
-		if p.CompilerPassed() || p.Type != nil && p.Type.Kind == ir.TypeRef {
+		if p.Type != nil && p.Type.Kind == ir.TypeRef {
 			return c.fail("calling %s, which takes a %s", fn.Foreign.Name, p.Type)
 		}
 	}
+	cb := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return !p.CompilerPassed() && p.Type != nil && p.Type.Kind == ir.TypeFunc })
+	ctx := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CContext })
+	rel := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CRelease })
+	var free string
+	if cb >= 0 && off >= 0 {
+		if fn.Params[cb].CFuncType == nil || rel >= 0 && fn.Params[rel].CFuncType == nil {
+			return c.fail("calling %s, whose function parameters name no C type (#[c.type])", fn.Foreign.Name)
+		}
+		if ctx < 0 {
+			return c.fail("calling %s, whose callback takes no context", fn.Foreign.Name)
+		}
+		args = slices.Clone(args)
+		// The argument is rendered already, as the function value it is: a
+		// callback's conversion is its operand.
+		vt := n.Args[cb].Value.ExprType()
+		if cv, ok := n.Args[cb].Value.(*ir.CConvert); ok {
+			vt = cv.Operand.ExprType()
+		}
+		if vt == nil || vt.Kind != ir.TypeFunc {
+			vt = fn.Params[cb].Type
+		}
+		dispatch, heap := c.cCallback(fn.Params[cb].Type.Sig, args[off+cb], vt)
+		args[off+cb] = c.fnPointer(fn, cb, dispatch)
+		switch {
+		case rel >= 0:
+			args[off+ctx] = "(" + c.typeName(fn.Params[ctx].Type) + ")" + heap
+			args[off+rel] = c.fnPointer(fn, rel, "sngl_release")
+		case fn.Params[cb].Transfer == ir.TransferRetains:
+			args[off+ctx] = "(" + c.typeName(fn.Params[ctx].Type) + ")" + heap
+		default:
+			free = heap
+		}
+	}
 	call := fn.Foreign.Name + "(" + strings.Join(args, ", ") + ")"
+	if free != "" {
+		return c.fail("a callback %s holds for the call alone", fn.Foreign.Name)
+	}
 	if fn.Return != nil {
 		switch fn.Return.Kind {
 		case ir.TypeInt, ir.TypeFloat:
@@ -564,4 +730,56 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 		}
 	}
 	return call
+}
+
+// fnPointer is f, a function the file defines, cast to the C type parameter
+// i of fn names (#[c.type]): C converts no function pointer to another
+// unasked.
+//
+// Through `void (*)(void)`, which C's compilers take as matching every
+// function type: a release C calls with more than the context, as GLib's
+// GClosureNotify is, is one taking the context alone, which every C ABI
+// calls alike, and GLib relies on.
+func (c *Context) fnPointer(fn *ir.Func, i int, f string) string {
+	return "(" + fn.Params[i].CFuncType.String() + ")(void (*)(void))" + f
+}
+
+// defineStruct defines sd's C struct in the file, after the structs its
+// fields hold by value.
+func (c *Context) defineStruct(sd *ir.StructDef) {
+	name := Global(sd.Name)
+	if c.file.defined(name) {
+		return
+	}
+	// Defined before its fields are named, so a field's type naming this
+	// struct again finds it: C would refuse such a struct anyway.
+	c.file.define(name, "")
+	var deps []string
+	var b strings.Builder
+	fmt.Fprintf(&b, "typedef struct %s {\n", name)
+	for _, f := range sd.Fields {
+		t := c.typeName(f.Type)
+		deps = append(deps, t)
+		fmt.Fprintf(&b, "\t%s %s;\n", t, Local(f.Name))
+	}
+	if len(sd.Fields) == 0 {
+		// C refuses a struct with no members.
+		b.WriteString("\tchar unused;\n")
+	}
+	fmt.Fprintf(&b, "} %s;\n", name)
+	c.file.redefine(name, b.String(), deps...)
+}
+
+// Helper defines a function the code calls, once by name, ahead of every
+// function of the program's.
+func (c *Context) Helper(name, text string) { c.file.helper(name, text) }
+
+// Include includes a header, `<name>` where system.
+func (c *Context) Include(name string, system bool) { c.file.include(name, system) }
+
+// Callback is value, a function value, as the dispatcher C calls for sig
+// and the context it hands back, the closure on the heap; sngl_release, which
+// the file defines, frees it.
+func (c *Context) Callback(sig *ir.FuncSig, value ir.Expr) (fn, ctx string) {
+	return c.cCallback(sig, c.EvalExpr(value), value.ExprType())
 }

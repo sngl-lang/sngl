@@ -147,6 +147,13 @@ func EvalExpr(r Renderer, e ir.Expr) string {
 		panic(fmt.Sprintf("irwalk.EvalExpr: %T calls no C, and is handed a conversion to %s", r, n.To))
 	case *ir.Lambda:
 		return r.Lambda(n)
+	case *ir.Closure:
+		// Only a language with no closure of its own meets one: passLambda
+		// writes it where the language claims no `lambda`.
+		if c, ok := r.(interface{ Closure(*ir.Closure) string }); ok {
+			return c.Closure(n)
+		}
+		panic(fmt.Sprintf("irwalk.EvalExpr: %T writes closures itself, and is handed a lifted one", r))
 	case *ir.MatchExpr:
 		return r.MatchExpr(n)
 	default:
@@ -326,6 +333,13 @@ func EvalMutTarget(r Renderer, e ir.Expr) string {
 	case *ir.Ident:
 		return r.MutTargetIdent(n)
 	case *ir.Select:
+		// A language selecting through a pointer otherwise than a value
+		// says how.
+		if s, ok := r.(interface {
+			MutTargetSelect(n *ir.Select, operand string) string
+		}); ok {
+			return s.MutTargetSelect(n, EvalMutTarget(r, n.Operand))
+		}
 		return EvalMutTarget(r, n.Operand) + "." + r.MutTargetField(n)
 	case *ir.Index:
 		return EvalMutTarget(r, n.Operand) + "[" + EvalExpr(r, n.Idx) + "]"

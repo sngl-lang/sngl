@@ -1,0 +1,27 @@
+# gtk4 writes a program in C, which `sngl build` compiles with the host's C
+# compiler, linking GTK through the pkg-config its sngl.build names. It needs
+# no display.
+
+[!exec:pkg-config] skip 'pkg-config required'
+[!exec:cc] skip 'C compiler required'
+[!gtk4] skip 'gtk4 development libraries required'
+
+sngl build --platform=gtk4 --lang=c app.sngl -o out
+[toolchain] exists out/app
+
+-- app.sngl --
+import ui "sngl:ui"
+
+component counter ui.node {
+    var n = 0
+    ui.button(text="{n}", @click {
+        n += 1
+    })
+}
+
+ui.window(title="count") {
+    counter()
+}
+-- testrun/build/gtk4/c/app.sngl/1 --
+sha256:10c335d3675dd244c875ee1b88b57f17
+{}

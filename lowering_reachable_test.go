@@ -27,16 +27,12 @@ import (
 // language registers an emitter for and one the Go backend panics on. Its
 // golden fixtures and the validate calibration both passed the whole time.
 //
-// The six below are the compensating passes for a language less capable than
-// the three registered ones, and each still has a caller in a golden fixture.
-// Listing them is the point: a seventh name appearing here is a pass that has
-// stopped answering for anybody.
+// The two below are compensating passes no registered language needs, and
+// each still has a caller in a golden fixture; C asks for NoLambda, NoRef,
+// NoUnit and NoEnum. Listing them is the point: a third name appearing here
+// is a pass that has stopped answering for anybody.
 var unrequestedCaps = []string{
 	"NoToggle",
-	"NoLambda",
-	"NoRef",
-	"NoUnit",
-	"NoEnum",
 	"NoComputed",
 }
 

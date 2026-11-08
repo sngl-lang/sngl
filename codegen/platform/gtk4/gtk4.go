@@ -82,7 +82,9 @@ func (g *Generator) Configure(opts map[string]string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.setGIROpt(opts["gir"])
-	g.cgoOpt = opts["cgo"] == "true"
+	// C reaches GTK only as C does: its widgets are the ones the cgo option
+	// declares, whatever the option says.
+	g.cgoOpt = opts["cgo"] == "true" || opts["lang"] == "c"
 	return nil
 }
 
@@ -102,7 +104,7 @@ func (g *Generator) PlatformIdentifier() string { return platformName }
 func (g *Generator) Description() string {
 	return "Native Linux/GNOME desktop GUI using GTK4."
 }
-func (g *Generator) SupportedLangs() []string { return []string{"go"} }
+func (g *Generator) SupportedLangs() []string { return []string{"go", "c"} }
 
 // Unavailable implements codegen.PlatformAvailability. It is answered from the
 // declarations rather than the registry: the checker asks it of every
@@ -212,6 +214,9 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	// silently emit an empty UI.
 	if _, err := g.gir(); err != nil {
 		return fmt.Errorf("platform gtk4 is unavailable here: %w", err)
+	}
+	if req.Lang != nil && req.Lang.LanguageIdentifier() == "c" {
+		return g.generateC(req, sink)
 	}
 	// Agent-mode test build: suppress the user's main() loop and force
 	// the package name to "main" so the agent's func main() compiles

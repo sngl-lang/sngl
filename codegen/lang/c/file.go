@@ -18,7 +18,15 @@ type file struct {
 	// every type.
 	helpers     []string
 	helperNames map[string]bool
-	err         error
+	// protos are every function's prototype, which C wants ahead of a call,
+	// and lifted the definitions of the functions the renderer lifts out of
+	// an expression: a lambda's body.
+	protos []string
+	lifted []string
+	// seq numbers what the renderer names: each lifted function, each
+	// temporary.
+	seq int
+	err error
 }
 
 // typeDef is one type definition: its name, the text that defines it, and
@@ -48,6 +56,20 @@ func (f *file) define(name, text string, deps ...string) {
 		return
 	}
 	f.types = append(f.types, &typeDef{name: name, text: text, deps: deps})
+}
+
+// defined reports whether a type of name has a definition.
+func (f *file) defined(name string) bool {
+	return slices.ContainsFunc(f.types, func(d *typeDef) bool { return d.name == name })
+}
+
+// redefine replaces name's definition, keeping its place.
+func (f *file) redefine(name, text string, deps ...string) {
+	for _, d := range f.types {
+		if d.name == name {
+			d.text, d.deps = text, deps
+		}
+	}
 }
 
 // helper adds a function's definition, once by name.
@@ -89,4 +111,10 @@ func (f *file) typeSection() string {
 		visit(d)
 	}
 	return b.String()
+}
+
+// next is a number no name the renderer made before has.
+func (f *file) next() int {
+	f.seq++
+	return f.seq
 }

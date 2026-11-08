@@ -1,0 +1,11 @@
+// `#[c.type]` names the function-pointer typedef a `#[cnative]` function's
+// parameter is, which C casts a function of its own to: a function with a
+// body is SNGL's, and a pointer to one is no typedef of it.
+import macro "sngl:macro"
+import c "sngl:x/c"
+
+func bodied(#[c.type("GCallback")] f func()) { // ERROR(check) "#[c.type] cannot mark a parameter of a function with a body"
+}
+
+#[macro.cnative("pointed")]
+func pointed(#[c.type("GCallback *")] f func(), #[c.context] data c.pointer) // ERROR(check) "#[c.type(\"GCallback *\")] names a pointer; name the function-pointer typedef, as GLib's GCallback is one"

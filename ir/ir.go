@@ -1579,6 +1579,10 @@ type Param struct {
 	// GLib's GClosureNotify. No caller passes it either; the translator
 	// hands over its function releasing the closure.
 	CRelease bool `json:",omitempty"`
+	// CFuncType is the C function-pointer type a callback or a release
+	// parameter is, sngl:x/c's #[type]: what a language passing a function
+	// of its own there casts it to, which its SNGL type does not say.
+	CFuncType *CType `json:",omitempty"`
 }
 
 // CompilerPassed reports whether the translator, not a caller, passes p: a C
@@ -1639,6 +1643,11 @@ type StructDef struct {
 	// namespace is flat -- so passHoistBodyTypes renames the later one after
 	// its owner.
 	BodyOwner string `json:",omitempty"`
+	// RefBox says lower.NoRef synthesized this struct to box a `ref` for a
+	// language that has none: a value of it is a reference, which every copy
+	// shares. A language whose struct is a value, as C's is, holds a box
+	// through a pointer.
+	RefBox bool `json:",omitempty"`
 	// A declaration's members are looked up on the declaration, so this is
 	// where every type's methods live — struct, enum, unit and component
 	// alike.

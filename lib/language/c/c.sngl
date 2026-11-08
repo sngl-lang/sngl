@@ -1,4 +1,5 @@
 import build "sngl:build"
+import marks "sngl:internal/marks"
 import gen "sngl:x/gen"
 
 // C's keywords, through C23, which no declaration may take.
@@ -87,4 +88,24 @@ component language(
     // keywords and the macros its headers define.
     const reservedWords list[string] = [...keywords, ...macros],
     const platforms     ...component build.platform,
-) build.language
+) build.language {
+    gen.run(@run(dir, args) {
+        var cmd = [buildProgram(dir, dir + "/app", cc, std)]
+        for var a = args {
+            cmd.push(a)
+        }
+        var code = gen.shell(cmd=cmd, dir=dir)
+        if code != 0 {
+            error.raise("exit status {code}", "exit")
+        }
+    })
+    gen.build(@build(dir, out) {
+        buildProgram(dir, out, cc, std)
+    })
+}
+
+// Compiles the program the build wrote to dir into the executable out with
+// cc under std, and returns out: every .c file there, linking what its
+// sngl.build names.
+#[marks.intrinsic("c.buildProgram", build)]
+func buildProgram(dir string, out string, cc string, std string) string

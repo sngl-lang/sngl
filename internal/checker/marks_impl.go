@@ -29,6 +29,7 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "retains"}:               markRetains,
 	{"macro", "moves"}:                 markMoves,
 	{"x/c", "context"}:                 markCContext,
+	{"x/c", "type"}:                    markCType,
 	{"x/c", "release"}:                 markCRelease,
 	{"macro", "unusable"}:              markUnusable,
 	{"language/kotlin", "native"}:      markKotlinNative,

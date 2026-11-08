@@ -135,6 +135,7 @@ var funcParamMarks = map[markKey]bool{
 	{"macro", "moves"}:   true,
 	{"x/c", "context"}:   true,
 	{"x/c", "release"}:   true,
+	{"x/c", "type"}:      true,
 }
 
 // applyFuncParamMarks runs the marks written on a declared function's
@@ -276,6 +277,29 @@ func markCContext(m *mark) error {
 // which the translator passes.
 func markCRelease(m *mark) error {
 	return markCompilerPassed(m, "release", func(p *ir.Param) { p.CRelease = true })
+}
+
+// markCType implements sngl:x/c's #[type]: the C function-pointer type a
+// callback or a release parameter of a #[cnative] function is.
+func markCType(m *mark) error {
+	fp, ok := m.sym.(funcParam)
+	if !ok || fp.bodied {
+		what := "a parameter of a function with a body"
+		if !ok {
+			what = ast.DeclFormName(m.decl)
+		}
+		return fmt.Errorf("#[c.type] cannot mark %s; only a parameter of a #[cnative] function", what)
+	}
+	name := m.args.String("name")
+	t, err := ir.ParseCType(name)
+	if err != nil {
+		return err
+	}
+	if t.Ptr > 0 || t.Const {
+		return fmt.Errorf("#[c.type(%q)] names a pointer; name the function-pointer typedef, as GLib's GCallback is one", name)
+	}
+	fp.param.CFuncType = t
+	return nil
 }
 
 // markCompilerPassed marks a parameter of a bodyless function as one the

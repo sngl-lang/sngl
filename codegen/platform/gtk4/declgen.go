@@ -227,10 +227,10 @@ struct _gpointer {}
 const func _instance(w ui.node) _gpointer
 
 #[macro.cnative("g_signal_connect_data")]
-func _signalConnect(instance _gpointer, signal string, handler func(self c.pointer), #[c.context] data _gpointer, #[c.release] destroy c.pointer, flags _ConnectFlags)
+func _signalConnect(instance _gpointer, signal string, #[c.type("GCallback")] handler func(self c.pointer), #[c.context] data _gpointer, #[c.type("GClosureNotify")] #[c.release] destroy c.pointer, flags _ConnectFlags)
 
 #[macro.cnative("g_signal_connect_data")]
-func _notifyConnect(instance _gpointer, signal string, handler func(self c.pointer, pspec c.pointer), #[c.context] data _gpointer, #[c.release] destroy c.pointer, flags _ConnectFlags)
+func _notifyConnect(instance _gpointer, signal string, #[c.type("GCallback")] handler func(self c.pointer, pspec c.pointer), #[c.context] data _gpointer, #[c.type("GClosureNotify")] #[c.release] destroy c.pointer, flags _ConnectFlags)
 
 // Connects handler to w's signal, as gtk4's connect protocol does. A property
 // notification is its event's own protocol (writeNotifyOn).

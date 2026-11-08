@@ -671,7 +671,8 @@ func (r *boxRegistry) boxFor(elem *ir.Type) *ir.StructDef {
 		return def
 	}
 	def := &ir.StructDef{
-		Name: "__ref_" + key,
+		Name:   "__ref_" + key,
+		RefBox: true,
 		Fields: []*ir.StructField{
 			{Name: "value", Type: elem},
 		},

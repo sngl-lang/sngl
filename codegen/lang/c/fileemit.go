@@ -19,7 +19,6 @@ type FileEmitter struct {
 	sink   codegen.Sink
 	opts   codegen.FileOptions
 	ctx    *Context
-	protos []string
 	body   bytes.Buffer
 	closed bool
 }
@@ -65,31 +64,13 @@ func (fe *FileEmitter) RequireImport(path string) string {
 }
 
 // Struct defines sd's C struct.
-func (fe *FileEmitter) Struct(sd *ir.StructDef) {
-	name := Global(sd.Name)
-	var deps []string
-	var b strings.Builder
-	fmt.Fprintf(&b, "typedef struct %s {\n", name)
-	for _, f := range sd.Fields {
-		t := fe.ctx.typeName(f.Type)
-		if isProgramStruct(f.Type) {
-			deps = append(deps, t)
-		}
-		fmt.Fprintf(&b, "\t%s %s;\n", t, Local(f.Name))
-	}
-	if len(sd.Fields) == 0 {
-		// C refuses a struct with no members.
-		b.WriteString("\tchar unused;\n")
-	}
-	fmt.Fprintf(&b, "} %s;\n", name)
-	fe.ctx.file.define(name, b.String(), deps...)
-}
+func (fe *FileEmitter) Struct(sd *ir.StructDef) { fe.ctx.defineStruct(sd) }
 
 // Func writes fn, a function of the program, with its prototype ahead of
 // every function the file writes.
 func (fe *FileEmitter) Func(fn *ir.Func) {
 	sig := fe.signature(fn)
-	fe.protos = append(fe.protos, "static "+sig+";")
+	fe.ctx.file.protos = append(fe.ctx.file.protos, "static "+sig+";")
 	ctx := fe.ctx
 	for _, p := range fn.Params {
 		ctx = ctx.WithLocal(p.Name)
@@ -140,11 +121,12 @@ func (fe *FileEmitter) Close() error {
 	if types := fe.ctx.file.typeSection(); types != "" {
 		b.WriteString("\n" + types)
 	}
-	if len(fe.ctx.file.helpers) > 0 {
-		b.WriteString("\n" + strings.Join(fe.ctx.file.helpers, "\n"))
+	f := fe.ctx.file
+	if len(f.protos) > 0 {
+		b.WriteString("\n" + strings.Join(f.protos, "\n") + "\n")
 	}
-	if len(fe.protos) > 0 {
-		b.WriteString("\n" + strings.Join(fe.protos, "\n") + "\n")
+	if len(f.helpers) > 0 {
+		b.WriteString("\n" + strings.Join(f.helpers, "\n"))
 	}
 	if _, err := io.WriteString(w, b.String()); err != nil {
 		w.Close()
@@ -153,6 +135,12 @@ func (fe *FileEmitter) Close() error {
 	if _, err := fe.body.WriteTo(w); err != nil {
 		w.Close()
 		return err
+	}
+	for _, l := range f.lifted {
+		if _, err := io.WriteString(w, "\n"+l); err != nil {
+			w.Close()
+			return err
+		}
 	}
 	return w.Close()
 }
