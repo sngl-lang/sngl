@@ -134,6 +134,9 @@ func (c *Context) funcValue(fn *ir.Func, t *ir.Type) string {
 // template's lambda reads only what was spliced into it, and writes nothing
 // of its scope's.
 func (c *Context) Lambda(n *ir.Lambda) string {
+	if n.Type == nil || n.Type.Sig == nil {
+		n = &ir.Lambda{AST: n.AST, Func: n.Func, Type: ir.FuncOf(n.Func.Params, n.Func.Return)}
+	}
 	fnT := c.fnType(n.Type)
 	id := c.file.next()
 	name := fmt.Sprintf("sngl_lambda%d", id)

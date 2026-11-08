@@ -438,6 +438,8 @@ func (r *refRewriter) rewriteStmt(s ir.Stmt) {
 		n.Target = r.rewriteAssignTarget(n.Target)
 	case *ir.Break, *ir.Continue:
 		// A loop escape holds no ref to rewrite.
+	case *ir.CanvasRedrawStmt:
+		// A reference to a drawing owned elsewhere: no ref of this body's.
 	default:
 		panic(fmt.Sprintf("refRewriter.rewriteStmt: unhandled %T", n))
 	}
@@ -627,6 +629,9 @@ func seedAddressedVarsInStmt(s ir.Stmt, set map[*ir.Var]bool) {
 		seedAddressedVarsInExpr(n.Target, set)
 	case *ir.Break, *ir.Continue:
 		// A loop escape addresses nothing.
+	case *ir.CanvasRedrawStmt:
+		// Names a drawing's node and draw func, both owned elsewhere: a
+		// reference, as a call's callee is, addressing nothing of this body's.
 	default:
 		panic(fmt.Sprintf("seedAddressedVarsInStmt: unhandled %T", n))
 	}

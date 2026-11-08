@@ -409,6 +409,8 @@ func liftLambdasInStmt(s ir.Stmt, l *lifter) {
 		liftLambdasInStmts(n.Children, l)
 	case *ir.Break, *ir.Continue:
 		// A loop escape holds no lambda to lift.
+	case *ir.CanvasRedrawStmt:
+		// The draw func it names is lifted where it is owned.
 	default:
 		panic(fmt.Sprintf("liftLambdasInStmt: unhandled %T", n))
 	}
@@ -687,6 +689,9 @@ func (l *lifter) rewriteStmt(s ir.Stmt, captureField map[ir.Symbol]ir.Expr, capt
 		l.rewriteStmts(n.Children, captureField, captureMutable)
 	case *ir.Break, *ir.Continue:
 		// A loop escape holds no ident to rewrite.
+	case *ir.CanvasRedrawStmt:
+		// A reference to a drawing owned elsewhere, as analyzeCaptures
+		// reads it: nothing of this body's is in it.
 	default:
 		panic(fmt.Sprintf("lifter.rewriteStmt: unhandled %T", n))
 	}
