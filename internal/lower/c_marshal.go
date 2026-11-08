@@ -176,7 +176,7 @@ func (m *cMarshal) call(c *ir.Call) error {
 		return nil
 	}
 	for i, p := range fn.Params {
-		if arg := &c.Args[off+i]; p.CContext || p.Type != nil && p.Type.Kind == ir.TypeFunc {
+		if arg := &c.Args[off+i]; p.CompilerPassed() || p.Type != nil && p.Type.Kind == ir.TypeFunc {
 			if _, done := arg.Value.(*ir.CConvert); !done {
 				arg.Value = callbackArg(p, arg.Value)
 			}
@@ -217,32 +217,44 @@ func (m *cMarshal) call(c *ir.Call) error {
 	return nil
 }
 
-// insertCContext writes into c the argument for its callee's #[c.context]
-// parameter, which no caller passes and CallDefaults leaves to a native:
-// the placeholder the parameter defaults to, which callbackArg makes the
-// context the translator writes.
+// insertCContext writes into c the arguments for its callee's #[c.context]
+// and #[c.release] parameters, which no caller passes and CallDefaults
+// leaves to a native: the placeholder each defaults to, which callbackArg
+// makes what the translator writes.
 func insertCContext(c *ir.Call) {
-	k := slices.IndexFunc(c.Func.Params, func(p *ir.Param) bool { return p.CContext })
-	if k < 0 {
+	params := c.Func.Params
+	passed := 0
+	for _, p := range params {
+		if p.CompilerPassed() && c.ArgFor(p.Name) == nil {
+			passed++
+		}
+	}
+	if passed == 0 {
 		return
 	}
-	p := c.Func.Params[k]
-	if c.ArgFor(p.Name) != nil {
-		return
-	}
-	at := len(c.Args) - (len(c.Func.Params) - 1) + k
+	// Aligned from the end, as call aligns: a receiver-first native's
+	// receiver is an argument no parameter declares.
+	at := len(c.Args) - (len(params) - passed)
 	if at < 0 {
 		return
 	}
-	c.Args = slices.Insert(c.Args, at, ir.CallArg{Name: p.Name, Value: ir.CloneExprSharingDecls(p.Default)})
+	for _, p := range params {
+		if p.CompilerPassed() && c.ArgFor(p.Name) == nil {
+			c.Args = slices.Insert(c.Args, at, ir.CallArg{Name: p.Name, Value: ir.CloneExprSharingDecls(p.Default)})
+		}
+		at++
+	}
 }
 
 // callbackArg is v, the argument for p, as it crosses to C: a closure as the
-// callback a C function pointer calls, and a context as the `void *` the
-// translator writes from it.
+// callback a C function pointer calls, a context as the `void *` the
+// translator writes from it, and a release as its function letting it go.
 func callbackArg(p *ir.Param, v ir.Expr) ir.Expr {
-	if p.CContext {
+	switch {
+	case p.CContext:
 		return &ir.CConvert{Kind: ir.CConvertContext, To: ir.CTypeOf(p.Type), Operand: v, Type: p.Type}
+	case p.CRelease:
+		return &ir.CConvert{Kind: ir.CConvertRelease, To: ir.CTypeOf(p.Type), Operand: v, Type: p.Type}
 	}
 	return &ir.CConvert{Kind: ir.CConvertCallback, Operand: v, Type: p.Type}
 }

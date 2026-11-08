@@ -75,8 +75,16 @@ struct pointer {}
 // context to it as its last argument, after the ones its type declares: a
 // `func(int) int` is C's `int (*)(int, void *)`. Each parameter and the result
 // is an `int`, `float`, `bool` or `#[cnative]` struct. Unmarked, the callback
-// is held for the call; `#[macro.retains]`, for the rest of the program.
+// is held for the call; `#[macro.retains]`, for the rest of the program; and
+// where the function takes `#[release]`, until C calls it.
 func context() ir.Macro
+
+// Marks the parameter a `#[cnative]` function taking a callback is handed the
+// function C calls, with the context, once it is done with the callback:
+// GLib's `GClosureNotify` and `GDestroyNotify`. The compiler passes one that
+// lets the closure go, so the callback is held until then, and no caller
+// passes it.
+func release() ir.Macro
 
 #[macro.cnative("void *", cast)]
 const func pointerTo(s str) pointer

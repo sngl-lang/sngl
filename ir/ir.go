@@ -1574,7 +1574,16 @@ type Param struct {
 	// callback it takes, written `#[c.context]`. No caller passes it: the
 	// translator does, from the closure the call converts.
 	CContext bool `json:",omitempty"`
+	// CRelease marks the parameter taking the function C calls with the
+	// context once it is done with the callback, written `#[c.release]`:
+	// GLib's GClosureNotify. No caller passes it either; the translator
+	// hands over its function releasing the closure.
+	CRelease bool `json:",omitempty"`
 }
+
+// CompilerPassed reports whether the translator, not a caller, passes p: a C
+// callback's context or release.
+func (p *Param) CompilerPassed() bool { return p.CContext || p.CRelease }
 
 // Transfer is what a callee does with an owned argument once it returns.
 type Transfer int

@@ -578,11 +578,13 @@ func (c *checker) checkCCallbacks() {
 			}
 			return fn.AST.Pos
 		}
-		var callbacks, contexts []int
+		var callbacks, contexts, releases []int
 		for i, p := range fn.Params {
 			switch {
 			case p.CContext:
 				contexts = append(contexts, i)
+			case p.CRelease:
+				releases = append(releases, i)
 			case p.Type != nil && p.Type.Kind == ir.TypeFunc:
 				callbacks = append(callbacks, i)
 			}
@@ -591,7 +593,28 @@ func (c *checker) checkCCallbacks() {
 			for _, i := range contexts {
 				c.error(pos(i), "#[c.context] marks what a #[cnative] function hands its callback, and %s is not a C function", fn.Name)
 			}
+			for _, i := range releases {
+				c.error(pos(i), "#[c.release] marks what a #[cnative] function calls to release its callback, and %s is not a C function", fn.Name)
+			}
 			continue
+		}
+		for _, i := range releases {
+			p := fn.Params[i]
+			switch {
+			case ir.CTypeOf(p.Type) == nil:
+				c.error(pos(i), "parameter %q takes a C function: declare it c.pointer, or a #[cnative] struct naming the C function's own spelling of one, not %s", p.Name, p.Type)
+			case len(contexts) == 0:
+				c.error(pos(i), "parameter %q releases a callback's context, and %s marks no #[c.context]", p.Name, fn.Name)
+			case i != releases[0]:
+				c.error(pos(i), "C function %q marks a second release, %q, and C releases its one context once", fn.Foreign.Name, p.Name)
+			}
+		}
+		if len(releases) > 0 {
+			for _, i := range callbacks {
+				if fn.Params[i].Transfer == ir.TransferRetains {
+					c.error(pos(i), "callback %q is held until C calls %q, which #[c.release] says, so it is not #[retains] as well", fn.Params[i].Name, fn.Params[releases[0]].Name)
+				}
+			}
 		}
 		for _, i := range contexts {
 			if p := fn.Params[i]; ir.CTypeOf(p.Type) == nil {

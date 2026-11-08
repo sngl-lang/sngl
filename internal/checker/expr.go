@@ -3464,7 +3464,7 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			}
 			// A callback's context is the translator's to pass, so a
 			// positional argument goes to the parameter after it.
-			for positional < n && sig.Params[positional].CContext {
+			for positional < n && sig.Params[positional].CompilerPassed() {
 				positional++
 			}
 			if positional >= n {
@@ -3509,8 +3509,8 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 				continue
 			}
 			p := sig.Params[idx]
-			if p.CContext {
-				c.error(arg.NamePos, "parameter %q is the context C hands its callback, which the compiler passes", p.Name)
+			if p.CompilerPassed() {
+				c.error(arg.NamePos, "parameter %q is what C hands its callback, or calls to release it, which the compiler passes", p.Name)
 				ok = false
 				c.checkExpr(arg.Value)
 				continue

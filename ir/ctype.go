@@ -185,6 +185,10 @@ const (
 	// has no operand of its own; the translator writes it from the
 	// callback's, and Operand is the placeholder the parameter defaults to.
 	CConvertContext
+	// CConvertRelease is the function a `#[c.release]` parameter is handed,
+	// which C calls with the context to let the closure go. Operand is the
+	// parameter's placeholder.
+	CConvertRelease
 )
 
 // CConvert is a value converted to a C type, the conversion a call of a C

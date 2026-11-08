@@ -134,6 +134,7 @@ var funcParamMarks = map[markKey]bool{
 	{"macro", "retains"}: true,
 	{"macro", "moves"}:   true,
 	{"x/c", "context"}:   true,
+	{"x/c", "release"}:   true,
 }
 
 // applyFuncParamMarks runs the marks written on a declared function's
@@ -264,22 +265,38 @@ func isStateRead(sym ir.Symbol) bool {
 
 // markCContext implements sngl:x/c's #[context]: the parameter is the
 // `void *` a C function hands back to its callback, which the translator
-// passes and no caller does. Its default is a placeholder that says so to
-// the call checker; checkCCallbacks judges the function once its own marks
-// say whether it is C's.
+// passes and no caller does. checkCCallbacks judges the function once its
+// own marks say whether it is C's.
 func markCContext(m *mark) error {
+	return markCompilerPassed(m, "context", func(p *ir.Param) { p.CContext = true })
+}
+
+// markCRelease implements sngl:x/c's #[release]: the parameter takes the
+// function C calls with the context once it is done with the callback,
+// which the translator passes.
+func markCRelease(m *mark) error {
+	return markCompilerPassed(m, "release", func(p *ir.Param) { p.CRelease = true })
+}
+
+// markCompilerPassed marks a parameter of a bodyless function as one the
+// translator passes. Its default is a placeholder that says so to the call
+// checker.
+func markCompilerPassed(m *mark, name string, set func(*ir.Param)) error {
 	fp, ok := m.sym.(funcParam)
 	if !ok || fp.bodied {
 		what := "a parameter of a function with a body"
 		if !ok {
 			what = ast.DeclFormName(m.decl)
 		}
-		return fmt.Errorf("#[c.context] cannot mark %s; only a parameter of a #[cnative] function", what)
+		return fmt.Errorf("#[c.%s] cannot mark %s; only a parameter of a #[cnative] function", name, what)
+	}
+	if fp.param.CompilerPassed() {
+		return fmt.Errorf("parameter %q is marked both #[c.context] and #[c.release]", fp.param.Name)
 	}
 	if fp.param.Default != nil {
-		return fmt.Errorf("parameter %q is a callback's context, which the compiler passes, so it takes no default", fp.param.Name)
+		return fmt.Errorf("parameter %q is a callback's %s, which the compiler passes, so it takes no default", fp.param.Name, name)
 	}
-	fp.param.CContext = true
+	set(fp.param)
 	fp.param.Default = ir.ZeroExpr(fp.param.Type)
 	return nil
 }

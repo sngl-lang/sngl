@@ -94,6 +94,7 @@ func callbacksSource(pkgName string, links []*ir.CLink, sigs []*ir.FuncSig) []by
 		}
 		fmt.Fprintf(&b, "extern %s %s(%s);\n", ret, n, strings.Join(params, ", "))
 	}
+	b.WriteString("extern void snglRelease(void *);\n")
 	b.WriteString("\nstatic void *sngl_context(uintptr_t i) { return (void *)i; }\n*/\nimport \"C\"\n\n")
 	b.WriteString(`import (
 	"unsafe"
@@ -107,10 +108,17 @@ func snglContext(fn any) unsafe.Pointer {
 	return C.sngl_context(C.uintptr_t(cbind.Register(fn) + 1))
 }
 
-// snglRelease drops the closure ctx names, once C is done calling it.
+func snglClosure(ctx unsafe.Pointer) any { return cbind.Lookup(int(uintptr(ctx)) - 1) }
+
+// snglRelease is what C calls with a context once it is done with the
+// callback, where the function takes a #[c.release]: GLib's
+// GClosureNotify, which hands the GClosure after it, and GDestroyNotify.
+//
+//export snglRelease
 func snglRelease(ctx unsafe.Pointer) { cbind.Release(int(uintptr(ctx)) - 1) }
 
-func snglClosure(ctx unsafe.Pointer) any { return cbind.Lookup(int(uintptr(ctx)) - 1) }
+// snglReleasePtr is snglRelease as the function pointer C calls.
+func snglReleasePtr() *[0]byte { return (*[0]byte)(C.snglRelease) }
 `)
 	for _, n := range names {
 		sig := byName[n]
@@ -128,19 +136,22 @@ func snglClosure(ctx unsafe.Pointer) any { return cbind.Lookup(int(uintptr(ctx))
 			}
 		}
 		params = append(params, "ctx unsafe.Pointer")
-		call := "snglClosure(ctx).(" + IRTypeToGo(ir.FuncOf(sig.Params, sig.Return)) + ")(" + strings.Join(args, ", ") + ")"
-		ret, body := "", call
+		// A closure released already answers C's zero: a callback C calls
+		// after it let the context go finds nothing, as cbind.Dispatch does.
+		lookup := "fn, ok := snglClosure(ctx).(" + IRTypeToGo(ir.FuncOf(sig.Params, sig.Return)) + ")"
+		call := "fn(" + strings.Join(args, ", ") + ")"
+		ret, body := "", lookup+"\n\tif ok {\n\t\t"+call+"\n\t}"
 		if r := sig.Return; r != nil && r.Kind != ir.TypeVoid {
 			ct := CTypeToGo(callbackCType(r))
 			ret = " " + ct
+			set := "r = " + call
 			switch {
-			case ir.CTypeOf(r) != nil:
-				body = "return " + call
-			case r.Kind == ir.TypeBool:
-				body = "if " + call + " {\n\t\treturn 1\n\t}\n\treturn 0"
-			default:
-				body = "return " + ct + "(" + call + ")"
+			case r.Kind == ir.TypeBool && ir.CTypeOf(r) == nil:
+				set = "if " + call + " {\n\t\t\tr = 1\n\t\t}"
+			case ir.CTypeOf(r) == nil:
+				set = "r = " + ct + "(" + call + ")"
 			}
+			body = lookup + "\n\tvar r " + ct + "\n\tif ok {\n\t\t" + set + "\n\t}\n\treturn r"
 		}
 		fmt.Fprintf(&b, "\n//export %s\nfunc %s(%s)%s {\n\t%s\n}\n", n, n, strings.Join(params, ", "), ret, body)
 		fmt.Fprintf(&b, "\n// %sPtr is %s as the function pointer C calls.\nfunc %sPtr() *[0]byte { return (*[0]byte)(C.%s) }\n", n, n, n, n)

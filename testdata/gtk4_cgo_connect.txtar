@@ -310,7 +310,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_widget_set_can_focus((*C.GtkWidget)(unsafe.Pointer(m.count)), C.gboolean(C.int(1)))
 	C.g_signal_connect_data(C.gpointer(gtk4rt.Handle(unsafe.Pointer(m.count))), m.__rel2, snglCallback_void_p__voidPtr(), C.gpointer(snglContext(func(self unsafe.Pointer) {
 		m.count_clicked_handler()
-	})), nil, C.GConnectFlags(0))
+	})), snglReleasePtr(), C.GConnectFlags(0))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n1)), gtk4rt.Handle(unsafe.Pointer(m.count)))
 	m.__n0 = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0)), C.gboolean(C.int(func() int {
@@ -324,7 +324,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_widget_set_can_focus((*C.GtkWidget)(unsafe.Pointer(m.__n0)), C.gboolean(C.int(1)))
 	C.g_signal_connect_data(C.gpointer(gtk4rt.Handle(unsafe.Pointer(m.__n0))), m.__rel3, snglCallback_void_p_void_p__voidPtr(), C.gpointer(snglContext(func(self unsafe.Pointer, pspec unsafe.Pointer) {
 		m.__n0_notifyActive_handler()
-	})), nil, C.GConnectFlags(0))
+	})), snglReleasePtr(), C.GConnectFlags(0))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n1)))
 }
@@ -354,6 +354,7 @@ package main
 
 extern void snglCallback_void_p__void(void *, void *);
 extern void snglCallback_void_p_void_p__void(void *, void *, void *);
+extern void snglRelease(void *);
 
 static void *sngl_context(uintptr_t i) { return (void *)i; }
 */
@@ -371,14 +372,24 @@ func snglContext(fn any) unsafe.Pointer {
 	return C.sngl_context(C.uintptr_t(cbind.Register(fn) + 1))
 }
 
-// snglRelease drops the closure ctx names, once C is done calling it.
+func snglClosure(ctx unsafe.Pointer) any { return cbind.Lookup(int(uintptr(ctx)) - 1) }
+
+// snglRelease is what C calls with a context once it is done with the
+// callback, where the function takes a #[c.release]: GLib's
+// GClosureNotify, which hands the GClosure after it, and GDestroyNotify.
+//
+//export snglRelease
 func snglRelease(ctx unsafe.Pointer) { cbind.Release(int(uintptr(ctx)) - 1) }
 
-func snglClosure(ctx unsafe.Pointer) any { return cbind.Lookup(int(uintptr(ctx)) - 1) }
+// snglReleasePtr is snglRelease as the function pointer C calls.
+func snglReleasePtr() *[0]byte { return (*[0]byte)(C.snglRelease) }
 
 //export snglCallback_void_p__void
 func snglCallback_void_p__void(a0 unsafe.Pointer, ctx unsafe.Pointer) {
-	snglClosure(ctx).(func(unsafe.Pointer))(a0)
+	fn, ok := snglClosure(ctx).(func(unsafe.Pointer))
+	if ok {
+		fn(a0)
+	}
 }
 
 // snglCallback_void_p__voidPtr is snglCallback_void_p__void as the function pointer C calls.
@@ -386,10 +397,13 @@ func snglCallback_void_p__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_
 
 //export snglCallback_void_p_void_p__void
 func snglCallback_void_p_void_p__void(a0 unsafe.Pointer, a1 unsafe.Pointer, ctx unsafe.Pointer) {
-	snglClosure(ctx).(func(unsafe.Pointer, unsafe.Pointer))(a0, a1)
+	fn, ok := snglClosure(ctx).(func(unsafe.Pointer, unsafe.Pointer))
+	if ok {
+		fn(a0, a1)
+	}
 }
 
 // snglCallback_void_p_void_p__voidPtr is snglCallback_void_p_void_p__void as the function pointer C calls.
 func snglCallback_void_p_void_p__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_void_p_void_p__void) }
 -- run/go/gtk4 --
-pass sha256:724b59a91ddc68b314a833635f812f35
+pass sha256:b3bdc7fb9e266f135dcdc47f6d48503a

@@ -35,3 +35,18 @@ func good(f func(int) bool, p c.pointer, #[c.context] data c.pointer)
 
 #[macro.cnative("two_contexts")]
 func twoContexts(f func(), #[c.context] a c.pointer, #[c.context] b c.pointer) // ERROR(check) "marks a second context, \"b\""
+
+#[macro.cnative("lone_release")]
+func loneRelease(f func(), #[c.release] r c.pointer) // ERROR(check) "parameter \"r\" releases a callback's context, and loneRelease marks no #[c.context]"
+
+#[macro.cnative("bad_release")]
+func badRelease(f func(), #[c.context] data c.pointer, #[c.release] r int) // ERROR(check) "parameter \"r\" takes a C function: declare it c.pointer"
+
+#[macro.cnative("two_releases")]
+func twoReleases(f func(), #[c.context] data c.pointer, #[c.release] r c.pointer, #[c.release] s c.pointer) // ERROR(check) "marks a second release, \"s\""
+
+#[macro.cnative("retained_released")]
+func retainedReleased(#[macro.retains] f func(), #[c.context] data c.pointer, #[c.release] r c.pointer) // ERROR(check) "callback \"f\" is held until C calls \"r\", which #[c.release] says, so it is not #[retains] as well"
+
+#[go.native("strings", "Repeat")]
+func goRelease(f func(), #[c.release] r c.pointer) // ERROR(check) "and goRelease is not a C function"

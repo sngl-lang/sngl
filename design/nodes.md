@@ -179,7 +179,11 @@ declaration itself. Two things about the name that are easy to get wrong:
   is NULL. They sit in a file of their own because a Go file that exports to
   C may define nothing in its preamble that another unit links, and a
   platform's preamble may. An unmarked callback is held for the call, a
-  `#[retains]` one for the rest of the program
+  `#[retains]` one for the rest of the program, and one whose function marks
+  a `#[c.release]` parameter until C calls the function the translator
+  hands it there (`snglRelease`, GLib's `GClosureNotify`). A dispatcher
+  finding its closure released does nothing, since C may still call a
+  callback it has let go, as GLib does after a disconnect.
   (`testdata/c_callback_argument.txtar`, `error_c_callback.sngl`,
   `error_c_context_mark.sngl`, `error_c_context_argument.sngl`). gtk4's
   `cgo=true` connects every handler this way; its default build keeps

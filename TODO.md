@@ -248,18 +248,18 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
    through shipped C, and `error_c_callback.sngl`,
    `error_c_context_mark.sngl` and `error_c_context_argument.sngl` hold the
    rules. The context is a parameter marked `#[c.context]`, typed
-   `c.pointer`, which no caller passes. A `#[retains]` callback is never
-   released yet; tie it to the node that connected it
-   (`design/ownership.md`'s node lifetime) as an owned value is.
+   `c.pointer`, which no caller passes, and a function C calls to release
+   it `#[c.release]`. A `#[retains]` callback is never released; tie it to
+   the node that called it (`design/ownership.md`'s node lifetime) as an
+   owned value is, where C offers no release.
    - **gtk4 under `cgo=true` connects through it**: declgen's
      `signalConnect` is `g_signal_connect_data`, and a `notify::` event its
      own `on` protocol (`testdata/gtk4_cgo_connect.txtar`,
      `cmd/sngl/testdata/gtk4_cgo_connect_runs.txt`). The default build keeps
      `gtk4rt.Connect`: a connect calling C there puts every program with a
      handler on the cgo path (`design/architecture.md`, *Which file a
-     program gets*). Next: hand `destroy` a function releasing the closure,
-     which GLib calls when the handler goes, so a retained callback is
-     released with its widget.
+     program gets*). GLib releases each handler through `destroy`, marked
+     `#[c.release]`, so a handler goes with its widget.
 5. **Structs and `ref` out-parameters** (design item 6). A fixture over
    a shipped C function filling a struct.
 6. **Docs.**

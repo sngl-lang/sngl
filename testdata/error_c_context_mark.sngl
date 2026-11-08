@@ -9,3 +9,6 @@ func defaulted(f func(), #[c.context] data c.pointer = c.pointer{}) // ERROR(che
 
 func bodied(f func(), #[c.context] data c.pointer) { // ERROR(check) "#[c.context] cannot mark a parameter of a function with a body"
 }
+
+#[macro.cnative("both")]
+func both(f func(), #[c.context] #[c.release] data c.pointer) // ERROR(check) "parameter \"data\" is marked both #[c.context] and #[c.release]"

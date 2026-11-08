@@ -11,6 +11,6 @@ func each(f func(int), #[c.context] data c.pointer, n int)
 
 func call() {
     each(func(i int) {}, 3)
-    each(func(i int) {}, data=c.pointer{}, n=3) // ERROR(check) "parameter \"data\" is the context C hands its callback, which the compiler passes"
+    each(func(i int) {}, data=c.pointer{}, n=3) // ERROR(check) "parameter \"data\" is what C hands its callback, or calls to release it, which the compiler passes"
     each(func(i int) {}, 3, 4)                  // ERROR(check) "too many arguments"
 }

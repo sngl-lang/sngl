@@ -58,7 +58,7 @@ func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
 		// The closure: CCall makes it the context, and hands C the
 		// dispatcher for its type in its place.
 		return gc.EvalExpr(x.Operand)
-	case ir.CConvertContext:
+	case ir.CConvertContext, ir.CConvertRelease:
 		return "nil"
 	}
 	operand := gc.EvalExpr(x.Operand)
@@ -89,12 +89,13 @@ func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
 //
 // A callback crosses as the dispatcher cgo exports for its type (ccallback.go)
 // and the closure as the context, registered for as long as the callback is
-// held: for the call, or for the rest of the program where the parameter is
-// `#[retains]`.
+// held: for the call, until C calls the release a `#[c.release]` parameter is
+// handed, or for the rest of the program where the parameter is `#[retains]`.
 func (gc *GoIRContext) CCall(fn *ir.Func, args []string) string {
 	off := len(args) - len(fn.Params)
-	cb := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return !p.CContext && p.Type != nil && p.Type.Kind == ir.TypeFunc })
+	cb := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return !p.CompilerPassed() && p.Type != nil && p.Type.Kind == ir.TypeFunc })
 	ctx := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CContext })
+	rel := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CRelease })
 	if off < 0 || cb < 0 || ctx < 0 {
 		return gc.cCall(fn, args)
 	}
@@ -109,7 +110,12 @@ func (gc *GoIRContext) CCall(fn *ir.Func, args []string) string {
 		}
 		return v
 	}
-	if fn.Params[cb].Transfer == ir.TransferRetains {
+	// A function pointer is cgo's *[0]byte, which any C function pointer
+	// type is assignable from: GClosureNotify takes it as it is.
+	if rel >= 0 {
+		args[off+rel] = "snglReleasePtr()"
+	}
+	if rel >= 0 || fn.Params[cb].Transfer == ir.TransferRetains {
 		args[off+ctx] = asContext("snglContext(" + closure + ")")
 		return gc.cCall(fn, args)
 	}

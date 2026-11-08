@@ -472,6 +472,7 @@ package main
 
 extern void snglCallback_void_p__void(void *, void *);
 extern void snglCallback_void_p_void_p__void(void *, void *, void *);
+extern void snglRelease(void *);
 
 static void *sngl_context(uintptr_t i) { return (void *)i; }
 */
@@ -489,14 +490,24 @@ func snglContext(fn any) unsafe.Pointer {
 	return C.sngl_context(C.uintptr_t(cbind.Register(fn) + 1))
 }
 
-// snglRelease drops the closure ctx names, once C is done calling it.
+func snglClosure(ctx unsafe.Pointer) any { return cbind.Lookup(int(uintptr(ctx)) - 1) }
+
+// snglRelease is what C calls with a context once it is done with the
+// callback, where the function takes a #[c.release]: GLib's
+// GClosureNotify, which hands the GClosure after it, and GDestroyNotify.
+//
+//export snglRelease
 func snglRelease(ctx unsafe.Pointer) { cbind.Release(int(uintptr(ctx)) - 1) }
 
-func snglClosure(ctx unsafe.Pointer) any { return cbind.Lookup(int(uintptr(ctx)) - 1) }
+// snglReleasePtr is snglRelease as the function pointer C calls.
+func snglReleasePtr() *[0]byte { return (*[0]byte)(C.snglRelease) }
 
 //export snglCallback_void_p__void
 func snglCallback_void_p__void(a0 unsafe.Pointer, ctx unsafe.Pointer) {
-	snglClosure(ctx).(func(unsafe.Pointer))(a0)
+	fn, ok := snglClosure(ctx).(func(unsafe.Pointer))
+	if ok {
+		fn(a0)
+	}
 }
 
 // snglCallback_void_p__voidPtr is snglCallback_void_p__void as the function pointer C calls.
@@ -504,10 +515,13 @@ func snglCallback_void_p__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_
 
 //export snglCallback_void_p_void_p__void
 func snglCallback_void_p_void_p__void(a0 unsafe.Pointer, a1 unsafe.Pointer, ctx unsafe.Pointer) {
-	snglClosure(ctx).(func(unsafe.Pointer, unsafe.Pointer))(a0, a1)
+	fn, ok := snglClosure(ctx).(func(unsafe.Pointer, unsafe.Pointer))
+	if ok {
+		fn(a0, a1)
+	}
 }
 
 // snglCallback_void_p_void_p__voidPtr is snglCallback_void_p_void_p__void as the function pointer C calls.
 func snglCallback_void_p_void_p__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_void_p_void_p__void) }
 -- run/go/gtk4 --
-pass sha256:f32da353daf3467cf1a4055a3374adc2
+pass sha256:f1b5062b9248e50cd3e0f957577e6195
