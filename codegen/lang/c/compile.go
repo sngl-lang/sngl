@@ -1,0 +1,82 @@
+package c
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+)
+
+// Standards are the C standards a program compiles as. The output holds to
+// both: a construct only the later admits needs a build option of its own.
+var Standards = []string{"c11", "c17"}
+
+// Flags are what every build of a program passes its compiler for std: the
+// standard, strictly, and signed arithmetic that wraps as it does on Go and
+// Kotlin. What generated code is entitled to leave unused -- a parameter a
+// body does not read, a library function nothing calls -- is not an error.
+func Flags(std string) []string {
+	return []string{
+		"-std=" + std, "-pedantic", "-Wall", "-Wextra", "-Werror",
+		"-Wno-unused-parameter", "-Wno-unused-function", "-Wno-unused-variable", "-Wno-unused-but-set-variable",
+		"-fwrapv",
+	}
+}
+
+// Compiler is a C compiler on the host.
+type Compiler struct {
+	// Name is how a test names it: gcc, clang, or a MinGW cross compiler's
+	// triple.
+	Name string
+	Path string
+	// Windows says it builds a Windows executable, which runs under Wine.
+	Windows bool
+}
+
+// Compilers are the C compilers on the host that SNGL holds its output to:
+// gcc, the reference, clang, and MinGW's for 64- and 32-bit Windows.
+func Compilers() []Compiler {
+	var out []Compiler
+	for _, c := range []Compiler{
+		{Name: "gcc"},
+		{Name: "clang"},
+		{Name: "x86_64-w64-mingw32-gcc", Windows: true},
+		{Name: "i686-w64-mingw32-gcc", Windows: true},
+	} {
+		if p, err := exec.LookPath(c.Name); err == nil {
+			c.Path = p
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// Build compiles sources, in dir, into out under std, with extra flags after
+// the standard ones (a library's, from its c.link). The compiler's own
+// output is the error when it fails.
+func (c Compiler) Build(dir string, sources []string, out, std string, extra ...string) error {
+	args := append(Flags(std), "-o", out)
+	args = append(args, sources...)
+	args = append(args, extra...)
+	args = append(args, "-lm")
+	cmd := exec.Command(c.Path, args...)
+	cmd.Dir = dir
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%s %s: %w\n%s", c.Name, strings.Join(args, " "), err, stderr.String())
+	}
+	return nil
+}
+
+// WriteRuntime writes the C runtime into dir, beside the program.
+func WriteRuntime(dir string) error {
+	for name, data := range Runtime() {
+		if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}

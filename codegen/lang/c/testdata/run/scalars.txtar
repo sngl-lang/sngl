@@ -1,0 +1,101 @@
+Numbers, strings, structs, conditions and counted loops, each written as C
+and printed through the runtime's formats: an int's digits, a float's
+shortest form as Go writes it, a bool's word.
+
+-- app.sngl --
+import seq "sngl:seq"
+
+struct Point {
+    x int
+    y int
+}
+
+func sum(n int) int {
+    var total = 0
+    for var i = seq.range(1, n + 1) {
+        total += i
+    }
+    return total
+}
+
+func describe(n int) string {
+    if n < 0 {
+        return "negative"
+    } else if n == 0 {
+        return "zero"
+    }
+    return "positive {n}"
+}
+
+func moved(p Point, by int) => Point{x=p.x + by, y=p.y * 2}
+
+struct Named {
+    name string
+    at   Point
+}
+
+func same(a Named, b Named) => a == b
+
+func half(n int) => float(n) / 2.0
+
+func both(a bool, b bool) => "{a && b} {a || b}"
+
+func divide(a int, b int) => "{a / b} {a % b}"
+
+func countdown(n int) string {
+    var out = ""
+    var i = n
+    for i > 0 {
+        out = out + "{i} "
+        i -= 1
+    }
+    return out
+}
+-- main.c --
+#include "program.c"
+#include <stdio.h>
+
+static void print(sngl_string s) { printf("%.*s\n", (int)s.len, s.ptr); }
+
+int main(void) {
+	print(sngl_int_format(s_sum(100)));
+	print(s_describe(-3));
+	print(s_describe(0));
+	print(s_describe(42));
+	s_Point p = s_moved((s_Point){.x = 1, .y = 2}, 3);
+	print(sngl_concat(sngl_int_format(p.x), sngl_int_format(p.y)));
+	print(sngl_float_format(s_half(7)));
+	print(sngl_float_format(s_half(1000000000)));
+	print(sngl_float_format(1e21));
+	print(sngl_float_format(0.0001));
+	print(sngl_float_format(0.00001));
+	print(s_both(true, false));
+	print(s_divide(-7, 2));
+	print(s_countdown(3));
+	s_Named a = {.name = SNGL_STR("a"), .at = {.x = 1, .y = 2}};
+	s_Named b = a;
+	print(sngl_bool_format(s_same(a, b)));
+	b.at.y = 3;
+	print(sngl_bool_format(s_same(a, b)));
+	b = a;
+	b.name = SNGL_STR("b");
+	print(sngl_bool_format(s_same(a, b)));
+	return 0;
+}
+-- want --
+5050
+negative
+zero
+positive 42
+44
+3.5
+5e+08
+1e+21
+0.0001
+1e-05
+false true
+-3 -1
+3 2 1 
+true
+false
+false

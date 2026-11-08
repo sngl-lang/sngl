@@ -287,9 +287,9 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
 - **Ownership as decided.** `string`, `list` and `map` are owned, with no
   destructor. Statement temporaries live in a per-turn arena the event loop
   resets. A value stored is copied to the heap (`__snglHeap`), and freed on
-  overwrite by `OwnedState`'s effects. The target writes `CMarshal` in
-  `#[gen.can]`, which turns the pass off, since its conversions are identities or casts
-  (`design/ownership.md`, *A C language target*).
+  overwrite by `OwnedState`'s effects. `CMarshal` still runs, for the
+  arguments no caller passes, and C renders its conversions as identities or
+  casts (`design/ownership.md`, *A C language target*).
 - **What C needs that no target has needed:**
   - closures as an environment struct and a function pointer
   - generics, monomorphized (`design/types.md`)
@@ -297,22 +297,59 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
     `option`, payload enums, and `async` continuations
 
   The runtime is C shipped in `pkg/c/`, as `pkg/go/` is Go's.
-- **The first program is one with no UI**: `sngl test` functions on a
-  platform that renders nothing, so the language stands on its own before
-  any platform depends on it. The test agent's JSON-RPC (`pkg/go/testagent`)
-  needs a C implementation.
-- **Then a platform.** win32 is the first one written for it (Part 3). gtk4
-  follows once Part 1 has moved its runtime out of Go.
-- Recorded runs and goldens follow the Go ones: `run/c/<platform>` and
-  `testrun/<platform>/c/…`.
+- **Which C.** The output compiles as both C11 and C17, held by
+  `-std=c11` and `-std=c17` with `-Wall -Wextra -pedantic -Werror`. A program
+  needing more than both admit gets a build option rather than a newer floor.
+  gcc is the reference compiler; clang and MinGW are held to it wherever the
+  host has them, and a test missing one skips rather than fails. `int` is
+  `int64_t`, so the spec's 64 bits hold on C as on Go and Kotlin.
+- **gtk4 is the first platform**, ahead of win32 (Part 3). gtk4 already calls
+  GTK through `#[cnative]` declarations under `cgo=true`, so on C its widget
+  declarations are those, whatever the option says. What a C program calls in
+  gtk4rt moves to C shipped with the platform (`lib/platform/gtk4/rt/`, named
+  by its `c.link`'s `sources`), and the Go build under `cgo=true` calls the
+  same C.
+- Recorded runs and goldens follow the Go ones: `out/c/<platform>/…`,
+  `run/c/<platform>` and `testrun/<platform>/c/…`.
+
+### The steps
+
+1. **The language and its runtime.** `lib/language/c` declares the `c` node:
+   its capabilities, its reserved words, and `cc` and `std` options.
+   `codegen/lang/c` renders functions, structs, enums and statements over
+   scalars and strings, and `pkg/c/sngl.h`/`sngl.c` hold the arena and the
+   string operations. Its tests compile what it writes with every compiler
+   present, under both standards, and run it. Done:
+   `codegen/lang/c/testdata/run/*.txtar` run under `TestRun`, which builds
+   each with gcc, clang and MinGW where the host has them (Wine runs the
+   last). A program's top-level names take an `s_` prefix, since it shares
+   C's one namespace with GTK's headers. What C does not yet write is refused
+   at generation, naming the construct.
+2. **gtk4 writes C for the smallest program**: a window, a box, a label and a
+   button whose click counts (the program `gtk4_cgo_connect.txtar` holds).
+   gtk4's generator gains a C emitter beside its Go one, the gtk4rt calls such
+   a program makes move to `lib/platform/gtk4/rt/`, and callbacks cross as the
+   C translator's closures. Golden `out/c/gtk4`, and a script test that
+   builds and runs it under cage.
+3. **`sngl test` on C.** The test agent's JSON-RPC (`pkg/go/testagent`) in
+   C, and the test lowering, so a test function clicks, asserts and reads
+   state. `run/c/gtk4` is recorded as `run/go/gtk4` is.
+4. **The rest of the language**, each against the gtk4 goldens that need it:
+   lists, maps, options, payload enums and `match`, closures, generics,
+   string formatting and units, `async`. Each construct C does not yet write
+   is refused by name at generation, never written as C that fails to
+   compile.
+5. **The rest of gtk4**: styles, images, scrolls, menus, tabs, toplevels and
+   canvases, moving what each needs out of gtk4rt into C.
+6. **Docs**: the spec's `int` row, `design/architecture.md`'s per-language
+   notes, and `design/ownership.md`'s C target as built.
 
 ### Open questions
 
-- Which C: C11 or C17, and which compilers CI holds it to (gcc, clang, MinGW
-  for win32).
 - Whether the arena resets per turn on every platform's loop, or only where
-  the platform's runtime says a turn ended. Win32's message loop and GTK's
-  main loop both have a natural point.
+  the platform's runtime says a turn ended. GTK's main loop and Win32's
+  message loop both have a natural point: on gtk4, each callback the program
+  is handed resets it as it returns to the loop.
 
 ## Part 3: The win32 platform
 

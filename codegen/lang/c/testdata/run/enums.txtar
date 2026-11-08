@@ -1,0 +1,65 @@
+An enum is the integer its member's position is, a match the chain of tests
+it means, and a string literal the bytes it holds, escaped so that C reads
+back exactly them.
+
+-- app.sngl --
+enum Shape { circle, square, triangle }
+
+func sides(s Shape) => match s {
+    circle => 0
+    square => 4
+    triangle => 3
+}
+
+func name(s Shape) string {
+    match s {
+        circle {
+            return "circle"
+        }
+        square {
+            return "square"
+        }
+        else {
+            return "other"
+        }
+    }
+}
+
+func bigger(a int, b int) => a > b ? a : b
+
+func wrap(x int8) int8 { return x + 1 }
+
+func quoted() => "say \"hi\"\tto ü?? \\ \{\}"
+
+-- main.c --
+#include "program.c"
+#include <stdio.h>
+
+static void print(sngl_string s) { printf("%.*s\n", (int)s.len, s.ptr); }
+
+int main(void) {
+	print(sngl_int_format(s_sides(2)));
+	print(s_name(1));
+	print(s_name(2));
+	print(sngl_int_format(s_bigger(3, 9)));
+	print(sngl_int_format(s_wrap(127)));
+	print(s_quoted());
+	print(sngl_float_format(100));
+	print(sngl_float_format(1e6));
+	print(sngl_float_format(123456));
+	print(sngl_float_format(1234567.5));
+	print(sngl_float_format(-0.5));
+	return 0;
+}
+-- want --
+3
+square
+other
+9
+-128
+say "hi"	to ü?? \ {}
+100
+1e+06
+123456
+1.2345675e+06
+-0.5

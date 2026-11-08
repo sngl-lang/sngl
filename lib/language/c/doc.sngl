@@ -1,0 +1,9 @@
+// C language package. Declarations here are visible at every output target
+// that selects --lang c.
+//
+// The C a program is written in compiles as both C11 and C17, and calls
+// nothing beyond the C library and the libraries its `c.link`s name. Its
+// runtime is pkg/c, written beside the program: the arena a turn's
+// strings are made in, and what C has no spelling for. `int` is `int64_t`,
+// so it holds 64 bits as it does on Go and Kotlin, and signed arithmetic
+// wraps as it does there: the program is compiled with `-fwrapv`.

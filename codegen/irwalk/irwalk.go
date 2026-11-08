@@ -197,6 +197,10 @@ func evalStmtImpl(r Renderer, s ir.Stmt) []string {
 	case *ir.Break:
 		return []string{r.BreakText(n)}
 	case *ir.Continue:
+		// A language whose statements end in a terminator says so.
+		if c, ok := r.(interface{ ContinueText() string }); ok {
+			return []string{c.ContinueText()}
+		}
 		return []string{"continue"}
 	case *ir.For:
 		return evalFor(r, n)
@@ -221,9 +225,10 @@ func evalStmtImpl(r Renderer, s ir.Stmt) []string {
 // which is what a host loop can express.
 func evalFor(r Renderer, n *ir.For) []string {
 	// A loop with no head has no expression to render, and asking for one
-	// would render the language's nil.
+	// would render the language's nil. A counted loop's sequence is never
+	// built, so its head is its bounds (ir.Counted) and not the call.
 	iter := ""
-	if n.Iter != nil {
+	if n.Iter != nil && n.IterKind != ir.IterCounted {
 		iter = EvalExpr(r, n.Iter)
 	}
 	child := r.Scoped(n.Key)
