@@ -6,7 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
+
+	"duckfam.us/sngl/ir"
 )
 
 // Standards are the C standards a program compiles as. The output holds to
@@ -82,20 +85,45 @@ func WriteRuntime(dir string) error {
 }
 
 // BuildFile names the manifest a C program is written with, which says what
-// it links beyond the C library: one `pkg-config <name>` per line, each a
-// library pkg-config gives the flags of. A line beginning with `#` is a
-// comment.
+// it links beyond the C library, a line each: `pkg-config <name>`, a
+// library pkg-config gives the flags of, and `flag <flag>`, one a c.link
+// names. A line beginning with `#` is a comment.
 const BuildFile = "sngl.build"
 
 // Manifest is the BuildFile for a program linking the pkg-config packages
-// named.
-func Manifest(pkgConfig ...string) []byte {
+// named, and the flags links name.
+func Manifest(links []*ir.CLink, pkgConfig ...string) []byte {
 	var b strings.Builder
 	b.WriteString("# What this program links, which `sngl build` reads.\n")
 	for _, p := range pkgConfig {
 		b.WriteString("pkg-config " + p + "\n")
 	}
+	var seen []string
+	for _, l := range links {
+		for _, f := range append(slices.Clone(l.CFlags), l.LDFlags...) {
+			if !slices.Contains(seen, f) {
+				seen = append(seen, f)
+				b.WriteString("flag " + f + "\n")
+			}
+		}
+	}
 	return []byte(b.String())
+}
+
+// Links includes the headers links name in the file c renders, and is the
+// sources they ship, by name, written beside the program.
+func Links(c *Context, links []*ir.CLink) (map[string][]byte, error) {
+	out := map[string][]byte{}
+	for _, l := range links {
+		c.Include(l.Include, l.System)
+		for _, src := range l.Sources {
+			if prev, ok := out[src.Name]; ok && string(prev) != src.Text {
+				return nil, fmt.Errorf("two c.links ship a source named %s", src.Name)
+			}
+			out[src.Name] = []byte(src.Text)
+		}
+	}
+	return out, nil
 }
 
 // BuildDir compiles the program written in dir into out under std: every .c
@@ -112,6 +140,10 @@ func (c Compiler) BuildDir(dir, out, std string) (string, error) {
 	if data, err := os.ReadFile(filepath.Join(dir, BuildFile)); err == nil {
 		for line := range strings.SplitSeq(string(data), "\n") {
 			line = strings.TrimSpace(line)
+			if f, ok := strings.CutPrefix(line, "flag "); ok {
+				extra = append(extra, f)
+				continue
+			}
 			name, ok := strings.CutPrefix(line, "pkg-config ")
 			if !ok {
 				continue

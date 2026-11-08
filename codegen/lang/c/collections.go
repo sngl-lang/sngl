@@ -24,7 +24,8 @@ func (c *Context) listType(t *ir.Type) string {
 	elem := t.Elems[0]
 	et := c.typeName(elem)
 	name := "sngl_list_" + typeToken(elem)
-	c.file.define(name, fmt.Sprintf("typedef struct %s {\n\t%s *data;\n\tint64_t len;\n\tint64_t cap;\n} %s;\n", name, et, name), strings.TrimSuffix(et, " *"))
+	// Its elements are pointed to, so the element type need only be declared.
+	c.file.define(name, fmt.Sprintf("typedef struct %s {\n\t%s *data;\n\tint64_t len;\n\tint64_t cap;\n} %s;\n", name, et, name))
 	return name
 }
 
@@ -33,7 +34,7 @@ func (c *Context) optType(t *ir.Type) string {
 	elem := t.Elems[0]
 	et := c.typeName(elem)
 	name := "sngl_opt_" + typeToken(elem)
-	c.file.define(name, fmt.Sprintf("typedef struct %s {\n\tbool ok;\n\t%s value;\n} %s;\n", name, et, name), strings.TrimSuffix(et, " *"))
+	c.file.define(name, fmt.Sprintf("typedef struct %s {\n\tbool ok;\n\t%s value;\n} %s;\n", name, et, name), et)
 	return name
 }
 
@@ -424,8 +425,7 @@ func (c *Context) copyValue(t *ir.Type, v string) string {
 func (c *Context) mapType(t *ir.Type) string {
 	kt, vt := c.typeName(t.Elems[0]), c.typeName(t.Elems[1])
 	name := "sngl_map_" + typeToken(t.Elems[0]) + "__" + typeToken(t.Elems[1])
-	c.file.define(name, fmt.Sprintf("typedef struct %s {\n\t%s *keys;\n\t%s *vals;\n\tint64_t len;\n\tint64_t cap;\n} %s;\n", name, kt, vt, name),
-		strings.TrimSuffix(kt, " *"), strings.TrimSuffix(vt, " *"))
+	c.file.define(name, fmt.Sprintf("typedef struct %s {\n\t%s *keys;\n\t%s *vals;\n\tint64_t len;\n\tint64_t cap;\n} %s;\n", name, kt, vt, name))
 	return name
 }
 

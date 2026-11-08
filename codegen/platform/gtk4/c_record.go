@@ -38,10 +38,10 @@ type cRecord struct {
 	appended map[string]bool
 }
 
-func recordType(comp *ir.Component) string { return clang.Global(comp.Name) + "__inst" }
+func recordType(comp *ir.Component) string { return clang.Decl(&comp.DeclInfo) + "__inst" }
 
 func recordFunc(comp *ir.Component, name string) string {
-	return clang.Global(comp.Name) + "_" + name
+	return clang.Decl(&comp.DeclInfo) + "_" + name
 }
 
 // holds reports whether name is something r holds.
@@ -65,6 +65,24 @@ func (e *cEmitter) record(comp *ir.Component) {
 
 	typ := recordType(comp)
 	body := codegen.WalkLowered(context.Background(), comp.Stmts, e)
+	// What the body made is the candidates for its root; what its functions
+	// make, walked next, are fields too, which the struct must hold before
+	// anything is written.
+	made := slices.Clone(r.order)
+	var funcs []*ir.Func
+	for _, fn := range e.closureFuncs(comp) {
+		e.anchor = ""
+		fn.Block = codegen.WalkLowered(context.Background(), fn.Block, e)
+		funcs = append(funcs, fn)
+	}
+	for _, fn := range comp.Funcs {
+		if fn == nil || len(fn.Block) == 0 {
+			continue
+		}
+		e.anchor = ""
+		fn.Block = codegen.WalkLowered(context.Background(), fn.Block, e)
+		funcs = append(funcs, fn)
+	}
 	var ctor strings.Builder
 	var params []string
 	for _, p := range comp.Props {
@@ -89,7 +107,7 @@ func (e *cEmitter) record(comp *ir.Component) {
 	}
 	// The root: what the body left unattached, boxed where it left several.
 	var tops []string
-	for _, id := range r.order {
+	for _, id := range made {
 		if !r.appended[id] {
 			tops = append(tops, id)
 		}
@@ -116,7 +134,7 @@ func (e *cEmitter) record(comp *ir.Component) {
 		if v.Name == instanceRootVar {
 			t, hasRoot = "GtkWidget *", true
 		}
-		deps = append(deps, strings.TrimSuffix(t, " *"))
+		deps = append(deps, t)
 		fields = append(fields, "\t"+t+" "+clang.Local(v.Name)+";")
 	}
 	if !hasRoot {
@@ -128,30 +146,18 @@ func (e *cEmitter) record(comp *ir.Component) {
 	e.ctx.Define(typ, "typedef struct "+typ+" {\n"+strings.Join(fields, "\n")+"\n} "+typ+";\n", deps...)
 	e.ctx.Include("stdlib.h", true)
 
-	var funcs strings.Builder
 	teardown := ""
-	// The closures made in the record, written as its functions: what they
-	// read of it they read through it, as the rest of its code does.
-	for _, fn := range e.closureFuncs(comp) {
-		e.anchor = ""
-		fn.Block = codegen.WalkLowered(context.Background(), fn.Block, e)
+	for _, fn := range funcs {
 		e.fe.FuncAs(fn, recordFunc(comp, fn.Name), typ+" *"+selfName)
-	}
-	for _, fn := range comp.Funcs {
-		if fn == nil || len(fn.Block) == 0 {
-			continue
-		}
-		e.anchor = ""
-		fn.Block = codegen.WalkLowered(context.Background(), fn.Block, e)
-		e.fe.FuncAs(fn, recordFunc(comp, fn.Name), typ+" *"+selfName)
-		if fn.Name == lower.TeardownFunc {
+		if fn.Name == lower.TeardownFunc && slices.Contains(comp.Funcs, fn) {
 			teardown = "\t" + recordFunc(comp, fn.Name) + "(" + selfName + ");\n"
 		}
 	}
+	var destroy strings.Builder
 	io := e.fe
 	fmt.Fprintf(io, "%s", ctor.String())
-	fmt.Fprintf(&funcs, "\nstatic void %s(%s *%s) {\n%s\tg_object_unref(%s);\n\tfree(%s);\n}\n", recordFunc(comp, "_destroy"), typ, selfName, teardown, root, selfName)
-	fmt.Fprintf(io, "%s", funcs.String())
+	fmt.Fprintf(&destroy, "\nstatic void %s(%s *%s) {\n%s\tg_object_unref(%s);\n\tfree(%s);\n}\n", recordFunc(comp, "_destroy"), typ, selfName, teardown, root, selfName)
+	fmt.Fprintf(io, "%s", destroy.String())
 	e.fe.Prototype(fmt.Sprintf("static %s;", sig))
 	e.fe.Prototype(fmt.Sprintf("static void %s(%s *%s);", recordFunc(comp, "_destroy"), typ, selfName))
 }

@@ -51,8 +51,12 @@ func (f *file) include(name string, system bool) {
 	}
 }
 
-// define adds a type definition, once by name.
+// define adds a type definition, once by name. deps are the types its text
+// writes: those it holds by value are defined ahead of it, and one it holds
+// through a pointer needs only the declaration every struct has
+// (typeSection).
 func (f *file) define(name, text string, deps ...string) {
+	deps = byValue(deps)
 	if slices.ContainsFunc(f.types, func(d *typeDef) bool { return d.name == name }) {
 		return
 	}
@@ -78,6 +82,7 @@ func (f *file) defined(name string) bool {
 
 // redefine replaces name's definition, keeping its place.
 func (f *file) redefine(name, text string, deps ...string) {
+	deps = byValue(deps)
 	for _, d := range f.types {
 		if d.name == name {
 			d.text, d.deps = text, deps
@@ -124,6 +129,18 @@ func (f *file) typeSection() string {
 	for _, d := range f.types {
 		visit(d)
 	}
+	// Every struct declared ahead of every definition, so a pointer to one
+	// is a type wherever it is written, a record holding a list of its own
+	// included: C11 takes a typedef repeated as the same type.
+	var fwd strings.Builder
+	for _, d := range f.types {
+		if strings.HasPrefix(d.text, "typedef struct "+d.name+" {") {
+			fwd.WriteString("typedef struct " + d.name + " " + d.name + ";\n")
+		}
+	}
+	if fwd.Len() > 0 {
+		return fwd.String() + "\n" + b.String()
+	}
 	return b.String()
 }
 
@@ -131,4 +148,15 @@ func (f *file) typeSection() string {
 func (f *file) next() int {
 	f.seq++
 	return f.seq
+}
+
+// byValue is the types of deps a value of which is held, not pointed to.
+func byValue(deps []string) []string {
+	var out []string
+	for _, d := range deps {
+		if !strings.HasSuffix(strings.TrimSpace(d), "*") {
+			out = append(out, d)
+		}
+	}
+	return out
 }

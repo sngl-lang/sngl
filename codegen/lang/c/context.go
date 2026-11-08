@@ -89,11 +89,11 @@ func (c *Context) typeName(t *ir.Type) string {
 			// pointer to the one on the heap.
 			if sd, ok := t.Decl.(*ir.StructDef); ok && sd.RefBox {
 				c.Box(sd)
-				return Global(sd.Name) + " *"
+				return Decl(&sd.DeclInfo) + " *"
 			}
 			if sd, ok := t.Decl.(*ir.StructDef); ok && isProgramStruct(t) {
 				c.defineStruct(sd)
-				return Global(sd.Name)
+				return Decl(&sd.DeclInfo)
 			}
 		case ir.TypeNative:
 			if ref, ok := t.Meta.(ir.NativeTypeRef); ok {
@@ -231,7 +231,7 @@ func (c *Context) Ident(n *ir.Ident) string {
 			}
 		}
 		if c.isPackageVar(sym) {
-			return Global(sym.Name)
+			return Decl(&sym.DeclInfo)
 		}
 		return Local(n.Name)
 	case *ir.Func:
@@ -350,8 +350,8 @@ func (c *Context) Select(n *ir.Select, operand string) string {
 	// lower.NoRef reboxes a var and the reads it rewrites, and leaves an
 	// identifier it did not visit typed as the value: the var says what it
 	// holds.
-	if id, ok := n.Operand.(*ir.Ident); ok && (t == nil || t.Kind != ir.TypeStruct) {
-		if v, ok := id.Sym.(*ir.Var); ok && v.Type != nil {
+	if id, ok := n.Operand.(*ir.Ident); ok {
+		if v, ok := id.Sym.(*ir.Var); ok && v.Type != nil && (t == nil || t.Kind != ir.TypeStruct || isBox(v.Type)) {
 			t = v.Type
 		}
 	}
@@ -367,6 +367,15 @@ func (c *Context) Select(n *ir.Select, operand string) string {
 		return c.fail("selecting %s of %s", n.Field, t)
 	}
 	return operand + "." + Local(n.Field)
+}
+
+// isBox reports whether t is a box lower.NoRef made.
+func isBox(t *ir.Type) bool {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	return ok && sd.RefBox
 }
 
 // isPointer reports whether a value of t is held through a pointer, which a
@@ -387,7 +396,7 @@ func (c *Context) StructLit(n *ir.StructLit, fields []string) string {
 		return c.fail("a literal of %s", n.Type)
 	}
 	if sd, ok := n.Type.Decl.(*ir.StructDef); ok && sd.RefBox {
-		name := Global(sd.Name)
+		name := Decl(&sd.DeclInfo)
 		c.Box(sd)
 		return "((" + name + " *)" + c.heapCopy(name, c.structLit(n, fields)) + ")"
 	}
@@ -395,7 +404,7 @@ func (c *Context) StructLit(n *ir.StructLit, fields []string) string {
 }
 
 func (c *Context) structLit(n *ir.StructLit, fields []string) string {
-	name := Global(n.Type.Decl.(*ir.StructDef).Name)
+	name := Decl(&n.Type.Decl.(*ir.StructDef).DeclInfo)
 	var parts []string
 	for i, f := range n.Fields {
 		if f.Spread || f.Name == "" {
@@ -411,7 +420,7 @@ func (c *Context) structLit(n *ir.StructLit, fields []string) string {
 
 // Box defines sd, a box lower.NoRef made, as the struct it is.
 func (c *Context) Box(sd *ir.StructDef) {
-	name := Global(sd.Name)
+	name := Decl(&sd.DeclInfo)
 	elem := c.typeName(sd.Fields[0].Type)
 	c.file.define(name, "typedef struct "+name+" {\n\t"+elem+" value;\n} "+name+";\n", elem)
 }
@@ -490,9 +499,13 @@ func (c *Context) platform() string {
 // receiver's name and its own.
 func funcName(fn *ir.Func) string {
 	if fn.IsMethod() {
-		return Method(fn.RecvName(), fn.Name)
+		name := Method(fn.RecvName(), fn.Name)
+		if path := fn.PkgPath(); path != "" {
+			name = "s_" + mangle(strings.TrimPrefix(path, "sngl:")) + "__" + strings.TrimPrefix(name, "s_")
+		}
+		return name
 	}
-	return Global(fn.Name)
+	return Decl(&fn.DeclInfo)
 }
 
 // Conversion converts between SNGL's scalars, and writes a scalar's text.
@@ -805,7 +818,7 @@ func (c *Context) fnPointer(fn *ir.Func, i int, f string) string {
 // defineStruct defines sd's C struct in the file, after the structs its
 // fields hold by value.
 func (c *Context) defineStruct(sd *ir.StructDef) {
-	name := Global(sd.Name)
+	name := Decl(&sd.DeclInfo)
 	if c.file.defined(name) {
 		return
 	}
@@ -819,7 +832,7 @@ func (c *Context) defineStruct(sd *ir.StructDef) {
 		t := c.typeName(f.Type)
 		// A field held through a pointer still names its type, which C
 		// wants declared first.
-		deps = append(deps, strings.TrimSuffix(t, " *"))
+		deps = append(deps, t)
 		fmt.Fprintf(&b, "\t%s %s;\n", t, Local(f.Name))
 	}
 	if len(sd.Fields) == 0 {

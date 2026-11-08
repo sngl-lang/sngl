@@ -60,7 +60,7 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 		funcs = append(append([]*ir.Func(nil), funcs...), root.Funcs...)
 	}
 	for _, v := range vars {
-		e.globals[v] = clang.Global(v.Name)
+		e.globals[v] = clang.Decl(&v.DeclInfo)
 	}
 	// Every body is walked before any is written, so that a widget one
 	// function makes is known where another reads it.
@@ -96,7 +96,7 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 		if v.Init == nil {
 			continue
 		}
-		fmt.Fprintf(&build, "\t%s = %s;\n", clang.Global(v.Name), e.ctx.EvalExpr(v.Init))
+		fmt.Fprintf(&build, "\t%s = %s;\n", e.globals[v], e.ctx.EvalExpr(v.Init))
 	}
 	for _, l := range e.ctx.EvalBlock(body) {
 		build.WriteString("\t" + l + "\n")
@@ -107,7 +107,7 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	}
 	var globals strings.Builder
 	for _, v := range vars {
-		fmt.Fprintf(&globals, "static %s %s;\n", e.ctx.TypeName(v.Type), clang.Global(v.Name))
+		fmt.Fprintf(&globals, "static %s %s;\n", e.ctx.TypeName(v.Type), e.globals[v])
 	}
 	for _, id := range e.order {
 		fmt.Fprintf(&globals, "static %s *%s;\n", e.nodes[id], clang.Global(id))
@@ -122,18 +122,28 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	} else {
 		teardown := ""
 		if pkg.Teardown != nil {
-			teardown = "\t" + clang.Global(pkg.Teardown.Name) + "();\n"
+			teardown = "\t" + clang.Decl(&pkg.Teardown.DeclInfo) + "();\n"
 		}
 		io.WriteString(fe, "\nint main(void) {\n\tint status = sngl_app_run(sngl_build);\n"+teardown+"\treturn status;\n}\n")
 	}
 	if e.err != nil {
 		return e.err
 	}
+	links := ir.ReachedCLinks(pkg)
+	sources, err := clang.Links(e.ctx, links)
+	if err != nil {
+		return fmt.Errorf("gtk4: %w", err)
+	}
 	if err := fe.Close(); err != nil {
 		return fmt.Errorf("gtk4: %w", err)
 	}
-	if err := writeRawFile(sink, clang.BuildFile, clang.Manifest("gtk4")); err != nil {
+	if err := writeRawFile(sink, clang.BuildFile, clang.Manifest(links, "gtk4")); err != nil {
 		return err
+	}
+	for name, data := range sources {
+		if err := writeRawFile(sink, name, data); err != nil {
+			return err
+		}
 	}
 	// The runtimes are the same for every program, so a golden holds their
 	// digest rather than their text.

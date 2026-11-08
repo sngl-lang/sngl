@@ -52,6 +52,17 @@ func (t *Translator) NewFileEmitter(sink codegen.Sink, opts codegen.FileOptions)
 // Global is name, a declaration at a program's top level, as C names it.
 func Global(name string) string { return "s_" + mangle(name) }
 
+// Decl is d, a declaration at a program's or a library's top level, as C
+// names it: a library's carries its package, since two packages may each
+// declare a name and C has one namespace for both -- sngl:x/c's `free`
+// beside a program's own.
+func Decl(d *ir.DeclInfo) string {
+	if path := d.PkgPath(); path != "" {
+		return "s_" + mangle(strings.TrimPrefix(path, "sngl:")) + "__" + mangle(d.Name)
+	}
+	return Global(d.Name)
+}
+
 // Method is the function a method of the type named recv is.
 func Method(recv, name string) string { return "s_" + mangle(recv) + "_" + mangle(name) }
 

@@ -30,17 +30,13 @@ import (
 func (c *Context) fnType(t *ir.Type) string {
 	sig := t.Sig
 	name := "sngl_fn_" + sigToken(sig)
-	var params []string
-	var deps []string
-	params = append(params, "void *env")
+	params := []string{"void *env"}
 	for _, p := range sig.Params {
-		pt := c.typeName(p.Type)
-		params = append(params, pt)
-		deps = append(deps, strings.TrimSuffix(pt, " *"))
+		params = append(params, c.typeName(p.Type))
 	}
 	ret := c.typeName(sig.Return)
-	deps = append(deps, ret)
-	c.file.define(name, fmt.Sprintf("typedef struct %s {\n\t%s (*fn)(%s);\n\tvoid *env;\n} %s;\n", name, ret, strings.Join(params, ", "), name), deps...)
+	// A function pointer's parameters may be types only declared.
+	c.file.define(name, fmt.Sprintf("typedef struct %s {\n\t%s (*fn)(%s);\n\tvoid *env;\n} %s;\n", name, ret, strings.Join(params, ", "), name))
 	return name
 }
 
@@ -169,7 +165,7 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 	var deps []string
 	for _, name := range caps {
 		t := c.localType(n.Func.Block, name)
-		deps = append(deps, strings.TrimSuffix(c.typeName(t), " *"))
+		deps = append(deps, c.typeName(t))
 		fields = append(fields, "\t"+c.typeName(t)+" "+Local(name)+";")
 		inits = append(inits, "."+Local(name)+" = "+Local(name))
 		inner.locals[name] = true

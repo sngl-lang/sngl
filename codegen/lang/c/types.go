@@ -39,7 +39,7 @@ func cTypeName(t *ir.Type) (string, error) {
 		return "int64_t", nil
 	case ir.TypeStruct:
 		if sd, ok := t.Decl.(*ir.StructDef); ok {
-			return Global(sd.Name), nil
+			return Decl(&sd.DeclInfo), nil
 		}
 	}
 	return "", fmt.Errorf("C does not yet write a %s", t)

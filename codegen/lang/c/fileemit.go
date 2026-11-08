@@ -21,6 +21,8 @@ type FileEmitter struct {
 	ctx    *Context
 	body   bytes.Buffer
 	closed bool
+	// written is each function written, by its C name.
+	written map[string]bool
 }
 
 var _ codegen.FileEmitter = (*FileEmitter)(nil)
@@ -88,7 +90,17 @@ func (fe *FileEmitter) Func(fn *ir.Func) { fe.FuncAs(fn, funcName(fn), "") }
 // FuncAs writes fn under name, taking first, where it is not empty, the
 // parameter first declares: a record a platform's function reads its state
 // through.
+//
+// A function is written once by name: the program and its platform may each
+// load a library, and two loads declare one function twice.
 func (fe *FileEmitter) FuncAs(fn *ir.Func, name, first string) {
+	if fe.written[name] {
+		return
+	}
+	if fe.written == nil {
+		fe.written = map[string]bool{}
+	}
+	fe.written[name] = true
 	sig := fe.signatureAs(fn, name, first)
 	fe.ctx.file.protos = append(fe.ctx.file.protos, "static "+sig+";")
 	ctx := fe.ctx.WithReturn(fn.Return)
