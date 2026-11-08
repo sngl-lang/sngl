@@ -170,6 +170,16 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 		inits = append(inits, "."+Local(name)+" = "+Local(name))
 		inner.locals[name] = true
 	}
+	// The record the code is written in, which the body reads what it holds
+	// through.
+	var self string
+	if c.Self != "" {
+		i := strings.LastIndexAny(c.Self, " *")
+		self = c.Self[i+1:]
+		fields = append(fields, "\t"+c.Self+";")
+		inits = append(inits, "."+self+" = "+self)
+		inner.Self = c.Self
+	}
 	if len(fields) == 0 {
 		fields = []string{"\tchar unused;"}
 	}
@@ -184,10 +194,13 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 	c.file.protos = append(c.file.protos, sig+";")
 	var b strings.Builder
 	b.WriteString(sig + " {\n")
-	if len(caps) > 0 {
+	if len(caps) > 0 || self != "" {
 		fmt.Fprintf(&b, "\t%s *env = env_;\n", envT)
 		for _, name := range caps {
 			fmt.Fprintf(&b, "\t%s %s = env->%s;\n", c.typeName(c.localType(n.Func.Block, name)), Local(name), Local(name))
+		}
+		if self != "" {
+			fmt.Fprintf(&b, "\t%s = env->%s;\n", c.Self, self)
 		}
 	}
 	for _, l := range irwalk.EvalBlock(inner, n.Func.Block) {
@@ -196,7 +209,7 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 	b.WriteString("}\n")
 	c.file.lifted = append(c.file.lifted, b.String())
 	env := "NULL"
-	if len(caps) > 0 {
+	if len(caps) > 0 || self != "" {
 		env = c.heapCopy(envT, "{"+strings.Join(inits, ", ")+"}")
 	}
 	return "((" + fnT + "){" + name + ", " + env + "})"

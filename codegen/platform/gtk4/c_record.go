@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	clang "duckfam.us/sngl/codegen/lang/c"
 	"duckfam.us/sngl/codegen/lang/golang"
@@ -59,9 +60,10 @@ func (r *cRecord) holds(name string) bool {
 // and the destroy.
 func (e *cEmitter) record(comp *ir.Component) {
 	r := &cRecord{comp: comp, nodes: map[string]string{}, appended: map[string]bool{}}
-	prev := e.scope
+	prev, prevSelf := e.scope, e.ctx.Self
 	e.scope = r
-	defer func() { e.scope = prev }()
+	e.ctx.Self = recordType(comp) + " *" + selfName
+	defer func() { e.scope, e.ctx.Self = prev, prevSelf }()
 
 	typ := recordType(comp)
 	body := codegen.WalkLowered(context.Background(), comp.Stmts, e)
@@ -76,7 +78,7 @@ func (e *cEmitter) record(comp *ir.Component) {
 		funcs = append(funcs, fn)
 	}
 	for _, fn := range comp.Funcs {
-		if fn == nil || len(fn.Block) == 0 {
+		if fn == nil || !hasBody(fn) {
 			continue
 		}
 		e.anchor = ""
@@ -141,14 +143,21 @@ func (e *cEmitter) record(comp *ir.Component) {
 		fields = append(fields, "\tGtkWidget *__root;")
 	}
 	for _, id := range r.order {
-		fields = append(fields, "\t"+r.nodes[id]+" *"+clang.Local(id)+";")
+		fields = append(fields, "\t"+r.nodes[id]+clang.Local(id)+";")
 	}
 	e.ctx.Define(typ, "typedef struct "+typ+" {\n"+strings.Join(fields, "\n")+"\n} "+typ+";\n", deps...)
 	e.ctx.Include("stdlib.h", true)
 
 	teardown := ""
 	for _, fn := range funcs {
-		e.fe.FuncAs(fn, recordFunc(comp, fn.Name), typ+" *"+selfName)
+		// A function the component declares names it as its receiver,
+		// first: that parameter is the record.
+		if takesRecord(fn, comp) {
+			fn.Params[0].Name = selfName
+			e.fe.FuncAs(fn, recordFunc(comp, fn.Name), "")
+		} else {
+			e.fe.FuncAs(fn, recordFunc(comp, fn.Name), typ+" *"+selfName)
+		}
 		if fn.Name == lower.TeardownFunc && slices.Contains(comp.Funcs, fn) {
 			teardown = "\t" + recordFunc(comp, fn.Name) + "(" + selfName + ");\n"
 		}
@@ -198,9 +207,12 @@ func (e *cEmitter) OnCreateComponent(ctx context.Context, id string, call *ir.Ca
 		}
 		args = append(args, val)
 	}
+	// Held as a widget is: a setter or a teardown after the function that
+	// built it reaches it.
 	t := &ir.Type{Kind: ir.TypeInstance, Decl: comp}
 	v := &ir.Var{Name: id, Type: t}
-	return []ir.Stmt{&ir.LocalVar{Name: id, Type: t, Sym: v, Init: recordCall(comp, "_new", t, args...)}}
+	e.hold(id, recordType(comp)+" *")
+	return []ir.Stmt{&ir.Assign{Target: &ir.Ident{Name: id, Sym: v, Type: t}, Op: ast.AssignSet, Value: recordCall(comp, "_new", t, args...)}}
 }
 
 func (e *cEmitter) OnComponentRoot(ctx context.Context, id string, inst, key ir.Expr) []ir.Stmt {
@@ -314,4 +326,10 @@ func (e *cEmitter) closure(c *clang.Context, n *ir.Closure) (string, bool) {
 	c.Helper(name+"__fn", fmt.Sprintf("static %s %s__fn(%s) {\n\t%s;\n}\n", ret, name, strings.Join(params, ", "), body))
 	env := "sngl_heap_copy(&(" + envT + "[]){{" + c.EvalExpr(n.State) + ", " + selfName + "}}, sizeof(" + envT + "))"
 	return "((" + fnT + "){" + name + "__fn, " + env + "})", true
+}
+
+// takesRecord reports whether fn, a function of comp's, names comp as its
+// first parameter, the receiver a method has: that parameter is the record.
+func takesRecord(fn *ir.Func, comp *ir.Component) bool {
+	return len(fn.Params) > 0 && fn.Params[0].Type != nil && fn.Params[0].Type.Decl == ir.Symbol(comp)
 }

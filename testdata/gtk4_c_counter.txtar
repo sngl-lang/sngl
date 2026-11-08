@@ -36,26 +36,30 @@ ui.window(title="t") {
 #include "sngl_gtk.h"
 #include <stdlib.h>
 
-typedef struct s___ref_bool {
-	bool value;
-} s___ref_bool;
+typedef struct s___lambda0_caps s___lambda0_caps;
+typedef struct s___ref_bool s___ref_bool;
+typedef struct s___lambda1_caps s___lambda1_caps;
+typedef struct s___ref_int s___ref_int;
+typedef struct s_Look s_Look;
+typedef struct sngl_fn_void__void sngl_fn_void__void;
+typedef struct sngl_fn_void_p__void sngl_fn_void_p__void;
+typedef struct sngl_lambda1_env sngl_lambda1_env;
 
 typedef struct s___lambda0_caps {
 	s___ref_bool * visible__inst0;
 } s___lambda0_caps;
 
-typedef struct s___ref_int {
-	int64_t value;
-} s___ref_int;
+typedef struct s___ref_bool {
+	bool value;
+} s___ref_bool;
 
 typedef struct s___lambda1_caps {
 	s___ref_int * n__inst0;
 } s___lambda1_caps;
 
-typedef struct sngl_fn_bool__void {
-	void (*fn)(void *env, bool);
-	void *env;
-} sngl_fn_bool__void;
+typedef struct s___ref_int {
+	int64_t value;
+} s___ref_int;
 
 typedef struct s_Look {
 	sngl_string css;
@@ -86,28 +90,15 @@ typedef struct sngl_fn_void_p__void {
 } sngl_fn_void_p__void;
 
 typedef struct sngl_lambda1_env {
-	sngl_fn_void__void __handler2;
+	sngl_fn_void__void __handler1;
 } sngl_lambda1_env;
 
 
 static void s___lambda0(s___lambda0_caps state, bool __visible);
 static void s___lambda1(s___lambda1_caps state);
 static void s___snglTeardown(void);
-static void s_free(char * s);
+static void s_x_c__free(char * s);
 static void sngl_lambda1(void *env_, void * self);
-
-static void s___lambda0__fn(void *env, bool a0) {
-	s___lambda0(*(s___lambda0_caps *)env, a0);
-}
-
-static void sngl_dispatch_bool__void(bool a0, void *ctx) {
-	sngl_fn_bool__void *f = ctx;
-	f->fn(f->env, a0);
-}
-
-static void sngl_release(void *ctx) {
-	free(ctx);
-}
 
 static void sngl_look_apply(GtkWidget *w, s_Look l) {
 	sngl_set_look(w, l.css.ptr, (int)(l.width + 0.5), (int)(l.height + 0.5), l.grow,
@@ -122,6 +113,10 @@ static void s___lambda1__fn(void *env) {
 static void sngl_dispatch_void_p__void(void * a0, void *ctx) {
 	sngl_fn_void_p__void *f = ctx;
 	f->fn(f->env, a0);
+}
+
+static void sngl_release(void *ctx) {
+	free(ctx);
 }
 
 static s___ref_int * s_n__inst0;
@@ -140,14 +135,14 @@ static void s___lambda1(s___lambda1_caps state) {
 	state.n__inst0->value += 1;
 	char * __rel0 = sngl_cstring(sngl_int_format((int64_t)(state.n__inst0->value)));
 	gtk_button_set_label((GtkButton *)((void *)(s_count)), __rel0);
-	s_free(__rel0);
+	s_x_c__free(__rel0);
 }
 
 static void s___snglTeardown(void) {
-	s_free(s___rel2);
+	s_x_c__free(s___rel2);
 }
 
-static void s_free(char * s) {
+static void s_x_c__free(char * s) {
 	free((void *)(s));
 }
 
@@ -158,19 +153,17 @@ static void sngl_build(void) {
 	s___n0 = (GtkWidget *)(sngl_toplevel_new());
 	sngl_toplevel_set_title(GTK_WIDGET(s___n0), (SNGL_STR("t")).ptr);
 	sngl_toplevel_set_visible(GTK_WIDGET(s___n0), s_visible__inst0->value);
-	sngl_fn_bool__void __handler1 = ((sngl_fn_bool__void){s___lambda0__fn, sngl_heap_copy(&(s___lambda0_caps[]){(s___lambda0_caps){.visible__inst0 = s_visible__inst0}}, sizeof(s___lambda0_caps))});
-	sngl_toplevel_on_visible(GTK_WIDGET(s___n0), (SnglBoolFn)sngl_dispatch_bool__void, sngl_heap_copy(&(sngl_fn_bool__void[]){__handler1}, sizeof(sngl_fn_bool__void)), (GDestroyNotify)sngl_release);
 	s___n1 = (GtkBox *)(gtk_box_new((GtkOrientation)((int)(0)), (int)(0)));
 	gtk_orientable_set_orientation((GtkOrientable *)((void *)(s___n1)), (GtkOrientation)((int)(1)));
 	sngl_look_apply(GTK_WIDGET(s___n1), (s_Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = true, .spacing = 6, .grid = false, .columns = 0});
 	s_count = (GtkButton *)(gtk_button_new());
 	char * __rel1 = sngl_cstring(sngl_int_format((int64_t)(s_n__inst0->value)));
 	gtk_button_set_label((GtkButton *)((void *)(s_count)), __rel1);
-	s_free(__rel1);
+	s_x_c__free(__rel1);
 	gtk_widget_set_can_focus((GtkWidget *)((void *)(s_count)), (gboolean)((int)(1)));
 	sngl_look_apply(GTK_WIDGET(s_count), (s_Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0});
-	sngl_fn_void__void __handler2 = ((sngl_fn_void__void){s___lambda1__fn, sngl_heap_copy(&(s___lambda1_caps[]){(s___lambda1_caps){.n__inst0 = s_n__inst0}}, sizeof(s___lambda1_caps))});
-	g_signal_connect_data((gpointer)(s_count), s___rel2, (GCallback)(void (*)(void))sngl_dispatch_void_p__void, (gpointer)sngl_heap_copy(&(sngl_fn_void_p__void[]){((sngl_fn_void_p__void){sngl_lambda1, sngl_heap_copy(&(sngl_lambda1_env[]){{.__handler2 = __handler2}}, sizeof(sngl_lambda1_env))})}, sizeof(sngl_fn_void_p__void)), (GClosureNotify)(void (*)(void))sngl_release, (GConnectFlags)(0));
+	sngl_fn_void__void __handler1 = ((sngl_fn_void__void){s___lambda1__fn, sngl_heap_copy(&(s___lambda1_caps[]){(s___lambda1_caps){.n__inst0 = s_n__inst0}}, sizeof(s___lambda1_caps))});
+	g_signal_connect_data((gpointer)(s_count), s___rel2, (GCallback)(void (*)(void))sngl_dispatch_void_p__void, (gpointer)sngl_heap_copy(&(sngl_fn_void_p__void[]){((sngl_fn_void_p__void){sngl_lambda1, sngl_heap_copy(&(sngl_lambda1_env[]){{.__handler1 = __handler1}}, sizeof(sngl_lambda1_env))})}, sizeof(sngl_fn_void_p__void)), (GClosureNotify)(void (*)(void))sngl_release, (GConnectFlags)(0));
 	gtk_box_append(GTK_BOX((GtkWidget *)(s___n1)), GTK_WIDGET(s_count));
 	gtk_box_append(GTK_BOX(s___n0), GTK_WIDGET(s___n1));
 	sngl_app_attach(GTK_WIDGET(s___n0));
@@ -184,11 +177,11 @@ int main(void) {
 
 static void sngl_lambda1(void *env_, void * self) {
 	sngl_lambda1_env *env = env_;
-	sngl_fn_void__void __handler2 = env->__handler2;
-	(__handler2).fn((__handler2).env);
+	sngl_fn_void__void __handler1 = env->__handler1;
+	(__handler1).fn((__handler1).env);
 }
 -- out/c/gtk4/sngl.build --
 # What this program links, which `sngl build` reads.
 pkg-config gtk4
 -- run/c/gtk4 --
-pass sha256:5900e3a8a11ab872b73be0b0d1927372
+pass sha256:5331f281bc6256ec69e2e5c15bbcbee3

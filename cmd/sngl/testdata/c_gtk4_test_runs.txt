@@ -36,7 +36,7 @@ func testClickReachesTheClosure(t test.Test, c main) {
     t.assert(c.n == 2)
 }
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:507373814c3ab63219744d08d3c2706e
+sha256:412ab06e144a6b01b5ff14a8540d6b73
 {
   "results": [
     {

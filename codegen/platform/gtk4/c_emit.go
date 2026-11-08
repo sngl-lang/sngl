@@ -12,6 +12,7 @@ import (
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	clang "duckfam.us/sngl/codegen/lang/c"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
 	"duckfam.us/sngl/ir"
 	"duckfam.us/sngl/lib"
 )
@@ -44,7 +45,11 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	if agent {
 		fe.RequireImport(clang.TestHeader)
 	}
-	e := &cEmitter{fe: fe, ctx: fe.Context(), pkg: pkg, globals: map[*ir.Var]string{}, nodes: map[string]string{}, invokers: map[string]cInvoker{}}
+	reg, err := g.gir()
+	if err != nil {
+		return err
+	}
+	e := &cEmitter{fe: fe, ctx: fe.Context(), pkg: pkg, reg: reg, globals: map[*ir.Var]string{}, nodes: map[string]string{}, invokers: map[string]cInvoker{}}
 	e.ctx.State = e.state
 	e.ctx.Types = e.types
 	e.ctx.Native = e.native
@@ -74,7 +79,7 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 			tests = append(tests, fn)
 			continue
 		}
-		if len(fn.Block) == 0 {
+		if !hasBody(fn) {
 			continue
 		}
 		// A handler writes its widgets as the body does.
@@ -110,7 +115,7 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 		fmt.Fprintf(&globals, "static %s %s;\n", e.ctx.TypeName(v.Type), e.globals[v])
 	}
 	for _, id := range e.order {
-		fmt.Fprintf(&globals, "static %s *%s;\n", e.nodes[id], clang.Global(id))
+		fmt.Fprintf(&globals, "static %s%s;\n", e.nodes[id], clang.Global(id))
 	}
 	for _, a := range e.anchors {
 		fmt.Fprintf(&globals, "static GtkWidget *%s;\n", a)
@@ -317,6 +322,7 @@ type cEmitter struct {
 	fe  *clang.FileEmitter
 	ctx *clang.Context
 	pkg *ir.Package
+	reg *gir.TypeRegistry
 	// globals are the package's vars, by the static each is.
 	globals map[*ir.Var]string
 	// nodes are the C type of each widget the body makes, by its id, and
@@ -345,15 +351,22 @@ func (e *cEmitter) fail(format string, args ...any) []ir.Stmt {
 	return nil
 }
 
-// state renders a package var, and a widget the body made, as its static.
-func (e *cEmitter) state(n *ir.Ident) (string, bool) {
-	if e.scope.holds(n.Name) {
-		return selfName + "->" + clang.Local(n.Name), true
-	}
+// state renders a package var and a record's, by the declaration, and a
+// widget or record the code holds, by its name where no local takes it.
+func (e *cEmitter) state(n *ir.Ident, local bool) (string, bool) {
 	if v, ok := n.Sym.(*ir.Var); ok {
 		if s, ok := e.globals[v]; ok {
 			return s, true
 		}
+		if r := e.scope; r != nil && slices.Contains(r.comp.Vars, v) {
+			return selfName + "->" + clang.Local(n.Name), true
+		}
+	}
+	if local {
+		return "", false
+	}
+	if r := e.scope; r != nil && r.holds(n.Name) {
+		return selfName + "->" + clang.Local(n.Name), true
 	}
 	if _, ok := e.nodes[n.Name]; ok {
 		return clang.Global(n.Name), true
@@ -396,23 +409,30 @@ func (e *cEmitter) OnMakeNode(ctx context.Context, id, tag string, made ir.Expr)
 		// A primitive of gtk4.sngl's own is a GtkWidget: a toplevel's box.
 		cType = "GtkWidget"
 	}
-	if r := e.scope; r != nil {
-		if _, dup := r.nodes[id]; !dup {
-			r.order = append(r.order, id)
-		}
-		r.nodes[id] = cType
-	} else {
-		if _, dup := e.nodes[id]; !dup {
-			e.order = append(e.order, id)
-		}
-		e.nodes[id] = cType
-	}
+	e.hold(id, cType+" *")
 	v := &ir.Var{Name: id, Type: ir.NativePointerOf(cType)}
 	return []ir.Stmt{&ir.Assign{
 		Target: &ir.Ident{Name: id, Sym: v, Type: v.Type},
 		Op:     ast.AssignSet,
 		Value:  &ir.Conversion{Type: v.Type, Operand: made},
 	}}
+}
+
+// hold makes id, a widget or a record the code builds, something the
+// record being written holds, or the file where none is, as the C type
+// cType: what a function after the one that made it reads.
+func (e *cEmitter) hold(id, cType string) {
+	if r := e.scope; r != nil {
+		if _, dup := r.nodes[id]; !dup {
+			r.order = append(r.order, id)
+		}
+		r.nodes[id] = cType
+		return
+	}
+	if _, dup := e.nodes[id]; !dup {
+		e.order = append(e.order, id)
+	}
+	e.nodes[id] = cType
 }
 
 // registryClass reports whether tag names one of GIR's classes.
@@ -467,6 +487,16 @@ func (e *cEmitter) OnConnectThrough(ctx context.Context, node ir.Expr, event str
 	if unwritten(handler) {
 		return nil
 	}
+	id, _ := node.(*ir.Ident)
+	if id != nil && !e.connects(id.Name, event) {
+		// An event the node's class has no signal for -- a component's own,
+		// on the box its instance renders as -- reaches its handler as a
+		// call, and nothing connects.
+		return nil
+	}
+	if id != nil {
+		handler = handlerOn(handler, node)
+	}
 	e.seq++
 	name := fmt.Sprintf("__handler%d", e.seq)
 	v := &ir.Var{Name: name, Type: handler.ExprType()}
@@ -483,7 +513,7 @@ func (e *cEmitter) OnConnectThrough(ctx context.Context, node ir.Expr, event str
 		}
 		return n, nil
 	})
-	if id, ok := node.(*ir.Ident); ok {
+	if id != nil {
 		if i := slices.IndexFunc(c.Func.Params, func(p *ir.Param) bool { return p.Name == "signal" }); i >= 0 && i < len(c.Args) {
 			e.invokers[id.Name+"."+codegen.TriggerEventName(handler, event)] = cInvoker{
 				node:   node,
@@ -556,9 +586,18 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 	}
 	// A function of the record being written is handed it.
 	if r := e.scope; r != nil && slices.Contains(r.comp.Funcs, n.Func) {
-		args := []string{selfName}
-		for _, a := range n.Args {
+		var args []string
+		for i, a := range n.Args {
+			// The component as the receiver a method call names is the
+			// record, which __self is.
+			if id, ok := a.Value.(*ir.Ident); ok && i == 0 && id.Sym == ir.Symbol(r.comp) {
+				args = append(args, selfName)
+				continue
+			}
 			args = append(args, c.EvalExpr(a.Value))
+		}
+		if !takesRecord(n.Func, r.comp) {
+			args = append([]string{selfName}, args...)
 		}
 		return recordFunc(r.comp, n.Func.Name) + "(" + strings.Join(args, ", ") + ")", true
 	}
@@ -635,4 +674,68 @@ func anchorName(name string) ir.Expr { return &ir.Literal{Type: ir.TypString, Va
 func anchorOf(e ir.Expr) string {
 	lit, _ := e.(*ir.Literal)
 	return lit.Value
+}
+
+// connects reports whether the GLib connect of event reaches the widget id
+// names: its GIR class has the signal, or it is a property's notification.
+// A widget gtk4.sngl makes of its own, and a name no widget holds, connect
+// through their own protocols.
+func (e *cEmitter) connects(id, event string) bool {
+	cType, ok := e.nodes[id]
+	if r := e.scope; r != nil {
+		if t, held := r.nodes[id]; held {
+			cType, ok = t, true
+		}
+	}
+	cType = strings.TrimSuffix(cType, " *")
+	if !ok || !strings.HasPrefix(cType, "Gtk") || e.reg == nil {
+		return true
+	}
+	if strings.HasPrefix(event, "notify::") {
+		return true
+	}
+	info := e.reg.ByCType[cType]
+	if info == nil {
+		return true
+	}
+	for _, sig := range info.Signals {
+		if sig.Name == event {
+			return true
+		}
+	}
+	_, found := girSignal(info, event)
+	return found
+}
+
+// handlerOn is a handler declaring the widget it fires on, `@toggled(b)`,
+// as the one the connect's template calls with nothing: what it reads of
+// its parameter it reads of node.
+func handlerOn(handler, node ir.Expr) ir.Expr {
+	switch h := handler.(type) {
+	case *ir.Lambda:
+		if h.Func == nil || len(h.Func.Params) == 0 {
+			return h
+		}
+		fn := *h.Func
+		fn.Block = selfIsNode(fn.Block, fn.Params, node)
+		fn.Params = nil
+		return &ir.Lambda{AST: h.AST, Func: &fn, Type: ir.FuncOf(nil, fn.Return)}
+	case *ir.Closure:
+		if h.Func == nil || len(h.Func.Params) < 2 {
+			return h
+		}
+		h.Func.Block = selfIsNode(h.Func.Block, h.Func.Params[1:], node)
+		h.Func.Params = h.Func.Params[:1]
+		cp := *h
+		cp.Type = ir.FuncOf(nil, h.Func.Return)
+		return &cp
+	}
+	return handler
+}
+
+// hasBody reports whether fn is written with a body, an empty one included:
+// what has none is a declaration -- a native, or a handler lowering attaches
+// where the program wrote none.
+func hasBody(fn *ir.Func) bool {
+	return len(fn.Block) > 0 || fn.AST != nil && (fn.AST.Body != nil || fn.AST.Block.IsDefined())
 }

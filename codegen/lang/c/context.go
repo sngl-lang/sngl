@@ -22,8 +22,10 @@ type Context struct {
 	Ctx *codegen.ExprCtx
 	// State, where set, renders a name the platform holds rather than the
 	// scope -- a package var, a widget the package body made, which gtk4
-	// keeps as statics of the file -- and reports whether n was one.
-	State func(n *ir.Ident) (string, bool)
+	// keeps as statics of the file -- and reports whether n was one. local
+	// says the scope declares a local of n's name, which a name the platform
+	// matches by its spelling alone does not reach past.
+	State func(n *ir.Ident, local bool) (string, bool)
 	// Native, where set, renders a call the platform answers itself -- one
 	// of a runtime the platform has in C under another name -- and reports
 	// whether it was one.
@@ -41,6 +43,10 @@ type Context struct {
 	locals map[string]bool
 	// ret is the return type of the function being written.
 	ret *ir.Type
+	// Self, where set, is the parameter the code being written reads a
+	// platform's record through, `T *name`, which a lambda lifted out of it
+	// takes along.
+	Self string
 }
 
 var (
@@ -222,13 +228,15 @@ func (c *Context) Ident(n *ir.Ident) string {
 	case *ir.Param, *ir.LoopVar:
 		return Local(n.Name)
 	case *ir.Var:
-		if c.locals[n.Name] {
-			return Local(n.Name)
-		}
+		// State first: a var the platform holds is that var whatever a local
+		// is called, as a slot's render names its box `parent`.
 		if c.State != nil {
-			if s, ok := c.State(n); ok {
+			if s, ok := c.State(n, c.locals[n.Name]); ok {
 				return s
 			}
+		}
+		if c.locals[n.Name] {
+			return Local(n.Name)
 		}
 		if c.isPackageVar(sym) {
 			return Decl(&sym.DeclInfo)
@@ -243,8 +251,8 @@ func (c *Context) Ident(n *ir.Ident) string {
 	if n.Member != "" {
 		return c.fail("an enum member (%s)", n.Member)
 	}
-	if c.State != nil && !c.locals[n.Name] {
-		if s, ok := c.State(n); ok {
+	if c.State != nil {
+		if s, ok := c.State(n, c.locals[n.Name]); ok {
 			return s
 		}
 	}
@@ -673,7 +681,11 @@ func (c *Context) countedHead(n *ir.For) string {
 	}
 	step := fmt.Sprintf(" += %d", k.Step)
 	if n.Value == "" {
+		// A loop naming no variable still counts.
 		v := Local(n.Key)
+		if n.Key == "" {
+			v = fmt.Sprintf("__count%d", c.file.next())
+		}
 		return "for (int64_t " + v + " = " + start + ", " + v + "__end = " + end + "; " + v + cmp + v + "__end; " + v + step + ") {"
 	}
 	i, v := Local(n.Key), Local(n.Value)
