@@ -28,6 +28,10 @@ type Context struct {
 	// of a runtime the platform has in C under another name -- and reports
 	// whether it was one.
 	Native func(c *Context, n *ir.Call) (string, bool)
+	// Closures, where set, writes a closure the platform holds otherwise --
+	// one reading a record a platform's code is written in -- and reports
+	// whether n was one.
+	Closures func(c *Context, n *ir.Closure) (string, bool)
 	// Types, where set, names a type the platform holds as a C type of its
 	// own: a widget, which gtk4 holds as the GObject pointer it is.
 	Types func(t *ir.Type) (string, bool)
@@ -355,11 +359,12 @@ func (c *Context) Select(n *ir.Select, operand string) string {
 	if t != nil && t.Kind == ir.TypeRef && n.Field == "value" {
 		return operand + "->value"
 	}
-	if t == nil || t.Kind != ir.TypeStruct && t.Kind != ir.TypeNative {
-		return c.fail("selecting %s of %s", n.Field, t)
-	}
-	if c.isPointer(t) {
+	if t != nil && c.isPointer(t) {
+		// A box, a C pointer, a record a platform holds by pointer.
 		return operand + "->" + Local(n.Field)
+	}
+	if t == nil || t.Kind != ir.TypeStruct {
+		return c.fail("selecting %s of %s", n.Field, t)
 	}
 	return operand + "." + Local(n.Field)
 }
@@ -671,8 +676,11 @@ func (c *Context) Catch(*ir.If, []string) []string {
 	return []string{c.fail("catching a raise") + ";"}
 }
 
-func (c *Context) Finally(*ir.If, []string, []string) []string {
-	return []string{c.fail("a finally block") + ";"}
+// Finally is body and then finally, which is how body ends while a raise
+// ends the program, since C does not yet catch one (Catch): when it does, a
+// raise must run finally on its way out.
+func (c *Context) Finally(_ *ir.If, body, finally []string) []string {
+	return append(append([]string{"{"}, irwalk.IndentLines("\t", body)...), append(irwalk.IndentLines("\t", finally), "}")...)
 }
 
 // Match is nil, which asks for the if chain: a C switch takes integers
@@ -809,7 +817,9 @@ func (c *Context) defineStruct(sd *ir.StructDef) {
 	fmt.Fprintf(&b, "typedef struct %s {\n", name)
 	for _, f := range sd.Fields {
 		t := c.typeName(f.Type)
-		deps = append(deps, t)
+		// A field held through a pointer still names its type, which C
+		// wants declared first.
+		deps = append(deps, strings.TrimSuffix(t, " *"))
 		fmt.Fprintf(&b, "\t%s %s;\n", t, Local(f.Name))
 	}
 	if len(sd.Fields) == 0 {
@@ -819,6 +829,13 @@ func (c *Context) defineStruct(sd *ir.StructDef) {
 	fmt.Fprintf(&b, "} %s;\n", name)
 	c.file.redefine(name, b.String(), deps...)
 }
+
+// FnType names the C struct a function value of t is.
+func (c *Context) FnType(t *ir.Type) string { return c.fnType(t) }
+
+// Define defines the type name in the file, after the types deps names
+// that it holds by value.
+func (c *Context) Define(name, text string, deps ...string) { c.file.define(name, text, deps...) }
 
 // Helper defines a function the code calls, once by name, ahead of every
 // function of the program's.

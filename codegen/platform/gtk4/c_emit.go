@@ -48,6 +48,7 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	e.ctx.State = e.state
 	e.ctx.Types = e.types
 	e.ctx.Native = e.native
+	e.ctx.Closures = e.closure
 
 	// What is built is the package body, or the body of the component a
 	// test harness isolated, whose state is then the program's.
@@ -61,9 +62,34 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	for _, v := range vars {
 		e.globals[v] = clang.Global(v.Name)
 	}
-	// What the body builds, rendered first, so that the widgets it makes
-	// are known before anything reads one.
+	// Every body is walked before any is written, so that a widget one
+	// function makes is known where another reads it.
 	body := codegen.WalkLowered(context.Background(), stmts, e)
+	var tests, written []*ir.Func
+	for _, fn := range funcs {
+		if instanceOwnsFunc(pkg, fn) || e.closureOwner(fn) != nil {
+			continue
+		}
+		if fn.IsTest {
+			tests = append(tests, fn)
+			continue
+		}
+		if len(fn.Block) == 0 {
+			continue
+		}
+		// A handler writes its widgets as the body does.
+		e.anchor = ""
+		fn.Block = codegen.WalkLowered(context.Background(), fn.Block, e)
+		written = append(written, fn)
+	}
+	for _, comp := range pkg.Components {
+		if isInstanceComponent(comp) {
+			e.record(comp)
+		}
+	}
+	for _, fn := range written {
+		fe.Func(fn)
+	}
 	var build strings.Builder
 	build.WriteString("\nstatic void sngl_build(void) {\n")
 	for _, v := range vars {
@@ -79,30 +105,12 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	if e.err != nil {
 		return e.err
 	}
-
 	var globals strings.Builder
 	for _, v := range vars {
 		fmt.Fprintf(&globals, "static %s %s;\n", e.ctx.TypeName(v.Type), clang.Global(v.Name))
 	}
 	for _, id := range e.order {
 		fmt.Fprintf(&globals, "static %s *%s;\n", e.nodes[id], clang.Global(id))
-	}
-	var tests []*ir.Func
-	for _, fn := range funcs {
-		if fn.IsTest {
-			tests = append(tests, fn)
-			continue
-		}
-		if len(fn.Block) == 0 {
-			continue
-		}
-		// A handler writes its widgets as the body does.
-		e.anchor = ""
-		fn.Block = codegen.WalkLowered(context.Background(), fn.Block, e)
-		fe.Func(fn)
-	}
-	if e.err != nil {
-		return e.err
 	}
 	for _, a := range e.anchors {
 		fmt.Fprintf(&globals, "static GtkWidget *%s;\n", a)
@@ -312,8 +320,12 @@ type cEmitter struct {
 	// once it has reset the slot, and anchors every slot's.
 	anchor  string
 	anchors []string
-	seq     int
-	err     error
+	// scope is the record being written, where one is.
+	scope *cRecord
+	// recordClosures are each record's closures (closureFuncs).
+	recordClosures map[*ir.Component][]*ir.Func
+	seq            int
+	err            error
 }
 
 func (e *cEmitter) fail(format string, args ...any) []ir.Stmt {
@@ -325,6 +337,9 @@ func (e *cEmitter) fail(format string, args ...any) []ir.Stmt {
 
 // state renders a package var, and a widget the body made, as its static.
 func (e *cEmitter) state(n *ir.Ident) (string, bool) {
+	if e.scope.holds(n.Name) {
+		return selfName + "->" + clang.Local(n.Name), true
+	}
 	if v, ok := n.Sym.(*ir.Var); ok {
 		if s, ok := e.globals[v]; ok {
 			return s, true
@@ -339,13 +354,17 @@ func (e *cEmitter) state(n *ir.Ident) (string, bool) {
 // types names a widget as the GObject pointer it is: its class's where it is
 // one of GIR's, and GtkWidget's for any node else.
 func (e *cEmitter) types(t *ir.Type) (string, bool) {
-	if t.Kind != ir.TypeComponent {
+	if t.Kind != ir.TypeComponent && t.Kind != ir.TypeInstance {
 		return "", false
 	}
 	comp, _ := t.Decl.(*ir.Component)
-	if cType := widgetCType(comp); cType != "" {
+	if cType := widgetCType(comp); strings.HasPrefix(cType, "Gtk") {
 		return cType + " *", true
 	}
+	if comp := recordOf(t); comp != nil {
+		return recordType(comp) + " *", true
+	}
+	// gtk4.sngl's own primitives and any node else are a GtkWidget.
 	return "GtkWidget *", true
 }
 
@@ -367,10 +386,17 @@ func (e *cEmitter) OnMakeNode(ctx context.Context, id, tag string, made ir.Expr)
 		// A primitive of gtk4.sngl's own is a GtkWidget: a toplevel's box.
 		cType = "GtkWidget"
 	}
-	if _, dup := e.nodes[id]; !dup {
-		e.order = append(e.order, id)
+	if r := e.scope; r != nil {
+		if _, dup := r.nodes[id]; !dup {
+			r.order = append(r.order, id)
+		}
+		r.nodes[id] = cType
+	} else {
+		if _, dup := e.nodes[id]; !dup {
+			e.order = append(e.order, id)
+		}
+		e.nodes[id] = cType
 	}
-	e.nodes[id] = cType
 	v := &ir.Var{Name: id, Type: ir.NativePointerOf(cType)}
 	return []ir.Stmt{&ir.Assign{
 		Target: &ir.Ident{Name: id, Sym: v, Type: v.Type},
@@ -409,8 +435,11 @@ func (e *cEmitter) OnAppendChild(ctx context.Context, parent, child ir.Expr) []i
 // OnAppendThrough is the class's append, or where a slot's render puts a
 // child in the box it renders into, a place before the slot's anchor.
 func (e *cEmitter) OnAppendThrough(ctx context.Context, parent, child, call ir.Expr) []ir.Stmt {
+	if id, ok := child.(*ir.Ident); ok && e.scope != nil {
+		e.scope.appended[id.Name] = true
+	}
 	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" && e.anchor != "" {
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("InsertBefore", ir.TypVoid, parent, child)}}
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("InsertBefore", ir.TypVoid, parent, child, anchorName(e.anchor))}}
 	}
 	return []ir.Stmt{&ir.CallStmt{Call: call.(*ir.Call)}}
 }
@@ -471,22 +500,6 @@ func (e *cEmitter) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []i
 	return e.fail("removing a child without its class's remove")
 }
 
-func (e *cEmitter) OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt {
-	return e.fail("a component built at run time")
-}
-
-func (e *cEmitter) OnComponentRoot(ctx context.Context, id string, inst, key ir.Expr) []ir.Stmt {
-	return e.fail("a component built at run time")
-}
-
-func (e *cEmitter) OnUpdateComponent(ctx context.Context, inst ir.Expr, prop string, value ir.Expr) []ir.Stmt {
-	return e.fail("a component built at run time")
-}
-
-func (e *cEmitter) OnDestroyComponent(ctx context.Context, inst ir.Expr) []ir.Stmt {
-	return e.fail("a component built at run time")
-}
-
 // OnSlotReset starts a slot's render over: its list of widgets emptied, and
 // its anchor made in the box it renders into where it is not there already.
 func (e *cEmitter) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
@@ -497,7 +510,7 @@ func (e *cEmitter) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
 	ref := &ir.Ident{Name: slot.Name, Sym: slot, Type: slot.Type}
 	return []ir.Stmt{
 		&ir.Assign{Target: ref, Op: ast.AssignSet, Value: &ir.ListLit{Type: slot.Type}},
-		&ir.CallStmt{Call: rtCall("SlotAnchor", ir.TypVoid, &ir.Ident{Name: "parent", Type: ir.NativePointerOf("GtkWidget")})},
+		&ir.CallStmt{Call: rtCall("SlotAnchor", ir.TypVoid, &ir.Ident{Name: "parent", Type: ir.NativePointerOf("GtkWidget")}, anchorName(e.anchor))},
 	}
 }
 
@@ -521,7 +534,25 @@ func (e *cEmitter) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
 // cNatives are the gtk4rt calls a cgo build still makes, as rt's C writes
 // each: its name, or what it writes in its place given its arguments.
 func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
-	if n.Func == nil || n.Func.Foreign.Path != gtk4rtPkg {
+	if n.Func == nil {
+		return "", false
+	}
+	if n.Func.Foreign.Path == recordPath {
+		args := make([]string, len(n.Args))
+		for i, a := range n.Args {
+			args[i] = c.EvalExpr(a.Value)
+		}
+		return n.Func.Name + "(" + strings.Join(args, ", ") + ")", true
+	}
+	// A function of the record being written is handed it.
+	if r := e.scope; r != nil && slices.Contains(r.comp.Funcs, n.Func) {
+		args := []string{selfName}
+		for _, a := range n.Args {
+			args = append(args, c.EvalExpr(a.Value))
+		}
+		return recordFunc(r.comp, n.Func.Name) + "(" + strings.Join(args, ", ") + ")", true
+	}
+	if n.Func.Foreign.Path != gtk4rtPkg {
 		return "", false
 	}
 	name := strings.TrimPrefix(n.Func.Foreign.Name, "gtk4rt.")
@@ -550,9 +581,10 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 	case "BoxRemove":
 		return "gtk_box_remove(GTK_BOX(" + arg(0) + "), " + widget(1) + ")", true
 	case "SlotAnchor":
-		return e.anchor + " = sngl_slot_anchor(" + widget(0) + ", " + e.anchor + ")", true
+		a := anchorOf(n.Args[1].Value)
+		return a + " = sngl_slot_anchor(" + widget(0) + ", " + a + ")", true
 	case "InsertBefore":
-		return "sngl_box_insert_before(" + widget(0) + ", " + e.anchor + ", " + widget(1) + ")", true
+		return "sngl_box_insert_before(" + widget(0) + ", " + anchorOf(n.Args[2].Value) + ", " + widget(1) + ")", true
 	case "AppAttach":
 		return "sngl_app_attach(" + widget(0) + ")", true
 	case "SetLook":
@@ -584,4 +616,13 @@ func (e *cEmitter) setLook(c *clang.Context, w string, look ir.Expr) string {
 }
 `)
 	return "sngl_look_apply(" + w + ", " + c.EvalExpr(look) + ")"
+}
+
+// anchorName carries a slot's anchor, the static it is, in the IR a walk
+// writes, which is rendered after every walk.
+func anchorName(name string) ir.Expr { return &ir.Literal{Type: ir.TypString, Value: name} }
+
+func anchorOf(e ir.Expr) string {
+	lit, _ := e.(*ir.Literal)
+	return lit.Value
 }

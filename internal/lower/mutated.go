@@ -33,6 +33,18 @@ func lowerMutatedVars(pkg *ir.Package, _ Features, _ Options) error {
 	for v := range pkg.AddressedVars {
 		pkg.MutatedVars[v] = true
 	}
+	for v := range writtenVars(pkg) {
+		pkg.MutatedVars[v] = true
+	}
+	return nil
+}
+
+// writtenVars is every Var something in pkg writes after it is bound: an
+// assignment or a toggle through it, or a call declaring it writes its
+// argument. NoLambda reads it too, since a closure holds such a var by
+// reference, where it sees what a later write gives it.
+func writtenVars(pkg *ir.Package) map[*ir.Var]bool {
+	out := map[*ir.Var]bool{}
 	mark := func(e ir.Expr) {
 		// The root of an assignment path: `s`, `s.field`, `s.a.b`, `s[i]`.
 		// Writing through any of them writes the binding.
@@ -44,38 +56,13 @@ func lowerMutatedVars(pkg *ir.Package, _ Features, _ Options) error {
 				e = x.Operand
 			case *ir.Ident:
 				if v, ok := x.Sym.(*ir.Var); ok {
-					pkg.MutatedVars[v] = true
+					out[v] = true
 				}
 				return
 			default:
 				return
 			}
 		}
-	}
-	visit := func(root any) {
-		_ = ir.Walk(root, func(n ir.Node) error {
-			switch s := n.(type) {
-			case *ir.Assign:
-				mark(s.Target)
-			case *ir.Toggle:
-				mark(s.Target)
-			case *ir.Call:
-				if s.Func == nil || !s.Func.MutatesReceiver {
-					return nil
-				}
-				// The declaration says this call writes through its argument,
-				// so every argument is treated as written: which one it means
-				// is the first, but a receiver reaches here as an argument or
-				// as Call.Receiver depending on the pass that built it.
-				if s.Receiver != nil {
-					mark(s.Receiver)
-				}
-				for _, a := range s.Args {
-					mark(a.Value)
-				}
-			}
-			return nil
-		})
 	}
 	// The package, not a list of roots assembled here. The list this replaces
 	// named component bodies, their funcs, window
@@ -85,6 +72,28 @@ func lowerMutatedVars(pkg *ir.Package, _ Features, _ Options) error {
 	// skipped the copy, and the in-place write left Compose's structural
 	// equality saying nothing had changed: exactly the bug the copy exists to
 	// prevent, in the one place nothing tested.
-	visit(pkg)
-	return nil
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		switch s := n.(type) {
+		case *ir.Assign:
+			mark(s.Target)
+		case *ir.Toggle:
+			mark(s.Target)
+		case *ir.Call:
+			if s.Func == nil || !s.Func.MutatesReceiver {
+				return nil
+			}
+			// The declaration says this call writes through its argument,
+			// so every argument is treated as written: which one it means
+			// is the first, but a receiver reaches here as an argument or
+			// as Call.Receiver depending on the pass that built it.
+			if s.Receiver != nil {
+				mark(s.Receiver)
+			}
+			for _, a := range s.Args {
+				mark(a.Value)
+			}
+		}
+		return nil
+	})
+	return out
 }

@@ -39,6 +39,12 @@ func NewFile(sink codegen.Sink, opts codegen.FileOptions, pkg *ir.Package, platf
 	return fe
 }
 
+// Prototype declares a function the platform writes itself, ahead of every
+// function the file writes.
+func (fe *FileEmitter) Prototype(proto string) {
+	fe.ctx.file.protos = append(fe.ctx.file.protos, proto)
+}
+
 // Context is the renderer the file's code is written through.
 func (fe *FileEmitter) Context() *Context { return fe.ctx }
 
@@ -77,8 +83,13 @@ func (fe *FileEmitter) Struct(sd *ir.StructDef) { fe.ctx.defineStruct(sd) }
 
 // Func writes fn, a function of the program, with its prototype ahead of
 // every function the file writes.
-func (fe *FileEmitter) Func(fn *ir.Func) {
-	sig := fe.signature(fn)
+func (fe *FileEmitter) Func(fn *ir.Func) { fe.FuncAs(fn, funcName(fn), "") }
+
+// FuncAs writes fn under name, taking first, where it is not empty, the
+// parameter first declares: a record a platform's function reads its state
+// through.
+func (fe *FileEmitter) FuncAs(fn *ir.Func, name, first string) {
+	sig := fe.signatureAs(fn, name, first)
 	fe.ctx.file.protos = append(fe.ctx.file.protos, "static "+sig+";")
 	ctx := fe.ctx.WithReturn(fn.Return)
 	for _, p := range fn.Params {
@@ -93,15 +104,18 @@ func (fe *FileEmitter) Func(fn *ir.Func) {
 
 // signature is fn's C declarator: its return type, its name and its
 // parameters, `void` where it takes none.
-func (fe *FileEmitter) signature(fn *ir.Func) string {
+func (fe *FileEmitter) signatureAs(fn *ir.Func, name, first string) string {
 	var params []string
+	if first != "" {
+		params = append(params, first)
+	}
 	for _, p := range fn.Params {
 		params = append(params, fe.ctx.typeName(p.Type)+" "+Local(p.Name))
 	}
 	if len(params) == 0 {
 		params = []string{"void"}
 	}
-	return fe.ctx.typeName(fn.Return) + " " + funcName(fn) + "(" + strings.Join(params, ", ") + ")"
+	return fe.ctx.typeName(fn.Return) + " " + name + "(" + strings.Join(params, ", ") + ")"
 }
 
 // Err is the first construct the file's code holds that C does not yet

@@ -36,22 +36,26 @@ ui.window(title="t") {
 #include "sngl_gtk.h"
 #include <stdlib.h>
 
+typedef struct s___ref_bool {
+	bool value;
+} s___ref_bool;
+
+typedef struct s___lambda0_caps {
+	s___ref_bool * visible__inst0;
+} s___lambda0_caps;
+
 typedef struct s___ref_int {
 	int64_t value;
 } s___ref_int;
 
-typedef struct s___ref_bool {
-	bool value;
-} s___ref_bool;
+typedef struct s___lambda1_caps {
+	s___ref_int * n__inst0;
+} s___lambda1_caps;
 
 typedef struct sngl_fn_bool__void {
 	void (*fn)(void *env, bool);
 	void *env;
 } sngl_fn_bool__void;
-
-typedef struct s___lambda0_caps {
-	s___ref_bool * visible__inst0;
-} s___lambda0_caps;
 
 typedef struct s_Look {
 	sngl_string css;
@@ -76,10 +80,6 @@ typedef struct sngl_fn_void__void {
 	void *env;
 } sngl_fn_void__void;
 
-typedef struct s___lambda1_caps {
-	s___ref_int * n__inst0;
-} s___lambda1_caps;
-
 typedef struct sngl_fn_void_p__void {
 	void (*fn)(void *env, void *);
 	void *env;
@@ -90,11 +90,11 @@ typedef struct sngl_lambda1_env {
 } sngl_lambda1_env;
 
 
-static void sngl_lambda1(void *env_, void * self);
 static void s___lambda0(s___lambda0_caps state, bool __visible);
 static void s___lambda1(s___lambda1_caps state);
 static void s___snglTeardown(void);
 static void s_free(char * s);
+static void sngl_lambda1(void *env_, void * self);
 
 static void s___lambda0__fn(void *env, bool a0) {
 	s___lambda0(*(s___lambda0_caps *)env, a0);
@@ -191,4 +191,4 @@ static void sngl_lambda1(void *env_, void * self) {
 # What this program links, which `sngl build` reads.
 pkg-config gtk4
 -- run/c/gtk4 --
-pass sha256:ac8317a80752caf081f9d4ad325fcfbd
+pass sha256:5900e3a8a11ab872b73be0b0d1927372

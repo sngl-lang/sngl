@@ -83,6 +83,11 @@ func typeToken(t *ir.Type) string {
 // Closure is a lifted lambda as a function value: its thunk, and its
 // captures copied to the heap.
 func (c *Context) Closure(n *ir.Closure) string {
+	if c.Closures != nil {
+		if out, ok := c.Closures(c, n); ok {
+			return out
+		}
+	}
 	fnT := c.fnType(n.Type)
 	state := n.Func.Params[0]
 	stateT := c.typeName(state.Type)
@@ -160,9 +165,11 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 		return nil
 	})
 	var fields, inits []string
-	inner := &Context{Ctx: c.Ctx, State: c.State, Native: c.Native, Types: c.Types, file: c.file, locals: map[string]bool{}, ret: n.Type.Sig.Return}
+	inner := &Context{Ctx: c.Ctx, State: c.State, Native: c.Native, Types: c.Types, Closures: c.Closures, file: c.file, locals: map[string]bool{}, ret: n.Type.Sig.Return}
+	var deps []string
 	for _, name := range caps {
 		t := c.localType(n.Func.Block, name)
+		deps = append(deps, strings.TrimSuffix(c.typeName(t), " *"))
 		fields = append(fields, "\t"+c.typeName(t)+" "+Local(name)+";")
 		inits = append(inits, "."+Local(name)+" = "+Local(name))
 		inner.locals[name] = true
@@ -170,7 +177,7 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 	if len(fields) == 0 {
 		fields = []string{"\tchar unused;"}
 	}
-	c.file.define(envT, "typedef struct "+envT+" {\n"+strings.Join(fields, "\n")+"\n} "+envT+";\n")
+	c.file.define(envT, "typedef struct "+envT+" {\n"+strings.Join(fields, "\n")+"\n} "+envT+";\n", deps...)
 	params := []string{"void *env_"}
 	for _, p := range n.Func.Params {
 		params = append(params, c.typeName(p.Type)+" "+Local(p.Name))

@@ -294,6 +294,8 @@ func (r *refRewriter) rewriteExpr(e ir.Expr) ir.Expr {
 		return x
 	case *ir.Call:
 		x.Receiver = r.rewriteExpr(x.Receiver)
+		// A call through a function value reads the var holding it.
+		x.Callee = r.rewriteExpr(x.Callee)
 		for i := range x.Args {
 			x.Args[i].Value = r.rewriteExpr(x.Args[i].Value)
 		}
@@ -505,6 +507,7 @@ func seedAddressedVarsInExpr(e ir.Expr, set map[*ir.Var]bool) {
 		}
 	case *ir.Call:
 		seedAddressedVarsInExpr(x.Receiver, set)
+		seedAddressedVarsInExpr(x.Callee, set)
 		for i := range x.Args {
 			seedAddressedVarsInExpr(x.Args[i].Value, set)
 		}

@@ -561,15 +561,17 @@ func (c *Context) stringIntrinsic(n *ir.Call) (string, bool) {
 		"string.replace":   "sngl_string_replace",
 		"int.parse":        "sngl_int_parse",
 	}
+	fn, ok := runtime[n.Func.Intrinsic]
+	if !ok && n.Func.Intrinsic != "string.split" {
+		return "", false
+	}
+	// Rendered once it is known to be one: rendering a lambda lifts it.
 	args := make([]string, len(n.Args))
 	for i, a := range n.Args {
 		args[i] = c.EvalExpr(a.Value)
 	}
-	if fn, ok := runtime[n.Func.Intrinsic]; ok {
+	if ok {
 		return fn + "(" + strings.Join(args, ", ") + ")", true
-	}
-	if n.Func.Intrinsic != "string.split" {
-		return "", false
 	}
 	t := ir.ListOf(ir.TypString)
 	grow := c.listGrow(t)

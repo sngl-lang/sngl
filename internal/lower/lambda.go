@@ -302,6 +302,7 @@ func liftLambdas(e ir.Expr, l *lifter) ir.Expr {
 		return x
 	case *ir.Call:
 		x.Receiver = liftLambdas(x.Receiver, l)
+		x.Callee = liftLambdas(x.Callee, l)
 		for i := range x.Args {
 			x.Args[i].Value = liftLambdas(x.Args[i].Value, l)
 		}
@@ -444,6 +445,8 @@ type lifter struct {
 	// the same Sym as its enclosing lambda re-uses the outer's ref-typed
 	// state field instead of taking a fresh address.
 	enclosing []scopeFrame
+	// written is writtenVars(pkg), read on the first Lift.
+	written map[*ir.Var]bool
 }
 
 // newLifter seeds the name registry from the package as it stands. Seeding
@@ -478,6 +481,17 @@ type scopeFrame struct {
 // lambda expression.
 func (l *lifter) Lift(body []ir.Stmt, params []*ir.Param, ret *ir.Type, src *ast.LambdaExpr) *ir.Closure {
 	caps := analyzeCaptures(body, params)
+	// A var something else writes is held by reference too: the closure
+	// reads what the write gives it, as a closure does on a language with
+	// closures of its own. A record's prop cell its setter writes is one.
+	if l.written == nil {
+		l.written = writtenVars(l.pkg)
+	}
+	for i := range caps {
+		if v, ok := caps[i].Sym.(*ir.Var); ok && l.written[v] {
+			caps[i].Mutable = true
+		}
+	}
 
 	// Synthesize names.
 	capsName, funcName := l.freshNames()
@@ -736,6 +750,8 @@ func (l *lifter) rewriteExpr(e ir.Expr, captureField map[ir.Symbol]ir.Expr, capt
 		return x
 	case *ir.Call:
 		x.Receiver = l.rewriteExpr(x.Receiver, captureField, captureMutable)
+		// A captured function value called is read through the state.
+		x.Callee = l.rewriteExpr(x.Callee, captureField, captureMutable)
 		for i := range x.Args {
 			x.Args[i].Value = l.rewriteExpr(x.Args[i].Value, captureField, captureMutable)
 		}
