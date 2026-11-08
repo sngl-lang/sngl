@@ -67,7 +67,12 @@ char *sngl_cstring(sngl_string s) {
 	return c;
 }
 
+void (*sngl_panic_hook)(const char *msg);
+
 _Noreturn void sngl_panic(const char *msg) {
+	if (sngl_panic_hook != NULL) {
+		sngl_panic_hook(msg);
+	}
 	fprintf(stderr, "panic: %s\n", msg);
 	fflush(stderr);
 	abort();

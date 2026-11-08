@@ -1,0 +1,47 @@
+# A gtk4 program in C runs its tests in the C test agent (pkg/c/runtime):
+# each test builds the program, and a click is GTK's "clicked", which reaches
+# the closure GLib holds through its dispatcher, the closure's state the box
+# NoRef made of the component's var.
+
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import c "sngl:language/c"
+import test "sngl:test"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+component main ui.node {
+    var n = 0
+    ui.vbox {
+        ui.button #count(text="{n}", @click {
+            n += 1
+        })
+    }
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testClickReachesTheClosure(t test.Test, c main) {
+    c.count.click()
+    c.count.click()
+    t.assert(c.n == 2)
+}
+-- testrun/gtk4/c/app.sngl/main/1 --
+sha256:c69fd80d57f372a3eaa9879ab6f32f7e
+{
+  "results": [
+    {
+      "Desc": "ClickReachesTheClosure",
+      "Passed": true
+    }
+  ]
+}

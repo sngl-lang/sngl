@@ -394,7 +394,9 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			// into a top-level Func + state struct. lifter.Lift appends the
 			// synthesized struct + Func to pkg, so we don't push h.Func into
 			// *funcs ourselves.
-			handlerArg = st.lifter.Lift(h.Func.Block, h.Func.Params, h.Func.Return, nil)
+			cl := st.lifter.Lift(h.Func.Block, h.Func.Params, h.Func.Return, nil)
+			cl.Func.Lowered.ComponentEvent = h.ComponentEvent
+			handlerArg = cl
 		case st.inlineHandlers || capturesPerIteration(captures):
 			// Closure-supporting target whose handler body reads a
 			// per-iteration binding: emit the handler as an inline closure

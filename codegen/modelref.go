@@ -107,6 +107,8 @@ func TriggerEventName(handler ir.Expr, fallback string) string {
 		fn, _ = h.Sym.(*ir.Func)
 	case *ir.Lambda:
 		fn = h.Func
+	case *ir.Closure:
+		fn = h.Func
 	}
 	if fn == nil || fn.Lowered.ComponentEvent == "" {
 		return fallback

@@ -161,6 +161,9 @@ func intLiteral(v string) string {
 	return v
 }
 
+// StringLiteral is s as a string literal of the program's.
+func StringLiteral(s string) string { return stringLiteral(s) }
+
 // stringLiteral is s as a string the program holds: its bytes, escaped so
 // that C reads back exactly them, with the length the compiler counts.
 func stringLiteral(s string) string {

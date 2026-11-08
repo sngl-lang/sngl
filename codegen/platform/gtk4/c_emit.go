@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -28,28 +30,40 @@ import (
 // rtFiles are gtk4's runtime sources, written beside main.c.
 var rtFiles = []string{"sngl_gtk.h", "sngl_gtk.c", "look.c"}
 
-// generateC writes req's program as C.
+// generateC writes req's program as C: built for `sngl test`, its tests and
+// the agent running them in place of the application.
 func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	pkg := req.Pkg
 	if pkg.Run != nil {
 		return fmt.Errorf("gtk4: @run is not yet written in C")
 	}
+	agent := codegen.OptionString(req.Options, "testMode") == "agent"
 	fe := clang.NewFile(sink, codegen.FileOptions{Name: "main.c", Source: req.Source, Platform: platformName}, pkg, platformName)
 	fe.RequireImport("<gtk/gtk.h>")
 	fe.RequireImport("sngl_gtk.h")
-	e := &cEmitter{fe: fe, ctx: fe.Context(), pkg: pkg, globals: map[*ir.Var]string{}, nodes: map[string]string{}}
+	if agent {
+		fe.RequireImport(clang.TestHeader)
+	}
+	e := &cEmitter{fe: fe, ctx: fe.Context(), pkg: pkg, globals: map[*ir.Var]string{}, nodes: map[string]string{}, invokers: map[string]cInvoker{}}
 	e.ctx.State = e.state
 	e.ctx.Types = e.types
 	e.ctx.Native = e.native
 
-	var globals strings.Builder
+	// What is built is the package body, or the body of the component a
+	// test harness isolated, whose state is then the program's.
+	stmts, funcs := pkg.Body, pkg.Funcs
 	vars := append(append([]*ir.Var(nil), pkg.Consts...), pkg.Vars...)
+	if root := pkg.RootDecl(); root != nil {
+		stmts = root.Stmts
+		vars = append(vars, root.Vars...)
+		funcs = append(append([]*ir.Func(nil), funcs...), root.Funcs...)
+	}
 	for _, v := range vars {
 		e.globals[v] = clang.Global(v.Name)
 	}
-	// What the package body builds, rendered first, so that the widgets it
-	// makes are known before anything reads one.
-	body := codegen.WalkLowered(context.Background(), pkg.Body, e)
+	// What the body builds, rendered first, so that the widgets it makes
+	// are known before anything reads one.
+	body := codegen.WalkLowered(context.Background(), stmts, e)
 	var build strings.Builder
 	build.WriteString("\nstatic void sngl_build(void) {\n")
 	for _, v := range vars {
@@ -66,6 +80,7 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 		return e.err
 	}
 
+	var globals strings.Builder
 	for _, v := range vars {
 		fmt.Fprintf(&globals, "static %s %s;\n", e.ctx.TypeName(v.Type), clang.Global(v.Name))
 	}
@@ -73,8 +88,13 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 		fmt.Fprintf(&globals, "static %s *%s;\n", e.nodes[id], clang.Global(id))
 	}
 	io.WriteString(fe, "\n"+globals.String())
-	for _, fn := range pkg.Funcs {
-		if fn.IsTest || len(fn.Block) == 0 {
+	var tests []*ir.Func
+	for _, fn := range funcs {
+		if fn.IsTest {
+			tests = append(tests, fn)
+			continue
+		}
+		if len(fn.Block) == 0 {
 			continue
 		}
 		// A handler writes its widgets as the body does.
@@ -85,11 +105,18 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 		return e.err
 	}
 	io.WriteString(fe, build.String())
-	teardown := ""
-	if pkg.Teardown != nil {
-		teardown = "\t" + clang.Global(pkg.Teardown.Name) + "();\n"
+	if agent {
+		io.WriteString(fe, e.tests(tests))
+	} else {
+		teardown := ""
+		if pkg.Teardown != nil {
+			teardown = "\t" + clang.Global(pkg.Teardown.Name) + "();\n"
+		}
+		io.WriteString(fe, "\nint main(void) {\n\tint status = sngl_app_run(sngl_build);\n"+teardown+"\treturn status;\n}\n")
 	}
-	io.WriteString(fe, "\nint main(void) {\n\tint status = sngl_app_run(sngl_build);\n"+teardown+"\treturn status;\n}\n")
+	if e.err != nil {
+		return e.err
+	}
 	if err := fe.Close(); err != nil {
 		return fmt.Errorf("gtk4: %w", err)
 	}
@@ -98,7 +125,11 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	}
 	// The runtimes are the same for every program, so a golden holds their
 	// digest rather than their text.
-	for name, data := range clang.Runtime() {
+	runtime := clang.Runtime()
+	if agent {
+		maps.Copy(runtime, clang.TestRuntime())
+	}
+	for name, data := range runtime {
 		codegen.MarkBoilerplate(sink, name)
 		if err := writeRawFile(sink, name, data); err != nil {
 			return err
@@ -117,6 +148,147 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	return nil
 }
 
+// cInvoker is how a test fires an event on a widget: the signal the
+// program's handler is connected to, emitted on the widget as GTK would.
+type cInvoker struct {
+	node, signal ir.Expr
+	// notify says the signal is a property's notification, which a test
+	// fires only by setting the property first.
+	notify bool
+}
+
+// tests writes each test as a function of the agent's, and main serving
+// them. A test builds the program where it mounts its component, or first
+// where it takes none; the program's state and widgets are the file's, so a
+// build starts it over.
+func (e *cEmitter) tests(fns []*ir.Func) string {
+	var b strings.Builder
+	var table []string
+	for _, fn := range fns {
+		name := "sngl_" + fn.Name
+		tName, comp := "t", codegen.TestComponentParam(fn)
+		for _, p := range fn.Params {
+			if p.Name != comp {
+				tName = p.Name
+				break
+			}
+		}
+		fmt.Fprintf(&b, "\nstatic void %s(sngl_t *%s) {\n", name, clang.Local(tName))
+		if comp == "" {
+			b.WriteString("\tsngl_build();\n")
+		}
+		for _, l := range e.testBlock(fn.Block, tName, comp) {
+			b.WriteString("\t" + l + "\n")
+		}
+		b.WriteString("}\n")
+		table = append(table, fmt.Sprintf("\t{%q, %s},", strings.TrimPrefix(fn.Name, "test"), name))
+	}
+	b.WriteString("\nstatic const sngl_test sngl_tests[] = {\n" + strings.Join(table, "\n") + "\n};\n")
+	b.WriteString("\nint main(void) {\n\tgtk_init();\n\treturn sngl_test_main(sngl_tests, sizeof sngl_tests / sizeof sngl_tests[0]);\n}\n")
+	return b.String()
+}
+
+// testBlock renders a test's statements: its asserts, its triggers and its
+// mount as the agent and the widgets take them, and the rest as the program's
+// own, the component it takes read as the program's state.
+func (e *cEmitter) testBlock(stmts []ir.Stmt, tName, comp string) []string {
+	var lines []string
+	for _, s := range stmts {
+		lines = append(lines, e.testStmt(s, tName, comp)...)
+	}
+	return lines
+}
+
+func (e *cEmitter) testStmt(s ir.Stmt, tName, comp string) []string {
+	if _, _, ok := codegen.TestMount(s); ok {
+		return []string{"sngl_build();"}
+	}
+	if cs, ok := s.(*ir.CallStmt); ok {
+		if tt, ok := codegen.EventTriggerTarget(cs.Call); ok {
+			return e.trigger(tt.ID, cs.Call)
+		}
+	}
+	s = e.componentReads(s, comp)
+	switch n := s.(type) {
+	case *ir.CallStmt:
+		c := n.Call
+		switch {
+		case ir.IsTestCall(c, ir.TestAssertID), ir.IsTestCall(c, ir.TestMustID):
+			cond := e.ctx.EvalExpr(c.Args[1].Value)
+			fail, word := "sngl_test_fail", "assert"
+			if ir.IsTestCall(c, ir.TestMustID) {
+				fail, word = "sngl_test_fail_now", "must"
+			}
+			return []string{"if (!(" + cond + ")) {", "\t" + fail + "(" + clang.Local(tName) + ", " + clang.StringLiteral(word+" failed: "+cond) + ");", "}"}
+		}
+		if ir.IsTestMethodCall(c) {
+			e.fail("a test's t.%s", c.Func.Name)
+			return nil
+		}
+	case *ir.If:
+		lines := []string{"if (" + e.ctx.EvalExpr(n.Cond) + ") {"}
+		for _, l := range e.testBlock(n.Body, tName, comp) {
+			lines = append(lines, "\t"+l)
+		}
+		if len(n.Else) > 0 {
+			lines = append(lines, "} else {")
+			for _, l := range e.testBlock(n.Else, tName, comp) {
+				lines = append(lines, "\t"+l)
+			}
+		}
+		return append(lines, "}")
+	}
+	return e.ctx.EvalStmt(s)
+}
+
+// componentReads is s with each read of the component a test takes, `c.n`,
+// the program's state or widget it names.
+func (e *cEmitter) componentReads(s ir.Stmt, comp string) ir.Stmt {
+	if comp == "" {
+		return s
+	}
+	s = ir.CloneStmtsSharingDecls([]ir.Stmt{s})[0]
+	_ = ir.Rewrite(s, func(n ir.Node) (ir.Node, error) {
+		sel, ok := n.(*ir.Select)
+		if !ok {
+			return n, nil
+		}
+		id, ok := sel.Operand.(*ir.Ident)
+		if !ok || id.Name != comp {
+			return n, nil
+		}
+		for v := range e.globals {
+			if v.Name != sel.Field {
+				continue
+			}
+			ref := &ir.Ident{Name: v.Name, Sym: v, Type: v.Type}
+			// State a closure writes is the box NoRef made of it.
+			if sd, ok := v.Type.Decl.(*ir.StructDef); ok && v.Type.Kind == ir.TypeStruct && sd.RefBox {
+				return &ir.Select{Operand: ref, Field: "value", Type: sd.Fields[0].Type}, ir.SkipDir
+			}
+			return ref, ir.SkipDir
+		}
+		return &ir.Ident{Name: sel.Field, Type: sel.Type}, ir.SkipDir
+	})
+	return s
+}
+
+// trigger fires the event c names on the widget id, as GTK does: its signal
+// emitted, which reaches the program's handler through the connection the
+// program made.
+func (e *cEmitter) trigger(id string, c *ir.Call) []string {
+	inv, ok := e.invokers[id+"."+c.Event]
+	if !ok {
+		e.fail("a test's %s.%s(), which nothing connects", id, c.Event)
+		return nil
+	}
+	if inv.notify || len(c.Args) > 0 {
+		e.fail("a test's %s.%s() carrying a value", id, c.Event)
+		return nil
+	}
+	return []string{"g_signal_emit_by_name((gpointer)(" + e.ctx.EvalExpr(inv.node) + "), " + e.ctx.EvalExpr(inv.signal) + ");"}
+}
+
 // cEmitter translates the lowered tree's node operations into the C calls
 // that build it.
 type cEmitter struct {
@@ -129,8 +301,11 @@ type cEmitter struct {
 	// order the ids in the order made.
 	nodes map[string]string
 	order []string
-	seq   int
-	err   error
+	// invokers are how a test fires each event a handler is connected to,
+	// by "<id>.<event>" as the test names it.
+	invokers map[string]cInvoker
+	seq      int
+	err      error
 }
 
 func (e *cEmitter) fail(format string, args ...any) []ir.Stmt {
@@ -256,6 +431,15 @@ func (e *cEmitter) OnConnectThrough(ctx context.Context, node ir.Expr, event str
 		}
 		return n, nil
 	})
+	if id, ok := node.(*ir.Ident); ok {
+		if i := slices.IndexFunc(c.Func.Params, func(p *ir.Param) bool { return p.Name == "signal" }); i >= 0 && i < len(c.Args) {
+			e.invokers[id.Name+"."+codegen.TriggerEventName(handler, event)] = cInvoker{
+				node:   node,
+				signal: c.Args[i].Value,
+				notify: strings.HasPrefix(event, "notify"),
+			}
+		}
+	}
 	return []ir.Stmt{
 		&ir.LocalVar{Name: name, Type: v.Type, Init: handler, Sym: v},
 		&ir.CallStmt{Call: c},

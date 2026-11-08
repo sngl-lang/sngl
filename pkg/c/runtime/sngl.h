@@ -35,6 +35,10 @@ char *sngl_cstring(sngl_string s);
 /* The program stops, writing msg, as a raise nothing catches does. */
 _Noreturn void sngl_panic(const char *msg);
 
+/* sngl_panic_hook, where set, is called with a panic's message first: the
+ * test agent fails the test running and goes on to the next. */
+extern void (*sngl_panic_hook)(const char *msg);
+
 sngl_string sngl_concat(sngl_string a, sngl_string b);
 bool sngl_string_eq(sngl_string a, sngl_string b);
 int sngl_string_cmp(sngl_string a, sngl_string b);

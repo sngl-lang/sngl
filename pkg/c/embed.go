@@ -15,8 +15,19 @@ var Header []byte
 //go:embed runtime/sngl.c
 var Source []byte
 
+// TestHeader and TestSource are the test agent a program built for `sngl
+// test` runs in, written beside it then.
+//
+//go:embed runtime/sngl_test.h
+var TestHeader []byte
+
+//go:embed runtime/sngl_test.c
+var TestSource []byte
+
 // The names the runtime is written under, beside the program.
 const (
-	HeaderFile = "sngl.h"
-	SourceFile = "sngl.c"
+	HeaderFile     = "sngl.h"
+	SourceFile     = "sngl.c"
+	TestHeaderFile = "sngl_test.h"
+	TestSourceFile = "sngl_test.c"
 )

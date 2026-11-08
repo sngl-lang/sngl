@@ -191,4 +191,4 @@ static void sngl_lambda1(void *env_, void * self) {
 # What this program links, which `sngl build` reads.
 pkg-config gtk4
 -- run/c/gtk4 --
-pass sha256:b3461d65639ea30f62e49357bb320da6
+pass sha256:ac8317a80752caf081f9d4ad325fcfbd

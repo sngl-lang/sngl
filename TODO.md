@@ -347,7 +347,14 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
      string out of it yet (step 4's ownership).
 3. **`sngl test` on C.** The test agent's JSON-RPC (`pkg/go/testagent`) in
    C, and the test lowering, so a test function clicks, asserts and reads
-   state. `run/c/gtk4` is recorded as `run/go/gtk4` is.
+   state. `run/c/gtk4` is recorded as `run/go/gtk4` is. Done for a click:
+   `cmd/sngl/testdata/c_gtk4_test_runs.txt`. The agent is
+   `pkg/c/runtime/sngl_test.c`, single-threaded, a failed `must` and a panic
+   leaving a test by `longjmp`; the C language launches it
+   (`LaunchTest`). Each test builds the program, since its state is the
+   file's. A trigger emits the signal its handler is connected to, so one
+   carrying a value or a property's notification is refused, and so are
+   `t.snapshot`, `t.wait` and `t.setContext`.
 4. **The rest of the language**, each against the gtk4 goldens that need it:
    lists, maps, options, payload enums and `match`, closures, generics,
    string formatting and units, `async`. Each construct C does not yet write
