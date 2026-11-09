@@ -58,7 +58,7 @@ static void conn_write(const char *s, size_t n, void *ctx) {
 /* capture draws the toplevel shown last, its client area, into a DIB
  * section: PrintWindow has the window and each control in it paint there, as
  * they would on a screen, which under Wine's null driver there is none of. */
-static bool capture(unsigned char **png, size_t *n, const char **why) {
+static bool capture(unsigned char **rgba, int *width, int *height, const char **why) {
 	/* A layout a change posted runs first. */
 	sngl_win32_pump();
 	HWND top = sngl_win32_shown();
@@ -103,7 +103,10 @@ static bool capture(unsigned char **png, size_t *n, const char **why) {
 			p[2] = b;
 			p[3] = 0xff;
 		}
-		*png = sngl_test_png(bits, w, h, n);
+		*rgba = malloc((size_t)w * (size_t)h * 4);
+		memcpy(*rgba, bits, (size_t)w * (size_t)h * 4);
+		*width = w;
+		*height = h;
 	}
 	SelectObject(dc, was);
 	DeleteObject(bmp);

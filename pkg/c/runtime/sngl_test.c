@@ -223,7 +223,7 @@ static void sngl_string_member(const char *line, const char *key, char *out, siz
 
 /* --- Snapshots --- */
 
-bool (*sngl_test_capture)(unsigned char **png, size_t *n, const char **why);
+bool (*sngl_test_capture)(unsigned char **rgba, int *width, int *height, const char **why);
 
 /* The id of the request the agent sent last: its own, counted apart from
  * the driver's. */
@@ -257,22 +257,24 @@ void sngl_test_snapshot(sngl_t *t, sngl_string name) {
 		sngl_snapshot_failed(t, name, "\": ", "this platform draws no snapshot in C");
 		return;
 	}
-	unsigned char *png = NULL;
-	size_t n = 0;
+	unsigned char *rgba = NULL;
+	int w = 0, h = 0;
 	const char *why = "";
-	if (!sngl_test_capture(&png, &n, &why)) {
+	if (!sngl_test_capture(&rgba, &w, &h, &why)) {
 		sngl_snapshot_failed(t, name, "\": capture: ", why);
 		return;
 	}
+	/* The pixels as they are, which the driver encodes as a PNG
+	 * (testlaunch.RawPixelsMime). */
 	long long id = ++sngl_request_id;
 	sngl_printf("{\"jsonrpc\":\"2.0\",\"id\":%lld,\"method\":\"snapshotAssert\",\"params\":{\"test\":", id);
 	sngl_json_str(t->name);
 	sngl_puts(",\"name\":");
 	sngl_json(name.ptr, name.len);
-	sngl_puts(",\"mime\":\"image/png\",\"bytes\":\"");
-	sngl_base64(png, n);
+	sngl_printf(",\"mime\":\"image/x-sngl-rgba\",\"width\":%d,\"height\":%d,\"bytes\":\"", w, h);
+	sngl_base64(rgba, (size_t)w * (size_t)h * 4);
 	sngl_puts("\"}}\n");
-	free(png);
+	free(rgba);
 	sngl_send();
 	/* The driver sends nothing else while a test runs, so the next line
 	 * with this id is its answer. */
@@ -296,187 +298,6 @@ void sngl_test_snapshot(sngl_t *t, sngl_string name) {
 		return;
 	}
 	sngl_snapshot_failed(t, name, "\": ", "the driver went away before it answered");
-}
-
-/* sngl_crc32 continues crc, PNG's, over the n bytes at p. */
-static uint32_t sngl_crc32(uint32_t crc, const unsigned char *p, size_t n) {
-	static uint32_t table[256];
-	if (table[1] == 0) {
-		for (uint32_t i = 0; i < 256; i++) {
-			uint32_t c = i;
-			for (int k = 0; k < 8; k++) {
-				c = c & 1 ? 0xedb88320u ^ (c >> 1) : c >> 1;
-			}
-			table[i] = c;
-		}
-	}
-	crc = ~crc;
-	for (size_t i = 0; i < n; i++) {
-		crc = table[(crc ^ p[i]) & 0xff] ^ (crc >> 8);
-	}
-	return ~crc;
-}
-
-static unsigned char *sngl_be32(unsigned char *p, uint32_t v) {
-	p[0] = (unsigned char)(v >> 24);
-	p[1] = (unsigned char)(v >> 16);
-	p[2] = (unsigned char)(v >> 8);
-	p[3] = (unsigned char)v;
-	return p + 4;
-}
-
-/* sngl_png_chunk writes the chunk of type typ holding the n bytes at data
- * at p, returning where it ends. */
-static unsigned char *sngl_png_chunk(unsigned char *p, const char *typ, const unsigned char *data, size_t n) {
-	p = sngl_be32(p, (uint32_t)n);
-	unsigned char *start = p;
-	memcpy(p, typ, 4);
-	if (n > 0) {
-		memcpy(p + 4, data, n);
-	}
-	p += 4 + n;
-	return sngl_be32(p, sngl_crc32(0, start, 4 + n));
-}
-
-/* sngl_bits is a deflate stream being written, its bits from the lowest. */
-typedef struct {
-	unsigned char *p;
-	size_t n, cap;
-	uint32_t acc;
-	int nacc;
-} sngl_bits;
-
-static void sngl_bits_put(sngl_bits *b, uint32_t v, int n) {
-	b->acc |= v << b->nacc;
-	b->nacc += n;
-	while (b->nacc >= 8) {
-		if (b->n == b->cap) {
-			b->cap = b->cap * 2 + 64;
-			b->p = realloc(b->p, b->cap);
-		}
-		b->p[b->n++] = (unsigned char)b->acc;
-		b->acc >>= 8;
-		b->nacc -= 8;
-	}
-}
-
-/* sngl_bits_code writes a Huffman code, whose bits deflate packs from the
- * highest. */
-static void sngl_bits_code(sngl_bits *b, uint32_t code, int n) {
-	uint32_t r = 0;
-	for (int i = 0; i < n; i++) {
-		r = r << 1 | (code >> i & 1);
-	}
-	sngl_bits_put(b, r, n);
-}
-
-/* sngl_bits_symbol writes a literal, a length or the end in deflate's fixed
- * code. */
-static void sngl_bits_symbol(sngl_bits *b, int s) {
-	if (s < 144) {
-		sngl_bits_code(b, 0x30 + (uint32_t)s, 8);
-	} else if (s < 256) {
-		sngl_bits_code(b, 0x190 + (uint32_t)(s - 144), 9);
-	} else if (s < 280) {
-		sngl_bits_code(b, (uint32_t)(s - 256), 7);
-	} else {
-		sngl_bits_code(b, 0xc0 + (uint32_t)(s - 280), 8);
-	}
-}
-
-static const uint16_t sngl_len_base[29] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258};
-static const uint8_t sngl_len_extra[29] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0};
-static const uint16_t sngl_dist_base[30] = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577};
-static const uint8_t sngl_dist_extra[30] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
-
-/* sngl_bits_match writes a copy of len bytes from dist back. */
-static void sngl_bits_match(sngl_bits *b, int len, int dist) {
-	int k = 28;
-	while (sngl_len_base[k] > len) {
-		k--;
-	}
-	sngl_bits_symbol(b, 257 + k);
-	sngl_bits_put(b, (uint32_t)(len - sngl_len_base[k]), sngl_len_extra[k]);
-	int j = 29;
-	while (sngl_dist_base[j] > dist) {
-		j--;
-	}
-	sngl_bits_code(b, (uint32_t)j, 5);
-	sngl_bits_put(b, (uint32_t)(dist - sngl_dist_base[j]), sngl_dist_extra[j]);
-}
-
-/* The PNG holds its pixels deflated in one block of the fixed code, whose
- * only copies are of the pixel before and of the row above: what a window
- * repeats, its flat fills, costs a few bits a run, and no C runtime ships
- * a deflate. */
-unsigned char *sngl_test_png(const unsigned char *rgba, int w, int h, size_t *n) {
-	size_t row = (size_t)w * 4 + 1, raw = row * (size_t)h;
-	unsigned char *r = malloc(raw);
-	for (int y = 0; y < h; y++) {
-		/* Each row starts with its filter, none. */
-		r[(size_t)y * row] = 0;
-		memcpy(r + (size_t)y * row + 1, rgba + (size_t)y * (size_t)w * 4, (size_t)w * 4);
-	}
-	sngl_bits b = {0};
-	sngl_bits_put(&b, 0x78, 8);
-	sngl_bits_put(&b, 0x01, 8);
-	/* The last block, of the fixed code. */
-	sngl_bits_put(&b, 1, 1);
-	sngl_bits_put(&b, 1, 2);
-	size_t dists[2] = {4, row};
-	for (size_t i = 0; i < raw;) {
-		size_t best = 0, at = 0;
-		for (int k = 0; k < 2; k++) {
-			size_t d = dists[k];
-			if (d > i || d > 32768) {
-				continue;
-			}
-			size_t l = 0;
-			while (l < 258 && i + l < raw && r[i + l] == r[i + l - d]) {
-				l++;
-			}
-			if (l > best) {
-				best = l;
-				at = d;
-			}
-		}
-		if (best >= 3) {
-			sngl_bits_match(&b, (int)best, (int)at);
-			i += best;
-		} else {
-			sngl_bits_symbol(&b, r[i++]);
-		}
-	}
-	sngl_bits_symbol(&b, 256);
-	if (b.nacc > 0) {
-		sngl_bits_put(&b, 0, 8 - b.nacc);
-	}
-	uint32_t a = 1, s2 = 0;
-	for (size_t i = 0; i < raw; i++) {
-		a = (a + r[i]) % 65521;
-		s2 = (s2 + a) % 65521;
-	}
-	free(r);
-	unsigned char adler[4];
-	sngl_be32(adler, s2 << 16 | a);
-	for (int i = 0; i < 4; i++) {
-		sngl_bits_put(&b, adler[i], 8);
-	}
-	unsigned char ihdr[13];
-	sngl_be32(ihdr, (uint32_t)w);
-	sngl_be32(ihdr + 4, (uint32_t)h);
-	/* Eight bits a sample, RGBA, deflate, PNG's one filter method, no
-	 * interlace. */
-	memcpy(ihdr + 8, "\x08\x06\x00\x00\x00", 5);
-	unsigned char *png = malloc(8 + 25 + 12 + b.n + 12);
-	unsigned char *p = png;
-	memcpy(p, "\x89PNG\r\n\x1a\n", 8);
-	p = sngl_png_chunk(p + 8, "IHDR", ihdr, sizeof ihdr);
-	p = sngl_png_chunk(p, "IDAT", b.p, b.n);
-	p = sngl_png_chunk(p, "IEND", NULL, 0);
-	free(b.p);
-	*n = (size_t)(p - png);
-	return png;
 }
 
 static void sngl_respond(long long id, const char *result) {
