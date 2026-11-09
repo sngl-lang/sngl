@@ -387,7 +387,7 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
 it calls and wraps them in the stdlib's components, and each widget's create,
 append, remove, set and event are `#[gen.protocol]` functions. Its runtime is
 C shipped with the platform (Part 1, item 7). It holds the window procedure,
-the message loop and the layout engine. It builds with Go (cgo against MinGW)
+the message loop and the layout engine. It builds with Go (through Part 4's generated wrappers, cgo against MinGW)
 and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
 
 ### Decisions
@@ -659,10 +659,16 @@ what someone wrapped, and win32's Go path would need the same again.
   they cross) and writes a Go package with one wrapper per declaration, the
   cgo in it and none in the program. Beside each `cnative` mark it adds a
   `go.native` mark pointing at its wrapper.
-- **The Go codegen sees both marks and writes one**, by a build option on
-  the language or platform that defaults to the wrapper. Direct cgo stays
-  available for what a wrapper cannot express, and as gtk4's `cgo=true`
-  opt-out is today.
+- **The Go codegen sees both marks and writes one**, by a build option.
+  **Decided:** gtk4's `cgo=true` becomes an enum, `direct`, `wrapper` or
+  `purego`, defaulting to `wrapper`. `wrapper` falls back to `direct` for a
+  declaration with no wrapper, so a declaration the tool cannot wrap still
+  builds. `purego` calls C through
+  [purego](https://github.com/ebitengine/purego), with no cgo at all.
+- **Decided: where the wrappers go is a flag.** The tool takes the Go
+  import path and the destination file on its command line, and detects
+  both by default: the module from the nearest `go.mod`, and a path beside
+  the platform package (as `lib/platform/win32/rt` is).
 - **`go generate` keeps it current.** The wrapper package and the marks are
   committed, and a test holds them to the declarations, as win32gen's test
   holds `api.sngl`.
@@ -676,17 +682,18 @@ what someone wrapped, and win32's Go path would need the same again.
   exists), win32, and any C platform added later.
 - **Ship it as `sngl tool cgogen`**, so a user's own package of `cnative`
   declarations gets wrappers the same way.
+- **Decided: win32's Go path is the tool's first user.** win32 does not
+  call C directly from Go first and move over later; its Go path is built on
+  the generated wrappers, and gtk4 moves onto them after.
 
 ### Open questions
 
-- Where the wrapper package lives: beside the platform's SNGL (as
-  `lib/platform/win32/rt` is), or under `pkg/go/`. It has to be importable by
-  generated programs and versioned with the library.
 - How a callback (`#[c.context]`, `#[c.release]`) crosses a wrapper: gtk4rt
   registers Go handlers through `cbind` today, which the generator would
   have to write.
 - What a wrapper costs per call against direct cgo, which is one cgo call
   either way, and whether strings should be converted inside the wrapper
   (as gtk4rt does) rather than by `CMarshal` in the program.
-- The order against Part 3: win32's Go path could be the tool's first user,
-  rather than writing direct cgo first and moving it later.
+- What `purego` cannot reach: a struct passed by value, a callback's
+  context, and a macro (`GetWindowLongPtrW` on 386) each need checking
+  against its limits.
