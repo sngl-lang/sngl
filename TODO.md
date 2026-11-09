@@ -414,7 +414,14 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
 
 ### The steps
 
-1. **The generator: `internal/cmd/win32gen` → committed SNGL.**
+1. **The generator: `internal/cmd/win32gen` → committed SNGL.** Done:
+   `lib/platform/win32/api` (`sngl:platform/win32/api`), held formatted by
+   win32gen's own test and checked as every library package is. win32json
+   says what is declared and which parameters are out or optional; each C
+   spelling comes from MinGW's preprocessed headers for both architectures,
+   since the metadata writes `UInt32` where C writes `UINT` or `DWORD`, which
+   cgo tells apart. An optional handle is written as a handle, losing only
+   NULL. `GetWindowLongPtrW` is a macro on 386, so the C runtime calls it.
    - Run as `go tool win32gen`, it fetches win32json at a pinned commit (in a
      const) into a temp directory. The partitions are
      `UI.WindowsAndMessaging`, `Graphics.Gdi`, `UI.Controls`, `Foundation`
@@ -503,13 +510,17 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      in `codegen/platform/platforms.go`.
    - `SupportedLangs` is `{"go", "c"}` once Part 2 exists, `{"go"}` until
      then.
-   - It builds a MutationModel. Every op is a declared protocol, so the
-     translator only places nodes: model fields, the application's attach,
-     render slots and instances. Neither gtk4's nor fyne's generator is
-     language-neutral (both write Go text in Go), so the placement logic
-     either goes to `codegen` for both languages or is written over the IR
-     and handed to the language's renderer. Decide this before copying
-     either; it is the same question Part 2 asks of every platform.
+   - **Decided: placement is SNGL, not a generator's Go.** gtk4 writes it
+     twice, in Go (`compiler_ir.go`) and in C (`c_emit.go`, `c_record.go`).
+     win32 writes it neither way. What every platform shares -- a widget as
+     a record's field or a local, a record's constructor and teardown, an
+     instance built and destroyed, a slot's children appended -- is a
+     lowering pass writing plain IR, which each language already renders.
+     What one platform decides -- where a window attaches, what hosts a
+     slot, how an anchor is held, what a record's root is, what teardown
+     releases -- is a protocol function in its own package. win32's slice
+     builds it; gtk4 moves onto it after, its recorded runs in both
+     languages holding it unchanged.
    - `FirstUnimplementedNode` refuses what the slice does not cover yet,
      so `sngl test` reports a skip rather than a compile error.
    - Everything snapshot-specific is behind `//go:build !js` with a `_js.go`
@@ -604,8 +615,3 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      run there as gtk4's do.
    - A `winmd:` import scheme, if a program wants to declare a Win32 call the
      committed file does not hold. It is not needed for the platform itself.
-
-### Open questions
-
-- Where a platform generator's node placement lives once more than one
-  language renders it (step 4).

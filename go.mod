@@ -164,6 +164,7 @@ tool (
 	duckfam.us/sngl/cmd/sngl
 	duckfam.us/sngl/internal/cmd/docsgen
 	duckfam.us/sngl/internal/cmd/verify
+	duckfam.us/sngl/internal/cmd/win32gen
 	fyne.io/fyne/v2
 	github.com/bwplotka/mdox
 	golang.org/x/tools/cmd/stringer
