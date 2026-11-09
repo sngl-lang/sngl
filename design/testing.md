@@ -159,6 +159,13 @@ run as an edit to the codegen does, and only a run that succeeded is recorded.
 The program never depends on the host's GIR, because no test reads one (see
 gtk4 in design/architecture.md).
 
+**And so is each C compiler's build and run in `codegen/lang/c`'s
+`TestRun`**, recorded in `codegen/lang/c/testdata/run_records/<archive>/<cc>-<variant>`:
+a digest of the compiler, its flags, program.c, main.c, the runtime and what
+the run must print. Its matrix (`clang.Matrix`) is gcc, clang (each also under
+AddressSanitizer and UBSan) and both MinGW compilers, whose programs run
+under Wine, so a plain run needs none of them and `-update` needs all of them.
+
 **A test program that goes away before it answers its run fails it**
 (`exitedEarly`, `cmd/sngl/testdata/test_program_exits_runs.txt`): a Go
 target's stack overflow ends the program where no recover reaches, and the

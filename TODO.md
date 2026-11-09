@@ -405,7 +405,8 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
   bits and messages (`BM_SETCHECK`). So the widget wrappers are written by
   hand, over generated declarations.
 - **Both architectures; amd64 is the default.** An `arch` option on the
-  platform node takes `amd64` or `386`.
+  platform node takes `amd64` or `386`, and the test matrix, CI included,
+  runs both.
 - **The first milestone is a vertical slice:** `ui.window`, `ui.text`,
   `ui.button`, `ui.input`, `ui.checkbox`, `ui.vbox`, `ui.hbox` and
   `ui.spacer`, events, style basics, goldens, and a Wine-under-cage test
@@ -524,9 +525,10 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      language turns that into its own build:
      - **Go:** `GOOS=windows`, `GOARCH`, `CGO_ENABLED=1` and `CC=<arch>-w64-mingw32-gcc`.
      - **C:** the MinGW compiler directly.
-   - Either the node's options reach the language's build intrinsic, or the
-     node writes its own `gen.build`/`gen.run`. Decide which after reading
-     `lib/x/gen/command.sngl` and how `sngl:language/go` writes its own.
+   - **Decided:** a build option on the platform node names the target, and
+     the language's build reads it. It defaults to the host, and win32, which
+     targets only Windows, cross-compiles on Linux. `sngl build` writes an
+     `.exe`, and `sngl run` on Linux runs it under `wine` without being asked.
    - A program links as a GUI program (`-H=windowsgui` for Go, `-mwindows`
      for C); a test agent does not, since it talks over stdin and stdout.
    - The binary is `<name>.exe` (`binaryName`).
@@ -541,10 +543,11 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      stdout piped as the `RPCChannel` the test agent speaks. It reports
      `codegen.SkipError` where `wine`, the MinGW compiler or cage is
      missing.
-   - **Open question:** whether a console-subsystem `.exe` under Wine passes
-     Unix pipes through to its standard handles cleanly enough for the
-     JSON-RPC. If not, fall back to a TCP port, as android does over
-     `adb forward`.
+   - **Decided:** the agent under Wine talks over TCP, as android's does over
+     `adb forward`, not over pipes.
+   - **Decided:** every build and run under Wine is recorded by digest, as
+     gtk4's and `codegen/lang/c`'s `TestRun` are: a plain run launches
+     nothing, `-update` reruns what moved and `-verify` everything.
    - Wine setup:
      - A `WINEPREFIX` per test cache directory, made once with
        `wineboot -i` outside cage and reused, since one is slow to make.
@@ -604,11 +607,5 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
 
 ### Open questions
 
-- Should `GOARCH=386` stay a supported default-off option once `amd64` works,
-  or be tested in CI too? Wine runs both on this host, and CI's Debian image
-  needs `wine32` for 386.
 - Where a platform generator's node placement lives once more than one
   language renders it (step 4).
-- The cross-compile hook: platform options read by the language's build or a
-  platform-written `gen.build` (step 5).
-- Pipes or TCP for the test agent under Wine (step 6).

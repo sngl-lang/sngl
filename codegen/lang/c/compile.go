@@ -38,18 +38,29 @@ type Compiler struct {
 	Windows bool
 }
 
-// Compilers are the C compilers on the host that SNGL holds its output to:
-// gcc, the reference, clang, and MinGW's for 64- and 32-bit Windows.
-func Compilers() []Compiler {
-	var out []Compiler
-	for _, c := range []Compiler{
+// Matrix is every C compiler SNGL holds its output to: gcc, the reference,
+// clang, and MinGW's for 64- and 32-bit Windows. Path is empty for one the
+// host lacks.
+func Matrix() []Compiler {
+	out := []Compiler{
 		{Name: "gcc"},
 		{Name: "clang"},
 		{Name: "x86_64-w64-mingw32-gcc", Windows: true},
 		{Name: "i686-w64-mingw32-gcc", Windows: true},
-	} {
+	}
+	for i, c := range out {
 		if p, err := exec.LookPath(c.Name); err == nil {
-			c.Path = p
+			out[i].Path = p
+		}
+	}
+	return out
+}
+
+// Compilers are the compilers of the Matrix on the host.
+func Compilers() []Compiler {
+	var out []Compiler
+	for _, c := range Matrix() {
+		if c.Path != "" {
 			out = append(out, c)
 		}
 	}
