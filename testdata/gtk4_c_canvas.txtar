@@ -494,7 +494,7 @@ static sngl_list___anon_id_elem_4ccb28 s___identified0(sngl_list_float __xs) {
 		sngl_string __id = sngl_string_replace(sngl_float_format(__x), SNGL_STR("#"), SNGL_STR("##"));
 		int64_t __n = sngl_map_string__int_get(__seen, __id, 0);
 		(*sngl_map_string__int_slot(&(__seen), __id)) = (__n + 1);
-		if ((__n > 0)) {
+		if (__n > 0) {
 			__id = sngl_concat(sngl_concat(__id, SNGL_STR("#")), sngl_int_format((int64_t)(__n)));
 		}
 		sngl_list___anon_id_elem_4ccb28_push(&(__out), (s___anon_id_elem_4ccb28){.id = __id, .elem = __x});
@@ -503,15 +503,15 @@ static sngl_list___anon_id_elem_4ccb28 s___identified0(sngl_list_float __xs) {
 }
 
 static void s_platform_gtk4__paint(cairo_t * ctx, s_ui_draw__Style style) {
-	if ((style.fill.a > 0)) {
+	if (style.fill.a > 0) {
 		s_platform_gtk4__source(ctx, style.fill);
-		if ((style.stroke.a > 0)) {
+		if (style.stroke.a > 0) {
 			cairo_fill_preserve(ctx);
 		} else {
 			cairo_fill(ctx);
 		}
 	}
-	if ((style.stroke.a > 0)) {
+	if (style.stroke.a > 0) {
 		cairo_set_line_width(ctx, (double)(style.strokeWidth));
 		cairo_set_line_cap(ctx, s_platform_gtk4__lineCap(style.lineCap));
 		cairo_set_line_join(ctx, s_platform_gtk4__lineJoin(style.lineJoin));
@@ -525,20 +525,20 @@ static void s_platform_gtk4__source(cairo_t * ctx, s_builtin__color c__r0) {
 }
 
 static cairo_line_cap_t s_platform_gtk4__lineCap(int64_t cap) {
-	if ((cap == 1)) {
+	if (cap == 1) {
 		return (cairo_line_cap_t)((int)(1));
 	}
-	if ((cap == 2)) {
+	if (cap == 2) {
 		return (cairo_line_cap_t)((int)(2));
 	}
 	return (cairo_line_cap_t)((int)(0));
 }
 
 static cairo_line_join_t s_platform_gtk4__lineJoin(int64_t join) {
-	if ((join == 1)) {
+	if (join == 1) {
 		return (cairo_line_join_t)((int)(1));
 	}
-	if ((join == 2)) {
+	if (join == 2) {
 		return (cairo_line_join_t)((int)(2));
 	}
 	return (cairo_line_join_t)((int)(0));
@@ -581,14 +581,14 @@ static void s___renderSlot0(GtkBox * parent) {
 						sngl_string __key1 = r.id;
 						int64_t __key1_n = sngl_map_string__int_get(__inst0_seen, __key1, 0);
 						(*sngl_map_string__int_slot(&(__inst0_seen), __key1)) = (__key1_n + 1);
-						if ((__key1_n > 0)) {
+						if (__key1_n > 0) {
 							__key1 = sngl_concat(sngl_concat(__key1, SNGL_STR("#")), sngl_int_format((int64_t)(__key1_n)));
 						}
-						if ((sngl_map_string__instance_dot__find(s___inst0_live, __key1) >= 0)) {
+						if (sngl_map_string__instance_dot__find(s___inst0_live, __key1) >= 0) {
 							__n0 = sngl_map_string__instance_dot__get(s___inst0_live, __key1, NULL);
 							s_dot___set_r(__n0, r.elem);
 						} else {
-							if ((sngl_map_string__instance_dot__find(s___inst0_live, __key1) >= 0)) {
+							if (sngl_map_string__instance_dot__find(s___inst0_live, __key1) >= 0) {
 								s_dot__destroy(sngl_map_string__instance_dot__get(s___inst0_live, __key1, NULL));
 							}
 							s___n0__new = s_dot__new(r.elem);
@@ -695,4 +695,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:0750443ef952e6c0647371b25a56def1
+pass sha256:e797e988aa0020cc544e4f7b23bb955e

@@ -163,6 +163,7 @@ func write(t *testing.T, dir, name string, data []byte) {
 // run is what exe prints, under Wine where cc builds for Windows.
 func run(t *testing.T, cc clang.Compiler, exe string) string {
 	t.Helper()
+	exe = cc.Exe(exe)
 	name, args := exe, []string(nil)
 	if cc.Windows {
 		wine, err := exec.LookPath("wine")

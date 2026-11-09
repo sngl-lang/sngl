@@ -27,7 +27,7 @@ func (c *Context) merge(n *ir.Call, args []string) (string, bool) {
 		b.WriteString("static " + typ + " " + name + "(" + typ + " base, " + typ + " ov) {\n")
 		for _, f := range sd.Fields {
 			v := "ov." + Local(f.Name)
-			b.WriteString("\tif (" + c.notZero(f.Type, v) + ") {\n\t\tbase." + Local(f.Name) + " = " + v + ";\n\t}\n")
+			b.WriteString("\tif (" + bare(c.notZero(f.Type, v)) + ") {\n\t\tbase." + Local(f.Name) + " = " + v + ";\n\t}\n")
 		}
 		b.WriteString("\treturn base;\n}\n")
 		c.file.helper(name, b.String())

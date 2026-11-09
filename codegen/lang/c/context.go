@@ -885,7 +885,7 @@ func (c *Context) ContinueText() string { return "continue;" }
 func (c *Context) ForHead(n *ir.For, iter string) string {
 	switch n.IterKind {
 	case ir.IterCondition:
-		return "while (" + iter + ") {"
+		return "while (" + bare(iter) + ") {"
 	case ir.IterForever:
 		return "for (;;) {"
 	case ir.IterCounted:
@@ -921,10 +921,41 @@ func (c *Context) countedHead(n *ir.For) string {
 	return "for (int64_t " + i + " = 0, " + v + " = " + start + ", " + v + "__end = " + end + "; " + v + cmp + v + "__end; " + i + "++, " + v + step + ") {"
 }
 
-func (c *Context) IfHead(_ *ir.If, cond string) string { return "if (" + cond + ") {" }
+func (c *Context) IfHead(_ *ir.If, cond string) string { return "if (" + bare(cond) + ") {" }
 func (c *Context) ElseHead() string                    { return "} else {" }
 func (c *Context) BlockEnd() string                    { return "}" }
 func (c *Context) Indent() string                      { return "\t" }
+
+// bare is cond without the parentheses an expression wraps itself in, which
+// the head's own parentheses stand for: clang warns of a comparison in two
+// (-Wparentheses-equality), taking it for an assignment meant.
+func bare(cond string) string {
+	if len(cond) < 2 || cond[0] != '(' || cond[len(cond)-1] != ')' {
+		return cond
+	}
+	depth := 0
+	for i := 0; i < len(cond); i++ {
+		switch cond[i] {
+		case '"', '\'':
+			// A literal's parentheses are not the expression's.
+			q := cond[i]
+			for i++; i < len(cond) && cond[i] != q; i++ {
+				if cond[i] == '\\' {
+					i++
+				}
+			}
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 && i < len(cond)-1 {
+				// The first parenthesis closes before the end: (a) == (b).
+				return cond
+			}
+		}
+	}
+	return cond[1 : len(cond)-1]
+}
 
 // Catch is body under a catch point (sngl_catch), which a raise in it jumps
 // back to with the error: the point is off the stack by then, and the handler

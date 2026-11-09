@@ -56,11 +56,20 @@ func Compilers() []Compiler {
 	return out
 }
 
+// Exe is the file a build into out writes: MinGW names a Windows executable
+// out.exe, whatever out says.
+func (c Compiler) Exe(out string) string {
+	if c.Windows && !strings.HasSuffix(out, ".exe") {
+		return out + ".exe"
+	}
+	return out
+}
+
 // Build compiles sources, in dir, into out under std, with extra flags after
-// the standard ones (a library's, from its c.link). The compiler's own
-// output is the error when it fails.
+// the standard ones (a library's, from its c.link); the program is at
+// c.Exe(out). The compiler's own output is the error when it fails.
 func (c Compiler) Build(dir string, sources []string, out, std string, extra ...string) error {
-	args := append(Flags(std), "-o", out)
+	args := append(Flags(std), "-o", c.Exe(out))
 	args = append(args, sources...)
 	args = append(args, extra...)
 	args = append(args, "-lm")

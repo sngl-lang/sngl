@@ -282,7 +282,7 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 		return sl + "(" + xs + ", " + arg(1) + ", " + arg(2) + ")", true
 	case "list.indexOf":
 		eq := c.equal(t.Elems[0], "l.data[i]", "v")
-		idx := c.listOp(t, "index_of", "int64_t NAME(L l, T v)", "\tfor (int64_t i = 0; i < l.len; i++) {\n\t\tif ("+eq+") {\n\t\t\treturn i;\n\t\t}\n\t}\n\treturn -1;\n")
+		idx := c.listOp(t, "index_of", "int64_t NAME(L l, T v)", "\tfor (int64_t i = 0; i < l.len; i++) {\n\t\tif ("+bare(eq)+") {\n\t\t\treturn i;\n\t\t}\n\t}\n\treturn -1;\n")
 		return idx + "(" + xs + ", " + arg(1) + ")", true
 	case "list.join":
 		join := c.listOp(t, "join", "sngl_string NAME(L l, sngl_string sep)", `	sngl_string out = SNGL_STR("");
@@ -545,7 +545,7 @@ var mapPlaceholder = regexp.MustCompile(`\b(M|K|V|NAME)\b`)
 // has none.
 func (c *Context) mapFind(t *ir.Type) string {
 	eq := c.equal(t.Elems[0], "m.keys[i]", "k")
-	return c.mapOp(t, "find", "int64_t NAME(M m, K k)", "\tfor (int64_t i = 0; i < m.len; i++) {\n\t\tif ("+eq+") {\n\t\t\treturn i;\n\t\t}\n\t}\n\treturn -1;\n")
+	return c.mapOp(t, "find", "int64_t NAME(M m, K k)", "\tfor (int64_t i = 0; i < m.len; i++) {\n\t\tif ("+bare(eq)+") {\n\t\t\treturn i;\n\t\t}\n\t}\n\treturn -1;\n")
 }
 
 // mapSlot is the function answering where a key's value is in a map of t,
