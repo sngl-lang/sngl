@@ -567,50 +567,31 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      targets only Windows, cross-compiles on Linux. `sngl build` writes an
      `.exe`, and `sngl run` on Linux runs it under `wine` without being asked.
    - A program links as a GUI program (`-H=windowsgui` for Go, `-mwindows`
-     for C); a test agent does not, since it talks over stdin and stdout.
+     for C), its test agent too, which talks over TCP.
    - The binary is `<name>.exe` (`binaryName`).
    - `sngl run` runs it under `wine`.
    - `internal/gencache/inputs.go:533` keys on `GOOS`, `GOARCH`,
      `CGO_ENABLED` and `CC` from the environment. Make sure the values
      set for the build, not only the ambient ones, are in the key.
-6. **Tests: a launcher, records and goldens.**
-   - `codegen.TestLauncher` on the generator (see
-     `codegen/platform/android/launcher.go` and `html/launcher.go`). It
-     cross-builds the agent and starts `wine agent.exe` with stdin and
-     stdout piped as the `RPCChannel` the test agent speaks. It reports
-     `codegen.SkipError` where `wine`, the MinGW compiler or cage is
-     missing.
-   - **Decided:** the agent under Wine talks over TCP, as android's does over
-     `adb forward`, not over pipes.
-   - **Decided:** every build and run under Wine is recorded by digest, as
-     gtk4's and `codegen/lang/c`'s `TestRun` are: a plain run launches
-     nothing, `-update` reruns what moved and `-verify` everything.
-   - Wine setup:
-     - A `WINEPREFIX` per test cache directory, made once with
-       `wineboot -i` outside cage and reused, since one is slow to make.
-     - `WINEDEBUG=-all`.
-     - `Graphics=x11`, with `DISPLAY` set to cage's own. `headless.Env`
-       leaves the developer's `DISPLAY` in place today, so an X11 client in
-       cage could reach the real desktop. Clear it, or check that cage always
-       overrides it.
-   - The snapshot is at a fixed client size. cage maximizes the window, so pick
-     the size with `SetWindowPos` after the window is mapped, or run Wine's
-     virtual desktop (`explorer /desktop=sngl,800x600`).
-   - `internal/toolchain/toolchain.go`:
-     - a `win32` case in `Unavailable` (the MinGW compiler for the arch,
-       `wine`, and `go` for Go)
-     - `PresentsWindows` true for win32
-     - win32 in `Build` and `Exec`
-     - Wine's failure strings in `SkipReason`
-   - The `Dockerfile` installs `wine`, `mingw-w64` and `xwayland` beside
-     cage. Check that Debian's cage starts Xwayland.
-   - Goldens `testdata/win32_*.txtar`: the generated code for each slice
-     component, per language, with recorded runs under `run/<lang>/win32` and
-     `testrun/win32/<lang>/…`.
-   - CLI scripts `cmd/sngl/testdata/win32_*.txt`, behind a `[win32]`
-     condition in `cmd/sngl/script_test.go`: build, run, and a click that
-     writes state, read back from a snapshot.
-   - Confirm each new fixture fails with its behavior reverted.
+6. **Tests: a launcher, records and goldens.** Done for C: the agent is
+   cross-compiled for the program's `arch` and runs under Wine, connecting
+   back to a loopback listener (`codegen/platform/win32/launcher.go`,
+   `design/testing.md`), and a test's trigger is the platform's
+   `#[gen.fires]` (`design/nodes.md`). Recorded for both architectures in
+   `cmd/sngl/testdata/c_win32_test_runs.txt`.
+   - **Changed from the plan:** the prefix draws with Wine's null driver, not
+     X11 under cage. It needs no display, so `DISPLAY` is cleared and nothing
+     reaches the developer's desktop, and with no window manager a window
+     keeps the size the program gives it. Under cage, Xwayland kept a window
+     at its creation size while Wine laid it out at the size `attach` asked
+     for, which was the "box does not fill the window" seen in the first
+     screenshots; the layout itself fills.
+   - Still open:
+     - Snapshots: the C agent answers no `t.snapshot` on any platform yet.
+       Under the null driver, `PrintWindow` into a DIB section captures a
+       window at a size the test fixes.
+     - A trigger of one copy of a node a loop renders (`c.row[1].click()`)
+       is refused by passPlacement.
 7. **Docs.**
    - `design/architecture.md`: a win32 bullet under *Platform Details*, with
      its C runtime and cross-compilation.

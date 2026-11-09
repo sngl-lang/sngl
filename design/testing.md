@@ -166,6 +166,22 @@ the run must print. Its matrix (`clang.Matrix`) is gcc, clang (each also under
 AddressSanitizer and UBSan) and both MinGW compilers, whose programs run
 under Wine, so a plain run needs none of them and `-update` needs all of them.
 
+**A win32 test runs under Wine in a prefix of the cache's**
+(`codegen/platform/win32/launcher.go`). The agent is cross-compiled with
+MinGW's compiler for the program's `arch` (`--opt arch=386` for 32-bit;
+`sngl test` takes options from its flags, not the output block) and run with
+the port of a loopback listener as its argument, which it connects back to
+(`sngl_win32_agent.c`): Wine hands a Windows program none of the host's
+pipes, so the C agent serves over whatever channel it is given
+(`sngl_test_serve`), stdin and stdout for every other C program. The prefix
+is made once, under a lock, with `wineboot -i` and the null graphics driver,
+and reused: the null driver needs no display, so `DISPLAY` is cleared and no
+window reaches a desktop, and with no window manager a window keeps the size
+the program gives it, where cage's Xwayland kept one at its creation size
+while Wine laid it out at another. `WINEDEBUG=-all` keeps Wine's diagnostics
+out of a failure's text. Each launch is recorded as any `sngl test` is
+(`cmd/sngl/testdata/c_win32_test_runs.txt`, both architectures).
+
 **A test program that goes away before it answers its run fails it**
 (`exitedEarly`, `cmd/sngl/testdata/test_program_exits_runs.txt`): a Go
 target's stack overflow ends the program where no recover reaches, and the

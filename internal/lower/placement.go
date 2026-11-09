@@ -49,7 +49,12 @@ func lowerPlacement(pkg *ir.Package, feats Features, _ Options) error {
 	if p.err != nil {
 		return p.err
 	}
+	liftRoot(pkg)
 	hoistNodes(pkg)
+	p.placeTests(pkg)
+	if p.err != nil {
+		return p.err
+	}
 	// The application is the platform's attach, and no value: nothing holds
 	// it once each attach is a call.
 	app := ir.Published().ApplicationType()
@@ -153,6 +158,12 @@ func closureFuncs(root any) []*ir.Func {
 
 type placement struct {
 	plat *ir.NodeProtocol
+	// fires is where a test fires each event the program handles, by
+	// "<id>.<event>" as the test names it (recordFire).
+	fires map[string]fireAt
+	// held is the package var holding each node a test reads that a
+	// function other than the package body makes, by its id (holdRead).
+	held map[string]*ir.Var
 	err  error
 }
 
@@ -296,6 +307,9 @@ func (p *placement) call(s ir.Stmt, call *ir.Call) []ir.Stmt {
 		if err != nil {
 			p.fail("%v", err)
 			return nil
+		}
+		if event, ok := arg(1).(*ir.Literal); ok {
+			p.recordFire(arg(0), event.Value, handler)
 		}
 		return through(connect)
 	default:

@@ -224,6 +224,21 @@ enum Protocol {
 // nothing itself.
 func protocol(op Protocol) ir.Macro
 
+// Says the function is how a test fires the event named on a node of the
+// component its first parameter is, for a platform asking for `placement`:
+// `c.save.click()` in a test is a call of it with the node, then what the
+// test hands the event. It puts each value where the host reads it -- an
+// edit's text, a check box's state -- and raises the host's own report, so
+// the handler the program connected runs as it would for the user:
+//
+//     #[gen.fires("click")]
+//     func _fire_Button_click(b Button) {
+//         _rtClick(b)
+//     }
+//
+// Its body is one call, as a protocol function's is.
+func fires(event string) ir.Macro
+
 // Names an event as its host knows it, where that is no SNGL name: GTK's
 // `notify::active` is `@notifyActive`. The `connect` operation is handed this
 // name, or the event's own where there is none.

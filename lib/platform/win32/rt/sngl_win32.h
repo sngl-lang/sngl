@@ -31,8 +31,10 @@ void sngl_win32_run(void);
 void sngl_win32_quit(void);
 
 /* sngl_win32_pump handles every message waiting and returns, the test agent's
- * way of letting the program settle between steps. */
+ * way of letting the program settle between steps; sngl_win32_step handles
+ * those waiting, or waits up to a millisecond for one. */
 void sngl_win32_pump(void);
+void sngl_win32_step(void);
 
 /* --- Nodes --- */
 
@@ -109,8 +111,21 @@ void sngl_win32_on_closed(HWND top, sngl_win32_fn fn, void *ctx, sngl_win32_rele
  * closes is hidden, ahead of its closed handler. */
 void sngl_win32_on_visible(HWND top, sngl_win32_bool_fn fn, void *ctx, sngl_win32_release release);
 
-/* sngl_win32_click presses a button or a checkbox as a user does, through
- * its own BM_CLICK: the test agent's trigger. */
-void sngl_win32_click(HWND w);
+/* --- A test's events ---
+ *
+ * Each puts what the test hands the event where Win32 keeps it and raises
+ * the notification the control would, which reaches the handler the program
+ * connected through the window the control is in, as the user's does. */
+
+/* sngl_win32_fire_click is a button's press, or a check box's, which is
+ * checked first. */
+void sngl_win32_fire_click(HWND w);
+void sngl_win32_fire_check(HWND w, int checked);
+/* sngl_win32_fire_change is text typed into an edit, and
+ * sngl_win32_fire_activate Enter pressed in it after. */
+void sngl_win32_fire_change(HWND w, const unsigned short *text);
+void sngl_win32_fire_activate(HWND w, const unsigned short *text);
+/* sngl_win32_fire_close is the window manager's close of a toplevel. */
+void sngl_win32_fire_close(HWND top);
 
 #endif

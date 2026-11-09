@@ -82,3 +82,101 @@ func strayClosures(root any, write func(*ir.Func)) {
 		return nil
 	})
 }
+
+// WriteTests writes pkg's tests into fe as the agent's, after WriteProgram:
+// a function each, and sngl_tests, the table sngl_test_serve is handed. A
+// test builds the program where it mounts the component it takes, or first
+// where it takes none, each from state set afresh. step is the call that
+// lets the program's loop run a moment, which a test's wait makes between
+// asking its predicate; a placed test's every other call is the program's
+// own (passPlacement), so nothing here knows a platform.
+func WriteTests(fe *FileEmitter, pkg *ir.Package, step string) error {
+	ctx := fe.Context()
+	var tName string
+	prev := ctx.Native
+	ctx.Native = func(c *Context, n *ir.Call) (string, bool) {
+		if out, ok := testCall(c, n, tName, step); ok {
+			return out, true
+		}
+		if prev != nil {
+			return prev(c, n)
+		}
+		return "", false
+	}
+	defer func() { ctx.Native = prev }()
+	teardown := ""
+	if pkg.Teardown != nil {
+		teardown = "\t\t" + Decl(&pkg.Teardown.DeclInfo) + "();\n"
+	}
+	var b strings.Builder
+	b.WriteString("\nstatic void sngl_reset(void) {\n\tstatic bool run;\n\tif (run) {\n" + teardown + "\t}\n\trun = true;\n\tsngl_init();\n}\n")
+	var table []string
+	for _, fn := range pkg.Funcs {
+		if !fn.IsTest {
+			continue
+		}
+		tName = "t"
+		if len(fn.Params) > 0 {
+			tName = fn.Params[0].Name
+		}
+		name := "sngl_" + fn.Name
+		fmt.Fprintf(&b, "\nstatic void %s(sngl_t *%s) {\n\tsngl_turn_enter();\n\tsngl_reset();\n", name, Local(tName))
+		if !mounts(fn) {
+			b.WriteString("\tsngl_build();\n")
+		}
+		for _, l := range ctx.EvalBlock(fn.Block) {
+			b.WriteString("\t" + l + "\n")
+		}
+		b.WriteString("\tsngl_turn_leave();\n}\n")
+		table = append(table, fmt.Sprintf("\t{%q, %s},", strings.TrimPrefix(fn.Name, "test"), name))
+	}
+	if len(table) == 0 {
+		b.WriteString("\nstatic const sngl_test *sngl_tests = NULL;\nstatic const size_t sngl_ntests = 0;\n")
+	} else {
+		b.WriteString("\nstatic const sngl_test sngl_tests[] = {\n" + strings.Join(table, "\n") + "\n};\nstatic const size_t sngl_ntests = sizeof sngl_tests / sizeof sngl_tests[0];\n")
+	}
+	if _, err := io.WriteString(fe, b.String()); err != nil {
+		return err
+	}
+	return fe.Err()
+}
+
+// mounts reports whether fn mounts the component it takes, which builds the
+// program where it does (passTestMount).
+func mounts(fn *ir.Func) bool {
+	found := false
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		if c, ok := n.(*ir.Call); ok && ir.IsTestCall(c, ir.TestMountID) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
+// testCall is n as the test being written makes it, or false where n is no
+// call only a test makes.
+func testCall(ctx *Context, n *ir.Call, tName, step string) (string, bool) {
+	switch {
+	case ir.IsTestCall(n, ir.TestMountID):
+		return "sngl_build()", true
+	case ir.IsTestCall(n, ir.TestAssertID), ir.IsTestCall(n, ir.TestMustID):
+		cond := ctx.EvalExpr(n.Args[1].Value)
+		fail, word := "sngl_test_fail", "assert"
+		if ir.IsTestCall(n, ir.TestMustID) {
+			fail, word = "sngl_test_fail_now", "must"
+		}
+		return "((" + cond + ") ? (void)0 : " + fail + "(" + Local(tName) + ", " + StringLiteral(word+" failed: "+cond) + "))", true
+	case ir.IsTestCall(n, ir.TestWaitID):
+		pred := n.Args[1].Value
+		fnT := ctx.TypeName(pred.ExprType())
+		name := fnT + "_wait"
+		ctx.Helper(name, "static void "+name+"("+fnT+" p, int64_t ms) {\n\tlong long end = sngl_test_now_ms() + ms;\n\twhile (!p.fn(p.env) && sngl_test_now_ms() < end) {\n\t\t"+step+";\n\t}\n}\n")
+		return name + "(" + ctx.EvalExpr(pred) + ", " + ctx.EvalExpr(n.Args[2].Value) + ")", true
+	case ir.IsTestMethodCall(n):
+		ctx.fail("a test's t.%s", n.Func.Name)
+		return "(void)0", true
+	}
+	return "", false
+}

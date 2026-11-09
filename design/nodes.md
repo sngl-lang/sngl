@@ -123,6 +123,26 @@ whole (`clang.WriteProgram`), so a platform on placement needs no translator:
 win32's generator writes only the program's entry
 (`testdata/win32_c_counter.txtar`, which fails with the pass turned off).
 
+**A test of a placed program reaches its instance as the program's own
+state** (`internal/lower/placetests.go`). A build rooted at the component a
+test takes renders it as the package body would: the root's vars, functions
+and body become the package's (`liftRoot`), so the language writes the one
+program it writes for any build. A test's `c.n` is then the package var, its
+`.value` where NoRef boxed it, and `c.save` the node's var. A node a function
+other than the package body makes -- a render slot's, made and taken away as
+the slot renders -- is held in a package var of its option that the
+function's every render starts by setting null (`holdRead`), so `c.big == null` once a branch took it away. A test's trigger, `c.save.click()`, is the
+platform's `#[gen.fires(event)]` function for the event the program's
+handler was connected to (`recordFire` notes it at each connect, under the
+name the program wrote, which an override may have connected under another:
+ui.input's `@change` is an edit's `@activate`), handed the node and the
+trigger's values. A fire puts each value where the host keeps it and raises
+the host's own notification, so the program's handler runs as it would for
+the user: win32's press of a check box sets its state and sends the
+`BN_CLICKED` the box would (`cmd/sngl/testdata/c_win32_test_runs.txt`). The
+language writes the tests with the program (`clang.WriteTests`), and only a
+test's own calls -- mount, assert, wait -- are its.
+
 The mark's other job is to stop the inliner. A platform's extension override
 inlines into its caller (`passInlinePure`), and every platform-package
 component must inline or the build fails — so the primitives those overrides

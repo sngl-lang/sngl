@@ -213,6 +213,14 @@ func _on_Window_closed(w Window, closed func()) {
     _rtWindowOnClosed(w, closed)
 }
 
+#[macro.cnative("sngl_win32_fire_close")]
+func _rtFireClose(w Window)
+
+#[gen.fires("closed")]
+func _fire_Window_closed(w Window) {
+    _rtFireClose(w)
+}
+
 #[macro.cnative("sngl_win32_on_visible")]
 func _rtWindowOnVisible(
     w Window,
@@ -339,6 +347,14 @@ func _on_Button_click(b Button, click func()) {
     _rtOnClick(b, click)
 }
 
+#[macro.cnative("sngl_win32_fire_click")]
+func _rtFireClick(w ui.node)
+
+#[gen.fires("click")]
+func _fire_Button_click(b Button) {
+    _rtFireClick(b)
+}
+
 // A check box Win32 checks itself as it is pressed, which `@click` reports
 // once it has.
 #[marks.intrinsic("win32:CheckBox")]
@@ -379,6 +395,15 @@ func _on_CheckBox_click(b CheckBox, click func()) {
     _rtOnClick(b, click)
 }
 
+#[macro.cnative("sngl_win32_fire_check")]
+func _rtFireCheck(b CheckBox, checked bool)
+
+// A test's press of a check box hands the state it leaves.
+#[gen.fires("click")]
+func _fire_CheckBox_click(b CheckBox, checked bool) {
+    _rtFireCheck(b, checked)
+}
+
 // A single-line EDIT control. `@change` is each change to its text the user
 // makes, and `@activate` Enter pressed in it.
 #[marks.intrinsic("win32:Edit")]
@@ -414,6 +439,23 @@ func _on_Edit_change(e Edit, change func()) {
 #[gen.protocol(on)]
 func _on_Edit_activate(e Edit, activate func()) {
     _rtOnActivate(e, activate)
+}
+
+#[macro.cnative("sngl_win32_fire_change")]
+func _rtFireChange(e Edit, text c.utf16)
+
+#[macro.cnative("sngl_win32_fire_activate")]
+func _rtFireActivate(e Edit, text c.utf16)
+
+// A test's change and activation of an edit hand the text it then holds.
+#[gen.fires("change")]
+func _fire_Edit_change(e Edit, text string) {
+    _rtFireChange(e, text)
+}
+
+#[gen.fires("activate")]
+func _fire_Edit_activate(e Edit, text string) {
+    _rtFireActivate(e, text)
 }
 
 // --- The stdlib's components ---

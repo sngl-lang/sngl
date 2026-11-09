@@ -44,6 +44,7 @@ var markImpls = map[markKey]markImpl{
 	{"x/gen", "native"}:                markGenNative,
 	{"x/gen", "protocol"}:              markGenProtocol,
 	{"x/gen", "connects"}:              markGenConnects,
+	{"x/gen", "fires"}:                 markGenFires,
 	{"ui/markup/md", "order"}:          markMdOrder,
 	{"json", "identifier"}:             markJSONIdentifier,
 	{"http", "identifier"}:             markHTTPIdentifier,
@@ -1090,6 +1091,30 @@ func markGenProtocol(m *mark) error {
 	}
 	fn.Protocol = op
 	m.c.protocols = append(m.c.protocols, protocolMark{fn: fn, pos: m.attr.Pos})
+	return nil
+}
+
+// markGenFires implements #[gen.fires(event)]: the function is how a test
+// fires event on a node of the component its first parameter is, handed what
+// the test hands the event after it. Which component, and whether it has
+// the event, is bindProtocols' question, as for #[gen.protocol].
+func markGenFires(m *mark) error {
+	fn, ok := m.sym.(*ir.Func)
+	if !ok {
+		return fmt.Errorf("#[gen.fires] cannot mark %s; it marks a function", ast.DeclFormName(m.decl))
+	}
+	event := m.args.String("event")
+	if event == "" {
+		return fmt.Errorf("#[gen.fires] names the event it fires, and the name is empty")
+	}
+	if fn.Protocol != ir.ProtocolNone {
+		return fmt.Errorf("#[gen.fires(%q)]: already the %s operation", event, fn.Protocol)
+	}
+	if len(fn.Params) == 0 || fn.Params[0].Type == nil || fn.Params[0].Type.Kind != ir.TypeComponent {
+		return fmt.Errorf("#[gen.fires] declares the #[intrinsic] component it fires on as its first parameter: func f(w W, value string)")
+	}
+	fn.Protocol = ir.ProtocolFire
+	m.c.protocols = append(m.c.protocols, protocolMark{fn: fn, pos: m.attr.Pos, event: event})
 	return nil
 }
 

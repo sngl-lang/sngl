@@ -695,7 +695,38 @@ void sngl_win32_on_visible(HWND top, sngl_win32_bool_fn fn, void *ctx, sngl_win3
 	}
 }
 
-void sngl_win32_click(HWND w) { SendMessageW(w, BM_CLICK, 0, 0); }
+/* --- A test's events --- */
+
+/* notify sends the control's notification to the window it is in. */
+static void notify(HWND w, WORD code) {
+	SendMessageW(GetParent(w), WM_COMMAND, MAKEWPARAM(GetDlgCtrlID(w), code), (LPARAM)w);
+}
+
+void sngl_win32_fire_click(HWND w) { notify(w, BN_CLICKED); }
+
+void sngl_win32_fire_check(HWND w, int checked) {
+	sngl_win32_set_checked(w, checked);
+	notify(w, BN_CLICKED);
+}
+
+void sngl_win32_fire_change(HWND w, const unsigned short *text) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		c->quiet = 1;
+	}
+	SetWindowTextW(w, (LPCWSTR)text);
+	if (c) {
+		c->quiet = 0;
+	}
+	notify(w, EN_CHANGE);
+}
+
+void sngl_win32_fire_activate(HWND w, const unsigned short *text) {
+	sngl_win32_set_edit_text(w, text);
+	SendMessageW(w, WM_KEYDOWN, VK_RETURN, 0);
+}
+
+void sngl_win32_fire_close(HWND top) { SendMessageW(top, WM_CLOSE, 0, 0); }
 
 /* --- The loop --- */
 
@@ -726,6 +757,13 @@ void sngl_win32_run(void) {
 			break;
 		}
 	}
+}
+
+void sngl_win32_step(void) {
+	if (!GetQueueStatus(QS_ALLINPUT)) {
+		MsgWaitForMultipleObjects(0, NULL, FALSE, 1, QS_ALLINPUT);
+	}
+	sngl_win32_pump();
 }
 
 void sngl_win32_pump(void) {

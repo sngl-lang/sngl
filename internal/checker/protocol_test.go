@@ -48,6 +48,11 @@ func TestGenProtocolPlacement(t *testing.T) {
 		{"an on of no event", "#[gen.protocol(on)]\nfunc _on_hold(w Thing, hold func()) {}\n", "#[gen.protocol(on)] connects the event its handler parameter is named as, and Thing has no event @hold nor two-way prop :hold"},
 		{"an on twice", "#[gen.protocol(on)]\nfunc _a(w Thing, tap func()) {}\n\n#[gen.protocol(on)]\nfunc _b(w Thing, tap func()) {}\n", "#[gen.protocol(on)]: Thing already connects @tap with _a"},
 		{"an on of another package's", "#[gen.protocol(on)]\nfunc _on_tap(w other.Other, tap func()) {}\n", "#[gen.protocol(on)]: Other is declared by"},
+		{"a fire of an event", "#[gen.fires(\"tap\")]\nfunc _fire_tap(w Thing, at int) {}\n", ""},
+		{"a fire of no event", "#[gen.fires(\"hold\")]\nfunc _fire_hold(w Thing) {}\n", "#[gen.fires(\"hold\")] fires an event of Thing, which has no event @hold nor two-way prop :hold"},
+		{"a fire twice", "#[gen.fires(\"tap\")]\nfunc _a(w Thing) {}\n\n#[gen.fires(\"tap\")]\nfunc _b(w Thing) {}\n", "#[gen.fires(\"tap\")]: Thing already fires @tap with _a"},
+		{"a fire of no node", "#[gen.fires(\"tap\")]\nfunc _fire_tap(at int) {}\n", "#[gen.fires] declares the #[intrinsic] component it fires on as its first parameter"},
+		{"a fire of another package's", "#[gen.fires(\"tap\")]\nfunc _fire_tap(w other.Other) {}\n", "#[gen.fires(\"tap\")]: Other is declared by"},
 		{"connects on an event", "#[marks.intrinsic(\"extstub:Press\")]\ncomponent Press(\n    #[gen.connects(\"button-press\")]\n    @pressed,\n) sngl.node\n", ""},
 		{"connects on a prop", "#[marks.intrinsic(\"extstub:Press\")]\ncomponent Press(\n    #[gen.connects(\"press\")]\n    x int,\n) sngl.node\n", "#[gen.connects] cannot mark a parameter; it marks an event"},
 	} {

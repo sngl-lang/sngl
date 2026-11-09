@@ -1,6 +1,7 @@
 /* The test agent a C program SNGL writes for `sngl test` runs in: it lists
- * and runs the program's tests as the driver asks, over JSON-RPC on stdin
- * and stdout (internal/testrpc), one message a line. */
+ * and runs the program's tests as the driver asks, over JSON-RPC
+ * (internal/testrpc), one message a line, on stdin and stdout or a channel
+ * the platform gives it. */
 #ifndef SNGL_TEST_H
 #define SNGL_TEST_H
 
@@ -14,7 +15,18 @@ typedef struct sngl_test {
 	void (*fn)(sngl_t *t);
 } sngl_test;
 
-/* sngl_test_main serves the driver until stdin ends. */
+/* sngl_test_io is the channel to the driver: read_line reads a line into
+ * buf, false once the driver is gone, and write sends n bytes, each a call
+ * with ctx. */
+typedef struct sngl_test_io {
+	bool (*read_line)(char *buf, size_t n, void *ctx);
+	void (*write)(const char *s, size_t n, void *ctx);
+	void *ctx;
+} sngl_test_io;
+
+/* sngl_test_serve serves the driver over io until it is gone, and
+ * sngl_test_main over stdin and stdout. */
+int sngl_test_serve(const sngl_test *tests, size_t n, const sngl_test_io *io);
 int sngl_test_main(const sngl_test *tests, size_t n);
 
 /* sngl_test_log writes msg to the test's log. */
@@ -29,5 +41,9 @@ _Noreturn void sngl_test_fail_now(sngl_t *t, sngl_string msg);
  * lets it go on: a library's complaint that the program misused it, which
  * the library survives, so a test that stops nowhere near it still fails. */
 void sngl_test_fault(const char *msg);
+
+/* sngl_test_now_ms is the wall clock in milliseconds, which a test's wait
+ * counts. */
+long long sngl_test_now_ms(void);
 
 #endif

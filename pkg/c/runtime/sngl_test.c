@@ -1,6 +1,7 @@
 #include "sngl_test.h"
 
 #include <setjmp.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,56 +16,89 @@ struct sngl_t {
 /* The test running now, which a panic fails rather than ending the agent. */
 static sngl_t *sngl_running;
 
-/* sngl_json writes s to out as a JSON string. */
-static void sngl_json(FILE *out, const char *s, size_t n) {
-	fputc('"', out);
+/* The driver's channel, and the message being written to it. */
+static const sngl_test_io *sngl_io;
+static char *sngl_out;
+static size_t sngl_out_len, sngl_out_cap;
+
+static void sngl_put(const char *s, size_t n) {
+	if (sngl_out_len + n + 1 > sngl_out_cap) {
+		sngl_out_cap = (sngl_out_len + n + 1) * 2;
+		sngl_out = realloc(sngl_out, sngl_out_cap);
+	}
+	memcpy(sngl_out + sngl_out_len, s, n);
+	sngl_out_len += n;
+}
+
+static void sngl_puts(const char *s) { sngl_put(s, strlen(s)); }
+
+static void sngl_putc(char c) { sngl_put(&c, 1); }
+
+static void sngl_printf(const char *format, ...) {
+	char buf[256];
+	va_list ap;
+	va_start(ap, format);
+	int n = vsnprintf(buf, sizeof buf, format, ap);
+	va_end(ap);
+	sngl_put(buf, n < 0 ? 0 : (size_t)n < sizeof buf ? (size_t)n : sizeof buf - 1);
+}
+
+/* sngl_send sends the message written. */
+static void sngl_send(void) {
+	sngl_io->write(sngl_out, sngl_out_len, sngl_io->ctx);
+	sngl_out_len = 0;
+}
+
+/* sngl_json writes s into the message as a JSON string. */
+static void sngl_json(const char *s, size_t n) {
+	sngl_putc('"');
 	for (size_t i = 0; i < n; i++) {
 		unsigned char c = (unsigned char)s[i];
 		switch (c) {
 		case '"':
-			fputs("\\\"", out);
+			sngl_puts("\\\"");
 			break;
 		case '\\':
-			fputs("\\\\", out);
+			sngl_puts("\\\\");
 			break;
 		case '\n':
-			fputs("\\n", out);
+			sngl_puts("\\n");
 			break;
 		case '\r':
-			fputs("\\r", out);
+			sngl_puts("\\r");
 			break;
 		case '\t':
-			fputs("\\t", out);
+			sngl_puts("\\t");
 			break;
 		default:
 			if (c < 0x20) {
-				fprintf(out, "\\u%04x", c);
+				sngl_printf("\\u%04x", c);
 			} else {
-				fputc(c, out);
+				sngl_putc((char)c);
 			}
 		}
 	}
-	fputc('"', out);
+	sngl_putc('"');
 }
 
-static void sngl_json_str(FILE *out, const char *s) { sngl_json(out, s, strlen(s)); }
+static void sngl_json_str(const char *s) { sngl_json(s, strlen(s)); }
 
 /* sngl_notify sends a notification naming test, with what rest writes after
  * its "test" member. */
 static void sngl_notify_test(const char *method, const char *test, const char *rest) {
-	fprintf(stdout, "{\"jsonrpc\":\"2.0\",\"method\":\"%s\",\"params\":{\"test\":", method);
-	sngl_json_str(stdout, test);
-	fprintf(stdout, "%s}}\n", rest);
-	fflush(stdout);
+	sngl_printf("{\"jsonrpc\":\"2.0\",\"method\":\"%s\",\"params\":{\"test\":", method);
+	sngl_json_str(test);
+	sngl_printf("%s}}\n", rest);
+	sngl_send();
 }
 
 void sngl_test_log(sngl_t *t, sngl_string msg) {
-	fprintf(stdout, "{\"jsonrpc\":\"2.0\",\"method\":\"log\",\"params\":{\"test\":");
-	sngl_json_str(stdout, t->name);
-	fputs(",\"msg\":", stdout);
-	sngl_json(stdout, msg.ptr, msg.len);
-	fputs("}}\n", stdout);
-	fflush(stdout);
+	sngl_printf("{\"jsonrpc\":\"2.0\",\"method\":\"log\",\"params\":{\"test\":");
+	sngl_json_str(t->name);
+	sngl_puts(",\"msg\":");
+	sngl_json(msg.ptr, msg.len);
+	sngl_puts("}}\n");
+	sngl_send();
 }
 
 void sngl_test_fail(sngl_t *t, sngl_string msg) {
@@ -95,10 +129,10 @@ void sngl_test_fault(const char *msg) {
 	}
 }
 
-/* sngl_now_ms is the wall clock in milliseconds: a test that waits on the
- * program's loop takes the time it waited, which clock(), the processor's
- * time, does not count. */
-static long long sngl_now_ms(void) {
+/* The wall clock in milliseconds: a test that waits on the program's loop
+ * takes the time it waited, which clock(), the processor's time, does not
+ * count. */
+long long sngl_test_now_ms(void) {
 	struct timespec ts;
 	timespec_get(&ts, TIME_UTC);
 	return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
@@ -110,7 +144,7 @@ static const char *sngl_run_one(const sngl_test *test) {
 	static sngl_t t;
 	t = (sngl_t){.name = test->name};
 	sngl_notify_test("testStart", test->name, "");
-	long long start = sngl_now_ms();
+	long long start = sngl_test_now_ms();
 	if (setjmp(t.abort) == 0) {
 		sngl_running = &t;
 		test->fn(&t);
@@ -123,7 +157,7 @@ static const char *sngl_run_one(const sngl_test *test) {
 	const char *status = t.failed ? "fail" : "pass";
 	char rest[96];
 	snprintf(rest, sizeof rest, ",\"status\":\"%s\",\"durationMs\":%lld", status,
-		sngl_now_ms() - start);
+		sngl_test_now_ms() - start);
 	sngl_notify_test("testEnd", test->name, rest);
 	return status;
 }
@@ -164,14 +198,31 @@ static void sngl_string_member(const char *line, const char *key, char *out, siz
 }
 
 static void sngl_respond(long long id, const char *result) {
-	fprintf(stdout, "{\"jsonrpc\":\"2.0\",\"id\":%lld,\"result\":%s}\n", id, result);
+	sngl_printf("{\"jsonrpc\":\"2.0\",\"id\":%lld,\"result\":%s}\n", id, result);
+	sngl_send();
+}
+
+static bool sngl_stdin_line(char *buf, size_t n, void *ctx) {
+	(void)ctx;
+	return fgets(buf, (int)n, stdin) != NULL;
+}
+
+static void sngl_stdout_write(const char *s, size_t n, void *ctx) {
+	(void)ctx;
+	fwrite(s, 1, n, stdout);
 	fflush(stdout);
 }
 
 int sngl_test_main(const sngl_test *tests, size_t n) {
+	static const sngl_test_io stdio = {sngl_stdin_line, sngl_stdout_write, NULL};
+	return sngl_test_serve(tests, n, &stdio);
+}
+
+int sngl_test_serve(const sngl_test *tests, size_t n, const sngl_test_io *io) {
+	sngl_io = io;
 	sngl_panic_hook = sngl_test_panicked;
-	char line[1 << 16];
-	while (fgets(line, sizeof line, stdin) != NULL) {
+	static char line[1 << 16];
+	while (io->read_line(line, sizeof line, io->ctx)) {
 		const char *idp = sngl_member(line, "id");
 		char method[32];
 		sngl_string_member(line, "method", method, sizeof method);
@@ -180,16 +231,16 @@ int sngl_test_main(const sngl_test *tests, size_t n) {
 		}
 		long long id = atoll(idp);
 		if (strcmp(method, "list") == 0) {
-			fputs("{\"jsonrpc\":\"2.0\",\"id\":", stdout);
-			fprintf(stdout, "%lld,\"result\":{\"tests\":[", id);
+			sngl_puts("{\"jsonrpc\":\"2.0\",\"id\":");
+			sngl_printf("%lld,\"result\":{\"tests\":[", id);
 			for (size_t i = 0; i < n; i++) {
 				if (i > 0) {
-					fputc(',', stdout);
+					sngl_putc(',');
 				}
-				sngl_json_str(stdout, tests[i].name);
+				sngl_json_str(tests[i].name);
 			}
-			fputs("]}}\n", stdout);
-			fflush(stdout);
+			sngl_puts("]}}\n");
+			sngl_send();
 		} else if (strcmp(method, "run") == 0) {
 			char filter[256];
 			sngl_string_member(line, "filter", filter, sizeof filter);
@@ -207,16 +258,16 @@ int sngl_test_main(const sngl_test *tests, size_t n) {
 					failed++;
 				}
 			}
-			fprintf(stdout, "{\"jsonrpc\":\"2.0\",\"method\":\"runComplete\",\"params\":{\"passed\":%d,\"failed\":%d,\"skipped\":0}}\n", passed, failed);
+			sngl_printf("{\"jsonrpc\":\"2.0\",\"method\":\"runComplete\",\"params\":{\"passed\":%d,\"failed\":%d,\"skipped\":0}}\n", passed, failed);
 			sngl_respond(id, "{}");
 		} else if (strcmp(method, "cancel") == 0) {
 			sngl_respond(id, "{}");
 			return 0;
 		} else {
-			fprintf(stdout, "{\"jsonrpc\":\"2.0\",\"id\":%lld,\"error\":{\"code\":-32601,\"message\":\"method not found: ", id);
-			fputs(method, stdout);
-			fputs("\"}}\n", stdout);
-			fflush(stdout);
+			sngl_printf("{\"jsonrpc\":\"2.0\",\"id\":%lld,\"error\":{\"code\":-32601,\"message\":\"method not found: ", id);
+			sngl_puts(method);
+			sngl_puts("\"}}\n");
+			sngl_send();
 		}
 	}
 	return 0;

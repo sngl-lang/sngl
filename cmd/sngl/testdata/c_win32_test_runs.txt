@@ -1,0 +1,125 @@
+# A win32 program in C runs its tests in the C test agent, cross-compiled
+# with MinGW's compiler and run under Wine in a prefix of the cache's, whose
+# windows the null driver draws; the agent connects back to the driver over
+# TCP, since Wine hands a Windows program none of the host's pipes
+# (codegen/platform/win32/launcher.go). A build rooted at the component a
+# test takes renders it as the package body would, and a test's trigger is
+# the platform's #[gen.fires] for the event the program's handler is
+# connected to: a button's press, a check box's state, an edit's text as it
+# is typed and as Enter commits it. A node a branch renders is held while it
+# is rendered and null once taken away, and a test taking no component
+# builds the program's window.
+
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok +3 tests, 0 failures'
+
+# The same agent built for 32-bit Windows.
+
+sngl test --platform=win32 --language=c --opt arch=386 app.sngl
+stdout 'ok +3 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+output {
+    c {
+        win32
+    }
+}
+
+component main ui.node {
+    var n = 0
+    var name = ""
+    var typed = ""
+    var on = false
+    ui.vbox {
+        ui.text(value="Count {n}")
+        ui.button #inc(text="More", @click { n += 1 })
+        ui.button #dec(text="Less", @click { n -= 1 })
+        ui.input #who(value=name, @input(v) { typed = v }, @change(v) { name = v })
+        ui.checkbox #flag(checked=on, @change(v) { on = v })
+        if n > 1 {
+            ui.text #big(value="Big")
+        }
+    }
+}
+
+ui.window(title="Counter") {
+    main()
+}
+
+func testPressesReachTheirHandlers(t test.Test, c main) {
+    c.inc.click()
+    t.assert(c.n == 1)
+    t.assert(c.big == null)
+    c.inc.click()
+    t.assert(c.big != null)
+    c.dec.click()
+    t.assert(c.n == 1)
+    t.assert(c.big == null)
+}
+
+func testValuesReachTheirHandlers(t test.Test, c main) {
+    c.who.input("an")
+    t.assert(c.typed == "an")
+    t.assert(c.name == "")
+    c.who.change("ann")
+    t.assert(c.name == "ann")
+    c.flag.change(true)
+    t.assert(c.on)
+    c.flag.change(false)
+    t.assert(!c.on)
+}
+
+func testTheWindowBuilds(t test.Test) {
+    t.assert(true)
+}
+-- testrun/win32/c/app.sngl/_/1 --
+sha256:e8365d039025942a03ba5877c0244144
+{
+  "results": [
+    {
+      "Desc": "TheWindowBuilds",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/_/2 --
+sha256:f7aedf1192224f12e0af12ec8cfa1f29
+{
+  "results": [
+    {
+      "Desc": "TheWindowBuilds",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/main/1 --
+sha256:9a644ad4f35789cedde15488c7352a79
+{
+  "results": [
+    {
+      "Desc": "PressesReachTheirHandlers",
+      "Passed": true
+    },
+    {
+      "Desc": "ValuesReachTheirHandlers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/main/2 --
+sha256:2823f7b9aa7c7b68f7bfd007f7273571
+{
+  "results": [
+    {
+      "Desc": "PressesReachTheirHandlers",
+      "Passed": true
+    },
+    {
+      "Desc": "ValuesReachTheirHandlers",
+      "Passed": true
+    }
+  ]
+}

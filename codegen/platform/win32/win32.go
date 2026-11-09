@@ -9,11 +9,16 @@ package win32
 import (
 	"fmt"
 	"io"
+	"io/fs"
+	"maps"
+	"os/exec"
+	"runtime"
 	"slices"
 
 	"duckfam.us/sngl/codegen"
 	clang "duckfam.us/sngl/codegen/lang/c"
 	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/lib"
 )
 
 func init() {
@@ -33,12 +38,19 @@ func (g *Generator) SupportedLangs() []string { return []string{"c"} }
 
 var _ codegen.TestProber = (*Generator)(nil)
 
-// ProbeTest implements codegen.TestProber: no host runs win32's tests yet,
-// since its test agent, which runs under Wine and talks over TCP, is not
-// written, and the C language's own launcher would run a Windows program's
-// agent over pipes.
+// ProbeTest implements codegen.TestProber: the test agent is cross-compiled
+// with MinGW's compiler and, off Windows, run under Wine.
 func (g *Generator) ProbeTest() (bool, string) {
-	return false, "win32's test agent is not written yet"
+	if runtime.GOOS == "windows" {
+		return true, ""
+	}
+	if _, err := exec.LookPath("wine"); err != nil {
+		return false, "wine is not on PATH"
+	}
+	if _, err := exec.LookPath("wineboot"); err != nil {
+		return false, "wineboot is not on PATH"
+	}
+	return true, ""
 }
 
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
@@ -52,47 +64,69 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 
 // generateC writes req's program as C: main.c, the program and its entry,
 // beside the C runtime (pkg/c), the platform's (its c.link's sources) and
-// the manifest naming what it links and what it is built for.
+// the manifest naming what it links and what it is built for. Built for
+// `sngl test`, its entry is the test agent's, serving its tests over the
+// channel sngl_win32_agent.c opens.
 func generateC(req *codegen.Request, sink codegen.Sink) error {
 	pkg := req.Pkg
 	if pkg.Run != nil {
 		return fmt.Errorf("win32: @run is not yet written")
 	}
+	agent := codegen.OptionString(req.Options, "testMode") == "agent"
 	fe := clang.NewFile(sink, codegen.FileOptions{Name: "main.c", Source: req.Source, Platform: platformName}, pkg, platformName)
 	links := reachedLinks(pkg)
 	sources, err := clang.Links(fe.Context(), links)
 	if err != nil {
 		return fmt.Errorf("win32: %w", err)
 	}
+	if agent {
+		fe.RequireImport(clang.TestHeader)
+		fe.RequireImport("sngl_win32_agent.h")
+	}
 	if err := clang.WriteProgram(fe, pkg); err != nil {
 		return fmt.Errorf("win32: %w", err)
 	}
-	teardown := ""
-	if pkg.Teardown != nil {
-		teardown = "\t" + clang.Decl(&pkg.Teardown.DeclInfo) + "();\n"
+	if agent {
+		if err := clang.WriteTests(fe, pkg, "sngl_win32_step()"); err != nil {
+			return fmt.Errorf("win32: %w", err)
+		}
+		io.WriteString(fe, "\nint main(int argc, char **argv) {\n\treturn sngl_win32_serve(sngl_tests, sngl_ntests, argc, argv);\n}\n")
+	} else {
+		teardown := ""
+		if pkg.Teardown != nil {
+			teardown = "\t" + clang.Decl(&pkg.Teardown.DeclInfo) + "();\n"
+		}
+		// The program is built in a turn, and the loop runs each message's
+		// in a turn of its own, which the callback a message reaches opens.
+		io.WriteString(fe, "\nint main(void) {\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n\tsngl_win32_run();\n"+teardown+"\treturn 0;\n}\n")
 	}
-	// The program is built in a turn, and the loop runs each message's in
-	// a turn of its own, which the callback a message reaches opens.
-	io.WriteString(fe, "\nint main(void) {\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n\tsngl_win32_run();\n"+teardown+"\treturn 0;\n}\n")
 	if err := fe.Close(); err != nil {
 		return fmt.Errorf("win32: %w", err)
 	}
 	manifest := clang.Manifest(links)
-	manifest = append(manifest, []byte("target windows/"+arch(req)+"\n")...)
+	if agent {
+		manifest = append(manifest, "flag -lws2_32\n"...)
+	}
+	manifest = append(manifest, "target windows/"+arch(req)+"\n"...)
 	if err := writeFile(sink, clang.BuildFile, manifest); err != nil {
 		return err
 	}
 	// The platform's runtime is a c.link's sources, the same for every
-	// program, so a golden holds their digest too.
-	for name, data := range sources {
-		codegen.MarkBoilerplate(sink, name)
-		if err := writeFile(sink, name, data); err != nil {
-			return err
+	// program, so a golden holds their digest too; and so is the agent's
+	// channel and the C runtime's.
+	runtime := clang.Runtime()
+	if agent {
+		maps.Copy(runtime, clang.TestRuntime())
+		for _, name := range agentFiles {
+			data, err := fs.ReadFile(lib.FS, "platform/win32/rt/"+name)
+			if err != nil {
+				return fmt.Errorf("win32: its test agent: %w", err)
+			}
+			runtime[name] = data
 		}
 	}
-	// The runtime is the same for every program, so a golden holds its
-	// digest rather than its text.
-	for name, data := range clang.Runtime() {
+	maps.Copy(runtime, sources)
+	for name, data := range runtime {
 		codegen.MarkBoilerplate(sink, name)
 		if err := writeFile(sink, name, data); err != nil {
 			return err
@@ -100,6 +134,10 @@ func generateC(req *codegen.Request, sink codegen.Sink) error {
 	}
 	return nil
 }
+
+// agentFiles are the test agent's channel, written beside a program built
+// for `sngl test`.
+var agentFiles = []string{"sngl_win32_agent.c", "sngl_win32_agent.h"}
 
 // reachedLinks are the c.links of the program and of each package whose C
 // it calls, among them the platform's own, whose runtime the protocol calls

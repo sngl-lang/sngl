@@ -894,6 +894,9 @@ const (
 	ProtocolHandle ProtocolOp = "handle"
 	ProtocolAttach ProtocolOp = "attach"
 	ProtocolDetach ProtocolOp = "detach"
+	// ProtocolFire is a component's, by the event: how a test fires the
+	// event as the host would (#[gen.fires]).
+	ProtocolFire ProtocolOp = "fire"
 )
 
 // NodeProtocol is the functions a platform declares to build an #[intrinsic]
@@ -919,6 +922,10 @@ type NodeProtocol struct {
 	// On is each event's own connect, by the event's name, which a node of
 	// the component is connected through in place of the platform's.
 	On map[string]*Func
+	// Fire is how a test fires each event, by the event's name: the node and
+	// what the test hands the event, put where the host reads it, and the
+	// host's report raised (passPlacement).
+	Fire map[string]*Func
 }
 
 // Handler is the function declared to connect event, nil where none is.
@@ -927,6 +934,14 @@ func (p *NodeProtocol) Handler(event string) *Func {
 		return nil
 	}
 	return p.On[event]
+}
+
+// Firer is the function declared to fire event, nil where none is.
+func (p *NodeProtocol) Firer(event string) *Func {
+	if p == nil {
+		return nil
+	}
+	return p.Fire[event]
 }
 
 // Setter is the function declared to set prop, nil where none is.
