@@ -25,4 +25,9 @@ void sngl_test_log(sngl_t *t, sngl_string msg);
 void sngl_test_fail(sngl_t *t, sngl_string msg);
 _Noreturn void sngl_test_fail_now(sngl_t *t, sngl_string msg);
 
+/* sngl_test_fault fails the test running, where one is, writing msg, and
+ * lets it go on: a library's complaint that the program misused it, which
+ * the library survives, so a test that stops nowhere near it still fails. */
+void sngl_test_fault(const char *msg);
+
 #endif

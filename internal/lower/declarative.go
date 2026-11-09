@@ -732,13 +732,10 @@ func (st *declarativeState) componentRootLocal(n *ir.NodeInst, id string) *ir.Lo
 // not a node.
 func (st *declarativeState) attachName(n *ir.NodeInst) string {
 	if st.instanceRecords && n != nil && n.Component != nil && hasRealComponentBody(n.Component) {
-		return n.ID + instanceRootSuffix
+		return n.ID + ir.InstanceRootSuffix
 	}
 	return n.ID
 }
-
-// instanceRootSuffix names the root binding beside an instance's own.
-const instanceRootSuffix = "__el"
 
 // lowerNodeForSlot emits the same create/setProp/attachHandler/appendChild
 // sequence passDeclarative produces for one NodeInst's subtree, then

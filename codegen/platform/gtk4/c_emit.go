@@ -47,6 +47,7 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	fe.RequireImport("sngl_gtk.h")
 	if agent {
 		fe.RequireImport(clang.TestHeader)
+		fe.RequireImport("<string.h>")
 	}
 	reg, err := g.gir()
 	if err != nil {
@@ -293,9 +294,32 @@ func (e *cEmitter) tests(fns []*ir.Func, teardown string) string {
 		table = append(table, fmt.Sprintf("\t{%q, %s},", strings.TrimPrefix(fn.Name, "test"), name))
 	}
 	b.WriteString("\nstatic const sngl_test sngl_tests[] = {\n" + strings.Join(table, "\n") + "\n};\n")
-	b.WriteString("\nint main(void) {\n\tgtk_init();\n\treturn sngl_test_main(sngl_tests, sizeof sngl_tests / sizeof sngl_tests[0]);\n}\n")
+	b.WriteString(cTestMain)
 	return b.String()
 }
+
+// cTestMain is the test agent's main. A critical GLib logs is a program
+// misusing GTK -- a widget appended that is not one, a pointer gone stale --
+// which GTK survives and a test reading the program's own state would not
+// notice, so it fails the test running.
+const cTestMain = `
+static GLogWriterOutput sngl_test_log_writer(GLogLevelFlags level, const GLogField *fields, gsize n, gpointer data) {
+	if (level & G_LOG_LEVEL_CRITICAL) {
+		for (gsize i = 0; i < n; i++) {
+			if (strcmp(fields[i].key, "MESSAGE") == 0 && fields[i].length < 0) {
+				sngl_test_fault(fields[i].value);
+			}
+		}
+	}
+	return g_log_writer_default(level, fields, n, data);
+}
+
+int main(void) {
+	g_log_set_writer_func(sngl_test_log_writer, NULL, NULL);
+	gtk_init();
+	return sngl_test_main(sngl_tests, sizeof sngl_tests / sizeof sngl_tests[0]);
+}
+`
 
 // testBlock renders a test's statements as the program's own, the component
 // it takes read as the program's state. What only a test does -- an assert, a
@@ -370,6 +394,13 @@ func (e *cEmitter) componentReads(s ir.Stmt, comp string) ir.Stmt {
 				return &ir.Literal{Type: ir.TypNull, Value: "null"}, ir.SkipDir
 			}
 		}
+		// One copy of a node loops rendered, `c.b[0][1]`: the widget its
+		// key holds, null where none was rendered there.
+		if ix, ok := n.(*ir.Index); ok {
+			if id, path := e.copyRead(ix, comp); id != "" {
+				return rtCall("CopyGet", ix.Type, &ir.Literal{Type: ir.TypString, Value: id}, ir.CopyKey(path)), ir.SkipDir
+			}
+		}
 		sel, ok := n.(*ir.Select)
 		if !ok {
 			return n, nil
@@ -399,6 +430,29 @@ func (e *cEmitter) componentReads(s ir.Stmt, comp string) ir.Stmt {
 	})
 	e.unreached(s, comp)
 	return s
+}
+
+// copyRead is the node and the path of indices ix reads one copy of off the
+// component comp, or "" where ix reads none.
+func (e *cEmitter) copyRead(ix *ir.Index, comp string) (string, []ir.Expr) {
+	var path []ir.Expr
+	var x ir.Expr = ix
+	for {
+		in, ok := x.(*ir.Index)
+		if !ok {
+			break
+		}
+		path = append([]ir.Expr{in.Idx}, path...)
+		x = in.Operand
+	}
+	sel, ok := x.(*ir.Select)
+	if !ok {
+		return "", nil
+	}
+	if id, ok := sel.Operand.(*ir.Ident); !ok || id.Name != comp || !slices.Contains(e.copies, sel.Field) {
+		return "", nil
+	}
+	return sel.Field, path
 }
 
 // unreached refuses what a test reaches other than through the component it
@@ -543,7 +597,12 @@ type cEmitter struct {
 	invokers map[string]cInvoker
 	// anchor is the anchor of the slot the function being walked renders,
 	// once it has reset the slot, and anchors every slot's.
-	anchor  string
+	anchor string
+	// forget is the call the slot render being walked starts with that lets
+	// go of each widget of the file's it makes, and of each copy: what the
+	// render no longer builds is not rendered, though GTK may hold it a
+	// while yet.
+	forget  *ir.Call
 	anchors []string
 	// scope is the record being written, where one is.
 	scope *cRecord
@@ -672,6 +731,9 @@ func (e *cEmitter) OnMakeNode(ctx context.Context, id, tag string, made ir.Expr)
 	// GTK let it go, which is what a test's null test asks.
 	if e.scope == nil {
 		out = []ir.Stmt{&ir.CallStmt{Call: rtCall("Hold", ir.TypVoid, ref, &ir.Conversion{Type: v.Type, Operand: made})}}
+		if e.anchor != "" && e.forget != nil {
+			e.forget.Args = append(e.forget.Args, ir.CallArg{Value: ref})
+		}
 	}
 	if imagePrimitive(tag) {
 		e.images[id] = tag
@@ -760,6 +822,14 @@ func (e *cEmitter) OnPropAssign(ctx context.Context, node ir.Expr, prop string, 
 		if !slices.Contains(e.copies, id) {
 			e.copies = append(e.copies, id)
 		}
+		if e.scope != nil && !slices.Contains(e.scope.copies, id) {
+			e.scope.copies = append(e.scope.copies, id)
+		}
+		// The render builds every copy again, so the table of them starts
+		// over with it.
+		if e.scope == nil && e.anchor != "" && e.forget != nil && !e.forgets(id) {
+			e.forget.Args = append(e.forget.Args, ir.CallArg{Value: &ir.Literal{Type: ir.TypString, Value: id}})
+		}
 		return []ir.Stmt{&ir.CallStmt{Call: rtCall("CopyPut", ir.TypVoid, &ir.Literal{Type: ir.TypString, Value: id}, value, node)}}
 	}
 	// What a source says it shows rather than what it shows, and a
@@ -779,6 +849,16 @@ func (e *cEmitter) OnPropAssign(ctx context.Context, node ir.Expr, prop string, 
 	return []ir.Stmt{&ir.CallStmt{Call: call}}
 }
 
+// markAppended notes child attached in the record being written, so it is
+// not a candidate for its root: a component instance by its own id, since
+// what is attached is its root's binding (ir.InstanceRootSuffix).
+func (e *cEmitter) markAppended(child ir.Expr) {
+	if id, ok := child.(*ir.Ident); ok && e.scope != nil {
+		e.scope.appended[id.Name] = true
+		e.scope.appended[strings.TrimSuffix(id.Name, ir.InstanceRootSuffix)] = true
+	}
+}
+
 func (e *cEmitter) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
 	if _, ok := e.markup.spans[codegen.IdentBareName(child)]; ok {
 		return nil
@@ -786,9 +866,7 @@ func (e *cEmitter) OnAppendChild(ctx context.Context, parent, child ir.Expr) []i
 	if ir.IsAppParent(parent) {
 		return []ir.Stmt{&ir.CallStmt{Call: rtCall("AppAttach", ir.TypVoid, child)}}
 	}
-	if id, ok := child.(*ir.Ident); ok && e.scope != nil {
-		e.scope.appended[id.Name] = true
-	}
+	e.markAppended(child)
 	// A slot's entry into the box it renders into, as OnRemoveChild takes
 	// it out.
 	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" && e.anchor != "" {
@@ -803,9 +881,7 @@ func (e *cEmitter) OnAppendThrough(ctx context.Context, parent, child, call ir.E
 	if _, ok := e.markup.spans[codegen.IdentBareName(child)]; ok {
 		return nil
 	}
-	if id, ok := child.(*ir.Ident); ok && e.scope != nil {
-		e.scope.appended[id.Name] = true
-	}
+	e.markAppended(child)
 	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" && e.anchor != "" {
 		return []ir.Stmt{&ir.CallStmt{Call: rtCall("InsertBefore", ir.TypVoid, parent, child, anchorName(e.anchor))}}
 	}
@@ -900,12 +976,24 @@ func (e *cEmitter) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []i
 // OnSlotReset starts a slot's render over: its list of widgets emptied, and
 // its anchor made in the box it renders into where it is not there already.
 func (e *cEmitter) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
-	e.anchor = clang.Global(slot.Name) + "__anchor"
-	if !slices.Contains(e.anchors, e.anchor) {
-		e.anchors = append(e.anchors, e.anchor)
+	// A record's is its own, as each instance renders the slot into a box
+	// of its own.
+	if r := e.scope; r != nil {
+		field := clang.Local(slot.Name) + "__anchor"
+		e.anchor = selfName + "->" + field
+		if !slices.Contains(r.anchors, field) {
+			r.anchors = append(r.anchors, field)
+		}
+	} else {
+		e.anchor = clang.Global(slot.Name) + "__anchor"
+		if !slices.Contains(e.anchors, e.anchor) {
+			e.anchors = append(e.anchors, e.anchor)
+		}
 	}
 	ref := &ir.Ident{Name: slot.Name, Sym: slot, Type: slot.Type}
+	e.forget = rtCall("Forget", ir.TypVoid)
 	return []ir.Stmt{
+		&ir.CallStmt{Call: e.forget},
 		&ir.Assign{Target: ref, Op: ast.AssignSet, Value: &ir.ListLit{Type: slot.Type}},
 		&ir.CallStmt{Call: rtCall("SlotAnchor", ir.TypVoid, &ir.Ident{Name: "parent", Type: ir.NativePointerOf("GtkWidget")}, anchorName(e.anchor))},
 	}
@@ -927,6 +1015,9 @@ func (e *cEmitter) OnCond(ctx context.Context, cond ir.Expr) ir.Expr { return co
 func (e *cEmitter) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
 	if n, ok := stmt.(*ir.CanvasRedrawStmt); ok {
 		return e.canvasRedraw(n)
+	}
+	if e.scope != nil && e.scope.rootRenders[stmt] {
+		return append(e.topsInto(ctx, stmt.(*ir.CallStmt).Call.Args[0].Value), stmt)
 	}
 	return []ir.Stmt{stmt}
 }
@@ -1039,7 +1130,7 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 		return "sngl_box_remove(" + widget(0) + ", " + widget(1) + ")", true
 	case "SlotAnchor":
 		a := anchorOf(n.Args[1].Value)
-		return a + " = sngl_slot_anchor(" + widget(0) + ", " + a + ")", true
+		return "sngl_slot_anchor(" + widget(0) + ", &" + a + ")", true
 	case "InsertBefore":
 		return "sngl_box_insert_before(" + widget(0) + ", " + anchorOf(n.Args[2].Value) + ", " + widget(1) + ")", true
 	case "AppAttach":
@@ -1100,6 +1191,20 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 		return "sngl_picture_paint(" + arg(0) + ", " + arg(1) + ", " + arg(2) + ", " + arg(3) + ", " + arg(4) + ", " + arg(5) + ")", true
 	case "ImagePaint":
 		return e.imagePaint(n.Args[1].Value, arg(0)), true
+	case "Forget":
+		if len(n.Args) == 0 {
+			return "(void)0", true
+		}
+		var held []string
+		for i, a := range n.Args {
+			if lit, ok := a.Value.(*ir.Literal); ok {
+				copies := copiesName(lit.Value)
+				held = append(held, "("+copies+" ? g_hash_table_remove_all("+copies+") : (void)0)")
+				continue
+			}
+			held = append(held, "sngl_hold((GtkWidget **)&"+arg(i)+", NULL)")
+		}
+		return "(" + strings.Join(held, ", ") + ")", true
 	case "Hold":
 		return "sngl_hold((GtkWidget **)&" + arg(0) + ", GTK_WIDGET(" + arg(1) + "))", true
 	case "FlowNew":
@@ -1116,6 +1221,9 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 		fn := t + "_foreground"
 		c.Helper(fn, "static sngl_string "+fn+"("+t+" c) {\n\tif (c.a == 0) {\n\t\treturn SNGL_STR(\"\");\n\t}\n\tchar buf[32];\n\tg_snprintf(buf, sizeof buf, \" foreground=\\\"#%02X%02X%02X\\\"\", (unsigned)c.r, (unsigned)c.g, (unsigned)c.b);\n\treturn sngl_string_copy(buf);\n}\n")
 		return fn + "(" + arg(0) + ")", true
+	case "CopyGet":
+		lit, _ := n.Args[0].Value.(*ir.Literal)
+		return "((" + c.TypeName(n.Type) + ")sngl_copy_get(" + copiesName(lit.Value) + ", (" + arg(1) + ").ptr))", true
 	case "CopyPut":
 		lit, _ := n.Args[0].Value.(*ir.Literal)
 		return "sngl_copy_put(&" + copiesName(lit.Value) + ", (" + arg(1) + ").ptr, " + widget(2) + ")", true
@@ -1275,6 +1383,17 @@ func cAssets(assets []codegen.FileAsset) ([]byte, error) {
 	}
 	b.WriteString("\nconst SnglAsset sngl_assets[] = {\n" + strings.Join(table, "") + "\t{NULL, NULL, 0},\n};\n")
 	return []byte(b.String()), nil
+}
+
+// forgets reports whether the slot render being walked lets go of the copies
+// of id already.
+func (e *cEmitter) forgets(id string) bool {
+	for _, a := range e.forget.Args {
+		if lit, ok := a.Value.(*ir.Literal); ok && lit.Value == id {
+			return true
+		}
+	}
+	return false
 }
 
 // copiesName is the table the copies of the node id names are held in.

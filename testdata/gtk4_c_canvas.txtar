@@ -261,11 +261,8 @@ static int64_t *sngl_map_string__int_slot(sngl_map_string__int *m, sngl_string k
 	}
 	if (m->len == m->cap) {
 		int64_t cap = m->cap < 4 ? 4 : m->cap * 2;
-		sngl_string *keys = malloc(sizeof(sngl_string) * (size_t)cap);
-		int64_t *vals = malloc(sizeof(int64_t) * (size_t)cap);
-		if (keys == NULL || vals == NULL) {
-			sngl_panic("out of memory");
-		}
+		sngl_string *keys = sngl_alloc(sizeof(sngl_string) * (size_t)cap);
+		int64_t *vals = sngl_alloc(sizeof(int64_t) * (size_t)cap);
 		if (m->len > 0) {
 			memcpy(keys, m->keys, sizeof(sngl_string) * (size_t)m->len);
 			memcpy(vals, m->vals, sizeof(int64_t) * (size_t)m->len);
@@ -290,10 +287,7 @@ static void sngl_list___anon_id_elem_4ccb28_grow(sngl_list___anon_id_elem_4ccb28
 	if (cap < 4) {
 		cap = 4;
 	}
-	s___anon_id_elem_4ccb28 *data = malloc(sizeof(s___anon_id_elem_4ccb28) * (size_t)cap);
-	if (data == NULL) {
-		sngl_panic("out of memory");
-	}
+	s___anon_id_elem_4ccb28 *data = sngl_alloc(sizeof(s___anon_id_elem_4ccb28) * (size_t)cap);
 	if (l->len > 0) {
 		memcpy(data, l->data, sizeof(s___anon_id_elem_4ccb28) * (size_t)l->len);
 	}
@@ -341,11 +335,8 @@ static s_dot__inst * *sngl_map_string__instance_dot__slot(sngl_map_string__insta
 	}
 	if (m->len == m->cap) {
 		int64_t cap = m->cap < 4 ? 4 : m->cap * 2;
-		sngl_string *keys = malloc(sizeof(sngl_string) * (size_t)cap);
-		s_dot__inst * *vals = malloc(sizeof(s_dot__inst *) * (size_t)cap);
-		if (keys == NULL || vals == NULL) {
-			sngl_panic("out of memory");
-		}
+		sngl_string *keys = sngl_alloc(sizeof(sngl_string) * (size_t)cap);
+		s_dot__inst * *vals = sngl_alloc(sizeof(s_dot__inst *) * (size_t)cap);
 		if (m->len > 0) {
 			memcpy(keys, m->keys, sizeof(sngl_string) * (size_t)m->len);
 			memcpy(vals, m->vals, sizeof(s_dot__inst *) * (size_t)m->len);
@@ -359,7 +350,7 @@ static s_dot__inst * *sngl_map_string__instance_dot__slot(sngl_map_string__insta
 	return &m->vals[m->len++];
 }
 
-static void sngl_list_node_grow(sngl_list_node *l, int64_t n) {
+static void sngl_list_node_grow_kept(sngl_list_node *l, int64_t n) {
 	if (l->len + n <= l->cap) {
 		return;
 	}
@@ -370,19 +361,17 @@ static void sngl_list_node_grow(sngl_list_node *l, int64_t n) {
 	if (cap < 4) {
 		cap = 4;
 	}
-	GtkWidget * *data = malloc(sizeof(GtkWidget *) * (size_t)cap);
-	if (data == NULL) {
-		sngl_panic("out of memory");
-	}
+	GtkWidget * *data = sngl_keep_alloc(sizeof(GtkWidget *) * (size_t)cap);
 	if (l->len > 0) {
 		memcpy(data, l->data, sizeof(GtkWidget *) * (size_t)l->len);
 	}
+	sngl_drop(l->data);
 	l->data = data;
 	l->cap = cap;
 }
 
-static void sngl_list_node_push(sngl_list_node *l, GtkWidget * v) {
-	sngl_list_node_grow(l, 1);
+static void sngl_list_node_push_kept(sngl_list_node *l, GtkWidget * v) {
+	sngl_list_node_grow_kept(l, 1);
 	l->data[l->len++] = v;
 }
 
@@ -411,10 +400,7 @@ static sngl_map_string__instance_dot_ sngl_map_string__instance_dot___keep(sngl_
 }
 
 static sngl_list_float sngl_list_float_of(int64_t n, const double *xs) {
-	sngl_list_float l = {malloc(sizeof(double) * (size_t)n), n, n};
-	if (l.data == NULL) {
-		sngl_panic("out of memory");
-	}
+	sngl_list_float l = {sngl_alloc(sizeof(double) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(double) * (size_t)n);
 	return l;
 }
@@ -581,12 +567,13 @@ static void s___renderSlot0(GtkBox * parent) {
 					for (struct { sngl_list_node l; int64_t i; } __loop3 = {s___slot0, 0}; __loop3.i < __loop3.l.len; __loop3.i++) { GtkWidget * __entry = __loop3.l.data[__loop3.i];
 						gtk_box_remove((GtkBox *)((void *)(parent)), (GtkWidget *)((void *)(__entry)));
 					}
+					(void)0;
 					{
 	sngl_list_node *__slot4 = &(s___slot0);
 	sngl_list_node__drop(*__slot4);
 	*__slot4 = sngl_list_node__keep(((sngl_list_node){0}));
 }
-					s___slot0__anchor = sngl_slot_anchor(GTK_WIDGET(parent), s___slot0__anchor);
+					sngl_slot_anchor(GTK_WIDGET(parent), &s___slot0__anchor);
 					sngl_map_string__instance_dot_ __inst0_next = ((sngl_map_string__instance_dot_){0});
 					sngl_map_string__int __inst0_seen = ((sngl_map_string__int){0});
 					for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop5 = {s___identified0(s_rs), 0}; __loop5.i < __loop5.l.len; __loop5.i++) { s___anon_id_elem_4ccb28 r = __loop5.l.data[__loop5.i];
@@ -610,7 +597,7 @@ static void s___renderSlot0(GtkBox * parent) {
 						(*sngl_map_string__instance_dot__slot(&(__inst0_next), __key1)) = __n0;
 						GtkWidget * __n0__el = __n0->__root;
 						sngl_box_insert_before(GTK_WIDGET(parent), s___slot0__anchor, GTK_WIDGET(__n0__el));
-						sngl_list_node_push(&(s___slot0), (GtkWidget *)(__n0__el));
+						sngl_list_node_push_kept(&(s___slot0), (GtkWidget *)(__n0__el));
 					}
 					for (struct { sngl_map_string__instance_dot_ m; int64_t i; } __loop6 = {s___inst0_live, 0}; __loop6.i < __loop6.m.len; __loop6.i++) { sngl_string __inst0_live_k = __loop6.m.keys[__loop6.i]; s_dot__inst * __inst0_live_v = __loop6.m.vals[__loop6.i];
 						if (!(sngl_map_string__instance_dot__find(__inst0_next, __inst0_live_k) >= 0)) {
@@ -626,6 +613,8 @@ static void s___renderSlot0(GtkBox * parent) {
 				sngl_catching = __finally8.up;
 				s___rendering0 = false;
 			} else {
+				__finally8.message = sngl_raised.message;
+				__finally8.kind = sngl_raised.kind;
 				s___rendering0 = false;
 				sngl_raise(__finally8.message, __finally8.kind);
 			}
@@ -706,4 +695,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:a93332b74cf495e86c36cb7c305267b4
+pass sha256:0750443ef952e6c0647371b25a56def1

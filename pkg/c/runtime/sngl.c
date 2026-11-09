@@ -7,6 +7,25 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Under AddressSanitizer the arena tells it what is live: a chunk is
+ * poisoned but for what sngl_alloc has handed out, so a value read after its
+ * turn gave it back is reported where it is read, as a freed block would be. */
+#if defined(__SANITIZE_ADDRESS__)
+#define SNGL_ASAN 1
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define SNGL_ASAN 1
+#endif
+#endif
+#ifdef SNGL_ASAN
+#include <sanitizer/asan_interface.h>
+#define sngl_poison(p, n) ASAN_POISON_MEMORY_REGION((p), (n))
+#define sngl_unpoison(p, n) ASAN_UNPOISON_MEMORY_REGION((p), (n))
+#else
+#define sngl_poison(p, n) ((void)(p), (void)(n))
+#define sngl_unpoison(p, n) ((void)(p), (void)(n))
+#endif
+
 /* The arena is a list of chunks, each a bump allocation. A reset keeps the
  * first, so a turn that makes a few strings allocates nothing. */
 typedef struct sngl_chunk {
@@ -31,10 +50,12 @@ void *sngl_alloc(size_t n) {
 		c->next = sngl_arena;
 		c->size = size;
 		c->used = 0;
+		sngl_poison(c->data, size);
 		sngl_arena = c;
 	}
 	void *p = (char *)sngl_arena->data + sngl_arena->used;
 	sngl_arena->used += n;
+	sngl_unpoison(p, n);
 	return p;
 }
 
@@ -140,11 +161,13 @@ void sngl_call_leave(sngl_mark m) {
 	if (sngl_depth > 1) {
 		while (sngl_arena != NULL && (void *)sngl_arena != m.chunk) {
 			sngl_chunk *next = sngl_arena->next;
+			sngl_unpoison(sngl_arena->data, sngl_arena->size);
 			free(sngl_arena);
 			sngl_arena = next;
 		}
 		if (sngl_arena != NULL) {
 			memset((char *)sngl_arena->data + m.used, 0x5a, sngl_arena->used - m.used);
+			sngl_poison((char *)sngl_arena->data + m.used, sngl_arena->used - m.used);
 			sngl_arena->used = m.used;
 		}
 	}
@@ -169,6 +192,7 @@ void sngl_turn_end(void) {
 	sngl_dropped_len = 0;
 	while (sngl_arena != NULL && sngl_arena->next != NULL) {
 		sngl_chunk *next = sngl_arena->next;
+		sngl_unpoison(sngl_arena->data, sngl_arena->size);
 		free(sngl_arena);
 		sngl_arena = next;
 	}
@@ -177,6 +201,7 @@ void sngl_turn_end(void) {
 		 * without keeping it reads as the garbage it is rather than as
 		 * what it was, until the arena is next written. */
 		memset(sngl_arena->data, 0x5a, sngl_arena->used);
+		sngl_poison(sngl_arena->data, sngl_arena->used);
 		sngl_arena->used = 0;
 	}
 }
@@ -195,7 +220,10 @@ char *sngl_cstring(sngl_string s) {
 	if (c == NULL) {
 		sngl_panic("out of memory");
 	}
-	memcpy(c, s.ptr, s.len);
+	/* A string's zero has no bytes, and a NULL memcpy may not read. */
+	if (s.len > 0) {
+		memcpy(c, s.ptr, s.len);
+	}
 	c[s.len] = '\0';
 	return c;
 }
@@ -222,6 +250,7 @@ _Noreturn void sngl_panic(const char *msg) {
 }
 
 sngl_catch *sngl_catching;
+struct sngl_raised sngl_raised;
 
 _Noreturn void sngl_raise(sngl_string message, sngl_string kind) {
 	sngl_catch *c = sngl_catching;
@@ -229,13 +258,15 @@ _Noreturn void sngl_raise(sngl_string message, sngl_string kind) {
 		sngl_panic(message.ptr);
 	}
 	sngl_catching = c->up;
-	c->message = message;
-	c->kind = kind;
+	sngl_raised.message = message;
+	sngl_raised.kind = kind;
 	longjmp(c->at, 1);
 }
 
-/* sngl_bytes is a string of the n bytes at p, copied into the arena. */
-static sngl_string sngl_bytes(const char *p, size_t n) {
+sngl_string sngl_string_bytes(const char *p, size_t n) {
+	if (n == 0) {
+		return SNGL_STR("");
+	}
 	char *b = sngl_alloc(n + 1);
 	memcpy(b, p, n);
 	b[n] = '\0';
@@ -273,7 +304,7 @@ int sngl_string_cmp(sngl_string a, sngl_string b) {
 sngl_string sngl_int_format(int64_t v) {
 	char buf[32];
 	int n = snprintf(buf, sizeof buf, "%" PRId64, v);
-	return sngl_bytes(buf, (size_t)n);
+	return sngl_string_bytes(buf, (size_t)n);
 }
 
 /* The point the C library writes and reads in a number under the program's
@@ -314,7 +345,7 @@ sngl_string sngl_float_format(double v) {
 	if (p != NULL) {
 		*p = '.';
 	}
-	return sngl_bytes(buf, (size_t)n);
+	return sngl_string_bytes(buf, (size_t)n);
 }
 
 /* sngl_number is s, a number written with a dot, as the C library reads it
@@ -365,12 +396,26 @@ sngl_string sngl_color_hex(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 	char buf[10];
 	int n = a == 255 ? snprintf(buf, sizeof buf, "#%02x%02x%02x", r, g, b)
 	                 : snprintf(buf, sizeof buf, "#%02x%02x%02x%02x", r, g, b, a);
-	return sngl_bytes(buf, (size_t)n);
+	return sngl_string_bytes(buf, (size_t)n);
+}
+
+int64_t sngl_float_int(double v) {
+	if (v != v) {
+		return 0;
+	}
+	/* 2^63, which a double holds exactly, where INT64_MAX it rounds up to. */
+	if (v >= 9223372036854775808.0) {
+		return INT64_MAX;
+	}
+	if (v <= -9223372036854775808.0) {
+		return INT64_MIN;
+	}
+	return (int64_t)v;
 }
 
 sngl_string sngl_unit_term(double mag, sngl_string base) {
-	if (mag == (double)(int64_t)mag) {
-		return sngl_concat(sngl_int_format((int64_t)mag), base);
+	if (mag == (double)sngl_float_int(mag)) {
+		return sngl_concat(sngl_int_format(sngl_float_int(mag)), base);
 	}
 	return sngl_concat(sngl_float_format(mag), base);
 }
@@ -531,7 +576,7 @@ sngl_string sngl_string_substring(sngl_string s, int64_t start, int64_t end) {
 		}
 		sngl_decode(s, &i);
 	}
-	return sngl_bytes(s.ptr + from, to - from);
+	return sngl_string_bytes(s.ptr + from, to - from);
 }
 
 static uint32_t sngl_upper(uint32_t r) {
@@ -586,17 +631,20 @@ sngl_string sngl_string_trim(sngl_string s) {
 	if (from >= to) {
 		return SNGL_STR("");
 	}
-	return sngl_bytes(s.ptr + from, to - from);
+	return sngl_string_bytes(s.ptr + from, to - from);
 }
 
 sngl_string sngl_string_replace(sngl_string s, sngl_string old, sngl_string new_) {
+	if (s.len == 0) {
+		return old.len == 0 ? new_ : SNGL_STR("");
+	}
 	if (old.len == 0) {
 		/* As Go's ReplaceAll: new before each character and at the end. */
 		sngl_string out = new_;
 		for (size_t i = 0; i < s.len;) {
 			size_t at = i;
 			sngl_decode(s, &i);
-			out = sngl_concat(out, sngl_concat(sngl_bytes(s.ptr + at, i - at), new_));
+			out = sngl_concat(out, sngl_concat(sngl_string_bytes(s.ptr + at, i - at), new_));
 		}
 		return out;
 	}
@@ -607,10 +655,10 @@ sngl_string sngl_string_replace(sngl_string s, sngl_string old, sngl_string new_
 		if (at < 0) {
 			break;
 		}
-		out = sngl_concat(out, sngl_concat(sngl_bytes(s.ptr + from, (size_t)(at - from)), new_));
+		out = sngl_concat(out, sngl_concat(sngl_string_bytes(s.ptr + from, (size_t)(at - from)), new_));
 		from = at + (int64_t)old.len;
 	}
-	return sngl_concat(out, sngl_bytes(s.ptr + from, s.len - (size_t)from));
+	return sngl_concat(out, sngl_string_bytes(s.ptr + from, s.len - (size_t)from));
 }
 
 int64_t sngl_int_parse(sngl_string s, int64_t base) {

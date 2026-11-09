@@ -115,6 +115,23 @@ stdout 'ok +2 tests, 0 failures'
 sngl test --platform=gtk4 --language=c keep.sngl
 stdout 'ok +1 tests, 0 failures'
 
+# A critical GLib logs fails the test running: a widget misused is a bug GTK
+# survives and a test reading state would miss. A component built at run
+# time attaches an instance by its root, renders a slot at its top into a
+# box it makes first, and holds its slot's anchor itself.
+
+sngl test --platform=gtk4 --language=c records.sngl
+stdout 'ok +3 tests, 0 failures'
+
+# A slot in a container of one child renders into a box that is the child; a
+# tab a slot took away is gone from the notebook before the slot reads it
+# again; and what a render no longer builds reads null though GTK still holds
+# it: a widget by its weak pointer, a copy by the table of them, which a
+# record's destroy and a widget finalized each leave too.
+
+sngl test --platform=gtk4 --language=c holders.sngl
+stdout 'ok +4 tests, 0 failures'
+
 -- app.sngl --
 import ui "sngl:ui"
 import c "sngl:language/c"
@@ -770,8 +787,248 @@ func testWhatAHandlerStoresOutlivesIt(t test.Test, c ticker) {
 ui.window(title="t") {
     ticker
 }
+-- records.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+
+// An instance a record's body makes is attached to the box around it by
+// its root, and a record whose body is a slot renders it into a box it
+// makes first, after the widgets written ahead of it.
+component counter(tag string, @seen(v string)) ui.node {
+    var n = 0
+
+    ui.vbox {
+        ui.text(value="counter {tag} {n}")
+        ui.effect(on="{tag}:{n}", @mount(k) { seen(k) })
+    }
+}
+
+component card(start int, foot component(v int) ui.node) ui.node {
+    var k = start * 2
+
+    ui.vbox {
+        ui.text(value="card {k}")
+        foot(k)
+    }
+}
+
+component population ui.node {
+    var items = [1, 2]
+    var foots = ""
+
+    ui.vbox {
+        for var i = items {
+            card(start=i) {
+                component foot(v) {
+                    counter(tag="{i}/{v}", @seen(s) { foots = foots + s + " " })
+                }
+            }
+        }
+    }
+}
+
+func testInstancesMount(t test.Test, c population) {
+    t.assert(c.foots == "1/2:0 2/4:0 ")
+}
+
+component badge(label string) ui.node {
+    var hits = 0
+
+    ui.button #hit(text="hit {label} {hits}", @click { hits = hits + 1 })
+}
+
+component rows ui.node {
+    var lines = [["a", "b"], ["a", "b"]]
+    var skip = "b"
+
+    ui.vbox {
+        ui.button #move(text="m", @click { skip = "a" })
+        for var r = lines {
+            ui.vbox {
+                var local = 0
+
+                ui.text(value="{local}")
+                for var n = r {
+                    if n != skip {
+                        badge #b(label=n)
+                    }
+                }
+            }
+        }
+    }
+}
+
+func testACopyPerRow(t test.Test, c rows) {
+    t.assert(c.b[0][0] != null)
+    t.assert(c.b[0][1] == null)
+    c.move.click()
+    t.assert(c.b[0][0] == null)
+    t.assert(c.b[0][1] != null)
+    t.assert(c.b[1][1] != null)
+}
+
+// Each instance renders its slot before an anchor of its own: one an
+// instance destroyed held is no other's.
+component sign(:msg string = "inner") ui.node {
+    ui.vbox {
+        ui.text(msg)
+        ui.button(text="again", @click { msg = "again" })
+    }
+}
+
+component asked ui.node {
+    var shown = true
+
+    if shown {
+        sign #failed()
+    }
+}
+
+component page ui.node {
+    var on = true
+    var outer = "outer"
+
+    ui.vbox {
+        ui.text #failed(outer)
+        if on {
+            asked()
+        }
+    }
+}
+
+func testAnInstanceBuiltAgain(t test.Test, c page) {
+    t.assert(c.failed.value == "outer")
+    c.on = false
+    c.on = true
+    t.assert(c.failed.value == "outer")
+}
+
+ui.window {
+    population
+    rows
+    page
+}
+-- holders.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+
+// A slot inside a container holding one child -- a card's frame, a
+// scroll -- renders into a box that is that child.
+component framed ui.node {
+    var opened = ""
+
+    ui.vbox {
+        for var name = ["one", "two"] {
+            ui.card #row(clickable=true, @click { opened = name }) {
+                ui.text(value=name)
+            }
+        }
+        ui.card(variant="outlined") {
+            if opened != "" {
+                ui.text(value="opened {opened}")
+            }
+        }
+        ui.scroll {
+            if opened != "" {
+                ui.text(value="scrolled {opened}")
+            }
+        }
+    }
+}
+
+func testClickOpens(t test.Test, c framed) {
+    c.row[1].click()
+    t.assert(c.opened == "two")
+    c.row[0].click()
+    t.assert(c.opened == "one")
+}
+
+// A tab a slot takes away is out of the notebook, and the slot's next
+// render reads nothing of it.
+component strip ui.node {
+    var idx = 0
+    var changed = -1
+    var extra = false
+
+    ui.tabs #tabs(:selected=idx, @change(i) { changed = i }) {
+        ui.tab(label="One") {
+            ui.text(value="first panel")
+        }
+        if extra {
+            ui.tab(label="More") {
+                ui.text(value="more panel")
+            }
+        }
+    }
+}
+
+func testATabComesAndGoes(t test.Test, c strip) {
+    c.extra = true
+    c.tabs.change(1)
+    t.assert(c.changed == 1)
+    c.idx = 0
+    c.extra = false
+    t.assert(c.changed == 1)
+}
+
+// A test reads one copy of a node loops render by its key, null where the
+// render took it away, whether the file or an instance holds it.
+component picks ui.node {
+    var items = ["a", "b", "c"]
+    var skip = "a"
+
+    ui.button #change(text="skip b", @click { skip = "b" })
+    for var it = items {
+        if it != skip {
+            ui.button #only(text=it)
+            ui.text #note(value=it)
+            ui.checkbox #tick(label=it, @change(on) {})
+        }
+    }
+}
+
+func testTheCopiesABranchRenders(t test.Test, c picks) {
+    t.assert(c.only[0] == null)
+    t.assert(c.tick[1] != null)
+    c.change.click()
+    t.assert(c.only[0] != null)
+    t.assert(c.only[1] == null)
+    t.assert(c.note[1] == null)
+    t.assert(c.tick[1] == null)
+}
+
+// A widget a branch the render no longer takes built reads null, whether or
+// not GTK has let it go yet.
+enum Dir { up, down }
+
+component dial ui.node {
+    var d Dir = up
+
+    match d {
+        up { ui.text #north(value="north") }
+        else { ui.text(value="south") }
+    }
+    ui.button #spin(text="Spin", @click {
+        d = d == Dir.up ? Dir.down : Dir.up
+    })
+}
+
+func testTheBranchTaken(t test.Test, c dial) {
+    t.assert(c.north != null)
+    c.spin.click()
+    t.assert(c.north == null)
+    c.spin.click()
+    t.assert(c.north != null)
+}
+
+ui.window {
+    dial
+    framed
+    strip
+    picks
+}
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:4b8473da0a5b4a909b53e3b8b3cad86d
+sha256:d0eb8ba73fbe64a6d4006ec674542883
 {
   "results": [
     {
@@ -781,7 +1038,7 @@ sha256:4b8473da0a5b4a909b53e3b8b3cad86d
   ]
 }
 -- testrun/gtk4/c/bare.sngl/main/1 --
-sha256:6c407d8ae2f58ecd755d50c2f6c648b2
+sha256:b2f9627bd69e1ea3ef62b67db31720dc
 {
   "results": [
     {
@@ -791,7 +1048,7 @@ sha256:6c407d8ae2f58ecd755d50c2f6c648b2
   ]
 }
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:0a664aad7937b43e28d93e7d5aadfa74
+sha256:63f882beb201a00ab15e7bb62ef32990
 {
   "results": [
     {
@@ -801,7 +1058,7 @@ sha256:0a664aad7937b43e28d93e7d5aadfa74
   ]
 }
 -- testrun/gtk4/c/choose.sngl/strip/1 --
-sha256:44555b66165db8c2ad095c5a77500ae0
+sha256:93abaed9ef3fe2d7b2ef51d5f1acf5e5
 {
   "results": [
     {
@@ -819,7 +1076,7 @@ sha256:44555b66165db8c2ad095c5a77500ae0
   ]
 }
 -- testrun/gtk4/c/controls.sngl/main/1 --
-sha256:01aef61c26ed02e9e2dd3a9e5f259ea4
+sha256:5bfb8abaf1d6743bac1c28f0022e1de8
 {
   "results": [
     {
@@ -829,7 +1086,7 @@ sha256:01aef61c26ed02e9e2dd3a9e5f259ea4
   ]
 }
 -- testrun/gtk4/c/flow.sngl/main/1 --
-sha256:33fd5c514df44f0ba458dbaeaf2133f6
+sha256:4dc34efb2cb7942b19b1212a410cc035
 {
   "results": [
     {
@@ -842,8 +1099,48 @@ sha256:33fd5c514df44f0ba458dbaeaf2133f6
     }
   ]
 }
+-- testrun/gtk4/c/holders.sngl/dial/1 --
+sha256:1e2bde5e1ad3bc81fccc056b79d0c2d0
+{
+  "results": [
+    {
+      "Desc": "TheBranchTaken",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/holders.sngl/framed/1 --
+sha256:8193c1c182cf719c1dcb10dd30d2f3d9
+{
+  "results": [
+    {
+      "Desc": "ClickOpens",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/holders.sngl/picks/1 --
+sha256:0cbb4fee97846413da09af683f6958dc
+{
+  "results": [
+    {
+      "Desc": "TheCopiesABranchRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/holders.sngl/strip/1 --
+sha256:3ecbf8299c8a7a92dfe3e748fdf7f8c8
+{
+  "results": [
+    {
+      "Desc": "ATabComesAndGoes",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/c/keep.sngl/ticker/1 --
-sha256:a55c822f5084efaafc5d7acb6432c029
+sha256:8ae51ba0ec5dffcfe82af72bbb7fe8a6
 {
   "results": [
     {
@@ -853,7 +1150,7 @@ sha256:a55c822f5084efaafc5d7acb6432c029
   ]
 }
 -- testrun/gtk4/c/keys.sngl/app/1 --
-sha256:0776645e99c207ff8c9c2abe7b798fe2
+sha256:f8acf688c24336b4f82fadcb1aa5d10f
 {
   "results": [
     {
@@ -863,7 +1160,7 @@ sha256:0776645e99c207ff8c9c2abe7b798fe2
   ]
 }
 -- testrun/gtk4/c/menus.sngl/app/1 --
-sha256:c3f3de0f8378da560ba1afa70d259419
+sha256:9fe6c989237c2e9243cee768d1437cc1
 {
   "results": [
     {
@@ -876,8 +1173,38 @@ sha256:c3f3de0f8378da560ba1afa70d259419
     }
   ]
 }
+-- testrun/gtk4/c/records.sngl/page/1 --
+sha256:1e750410eb06f4c6da706e7680baade0
+{
+  "results": [
+    {
+      "Desc": "AnInstanceBuiltAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/records.sngl/population/1 --
+sha256:ca819e87463b7c222d245bdfa0aeca13
+{
+  "results": [
+    {
+      "Desc": "InstancesMount",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/records.sngl/rows/1 --
+sha256:32589740f56b697b9095a7e2ffb44494
+{
+  "results": [
+    {
+      "Desc": "ACopyPerRow",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/c/rows.sngl/main/1 --
-sha256:146c3f6194f06a20a693db69198a33f3
+sha256:00ba4540b619bcd87430d638fb2b2e07
 {
   "results": [
     {
@@ -887,7 +1214,7 @@ sha256:146c3f6194f06a20a693db69198a33f3
   ]
 }
 -- testrun/gtk4/c/scroll.sngl/main/1 --
-sha256:83fce4131e7d903bda80a7a39b1a5bc7
+sha256:0eac11fb33de9a91050a62eb9134c401
 {
   "results": [
     {
@@ -901,7 +1228,7 @@ sha256:83fce4131e7d903bda80a7a39b1a5bc7
   ]
 }
 -- testrun/gtk4/c/slots.sngl/card/1 --
-sha256:a3184ff3a5c7cc5d11085746125b9cdb
+sha256:4ad6a60bb1d7bb86647dcc567decfc6c
 {
   "results": [
     {
@@ -911,7 +1238,7 @@ sha256:a3184ff3a5c7cc5d11085746125b9cdb
   ]
 }
 -- testrun/gtk4/c/timer.sngl/main/1 --
-sha256:ae078b5c2cb968b161cb2da4c545ffac
+sha256:0e4199b0728e00fe37719bc91a68b3ec
 {
   "results": [
     {
@@ -925,7 +1252,7 @@ sha256:ae078b5c2cb968b161cb2da4c545ffac
   ]
 }
 -- testrun/gtk4/c/units.sngl/app/1 --
-sha256:e062a871422f289440c227afddc1e07e
+sha256:4c3fedb15951ec798fca76a98f150f66
 {
   "results": [
     {

@@ -14,6 +14,12 @@ typedef void (*SnglBoolFn)(bool v, void *ctx);
 typedef void (*SnglStrFn)(const char *s, void *ctx);
 typedef void (*SnglDrawFn)(cairo_t *cr, void *data);
 
+/* sngl_contents_new is the box an instance of a component holds its widgets
+ * in, which the program never wrote: a child growing in it grows the box
+ * too, in the box it sits in, as CSS's display: contents makes its children
+ * that box's items (look.c). */
+GtkWidget *sngl_contents_new(void);
+
 /* sngl_set_look gives w what a gtk4rt.Look holds (look.c). */
 void sngl_set_look(GtkWidget *w, const char *css, int width, int height, double grow,
                    int cross, int align, int lines, int wrap, int hidden, const char *cursor,
@@ -53,10 +59,11 @@ void sngl_app_detach(GtkWidget *box);
 #define SNGL_APP ((GtkWidget *)NULL)
 
 /* A slot's children sit in its parent box before its anchor, a hidden
- * widget sngl_slot_anchor makes there once and answers again while it is
- * still the box's: what keeps a slot's children in their place among the
- * box's others as it renders again. */
-GtkWidget *sngl_slot_anchor(GtkWidget *box, GtkWidget *anchor);
+ * widget sngl_slot_anchor makes there once into *anchor and leaves while it
+ * is still the box's: what keeps a slot's children in their place among the
+ * box's others as it renders again. *anchor is held as sngl_hold holds, so
+ * an anchor gone with the box it was in is NULL rather than stale. */
+void sngl_slot_anchor(GtkWidget *box, GtkWidget **anchor);
 void sngl_box_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child);
 void sngl_box_remove(GtkWidget *box, GtkWidget *child);
 /* sngl_box_append is a child put at the end of a box, which a box of rt's
@@ -221,8 +228,10 @@ void sngl_hold(GtkWidget **slot, GtkWidget *w);
 /* A node loops render is held by the key of its copy (ir.CopyKey), which a
  * test reaching one copy finds it by: sngl_copy_put holds w under key in
  * *copies, made on first use, and takes it from any key it held before;
- * sngl_copy_get is the widget key holds, or NULL. */
+ * sngl_copy_get is the widget key holds, or NULL; sngl_copy_drop takes w
+ * from every key, as w's finalizing does. */
 void sngl_copy_put(GHashTable **copies, const char *key, GtkWidget *w);
+void sngl_copy_drop(GHashTable *copies, GtkWidget *w);
 GtkWidget *sngl_copy_get(GHashTable *copies, const char *key);
 
 /* sngl_flow_new is the label a flow of rich text is: wrapped, and starting

@@ -677,13 +677,22 @@ func (c *Context) Conversion(n *ir.Conversion) string {
 	}
 	switch to.Kind {
 	case ir.TypeInt, ir.TypeFloat:
+		// A double past an int's range is undefined to cast in C.
+		fromDouble := func(v string) string {
+			if to.Kind == ir.TypeInt {
+				return "sngl_float_int(" + v + ")"
+			}
+			return "(" + c.typeName(to) + ")(" + v + ")"
+		}
 		switch from.Kind {
-		case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeEnum:
+		case ir.TypeFloat:
+			return fromDouble(operand)
+		case ir.TypeInt, ir.TypeBool, ir.TypeEnum:
 			return "(" + c.typeName(to) + ")(" + operand + ")"
 		case ir.TypeUnit:
 			// The magnitude of a single-base unit, which is its double.
 			if !multiBase(from) {
-				return "(" + c.typeName(to) + ")(" + operand + ")"
+				return fromDouble(operand)
 			}
 		case ir.TypeString:
 			parse := "sngl_int_of"
@@ -740,6 +749,7 @@ func (c *Context) CallStmtLines(n *ir.CallStmt) []string {
 		at := fmt.Sprintf("__catch%d", c.file.next())
 		lines := c.guard(at, []string{c.EvalExpr(call) + ";"})
 		lines = append(lines, "\t\tsngl_catching = "+at+".up;", "\t} else {")
+		lines = append(lines, caught(at)...)
 		lines = append(lines, irwalk.IndentLines("\t\t", c.handle(h, at+".message", at+".kind"))...)
 		return append(lines, "\t}", "}")
 	}
@@ -925,6 +935,7 @@ func (c *Context) Catch(n *ir.If, body []string) []string {
 	at := fmt.Sprintf("__catch%d", c.file.next())
 	lines := c.guard(at, body)
 	lines = append(lines, "\t\tsngl_catching = "+at+".up;", "\t} else {")
+	lines = append(lines, caught(at)...)
 	if h.Func != nil {
 		lines = append(lines, irwalk.IndentLines("\t\t", c.handle(h, at+".message", at+".kind"))...)
 	}
@@ -940,8 +951,17 @@ func (c *Context) Finally(_ *ir.If, body, finally []string) []string {
 	lines = append(lines, "\t\t"+"sngl_catching = "+at+".up;")
 	lines = append(lines, irwalk.IndentLines("\t\t", finally)...)
 	lines = append(lines, "\t} else {")
+	lines = append(lines, caught(at)...)
 	lines = append(lines, irwalk.IndentLines("\t\t", finally)...)
 	return append(lines, "\t\tsngl_raise("+at+".message, "+at+".kind);", "\t}", "}")
+}
+
+// caught is the line a catch point's handler starts with, taking the error
+// the raise left: in sngl_raised, not the point, which is a local of the
+// function that set it, whose value a longjmp leaves indeterminate where
+// anything wrote it after the setjmp.
+func caught(at string) []string {
+	return []string{"\t\t" + at + ".message = sngl_raised.message;", "\t\t" + at + ".kind = sngl_raised.kind;"}
 }
 
 // guard opens a block pushing the catch point at and running body until it

@@ -499,7 +499,7 @@ with a `kind` on JavaScript, a `longjmp` to the innermost catch point
 (`sngl_catch`, a `setjmp` each catch block pushes) on C — and it passes through
 every fallible function between with no signature change. C has no closure to
 wrap a handler in, so a `return` in a caught body takes its catch point off
-before it leaves, and one in a handler inlined at its call is a `goto` past it. Where it stops has two shapes:
+before it leaves, and one in a handler inlined at its call is a `goto` past it. The error a raise carries travels in `sngl_raised`, which the handler copies into its point as it starts: C leaves indeterminate a local of the function that called `setjmp` written after the call, as the raise writing the point itself did. Where it stops has two shapes:
 
 - **A call's own `@error`** (`ErrorPerCall`) answers for that call alone: the
   handler runs and the statement after the call runs next. Each language's

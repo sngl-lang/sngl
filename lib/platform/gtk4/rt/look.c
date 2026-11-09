@@ -780,6 +780,12 @@ static void sngl_look_size_label(GtkWidget *w, SnglLook *l, int wrap) {
     gtk_widget_queue_resize(w);
 }
 
+GtkWidget *sngl_contents_new(void) {
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    sngl_look_ensure(box)->contents = 1;
+    return box;
+}
+
 void sngl_set_look(GtkWidget *w, const char *css, int width, int height, double grow,
                    int cross, int align, int lines, int wrap, int hidden, const char *cursor,
                           int justify, int spaced, int spacing, int grid, int columns) {

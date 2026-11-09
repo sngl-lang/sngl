@@ -63,6 +63,10 @@ void *sngl_heap_copy(const void *p, size_t n);
  * as Go's C.CString makes one. */
 char *sngl_cstring(sngl_string s);
 
+/* sngl_string_bytes is a string of the n bytes at p, copied into the
+ * arena with the NUL after them every string has. */
+sngl_string sngl_string_bytes(const char *p, size_t n);
+
 /* sngl_string_copy is the C string s as a string, copied into the turn's
  * arena: what a library hands back is its own to change or free. NULL is
  * the empty string. */
@@ -75,7 +79,9 @@ _Noreturn void sngl_panic(const char *msg);
  * window's @error. sngl_catching is the innermost one, each pointing up to
  * the one around it. A block pushes its own before it runs and takes it off
  * however it leaves; a raise takes it off on its way to `at`, and leaves the
- * error in message and kind. */
+ * error in sngl_raised, which the handler copies into message and kind as it
+ * starts: C leaves indeterminate a local of the function that called setjmp
+ * written after it, as the raise would have written the point. */
 typedef struct sngl_catch {
 	jmp_buf at;
 	struct sngl_catch *up;
@@ -83,6 +89,10 @@ typedef struct sngl_catch {
 	sngl_string kind;
 } sngl_catch;
 extern sngl_catch *sngl_catching;
+extern struct sngl_raised {
+	sngl_string message;
+	sngl_string kind;
+} sngl_raised;
 
 /* A handler reads nothing the block it catches for wrote: the block's
  * locals are out of its scope and a parameter is never written. So no value
@@ -138,8 +148,11 @@ int64_t sngl_int_of(sngl_string s);
 double sngl_float_of(sngl_string s);
 sngl_string sngl_bool_format(bool v);
 
-/* Integer division and remainder, raising on a zero divisor as every target
- * does, rather than C's undefined behavior. */
+/* int(f): f truncated toward zero, the nearest int where f is past either
+ * end, and 0 for NaN, as Kotlin's toLong answers -- where C's own cast is
+ * undefined. */
+int64_t sngl_float_int(double v);
+
 /* An async lifetime is held by its number, 0 for `forever`, which never
  * ends: sngl_async_begin makes one, sngl_async_end ends it, and
  * sngl_async_ended asks. */
@@ -147,6 +160,8 @@ int64_t sngl_async_begin(void);
 void sngl_async_end(int64_t id);
 bool sngl_async_ended(int64_t id);
 
+/* Integer division and remainder, raising on a zero divisor as every target
+ * does, rather than C's undefined behavior. */
 int64_t sngl_div(int64_t a, int64_t b);
 int64_t sngl_mod(int64_t a, int64_t b);
 

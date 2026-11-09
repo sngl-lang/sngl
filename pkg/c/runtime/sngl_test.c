@@ -89,6 +89,12 @@ static void sngl_test_panicked(const char *msg) {
 	longjmp(t->abort, 1);
 }
 
+void sngl_test_fault(const char *msg) {
+	if (sngl_running != NULL) {
+		sngl_test_fail(sngl_running, (sngl_string){msg, strlen(msg)});
+	}
+}
+
 /* sngl_now_ms is the wall clock in milliseconds: a test that waits on the
  * program's loop takes the time it waited, which clock(), the processor's
  * time, does not count. */
@@ -99,7 +105,10 @@ static long long sngl_now_ms(void) {
 }
 
 static const char *sngl_run_one(const sngl_test *test) {
-	sngl_t t = {.name = test->name};
+	/* Static, since a failure writes it after the setjmp, and C leaves a
+	 * local so written indeterminate once the longjmp lands. */
+	static sngl_t t;
+	t = (sngl_t){.name = test->name};
 	sngl_notify_test("testStart", test->name, "");
 	long long start = sngl_now_ms();
 	if (setjmp(t.abort) == 0) {

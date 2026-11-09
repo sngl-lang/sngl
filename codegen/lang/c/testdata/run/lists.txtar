@@ -1,6 +1,8 @@
 Lists and options: a literal, push, insert, remove, an index read and
 written, loops by element and by index, the list methods taking closures,
-sorting, and an option tested against null and narrowed.
+sorting, and an option tested against null and narrowed. A piece split
+off a string ends in the NUL every string does, so its bytes are a C
+string as they are.
 
 -- app.sngl --
 struct P {
@@ -58,6 +60,8 @@ func describe(n int) string {
     return "none"
 }
 
+func pieces(s string) => s.split(",")
+
 func outOfRange() int {
     var xs list[int] = [1]
     return xs[3]
@@ -74,6 +78,8 @@ int main(void) {
 	print(s_sorted());
 	print(s_describe(2));
 	print(s_describe(-1));
+	sngl_list_string ps = s_pieces(SNGL_STR("ab,cd"));
+	printf("%s|%s\n", ps.data[0].ptr, ps.data[1].ptr);
 	return 0;
 }
 -- want --
@@ -82,3 +88,4 @@ ann+cy
 apple,fig,pear b,a,c 1 false
 some 21
 none
+ab|cd

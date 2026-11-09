@@ -9,12 +9,15 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// A list is a struct per element type, `sngl_list_<elem>`: its elements on
-// the heap, how many there are and how many fit. It is passed by value and
-// shares its elements as a Go slice does, so a copy SNGL's value semantics
-// need is the one lowering writes out (ir.ValueCopyIntrinsic). Each
-// operation is a function defined for the element type the first time the
-// program uses it.
+// A list is a struct per element type, `sngl_list_<elem>`: its elements,
+// how many there are and how many fit. It is passed by value and shares its
+// elements as a Go slice does, so a copy SNGL's value semantics need is the
+// one lowering writes out (ir.ValueCopyIntrinsic). Each operation is a
+// function defined for the element type the first time the program uses it.
+//
+// A list made is the turn's, its elements in the arena as a string's bytes
+// are, and a holder keeps a copy (keep.go). A holder's own list grows in
+// kept memory, giving back what it outgrew; so does a holder's map.
 //
 // An option is a struct per value type, `sngl_opt_<value>`: whether it holds
 // one, and the value.
@@ -68,10 +71,7 @@ func (c *Context) listOf(t *ir.Type, elems []string) string {
 	if len(elems) == 0 {
 		return "((" + l + "){0})"
 	}
-	of := c.listOp(t, "of", "L NAME(int64_t n, const T *xs)", `	L l = {malloc(sizeof(T) * (size_t)n), n, n};
-	if (l.data == NULL) {
-		sngl_panic("out of memory");
-	}
+	of := c.listOp(t, "of", "L NAME(int64_t n, const T *xs)", `	L l = {sngl_alloc(sizeof(T) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(T) * (size_t)n);
 	return l;
 `)
@@ -106,10 +106,7 @@ func (c *Context) ListLit(n *ir.ListLit, elems []string) string {
 	if len(run) > 0 {
 		parts = append(parts, c.listOf(n.Type, run))
 	}
-	cat := c.listOp(n.Type, "cat", "L NAME(L a, L b)", `	L l = {malloc(sizeof(T) * (size_t)(a.len + b.len + 1)), a.len + b.len, a.len + b.len};
-	if (l.data == NULL) {
-		sngl_panic("out of memory");
-	}
+	cat := c.listOp(n.Type, "cat", "L NAME(L a, L b)", `	L l = {sngl_alloc(sizeof(T) * (size_t)(a.len + b.len + 1)), a.len + b.len, a.len + b.len};
 	if (a.len > 0) {
 		memcpy(l.data, a.data, sizeof(T) * (size_t)a.len);
 	}
@@ -129,8 +126,14 @@ func (c *Context) ListLit(n *ir.ListLit, elems []string) string {
 	return out
 }
 
-func (c *Context) listGrow(t *ir.Type) string {
-	return c.listOp(t, "grow", "void NAME(L *l, int64_t n)", `	if (l->len + n <= l->cap) {
+// listGrow is the function making room for n more elements in a list of t:
+// in the arena, or for a holder's list, kept, giving back what it outgrew.
+func (c *Context) listGrow(t *ir.Type, kept bool) string {
+	op, alloc, drop := "grow", "sngl_alloc", ""
+	if kept {
+		op, alloc, drop = "grow_kept", "sngl_keep_alloc", "\tsngl_drop(l->data);\n"
+	}
+	return c.listOp(t, op, "void NAME(L *l, int64_t n)", `	if (l->len + n <= l->cap) {
 		return;
 	}
 	int64_t cap = l->cap * 2;
@@ -140,16 +143,22 @@ func (c *Context) listGrow(t *ir.Type) string {
 	if (cap < 4) {
 		cap = 4;
 	}
-	T *data = malloc(sizeof(T) * (size_t)cap);
-	if (data == NULL) {
-		sngl_panic("out of memory");
-	}
+	T *data = `+alloc+`(sizeof(T) * (size_t)cap);
 	if (l->len > 0) {
 		memcpy(data, l->data, sizeof(T) * (size_t)l->len);
 	}
-	l->data = data;
+`+drop+`	l->data = data;
 	l->cap = cap;
 `)
+}
+
+// kept is the suffix naming the variant of an operation writing a list or a
+// map recv a holder holds.
+func (c *Context) kept(recv ir.Expr) (string, bool) {
+	if c.holder(recv) {
+		return "_kept", true
+	}
+	return "", false
 }
 
 // listAt is the element of list xs of type t at i, which raises past the
@@ -178,7 +187,7 @@ func (c *Context) Index(n *ir.Index, operand, idx string) string {
 // A key a holder's map takes is kept with it.
 func (c *Context) MutTargetIndex(n *ir.Index, operand, idx string) string {
 	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
-		if c.holder(n.Operand) && owns(t.Elems[0]) {
+		if c.holder(n.Operand) {
 			return "(*" + c.mapSlotKept(t) + "(&(" + operand + "), " + idx + "))"
 		}
 		return "(*" + c.mapSlot(t) + "(&(" + operand + "), " + idx + "))"
@@ -210,22 +219,34 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 	case "list.length":
 		return "(" + xs + ").len", true
 	case "list.push":
-		grow := c.listGrow(t)
-		push := c.listOp(t, "push", "void NAME(L *l, T v)", "\t"+grow+"(l, 1);\n\tl->data[l->len++] = v;\n")
+		suffix, held := c.kept(recv)
+		grow := c.listGrow(t, held)
+		push := c.listOp(t, "push"+suffix, "void NAME(L *l, T v)", "\t"+grow+"(l, 1);\n\tl->data[l->len++] = v;\n")
 		return push + "(&(" + xs + "), " + c.keptArg(t, recv, arg(1)) + ")", true
 	case "list.clear":
+		// What a holder's list held, it gives back.
+		if _, held := c.kept(recv); held && owns(t.Elems[0]) {
+			clear := c.listOp(t, "clear_kept", "void NAME(L *l)", "\tfor (int64_t i = 0; i < l->len; i++) {\n\t\t"+c.drop(t.Elems[0], "l->data[i]")+"\n\t}\n\tl->len = 0;\n")
+			return clear + "(&(" + xs + "))", true
+		}
 		return "((" + xs + ").len = 0)", true
 	case "list.remove":
-		rm := c.listOp(t, "remove", "void NAME(L *l, int64_t i)", `	if (i < 0 || i >= l->len) {
+		suffix, held := c.kept(recv)
+		drop := ""
+		if held && owns(t.Elems[0]) {
+			drop = "\t" + c.drop(t.Elems[0], "l->data[i]") + "\n"
+		}
+		rm := c.listOp(t, "remove"+suffix, "void NAME(L *l, int64_t i)", `	if (i < 0 || i >= l->len) {
 		return;
 	}
-	memmove(&l->data[i], &l->data[i + 1], sizeof(T) * (size_t)(l->len - i - 1));
+`+drop+`	memmove(&l->data[i], &l->data[i + 1], sizeof(T) * (size_t)(l->len - i - 1));
 	l->len--;
 `)
 		return rm + "(&(" + xs + "), " + arg(1) + ")", true
 	case "list.insert":
-		grow := c.listGrow(t)
-		ins := c.listOp(t, "insert", "void NAME(L *l, int64_t i, T v)", `	if (i < 0 || i > l->len) {
+		suffix, held := c.kept(recv)
+		grow := c.listGrow(t, held)
+		ins := c.listOp(t, "insert"+suffix, "void NAME(L *l, int64_t i, T v)", `	if (i < 0 || i > l->len) {
 		return;
 	}
 	`+grow+`(l, 1);
@@ -235,7 +256,7 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 `)
 		return ins + "(&(" + xs + "), " + arg(1) + ", " + c.keptArg(t, recv, arg(2)) + ")", true
 	case "list.reverse":
-		rev := c.listOp(t, "reverse", "L NAME(L l)", `	L out = {malloc(sizeof(T) * (size_t)(l.len + 1)), l.len, l.len};
+		rev := c.listOp(t, "reverse", "L NAME(L l)", `	L out = {sngl_alloc(sizeof(T) * (size_t)(l.len + 1)), l.len, l.len};
 	for (int64_t i = 0; i < l.len; i++) {
 		out.data[i] = l.data[l.len - 1 - i];
 	}
@@ -252,7 +273,7 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 	if (end < start) {
 		end = start;
 	}
-	L out = {malloc(sizeof(T) * (size_t)(end - start + 1)), end - start, end - start};
+	L out = {sngl_alloc(sizeof(T) * (size_t)(end - start + 1)), end - start, end - start};
 	if (end > start) {
 		memcpy(out.data, &l.data[start], sizeof(T) * (size_t)(end - start));
 	}
@@ -276,7 +297,7 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 		return join + "(" + xs + ", " + arg(1) + ")", true
 	case "list.filter":
 		fnT := c.fnType(n.Args[1].Value.ExprType())
-		grow := c.listGrow(t)
+		grow := c.listGrow(t, false)
 		f := c.listOp(t, "filter", "L NAME(L l, "+fnT+" f)", `	L out = {0};
 	for (int64_t i = 0; i < l.len; i++) {
 		if (f.fn(f.env, l.data[i])) {
@@ -297,7 +318,7 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 		fnT := c.fnType(ft)
 		name := c.listType(t) + "_map_" + typeToken(ft.Sig.Return)
 		c.file.helper(name, fmt.Sprintf(`static %s %s(%s l, %s f) {
-	%s out = {malloc(sizeof(%s) * (size_t)(l.len + 1)), l.len, l.len};
+	%s out = {sngl_alloc(sizeof(%s) * (size_t)(l.len + 1)), l.len, l.len};
 	for (int64_t i = 0; i < l.len; i++) {
 		out.data[i] = f.fn(f.env, l.data[i]);
 	}
@@ -436,7 +457,7 @@ func (c *Context) copyValue(t *ir.Type, v string) string {
 	switch t.Kind {
 	case ir.TypeList:
 		elem := c.copyValue(t.Elems[0], "l.data[i]")
-		return c.listOp(t, "copy", "L NAME(L l)", `	L out = {malloc(sizeof(T) * (size_t)(l.len + 1)), l.len, l.len};
+		return c.listOp(t, "copy", "L NAME(L l)", `	L out = {sngl_alloc(sizeof(T) * (size_t)(l.len + 1)), l.len, l.len};
 	for (int64_t i = 0; i < l.len; i++) {
 		out.data[i] = `+elem+`;
 	}
@@ -444,7 +465,7 @@ func (c *Context) copyValue(t *ir.Type, v string) string {
 `) + "(" + v + ")"
 	case ir.TypeMap:
 		kc, vc := c.copyValue(t.Elems[0], "m.keys[i]"), c.copyValue(t.Elems[1], "m.vals[i]")
-		return c.mapOp(t, "copy", "M NAME(M m)", `	M out = {malloc(sizeof(K) * (size_t)(m.len + 1)), malloc(sizeof(V) * (size_t)(m.len + 1)), m.len, m.len};
+		return c.mapOp(t, "copy", "M NAME(M m)", `	M out = {sngl_alloc(sizeof(K) * (size_t)(m.len + 1)), sngl_alloc(sizeof(V) * (size_t)(m.len + 1)), m.len, m.len};
 	for (int64_t i = 0; i < m.len; i++) {
 		out.keys[i] = `+kc+`;
 		out.vals[i] = `+vc+`;
@@ -531,29 +552,31 @@ func (c *Context) mapFind(t *ir.Type) string {
 // a place made for it, holding V's zero, where it has none.
 func (c *Context) mapSlot(t *ir.Type) string { return c.mapSlotAs(t, "slot", "k") }
 
-// mapSlotKept is mapSlot for a holder's map, which keeps a key it takes.
+// mapSlotKept is mapSlot for a holder's map, which keeps a key it takes and
+// grows in kept memory.
 func (c *Context) mapSlotKept(t *ir.Type) string {
 	return c.mapSlotAs(t, "slot_kept", c.keep(t.Elems[0], "k"))
 }
 
 func (c *Context) mapSlotAs(t *ir.Type, op, key string) string {
 	find := c.mapFind(t)
+	alloc, drop := "sngl_alloc", ""
+	if op == "slot_kept" {
+		alloc, drop = "sngl_keep_alloc", "\t\tsngl_drop(m->keys);\n\t\tsngl_drop(m->vals);\n"
+	}
 	return c.mapOp(t, op, "V *NAME(M *m, K k)", `	int64_t i = `+find+`(*m, k);
 	if (i >= 0) {
 		return &m->vals[i];
 	}
 	if (m->len == m->cap) {
 		int64_t cap = m->cap < 4 ? 4 : m->cap * 2;
-		K *keys = malloc(sizeof(K) * (size_t)cap);
-		V *vals = malloc(sizeof(V) * (size_t)cap);
-		if (keys == NULL || vals == NULL) {
-			sngl_panic("out of memory");
-		}
+		K *keys = `+alloc+`(sizeof(K) * (size_t)cap);
+		V *vals = `+alloc+`(sizeof(V) * (size_t)cap);
 		if (m->len > 0) {
 			memcpy(keys, m->keys, sizeof(K) * (size_t)m->len);
 			memcpy(vals, m->vals, sizeof(V) * (size_t)m->len);
 		}
-		m->keys = keys;
+`+drop+`		m->keys = keys;
 		m->vals = vals;
 		m->cap = cap;
 	}
@@ -607,7 +630,7 @@ func (c *Context) mapIntrinsic(n *ir.Call, t *ir.Type, m string) string {
 		l := c.listType(ir.ListOf(elem))
 		et := c.typeName(elem)
 		name := c.mapType(t) + "_" + part
-		c.file.helper(name, fmt.Sprintf("static %s %s(%s m) {\n\t%s l = {malloc(sizeof(%s) * (size_t)(m.len + 1)), m.len, m.len};\n\tif (m.len > 0) {\n\t\tmemcpy(l.data, m.%s, sizeof(%s) * (size_t)m.len);\n\t}\n\treturn l;\n}\n", l, name, c.mapType(t), l, et, part, et))
+		c.file.helper(name, fmt.Sprintf("static %s %s(%s m) {\n\t%s l = {sngl_alloc(sizeof(%s) * (size_t)(m.len + 1)), m.len, m.len};\n\tif (m.len > 0) {\n\t\tmemcpy(l.data, m.%s, sizeof(%s) * (size_t)m.len);\n\t}\n\treturn l;\n}\n", l, name, c.mapType(t), l, et, part, et))
 		return name + "(" + m + ")"
 	}
 	return c.fail("the intrinsic %s", n.Func.Intrinsic)
@@ -663,10 +686,11 @@ func (c *Context) stringIntrinsic(n *ir.Call) (string, bool) {
 		return fn + "(" + strings.Join(args, ", ") + ")", true
 	}
 	t := ir.ListOf(ir.TypString)
-	grow := c.listGrow(t)
+	grow := c.listGrow(t, false)
 	// An empty separator splits s into its characters, each of the bytes of
 	// its UTF-8 sequence, as Go's strings.Split does; a byte no sequence
-	// starts is one of its own.
+	// starts is one of its own. Each piece is copied, with the NUL a string
+	// ends in.
 	split := c.listOp(t, "split", "L NAME(sngl_string s, sngl_string sep)", `	L out = {0};
 	if (sep.len == 0) {
 		for (size_t i = 0; i < s.len;) {
@@ -676,7 +700,7 @@ func (c *Context) stringIntrinsic(n *ir.Call) (string, bool) {
 				n = 1;
 			}
 			`+grow+`(&out, 1);
-			out.data[out.len++] = (sngl_string){s.ptr + i, n};
+			out.data[out.len++] = sngl_string_bytes(s.ptr + i, n);
 			i += n;
 		}
 		return out;
@@ -686,10 +710,10 @@ func (c *Context) stringIntrinsic(n *ir.Call) (string, bool) {
 		int64_t at = sep.len == 0 ? -1 : sngl_string_find(s, sep, from);
 		`+grow+`(&out, 1);
 		if (at < 0) {
-			out.data[out.len++] = sngl_string_substring((sngl_string){s.ptr + from, s.len - (size_t)from}, 0, INT64_MAX);
+			out.data[out.len++] = sngl_string_bytes(s.ptr + from, s.len - (size_t)from);
 			return out;
 		}
-		out.data[out.len++] = (sngl_string){s.ptr + from, (size_t)(at - from)};
+		out.data[out.len++] = sngl_string_bytes(s.ptr + from, (size_t)(at - from));
 		from = at + (int64_t)sep.len;
 	}
 `)

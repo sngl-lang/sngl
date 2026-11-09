@@ -53,6 +53,26 @@ func TestRun(t *testing.T) {
 			write(t, dir, "program.c", program)
 			write(t, dir, "main.c", files["main.c"])
 			for _, cc := range compilers {
+				// Built again under AddressSanitizer and UBSan, which stop it at
+				// the first undefined behavior or bad access, the arena's
+				// included, where the compiler has them. Leaks are not checked:
+				// a closure's environment is never given back
+				// (design/ownership.md).
+				if !cc.Windows {
+					t.Run(cc.Name+"/sanitized", func(t *testing.T) {
+						exe := filepath.Join(dir, cc.Name+"-sanitized")
+						if err := cc.Build(dir, []string{"main.c", "sngl.c"}, exe, "c17", sanitize...); err != nil {
+							if strings.Contains(err.Error(), "asan") || strings.Contains(err.Error(), "ubsan") {
+								t.Skipf("%s has no sanitizers: %v", cc.Name, err)
+							}
+							t.Fatalf("%v\nprogram.c:\n%s", err, program)
+						}
+						t.Setenv("ASAN_OPTIONS", "detect_leaks=0")
+						if got, want := run(t, cc, exe), string(files["want"]); got != want {
+							t.Errorf("printed\n%s\nwant\n%s", got, want)
+						}
+					})
+				}
 				for _, std := range clang.Standards {
 					t.Run(cc.Name+"/"+std, func(t *testing.T) {
 						exe := filepath.Join(dir, cc.Name+"-"+std)
@@ -69,6 +89,10 @@ func TestRun(t *testing.T) {
 		})
 	}
 }
+
+// sanitize are the flags a sanitized build adds: GCC's undefined leaves out
+// a float cast past an int's range, which is named on its own.
+var sanitize = []string{"-fsanitize=address,undefined,float-cast-overflow", "-fno-sanitize-recover=all", "-fno-omit-frame-pointer", "-g"}
 
 // translate is src's functions and structs, checked and lowered as a build
 // for C lowers them, written as C.

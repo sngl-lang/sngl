@@ -42,6 +42,10 @@ func both(a bool, b bool) => "{a && b} {a || b}"
 
 func divide(a int, b int) => "{a / b} {a % b}"
 
+// A float past an int's range is the nearest end, and NaN is 0: C's own
+// cast is undefined there.
+func whole(f float) => int(f)
+
 func countdown(n int) string {
     var out = ""
     var i = n
@@ -80,6 +84,8 @@ int main(void) {
 	b = a;
 	b.name = SNGL_STR("b");
 	print(sngl_bool_format(s_same(a, b)));
+	print(sngl_concat(sngl_concat(sngl_int_format(s_whole(-2.9)), SNGL_STR(" ")), sngl_int_format(s_whole(1e20))));
+	print(sngl_concat(sngl_concat(sngl_int_format(s_whole(-1e20)), SNGL_STR(" ")), sngl_int_format(s_whole(0.0 / 0.0))));
 	return 0;
 }
 -- want --
@@ -99,3 +105,5 @@ false true
 true
 false
 false
+-2 9223372036854775807
+-9223372036854775808 0

@@ -37,6 +37,40 @@ type cRecord struct {
 	nodes    map[string]string
 	order    []string
 	appended map[string]bool
+	// rootRenders are the slot renders written directly in the body that
+	// render into the record's own root (codegen.RootSlotRenders), which is
+	// then a box made first: every slot renders into it, so the body's own
+	// widgets go into it too, in written order.
+	rootRenders map[ir.Stmt]bool
+	// copies are the nodes whose copy the record holds in the file's table
+	// of them, which its destroy takes it out of.
+	copies []string
+	// anchors are the fields holding the anchors of the slots the record
+	// renders.
+	anchors []string
+}
+
+// widget is the widget id is, in the record: an instance by its root.
+func (r *cRecord) widget(id string) ir.Expr {
+	ref := &ir.Ident{Name: id, IsElementRef: true, Synthesized: true}
+	if strings.HasSuffix(r.nodes[id], "__inst *") {
+		return &ir.Select{Operand: ref, Field: instanceRootVar, Type: ir.NativePointerOf("GtkWidget")}
+	}
+	return ref
+}
+
+// topsInto puts the widgets the body made so far and attached nowhere into
+// root, ahead of a slot render into it.
+func (e *cEmitter) topsInto(ctx context.Context, root ir.Expr) []ir.Stmt {
+	r := e.scope
+	var stmts []ir.Stmt
+	for _, id := range r.order {
+		if !r.appended[id] {
+			stmts = append(stmts, e.OnAppendChild(ctx, root, r.widget(id))...)
+			r.appended[id] = true
+		}
+	}
+	return stmts
 }
 
 func recordType(comp *ir.Component) string { return clang.Decl(&comp.DeclInfo) + "__inst" }
@@ -59,7 +93,7 @@ func (r *cRecord) holds(name string) bool {
 // record writes comp's record: the struct, the constructor, its functions
 // and the destroy.
 func (e *cEmitter) record(comp *ir.Component) {
-	r := &cRecord{comp: comp, nodes: map[string]string{}, appended: map[string]bool{}}
+	r := &cRecord{comp: comp, nodes: map[string]string{}, appended: map[string]bool{}, rootRenders: codegen.RootSlotRenders(comp.Stmts, instanceRootVar)}
 	prev, prevSelf := e.scope, e.ctx.Self
 	e.scope = r
 	e.ctx.Self = recordType(comp) + " *" + selfName
@@ -104,6 +138,9 @@ func (e *cEmitter) record(comp *ir.Component) {
 			fmt.Fprintf(&ctor, "\t%s->%s = %s;\n", selfName, clang.Local(v.Name), ctx.Keep(v.Type, ctx.EvalExpr(v.Init)))
 		}
 	}
+	if len(r.rootRenders) > 0 {
+		fmt.Fprintf(&ctor, "\t%s->%s = sngl_contents_new();\n", selfName, instanceRootVar)
+	}
 	for _, l := range ctx.EvalBlock(body) {
 		ctor.WriteString("\t" + l + "\n")
 	}
@@ -115,15 +152,19 @@ func (e *cEmitter) record(comp *ir.Component) {
 		}
 	}
 	root := selfName + "->__root"
-	switch len(tops) {
-	case 0:
+	switch {
+	case len(r.rootRenders) > 0:
+		for _, id := range tops {
+			fmt.Fprintf(&ctor, "\tsngl_box_append(%s, GTK_WIDGET(%s));\n", root, ctx.EvalExpr(r.widget(id)))
+		}
+	case len(tops) == 0:
 		fmt.Fprintf(&ctor, "\t%s = gtk_label_new(NULL);\n\tgtk_widget_set_visible(%s, FALSE);\n", root, root)
-	case 1:
-		fmt.Fprintf(&ctor, "\t%s = GTK_WIDGET(%s->%s);\n", root, selfName, clang.Local(tops[0]))
+	case len(tops) == 1:
+		fmt.Fprintf(&ctor, "\t%s = GTK_WIDGET(%s);\n", root, ctx.EvalExpr(r.widget(tops[0])))
 	default:
 		fmt.Fprintf(&ctor, "\t%s = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);\n", root)
 		for _, id := range tops {
-			fmt.Fprintf(&ctor, "\tgtk_box_append(GTK_BOX(%s), GTK_WIDGET(%s->%s));\n", root, selfName, clang.Local(id))
+			fmt.Fprintf(&ctor, "\tgtk_box_append(GTK_BOX(%s), GTK_WIDGET(%s));\n", root, ctx.EvalExpr(r.widget(id)))
 		}
 	}
 	fmt.Fprintf(&ctor, "\tg_object_ref_sink(%s);\n\treturn %s;\n}\n", root, selfName)
@@ -144,6 +185,9 @@ func (e *cEmitter) record(comp *ir.Component) {
 	}
 	for _, id := range r.order {
 		fields = append(fields, "\t"+r.nodes[id]+clang.Local(id)+";")
+	}
+	for _, a := range r.anchors {
+		fields = append(fields, "\tGtkWidget *"+a+";")
 	}
 	e.ctx.Define(typ, "typedef struct "+typ+" {\n"+strings.Join(fields, "\n")+"\n} "+typ+";\n", deps...)
 	e.ctx.Include("stdlib.h", true)
@@ -166,6 +210,14 @@ func (e *cEmitter) record(comp *ir.Component) {
 	var destroy strings.Builder
 	io := e.fe
 	fmt.Fprintf(io, "%s", ctor.String())
+	// An anchor is held weakly, and the record is gone before GTK may let
+	// go of it.
+	for _, a := range r.anchors {
+		teardown += fmt.Sprintf("\tsngl_hold(&%s->%s, NULL);\n", selfName, a)
+	}
+	for _, id := range r.copies {
+		teardown += fmt.Sprintf("\tsngl_copy_drop(%s, GTK_WIDGET(%s->%s));\n", copiesName(id), selfName, clang.Local(id))
+	}
 	fmt.Fprintf(&destroy, "\nstatic void %s(%s *%s) {\n%s\tg_object_unref(%s);\n\tfree(%s);\n}\n", recordFunc(comp, "_destroy"), typ, selfName, teardown, root, selfName)
 	fmt.Fprintf(io, "%s", destroy.String())
 	e.fe.Prototype(fmt.Sprintf("static %s;", sig))

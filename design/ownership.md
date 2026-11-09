@@ -955,7 +955,9 @@ bracketed by `sngl_turn_enter` and `sngl_turn_leave`: the program's start
 (`sngl_start`), each test function, each canvas draw (`c_canvas.go`'s
 `draws`). The outermost leave ends the turn: it frees what was dropped and
 resets the arena, overwriting what the turn made (0x5a) so that a value read
-past its turn reads as garbage rather than as what it was. Every callback C
+past its turn reads as garbage rather than as what it was; under
+AddressSanitizer it poisons what it gave back, so such a read is reported
+where it happens. Every callback C
 makes into the program goes through the dispatcher `cCallback` defines for its
 C signature, which brackets it with `sngl_call_enter` and `sngl_call_leave`:
 a signal's handler, a timer's tick, an idle. These give the arena back to
@@ -981,6 +983,13 @@ is deep: a list's buffer is copied and each element kept, and likewise a
 map's keys and values, a struct's fields, an option's value, and a payload
 enum's payload by its tag. `owns` says which types have anything to keep.
 
+**A list or a map made is the turn's too.** A literal's buffer, a spread's,
+a copy, a slice, a filter's or a map's result, a split's pieces and a map's
+keys are `sngl_alloc`ed, as a string's bytes are, and a holder keeps a copy.
+A holder's own list or map grows in kept memory and drops the buffer it
+outgrew (`grow_kept`, `slot_kept`, chosen by `holder` as an element's keep
+is), and its `remove` and `clear` drop what they take out.
+
 **A drop waits for the turn's end, and is a no-op for what was never kept.**
 A local of the turn may still be reading what a holder held when the holder
 is overwritten (`var s = label; label = "x"; use(s)`). So `sngl_drop` only
@@ -992,11 +1001,10 @@ not own.
 
 **Not yet, each a leak rather than a fault:**
 
-- A kept list that grows (`listGrow`) moves to an untracked buffer, so it is
-  never dropped.
-- `remove` and `clear` drop nothing they take out.
 - A closure's environment is freed only where C releases a callback's
-  context.
+  context, so a lambda a turn makes and drops -- a `filter`'s predicate --
+  leaks its environment; `codegen/lang/c`'s sanitized `TestRun` checks no
+  leaks for that reason.
 - A record's destroy frees the record, not what its fields keep.
 - `CMarshal`'s `cstring` is still a copy the program frees (`CConvert`),
   where the design above made it the identity.

@@ -692,8 +692,8 @@ func (st *reactivityState) recreateStatic(n *ir.NodeInst, declSt *declarativeSta
 	cur := &ir.Var{Name: n.ID, Type: elem, Synthesized: true}
 	fresh := &ir.Var{Name: n.ID + "__re" + n1, Type: elem, Synthesized: true}
 	root := rendersAsType(n.Component, declSt.hosted)
-	freshEl := &ir.Var{Name: fresh.Name + instanceRootSuffix, Type: root, Synthesized: true}
-	prevEl := &ir.Var{Name: n.ID + "__prev" + n1 + instanceRootSuffix, Type: root, Synthesized: true}
+	freshEl := &ir.Var{Name: fresh.Name + ir.InstanceRootSuffix, Type: root, Synthesized: true}
+	prevEl := &ir.Var{Name: n.ID + "__prev" + n1 + ir.InstanceRootSuffix, Type: root, Synthesized: true}
 
 	// The position the instance's root stands in, a node of the same family:
 	// what a platform binds the name to is its answer.

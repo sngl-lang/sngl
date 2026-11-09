@@ -66,14 +66,10 @@ func SetLook(w Handle, l Look) {
 		C.int(l.Justify), C.int(bool01(l.Spaced)), C.int(l.Spacing), C.int(bool01(l.Grid)), C.int(l.Columns))
 }
 
-// ContentsNew is the box an instance of a component holds its widgets in,
-// which the program never wrote: a child growing in it grows the box too, in
-// the box it sits in, as CSS's display: contents makes its children that
-// box's items.
+// ContentsNew is the box an instance of a component holds its widgets in
+// (sngl_contents_new).
 func ContentsNew() Handle {
-	box := BoxNew(OrientationVertical, 6)
-	C.sngl_look_ensure(widget(box)).contents = 1
-	return box
+	return Handle(unsafe.Pointer(C.sngl_contents_new()))
 }
 
 func bool01(b bool) int {

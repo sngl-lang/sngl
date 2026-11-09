@@ -329,13 +329,43 @@ void sngl_app_detach(GtkWidget *box) {
     }
 }
 
-GtkWidget *sngl_slot_anchor(GtkWidget *box, GtkWidget *anchor) {
-    if (box == SNGL_APP) return NULL;
-    if (anchor != NULL && gtk_widget_get_parent(anchor) == box) return anchor;
+/* sngl_slot_host is the box a slot rendering into w puts its entries in:
+ * w, a box, or for a container holding one child -- a frame, a button, a
+ * scroll, a window -- a box it holds as that child, made the first time. */
+static GtkWidget *sngl_slot_host(GtkWidget *w) {
+    if (w == SNGL_APP || GTK_IS_BOX(w)) return w;
+    GtkWidget *b = g_object_get_data(G_OBJECT(w), "sngl-slot-box");
+    if (b == NULL) {
+        b = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+        g_object_set_data_full(G_OBJECT(w), "sngl-slot-box", g_object_ref_sink(b), g_object_unref);
+    }
+    if (gtk_widget_get_parent(b) != NULL) return b;
+    if (GTK_IS_SCROLLED_WINDOW(w)) {
+        sngl_scroll_set_child(w, b);
+    } else if (GTK_IS_FRAME(w)) {
+        gtk_frame_set_child(GTK_FRAME(w), b);
+    } else if (GTK_IS_BUTTON(w)) {
+        gtk_button_set_child(GTK_BUTTON(w), b);
+    } else if (GTK_IS_WINDOW(w)) {
+        gtk_window_set_child(GTK_WINDOW(w), b);
+    } else {
+        g_critical("a slot renders into a %s, which holds no box", G_OBJECT_TYPE_NAME(w));
+        return w;
+    }
+    return b;
+}
+
+void sngl_slot_anchor(GtkWidget *box, GtkWidget **anchor) {
+    if (box == SNGL_APP) {
+        sngl_hold(anchor, NULL);
+        return;
+    }
+    box = sngl_slot_host(box);
+    if (*anchor != NULL && gtk_widget_get_parent(*anchor) == box) return;
     GtkWidget *w = gtk_label_new(NULL);
     gtk_widget_set_visible(w, FALSE);
     gtk_box_append(GTK_BOX(box), w);
-    return w;
+    sngl_hold(anchor, w);
 }
 
 void sngl_box_append(GtkWidget *box, GtkWidget *child) {
@@ -344,11 +374,13 @@ void sngl_box_append(GtkWidget *box, GtkWidget *child) {
         return;
     }
     if (sngl_tabs_add(box, child) || sngl_image_adopt(box, child)) return;
+    box = sngl_slot_host(box);
     gtk_box_append(GTK_BOX(box), child);
     sngl_menu_moved(box, child);
 }
 
 void sngl_box_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child) {
+    box = sngl_slot_host(box);
     if (box == SNGL_APP || anchor == NULL || gtk_widget_get_parent(anchor) != box) {
         sngl_box_append(box, child);
         return;
@@ -363,12 +395,14 @@ void sngl_box_remove(GtkWidget *box, GtkWidget *child) {
         sngl_app_detach(child);
         return;
     }
-    if (sngl_tabs_remove(box, child) || sngl_image_unadopt(box, child)) return;
-    /* What the box let go of may be gone once it has, and the bar asks
-     * what it was. */
+    /* What the box let go of may be gone once it has, and the bar and the
+     * tabs ask what it was. */
     g_object_ref(child);
-    gtk_box_remove(GTK_BOX(box), child);
-    sngl_menu_moved(box, child);
+    if (!sngl_tabs_remove(box, child) && !sngl_image_unadopt(box, child)) {
+        box = sngl_slot_host(box);
+        gtk_box_remove(GTK_BOX(box), child);
+        sngl_menu_moved(box, child);
+    }
     g_object_unref(child);
 }
 
@@ -379,13 +413,27 @@ void sngl_hold(GtkWidget **slot, GtkWidget *w) {
     if (w) g_object_add_weak_pointer(G_OBJECT(w), (gpointer *)slot);
 }
 
-void sngl_copy_put(GHashTable **copies, const char *key, GtkWidget *w) {
-    if (*copies == NULL) *copies = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+void sngl_copy_drop(GHashTable *copies, GtkWidget *w) {
+    if (copies == NULL) return;
     GHashTableIter it;
     gpointer k, v;
-    g_hash_table_iter_init(&it, *copies);
+    g_hash_table_iter_init(&it, copies);
     while (g_hash_table_iter_next(&it, &k, &v)) {
         if (v == w) g_hash_table_iter_remove(&it);
+    }
+}
+
+/* A widget gone is in no table, whatever let go of it. */
+static void sngl_copy_gone(gpointer copies, GObject *w) {
+    sngl_copy_drop(copies, (GtkWidget *)w);
+}
+
+void sngl_copy_put(GHashTable **copies, const char *key, GtkWidget *w) {
+    if (*copies == NULL) *copies = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+    sngl_copy_drop(*copies, w);
+    if (g_object_get_data(G_OBJECT(w), "sngl-copies") != *copies) {
+        g_object_set_data(G_OBJECT(w), "sngl-copies", *copies);
+        g_object_weak_ref(G_OBJECT(w), sngl_copy_gone, *copies);
     }
     g_hash_table_insert(*copies, g_strdup(key), w);
 }
