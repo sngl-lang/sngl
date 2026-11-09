@@ -1100,7 +1100,7 @@ sha256:2f2fd4e4e2e5478b2a09faa93b410d9e
   ]
 }
 -- testrun/gtk4/c/choose.sngl/strip/1 --
-sha256:327d88bc7872c9d956ed06738217c4c7
+sha256:d4679d74067aeb255ea9c78a91739ada
 {
   "results": [
     {
@@ -1182,7 +1182,7 @@ sha256:a4b0f5d025d7f07984a15d64ac4d500b
   ]
 }
 -- testrun/gtk4/c/keep.sngl/ticker/1 --
-sha256:597d63810877cc7ed1e28321a88868a3
+sha256:42c15891f20d8060f860f098761b5ff4
 {
   "results": [
     {
@@ -1202,7 +1202,7 @@ sha256:3f3f13155d24675dae9221ad915cf764
   ]
 }
 -- testrun/gtk4/c/menus.sngl/app/1 --
-sha256:29309d7c3689f18c448ac26aff9a0ee2
+sha256:5abafaa4013071febc5d49d0e789f70f
 {
   "results": [
     {
@@ -1236,7 +1236,7 @@ sha256:e9418a3c542b43516fcc5df5dfa380c9
   ]
 }
 -- testrun/gtk4/c/records.sngl/rows/1 --
-sha256:9b3a968c92b64e6884280eee2495fb8e
+sha256:ad0b8712fd5e06e220a727d158c99022
 {
   "results": [
     {

@@ -466,7 +466,7 @@ func (c *Context) isPointer(t *ir.Type) bool {
 func (c *Context) StructLit(n *ir.StructLit, fields []string) string {
 	// A value a platform holds by pointer, a gtk4rt picture: its zero is
 	// none.
-	if len(n.Fields) == 0 && c.isPointer(n.Type) {
+	if len(n.Fields) == 0 && c.isPointer(n.Type) && !isBox(n.Type) {
 		return "NULL"
 	}
 	if ir.PayloadEnum(n.Type) != nil && len(n.Fields) == 1 {
@@ -486,8 +486,11 @@ func (c *Context) StructLit(n *ir.StructLit, fields []string) string {
 		// A box is a holder: what it starts holding is kept.
 		kept := slices.Clone(fields)
 		for i, f := range n.Fields {
-			if i < len(kept) {
-				kept[i] = c.keep(sd.Fields[0].Type, c.nullAs(sd.Fields[0].Type, f.Value, kept[i]))
+			if i >= len(kept) {
+				continue
+			}
+			if j := slices.IndexFunc(sd.Fields, func(sf *ir.StructField) bool { return sf.Name == f.Name }); j >= 0 {
+				kept[i] = c.keep(sd.Fields[j].Type, c.nullAs(sd.Fields[j].Type, f.Value, kept[i]))
 			}
 		}
 		return "((" + name + " *)" + c.heapCopy(name, c.structLit(n, kept)) + ")"
@@ -519,9 +522,7 @@ func (c *Context) structLit(n *ir.StructLit, fields []string) string {
 
 // Box defines sd, a box lower.NoRef made, as the struct it is.
 func (c *Context) Box(sd *ir.StructDef) {
-	name := Decl(&sd.DeclInfo)
-	elem := c.typeName(sd.Fields[0].Type)
-	c.file.define(name, "typedef struct "+name+" {\n\t"+elem+" value;\n} "+name+";\n", elem)
+	c.defineStruct(sd)
 }
 
 // Spread is the list a spread reads, which the list literal it is in joins

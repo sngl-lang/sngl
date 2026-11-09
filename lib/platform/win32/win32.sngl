@@ -11,6 +11,76 @@ import api "sngl:platform/win32/api"
 // into the program.
 c.link(include="sngl_win32.h", library="user32", ldflags=["-mwindows", "-luser32", "-lgdi32", "-lcomctl32"], sources=["rt/sngl_win32.c", "rt/sngl_win32.h"])
 
+// The source annotations MinGW's sal.h, specstrings.h and driverspecs.h
+// define as macros, which windows.h includes: a local lowering names
+// `__out` was read by the preprocessor as one.
+const salMacros = [
+    "__analysis_assume",
+    "__bcount",
+    "__deref",
+    "__deref_opt_out",
+    "__deref_opt_out_bcount",
+    "__deref_out",
+    "__deref_out_ecount",
+    "__deref_out_opt",
+    "__drv_arg",
+    "__drv_at",
+    "__drv_deref",
+    "__drv_in",
+    "__drv_in_deref",
+    "__drv_out",
+    "__drv_out_deref",
+    "__drv_when",
+    "__ecount",
+    "__encoded_pointer",
+    "__fallthrough",
+    "__in",
+    "__in_bcount",
+    "__in_bcount_nz",
+    "__in_bcount_z",
+    "__in_ecount",
+    "__in_ecount_nz",
+    "__in_ecount_z",
+    "__in_opt",
+    "__inout",
+    "__inout_bcount",
+    "__inout_bcount_full",
+    "__inout_bcount_nz",
+    "__inout_bcount_part",
+    "__inout_bcount_z",
+    "__inout_ecount",
+    "__inout_ecount_full",
+    "__inout_ecount_nz",
+    "__inout_ecount_part",
+    "__inout_ecount_z",
+    "__inout_opt",
+    "__internal_kernel_driver",
+    "__kernel_code",
+    "__kernel_driver",
+    "__nothrow",
+    "__out",
+    "__out_bcount",
+    "__out_bcount_full",
+    "__out_bcount_full_z",
+    "__out_bcount_nz",
+    "__out_bcount_part",
+    "__out_bcount_part_z",
+    "__out_bcount_z",
+    "__out_ecount",
+    "__out_ecount_full",
+    "__out_ecount_full_z",
+    "__out_ecount_nz",
+    "__out_ecount_part",
+    "__out_ecount_part_z",
+    "__out_ecount_z",
+    "__out_opt",
+    "__range",
+    "__refparam",
+    "__specstrings",
+    "__user_code",
+    "__user_driver",
+]
+
 // The `win32` node of a build directive: `output { c { win32() } }`.
 //
 // Every node is a window the runtime makes, and every operation on one a
@@ -42,13 +112,15 @@ component platform(
     // compiler for it, and `sngl run` runs the program under Wine.
     const arch          string = "amd64",
     // What its generated code introduces beside a program's names: the
-    // runtime's prefix and the program's entry.
+    // runtime's prefix and the program's entry, and the annotations
+    // windows.h defines as macros.
     const reservedNames list[string] = [
         "sngl_win32",
         "sngl_build",
         "sngl_main",
         "main",
         "WinMain",
+        ...salMacros,
     ],
 ) build.platform
 
@@ -254,6 +326,13 @@ func _rtSetVertical(b Box, vertical bool)
 
 #[gen.protocol(create)]
 func _create_Box() Box {
+    return _rtBox(true)
+}
+
+// What a component renders several nodes, or a slot, at its top into: a box
+// down the page, as a window lays out what it holds.
+#[gen.protocol(contents)]
+func _contents() Box {
     return _rtBox(true)
 }
 

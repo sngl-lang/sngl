@@ -894,6 +894,10 @@ const (
 	ProtocolHandle ProtocolOp = "handle"
 	ProtocolAttach ProtocolOp = "attach"
 	ProtocolDetach ProtocolOp = "detach"
+	// ProtocolContents is a build-target node's too: the container a
+	// component built as a record renders into, where its body renders more
+	// than one node or a slot at its top.
+	ProtocolContents ProtocolOp = "contents"
 	// ProtocolFire is a component's, by the event: how a test fires the
 	// event as the host would (#[gen.fires]).
 	ProtocolFire ProtocolOp = "fire"
@@ -917,6 +921,9 @@ type NodeProtocol struct {
 	Handle *Func
 	Attach *Func
 	Detach *Func
+	// Contents makes the container a component's body renders into where
+	// it renders more than one node, or a slot, at its top.
+	Contents *Func
 	// Set is each prop's set, by the prop's name.
 	Set map[string]*Func
 	// On is each event's own connect, by the event's name, which a node of
@@ -974,6 +981,8 @@ func (p *NodeProtocol) Op(op ProtocolOp) *Func {
 		return p.Attach
 	case ProtocolDetach:
 		return p.Detach
+	case ProtocolContents:
+		return p.Contents
 	}
 	return nil
 }

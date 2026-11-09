@@ -26,26 +26,15 @@ var passDeclarative = pass{
 // lifter. With NoLambda off the body's free vars stay free — which is fine
 // for closure-supporting targets (e.g. Go) that emit the handler as a
 // nested closure under its owning component/window.
-func lowerDeclarative(pkg *ir.Package, caps Features, opts Options) error {
+func lowerDeclarative(pkg *ir.Package, caps Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
 	st := newDeclarativeState(pkg, caps)
 	st.seedCounter(pkg)
-	// A placed build rooted at a component renders it as the package body
-	// would (liftRoot), so what it renders is attached to the application
-	// too: a test's component is shown as a window holding it would be.
-	var placedRoot *ir.Component
-	if caps.Placement {
-		placedRoot = rootComponent(pkg, opts)
-	}
 	for _, comp := range pkg.Components {
 		st.hosted = comp.Family
-		if comp == placedRoot {
-			comp.Stmts = st.processStmtsForParent(comp.Stmts, &comp.Funcs, appRef())
-		} else {
-			comp.Stmts = st.processStmts(comp.Stmts, &comp.Funcs)
-		}
+		comp.Stmts = st.processStmts(comp.Stmts, &comp.Funcs)
 		destroyBuiltInstances(comp, st)
 	}
 	// The package body's parent is the application: each node there is

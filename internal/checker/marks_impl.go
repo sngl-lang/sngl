@@ -1065,6 +1065,10 @@ func markGenProtocol(m *mark) error {
 		if fn.Return == nil || fn.Return.Kind == ir.TypeVoid || fn.Return.Kind == ir.TypeComponent {
 			return fmt.Errorf("#[gen.protocol(handle)] declares the type a node is held as, which is no component, as its return type")
 		}
+	case ir.ProtocolContents:
+		if len(fn.Params) != 0 || fn.Return == nil || fn.Return.Kind != ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(contents)] takes nothing and returns the container it makes: func f() Box")
+		}
 	case ir.ProtocolAttach, ir.ProtocolDetach:
 		if len(fn.Params) != 1 || fn.Params[0].Type == nil || fn.Params[0].Type.Kind != ir.TypeComponent {
 			return fmt.Errorf("#[gen.protocol(%s)] takes the node at the program's root: func f(w Window)", op)

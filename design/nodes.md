@@ -123,6 +123,38 @@ whole (`clang.WriteProgram`), so a platform on placement needs no translator:
 win32's generator writes only the program's entry
 (`testdata/win32_c_counter.txtar`, which fails with the pass turned off).
 
+**A component built at run time is placed as a record**
+(`internal/lower/placerecords.go`): a row a keyed `for` keeps, a slot body
+lifted into a component of its own. The record is a struct holding the
+component's vars, the nodes its body makes and `__root`, the node it renders
+as, and it is a box (`StructDef.RefBox`), a reference every holder shares,
+which C holds through a pointer. Its constructor is the body building into
+it, each of its functions -- a setter, a slot's render, its teardown --
+becomes the package's taking it first, and inside each a read of a var or a
+node is a read through it. A var whose initializer reads nothing of the
+record starts in the record's literal, which would otherwise make a box
+field a box of its own only to replace it. `CreateComponent` is the
+constructor's call, `ComponentRoot` the read of `__root`, `UpdateComponent`
+the prop's setter and `DestroyComponent` the teardown; the root leaves the
+tree by the parent's remove, which the render destroying the instance makes
+too. A closure the record makes captured what it reads, as it captured the
+var, and one reading the record directly is refused
+(`testdata/win32_c_loop.txtar`, `cmd/sngl/testdata/c_win32_loops_runs.txt`).
+
+**A component rendering more than one node, or a slot, at its top renders
+into the platform's `contents`** (`intoContents`), a container the
+platform's `#[gen.protocol(contents)]` makes, as gtk4's C record makes one
+with `sngl_contents_new`: made first, so the slot renders into it, and each
+top node put into it ahead of the next statement rendering into the root, so
+they stand in the order written. A slot whose parent is typed only as a node
+is one such, and is placed through the container's append and insertBefore
+(`rootContainerOp`). The component a test takes is shown the same way
+(`placeRoot`): its one node attached to the application, or the container
+holding several. A node one function makes and another reads -- an effect's
+mount reading the input its render slot made -- is held in a package var
+beside the function's local (`hoistShared`), which the function and what it
+closes over still read, so each copy of a loop's handler reads its own.
+
 **A test of a placed program reaches its instance as the program's own
 state** (`internal/lower/placetests.go`). A build rooted at the component a
 test takes renders it as the package body would: the root's vars, functions
@@ -131,7 +163,14 @@ program it writes for any build. A test's `c.n` is then the package var, its
 `.value` where NoRef boxed it, and `c.save` the node's var. A node a function
 other than the package body makes -- a render slot's, made and taken away as
 the slot renders -- is held in a package var of its option that the
-function's every render starts by setting null (`holdRead`), so `c.big == null` once a branch took it away. A test's trigger, `c.save.click()`, is the
+function's every render starts by setting null (`holdRead`), so `c.big == null` once a branch took it away. One copy of a node loops render,
+`c.row[1]`, is held by its key (`ir.CopyProp`) in a package map that each
+render stamping the keys starts afresh (`copyWrite`, `clearCopies`): a
+record's builder does, since a keyed render updates every prop of each
+instance it keeps, the key among them. A trigger of the copy fires the node
+the key holds, and a null test of it is whether the key holds one. A method
+lowering wrote for the instance is handed null for it, its state being the
+program's. A test's trigger, `c.save.click()`, is the
 platform's `#[gen.fires(event)]` function for the event the program's
 handler was connected to (`recordFire` notes it at each connect, under the
 name the program wrote, which an override may have connected under another:

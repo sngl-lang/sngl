@@ -2,6 +2,8 @@ package lower
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -44,13 +46,27 @@ func lowerPlacement(pkg *ir.Package, feats Features, _ Options) error {
 	if handle == nil {
 		return fmt.Errorf("a platform asking for placement declares the type its nodes are held as: #[gen.protocol(handle)]")
 	}
-	p := &placement{plat: plat}
+	p := &placement{plat: plat, records: collectRecords(pkg), pkg: pkg}
+	// Read off the node operations, which the rewrite below makes calls.
+	if root := pkg.RootDecl(); root != nil {
+		p.rootTops, p.rootType = bodyTops(root)
+	}
 	ir.RewriteBlocks(pkg, p.block)
 	if p.err != nil {
 		return p.err
 	}
+	p.buildRecords(pkg)
+	if p.err != nil {
+		return p.err
+	}
+	p.placeRoot(pkg)
+	if p.err != nil {
+		return p.err
+	}
 	liftRoot(pkg)
+	p.clearCopies(pkg)
 	hoistNodes(pkg)
+	p.hoistShared(pkg)
 	p.placeTests(pkg)
 	if p.err != nil {
 		return p.err
@@ -77,6 +93,9 @@ func lowerPlacement(pkg *ir.Package, feats Features, _ Options) error {
 	}
 	var retype func(t *ir.Type) *ir.Type
 	retype = func(t *ir.Type) *ir.Type {
+		if r := p.recordOf(t); r != nil {
+			return r.typ
+		}
 		if isPlacedNode(t) {
 			return handle.Return
 		}
@@ -136,6 +155,100 @@ func hoistNodes(pkg *ir.Package) {
 	}
 }
 
+// hoistShared makes each node a function makes that another function reads
+// a package var, as hoistNodes does the package body's: an effect's mount
+// reads the node the render slot it is written in made. The var holds the
+// node made last. A closure is left as it is, since it captured the node it
+// reads -- its copy's, in a loop -- and a record's functions are, since a
+// record holds what its own functions make.
+func (p *placement) hoistShared(pkg *ir.Package) {
+	inRecord := map[*ir.Func]bool{}
+	for _, r := range p.records {
+		for _, fn := range r.funcs() {
+			inRecord[fn] = true
+		}
+	}
+	var funcs []*ir.Func
+	for _, fn := range pkg.Funcs {
+		if !inRecord[fn] && !fn.IsTest {
+			funcs = append(funcs, fn)
+		}
+	}
+	// The local each name is, and the function making it.
+	type local struct {
+		lv *ir.LocalVar
+		fn *ir.Func
+	}
+	made := map[string]local{}
+	for _, fn := range funcs {
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			if lv, ok := n.(*ir.LocalVar); ok && isPlacedNode(lv.Type) && made[lv.Name].lv == nil && packageVar(pkg, lv.Name) == nil {
+				made[lv.Name] = local{lv, fn}
+			}
+			return nil
+		})
+	}
+	// refers reports whether id is a ref of the local l: its symbol, none,
+	// as a ref passDeclarative made names a node, or the `#id` the program
+	// wrote, whose binding is a NodeHandle var.
+	refers := func(id *ir.Ident, l local) bool {
+		if l.lv == nil || id.Name != l.lv.Name {
+			return false
+		}
+		switch sym := id.Sym.(type) {
+		case nil:
+			return true
+		case *ir.Var:
+			return sym == l.lv.Sym || sym.NodeHandle
+		}
+		return false
+	}
+	shared := map[string]*ir.Var{}
+	for _, fn := range funcs {
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			if id, ok := n.(*ir.Ident); ok && made[id.Name].fn != fn && refers(id, made[id.Name]) {
+				shared[id.Name] = nil
+			}
+			return nil
+		})
+	}
+	for _, name := range slices.Sorted(maps.Keys(shared)) {
+		l := made[name]
+		v := &ir.Var{Name: name, Type: l.lv.Type, Synthesized: true}
+		shared[name] = v
+		pkg.Vars = append(pkg.Vars, v)
+		// The local stays, which the function and what it closes over
+		// read: a loop's copy its own.
+		l.fn.Block = ir.RewriteBlocks(l.fn.Block, func(stmts []ir.Stmt) []ir.Stmt {
+			out := stmts[:0:0]
+			for _, s := range stmts {
+				out = append(out, s)
+				if s == ir.Stmt(l.lv) {
+					local := &ir.Ident{Name: name, Type: l.lv.Type, IsElementRef: true, Synthesized: true}
+					if l.lv.Sym != nil {
+						local.Sym = l.lv.Sym
+					}
+					out = append(out, &ir.Assign{Target: &ir.Ident{Name: name, Type: l.lv.Type, Sym: v, IsElementRef: true, Synthesized: true}, Op: ast.AssignSet, Value: local})
+				}
+			}
+			return out
+		})
+	}
+	if len(shared) == 0 {
+		return
+	}
+	for _, fn := range funcs {
+		_ = ir.Rewrite(fn.Block, func(n ir.Node) (ir.Node, error) {
+			if id, ok := n.(*ir.Ident); ok && shared[id.Name] != nil && made[id.Name].fn != fn && refers(id, made[id.Name]) {
+				cp := *id
+				cp.Sym = shared[id.Name]
+				return &cp, nil
+			}
+			return n, nil
+		})
+	}
+}
+
 // closureFuncs is the function of each closure reachable from root, and of
 // each closure those reach.
 func closureFuncs(root any) []*ir.Func {
@@ -164,7 +277,18 @@ type placement struct {
 	// held is the package var holding each node a test reads that a
 	// function other than the package body makes, by its id (holdRead).
 	held map[string]*ir.Var
-	err  error
+	// records are the components the program builds at run time, as
+	// placement writes them (placerecords.go).
+	records map[*ir.Component]*record
+	// copies is the package's map from each copy's key to the node, for
+	// each node loops render that a test reaches one copy of (copyWrite).
+	copies map[string]*ir.Var
+	// rootTops are the nodes the body of the component the build is rooted
+	// at makes and puts nowhere, and rootType the type they are held as.
+	rootTops []string
+	rootType *ir.Type
+	pkg      *ir.Package
+	err      error
 }
 
 func (p *placement) fail(format string, args ...any) {
@@ -224,6 +348,11 @@ func (p *placement) stmt(s ir.Stmt) []ir.Stmt {
 		switch nodeOp(call) {
 		case "":
 			return []ir.Stmt{s}
+		case ir.NodeOpCreateComponent, ir.NodeOpComponentRoot:
+			placed, _ := p.instanceOp(call)
+			cp := *n
+			cp.Init = placed
+			return []ir.Stmt{&cp}
 		case ir.NodeOpCreateNode:
 			if len(call.Args) != 2 {
 				tag, _ := call.Args[0].Value.(*ir.Literal)
@@ -247,6 +376,9 @@ func (p *placement) stmt(s ir.Stmt) []ir.Stmt {
 		id, ok := sel.Operand.(*ir.Ident)
 		if !ok || !id.IsElementRef || !isPlacedNode(id.Type) {
 			return []ir.Stmt{s}
+		}
+		if sel.Field == ir.CopyProp {
+			return []ir.Stmt{p.copyWrite(id, n.Value)}
 		}
 		// spliceSets put the prop's set in as the value written.
 		comp, _ := id.Type.Decl.(*ir.Component)
@@ -280,6 +412,18 @@ func (p *placement) call(s ir.Stmt, call *ir.Call) []ir.Stmt {
 		if isNoWidget(arg(1)) {
 			return nil
 		}
+		pop := ir.ProtocolAppend
+		if op == ir.NodeOpRemoveChild {
+			pop = ir.ProtocolRemove
+		}
+		if fn := p.rootContainerOp(arg(0), pop); fn != nil {
+			put, err := protocolSplice(fn, []ir.Expr{arg(0), arg(1)})
+			if err != nil {
+				p.fail("%v", err)
+				return nil
+			}
+			return through(put)
+		}
 		p.fail("%s takes no child: it declares no #[gen.protocol(append)]", componentName(arg(0).ExprType()))
 		return nil
 	case ir.NodeOpInsertBefore:
@@ -312,6 +456,12 @@ func (p *placement) call(s ir.Stmt, call *ir.Call) []ir.Stmt {
 			p.recordFire(arg(0), event.Value, handler)
 		}
 		return through(connect)
+	case ir.NodeOpCreateComponent, ir.NodeOpUpdateComponent, ir.NodeOpDestroyComponent:
+		placed, _ := p.instanceOp(call)
+		if c, ok := placed.(*ir.Call); ok {
+			return []ir.Stmt{&ir.CallStmt{Call: c}}
+		}
+		return nil
 	default:
 		p.fail("a component built at run time (%s) is not placed yet", op)
 		return nil
@@ -349,6 +499,9 @@ func (p *placement) insertBefore(parent, child, ref ir.Expr) []ir.Stmt {
 	if comp != nil {
 		insert, appendFn = comp.Protocol.Op(ir.ProtocolInsertBefore), comp.Protocol.Op(ir.ProtocolAppend)
 	}
+	if insert == nil && appendFn == nil {
+		insert, appendFn = p.rootContainerOp(parent, ir.ProtocolInsertBefore), p.rootContainerOp(parent, ir.ProtocolAppend)
+	}
 	if insert == nil || appendFn == nil {
 		p.fail("%s places a child a render slot renders, and declares no #[gen.protocol(insertBefore)] and append to", componentName(parent.ExprType()))
 		return nil
@@ -378,6 +531,21 @@ func (p *placement) insertBefore(parent, child, ref ir.Expr) []ir.Stmt {
 		Body: through(appended),
 		Else: through(inserted),
 	}}
+}
+
+// rootContainerOp is op of the container #[gen.protocol(contents)] makes,
+// where parent is typed only as a node: a slot rendering at its component's
+// top renders into that container (intoContents). Nil otherwise.
+func (p *placement) rootContainerOp(parent ir.Expr, op ir.ProtocolOp) *ir.Func {
+	if comp, _ := parent.ExprType().Decl.(*ir.Component); comp != nil && comp.Intrinsic != "" {
+		return nil
+	}
+	contents := p.plat.Op(ir.ProtocolContents)
+	if contents == nil {
+		return nil
+	}
+	box, _ := contents.Return.Decl.(*ir.Component)
+	return box.Protocol.Op(op)
 }
 
 // unwrittenHandler reports whether h is a handler the program did not

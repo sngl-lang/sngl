@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"slices"
+
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
@@ -94,6 +96,22 @@ func (p *placement) placeTests(pkg *ir.Package) {
 					cp.Receiver = nil
 					return &cp, nil
 				}
+			case *ir.Ident:
+				// The instance itself, handed a method lowering wrote for it
+				// as its receiver: its state is the program's, so the method
+				// reads none of it through the receiver.
+				if _, param := x.Sym.(*ir.Param); param && x.Name == comp {
+					return &ir.Literal{Type: ir.TypNull, Value: "null"}, ir.SkipDir
+				}
+			case *ir.Binary:
+				// A copy null-tested is whether its key holds one.
+				if held, ok := p.copyNullTest(x, comp); ok {
+					return held, ir.SkipDir
+				}
+			case *ir.Index:
+				if read, ok := p.copyRead(x, comp); ok {
+					return read, ir.SkipDir
+				}
 			case *ir.Select:
 				if id, ok := x.Operand.(*ir.Ident); ok && id.Name == comp {
 					return p.instanceRead(pkg, x), ir.SkipDir
@@ -150,10 +168,6 @@ func (p *placement) fire(pkg *ir.Package, call *ir.Call, comp, id string, path [
 		p.fail("a test's trigger through %s, not the instance it takes", recv)
 		return call
 	}
-	if path != nil {
-		p.fail("a test's %s[…].%s(), one copy of a node a loop renders, is not placed yet", id, call.Event)
-		return call
-	}
 	at, ok := p.fires[id+"."+call.Event]
 	if !ok {
 		p.fail("a test's %s.%s(), which no handler of the program is connected to", id, call.Event)
@@ -168,12 +182,24 @@ func (p *placement) fire(pkg *ir.Package, call *ir.Call, comp, id string, path [
 		p.fail("a test's %s.%s() hands %d values, and %s takes %d", id, call.Event, len(call.Args), fn.Name, len(fn.Params)-1)
 		return call
 	}
-	v := packageVar(pkg, id)
-	if v == nil {
-		p.fail("a test fires %s.%s(), a node the placed program holds in no var", id, call.Event)
-		return call
+	var node ir.Expr
+	if path != nil {
+		// One copy of a node loops render: the one its key holds.
+		copies := p.copies[id]
+		if copies == nil {
+			p.fail("a test fires %s[…].%s(), and no copy of %s is held by its key", id, call.Event, id)
+			return call
+		}
+		node = &ir.Index{Operand: &ir.Ident{Name: copies.Name, Sym: copies, Type: copies.Type, Synthesized: true}, Idx: ir.CopyKey(path), Type: copies.Type.Elems[1]}
+	} else {
+		v := packageVar(pkg, id)
+		if v == nil {
+			p.fail("a test fires %s.%s(), a node the placed program holds in no var", id, call.Event)
+			return call
+		}
+		node = &ir.Ident{Name: v.Name, Sym: v, Type: v.Type, IsElementRef: true, Synthesized: true}
 	}
-	args := []ir.Expr{&ir.Ident{Name: v.Name, Sym: v, Type: v.Type, IsElementRef: true, Synthesized: true}}
+	args := []ir.Expr{node}
 	for _, a := range call.Args {
 		args = append(args, a.Value)
 	}
@@ -246,4 +272,175 @@ func (p *placement) holdRead(pkg *ir.Package, fn *ir.Func, comp string) {
 		}
 		f.Block = append(reset, f.Block...)
 	}
+}
+
+// copyWrite is the write of a copy's key onto node, a node loops render that
+// a test reaches one copy of: the node goes in the package's map from each
+// copy's key, which the test's trigger reads it out of.
+func (p *placement) copyWrite(node *ir.Ident, key ir.Expr) ir.Stmt {
+	if p.copies == nil {
+		p.copies = map[string]*ir.Var{}
+	}
+	v := p.copies[node.Name]
+	if v == nil {
+		t := ir.MapOf(ir.TypString, node.Type)
+		v = &ir.Var{Name: node.Name + "__copies", Type: t, Init: &ir.MapLitIR{Type: t}, Synthesized: true}
+		p.copies[node.Name] = v
+		p.pkg.Vars = append(p.pkg.Vars, v)
+	}
+	return &ir.Assign{
+		Target: &ir.Index{Operand: &ir.Ident{Name: v.Name, Sym: v, Type: v.Type, Synthesized: true}, Idx: key, Type: node.Type},
+		Op:     ast.AssignSet,
+		Value:  node,
+	}
+}
+
+// clearCopies has each render that stamps copies start their map afresh,
+// so a copy the render no longer makes is held by no key: the function
+// writing a key, or, where a record's constructor or setter writes it, each
+// function building that record, whose render updates every prop of each
+// instance it keeps -- the key among them.
+func (p *placement) clearCopies(pkg *ir.Package) {
+	if len(p.copies) == 0 {
+		return
+	}
+	held := map[*ir.Var]bool{}
+	for _, v := range p.copies {
+		held[v] = true
+	}
+	stamps := func(fn *ir.Func) []*ir.Var {
+		var out []*ir.Var
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			if a, ok := n.(*ir.Assign); ok {
+				if ix, ok := a.Target.(*ir.Index); ok {
+					if id, ok := ix.Operand.(*ir.Ident); ok {
+						if v, ok := id.Sym.(*ir.Var); ok && held[v] && !slices.Contains(out, v) {
+							out = append(out, v)
+						}
+					}
+				}
+			}
+			return nil
+		})
+		return out
+	}
+	// What a record's functions stamp, its builders clear.
+	byRecord := map[*ir.Func][]*ir.Var{}
+	inRecord := map[*ir.Func]bool{}
+	for _, r := range p.records {
+		var vs []*ir.Var
+		for _, fn := range r.funcs() {
+			inRecord[fn] = true
+			for _, v := range stamps(fn) {
+				if !slices.Contains(vs, v) {
+					vs = append(vs, v)
+				}
+			}
+		}
+		if len(vs) > 0 {
+			byRecord[r.new] = vs
+		}
+	}
+	for _, fn := range append(slices.Clone(pkg.Funcs), closureFuncs(pkg)...) {
+		if inRecord[fn] || fn.IsTest {
+			continue
+		}
+		clear := stamps(fn)
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			if c, ok := n.(*ir.Call); ok {
+				for _, v := range byRecord[c.Func] {
+					if !slices.Contains(clear, v) {
+						clear = append(clear, v)
+					}
+				}
+			}
+			return nil
+		})
+		var reset []ir.Stmt
+		for _, v := range clear {
+			reset = append(reset, &ir.Assign{
+				Target: &ir.Ident{Name: v.Name, Sym: v, Type: v.Type, Synthesized: true},
+				Op:     ast.AssignSet,
+				Value:  &ir.MapLitIR{Type: v.Type},
+			})
+		}
+		fn.Block = append(reset, fn.Block...)
+	}
+}
+
+// copyRead is ix, a test's read of one copy of a node loops render,
+// `c.row[1]`, as the copy its key holds, or null where the render made none
+// there. ok is false where ix reads no copy.
+func (p *placement) copyRead(ix *ir.Index, comp string) (ir.Expr, bool) {
+	copies, key := p.copyOf(ix, comp)
+	if copies == nil {
+		return nil, false
+	}
+	ref := func() ir.Expr { return &ir.Ident{Name: copies.Name, Sym: copies, Type: copies.Type, Synthesized: true} }
+	at := &ir.Index{Operand: ref(), Idx: key, Type: copies.Type.Elems[1]}
+	if ix.Type == nil || ix.Type.Kind != ir.TypeOption {
+		return at, true
+	}
+	return &ir.Ternary{Type: ix.Type, Cond: copyHeld(copies, ir.CloneExprSharingDecls(key)), Then: &ir.Conversion{Type: ix.Type, Operand: at}, Else: &ir.Literal{Type: ir.TypNull, Value: "null"}}, true
+}
+
+// copyNullTest is b, a test's `c.row[1] == null` or `!= null`, as whether
+// the copy's key holds one; ok is false where b tests no copy.
+func (p *placement) copyNullTest(b *ir.Binary, comp string) (ir.Expr, bool) {
+	if b.Op != ast.BinEq && b.Op != ast.BinNeq {
+		return nil, false
+	}
+	side := b.Left
+	if !ir.IsNullLiteral(b.Right) {
+		if !ir.IsNullLiteral(b.Left) {
+			return nil, false
+		}
+		side = b.Right
+	}
+	ix, ok := side.(*ir.Index)
+	if !ok {
+		return nil, false
+	}
+	copies, key := p.copyOf(ix, comp)
+	if copies == nil {
+		return nil, false
+	}
+	var held ir.Expr = copyHeld(copies, key)
+	if b.Op == ast.BinEq {
+		held = &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: held}
+	}
+	return held, true
+}
+
+// copyHeld is whether copies holds a copy at key.
+func copyHeld(copies *ir.Var, key ir.Expr) ir.Expr {
+	ref := &ir.Ident{Name: copies.Name, Sym: copies, Type: copies.Type, Synthesized: true}
+	return &ir.Call{Type: ir.TypBool, Func: ir.IntrinsicMethod("contains", "map.contains", copies.Type, ir.TypBool), Args: []ir.CallArg{{Value: ref}, {Value: key}}}
+}
+
+// copyOf is the map holding the copies ix reads one of off the instance
+// comp, and the copy's key, or nil where ix reads no copy.
+func (p *placement) copyOf(ix *ir.Index, comp string) (*ir.Var, ir.Expr) {
+	var path []ir.Expr
+	var x ir.Expr = ix
+	for {
+		in, isIx := x.(*ir.Index)
+		if !isIx {
+			break
+		}
+		path = append([]ir.Expr{in.Idx}, path...)
+		x = in.Operand
+	}
+	sel, ok := x.(*ir.Select)
+	if !ok {
+		return nil, nil
+	}
+	if id, ok := sel.Operand.(*ir.Ident); !ok || id.Name != comp {
+		return nil, nil
+	}
+	copies := p.copies[sel.Field]
+	if copies == nil {
+		return nil, nil
+	}
+	return copies, ir.CopyKey(path)
 }

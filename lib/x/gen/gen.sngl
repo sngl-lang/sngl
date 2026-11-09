@@ -193,6 +193,13 @@ enum Protocol {
     // platform's build-target node, for a platform asking for `placement`.
     attach
     detach
+    // Makes the container a component built at run time renders into, for
+    // a platform asking for `placement`: a function of nothing returning a
+    // node whose component declares `append` and `insertBefore`, declared
+    // once beside the platform's build-target node. A component whose body
+    // renders more than one node, or a slot, at its top is held as one, its
+    // nodes and the slot's put into it in the order written.
+    contents
 }
 
 // Says the function is the named operation of its component's protocol.

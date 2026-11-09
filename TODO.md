@@ -552,8 +552,11 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
        `FileEmitter`): Go and C, the package body as the function that
        builds the UI. `codegen/platform/win32` writes only the entry point
        around it, per language.
-     - Records for runtime instances, weak holds and copies tables come
-       after the slice, as the protocol ops gtk4's move needs.
+     - Records for runtime instances and copies tables are done
+       (`internal/lower/placerecords.go`, `design/nodes.md`): a record is a
+       box struct in plain IR, and a component rendering several nodes or a
+       slot at its top renders into the platform's
+       `#[gen.protocol(contents)]`. Weak holds come with gtk4's move.
    - `FirstUnimplementedNode` refuses what the slice does not cover yet,
      so `sngl test` reports a skip rather than a compile error.
    - Everything snapshot-specific is behind `//go:build !js` with a `_js.go`
@@ -598,12 +601,14 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
    - `t.setContext` writes the program's `__ctx_<name>` var
      (`clang.SetContexts`), and win32 asks for `stdlibContextParam` as gtk4
      does (`cmd/sngl/testdata/c_set_context_runs.txt`).
-   - Still open: a trigger of one copy of a node a loop renders
-     (`c.row[1].click()`). It waits on the records for runtime instances
-     above: a component under a reactive `for` is built at run time, which
-     placement refuses, so no loop of components renders on win32 yet, in a
-     test or out of one. Once one does, the copy's key (`ir.CopyProp`) is a
-     map from key to node in the package, as gtk4's C copies table is.
+   - A trigger of one copy of a node a loop renders (`c.row[1].click()`)
+     and a null test of one are done, through the package's map from each
+     copy's key (`cmd/sngl/testdata/c_win32_loops_runs.txt`).
+   - Still open: a test reaching a node or a var inside a record -- a
+     component built at run time once, `c.w.p.go.click()`, or a slot's
+     state -- is refused by placement ("holds in no var"), as gtk4's C
+     writer refuses most of them. It wants the record a test reaches held in
+     a package var, as `holdRead` holds a slot's node.
 7. **Docs.**
    - `design/architecture.md`: a win32 bullet under *Platform Details*, with
      its C runtime and cross-compilation.
