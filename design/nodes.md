@@ -140,7 +140,11 @@ declaration itself. Two things about the name that are easy to get wrong:
   `#[cnative("UINT")] struct UINT = int` -- crosses cast to the typedef, which
   cgo needs, since it refuses a `C.int` for an unsigned one
   (`testdata/c_alias_argument.txtar`); a string alias crosses as UTF-16
-  (`c.utf16`, `testdata/c_utf16_argument.txtar`). The alias is expanded where
+  (`c.utf16`, `testdata/c_utf16_argument.txtar`). A C function returning a `string`
+  hands back a `const char *` it keeps, which the call copies -- `C.GoString`
+  in Go, the turn's `sngl_string_copy` in C -- and one returning a `bool`
+  its `int` (`testdata/c_string_return.txtar`, `codegen/lang/c`'s
+  `cinterop` run). The alias is expanded where
   it is written, so `ir.Param.CAlias` remembers it. It records the alias
   rather than its C type because the alias's mark may run after the parameter
   is built, and it is shared by every clone, its package being the library's

@@ -521,6 +521,32 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      releases -- is a protocol function in its own package. win32's slice
      builds it; gtk4 moves onto it after, its recorded runs in both
      languages holding it unchanged.
+   - **The design.** After `passDeclarative` a program is already nearly
+     plain IR: each intrinsic left (`lower.CreateNode`, `AppendChild`,
+     `RemoveChild`, `AttachHandler`, a prop's write) carries the protocol
+     call it stands for. So placement is a lowering pass, `passPlacement`,
+     which a platform asks for with `#[gen.wants(placement)]`:
+     - `var x Button = CreateNode(tag, made)` becomes `var x H = made`, where
+       `H` is the platform's handle type: the return type of its
+       `#[gen.protocol(handle)]` function, a `#[cnative(…, cast)]` the
+       protocol bodies call to reach the handle (`HWND` on win32). Every type
+       the program writes as one of the platform's intrinsic components or
+       as `ui.node` becomes `H`.
+     - An append, a remove and a connect become the call they carry, the
+       connect's handler parameter replaced by the handler; a handler nobody
+       wrote is dropped. A prop's write becomes its set call.
+     - The application's attach and detach (`ir.AppParent`) and a slot's
+       insert before its next sibling are protocol functions too:
+       `attach`/`detach` on the platform node and `insertBefore` on a
+       container, which `can(insertBefore)` and `slot_placement.go` reach
+       without anchors.
+     - What is left is a package of structs, vars and funcs. Each language
+       writes such a package whole (a `ProgramEmitter` beside
+       `FileEmitter`): Go and C, the package body as the function that
+       builds the UI. `codegen/platform/win32` writes only the entry point
+       around it, per language.
+     - Records for runtime instances, weak holds and copies tables come
+       after the slice, as the protocol ops gtk4's move needs.
    - `FirstUnimplementedNode` refuses what the slice does not cover yet,
      so `sngl test` reports a skip rather than a compile error.
    - Everything snapshot-specific is behind `//go:build !js` with a `_js.go`

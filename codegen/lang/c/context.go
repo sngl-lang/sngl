@@ -1113,6 +1113,11 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 		switch fn.Return.Kind {
 		case ir.TypeInt, ir.TypeFloat:
 			return "(" + c.typeName(fn.Return) + ")" + call
+		case ir.TypeBool:
+			return "(" + call + " != 0)"
+		case ir.TypeString:
+			// The C function keeps what it returns; the copy is the turn's.
+			return "sngl_string_copy(" + call + ")"
 		case ir.TypeStruct:
 			if ir.CStructOf(fn.Return) != nil {
 				return c.fail("a C struct returned by %s", fn.Foreign.Name)

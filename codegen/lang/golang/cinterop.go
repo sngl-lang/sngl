@@ -190,6 +190,11 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 			call = "int(" + call + ")"
 		case ir.TypeFloat:
 			call = "float64(" + call + ")"
+		case ir.TypeBool:
+			call = "(" + call + " != 0)"
+		case ir.TypeString:
+			// The C function keeps what it returns; the copy is Go's.
+			call = "C.GoString(" + call + ")"
 		case ir.TypeStruct:
 			if ir.CStructOf(fn.Return) != nil {
 				call = gc.cValueOut(fn.Return, nil, call)
