@@ -53,7 +53,7 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	if err != nil {
 		return err
 	}
-	e := &cEmitter{fe: fe, ctx: fe.Context(), pkg: pkg, reg: reg, globals: map[*ir.Var]string{}, nodes: map[string]string{}, invokers: map[string]cInvoker{}, images: map[string]string{}}
+	e := &cEmitter{fe: fe, ctx: fe.Context(), pkg: pkg, reg: reg, globals: map[*ir.Var]string{}, nodes: map[string]string{}, appended: map[string]bool{}, invokers: map[string]cInvoker{}, images: map[string]string{}}
 	e.ctx.State = e.state
 	e.ctx.Types = e.types
 	e.ctx.Native = e.native
@@ -76,6 +76,7 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 	// Every body is walked before any is written, so that a widget one
 	// function makes is known where another reads it.
 	body := codegen.WalkLowered(context.Background(), stmts, e)
+	e.bodyMade = len(e.order)
 	var tests, written []*ir.Func
 	for _, fn := range funcs {
 		if instanceOwnsFunc(pkg, fn) || e.closureOwner(fn) != nil {
@@ -177,6 +178,7 @@ func (g *Generator) generateC(req *codegen.Request, sink codegen.Sink) error {
 		teardown = "\t" + clang.Decl(&pkg.Teardown.DeclInfo) + "();\n"
 	}
 	if agent {
+		io.WriteString(fe, e.testRoot())
 		io.WriteString(fe, e.tests(tests, teardown))
 	} else {
 		io.WriteString(fe, "\nstatic void sngl_start(void) {\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n}\n")
@@ -314,12 +316,38 @@ static GLogWriterOutput sngl_test_log_writer(GLogLevelFlags level, const GLogFie
 	return g_log_writer_default(level, fields, n, data);
 }
 
+// A snapshot is the window Go's agent draws: what the test shows, in a
+// window of 800 by 600.
+static bool sngl_test_draw(unsigned char **rgba, int *width, int *height, const char **why) {
+	return sngl_capture(sngl_test_root(), 800, 600, rgba, width, height, why);
+}
+
 int main(void) {
 	g_log_set_writer_func(sngl_test_log_writer, NULL, NULL);
 	gtk_init();
+	sngl_test_capture = sngl_test_draw;
 	return sngl_test_main(sngl_tests, sizeof sngl_tests / sizeof sngl_tests[0]);
 }
 `
+
+// testRoot writes sngl_test_root, the widget a snapshot shows: in a build
+// rooted at a component, the one its body makes and attaches nowhere; in a
+// build of the program, none, which shows the window it attached last.
+func (e *cEmitter) testRoot() string {
+	var tops []string
+	if e.pkg.RootDecl() != nil {
+		for _, id := range e.order[:e.bodyMade] {
+			if !e.appended[id] && !strings.HasSuffix(e.nodes[id], "__inst *") {
+				tops = append(tops, id)
+			}
+		}
+	}
+	root := "NULL"
+	if len(tops) == 1 {
+		root = "GTK_WIDGET(" + clang.Global(tops[0]) + ")"
+	}
+	return "\nstatic GtkWidget *sngl_test_root(void) {\n\treturn " + root + ";\n}\n"
+}
 
 // testBlock renders a test's statements as the program's own, the component
 // it takes read as the program's state. What only a test does -- an assert, a
@@ -328,6 +356,14 @@ int main(void) {
 func (e *cEmitter) testBlock(stmts []ir.Stmt, tName, comp string) []string {
 	e.testT = tName
 	defer func() { e.testT = "" }()
+	stmts = clang.SetContexts(stmts, func(name string) *ir.Var {
+		for v := range e.globals {
+			if v.Name == name {
+				return v
+			}
+		}
+		return nil
+	})
 	var lines []string
 	for _, s := range stmts {
 		lines = append(lines, e.ctx.EvalStmt(e.componentReads(s, comp))...)
@@ -355,6 +391,8 @@ func (e *cEmitter) testCall(ctx *clang.Context, n *ir.Call) (string, bool) {
 			fail, word = "sngl_test_fail_now", "must"
 		}
 		return "((" + cond + ") ? (void)0 : " + fail + "(" + clang.Local(e.testT) + ", " + clang.StringLiteral(word+" failed: "+cond) + "))", true
+	case ir.IsTestCall(n, ir.TestSnapshotID):
+		return "sngl_test_snapshot(" + clang.Local(e.testT) + ", " + ctx.EvalExpr(n.Args[1].Value) + ")", true
 	case ir.IsTestCall(n, ir.TestWaitID):
 		// The test runs on the loop's own thread, so it runs the loop while
 		// it waits, as gtk4rt.PumpFor does for Go.
@@ -592,6 +630,11 @@ type cEmitter struct {
 	// order the ids in the order made.
 	nodes map[string]string
 	order []string
+	// appended are the widgets of the file's something is attached to,
+	// and bodyMade how many of order the body made, which a build rooted at
+	// a component holds its root among (testRoot).
+	appended map[string]bool
+	bodyMade int
 	// invokers are how a test fires each event a handler is connected to,
 	// by "<id>.<event>" as the test names it.
 	invokers map[string]cInvoker
@@ -853,10 +896,16 @@ func (e *cEmitter) OnPropAssign(ctx context.Context, node ir.Expr, prop string, 
 // not a candidate for its root: a component instance by its own id, since
 // what is attached is its root's binding (ir.InstanceRootSuffix).
 func (e *cEmitter) markAppended(child ir.Expr) {
-	if id, ok := child.(*ir.Ident); ok && e.scope != nil {
-		e.scope.appended[id.Name] = true
-		e.scope.appended[strings.TrimSuffix(id.Name, ir.InstanceRootSuffix)] = true
+	id, ok := child.(*ir.Ident)
+	if !ok {
+		return
 	}
+	appended := e.appended
+	if e.scope != nil {
+		appended = e.scope.appended
+	}
+	appended[id.Name] = true
+	appended[strings.TrimSuffix(id.Name, ir.InstanceRootSuffix)] = true
 }
 
 func (e *cEmitter) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {

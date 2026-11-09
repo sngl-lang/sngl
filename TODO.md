@@ -273,11 +273,14 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
 
 ### Open questions
 
-- How much of gtk4rt moves to C in this part. The trampolines must, since
-  item 5 replaces them, and so must the layout manager, which is C already.
-  The rest (toplevels, images, menus, tabs) is ordinary GTK calls a SNGL
-  protocol could make itself once callbacks and structs cross. Decide whether
-  that is Part 1's work or gtk4's own migration.
+- **Decided: what of gtk4rt moves where is settled with gtk4's move onto
+  placement** (Part 3, step 8). What is ordinary GTK calls -- toplevels,
+  images, menus, tabs -- becomes protocol functions in `gtk4.sngl`, as
+  placement puts a platform's logic in SNGL. Only what cannot be SNGL stays
+  in the C runtime: the layout's measure and allocate, and the trampolines
+  until a callback crosses wholly. gtk4's C programs already have that
+  runtime in `lib/platform/gtk4/rt/`; its Go programs keep gtk4rt until the
+  move.
 
 ## Part 2: A C language target
 
@@ -352,9 +355,11 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
    `pkg/c/runtime/sngl_test.c`, single-threaded, a failed `must` and a panic
    leaving a test by `longjmp`; the C language launches it
    (`LaunchTest`). Each test builds the program, since its state is the
-   file's. A trigger emits the signal its handler is connected to, so one
-   carrying a value or a property's notification is refused, and so are
-   `t.snapshot`, `t.wait` and `t.setContext`.
+   file's. A trigger emits the signal its handler is connected to, a value
+   written into the widget first; `t.wait` runs GTK's loop, `t.snapshot`
+   draws what the test shows (`sngl_capture`), and `t.setContext` writes the
+   program's context var. `t.tick` and `t.test`, which only the interpreter and JS
+   implement, are refused.
 4. **The rest of the language**, each against the gtk4 goldens that need it:
    lists, maps, options, payload enums and `match`, closures, generics,
    string formatting and units, `async`. Each construct C does not yet write
@@ -376,10 +381,12 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
 
 ### Open questions
 
-- Whether the arena resets per turn on every platform's loop, or only where
-  the platform's runtime says a turn ended. GTK's main loop and Win32's
-  message loop both have a natural point: on gtk4, each callback the program
-  is handed resets it as it returns to the loop.
+- **Decided: the arena resets at `sngl_turn_leave`**, which each platform's
+  runtime already calls where a turn ends: on gtk4 as a callback returns to
+  GTK's loop, on win32 as a dispatched message does. Not before every value
+  that outlives its turn -- a string stored in a global, a field, a
+  collection -- is kept (`Context.Keep`) rather than left in the arena;
+  resetting first would leave those dangling.
 
 ## Part 3: The win32 platform
 
@@ -480,9 +487,9 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      manifest embedded as a C string. The second needs no resource step in
      any language's build. Declare per-monitor DPI awareness there too, and
      check what Wine draws with and without it.
-   - Snapshot: `PrintWindow` into a DIB section. The PNG encoding is the
-     language's: Go's `image/png` for the Go agent, and whatever the C test
-     agent uses for C.
+   - Snapshot: `PrintWindow` into a DIB section. The PNG encoding is Go's
+     `image/png`: the Go agent's own, and the driver's for the raw pixels the
+     C agent sends.
 3. **`lib/platform/win32`.**
    - `win32.sngl`: the platform node.
      - It takes `#[gen.can(asyncPost, instanceState)]` and
@@ -588,11 +595,15 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      screenshots; the layout itself fills.
    - Snapshots are done: `PrintWindow` into a DIB section, sent as raw pixels
      the driver encodes as a PNG (`design/testing.md`).
-   - Still open:
-     - gtk4's C agent sets no `sngl_test_capture`, so `t.snapshot` there is
-       refused.
-     - A trigger of one copy of a node a loop renders (`c.row[1].click()`)
-       is refused by passPlacement.
+   - `t.setContext` writes the program's `__ctx_<name>` var
+     (`clang.SetContexts`), and win32 asks for `stdlibContextParam` as gtk4
+     does (`cmd/sngl/testdata/c_set_context_runs.txt`).
+   - Still open: a trigger of one copy of a node a loop renders
+     (`c.row[1].click()`). It waits on the records for runtime instances
+     above: a component under a reactive `for` is built at run time, which
+     placement refuses, so no loop of components renders on win32 yet, in a
+     test or out of one. Once one does, the copy's key (`ir.CopyProp`) is a
+     map from key to node in the package, as gtk4's C copies table is.
 7. **Docs.**
    - `design/architecture.md`: a win32 bullet under *Platform Details*, with
      its C runtime and cross-compilation.

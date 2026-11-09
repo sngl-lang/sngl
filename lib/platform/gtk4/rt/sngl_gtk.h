@@ -53,6 +53,13 @@ GtkWindow *sngl_toplevel_window(GtkWidget *box);
 
 void sngl_app_detach(GtkWidget *box);
 
+/* sngl_capture draws root -- or, where it is NULL, the content of the
+ * toplevel attached last -- in a window of width by height, as a test's
+ * snapshot sees it: into *rgba, which the caller frees, *w by *h pixels,
+ * red, green, blue and alpha, from the top. False, with *why set, where
+ * there is nothing to draw. The widget leaves the window as it came. */
+bool sngl_capture(GtkWidget *root, int width, int height, unsigned char **rgba, int *w, int *h, const char **why);
+
 /* SNGL_APP is the application as a box: a slot at the package's root
  * renders its windows into it, which the box calls below attach and
  * detach, in no order a window shows. */

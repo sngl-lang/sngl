@@ -329,6 +329,100 @@ void sngl_app_detach(GtkWidget *box) {
     }
 }
 
+/* A tick that keeps a blocking iteration from parking past a deadline. */
+static gboolean sngl_capture_tick(gpointer data) {
+    (void)data;
+    return G_SOURCE_CONTINUE;
+}
+
+bool sngl_capture(GtkWidget *root, int width, int height, unsigned char **rgba, int *w, int *h, const char **why) {
+    if (root == NULL && sngl_attached && sngl_attached->len > 0) {
+        SnglToplevel *t = g_ptr_array_index(sngl_attached, sngl_attached->len - 1);
+        root = t->box;
+    }
+    if (root == NULL) {
+        *why = "nothing is shown";
+        return false;
+    }
+    if (gtk_widget_get_parent(root) != NULL) {
+        *why = "what is shown is in a window already";
+        return false;
+    }
+    /* What made it may hold it only weakly, and the window's leaving would
+     * free it: the capture keeps it, once. */
+    if (g_object_is_floating(root)) {
+        g_object_ref_sink(root);
+    }
+    GtkWidget *win = gtk_window_new();
+    gtk_window_set_default_size(GTK_WINDOW(win), width, height);
+    gtk_window_set_child(GTK_WINDOW(win), root);
+    gtk_window_present(GTK_WINDOW(win));
+    /* Mapped is not yet laid out: the compositor's map arrives before GTK
+     * allocates, and a widget of no width draws nothing. */
+    gint64 deadline = g_get_monotonic_time() + 2 * G_USEC_PER_SEC;
+    guint tick = g_timeout_add(5, sngl_capture_tick, NULL);
+    while (!(gtk_widget_get_mapped(win) && gtk_widget_get_width(win) > 0) && g_get_monotonic_time() < deadline) {
+        g_main_context_iteration(NULL, TRUE);
+    }
+    g_source_remove(tick);
+    while (g_main_context_iteration(NULL, FALSE)) {
+    }
+    bool ok = false;
+    GdkPaintable *paintable = gtk_widget_paintable_new(win);
+    GtkSnapshot *snap = gtk_snapshot_new();
+    gdk_paintable_snapshot(paintable, GDK_SNAPSHOT(snap), width, height);
+    GskRenderNode *node = gtk_snapshot_free_to_node(snap);
+    GskRenderer *renderer = gsk_cairo_renderer_new();
+#if GTK_CHECK_VERSION(4, 14, 0)
+    bool realized = gsk_renderer_realize_for_display(renderer, gdk_display_get_default(), NULL);
+#else
+    bool realized = gsk_renderer_realize(renderer, NULL, NULL);
+#endif
+    if (node == NULL) {
+        *why = "the window drew nothing";
+    } else if (!realized) {
+        *why = "the cairo renderer would not start";
+    } else {
+        graphene_rect_t bounds = GRAPHENE_RECT_INIT(0, 0, (float)width, (float)height);
+        GdkTexture *tex = gsk_renderer_render_texture(renderer, node, &bounds);
+        int tw = gdk_texture_get_width(tex), th = gdk_texture_get_height(tex);
+        *rgba = g_malloc((size_t)tw * (size_t)th * 4);
+#if GTK_CHECK_VERSION(4, 10, 0)
+        GdkTextureDownloader *dl = gdk_texture_downloader_new(tex);
+        gdk_texture_downloader_set_format(dl, GDK_MEMORY_R8G8B8A8);
+        gdk_texture_downloader_download_into(dl, *rgba, (gsize)tw * 4);
+        gdk_texture_downloader_free(dl);
+#else
+        /* Cairo's ARGB32, a word a pixel, premultiplied, which a window's
+         * opaque pixels are unchanged by. */
+        gdk_texture_download(tex, *rgba, (gsize)tw * 4);
+        for (size_t i = 0; i < (size_t)tw * (size_t)th; i++) {
+            guint32 px;
+            memcpy(&px, *rgba + i * 4, 4);
+            (*rgba)[i * 4] = (unsigned char)(px >> 16);
+            (*rgba)[i * 4 + 1] = (unsigned char)(px >> 8);
+            (*rgba)[i * 4 + 2] = (unsigned char)px;
+            (*rgba)[i * 4 + 3] = (unsigned char)(px >> 24);
+        }
+#endif
+        *w = tw;
+        *h = th;
+        g_object_unref(tex);
+        ok = true;
+    }
+    if (realized) {
+        gsk_renderer_unrealize(renderer);
+    }
+    g_object_unref(renderer);
+    if (node) {
+        gsk_render_node_unref(node);
+    }
+    g_object_unref(paintable);
+    gtk_window_set_child(GTK_WINDOW(win), NULL);
+    gtk_window_destroy(GTK_WINDOW(win));
+    return ok;
+}
+
 /* sngl_slot_host is the box a slot rendering into w puts its entries in:
  * w, a box, or for a container holding one child -- a frame, a button, a
  * scroll, a window -- a box it holds as that child, made the first time. */

@@ -20,10 +20,11 @@ c.link(include="sngl_win32.h", library="user32", ldflags=["-mwindows", "-luser32
 // entry. A box places a child ahead of another, so a render slot's content
 // goes where the slot is written. Win32 owns its controls and diffs nothing,
 // which is gtk4's reason for flattening the tree and asking for explicit
-// writes too.
+// writes too. A context is a hidden parameter of each function reading it,
+// as gtk4's is.
 #[gen.can(insertBefore)]
 #[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
-#[gen.wants(placement)]
+#[gen.wants(placement, stdlibContextParam)]
 #[gen.name("win32")]
 #[gen.native("win32")]
 component platform(

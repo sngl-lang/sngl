@@ -196,7 +196,18 @@ draws is the toplevel shown last, and a test taking a component has one: a
 placed build rooted at a component attaches what it renders to the
 application, as the package body's nodes are (`lowerDeclarative`), and win32's attach shows
 a node that is no window in a window of its own, which grows as what it holds
-does. gtk4's C agent sets no capture yet, and refuses `t.snapshot`.
+does. gtk4's capture is Go's agent's (`sngl_capture`): what the test shows
+in a window of 800 by 600, rendered by GSK's cairo renderer -- the one widget
+a component's body makes and attaches nowhere (`sngl_test_root`), or the
+content of the toplevel a test of the program attached last, which the agent
+never shows, since it never starts the application.
+
+**A C test's `t.setContext` writes the program's context var**
+(`clang.SetContexts`). passContext already passes what the test set to each
+call after it, the build's included, but a handler reads the program's
+`__ctx_<name>` when it runs, so a click after the setContext read the
+default (`cmd/sngl/testdata/c_set_context_runs.txt`). A context no var of the
+program's holds is passed only, and its setContext writes nothing.
 
 **A test program that goes away before it answers its run fails it**
 (`exitedEarly`, `cmd/sngl/testdata/test_program_exits_runs.txt`): a Go

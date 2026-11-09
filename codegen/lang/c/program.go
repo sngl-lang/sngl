@@ -5,6 +5,8 @@ import (
 	"io"
 	"strings"
 
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
 )
 
@@ -124,7 +126,15 @@ func WriteTests(fe *FileEmitter, pkg *ir.Package, step string) error {
 		if !mounts(fn) {
 			b.WriteString("\tsngl_build();\n")
 		}
-		for _, l := range ctx.EvalBlock(fn.Block) {
+		block := SetContexts(fn.Block, func(name string) *ir.Var {
+			for _, v := range pkg.Vars {
+				if v.Name == name {
+					return v
+				}
+			}
+			return nil
+		})
+		for _, l := range ctx.EvalBlock(block) {
 			b.WriteString("\t" + l + "\n")
 		}
 		b.WriteString("\tsngl_turn_leave();\n}\n")
@@ -181,4 +191,38 @@ func testCall(ctx *Context, n *ir.Call, tName, step string) (string, bool) {
 		return "(void)0", true
 	}
 	return "", false
+}
+
+// SetContexts is stmts with each `t.setContext(name, v)` the write of v to the
+// var the program holds the context in, which held names (`__ctx_<name>`), as
+// Go's agent writes the Model's field: what the program reads of it after,
+// it reads there, and every call the test makes after it passContext has
+// already handed v. A context no var of the program's holds is passed only,
+// so its setContext writes nothing.
+func SetContexts(stmts []ir.Stmt, held func(name string) *ir.Var) []ir.Stmt {
+	return ir.RewriteBlocks(stmts, func(block []ir.Stmt) []ir.Stmt {
+		out := block[:0:0]
+		for _, s := range block {
+			cs, ok := s.(*ir.CallStmt)
+			if !ok || cs.Call == nil {
+				out = append(out, s)
+				continue
+			}
+			name, value, ok := codegen.TestSetContext(cs.Call)
+			if !ok {
+				out = append(out, s)
+				continue
+			}
+			v := held("__ctx_" + name)
+			if v == nil {
+				continue
+			}
+			var target ir.Expr = &ir.Ident{Name: v.Name, Sym: v, Type: v.Type, Synthesized: true}
+			if sd, ok := v.Type.Decl.(*ir.StructDef); ok && v.Type.Kind == ir.TypeStruct && sd.RefBox {
+				target = &ir.Select{Operand: target, Field: "value", Type: sd.Fields[0].Type}
+			}
+			out = append(out, &ir.Assign{Target: target, Op: ast.AssignSet, Value: value})
+		}
+		return out
+	})
 }
