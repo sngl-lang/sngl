@@ -7,4 +7,5 @@ import (
 	_ "duckfam.us/sngl/codegen/platform/fyne"
 	_ "duckfam.us/sngl/codegen/platform/gtk4"
 	_ "duckfam.us/sngl/codegen/platform/html"
+	_ "duckfam.us/sngl/codegen/platform/win32"
 )

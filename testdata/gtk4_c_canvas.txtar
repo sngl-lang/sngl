@@ -597,7 +597,7 @@ static void s___renderSlot0(GtkBox * parent) {
 						(*sngl_map_string__instance_dot__slot(&(__inst0_next), __key1)) = __n0;
 						GtkWidget * __n0__el = __n0->__root;
 						sngl_box_insert_before(GTK_WIDGET(parent), s___slot0__anchor, GTK_WIDGET(__n0__el));
-						sngl_list_node_push_kept(&(s___slot0), (GtkWidget *)(__n0__el));
+						sngl_list_node_push_kept(&(s___slot0), __n0__el);
 					}
 					for (struct { sngl_map_string__instance_dot_ m; int64_t i; } __loop6 = {s___inst0_live, 0}; __loop6.i < __loop6.m.len; __loop6.i++) { sngl_string __inst0_live_k = __loop6.m.keys[__loop6.i]; s_dot__inst * __inst0_live_v = __loop6.m.vals[__loop6.i];
 						if (!(sngl_map_string__instance_dot__find(__inst0_next, __inst0_live_k) >= 0)) {
@@ -695,4 +695,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:e797e988aa0020cc544e4f7b23bb955e
+pass sha256:e3ec978ae9fc3ef7928c2ce180de90f5

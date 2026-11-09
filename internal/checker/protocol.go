@@ -21,8 +21,9 @@ func (c *checker) bindProtocols() {
 	for _, pm := range marks {
 		fn := pm.fn
 		op := fn.Protocol
-		if op == ir.ProtocolConnect {
-			c.bindConnect(pm)
+		switch op {
+		case ir.ProtocolConnect, ir.ProtocolHandle, ir.ProtocolAttach, ir.ProtocolDetach:
+			c.bindPlatformOp(pm)
 			continue
 		}
 		served, verb := fn.Return, "returns"
@@ -31,7 +32,7 @@ func (c *checker) bindProtocols() {
 			served, verb = fn.Params[0].Type, "sets"
 		case ir.ProtocolOn:
 			served, verb = fn.Params[0].Type, "connects to"
-		case ir.ProtocolAppend, ir.ProtocolRemove:
+		case ir.ProtocolAppend, ir.ProtocolRemove, ir.ProtocolInsertBefore:
 			served, verb = fn.Params[0].Type, "adds to"
 		}
 		comp, _ := served.Decl.(*ir.Component)
@@ -69,14 +70,19 @@ func (c *checker) bindProtocols() {
 			comp.Protocol.Append = fn
 		case ir.ProtocolRemove:
 			comp.Protocol.Remove = fn
+		case ir.ProtocolInsertBefore:
+			comp.Protocol.InsertBefore = fn
 		}
 	}
 }
 
-// bindConnect gives a #[gen.protocol(connect)] function to the build-target
-// node of its package: a platform connects a handler to every widget it
-// makes the same way, so the operation is the target's, not a component's.
-func (c *checker) bindConnect(pm protocolMark) {
+// bindPlatformOp gives a #[gen.protocol(connect)], (handle), (attach) or
+// (detach) function to the build-target node of its package: a platform
+// connects a handler to every widget it makes the same way, holds each node
+// as one type and shows each window alike, so the operation is the
+// target's, not a component's.
+func (c *checker) bindPlatformOp(pm protocolMark) {
+	op := pm.fn.Protocol
 	var node *ir.Component
 	for _, comp := range c.declPkg().Components {
 		if comp.Gen != nil && comp.Gen.TargetName != "" {
@@ -85,17 +91,26 @@ func (c *checker) bindConnect(pm protocolMark) {
 		}
 	}
 	if node == nil {
-		c.error(pm.pos, "#[gen.protocol(connect)] is a platform's, declared beside its build-target node, and this package declares none")
+		c.error(pm.pos, "#[gen.protocol(%s)] is a platform's, declared beside its build-target node, and this package declares none", op)
 		return
 	}
 	if node.Protocol == nil {
 		node.Protocol = &ir.NodeProtocol{}
 	}
-	if prev := node.Protocol.Connect; prev != nil {
-		c.error(pm.pos, "#[gen.protocol(connect)]: %s already has %s", node.DisplayName(), prev.Name)
+	if prev := node.Protocol.Op(op); prev != nil {
+		c.error(pm.pos, "#[gen.protocol(%s)]: %s already has %s", op, node.DisplayName(), prev.Name)
 		return
 	}
-	node.Protocol.Connect = pm.fn
+	switch op {
+	case ir.ProtocolConnect:
+		node.Protocol.Connect = pm.fn
+	case ir.ProtocolHandle:
+		node.Protocol.Handle = pm.fn
+	case ir.ProtocolAttach:
+		node.Protocol.Attach = pm.fn
+	case ir.ProtocolDetach:
+		node.Protocol.Detach = pm.fn
+	}
 }
 
 // bindSet gives a #[gen.protocol(set)] function to the prop of comp its value

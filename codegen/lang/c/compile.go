@@ -2,10 +2,12 @@ package c
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -36,6 +38,9 @@ type Compiler struct {
 	Path string
 	// Windows says it builds a Windows executable, which runs under Wine.
 	Windows bool
+	// Target is what it builds for, as a manifest's `target` line names it:
+	// windows/amd64 or windows/386 for MinGW's, empty for the host's.
+	Target string
 }
 
 // Matrix is every C compiler SNGL holds its output to: gcc, the reference,
@@ -45,8 +50,8 @@ func Matrix() []Compiler {
 	out := []Compiler{
 		{Name: "gcc"},
 		{Name: "clang"},
-		{Name: "x86_64-w64-mingw32-gcc", Windows: true},
-		{Name: "i686-w64-mingw32-gcc", Windows: true},
+		{Name: "x86_64-w64-mingw32-gcc", Windows: true, Target: "windows/amd64"},
+		{Name: "i686-w64-mingw32-gcc", Windows: true, Target: "windows/386"},
 	}
 	for i, c := range out {
 		if p, err := exec.LookPath(c.Name); err == nil {
@@ -107,7 +112,9 @@ func WriteRuntime(dir string) error {
 // BuildFile names the manifest a C program is written with, which says what
 // it links beyond the C library, a line each: `pkg-config <name>`, a
 // library pkg-config gives the flags of, and `flag <flag>`, one a c.link
-// names. A line beginning with `#` is a comment.
+// names. A `target <os>/<arch>` line says the program is built for a system
+// other than the host's, which a Compiler's Target names. A line beginning
+// with `#` is a comment.
 const BuildFile = "sngl.build"
 
 // Manifest is the BuildFile for a program linking the pkg-config packages
@@ -146,6 +153,47 @@ func Links(c *Context, links []*ir.CLink) (map[string][]byte, error) {
 	return out, nil
 }
 
+// TargetOf is the target dir's BuildFile names, empty for the host.
+func TargetOf(dir string) string {
+	data, err := os.ReadFile(filepath.Join(dir, BuildFile))
+	if err != nil {
+		return ""
+	}
+	for line := range strings.SplitSeq(string(data), "\n") {
+		if t, ok := strings.CutPrefix(strings.TrimSpace(line), "target "); ok {
+			return strings.TrimSpace(t)
+		}
+	}
+	return ""
+}
+
+// ForTarget is the compiler that builds for target: cc, $CC or cc for the
+// host, and for another system the Matrix's compiler for it.
+func ForTarget(target, cc string) (Compiler, error) {
+	if target == "" {
+		return Host(cc), nil
+	}
+	for _, c := range Matrix() {
+		if c.Target != target {
+			continue
+		}
+		if c.Path == "" {
+			return Compiler{}, fmt.Errorf("building for %s wants %s, which is not on PATH", target, c.Name)
+		}
+		return c, nil
+	}
+	return Compiler{}, fmt.Errorf("no C compiler builds for %s", target)
+}
+
+// Launch is the command running the program at exe: itself, or under Wine
+// where it is a Windows program and the host is not Windows.
+func Launch(exe string) []string {
+	if strings.HasSuffix(exe, ".exe") && runtime.GOOS != "windows" {
+		return []string{"wine", exe}
+	}
+	return []string{exe}
+}
+
 // BuildDir compiles the program written in dir into out under std: every .c
 // file there is a translation unit, and its BuildFile says what it links.
 func (c Compiler) BuildDir(dir, out, std string) (string, error) {
@@ -160,6 +208,9 @@ func (c Compiler) BuildDir(dir, out, std string) (string, error) {
 	if data, err := os.ReadFile(filepath.Join(dir, BuildFile)); err == nil {
 		for line := range strings.SplitSeq(string(data), "\n") {
 			line = strings.TrimSpace(line)
+			if t, ok := strings.CutPrefix(line, "target "); ok && t != c.Target {
+				return "", fmt.Errorf("%s builds for %s, and %s for %s", dir, t, c.Name, cmp.Or(c.Target, "the host"))
+			}
 			if f, ok := strings.CutPrefix(line, "flag "); ok {
 				extra = append(extra, f)
 				continue

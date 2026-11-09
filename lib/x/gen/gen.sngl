@@ -72,7 +72,13 @@ enum Rendered {
 // declares `navigation` and serves a page at its href: a `nav.link` becomes a
 // `ui.link` to the page's address, and a `go` passing no params passes the
 // page's own.
-enum Pass { structComponents, stdlibContextParam, focusOrder, canvas, reactiveCanvas, navigationHrefs }
+//
+// `placement` is for a platform whose every node operation is a protocol
+// function: once the tree is flattened, each intrinsic node operation left
+// becomes the call it carries and each node a value of the platform's
+// `handle` type, so the program is plain functions, structs and calls any
+// language writes, and the platform's generator writes only its entry.
+enum Pass { structComponents, stdlibContextParam, focusOrder, canvas, reactiveCanvas, navigationHrefs, placement }
 
 // Says the target emits each named construct natively, so the pass that would
 // lower it does not run.
@@ -170,6 +176,23 @@ enum Protocol {
     // component's package, at most one per event. For an event the host
     // raises through no call `connect` makes.
     on
+    // Puts a child into the widget ahead of another of its children: a
+    // function of the parent, typed as the component, the child and the
+    // child it goes before, declared in the component's package, at most one
+    // per component. A platform granting `insertBefore` places the child a
+    // render slot renders by it, among the children around the slot.
+    insertBefore
+    // The type every node of the platform is held as, for a platform asking
+    // for `placement`: a function of a node returning it, declared once
+    // beside the platform's build-target node. Its return type is the
+    // answer, and its body is how a protocol function reaches the handle
+    // from a node, which `#[cnative(…, cast)]` writes as the identity.
+    handle
+    // Shows a node the program holds at its root, which is a window, and
+    // takes one away: functions of the node, declared once beside the
+    // platform's build-target node, for a platform asking for `placement`.
+    attach
+    detach
 }
 
 // Says the function is the named operation of its component's protocol.

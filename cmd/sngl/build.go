@@ -83,6 +83,13 @@ func runBuild(cmd *cobra.Command, args []string) error {
 			if _, err := compile(); err != nil {
 				return fmt.Errorf("build failed: %w", err)
 			}
+			// A build for Windows names its program .exe whatever it was
+			// asked for, as MinGW's compiler does.
+			if _, err := os.Stat(finalPath); err != nil {
+				if _, exeErr := os.Stat(finalPath + ".exe"); exeErr == nil {
+					finalPath += ".exe"
+				}
+			}
 			fmt.Println(finalPath)
 			return nil
 		},

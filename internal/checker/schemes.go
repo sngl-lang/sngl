@@ -484,7 +484,8 @@ func (c *checker) checkCLinks() {
 			c.error(vn.Pos, "a c.link names the header it includes")
 			continue
 		}
-		c.pkg.CLinks = append(c.pkg.CLinks, link)
+		pkg := c.declPkg()
+		pkg.CLinks = append(pkg.CLinks, link)
 	}
 }
 

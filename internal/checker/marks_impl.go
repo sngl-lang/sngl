@@ -1048,6 +1048,26 @@ func markGenProtocol(m *mark) error {
 		if t := fn.Params[2].Type; t == nil || t.Kind != ir.TypeFunc {
 			return fmt.Errorf("#[gen.protocol(connect)] is handed the handler, a function, as its third parameter")
 		}
+	case ir.ProtocolInsertBefore:
+		if len(fn.Params) != 3 {
+			return fmt.Errorf("#[gen.protocol(insertBefore)] takes the parent, the child and the child it goes before: func f(parent P, child ui.node, before ui.node)")
+		}
+		for _, p := range fn.Params {
+			if p.Type == nil || p.Type.Kind != ir.TypeComponent {
+				return fmt.Errorf("#[gen.protocol(insertBefore)] declares the #[intrinsic] component it adds to, then the two nodes")
+			}
+		}
+	case ir.ProtocolHandle:
+		if len(fn.Params) != 1 || fn.Params[0].Type == nil || fn.Params[0].Type.Kind != ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(handle)] takes a node: func f(n ui.node) H")
+		}
+		if fn.Return == nil || fn.Return.Kind == ir.TypeVoid || fn.Return.Kind == ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(handle)] declares the type a node is held as, which is no component, as its return type")
+		}
+	case ir.ProtocolAttach, ir.ProtocolDetach:
+		if len(fn.Params) != 1 || fn.Params[0].Type == nil || fn.Params[0].Type.Kind != ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(%s)] takes the node at the program's root: func f(w Window)", op)
+		}
 	case ir.ProtocolSet:
 		if len(fn.Params) != 2 {
 			return fmt.Errorf("#[gen.protocol(set)] takes the widget and the value, named as the prop it sets: func f(w W, label string)")

@@ -650,6 +650,11 @@ func (c *Context) Conversion(n *ir.Conversion) string {
 	if from == nil || to == nil {
 		return c.fail("a conversion of an untyped value")
 	}
+	// A value as its own type is itself: a platform's node as the handle
+	// it is held as (passPlacement).
+	if from.Equal(to) {
+		return operand
+	}
 	// A widget, a C pointer: the cast C writes between two of them.
 	if c.isPointer(to) && (c.isPointer(from) || from.Kind == ir.TypeComponent) {
 		return "(" + c.typeName(to) + ")(" + operand + ")"
@@ -1055,8 +1060,46 @@ func (c *Context) CConvert(x *ir.CConvert) string {
 	case ir.CConvertCallback, ir.CConvertContext, ir.CConvertRelease:
 		// CCall writes all three from the closure.
 		return operand
+	case ir.CConvertUTF16:
+		// CMarshal unwrapped an option: what is left is a string or null.
+		if t := x.Operand.ExprType(); t == nil || t.Kind != ir.TypeString {
+			return "NULL"
+		}
+		return "(" + x.To.String() + ")sngl_utf16(" + operand + ")"
+	case ir.CConvertStruct:
+		return c.cStruct(x.Type) + "(" + operand + ")"
 	}
 	return c.fail("crossing to %s", x.To)
+}
+
+// cStruct is the helper writing t, a struct of the program's declaring a C
+// struct, as that C struct: field by field, each as its alias's typedef or
+// the C scalar it is, so the program holds its own struct and C is handed
+// its own.
+func (c *Context) cStruct(t *ir.Type) string {
+	sd := ir.CStructOf(t)
+	if sd == nil {
+		return c.fail("crossing a %s as a C struct", t)
+	}
+	from, to := c.typeName(t), sd.Foreign.C.String()
+	fn := "sngl_to_" + strings.TrimPrefix(from, "s_")
+	var fields []string
+	for _, f := range sd.Fields {
+		v := "v." + Local(f.Name)
+		switch {
+		case f.Type.Kind == ir.TypeBool:
+			v = "(" + v + " ? 1 : 0)"
+		case f.CAlias != nil && f.CAlias.C != nil:
+			v = "(" + f.CAlias.C.String() + ")" + v
+		case f.Type.Kind == ir.TypeFloat:
+			v = "(double)" + v
+		default:
+			v = "(int)" + v
+		}
+		fields = append(fields, "."+f.Name+" = "+v)
+	}
+	c.file.helper(fn, "static "+to+" "+fn+"("+from+" v) {\n\treturn ("+to+"){"+strings.Join(fields, ", ")+"};\n}\n")
+	return fn
 }
 
 // CCall is a call of the C function c names, whose number comes back as the

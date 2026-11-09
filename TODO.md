@@ -641,3 +641,52 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      run there as gtk4's do.
    - A `winmd:` import scheme, if a program wants to declare a Win32 call the
      committed file does not hold. It is not needed for the platform itself.
+
+## Part 4: Generated cgo wrappers
+
+Cgo is slow to build: every package with `import "C"` runs cgo over its C
+preamble, and a generated program that calls C directly pays that on every
+change to the program. gtk4 already avoids it by hand: wrapped mode calls
+gtk4rt, an unchanging Go package that holds the cgo, so its build is cached
+and the program itself has no `import "C"` (`design/architecture.md`, *Which
+file a program gets*). But gtk4rt's wrappers are written by hand and cover
+what someone wrapped, and win32's Go path would need the same again.
+
+### The design
+
+- **A dev-time tool generates the wrappers.** It reads every C declaration
+  in a platform package (each `#[macro.cnative]` function, and the types
+  they cross) and writes a Go package with one wrapper per declaration, the
+  cgo in it and none in the program. Beside each `cnative` mark it adds a
+  `go.native` mark pointing at its wrapper.
+- **The Go codegen sees both marks and writes one**, by a build option on
+  the language or platform that defaults to the wrapper. Direct cgo stays
+  available for what a wrapper cannot express, and as gtk4's `cgo=true`
+  opt-out is today.
+- **`go generate` keeps it current.** The wrapper package and the marks are
+  committed, and a test holds them to the declarations, as win32gen's test
+  holds `api.sngl`.
+- **It needs more than one native mark on a declaration.** `ir.Foreign` (on
+  `Func`, `Var` and types) holds one correspondence today. Make it a set
+  keyed by language, which is useful on its own: one declaration can name
+  its Go and its C spelling. A struct to embed wherever marks are allowed
+  keeps the field in one place rather than once per declaration kind.
+- **One tool for every C platform:** gtk4 (replacing gtk4rt's hand-written
+  wrappers and the generic `SetString`/`ChildCall` calls where a declaration
+  exists), win32, and any C platform added later.
+- **Ship it as `sngl tool cgogen`**, so a user's own package of `cnative`
+  declarations gets wrappers the same way.
+
+### Open questions
+
+- Where the wrapper package lives: beside the platform's SNGL (as
+  `lib/platform/win32/rt` is), or under `pkg/go/`. It has to be importable by
+  generated programs and versioned with the library.
+- How a callback (`#[c.context]`, `#[c.release]`) crosses a wrapper: gtk4rt
+  registers Go handlers through `cbind` today, which the generator would
+  have to write.
+- What a wrapper costs per call against direct cgo, which is one cgo call
+  either way, and whether strings should be converted inside the wrapper
+  (as gtk4rt does) rather than by `CMarshal` in the program.
+- The order against Part 3: win32's Go path could be the tool's first user,
+  rather than writing direct cgo first and moving it later.

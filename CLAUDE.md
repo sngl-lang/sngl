@@ -119,7 +119,7 @@ SNGL is a UI language that compiles to multiple platforms. The pipeline:
 - `internal/checker/` — two-pass type checker producing `ir/`
 - `internal/optimize/` — folding, DCE, the per-document `Fold`
 - `internal/lower/` — capability-gated IR→IR passes; entry `lower.Lower`
-- `codegen/lang/{golang,javascript,kotlin}`, `codegen/platform/{html,fyne,gtk4,bubbletea,android}` — generators
+- `codegen/lang/{golang,javascript,kotlin,c}`, `codegen/platform/{html,fyne,gtk4,bubbletea,android,win32}` — generators
 - `internal/interp/` — the interpreter, the reference every target is held to
 - `internal/build/` — what `sngl generate` runs, shared with the golden harness
 - `lib/<path>` is `sngl:<path>`; `lib/platform/<name>` and

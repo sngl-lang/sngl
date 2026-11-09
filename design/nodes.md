@@ -54,7 +54,7 @@ and takes no splice and no refusal (`isNoWidget`).
 
 `connect` is the platform's rather than a component's: a function of the
 node, the name the host knows the event by and the handler, declared once
-beside the build-target node (`bindConnect`,
+beside the build-target node (`bindPlatformOp`,
 `testdata/error_gen_protocol_connect.sngl`), since a platform connects a
 handler to every widget it makes the same way. `FeaturesFrom` reads it off
 the platform's node, and `passDeclarative` splices it into each
@@ -101,6 +101,27 @@ protocol this way, declgen writing a GIR class's and `gtk4.sngl` the tags no
 GIR class is behind, and what its translator still calls GTK for is where a
 node lives -- the application's attach, a render slot's box, the window icon
 -- and the canvas, which #294 takes (`design/architecture.md`).
+
+`insertBefore` is a component's, beside its `append`: the parent, the child
+and the node to go ahead of. `handle`, `attach` and `detach` are the
+platform's, as `connect` is: the type every node is held as, and how a node at
+the program's root -- a window -- is shown and taken away
+(`bindPlatformOp`). They are what a platform asking for **placement**
+(`#[gen.wants(placement)]`) declares, and with them the platform writes no
+placement code in Go. `passPlacement` (`internal/lower/placement.go`) runs
+once the tree is flat and every write explicit, and turns each node op into
+the protocol call `passDeclarative` spliced into it: a create is its call, an
+append, remove or insert its parent's, a handler's attach the connect or
+`on`, and an op on the application the platform's attach or detach. An
+insert whose reference is an `option` -- a render slot's cursor -- appends
+where it is null. A handler nobody wrote, which lowering attaches in place of
+an event the program left alone, is dropped rather than connected. Every node
+is then retyped as the `handle`'s return type, through lists and options too,
+and the package body's node locals, which handlers reach, become package vars.
+What is left is plain functions, structs and calls, which a language writes
+whole (`clang.WriteProgram`), so a platform on placement needs no translator:
+win32's generator writes only the program's entry
+(`testdata/win32_c_counter.txtar`, which fails with the pass turned off).
 
 The mark's other job is to stop the inliner. A platform's extension override
 inlines into its caller (`passInlinePure`), and every platform-package

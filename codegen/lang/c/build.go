@@ -18,9 +18,21 @@ func init() {
 		if std == "" {
 			std = "c17"
 		}
-		if _, err := Host(str(2)).BuildDir(str(0), str(1), std); err != nil {
+		cc, err := ForTarget(TargetOf(str(0)), str(2))
+		if err != nil {
 			return nil, err
 		}
-		return str(1), nil
+		if _, err := cc.BuildDir(str(0), str(1), std); err != nil {
+			return nil, err
+		}
+		return cc.Exe(str(1)), nil
+	})
+	codegen.RegisterCommand("c.launch", func(_ *ir.StructLit, args []any) (any, error) {
+		exe, _ := args[0].(string)
+		var out []any
+		for _, a := range Launch(exe) {
+			out = append(out, a)
+		}
+		return out, nil
 	})
 }

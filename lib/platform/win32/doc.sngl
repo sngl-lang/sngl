@@ -1,0 +1,13 @@
+// Package win32 is the platform for classic Windows programs over user32,
+// gdi32 and comctl32: a `ui.window` is a top-level window, a `ui.button` a
+// BUTTON control, a `ui.input` an EDIT.
+//
+// Win32 is a C API, so the platform names C and no language. Its widgets are
+// built by protocol functions over its runtime, C shipped beside its SNGL
+// (`rt/`), and over `sngl:platform/win32/api`, the Win32 declarations
+// generated from Microsoft's metadata. Win32 lays out nothing, so the runtime
+// keeps a record beside each window and lays a box's children out itself.
+//
+// A program on win32 builds with any language that calls C. Off Windows it
+// is cross-compiled with MinGW for the platform's `arch`, and `sngl run` runs
+// it under Wine.

@@ -253,6 +253,7 @@ var soleGate = map[string][]string{
 	"GenericFuncs":     {"Monomorphize", "MonomorphizeEnums"},
 	"FocusOrder":       {"FocusOrder"},
 	"Canvas":           {"Canvas"},
+	"Placement":        {"Placement"},
 
 	// Gates nothing. It is the one capability the lowering never reads: the
 	// build asks it, to decide whether a constant view loop is unrolled.

@@ -90,7 +90,7 @@ component language(
     const platforms     ...component build.platform,
 ) build.language {
     gen.run(@run(dir, args) {
-        var cmd = [buildProgram(dir, dir + "/app", cc, std)]
+        var cmd = launch(buildProgram(dir, dir + "/app", cc, std))
         for var a = args {
             cmd.push(a)
         }
@@ -105,7 +105,13 @@ component language(
 }
 
 // Compiles the program the build wrote to dir into the executable out with
-// cc under std, and returns out: every .c file there, linking what its
-// sngl.build names.
+// cc under std, and returns its path: every .c file there, linking what its
+// sngl.build names. A program built for another system is compiled by the
+// compiler for it, whatever cc says, and a Windows one's path ends `.exe`.
 #[marks.intrinsic("c.buildProgram", build)]
 func buildProgram(dir string, out string, cc string, std string) string
+
+// The command running the program at path: itself, or under Wine where it is
+// a Windows program and the host is not Windows.
+#[marks.intrinsic("c.launch", build)]
+func launch(path string) list[string]

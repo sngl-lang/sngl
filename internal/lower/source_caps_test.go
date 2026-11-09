@@ -37,7 +37,7 @@ func TestGenVocabularyIsMapped(t *testing.T) {
 				continue
 			}
 			if ed.Name == "Protocol" {
-				if !slices.Contains([]ir.ProtocolOp{ir.ProtocolCreate, ir.ProtocolAppend, ir.ProtocolRemove, ir.ProtocolConnect, ir.ProtocolSet, ir.ProtocolOn}, ir.ProtocolOp(m.Name)) {
+				if !slices.Contains([]ir.ProtocolOp{ir.ProtocolCreate, ir.ProtocolAppend, ir.ProtocolRemove, ir.ProtocolConnect, ir.ProtocolSet, ir.ProtocolOn, ir.ProtocolInsertBefore, ir.ProtocolHandle, ir.ProtocolAttach, ir.ProtocolDetach}, ir.ProtocolOp(m.Name)) {
 					t.Errorf("sngl:x/gen declares Protocol.%s, which ir declares no op for", m.Name)
 				}
 				continue

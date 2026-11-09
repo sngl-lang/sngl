@@ -62,6 +62,7 @@ var passField = map[string]func(*Features) *bool{
 	"canvas":             func(f *Features) *bool { return &f.Canvas },
 	"reactiveCanvas":     func(f *Features) *bool { return &f.ReactiveCanvas },
 	"navigationHrefs":    func(f *Features) *bool { return &f.NavigationHrefs },
+	"placement":          func(f *Features) *bool { return &f.Placement },
 }
 
 // FeaturesFrom reads a target's capabilities off the two build-tree nodes it
@@ -94,6 +95,7 @@ func FeaturesFrom(lang, plat *ir.Component) (Features, error) {
 	f.Reserved = slices.Compact(f.Reserved)
 	if plat != nil {
 		f.connect = plat.Protocol.Op(ir.ProtocolConnect)
+		f.platform = plat.Protocol
 	}
 	return f, nil
 }

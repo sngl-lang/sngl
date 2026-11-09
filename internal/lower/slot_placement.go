@@ -96,7 +96,9 @@ func (st *reactivityState) place(sp *slotPlacement, ref0 *ir.Ident) []ir.Stmt {
 		&ir.LocalVar{Name: ref.Name, Type: ref.Type, Sym: ref, Init: &ir.Literal{Type: ir.TypNull}},
 		&ir.If{
 			Cond: inRange(),
-			Body: []ir.Stmt{&ir.Assign{Target: varRef(ref), Op: ast.AssignSet, Value: atCursor()}},
+			// Wrapped as the option it is assigned to, which a language
+			// holding an option as a struct of its own (C) writes.
+			Body: []ir.Stmt{&ir.Assign{Target: varRef(ref), Op: ast.AssignSet, Value: &ir.Conversion{Type: ref.Type, Operand: atCursor()}}},
 		},
 		&ir.If{
 			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: varRef(ref), Right: node()},

@@ -18,10 +18,14 @@ var _ codegen.TestLauncher = (*Translator)(nil)
 // stdout the test agent's JSON-RPC.
 func (t *Translator) LaunchTest(ctx context.Context, dir string, _ codegen.LangTranslator, _ *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
 	bin := dir + ".testagent"
-	if _, err := Host("").BuildDir(dir, bin, "c17"); err != nil {
+	cc, err := ForTarget(TargetOf(dir), "")
+	if err != nil {
 		return nil, nil, err
 	}
-	cmd := exec.CommandContext(ctx, bin)
+	if _, err := cc.BuildDir(dir, bin, "c17"); err != nil {
+		return nil, nil, err
+	}
+	cmd := exec.CommandContext(ctx, cc.Exe(bin))
 	cmd.Dir = dir
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

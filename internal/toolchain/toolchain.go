@@ -25,6 +25,7 @@ package toolchain
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"fmt"
 	"os"
@@ -81,6 +82,15 @@ func Unavailable(lang, platform string) string {
 		}
 		if err := codegen.PlatformUnavailable("gtk4"); err != nil {
 			return err.Error()
+		}
+		return ""
+	case "win32":
+		// Which architecture the program is for is its manifest's to say,
+		// which a probe has not seen; the build names the missing one.
+		for _, cc := range clang.Matrix() {
+			if cc.Windows && cc.Path == "" {
+				return cc.Name + " not on PATH"
+			}
 		}
 		return ""
 	case "android":
@@ -191,12 +201,16 @@ func Build(ctx context.Context, files map[string][]byte, lang, platform string) 
 // it, under each standard its output holds to.
 func cBuild(dir string) (string, error) {
 	var out strings.Builder
+	target := clang.TargetOf(dir)
+	built := false
 	for _, cc := range clang.Compilers() {
-		if cc.Windows {
-			// A Windows compiler builds a Windows program, which links no
-			// host library.
+		if cc.Target != target {
+			// A program is built by each compiler for the system its
+			// manifest names: a host program links host libraries, and a
+			// Windows one Windows'.
 			continue
 		}
+		built = true
 		for _, std := range clang.Standards {
 			o, err := cc.BuildDir(dir, filepath.Join(dir, "app-"+cc.Name+"-"+std), std)
 			out.WriteString(o)
@@ -204,6 +218,9 @@ func cBuild(dir string) (string, error) {
 				return out.String(), err
 			}
 		}
+	}
+	if !built {
+		return out.String(), &SkipError{Reason: "no C compiler on PATH builds for " + cmp.Or(target, "the host")}
 	}
 	return out.String(), nil
 }

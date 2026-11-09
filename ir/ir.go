@@ -887,6 +887,13 @@ const (
 	ProtocolConnect ProtocolOp = "connect"
 	ProtocolSet     ProtocolOp = "set"
 	ProtocolOn      ProtocolOp = "on"
+	// ProtocolInsertBefore is a component's, beside its append.
+	ProtocolInsertBefore ProtocolOp = "insertBefore"
+	// ProtocolHandle, ProtocolAttach and ProtocolDetach are a build-target
+	// node's, as connect is, for a platform asking for placement.
+	ProtocolHandle ProtocolOp = "handle"
+	ProtocolAttach ProtocolOp = "attach"
+	ProtocolDetach ProtocolOp = "detach"
 )
 
 // NodeProtocol is the functions a platform declares to build an #[intrinsic]
@@ -896,9 +903,17 @@ type NodeProtocol struct {
 	Create *Func
 	Append *Func
 	Remove *Func
+	// InsertBefore puts a child ahead of another of the component's.
+	InsertBefore *Func
 	// Connect is held by a build-target node, not by the component: one
 	// connects a handler to every widget its platform makes.
 	Connect *Func
+	// Handle, Attach and Detach are a build-target node's too: the type every
+	// node is held as, and how a node at the program's root is shown and
+	// taken away (passPlacement).
+	Handle *Func
+	Attach *Func
+	Detach *Func
 	// Set is each prop's set, by the prop's name.
 	Set map[string]*Func
 	// On is each event's own connect, by the event's name, which a node of
@@ -936,6 +951,14 @@ func (p *NodeProtocol) Op(op ProtocolOp) *Func {
 		return p.Remove
 	case ProtocolConnect:
 		return p.Connect
+	case ProtocolInsertBefore:
+		return p.InsertBefore
+	case ProtocolHandle:
+		return p.Handle
+	case ProtocolAttach:
+		return p.Attach
+	case ProtocolDetach:
+		return p.Detach
 	}
 	return nil
 }

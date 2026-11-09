@@ -63,6 +63,11 @@ void *sngl_heap_copy(const void *p, size_t n);
  * as Go's C.CString makes one. */
 char *sngl_cstring(sngl_string s);
 
+/* sngl_utf16 is s encoded as NUL-terminated UTF-16 in the turn's arena, the
+ * way Win32 takes a string (LPCWSTR): valid for the call it is handed to. A
+ * byte that begins no UTF-8 sequence is U+FFFD. */
+const unsigned short *sngl_utf16(sngl_string s);
+
 /* sngl_string_bytes is a string of the n bytes at p, copied into the
  * arena with the NUL after them every string has. */
 sngl_string sngl_string_bytes(const char *p, size_t n);

@@ -169,6 +169,9 @@ var passes = []pass{
 	// After everything that splices a handler or drops an emit, so what
 	// reads a write's local is what the build keeps.
 	passFoldWrites,
+	// After every pass that makes or reads a node operation, each of which it
+	// writes as the protocol call it carries.
+	passPlacement,
 	// Last: it reads every body the passes above finished rewriting.
 	passMutatedVars,
 	passCSE,

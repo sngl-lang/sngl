@@ -215,6 +215,55 @@ void *sngl_heap_copy(const void *p, size_t n) {
 	return q;
 }
 
+/* sngl_utf8_next is the code point at s[*i], moving *i past it: U+FFFD for
+ * a byte that begins no sequence, or a sequence cut short or overlong. */
+static uint32_t sngl_utf8_next(sngl_string s, size_t *i) {
+	const unsigned char *p = (const unsigned char *)s.ptr + *i;
+	size_t left = s.len - *i;
+	uint32_t c = p[0];
+	size_t n = c < 0x80 ? 1 : (c & 0xe0) == 0xc0 ? 2 : (c & 0xf0) == 0xe0 ? 3 : (c & 0xf8) == 0xf0 ? 4 : 0;
+	if (n == 0 || n > left) {
+		*i += 1;
+		return 0xfffd;
+	}
+	if (n == 1) {
+		*i += 1;
+		return c;
+	}
+	c &= 0x7fu >> n;
+	for (size_t k = 1; k < n; k++) {
+		if ((p[k] & 0xc0) != 0x80) {
+			*i += 1;
+			return 0xfffd;
+		}
+		c = (c << 6) | (p[k] & 0x3f);
+	}
+	static const uint32_t least[] = {0, 0, 0x80, 0x800, 0x10000};
+	*i += n;
+	if (c < least[n] || c > 0x10ffff || (c >= 0xd800 && c <= 0xdfff)) {
+		return 0xfffd;
+	}
+	return c;
+}
+
+const unsigned short *sngl_utf16(sngl_string s) {
+	/* No code point takes more units than its UTF-8 takes bytes. */
+	unsigned short *out = sngl_alloc((s.len + 1) * sizeof *out);
+	size_t n = 0;
+	for (size_t i = 0; i < s.len;) {
+		uint32_t c = sngl_utf8_next(s, &i);
+		if (c >= 0x10000) {
+			c -= 0x10000;
+			out[n++] = (unsigned short)(0xd800 + (c >> 10));
+			out[n++] = (unsigned short)(0xdc00 + (c & 0x3ff));
+		} else {
+			out[n++] = (unsigned short)c;
+		}
+	}
+	out[n] = 0;
+	return out;
+}
+
 char *sngl_cstring(sngl_string s) {
 	char *c = malloc(s.len + 1);
 	if (c == NULL) {

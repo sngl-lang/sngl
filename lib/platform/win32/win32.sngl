@@ -1,0 +1,480 @@
+import ui "sngl:ui"
+import build "sngl:build"
+import marks "sngl:internal/marks"
+import macro "sngl:macro"
+import gen "sngl:x/gen"
+import c "sngl:x/c"
+import api "sngl:platform/win32/api"
+
+// The runtime every win32 program links: the window procedure, the layout of
+// a box's children and the message loop, in C, which each language compiles
+// into the program.
+c.link(include="sngl_win32.h", library="user32", ldflags=["-mwindows", "-luser32", "-lgdi32", "-lcomctl32"], sources=["rt/sngl_win32.c", "rt/sngl_win32.h"])
+
+// The `win32` node of a build directive: `output { c { win32() } }`.
+//
+// Every node is a window the runtime makes, and every operation on one a
+// protocol function below, so the platform asks for `placement`: what the
+// program renders becomes calls of these, which each language writes as it
+// writes any call, and the platform's generator writes only the program's
+// entry. A box places a child ahead of another, so a render slot's content
+// goes where the slot is written. Win32 owns its controls and diffs nothing,
+// which is gtk4's reason for flattening the tree and asking for explicit
+// writes too.
+#[gen.can(insertBefore)]
+#[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
+#[gen.wants(placement)]
+#[gen.name("win32")]
+#[gen.native("win32")]
+component platform(
+    // Go package name for the generated files.
+    const package       string,
+    // Emit a standalone main() or a library-style module.
+    const main          bool,
+    // The process start, wrapped: what the handler does before calling `run`
+    // happens before the message loop, and what it does after, once the loop
+    // has exited. `run` shows the windows and runs the loop. `args` is the
+    // command line after the program's name.
+    @run(args list[string], run func()),
+    // The architecture the program is built for: `amd64`, or `386` for
+    // 32-bit Windows. Off Windows, the build cross-compiles with MinGW's
+    // compiler for it, and `sngl run` runs the program under Wine.
+    const arch          string = "amd64",
+    // What its generated code introduces beside a program's names: the
+    // runtime's prefix and the program's entry.
+    const reservedNames list[string] = [
+        "sngl_win32",
+        "sngl_build",
+        "sngl_main",
+        "main",
+        "WinMain",
+    ],
+) build.platform
+
+// Every node is a window, held as its handle. Protocol functions below take
+// and return nodes typed as their components, which is what the handle is to
+// each language; one handing a node to a Win32 function of api reaches the
+// handle through this.
+#[macro.cnative("HWND", cast)]
+#[gen.protocol(handle)]
+func _handle(n ui.node) api.HWND
+
+// A node the program holds at its root, a window, is shown when the program
+// attaches it and destroyed, with everything in it, when it detaches it.
+#[macro.cnative("sngl_win32_attach")]
+func _rtAttach(w Window)
+
+#[macro.cnative("sngl_win32_detach")]
+func _rtDetach(w Window)
+
+#[gen.protocol(attach)]
+func _attach(w Window) {
+    _rtAttach(w)
+}
+
+#[gen.protocol(detach)]
+func _detach(w Window) {
+    _rtDetach(w)
+}
+
+// The runtime's way into a node's children, which every container shares: a
+// child appended last, put ahead of another, and destroyed as it is taken
+// out.
+#[macro.cnative("sngl_win32_append")]
+func _rtAppend(parent ui.node, child ui.node)
+
+#[macro.cnative("sngl_win32_insert")]
+func _rtInsert(parent ui.node, child ui.node, before ui.node)
+
+#[macro.cnative("sngl_win32_remove")]
+func _rtRemove(parent ui.node, child ui.node)
+
+// A handler the runtime calls with its context, which it releases when the
+// window it was connected to goes.
+#[macro.cnative("sngl_win32_on_click")]
+func _rtOnClick(
+    w ui.node,
+    #[c.type("sngl_win32_fn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
+)
+
+#[macro.cnative("sngl_win32_on_change")]
+func _rtOnChange(
+    w ui.node,
+    #[c.type("sngl_win32_fn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
+)
+
+#[macro.cnative("sngl_win32_on_activate")]
+func _rtOnActivate(
+    w ui.node,
+    #[c.type("sngl_win32_fn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
+)
+
+// A control's or a toplevel's text, which the runtime measures it by again.
+#[macro.cnative("sngl_win32_set_text")]
+func _rtSetText(w ui.node, text c.utf16)
+
+// What a node's style asks of the runtime (sngl_win32_look): its share of a
+// box's spare room, the gap between a box's children, the room inside its
+// edges, its least size, its colors as 0xRRGGBB or -1 for the system's, and
+// its font size, 0 for the system's.
+#[macro.cnative("sngl_win32_look")]
+struct Look {
+    flex       float
+    gap        int
+    padTop     int
+    padRight   int
+    padBottom  int
+    padLeft    int
+    minWidth   int
+    minHeight  int
+    color      int
+    background int
+    fontPx     int
+}
+
+#[macro.cnative("sngl_win32_set_look")]
+func _look(w ui.node, look Look)
+
+// --- Windows ---
+
+// A toplevel: the window a `ui.window` is. The window manager's close hides
+// it and is reported as `visible = false` followed by `@closed`, and the
+// program ends when the last window it showed is closed.
+#[marks.intrinsic("win32:Window")]
+component Window(title string, :visible bool = true, @closed(), content ...component ui.node) root
+
+#[macro.cnative("sngl_win32_toplevel")]
+func _rtToplevel() Window
+
+#[macro.cnative("sngl_win32_set_visible")]
+func _rtSetVisible(w Window, visible bool)
+
+// A window is no `ui.node`, being the root of what it holds, so it reaches
+// the runtime's calls every node shares through declarations of its own.
+#[macro.cnative("HWND", cast)]
+func _windowHandle(w Window) api.HWND
+
+#[macro.cnative("sngl_win32_append")]
+func _rtWindowAppend(parent Window, child ui.node)
+
+#[macro.cnative("sngl_win32_remove")]
+func _rtWindowRemove(parent Window, child ui.node)
+
+#[macro.cnative("sngl_win32_insert")]
+func _rtWindowInsert(parent Window, child ui.node, before ui.node)
+
+#[macro.cnative("sngl_win32_on_closed")]
+func _rtWindowOnClosed(
+    w Window,
+    #[c.type("sngl_win32_fn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
+)
+
+#[gen.protocol(create)]
+func _create_Window() Window {
+    return _rtToplevel()
+}
+
+#[gen.protocol(append)]
+func _append_Window(parent Window, child ui.node) {
+    _rtWindowAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_Window(parent Window, child ui.node) {
+    _rtWindowRemove(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Window(parent Window, child ui.node, before ui.node) {
+    _rtWindowInsert(parent, child, before)
+}
+
+// A title needs no layout, so it is Win32's own call.
+#[gen.protocol(set)]
+func _set_Window_title(w Window, title string) {
+    api.SetWindowText(_windowHandle(w), title)
+}
+
+#[gen.protocol(set)]
+func _set_Window_visible(w Window, visible bool) {
+    _rtSetVisible(w, visible)
+}
+
+#[gen.protocol(on)]
+func _on_Window_closed(w Window, closed func()) {
+    _rtWindowOnClosed(w, closed)
+}
+
+#[macro.cnative("sngl_win32_on_visible")]
+func _rtWindowOnVisible(
+    w Window,
+    #[c.type("sngl_win32_bool_fn")] fn func(visible bool),
+    #[c.context] ctx c.pointer,
+    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
+)
+
+// The window manager's close hides the window, which reaches `:visible` as
+// false before `@closed` is reported.
+#[gen.protocol(on)]
+func _on_Window_visible(w Window, visible func(visible bool)) {
+    _rtWindowOnVisible(w, visible)
+}
+
+// --- Containers ---
+
+// A box lays its children out along an axis, each its own size, the room to
+// spare shared by flex, and each the box's whole size across it.
+#[marks.intrinsic("win32:Box")]
+component Box(vertical bool, look Look, children ...component ui.node) ui.node
+
+#[macro.cnative("sngl_win32_box")]
+func _rtBox(vertical bool) Box
+
+#[macro.cnative("sngl_win32_set_vertical")]
+func _rtSetVertical(b Box, vertical bool)
+
+#[gen.protocol(create)]
+func _create_Box() Box {
+    return _rtBox(true)
+}
+
+#[gen.protocol(append)]
+func _append_Box(parent Box, child ui.node) {
+    _rtAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_Box(parent Box, child ui.node) {
+    _rtRemove(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Box(parent Box, child ui.node, before ui.node) {
+    _rtInsert(parent, child, before)
+}
+
+#[gen.protocol(set)]
+func _set_Box_vertical(b Box, vertical bool) {
+    _rtSetVertical(b, vertical)
+}
+
+#[gen.protocol(set)]
+func _set_Box_look(b Box, look Look) {
+    _look(b, look)
+}
+
+// Room a box shares out by its flex and draws nothing in.
+#[marks.intrinsic("win32:Spacer")]
+component Spacer(look Look) ui.node
+
+#[macro.cnative("sngl_win32_spacer")]
+func _rtSpacer() Spacer
+
+#[gen.protocol(create)]
+func _create_Spacer() Spacer {
+    return _rtSpacer()
+}
+
+#[gen.protocol(set)]
+func _set_Spacer_look(s Spacer, look Look) {
+    _look(s, look)
+}
+
+// --- Controls ---
+
+// A STATIC control, its text on one line per line it holds.
+#[marks.intrinsic("win32:Text")]
+component Text(value string, look Look) ui.node
+
+#[macro.cnative("sngl_win32_text")]
+func _rtText() Text
+
+#[gen.protocol(create)]
+func _create_Text() Text {
+    return _rtText()
+}
+
+#[gen.protocol(set)]
+func _set_Text_value(t Text, value string) {
+    _rtSetText(t, value)
+}
+
+#[gen.protocol(set)]
+func _set_Text_look(t Text, look Look) {
+    _look(t, look)
+}
+
+// A push button.
+#[marks.intrinsic("win32:Button")]
+component Button(text string, look Look, @click()) ui.node
+
+#[macro.cnative("sngl_win32_button")]
+func _rtButton() Button
+
+#[gen.protocol(create)]
+func _create_Button() Button {
+    return _rtButton()
+}
+
+#[gen.protocol(set)]
+func _set_Button_text(b Button, text string) {
+    _rtSetText(b, text)
+}
+
+#[gen.protocol(set)]
+func _set_Button_look(b Button, look Look) {
+    _look(b, look)
+}
+
+#[gen.protocol(on)]
+func _on_Button_click(b Button, click func()) {
+    _rtOnClick(b, click)
+}
+
+// A check box Win32 checks itself as it is pressed, which `@click` reports
+// once it has.
+#[marks.intrinsic("win32:CheckBox")]
+component CheckBox(label string, checked bool, look Look, @click()) ui.node
+
+#[macro.cnative("sngl_win32_checkbox")]
+func _rtCheckBox() CheckBox
+
+#[macro.cnative("sngl_win32_set_checked")]
+func _rtSetChecked(b CheckBox, checked bool)
+
+// Whether a check box is checked, read off it.
+#[macro.cnative("sngl_win32_checked")]
+func isChecked(b CheckBox) bool
+
+#[gen.protocol(create)]
+func _create_CheckBox() CheckBox {
+    return _rtCheckBox()
+}
+
+#[gen.protocol(set)]
+func _set_CheckBox_label(b CheckBox, label string) {
+    _rtSetText(b, label)
+}
+
+#[gen.protocol(set)]
+func _set_CheckBox_checked(b CheckBox, checked bool) {
+    _rtSetChecked(b, checked)
+}
+
+#[gen.protocol(set)]
+func _set_CheckBox_look(b CheckBox, look Look) {
+    _look(b, look)
+}
+
+#[gen.protocol(on)]
+func _on_CheckBox_click(b CheckBox, click func()) {
+    _rtOnClick(b, click)
+}
+
+// A single-line EDIT control. `@change` is each change to its text the user
+// makes, and `@activate` Enter pressed in it.
+#[marks.intrinsic("win32:Edit")]
+component Edit(look Look, @change(), @activate()) ui.node
+
+#[macro.cnative("sngl_win32_edit")]
+func _rtEdit() Edit
+
+// An edit's text, read off it.
+#[macro.cnative("sngl_win32_get_text")]
+func editText(e Edit) string
+
+// Writes an edit's text where it differs, reporting no change: see
+// ui.input.
+#[macro.cnative("sngl_win32_set_edit_text")]
+func setEditText(e Edit, text c.utf16)
+
+#[gen.protocol(create)]
+func _create_Edit() Edit {
+    return _rtEdit()
+}
+
+#[gen.protocol(set)]
+func _set_Edit_look(e Edit, look Look) {
+    _look(e, look)
+}
+
+#[gen.protocol(on)]
+func _on_Edit_change(e Edit, change func()) {
+    _rtOnChange(e, change)
+}
+
+#[gen.protocol(on)]
+func _on_Edit_activate(e Edit, activate func()) {
+    _rtOnActivate(e, activate)
+}
+
+// --- The stdlib's components ---
+
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content, favicon, menu) {
+    Window(title=title, :visible=visible, @closed { closed() }) {
+        content
+    }
+}
+
+const component ui.text[platform](value, style) {
+    Text(value=value, look=lookOf(style)) {}
+}
+
+const component ui.button[platform](text, focusable, style, @click) {
+    Button(text=text, look=lookOf(style), @click { click() }) {}
+}
+
+const component ui.checkbox[platform](label, checked, focusable, style, @change) {
+    CheckBox #box(label=label, checked=checked, look=lookOf(style), @click {
+        if isChecked(box) != checked {
+            checked = isChecked(box)
+            change(checked)
+        }
+    }) {}
+}
+
+// The value is pushed by an effect rather than bound, as gtk4's is: the
+// edit reports each change it is given as one the user made, so only a
+// value it does not already show is written, and quietly.
+const component ui.input[platform](value, focusable, style, @input, @change) {
+    Edit #entry(
+        look = lookOf(style),
+        @change {
+            if editText(entry) != value {
+                value = editText(entry)
+                input(value)
+            }
+        },
+        @activate {
+            value = editText(entry)
+            change(value)
+        },
+    ) {}
+    effect(on=value, @mount(v) {
+        setEditText(entry, v)
+    })
+}
+
+const component ui.vbox[platform](style, children) {
+    Box(vertical=true, look=boxLookOf(style, 6)) {
+        children
+    }
+}
+
+const component ui.hbox[platform](style, children) {
+    Box(vertical=false, look=boxLookOf(style, 6)) {
+        children
+    }
+}
+
+const component ui.spacer[platform](style) {
+    Spacer(look=lookOf({flex=1, ...style})) {}
+}
