@@ -46,4 +46,20 @@ void sngl_test_fault(const char *msg);
  * counts. */
 long long sngl_test_now_ms(void);
 
+/* sngl_test_capture, which a platform able to draw its program sets before
+ * it serves, draws the program's window as a PNG into *png, which the caller
+ * frees, its length in *n; false, with *why set, where there is none to
+ * draw. */
+extern bool (*sngl_test_capture)(unsigned char **png, size_t *n, const char **why);
+
+/* sngl_test_snapshot compares what sngl_test_capture draws with the golden
+ * named name, which the driver keeps, failing the test where they differ:
+ * a test's t.snapshot. */
+void sngl_test_snapshot(sngl_t *t, sngl_string name);
+
+/* sngl_test_png encodes w by h pixels, four bytes each, red, green, blue
+ * and alpha, row by row from the top, as a PNG, setting *n to its length.
+ * The caller frees it. */
+unsigned char *sngl_test_png(const unsigned char *rgba, int w, int h, size_t *n);
+
 #endif

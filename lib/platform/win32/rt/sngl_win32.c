@@ -46,6 +46,7 @@ static int ready;
 static HWND park;
 static HFONT message_font;
 static int shown; /* toplevels shown and not closed */
+static HWND shown_last; /* the toplevel shown last */
 
 static ctl *ctl_of(HWND w) { return w ? (ctl *)GetPropW(w, SNGL_PROP) : NULL; }
 
@@ -254,6 +255,24 @@ static void lay_out_top(HWND top) {
 	lay_out(top, r.right - r.left, r.bottom - r.top);
 }
 
+/* fit sizes a toplevel to hold what it holds, at least min_w by min_h, as a
+ * GTK window grows to its content: grown, and never shrunk, since a window
+ * the user sized keeps that size. */
+static void fit(HWND top, int min_w, int min_h) {
+	SIZE s;
+	measure(top, &s);
+	RECT r;
+	GetClientRect(top, &r);
+	int w = r.right - r.left, h = r.bottom - r.top;
+	int want_w = s.cx > min_w ? s.cx : min_w, want_h = s.cy > min_h ? s.cy : min_h;
+	if (want_w <= w && want_h <= h) {
+		return;
+	}
+	RECT wr = {0, 0, want_w > w ? want_w : w, want_h > h ? want_h : h};
+	AdjustWindowRectEx(&wr, (DWORD)GetWindowLongPtrW(top, GWL_STYLE), FALSE, (DWORD)GetWindowLongPtrW(top, GWL_EXSTYLE));
+	SetWindowPos(top, NULL, 0, 0, wr.right - wr.left, wr.bottom - wr.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
 /* relayout asks for the layout of the toplevel w is in, once whatever is
  * changing it has. A node not yet under one waits for its append. */
 static void relayout(HWND w) {
@@ -333,6 +352,7 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 	case SNGL_WM_LAYOUT:
 		if (c) {
 			c->laying = 0;
+			fit(w, 0, 0);
 			lay_out_top(w);
 		}
 		return 0;
@@ -550,6 +570,14 @@ void sngl_win32_attach(HWND top) {
 	if (!c) {
 		return;
 	}
+	if (c->kind != K_TOP) {
+		/* A node the program attaches bare -- a test's component, a
+		 * package body with no window -- is shown in a window of its
+		 * own. */
+		HWND node = top;
+		top = sngl_win32_toplevel();
+		sngl_win32_append(top, node);
+	}
 	/* Sized to what it holds, as a GTK window is to its content. */
 	SIZE s;
 	measure(top, &s);
@@ -560,7 +588,17 @@ void sngl_win32_attach(HWND top) {
 	lay_out_top(top);
 }
 
-void sngl_win32_detach(HWND top) { DestroyWindow(top); }
+void sngl_win32_detach(HWND top) {
+	ctl *c = ctl_of(top);
+	if (c && c->kind != K_TOP) {
+		/* The window attach made it. */
+		HWND made = GetAncestor(top, GA_ROOT);
+		if (made != park) {
+			top = made;
+		}
+	}
+	DestroyWindow(top);
+}
 
 /* --- Props --- */
 
@@ -615,6 +653,16 @@ void sngl_win32_set_visible(HWND top, int visible) {
 	}
 	ShowWindow(top, visible ? SW_SHOW : SW_HIDE);
 	shown += visible ? 1 : -1;
+	if (visible) {
+		shown_last = top;
+	}
+}
+
+HWND sngl_win32_shown(void) {
+	if (shown_last && (!IsWindow(shown_last) || !IsWindowVisible(shown_last))) {
+		shown_last = NULL;
+	}
+	return shown_last;
 }
 
 void sngl_win32_set_look(HWND w, sngl_win32_look look) {

@@ -174,6 +174,8 @@ func testCall(ctx *Context, n *ir.Call, tName, step string) (string, bool) {
 		name := fnT + "_wait"
 		ctx.Helper(name, "static void "+name+"("+fnT+" p, int64_t ms) {\n\tlong long end = sngl_test_now_ms() + ms;\n\twhile (!p.fn(p.env) && sngl_test_now_ms() < end) {\n\t\t"+step+";\n\t}\n}\n")
 		return name + "(" + ctx.EvalExpr(pred) + ", " + ctx.EvalExpr(n.Args[2].Value) + ")", true
+	case ir.IsTestCall(n, ir.TestSnapshotID):
+		return "sngl_test_snapshot(" + Local(tName) + ", " + ctx.EvalExpr(n.Args[1].Value) + ")", true
 	case ir.IsTestMethodCall(n):
 		ctx.fail("a test's t.%s", n.Func.Name)
 		return "(void)0", true

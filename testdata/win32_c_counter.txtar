@@ -715,4 +715,4 @@ flag -lgdi32
 flag -lcomctl32
 target windows/amd64
 -- run/c/win32 --
-pass sha256:5489fcea95576b17a52e8416803f9cc0
+pass sha256:a9b5141d5bce0536132252cc9d135994

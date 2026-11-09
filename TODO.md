@@ -586,10 +586,11 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      at its creation size while Wine laid it out at the size `attach` asked
      for, which was the "box does not fill the window" seen in the first
      screenshots; the layout itself fills.
+   - Snapshots are done: `PrintWindow` into a DIB section, encoded by the C
+     test runtime's own PNG writer (`design/testing.md`).
    - Still open:
-     - Snapshots: the C agent answers no `t.snapshot` on any platform yet.
-       Under the null driver, `PrintWindow` into a DIB section captures a
-       window at a size the test fixes.
+     - gtk4's C agent sets no `sngl_test_capture`, so `t.snapshot` there is
+       refused.
      - A trigger of one copy of a node a loop renders (`c.row[1].click()`)
        is refused by passPlacement.
 7. **Docs.**

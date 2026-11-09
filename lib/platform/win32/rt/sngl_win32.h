@@ -56,8 +56,8 @@ void sngl_win32_insert(HWND parent, HWND child, HWND before);
 /* sngl_win32_remove destroys child, which is one of parent's children. */
 void sngl_win32_remove(HWND parent, HWND child);
 
-/* sngl_win32_attach shows a toplevel the program holds, and
- * sngl_win32_detach destroys one. */
+/* sngl_win32_attach shows a toplevel the program holds, or any other node
+ * in a toplevel of its own, and sngl_win32_detach destroys the toplevel. */
 void sngl_win32_attach(HWND top);
 void sngl_win32_detach(HWND top);
 
@@ -78,6 +78,8 @@ void sngl_win32_set_edit_text(HWND w, const unsigned short *text);
 void sngl_win32_set_checked(HWND w, int checked);
 int sngl_win32_checked(HWND w);
 void sngl_win32_set_visible(HWND top, int visible);
+/* sngl_win32_shown is the toplevel shown last, while it is, or NULL. */
+HWND sngl_win32_shown(void);
 
 /* sngl_win32_look is what a node's style asks of the layout and the paint:
  * how much of a box's spare room it takes (flex), the gap a box leaves

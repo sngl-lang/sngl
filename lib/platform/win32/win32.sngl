@@ -60,21 +60,23 @@ component platform(
 func _handle(n ui.node) api.HWND
 
 // A node the program holds at its root, a window, is shown when the program
-// attaches it and destroyed, with everything in it, when it detaches it.
+// attaches it and destroyed, with everything in it, when it detaches it. Any
+// other node attached -- a test's component, a program with no window -- is
+// shown in a window of its own, which goes with it.
 #[macro.cnative("sngl_win32_attach")]
-func _rtAttach(w Window)
+func _rtAttach(n ui.node)
 
 #[macro.cnative("sngl_win32_detach")]
-func _rtDetach(w Window)
+func _rtDetach(n ui.node)
 
 #[gen.protocol(attach)]
-func _attach(w Window) {
-    _rtAttach(w)
+func _attach(n ui.node) {
+    _rtAttach(n)
 }
 
 #[gen.protocol(detach)]
-func _detach(w Window) {
-    _rtDetach(w)
+func _detach(n ui.node) {
+    _rtDetach(n)
 }
 
 // The runtime's way into a node's children, which every container shares: a

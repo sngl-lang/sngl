@@ -182,6 +182,22 @@ while Wine laid it out at another. `WINEDEBUG=-all` keeps Wine's diagnostics
 out of a failure's text. Each launch is recorded as any `sngl test` is
 (`cmd/sngl/testdata/c_win32_test_runs.txt`, both architectures).
 
+**A C agent's snapshot is the platform's capture, sent as a PNG**
+(`sngl_test_snapshot`). A platform that can draw its program sets
+`sngl_test_capture` before it serves; the agent encodes what it draws with
+`sngl_test_png` and waits for the driver's answer to its `snapshotAssert` on
+the channel it serves on, which carries nothing else while a test runs. The
+encoder deflates in one block of the fixed code whose only copies are of the
+pixel before and of the row above, since no C runtime ships a deflate:
+stored blocks made a 200 by 140 window 100KB a picture in a script's record,
+and these make it under 2KB. win32's capture is `PrintWindow` into a DIB
+section, which the null driver draws as a screen would. The window it draws
+is the toplevel shown last, and a test taking a component has one: a placed
+build rooted at a component attaches what it renders to the application, as
+the package body's nodes are (`lowerDeclarative`), and win32's attach shows
+a node that is no window in a window of its own, which grows as what it holds
+does. gtk4's C agent sets no capture yet, and refuses `t.snapshot`.
+
 **A test program that goes away before it answers its run fails it**
 (`exitedEarly`, `cmd/sngl/testdata/test_program_exits_runs.txt`): a Go
 target's stack overflow ends the program where no recover reaches, and the
