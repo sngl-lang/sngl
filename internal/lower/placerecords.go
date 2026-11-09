@@ -40,8 +40,11 @@ type record struct {
 	typ  *ir.Type
 	new  *ir.Func
 	// teardown is the component's teardown, now a function of the
-	// package's taking the record, or nil where it has none.
+	// package's taking the record, or nil where it has none; destroy is
+	// what DestroyComponent calls, the teardown and letting go of what a
+	// test held of the record (holdRead).
 	teardown *ir.Func
+	destroy  *ir.Func
 	// tops are the nodes the body makes and puts nowhere, which its root is
 	// one of, and nodeType the type the root is held as.
 	tops     []string
@@ -58,7 +61,7 @@ const recordRoot = "__root"
 // funcs are the record's functions: its constructor and its component's,
 // each the package's once buildRecord ran.
 func (r *record) funcs() []*ir.Func {
-	return append([]*ir.Func{r.new}, r.owned...)
+	return append([]*ir.Func{r.new, r.destroy}, r.owned...)
 }
 
 // collectRecords is a record for each component the program builds at run
@@ -82,6 +85,7 @@ func collectRecords(pkg *ir.Package) map[*ir.Component]*record {
 		sd := &ir.StructDef{Name: comp.Name + "__inst", RefBox: true}
 		r := &record{comp: comp, sd: sd, typ: &ir.Type{Kind: ir.TypeStruct, Decl: sd}}
 		r.new = &ir.Func{Name: comp.Name + "__new", Return: r.typ}
+		r.destroy = &ir.Func{Name: comp.Name + "__destroy", Return: ir.TypVoid, Params: []*ir.Param{{Name: recordSelf, Type: r.typ}}}
 		for _, p := range comp.Props {
 			param := p.Sym
 			if param == nil {
@@ -207,10 +211,7 @@ func (p *placement) instanceOp(call *ir.Call) (ir.Expr, bool) {
 			p.fail("a %s destroyed, which is built at run time by no record", componentName(arg(0).ExprType()))
 			return nil, true
 		}
-		if r.teardown == nil {
-			return nil, true
-		}
-		return &ir.Call{Func: r.teardown, Args: []ir.CallArg{{Value: arg(0)}}, Type: ir.TypVoid}, true
+		return &ir.Call{Func: r.destroy, Args: []ir.CallArg{{Value: arg(0)}}, Type: ir.TypVoid}, true
 	}
 	return nil, false
 }
@@ -355,6 +356,15 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 	r.owned = comp.Funcs
 	comp.Funcs = nil
 
+	// The destroy: its teardown, where it has one. A return besides, so the
+	// function has a body for what holdRead adds before it.
+	self := r.destroy.Params[0]
+	if r.teardown != nil {
+		r.destroy.Block = append(r.destroy.Block, &ir.CallStmt{Call: &ir.Call{Func: r.teardown, Args: []ir.CallArg{{Value: &ir.Ident{Name: self.Name, Sym: self, Type: r.typ, Synthesized: true}}}, Type: ir.TypVoid}})
+	}
+	r.destroy.Block = append(r.destroy.Block, &ir.Return{})
+	pkg.Funcs = append(pkg.Funcs, r.destroy)
+
 	// A closure the record makes captured what it reads; one reading the
 	// record itself has no __self to read it through.
 	for _, fn := range closureFuncs(r.new) {
@@ -432,7 +442,12 @@ func (p *placement) intoContents(owner string, stmts []ir.Stmt, tops []string, r
 	var pending []*ir.LocalVar
 	flush := func() bool {
 		for _, lv := range pending {
-			put, err := protocolSplice(appendFn, []ir.Expr{root(), &ir.Ident{Name: lv.Name, Type: lv.Type, Sym: lv.Sym, IsElementRef: true, Synthesized: true}})
+			top := &ir.Ident{Name: lv.Name, Type: lv.Type, IsElementRef: true, Synthesized: true}
+			// Set only where there is one: a nil *Var is a symbol.
+			if lv.Sym != nil {
+				top.Sym = lv.Sym
+			}
+			put, err := protocolSplice(appendFn, []ir.Expr{root(), top})
 			if err != nil {
 				p.fail("%v", err)
 				return false

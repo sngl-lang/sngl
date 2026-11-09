@@ -604,11 +604,11 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
    - A trigger of one copy of a node a loop renders (`c.row[1].click()`)
      and a null test of one are done, through the package's map from each
      copy's key (`cmd/sngl/testdata/c_win32_loops_runs.txt`).
-   - Still open: a test reaching a node or a var inside a record -- a
-     component built at run time once, `c.w.p.go.click()`, or a slot's
-     state -- is refused by placement ("holds in no var"), as gtk4's C
-     writer refuses most of them. It wants the record a test reaches held in
-     a package var, as `holdRead` holds a slot's node.
+   - A test reaching into what is built at run time -- a node a render
+     slot or a record makes, `c.w.p.go.click()`, a node under a branch of
+     the package body -- is done: the node is held in a package var of its
+     option (`holdRead`), which a record sets as it makes it and lets go of
+     as it is destroyed (`cmd/sngl/testdata/c_win32_test_reach_runs.txt`).
 7. **Docs.**
    - `design/architecture.md`: a win32 bullet under *Platform Details*, with
      its C runtime and cross-compilation.

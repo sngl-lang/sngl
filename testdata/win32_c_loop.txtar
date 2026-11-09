@@ -272,6 +272,7 @@ static void s___lambda0(s___lambda0_caps state);
 static void s___child0__set___p0(s___child0__inst * __self, s___anon_id_elem_c6a818 __v);
 static void s___anon_id_elem_c6a818__drop(s___anon_id_elem_c6a818 v);
 static void s___child0__set___on0(s___child0__inst * __self, sngl_fn_void__void __v);
+static void s___child0__destroy(s___child0__inst * __self);
 static void s___lambda1(s___lambda1_caps state, bool __visible);
 static sngl_list_string sngl_list_string__keep(sngl_list_string v);
 
@@ -610,6 +611,7 @@ static void s___renderSlot0(HWND parent) {
 							s___child0__set___p0(__n3, name);
 						} else {
 							if (sngl_map_string____child0__inst_find(s___inst1_live, __key2) >= 0) {
+								s___child0__destroy(sngl_map_string____child0__inst_get(s___inst1_live, __key2, NULL));
 							}
 							s___child0__inst * __n3__new = s___child0__new(name, ((sngl_fn_void__void){sngl_lambda6, sngl_heap_copy(&(sngl_lambda6_env[]){{.name = s___anon_id_elem_c6a818__keep(name)}}, sizeof(sngl_lambda6_env))}));
 							__n3 = __n3__new;
@@ -633,6 +635,7 @@ static void s___renderSlot0(HWND parent) {
 					}
 					for (struct { sngl_map_string____child0__inst m; int64_t i; } __loop8 = {s___inst1_live, 0}; __loop8.i < __loop8.m.len; __loop8.i++) { sngl_string __inst1_live_k = __loop8.m.keys[__loop8.i]; s___child0__inst * __inst1_live_v = __loop8.m.vals[__loop8.i];
 						if (!(sngl_map_string____child0__inst_find(__inst1_next, __inst1_live_k) >= 0)) {
+							s___child0__destroy(__inst1_live_v);
 						}
 					}
 					{
@@ -660,6 +663,7 @@ static void s___renderSlot0(HWND parent) {
 
 static void s___snglTeardown(void) {
 	for (struct { sngl_map_string____child0__inst m; int64_t i; } __loop12 = {s___inst1_live, 0}; __loop12.i < __loop12.m.len; __loop12.i++) { sngl_string __inst1_live_dk = __loop12.m.keys[__loop12.i]; s___child0__inst * __inst1_live_dv = __loop12.m.vals[__loop12.i];
+		s___child0__destroy(__inst1_live_dv);
 	}
 	{
 	sngl_map_string____child0__inst *__slot13 = &(s___inst1_live);
@@ -693,6 +697,10 @@ static void s___child0__set___p0(s___child0__inst * __self, s___anon_id_elem_c6a
 
 static void s___child0__set___on0(s___child0__inst * __self, sngl_fn_void__void __v) {
 	__self->__prop___on0->value = __v;
+}
+
+static void s___child0__destroy(s___child0__inst * __self) {
+	return;
 }
 
 static void s___lambda1(s___lambda1_caps state, bool __visible) {
@@ -766,4 +774,4 @@ flag -lgdi32
 flag -lcomctl32
 target windows/amd64
 -- run/c/win32 --
-pass sha256:5e02c46a517331398f85f88c5cc250f8
+pass sha256:0a378fe5d46b559a3bc096a2ff886109

@@ -140,7 +140,7 @@ func hoistNodes(pkg *ir.Package) {
 		case nil:
 			id.Sym = v
 		case *ir.Var:
-			if sym.NodeHandle {
+			if sym != nil && sym.NodeHandle {
 				id.Sym = v
 			}
 		}

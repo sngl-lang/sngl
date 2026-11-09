@@ -163,7 +163,12 @@ program it writes for any build. A test's `c.n` is then the package var, its
 `.value` where NoRef boxed it, and `c.save` the node's var. A node a function
 other than the package body makes -- a render slot's, made and taken away as
 the slot renders -- is held in a package var of its option that the
-function's every render starts by setting null (`holdRead`), so `c.big == null` once a branch took it away. One copy of a node loops render,
+function's every render starts by setting null (`holdRead`), so `c.big == null` once a branch took it away. The package body's own branches are held
+the same way, and a node a record holds is held as the record's constructor
+makes it and let go by its destroy, unless another record's took its place
+-- a keyed render builds the new before destroying the old -- so it too is
+null once its branch is gone. A trigger fires the node such a var holds
+(`cmd/sngl/testdata/c_win32_test_reach_runs.txt`). One copy of a node loops render,
 `c.row[1]`, is held by its key (`ir.CopyProp`) in a package map that each
 render stamping the keys starts afresh (`copyWrite`, `clearCopies`): a
 record's builder does, since a keyed render updates every prop of each

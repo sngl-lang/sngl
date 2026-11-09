@@ -191,13 +191,15 @@ func (p *placement) fire(pkg *ir.Package, call *ir.Call, comp, id string, path [
 			return call
 		}
 		node = &ir.Index{Operand: &ir.Ident{Name: copies.Name, Sym: copies, Type: copies.Type, Synthesized: true}, Idx: ir.CopyKey(path), Type: copies.Type.Elems[1]}
-	} else {
-		v := packageVar(pkg, id)
-		if v == nil {
-			p.fail("a test fires %s.%s(), a node the placed program holds in no var", id, call.Event)
-			return call
-		}
+	} else if v := packageVar(pkg, id); v != nil {
 		node = &ir.Ident{Name: v.Name, Sym: v, Type: v.Type, IsElementRef: true, Synthesized: true}
+	} else if v := p.held[id]; v != nil {
+		// A node a function other than the package body makes, which the
+		// test reads where it is rendered (holdRead).
+		node = &ir.Conversion{Type: v.Type.Elems[0], Operand: &ir.Ident{Name: v.Name, Sym: v, Type: v.Type, Synthesized: true}}
+	} else {
+		p.fail("a test fires %s.%s(), a node the placed program holds in no var", id, call.Event)
+		return call
 	}
 	args := []ir.Expr{node}
 	for _, a := range call.Args {
@@ -228,12 +230,11 @@ func (p *placement) holdRead(pkg *ir.Package, fn *ir.Func, comp string) {
 	if len(read) == 0 {
 		return
 	}
-	for _, f := range append(append([]*ir.Func(nil), pkg.Funcs...), closureFuncs(pkg)...) {
-		if f.IsTest {
-			continue
-		}
+	// hold is block with each node read made in it held as it is made, and
+	// the resets that start the function rendering it.
+	hold := func(block []ir.Stmt) ([]ir.Stmt, []ir.Stmt) {
 		var held []*ir.Var
-		ir.RewriteBlocks(f, func(stmts []ir.Stmt) []ir.Stmt {
+		block = ir.RewriteBlocks(block, func(stmts []ir.Stmt) []ir.Stmt {
 			out := stmts[:0:0]
 			for _, s := range stmts {
 				out = append(out, s)
@@ -241,37 +242,89 @@ func (p *placement) holdRead(pkg *ir.Package, fn *ir.Func, comp string) {
 				if !ok || !read[lv.Name] || !isPlacedNode(lv.Type) || p.held[lv.Name] != nil {
 					continue
 				}
-				v := &ir.Var{Name: lv.Name + "__held", Type: ir.OptionOf(lv.Type), Synthesized: true}
-				if p.held == nil {
-					p.held = map[string]*ir.Var{}
-				}
-				p.held[lv.Name] = v
-				pkg.Vars = append(pkg.Vars, v)
+				v := p.heldVar(pkg, lv.Name, lv.Type)
 				held = append(held, v)
 				local := &ir.Ident{Name: lv.Name, Type: lv.Type, IsElementRef: true, Synthesized: true}
 				if lv.Sym != nil {
 					local.Sym = lv.Sym
 				}
-				out = append(out, &ir.Assign{
-					Target: &ir.Ident{Name: v.Name, Sym: v, Type: v.Type, Synthesized: true},
-					Op:     ast.AssignSet,
-					// Wrapped as the option it is assigned to, which a
-					// language holding an option as a struct (C) writes.
-					Value: &ir.Conversion{Type: v.Type, Operand: local},
-				})
+				out = append(out, holdAssign(v, local))
 			}
 			return out
 		})
 		var reset []ir.Stmt
 		for _, v := range held {
-			reset = append(reset, &ir.Assign{
-				Target: &ir.Ident{Name: v.Name, Sym: v, Type: v.Type, Synthesized: true},
-				Op:     ast.AssignSet,
-				Value:  &ir.Literal{Type: ir.TypNull, Value: "null"},
-			})
+			reset = append(reset, holdAssign(v, &ir.Literal{Type: ir.TypNull, Value: "null"}))
 		}
-		f.Block = append(reset, f.Block...)
+		return block, reset
 	}
+	for _, f := range append(append([]*ir.Func(nil), pkg.Funcs...), closureFuncs(pkg)...) {
+		if f.IsTest {
+			continue
+		}
+		block, reset := hold(f.Block)
+		f.Block = append(reset, block...)
+	}
+	// The package body's, under a branch it renders once.
+	body, reset := hold(pkg.Body)
+	pkg.Body = append(reset, body...)
+	// A record's, held as its constructor makes it and let go as it is
+	// destroyed, unless another record's took its place.
+	for _, r := range p.records {
+		for _, f := range r.sd.Fields {
+			if !read[f.Name] || p.held[f.Name] != nil || !isPlacedNode(f.Type) {
+				continue
+			}
+			v := p.heldVar(pkg, f.Name, f.Type)
+			field := func(self ir.Expr) ir.Expr { return &ir.Select{Operand: self, Field: f.Name, Type: f.Type} }
+			r.new.Block = ir.RewriteBlocks(r.new.Block, func(stmts []ir.Stmt) []ir.Stmt {
+				out := stmts[:0:0]
+				for _, s := range stmts {
+					out = append(out, s)
+					if a, ok := s.(*ir.Assign); ok {
+						if sel, ok := a.Target.(*ir.Select); ok && sel.Field == f.Name {
+							out = append(out, holdAssign(v, ir.CloneExprSharingDecls(sel)))
+						}
+					}
+				}
+				return out
+			})
+			self := r.destroy.Params[0]
+			selfRef := &ir.Ident{Name: self.Name, Sym: self, Type: self.Type, Synthesized: true}
+			ref := func() ir.Expr { return &ir.Ident{Name: v.Name, Sym: v, Type: v.Type, Synthesized: true} }
+			mine := &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd,
+				Left:  &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: ref(), Right: &ir.Literal{Type: ir.TypNull, Value: "null"}},
+				Right: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: &ir.Conversion{Type: f.Type, Operand: ref()}, Right: field(selfRef)},
+			}
+			clear := &ir.If{Cond: mine, Body: []ir.Stmt{holdAssign(v, &ir.Literal{Type: ir.TypNull, Value: "null"})}}
+			r.destroy.Block = append([]ir.Stmt{clear}, r.destroy.Block...)
+		}
+	}
+}
+
+// heldVar is the package var holding the node a test reads named name,
+// made the first time one is asked for.
+func (p *placement) heldVar(pkg *ir.Package, name string, t *ir.Type) *ir.Var {
+	if v := p.held[name]; v != nil {
+		return v
+	}
+	v := &ir.Var{Name: name + "__held", Type: ir.OptionOf(t), Synthesized: true}
+	if p.held == nil {
+		p.held = map[string]*ir.Var{}
+	}
+	p.held[name] = v
+	pkg.Vars = append(pkg.Vars, v)
+	return v
+}
+
+// holdAssign is the write of value to v, a held node's var.
+func holdAssign(v *ir.Var, value ir.Expr) ir.Stmt {
+	if !ir.IsNullLiteral(value) {
+		// Wrapped as the option it is assigned to, which a language
+		// holding an option as a struct (C) writes.
+		value = &ir.Conversion{Type: v.Type, Operand: value}
+	}
+	return &ir.Assign{Target: &ir.Ident{Name: v.Name, Sym: v, Type: v.Type, Synthesized: true}, Op: ast.AssignSet, Value: value}
 }
 
 // copyWrite is the write of a copy's key onto node, a node loops render that
