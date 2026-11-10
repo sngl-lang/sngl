@@ -256,7 +256,7 @@ sha256:23ce0e9469cedcba9f24d23078ca8260
   ]
 }
 -- testrun/win32/c/rows.sngl/main/1 --
-sha256:84334e2168059d2bde380cded2c2e138
+sha256:d658468821aab221ef7a15aadd4399f7
 {
   "results": [
     {
