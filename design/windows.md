@@ -289,7 +289,7 @@ exception, naming a declaration rather than holding a value.
 `gtk4(@run(args, run) { … })`. A handler is not a value, so the const rule
 does not reach it, and its body is program code: `enterFuncBody` resets
 `outputDepth`, or a call in it resolved as a target at the next level down.
-The event is what says a platform supports it: gtk4 and fyne declare it, and
+The event is what says a platform supports it: gtk4, fyne and win32 declare it, and
 on html or android it is an event the node does not declare. The build
 (`internal/build/run.go`) makes the handler a function of the program's,
 `ir.Package.Run`, so every lowering pass reads it as it reads any other --
@@ -305,7 +305,11 @@ does*; `golang.EmitAppStart` writes both hosts' part of `main`).
 `golang.ModelCallee` spells the call, since a handler that touches no state is
 emitted free. gtk4's cgo mode has no entry point to wrap and refuses it.
 `testdata/platform_run_handler.txtar` is the code and
-`testdata/platform_run_handler_runs.txtar` runs it.
+`testdata/platform_run_handler_runs.txtar` runs it. win32's C `main` is its
+generator's (`appMain`): the runtime holds what the build attaches hidden,
+telling each window's `visible` so, until the handler's `run` presents it,
+and a loop started with nothing shown ends only as the program quits
+(`testdata/win32_c_run_handler_runs.txtar`).
 
 **The package body is the application's view, and a window is a component.**
 Every node at the root of the package body is `lower.AppendChild(__app, n)`

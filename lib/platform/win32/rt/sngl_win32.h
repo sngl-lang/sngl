@@ -26,9 +26,18 @@ typedef void (*sngl_win32_release)(void *ctx);
 void sngl_win32_init(void);
 
 /* sngl_win32_run runs the message loop until sngl_win32_quit, or until the
- * last toplevel shown is closed. */
+ * last toplevel shown is closed; started with none shown, only the quit ends
+ * it. */
 void sngl_win32_run(void);
 void sngl_win32_quit(void);
+
+/* An @run handler's start: sngl_win32_hold keeps what the program attaches
+ * hidden, its :visible told so, until sngl_win32_present shows it, which
+ * the handler's run does before the loop. sngl_win32_refuse_run_again ends
+ * the process where a handler calls run a second time. */
+void sngl_win32_hold(void);
+void sngl_win32_present(void);
+void sngl_win32_refuse_run_again(const char *pos);
 
 /* sngl_win32_pump handles every message waiting and returns, the test agent's
  * way of letting the program settle between steps; sngl_win32_step handles

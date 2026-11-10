@@ -236,7 +236,10 @@ their change was about (`TestScriptGrepsNameAFile` is the lint against the
 class). A `deny` that names no reason, no file, a file no target generates, or
 a pattern that does not compile is a failure.
 
-**What a program does when it runs is an `exec` line**, for a Go target:
+**What a program does when it runs is an `exec` line**, for a Go target or
+one whose platform builds and runs its own program (`codegen.ProgramRunner`:
+win32's C, run under Wine in the test agent's prefix, its CRLFs read as
+newlines):
 
 ```
 exec out/go/gtk4 --window x <clicks.txt -- shown.txt

@@ -326,10 +326,16 @@ const runTimeout = time.Minute
 
 // Exec builds the generated files for one Go target into a program and runs
 // it once per run, in the display this process has, which for a program that
-// presents windows is the headless compositor its test binary runs inside.
+// presents windows is the headless compositor its test binary runs inside. A
+// platform building and running its own program (codegen.ProgramRunner) does
+// both for a target in another language.
 func Exec(ctx context.Context, files map[string][]byte, lang, platform string, runs []Run) (output string, ran []Ran, err error) {
 	if lang != "go" {
-		return "", nil, fmt.Errorf("no way to run a %s/%s program", lang, platform)
+		runner, ok := codegen.LookupPlatform(platform).(codegen.ProgramRunner)
+		if !ok {
+			return "", nil, fmt.Errorf("no way to run a %s/%s program", lang, platform)
+		}
+		return execRunner(ctx, runner, files, lang, platform, runs)
 	}
 	dir, release, err := codegen.BuildDirForContent("fixture", files, lang, platform)
 	if err != nil {
@@ -375,6 +381,36 @@ func Exec(ctx context.Context, files map[string][]byte, lang, platform string, r
 		err := cmd.Run()
 		cancel()
 		ran = append(ran, Ran{Stdout: stdout.String(), Stderr: stderr.String(), Err: err})
+	}
+	return output, ran, nil
+}
+
+// execRunner is Exec through the platform's own build and run.
+func execRunner(ctx context.Context, runner codegen.ProgramRunner, files map[string][]byte, lang, platform string, runs []Run) (string, []Ran, error) {
+	dir, release, err := codegen.BuildDirForContent("fixture", files, lang, platform)
+	if err != nil {
+		return "", nil, err
+	}
+	defer release()
+	for name, data := range files {
+		if err := writeUnder(dir, name, data); err != nil {
+			return "", nil, err
+		}
+	}
+	prs := make([]codegen.ProgramRun, len(runs))
+	for i, r := range runs {
+		if r.Wayland {
+			return "", nil, fmt.Errorf("a %s/%s program speaks no Wayland", lang, platform)
+		}
+		prs[i] = codegen.ProgramRun{Args: r.Args, Stdin: r.Stdin}
+	}
+	output, prans, err := runner.RunProgram(ctx, dir, prs)
+	if err != nil {
+		return output, nil, err
+	}
+	ran := make([]Ran, len(prans))
+	for i, r := range prans {
+		ran[i] = Ran{Stdout: r.Stdout, Stderr: r.Stderr, Err: r.Err}
 	}
 	return output, ran, nil
 }

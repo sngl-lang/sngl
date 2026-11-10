@@ -1330,6 +1330,11 @@ func pickNode(n ui.node, label c.utf16) bool
 #[macro.cnative("sngl_win32_pick_date")]
 func pickDate(n ui.node, iso c.utf16) bool
 
+// Ends the message loop, and with it the program: a window-less program's,
+// such as one an `@run` handler started without calling run, way out.
+#[macro.cnative("sngl_win32_quit")]
+func quit()
+
 // --- Timers ---
 
 // Calls `fn` every `ms` milliseconds from the message loop, until the id it

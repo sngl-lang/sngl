@@ -112,6 +112,11 @@ static UINT(WINAPI *dpi_for_window)(HWND);
 static BOOL(WINAPI *metrics_for_dpi)(UINT, UINT, PVOID, UINT, UINT);
 static int(WINAPI *system_metric_for_dpi)(int, UINT);
 static int shown; /* toplevels shown and not closed */
+/* holding is set while an @run handler has not called run: what the program
+ * attaches waits in held, hidden, until run presents it. */
+static int holding;
+static HWND *held;
+static int nheld;
 static HWND shown_last; /* the toplevel shown last */
 
 static ctl *ctl_of(HWND w) { return w ? (ctl *)GetPropW(w, SNGL_PROP) : NULL; }
@@ -2504,8 +2509,35 @@ void sngl_win32_attach(HWND top) {
 	RECT r = {0, 0, s.cx < 200 ? 200 : s.cx, s.cy < 100 ? 100 : s.cy};
 	AdjustWindowRectEx(&r, (DWORD)GetWindowLongPtrW(top, GWL_STYLE), FALSE, (DWORD)GetWindowLongPtrW(top, GWL_EXSTYLE));
 	SetWindowPos(top, NULL, 0, 0, r.right - r.left, r.bottom - r.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
-	sngl_win32_set_visible(top, 1);
+	if (holding) {
+		/* Not shown yet, which the window's :visible hears. */
+		held = realloc(held, sizeof(HWND) * (size_t)(nheld + 1));
+		held[nheld++] = top;
+		if (c->visible.fn) {
+			((sngl_win32_bool_fn)(void (*)(void))c->visible.fn)(0, c->visible.ctx);
+		}
+	} else {
+		sngl_win32_set_visible(top, 1);
+	}
 	lay_out_top(top);
+}
+
+void sngl_win32_hold(void) { holding = 1; }
+
+void sngl_win32_present(void) {
+	holding = 0;
+	for (int i = 0; i < nheld; i++) {
+		if (IsWindow(held[i])) {
+			ctl *c = ctl_of(held[i]);
+			sngl_win32_set_visible(held[i], 1);
+			if (c && c->visible.fn) {
+				((sngl_win32_bool_fn)(void (*)(void))c->visible.fn)(1, c->visible.ctx);
+			}
+		}
+	}
+	free(held);
+	held = NULL;
+	nheld = 0;
 }
 
 void sngl_win32_detach(HWND top) {
@@ -2942,14 +2974,21 @@ void sngl_win32_cancel(int id) {
 
 void sngl_win32_run(void) {
 	sngl_win32_init();
+	/* A start with no window on screen ends only when the program quits. */
+	int hidden = shown <= 0;
 	MSG m;
 	while (!quitting && GetMessageW(&m, NULL, 0, 0) > 0) {
 		step(&m);
-		if (shown <= 0) {
+		if (!hidden && shown <= 0) {
 			/* The last window the program showed is closed. */
 			break;
 		}
 	}
+}
+
+void sngl_win32_refuse_run_again(const char *pos) {
+	fprintf(stderr, "%s: run called again; an application runs once per process\n", pos);
+	exit(2);
 }
 
 void sngl_win32_step(void) {

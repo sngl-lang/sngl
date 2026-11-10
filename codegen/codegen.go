@@ -391,6 +391,27 @@ type TestLauncher interface {
 	LaunchTest(ctx context.Context, dir string, lang LangTranslator, opts *ir.StructLit) (RPCChannel, Cleanup, error)
 }
 
+// A ProgramRunner is a platform that builds the program it wrote to dir
+// and runs it itself, once per run, rather than as a Go program is: win32's
+// C, cross-compiled and run under Wine. A golden's `exec` runs one through
+// it (internal/toolchain.Exec). A run that could not start, did not end in
+// time or exited non-zero has its Err set.
+type ProgramRunner interface {
+	RunProgram(ctx context.Context, dir string, runs []ProgramRun) (output string, ran []ProgramRan, err error)
+}
+
+// A ProgramRun is one execution of a program: its arguments and its stdin.
+type ProgramRun struct {
+	Args  []string
+	Stdin []byte
+}
+
+// A ProgramRan is what one ProgramRun printed, and how it ended.
+type ProgramRan struct {
+	Stdout, Stderr string
+	Err            error
+}
+
 // SkipError signals that a target's prerequisites are missing on the
 // host (e.g. pkg-config can't find gtk4). sngl test surfaces this as
 // a SKIP line rather than a FAIL. Match via errors.As.

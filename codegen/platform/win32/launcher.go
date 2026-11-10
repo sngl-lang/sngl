@@ -111,6 +111,52 @@ func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.Lan
 	}
 }
 
+var _ codegen.ProgramRunner = (*Generator)(nil)
+
+// RunProgram implements codegen.ProgramRunner: the program the build wrote
+// to dir, cross-compiled for its target and run once per run -- under Wine,
+// off Windows, in the prefix the test agent runs in -- for no more than a
+// minute each.
+func (g *Generator) RunProgram(ctx context.Context, dir string, runs []codegen.ProgramRun) (string, []codegen.ProgramRan, error) {
+	if ok, reason := g.ProbeTest(); !ok {
+		return "", nil, &codegen.SkipError{Reason: reason}
+	}
+	cc, err := clang.ForTarget(clang.TargetOf(dir), "")
+	if err != nil {
+		return "", nil, &codegen.SkipError{Reason: err.Error()}
+	}
+	bin := filepath.Join(dir, "app")
+	if out, err := cc.BuildDir(dir, bin, "c17"); err != nil {
+		return out, nil, err
+	}
+	argv := clang.Launch(cc.Exe(bin))
+	env := os.Environ()
+	if argv[0] == "wine" {
+		prefix, err := winePrefix(ctx)
+		if err != nil {
+			return "", nil, err
+		}
+		env = wineEnv(prefix)
+	}
+	var ran []codegen.ProgramRan
+	for _, r := range runs {
+		rctx, cancel := context.WithTimeout(ctx, time.Minute)
+		cmd := exec.CommandContext(rctx, argv[0], append(argv[1:], r.Args...)...)
+		cmd.WaitDelay = 5 * time.Second
+		cmd.Dir = dir
+		cmd.Env = env
+		cmd.Stdin = bytes.NewReader(r.Stdin)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		err := cmd.Run()
+		cancel()
+		// Windows' C library writes a text stream's newline as CRLF.
+		lf := strings.NewReplacer("\r\n", "\n")
+		ran = append(ran, codegen.ProgramRan{Stdout: lf.Replace(stdout.String()), Stderr: lf.Replace(stderr.String()), Err: err})
+	}
+	return "", ran, nil
+}
+
 // wineEnv is the environment a program runs under Wine in: the prefix, no
 // display -- the prefix draws through Wine's null driver, so no window
 // reaches the developer's desktop -- and none of Wine's own diagnostics.
