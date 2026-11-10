@@ -9,6 +9,7 @@ import (
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/build"
 	"duckfam.us/sngl/internal/checker"
 	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/internal/optimize"
@@ -133,7 +134,7 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int, policy
 		if err != nil {
 			return nil, err
 		}
-		pkg = ir.ClonePackageFor(pkg, platform, lang)
+		pkg = prepare(pkg, platform, lang)
 		optCfg := &optimize.Config{
 			Platform: platform,
 			Language: lang,
@@ -185,7 +186,7 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int, po
 	if err != nil {
 		return nil, err
 	}
-	pkg = ir.ClonePackageFor(pkg, platform, lang)
+	pkg = prepare(pkg, platform, lang)
 	optCfg := &optimize.Config{
 		Platform: platform,
 		Language: lang,
@@ -323,7 +324,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				// blank. Both rewrite in place and both are target-specific, so a
 				// document snapshotted for several platforms gets a copy per
 				// platform -- the second otherwise lowers what the first left.
-				pkg := ir.ClonePackageFor(p.pkg, platform, lang)
+				pkg := prepare(p.pkg, platform, lang)
 				batchOptCfg := &optimize.Config{
 					Platform: platform,
 					Language: lang,
@@ -408,7 +409,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				continue
 			}
 
-			pkg := ir.ClonePackageFor(p.pkg, platform, lang)
+			pkg := prepare(p.pkg, platform, lang)
 			batchOptCfg := &optimize.Config{
 				Platform: platform,
 				Language: lang,
@@ -478,6 +479,15 @@ func LangForPlatform(platform string) string {
 // lowerOptions is what a snapshot hands lower.Lower for platform in lang, as
 // a build does (build.LowerOptions): a pass asking which intrinsics the
 // platform writes itself, or which language it writes, was answered nothing.
+// prepare is pkg's copy for platform and lang, prepared as every build's
+// is: a snapshot runs no test, so the program it draws holds none
+// (build.PrepareTarget).
+func prepare(pkg *ir.Package, platform, lang string) *ir.Package {
+	pkg = ir.ClonePackageFor(pkg, platform, lang)
+	build.PrepareTarget(pkg, build.Target{Platform: platform, Lang: lang})
+	return pkg
+}
+
 func lowerOptions(platform, lang string) lower.Options {
 	opts := lower.Options{Platform: platform, Language: lang}
 	if plat := codegen.LookupPlatform(platform); plat != nil {

@@ -37,7 +37,7 @@ var passPlacement = pass{
 	apply:   lowerPlacement,
 }
 
-func lowerPlacement(pkg *ir.Package, feats Features, _ Options) error {
+func lowerPlacement(pkg *ir.Package, feats Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -67,7 +67,11 @@ func lowerPlacement(pkg *ir.Package, feats Features, _ Options) error {
 	p.clearCopies(pkg)
 	hoistNodes(pkg)
 	p.hoistShared(pkg)
-	p.placeTests(pkg)
+	// A build emitting no tests leaves them as they were checked, as every
+	// pass reaching into a test does: a snapshot's program reads no test.
+	if opts.Tests {
+		p.placeTests(pkg)
+	}
 	if p.err != nil {
 		return p.err
 	}
