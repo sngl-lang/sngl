@@ -338,8 +338,9 @@ func (p *placement) holdRead(pkg *ir.Package, fn *ir.Func, comp string) {
 	body, reset := hold(pkg.Body)
 	pkg.Body = append(reset, body...)
 	// A record's, held as its constructor makes it and let go as it is
-	// destroyed, unless another record's took its place.
-	for _, r := range p.records {
+	// destroyed, unless another record's took its place. In order, since
+	// each makes the package var it holds in.
+	for _, r := range p.recordList() {
 		for _, f := range r.sd.Fields {
 			if !read[f.Name] || p.held[f.Name] != nil || !isPlacedNode(f.Type) {
 				continue

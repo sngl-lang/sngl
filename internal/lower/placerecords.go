@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"cmp"
+	"maps"
 	"slices"
 	"strings"
 
@@ -153,6 +155,12 @@ func (p *placement) recordOf(t *ir.Type) *record {
 	}
 	comp, _ := t.Decl.(*ir.Component)
 	return p.records[comp]
+}
+
+// recordList is p's records in the order of their structs' names, for a
+// walk whose order shows in what it writes.
+func (p *placement) recordList() []*record {
+	return slices.SortedFunc(maps.Values(p.records), func(a, b *record) int { return cmp.Compare(a.sd.Name, b.sd.Name) })
 }
 
 // instanceOp is the node operation on an instance call makes, as placed:
