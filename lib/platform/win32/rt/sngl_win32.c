@@ -1,7 +1,10 @@
 /* sngl_win32.c is sngl:platform/win32's runtime (sngl_win32.h). */
 #include "sngl_win32.h"
 
+#define COBJMACROS
 #include <commctrl.h>
+#include <urlmon.h>
+#include <wincodec.h>
 #include <shellapi.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,8 +21,12 @@
 #define SNGL_WM_REACHED (WM_APP + 3)
 /* A modal's open applied, once it is in the window it is shown over. */
 #define SNGL_WM_OPEN (WM_APP + 4)
+/* A picture's load reported to its image, once it is in one; and a fetch
+ * arrived, the file it was saved to the message's lParam, or 0. */
+#define SNGL_WM_LOADED (WM_APP + 5)
+#define SNGL_WM_FETCHED (WM_APP + 6)
 
-enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO, K_TABS, K_SCROLL, K_MODAL, K_ENTRY, K_TABLE, K_TREE, K_DATE };
+enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO, K_TABS, K_SCROLL, K_MODAL, K_ENTRY, K_TABLE, K_TREE, K_DATE, K_IMAGE, K_PICTURE };
 
 /* How a box lays its children out (sngl_win32_set_mode). */
 enum { M_LINE, M_GRID, M_FLOW, M_STACK, M_EQUAL };
@@ -90,6 +97,14 @@ typedef struct {
 	 * the column a header click last asked for. A tree's label selected. */
 	int selectable, sortable, sort_col;
 	WCHAR *chosen;
+	/* An image's fit (sngl_win32_set_fit), its handlers, and why its
+	 * picture failed; a picture's bitmap, its size, and what it shows. */
+	int fit;
+	handler load, failed;
+	char *why;
+	HBITMAP bmp;
+	int bw, bh;
+	WCHAR *url;
 	HWND self;
 	HWND *kids;
 	int nkids, capkids;
@@ -221,6 +236,13 @@ static void forget(HWND w) {
 	drop_handler(&c->closed);
 	drop_handler(&c->visible);
 	drop_handler(&c->reach);
+	drop_handler(&c->load);
+	drop_handler(&c->failed);
+	if (c->bmp) {
+		DeleteObject(c->bmp);
+	}
+	free(c->why);
+	free(c->url);
 	if (c->dialog) {
 		HWND owner = GetWindow(c->dialog, GW_OWNER);
 		if (c->open && owner) {
@@ -618,6 +640,18 @@ static void measure(HWND w, SIZE *out) {
 		}
 		break;
 	}
+	case K_IMAGE:
+		/* Its picture's size, a pixel a SNGL px, or nothing while it has
+		 * none. */
+		for (int i = 0; i < c->nkids; i++) {
+			ctl *k = ctl_of(c->kids[i]);
+			if (k && k->bmp) {
+				s.cx = px(k->bw, c->dpi);
+				s.cy = px(k->bh, c->dpi);
+			}
+		}
+		break;
+	case K_PICTURE:
 	case K_MODAL:
 	case K_ENTRY:
 	case K_SPACER:
@@ -862,6 +896,13 @@ static void place(HWND w, int cw, int ch) {
 		break;
 	case K_TABS:
 		lay_out_tabs(w, cw, ch);
+		break;
+	case K_IMAGE:
+		/* Its picture fills it, and paints itself fitted. */
+		for (int i = 0; i < c->nkids; i++) {
+			SetWindowPos(c->kids[i], NULL, 0, 0, cw, ch, SWP_NOZORDER | SWP_NOACTIVATE);
+			InvalidateRect(c->kids[i], NULL, TRUE);
+		}
 		break;
 	default:
 		break;
@@ -1187,6 +1228,200 @@ static void tip_tool(HWND box, HWND child, const WCHAR *text) {
 	}
 }
 
+/* --- Pictures --- */
+
+static IWICImagingFactory *wic;
+
+/* decode is the picture data, or the file path, holds as a 32-bit DIB of
+ * premultiplied BGRA, *w by *h, or NULL with *why set. */
+static HBITMAP decode(const unsigned char *data, size_t len, const WCHAR *path, int *w, int *h, const char **why) {
+	if (!wic && FAILED(CoCreateInstance(&CLSID_WICImagingFactory, NULL, CLSCTX_INPROC_SERVER, &IID_IWICImagingFactory, (void **)&wic))) {
+		*why = "no image decoder (WIC)";
+		return NULL;
+	}
+	IWICBitmapDecoder *dec = NULL;
+	IWICStream *stream = NULL;
+	HRESULT hr;
+	if (data) {
+		hr = IWICImagingFactory_CreateStream(wic, &stream);
+		if (SUCCEEDED(hr)) {
+			hr = IWICStream_InitializeFromMemory(stream, (BYTE *)data, (DWORD)len);
+		}
+		if (SUCCEEDED(hr)) {
+			hr = IWICImagingFactory_CreateDecoderFromStream(wic, (IStream *)stream, NULL, WICDecodeMetadataCacheOnDemand, &dec);
+		}
+	} else {
+		hr = IWICImagingFactory_CreateDecoderFromFilename(wic, path, NULL, GENERIC_READ, WICDecodeMetadataCacheOnDemand, &dec);
+	}
+	IWICBitmapFrameDecode *frame = NULL;
+	IWICBitmapSource *pbgra = NULL;
+	HBITMAP bmp = NULL;
+	UINT fw = 0, fh = 0;
+	if (SUCCEEDED(hr)) {
+		hr = IWICBitmapDecoder_GetFrame(dec, 0, &frame);
+	}
+	if (SUCCEEDED(hr)) {
+		hr = WICConvertBitmapSource(&GUID_WICPixelFormat32bppPBGRA, (IWICBitmapSource *)frame, &pbgra);
+	}
+	if (SUCCEEDED(hr)) {
+		hr = IWICBitmapSource_GetSize(pbgra, &fw, &fh);
+	}
+	if (SUCCEEDED(hr) && fw > 0 && fh > 0) {
+		BITMAPINFO bi;
+		memset(&bi, 0, sizeof bi);
+		bi.bmiHeader.biSize = sizeof bi.bmiHeader;
+		bi.bmiHeader.biWidth = (LONG)fw;
+		bi.bmiHeader.biHeight = -(LONG)fh;
+		bi.bmiHeader.biPlanes = 1;
+		bi.bmiHeader.biBitCount = 32;
+		bi.bmiHeader.biCompression = BI_RGB;
+		void *bits = NULL;
+		bmp = CreateDIBSection(NULL, &bi, DIB_RGB_COLORS, &bits, NULL, 0);
+		if (bmp && FAILED(IWICBitmapSource_CopyPixels(pbgra, NULL, fw * 4, fw * fh * 4, bits))) {
+			DeleteObject(bmp);
+			bmp = NULL;
+		}
+	}
+	if (pbgra) {
+		IWICBitmapSource_Release(pbgra);
+	}
+	if (frame) {
+		IWICBitmapFrameDecode_Release(frame);
+	}
+	if (dec) {
+		IWICBitmapDecoder_Release(dec);
+	}
+	if (stream) {
+		IWICStream_Release(stream);
+	}
+	if (!bmp) {
+		*why = data ? "the image could not be decoded" : "the image could not be read";
+		return NULL;
+	}
+	*w = (int)fw;
+	*h = (int)fh;
+	return bmp;
+}
+
+/* shown_as is the picture's result: its bitmap, or why it has none, which
+ * its image hears once it is in one. */
+static void shown_as(HWND w, ctl *c, HBITMAP bmp, int bw, int bh, const char *why) {
+	if (c->bmp) {
+		DeleteObject(c->bmp);
+	}
+	c->bmp = bmp;
+	c->bw = bw;
+	c->bh = bh;
+	free(c->why);
+	c->why = why ? _strdup(why) : NULL;
+	InvalidateRect(w, NULL, TRUE);
+	PostMessageW(w, SNGL_WM_LOADED, 0, 0);
+}
+
+typedef struct {
+	HWND w;
+	WCHAR *url;
+} fetch;
+
+/* fetched saves the URL a fetch names to the cache, off the loop, and
+ * hands the loop the file. */
+static DWORD WINAPI fetched(void *arg) {
+	fetch *f = arg;
+	WCHAR path[MAX_PATH];
+	WCHAR *saved = NULL;
+	if (SUCCEEDED(URLDownloadToCacheFileW(NULL, f->url, path, MAX_PATH, 0, NULL))) {
+		saved = _wcsdup(path);
+	}
+	if (!PostMessageW(f->w, SNGL_WM_FETCHED, 0, (LPARAM)saved)) {
+		free(saved);
+	}
+	free(f->url);
+	free(f);
+	return 0;
+}
+
+/* load shows what url names: a file the program carries (sngl_win32_assets),
+ * one fetched where it is an http or https URL, or one on disk. */
+static void load(HWND w, ctl *c) {
+	const char *why = NULL;
+	int bw = 0, bh = 0;
+	HBITMAP bmp = NULL;
+	if (!c->url || !c->url[0]) {
+		shown_as(w, c, NULL, 0, 0, NULL);
+		return;
+	}
+	/* A carried file's URL is its path from the root it is served under. */
+	char *name = _strdup(utf8(c->url[0] == L'/' ? c->url + 1 : c->url));
+	for (const sngl_win32_asset *a = sngl_win32_assets; a->name; a++) {
+		if (strcmp(a->name, name) == 0) {
+			bmp = decode(a->data, a->len, NULL, &bw, &bh, &why);
+			free(name);
+			shown_as(w, c, bmp, bw, bh, why);
+			return;
+		}
+	}
+	free(name);
+	if (wcsncmp(c->url, L"http://", 7) == 0 || wcsncmp(c->url, L"https://", 8) == 0) {
+		fetch *f = malloc(sizeof *f);
+		f->w = w;
+		f->url = _wcsdup(c->url);
+		HANDLE t = CreateThread(NULL, 0, fetched, f, 0, NULL);
+		if (t) {
+			CloseHandle(t);
+		} else {
+			free(f->url);
+			free(f);
+			shown_as(w, c, NULL, 0, 0, "the image could not be fetched");
+		}
+		return;
+	}
+	bmp = decode(NULL, 0, c->url, &bw, &bh, &why);
+	shown_as(w, c, bmp, bw, bh, why);
+}
+
+/* paint_picture draws a picture's bitmap into its w by h area as its
+ * image's fit says: whole and centered, covering it, stretched over it, at
+ * its own size, or whole and no larger than its own. */
+static void paint_picture(HWND w, ctl *c, HDC dc) {
+	if (!c->bmp) {
+		return;
+	}
+	RECT r;
+	GetClientRect(w, &r);
+	int aw = r.right, ah = r.bottom;
+	ctl *frame = ctl_of(GetParent(w));
+	int fit = frame ? frame->fit : 0;
+	double sx = (double)aw / c->bw, sy = (double)ah / c->bh, sc;
+	switch (fit) {
+	case 1: /* cover */
+		sc = sx > sy ? sx : sy;
+		break;
+	case 3: /* none */
+		sc = 1;
+		break;
+	case 4: /* scaleDown */
+		sc = sx < sy ? sx : sy;
+		sc = sc < 1 ? sc : 1;
+		break;
+	default: /* contain, and fill below */
+		sc = sx < sy ? sx : sy;
+	}
+	int dw = (int)(c->bw * sc + 0.5), dh = (int)(c->bh * sc + 0.5);
+	if (fit == 2) {
+		dw = aw;
+		dh = ah;
+	}
+	HDC mem = CreateCompatibleDC(dc);
+	HGDIOBJ old = SelectObject(mem, c->bmp);
+	int saved = SaveDC(dc);
+	IntersectClipRect(dc, 0, 0, aw, ah);
+	BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+	AlphaBlend(dc, (aw - dw) / 2, (ah - dh) / 2, dw, dh, mem, 0, 0, c->bw, c->bh, bf);
+	RestoreDC(dc, saved);
+	SelectObject(mem, old);
+	DeleteDC(mem);
+}
+
 /* --- Window procedures --- */
 
 static LRESULT color(ctl *c, HDC dc, LRESULT otherwise) {
@@ -1276,8 +1511,51 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 			return 1;
 		}
 		break;
+	case WM_NCHITTEST:
+		if (c && c->kind == K_PICTURE) {
+			/* Its image takes the click. */
+			return HTTRANSPARENT;
+		}
+		break;
+	case SNGL_WM_LOADED:
+		if (c && c->kind == K_PICTURE) {
+			ctl *frame = ctl_of(GetParent(w));
+			if (frame && frame->kind == K_IMAGE) {
+				free(frame->why);
+				frame->why = c->why ? _strdup(c->why) : NULL;
+				if (c->bmp) {
+					fire(&frame->load);
+				} else if (c->why) {
+					fire(&frame->failed);
+				}
+				relayout(w);
+			}
+		}
+		return 0;
+	case SNGL_WM_FETCHED:
+		if (c && c->kind == K_PICTURE) {
+			WCHAR *path = (WCHAR *)lp;
+			const char *why = "the image could not be fetched";
+			int bw = 0, bh = 0;
+			HBITMAP bmp = path ? decode(NULL, 0, path, &bw, &bh, &why) : NULL;
+			free(path);
+			shown_as(w, c, bmp, bw, bh, bmp ? NULL : why);
+		}
+		return 0;
 	case WM_PAINT:
 	case WM_PRINTCLIENT:
+		if (c && c->kind == K_PICTURE) {
+			PAINTSTRUCT ps;
+			HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : BeginPaint(w, &ps);
+			if (msg == WM_PRINTCLIENT) {
+				SendMessageW(w, WM_ERASEBKGND, wp, 0);
+			}
+			paint_picture(w, c, dc);
+			if (msg != WM_PRINTCLIENT) {
+				EndPaint(w, &ps);
+			}
+			return 0;
+		}
 		if (c && c->framed) {
 			PAINTSTRUCT ps;
 			HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : BeginPaint(w, &ps);
@@ -1590,6 +1868,7 @@ void sngl_win32_init(void) {
 		return;
 	}
 	ready = 1;
+	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	aware();
 	common_controls_v6();
 	INITCOMMONCONTROLSEX icc = {sizeof icc, ICC_STANDARD_CLASSES | ICC_PROGRESS_CLASS | ICC_TAB_CLASSES | ICC_BAR_CLASSES | ICC_LISTVIEW_CLASSES | ICC_TREEVIEW_CLASSES | ICC_DATE_CLASSES};
@@ -2373,6 +2652,49 @@ int sngl_win32_pick_date(HWND w, const unsigned short *iso) {
 	ch.dwFlags = (DWORD)SendMessageW(t, DTM_GETSYSTEMTIME, 0, (LPARAM)&ch.st);
 	SendMessageW(GetParent(t), WM_NOTIFY, ch.nmhdr.idFrom, (LPARAM)&ch);
 	return 1;
+}
+
+HWND sngl_win32_image(void) { return control(SNGL_BOX_CLASS, WS_CLIPCHILDREN, 0, K_IMAGE); }
+
+HWND sngl_win32_picture(void) { return control(SNGL_BOX_CLASS, 0, 0, K_PICTURE); }
+
+void sngl_win32_set_fit(HWND w, int fit) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		c->fit = fit;
+		for (int i = 0; i < c->nkids; i++) {
+			InvalidateRect(c->kids[i], NULL, TRUE);
+		}
+	}
+}
+
+void sngl_win32_set_url(HWND w, const unsigned short *url) {
+	ctl *c = ctl_of(w);
+	if (!c || (c->url && wcscmp(c->url, (const WCHAR *)url) == 0)) {
+		return;
+	}
+	free(c->url);
+	c->url = _wcsdup((const WCHAR *)url);
+	load(w, c);
+}
+
+const char *sngl_win32_image_failure(HWND w) {
+	ctl *c = ctl_of(w);
+	return c && c->why ? c->why : "";
+}
+
+void sngl_win32_on_load(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		set_handler(&c->load, fn, ctx, release);
+	}
+}
+
+void sngl_win32_on_failed(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		set_handler(&c->failed, fn, ctx, release);
+	}
 }
 
 HWND sngl_win32_radio(void) { return control(L"BUTTON", BS_AUTORADIOBUTTON | WS_TABSTOP, 0, K_RADIO); }

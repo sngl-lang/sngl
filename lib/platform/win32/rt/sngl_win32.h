@@ -96,6 +96,30 @@ HWND sngl_win32_modal(void);
  * as the user does, answering whether there was one to choose. */
 HWND sngl_win32_entry(void);
 
+/* sngl_win32_image is an image: a node holding the picture it shows, which
+ * fills it, painted as sngl_win32_set_fit says -- 0 contain, 1 cover, 2
+ * fill, 3 none, 4 scaleDown -- and measured at the picture's size. A
+ * picture, sngl_win32_picture, shows what sngl_win32_set_url names: a file
+ * the program carries, one of sngl_win32_assets; one fetched, for an http or
+ * https URL; or a file on disk. Its image hears that it loaded, or that it
+ * failed and why (sngl_win32_image_failure), once the picture is in it. */
+HWND sngl_win32_image(void);
+HWND sngl_win32_picture(void);
+void sngl_win32_set_fit(HWND w, int fit);
+void sngl_win32_set_url(HWND w, const unsigned short *url);
+const char *sngl_win32_image_failure(HWND w);
+void sngl_win32_on_load(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
+void sngl_win32_on_failed(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
+
+/* The files a program carries, which its build defines, ending at a NULL
+ * name: each by the path its URL names. */
+typedef struct {
+	const char *name;
+	const unsigned char *data;
+	size_t len;
+} sngl_win32_asset;
+extern const sngl_win32_asset sngl_win32_assets[];
+
 /* sngl_win32_table is a list view of rows and columns. sngl_win32_fill_table
  * gives it its columns, one a line, and its rows, one a line of cells
  * separated by tabs, reporting nothing; sngl_win32_set_row selects a row,

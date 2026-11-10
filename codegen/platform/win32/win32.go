@@ -146,6 +146,14 @@ func generateC(req *codegen.Request, sink codegen.Sink) error {
 	if err := writeFile(sink, clang.BuildFile, manifest); err != nil {
 		return err
 	}
+	// The files the program carries, which the runtime's images show.
+	assets, err := clang.Assets(req.FileAssets, "sngl_win32.h", "sngl_win32_asset", "sngl_win32_assets")
+	if err != nil {
+		return fmt.Errorf("win32: %w", err)
+	}
+	if err := writeFile(sink, "sngl_win32_assets.c", assets); err != nil {
+		return err
+	}
 	// The platform's runtime is a c.link's sources, the same for every
 	// program, so a golden holds their digest too; and so is the agent's
 	// channel and the C runtime's.

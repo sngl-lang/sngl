@@ -10,7 +10,7 @@ import api "sngl:platform/win32/api"
 // The runtime every win32 program links: the window procedure, the layout of
 // a box's children and the message loop, in C, which each language compiles
 // into the program.
-c.link(include="sngl_win32.h", library="user32", ldflags=["-mwindows", "-luser32", "-lgdi32", "-lcomctl32", "-lshell32"], sources=["rt/sngl_win32.c", "rt/sngl_win32.h"])
+c.link(include="sngl_win32.h", library="user32", ldflags=["-mwindows", "-luser32", "-lgdi32", "-lcomctl32", "-lshell32", "-lmsimg32", "-lole32", "-luuid", "-lwindowscodecs", "-lurlmon"], sources=["rt/sngl_win32.c", "rt/sngl_win32.h"])
 
 // The source annotations MinGW's sal.h, specstrings.h and driverspecs.h
 // define as macros, which windows.h includes: a local lowering names
@@ -1335,6 +1335,109 @@ func pickDate(n ui.node, iso c.utf16) bool
 #[macro.cnative("sngl_win32_quit")]
 func quit()
 
+// An image: a node holding the picture it shows, which fills it, painted as
+// `fit` says and measured at the picture's size. `@load` is its picture
+// shown, and `@failed` its picture failing, why being imageFailure's.
+#[marks.intrinsic("win32:Image")]
+component Image(fit ui.ObjectFit, look Look, @click(), @load(), @failed(), content ...component option[ui.imageSource]) ui.node
+
+// A picture, showing what `url` names: a file the program carries, one
+// fetched for an http or https URL, or a file on disk.
+#[marks.intrinsic("win32:Picture")]
+component Picture(url string) ui.imageSource
+
+#[macro.cnative("sngl_win32_image")]
+func _rtImage() Image
+
+#[macro.cnative("sngl_win32_picture")]
+func _rtPicture() Picture
+
+#[macro.cnative("sngl_win32_set_fit")]
+func _rtSetFit(i Image, fit int)
+
+#[macro.cnative("sngl_win32_set_url")]
+func _rtSetUrl(p Picture, url c.utf16)
+
+// Why an image's picture failed, or "".
+#[macro.cnative("sngl_win32_image_failure")]
+func imageFailure(i Image) string
+
+#[macro.cnative("sngl_win32_on_load")]
+func _rtOnLoad(
+    i Image,
+    #[c.type("sngl_win32_fn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
+)
+
+#[macro.cnative("sngl_win32_on_failed")]
+func _rtOnFailed(
+    i Image,
+    #[c.type("sngl_win32_fn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
+)
+
+#[gen.protocol(create)]
+func _create_Image() Image {
+    return _rtImage()
+}
+
+#[gen.protocol(append)]
+func _append_Image(parent Image, child ui.node) {
+    _rtAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_Image(parent Image, child ui.node) {
+    _rtRemove(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Image(parent Image, child ui.node, before ui.node) {
+    _rtInsert(parent, child, before)
+}
+
+#[gen.protocol(set)]
+func _set_Image_fit(i Image, fit ui.ObjectFit) {
+    _rtSetFit(i, int(fit))
+}
+
+#[gen.protocol(set)]
+func _set_Image_look(i Image, look Look) {
+    _look(i, look)
+}
+
+#[gen.protocol(on)]
+func _on_Image_click(i Image, click func()) {
+    _rtOnClick(i, click)
+}
+
+#[gen.protocol(on)]
+func _on_Image_load(i Image, load func()) {
+    _rtOnLoad(i, load)
+}
+
+#[gen.protocol(on)]
+func _on_Image_failed(i Image, failed func()) {
+    _rtOnFailed(i, failed)
+}
+
+#[gen.fires("click")]
+func _fire_Image_click(i Image) {
+    _rtFireClick(i)
+}
+
+#[gen.protocol(create)]
+func _create_Picture() Picture {
+    return _rtPicture()
+}
+
+#[gen.protocol(set)]
+func _set_Picture_url(p Picture, url string) {
+    _rtSetUrl(p, url)
+}
+
 // --- Timers ---
 
 // Calls `fn` every `ms` milliseconds from the message loop, until the id it
@@ -1749,4 +1852,27 @@ const component ui.datepicker[platform](value, min, max, disabled, style, @chang
     effect(on=value, @mount(v) {
         showDate(picker, _isoOf(v))
     })
+}
+
+// An image shows its source's picture, fitted into its frame. `alt` has
+// nothing to reach: a Win32 window carries no description a screen reader
+// reads from a picture.
+const component ui.image[platform](fit, style, @click, @load, @error, src) {
+    Image #frame(
+        fit = fit,
+        look = lookOf(style),
+        @click { click() },
+        @load { load() },
+        @failed { error({message=imageFailure(frame), kind="image"}) },
+    ) {
+        src
+    }
+}
+
+const component ui.file[platform](path) {
+    Picture(url=path)
+}
+
+const component ui.remote[platform](url) {
+    Picture(url=url)
 }
