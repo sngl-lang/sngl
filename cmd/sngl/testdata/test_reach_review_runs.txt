@@ -1974,7 +1974,7 @@ sha256:69fa338ac3a47580f1a195411947cf2d
   ]
 }
 -- testrun/win32/c/sitecall.sngl/main/1 --
-sha256:f3a0ba8ea552e8077f2d4cdc0746a52a
+sha256:283351c0fa0ed8ee38bb9ab70071273a
 {
   "results": [
     {
