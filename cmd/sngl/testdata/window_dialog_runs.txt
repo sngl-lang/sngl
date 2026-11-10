@@ -1,6 +1,6 @@
 # A window after html's document is a `<dialog>` in it, run in Chromium and on
-# the interpreter, which holds it to the same answers, and on fyne and gtk4,
-# where it is a toplevel of its own. A test's component may be a root
+# the interpreter, which holds it to the same answers, and on fyne, gtk4 and
+# win32, where it is a toplevel of its own. A test's component may be a root
 # component, and its windows' handles are reached through it like any other
 # node's: a read of `c.log.visible` is the cell the window keeps for it.
 #
@@ -24,6 +24,9 @@ sngl test --platform=fyne --language=go app.sngl
 stdout '3 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
 stdout '3 tests, 0 failures'
 
 # bubbletea and android show one window, and refuse the second.
@@ -144,6 +147,24 @@ sha256:700fb001f9594934dfa2e65d90226c87
     },
     {
       "Desc": "TheDocumentWindowKeepsItsCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/app/1 --
+sha256:3da609a1969a5fc822b85817b58cfe4c
+{
+  "results": [
+    {
+      "Desc": "OpenAndCloseADialog",
+      "Passed": true
+    },
+    {
+      "Desc": "TheDocumentWindowKeepsItsCell",
+      "Passed": true
+    },
+    {
+      "Desc": "ADialogUnderAnIfComesAndGoes",
       "Passed": true
     }
   ]
