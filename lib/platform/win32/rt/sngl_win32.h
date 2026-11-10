@@ -78,6 +78,18 @@ HWND sngl_win32_scroll(void);
  * shown in a window of their own over the window it is in, which is
  * disabled while the modal is open. */
 HWND sngl_win32_modal(void);
+/* sngl_win32_entry is a menu entry, its label its text: a node taking no
+ * room, which the toplevel it is in shows in its menu bar, wherever in it
+ * it is, and an entry holding entries as their submenu. Its click handler
+ * is its command. sngl_win32_set_entry_* gray it or check it.
+ * sngl_win32_menu_items is how many items the menu bar of the toplevel w
+ * is in holds, and sngl_win32_choose chooses the entry labeled label in it
+ * as the user does, answering whether there was one to choose. */
+HWND sngl_win32_entry(void);
+void sngl_win32_set_entry_disabled(HWND w, int disabled);
+void sngl_win32_set_entry_checked(HWND w, int checked);
+int sngl_win32_menu_items(HWND w);
+int sngl_win32_choose(HWND w, const unsigned short *label);
 
 /* sngl_win32_append makes child the last of parent's children, and
  * sngl_win32_insert puts it before before, which is one of them. Either lays

@@ -19,7 +19,7 @@
 /* A modal's open applied, once it is in the window it is shown over. */
 #define SNGL_WM_OPEN (WM_APP + 4)
 
-enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO, K_TABS, K_SCROLL, K_MODAL };
+enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO, K_TABS, K_SCROLL, K_MODAL, K_ENTRY };
 
 /* How a box lays its children out (sngl_win32_set_mode). */
 enum { M_LINE, M_GRID, M_FLOW, M_STACK, M_EQUAL };
@@ -81,6 +81,11 @@ typedef struct {
 	 * which modal_of names back. */
 	HWND dialog, modal_of;
 	int open, closable;
+	/* A menu entry's command, its state, and the menu bar a toplevel shows
+	 * its entries in. */
+	UINT id;
+	int disabled, checked;
+	HMENU menu;
 	HWND self;
 	HWND *kids;
 	int nkids, capkids;
@@ -213,6 +218,10 @@ static void forget(HWND w) {
 			EnableWindow(owner, TRUE);
 		}
 		DestroyWindow(c->dialog);
+	}
+	if (c->menu) {
+		SetMenu(w, NULL);
+		DestroyMenu(c->menu);
 	}
 	if (c->font) {
 		DeleteObject(c->font);
@@ -525,6 +534,7 @@ static void measure(HWND w, SIZE *out) {
 		break;
 	}
 	case K_MODAL:
+	case K_ENTRY:
 	case K_SPACER:
 		break;
 	}
@@ -978,6 +988,98 @@ static void show_modal(HWND m, ctl *c) {
 	}
 }
 
+/* --- Menus --- */
+
+/* entry_flags is how an entry's state shows in a menu. */
+static UINT entry_flags(ctl *e) { return (e->disabled ? MF_GRAYED : MF_ENABLED) | (e->checked ? MF_CHECKED : MF_UNCHECKED); }
+
+/* fill_menu puts in m an item for each entry entry holds, or the top's
+ * walk finds: a submenu where it holds entries itself, and otherwise its
+ * command. */
+static void fill_menu(HMENU m, HWND w, int top);
+
+static void add_entry(HMENU m, HWND e) {
+	ctl *ec = ctl_of(e);
+	int n = GetWindowTextLengthW(e);
+	WCHAR *label = malloc(sizeof(WCHAR) * (size_t)(n + 1));
+	GetWindowTextW(e, label, n + 1);
+	int subs = 0;
+	for (int i = 0; i < ec->nkids; i++) {
+		ctl *k = ctl_of(ec->kids[i]);
+		subs += k && k->kind == K_ENTRY;
+	}
+	if (subs) {
+		HMENU sub = CreatePopupMenu();
+		fill_menu(sub, e, 0);
+		AppendMenuW(m, MF_POPUP | entry_flags(ec), (UINT_PTR)sub, label);
+	} else {
+		AppendMenuW(m, MF_STRING | entry_flags(ec), ec->id, label);
+	}
+	free(label);
+}
+
+static void fill_menu(HMENU m, HWND w, int top) {
+	ctl *c = ctl_of(w);
+	if (!c) {
+		return;
+	}
+	for (int i = 0; i < c->nkids; i++) {
+		ctl *k = ctl_of(c->kids[i]);
+		if (!k) {
+			continue;
+		}
+		if (k->kind == K_ENTRY) {
+			add_entry(m, c->kids[i]);
+		} else if (top) {
+			/* A menu bar's entries are found wherever the window holds
+			 * them, ui.menubar's included. */
+			fill_menu(m, c->kids[i], 1);
+		}
+	}
+}
+
+/* menu_sync gives the toplevel w is in a menu bar of every entry it holds,
+ * or none where it holds none. */
+static void menu_sync(HWND w) {
+	HWND top = GetAncestor(w, GA_ROOT);
+	ctl *c = ctl_of(top);
+	if (!c || c->kind != K_TOP) {
+		return;
+	}
+	HMENU m = CreateMenu();
+	fill_menu(m, top, 1);
+	HMENU old = c->menu;
+	c->menu = GetMenuItemCount(m) > 0 ? m : NULL;
+	if (!c->menu) {
+		DestroyMenu(m);
+	}
+	if (c->menu || old) {
+		SetMenu(top, c->menu);
+		DrawMenuBar(top);
+	}
+	if (old) {
+		DestroyMenu(old);
+	}
+}
+
+/* find_entry is the entry under w whose command is id, or NULL. */
+static ctl *find_entry(HWND w, UINT id) {
+	ctl *c = ctl_of(w);
+	if (!c) {
+		return NULL;
+	}
+	if (c->kind == K_ENTRY && c->id == id) {
+		return c;
+	}
+	for (int i = 0; i < c->nkids; i++) {
+		ctl *e = find_entry(c->kids[i], id);
+		if (e) {
+			return e;
+		}
+	}
+	return NULL;
+}
+
 /* tips is the tooltip every box with a tip shows its children's through. */
 static HWND tips;
 
@@ -1024,6 +1126,14 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 	ctl *c = ctl_of(w);
 	switch (msg) {
 	case WM_COMMAND: {
+		if (lp == 0 && HIWORD(wp) == 0 && c && c->kind == K_TOP) {
+			/* A menu's command, its entry's id. */
+			ctl *e = find_entry(w, LOWORD(wp));
+			if (e) {
+				fire(&e->click);
+			}
+			return 0;
+		}
 		ctl *src = ctl_of((HWND)lp);
 		if (!src) {
 			break;
@@ -1623,6 +1733,78 @@ HWND sngl_win32_modal(void) {
 	return w;
 }
 
+HWND sngl_win32_entry(void) {
+	static UINT next_entry = 1000;
+	HWND w = control(SNGL_BOX_CLASS, 0, 0, K_ENTRY);
+	ctl *c = ctl_of(w);
+	if (c) {
+		c->off_prop = 1;
+		c->id = next_entry++;
+		ShowWindow(w, SW_HIDE);
+	}
+	return w;
+}
+
+void sngl_win32_set_entry_disabled(HWND w, int disabled) {
+	ctl *c = ctl_of(w);
+	if (c && c->disabled != (disabled != 0)) {
+		c->disabled = disabled != 0;
+		menu_sync(w);
+	}
+}
+
+void sngl_win32_set_entry_checked(HWND w, int checked) {
+	ctl *c = ctl_of(w);
+	if (c && c->checked != (checked != 0)) {
+		c->checked = checked != 0;
+		menu_sync(w);
+	}
+}
+
+/* entry_labeled is the entry under w labeled label, or NULL. */
+static HWND entry_labeled(HWND w, const WCHAR *label) {
+	ctl *c = ctl_of(w);
+	if (!c) {
+		return NULL;
+	}
+	if (c->kind == K_ENTRY) {
+		WCHAR buf[256];
+		GetWindowTextW(w, buf, 256);
+		if (wcscmp(buf, label) == 0) {
+			return w;
+		}
+	}
+	for (int i = 0; i < c->nkids; i++) {
+		HWND e = entry_labeled(c->kids[i], label);
+		if (e) {
+			return e;
+		}
+	}
+	return NULL;
+}
+
+int sngl_win32_choose(HWND w, const unsigned short *label) {
+	HWND top = GetAncestor(w, GA_ROOT);
+	ctl *c = ctl_of(top);
+	HWND e = entry_labeled(top, (const WCHAR *)label);
+	if (!c || !c->menu || !e) {
+		return 0;
+	}
+	/* As the user's choice: through the menu, where a grayed item is none. */
+	ctl *ec = ctl_of(e);
+	MENUITEMINFOW mi = {sizeof mi, MIIM_STATE, 0, 0, 0, NULL, NULL, NULL, 0, NULL, 0, NULL};
+	if (!GetMenuItemInfoW(c->menu, ec->id, FALSE, &mi) || (mi.fState & MFS_GRAYED)) {
+		return 0;
+	}
+	SendMessageW(top, WM_COMMAND, MAKEWPARAM(ec->id, 0), 0);
+	return 1;
+}
+
+int sngl_win32_menu_items(HWND w) {
+	ctl *c = ctl_of(GetAncestor(w, GA_ROOT));
+	return c && c->menu ? GetMenuItemCount(c->menu) : 0;
+}
+
 HWND sngl_win32_radio(void) { return control(L"BUTTON", BS_AUTORADIOBUTTON | WS_TABSTOP, 0, K_RADIO); }
 
 HWND sngl_win32_select(void) { return control(WC_COMBOBOXW, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP, 0, K_SELECT); }
@@ -1648,6 +1830,23 @@ static int kids_index(ctl *c, HWND child) {
 	return -1;
 }
 
+/* holds_entries is whether w is a menu entry or holds one. */
+static int holds_entries(HWND w) {
+	ctl *c = ctl_of(w);
+	if (!c) {
+		return 0;
+	}
+	if (c->kind == K_ENTRY) {
+		return 1;
+	}
+	for (int i = 0; i < c->nkids; i++) {
+		if (holds_entries(c->kids[i])) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 /* host is the window that holds what is put in parent: a modal's own,
  * and otherwise parent. */
 static HWND host(HWND parent) {
@@ -1667,6 +1866,9 @@ static void adopt(HWND parent, HWND child, int at) {
 	}
 	if (c->tip) {
 		tip_tool(parent, child, c->tip);
+	}
+	if (holds_entries(child)) {
+		menu_sync(parent);
 	}
 	relayout(parent);
 }
@@ -1702,7 +1904,11 @@ void sngl_win32_remove(HWND parent, HWND child) {
 			tip_tool(parent, child, NULL);
 		}
 	}
+	int entries = holds_entries(child);
 	DestroyWindow(child);
+	if (entries) {
+		menu_sync(parent);
+	}
 	if (c && c->kind == K_TABS) {
 		if (c->selected >= c->nkids) {
 			c->selected = c->nkids > 0 ? c->nkids - 1 : 0;
@@ -1759,6 +1965,10 @@ void sngl_win32_set_text(HWND w, const unsigned short *text) {
 		return;
 	}
 	SetWindowTextW(w, (LPCWSTR)text);
+	if (c && c->kind == K_ENTRY) {
+		menu_sync(w);
+		return;
+	}
 	HWND parent = GetParent(w);
 	ctl *pc = ctl_of(parent);
 	if (pc && pc->kind == K_TABS) {

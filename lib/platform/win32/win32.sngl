@@ -490,7 +490,7 @@ func _set_Text_look(t Text, look Look) {
 
 // A push button.
 #[marks.intrinsic("win32:Button")]
-component Button(text string, look Look, @click()) ui.node
+component Button(text string, enabled bool = true, look Look, @click()) ui.node
 
 #[macro.cnative("sngl_win32_button")]
 func _rtButton() Button
@@ -503,6 +503,11 @@ func _create_Button() Button {
 #[gen.protocol(set)]
 func _set_Button_text(b Button, text string) {
     _rtSetText(b, text)
+}
+
+#[gen.protocol(set)]
+func _set_Button_enabled(b Button, enabled bool) {
+    _rtSetEnabled(b, enabled)
 }
 
 #[gen.protocol(set)]
@@ -1107,6 +1112,72 @@ func _fire_Modal_closed(m Modal) {
     _rtFireModalClose(m)
 }
 
+// An entry of the menu bar of the window it is in, wherever in the window
+// it is, taking no room in its box; one holding entries is their submenu.
+// `@select` is the user choosing it.
+#[marks.intrinsic("win32:MenuEntry")]
+component MenuEntry(label string, disabled bool, checked bool, @select(), entries ...component ui.node) ui.node
+
+#[macro.cnative("sngl_win32_entry")]
+func _rtEntry() MenuEntry
+
+#[macro.cnative("sngl_win32_set_entry_disabled")]
+func _rtSetEntryDisabled(e MenuEntry, disabled bool)
+
+#[macro.cnative("sngl_win32_set_entry_checked")]
+func _rtSetEntryChecked(e MenuEntry, checked bool)
+
+// How many items the menu bar of the window `n` is in holds.
+#[macro.cnative("sngl_win32_menu_items")]
+func menuItems(n ui.node) int
+
+// Chooses the entry labeled `label` in the menu bar of the window `n` is
+// in, as the user does: a test's way to a menu. False where there is no
+// such entry, or it is grayed.
+#[macro.cnative("sngl_win32_choose")]
+func chooseMenu(n ui.node, label c.utf16) bool
+
+#[gen.protocol(create)]
+func _create_MenuEntry() MenuEntry {
+    return _rtEntry()
+}
+
+#[gen.protocol(append)]
+func _append_MenuEntry(parent MenuEntry, child ui.node) {
+    _rtAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_MenuEntry(parent MenuEntry, child ui.node) {
+    _rtRemove(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_MenuEntry(parent MenuEntry, child ui.node, before ui.node) {
+    _rtInsert(parent, child, before)
+}
+
+#[gen.protocol(set)]
+func _set_MenuEntry_label(e MenuEntry, label string) {
+    _rtSetText(e, label)
+}
+
+#[gen.protocol(set)]
+func _set_MenuEntry_disabled(e MenuEntry, disabled bool) {
+    _rtSetEntryDisabled(e, disabled)
+}
+
+#[gen.protocol(set)]
+func _set_MenuEntry_checked(e MenuEntry, checked bool) {
+    _rtSetEntryChecked(e, checked)
+}
+
+#[gen.protocol(on)]
+func _on_MenuEntry_select(e MenuEntry, select func()) {
+    _rtOnClick(e, select)
+}
+
+
 // --- Timers ---
 
 // Calls `fn` every `ms` milliseconds from the message loop, until the id it
@@ -1124,9 +1195,18 @@ func _rtCancel(id int)
 
 // --- The stdlib's components ---
 
+// Its menu is the window's menu bar, drawn two deep: a top-level entry and
+// its submenu, as gtk4's is.
 const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content, favicon, menu) {
     Window(title=title, :visible=visible, @closed { closed() }) {
         content
+        for var it = menu {
+            MenuEntry(label=it.label, disabled=it.disabled, checked=it.checked, @select { it.select() }) {
+                for var sub = it.children {
+                    MenuEntry(label=sub.label, disabled=sub.disabled, checked=sub.checked, @select { sub.select() }) {}
+                }
+            }
+        }
     }
 }
 
@@ -1406,5 +1486,30 @@ const component ui.tooltip[platform](style, text, trigger) {
 const component ui.modal[platform](open, title, closable, @close, content) {
     Modal(title=title, open=open, closable=closable, @closed { close() }) {
         content
+    }
+}
+
+// A menu bar is the window's, wherever it is written in it: its entries
+// join the menu bar of the window they are in, and take no room where they
+// are.
+const component ui.menubar[platform](style, items) {
+    Box(vertical=false, visible=false, look=lookOf(style)) {
+        for var it = items {
+            MenuEntry(label=it.label, disabled=it.disabled, checked=it.checked, @select { it.select() }) {
+                for var sub = it.children {
+                    MenuEntry(label=sub.label, disabled=sub.disabled, checked=sub.checked, @select { sub.select() }) {}
+                }
+            }
+        }
+    }
+}
+
+// Its top-level entries as buttons in place while it is open, as on gtk4: a
+// popup menu Win32 tracks runs a loop of its own until it is dismissed.
+const component ui.menu[platform](style, open, items) {
+    Box(vertical=true, framed=true, visible=open, look=boxLookOf(style, 0)) {
+        for var it = items {
+            Button(text=it.label, enabled=!it.disabled, @click { it.select() }) {}
+        }
     }
 }

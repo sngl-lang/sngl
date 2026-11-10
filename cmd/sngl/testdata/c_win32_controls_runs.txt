@@ -39,6 +39,17 @@ exists panels.sngl.snapshots/first.png
 exists panels.sngl.snapshots/more.png
 ! cmp panels.sngl.snapshots/first.png panels.sngl.snapshots/more.png
 
+# A menu entry is a node taking no room, which the window it is in shows in
+# its menu bar wherever in it it is -- the window's own menu and a
+# ui.menubar's alike -- and an entry holding entries as their submenu. A
+# command reaches the entry's handler by its id, and a test chooses one by
+# its label as the user does, which a grayed one refuses. A ui.menu is its
+# entries as buttons in place while it is open.
+
+sngl test --platform=win32 --language=c menus.sngl
+stdout 'ok +3 tests, 0 failures'
+exists menus.sngl.snapshots/menu.png
+
 -- controls.sngl --
 import ui "sngl:ui"
 import time "sngl:time"
@@ -276,8 +287,68 @@ func testDraws(t test.Test, c main) {
     c.tabs.change(2)
     t.snapshot("more")
 }
+-- menus.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+import win32 "sngl:platform/win32"
+
+output {
+    c {
+        win32
+    }
+}
+
+component main ui.node {
+    var opened = 0
+    var wrap = false
+    var showMenu = false
+    var picks = 0
+    ui.vbox {
+        ui.menubar {
+            ui.menuItem(label="File") {
+                ui.menuItem(label="Open", @select { opened += 1 })
+                ui.menuItem(label="Wrap", checked=wrap, @select { wrap = !wrap })
+            }
+            ui.menuItem(label="Help", disabled=true)
+        }
+        ui.button #more(text="More", @click { showMenu = !showMenu })
+        ui.menu(open=showMenu) {
+            ui.menuItem(label="Pick", @select { picks += 1 })
+            ui.menuItem(label="Never", disabled=true)
+        }
+        ui.text #status(value="opened {opened} wrap {wrap} picks {picks}")
+    }
+}
+
+ui.window(title="Menus") {
+    main()
+    component menu {
+        ui.menuItem(label="Window") {
+            ui.menuItem(label="Close")
+        }
+    }
+}
+
+func testTheWindowBuilds(t test.Test) {
+    t.assert(true)
+}
+
+func testTheMenuBarIsTheWindows(t test.Test, c main) {
+    t.assert(win32.menuItems(c.status) == 2)
+    t.assert(win32.chooseMenu(c.status, "Open"))
+    t.assert(c.opened == 1)
+    t.assert(win32.chooseMenu(c.status, "Wrap"))
+    t.assert(c.wrap)
+    t.assert(!win32.chooseMenu(c.status, "Help"))
+}
+
+func testDraws(t test.Test, c main) {
+    t.snapshot("shut")
+    c.more.click()
+    t.snapshot("menu")
+}
 -- testrun/win32/c/controls.sngl/main/1 --
-sha256:5242d7883136f296c4a0de17a7ac921a
+sha256:870947d97734fcb07cb8e3984aeaa275
 {
   "results": [
     {
@@ -302,7 +373,7 @@ sha256:5242d7883136f296c4a0de17a7ac921a
   }
 }
 -- testrun/win32/c/layout.sngl/main/1 --
-sha256:cd22fe37828b8b1f30237feb02fd79e0
+sha256:fb2f1ff5455ab6879e100892fdb4763f
 {
   "results": [
     {
@@ -319,8 +390,36 @@ sha256:cd22fe37828b8b1f30237feb02fd79e0
     "open.png": "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"
   }
 }
+-- testrun/win32/c/menus.sngl/_/1 --
+sha256:d5d27f08f70824419ee8308d4e970fd3
+{
+  "results": [
+    {
+      "Desc": "TheWindowBuilds",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/menus.sngl/main/1 --
+sha256:604b0e05baaad0b305829716c18442a1
+{
+  "results": [
+    {
+      "Desc": "TheMenuBarIsTheWindows",
+      "Passed": true
+    },
+    {
+      "Desc": "Draws",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "menu.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAABPCAIAAAAhjx2pAAADi0lEQVR4nOycT06tPBjGacMGDBOZ6wS34CYcdoMyJO7ARVgdMP2cGMGRiSP4gtie8ueUI8VEL7/nTW4okDswvzx9T8953vj19VVrXdd127YRQmESQiRJkmWZuL+/T9P04uJCSmmeIrRSTdOUZfny8iLf3t6gCqo2oSqKIinl5eVlVVWybVuogqpNqLJsdVDZNUVtWIAFWIAFWIAFWIC1c7A6sMSnzGq8BCzAWgkWjoVj/YhjRVHUtm1vWkII90sIYWSX9t/pU2QVmws0Ixcyez29GF0DFmANwOpNa5EP9wW8aupVgDUGa4UWKaTH2nuPFQgK1jWyLhzL51i2o59lzv8UsHYOVgfWLDSzj/xLtkK2wvmtEG0lwAIswAKsPwSWEKJpGrNEKFRN00gpZZIkZVnCFmxtwlb/m/ezszNBSoeUzo+kdN7f381Nmnead5p3mvdf3rybCxwLx8KxcCwcC8fCsXAsHGszx4rv7u7MNULbSCnV/WxGKWXuIBSqPM8PP5upqopjUo5JQ45J7dHo4PdYDw8PaZpeX18zIIQBIesGhPRf5jw+Pg6ad4YZMcwocJiRHWA0AIthRgwzCh9m1A8wGoBFUdsWYAEWYAEWYP3DYNnIF+WpeLCCGEPMdDoD+pYA6wCWmxPskYKqdVSxFS5shdbDzLQiMfsUx8KxFhxrtmY3RHZJ/y4JWAOwrAn5oYEqP1WANQbrRFxOnKRFj0WPNd9jeeSOmgEswFoDVs/QtHmHLQ9bMfugZx+0d9xHx65xLBzre46FVgiwAAuwAOvPgcUwI4YZhQ8z6gcYDcBimBHDjAKHGdkBRoNPhVmWaa2fnp74mHPsYw7yq0/pXF1dPT8/HxwLoW315Vha6/Pzc+JfxL8C419a60GPVdc18S/iX+Hxr7quiX8R/yL+RfyL+BfxL+JfxL+IfxH/+jXxL8ACrAWw8k+NBjsBFmCFgoVj4Vg/4lj9NMOpUeVGUydzb07fsUtO3r9O3ilbeZ7b2Znu9eI77k3A2jlYHVhKqRETI+OxL7ivTc3J/R8Aa+dgdWBN6xREwMjFiB5r3GNZSqYO5NrSyK5m36HcwrHGjuVCdsyWTnln5xK3t7dKqaIobm5uzE2EVqooio+PD6WU5K9y+KtQ2xXxL+JfxL+IfxH/Iv5F/Iv4F/Ev4l/Ev/5I/CvmiO/YER/13frvU1+cYVFY1DqL8uv/AQDK46NErZM/0QAAAABJRU5ErkJggg==",
+    "shut.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAABRCAIAAAAYU35CAAAC+ElEQVR4nOzbza6iMBTAcdq4Y2VYudeN7/8AvoQr3sD4sXLbTrxOmzOHCkiBO8r/NJlQWgqU3z00jq7O5/PxeLxer977giDywhhTVdV+vzeHw2Gz2Wy3W2ttaCWIgeGcq+v6dDrZ2+2GKlSNoqooCmvtbre7XC7We48qVI2iKtp6oIp1CmXEAixgAQtYwAIWsBYO6wHL/ESo6SqwgDUQFhmLjDVJxiqKwnv/TFrGGPmfECZErMZ/m61EjFXYIBIhkcXt5obaBhaw/oH1TFqdPmQHclUzVwFLwxoQnQpZYy19jZUJhdSlUhcZqy1jxRV90lx7K7AWDusBK4km2dRe5VXIqzD9KiTGCmABC1jA+iBYxhjnXKgSRG4456y1tqqquq6xha1RbD2/875erw2/0uFXOpP8Sud+v4edLN5ZvLN4Z/H+ny/ewwYZi4xFxiJjkbHIWGQsMhYZi4xFxiJjkbHIWFNlrLIsw+YvRPkToTbHhU00LN/H6v4+Vpz6qT+hLcty0lNkjj/bPCwClnwYmQ/m10vOxX/TPKhYNf9oYlXO2oA+qtu7c6025L/NcyWvJ5Zna/LAWNT+zm6yZ8sh7a1fHKt453IW1J5hfdSecMbhIQfsvJ5wkH6WyW7qkJamniOonclW1liPNVYfGaPoeUVTPtGcc706UJ1r8PgtA8oqsP7C6jMps02cfEhvCXh1oHxbqfw3uMg/jOb4fNygP27o8yD79On5POL2DCV5ovx7CbViWRlL3ny8c7Un2UeVZh+5p7PzWyU5cp8Bkwe+e7/JpleHyP2qqeWoLyimeT9zJomxYrZr/sTJ+YxXIUH0iUTGolDyCxmLjDVJxgIWsIAFLGABC1jAAhawgAUsYAELWMACFrCABSxgAQtYwAIWsIAFLGABC1jAAhawgAUsYAELWMACFrCABSxgAQtYwAIWsIAFLGABC1jAAhawgAUsYAELWMACFrCABSxgAQtYwAIWsIAFLGABC1jAAhawgAUsYAHrbVh/BgArucjx3D80lQAAAABJRU5ErkJggg=="
+  }
+}
 -- testrun/win32/c/panels.sngl/main/1 --
-sha256:809fbd9b6b9b906d5e493bfa80b93342
+sha256:265a4f61cc40f228772b89f0d6279e7f
 {
   "results": [
     {
