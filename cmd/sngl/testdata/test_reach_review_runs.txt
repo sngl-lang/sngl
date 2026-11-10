@@ -2,7 +2,8 @@
 # found answered wrongly somewhere: a copy's record released on Destroy alone
 # (copies), a reached node whose id a target reserves (reserved), a copy of a
 # copy (nested), a program's own call through an instance a test reaches
-# into (sitecall), an event fired two instances down (deepfire), an empty
+# into (sitecall, on C as well, where a build rooted at a component makes the
+# methods spliced into it its own, and placement the package's), an event fired two instances down (deepfire), an empty
 # handler under a loop (emptyfocus), a sngl:seq loop's variable in a prop
 # (seq), a handler forwarding what it bound nothing of (forward), a nested
 # list that shrinks (shrink), and an instance whose body renders nothing
@@ -88,6 +89,12 @@ sngl test --platform=gtk4 --language=go sitecall.sngl
 stdout 'ok   1 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin sitecall.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c sitecall.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=win32 --language=c sitecall.sngl
 stdout 'ok   1 tests, 0 failures'
 
 sngl test --platform=none deepfire.sngl
@@ -1401,7 +1408,7 @@ sha256:41bd90942ee516c7212ea624bb891a77
   ]
 }
 -- testrun/bubbletea/go/sitecall.sngl/main/1 --
-sha256:f37a8568319226f4267664930e9a9fa3
+sha256:aef0b1abffed2a691714dc51551f7f3a
 {
   "results": [
     {
@@ -1598,6 +1605,16 @@ sha256:ef334e891590ddeac3e035e2a15942da
   "results": [
     {
       "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/sitecall.sngl/main/1 --
+sha256:bca0df82c7931422c8cf8306f8f48d2d
+{
+  "results": [
+    {
+      "Desc": "ProgramCall",
       "Passed": true
     }
   ]
@@ -1809,7 +1826,7 @@ sha256:77441ac30775759958fe199b09dbe967
   ]
 }
 -- testrun/html/none/deepfire.sngl/main/1 --
-sha256:d9b6baa14283ff7805f56c1385f89566
+sha256:760b2833992d011de31fd4dcf2b85901
 {
   "results": [
     {
@@ -1937,7 +1954,7 @@ sha256:9cb48eb03f70b4411e6e0a507856503f
   ]
 }
 -- testrun/html/none/sitecall.sngl/main/1 --
-sha256:e516ff36bc4d780504fa829cdfe8763c
+sha256:37202907274647ba35ec82ebd09b89aa
 {
   "results": [
     {
@@ -1952,6 +1969,16 @@ sha256:69fa338ac3a47580f1a195411947cf2d
   "results": [
     {
       "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/sitecall.sngl/main/1 --
+sha256:4f083d26c6d1155f0da63409244f36e6
+{
+  "results": [
+    {
+      "Desc": "ProgramCall",
       "Passed": true
     }
   ]

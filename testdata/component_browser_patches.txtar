@@ -1058,7 +1058,7 @@ sha256:ce48baafae9652b330c696c86c3a492d
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/picker/1 --
-sha256:6e4b200475d6ec4bba2da319a06ccd7c
+sha256:4e28e16e2dd46d45ba1ce3d8eed2fea4
 {
   "results": [
     {

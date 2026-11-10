@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 
@@ -424,16 +425,47 @@ type hoistTarget struct {
 	// left standing, route mode skipped it for having one and emitted
 	// `s.Keep__inst0(…)` against a file that declared nothing of the name.
 	method bool
+	// comp is the component a method hoisted here is one of.
+	comp *ir.Component
 }
 
 func componentHoist(c *ir.Component) hoistTarget {
-	return hoistTarget{vars: &c.Vars, funcs: &c.Funcs, method: true}
+	return hoistTarget{vars: &c.Vars, funcs: &c.Funcs, method: true, comp: c}
 }
 
 // packageHoist is the package's own declarations, where what a callee spliced
 // into the package body declares goes.
 func packageHoist(pkg *ir.Package) hoistTarget {
 	return hoistTarget{vars: &pkg.Vars, funcs: &pkg.Funcs}
+}
+
+// rehomeReceiver makes fn, a method of the component spliced into comp, a
+// method of comp: it reads the state the splice renamed onto comp, and a call
+// of it is made on comp's instance. Left a method of the spliced component, a
+// test build rooted at a component called `b.reset()` on `badge` itself
+// (passNoImplicitRecv hands a method its receiver's component), which C
+// writes as no value: test_reach_runs.txt's sitecall on gtk4 C and win32 C.
+func rehomeReceiver(fn *ir.Func, comp *ir.Component) {
+	if comp == nil || fn.Receiver == nil {
+		return
+	}
+	from, ok := fn.Receiver.Decl.(*ir.Component)
+	if !ok || from == comp {
+		return
+	}
+	t := comp.SymType()
+	fn.Receiver = t
+	params := map[ir.Symbol]ir.Symbol{}
+	fn.Params = slices.Clone(fn.Params)
+	for i, p := range fn.Params {
+		if p != nil && p.Receiver {
+			cp := *p
+			cp.Type = t
+			fn.Params[i] = &cp
+			params[p] = &cp
+		}
+	}
+	fn.Block = renameIdents(fn.Block, nil, params)
 }
 
 // dropReceiver makes fn an ordinary func rather than a method of a component
@@ -1398,6 +1430,8 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		if !hoist.method {
 			dropReceiver(clone)
 			st.demoted[clone] = true
+		} else {
+			rehomeReceiver(clone, hoist.comp)
 		}
 		carryPointsTo(st.pkg, ir.SlotReturnKey(f), ir.SlotReturnKey(clone))
 		*hoist.funcs = append(*hoist.funcs, clone)
@@ -1450,6 +1484,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		fn.Writes = renameVarList(fn.Writes, symRenames)
 	}
 	body := renameIdents(splicedBody(comp, typeArgs), renames, symRenames)
+	body = st.spliceLifted(body, varStart, funcStart, symRenames)
 	repointNodeHandles(body, symRenames)
 	st.pointSpliceCalls(comp, symRenames, body, (*hoist.funcs)[funcStart:])
 
@@ -1573,6 +1608,97 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	}
 
 	return body, nil
+}
+
+// spliceLifted gives a splice its own copy of every function passLambda
+// lifted out of the component that captures state the splice renamed. A
+// lifted function is the package's, so every splice of the component shared
+// one, and its captures (ir.Package.LiftedCaptures) named the component's
+// declarations rather than the splice's: a handler's write of `language` was
+// a write of no var the program held, and passReactivity injected no update
+// after it (cmd/sngl/testdata/record_handler_prop_runs.txt on C). The copy's
+// captures name the splice's vars, and a lifted function another one's body
+// makes a closure of is copied with it.
+func (st *inlineCompState) spliceLifted(body []ir.Stmt, varStart, funcStart int, symRenames map[ir.Symbol]ir.Symbol) []ir.Stmt {
+	if len(st.pkg.LiftedCaptures) == 0 {
+		return body
+	}
+	copies := map[*ir.Func]*ir.Func{}
+	var copyOf func(f *ir.Func) *ir.Func
+	var repoint func(stmts []ir.Stmt) []ir.Stmt
+	// needs is whether f, or a lifted function its body makes a closure of,
+	// captures a renamed declaration.
+	needs := map[*ir.Func]bool{}
+	var needsCopy func(f *ir.Func) bool
+	needsCopy = func(f *ir.Func) bool {
+		if v, ok := needs[f]; ok {
+			return v
+		}
+		needs[f] = false
+		caps, lifted := st.pkg.LiftedCaptures[f]
+		if !lifted {
+			return false
+		}
+		found := false
+		for sym := range caps {
+			if _, ok := symRenames[sym]; ok {
+				found = true
+			}
+		}
+		for _, s := range f.Block {
+			_ = ir.Walk(s, func(n ir.Node) error {
+				if c, ok := n.(*ir.Closure); ok && c.Func != nil && needsCopy(c.Func) {
+					found = true
+				}
+				return nil
+			})
+		}
+		needs[f] = found
+		return found
+	}
+	copyOf = func(f *ir.Func) *ir.Func {
+		if c, ok := copies[f]; ok {
+			return c
+		}
+		c := cloneFuncShallow(f)
+		c.Name = st.names.next(f.Name, "inst")
+		copies[f] = c
+		params := map[ir.Symbol]ir.Symbol{}
+		c.Params = make([]*ir.Param, len(f.Params))
+		for i, p := range f.Params {
+			cp := *p
+			c.Params[i] = &cp
+			params[p] = &cp
+		}
+		maps.Copy(params, symRenames)
+		c.Block = repoint(renameIdents(deepCloneStmts(f.Block), nil, params))
+		caps := map[ir.Symbol]string{}
+		for sym, name := range st.pkg.LiftedCaptures[f] {
+			if to, ok := symRenames[sym]; ok {
+				sym = to
+			}
+			caps[sym] = name
+		}
+		st.pkg.LiftedCaptures[c] = caps
+		st.pkg.Funcs = append(st.pkg.Funcs, c)
+		return c
+	}
+	w := newExprWalker(func(e ir.Expr) ir.Expr {
+		if c, ok := e.(*ir.Closure); ok && c.Func != nil && needsCopy(c.Func) {
+			c.Func = copyOf(c.Func)
+		}
+		return e
+	})
+	repoint = w.stmts
+	for _, v := range (*st.hoist.vars)[varStart:] {
+		if v.Init != nil {
+			v.Init = w.expr(v.Init)
+		}
+	}
+	for _, fn := range (*st.hoist.funcs)[funcStart:] {
+		fn.Block = repoint(fn.Block)
+	}
+	return repoint(body)
 }
 
 // calleeReadsInContent is body, the callee's spliced around the call site's

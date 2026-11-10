@@ -134,13 +134,7 @@ func emitTarget(pkg *ir.Package, target Target, evalCache *optimize.EvalCache, o
 	if _, ok := codegen.OptionField(target.Options, "projectDir"); !ok {
 		codegen.SetOptionField(target.Options, "projectDir", o.Dir)
 	}
-	// Before optimize, not after: the root decides what the inliner flattens
-	// into what, so the isolation has to be in place before anything moves.
-	root := codegen.OptionString(target.Options, "rootComponent")
-	IsolateRootComponent(tpkg, root)
-	if !optionBool(target.Options, "test") && !IsInterpreted(target) {
-		dropTests(tpkg)
-	}
+	PrepareTarget(tpkg, target)
 	installRun(tpkg, target)
 
 	// Ahead of the optimizer, which has no reason to keep a bodyless host it
@@ -189,7 +183,7 @@ func emitTarget(pkg *ir.Package, target Target, evalCache *optimize.EvalCache, o
 		icaps := lower.InterpreterFeatures()
 		if err := lower.Lower(tpkg, icaps, lower.Options{
 			Platform:        target.Platform,
-			RootComponent:   root,
+			RootComponent:   codegen.OptionString(target.Options, "rootComponent"),
 			ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat), RendersNative: codegen.RendersNativeFunc(plat),
 		}); err != nil {
 			return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
@@ -205,7 +199,7 @@ func emitTarget(pkg *ir.Package, target Target, evalCache *optimize.EvalCache, o
 		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 	}
 	start = time.Now()
-	if err := lower.Lower(tpkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, RootComponent: root, Tests: optionBool(target.Options, "test"), ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat), RendersNative: codegen.RendersNativeFunc(plat)}); err != nil {
+	if err := lower.Lower(tpkg, feats, LowerOptions(target, plat)); err != nil {
 		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 	}
 	slog.Info("lower", "dir", o.Dir, "caps", feats.String(), "duration", time.Since(start))
@@ -285,6 +279,30 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 	}
 	files := mem.Files()
 	return files, mem.Boilerplate(), nil
+}
+
+// PrepareTarget is what target's options make of pkg before it is optimized:
+// the root a harness renders, and no tests for a build that runs none. Before
+// optimize, not after: the root decides what the inliner flattens into what,
+// so the isolation has to be in place before anything moves. `sngl dump` does
+// the same, or it lowers a tree no build makes.
+func PrepareTarget(pkg *ir.Package, target Target) {
+	IsolateRootComponent(pkg, codegen.OptionString(target.Options, "rootComponent"))
+	if !optionBool(target.Options, "test") && !IsInterpreted(target) {
+		dropTests(pkg)
+	}
+}
+
+// LowerOptions is what lower.Lower is handed for target on plat.
+func LowerOptions(target Target, plat codegen.PlatformGenerator) lower.Options {
+	return lower.Options{
+		Platform:        target.Platform,
+		Language:        target.Lang,
+		RootComponent:   codegen.OptionString(target.Options, "rootComponent"),
+		Tests:           optionBool(target.Options, "test"),
+		ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
+		RendersNative:   codegen.RendersNativeFunc(plat),
+	}
 }
 
 // IsolateRootComponent makes comp the program's only entry point, and is what

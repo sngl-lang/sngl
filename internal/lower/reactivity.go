@@ -1370,7 +1370,15 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 		// expressions. Its mutations need the same updaters spliced after them
 		// as any other body's, since the state they write is read by the same
 		// widgets.
+		//
+		// Not a closure's: passLambda lifted its body into a package func, the
+		// package's funcs are each injected once, and a closure is met wherever
+		// it is made, the update spliced after a write of what it reads holding
+		// it again (`record_handler_prop` on C wrote the update three times).
 		for _, f := range handlerBodiesIn(s) {
+			if _, lifted := st.pkg.LiftedCaptures[f]; lifted {
+				continue
+			}
 			f.Block = st.injectIntoStmts(f.Block)
 		}
 		if updaters := st.updatersFor(s); len(updaters) > 0 {
@@ -1570,7 +1578,6 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 		// passing leaf Idents/Literals through unchanged, which is safe since
 		// NoTernary only ever replaces Ternary nodes, never leaves.
 		//
-		value := rewriteIdentsToCaptures(p.Expr, rewrite)
 		nodeRef := func() ir.Expr {
 			return handleRef(p.NodeID, handleType(p.Node))
 		}
@@ -1587,25 +1594,29 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 			if rebuilt[p.NodeID] {
 				continue
 			}
-			out = append(out, st.propSetter(p, fieldRewrite, &ir.CallStmt{Call: &ir.Call{
-				Type: ir.TypVoid,
-				Func: st.intrinsics[ir.NodeOpUpdateComponent],
-				Args: []ir.CallArg{
-					{Value: nodeRef()},
-					{Value: &ir.Literal{Type: ir.TypString, Value: p.Key}},
-					{Value: value},
-				},
-			}}))
+			out = append(out, st.propSetter(p, fieldRewrite, func(rewrite map[ir.Symbol]ir.Expr) ir.Stmt {
+				return &ir.CallStmt{Call: &ir.Call{
+					Type: ir.TypVoid,
+					Func: st.intrinsics[ir.NodeOpUpdateComponent],
+					Args: []ir.CallArg{
+						{Value: nodeRef()},
+						{Value: &ir.Literal{Type: ir.TypString, Value: p.Key}},
+						{Value: rewriteIdentsToCaptures(p.Expr, rewrite)},
+					},
+				}}
+			}))
 			continue
 		}
-		out = append(out, st.propSetter(p, fieldRewrite, &ir.Assign{
-			Target: &ir.Select{
-				Type:    propType(p.Node, p.Key, p.Expr),
-				Operand: nodeRef(),
-				Field:   p.Key,
-			},
-			Op:    ast.AssignSet,
-			Value: value,
+		out = append(out, st.propSetter(p, fieldRewrite, func(rewrite map[ir.Symbol]ir.Expr) ir.Stmt {
+			return &ir.Assign{
+				Target: &ir.Select{
+					Type:    propType(p.Node, p.Key, p.Expr),
+					Operand: nodeRef(),
+					Field:   p.Key,
+				},
+				Op:    ast.AssignSet,
+				Value: rewriteIdentsToCaptures(p.Expr, rewrite),
+			}
 		}))
 	}
 	// After every prop the live instances could absorb, so a rebuild that
@@ -1632,15 +1643,27 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 	return out
 }
 
-// propSetter hoists write into a function of p's owner where p's expression
-// holds a handler writing state: spliced in place, the update would hold the
-// handler it is spliced into (design/families.md). The function is never
-// injected into; its handler is the node's own, injected with the body.
-func (st *reactivityState) propSetter(p reactiveProp, fieldRewrite map[ir.Symbol]ir.Expr, write ir.Stmt) ir.Stmt {
-	if len(fieldRewrite) > 0 || !sameScope(p.owner, st.owner) || !st.holdsWriter(p.Expr) {
-		return write
+// propSetter hoists write into a function where p's expression holds a
+// handler writing state: spliced in place, the update would hold the handler
+// it is spliced into (design/families.md). The function is never injected
+// into; its handler is the node's own, injected with the body.
+//
+// write builds the update reading p's expression through rewrite. From the
+// owner's own body the function is the owner's and reads its state as the
+// owner does. From a lifted body -- a handler passLambda made a closure of,
+// reading what it captured through its state -- it is a package function
+// taking that state, so it reads the captures as the handler does.
+func (st *reactivityState) propSetter(p reactiveProp, fieldRewrite map[ir.Symbol]ir.Expr, write func(map[ir.Symbol]ir.Expr) ir.Stmt) ir.Stmt {
+	if !st.holdsWriter(p.Expr) {
+		return write(fieldRewrite)
 	}
-	key := setterKey{p.Node, p.Key}
+	if len(fieldRewrite) > 0 {
+		return st.liftedSetter(p, fieldRewrite, write)
+	}
+	if !sameScope(p.owner, st.owner) {
+		return write(fieldRewrite)
+	}
+	key := setterKey{p.Node, p.Key, nil}
 	f := st.setters[key]
 	if f == nil {
 		f = &ir.Func{
@@ -1648,13 +1671,68 @@ func (st *reactivityState) propSetter(p reactiveProp, fieldRewrite map[ir.Symbol
 			Return:      ir.TypVoid,
 			Purity:      ir.PurityMutates,
 			Synthesized: true,
-			Block:       []ir.Stmt{write},
+			Block:       []ir.Stmt{write(nil)},
 		}
 		st.setters[key] = f
 		st.setterFuncs[f] = true
 		p.owner.addFunc(f)
 	}
 	return callOf(f)
+}
+
+// liftedSetter is propSetter's function for a lifted body: a package function
+// taking the body's state, one per prop and lifted function, since each
+// lifted function's state is its own struct.
+func (st *reactivityState) liftedSetter(p reactiveProp, fieldRewrite map[ir.Symbol]ir.Expr, write func(map[ir.Symbol]ir.Expr) ir.Stmt) ir.Stmt {
+	state := liftedStateParam(fieldRewrite)
+	var lifted *ir.Func
+	for f := range st.pkg.LiftedCaptures {
+		if len(f.Params) > 0 && f.Params[0] == state {
+			lifted = f
+			break
+		}
+	}
+	if lifted == nil {
+		return write(fieldRewrite)
+	}
+	key := setterKey{p.Node, p.Key, lifted}
+	f := st.setters[key]
+	if f == nil {
+		param := *state
+		f = &ir.Func{
+			Name:        "__set" + strings.TrimLeft(p.NodeID, "_") + "_" + p.Key + "_" + lifted.Name,
+			Params:      []*ir.Param{&param},
+			Return:      ir.TypVoid,
+			Purity:      ir.PurityMutates,
+			Synthesized: true,
+			Block:       []ir.Stmt{write(captureRewrite(st.pkg.LiftedCaptures[lifted], &param))},
+		}
+		st.setters[key] = f
+		st.setterFuncs[f] = true
+		st.pkg.Funcs = append(st.pkg.Funcs, f)
+	}
+	return &ir.CallStmt{Call: &ir.Call{
+		Type: ir.TypVoid,
+		Func: f,
+		Args: []ir.CallArg{{Value: &ir.Ident{Name: state.Name, Sym: state, Type: state.Type}}},
+	}}
+}
+
+// liftedStateParam is the state parameter a lifted body's rewrite reads its
+// captures through.
+func liftedStateParam(rewrite map[ir.Symbol]ir.Expr) *ir.Param {
+	for _, e := range rewrite {
+		if d, ok := e.(*ir.Unary); ok {
+			if sel, ok := d.Operand.(*ir.Select); ok {
+				if id, ok := sel.Operand.(*ir.Ident); ok {
+					if p, ok := id.Sym.(*ir.Param); ok {
+						return p
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // The package is walked as the application's body and again for its funcs,
@@ -1669,21 +1747,37 @@ func sameScope(a, b reactivityOwner) bool {
 }
 
 type setterKey struct {
-	node *ir.NodeInst
-	prop string
+	node   *ir.NodeInst
+	prop   string
+	lifted *ir.Func
 }
 
+// holdsWriter reports whether e holds a handler writing tracked state. A
+// lifted handler is a Closure, whose body ir.Walk leaves to its Func, so the
+// walk goes on into it here.
 func (st *reactivityState) holdsWriter(e ir.Expr) bool {
 	found := false
-	_ = ir.Walk(e, func(n ir.Node) error {
+	seen := map[*ir.Func]bool{}
+	var visit func(n ir.Node) error
+	visit = func(n ir.Node) error {
 		var target ir.Expr
 		switch x := n.(type) {
+		case *ir.Closure:
+			if x.Func != nil && !seen[x.Func] {
+				seen[x.Func] = true
+				for _, s := range x.Func.Block {
+					_ = ir.Walk(s, visit)
+				}
+			}
 		case *ir.Assign:
 			target = x.Target
 		case *ir.Toggle:
 			target = x.Target
 		case *ir.CallStmt:
 			target = mutatingCallReceiver(x.Call)
+		}
+		if found {
+			return ir.SkipAll
 		}
 		if target == nil {
 			return nil
@@ -1693,7 +1787,8 @@ func (st *reactivityState) holdsWriter(e ir.Expr) bool {
 			return ir.SkipAll
 		}
 		return nil
-	})
+	}
+	_ = ir.Walk(e, visit)
 	return found
 }
 
@@ -1867,29 +1962,33 @@ peel:
 		if resolved == nil {
 			return nil, nil
 		}
-		// Build a rewrite map from every captured Sym to the access expr
-		// that reads it inside the lifted body. The injected updater's
-		// value expression originally references the reactive Var
-		// directly; rewrite those Idents to route through state.
-		rewrite := make(map[ir.Symbol]ir.Expr, len(capMap))
-		for sym, name := range capMap {
-			rewrite[sym] = &ir.Unary{
-				Op: ast.UnaryDeref,
-				Operand: &ir.Select{
-					Operand: &ir.Ident{
-						Name: stateParam.Name,
-						Sym:  stateParam,
-						Type: stateParam.Type,
-					},
-					Field: name,
-					Type:  ir.RefOf(sym.SymType()),
-				},
-				Type: sym.SymType(),
-			}
-		}
-		return resolved, rewrite
+		return resolved, captureRewrite(capMap, stateParam)
 	}
 	return nil, nil
+}
+
+// captureRewrite maps every captured Sym to the access expr that reads it
+// inside a lifted body whose state is stateParam. The injected updater's value
+// expression originally references the reactive Var directly; rewrite those
+// Idents to route through state.
+func captureRewrite(capMap map[ir.Symbol]string, stateParam *ir.Param) map[ir.Symbol]ir.Expr {
+	rewrite := make(map[ir.Symbol]ir.Expr, len(capMap))
+	for sym, name := range capMap {
+		rewrite[sym] = &ir.Unary{
+			Op: ast.UnaryDeref,
+			Operand: &ir.Select{
+				Operand: &ir.Ident{
+					Name: stateParam.Name,
+					Sym:  stateParam,
+					Type: stateParam.Type,
+				},
+				Field: name,
+				Type:  ir.RefOf(sym.SymType()),
+			},
+			Type: sym.SymType(),
+		}
+	}
+	return rewrite
 }
 
 // rewriteIdentsToCaptures returns a copy of e where every Ident whose Sym

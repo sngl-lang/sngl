@@ -633,6 +633,16 @@ component that reads its props, which would be the Model's
 it used to reach the Model as a field nothing declared, or the view as an
 empty string.
 
+**A method spliced into a component is that component's** (`rehomeReceiver`):
+it reads the state the splice renamed onto the component, and a call of it
+is made on the component's instance. Kept a method of the component spliced,
+a test build rooted at `main` called `b.reset()` as `badge.reset__inst1()`,
+on the component itself, which passNoImplicitRecv hands a method as its
+receiver and C writes as no value. Spliced into the package body, it loses
+its receiver instead (`dropReceiver`), and so does every method of the root
+placement lifts into the package (`liftRoot`), whose state is the package's
+(`cmd/sngl/testdata/test_reach_review_runs.txt`'s sitecall on C).
+
 **A spliced instance starts again each time its position is taken**, as one a
 target builds there does and as the interpreter's `evictUnreached` has it.
 Spliced, its vars are its owner's and were set once, in `New()`, so on

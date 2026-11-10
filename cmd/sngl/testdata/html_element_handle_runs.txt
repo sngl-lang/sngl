@@ -179,7 +179,7 @@ sha256:f3b8ef5e7e5235dad81b7efa10e228d7
   ]
 }
 -- testrun/html/none/splices.sngl/main/1 --
-sha256:4f9358de8f2465e4f609999695fa1ae4
+sha256:562e6e64f905e1795ab302a356ec2b26
 {
   "results": [
     {

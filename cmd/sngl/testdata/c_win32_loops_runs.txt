@@ -238,7 +238,7 @@ sha256:30578cc1e63ad8625f1a372cdba7c12c
   }
 }
 -- testrun/win32/c/nested.sngl/main/1 --
-sha256:d2bfcfd46c4d6f44988a90eba4add1a2
+sha256:57e0f0502c63efdae89e717616631b73
 {
   "results": [
     {

@@ -1248,7 +1248,7 @@ sha256:d11f2dc83508905b64a3e7eccfca0548
   ]
 }
 -- testrun/gtk4/c/menus.sngl/app/1 --
-sha256:9ca61a65fd4bbec00ba436d9d4fcc2f4
+sha256:ef8ea39b356a631c9055ba48ca95f40a
 {
   "results": [
     {

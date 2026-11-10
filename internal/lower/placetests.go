@@ -69,6 +69,30 @@ func liftRoot(pkg *ir.Package) {
 	pkg.Vars = append(pkg.Vars, root.Vars...)
 	pkg.Funcs = append(pkg.Funcs, root.Funcs...)
 	pkg.Body = append(pkg.Body, root.Stmts...)
+	// The root's methods are functions of the package's now, as they are
+	// where the build is rooted at the package body: the root's state is the
+	// package's, and a method reads none of it through its receiver. Left
+	// with one, `b.reset()` from a handler passed the component `main` itself,
+	// which no language writes as a value. passNoImplicitRecv has made every
+	// call's receiver its first argument.
+	demoted := map[*ir.Func]bool{}
+	for _, f := range root.Funcs {
+		if len(f.Params) > 0 && f.Params[0].Receiver {
+			dropReceiver(f)
+			demoted[f] = true
+		}
+	}
+	if len(demoted) > 0 {
+		_ = ir.Walk(pkg, func(n ir.Node) error {
+			if call, ok := n.(*ir.Call); ok && demoted[call.Func] {
+				call.Receiver = nil
+				if len(call.Args) == len(call.Func.Params)+1 {
+					call.Args = call.Args[1:]
+				}
+			}
+			return nil
+		})
+	}
 	root.Vars, root.Funcs, root.Stmts = nil, nil, nil
 }
 

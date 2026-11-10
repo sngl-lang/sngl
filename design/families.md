@@ -138,6 +138,20 @@ not injected into, since the handler it holds is the one the node's prop
 holds (`testdata/record_handler_prop.txtar`,
 `cmd/sngl/testdata/record_handler_prop_runs.txt`).
 
+On C the handler is a function `passLambda` lifted, which reads what it
+captured through its state, so the update there is a package function taking
+that state (`liftedSetter`). `holdsWriter` follows a `Closure` into its
+function, since `ir.Walk` stops at one. passReactivity injects into a lifted
+function once, with the package's functions, not at every closure of it it
+meets: a closure is made wherever its prop is, the update included, and the
+handler was handed the update three times. A lifted function is the
+package's, so every splice of the component it was lifted from shared it,
+and its captures (`ir.Package.LiftedCaptures`) named the component's
+declarations rather than the splice's: the root's `language` was
+`language__inst0` after the inliner, and the handler's write was of a var
+no update follows. The splice copies each lifted function capturing what it
+renamed (`spliceLifted`), with the closures of it the copy's body makes.
+
 On html a loop over records a page writes into its markup unrolls with each
 record's handler a constant: in a document's fold a function literal is a
 value, a copy reading the values the fold bound for it (`heldLambda`), and

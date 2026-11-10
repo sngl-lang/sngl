@@ -217,24 +217,6 @@ func (m Model) shout__inst1() string {
 	return out
 }
 
-func LookOf(s Style) lipgloss.Style {
-	return BoxLook(s, true)
-}
-
-func FitOf(whiteSpace string, display string) tui.Fit {
-	return tui.Fit{Wrap: WrapOf(whiteSpace), Hidden: (display == "none")}
-}
-
-func GrowOf(flex *float64, display string) float64 {
-	var __lt0 float64
-	if (flex == nil) || (display == "none") {
-		__lt0 = 0.0
-	} else {
-		__lt0 = (*(flex))
-	}
-	return __lt0
-}
-
 func SpaceOf(m__r0 *Measurement, across bool) int {
 	var __lt3 float64
 	if across {
@@ -309,19 +291,6 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
 	}
 	return l
-}
-
-func WrapOf(whiteSpace string) int {
-	var __lt6 int
-	switch whiteSpace {
-	case "nowrap":
-		__lt6 = 1
-	case "pre":
-		__lt6 = 2
-	default:
-		__lt6 = 0
-	}
-	return __lt6
 }
 
 func PxOf(m__r1 *Measurement) float64 {
@@ -1466,7 +1435,7 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function row_shout__inst0(state2, x) {
+  function main_shout__inst0(state2, x) {
     let out = "";
     for (const c of [1, 2]) {
       ;
@@ -1475,7 +1444,7 @@ window.__sngl_boot = () => {
     ;
     return out;
   }
-  function tagged_suffix__inst0(state2, s, x) {
+  function main_suffix__inst0(state2, s, x) {
     return s + x.elem;
   }
   function __snglTeardown() {
@@ -1488,7 +1457,7 @@ window.__sngl_boot = () => {
     __inst1_live = [];
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { row_shout__inst0, tagged_suffix__inst0, __snglTeardown });
+    Object.assign(window, { main_shout__inst0, main_suffix__inst0, __snglTeardown });
   }
   function __cf_row(props) {
     const __root = document.createElement("div");
@@ -1594,7 +1563,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:17b4736b736adaf80d4f869913af8dda
+pass sha256:0b0834dd6600e3ab03fd7f00aee9ab83
 -- run/go/fyne --
 pass sha256:494a18d3def676d6bfbb9f048e4fe5e1
 -- run/go/gtk4 --
@@ -1602,9 +1571,9 @@ pass sha256:e56892497fdb1a1ce295dd4a9ef75156
 -- run/kotlin/android --
 pass sha256:def9e3220d52cba240831df7c68cefb0
 -- run/none/html --
-pass sha256:b2dee9a0b0a570395500a6b042876e0a
+pass sha256:f406eb3b0b69f896ac65d0158571c47a
 -- testrun/html/none/component_func_reads_loop_prop.sngl/main/1 --
-sha256:61b89561c382a57c54d5a4bf80b551cf
+sha256:d051b9c11dd2f3a8a59a2d454785bc0f
 {
   "results": [
     {

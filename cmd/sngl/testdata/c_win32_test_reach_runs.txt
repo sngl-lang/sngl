@@ -403,7 +403,7 @@ sha256:056afca46cff4c73c984f705949b10e4
   ]
 }
 -- testrun/win32/c/copies.sngl/main/1 --
-sha256:43431584e29ddbc5912e57dcb1a51aa1
+sha256:d80036c5b2d314485278f3b55928e552
 {
   "results": [
     {
@@ -417,7 +417,7 @@ sha256:43431584e29ddbc5912e57dcb1a51aa1
   ]
 }
 -- testrun/win32/c/deepfire.sngl/main/1 --
-sha256:abcdc98638f27110d068d0e5552a0a0f
+sha256:8423fc835700831185ff165ee047ecf5
 {
   "results": [
     {
@@ -457,7 +457,7 @@ sha256:98801431a6579f6fbe526662cddb8dff
   ]
 }
 -- testrun/win32/c/slot.sngl/main/1 --
-sha256:631c178690eb47b943395ab6b3f236a9
+sha256:fc31da50f70ef001961af7bd5d2638e1
 {
   "results": [
     {
