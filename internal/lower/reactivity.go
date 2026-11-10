@@ -1254,6 +1254,12 @@ func (st *reactivityState) gatherLambdaReads(e ir.Expr, out map[*ir.Var]bool) {
 		fn = x.Func
 	case *ir.Closure:
 		fn = x.Func
+		// passLambda has lifted the body, which reads a capture through its
+		// state param, so what it reads of the program's is what that state
+		// is built from.
+		if x.State != nil {
+			st.gatherDeps(x.State, out)
+		}
 	}
 	if fn == nil {
 		return

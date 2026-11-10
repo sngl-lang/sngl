@@ -185,7 +185,10 @@ attaching no node at all (`cmd/sngl/testdata/view_list_lambda_runs.txt`).
 What the function a `const` call is handed reads is what the call reads
 (`gatherLambdaReads`): a const callee cannot keep it for later, so
 `xs.filter(func(x) => x.startsWith(prefix))` re-renders when `prefix`
-changes.
+changes. On a target without lambdas, `passLambda` has already lifted the body,
+which reads `prefix` through its state param, so the reads are what the
+closure's state is built from; read only from the body, setting `prefix`
+re-rendered nothing on either C platform.
 
 **A family registers before what names it.** A component is bound only once its
 own signature resolves, so a member declared above its family would name

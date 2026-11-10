@@ -374,7 +374,7 @@ sha256:240a8905a9b8c09ffb322d6fbf582f53
   ]
 }
 -- testrun/win32/c/slot.sngl/main/1 --
-sha256:f743d096a92d0704bce8bc8ff7a5b787
+sha256:42c9e85d64b806ef258f0713a6deb406
 {
   "results": [
     {
