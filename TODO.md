@@ -577,7 +577,7 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      `cmd/sngl/consteval_output_test.go` checks a Go build's imports, which
      win32 joins with Part 4. The docs gallery (`docs/docs.go`'s
      `platformOrder`) shows win32 once the stdlib's examples render there,
-     after the rest of the override set (step 8); gtk4 is not in it either.
+     which waits on the canvas (step 8); gtk4 is not in it either.
 5. **Cross-compiling.** Done for C, Go with Part 4.
    - The platform says what it builds for, and the language's build reads it.
      win32's generator writes `target windows/<arch>` into C's `sngl.build`
@@ -628,29 +628,42 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      the generator, the metadata pin, and the layout engine.
    - CLAUDE.md's `codegen/platform/{…}` list.
    - The platform's page in the docs site (`go tool docsgen`).
-8. **After the slice.**
-   - The rest of gtk4's override set:
-     - `ui.image` (GDI+ or WIC through the runtime)
-     - `ui.scroll` (a scrolling container window)
-     - `ui.tabs` (`WC_TABCONTROL`)
-     - `ui.progress` (`PROGRESS_CLASS`)
-     - `ui.select` (`COMBOBOX`)
-     - `ui.textarea` (`ES_MULTILINE`)
-     - `ui.menubar` and `ui.menu` (`CreateMenu` on the window, which is
-       what `ui.window`'s menu slot wants)
-     - `ui.table` and `ui.tree` (`WC_LISTVIEW`, `WC_TREEVIEW`)
-     - `ui.modal` (a modal owned window)
-     - `ui.datepicker` (`DATETIMEPICK_CLASS`)
-     - `ui.tooltip` (`TOOLTIPS_CLASS`)
-     - `time.timer` (`SetTimer`)
-   - Shapes and the canvas over GDI, as `api.sngl` calls the way gtk4 draws
-     them over cairo.
-   - A second window, `@closed`, `visible` and `@run`, per
-     `design/windows.md`.
-   - Interpreter simulation (`--simulate win32`), if the protocol functions
-     run there as gtk4's do.
-   - A `winmd:` import scheme, if a program wants to declare a Win32 call the
-     committed file does not hold. It is not needed for the platform itself.
+8. **After the slice.** Done but for the canvas, markup and simulation.
+   - Every `sngl:ui` component builds on win32 in C, held to
+     `cmd/sngl/testdata/c_win32_controls_runs.txt`:
+     - textarea (`ES_MULTILINE`), select (`CBS_DROPDOWNLIST`), progress and
+       spinner (`PROGRESS_CLASS`, a marquee where indeterminate), and
+       `time.timer` (`SetTimer` on the parked window);
+     - grid, stack, splitview, card, drawer, popover and toolbar, as the
+       box's layout modes (grid, flow, stack, equal shares), a frame and a
+       click, with a style's `display` read; divider, link, toggle and
+       radio;
+     - tabs (`WC_TABCONTROL`), scroll, tooltip (`TOOLTIPS_CLASS`) and modal,
+       a window of its own over the program's;
+     - the window's menu bar (`CreateMenu`), which `ui.window`'s menu and a
+       `ui.menubar` share, and `ui.menu` in place;
+     - table (`WC_LISTVIEW`), tree (`WC_TREEVIEW`) and datepicker
+       (`DATETIMEPICK_CLASS`);
+     - image, file and remote (WIC, the program's carried files in
+       `sngl_win32_assets.c`, `URLDownloadToCacheFile`).
+   - A second window, `visible` and `@closed`: `window_dialog_runs.txt`. And
+     `@run` (`testdata/win32_c_run_handler_runs.txtar`), which a golden's
+     `exec` runs under Wine through `codegen.ProgramRunner`.
+   - **Left: the canvas and its shapes.** `draw.canvas` declares no
+     protocol: gtk4 draws it from its generator, in Go and in C, and
+     `passShapeDraw` is that generator's (#294). On win32 it needs the
+     canvas as a protocol -- a create, a draw callback handed a context, a
+     click -- with the shapes as `#[gen.protocol]` calls of GDI (or
+     Direct2D) through the runtime, as gtk4's overrides call cairo.
+   - **Left: `sngl:ui/markup`.** gtk4's translator assembles a flow's markup
+     from its span tree, since a span is no widget; win32 would want that
+     tree as the runtime's rich edit (`MSFTEDIT_CLASS`) or text it draws.
+   - **Left: interpreter simulation** (`--simulate win32`). gtk4's runs its
+     protocol functions over a fake GTK in the interpreter; win32's
+     `#[cnative]` calls have no such fake.
+   - A `winmd:` import scheme, if a program wants to declare a Win32 call
+     the committed file does not hold. It is not needed for the platform
+     itself.
 
 ## Part 4: Generated cgo wrappers
 
