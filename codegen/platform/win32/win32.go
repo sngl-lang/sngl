@@ -91,6 +91,10 @@ func generateC(req *codegen.Request, sink codegen.Sink) error {
 			return fmt.Errorf("win32: %w", err)
 		}
 		io.WriteString(fe, "\nint main(int argc, char **argv) {\n\treturn sngl_win32_serve(sngl_tests, sngl_ntests, argc, argv);\n}\n")
+	} else if codegen.OptionBool(req.Options, snapshotOption) {
+		// Built for `sngl snapshot`: the program built and shown, then drawn
+		// at the size asked for into the file its first argument names.
+		io.WriteString(fe, "\nint main(int argc, char **argv) {\n\tif (argc < 4) {\n\t\treturn 2;\n\t}\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n\treturn sngl_win32_snapshot(argv[1], atoi(argv[2]), atoi(argv[3]));\n}\n")
 	} else {
 		teardown := ""
 		if pkg.Teardown != nil {
@@ -134,6 +138,9 @@ func generateC(req *codegen.Request, sink codegen.Sink) error {
 	}
 	return nil
 }
+
+// snapshotOption builds the program for `sngl snapshot` (snapshot.go).
+const snapshotOption = "snapshot"
 
 // agentFiles are the test agent's channel, written beside a program built
 // for `sngl test`.

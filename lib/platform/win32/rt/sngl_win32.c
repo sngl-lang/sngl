@@ -2,6 +2,7 @@
 #include "sngl_win32.h"
 
 #include <commctrl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -1006,4 +1007,98 @@ void sngl_win32_pump(void) {
 		}
 		step(&m);
 	}
+}
+
+/* sngl_win32_capture draws the toplevel shown last, its client area, into a DIB
+ * section: PrintWindow has the window and each control in it paint there, as
+ * they would on a screen, which under Wine's null driver there is none of. */
+int sngl_win32_capture(unsigned char **rgba, int *width, int *height, const char **why) {
+	/* A layout a change posted runs first. */
+	sngl_win32_pump();
+	HWND top = sngl_win32_shown();
+	if (top == NULL) {
+		*why = "no window is shown";
+		return 0;
+	}
+	RECT r;
+	GetClientRect(top, &r);
+	int w = r.right - r.left, h = r.bottom - r.top;
+	if (w <= 0 || h <= 0) {
+		*why = "the window shown has no area";
+		return 0;
+	}
+	BITMAPINFO bi;
+	memset(&bi, 0, sizeof bi);
+	bi.bmiHeader.biSize = sizeof bi.bmiHeader;
+	bi.bmiHeader.biWidth = w;
+	/* Negative: the rows from the top, as PNG has them. */
+	bi.bmiHeader.biHeight = -h;
+	bi.bmiHeader.biPlanes = 1;
+	bi.bmiHeader.biBitCount = 32;
+	bi.bmiHeader.biCompression = BI_RGB;
+	HDC dc = CreateCompatibleDC(NULL);
+	void *bits = NULL;
+	HBITMAP bmp = CreateDIBSection(dc, &bi, DIB_RGB_COLORS, &bits, NULL, 0);
+	if (bmp == NULL) {
+		DeleteDC(dc);
+		*why = "CreateDIBSection failed";
+		return 0;
+	}
+	HGDIOBJ was = SelectObject(dc, bmp);
+	BOOL drawn = PrintWindow(top, dc, PW_CLIENTONLY);
+	GdiFlush();
+	if (drawn) {
+		/* Blue, green, red and an unused byte to red, green, blue and an
+		 * opaque alpha. */
+		unsigned char *p = bits;
+		for (size_t i = 0; i < (size_t)w * (size_t)h; i++, p += 4) {
+			unsigned char b = p[0];
+			p[0] = p[2];
+			p[2] = b;
+			p[3] = 0xff;
+		}
+		*rgba = malloc((size_t)w * (size_t)h * 4);
+		memcpy(*rgba, bits, (size_t)w * (size_t)h * 4);
+		*width = w;
+		*height = h;
+	}
+	SelectObject(dc, was);
+	DeleteObject(bmp);
+	DeleteDC(dc);
+	if (!drawn) {
+		*why = "PrintWindow failed";
+	}
+	return drawn != 0;
+}
+
+int sngl_win32_snapshot(const char *path, int width, int height) {
+	HWND top = sngl_win32_shown();
+	if (top != NULL && width > 0 && height > 0) {
+		RECT r = {0, 0, width, height};
+		AdjustWindowRectEx(&r, (DWORD)GetWindowLongPtrW(top, GWL_STYLE), FALSE, (DWORD)GetWindowLongPtrW(top, GWL_EXSTYLE));
+		SetWindowPos(top, NULL, 0, 0, r.right - r.left, r.bottom - r.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+	}
+	unsigned char *rgba = NULL;
+	int w = 0, h = 0;
+	const char *why = NULL;
+	if (!sngl_win32_capture(&rgba, &w, &h, &why)) {
+		fprintf(stderr, "snapshot: %s\n", why);
+		return 1;
+	}
+	FILE *f = fopen(path, "wb");
+	if (f == NULL) {
+		free(rgba);
+		fprintf(stderr, "snapshot: cannot write %s\n", path);
+		return 1;
+	}
+	unsigned char head[8];
+	for (int i = 0; i < 4; i++) {
+		head[i] = (unsigned char)((unsigned)w >> (8 * i));
+		head[4 + i] = (unsigned char)((unsigned)h >> (8 * i));
+	}
+	size_t n = (size_t)w * (size_t)h * 4;
+	int ok = fwrite(head, 1, sizeof head, f) == sizeof head && fwrite(rgba, 1, n, f) == n;
+	ok = fclose(f) == 0 && ok;
+	free(rgba);
+	return ok ? 0 : 1;
 }

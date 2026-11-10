@@ -161,7 +161,11 @@ is one such, and is placed through the container's append and insertBefore
 holding several. A node one function makes and another reads -- an effect's
 mount reading the input its render slot made -- is held in a package var
 beside the function's local (`hoistShared`), which the function and what it
-closes over still read, so each copy of a loop's handler reads its own.
+closes over still read, so each copy of a loop's handler reads its own. A node the package body or a record's body makes under a boundary is
+hoisted or made a field as one made outside it (`bodyLocals`): a boundary is
+where a raise is caught, which C writes as a block, so the node was that
+block's local, and a handler writing it named nothing the C declared
+(`cmd/sngl/testdata/render_raise_reaches_its_boundary_runs.txt`).
 
 **A test of a placed program reaches its instance as the program's own
 state** (`internal/lower/placetests.go`). A build rooted at the component a

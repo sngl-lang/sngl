@@ -81,6 +81,19 @@ void sngl_win32_set_visible(HWND top, int visible);
 /* sngl_win32_shown is the toplevel shown last, while it is, or NULL. */
 HWND sngl_win32_shown(void);
 
+/* sngl_win32_capture draws the client area of the toplevel shown last into
+ * *rgba, which the caller frees: *width by *height pixels, four bytes each,
+ * red, green, blue and alpha, row by row from the top. Zero, with *why set,
+ * where there is none to draw. A layout a change posted runs first. */
+int sngl_win32_capture(unsigned char **rgba, int *width, int *height, const char **why);
+
+/* sngl_win32_snapshot sizes the toplevel shown last to a client area of
+ * width by height, where both are positive, and writes what it draws to
+ * path: its width and height, four bytes each, little-endian, then its
+ * pixels as sngl_win32_capture has them. `sngl snapshot`'s entry; zero where
+ * it wrote them. */
+int sngl_win32_snapshot(const char *path, int width, int height);
+
 /* sngl_win32_look is what a node's style asks of the layout and the paint:
  * how much of a box's spare room it takes (flex), the gap a box leaves
  * between its children, the room inside its edges, its least size, and its

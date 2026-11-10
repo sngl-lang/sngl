@@ -151,7 +151,7 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int, policy
 		if err != nil {
 			return nil, err
 		}
-		if err := lower.Lower(pkg, feats, lower.Options{Platform: platform}); err != nil {
+		if err := lower.Lower(pkg, feats, lowerOptions(platform, lang)); err != nil {
 			return nil, fmt.Errorf("lower: %w", err)
 		}
 		// Unconditional. It used to run only when the target had capabilities to lower
@@ -203,7 +203,7 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int, po
 	if err != nil {
 		return nil, err
 	}
-	if err := lower.Lower(pkg, feats, lower.Options{Platform: platform}); err != nil {
+	if err := lower.Lower(pkg, feats, lowerOptions(platform, lang)); err != nil {
 		return nil, fmt.Errorf("lower: %w", err)
 	}
 	// Unconditional. It used to run only when the target had capabilities to lower
@@ -337,7 +337,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				if err != nil {
 					return nil, err
 				}
-				if err := lower.Lower(pkg, batchFeats, lower.Options{Platform: platform}); err != nil {
+				if err := lower.Lower(pkg, batchFeats, lowerOptions(platform, lang)); err != nil {
 					return nil, fmt.Errorf("batch snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
 				}
 				batchDocs = append(batchDocs, codegen.BatchDoc{
@@ -422,7 +422,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			if err != nil {
 				return nil, err
 			}
-			if err := lower.Lower(pkg, batchFeats, lower.Options{Platform: platform}); err != nil {
+			if err := lower.Lower(pkg, batchFeats, lowerOptions(platform, lang)); err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
 			}
 			if !batchFeats.LowersNothing() {
@@ -461,14 +461,28 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 	return results, nil
 }
 
-// LangForPlatform returns the default language for a platform.
+// LangForPlatform returns the language a platform is snapshotted in: the
+// first it supports, which is its default where --lang is left out. html's
+// is the page with its script, which the gallery's interactive preview is.
 func LangForPlatform(platform string) string {
-	switch platform {
-	case "bubbletea", "fyne", "gtk4":
-		return "go"
-	case "android":
-		return "kotlin"
-	default:
-		return "js"
+	if platform != "html" {
+		if plat := codegen.LookupPlatform(platform); plat != nil {
+			if langs := plat.SupportedLangs(); len(langs) > 0 {
+				return langs[0]
+			}
+		}
 	}
+	return "js"
+}
+
+// lowerOptions is what a snapshot hands lower.Lower for platform in lang, as
+// a build does (build.LowerOptions): a pass asking which intrinsics the
+// platform writes itself, or which language it writes, was answered nothing.
+func lowerOptions(platform, lang string) lower.Options {
+	opts := lower.Options{Platform: platform, Language: lang}
+	if plat := codegen.LookupPlatform(platform); plat != nil {
+		opts.ClaimsIntrinsic = codegen.ClaimsIntrinsicFunc(plat)
+		opts.RendersNative = codegen.RendersNativeFunc(plat)
+	}
+	return opts
 }

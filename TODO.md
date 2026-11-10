@@ -521,7 +521,7 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      font. Everything else goes in `unstyled` with a reason.
      `lib/style_coverage_test.go` holds it to every field.
    - `doc.sngl`, the package doc.
-4. **`codegen/platform/win32`.**
+4. **`codegen/platform/win32`.** Done, but for Go (Part 4) and the gallery.
    - Registered with `codegen.RegisterNative("win32", …)` and blank-imported
      in `codegen/platform/platforms.go`.
    - `SupportedLangs` is `{"go", "c"}` once Part 2 exists, `{"go"}` until
@@ -566,13 +566,18 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
        box struct in plain IR, and a component rendering several nodes or a
        slot at its top renders into the platform's
        `#[gen.protocol(contents)]`. Weak holds come with gtk4's move.
-   - `FirstUnimplementedNode` refuses what the slice does not cover yet,
-     so `sngl test` reports a skip rather than a compile error.
-   - Everything snapshot-specific is behind `//go:build !js` with a `_js.go`
-     stub, so the playground's wasm builds.
-   - Edit the hard-coded platform switches: `internal/snapshot/snapshot.go:467`
-     (`LangForPlatform`), `docs/docs.go:439` and
-     `cmd/sngl/consteval_output_test.go:64`.
+   - What the slice does not cover is refused by the check, per target,
+     naming the component (`reportBodylessLibComponents`), as on every
+     platform; no built-in node kind is left unwritten, a boundary included
+     (`cmd/sngl/testdata/render_raise_reaches_its_boundary_runs.txt`), so
+     `FirstUnimplementedNode` has nothing to list.
+   - `sngl snapshot` is written (`codegen/platform/win32/snapshot.go`), behind
+     `//go:build !js` with a `_js.go` stub, so the playground's wasm builds.
+   - `LangForPlatform` is the platform's first language, from the registry.
+     `cmd/sngl/consteval_output_test.go` checks a Go build's imports, which
+     win32 joins with Part 4. The docs gallery (`docs/docs.go`'s
+     `platformOrder`) shows win32 once the stdlib's examples render there,
+     after the rest of the override set (step 8); gtk4 is not in it either.
 5. **Cross-compiling.** Nothing sets a target OS for a generated program
    today. `go.buildModule` (`codegen/lang/golang/build.go`) runs the host's
    `go build`, and `cmd/sngl/build.go:168` (`isWindowsTarget`) reads a `goos`

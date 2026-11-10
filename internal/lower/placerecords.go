@@ -246,11 +246,11 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 		vars[v] = true
 		add(v.Name, v.Type)
 	}
-	for _, s := range comp.Stmts {
-		if lv, ok := s.(*ir.LocalVar); ok && (isPlacedNode(lv.Type) || p.recordOf(lv.Type) != nil) {
+	bodyLocals(comp.Stmts, func(_ []ir.Stmt, _ int, lv *ir.LocalVar) {
+		if isPlacedNode(lv.Type) || p.recordOf(lv.Type) != nil {
 			add(lv.Name, lv.Type)
 		}
-	}
+	})
 	add(recordRoot, r.nodeType)
 	pkg.Structs = append(pkg.Structs, r.sd)
 
@@ -337,13 +337,12 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 			return
 		}
 	}
-	for _, s := range stmts {
-		if lv, ok := s.(*ir.LocalVar); ok && fields[lv.Name] != nil {
-			body = append(body, &ir.Assign{Target: field(lv.Name, lv.Type), Op: ast.AssignSet, Value: lv.Init})
-			continue
+	bodyLocals(stmts, func(stmts []ir.Stmt, i int, lv *ir.LocalVar) {
+		if fields[lv.Name] != nil {
+			stmts[i] = &ir.Assign{Target: field(lv.Name, lv.Type), Op: ast.AssignSet, Value: lv.Init}
 		}
-		body = append(body, s)
-	}
+	})
+	body = append(body, stmts...)
 	if single {
 		body = append(body, &ir.Assign{Target: field(recordRoot, r.nodeType), Op: ast.AssignSet, Value: &ir.Ident{Name: r.tops[0], Type: r.nodeType, IsElementRef: true, Synthesized: true}})
 	}

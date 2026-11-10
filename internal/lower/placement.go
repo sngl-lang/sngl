@@ -112,16 +112,15 @@ func lowerPlacement(pkg *ir.Package, feats Features, _ Options) error {
 // inliners left unique, so each ref of the name is the var's.
 func hoistNodes(pkg *ir.Package) {
 	hoisted := map[string]*ir.Var{}
-	for i, s := range pkg.Body {
-		lv, ok := s.(*ir.LocalVar)
-		if !ok || !isPlacedNode(lv.Type) {
-			continue
+	bodyLocals(pkg.Body, func(stmts []ir.Stmt, i int, lv *ir.LocalVar) {
+		if !isPlacedNode(lv.Type) {
+			return
 		}
 		v := &ir.Var{Name: lv.Name, Type: lv.Type, Synthesized: true}
 		hoisted[lv.Name] = v
 		pkg.Vars = append(pkg.Vars, v)
-		pkg.Body[i] = &ir.Assign{Target: &ir.Ident{Name: lv.Name, Type: lv.Type, Sym: v, IsElementRef: true, Synthesized: true}, Op: ast.AssignSet, Value: lv.Init}
-	}
+		stmts[i] = &ir.Assign{Target: &ir.Ident{Name: lv.Name, Type: lv.Type, Sym: v, IsElementRef: true, Synthesized: true}, Op: ast.AssignSet, Value: lv.Init}
+	})
 	if len(hoisted) == 0 {
 		return
 	}
@@ -152,6 +151,23 @@ func hoistNodes(pkg *ir.Package) {
 	// list of the package's.
 	for _, fn := range closureFuncs(pkg) {
 		_ = ir.Rewrite(fn, bind)
+	}
+}
+
+// bodyLocals calls f with each local a body declares where the body's own
+// are: its statements, and a boundary's children, since a boundary is where
+// a raise is caught, which a language writes as a block, and no scope of the
+// program's. A node made under one was that block's local, so a handler
+// writing `#single` there, as a package's or a record's, named nothing the C
+// it was written in declared (cmd/sngl/testdata/render_raise_reaches_its_boundary_runs.txt).
+func bodyLocals(stmts []ir.Stmt, f func(stmts []ir.Stmt, i int, lv *ir.LocalVar)) {
+	for i, s := range stmts {
+		switch x := s.(type) {
+		case *ir.ErrorBoundary:
+			bodyLocals(x.Children, f)
+		case *ir.LocalVar:
+			f(stmts, i, x)
+		}
 	}
 }
 
