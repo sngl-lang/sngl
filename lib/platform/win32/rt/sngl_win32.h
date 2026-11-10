@@ -46,6 +46,11 @@ HWND sngl_win32_button(void);
 HWND sngl_win32_edit(void);
 HWND sngl_win32_checkbox(void);
 HWND sngl_win32_spacer(void);
+/* sngl_win32_progress is a progress bar, sngl_win32_textarea a multi-line
+ * edit and sngl_win32_select a drop-down list. */
+HWND sngl_win32_progress(void);
+HWND sngl_win32_textarea(void);
+HWND sngl_win32_select(void);
 
 /* sngl_win32_append makes child the last of parent's children, and
  * sngl_win32_insert puts it before before, which is one of them. Either lays
@@ -74,6 +79,23 @@ const char *sngl_win32_get_text(HWND w);
 /* sngl_win32_set_edit_text sets an edit's text without reporting a change,
  * and only where it differs, so the caret stays where it is. */
 void sngl_win32_set_edit_text(HWND w, const unsigned short *text);
+
+/* sngl_win32_set_rows is the lines a multi-line edit is measured to show, 0
+ * for the runtime's three. */
+void sngl_win32_set_rows(HWND w, int rows);
+
+/* sngl_win32_set_fraction fills a progress bar to fraction, 0 to 1, and a
+ * negative one makes it indeterminate. sngl_win32_set_show_text writes its
+ * text over it, or how far along it is where it has none. */
+void sngl_win32_set_fraction(HWND w, double fraction);
+void sngl_win32_set_show_text(HWND w, int show);
+
+/* sngl_win32_offer gives a drop-down the choices labels holds, one a line,
+ * and selects the one labeled chosen, or none; it reports neither.
+ * sngl_win32_selected is the label of its choice selected, or "", as UTF-8 in
+ * a buffer the next call overwrites. */
+void sngl_win32_offer(HWND w, const unsigned short *labels, const unsigned short *chosen);
+const char *sngl_win32_selected(HWND w);
 
 void sngl_win32_set_checked(HWND w, int checked);
 int sngl_win32_checked(HWND w);
@@ -119,7 +141,9 @@ void sngl_win32_set_look(HWND w, sngl_win32_look look);
  * for, after hiding it. */
 void sngl_win32_on_click(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
 void sngl_win32_on_change(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
-/* sngl_win32_on_activate calls fn when Enter is pressed in an edit. */
+/* sngl_win32_on_activate calls fn when Enter is pressed in an edit, or as a
+ * multi-line edit loses the focus. A drop-down's change is a choice the user
+ * selects. */
 void sngl_win32_on_activate(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
 void sngl_win32_on_closed(HWND top, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
 /* sngl_win32_on_visible calls fn with 0 when a toplevel the window manager
@@ -140,7 +164,17 @@ void sngl_win32_fire_check(HWND w, int checked);
  * sngl_win32_fire_activate Enter pressed in it after. */
 void sngl_win32_fire_change(HWND w, const unsigned short *text);
 void sngl_win32_fire_activate(HWND w, const unsigned short *text);
+/* sngl_win32_fire_select is the choice labeled label picked from a
+ * drop-down. */
+void sngl_win32_fire_select(HWND w, const unsigned short *label);
 /* sngl_win32_fire_close is the window manager's close of a toplevel. */
 void sngl_win32_fire_close(HWND top);
+
+/* --- Timers --- */
+
+/* sngl_win32_every calls fn every ms milliseconds from the loop until
+ * sngl_win32_cancel is given the id it returns, which releases ctx. */
+int sngl_win32_every(int ms, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
+void sngl_win32_cancel(int id);
 
 #endif

@@ -14,7 +14,7 @@
 /* Work sngl_post queued, its handler the message's lParam. */
 #define SNGL_WM_POST (WM_APP + 2)
 
-enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER };
+enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT };
 
 typedef struct {
 	sngl_win32_fn fn;
@@ -44,6 +44,12 @@ typedef struct {
 	int quiet;
 	/* laying is set while a toplevel's layout is posted and not yet run. */
 	int laying;
+	/* rows is the lines a multi-line edit is measured to show, and fraction
+	 * a progress bar's, negative while it is indeterminate, which show_text
+	 * writes over it. */
+	int rows;
+	double fraction;
+	int show_text;
 	HWND *kids;
 	int nkids, capkids;
 } ctl;
@@ -203,6 +209,57 @@ static SIZE text_size(HWND w) {
 	return s;
 }
 
+/* bar_text is what a progress bar shows over itself where it shows any: its
+ * text, or how far along it is. */
+static void bar_text(HWND w, ctl *c, WCHAR *buf, int n) {
+	buf[0] = 0;
+	GetWindowTextW(w, buf, n);
+	if (buf[0] == 0 && c->fraction >= 0) {
+		swprintf(buf, (size_t)n, L"%d%%", (int)(c->fraction * 100 + 0.5));
+	}
+}
+
+/* line_height is a line of w's font. */
+static int line_height(HWND w) {
+	HDC dc = GetDC(w);
+	HGDIOBJ old = SelectObject(dc, font_of(ctl_of(w)));
+	TEXTMETRICW tm;
+	GetTextMetricsW(dc, &tm);
+	SelectObject(dc, old);
+	ReleaseDC(w, dc);
+	return tm.tmHeight;
+}
+
+/* select_size is a drop-down's: its longest choice beside its arrow. */
+static SIZE select_size(HWND w, ctl *c) {
+	SIZE s = {0, line_height(w)};
+	int n = (int)SendMessageW(w, CB_GETCOUNT, 0, 0);
+	HDC dc = GetDC(w);
+	HGDIOBJ old = SelectObject(dc, font_of(c));
+	for (int i = 0; i < n; i++) {
+		int len = (int)SendMessageW(w, CB_GETLBTEXTLEN, (WPARAM)i, 0);
+		if (len <= 0) {
+			continue;
+		}
+		WCHAR *buf = malloc(sizeof(WCHAR) * (size_t)(len + 1));
+		SendMessageW(w, CB_GETLBTEXT, (WPARAM)i, (LPARAM)buf);
+		RECT r = {0, 0, 0, 0};
+		DrawTextW(dc, buf, len, &r, DT_CALCRECT | DT_NOPREFIX | DT_SINGLELINE);
+		free(buf);
+		if (r.right - r.left > s.cx) {
+			s.cx = r.right - r.left;
+		}
+	}
+	SelectObject(dc, old);
+	ReleaseDC(w, dc);
+	s.cx += GetSystemMetrics(SM_CXVSCROLL) + px(16, c->dpi);
+	if (s.cx < px(100, c->dpi)) {
+		s.cx = px(100, c->dpi);
+	}
+	s.cy += px(10, c->dpi);
+	return s;
+}
+
 /* box_measure is a box's or a toplevel's children laid end to end. */
 static SIZE box_measure(ctl *c) {
 	SIZE s = {0, 0};
@@ -253,6 +310,33 @@ static void measure(HWND w, SIZE *out) {
 		s = text_size(w);
 		s.cx = px(150, c->dpi);
 		s.cy += px(8, c->dpi);
+		break;
+	case K_AREA:
+		s.cx = px(200, c->dpi);
+		s.cy = line_height(w) * (c->rows > 0 ? c->rows : 3) + px(8, c->dpi);
+		break;
+	case K_SELECT:
+		s = select_size(w, c);
+		break;
+	case K_PROGRESS:
+		s.cx = px(100, c->dpi);
+		s.cy = px(16, c->dpi);
+		if (c->show_text) {
+			WCHAR buf[256];
+			bar_text(w, c, buf, 256);
+			HDC dc = GetDC(w);
+			HGDIOBJ old = SelectObject(dc, font_of(c));
+			RECT r = {0, 0, 0, 0};
+			DrawTextW(dc, buf, -1, &r, DT_CALCRECT | DT_NOPREFIX | DT_SINGLELINE);
+			SelectObject(dc, old);
+			ReleaseDC(w, dc);
+			if (r.right - r.left + px(16, c->dpi) > s.cx) {
+				s.cx = r.right - r.left + px(16, c->dpi);
+			}
+			if (r.bottom - r.top + px(4, c->dpi) > s.cy) {
+				s.cy = r.bottom - r.top + px(4, c->dpi);
+			}
+		}
 		break;
 	case K_SPACER:
 		break;
@@ -314,6 +398,11 @@ static void lay_out(HWND box, int w, int h) {
 	for (int i = 0; i < c->nkids; i++) {
 		int x = c->vertical ? x0 : at, y = c->vertical ? at : y0;
 		int cw = c->vertical ? iw : size[i], ch = c->vertical ? size[i] : ih;
+		ctl *kc = ctl_of(c->kids[i]);
+		if (kc && kc->kind == K_SELECT) {
+			/* A drop-down's height is its list's too, dropped. */
+			ch += px(200, kc->dpi);
+		}
 		if (dwp) {
 			dwp = DeferWindowPos(dwp, c->kids[i], NULL, x, y, cw, ch, SWP_NOZORDER | SWP_NOACTIVATE);
 		}
@@ -389,6 +478,28 @@ static void relayout(HWND w) {
 	PostMessageW(top, SNGL_WM_LAYOUT, 0, 0);
 }
 
+/* --- Timers --- */
+
+/* A timer is the parked window's, which is never shown and so never closed:
+ * its id is the one SetTimer is given, and its handler what each tick calls. */
+static struct timer {
+	UINT_PTR id;
+	handler h;
+} *timers;
+static int ntimers, captimers;
+static UINT_PTR next_timer = 1;
+
+static void tick(UINT_PTR id) {
+	for (int i = 0; i < ntimers; i++) {
+		if (timers[i].id == id) {
+			/* By value: the handler may cancel its own timer. */
+			handler h = timers[i].h;
+			fire(&h);
+			return;
+		}
+	}
+}
+
 /* --- Window procedures --- */
 
 static LRESULT color(ctl *c, HDC dc, LRESULT otherwise) {
@@ -424,6 +535,21 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 				fire(&src->change);
 			}
 			return 0;
+		case EN_KILLFOCUS:
+			/* A multi-line edit's text is committed as it is left, Enter
+			 * being a line of it. */
+			if (src->kind == K_AREA) {
+				fire(&src->activate);
+				return 0;
+			}
+			break;
+		case CBN_SELCHANGE:
+			/* BN_PAINT's code too, which only a BS_NOTIFY button sends. */
+			if (src->kind == K_SELECT) {
+				fire(&src->change);
+				return 0;
+			}
+			break;
 		}
 		break;
 	}
@@ -460,6 +586,12 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 		free(h);
 		return 0;
 	}
+	case WM_TIMER:
+		if (w == park) {
+			tick(wp);
+			return 0;
+		}
+		break;
 	case SNGL_WM_LAYOUT:
 		if (c) {
 			c->laying = 0;
@@ -523,6 +655,33 @@ static LRESULT CALLBACK control_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp, UIN
 			}
 		}
 		break;
+	case WM_PAINT:
+	case WM_PRINTCLIENT: {
+		/* A progress bar writes its text over what Win32 draws, as GTK's
+		 * does; PrintWindow, a snapshot's, asks for the client area with
+		 * WM_PRINTCLIENT and the DC it draws in. */
+		ctl *c = ctl_of(w);
+		if (!c || c->kind != K_PROGRESS || !c->show_text) {
+			break;
+		}
+		LRESULT r = DefSubclassProc(w, msg, wp, lp);
+		WCHAR buf[256];
+		bar_text(w, c, buf, 256);
+		HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : GetDC(w);
+		RECT rc;
+		GetClientRect(w, &rc);
+		HGDIOBJ old = SelectObject(dc, font_of(c));
+		SetBkMode(dc, TRANSPARENT);
+		if (c->color >= 0) {
+			SetTextColor(dc, RGB((c->color >> 16) & 0xff, (c->color >> 8) & 0xff, c->color & 0xff));
+		}
+		DrawTextW(dc, buf, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+		SelectObject(dc, old);
+		if (msg != WM_PRINTCLIENT) {
+			ReleaseDC(w, dc);
+		}
+		return r;
+	}
 	case WM_NCDESTROY:
 		RemoveWindowSubclass(w, control_proc, 1);
 		forget(w);
@@ -604,7 +763,7 @@ void sngl_win32_init(void) {
 	ready = 1;
 	aware();
 	common_controls_v6();
-	INITCOMMONCONTROLSEX icc = {sizeof icc, ICC_STANDARD_CLASSES};
+	INITCOMMONCONTROLSEX icc = {sizeof icc, ICC_STANDARD_CLASSES | ICC_PROGRESS_CLASS};
 	InitCommonControlsEx(&icc);
 	HINSTANCE inst = GetModuleHandleW(NULL);
 	WNDCLASSEXW wc;
@@ -684,6 +843,16 @@ HWND sngl_win32_edit(void) { return control(L"EDIT", ES_AUTOHSCROLL | WS_TABSTOP
 HWND sngl_win32_checkbox(void) { return control(L"BUTTON", BS_AUTOCHECKBOX | WS_TABSTOP, 0, K_CHECK); }
 
 HWND sngl_win32_spacer(void) { return control(SNGL_BOX_CLASS, 0, 0, K_SPACER); }
+
+HWND sngl_win32_progress(void) {
+	HWND w = control(PROGRESS_CLASSW, 0, 0, K_PROGRESS);
+	SendMessageW(w, PBM_SETRANGE32, 0, 10000);
+	return w;
+}
+
+HWND sngl_win32_textarea(void) { return control(L"EDIT", ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL | WS_TABSTOP, WS_EX_CLIENTEDGE, K_AREA); }
+
+HWND sngl_win32_select(void) { return control(WC_COMBOBOXW, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP, 0, K_SELECT); }
 
 /* --- The tree --- */
 
@@ -800,7 +969,61 @@ const char *sngl_win32_get_text(HWND w) {
 	}
 	WideCharToMultiByte(CP_UTF8, 0, wide, -1, buf, cap, NULL, NULL);
 	free(wide);
+	/* A multi-line edit ends each line with "\r\n", which SNGL writes "\n". */
+	char *to = buf;
+	for (char *from = buf; *from; from++) {
+		if (*from != '\r') {
+			*to++ = *from;
+		}
+	}
+	*to = 0;
 	return buf;
+}
+
+/* utf8 is wide as UTF-8, in a buffer the next call overwrites. */
+static const char *utf8(const WCHAR *wide) {
+	static char *buf;
+	static int cap;
+	int need = WideCharToMultiByte(CP_UTF8, 0, wide, -1, NULL, 0, NULL, NULL);
+	if (need > cap) {
+		cap = need;
+		buf = realloc(buf, (size_t)cap);
+	}
+	WideCharToMultiByte(CP_UTF8, 0, wide, -1, buf, cap, NULL, NULL);
+	return buf;
+}
+
+/* crlf is text with each "\n" a multi-line edit's "\r\n", which the caller
+ * frees. */
+static WCHAR *crlf(const WCHAR *text) {
+	size_t n = 0, lf = 0;
+	for (; text[n]; n++) {
+		lf += text[n] == '\n';
+	}
+	WCHAR *out = malloc(sizeof(WCHAR) * (n + lf + 1)), *to = out;
+	for (size_t i = 0; i < n; i++) {
+		if (text[i] == '\n' && (i == 0 || text[i - 1] != '\r')) {
+			*to++ = '\r';
+		}
+		*to++ = text[i];
+	}
+	*to = 0;
+	return out;
+}
+
+/* set_quietly writes w's text without reporting a change, as a multi-line
+ * edit's lines where it is one. */
+static void set_quietly(HWND w, const WCHAR *text) {
+	ctl *c = ctl_of(w);
+	WCHAR *lines = c && c->kind == K_AREA ? crlf(text) : NULL;
+	if (c) {
+		c->quiet = 1;
+	}
+	SetWindowTextW(w, lines ? lines : text);
+	if (c) {
+		c->quiet = 0;
+	}
+	free(lines);
 }
 
 void sngl_win32_set_edit_text(HWND w, const unsigned short *text) {
@@ -808,18 +1031,105 @@ void sngl_win32_set_edit_text(HWND w, const unsigned short *text) {
 	int n = GetWindowTextLengthW(w);
 	WCHAR *now = malloc(sizeof(WCHAR) * (size_t)(n + 1));
 	GetWindowTextW(w, now, n + 1);
-	int same = wcscmp(now, (LPCWSTR)text) == 0;
+	WCHAR *want = c && c->kind == K_AREA ? crlf((LPCWSTR)text) : NULL;
+	int same = wcscmp(now, want ? want : (LPCWSTR)text) == 0;
 	free(now);
-	if (same) {
+	free(want);
+	if (!same) {
+		set_quietly(w, (LPCWSTR)text);
+	}
+}
+
+void sngl_win32_set_rows(HWND w, int rows) {
+	ctl *c = ctl_of(w);
+	if (c && c->rows != rows) {
+		c->rows = rows;
+		relayout(w);
+	}
+}
+
+void sngl_win32_set_fraction(HWND w, double fraction) {
+	ctl *c = ctl_of(w);
+	if (!c) {
 		return;
 	}
-	if (c) {
-		c->quiet = 1;
+	c->fraction = fraction;
+	LONG_PTR style = GetWindowLongPtrW(w, GWL_STYLE);
+	if (fraction < 0) {
+		SetWindowLongPtrW(w, GWL_STYLE, style | PBS_MARQUEE);
+		SendMessageW(w, PBM_SETMARQUEE, TRUE, 30);
+	} else {
+		if (style & PBS_MARQUEE) {
+			SendMessageW(w, PBM_SETMARQUEE, FALSE, 0);
+			SetWindowLongPtrW(w, GWL_STYLE, style & ~(LONG_PTR)PBS_MARQUEE);
+		}
+		SendMessageW(w, PBM_SETPOS, (WPARAM)(fraction > 1 ? 10000 : (int)(fraction * 10000 + 0.5)), 0);
 	}
-	SetWindowTextW(w, (LPCWSTR)text);
-	if (c) {
-		c->quiet = 0;
+	InvalidateRect(w, NULL, TRUE);
+	if (c->show_text) {
+		relayout(w);
 	}
+}
+
+void sngl_win32_set_show_text(HWND w, int show) {
+	ctl *c = ctl_of(w);
+	if (c && c->show_text != (show != 0)) {
+		c->show_text = show != 0;
+		InvalidateRect(w, NULL, TRUE);
+		relayout(w);
+	}
+}
+
+/* find is the choice of a drop-down labeled label, or -1. */
+static int find(HWND w, const WCHAR *label) {
+	int n = (int)SendMessageW(w, CB_GETCOUNT, 0, 0);
+	for (int i = 0; i < n; i++) {
+		int len = (int)SendMessageW(w, CB_GETLBTEXTLEN, (WPARAM)i, 0);
+		WCHAR *buf = malloc(sizeof(WCHAR) * (size_t)(len + 1));
+		SendMessageW(w, CB_GETLBTEXT, (WPARAM)i, (LPARAM)buf);
+		int same = wcscmp(buf, label) == 0;
+		free(buf);
+		if (same) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+void sngl_win32_offer(HWND w, const unsigned short *labels, const unsigned short *chosen) {
+	SendMessageW(w, CB_RESETCONTENT, 0, 0);
+	const WCHAR *at = (const WCHAR *)labels;
+	if (*at) {
+		for (;;) {
+			const WCHAR *end = wcschr(at, L'\n');
+			size_t len = end ? (size_t)(end - at) : wcslen(at);
+			WCHAR *one = malloc(sizeof(WCHAR) * (len + 1));
+			memcpy(one, at, sizeof(WCHAR) * len);
+			one[len] = 0;
+			SendMessageW(w, CB_ADDSTRING, 0, (LPARAM)one);
+			free(one);
+			if (!end) {
+				break;
+			}
+			at = end + 1;
+		}
+	}
+	/* CB_SETCURSEL reports nothing, which is what an offer wants. */
+	SendMessageW(w, CB_SETCURSEL, (WPARAM)find(w, (const WCHAR *)chosen), 0);
+	relayout(w);
+}
+
+const char *sngl_win32_selected(HWND w) {
+	int at = (int)SendMessageW(w, CB_GETCURSEL, 0, 0);
+	if (at < 0) {
+		return "";
+	}
+	int len = (int)SendMessageW(w, CB_GETLBTEXTLEN, (WPARAM)at, 0);
+	WCHAR *buf = malloc(sizeof(WCHAR) * (size_t)(len + 1));
+	SendMessageW(w, CB_GETLBTEXT, (WPARAM)at, (LPARAM)buf);
+	const char *out = utf8(buf);
+	free(buf);
+	return out;
 }
 
 void sngl_win32_set_checked(HWND w, int checked) { SendMessageW(w, BM_SETCHECK, checked ? BST_CHECKED : BST_UNCHECKED, 0); }
@@ -929,20 +1239,23 @@ void sngl_win32_fire_check(HWND w, int checked) {
 }
 
 void sngl_win32_fire_change(HWND w, const unsigned short *text) {
-	ctl *c = ctl_of(w);
-	if (c) {
-		c->quiet = 1;
-	}
-	SetWindowTextW(w, (LPCWSTR)text);
-	if (c) {
-		c->quiet = 0;
-	}
+	set_quietly(w, (LPCWSTR)text);
 	notify(w, EN_CHANGE);
 }
 
 void sngl_win32_fire_activate(HWND w, const unsigned short *text) {
 	sngl_win32_set_edit_text(w, text);
+	ctl *c = ctl_of(w);
+	if (c && c->kind == K_AREA) {
+		notify(w, EN_KILLFOCUS);
+		return;
+	}
 	SendMessageW(w, WM_KEYDOWN, VK_RETURN, 0);
+}
+
+void sngl_win32_fire_select(HWND w, const unsigned short *label) {
+	SendMessageW(w, CB_SETCURSEL, (WPARAM)find(w, (const WCHAR *)label), 0);
+	notify(w, CBN_SELCHANGE);
 }
 
 void sngl_win32_fire_close(HWND top) { SendMessageW(top, WM_CLOSE, 0, 0); }
@@ -976,6 +1289,32 @@ void sngl_post(void (*fn)(void *ctx), void *ctx, void (*release)(void *ctx)) {
 	if (!PostMessageW(park, SNGL_WM_POST, 0, (LPARAM)h)) {
 		drop_handler(h);
 		free(h);
+	}
+}
+
+int sngl_win32_every(int ms, sngl_win32_fn fn, void *ctx, sngl_win32_release release) {
+	sngl_win32_init();
+	if (ntimers == captimers) {
+		captimers = captimers ? captimers * 2 : 4;
+		timers = realloc(timers, sizeof *timers * (size_t)captimers);
+	}
+	struct timer *t = &timers[ntimers++];
+	memset(t, 0, sizeof *t);
+	t->id = next_timer++;
+	set_handler(&t->h, fn, ctx, release);
+	SetTimer(park, t->id, (UINT)(ms > 0 ? ms : 1), NULL);
+	return (int)t->id;
+}
+
+void sngl_win32_cancel(int id) {
+	for (int i = 0; i < ntimers; i++) {
+		if (timers[i].id == (UINT_PTR)id) {
+			KillTimer(park, timers[i].id);
+			handler h = timers[i].h;
+			timers[i] = timers[--ntimers];
+			drop_handler(&h);
+			return;
+		}
 	}
 }
 

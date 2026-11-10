@@ -1,4 +1,5 @@
 import ui "sngl:ui"
+import time "sngl:time"
 import build "sngl:build"
 import marks "sngl:internal/marks"
 import macro "sngl:macro"
@@ -494,14 +495,14 @@ component Edit(look Look, @change(), @activate()) ui.node
 #[macro.cnative("sngl_win32_edit")]
 func _rtEdit() Edit
 
-// An edit's text, read off it.
+// An edit's text, a multi-line one's included, read off it.
 #[macro.cnative("sngl_win32_get_text")]
-func editText(e Edit) string
+func editText(e ui.node) string
 
 // Writes an edit's text where it differs, reporting no change: see
 // ui.input.
 #[macro.cnative("sngl_win32_set_edit_text")]
-func setEditText(e Edit, text c.utf16)
+func setEditText(e ui.node, text c.utf16)
 
 #[gen.protocol(create)]
 func _create_Edit() Edit {
@@ -524,10 +525,10 @@ func _on_Edit_activate(e Edit, activate func()) {
 }
 
 #[macro.cnative("sngl_win32_fire_change")]
-func _rtFireChange(e Edit, text c.utf16)
+func _rtFireChange(e ui.node, text c.utf16)
 
 #[macro.cnative("sngl_win32_fire_activate")]
-func _rtFireActivate(e Edit, text c.utf16)
+func _rtFireActivate(e ui.node, text c.utf16)
 
 // A test's change and activation of an edit hand the text it then holds.
 #[gen.fires("change")]
@@ -539,6 +540,145 @@ func _fire_Edit_change(e Edit, text string) {
 func _fire_Edit_activate(e Edit, text string) {
     _rtFireActivate(e, text)
 }
+
+// A multi-line EDIT control, which scrolls down. `@change` is each change to
+// its text the user makes, and `@commit` the focus leaving it, Enter being a
+// line of its text.
+#[marks.intrinsic("win32:TextArea")]
+component TextArea(rows int, look Look, @change(), @commit()) ui.node
+
+#[macro.cnative("sngl_win32_textarea")]
+func _rtTextArea() TextArea
+
+#[macro.cnative("sngl_win32_set_rows")]
+func _rtSetRows(e TextArea, rows int)
+
+#[gen.protocol(create)]
+func _create_TextArea() TextArea {
+    return _rtTextArea()
+}
+
+#[gen.protocol(set)]
+func _set_TextArea_rows(e TextArea, rows int) {
+    _rtSetRows(e, rows)
+}
+
+#[gen.protocol(set)]
+func _set_TextArea_look(e TextArea, look Look) {
+    _look(e, look)
+}
+
+#[gen.protocol(on)]
+func _on_TextArea_change(e TextArea, change func()) {
+    _rtOnChange(e, change)
+}
+
+#[gen.protocol(on)]
+func _on_TextArea_commit(e TextArea, commit func()) {
+    _rtOnActivate(e, commit)
+}
+
+#[gen.fires("change")]
+func _fire_TextArea_change(e TextArea, text string) {
+    _rtFireChange(e, text)
+}
+
+#[gen.fires("commit")]
+func _fire_TextArea_commit(e TextArea, text string) {
+    _rtFireActivate(e, text)
+}
+
+// A progress bar, filled to `fraction` of it, or indeterminate where that is
+// negative. With `showText` it writes its text over itself, or how far along
+// it is where it has none.
+#[marks.intrinsic("win32:Progress")]
+component Progress(fraction float, text string, showText bool, look Look) ui.node
+
+#[macro.cnative("sngl_win32_progress")]
+func _rtProgress() Progress
+
+#[macro.cnative("sngl_win32_set_fraction")]
+func _rtSetFraction(p Progress, fraction float)
+
+#[macro.cnative("sngl_win32_set_show_text")]
+func _rtSetShowText(p Progress, show bool)
+
+#[gen.protocol(create)]
+func _create_Progress() Progress {
+    return _rtProgress()
+}
+
+#[gen.protocol(set)]
+func _set_Progress_fraction(p Progress, fraction float) {
+    _rtSetFraction(p, fraction)
+}
+
+#[gen.protocol(set)]
+func _set_Progress_text(p Progress, text string) {
+    _rtSetText(p, text)
+}
+
+#[gen.protocol(set)]
+func _set_Progress_showText(p Progress, showText bool) {
+    _rtSetShowText(p, showText)
+}
+
+#[gen.protocol(set)]
+func _set_Progress_look(p Progress, look Look) {
+    _look(p, look)
+}
+
+// A drop-down list. Its choices are offered by label, and `@change` is one
+// the user selects.
+#[marks.intrinsic("win32:Select")]
+component Select(look Look, @change()) ui.node
+
+#[macro.cnative("sngl_win32_select")]
+func _rtSelect() Select
+
+// Offers a drop-down the labels `labels` joins with newlines and selects
+// `chosen` where one of them is it, reporting neither.
+#[macro.cnative("sngl_win32_offer")]
+func offerChoices(s Select, labels c.utf16, chosen c.utf16)
+
+// The label of the choice a drop-down has selected, or "".
+#[macro.cnative("sngl_win32_selected")]
+func selectedLabel(s Select) string
+
+// Selects the choice labeled `label` as the user's pick does, which reports
+// it.
+#[macro.cnative("sngl_win32_fire_select")]
+func selectLabel(s Select, label c.utf16)
+
+#[gen.protocol(create)]
+func _create_Select() Select {
+    return _rtSelect()
+}
+
+#[gen.protocol(set)]
+func _set_Select_look(s Select, look Look) {
+    _look(s, look)
+}
+
+#[gen.protocol(on)]
+func _on_Select_change(s Select, change func()) {
+    _rtOnChange(s, change)
+}
+
+// --- Timers ---
+
+// Calls `fn` every `ms` milliseconds from the message loop, until the id it
+// answers is cancelled.
+#[macro.cnative("sngl_win32_every")]
+func _rtEvery(
+    ms int,
+    #[c.type("sngl_win32_fn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
+) int
+
+#[macro.cnative("sngl_win32_cancel")]
+func _rtCancel(id int)
 
 // --- The stdlib's components ---
 
@@ -585,6 +725,79 @@ const component ui.input[platform](value, focusable, style, @input, @change) {
     effect(on=value, @mount(v) {
         setEditText(entry, v)
     })
+}
+
+// As ui.input's, but for Enter, which is a line of the text: the text is
+// committed as the focus leaves it.
+const component ui.textarea[platform](value, rows, focusable, style, @input, @change) {
+    TextArea #area(
+        rows = rows,
+        look = lookOf(style),
+        @change {
+            if editText(area) != value {
+                value = editText(area)
+                input(value)
+            }
+        },
+        @commit {
+            value = editText(area)
+            change(value)
+        },
+    ) {}
+    effect(on=value, @mount(v) {
+        setEditText(area, v)
+    })
+}
+
+// A bar given no value is indeterminate, Win32's marquee. Written as two
+// bars rather than one with a conditional fraction, as gtk4's is.
+const component ui.progress[platform](style, value, max, label, showValue) {
+    if value != null {
+        Progress(fraction=value / max, text=label, showText=showValue, look=lookOf(style)) {}
+    } else {
+        Progress(fraction=-1.0, text=label, showText=showValue, look=lookOf(style)) {}
+    }
+}
+
+// One drop-down, offered the choices' labels whenever they change and
+// selecting the label of the bound value whenever it does, as gtk4's is.
+// `placeholder` and the focus events have nothing to reach.
+const component ui.select[platform](value, disabled, focusable, style, @change, options) {
+    Select #drop(look=lookOf(style), @change {
+        var at = ui.choiceLabeled(options, selectedLabel(drop))
+        if at >= 0 && options[at].value != value {
+            value = options[at].value
+            change(options[at].value)
+        }
+    }) {}
+    effect(on={labels=options.map(func(o) => o.label).format("\n"), drop=drop}, @mount(k) {
+        offerChoices(drop, k.labels, ui.choiceLabel(options, value))
+    })
+    effect(on=value, @mount(v) {
+        offerChoices(drop, options.map(func(o) => o.label).format("\n"), ui.choiceLabel(options, v))
+    })
+}
+
+// A test picks the choice holding `value` through the drop-down, which
+// knows its choices by label.
+func ui.select[T].change[platform](value) {
+    selectLabel(drop, ui.choiceLabel(options, value))
+}
+
+// A timer is the runtime's, on the window every node is made in: the effect
+// arms it as its branch mounts and cancels it as it goes, as gtk4's does.
+const component time.timer[platform](interval, enabled, @tick) {
+    var handle = 0
+
+    if enabled {
+        effect(
+            on = interval,
+            @mount(d) { handle = _rtEvery(int(d), tick) },
+            @unmount(d) {
+                _rtCancel(handle)
+            },
+        )
+    }
 }
 
 const component ui.vbox[platform](style, children) {
