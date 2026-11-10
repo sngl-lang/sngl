@@ -2,6 +2,7 @@
 #include "sngl_win32.h"
 
 #include <commctrl.h>
+#include <shellapi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +15,10 @@
 /* Work sngl_post queued, its handler the message's lParam. */
 #define SNGL_WM_POST (WM_APP + 2)
 
-enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT };
+enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO };
+
+/* How a box lays its children out (sngl_win32_set_mode). */
+enum { M_LINE, M_GRID, M_FLOW, M_STACK, M_EQUAL };
 
 typedef struct {
 	sngl_win32_fn fn;
@@ -50,11 +54,24 @@ typedef struct {
 	int rows;
 	double fraction;
 	int show_text;
+	/* A box's mode, its columns as a grid, and the height a flow wrapped
+	 * to at the width it was last laid out at, which it measures as next. */
+	int mode, columns, flow_h;
+	/* framed is a box drawn with an etched edge inside its bounds. */
+	int framed;
+	/* off_prop and off_look hide a node, by its visible prop and by its
+	 * style's display, and either takes it out of its box's layout. */
+	int off_prop, off_look;
+	/* href is a link's, opened as the user clicks it. */
+	WCHAR *href;
+	HWND self;
 	HWND *kids;
 	int nkids, capkids;
 } ctl;
 
 static int ready;
+/* firing is set while a test's event is raised. */
+static int firing;
 static HWND park;
 /* The message font at each DPI a window has been shown at. */
 static struct {
@@ -128,10 +145,14 @@ static void own_font(ctl *c) {
 		DeleteObject(c->font);
 		c->font = NULL;
 	}
-	if (c->font_px > 0) {
+	if (c->font_px > 0 || c->kind == K_LINK) {
+		/* A link is underlined, in its own size or the system's. */
 		LOGFONTW lf;
 		GetObjectW(message_font(c->dpi), sizeof lf, &lf);
-		lf.lfHeight = -px(c->font_px, c->dpi);
+		if (c->font_px > 0) {
+			lf.lfHeight = -px(c->font_px, c->dpi);
+		}
+		lf.lfUnderline = c->kind == K_LINK;
 		c->font = CreateFontIndirectW(&lf);
 	}
 }
@@ -175,12 +196,14 @@ static void forget(HWND w) {
 		DeleteObject(c->brush);
 	}
 	free(c->kids);
+	free(c->href);
 	free(c);
 }
 
 /* --- Layout --- */
 
 static void measure(HWND w, SIZE *out);
+static void relayout(HWND w);
 
 /* text_size is w's text as its font draws it. */
 static SIZE text_size(HWND w) {
@@ -260,21 +283,103 @@ static SIZE select_size(HWND w, ctl *c) {
 	return s;
 }
 
-/* box_measure is a box's or a toplevel's children laid end to end. */
-static SIZE box_measure(ctl *c) {
-	SIZE s = {0, 0};
-	int gap = px(c->gap, c->dpi);
+/* laid is whether a box lays w out: a node hidden takes no room. */
+static int laid(HWND w) {
+	ctl *k = ctl_of(w);
+	return k && !k->off_prop && !k->off_look;
+}
+
+/* edge is the room a framed box's edge takes inside each of its sides. */
+static int edge(ctl *c) { return c->framed ? px(2, c->dpi) : 0; }
+
+/* kid is a child a box lays out, and the size it measures. */
+typedef struct {
+	HWND w;
+	SIZE s;
+	double flex;
+} kid;
+
+/* laid_kids is c's children it lays out, which the caller frees, and how
+ * many there are. */
+static kid *laid_kids(ctl *c, int *n) {
+	kid *ks = malloc(sizeof(kid) * (size_t)(c->nkids ? c->nkids : 1));
+	*n = 0;
 	for (int i = 0; i < c->nkids; i++) {
-		SIZE k;
-		measure(c->kids[i], &k);
+		if (!laid(c->kids[i])) {
+			continue;
+		}
+		kid *k = &ks[(*n)++];
+		k->w = c->kids[i];
+		measure(k->w, &k->s);
+		k->flex = ctl_of(k->w)->flex;
+	}
+	return ks;
+}
+
+/* columns_of is how many columns a grid lays its children in. */
+static int columns_of(ctl *c) { return c->columns > 0 ? c->columns : 1; }
+
+/* box_measure is what a box's or a toplevel's children need as its mode
+ * lays them out: end to end, in a grid's rows, wrapped, one over another,
+ * or each the room of the largest. */
+static SIZE box_measure(ctl *c) {
+	SIZE s = {0, 0}, most = {0, 0};
+	int gap = px(c->gap, c->dpi), n;
+	kid *ks = laid_kids(c, &n);
+	for (int i = 0; i < n; i++) {
+		most.cx = ks[i].s.cx > most.cx ? ks[i].s.cx : most.cx;
+		most.cy = ks[i].s.cy > most.cy ? ks[i].s.cy : most.cy;
+	}
+	switch (c->mode) {
+	case M_GRID: {
+		int cols = columns_of(c), rows = (n + cols - 1) / cols;
+		s.cx = cols * most.cx + (cols - 1) * gap;
+		for (int r = 0; r < rows; r++) {
+			int h = 0;
+			for (int i = r * cols; i < n && i < (r + 1) * cols; i++) {
+				h = ks[i].s.cy > h ? ks[i].s.cy : h;
+			}
+			s.cy += h + (r > 0 ? gap : 0);
+		}
+		break;
+	}
+	case M_STACK:
+		s = most;
+		break;
+	case M_FLOW:
+		/* As wide as its widest child, which it wraps the rest around at
+		 * the width it is given, and as tall as that last wrapped. */
+		s.cx = most.cx;
+		s.cy = c->flow_h > most.cy ? c->flow_h : most.cy;
+		break;
+	case M_EQUAL:
 		if (c->vertical) {
-			s.cy += k.cy + (i > 0 ? gap : 0);
-			s.cx = k.cx > s.cx ? k.cx : s.cx;
+			s.cx = most.cx;
+			s.cy = n * most.cy + (n > 0 ? (n - 1) * gap : 0);
 		} else {
-			s.cx += k.cx + (i > 0 ? gap : 0);
-			s.cy = k.cy > s.cy ? k.cy : s.cy;
+			s.cx = n * most.cx + (n > 0 ? (n - 1) * gap : 0);
+			s.cy = most.cy;
+		}
+		break;
+	default: {
+		int vertical = c->vertical;
+		for (int i = 0; i < n; i++) {
+			if (vertical) {
+				s.cy += ks[i].s.cy + (i > 0 ? gap : 0);
+			} else {
+				s.cx += ks[i].s.cx + (i > 0 ? gap : 0);
+			}
+		}
+		if (vertical) {
+			s.cx = most.cx;
+		} else {
+			s.cy = most.cy;
 		}
 	}
+	}
+	free(ks);
+	s.cx += 2 * edge(c);
+	s.cy += 2 * edge(c);
 	return s;
 }
 
@@ -302,6 +407,7 @@ static void measure(HWND w, SIZE *out) {
 		}
 		break;
 	case K_CHECK:
+	case K_RADIO:
 		s = text_size(w);
 		s.cx += (system_metric_for_dpi ? system_metric_for_dpi(SM_CXMENUCHECK, (UINT)c->dpi) : GetSystemMetrics(SM_CXMENUCHECK)) + px(8, c->dpi);
 		s.cy += px(4, c->dpi);
@@ -338,6 +444,17 @@ static void measure(HWND w, SIZE *out) {
 			}
 		}
 		break;
+	case K_DIVIDER:
+		/* An etched line, two pixels across. */
+		if (c->vertical) {
+			s.cx = 2;
+		} else {
+			s.cy = 2;
+		}
+		break;
+	case K_LINK:
+		s = text_size(w);
+		break;
 	case K_SPACER:
 		break;
 	}
@@ -352,39 +469,30 @@ static void measure(HWND w, SIZE *out) {
 	*out = s;
 }
 
-/* lay_out places a box's or a toplevel's children in its w by h client
- * area: each its own size along the box, the spare room shared by flex, and
- * the whole of the box across it. */
-static void lay_out(HWND box, int w, int h) {
-	ctl *c = ctl_of(box);
-	if (!c || c->nkids == 0) {
-		return;
-	}
-	int pad[4], gap = px(c->gap, c->dpi);
-	for (int i = 0; i < 4; i++) {
-		pad[i] = px(c->pad[i], c->dpi);
-	}
-	int x0 = pad[3], y0 = pad[0];
-	int iw = w - pad[1] - pad[3], ih = h - pad[0] - pad[2];
-	int avail = (c->vertical ? ih : iw) - gap * (c->nkids - 1);
-	int *size = malloc(sizeof(int) * (size_t)c->nkids);
+/* line places a line's children along it: each its own size, the spare
+ * room shared by flex, and the whole of the box across it. */
+static void line(ctl *c, kid *ks, int n, RECT *at, int x0, int y0, int iw, int ih, int gap) {
+	int avail = (c->vertical ? ih : iw) - gap * (n - 1);
+	int *size = malloc(sizeof(int) * (size_t)n);
 	int total = 0;
 	double flex = 0;
-	for (int i = 0; i < c->nkids; i++) {
-		SIZE k;
-		measure(c->kids[i], &k);
-		size[i] = c->vertical ? k.cy : k.cx;
+	for (int i = 0; i < n; i++) {
+		size[i] = c->vertical ? ks[i].s.cy : ks[i].s.cx;
 		total += size[i];
-		ctl *kc = ctl_of(c->kids[i]);
-		flex += kc ? kc->flex : 0;
+		flex += ks[i].flex;
 	}
 	int spare = avail - total;
-	if (spare > 0 && flex > 0) {
+	if (c->mode == M_EQUAL) {
+		/* Every child the same share, what rounding left the last's. */
+		for (int i = 0; i < n; i++) {
+			size[i] = avail / n;
+		}
+		size[n - 1] += avail - (avail / n) * n;
+	} else if (spare > 0 && flex > 0) {
 		int given = 0, last = -1;
-		for (int i = 0; i < c->nkids; i++) {
-			ctl *kc = ctl_of(c->kids[i]);
-			if (kc && kc->flex > 0) {
-				int more = (int)(spare * (kc->flex / flex));
+		for (int i = 0; i < n; i++) {
+			if (ks[i].flex > 0) {
+				int more = (int)(spare * (ks[i].flex / flex));
 				size[i] += more;
 				given += more;
 				last = i;
@@ -393,31 +501,119 @@ static void lay_out(HWND box, int w, int h) {
 		/* What rounding left goes to the last to flex. */
 		size[last] += spare - given;
 	}
-	HDWP dwp = BeginDeferWindowPos(c->nkids);
-	int at = c->vertical ? y0 : x0;
-	for (int i = 0; i < c->nkids; i++) {
-		int x = c->vertical ? x0 : at, y = c->vertical ? at : y0;
-		int cw = c->vertical ? iw : size[i], ch = c->vertical ? size[i] : ih;
-		ctl *kc = ctl_of(c->kids[i]);
-		if (kc && kc->kind == K_SELECT) {
+	int pos = c->vertical ? y0 : x0;
+	for (int i = 0; i < n; i++) {
+		int x = c->vertical ? x0 : pos, y = c->vertical ? pos : y0;
+		SetRect(&at[i], x, y, x + (c->vertical ? iw : size[i]), y + (c->vertical ? size[i] : ih));
+		pos += size[i] + gap;
+	}
+	free(size);
+}
+
+/* grid places a grid's children cols to a row, in columns of equal width
+ * sharing the grid's, each row as tall as its tallest. */
+static void grid(ctl *c, kid *ks, int n, RECT *at, int x0, int y0, int iw, int gap) {
+	int cols = columns_of(c);
+	int cw = (iw - gap * (cols - 1)) / cols, y = y0;
+	for (int r = 0; r * cols < n; r++) {
+		int h = 0;
+		for (int i = r * cols; i < n && i < (r + 1) * cols; i++) {
+			h = ks[i].s.cy > h ? ks[i].s.cy : h;
+		}
+		for (int i = r * cols; i < n && i < (r + 1) * cols; i++) {
+			int x = x0 + (i - r * cols) * (cw + gap);
+			SetRect(&at[i], x, y, x + cw, y + h);
+		}
+		y += h + gap;
+	}
+}
+
+/* flow places a flow's children along a row each its own size, starting
+ * another where the next would not fit, and answers how tall that is. */
+static int flow(kid *ks, int n, RECT *at, int x0, int y0, int iw, int gap) {
+	int x = x0, y = y0, h = 0;
+	for (int i = 0; i < n; i++) {
+		if (x > x0 && x + ks[i].s.cx > x0 + iw) {
+			x = x0;
+			y += h + gap;
+			h = 0;
+		}
+		SetRect(&at[i], x, y, x + ks[i].s.cx, y + ks[i].s.cy);
+		x += ks[i].s.cx + gap;
+		h = ks[i].s.cy > h ? ks[i].s.cy : h;
+	}
+	return n > 0 ? y + h - y0 : 0;
+}
+
+/* lay_out places a box's or a toplevel's children in its w by h client
+ * area, as its mode does, and each box among them its own. */
+static void lay_out(HWND box, int w, int h) {
+	ctl *c = ctl_of(box);
+	if (!c || c->nkids == 0) {
+		InvalidateRect(box, NULL, TRUE);
+		return;
+	}
+	int pad[4], gap = px(c->gap, c->dpi), e = edge(c);
+	for (int i = 0; i < 4; i++) {
+		pad[i] = px(c->pad[i], c->dpi) + e;
+	}
+	int x0 = pad[3], y0 = pad[0];
+	int iw = w - pad[1] - pad[3], ih = h - pad[0] - pad[2];
+	int n;
+	kid *ks = laid_kids(c, &n);
+	RECT *at = calloc((size_t)(n ? n : 1), sizeof(RECT));
+	if (n > 0) {
+		switch (c->mode) {
+		case M_GRID:
+			grid(c, ks, n, at, x0, y0, iw, gap);
+			break;
+		case M_FLOW: {
+			int fh = flow(ks, n, at, x0, y0, iw, gap);
+			if (fh != c->flow_h) {
+				/* It wraps to another height: what holds it measures
+				 * it again. */
+				c->flow_h = fh;
+				relayout(box);
+			}
+			break;
+		}
+		case M_STACK:
+			for (int i = 0; i < n; i++) {
+				SetRect(&at[i], x0, y0, x0 + iw, y0 + ih);
+			}
+			break;
+		default:
+			line(c, ks, n, at, x0, y0, iw, ih, gap);
+		}
+	}
+	HDWP dwp = BeginDeferWindowPos(n ? n : 1);
+	for (int i = 0; i < n; i++) {
+		int ch = at[i].bottom - at[i].top;
+		ctl *kc = ctl_of(ks[i].w);
+		if (kc->kind == K_SELECT) {
 			/* A drop-down's height is its list's too, dropped. */
 			ch += px(200, kc->dpi);
 		}
 		if (dwp) {
-			dwp = DeferWindowPos(dwp, c->kids[i], NULL, x, y, cw, ch, SWP_NOZORDER | SWP_NOACTIVATE);
+			dwp = DeferWindowPos(dwp, ks[i].w, NULL, at[i].left, at[i].top, at[i].right - at[i].left, ch, SWP_NOZORDER | SWP_NOACTIVATE);
 		}
-		at += size[i] + gap;
 	}
 	if (dwp) {
 		EndDeferWindowPos(dwp);
 	}
-	for (int i = 0; i < c->nkids; i++) {
-		ctl *kc = ctl_of(c->kids[i]);
-		if (kc && kc->kind == K_BOX) {
-			lay_out(c->kids[i], c->vertical ? iw : size[i], c->vertical ? size[i] : ih);
+	if (c->mode == M_STACK) {
+		/* The last layer on top, drawn over the rest. */
+		for (int i = n - 1; i >= 0; i--) {
+			SetWindowPos(ks[i].w, i == n - 1 ? HWND_TOP : ks[i + 1].w, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 		}
 	}
-	free(size);
+	for (int i = 0; i < n; i++) {
+		if (ctl_of(ks[i].w)->kind == K_BOX) {
+			lay_out(ks[i].w, at[i].right - at[i].left, at[i].bottom - at[i].top);
+		}
+	}
+	free(at);
+	free(ks);
 	InvalidateRect(box, NULL, TRUE);
 }
 
@@ -508,6 +704,8 @@ static LRESULT color(ctl *c, HDC dc, LRESULT otherwise) {
 	}
 	if (c->color >= 0) {
 		SetTextColor(dc, RGB((c->color >> 16) & 0xff, (c->color >> 8) & 0xff, c->color & 0xff));
+	} else if (c->kind == K_LINK) {
+		SetTextColor(dc, IsWindowEnabled(c->self) ? GetSysColor(COLOR_HOTLIGHT) : GetSysColor(COLOR_GRAYTEXT));
 	}
 	if (c->brush) {
 		SetBkColor(dc, RGB((c->background >> 16) & 0xff, (c->background >> 8) & 0xff, c->background & 0xff));
@@ -528,6 +726,11 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 		}
 		switch (HIWORD(wp)) {
 		case BN_CLICKED:
+			/* STN_CLICKED too, a link's. A test's click reports it
+			 * without opening anything. */
+			if (src->kind == K_LINK && src->href && src->href[0] && !firing) {
+				ShellExecuteW(NULL, L"open", src->href, NULL, NULL, SW_SHOWNORMAL);
+			}
 			fire(&src->click);
 			return 0;
 		case EN_CHANGE:
@@ -572,6 +775,38 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 			GetClientRect(w, &r);
 			FillRect((HDC)wp, &r, c->brush);
 			return 1;
+		}
+		break;
+	case WM_PAINT:
+	case WM_PRINTCLIENT:
+		if (c && c->framed) {
+			PAINTSTRUCT ps;
+			HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : BeginPaint(w, &ps);
+			if (msg == WM_PRINTCLIENT) {
+				/* PrintWindow erases through this DC too. */
+				SendMessageW(w, WM_ERASEBKGND, wp, 0);
+			}
+			RECT r;
+			GetClientRect(w, &r);
+			DrawEdge(dc, &r, EDGE_ETCHED, BF_RECT);
+			if (msg != WM_PRINTCLIENT) {
+				EndPaint(w, &ps);
+			}
+			return 0;
+		}
+		break;
+	case WM_LBUTTONUP:
+		/* A box with a click handler, a clickable card, is pressed as a
+		 * button is. */
+		if (c && c->click.fn) {
+			fire(&c->click);
+			return 0;
+		}
+		break;
+	case WM_SETCURSOR:
+		if (c && c->click.fn && LOWORD(lp) == HTCLIENT) {
+			SetCursor(LoadCursorW(NULL, (LPCWSTR)IDC_HAND));
+			return TRUE;
 		}
 		break;
 	case WM_SIZE:
@@ -655,6 +890,14 @@ static LRESULT CALLBACK control_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp, UIN
 			}
 		}
 		break;
+	case WM_SETCURSOR: {
+		ctl *c = ctl_of(w);
+		if (c && c->kind == K_LINK) {
+			SetCursor(LoadCursorW(NULL, (LPCWSTR)IDC_HAND));
+			return TRUE;
+		}
+		break;
+	}
 	case WM_PAINT:
 	case WM_PRINTCLIENT: {
 		/* A progress bar writes its text over what Win32 draws, as GTK's
@@ -792,13 +1035,16 @@ static ctl *new_ctl(HWND w, enum sngl_kind kind) {
 	c->kind = kind;
 	c->dpi = dpi_of(w);
 	c->color = c->background = -1;
+	c->self = w;
 	SetPropW(w, SNGL_PROP, c);
 	return c;
 }
 
 static HWND control(LPCWSTR class, DWORD style, DWORD ex, enum sngl_kind kind) {
 	sngl_win32_init();
-	HWND w = CreateWindowExW(ex, class, L"", WS_CHILD | WS_VISIBLE | style, 0, 0, 0, 0, park, NULL, GetModuleHandleW(NULL), NULL);
+	/* Each clips its siblings, so a stack's layers paint only where they
+	 * show. */
+	HWND w = CreateWindowExW(ex, class, L"", WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | style, 0, 0, 0, 0, park, NULL, GetModuleHandleW(NULL), NULL);
 	new_ctl(w, kind);
 	SendMessageW(w, WM_SETFONT, (WPARAM)font_of(ctl_of(w)), FALSE);
 	if (kind != K_BOX && kind != K_SPACER) {
@@ -830,7 +1076,77 @@ void sngl_win32_set_vertical(HWND box, int vertical) {
 	ctl *c = ctl_of(box);
 	if (c && c->vertical != vertical) {
 		c->vertical = vertical;
+		if (c->kind == K_DIVIDER) {
+			LONG_PTR style = GetWindowLongPtrW(box, GWL_STYLE) & ~(LONG_PTR)(SS_ETCHEDHORZ | SS_ETCHEDVERT);
+			SetWindowLongPtrW(box, GWL_STYLE, style | (vertical ? SS_ETCHEDVERT : SS_ETCHEDHORZ));
+			InvalidateRect(box, NULL, TRUE);
+		}
 		relayout(box);
+	}
+}
+
+void sngl_win32_set_mode(HWND box, int mode) {
+	ctl *c = ctl_of(box);
+	if (c && c->mode != mode) {
+		c->mode = mode;
+		c->flow_h = 0;
+		relayout(box);
+	}
+}
+
+void sngl_win32_set_columns(HWND box, int columns) {
+	ctl *c = ctl_of(box);
+	if (c && c->columns != columns) {
+		c->columns = columns;
+		relayout(box);
+	}
+}
+
+void sngl_win32_set_framed(HWND box, int framed) {
+	ctl *c = ctl_of(box);
+	if (c && c->framed != (framed != 0)) {
+		c->framed = framed != 0;
+		InvalidateRect(box, NULL, TRUE);
+		relayout(box);
+	}
+}
+
+/* show shows or hides w as neither its prop nor its look hides it, and lays
+ * out what it is in again, where it takes room or none. */
+static void show(HWND w, ctl *c) {
+	int on = !c->off_prop && !c->off_look;
+	if ((IsWindowVisible(w) != 0) != on || (GetWindowLongPtrW(w, GWL_STYLE) & WS_VISIBLE) != (on ? WS_VISIBLE : 0)) {
+		ShowWindow(w, on ? SW_SHOWNA : SW_HIDE);
+		HWND parent = GetParent(w);
+		if (parent) {
+			relayout(parent);
+		}
+	}
+}
+
+void sngl_win32_set_shown(HWND w, int shown) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		c->off_prop = !shown;
+		show(w, c);
+	}
+}
+
+int sngl_win32_is_shown(HWND w) {
+	ctl *c = ctl_of(w);
+	return c && !c->off_prop && !c->off_look;
+}
+
+void sngl_win32_set_enabled(HWND w, int enabled) {
+	EnableWindow(w, enabled != 0);
+	InvalidateRect(w, NULL, TRUE);
+}
+
+void sngl_win32_set_href(HWND w, const unsigned short *href) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		free(c->href);
+		c->href = _wcsdup((const WCHAR *)href);
 	}
 }
 
@@ -851,6 +1167,20 @@ HWND sngl_win32_progress(void) {
 }
 
 HWND sngl_win32_textarea(void) { return control(L"EDIT", ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL | WS_TABSTOP, WS_EX_CLIENTEDGE, K_AREA); }
+
+HWND sngl_win32_divider(void) { return control(L"STATIC", SS_ETCHEDHORZ, 0, K_DIVIDER); }
+
+HWND sngl_win32_link(void) {
+	HWND w = control(L"STATIC", SS_LEFT | SS_NOPREFIX | SS_NOTIFY, 0, K_LINK);
+	ctl *c = ctl_of(w);
+	if (c) {
+		own_font(c);
+		SendMessageW(w, WM_SETFONT, (WPARAM)font_of(c), FALSE);
+	}
+	return w;
+}
+
+HWND sngl_win32_radio(void) { return control(L"BUTTON", BS_AUTORADIOBUTTON | WS_TABSTOP, 0, K_RADIO); }
 
 HWND sngl_win32_select(void) { return control(WC_COMBOBOXW, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP, 0, K_SELECT); }
 
@@ -1169,6 +1499,10 @@ void sngl_win32_set_look(HWND w, sngl_win32_look look) {
 	c->pad[3] = look.padLeft;
 	c->min_w = look.minWidth;
 	c->min_h = look.minHeight;
+	if (c->off_look != (look.hidden != 0)) {
+		c->off_look = look.hidden != 0;
+		show(w, c);
+	}
 	c->color = color;
 	if (c->brush) {
 		DeleteObject(c->brush);
@@ -1231,7 +1565,11 @@ static void notify(HWND w, WORD code) {
 	SendMessageW(GetParent(w), WM_COMMAND, MAKEWPARAM(GetDlgCtrlID(w), code), (LPARAM)w);
 }
 
-void sngl_win32_fire_click(HWND w) { notify(w, BN_CLICKED); }
+void sngl_win32_fire_click(HWND w) {
+	firing = 1;
+	notify(w, BN_CLICKED);
+	firing = 0;
+}
 
 void sngl_win32_fire_check(HWND w, int checked) {
 	sngl_win32_set_checked(w, checked);

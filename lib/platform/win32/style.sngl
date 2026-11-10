@@ -4,7 +4,7 @@ import ui "sngl:ui"
 // paints it by. Win32 itself styles no control past its font and the colors
 // its parent answers WM_CTLCOLOR* with, and lays out nothing, so what the
 // runtime's layout reads -- a box's gap and padding, a node's flex share and
-// least size -- is the rest.
+// least size, and whether its display hides it -- is the rest.
 
 // What a Style may say that this platform does not answer yet:
 //
@@ -26,7 +26,6 @@ import ui "sngl:ui"
 //     the program's; an edit draws its own sunken one.
 //   - opacity: a child window is drawn opaque.
 //   - cursor: every window shows the arrow its class gives it.
-//   - display: a node is shown while it is rendered.
 //   - listStyleType: no control here draws a list marker.
 const unstyled list[string] = [
     "margin",
@@ -64,7 +63,6 @@ const unstyled list[string] = [
     "borderStyle",
     "opacity",
     "cursor",
-    "display",
     "listStyleType",
 ]
 
@@ -106,6 +104,7 @@ const func lookOf(s ui.Style) Look {
         color = rgb(s.color),
         background = rgb(s.background),
         fontPx = inset(s.fontSize),
+        hidden = s.display == ui.Display.none ? 1 : 0,
     }
     return look
 }

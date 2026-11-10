@@ -40,7 +40,16 @@ void sngl_win32_step(void);
 
 HWND sngl_win32_toplevel(void);
 HWND sngl_win32_box(int vertical);
+/* sngl_win32_set_vertical is a box's axis, or a divider's. */
 void sngl_win32_set_vertical(HWND box, int vertical);
+/* sngl_win32_set_mode is how a box lays its children out: 0 along its axis,
+ * 1 in a grid of sngl_win32_set_columns columns, 2 in rows that wrap, 3
+ * one over another, each the box's whole room, and 4 along its axis in
+ * equal shares. */
+void sngl_win32_set_mode(HWND box, int mode);
+void sngl_win32_set_columns(HWND box, int columns);
+/* sngl_win32_set_framed draws an etched edge inside a box's bounds. */
+void sngl_win32_set_framed(HWND box, int framed);
 HWND sngl_win32_text(void);
 HWND sngl_win32_button(void);
 HWND sngl_win32_edit(void);
@@ -51,6 +60,12 @@ HWND sngl_win32_spacer(void);
 HWND sngl_win32_progress(void);
 HWND sngl_win32_textarea(void);
 HWND sngl_win32_select(void);
+/* sngl_win32_divider is an etched line, sngl_win32_link a text that opens
+ * its href as it is clicked, and sngl_win32_radio a radio button, which
+ * unchecks the others in its box as it is checked. */
+HWND sngl_win32_divider(void);
+HWND sngl_win32_link(void);
+HWND sngl_win32_radio(void);
 
 /* sngl_win32_append makes child the last of parent's children, and
  * sngl_win32_insert puts it before before, which is one of them. Either lays
@@ -97,6 +112,14 @@ void sngl_win32_set_show_text(HWND w, int show);
 void sngl_win32_offer(HWND w, const unsigned short *labels, const unsigned short *chosen);
 const char *sngl_win32_selected(HWND w);
 
+/* sngl_win32_set_shown hides a node, which then takes no room in its box,
+ * or shows it again; sngl_win32_is_shown is whether it is shown. */
+void sngl_win32_set_shown(HWND w, int shown);
+int sngl_win32_is_shown(HWND w);
+void sngl_win32_set_enabled(HWND w, int enabled);
+/* sngl_win32_set_href is what a link opens. */
+void sngl_win32_set_href(HWND w, const unsigned short *href);
+
 void sngl_win32_set_checked(HWND w, int checked);
 int sngl_win32_checked(HWND w);
 void sngl_win32_set_visible(HWND top, int visible);
@@ -119,9 +142,9 @@ int sngl_win32_snapshot(const char *path, int width, int height);
 /* sngl_win32_look is what a node's style asks of the layout and the paint:
  * how much of a box's spare room it takes (flex), the gap a box leaves
  * between its children, the room inside its edges, its least size, and its
- * colors and font size. A color is 0xRRGGBB, or -1 for the system's; a size
- * of 0 is the system's. Its fields are named as sngl:platform/win32's Look,
- * which crosses as one. */
+ * colors and font size, and whether its style's display hides it. A color
+ * is 0xRRGGBB, or -1 for the system's; a size of 0 is the system's. Its
+ * fields are named as sngl:platform/win32's Look, which crosses as one. */
 typedef struct sngl_win32_look {
 	double flex;
 	int gap;
@@ -129,6 +152,7 @@ typedef struct sngl_win32_look {
 	int minWidth, minHeight;
 	int color, background;
 	int fontPx;
+	int hidden;
 } sngl_win32_look;
 
 void sngl_win32_set_look(HWND w, sngl_win32_look look);

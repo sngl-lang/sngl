@@ -10,7 +10,7 @@ import api "sngl:platform/win32/api"
 // The runtime every win32 program links: the window procedure, the layout of
 // a box's children and the message loop, in C, which each language compiles
 // into the program.
-c.link(include="sngl_win32.h", library="user32", ldflags=["-mwindows", "-luser32", "-lgdi32", "-lcomctl32"], sources=["rt/sngl_win32.c", "rt/sngl_win32.h"])
+c.link(include="sngl_win32.h", library="user32", ldflags=["-mwindows", "-luser32", "-lgdi32", "-lcomctl32", "-lshell32"], sources=["rt/sngl_win32.c", "rt/sngl_win32.h"])
 
 // The source annotations MinGW's sal.h, specstrings.h and driverspecs.h
 // define as macros, which windows.h includes: a local lowering names
@@ -198,7 +198,8 @@ func _rtSetText(w ui.node, text c.utf16)
 // What a node's style asks of the runtime (sngl_win32_look): its share of a
 // box's spare room, the gap between a box's children, the room inside its
 // edges, its least size, its colors as 0xRRGGBB or -1 for the system's, and
-// its font size, 0 for the system's.
+// its font size, 0 for the system's, and 1 where its style's display hides
+// it, which takes it out of its box's layout.
 #[macro.cnative("sngl_win32_look")]
 struct Look {
     flex       float
@@ -212,10 +213,19 @@ struct Look {
     color      int
     background int
     fontPx     int
+    hidden     int
 }
 
 #[macro.cnative("sngl_win32_set_look")]
 func _look(w ui.node, look Look)
+
+// A node hidden takes no room in its box until it is shown again.
+#[macro.cnative("sngl_win32_set_shown")]
+func _rtSetShown(w ui.node, shown bool)
+
+// A control disabled is drawn grayed and takes no input.
+#[macro.cnative("sngl_win32_set_enabled")]
+func _rtSetEnabled(w ui.node, enabled bool)
 
 // --- Windows ---
 
@@ -314,10 +324,45 @@ func _on_Window_visible(w Window, visible func(visible bool)) {
 
 // --- Containers ---
 
-// A box lays its children out along an axis, each its own size, the room to
-// spare shared by flex, and each the box's whole size across it.
+// How a box lays its children out.
+enum BoxMode {
+    // Along its axis, each its own size, the room to spare shared by flex,
+    // and each the box's whole size across it.
+    line
+    // `columns` to a row, in columns of equal width sharing the box's.
+    grid
+    // In rows, each child its own size, a row wrapping where the next would
+    // not fit.
+    flow
+    // One over another, each the box's whole room.
+    stack
+    // Along its axis in equal shares.
+    equal
+}
+
+// A box lays its children out as its mode says. A framed one draws an
+// etched edge inside its bounds, a hidden one takes no room, and one with a
+// click handler is pressed as a button is.
 #[marks.intrinsic("win32:Box")]
-component Box(vertical bool, look Look, children ...component ui.node) ui.node
+component Box(
+    vertical bool,
+    look     Look,
+    mode     BoxMode = BoxMode.line,
+    columns  int = 0,
+    framed   bool = false,
+    visible  bool = true,
+    @click(),
+    children ...component ui.node,
+) ui.node
+
+#[macro.cnative("sngl_win32_set_mode")]
+func _rtSetMode(b Box, mode int)
+
+#[macro.cnative("sngl_win32_set_columns")]
+func _rtSetColumns(b Box, columns int)
+
+#[macro.cnative("sngl_win32_set_framed")]
+func _rtSetFramed(b Box, framed bool)
 
 #[macro.cnative("sngl_win32_box")]
 func _rtBox(vertical bool) Box
@@ -360,6 +405,36 @@ func _set_Box_vertical(b Box, vertical bool) {
 #[gen.protocol(set)]
 func _set_Box_look(b Box, look Look) {
     _look(b, look)
+}
+
+#[gen.protocol(set)]
+func _set_Box_mode(b Box, mode BoxMode) {
+    _rtSetMode(b, int(mode))
+}
+
+#[gen.protocol(set)]
+func _set_Box_columns(b Box, columns int) {
+    _rtSetColumns(b, columns)
+}
+
+#[gen.protocol(set)]
+func _set_Box_framed(b Box, framed bool) {
+    _rtSetFramed(b, framed)
+}
+
+#[gen.protocol(set)]
+func _set_Box_visible(b Box, visible bool) {
+    _rtSetShown(b, visible)
+}
+
+#[gen.protocol(on)]
+func _on_Box_click(b Box, click func()) {
+    _rtOnClick(b, click)
+}
+
+#[gen.fires("click")]
+func _fire_Box_click(b Box) {
+    _rtFireClick(b)
 }
 
 // Room a box shares out by its flex and draws nothing in.
@@ -441,7 +516,7 @@ func _fire_Button_click(b Button) {
 // A check box Win32 checks itself as it is pressed, which `@click` reports
 // once it has.
 #[marks.intrinsic("win32:CheckBox")]
-component CheckBox(label string, checked bool, look Look, @click()) ui.node
+component CheckBox(label string, checked bool, enabled bool = true, look Look, @click()) ui.node
 
 #[macro.cnative("sngl_win32_checkbox")]
 func _rtCheckBox() CheckBox
@@ -466,6 +541,11 @@ func _set_CheckBox_label(b CheckBox, label string) {
 #[gen.protocol(set)]
 func _set_CheckBox_checked(b CheckBox, checked bool) {
     _rtSetChecked(b, checked)
+}
+
+#[gen.protocol(set)]
+func _set_CheckBox_enabled(b CheckBox, enabled bool) {
+    _rtSetEnabled(b, enabled)
 }
 
 #[gen.protocol(set)]
@@ -539,6 +619,121 @@ func _fire_Edit_change(e Edit, text string) {
 #[gen.fires("activate")]
 func _fire_Edit_activate(e Edit, text string) {
     _rtFireActivate(e, text)
+}
+
+// An etched line across a box, or down it where it is vertical.
+#[marks.intrinsic("win32:Divider")]
+component Divider(vertical bool, look Look) ui.node
+
+#[macro.cnative("sngl_win32_divider")]
+func _rtDivider() Divider
+
+#[macro.cnative("sngl_win32_set_vertical")]
+func _rtSetDividerVertical(d Divider, vertical bool)
+
+#[gen.protocol(create)]
+func _create_Divider() Divider {
+    return _rtDivider()
+}
+
+#[gen.protocol(set)]
+func _set_Divider_vertical(d Divider, vertical bool) {
+    _rtSetDividerVertical(d, vertical)
+}
+
+#[gen.protocol(set)]
+func _set_Divider_look(d Divider, look Look) {
+    _look(d, look)
+}
+
+// A text drawn as a link, which opens `href` as the user clicks it and
+// reports the click.
+#[marks.intrinsic("win32:Link")]
+component Link(text string, href string, enabled bool, look Look, @click()) ui.node
+
+#[macro.cnative("sngl_win32_link")]
+func _rtLink() Link
+
+#[macro.cnative("sngl_win32_set_href")]
+func _rtSetHref(l Link, href c.utf16)
+
+#[gen.protocol(create)]
+func _create_Link() Link {
+    return _rtLink()
+}
+
+#[gen.protocol(set)]
+func _set_Link_text(l Link, text string) {
+    _rtSetText(l, text)
+}
+
+#[gen.protocol(set)]
+func _set_Link_href(l Link, href string) {
+    _rtSetHref(l, href)
+}
+
+#[gen.protocol(set)]
+func _set_Link_enabled(l Link, enabled bool) {
+    _rtSetEnabled(l, enabled)
+}
+
+#[gen.protocol(set)]
+func _set_Link_look(l Link, look Look) {
+    _look(l, look)
+}
+
+#[gen.protocol(on)]
+func _on_Link_click(l Link, click func()) {
+    _rtOnClick(l, click)
+}
+
+#[gen.fires("click")]
+func _fire_Link_click(l Link) {
+    _rtFireClick(l)
+}
+
+// A radio button, which unchecks the others in its box as the user checks
+// it; `@click` reports it once it has.
+#[marks.intrinsic("win32:Radio")]
+component Radio(label string, checked bool, enabled bool, look Look, @click()) ui.node
+
+#[macro.cnative("sngl_win32_radio")]
+func _rtRadio() Radio
+
+#[macro.cnative("sngl_win32_set_checked")]
+func _rtSetRadioChecked(b Radio, checked bool)
+
+#[macro.cnative("sngl_win32_checked")]
+func isPicked(b Radio) bool
+
+#[gen.protocol(create)]
+func _create_Radio() Radio {
+    return _rtRadio()
+}
+
+#[gen.protocol(set)]
+func _set_Radio_label(b Radio, label string) {
+    _rtSetText(b, label)
+}
+
+#[gen.protocol(set)]
+func _set_Radio_checked(b Radio, checked bool) {
+    _rtSetRadioChecked(b, checked)
+}
+
+#[gen.protocol(set)]
+func _set_Radio_enabled(b Radio, enabled bool) {
+    _rtSetEnabled(b, enabled)
+}
+
+#[gen.protocol(set)]
+func _set_Radio_look(b Radio, look Look) {
+    _look(b, look)
+}
+
+#[gen.protocol(on)]
+func _on_Radio_click(b Radio, click func()) {
+    _rtOnClick(b, click)
 }
 
 // A multi-line EDIT control, which scrolls down. `@change` is each change to
@@ -631,7 +826,7 @@ func _set_Progress_look(p Progress, look Look) {
 // A drop-down list. Its choices are offered by label, and `@change` is one
 // the user selects.
 #[marks.intrinsic("win32:Select")]
-component Select(look Look, @change()) ui.node
+component Select(enabled bool, look Look, @change()) ui.node
 
 #[macro.cnative("sngl_win32_select")]
 func _rtSelect() Select
@@ -653,6 +848,11 @@ func selectLabel(s Select, label c.utf16)
 #[gen.protocol(create)]
 func _create_Select() Select {
     return _rtSelect()
+}
+
+#[gen.protocol(set)]
+func _set_Select_enabled(s Select, enabled bool) {
+    _rtSetEnabled(s, enabled)
 }
 
 #[gen.protocol(set)]
@@ -761,9 +961,9 @@ const component ui.progress[platform](style, value, max, label, showValue) {
 
 // One drop-down, offered the choices' labels whenever they change and
 // selecting the label of the bound value whenever it does, as gtk4's is.
-// `placeholder` and the focus events have nothing to reach.
+// `placeholder`, `focusable` and the focus events have nothing to reach.
 const component ui.select[platform](value, disabled, focusable, style, @change, options) {
-    Select #drop(look=lookOf(style), @change {
+    Select #drop(enabled=!disabled, look=lookOf(style), @change {
         var at = ui.choiceLabeled(options, selectedLabel(drop))
         if at >= 0 && options[at].value != value {
             value = options[at].value
@@ -814,4 +1014,111 @@ const component ui.hbox[platform](style, children) {
 
 const component ui.spacer[platform](style) {
     Spacer(look=lookOf({flex=1, ...style})) {}
+}
+
+// A busy indicator is a progress bar's marquee.
+const component ui.spinner[platform](label, style) {
+    Progress(fraction=-1.0, text=label, showText=false, look=lookOf(style)) {}
+}
+
+// `label` has nowhere to go: an etched line draws no text.
+const component ui.divider[platform](style, direction) {
+    Divider(vertical=direction == "vertical", look=lookOf(style)) {}
+}
+
+const component ui.link[platform](text, href, disabled, style, @click) {
+    Link(text=text, href=href, enabled=!disabled, look=lookOf(style), @click { click() }) {}
+}
+
+// A check box, Win32 having no switch.
+const component ui.toggle[platform](label, checked, disabled, style, @change) {
+    CheckBox #box(label=label, checked=checked, enabled=!disabled, look=lookOf(style), @click {
+        if isChecked(box) != checked {
+            checked = isChecked(box)
+            change(checked)
+        }
+    }) {}
+}
+
+// The buttons of a group are a box's, which Win32 unchecks the others of as
+// one is checked.
+const component ui.radio[platform](value, disabled, direction, style, @change, options) {
+    // A choice of the option holding `v`, a button's or a test's.
+    func pickValue(v T) {
+        if v != value {
+            value = v
+            change(v)
+        }
+    }
+    Box(vertical=direction == ui.Orientation.vertical, look=boxLookOf(style, 6)) {
+        for var opt = options {
+            Radio #button(label=opt.label, checked=opt.value == value, enabled=!disabled, @click {
+                if isPicked(button) {
+                    pickValue(opt.value)
+                }
+            }) {}
+        }
+    }
+}
+
+// A test picks the option holding `value` as pressing its button does.
+func ui.radio[T].change[platform](value) {
+    pickValue(value)
+}
+
+const component ui.toolbar[platform](style, controls) {
+    Box(vertical=false, look=boxLookOf(style, 4)) {
+        controls
+    }
+}
+
+// Laid out `columns` to a row, or flowing where it has none.
+const component ui.grid[platform](columns, style, children) {
+    Box(vertical=false, mode=gridMode(columns), columns=gridColumns(columns), look=boxLookOf(style, 6)) {
+        children
+    }
+}
+
+const func gridMode(columns option[int]) => columns == null ? BoxMode.flow : BoxMode.grid
+
+const func gridColumns(columns option[int]) => columns == null ? 0 : columns
+
+const component ui.stack[platform](style, layers) {
+    Box(vertical=true, mode=BoxMode.stack, look=lookOf(style)) {
+        layers
+    }
+}
+
+// The panes share the box evenly, so `position`, its bounds and `@resize`
+// have nothing to reach, as on gtk4.
+const component ui.splitview[platform](style, direction, panes) {
+    Box(vertical=direction == "vertical", mode=BoxMode.equal, look=lookOf(style)) {
+        panes
+    }
+}
+
+// A card is a framed box, and a clickable one is pressed as a button is.
+const component ui.card[platform](style, clickable, @click, content) {
+    if clickable {
+        Box(vertical=true, framed=true, look=boxLookOf(style, 6), @click { click() }) {
+            content
+        }
+    } else {
+        Box(vertical=true, framed=true, look=boxLookOf(style, 6)) {
+            content
+        }
+    }
+}
+
+// Shown in place while it is open, as on gtk4.
+const component ui.drawer[platform](style, open, content) {
+    Box(vertical=true, visible=open, look=boxLookOf(style, 6)) {
+        content
+    }
+}
+
+const component ui.popover[platform](style, open, content) {
+    Box(vertical=true, framed=true, visible=open, look=boxLookOf(style, 6)) {
+        content
+    }
 }
