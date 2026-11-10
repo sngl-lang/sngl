@@ -457,7 +457,8 @@ func (c *Context) option(n *ir.Conversion) (string, bool) {
 }
 
 // optionCompare is a comparison with null, which asks whether an option holds
-// a value, or of an option with a value, and reports whether n was one.
+// a value, of two options, or of an option with a value, and reports whether
+// n was one.
 func (c *Context) optionCompare(n *ir.Binary, left, right string) (string, bool) {
 	if n.Op != ast.BinEq && n.Op != ast.BinNeq {
 		return "", false
@@ -478,6 +479,12 @@ func (c *Context) optionCompare(n *ir.Binary, left, right string) (string, bool)
 		return not + "(" + left + ").ok", true
 	case ir.IsNullLiteral(n.Left) && rt != nil && rt.Kind == ir.TypeOption:
 		return not + "(" + right + ").ok", true
+	case lt != nil && lt.Kind == ir.TypeOption && rt != nil && rt.Kind == ir.TypeOption:
+		eq := c.equal(lt, left, right)
+		if n.Op == ast.BinNeq {
+			return "!" + eq, true
+		}
+		return eq, true
 	case lt != nil && lt.Kind == ir.TypeOption && rt != nil && rt.Kind != ir.TypeOption:
 		eq := "((" + left + ").ok && " + c.equal(lt.Elems[0], "("+left+").value", right) + ")"
 		if n.Op == ast.BinNeq {

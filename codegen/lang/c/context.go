@@ -372,8 +372,8 @@ func (c *Context) Binary(n *ir.Binary, left, right string) string {
 }
 
 // equal is whether a and b, two values of type t, are equal: a struct's
-// fields each, through a function the file defines for it, since C compares
-// no struct.
+// fields each, and an option's presence and then its value, through a
+// function the file defines for it, since C compares no struct.
 func (c *Context) equal(t *ir.Type, a, b string) string {
 	if textual(t) {
 		return "sngl_string_eq(" + a + ", " + b + ")"
@@ -401,6 +401,16 @@ func (c *Context) equal(t *ir.Type, a, b string) string {
 			parts = []string{"true"}
 		}
 		c.file.helper(fn, "static bool "+fn+"("+name+" a, "+name+" b) {\n\treturn "+strings.Join(parts, " && ")+";\n}\n")
+		return fn + "(" + a + ", " + b + ")"
+	case ir.TypeOption:
+		// Held by its pointer, an option is NULL or the value's; otherwise
+		// it is a struct of whether it holds one and the one it holds.
+		if c.ptrOption(t) {
+			break
+		}
+		name := c.typeName(t)
+		fn := name + "__eq"
+		c.file.helper(fn, "static bool "+fn+"("+name+" a, "+name+" b) {\n\treturn a.ok == b.ok && (!a.ok || "+c.equal(t.Elems[0], "a.value", "b.value")+");\n}\n")
 		return fn + "(" + a + ", " + b + ")"
 	}
 	return "(" + a + " == " + b + ")"
