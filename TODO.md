@@ -578,25 +578,23 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      win32 joins with Part 4. The docs gallery (`docs/docs.go`'s
      `platformOrder`) shows win32 once the stdlib's examples render there,
      after the rest of the override set (step 8); gtk4 is not in it either.
-5. **Cross-compiling.** Nothing sets a target OS for a generated program
-   today. `go.buildModule` (`codegen/lang/golang/build.go`) runs the host's
-   `go build`, and `cmd/sngl/build.go:168` (`isWindowsTarget`) reads a `goos`
-   option no platform sets.
-   - The platform says what it builds for (Windows, `arch`), and each
-     language turns that into its own build:
-     - **Go:** `GOOS=windows`, `GOARCH`, `CGO_ENABLED=1` and `CC=<arch>-w64-mingw32-gcc`.
-     - **C:** the MinGW compiler directly.
-   - **Decided:** a build option on the platform node names the target, and
-     the language's build reads it. It defaults to the host, and win32, which
-     targets only Windows, cross-compiles on Linux. `sngl build` writes an
-     `.exe`, and `sngl run` on Linux runs it under `wine` without being asked.
-   - A program links as a GUI program (`-H=windowsgui` for Go, `-mwindows`
-     for C), its test agent too, which talks over TCP.
-   - The binary is `<name>.exe` (`binaryName`).
-   - `sngl run` runs it under `wine`.
-   - `internal/gencache/inputs.go:533` keys on `GOOS`, `GOARCH`,
-     `CGO_ENABLED` and `CC` from the environment. Make sure the values
-     set for the build, not only the ambient ones, are in the key.
+5. **Cross-compiling.** Done for C, Go with Part 4.
+   - The platform says what it builds for, and the language's build reads it.
+     win32's generator writes `target windows/<arch>` into C's `sngl.build`
+     (`codegen/lang/c/compile.go`), and `c.buildProgram` picks MinGW's
+     compiler for it (`ForTarget`), whatever `cc` says.
+     `cmd/sngl/testdata/c_win32_build.txt` holds both architectures.
+   - A program links as a GUI program: `-mwindows` is in the platform's
+     `c.link`, so its test agent, which talks over TCP, links that way too.
+   - MinGW names the binary `<name>.exe`, which `sngl build` reports.
+   - `sngl run` runs it under `wine` (`c.launch`), checked by hand: a GUI
+     program does not exit by itself, and `@run` is not written for win32.
+   - **Go, with Part 4:** `go.buildModule` (`codegen/lang/golang/build.go`)
+     runs the host's `go build`. It will read the same target and set
+     `GOOS=windows`, `GOARCH`, `CGO_ENABLED=1`, `CC=<arch>-w64-mingw32-gcc`
+     and `-ldflags=-H=windowsgui`. `internal/gencache/inputs.go` keys on
+     those variables from the environment, so the values set for the build,
+     not only the ambient ones, must be in the key.
 6. **Tests: a launcher, records and goldens.** Done for C: the agent is
    cross-compiled for the program's `arch` and runs under Wine, connecting
    back to a loopback listener (`codegen/platform/win32/launcher.go`,

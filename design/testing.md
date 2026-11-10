@@ -118,7 +118,8 @@ not start, and a slow fyne run timed out there.
 **Nor does it compile what a record answers.** A script's `sngl build` and
 compiled `sngl run` are answered from a `testrun/build/…` or `testrun/run/…`
 record of the generated program and the arguments (`Records.AnswerTool`; a
-run's record holds what it printed), and compile only under `-update` and
+run's record holds what it printed, and a build's the name of the file it
+wrote, so a Windows build's `app.exe` is printed with nothing built), and compile only under `-update` and
 `-verify`, which the `[toolchain]` condition says: a step running the binary
 they built is guarded by it. A script that only checks generated Go compiles
 writes `gobuild <pkgs>` rather than `exec go build`, answered the same way

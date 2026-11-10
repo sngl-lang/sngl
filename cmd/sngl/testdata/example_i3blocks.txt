@@ -46,7 +46,11 @@ exec sh -c '(echo "["; echo "{\"name\":\"load\",\"instance\":\"4\",\"button\":1,
 stdout '"name":"load"'
 -- testrun/build/fyne/go/i3blocks/bar.sngl/1 --
 sha256:51bad4287d8569ad1b2111ada325b370
-{}
+{
+  "stdout": "bar"
+}
 -- testrun/build/gtk4/go/i3blocks/bar.sngl/1 --
 sha256:23af7fc12842dbf25dfbaf572928644a
-{}
+{
+  "stdout": "bar"
+}

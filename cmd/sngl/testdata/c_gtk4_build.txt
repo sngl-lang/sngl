@@ -257,13 +257,21 @@ ui.window(title="Grid") {
 }
 -- testrun/build/gtk4/c/app.sngl/1 --
 sha256:e5609af0b70c37753e214598a1fadfba
-{}
+{
+  "stdout": "app"
+}
 -- testrun/build/gtk4/c/generic.sngl/1 --
 sha256:7bec68b420f42986b6f680450c22182a
-{}
+{
+  "stdout": "app"
+}
 -- testrun/build/gtk4/c/pages.sngl/1 --
 sha256:b2de68cf9eccc3b067e9c4b1596d00ff
-{}
+{
+  "stdout": "app"
+}
 -- testrun/build/gtk4/c/shared.sngl/1 --
 sha256:9c06c4592dd5617988341f9bd2053618
-{}
+{
+  "stdout": "app"
+}
