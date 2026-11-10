@@ -66,6 +66,18 @@ HWND sngl_win32_select(void);
 HWND sngl_win32_divider(void);
 HWND sngl_win32_link(void);
 HWND sngl_win32_radio(void);
+/* sngl_win32_tabs is a tab control, which shows a tab for each page
+ * appended to it, titled with the page's text, and the page of the one
+ * selected; a page, sngl_win32_tab_page, is a box. */
+HWND sngl_win32_tabs(void);
+HWND sngl_win32_tab_page(void);
+/* sngl_win32_scroll is a box that scrolls what it holds along the axes
+ * sngl_win32_set_scroll gives it, vertically where it is given none. */
+HWND sngl_win32_scroll(void);
+/* sngl_win32_modal is a node taking no room in its box, whose children are
+ * shown in a window of their own over the window it is in, which is
+ * disabled while the modal is open. */
+HWND sngl_win32_modal(void);
 
 /* sngl_win32_append makes child the last of parent's children, and
  * sngl_win32_insert puts it before before, which is one of them. Either lays
@@ -117,6 +129,18 @@ const char *sngl_win32_selected(HWND w);
 void sngl_win32_set_shown(HWND w, int shown);
 int sngl_win32_is_shown(HWND w);
 void sngl_win32_set_enabled(HWND w, int enabled);
+/* sngl_win32_set_selected is the page a tabs shows. */
+void sngl_win32_set_selected(HWND tabs, int selected);
+void sngl_win32_set_scroll(HWND w, int vertical, int horizontal);
+/* sngl_win32_set_tip is what a box's children show as the pointer rests
+ * on them; empty, nothing. */
+void sngl_win32_set_tip(HWND box, const unsigned short *tip);
+/* sngl_win32_set_open shows a modal or hides it, and sngl_win32_is_open is
+ * whether it is shown. A closable one's window has a close button, which
+ * reports its closed handler and leaves it to the program to hide it. */
+void sngl_win32_set_open(HWND m, int open);
+int sngl_win32_is_open(HWND m);
+void sngl_win32_set_closable(HWND m, int closable);
 /* sngl_win32_set_href is what a link opens. */
 void sngl_win32_set_href(HWND w, const unsigned short *href);
 
@@ -172,6 +196,9 @@ void sngl_win32_on_activate(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_rele
 void sngl_win32_on_closed(HWND top, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
 /* sngl_win32_on_visible calls fn with 0 when a toplevel the window manager
  * closes is hidden, ahead of its closed handler. */
+/* sngl_win32_on_reach_end calls fn when a scroll's end comes within half
+ * a page of showing, as it is scrolled there or what it holds shrinks. */
+void sngl_win32_on_reach_end(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
 void sngl_win32_on_visible(HWND top, sngl_win32_bool_fn fn, void *ctx, sngl_win32_release release);
 
 /* --- A test's events ---
@@ -191,8 +218,13 @@ void sngl_win32_fire_activate(HWND w, const unsigned short *text);
 /* sngl_win32_fire_select is the choice labeled label picked from a
  * drop-down. */
 void sngl_win32_fire_select(HWND w, const unsigned short *label);
-/* sngl_win32_fire_close is the window manager's close of a toplevel. */
+/* sngl_win32_fire_close is the window manager's close of a toplevel, or
+ * of a modal's window. */
 void sngl_win32_fire_close(HWND top);
+/* sngl_win32_fire_tab is the tab at index chosen, and
+ * sngl_win32_fire_reach_end a scroll's end arriving. */
+void sngl_win32_fire_tab(HWND tabs, int index);
+void sngl_win32_fire_reach_end(HWND w);
 
 /* --- Timers --- */
 

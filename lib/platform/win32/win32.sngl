@@ -341,8 +341,9 @@ enum BoxMode {
 }
 
 // A box lays its children out as its mode says. A framed one draws an
-// etched edge inside its bounds, a hidden one takes no room, and one with a
-// click handler is pressed as a button is.
+// etched edge inside its bounds, a hidden one takes no room, one with a
+// click handler is pressed as a button is, and one with a tip shows it as
+// the pointer rests on one of its children.
 #[marks.intrinsic("win32:Box")]
 component Box(
     vertical bool,
@@ -351,9 +352,13 @@ component Box(
     columns  int = 0,
     framed   bool = false,
     visible  bool = true,
+    tip      string = "",
     @click(),
     children ...component ui.node,
 ) ui.node
+
+#[macro.cnative("sngl_win32_set_tip")]
+func _rtSetTip(b Box, tip c.utf16)
 
 #[macro.cnative("sngl_win32_set_mode")]
 func _rtSetMode(b Box, mode int)
@@ -425,6 +430,11 @@ func _set_Box_framed(b Box, framed bool) {
 #[gen.protocol(set)]
 func _set_Box_visible(b Box, visible bool) {
     _rtSetShown(b, visible)
+}
+
+#[gen.protocol(set)]
+func _set_Box_tip(b Box, tip string) {
+    _rtSetTip(b, tip)
 }
 
 #[gen.protocol(on)]
@@ -865,6 +875,238 @@ func _on_Select_change(s Select, change func()) {
     _rtOnChange(s, change)
 }
 
+// A tab control, which shows a tab for each page it holds and the page of
+// the one `selected`.
+#[marks.intrinsic("win32:Tabs")]
+component Tabs(selected int, look Look, pages ...component ui.node) ui.node
+
+// One page of a tab control, its tab titled `title`. `@change` is the user
+// choosing its tab, which a disabled page's refuses.
+#[marks.intrinsic("win32:TabPage")]
+component TabPage(title string, enabled bool, @change(), content ...component ui.node) ui.node
+
+#[macro.cnative("sngl_win32_tabs")]
+func _rtTabs() Tabs
+
+#[macro.cnative("sngl_win32_set_selected")]
+func _rtSetSelected(t Tabs, selected int)
+
+// Chooses the tab at `index` as the user's click on it does, which reports
+// it.
+#[macro.cnative("sngl_win32_fire_tab")]
+func pickTab(t Tabs, index int)
+
+#[macro.cnative("sngl_win32_tab_page")]
+func _rtTabPage() TabPage
+
+#[gen.protocol(create)]
+func _create_Tabs() Tabs {
+    return _rtTabs()
+}
+
+#[gen.protocol(append)]
+func _append_Tabs(parent Tabs, page ui.node) {
+    _rtAppend(parent, page)
+}
+
+#[gen.protocol(remove)]
+func _remove_Tabs(parent Tabs, page ui.node) {
+    _rtRemove(parent, page)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Tabs(parent Tabs, page ui.node, before ui.node) {
+    _rtInsert(parent, page, before)
+}
+
+#[gen.protocol(set)]
+func _set_Tabs_selected(t Tabs, selected int) {
+    _rtSetSelected(t, selected)
+}
+
+#[gen.protocol(set)]
+func _set_Tabs_look(t Tabs, look Look) {
+    _look(t, look)
+}
+
+#[gen.protocol(create)]
+func _create_TabPage() TabPage {
+    return _rtTabPage()
+}
+
+#[gen.protocol(append)]
+func _append_TabPage(parent TabPage, child ui.node) {
+    _rtAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_TabPage(parent TabPage, child ui.node) {
+    _rtRemove(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_TabPage(parent TabPage, child ui.node, before ui.node) {
+    _rtInsert(parent, child, before)
+}
+
+#[gen.protocol(set)]
+func _set_TabPage_title(p TabPage, title string) {
+    _rtSetText(p, title)
+}
+
+#[gen.protocol(set)]
+func _set_TabPage_enabled(p TabPage, enabled bool) {
+    _rtSetEnabled(p, enabled)
+}
+
+#[gen.protocol(on)]
+func _on_TabPage_change(p TabPage, change func()) {
+    _rtOnClick(p, change)
+}
+
+// A box scrolling what it holds along its axes, which reports its end
+// coming within half a page of showing as it arrives there.
+#[marks.intrinsic("win32:Scroll")]
+component Scroll(
+    axes    ui.ScrollDirection,
+    look    Look,
+    @reachEnd(),
+    content    ...component option[ui.node],
+) ui.node
+
+#[macro.cnative("sngl_win32_scroll")]
+func _rtScroll() Scroll
+
+#[macro.cnative("sngl_win32_set_scroll")]
+func _rtSetScroll(s Scroll, vertical bool, horizontal bool)
+
+#[macro.cnative("sngl_win32_on_reach_end")]
+func _rtOnReachEnd(
+    w Scroll,
+    #[c.type("sngl_win32_fn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
+)
+
+#[macro.cnative("sngl_win32_fire_reach_end")]
+func _rtFireReachEnd(s Scroll)
+
+#[gen.protocol(create)]
+func _create_Scroll() Scroll {
+    return _rtScroll()
+}
+
+#[gen.protocol(append)]
+func _append_Scroll(parent Scroll, child ui.node) {
+    _rtAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_Scroll(parent Scroll, child ui.node) {
+    _rtRemove(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Scroll(parent Scroll, child ui.node, before ui.node) {
+    _rtInsert(parent, child, before)
+}
+
+#[gen.protocol(set)]
+func _set_Scroll_axes(s Scroll, axes ui.ScrollDirection) {
+    _rtSetScroll(s, axes != ui.ScrollDirection.horizontal, axes != ui.ScrollDirection.vertical)
+}
+
+#[gen.protocol(set)]
+func _set_Scroll_look(s Scroll, look Look) {
+    _look(s, look)
+}
+
+#[gen.protocol(on)]
+func _on_Scroll_reachEnd(s Scroll, reachEnd func()) {
+    _rtOnReachEnd(s, reachEnd)
+}
+
+#[gen.fires("reachEnd")]
+func _fire_Scroll_reachEnd(s Scroll) {
+    _rtFireReachEnd(s)
+}
+
+// A node taking no room in its box, whose children are shown in a window of
+// their own over the window it is in while it is `open`, that window
+// disabled meanwhile. A closable one's window has a close button, which
+// reports `@closed` and leaves hiding it to the program.
+#[marks.intrinsic("win32:Modal")]
+component Modal(title string, open bool, closable bool, @closed(), content ...component ui.node) ui.node
+
+#[macro.cnative("sngl_win32_modal")]
+func _rtModal() Modal
+
+#[macro.cnative("sngl_win32_set_open")]
+func _rtSetOpen(m Modal, open bool)
+
+#[macro.cnative("sngl_win32_set_closable")]
+func _rtSetClosable(m Modal, closable bool)
+
+#[macro.cnative("sngl_win32_on_closed")]
+func _rtModalOnClosed(
+    m Modal,
+    #[c.type("sngl_win32_fn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
+)
+
+#[macro.cnative("sngl_win32_fire_close")]
+func _rtFireModalClose(m Modal)
+
+// Whether a modal's window is shown.
+#[macro.cnative("sngl_win32_is_open")]
+func isOpen(m Modal) bool
+
+#[gen.protocol(create)]
+func _create_Modal() Modal {
+    return _rtModal()
+}
+
+#[gen.protocol(append)]
+func _append_Modal(parent Modal, child ui.node) {
+    _rtAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_Modal(parent Modal, child ui.node) {
+    _rtRemove(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Modal(parent Modal, child ui.node, before ui.node) {
+    _rtInsert(parent, child, before)
+}
+
+#[gen.protocol(set)]
+func _set_Modal_title(m Modal, title string) {
+    _rtSetText(m, title)
+}
+
+#[gen.protocol(set)]
+func _set_Modal_open(m Modal, open bool) {
+    _rtSetOpen(m, open)
+}
+
+#[gen.protocol(set)]
+func _set_Modal_closable(m Modal, closable bool) {
+    _rtSetClosable(m, closable)
+}
+
+#[gen.protocol(on)]
+func _on_Modal_closed(m Modal, closed func()) {
+    _rtModalOnClosed(m, closed)
+}
+
+#[gen.fires("closed")]
+func _fire_Modal_closed(m Modal) {
+    _rtFireModalClose(m)
+}
+
 // --- Timers ---
 
 // Calls `fn` every `ms` milliseconds from the message loop, until the id it
@@ -1119,6 +1361,50 @@ const component ui.drawer[platform](style, open, content) {
 
 const component ui.popover[platform](style, open, content) {
     Box(vertical=true, framed=true, visible=open, look=boxLookOf(style, 6)) {
+        content
+    }
+}
+
+// A tab is a page of a tab control, which shows a tab for it. `variant` is
+// the control's look, which Win32's theme draws.
+const component ui.tabs[platform](selected, style, @change, items) {
+    Tabs #strip(selected=selected, look=lookOf(style)) {
+        for var k, t = items {
+            TabPage(title=t.label, enabled=!t.disabled, @change {
+                selected = k
+                change(k)
+            }) {
+                t.content
+            }
+        }
+    }
+}
+
+// A test chooses the tab at `index` as a click on it does.
+func ui.tabs.change[platform](index) {
+    pickTab(strip, index)
+}
+
+// `@scroll` and `@scrollEnd` have nothing to reach: the runtime reports only
+// the end arriving.
+const component ui.scroll[platform](style, direction, @reachEnd, content) {
+    Scroll(axes=direction, look=lookOf(style), @reachEnd { reachEnd() }) {
+        content
+    }
+}
+
+// The trigger's box shows the tip as the pointer rests on it. `position`
+// and `delay` are the system's.
+const component ui.tooltip[platform](style, text, trigger) {
+    Box(vertical=true, tip=text, look=lookOf(style)) {
+        trigger
+    }
+}
+
+// A window of its own, owned by the program's and modal over it. Its style
+// and `size` have nothing to reach: the window is sized to what it holds.
+const component ui.modal[platform](open, title, closable, @close, content) {
+    Modal(title=title, open=open, closable=closable, @closed { close() }) {
         content
     }
 }

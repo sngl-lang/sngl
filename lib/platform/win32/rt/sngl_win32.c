@@ -14,8 +14,12 @@
 #define SNGL_WM_LAYOUT (WM_APP + 1)
 /* Work sngl_post queued, its handler the message's lParam. */
 #define SNGL_WM_POST (WM_APP + 2)
+/* A scroll's end arriving, reported once its layout is done. */
+#define SNGL_WM_REACHED (WM_APP + 3)
+/* A modal's open applied, once it is in the window it is shown over. */
+#define SNGL_WM_OPEN (WM_APP + 4)
 
-enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO };
+enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO, K_TABS, K_SCROLL, K_MODAL };
 
 /* How a box lays its children out (sngl_win32_set_mode). */
 enum { M_LINE, M_GRID, M_FLOW, M_STACK, M_EQUAL };
@@ -64,6 +68,19 @@ typedef struct {
 	int off_prop, off_look;
 	/* href is a link's, opened as the user clicks it. */
 	WCHAR *href;
+	/* tip is what a box's children show as the pointer rests on them. */
+	WCHAR *tip;
+	/* selected is a tabs' page shown. */
+	int selected;
+	/* A scroll's axes, where it is along each, and whether its end was
+	 * reported and has not been left since; reach is its handler. */
+	int scroll_v, scroll_h, pos_x, pos_y, at_end;
+	handler reach;
+	/* A modal is a node holding no room in its box, and dialog the window
+	 * it shows what it holds in while open, over the window it is in,
+	 * which modal_of names back. */
+	HWND dialog, modal_of;
+	int open, closable;
 	HWND self;
 	HWND *kids;
 	int nkids, capkids;
@@ -189,6 +206,14 @@ static void forget(HWND w) {
 	drop_handler(&c->activate);
 	drop_handler(&c->closed);
 	drop_handler(&c->visible);
+	drop_handler(&c->reach);
+	if (c->dialog) {
+		HWND owner = GetWindow(c->dialog, GW_OWNER);
+		if (c->open && owner) {
+			EnableWindow(owner, TRUE);
+		}
+		DestroyWindow(c->dialog);
+	}
 	if (c->font) {
 		DeleteObject(c->font);
 	}
@@ -197,6 +222,7 @@ static void forget(HWND w) {
 	}
 	free(c->kids);
 	free(c->href);
+	free(c->tip);
 	free(c);
 }
 
@@ -204,6 +230,8 @@ static void forget(HWND w) {
 
 static void measure(HWND w, SIZE *out);
 static void relayout(HWND w);
+static void refresh(HWND w, int dpi);
+static void lay_out_top(HWND top);
 
 /* text_size is w's text as its font draws it. */
 static SIZE text_size(HWND w) {
@@ -383,6 +411,26 @@ static SIZE box_measure(ctl *c) {
 	return s;
 }
 
+/* tabs_size is a tabs': its largest page, and the strip of tabs over it. */
+static SIZE tabs_size(HWND w, ctl *c) {
+	SIZE most = {0, 0};
+	for (int i = 0; i < c->nkids; i++) {
+		SIZE k;
+		measure(c->kids[i], &k);
+		most.cx = k.cx > most.cx ? k.cx : most.cx;
+		most.cy = k.cy > most.cy ? k.cy : most.cy;
+	}
+	RECT r = {0, 0, most.cx, most.cy};
+	SendMessageW(w, TCM_ADJUSTRECT, TRUE, (LPARAM)&r);
+	SIZE s = {r.right - r.left, r.bottom - r.top};
+	int n = (int)SendMessageW(w, TCM_GETITEMCOUNT, 0, 0);
+	RECT last;
+	if (n > 0 && SendMessageW(w, TCM_GETITEMRECT, (WPARAM)(n - 1), (LPARAM)&last) && last.right + px(4, c->dpi) > s.cx) {
+		s.cx = last.right + px(4, c->dpi);
+	}
+	return s;
+}
+
 static void measure(HWND w, SIZE *out) {
 	ctl *c = ctl_of(w);
 	SIZE s = {0, 0};
@@ -455,6 +503,28 @@ static void measure(HWND w, SIZE *out) {
 	case K_LINK:
 		s = text_size(w);
 		break;
+	case K_TABS:
+		s = tabs_size(w, c);
+		break;
+	case K_SCROLL: {
+		/* What it holds across the axes it does not scroll along, and
+		 * along one it does, its least size where its style gives one
+		 * and otherwise no more than a few lines of it. */
+		s = box_measure(c);
+		int most = px(200, c->dpi);
+		if (c->scroll_v) {
+			int cap = c->min_h > 0 ? 0 : most;
+			s.cy = s.cy < cap ? s.cy : cap;
+			s.cx += GetSystemMetrics(SM_CXVSCROLL);
+		}
+		if (c->scroll_h) {
+			int cap = c->min_w > 0 ? 0 : most;
+			s.cx = s.cx < cap ? s.cx : cap;
+			s.cy += GetSystemMetrics(SM_CYHSCROLL);
+		}
+		break;
+	}
+	case K_MODAL:
 	case K_SPACER:
 		break;
 	}
@@ -545,6 +615,66 @@ static int flow(kid *ks, int n, RECT *at, int x0, int y0, int iw, int gap) {
 	return n > 0 ? y + h - y0 : 0;
 }
 
+static void place(HWND w, int cw, int ch);
+
+/* scroll_area is the room a scroll lays what it holds out in, inside its
+ * vw by vh client area: as large as what it holds along each axis it
+ * scrolls, and moved by how far it has. It sets the scroll bars by it, and
+ * reports its end coming within half a page of showing, once each time it
+ * arrives there. */
+static void scroll_area(HWND box, ctl *c, int vw, int vh, int *x0, int *y0, int *iw, int *ih) {
+	SIZE content = box_measure(c);
+	int pw = *iw, ph = *ih;
+	if (c->scroll_h && content.cx > *iw) {
+		*iw = content.cx;
+	}
+	if (c->scroll_v && content.cy > *ih) {
+		*ih = content.cy;
+	}
+	int max_x = *iw - pw > 0 ? *iw - pw : 0, max_y = *ih - ph > 0 ? *ih - ph : 0;
+	c->pos_x = c->pos_x > max_x ? max_x : c->pos_x < 0 ? 0 : c->pos_x;
+	c->pos_y = c->pos_y > max_y ? max_y : c->pos_y < 0 ? 0 : c->pos_y;
+	SCROLLINFO si = {sizeof si, SIF_ALL | SIF_DISABLENOSCROLL, 0, 0, 0, 0, 0};
+	if (c->scroll_v) {
+		si.nMax = *ih + (vh - ph) - 1;
+		si.nPage = (UINT)vh;
+		si.nPos = c->pos_y;
+		SetScrollInfo(box, SB_VERT, &si, TRUE);
+	}
+	if (c->scroll_h) {
+		si.nMax = *iw + (vw - pw) - 1;
+		si.nPage = (UINT)vw;
+		si.nPos = c->pos_x;
+		SetScrollInfo(box, SB_HORZ, &si, TRUE);
+	}
+	*x0 -= c->pos_x;
+	*y0 -= c->pos_y;
+	int ending = c->scroll_v ? c->pos_y + ph >= *ih - ph / 2 : c->pos_x + pw >= *iw - pw / 2;
+	if (ending && !c->at_end) {
+		c->at_end = 1;
+		PostMessageW(box, SNGL_WM_REACHED, 0, 0);
+	} else if (!ending) {
+		c->at_end = 0;
+	}
+}
+
+/* lay_out_tabs shows a tabs' page selected in the room under its strip,
+ * and hides the rest. */
+static void lay_out_tabs(HWND tabs, int w, int h) {
+	ctl *c = ctl_of(tabs);
+	RECT r = {0, 0, w, h};
+	SendMessageW(tabs, TCM_ADJUSTRECT, FALSE, (LPARAM)&r);
+	for (int i = 0; i < c->nkids; i++) {
+		if (i == c->selected) {
+			SetWindowPos(c->kids[i], HWND_TOP, r.left, r.top, r.right - r.left, r.bottom - r.top, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+			place(c->kids[i], r.right - r.left, r.bottom - r.top);
+		} else {
+			ShowWindow(c->kids[i], SW_HIDE);
+		}
+	}
+	InvalidateRect(tabs, NULL, TRUE);
+}
+
 /* lay_out places a box's or a toplevel's children in its w by h client
  * area, as its mode does, and each box among them its own. */
 static void lay_out(HWND box, int w, int h) {
@@ -557,8 +687,17 @@ static void lay_out(HWND box, int w, int h) {
 	for (int i = 0; i < 4; i++) {
 		pad[i] = px(c->pad[i], c->dpi) + e;
 	}
+	if (c->kind == K_SCROLL) {
+		/* The bars always shown, so the room inside is the same
+		 * whatever it holds. */
+		w -= c->scroll_v ? GetSystemMetrics(SM_CXVSCROLL) : 0;
+		h -= c->scroll_h ? GetSystemMetrics(SM_CYHSCROLL) : 0;
+	}
 	int x0 = pad[3], y0 = pad[0];
 	int iw = w - pad[1] - pad[3], ih = h - pad[0] - pad[2];
+	if (c->kind == K_SCROLL) {
+		scroll_area(box, c, w, h, &x0, &y0, &iw, &ih);
+	}
 	int n;
 	kid *ks = laid_kids(c, &n);
 	RECT *at = calloc((size_t)(n ? n : 1), sizeof(RECT));
@@ -608,13 +747,37 @@ static void lay_out(HWND box, int w, int h) {
 		}
 	}
 	for (int i = 0; i < n; i++) {
-		if (ctl_of(ks[i].w)->kind == K_BOX) {
-			lay_out(ks[i].w, at[i].right - at[i].left, at[i].bottom - at[i].top);
-		}
+		place(ks[i].w, at[i].right - at[i].left, at[i].bottom - at[i].top);
 	}
 	free(at);
 	free(ks);
 	InvalidateRect(box, NULL, TRUE);
+}
+
+/* place lays out what w holds in its cw by ch bounds, where it holds any. */
+static void place(HWND w, int cw, int ch) {
+	ctl *c = ctl_of(w);
+	if (!c) {
+		return;
+	}
+	switch (c->kind) {
+	case K_BOX:
+	case K_SCROLL:
+		lay_out(w, cw, ch);
+		break;
+	case K_TABS:
+		lay_out_tabs(w, cw, ch);
+		break;
+	default:
+		break;
+	}
+}
+
+/* lay_out_now lays out what w holds in the bounds it has. */
+static void lay_out_now(HWND w) {
+	RECT r;
+	GetWindowRect(w, &r);
+	place(w, r.right - r.left, r.bottom - r.top);
 }
 
 static void lay_out_top(HWND top) {
@@ -693,6 +856,147 @@ static void tick(UINT_PTR id) {
 			fire(&h);
 			return;
 		}
+	}
+}
+
+/* --- Tabs, scrolls, modals and tips --- */
+
+/* tabs_sync gives a tabs a tab for each page it holds, titled with the
+ * page's text, and selects the one it shows. */
+static void tabs_sync(HWND tabs) {
+	ctl *c = ctl_of(tabs);
+	if (!c) {
+		return;
+	}
+	SendMessageW(tabs, TCM_DELETEALLITEMS, 0, 0);
+	for (int i = 0; i < c->nkids; i++) {
+		int n = GetWindowTextLengthW(c->kids[i]);
+		WCHAR *title = malloc(sizeof(WCHAR) * (size_t)(n + 1));
+		GetWindowTextW(c->kids[i], title, n + 1);
+		TCITEMW item;
+		memset(&item, 0, sizeof item);
+		item.mask = TCIF_TEXT;
+		item.pszText = title;
+		SendMessageW(tabs, TCM_INSERTITEMW, (WPARAM)i, (LPARAM)&item);
+		free(title);
+	}
+	SendMessageW(tabs, TCM_SETCURSEL, (WPARAM)c->selected, 0);
+	relayout(tabs);
+}
+
+/* tab_chosen is the user's choice of a tab: its page is shown and reports
+ * it, or, where the page is disabled, the tab selected before is again. */
+static void tab_chosen(HWND tabs, ctl *c) {
+	int at = (int)SendMessageW(tabs, TCM_GETCURSEL, 0, 0);
+	if (at < 0 || at >= c->nkids || !IsWindowEnabled(c->kids[at])) {
+		SendMessageW(tabs, TCM_SETCURSEL, (WPARAM)c->selected, 0);
+		return;
+	}
+	c->selected = at;
+	lay_out_now(tabs);
+	ctl *page = ctl_of(c->kids[at]);
+	if (page) {
+		fire(&page->click);
+	}
+}
+
+/* scrolled moves a scroll along bar as the bar's request asks. */
+static void scrolled(HWND w, ctl *c, int bar, int request) {
+	SCROLLINFO si = {sizeof si, SIF_ALL, 0, 0, 0, 0, 0};
+	GetScrollInfo(w, bar, &si);
+	int pos = si.nPos, line = px(20, c->dpi);
+	switch (request) {
+	case SB_LINEUP:
+		pos -= line;
+		break;
+	case SB_LINEDOWN:
+		pos += line;
+		break;
+	case SB_PAGEUP:
+		pos -= (int)si.nPage;
+		break;
+	case SB_PAGEDOWN:
+		pos += (int)si.nPage;
+		break;
+	case SB_THUMBTRACK:
+	case SB_THUMBPOSITION:
+		pos = si.nTrackPos;
+		break;
+	case SB_TOP:
+		pos = 0;
+		break;
+	case SB_BOTTOM:
+		pos = si.nMax;
+		break;
+	default:
+		return;
+	}
+	if (bar == SB_VERT) {
+		c->pos_y = pos;
+	} else {
+		c->pos_x = pos;
+	}
+	lay_out_now(w);
+}
+
+/* show_modal shows a modal's window over the window the modal is in,
+ * disabling that one while it is open, or hides it and enables it again. */
+static void show_modal(HWND m, ctl *c) {
+	HWND owner = GetAncestor(m, GA_ROOT);
+	if (owner == park) {
+		owner = NULL;
+	}
+	HWND was = GetWindow(c->dialog, GW_OWNER);
+	if (c->open) {
+		if (IsWindowVisible(c->dialog)) {
+			return;
+		}
+		SetWindowLongPtrW(c->dialog, GWLP_HWNDPARENT, (LONG_PTR)owner);
+		ctl *d = ctl_of(c->dialog);
+		refresh(c->dialog, owner ? dpi_of(owner) : system_dpi);
+		SIZE s;
+		measure(c->dialog, &s);
+		RECT r = {0, 0, s.cx < px(240, d->dpi) ? px(240, d->dpi) : s.cx, s.cy < px(80, d->dpi) ? px(80, d->dpi) : s.cy};
+		AdjustWindowRectEx(&r, (DWORD)GetWindowLongPtrW(c->dialog, GWL_STYLE), FALSE, (DWORD)GetWindowLongPtrW(c->dialog, GWL_EXSTYLE));
+		int ww = r.right - r.left, wh = r.bottom - r.top, x = 0, y = 0;
+		RECT o;
+		if (owner && GetWindowRect(owner, &o)) {
+			x = o.left + (o.right - o.left - ww) / 2;
+			y = o.top + (o.bottom - o.top - wh) / 2;
+		}
+		SetWindowPos(c->dialog, HWND_TOP, x, y, ww, wh, SWP_NOACTIVATE);
+		ShowWindow(c->dialog, SW_SHOW);
+		lay_out_top(c->dialog);
+		if (owner) {
+			EnableWindow(owner, FALSE);
+		}
+	} else if (IsWindowVisible(c->dialog)) {
+		if (was) {
+			EnableWindow(was, TRUE);
+		}
+		ShowWindow(c->dialog, SW_HIDE);
+	}
+}
+
+/* tips is the tooltip every box with a tip shows its children's through. */
+static HWND tips;
+
+/* tip_tool gives child, one of box's, the tip text, or none where it is NULL
+ * or empty. */
+static void tip_tool(HWND box, HWND child, const WCHAR *text) {
+	if (!tips) {
+		tips = CreateWindowExW(WS_EX_TOPMOST, TOOLTIPS_CLASSW, NULL, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, park, NULL, GetModuleHandleW(NULL), NULL);
+	}
+	TOOLINFOW ti;
+	memset(&ti, 0, sizeof ti);
+	ti.cbSize = sizeof ti;
+	ti.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
+	ti.hwnd = box;
+	ti.uId = (UINT_PTR)child;
+	SendMessageW(tips, TTM_DELTOOLW, 0, (LPARAM)&ti);
+	if (text && text[0]) {
+		ti.lpszText = (WCHAR *)text;
+		SendMessageW(tips, TTM_ADDTOOLW, 0, (LPARAM)&ti);
 	}
 }
 
@@ -814,6 +1118,41 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 			lay_out_top(w);
 		}
 		return 0;
+	case WM_NOTIFY: {
+		NMHDR *nm = (NMHDR *)lp;
+		ctl *src = ctl_of(nm->hwndFrom);
+		if (src && src->kind == K_TABS && nm->code == TCN_SELCHANGE) {
+			tab_chosen(nm->hwndFrom, src);
+			return 0;
+		}
+		break;
+	}
+	case WM_VSCROLL:
+	case WM_HSCROLL:
+		if (c && c->kind == K_SCROLL) {
+			scrolled(w, c, msg == WM_VSCROLL ? SB_VERT : SB_HORZ, LOWORD(wp));
+			return 0;
+		}
+		break;
+	case WM_MOUSEWHEEL:
+		if (c && c->kind == K_SCROLL) {
+			int lines = GET_WHEEL_DELTA_WPARAM(wp) / WHEEL_DELTA;
+			for (int i = 0; i < (lines < 0 ? -lines : lines); i++) {
+				scrolled(w, c, c->scroll_v ? SB_VERT : SB_HORZ, lines < 0 ? SB_LINEDOWN : SB_LINEUP);
+			}
+			return 0;
+		}
+		break;
+	case SNGL_WM_REACHED:
+		if (c) {
+			fire(&c->reach);
+		}
+		return 0;
+	case SNGL_WM_OPEN:
+		if (c && c->kind == K_MODAL) {
+			show_modal(w, c);
+		}
+		return 0;
 	case SNGL_WM_POST: {
 		handler *h = (handler *)lp;
 		fire(h);
@@ -847,6 +1186,14 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 		}
 		break;
 	case WM_CLOSE:
+		if (c && c->modal_of) {
+			/* A modal's close is the program's to answer, by its open. */
+			ctl *m = ctl_of(c->modal_of);
+			if (m && m->closable) {
+				fire(&m->closed);
+			}
+			return 0;
+		}
 		if (c && c->kind == K_TOP) {
 			sngl_win32_set_visible(w, 0);
 			if (c->visible.fn) {
@@ -857,7 +1204,7 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 		}
 		break;
 	case WM_NCDESTROY:
-		if (c && c->kind == K_TOP && IsWindowVisible(w)) {
+		if (c && c->kind == K_TOP && !c->modal_of && IsWindowVisible(w)) {
 			shown--;
 		}
 		forget(w);
@@ -1006,7 +1353,7 @@ void sngl_win32_init(void) {
 	ready = 1;
 	aware();
 	common_controls_v6();
-	INITCOMMONCONTROLSEX icc = {sizeof icc, ICC_STANDARD_CLASSES | ICC_PROGRESS_CLASS};
+	INITCOMMONCONTROLSEX icc = {sizeof icc, ICC_STANDARD_CLASSES | ICC_PROGRESS_CLASS | ICC_TAB_CLASSES | ICC_BAR_CLASSES};
 	InitCommonControlsEx(&icc);
 	HINSTANCE inst = GetModuleHandleW(NULL);
 	WNDCLASSEXW wc;
@@ -1142,6 +1489,68 @@ void sngl_win32_set_enabled(HWND w, int enabled) {
 	InvalidateRect(w, NULL, TRUE);
 }
 
+void sngl_win32_set_selected(HWND tabs, int selected) {
+	ctl *c = ctl_of(tabs);
+	if (c && c->selected != selected) {
+		c->selected = selected;
+		SendMessageW(tabs, TCM_SETCURSEL, (WPARAM)selected, 0);
+		relayout(tabs);
+	}
+}
+
+void sngl_win32_set_scroll(HWND w, int vertical, int horizontal) {
+	ctl *c = ctl_of(w);
+	if (!c) {
+		return;
+	}
+	c->scroll_v = vertical != 0;
+	c->scroll_h = horizontal != 0;
+	LONG_PTR style = GetWindowLongPtrW(w, GWL_STYLE) & ~(LONG_PTR)(WS_VSCROLL | WS_HSCROLL);
+	SetWindowLongPtrW(w, GWL_STYLE, style | (c->scroll_v ? WS_VSCROLL : 0) | (c->scroll_h ? WS_HSCROLL : 0));
+	SetWindowPos(w, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+	/* What it holds is laid down its axis, or across where it scrolls only
+	 * that way. */
+	c->vertical = !(c->scroll_h && !c->scroll_v);
+	relayout(w);
+}
+
+void sngl_win32_set_tip(HWND box, const unsigned short *tip) {
+	ctl *c = ctl_of(box);
+	if (!c) {
+		return;
+	}
+	free(c->tip);
+	c->tip = _wcsdup((const WCHAR *)tip);
+	for (int i = 0; i < c->nkids; i++) {
+		tip_tool(box, c->kids[i], c->tip);
+	}
+}
+
+void sngl_win32_set_open(HWND m, int open) {
+	ctl *c = ctl_of(m);
+	if (c && c->kind == K_MODAL) {
+		c->open = open != 0;
+		/* Applied once the modal is in the window it shows over. */
+		PostMessageW(m, SNGL_WM_OPEN, 0, 0);
+	}
+}
+
+int sngl_win32_is_open(HWND m) {
+	ctl *c = ctl_of(m);
+	return c && c->dialog && IsWindowVisible(c->dialog);
+}
+
+void sngl_win32_set_closable(HWND m, int closable) {
+	ctl *c = ctl_of(m);
+	if (!c || !c->dialog) {
+		return;
+	}
+	c->closable = closable != 0;
+	LONG_PTR style = GetWindowLongPtrW(c->dialog, GWL_STYLE) & ~(LONG_PTR)WS_SYSMENU;
+	SetWindowLongPtrW(c->dialog, GWL_STYLE, style | (c->closable ? WS_SYSMENU : 0));
+	SetWindowPos(c->dialog, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+}
+
 void sngl_win32_set_href(HWND w, const unsigned short *href) {
 	ctl *c = ctl_of(w);
 	if (c) {
@@ -1180,6 +1589,40 @@ HWND sngl_win32_link(void) {
 	return w;
 }
 
+HWND sngl_win32_tabs(void) { return control(WC_TABCONTROLW, WS_CLIPCHILDREN | WS_TABSTOP, WS_EX_CONTROLPARENT, K_TABS); }
+
+/* A page is a box, its title its text. */
+HWND sngl_win32_tab_page(void) { return sngl_win32_box(1); }
+
+HWND sngl_win32_scroll(void) {
+	HWND w = control(SNGL_BOX_CLASS, WS_CLIPCHILDREN, WS_EX_CONTROLPARENT, K_SCROLL);
+	ctl *c = ctl_of(w);
+	if (c) {
+		c->vertical = 1;
+		sngl_win32_set_scroll(w, 1, 0);
+	}
+	return w;
+}
+
+HWND sngl_win32_modal(void) {
+	HWND w = control(SNGL_BOX_CLASS, 0, 0, K_MODAL);
+	ctl *c = ctl_of(w);
+	if (!c) {
+		return w;
+	}
+	c->off_prop = 1;
+	ShowWindow(w, SW_HIDE);
+	c->dialog = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_CONTROLPARENT, SNGL_TOP_CLASS, L"", WS_POPUP | WS_CAPTION | WS_CLIPCHILDREN, 0, 0, 0, 0, park, NULL, GetModuleHandleW(NULL), NULL);
+	ctl *d = new_ctl(c->dialog, K_TOP);
+	if (d) {
+		d->vertical = 1;
+		d->gap = 6;
+		d->pad[0] = d->pad[1] = d->pad[2] = d->pad[3] = 12;
+		d->modal_of = w;
+	}
+	return w;
+}
+
 HWND sngl_win32_radio(void) { return control(L"BUTTON", BS_AUTORADIOBUTTON | WS_TABSTOP, 0, K_RADIO); }
 
 HWND sngl_win32_select(void) { return control(WC_COMBOBOXW, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP, 0, K_SELECT); }
@@ -1205,6 +1648,13 @@ static int kids_index(ctl *c, HWND child) {
 	return -1;
 }
 
+/* host is the window that holds what is put in parent: a modal's own,
+ * and otherwise parent. */
+static HWND host(HWND parent) {
+	ctl *c = ctl_of(parent);
+	return c && c->kind == K_MODAL ? c->dialog : parent;
+}
+
 static void adopt(HWND parent, HWND child, int at) {
 	ctl *c = ctl_of(parent);
 	if (!c) {
@@ -1212,10 +1662,17 @@ static void adopt(HWND parent, HWND child, int at) {
 	}
 	SetParent(child, parent);
 	kids_insert(c, child, at);
+	if (c->kind == K_TABS) {
+		tabs_sync(parent);
+	}
+	if (c->tip) {
+		tip_tool(parent, child, c->tip);
+	}
 	relayout(parent);
 }
 
 void sngl_win32_append(HWND parent, HWND child) {
+	parent = host(parent);
 	ctl *c = ctl_of(parent);
 	if (c) {
 		adopt(parent, child, c->nkids);
@@ -1223,6 +1680,7 @@ void sngl_win32_append(HWND parent, HWND child) {
 }
 
 void sngl_win32_insert(HWND parent, HWND child, HWND before) {
+	parent = host(parent);
 	ctl *c = ctl_of(parent);
 	if (!c) {
 		return;
@@ -1232,6 +1690,7 @@ void sngl_win32_insert(HWND parent, HWND child, HWND before) {
 }
 
 void sngl_win32_remove(HWND parent, HWND child) {
+	parent = host(parent);
 	ctl *c = ctl_of(parent);
 	if (c) {
 		int at = kids_index(c, child);
@@ -1239,9 +1698,20 @@ void sngl_win32_remove(HWND parent, HWND child) {
 			memmove(c->kids + at, c->kids + at + 1, sizeof(HWND) * (size_t)(c->nkids - at - 1));
 			c->nkids--;
 		}
-		relayout(parent);
+		if (c->tip) {
+			tip_tool(parent, child, NULL);
+		}
 	}
 	DestroyWindow(child);
+	if (c && c->kind == K_TABS) {
+		if (c->selected >= c->nkids) {
+			c->selected = c->nkids > 0 ? c->nkids - 1 : 0;
+		}
+		tabs_sync(parent);
+	}
+	if (c) {
+		relayout(parent);
+	}
 }
 
 void sngl_win32_attach(HWND top) {
@@ -1282,7 +1752,19 @@ void sngl_win32_detach(HWND top) {
 /* --- Props --- */
 
 void sngl_win32_set_text(HWND w, const unsigned short *text) {
+	ctl *c = ctl_of(w);
+	if (c && c->kind == K_MODAL) {
+		/* A modal's is its window's title. */
+		SetWindowTextW(c->dialog, (LPCWSTR)text);
+		return;
+	}
 	SetWindowTextW(w, (LPCWSTR)text);
+	HWND parent = GetParent(w);
+	ctl *pc = ctl_of(parent);
+	if (pc && pc->kind == K_TABS) {
+		/* A page's is its tab's. */
+		tabs_sync(parent);
+	}
 	relayout(w);
 }
 
@@ -1551,6 +2033,13 @@ void sngl_win32_on_closed(HWND top, sngl_win32_fn fn, void *ctx, sngl_win32_rele
 	}
 }
 
+void sngl_win32_on_reach_end(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		set_handler(&c->reach, fn, ctx, release);
+	}
+}
+
 void sngl_win32_on_visible(HWND top, sngl_win32_bool_fn fn, void *ctx, sngl_win32_release release) {
 	ctl *c = ctl_of(top);
 	if (c) {
@@ -1596,7 +2085,27 @@ void sngl_win32_fire_select(HWND w, const unsigned short *label) {
 	notify(w, CBN_SELCHANGE);
 }
 
-void sngl_win32_fire_close(HWND top) { SendMessageW(top, WM_CLOSE, 0, 0); }
+void sngl_win32_fire_close(HWND top) {
+	ctl *c = ctl_of(top);
+	if (c && c->kind == K_MODAL) {
+		/* A modal's close is its window's. */
+		top = c->dialog;
+	}
+	SendMessageW(top, WM_CLOSE, 0, 0);
+}
+
+void sngl_win32_fire_tab(HWND tabs, int index) {
+	SendMessageW(tabs, TCM_SETCURSEL, (WPARAM)index, 0);
+	NMHDR nm = {tabs, (UINT_PTR)GetDlgCtrlID(tabs), TCN_SELCHANGE};
+	SendMessageW(GetParent(tabs), WM_NOTIFY, nm.idFrom, (LPARAM)&nm);
+}
+
+void sngl_win32_fire_reach_end(HWND w) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		fire(&c->reach);
+	}
+}
 
 /* --- The loop --- */
 
