@@ -1178,6 +1178,159 @@ func _on_MenuEntry_select(e MenuEntry, select func()) {
 }
 
 
+// A list view of rows and columns. `@select` is a row the user selects, and
+// `@sort` a column header they click, where setTable lets them.
+#[marks.intrinsic("win32:Table")]
+component Table(enabled bool, look Look, @select(), @sort()) ui.node
+
+#[macro.cnative("sngl_win32_table")]
+func _rtTable() Table
+
+// Whether a table's rows can be selected, and its rows sorted by a column
+// whose header is clicked.
+#[macro.cnative("sngl_win32_set_table")]
+func setTable(t Table, selectable bool, sortable bool)
+
+// Gives a table its columns, `columns` one a line, and its rows, `rows` one
+// a line of cells separated by tabs, reporting nothing.
+#[macro.cnative("sngl_win32_fill_table")]
+func fillTable(t Table, columns c.utf16, rows c.utf16)
+
+// Selects a table's row `row`, or none where it is negative, unreported.
+#[macro.cnative("sngl_win32_set_row")]
+func selectRow(t Table, row int)
+
+// The row a table has selected, or -1.
+#[macro.cnative("sngl_win32_row")]
+func selectedRow(t Table) int
+
+// The header of the column the user last clicked.
+#[macro.cnative("sngl_win32_sorted")]
+func sortedColumn(t Table) string
+
+#[gen.protocol(create)]
+func _create_Table() Table {
+    return _rtTable()
+}
+
+#[gen.protocol(set)]
+func _set_Table_enabled(t Table, enabled bool) {
+    _rtSetEnabled(t, enabled)
+}
+
+#[gen.protocol(set)]
+func _set_Table_look(t Table, look Look) {
+    _look(t, look)
+}
+
+#[gen.protocol(on)]
+func _on_Table_select(t Table, select func()) {
+    _rtOnChange(t, select)
+}
+
+#[gen.protocol(on)]
+func _on_Table_sort(t Table, sort func()) {
+    _rtOnClick(t, sort)
+}
+
+// A tree view. `@select` is a node the user selects, and `@expand` one they
+// expand or collapse.
+#[marks.intrinsic("win32:Tree")]
+component Tree(look Look, @select(), @expand()) ui.node
+
+#[macro.cnative("sngl_win32_tree")]
+func _rtTree() Tree
+
+// Gives a tree its nodes, `lines` one a line, each indented a tab a level,
+// expanding those whose places in that order `expanded` lists, comma
+// separated.
+#[macro.cnative("sngl_win32_fill_tree")]
+func fillTree(t Tree, lines c.utf16, expanded c.utf16)
+
+// Selects the node labeled `label`, unreported.
+#[macro.cnative("sngl_win32_set_chosen")]
+func chooseNode(t Tree, label c.utf16)
+
+// The label of the node a tree has selected, or "".
+#[macro.cnative("sngl_win32_chosen")]
+func chosenNode(t Tree) string
+
+#[gen.protocol(create)]
+func _create_Tree() Tree {
+    return _rtTree()
+}
+
+#[gen.protocol(set)]
+func _set_Tree_look(t Tree, look Look) {
+    _look(t, look)
+}
+
+#[gen.protocol(on)]
+func _on_Tree_select(t Tree, select func()) {
+    _rtOnChange(t, select)
+}
+
+#[gen.protocol(on)]
+func _on_Tree_expand(t Tree, expand func()) {
+    _rtOnActivate(t, expand)
+}
+
+// A date picker, whose check box unchecked is no date. `@change` is a date
+// the user picks.
+#[marks.intrinsic("win32:DatePicker")]
+component DatePicker(enabled bool, look Look, @change()) ui.node
+
+#[macro.cnative("sngl_win32_date")]
+func _rtDate() DatePicker
+
+// Shows the date `iso`, "YYYY-MM-DD", or none where it is "", unreported.
+#[macro.cnative("sngl_win32_set_date")]
+func showDate(d DatePicker, iso c.utf16)
+
+// Bounds the dates a picker offers; "" is no bound.
+#[macro.cnative("sngl_win32_set_date_range")]
+func boundDates(d DatePicker, min c.utf16, max c.utf16)
+
+// The date a picker shows, "YYYY-MM-DD", or "" for none.
+#[macro.cnative("sngl_win32_date_of")]
+func shownDate(d DatePicker) string
+
+#[gen.protocol(create)]
+func _create_DatePicker() DatePicker {
+    return _rtDate()
+}
+
+#[gen.protocol(set)]
+func _set_DatePicker_enabled(d DatePicker, enabled bool) {
+    _rtSetEnabled(d, enabled)
+}
+
+#[gen.protocol(set)]
+func _set_DatePicker_look(d DatePicker, look Look) {
+    _look(d, look)
+}
+
+#[gen.protocol(on)]
+func _on_DatePicker_change(d DatePicker, change func()) {
+    _rtOnChange(d, change)
+}
+
+// A test's choice, as the user's, in the first table, tree or date picker
+// of the window `n` is in: a row selected, a column header clicked, a node
+// selected by its label, a date picked ("YYYY-MM-DD", or "" for none). Each
+// answers whether there was one to choose.
+#[macro.cnative("sngl_win32_pick_row")]
+func pickRow(n ui.node, row int) bool
+
+#[macro.cnative("sngl_win32_click_column")]
+func clickColumn(n ui.node, column int) bool
+
+#[macro.cnative("sngl_win32_pick_node")]
+func pickNode(n ui.node, label c.utf16) bool
+
+#[macro.cnative("sngl_win32_pick_date")]
+func pickDate(n ui.node, iso c.utf16) bool
+
 // --- Timers ---
 
 // Calls `fn` every `ms` milliseconds from the message loop, until the id it
@@ -1512,4 +1665,80 @@ const component ui.menu[platform](style, open, items) {
             Button(text=it.label, enabled=!it.disabled, @click { it.select() }) {}
         }
     }
+}
+
+// Its columns and rows are offered whenever they change, as a select's
+// choices are, and the bound selection whenever it does. A cell holding a
+// tab or a line break is split there. `sortColumn` and `sortDirection` have
+// nothing to reach: the program sorts its rows, and the header shows no
+// arrow.
+const component ui.table[platform](style, columns, selectable, selected, sortable, @select, @sort, rows) {
+    Table #grid(
+        enabled = true,
+        look = lookOf(style),
+        @select {
+            if selectedRow(grid) != selected {
+                selected = selectedRow(grid)
+                select()
+            }
+        },
+        @sort { sort(sortedColumn(grid)) },
+    ) {}
+    effect(on={sortable=sortable, selectable=selectable, grid=grid}, @mount(k) {
+        setTable(grid, k.selectable, k.sortable)
+    })
+    effect(on={columns=columns.format("\n"), rows=rows.map(func(r) => r.cells.format("\t")).format("\n"), grid=grid}, @mount(k) {
+        selectRow(grid, selected)
+        fillTable(grid, k.columns, k.rows)
+    })
+    effect(on=selected, @mount(s) {
+        selectRow(grid, s)
+    })
+}
+
+// A tree's nodes in traversal order, a line each, indented a tab a level.
+const func _treeLines(items list[ui.treeItem], indent string) string {
+    var out = ""
+    for var it = items {
+        out = out + indent + it.label + "\n" + _treeLines(it.children, indent + "\t")
+    }
+    return out
+}
+
+// Its nodes are offered whenever they change, those `expanded` lists
+// expanded, and the bound selection whenever it changes.
+const component ui.tree[platform](style, selected, expanded, @select, @expand, items) {
+    Tree #nodes(look=lookOf(style), @select {
+        if chosenNode(nodes) != selected {
+            selected = chosenNode(nodes)
+            select()
+        }
+    }, @expand { expand() }) {}
+    effect(on={lines=_treeLines(items, ""), expanded=expanded.format(","), nodes=nodes}, @mount(k) {
+        chooseNode(nodes, selected)
+        fillTree(nodes, k.lines, k.expanded)
+    })
+    effect(on=selected, @mount(s) {
+        chooseNode(nodes, s)
+    })
+}
+
+// A date as the picker shows it: "YYYY-MM-DD", or "" for none.
+const func _isoOf(d option[time.date]) => d == null ? "" : string(d)
+
+// `placeholder` and the focus events have nothing to reach.
+const component ui.datepicker[platform](value, min, max, disabled, style, @change) {
+    DatePicker #picker(enabled=!disabled, look=lookOf(style), @change {
+        var picked = time.parseDate(shownDate(picker))
+        if picked != value {
+            value = picked
+            change(picked)
+        }
+    }) {}
+    effect(on={min=_isoOf(min), max=_isoOf(max), picker=picker}, @mount(k) {
+        boundDates(picker, k.min, k.max)
+    })
+    effect(on=value, @mount(v) {
+        showDate(picker, _isoOf(v))
+    })
 }

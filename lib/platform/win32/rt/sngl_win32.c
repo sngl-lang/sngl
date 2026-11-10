@@ -19,7 +19,7 @@
 /* A modal's open applied, once it is in the window it is shown over. */
 #define SNGL_WM_OPEN (WM_APP + 4)
 
-enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO, K_TABS, K_SCROLL, K_MODAL, K_ENTRY };
+enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO, K_TABS, K_SCROLL, K_MODAL, K_ENTRY, K_TABLE, K_TREE, K_DATE };
 
 /* How a box lays its children out (sngl_win32_set_mode). */
 enum { M_LINE, M_GRID, M_FLOW, M_STACK, M_EQUAL };
@@ -86,6 +86,10 @@ typedef struct {
 	UINT id;
 	int disabled, checked;
 	HMENU menu;
+	/* A table's: whether a row can be selected and a column sorted by, and
+	 * the column a header click last asked for. A tree's label selected. */
+	int selectable, sortable, sort_col;
+	WCHAR *chosen;
 	HWND self;
 	HWND *kids;
 	int nkids, capkids;
@@ -232,6 +236,7 @@ static void forget(HWND w) {
 	free(c->kids);
 	free(c->href);
 	free(c->tip);
+	free(c->chosen);
 	free(c);
 }
 
@@ -239,6 +244,7 @@ static void forget(HWND w) {
 
 static void measure(HWND w, SIZE *out);
 static void relayout(HWND w);
+static const char *utf8(const WCHAR *wide);
 static void refresh(HWND w, int dpi);
 static void lay_out_top(HWND top);
 
@@ -420,6 +426,41 @@ static SIZE box_measure(ctl *c) {
 	return s;
 }
 
+/* tree_size is a tree's: its widest row shown, as deep as it is, and every
+ * row shown, unless its style gives it a height. */
+static SIZE tree_size(HWND w, ctl *c) {
+	SIZE s = {0, 0};
+	int rows = 0, indent = (int)SendMessageW(w, TVM_GETINDENT, 0, 0);
+	HDC dc = GetDC(w);
+	HGDIOBJ old = SelectObject(dc, font_of(c));
+	for (HTREEITEM it = (HTREEITEM)SendMessageW(w, TVM_GETNEXTITEM, TVGN_ROOT, 0); it; it = (HTREEITEM)SendMessageW(w, TVM_GETNEXTITEM, TVGN_NEXTVISIBLE, (LPARAM)it)) {
+		WCHAR buf[256];
+		TVITEMW ti;
+		memset(&ti, 0, sizeof ti);
+		ti.mask = TVIF_TEXT;
+		ti.hItem = it;
+		ti.pszText = buf;
+		ti.cchTextMax = 256;
+		SendMessageW(w, TVM_GETITEMW, 0, (LPARAM)&ti);
+		int depth = 0;
+		for (HTREEITEM p = (HTREEITEM)SendMessageW(w, TVM_GETNEXTITEM, TVGN_PARENT, (LPARAM)it); p; p = (HTREEITEM)SendMessageW(w, TVM_GETNEXTITEM, TVGN_PARENT, (LPARAM)p)) {
+			depth++;
+		}
+		RECT r = {0, 0, 0, 0};
+		DrawTextW(dc, buf, -1, &r, DT_CALCRECT | DT_NOPREFIX | DT_SINGLELINE);
+		int wide = r.right + indent * (depth + 1) + px(24, c->dpi);
+		s.cx = wide > s.cx ? wide : s.cx;
+		rows++;
+	}
+	SelectObject(dc, old);
+	ReleaseDC(w, dc);
+	s.cy = c->min_h > 0 ? 0 : rows * (int)SendMessageW(w, TVM_GETITEMHEIGHT, 0, 0) + px(4, c->dpi);
+	if (s.cx < px(120, c->dpi)) {
+		s.cx = px(120, c->dpi);
+	}
+	return s;
+}
+
 /* tabs_size is a tabs': its largest page, and the strip of tabs over it. */
 static SIZE tabs_size(HWND w, ctl *c) {
 	SIZE most = {0, 0};
@@ -530,6 +571,45 @@ static void measure(HWND w, SIZE *out) {
 			int cap = c->min_w > 0 ? 0 : most;
 			s.cx = s.cx < cap ? s.cx : cap;
 			s.cy += GetSystemMetrics(SM_CYHSCROLL);
+		}
+		break;
+	}
+	case K_TABLE: {
+		/* Every column, and every row under the header, unless its style
+		 * gives it a height. */
+		HWND header = (HWND)SendMessageW(w, LVM_GETHEADER, 0, 0);
+		int cols = (int)SendMessageW(header, HDM_GETITEMCOUNT, 0, 0);
+		for (int i = 0; i < cols; i++) {
+			s.cx += (int)SendMessageW(w, LVM_GETCOLUMNWIDTH, (WPARAM)i, 0);
+		}
+		RECT hr = {0, 0, 0, 0};
+		if (cols > 0) {
+			SendMessageW(header, HDM_GETITEMRECT, 0, (LPARAM)&hr);
+		}
+		int head = hr.bottom - hr.top > 0 ? hr.bottom - hr.top : line_height(w) + px(8, c->dpi);
+		int rows = (int)SendMessageW(w, LVM_GETITEMCOUNT, 0, 0), row = line_height(w) + px(4, c->dpi);
+		RECT ir;
+		ir.left = LVIR_BOUNDS;
+		if (rows > 0 && SendMessageW(w, LVM_GETITEMRECT, 0, (LPARAM)&ir) && ir.bottom > ir.top) {
+			row = ir.bottom - ir.top;
+		}
+		s.cx += 2 * GetSystemMetrics(SM_CXEDGE) + GetSystemMetrics(SM_CXVSCROLL);
+		s.cy = c->min_h > 0 ? 0 : head + rows * row + 2 * GetSystemMetrics(SM_CYEDGE) + px(2, c->dpi);
+		break;
+	}
+	case K_TREE:
+		s = tree_size(w, c);
+		break;
+	case K_DATE: {
+		SIZE ideal = {0, 0};
+		if (SendMessageW(w, DTM_GETIDEALSIZE, 0, (LPARAM)&ideal) && ideal.cx > 0) {
+			s = ideal;
+		} else {
+			s = text_size(w);
+			s.cx = px(130, c->dpi);
+		}
+		if (s.cy < line_height(w) + px(8, c->dpi)) {
+			s.cy = line_height(w) + px(8, c->dpi);
 		}
 		break;
 	}
@@ -1231,9 +1311,53 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 	case WM_NOTIFY: {
 		NMHDR *nm = (NMHDR *)lp;
 		ctl *src = ctl_of(nm->hwndFrom);
-		if (src && src->kind == K_TABS && nm->code == TCN_SELCHANGE) {
-			tab_chosen(nm->hwndFrom, src);
-			return 0;
+		if (!src) {
+			break;
+		}
+		switch (src->kind) {
+		case K_TABS:
+			if (nm->code == TCN_SELCHANGE) {
+				tab_chosen(nm->hwndFrom, src);
+				return 0;
+			}
+			break;
+		case K_TABLE: {
+			NMLISTVIEW *lv = (NMLISTVIEW *)lp;
+			if (nm->code == LVN_ITEMCHANGING && (lv->uChanged & LVIF_STATE) && (lv->uNewState & LVIS_SELECTED) && !src->selectable && !src->quiet) {
+				/* A table no row of which can be selected refuses it. */
+				return TRUE;
+			}
+			if (nm->code == LVN_ITEMCHANGED && (lv->uChanged & LVIF_STATE) && (lv->uNewState & LVIS_SELECTED) && !(lv->uOldState & LVIS_SELECTED) && !src->quiet) {
+				src->selected = lv->iItem;
+				fire(&src->change);
+				return 0;
+			}
+			if (nm->code == LVN_COLUMNCLICK && src->sortable) {
+				src->sort_col = lv->iSubItem;
+				fire(&src->click);
+				return 0;
+			}
+			break;
+		}
+		case K_TREE:
+			if (nm->code == TVN_SELCHANGEDW && !src->quiet) {
+				fire(&src->change);
+				return 0;
+			}
+			if (nm->code == TVN_ITEMEXPANDEDW && !src->quiet) {
+				fire(&src->activate);
+				relayout(nm->hwndFrom);
+				return 0;
+			}
+			break;
+		case K_DATE:
+			if (nm->code == DTN_DATETIMECHANGE && !src->quiet) {
+				fire(&src->change);
+				return 0;
+			}
+			break;
+		default:
+			break;
 		}
 		break;
 	}
@@ -1463,7 +1587,7 @@ void sngl_win32_init(void) {
 	ready = 1;
 	aware();
 	common_controls_v6();
-	INITCOMMONCONTROLSEX icc = {sizeof icc, ICC_STANDARD_CLASSES | ICC_PROGRESS_CLASS | ICC_TAB_CLASSES | ICC_BAR_CLASSES};
+	INITCOMMONCONTROLSEX icc = {sizeof icc, ICC_STANDARD_CLASSES | ICC_PROGRESS_CLASS | ICC_TAB_CLASSES | ICC_BAR_CLASSES | ICC_LISTVIEW_CLASSES | ICC_TREEVIEW_CLASSES | ICC_DATE_CLASSES};
 	InitCommonControlsEx(&icc);
 	HINSTANCE inst = GetModuleHandleW(NULL);
 	WNDCLASSEXW wc;
@@ -1803,6 +1927,447 @@ int sngl_win32_choose(HWND w, const unsigned short *label) {
 int sngl_win32_menu_items(HWND w) {
 	ctl *c = ctl_of(GetAncestor(w, GA_ROOT));
 	return c && c->menu ? GetMenuItemCount(c->menu) : 0;
+}
+
+HWND sngl_win32_table(void) {
+	HWND w = control(WC_LISTVIEWW, LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_TABSTOP, WS_EX_CLIENTEDGE, K_TABLE);
+	SendMessageW(w, LVM_SETEXTENDEDLISTVIEWSTYLE, 0, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+	ctl *c = ctl_of(w);
+	if (c) {
+		c->selected = -1;
+	}
+	return w;
+}
+
+HWND sngl_win32_tree(void) { return control(WC_TREEVIEWW, TVS_HASLINES | TVS_LINESATROOT | TVS_HASBUTTONS | TVS_SHOWSELALWAYS | WS_TABSTOP, WS_EX_CLIENTEDGE, K_TREE); }
+
+HWND sngl_win32_date(void) { return control(DATETIMEPICK_CLASSW, DTS_SHORTDATEFORMAT | DTS_SHOWNONE | WS_TABSTOP, 0, K_DATE); }
+
+/* split calls each with each piece of text between seps, and its length. */
+static void split(const WCHAR *text, WCHAR sep, void (*each)(const WCHAR *piece, size_t n, void *arg), void *arg) {
+	if (!*text) {
+		return;
+	}
+	for (;;) {
+		const WCHAR *end = wcschr(text, sep);
+		size_t n = end ? (size_t)(end - text) : wcslen(text);
+		each(text, n, arg);
+		if (!end) {
+			return;
+		}
+		text = end + 1;
+	}
+}
+
+static WCHAR *dup_n(const WCHAR *s, size_t n) {
+	WCHAR *out = malloc(sizeof(WCHAR) * (n + 1));
+	memcpy(out, s, sizeof(WCHAR) * n);
+	out[n] = 0;
+	return out;
+}
+
+static void add_column(const WCHAR *label, size_t n, void *arg) {
+	HWND w = arg;
+	int at = (int)SendMessageW((HWND)SendMessageW(w, LVM_GETHEADER, 0, 0), HDM_GETITEMCOUNT, 0, 0);
+	LVCOLUMNW col;
+	memset(&col, 0, sizeof col);
+	col.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+	col.pszText = dup_n(label, n);
+	col.cx = 60;
+	col.iSubItem = at;
+	SendMessageW(w, LVM_INSERTCOLUMNW, (WPARAM)at, (LPARAM)&col);
+	free(col.pszText);
+}
+
+typedef struct {
+	HWND w;
+	int row, col;
+} cell_at;
+
+static void add_cell(const WCHAR *text, size_t n, void *arg) {
+	cell_at *at = arg;
+	LVITEMW it;
+	memset(&it, 0, sizeof it);
+	it.mask = LVIF_TEXT;
+	it.iItem = at->row;
+	it.iSubItem = at->col;
+	it.pszText = dup_n(text, n);
+	if (at->col == 0) {
+		SendMessageW(at->w, LVM_INSERTITEMW, 0, (LPARAM)&it);
+	} else {
+		SendMessageW(at->w, LVM_SETITEMTEXTW, (WPARAM)at->row, (LPARAM)&it);
+	}
+	free(it.pszText);
+	at->col++;
+}
+
+static void add_row(const WCHAR *line, size_t n, void *arg) {
+	cell_at *at = arg;
+	WCHAR *row = dup_n(line, n);
+	at->col = 0;
+	if (n == 0) {
+		add_cell(row, 0, at);
+	}
+	split(row, L'\t', add_cell, at);
+	free(row);
+	at->row++;
+}
+
+/* fit_columns makes each of a table's columns as wide as its header or its
+ * widest cell, whichever is wider. */
+static void fit_columns(HWND w, ctl *c) {
+	int cols = (int)SendMessageW((HWND)SendMessageW(w, LVM_GETHEADER, 0, 0), HDM_GETITEMCOUNT, 0, 0);
+	int rows = (int)SendMessageW(w, LVM_GETITEMCOUNT, 0, 0);
+	HDC dc = GetDC(w);
+	HGDIOBJ old = SelectObject(dc, font_of(c));
+	for (int i = 0; i < cols; i++) {
+		WCHAR buf[256];
+		int wide = 0;
+		for (int r = -1; r < rows; r++) {
+			buf[0] = 0;
+			if (r < 0) {
+				LVCOLUMNW col;
+				memset(&col, 0, sizeof col);
+				col.mask = LVCF_TEXT;
+				col.pszText = buf;
+				col.cchTextMax = 256;
+				SendMessageW(w, LVM_GETCOLUMNW, (WPARAM)i, (LPARAM)&col);
+			} else {
+				LVITEMW it;
+				memset(&it, 0, sizeof it);
+				it.iSubItem = i;
+				it.pszText = buf;
+				it.cchTextMax = 256;
+				SendMessageW(w, LVM_GETITEMTEXTW, (WPARAM)r, (LPARAM)&it);
+			}
+			RECT tr = {0, 0, 0, 0};
+			DrawTextW(dc, buf, -1, &tr, DT_CALCRECT | DT_NOPREFIX | DT_SINGLELINE);
+			wide = tr.right > wide ? tr.right : wide;
+		}
+		SendMessageW(w, LVM_SETCOLUMNWIDTH, (WPARAM)i, wide + px(16, c->dpi));
+	}
+	SelectObject(dc, old);
+	ReleaseDC(w, dc);
+}
+
+/* select_row selects a table's row at, or none where it is negative,
+ * reporting nothing. */
+static void select_row(HWND w, ctl *c, int at) {
+	c->quiet++;
+	LVITEMW it;
+	memset(&it, 0, sizeof it);
+	it.stateMask = LVIS_SELECTED | LVIS_FOCUSED;
+	SendMessageW(w, LVM_SETITEMSTATE, (WPARAM)-1, (LPARAM)&it);
+	if (at >= 0) {
+		it.state = LVIS_SELECTED | LVIS_FOCUSED;
+		SendMessageW(w, LVM_SETITEMSTATE, (WPARAM)at, (LPARAM)&it);
+		SendMessageW(w, LVM_ENSUREVISIBLE, (WPARAM)at, FALSE);
+	}
+	c->quiet--;
+}
+
+void sngl_win32_fill_table(HWND w, const unsigned short *columns, const unsigned short *rows) {
+	ctl *c = ctl_of(w);
+	if (!c) {
+		return;
+	}
+	c->quiet++;
+	SendMessageW(w, LVM_DELETEALLITEMS, 0, 0);
+	while (SendMessageW(w, LVM_DELETECOLUMN, 0, 0)) {
+	}
+	split((const WCHAR *)columns, L'\n', add_column, w);
+	cell_at at = {w, 0, 0};
+	split((const WCHAR *)rows, L'\n', add_row, &at);
+	fit_columns(w, c);
+	select_row(w, c, c->selected);
+	c->quiet--;
+	relayout(w);
+}
+
+void sngl_win32_set_row(HWND w, int row) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		c->selected = row;
+		select_row(w, c, row);
+	}
+}
+
+int sngl_win32_row(HWND w) {
+	ctl *c = ctl_of(w);
+	return c ? c->selected : -1;
+}
+
+void sngl_win32_set_table(HWND w, int selectable, int sortable) {
+	ctl *c = ctl_of(w);
+	if (!c) {
+		return;
+	}
+	c->selectable = selectable != 0;
+	c->sortable = sortable != 0;
+	LONG_PTR style = GetWindowLongPtrW(w, GWL_STYLE) & ~(LONG_PTR)LVS_NOSORTHEADER;
+	SetWindowLongPtrW(w, GWL_STYLE, style | (c->sortable ? 0 : LVS_NOSORTHEADER));
+}
+
+const char *sngl_win32_sorted(HWND w) {
+	ctl *c = ctl_of(w);
+	WCHAR buf[256] = {0};
+	LVCOLUMNW col;
+	memset(&col, 0, sizeof col);
+	col.mask = LVCF_TEXT;
+	col.pszText = buf;
+	col.cchTextMax = 256;
+	if (c) {
+		SendMessageW(w, LVM_GETCOLUMNW, (WPARAM)c->sort_col, (LPARAM)&col);
+	}
+	return utf8(buf);
+}
+
+typedef struct {
+	HWND w;
+	HTREEITEM parents[64];
+	int index;
+	const WCHAR *expanded;
+	HTREEITEM *open;
+	int nopen;
+} tree_fill;
+
+/* listed is whether n is among the numbers list holds, comma separated. */
+static int listed(const WCHAR *list, int n) {
+	for (const WCHAR *at = list; *at;) {
+		if (_wtoi(at) == n) {
+			return 1;
+		}
+		const WCHAR *comma = wcschr(at, L',');
+		if (!comma) {
+			break;
+		}
+		at = comma + 1;
+	}
+	return 0;
+}
+
+static void add_node(const WCHAR *line, size_t n, void *arg) {
+	tree_fill *f = arg;
+	size_t depth = 0;
+	while (depth < n && line[depth] == L'\t') {
+		depth++;
+	}
+	if (depth > 62) {
+		depth = 62;
+	}
+	TVINSERTSTRUCTW ins;
+	memset(&ins, 0, sizeof ins);
+	ins.hParent = depth == 0 ? TVI_ROOT : f->parents[depth - 1];
+	ins.hInsertAfter = TVI_LAST;
+	ins.item.mask = TVIF_TEXT;
+	ins.item.pszText = dup_n(line + depth, n - depth);
+	HTREEITEM it = (HTREEITEM)SendMessageW(f->w, TVM_INSERTITEMW, 0, (LPARAM)&ins);
+	free(ins.item.pszText);
+	f->parents[depth] = it;
+	if (listed(f->expanded, f->index)) {
+		f->open = realloc(f->open, sizeof(HTREEITEM) * (size_t)(f->nopen + 1));
+		f->open[f->nopen++] = it;
+	}
+	f->index++;
+}
+
+/* tree_find is the item of w under from, or from itself, labeled label. */
+static HTREEITEM tree_find(HWND w, HTREEITEM from, const WCHAR *label) {
+	for (HTREEITEM it = from; it; it = (HTREEITEM)SendMessageW(w, TVM_GETNEXTITEM, TVGN_NEXT, (LPARAM)it)) {
+		WCHAR buf[256];
+		TVITEMW ti;
+		memset(&ti, 0, sizeof ti);
+		ti.mask = TVIF_TEXT;
+		ti.hItem = it;
+		ti.pszText = buf;
+		ti.cchTextMax = 256;
+		SendMessageW(w, TVM_GETITEMW, 0, (LPARAM)&ti);
+		if (wcscmp(buf, label) == 0) {
+			return it;
+		}
+		HTREEITEM in = tree_find(w, (HTREEITEM)SendMessageW(w, TVM_GETNEXTITEM, TVGN_CHILD, (LPARAM)it), label);
+		if (in) {
+			return in;
+		}
+	}
+	return NULL;
+}
+
+static void tree_select(HWND w, ctl *c) {
+	HTREEITEM root = (HTREEITEM)SendMessageW(w, TVM_GETNEXTITEM, TVGN_ROOT, 0);
+	HTREEITEM it = c->chosen && c->chosen[0] ? tree_find(w, root, c->chosen) : NULL;
+	c->quiet++;
+	SendMessageW(w, TVM_SELECTITEM, TVGN_CARET, (LPARAM)it);
+	c->quiet--;
+}
+
+void sngl_win32_fill_tree(HWND w, const unsigned short *lines, const unsigned short *expanded) {
+	ctl *c = ctl_of(w);
+	if (!c) {
+		return;
+	}
+	c->quiet++;
+	SendMessageW(w, TVM_DELETEITEM, 0, (LPARAM)TVI_ROOT);
+	tree_fill f;
+	memset(&f, 0, sizeof f);
+	f.w = w;
+	f.expanded = (const WCHAR *)expanded;
+	split((const WCHAR *)lines, L'\n', add_node, &f);
+	for (int i = 0; i < f.nopen; i++) {
+		SendMessageW(w, TVM_EXPAND, TVE_EXPAND, (LPARAM)f.open[i]);
+	}
+	free(f.open);
+	tree_select(w, c);
+	c->quiet--;
+	relayout(w);
+}
+
+void sngl_win32_set_chosen(HWND w, const unsigned short *label) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		free(c->chosen);
+		c->chosen = _wcsdup((const WCHAR *)label);
+		tree_select(w, c);
+	}
+}
+
+const char *sngl_win32_chosen(HWND w) {
+	WCHAR buf[256] = {0};
+	HTREEITEM it = (HTREEITEM)SendMessageW(w, TVM_GETNEXTITEM, TVGN_CARET, 0);
+	if (it) {
+		TVITEMW ti;
+		memset(&ti, 0, sizeof ti);
+		ti.mask = TVIF_TEXT;
+		ti.hItem = it;
+		ti.pszText = buf;
+		ti.cchTextMax = 256;
+		SendMessageW(w, TVM_GETITEMW, 0, (LPARAM)&ti);
+	}
+	return utf8(buf);
+}
+
+/* iso_date reads "YYYY-MM-DD" into *st, or answers zero. */
+static int iso_date(const WCHAR *iso, SYSTEMTIME *st) {
+	int y, m, d;
+	if (!iso || swscanf(iso, L"%d-%d-%d", &y, &m, &d) != 3) {
+		return 0;
+	}
+	memset(st, 0, sizeof *st);
+	st->wYear = (WORD)y;
+	st->wMonth = (WORD)m;
+	st->wDay = (WORD)d;
+	return 1;
+}
+
+void sngl_win32_set_date(HWND w, const unsigned short *iso) {
+	ctl *c = ctl_of(w);
+	SYSTEMTIME st;
+	if (c) {
+		c->quiet++;
+	}
+	if (iso_date((const WCHAR *)iso, &st)) {
+		SendMessageW(w, DTM_SETSYSTEMTIME, GDT_VALID, (LPARAM)&st);
+	} else {
+		/* Windows ignores the time with GDT_NONE; Wine refuses a NULL one. */
+		memset(&st, 0, sizeof st);
+		SendMessageW(w, DTM_SETSYSTEMTIME, GDT_NONE, (LPARAM)&st);
+	}
+	if (c) {
+		c->quiet--;
+	}
+}
+
+void sngl_win32_set_date_range(HWND w, const unsigned short *min, const unsigned short *max) {
+	SYSTEMTIME st[2];
+	WPARAM has = 0;
+	if (iso_date((const WCHAR *)min, &st[0])) {
+		has |= GDTR_MIN;
+	}
+	if (iso_date((const WCHAR *)max, &st[1])) {
+		has |= GDTR_MAX;
+	}
+	SendMessageW(w, DTM_SETRANGE, has, (LPARAM)st);
+}
+
+const char *sngl_win32_date_of(HWND w) {
+	SYSTEMTIME st;
+	if (SendMessageW(w, DTM_GETSYSTEMTIME, 0, (LPARAM)&st) != GDT_VALID) {
+		return "";
+	}
+	WCHAR buf[16];
+	swprintf(buf, 16, L"%04d-%02d-%02d", st.wYear, st.wMonth, st.wDay);
+	return utf8(buf);
+}
+
+/* find_kind is the first node of kind under w, w itself included, or NULL. */
+static HWND find_kind(HWND w, enum sngl_kind kind) {
+	ctl *c = ctl_of(w);
+	if (!c) {
+		return NULL;
+	}
+	if (c->kind == kind) {
+		return w;
+	}
+	for (int i = 0; i < c->nkids; i++) {
+		HWND k = find_kind(c->kids[i], kind);
+		if (k) {
+			return k;
+		}
+	}
+	return NULL;
+}
+
+int sngl_win32_pick_row(HWND w, int row) {
+	HWND t = find_kind(GetAncestor(w, GA_ROOT), K_TABLE);
+	if (!t) {
+		return 0;
+	}
+	LVITEMW it;
+	memset(&it, 0, sizeof it);
+	it.stateMask = LVIS_SELECTED | LVIS_FOCUSED;
+	it.state = LVIS_SELECTED | LVIS_FOCUSED;
+	return (int)SendMessageW(t, LVM_SETITEMSTATE, (WPARAM)row, (LPARAM)&it);
+}
+
+int sngl_win32_click_column(HWND w, int col) {
+	HWND t = find_kind(GetAncestor(w, GA_ROOT), K_TABLE);
+	if (!t) {
+		return 0;
+	}
+	NMLISTVIEW lv;
+	memset(&lv, 0, sizeof lv);
+	lv.hdr.hwndFrom = t;
+	lv.hdr.idFrom = (UINT_PTR)GetDlgCtrlID(t);
+	lv.hdr.code = LVN_COLUMNCLICK;
+	lv.iItem = -1;
+	lv.iSubItem = col;
+	SendMessageW(GetParent(t), WM_NOTIFY, lv.hdr.idFrom, (LPARAM)&lv);
+	return 1;
+}
+
+int sngl_win32_pick_node(HWND w, const unsigned short *label) {
+	HWND t = find_kind(GetAncestor(w, GA_ROOT), K_TREE);
+	if (!t) {
+		return 0;
+	}
+	HTREEITEM it = tree_find(t, (HTREEITEM)SendMessageW(t, TVM_GETNEXTITEM, TVGN_ROOT, 0), (const WCHAR *)label);
+	return it && SendMessageW(t, TVM_SELECTITEM, TVGN_CARET, (LPARAM)it);
+}
+
+int sngl_win32_pick_date(HWND w, const unsigned short *iso) {
+	HWND t = find_kind(GetAncestor(w, GA_ROOT), K_DATE);
+	if (!t) {
+		return 0;
+	}
+	sngl_win32_set_date(t, iso);
+	NMDATETIMECHANGE ch;
+	memset(&ch, 0, sizeof ch);
+	ch.nmhdr.hwndFrom = t;
+	ch.nmhdr.idFrom = (UINT_PTR)GetDlgCtrlID(t);
+	ch.nmhdr.code = DTN_DATETIMECHANGE;
+	ch.dwFlags = (DWORD)SendMessageW(t, DTM_GETSYSTEMTIME, 0, (LPARAM)&ch.st);
+	SendMessageW(GetParent(t), WM_NOTIFY, ch.nmhdr.idFrom, (LPARAM)&ch);
+	return 1;
 }
 
 HWND sngl_win32_radio(void) { return control(L"BUTTON", BS_AUTORADIOBUTTON | WS_TABSTOP, 0, K_RADIO); }

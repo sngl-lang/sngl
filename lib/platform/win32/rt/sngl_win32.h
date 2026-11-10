@@ -86,6 +86,51 @@ HWND sngl_win32_modal(void);
  * is in holds, and sngl_win32_choose chooses the entry labeled label in it
  * as the user does, answering whether there was one to choose. */
 HWND sngl_win32_entry(void);
+
+/* sngl_win32_table is a list view of rows and columns. sngl_win32_fill_table
+ * gives it its columns, one a line, and its rows, one a line of cells
+ * separated by tabs, reporting nothing; sngl_win32_set_row selects a row,
+ * or none where it is negative, also unreported, and sngl_win32_row is the
+ * one selected. sngl_win32_set_table says whether a row can be selected,
+ * which reports its change handler, and whether a column header's click
+ * asks for the rows sorted by it, which reports its click handler, and
+ * sngl_win32_sorted is the header last clicked. */
+HWND sngl_win32_table(void);
+void sngl_win32_fill_table(HWND w, const unsigned short *columns, const unsigned short *rows);
+void sngl_win32_set_row(HWND w, int row);
+int sngl_win32_row(HWND w);
+void sngl_win32_set_table(HWND w, int selectable, int sortable);
+const char *sngl_win32_sorted(HWND w);
+
+/* sngl_win32_tree is a tree view. sngl_win32_fill_tree gives it its nodes,
+ * one a line, each indented by a tab a level, expanding those whose places
+ * in that order expanded lists, comma separated; sngl_win32_set_chosen
+ * selects the node labeled label, and sngl_win32_chosen is the label of the
+ * one selected. A selection the user makes reports the change handler, and
+ * a node expanded or collapsed the activate handler. */
+HWND sngl_win32_tree(void);
+void sngl_win32_fill_tree(HWND w, const unsigned short *lines, const unsigned short *expanded);
+void sngl_win32_set_chosen(HWND w, const unsigned short *label);
+const char *sngl_win32_chosen(HWND w);
+
+/* sngl_win32_date is a date picker, whose check box unchecked is no date.
+ * Dates are "YYYY-MM-DD", or "" for none: sngl_win32_set_date shows one
+ * unreported, sngl_win32_set_date_range bounds the ones it offers, and
+ * sngl_win32_date_of is the one it shows. A date the user picks reports
+ * the change handler. */
+HWND sngl_win32_date(void);
+void sngl_win32_set_date(HWND w, const unsigned short *iso);
+void sngl_win32_set_date_range(HWND w, const unsigned short *min, const unsigned short *max);
+const char *sngl_win32_date_of(HWND w);
+
+/* A test's choice, as the user's, in the first table, tree or date picker
+ * of the toplevel w is in: a row selected, a column header clicked, a node
+ * selected by its label, a date picked. Each answers whether there was one
+ * to choose. */
+int sngl_win32_pick_row(HWND w, int row);
+int sngl_win32_click_column(HWND w, int col);
+int sngl_win32_pick_node(HWND w, const unsigned short *label);
+int sngl_win32_pick_date(HWND w, const unsigned short *iso);
 void sngl_win32_set_entry_disabled(HWND w, int disabled);
 void sngl_win32_set_entry_checked(HWND w, int checked);
 int sngl_win32_menu_items(HWND w);
