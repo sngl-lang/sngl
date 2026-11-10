@@ -10,6 +10,8 @@
 #define SNGL_PROP L"sngl.ctl"
 /* A toplevel's layout, asked for by each change in it and run once. */
 #define SNGL_WM_LAYOUT (WM_APP + 1)
+/* Work sngl_post queued, its handler the message's lParam. */
+#define SNGL_WM_POST (WM_APP + 2)
 
 enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER };
 
@@ -28,6 +30,9 @@ typedef struct {
 	int pad[4]; /* top, right, bottom, left */
 	int min_w, min_h;
 	int color, background, font_px;
+	/* dpi is what its font is made for. Every length above is a SNGL px,
+	 * a 96th of an inch, scaled to the window's DPI where it is used. */
+	int dpi;
 	HFONT font;   /* the node's own, for a font_px; else the message font */
 	HBRUSH brush; /* its background's, for a background */
 	handler click, change, activate, closed;
@@ -44,13 +49,85 @@ typedef struct {
 
 static int ready;
 static HWND park;
-static HFONT message_font;
+/* The message font at each DPI a window has been shown at. */
+static struct {
+	int dpi;
+	HFONT font;
+} message_fonts[8];
+static int nmessage_fonts;
+static int system_dpi = 96;
+/* What Windows 10 1607 added for a per-monitor DPI, found at run time so the
+ * program still starts where it is missing, as system-aware. */
+static UINT(WINAPI *dpi_for_window)(HWND);
+static BOOL(WINAPI *metrics_for_dpi)(UINT, UINT, PVOID, UINT, UINT);
+static int(WINAPI *system_metric_for_dpi)(int, UINT);
 static int shown; /* toplevels shown and not closed */
 static HWND shown_last; /* the toplevel shown last */
 
 static ctl *ctl_of(HWND w) { return w ? (ctl *)GetPropW(w, SNGL_PROP) : NULL; }
 
-static HFONT font_of(ctl *c) { return c && c->font ? c->font : message_font; }
+static int dpi_of(HWND w) {
+	if (dpi_for_window && w) {
+		UINT d = dpi_for_window(w);
+		if (d) {
+			return (int)d;
+		}
+	}
+	return system_dpi;
+}
+
+/* px is n SNGL px at dpi. */
+static int px(int n, int dpi) { return MulDiv(n, dpi, 96); }
+
+/* message_font is the font a control draws in where it is given none of its
+ * own, the system's message font at dpi. */
+static HFONT message_font(int dpi) {
+	for (int i = 0; i < nmessage_fonts; i++) {
+		if (message_fonts[i].dpi == dpi) {
+			return message_fonts[i].font;
+		}
+	}
+	NONCLIENTMETRICSW ncm;
+	memset(&ncm, 0, sizeof ncm);
+	ncm.cbSize = sizeof ncm;
+	HFONT f = NULL;
+	if (metrics_for_dpi && metrics_for_dpi(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0, (UINT)dpi)) {
+		f = CreateFontIndirectW(&ncm.lfMessageFont);
+	} else if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0)) {
+		ncm.lfMessageFont.lfHeight = MulDiv(ncm.lfMessageFont.lfHeight, dpi, system_dpi);
+		f = CreateFontIndirectW(&ncm.lfMessageFont);
+	}
+	if (!f) {
+		f = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+	}
+	if (nmessage_fonts < (int)(sizeof message_fonts / sizeof message_fonts[0])) {
+		message_fonts[nmessage_fonts].dpi = dpi;
+		message_fonts[nmessage_fonts].font = f;
+		nmessage_fonts++;
+	}
+	return f;
+}
+
+static HFONT font_of(ctl *c) {
+	if (c && c->font) {
+		return c->font;
+	}
+	return message_font(c ? c->dpi : system_dpi);
+}
+
+/* own_font makes c's own font, for its font_px at its dpi, or none. */
+static void own_font(ctl *c) {
+	if (c->font) {
+		DeleteObject(c->font);
+		c->font = NULL;
+	}
+	if (c->font_px > 0) {
+		LOGFONTW lf;
+		GetObjectW(message_font(c->dpi), sizeof lf, &lf);
+		lf.lfHeight = -px(c->font_px, c->dpi);
+		c->font = CreateFontIndirectW(&lf);
+	}
+}
 
 static void fire(handler *h) {
 	if (h->fn) {
@@ -128,14 +205,15 @@ static SIZE text_size(HWND w) {
 /* box_measure is a box's or a toplevel's children laid end to end. */
 static SIZE box_measure(ctl *c) {
 	SIZE s = {0, 0};
+	int gap = px(c->gap, c->dpi);
 	for (int i = 0; i < c->nkids; i++) {
 		SIZE k;
 		measure(c->kids[i], &k);
 		if (c->vertical) {
-			s.cy += k.cy + (i > 0 ? c->gap : 0);
+			s.cy += k.cy + (i > 0 ? gap : 0);
 			s.cx = k.cx > s.cx ? k.cx : s.cx;
 		} else {
-			s.cx += k.cx + (i > 0 ? c->gap : 0);
+			s.cx += k.cx + (i > 0 ? gap : 0);
 			s.cy = k.cy > s.cy ? k.cy : s.cy;
 		}
 	}
@@ -159,32 +237,32 @@ static void measure(HWND w, SIZE *out) {
 		break;
 	case K_BUTTON:
 		s = text_size(w);
-		s.cx += 20;
-		s.cy += 10;
-		if (s.cx < 75) {
-			s.cx = 75;
+		s.cx += px(20, c->dpi);
+		s.cy += px(10, c->dpi);
+		if (s.cx < px(75, c->dpi)) {
+			s.cx = px(75, c->dpi);
 		}
 		break;
 	case K_CHECK:
 		s = text_size(w);
-		s.cx += GetSystemMetrics(SM_CXMENUCHECK) + 8;
-		s.cy += 4;
+		s.cx += (system_metric_for_dpi ? system_metric_for_dpi(SM_CXMENUCHECK, (UINT)c->dpi) : GetSystemMetrics(SM_CXMENUCHECK)) + px(8, c->dpi);
+		s.cy += px(4, c->dpi);
 		break;
 	case K_EDIT:
 		s = text_size(w);
-		s.cx = 150;
-		s.cy += 8;
+		s.cx = px(150, c->dpi);
+		s.cy += px(8, c->dpi);
 		break;
 	case K_SPACER:
 		break;
 	}
-	s.cx += c->pad[1] + c->pad[3];
-	s.cy += c->pad[0] + c->pad[2];
-	if (s.cx < c->min_w) {
-		s.cx = c->min_w;
+	s.cx += px(c->pad[1] + c->pad[3], c->dpi);
+	s.cy += px(c->pad[0] + c->pad[2], c->dpi);
+	if (s.cx < px(c->min_w, c->dpi)) {
+		s.cx = px(c->min_w, c->dpi);
 	}
-	if (s.cy < c->min_h) {
-		s.cy = c->min_h;
+	if (s.cy < px(c->min_h, c->dpi)) {
+		s.cy = px(c->min_h, c->dpi);
 	}
 	*out = s;
 }
@@ -197,9 +275,13 @@ static void lay_out(HWND box, int w, int h) {
 	if (!c || c->nkids == 0) {
 		return;
 	}
-	int x0 = c->pad[3], y0 = c->pad[0];
-	int iw = w - c->pad[1] - c->pad[3], ih = h - c->pad[0] - c->pad[2];
-	int avail = (c->vertical ? ih : iw) - c->gap * (c->nkids - 1);
+	int pad[4], gap = px(c->gap, c->dpi);
+	for (int i = 0; i < 4; i++) {
+		pad[i] = px(c->pad[i], c->dpi);
+	}
+	int x0 = pad[3], y0 = pad[0];
+	int iw = w - pad[1] - pad[3], ih = h - pad[0] - pad[2];
+	int avail = (c->vertical ? ih : iw) - gap * (c->nkids - 1);
 	int *size = malloc(sizeof(int) * (size_t)c->nkids);
 	int total = 0;
 	double flex = 0;
@@ -234,7 +316,7 @@ static void lay_out(HWND box, int w, int h) {
 		if (dwp) {
 			dwp = DeferWindowPos(dwp, c->kids[i], NULL, x, y, cw, ch, SWP_NOZORDER | SWP_NOACTIVATE);
 		}
-		at += size[i] + c->gap;
+		at += size[i] + gap;
 	}
 	if (dwp) {
 		EndDeferWindowPos(dwp);
@@ -253,6 +335,27 @@ static void lay_out_top(HWND top) {
 	RECT r;
 	GetClientRect(top, &r);
 	lay_out(top, r.right - r.left, r.bottom - r.top);
+}
+
+/* refresh gives w and what is under it the fonts for dpi, the DPI of the
+ * toplevel they are in: what a control made, parked at the system's, takes
+ * as it is put in one, and all of them as the toplevel moves to a monitor of
+ * another. */
+static void refresh(HWND w, int dpi) {
+	ctl *c = ctl_of(w);
+	if (!c) {
+		return;
+	}
+	if (c->dpi != dpi) {
+		c->dpi = dpi;
+		own_font(c);
+		if (c->kind != K_TOP && c->kind != K_BOX) {
+			SendMessageW(w, WM_SETFONT, (WPARAM)font_of(c), FALSE);
+		}
+	}
+	for (int i = 0; i < c->nkids; i++) {
+		refresh(c->kids[i], dpi);
+	}
 }
 
 /* fit sizes a toplevel to hold what it holds, at least min_w by min_h, as a
@@ -349,13 +452,32 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 			lay_out_top(w);
 		}
 		return 0;
+	case SNGL_WM_POST: {
+		handler *h = (handler *)lp;
+		fire(h);
+		drop_handler(h);
+		free(h);
+		return 0;
+	}
 	case SNGL_WM_LAYOUT:
 		if (c) {
 			c->laying = 0;
+			refresh(w, dpi_of(w));
 			fit(w, 0, 0);
 			lay_out_top(w);
 		}
 		return 0;
+	case WM_DPICHANGED:
+		/* Moved to a monitor of another DPI: the size Windows suggests,
+		 * and everything in it measured again at the new one. */
+		if (c && c->kind == K_TOP) {
+			RECT *r = (RECT *)lp;
+			refresh(w, HIWORD(wp));
+			SetWindowPos(w, NULL, r->left, r->top, r->right - r->left, r->bottom - r->top, SWP_NOZORDER | SWP_NOACTIVATE);
+			lay_out_top(w);
+			return 0;
+		}
+		break;
 	case WM_CLOSE:
 		if (c && c->kind == K_TOP) {
 			sngl_win32_set_visible(w, 0);
@@ -410,23 +532,79 @@ static LRESULT CALLBACK control_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp, UIN
 
 /* --- Making nodes --- */
 
+/* aware has the process draw at each monitor's own DPI where Windows can,
+ * and at the system's where it cannot, rather than be scaled up blurred. */
+static void aware(void) {
+	HMODULE user32 = GetModuleHandleW(L"user32.dll");
+	BOOL(WINAPI * per_monitor)(HANDLE) = NULL;
+	if (user32) {
+		per_monitor = (BOOL(WINAPI *)(HANDLE))(void (*)(void))GetProcAddress(user32, "SetProcessDpiAwarenessContext");
+		dpi_for_window = (UINT(WINAPI *)(HWND))(void (*)(void))GetProcAddress(user32, "GetDpiForWindow");
+		metrics_for_dpi = (BOOL(WINAPI *)(UINT, UINT, PVOID, UINT, UINT))(void (*)(void))GetProcAddress(user32, "SystemParametersInfoForDpi");
+		system_metric_for_dpi = (int(WINAPI *)(int, UINT))(void (*)(void))GetProcAddress(user32, "GetSystemMetricsForDpi");
+	}
+	/* DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, which older headers lack. */
+	if (!per_monitor || !per_monitor((HANDLE)(INT_PTR)-4)) {
+		SetProcessDPIAware();
+		dpi_for_window = NULL;
+	}
+	HDC dc = GetDC(NULL);
+	if (dc) {
+		system_dpi = GetDeviceCaps(dc, LOGPIXELSY);
+		ReleaseDC(NULL, dc);
+	}
+}
+
+/* The manifest asking for Common Controls 6, whose controls draw in the
+ * system's theme where 5's draw as Windows 95 did. */
+static const char common_controls[] =
+	"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+	"<assembly xmlns=\"urn:schemas-microsoft-com:asm.v1\" manifestVersion=\"1.0\">"
+	"<dependency><dependentAssembly><assemblyIdentity type=\"win32\""
+	" name=\"Microsoft.Windows.Common-Controls\" version=\"6.0.0.0\""
+	" processorArchitecture=\"*\" publicKeyToken=\"6595b64144ccf1df\" language=\"*\"/>"
+	"</dependentAssembly></dependency></assembly>";
+
+/* common_controls_v6 activates the manifest for the rest of the process, so
+ * every control made after is 6's. An activation context is made from a
+ * file or a module's resource only, and a resource needs a step in every
+ * language's build, so the manifest is written to a file of its own and
+ * the file removed once read. */
+static void common_controls_v6(void) {
+	WCHAR dir[MAX_PATH], path[MAX_PATH];
+	if (!GetTempPathW(MAX_PATH, dir) || !GetTempFileNameW(dir, L"sngl", 0, path)) {
+		return;
+	}
+	HANDLE f = CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_TEMPORARY, NULL);
+	if (f == INVALID_HANDLE_VALUE) {
+		return;
+	}
+	DWORD wrote = 0;
+	BOOL ok = WriteFile(f, common_controls, sizeof common_controls - 1, &wrote, NULL);
+	CloseHandle(f);
+	if (ok) {
+		ACTCTXW ac;
+		memset(&ac, 0, sizeof ac);
+		ac.cbSize = sizeof ac;
+		ac.lpSource = path;
+		HANDLE ctx = CreateActCtxW(&ac);
+		ULONG_PTR cookie;
+		if (ctx != INVALID_HANDLE_VALUE) {
+			ActivateActCtx(ctx, &cookie);
+		}
+	}
+	DeleteFileW(path);
+}
+
 void sngl_win32_init(void) {
 	if (ready) {
 		return;
 	}
 	ready = 1;
-	SetProcessDPIAware();
+	aware();
+	common_controls_v6();
 	INITCOMMONCONTROLSEX icc = {sizeof icc, ICC_STANDARD_CLASSES};
 	InitCommonControlsEx(&icc);
-	NONCLIENTMETRICSW ncm;
-	memset(&ncm, 0, sizeof ncm);
-	ncm.cbSize = sizeof ncm;
-	if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0)) {
-		message_font = CreateFontIndirectW(&ncm.lfMessageFont);
-	}
-	if (!message_font) {
-		message_font = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
-	}
 	HINSTANCE inst = GetModuleHandleW(NULL);
 	WNDCLASSEXW wc;
 	memset(&wc, 0, sizeof wc);
@@ -452,6 +630,7 @@ static ctl *new_ctl(HWND w, enum sngl_kind kind) {
 	}
 	ctl *c = calloc(1, sizeof *c);
 	c->kind = kind;
+	c->dpi = dpi_of(w);
 	c->color = c->background = -1;
 	SetPropW(w, SNGL_PROP, c);
 	return c;
@@ -461,7 +640,7 @@ static HWND control(LPCWSTR class, DWORD style, DWORD ex, enum sngl_kind kind) {
 	sngl_win32_init();
 	HWND w = CreateWindowExW(ex, class, L"", WS_CHILD | WS_VISIBLE | style, 0, 0, 0, 0, park, NULL, GetModuleHandleW(NULL), NULL);
 	new_ctl(w, kind);
-	SendMessageW(w, WM_SETFONT, (WPARAM)message_font, FALSE);
+	SendMessageW(w, WM_SETFONT, (WPARAM)font_of(ctl_of(w)), FALSE);
 	if (kind != K_BOX && kind != K_SPACER) {
 		SetWindowSubclass(w, control_proc, 1, 0);
 	}
@@ -470,7 +649,7 @@ static HWND control(LPCWSTR class, DWORD style, DWORD ex, enum sngl_kind kind) {
 
 HWND sngl_win32_toplevel(void) {
 	sngl_win32_init();
-	HWND w = CreateWindowExW(WS_EX_CONTROLPARENT, SNGL_TOP_CLASS, L"", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, 400, 300, NULL, NULL, GetModuleHandleW(NULL), NULL);
+	HWND w = CreateWindowExW(WS_EX_CONTROLPARENT, SNGL_TOP_CLASS, L"", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, px(400, system_dpi), px(300, system_dpi), NULL, NULL, GetModuleHandleW(NULL), NULL);
 	ctl *c = new_ctl(w, K_TOP);
 	if (c) {
 		c->vertical = 1;
@@ -689,17 +868,8 @@ void sngl_win32_set_look(HWND w, sngl_win32_look look) {
 		c->brush = CreateSolidBrush(RGB((background >> 16) & 0xff, (background >> 8) & 0xff, background & 0xff));
 	}
 	if (font_px != c->font_px) {
-		if (c->font) {
-			DeleteObject(c->font);
-			c->font = NULL;
-		}
 		c->font_px = font_px;
-		if (font_px > 0) {
-			LOGFONTW lf;
-			GetObjectW(message_font, sizeof lf, &lf);
-			lf.lfHeight = -font_px;
-			c->font = CreateFontIndirectW(&lf);
-		}
+		own_font(c);
 		SendMessageW(w, WM_SETFONT, (WPARAM)font_of(c), TRUE);
 	}
 	InvalidateRect(w, NULL, TRUE);
@@ -793,6 +963,19 @@ static int step(MSG *m) {
 	TranslateMessage(m);
 	DispatchMessageW(m);
 	return 1;
+}
+
+/* sngl_post (sngl.h) queues fn behind what the loop already holds, on the
+ * parked window every control is made in, which the program never shows
+ * and so never closes. */
+void sngl_post(void (*fn)(void *ctx), void *ctx, void (*release)(void *ctx)) {
+	sngl_win32_init();
+	handler *h = calloc(1, sizeof *h);
+	set_handler(h, fn, ctx, release);
+	if (!PostMessageW(park, SNGL_WM_POST, 0, (LPARAM)h)) {
+		drop_handler(h);
+		free(h);
+	}
 }
 
 void sngl_win32_run(void) {

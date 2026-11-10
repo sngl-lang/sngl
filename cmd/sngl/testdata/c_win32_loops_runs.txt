@@ -32,6 +32,13 @@ stdout 'ok +2 tests, 0 failures'
 sngl test --platform=win32 --language=c nested.sngl
 stdout 'ok +3 tests, 0 failures'
 
+# A sngl:seq sequence held or passed is the list of what it counts, which is
+# what C holds an iter[T] as; one a loop walks where it is written is counted
+# and never built.
+
+sngl test --platform=win32 --language=c seq.sngl
+stdout 'ok +1 tests, 0 failures'
+
 -- app.sngl --
 import ui "sngl:ui"
 import test "sngl:test"
@@ -180,8 +187,41 @@ func testOneCopyOfALoopInANestedComponent(t Test, c main) {
 window {
     main
 }
+-- seq.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+import seq "sngl:seq"
+
+func sum(xs iter[int]) int {
+    var s = 0
+    for var x = xs {
+        s = s + x
+    }
+    return s
+}
+
+component main ui.node {
+    var n = 5
+    var log = ""
+    ui.vbox {
+        ui.button #go(text="go", @click {
+            var evens = seq.step(0, n, 2)
+            var down = seq.step(n, 0, -2)
+            log = "{sum(evens)} {sum(down)} {sum(seq.count(n))} {sum(seq.range(2, n))} {sum([7, 8])}"
+        })
+    }
+}
+
+func testHeldAndPassed(t test.Test, c main) {
+    c.go.click()
+    t.assert(c.log == "6 9 10 9 15")
+}
+
+ui.window {
+    main()
+}
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:aac6cb46443ef36854ca1e6d42b0485b
+sha256:30578cc1e63ad8625f1a372cdba7c12c
 {
   "results": [
     {
@@ -194,11 +234,11 @@ sha256:aac6cb46443ef36854ca1e6d42b0485b
     }
   ],
   "snapshots": {
-    "dropped.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAABuCAIAAADtf8s6AAACh0lEQVR4nOzcQW7qMBAGYPOUXXYcE47JVbhC1jyh1G4a22lInKoV31iqklHZfRobCf/d4/EISjWt6/XahRDu93vsKLW3brdbCOEJK4RwPp9jX6kG9S8+BLDAAgsssMACCyywwDoWVt/38REssNrBMrFMrEMmlrVzdV/e7IDZDpg6wzDUOmCBtQSr7/uZnllnGIa8Ez8NFlgVWMWV5tNCByywXoaVzyRTqjalHN63HN6NrpdGl4n1ObHGI1StMw6qvAMWWN/AWrnx5R1boa1w+1aoXiqwwAILLLDAenNYXfqRslIN63S5XOKzUs3q5Mvzmi/PzljOWM5Yv+KMBRZYYIEFFlhggQVWe1gnoSBCQYSCCAURCiIURCiIUBChIEJBhIIIBREKIhREKIhQEKEgPxEKonaWyxQflynS3RvXJVZelwBrFaypJ3fnF+7O2wq3b4Xp8uD07/g6rtlr6phYJlZhYhVXml7TMZae846JZWJVJ9Z04TLlAlYzWNa2BVYBln1ttq85Y+06Y6UzeFFVMQ5k+SNgvTmsJ6yijFkz/5+8Yyu0FVa3QmcsZ6xDzlgrl3FVG1dg7YJlYplYh0wsoSBCQYSCCAURCiIURCiIUBChIEJBhIIIBREKIhREKIhQEKEgQkGEgvzxUBCwwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMB6G1gePOx4+D8AxM2PmqKcDJ0AAAAASUVORK5CYII="
+    "dropped.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAABuCAIAAADtf8s6AAAC1ElEQVR4nOzcS6riTBgGYKtwA5KRc524/wW4CUfZgXgZibPk55A/1SG31iRCH3zqg0arz5k9vFXQXe/6crmcTqfb7VaW5cqy5q0QQpZlh8MhHI/H7Xa72+1ijPXfWtbEVRRFnufn8zne73eqqFpE1Wq1ijHu9/vr9RrLsqSKqkVUJVs/qNJ3YxYcsMACCyywfjusEEL9ESywloMlsSTWRxLLzJx1/cEJ2H8Cpp30LxPdHbDAGoMVQmjpae2UZdndqX8bLLAGYPVOyqeRHbDAehtWN5Ok1FBKubxPubyLrreiS2L9SazqCjW0UwVVdwcssP4C68WDr7vjKHQUTj8KrbcWWGCBBdYvghVCKIqi/mpZc1dRFDHGmGVZnudssbWIrer/vG82m+CVjlc6H3ml83g86k2Xd5d3l3eX93/88l5/kFgSS2JJLIklsSSWxJJYiyXW+vl8KgVRCqIURCmIUhClIEpBlIIoBVEKohREKYhSEKUgSkGUgigF+XgpiJk5HlP8/5givb3xXOLF5xJgvQSr6cnb+ZG3847C6UdhejzY/LP6Wk3ra9qRWBKrJ7F6J6VXM8bS5+6OxJJYg4nVHFyaXMBaDJaZNmD1wHKutc41d6xZd6x0B+9VlW70zR8Y/xWwvhzWD6xeGa3N7s90dxyFjsLBo9Adyx3rI3esF0dcDcUVWLNgmZFRCqIURCmIUhClIEpBlIIoBVEKohREKYhSEKUgSkGUgigFUQqiFEQpiFKQry0FAQsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILrK+B5YMPMz78NwCP7PdsgcHMiAAAAABJRU5ErkJggg=="
   }
 }
 -- testrun/win32/c/nested.sngl/main/1 --
-sha256:a5f6a8e649996de19d20b8d1f1d8ce0e
+sha256:d2bfcfd46c4d6f44988a90eba4add1a2
 {
   "results": [
     {
@@ -216,7 +256,7 @@ sha256:a5f6a8e649996de19d20b8d1f1d8ce0e
   ]
 }
 -- testrun/win32/c/rows.sngl/main/1 --
-sha256:8d1b272fab0a90b9baea6c22c12b9e17
+sha256:ff477f11aab4ed87e652d622978d94e2
 {
   "results": [
     {
@@ -229,8 +269,18 @@ sha256:8d1b272fab0a90b9baea6c22c12b9e17
     }
   ]
 }
+-- testrun/win32/c/seq.sngl/main/1 --
+sha256:be2556ef5723e9d32a2f33120af29da1
+{
+  "results": [
+    {
+      "Desc": "HeldAndPassed",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/win32/c/top.sngl/main/1 --
-sha256:788aac9174a9964df1f3df77fc07ca80
+sha256:cc3d8c2bf38284951cbdae11c73f6a2b
 {
   "results": [
     {

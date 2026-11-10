@@ -1123,16 +1123,6 @@ func (e *cEmitter) native(c *clang.Context, n *ir.Call) (string, bool) {
 		return "gtk_switch_get_active(GTK_SWITCH(" + arg(0) + "))", true
 	case "gtk4.entryText":
 		return "sngl_string_copy(gtk_editable_get_text(GTK_EDITABLE(" + arg(0) + ")))", true
-	case "async.start", "async.do":
-		// C has no thread of its own to start work on: the work runs on the
-		// loop's, once the turn that started it is done, and its `do` the
-		// same way.
-		if len(n.Args) != 1 {
-			e.fail("%s of %d arguments", n.Func.Intrinsic, len(n.Args))
-			return "(void)0", true
-		}
-		fn, ctx := c.Callback(ir.FuncOf(nil, ir.TypVoid).Sig, n.Args[0].Value)
-		return "sngl_idle((SnglFn)" + fn + ", " + ctx + ", (GDestroyNotify)sngl_release)", true
 	case "gtk4.calendarDate":
 		// A calendar always has a day selected, which rt writes as a date's
 		// text.

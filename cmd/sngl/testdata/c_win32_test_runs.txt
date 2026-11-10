@@ -11,7 +11,7 @@
 # builds the program's window.
 #
 # A snapshot is the window PrintWindow draws into a DIB section, sent to the
-# driver as a PNG the C runtime encodes. The component a test takes is shown
+# driver as its pixels, which the driver encodes as a PNG. The component a test takes is shown
 # in a window of its own, which grows as what it holds does: "Big" shows
 # under the check box once the count passes one.
 
@@ -28,6 +28,14 @@ exists app.sngl.snapshots/big.png
 env SNGL_UPDATE_SNAPSHOTS=
 sngl test --platform=win32 --language=c --opt arch=386 app.sngl
 stdout 'ok +4 tests, 0 failures'
+
+# async.do runs its work on the loop, after the turn that posted it: C
+# answers it with sngl_post, which the runtime defines as a message posted
+# to the window every control is parked in, and a test's t.wait runs the
+# loop while it waits.
+
+sngl test --platform=win32 --language=c async.sngl
+stdout 'ok +1 tests, 0 failures'
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -93,8 +101,38 @@ func testDrawsTheWindow(t test.Test, c main) {
 func testTheWindowBuilds(t test.Test) {
     t.assert(true)
 }
+-- async.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var log = ""
+    var got = 0
+    ui.vbox {
+        ui.button #go(text="go", @click {
+            var n = 6 * 7
+            async.do(func() {
+                got = n
+            })
+            log = "posted"
+        })
+        ui.text #shown(value=log)
+    }
+}
+
+func testWorkRunsOnTheLoop(t test.Test, c main) {
+    c.go.click()
+    t.wait(func() => c.got == 42, 2000)
+    t.assert(c.got == 42)
+    t.assert(c.log == "posted")
+}
+
+ui.window {
+    main()
+}
 -- testrun/win32/c/app.sngl/_/1 --
-sha256:7e82e9ce470b76d161745b9e42e1f477
+sha256:e1bec677b25aca2e93de40e61f8fc9e6
 {
   "results": [
     {
@@ -104,7 +142,7 @@ sha256:7e82e9ce470b76d161745b9e42e1f477
   ]
 }
 -- testrun/win32/c/app.sngl/_/2 --
-sha256:32488da4923b9587849ba421d16cbc6c
+sha256:9fc4e793db456db4266253767a10f2d1
 {
   "results": [
     {
@@ -114,7 +152,7 @@ sha256:32488da4923b9587849ba421d16cbc6c
   ]
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:9be00c0526d975a690068dea8514ef21
+sha256:4ebe72e7d2392b0a07bde7e63a032090
 {
   "results": [
     {
@@ -131,12 +169,12 @@ sha256:9be00c0526d975a690068dea8514ef21
     }
   ],
   "snapshots": {
-    "big.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAACMCAIAAAC283GzAAAEO0lEQVR4nOzd0Y2qQBSH8fWGN97sjha0AgqxEGvQUmhBX71Bd3CEERRx4y6/P8nNgKw32f1y5kSHb7LD4fAlMnX+hQGwgAUsYH08WNn53688z8OVr9GTY57nyZ9t3nz0Ozt+3ZH1ADFJ4jd/63/k+Kgje7DMxLddxs0NcSm6XGxOW2NT4eymwtbRxSi8cpPuPffu7H8fzbvmfWTzjqpZUfVDYKFqblTVYLW6JVSh6nWqvnusbiceX2map/ieZJp7WiTFPwiymUC28JeeyV/6D/ZYwAIWsIAFLGABC1jAAhawgAUsYAFrVmAtTqdTGItMk/V6Xa9uqKoqXBF5Nbvd7rpsZrlchut6LD2WHkuP9ak9FrCABSxgAQtYwAIWsID1HrDyc+6dAgtYI8FSsVSst1SseF11a5F+HtKcxoutw4u55wofeq5QLokha8bdQWsMLGDdgHV5GGSQj/gGtapbq4DVBmtEBinUY829x3oRFKWrVbpUrL6K1XT0Seb6XwXWzMGqwUpCk3yp/9RUaCpMT4UyVYAFLGABC1jAmjlYWbNIWWTCLFarVRiLTBYaIxojGiMaIxojGiMaIxojGiMaIxojGiMaozlrjEhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBfosUxPNb3ee3gDUNWDJtMr+M6y/jTg1rlqy1rnRvABawBsBK7tofA9Q6NRWaCh+dCoOh6LssxSUqeapiqVjDFas7wcXT33lz45vTcJeKpWINVaxkZUrSpmKpWH0VqwEoud16/ymwgJUGq8tH60r/qanQVPj0VOgYcZCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCfLwUJNtut2EsMk2KoqiXzez3+3BF5NWUZXldNrPZbMJ1kZdSVZUeS4/1rh4LWMACFrCABSxgAQtYwAIWsIAFLGABC1jAAhawgAUsYAELWMACFrCABSxgAQtYwJohWPUK0rIs7SxnZ7kJd5azEaaNMN+yEWZdsY7HYxjrsfRYeiw91mf3WNwN3A3cDdwN3A3cDdwN3A3cDdwN3A1/yd1QFIVPJXwq8dSnEsPuhsuj+CJPZdjd4Nse3/aM+LZH8655/+Hm/T+7dqzqMAxDATQGb/r/T9X+eJS6ImBql5RmONJS6HoIV/i6Cl2FrkJX4d2uQp13nXedd513nXedd513nXedd513nXedd513nff3nXdvhd4K994KiSFmS4yMJWP9MmOBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWFfCas8f/5uZx3FExOOHMR9PG56QQuoSUq8+1mkGr4g4fcysXdxeAVU99etVhRmzMr16qphcha5CV6Gr8HZXIVhgfQXWNGNlpmglWu1GqzFtJVTJXrLXbvbq038mXzJrV/ZvAPDUY8mkzDZDAAAAAElFTkSuQmCC",
-    "one.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAAB5CAIAAADzrPkZAAADqUlEQVR4nOzdUY6iShSH8faGN97cHVvQFbAQF+IadClsQV+9QaewBIQWi4kOv38lnQLpnqT7y6kzCl9lp9PpRyR1/gsTYAELWMD6eLCy69efPM/DmZ/Ji2Oe573f2/zwyT/Z+LqRDQCRJPEPn/UfMj5qZL8sM/Flt3lzQVyKbiebQ0vh0pfCVroYhVce0r3m2ZWad8275l3znqB5Bxaw5gGr1S0ZRpJR/6+w24nHZ5rmKb6mN801cacVf6MObDkd2Mofezl/bD2WHuv7e6wwARawgAUsYAELWMACFrCABSxgLRCs1eVyCXORNNlut/U771VVhTMi7+ZwONxvm1mv1+G8HkuPpcfSY31qjwUsYAELWMACFrCABSxgzQNWfs2zQ2ABayJYKpaKNUvFim+hbj3uloc0h83X7queKxx5rtC4jRiyZt6dtObAAtYDWLfnPkb5iC9Qq7q1ClhtsCZklEI91tJ7rDdBUbpapUvFGqpYww9FDr8KrIWDVYPVC03vS8OHlkJLYf9SKKkCLGABC1jAAtbCwcqam5RFEma12WzCXCRZaIxojGiMaIxojGiMaIxojGiMaIxojGiMaIyWrDEiBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBfkWKYjnt7rPbwErDViSNplfxv2X8aSGNbestc50LwAWsEbA6t21PwaodWgptBT+dikMhqI/ZSkuUb2HKpaKNV6xugtcvPxdNzd+OAxXqVgq1ljF6q1MvbSpWCrWUMVqAOrdbn34EFjA6gery0frzPChpdBS+PJSaEwYpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCAfLwXJ9vt9mIukSVEU9W0zx+MxnBF5N2VZ3m+b2e124bzIW6mqSo+lx5qrxwIWsIAFLGABC1jAAhawgAUsYAELWMACFrCABSxgAQtYwAIWsIAFLGABC1jAAhawFghWfQdpWZZ2lrOzXMKd5WyEaSPMWTbCrCvW+XwOcz2WHkuPpcf67B6Lu4G7gbuBu4G7gbuBu4G7gbuBu4G74V9yNxRF4V0J70q89K7EuLvh9ii+yEsZdzf4tMenPRM+7dG8a97/cvP+P7t2TAMAAMJA0L9rJJAOhA7n4Qcaziq0Cq1Cq7BtFTLvzDvzzrwz78w78868M+/MO/POvDPvzPtu3v0K/QqzX6FiFBMV48ZyY33eWMIS1klYMwAfsSr/g6X1lAAAAABJRU5ErkJggg=="
+    "big.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAACMCAIAAAC283GzAAAExklEQVR4nOzcsU7rSBSHcXuULhUKQqJPGjoehSdNTYdET0eVN0A2VIjOXvn6jtfYxgmJWZH17z8S8tiDrwSfzowuOd/i/f09EZk6IV4AC1jAAtavB2vx52uyXC7jneTozXG5XA5+b/Pyo99snN1YjAAxSdov/9F/yPhVY3FgmWkvq6+bBe1SVN9spp1rW+HstsLO6GMUn3xKf81XK8ff4/Du8H7k4R1Vs6LqPwILVXOjqgKrc1pCFapOp+rvGat/Em/faQ5P7TWDadZ0SGp/I8hmAlnqNz2T3/T/8IwFLGABC1jAAhawgAUsYAELWMACFrBmBdbi4+Pj+fn59fW1LMt4U+TIpGm6Wq1ubm7Sh4eH6+vr9Xodguqlep1avYqi2O12Ly8v4e3tDVWomoSq6swewmazyfM8lGWJKlRNQlXDVgVVMzeMCQewgAUsYAELWMCaOVgVWOmfxFl3CixgHQmWiqVi/UjFSpKkLMu6aKVp2v4jRBrTTJuv/af6Cvf0FRr1aEPWXPcvOtfAAtYnsOqitZeP9gK1ql+rgNUF64jspdAZa+5nrBNBUbo6pUvFGqtYzYl+kLnxp8CaOVgVWIPQDD4an9oKbYXDW6FMFWABC1jAOiOw0jQtiiJORU5NURQhhLBarXa7HbawNQlb9WfeLy4u0izLdOno0pm+S4fGiMaIxojGiMaIxojGiMaIxojGiMaIxojGaMYaI1IQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFKQc5GC6N/q928BaxqwZNos/DD+/WF8UcOav0l07vQXAAtYe8BqSxzq647WoTO1FdoKD90Ko6Hob1lql6jBqYqlYu2vWP0Nrr39lWXZmcZVKpaKta9iDVamQdpULBVrrGI1AFXlqCf8GJ8CC1jDYPX56NwZn9oKbYXf3gqNIwYpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpyO+Xgtzf38drkclSfWzm7u4uTkUmyHa7dcZyxnLGcsY6nzMWsIAFLGABC1jAAhawgAUsYAELWMACFrCABSxgAQtYwAIWsIAFLGABC1jAAhawgAUsYAFrGrCqjyZvt9s4FZkmWuy12Gux12KvxV6LvRZ7LfZa7LXYa7HXYq/Ffs4t9sAC1o+AVf0/1tPTU57ngxrSEMLl5eXt7W28IXJQ0sfHx6urq/V6HcJA9apdpVmWYQtb32Ir5Hn+FVXV4xA2m02WZfGGyEEJtZU7TgcSQiDrJuv+rqx7uFAlSZL8w94dozAIBGEURrCb1vtfyYvY2gcRzWAw7uIGInzzN0vSPpaZnRfi5HTjBCxgAQtYwAIWsIAFLGAB6ylgXb4mXL5HiHxm2dh8+Vu59eV9GIbtA6WKalGTx3Gcpsmu0K6w5a6Q885557xz3jnvnHfOO+ed885557xz3jnvnHfOO+e9rfMOLGABC1jAAhawgAUsYAHrIWB122HJujeMCAtEC8SbC8Ru5wlSkGqC1Psn9ofa8YqIw2UmUpg+A5TpybdXJkypkuozTxkmU6Gp0FRoKvy7qRBYwPoJWKc91jzPWiutVW1rVee86730XrW9V3/6zclNJlKS1wCByOc1t+BR7wAAAABJRU5ErkJggg==",
+    "one.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAAB5CAIAAADzrPkZAAAEMElEQVR4nOzcsU7rSBSHcXuULhUKQqJPGjoehSdNTYdET0eVN0A2VIjOXvl6x9fXNgmEiUTk338k5HFMVoJPZ85ecr7F+/t7JpI6IV4AC1jAAtavB2vx52u2XC7jnezow3G5XE5+b/fmR7+zdXZrsQeIJOm/+Un/Q9avWosvlpn+Y+1190C/FLU3u62jcO5H4SBjjOIr/2T8zGdPat4175p3zXuC5h1YwDoNWINuybKSrOb/CsedeP9O1zz1n5lM90y/0+p/ow5sPh1Y7pc9n1+2HkuPdf49VrwAFrCABSxgAQtYwAIWsIAFLGDNEKzFx8fH8/Pz6+trXdfxpsiRyfN8tVrd3NzkDw8P19fX6/U6BNVL9fpp9aqqarfbvby8hLe3N1ShKglVTc8ewmazKcsy1HWNKlQloapjq4Gq21tWwgUsYAELWMACFrBmDlYDVv4ncTfcAgtYR4KlYqlYJ6lYWZbVdd0WrTzP+3+EyGO6bfd1/Kq5wgNzhVa7+pB11+OLwTWwgPUPWG3ROshH/wG1alyrgDUE64gcpFCPNfce64egKF2D0qVi7atYXUc/ydz+V4E1c7AasCahmXxp/9ZR6CicPgolVYAFLGAB64zAyvO8qqq4FflpqqoKIYTVarXb7bCFrSRstZ95v7i4yIuiMKVjSif9lA6NEY0RjRGNEY0RjRGNEY0RjRGNEY0RjRGN0Yw1RqQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQg5yIFMb81nt8CVhqwJG0Wfhh/fxif1LDubxKDO+MHgAWsA2D1JQ7t9UDrMNg6Ch2FXz0Ko6Ho/7LUL1GTWxVLxTpcscYHXP/4q+t6sI1PqVgq1qGKNVmZJmlTsVSsfRWrA6gpRyPhx/4tsIA1DdaYj8Gd/VtHoaPw20ehdcQiBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBfn9UpD7+/t4LZIszcdm7u7u4lYkQbbbrR5Lj6XH0mOdT48FLGABC1jAAhawgAUsYAELWMACFrCABSxgAQtYwAIWsIAFLGABC1jAAhawgAUsYAELWMBKA1bz0eTtdhu3ImlixN6IvRF7I/ZG7I3YG7E3Ym/E3oi9EXsj9kbs5zxiDyxgnQSs5t+xnp6eyrKc1JCGEC4vL29vb+MNkS8lf3x8vLq6Wq/XIUxUr9ZVWhQFtrD1LbZCWZafUdW8HMJmsymKIt4Q+VJCa+WO24mEEMi6ybq/K+ueLlRZlmX/sXfHJgDDMBBFl9D+K2kRDRFESBWIAklj/KRGuP7V3Qe7XB8uYAELWMACFrCABSxgAQtYq4A1pgljHmHtfbuxefhW7kzeI+J6MObVtJqcmVWlK9QV/tkVct4575x3zjvnnfO+t/N+DAA2qa5rgSIQ5AAAAABJRU5ErkJggg=="
   }
 }
 -- testrun/win32/c/app.sngl/main/2 --
-sha256:c50e1075d0d717de265218cf341b561e
+sha256:fb56c26e3058a4d526a7f89c87183b78
 {
   "results": [
     {
@@ -149,6 +187,16 @@ sha256:c50e1075d0d717de265218cf341b561e
     },
     {
       "Desc": "DrawsTheWindow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/async.sngl/main/1 --
+sha256:eb8c23e0688ed485bf0ddaf17afeda42
+{
+  "results": [
+    {
+      "Desc": "WorkRunsOnTheLoop",
       "Passed": true
     }
   ]

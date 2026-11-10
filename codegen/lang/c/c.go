@@ -13,11 +13,15 @@ import (
 	"sync"
 
 	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/ir"
 )
 
 func init() {
 	codegen.RegisterNative(langC, &Translator{})
+	// A post back to the loop is the language's on C, which starts no
+	// thread: each platform's runtime defines the sngl_post it calls.
+	codegen.DeclareLangImplements(langC, lower.AsyncStartIntrinsic, lower.AsyncDoIntrinsic)
 }
 
 // langC is this translator's registry key.

@@ -352,7 +352,14 @@ func (p *placement) stmt(s ir.Stmt) []ir.Stmt {
 			placed, _ := p.instanceOp(call)
 			cp := *n
 			cp.Init = placed
-			return []ir.Stmt{&cp}
+			out := []ir.Stmt{&cp}
+			// A copy's root is read with the copy's key where a test
+			// reaches one copy: the instance goes in the package's map
+			// from each copy's key, as a node a loop renders does.
+			if id, ok := call.Args[0].Value.(*ir.Ident); ok && nodeOp(call) == ir.NodeOpComponentRoot && len(call.Args) > 1 {
+				out = append(out, p.copyWrite(id, call.Args[1].Value))
+			}
+			return out
 		case ir.NodeOpCreateNode:
 			if len(call.Args) != 2 {
 				tag, _ := call.Args[0].Value.(*ir.Literal)

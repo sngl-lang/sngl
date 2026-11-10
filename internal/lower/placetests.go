@@ -116,9 +116,25 @@ func (p *placement) placeTests(pkg *ir.Package) {
 				if id, ok := x.Operand.(*ir.Ident); ok && id.Name == comp {
 					return p.instanceRead(pkg, x), ir.SkipDir
 				}
+			case *ir.Conversion:
+				// An instance a record is made of, as the component it
+				// is of: the record its var holds, whose reads recordReads
+				// finishes.
+				if sel, ok := x.Operand.(*ir.Select); ok {
+					if id, ok := sel.Operand.(*ir.Ident); ok && id.Name == comp {
+						read := p.instanceRead(pkg, sel)
+						if t := read.ExprType(); t != nil && t.Kind == ir.TypeOption && p.recordOf(t.Elems[0]) != nil {
+							return &ir.Conversion{Type: t.Elems[0], Operand: read}, ir.SkipDir
+						}
+						cp := *x
+						cp.Operand = read
+						return &cp, ir.SkipDir
+					}
+				}
 			}
 			return n, nil
 		})
+		p.recordReads(fn)
 	}
 }
 
@@ -231,13 +247,42 @@ func (p *placement) holdRead(pkg *ir.Package, fn *ir.Func, comp string) {
 		return
 	}
 	// hold is block with each node read made in it held as it is made, and
-	// the resets that start the function rendering it.
+	// the resets that start the function rendering it. An instance a record
+	// is made of is declared first and set after, from the instances kept
+	// or a new one, so it is held as it is set, and let go as it is
+	// destroyed, unless another took its place.
 	hold := func(block []ir.Stmt) ([]ir.Stmt, []ir.Stmt) {
 		var held []*ir.Var
+		instances := map[ir.Symbol]*ir.Var{}
+		_ = ir.Walk(block, func(n ir.Node) error {
+			lv, ok := n.(*ir.LocalVar)
+			// One a test reaches a copy of is in the package's map from
+			// each copy's key instead (copyWrite).
+			if !ok || lv.Sym == nil || !read[lv.Name] || p.held[lv.Name] != nil || p.copies[lv.Name] != nil {
+				return nil
+			}
+			if r := p.recordOf(lv.Type); r != nil {
+				v := p.heldVar(pkg, lv.Name, lv.Type)
+				held = append(held, v)
+				instances[lv.Sym] = v
+				p.letGo(r, v, lv.Type, func(self ir.Expr) ir.Expr { return self })
+			}
+			return nil
+		})
 		block = ir.RewriteBlocks(block, func(stmts []ir.Stmt) []ir.Stmt {
 			out := stmts[:0:0]
 			for _, s := range stmts {
 				out = append(out, s)
+				switch x := s.(type) {
+				case *ir.LocalVar:
+					if v := instances[x.Sym]; v != nil && x.Sym != nil && x.Init != nil {
+						out = append(out, holdAssign(v, &ir.Ident{Name: x.Name, Sym: x.Sym, Type: x.Type, Synthesized: true}))
+					}
+				case *ir.Assign:
+					if id, ok := x.Target.(*ir.Ident); ok && id.Sym != nil && instances[id.Sym] != nil {
+						out = append(out, holdAssign(instances[id.Sym], ir.CloneExprSharingDecls(id)))
+					}
+				}
 				lv, ok := s.(*ir.LocalVar)
 				if !ok || !read[lv.Name] || !isPlacedNode(lv.Type) || p.held[lv.Name] != nil {
 					continue
@@ -276,7 +321,6 @@ func (p *placement) holdRead(pkg *ir.Package, fn *ir.Func, comp string) {
 				continue
 			}
 			v := p.heldVar(pkg, f.Name, f.Type)
-			field := func(self ir.Expr) ir.Expr { return &ir.Select{Operand: self, Field: f.Name, Type: f.Type} }
 			r.new.Block = ir.RewriteBlocks(r.new.Block, func(stmts []ir.Stmt) []ir.Stmt {
 				out := stmts[:0:0]
 				for _, s := range stmts {
@@ -289,17 +333,62 @@ func (p *placement) holdRead(pkg *ir.Package, fn *ir.Func, comp string) {
 				}
 				return out
 			})
-			self := r.destroy.Params[0]
-			selfRef := &ir.Ident{Name: self.Name, Sym: self, Type: self.Type, Synthesized: true}
-			ref := func() ir.Expr { return &ir.Ident{Name: v.Name, Sym: v, Type: v.Type, Synthesized: true} }
-			mine := &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd,
-				Left:  &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: ref(), Right: &ir.Literal{Type: ir.TypNull, Value: "null"}},
-				Right: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: &ir.Conversion{Type: f.Type, Operand: ref()}, Right: field(selfRef)},
-			}
-			clear := &ir.If{Cond: mine, Body: []ir.Stmt{holdAssign(v, &ir.Literal{Type: ir.TypNull, Value: "null"})}}
-			r.destroy.Block = append([]ir.Stmt{clear}, r.destroy.Block...)
+			p.letGo(r, v, f.Type, func(self ir.Expr) ir.Expr { return &ir.Select{Operand: self, Field: f.Name, Type: f.Type} })
 		}
 	}
+}
+
+// recordReads finishes fn's reads of a record a test holds an instance of:
+// a var the record holds boxed, read as its value as a package var's is
+// (instanceRead), and a function of the component the instance is a copy
+// of, which is the record's own copy of it.
+func (p *placement) recordReads(fn *ir.Func) {
+	_ = ir.Rewrite(fn.Block, func(n ir.Node) (ir.Node, error) {
+		switch x := n.(type) {
+		case *ir.Select:
+			r := p.recordOf(x.Operand.ExprType())
+			if r == nil {
+				return n, nil
+			}
+			for _, f := range r.sd.Fields {
+				if f.Name != x.Field || f.Type == nil || f.Type.Equal(x.Type) {
+					continue
+				}
+				if sd, ok := f.Type.Decl.(*ir.StructDef); ok && f.Type.Kind == ir.TypeStruct && sd.RefBox {
+					return &ir.Select{Operand: &ir.Select{Operand: x.Operand, Field: x.Field, Type: f.Type}, Field: "value", Type: sd.Fields[0].Type}, ir.SkipDir
+				}
+			}
+		case *ir.Call:
+			if x.Func == nil || len(x.Args) == 0 {
+				return n, nil
+			}
+			r := p.recordOf(x.Args[0].Value.ExprType())
+			if r == nil || slices.Contains(r.owned, x.Func) {
+				return n, nil
+			}
+			if own := r.named[x.Func.Name]; own != nil {
+				cp := *x
+				cp.Func = own
+				return &cp, nil
+			}
+		}
+		return n, nil
+	})
+}
+
+// letGo has r's destroy null v, a held var of t, while it holds what of
+// reads of the record destroyed: a keyed render builds the record taking
+// one's place before it destroys the one it replaces.
+func (p *placement) letGo(r *record, v *ir.Var, t *ir.Type, of func(self ir.Expr) ir.Expr) {
+	self := r.destroy.Params[0]
+	selfRef := &ir.Ident{Name: self.Name, Sym: self, Type: self.Type, Synthesized: true}
+	ref := func() ir.Expr { return &ir.Ident{Name: v.Name, Sym: v, Type: v.Type, Synthesized: true} }
+	mine := &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd,
+		Left:  &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: ref(), Right: &ir.Literal{Type: ir.TypNull, Value: "null"}},
+		Right: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: &ir.Conversion{Type: t, Operand: ref()}, Right: of(selfRef)},
+	}
+	clear := &ir.If{Cond: mine, Body: []ir.Stmt{holdAssign(v, &ir.Literal{Type: ir.TypNull, Value: "null"})}}
+	r.destroy.Block = append([]ir.Stmt{clear}, r.destroy.Block...)
 }
 
 // heldVar is the package var holding the node a test reads named name,

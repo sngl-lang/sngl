@@ -22,6 +22,17 @@ import (
 // An option is a struct per value type, `sngl_opt_<value>`: whether it holds
 // one, and the value.
 
+// listed is t, or for an iter[T] the list[T] C holds it as. A sequence a
+// loop walks where it is written is counted and never built (countedHead);
+// one held or passed is its elements, as a list where an iter is read is the
+// list (Conversion), so either is walked the same.
+func listed(t *ir.Type) *ir.Type {
+	if t != nil && t.Kind == ir.TypeIter && len(t.Elems) == 1 {
+		return &ir.Type{Kind: ir.TypeList, Elems: t.Elems}
+	}
+	return t
+}
+
 // listType names list[elem]'s C struct, defined in the file.
 func (c *Context) listType(t *ir.Type) string {
 	elem := t.Elems[0]
@@ -79,7 +90,8 @@ func (c *Context) listOf(t *ir.Type, elems []string) string {
 }
 
 func (c *Context) ListLit(n *ir.ListLit, elems []string) string {
-	if n.Type == nil || n.Type.Kind != ir.TypeList {
+	t := listed(n.Type)
+	if t == nil || t.Kind != ir.TypeList {
 		return c.fail("a list literal of %s", n.Type)
 	}
 	// A spread joins the list it reads to what is written around it, each
@@ -91,22 +103,22 @@ func (c *Context) ListLit(n *ir.ListLit, elems []string) string {
 			run = append(run, elems[i])
 			continue
 		}
-		if st := sp.Operand.ExprType(); st == nil || st.Kind != ir.TypeList || !st.Elems[0].Equal(n.Type.Elems[0]) {
+		if st := sp.Operand.ExprType(); st == nil || st.Kind != ir.TypeList || !st.Elems[0].Equal(t.Elems[0]) {
 			return c.fail("a spread of %s into %s", st, n.Type)
 		}
 		if len(run) > 0 {
-			parts = append(parts, c.listOf(n.Type, run))
+			parts = append(parts, c.listOf(t, run))
 			run = nil
 		}
 		parts = append(parts, elems[i])
 	}
 	if len(parts) == 0 {
-		return c.listOf(n.Type, elems)
+		return c.listOf(t, elems)
 	}
 	if len(run) > 0 {
-		parts = append(parts, c.listOf(n.Type, run))
+		parts = append(parts, c.listOf(t, run))
 	}
-	cat := c.listOp(n.Type, "cat", "L NAME(L a, L b)", `	L l = {sngl_alloc(sizeof(T) * (size_t)(a.len + b.len + 1)), a.len + b.len, a.len + b.len};
+	cat := c.listOp(t, "cat", "L NAME(L a, L b)", `	L l = {sngl_alloc(sizeof(T) * (size_t)(a.len + b.len + 1)), a.len + b.len, a.len + b.len};
 	if (a.len > 0) {
 		memcpy(l.data, a.data, sizeof(T) * (size_t)a.len);
 	}
@@ -116,7 +128,7 @@ func (c *Context) ListLit(n *ir.ListLit, elems []string) string {
 	return l;
 `)
 	// A spread alone is a copy, which a list written into must be.
-	out := cat + "(" + parts[0] + ", " + c.listOf(n.Type, nil) + ")"
+	out := cat + "(" + parts[0] + ", " + c.listOf(t, nil) + ")"
 	if len(parts) > 1 {
 		out = parts[0]
 		for _, p := range parts[1:] {
@@ -193,6 +205,37 @@ func (c *Context) MutTargetIndex(n *ir.Index, operand, idx string) string {
 		return "(*" + c.mapSlot(t) + "(&(" + operand + "), " + idx + "))"
 	}
 	return c.Index(n, operand, idx)
+}
+
+// seqIntrinsic renders a sngl:seq sequence held or passed rather than walked
+// where it is written: the list of what it counts (listed).
+func (c *Context) seqIntrinsic(n *ir.Call) (string, bool) {
+	var start, end, by string
+	arg := func(i int) string { return c.EvalExpr(n.Args[i].Value) }
+	switch {
+	case n.Func.Intrinsic == "seq.count" && len(n.Args) == 1:
+		start, end, by = "0", arg(0), "1"
+	case n.Func.Intrinsic == "seq.range" && len(n.Args) == 2:
+		start, end, by = arg(0), arg(1), "1"
+	case n.Func.Intrinsic == "seq.step" && len(n.Args) == 3:
+		start, end, by = arg(0), arg(1), arg(2)
+	default:
+		return "", false
+	}
+	// A step of 0 counts nothing, as it does everywhere else.
+	seq := c.listOp(listed(n.Type), "seq", "L NAME(int64_t start, int64_t end, int64_t by)", `	int64_t n = 0;
+	if (by > 0 && end > start) {
+		n = (end - start + by - 1) / by;
+	} else if (by < 0 && start > end) {
+		n = (start - end - by - 1) / -by;
+	}
+	L l = {sngl_alloc(sizeof(T) * (size_t)(n + 1)), n, n};
+	for (int64_t i = 0; i < n; i++) {
+		l.data[i] = start + i * by;
+	}
+	return l;
+`)
+	return seq + "(" + start + ", " + end + ", " + by + ")", true
 }
 
 // listIntrinsic renders a call of one of sngl:builtin's list methods, the
@@ -369,7 +412,7 @@ func (c *Context) listLoop(n *ir.For) string {
 	if conv, ok := iter.(*ir.Conversion); ok && conv.Type != nil && conv.Type.Kind == ir.TypeIter {
 		iter = conv.Operand
 	}
-	t := iter.ExprType()
+	t := listed(iter.ExprType())
 	if t == nil || t.Kind != ir.TypeList {
 		return c.fail("a loop over a %s", t) + "; {"
 	}

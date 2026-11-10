@@ -50,8 +50,9 @@ type record struct {
 	tops     []string
 	nodeType *ir.Type
 	// owned are the component's functions, the package's once buildRecord
-	// moved them.
+	// moved them, and named each of them by the name it was declared with.
 	owned []*ir.Func
+	named map[string]*ir.Func
 }
 
 // recordRoot is the field a record holds the node it renders as in, the var
@@ -253,9 +254,28 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 	add(recordRoot, r.nodeType)
 	pkg.Structs = append(pkg.Structs, r.sd)
 
+	// funcs are the record's functions, each true where it is handed the
+	// record already -- a method, whose receiver it is -- as asked before
+	// any is handed it.
 	funcs := map[*ir.Func]bool{}
+	selfTaking := map[*ir.Func]bool{}
 	for _, fn := range comp.Funcs {
 		funcs[fn] = true
+		selfTaking[fn] = takesSelf(fn, r)
+	}
+	// fieldOf is the record's field x reads, or nil.
+	fieldOf := func(x *ir.Ident) *ir.StructField {
+		f := fields[x.Name]
+		if f == nil {
+			return nil
+		}
+		if v, ok := x.Sym.(*ir.Var); ok && !vars[v] && !v.NodeHandle {
+			return nil
+		}
+		if _, ok := x.Sym.(*ir.Param); ok {
+			return nil
+		}
+		return f
 	}
 	// through rewrites what root reads of the record to reads through self,
 	// and each call of the record's functions to hand it self.
@@ -263,21 +283,15 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 		_ = ir.Rewrite(root, func(n ir.Node) (ir.Node, error) {
 			switch x := n.(type) {
 			case *ir.Ident:
-				f := fields[x.Name]
+				f := fieldOf(x)
 				if f == nil {
-					return n, nil
-				}
-				if v, ok := x.Sym.(*ir.Var); ok && !vars[v] && !v.NodeHandle {
-					return n, nil
-				}
-				if _, ok := x.Sym.(*ir.Param); ok {
 					return n, nil
 				}
 				// The field's type: NoRef leaves a read of a var it boxed
 				// typed as what the box holds, and the var says it is a box.
 				return &ir.Select{Operand: self(), Field: f.Name, Type: f.Type}, ir.SkipDir
 			case *ir.Call:
-				if x.Func != nil && funcs[x.Func] && !takesSelf(x.Func, r) {
+				if x.Func != nil && funcs[x.Func] && !selfTaking[x.Func] {
 					cp := *x
 					cp.Args = append([]ir.CallArg{{Value: self()}}, x.Args...)
 					return &cp, nil
@@ -339,9 +353,12 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 	pkg.Funcs = append(pkg.Funcs, r.new)
 
 	// Its functions, each the package's, handed the record first.
+	hosts := []closureHost{{r.new, local}}
+	r.named = map[string]*ir.Func{}
 	for _, fn := range comp.Funcs {
+		r.named[fn.Name] = fn
 		var self *ir.Param
-		if takesSelf(fn, r) {
+		if selfTaking[fn] {
 			self = fn.Params[0]
 			self.Type = r.typ
 		} else {
@@ -350,6 +367,7 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 		}
 		param := func() ir.Expr { return &ir.Ident{Name: self.Name, Sym: self, Type: r.typ, Synthesized: true} }
 		through(fn.Block, param)
+		hosts = append(hosts, closureHost{fn, param})
 		fn.Name = comp.Name + "__" + strings.TrimPrefix(fn.Name, "__")
 		pkg.Funcs = append(pkg.Funcs, fn)
 	}
@@ -365,23 +383,76 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 	r.destroy.Block = append(r.destroy.Block, &ir.Return{})
 	pkg.Funcs = append(pkg.Funcs, r.destroy)
 
-	// A closure the record makes captured what it reads; one reading the
-	// record itself has no __self to read it through.
-	for _, fn := range closureFuncs(r.new) {
+	// A closure the record makes captured what it reads by value, and reads
+	// the record itself -- calls one of its functions, reads a node it holds
+	// -- through the __self it captures besides, as does each
+	// closure holding one that does, which hands it on.
+	reads := func(fn *ir.Func) bool {
+		found := false
 		_ = ir.Walk(fn.Block, func(n ir.Node) error {
 			switch x := n.(type) {
 			case *ir.Ident:
-				if v, ok := x.Sym.(*ir.Var); ok && vars[v] {
-					p.fail("a closure %s makes reads its %s directly, which placement does not reach yet", comp.Name, v.Name)
+				if fieldOf(x) != nil {
+					found = true
 				}
 			case *ir.Call:
 				if x.Func != nil && funcs[x.Func] {
-					p.fail("a closure %s makes calls its %s, which placement does not reach yet", comp.Name, x.Func.Name)
+					found = true
 				}
 			}
 			return nil
 		})
+		return found
 	}
+	needs := map[*ir.Func]bool{}
+	var needsSelf func(fn *ir.Func) bool
+	needsSelf = func(fn *ir.Func) bool {
+		if v, ok := needs[fn]; ok {
+			return v
+		}
+		needs[fn] = false
+		v := reads(fn) || slices.ContainsFunc(closureFuncs(fn), func(in *ir.Func) bool { return in != fn && needsSelf(in) })
+		needs[fn] = v
+		return v
+	}
+	lifted := map[*ir.Func]bool{}
+	var capture func(h closureHost)
+	capture = func(h closureHost) {
+		_ = ir.Walk(h.fn.Block, func(n ir.Node) error {
+			cl, ok := n.(*ir.Closure)
+			if !ok || cl.Func == nil || cl.State == nil || len(cl.Func.Params) == 0 || !needsSelf(cl.Func) {
+				return nil
+			}
+			state := cl.Func.Params[0]
+			sd, ok := state.Type.Decl.(*ir.StructDef)
+			if !ok {
+				p.fail("a closure %s makes reads it, and its state is no struct", comp.Name)
+				return nil
+			}
+			cl.State.Fields = append(cl.State.Fields, ir.FieldInit{Name: recordSelf, Value: h.self()})
+			if lifted[cl.Func] {
+				return nil
+			}
+			lifted[cl.Func] = true
+			sd.Fields = append(sd.Fields, &ir.StructField{Name: recordSelf, Type: r.typ})
+			inner := func() ir.Expr {
+				return &ir.Select{Operand: &ir.Ident{Name: state.Name, Sym: state, Type: state.Type, Synthesized: true}, Field: recordSelf, Type: r.typ}
+			}
+			through(cl.Func.Block, inner)
+			capture(closureHost{cl.Func, inner})
+			return nil
+		})
+	}
+	for _, h := range hosts {
+		capture(h)
+	}
+}
+
+// closureHost is a function holding closures, and how it reads the record
+// it is of.
+type closureHost struct {
+	fn   *ir.Func
+	self func() ir.Expr
 }
 
 // takesSelf reports whether fn, a function of r's component, already takes

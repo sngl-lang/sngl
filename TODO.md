@@ -459,15 +459,17 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      (`GetWindowLongPtrW` is a macro over `GetWindowLongW` on 386). Generate
      the declarations both architectures can call, or keep that call in
      the C runtime.
-2. **The C runtime: `lib/platform/win32/rt/`.** C sources and a header,
+2. **The C runtime: `lib/platform/win32/rt/`.** Done. C sources and a header,
    reached by the platform's `c.link(include="windows.h", system=true, library=…, sources=…)` with `-luser32 -lgdi32 -lcomctl32`.
    - One registered window class whose `WNDPROC` finds the control's
      handlers through `GWLP_USERDATA` and calls them through Part 1's
      callbacks: `WM_COMMAND` with `BN_CLICKED`, and `EN_CHANGE`.
    - The message loop as `run` and `quit`, and posting work to the loop for
-     `asyncPost` (`PostMessageW` of a private `WM_APP` message, as gtk4 posts
-     an idle callback). Go's half of the post, from a goroutine, is the Go
-     language's own (Part 1, item 7).
+     `asyncPost`: `sngl_post` (`pkg/c/runtime/sngl.h`), which C writes for
+     `async.start` and `async.do` on every platform, is a private `WM_APP`
+     message to the parked window, as gtk4's is an idle callback
+     (`cmd/sngl/testdata/c_win32_test_runs.txt`). Go's half of the post,
+     from a goroutine, is the Go language's own (Part 1, item 7).
    - **Layout.** Win32 has no layout manager. A child control sits at
      the pixel position it is given, and nothing moves it when its parent is
      resized. The runtime keeps a box tree beside the controls: a vbox or
@@ -481,20 +483,27 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
    - **Fonts.** A control created bare draws in the System font. Every
      control gets `WM_SETFONT` with the message font from
      `SystemParametersInfoW(SPI_GETNONCLIENTMETRICS)`.
-   - **Common Controls v6 and DPI.** Themed controls need an activation
-     context from a manifest. Either link a resource compiled with `windres`
-     from a committed `.rc`, or call `CreateActCtxW` at start-up with the
-     manifest embedded as a C string. The second needs no resource step in
-     any language's build. Declare per-monitor DPI awareness there too, and
-     check what Wine draws with and without it.
+   - **Common Controls v6 and DPI.** The runtime activates Common Controls 6
+     with `CreateActCtxW` at start-up, from the manifest it holds as a C
+     string and writes to a temporary file, which needs no resource step in
+     any language's build; Wine draws its flat themed buttons under it, where
+     5 drew bevels. It is per-monitor DPI aware where Windows has the calls,
+     found at run time, and system aware where not: a look's lengths are
+     SNGL px scaled to the window's DPI where layout reads them, and the
+     fonts follow a toplevel's DPI as it lays out and on `WM_DPICHANGED`.
+     Checked by hand under Wine at 96 and 144 DPI, which no test pins, since
+     a prefix holds one DPI.
    - Snapshot: `PrintWindow` into a DIB section. The PNG encoding is Go's
      `image/png`: the Go agent's own, and the driver's for the raw pixels the
      C agent sends.
-3. **`lib/platform/win32`.**
+3. **`lib/platform/win32`.** Done.
    - `win32.sngl`: the platform node.
-     - It takes `#[gen.can(asyncPost, instanceState)]` and
+     - It takes `#[gen.can(insertBefore, asyncPost, instanceState)]` and
        `#[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]`, as gtk4 and fyne do, since Win32 also owns its controls
-       and diffs nothing.
+       and diffs nothing. With `instanceState` a component with state of its
+       own is a record, a library override's included, and a test reaches
+       an instance, or one copy of those a loop renders, through it
+       (`cmd/sngl/testdata/c_win32_test_reach_runs.txt`).
      - Options: `package`, `main`, `@run`, `arch` (`"amd64"` default,
        `"386"`), and `reservedNames`.
    - The primitives (`#[marks.intrinsic("win32:Toplevel")]`, `Button`,

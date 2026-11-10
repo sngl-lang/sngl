@@ -160,10 +160,6 @@ void sngl_canvas_on_click(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify rel
 /* sngl_canvas_click is a press of w, as a test makes one. */
 void sngl_canvas_click(GtkWidget *w);
 
-/* sngl_idle runs fn with ctx once, from the main loop when it is next idle,
- * and releases ctx after: what async.start and async.do are on a program in
- * C, whose work all runs on the loop's thread. */
-void sngl_idle(SnglFn fn, void *ctx, GDestroyNotify release);
 
 /* A timer's schedule: fn runs with ctx every ms milliseconds, on the main
  * loop's thread, until sngl_schedule_cancel removes it, which releases ctx.

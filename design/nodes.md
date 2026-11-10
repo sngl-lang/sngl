@@ -138,8 +138,16 @@ constructor's call, `ComponentRoot` the read of `__root`, `UpdateComponent`
 the prop's setter and `DestroyComponent` the teardown; the root leaves the
 tree by the parent's remove, which the render destroying the instance makes
 too. A closure the record makes captured what it reads, as it captured the
-var, and one reading the record directly is refused
+var; one reading the record itself -- calling one of its functions, an
+input's effect settling, or reading a node it holds -- captures the record
+too, as `__self`, and so does each closure holding such a one, which hands
+it on. Whether a function is handed the record already, a method whose
+receiver it is, is asked before any is given its `__self`, or a call of one
+given it first would be taken for a method's
 (`testdata/win32_c_loop.txtar`, `cmd/sngl/testdata/c_win32_loops_runs.txt`).
+A platform granting `instanceState` makes one of every component with state
+of its own built at run time, a library override's included, where without
+it the inliner splices one.
 
 **A component rendering more than one node, or a slot, at its top renders
 into the platform's `contents`** (`intoContents`), a container the
@@ -167,9 +175,16 @@ function's every render starts by setting null (`holdRead`), so `c.big == null` 
 the same way, and a node a record holds is held as the record's constructor
 makes it and let go by its destroy, unless another record's took its place
 -- a keyed render builds the new before destroying the old -- so it too is
-null once its branch is gone. A trigger fires the node such a var holds
+null once its branch is gone. An instance of a component built at run time
+is held the same way, as it is set rather than declared, since a render
+declares it and then sets it from the instances kept or a new one, and let
+go by its own destroy; the test's conversion of it to its component is to
+the record, a var of the record's NoRef boxed is read as its `.value`, and
+a function of the component the instance is a copy of -- a fire lowering
+wrote -- is the record's own copy of it (`recordReads`). A trigger fires the node such a var holds
 (`cmd/sngl/testdata/c_win32_test_reach_runs.txt`). One copy of a node loops render,
-`c.row[1]`, is held by its key (`ir.CopyProp`) in a package map that each
+`c.row[1]`, or one copy of an instance, whose root is read with its key,
+is held by its key (`ir.CopyProp`) in a package map that each
 render stamping the keys starts afresh (`copyWrite`, `clearCopies`): a
 record's builder does, since a keyed render updates every prop of each
 instance it keeps, the key among them. A trigger of the copy fires the node

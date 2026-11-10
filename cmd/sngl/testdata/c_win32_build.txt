@@ -54,8 +54,8 @@ ui.window(title="count") {
     counter()
 }
 -- testrun/build/win32/c/app.sngl/1 --
-sha256:25bd885c94a753dc7f1429e54fa5bc02
+sha256:cb110a49e1c59642297b1c5bde2ef9b7
 {}
 -- testrun/build/win32/c/app386.sngl/1 --
-sha256:6c86f1364504a811588e29c2ac60d60b
+sha256:4b26f37c92fd7b940153b62796d01c8f
 {}

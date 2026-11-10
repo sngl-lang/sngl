@@ -5,7 +5,10 @@
 # that var holds. A node the package body makes under a branch is held the
 # same way. A node a record holds is held as the record's constructor makes
 # it, and let go as the record is destroyed, unless another record's took
-# its place, so it is null once its branch is gone.
+# its place, so it is null once its branch is gone. An instance of a
+# component built at run time is held as it is set, from the instances kept
+# or a new one, and let go as it is destroyed (deepfire's `c.p`), and a test
+# reads its state and fires its events through the record.
 
 sngl test --platform=win32 --language=c forward.sngl
 stdout 'ok +1 tests, 0 failures'
@@ -27,6 +30,15 @@ stdout 'ok +2 tests, 0 failures'
 
 sngl test --platform=win32 --language=c slot.sngl
 stdout 'ok +1 tests, 0 failures'
+
+# A component with state of its own is a record on win32, which keeps it
+# per instance (#[gen.can(instanceState)]). A test reaches one copy of
+# those a loop renders through the package's map from each copy's key,
+# which each copy's root is read with: its state, a node it makes, the
+# event it raises, and null once the loop no longer makes it.
+
+sngl test --platform=win32 --language=c copies.sngl
+stdout 'ok +2 tests, 0 failures'
 
 -- forward.sngl --
 import . "sngl:ui"
@@ -309,8 +321,65 @@ func testHandlerReadsItsContentsLoop(t Test, c main) {
 window {
     main
 }
+-- copies.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component tile(label string, @tapped(n int)) node {
+    var taps = 0
+    text #face(value="<{label}:{taps}>")
+    button #tap(text="tap", @click {
+        taps = taps + 1
+        tapped(taps)
+    })
+}
+
+component main node {
+    var names list[string] = ["a", "b", "c"]
+    var log = ""
+    vbox {
+        for var i, n = names {
+            tile #r(label="{i}{n}", @tapped(k) {
+                log = log + "{n}{k};"
+            })
+        }
+        button #rev(text="rev", @click {
+            names = ["c", "b", "a"]
+        })
+        button #drop(text="drop", @click {
+            names = ["b", "c"]
+        })
+    }
+}
+
+func testReorder(t Test, c main) {
+    c.r[0].tap.click()
+    t.assert(c.r[0].taps == 1)
+    t.assert(c.log == "a1;")
+    c.rev.click()
+    t.assert(c.r[0].label == "0c")
+    t.assert(c.r[0].face.value == "<0c:{c.r[0].taps}>")
+    c.r[0].tap.click()
+    t.assert(c.log == "a1;c{c.r[0].taps};")
+    c.r[2].tapped(9)
+    t.assert(c.log == "a1;c{c.r[0].taps};a9;")
+}
+
+func testDrop(t Test, c main) {
+    c.r[2].tap.click()
+    t.assert(c.r[2].taps == 1)
+    c.drop.click()
+    t.assert(c.r[2] == null)
+    t.assert(c.r[1].label == "1c")
+    c.r[1].tap.click()
+    t.assert(c.log == "c1;c{c.r[1].taps};")
+}
+
+window {
+    main
+}
 -- testrun/win32/c/branch.sngl/branch/1 --
-sha256:bd069555e291c48c78fe0402bd9021f6
+sha256:353ef73dec5fde0a11a68c5f3bc4e471
 {
   "results": [
     {
@@ -324,7 +393,7 @@ sha256:bd069555e291c48c78fe0402bd9021f6
   ]
 }
 -- testrun/win32/c/context.sngl/main/1 --
-sha256:19dcda165e424ce2c985b865f1028a3a
+sha256:056afca46cff4c73c984f705949b10e4
 {
   "results": [
     {
@@ -333,8 +402,22 @@ sha256:19dcda165e424ce2c985b865f1028a3a
     }
   ]
 }
+-- testrun/win32/c/copies.sngl/main/1 --
+sha256:43431584e29ddbc5912e57dcb1a51aa1
+{
+  "results": [
+    {
+      "Desc": "Reorder",
+      "Passed": true
+    },
+    {
+      "Desc": "Drop",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/win32/c/deepfire.sngl/main/1 --
-sha256:dac6e0468ecb4b89a1cba50722ce1eaa
+sha256:abcdc98638f27110d068d0e5552a0a0f
 {
   "results": [
     {
@@ -344,7 +427,7 @@ sha256:dac6e0468ecb4b89a1cba50722ce1eaa
   ]
 }
 -- testrun/win32/c/forward.sngl/main/1 --
-sha256:e396dec02bdb710639984b25d67b9a55
+sha256:4d22738ed1b91c54191a02adb70b0411
 {
   "results": [
     {
@@ -354,7 +437,7 @@ sha256:e396dec02bdb710639984b25d67b9a55
   ]
 }
 -- testrun/win32/c/panel.sngl/panel/1 --
-sha256:3a2da0b6590729b48b9393f5616253a4
+sha256:82cff9c5e34647afca16671d352438a4
 {
   "results": [
     {
@@ -364,7 +447,7 @@ sha256:3a2da0b6590729b48b9393f5616253a4
   ]
 }
 -- testrun/win32/c/reserved.sngl/main/1 --
-sha256:240a8905a9b8c09ffb322d6fbf582f53
+sha256:98801431a6579f6fbe526662cddb8dff
 {
   "results": [
     {
@@ -374,7 +457,7 @@ sha256:240a8905a9b8c09ffb322d6fbf582f53
   ]
 }
 -- testrun/win32/c/slot.sngl/main/1 --
-sha256:42c9e85d64b806ef258f0713a6deb406
+sha256:631c178690eb47b943395ab6b3f236a9
 {
   "results": [
     {

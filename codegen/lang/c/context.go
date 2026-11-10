@@ -9,6 +9,7 @@ import (
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/codegen/irwalk"
+	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/ir"
 )
 
@@ -78,6 +79,7 @@ func (c *Context) fail(format string, args ...any) string {
 func (c *Context) TypeName(t *ir.Type) string { return c.typeName(t) }
 
 func (c *Context) typeName(t *ir.Type) string {
+	t = listed(t)
 	if t != nil && c.Types != nil {
 		if s, ok := c.Types(t); ok {
 			return s
@@ -383,7 +385,9 @@ func (c *Context) equal(t *ir.Type, a, b string) string {
 	case ir.TypeString:
 		return "sngl_string_eq(" + a + ", " + b + ")"
 	case ir.TypeStruct:
-		if !isProgramStruct(t) {
+		// A box is shared, held by its pointer, and is equal only to
+		// itself: a record, a var a closure writes.
+		if !isProgramStruct(t) || isBox(t) {
 			break
 		}
 		sd := t.Decl.(*ir.StructDef)
@@ -564,6 +568,9 @@ func (c *Context) Call(n *ir.Call) string {
 	if out, ok := c.listIntrinsic(n); ok {
 		return out
 	}
+	if out, ok := c.seqIntrinsic(n); ok {
+		return out
+	}
 	if out, ok := c.stringIntrinsic(n); ok {
 		return out
 	}
@@ -574,6 +581,15 @@ func (c *Context) Call(n *ir.Call) string {
 		return out
 	}
 	switch n.Func.Intrinsic {
+	case lower.AsyncStartIntrinsic, lower.AsyncDoIntrinsic:
+		// C has no thread of its own to start work on: the work runs on the
+		// loop's, once the turn that started it is done, and its `do` the
+		// same way, through what the platform's runtime defines sngl_post as.
+		if len(n.Args) != 1 {
+			return c.fail("%s of %d arguments", n.Func.Intrinsic, len(n.Args))
+		}
+		fn, ctx := c.Callback(ir.FuncOf(nil, ir.TypVoid).Sig, n.Args[0].Value)
+		return "sngl_post((void (*)(void *))" + fn + ", " + ctx + ", sngl_release)"
 	case "async.begin":
 		return "sngl_async_begin()"
 	case "async.end", "async.ended":

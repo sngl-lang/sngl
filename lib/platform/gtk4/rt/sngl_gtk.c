@@ -263,7 +263,8 @@ static void sngl_idle_free(gpointer data) {
     g_free(h);
 }
 
-void sngl_idle(SnglFn fn, void *ctx, GDestroyNotify release) {
+/* sngl_post (sngl.h) runs from the main loop when it is next idle. */
+void sngl_post(void (*fn)(void *ctx), void *ctx, void (*release)(void *ctx)) {
     SnglHandler *h = g_new0(SnglHandler, 1);
     h->fn = fn;
     h->ctx = ctx;

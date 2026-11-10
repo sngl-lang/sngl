@@ -27,6 +27,9 @@ stdout 'ok   3 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
 stdout 'ok   3 tests, 0 failures'
 
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok   3 tests, 0 failures'
+
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -248,6 +251,30 @@ sha256:ba0fe1dd9bc75ba5cf6405760adf3412
 }
 -- testrun/html/none/app.sngl/single/1 --
 sha256:6e023c20416760a151cc51065888a09e
+{
+  "results": [
+    {
+      "Desc": "WhereAnotherComponentLoopsTheId",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/main/1 --
+sha256:eddef5048a903832d60fad9226ac01be
+{
+  "results": [
+    {
+      "Desc": "OneCopyOfANestedLoop",
+      "Passed": true
+    },
+    {
+      "Desc": "AfterTheLoopsRenderAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/single/1 --
+sha256:ef446658653541865ef575c911445924
 {
   "results": [
     {

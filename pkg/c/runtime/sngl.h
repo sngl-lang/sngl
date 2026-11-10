@@ -165,6 +165,12 @@ int64_t sngl_async_begin(void);
 void sngl_async_end(int64_t id);
 bool sngl_async_ended(int64_t id);
 
+/* sngl_post runs fn with ctx once, from the platform's loop after the turn
+ * that posted it, and releases ctx after: what async.start and async.do are
+ * on a program in C, whose work all runs on the loop's thread. The
+ * platform's runtime defines it. */
+void sngl_post(void (*fn)(void *ctx), void *ctx, void (*release)(void *ctx));
+
 /* Integer division and remainder, raising on a zero divisor as every target
  * does, rather than C's undefined behavior. */
 int64_t sngl_div(int64_t a, int64_t b);

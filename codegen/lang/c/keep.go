@@ -22,6 +22,7 @@ import (
 func owns(t *ir.Type) bool { return ownsSeen(t, map[ir.Symbol]bool{}) }
 
 func ownsSeen(t *ir.Type, seen map[ir.Symbol]bool) bool {
+	t = listed(t)
 	if t == nil {
 		return false
 	}
@@ -90,6 +91,7 @@ func (c *Context) drop(t *ir.Type, v string) string {
 // ownHelper is the function the file defines to keep or drop a value of t,
 // declared ahead, since a recursive type's reaches it again.
 func (c *Context) ownHelper(t *ir.Type, op string) string {
+	t = listed(t)
 	tn := c.typeName(t)
 	name := tn + "__" + op
 	if c.file.helperNames[name] {

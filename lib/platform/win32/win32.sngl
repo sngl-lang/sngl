@@ -92,7 +92,7 @@ const salMacros = [
 // which is gtk4's reason for flattening the tree and asking for explicit
 // writes too. A context is a hidden parameter of each function reading it,
 // as gtk4's is.
-#[gen.can(insertBefore)]
+#[gen.can(insertBefore, asyncPost, instanceState)]
 #[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
 #[gen.wants(placement, stdlibContextParam)]
 #[gen.name("win32")]
