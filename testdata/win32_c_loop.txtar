@@ -218,6 +218,7 @@ typedef struct s_platform_win32__Look {
 	int64_t color;
 	int64_t background;
 	int64_t fontPx;
+	int64_t hidden;
 } s_platform_win32__Look;
 
 typedef struct sngl_list_float {
@@ -473,7 +474,7 @@ static int64_t sngl_list_HWND_index_of(sngl_list_HWND l, HWND v) {
 }
 
 static sngl_win32_look sngl_to_platform_win32__Look(s_platform_win32__Look v) {
-	return (sngl_win32_look){.flex = (double)v.flex, .gap = (int)v.gap, .padTop = (int)v.padTop, .padRight = (int)v.padRight, .padBottom = (int)v.padBottom, .padLeft = (int)v.padLeft, .minWidth = (int)v.minWidth, .minHeight = (int)v.minHeight, .color = (int)v.color, .background = (int)v.background, .fontPx = (int)v.fontPx};
+	return (sngl_win32_look){.flex = (double)v.flex, .gap = (int)v.gap, .padTop = (int)v.padTop, .padRight = (int)v.padRight, .padBottom = (int)v.padBottom, .padLeft = (int)v.padLeft, .minWidth = (int)v.minWidth, .minHeight = (int)v.minHeight, .color = (int)v.color, .background = (int)v.background, .fontPx = (int)v.fontPx, .hidden = (int)v.hidden};
 }
 
 static void s___lambda0__fn(void *env) {
@@ -561,7 +562,7 @@ static s_platform_win32__Look s_platform_win32__boxLookOf(s_ui__Style s, int64_t
 }
 
 static s_platform_win32__Look s_platform_win32__lookOf(s_ui__Style s) {
-	s_platform_win32__Look look = (s_platform_win32__Look){.flex = (!(s.flex).ok ? 0.0 : (s.flex).value), .gap = (!(s.gap).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.gap).value.px + (16.0 * ((s.gap).value.em + (s.gap).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .padTop = s_platform_win32__inset(((s.paddingTop).ok ? s.paddingTop : ((s.paddingY).ok ? s.paddingY : s.padding))), .padRight = s_platform_win32__inset(((s.paddingRight).ok ? s.paddingRight : ((s.paddingX).ok ? s.paddingX : s.padding))), .padBottom = s_platform_win32__inset(((s.paddingBottom).ok ? s.paddingBottom : ((s.paddingY).ok ? s.paddingY : s.padding))), .padLeft = s_platform_win32__inset(((s.paddingLeft).ok ? s.paddingLeft : ((s.paddingX).ok ? s.paddingX : s.padding))), .minWidth = (!(s.minWidth).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.minWidth).value.px + (16.0 * ((s.minWidth).value.em + (s.minWidth).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .minHeight = (!(s.height).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.height).value.px + (16.0 * ((s.height).value.em + (s.height).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .color = s_platform_win32__rgb(s.color), .background = s_platform_win32__rgb(s.background), .fontPx = (!(s.fontSize).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.fontSize).value.px + (16.0 * ((s.fontSize).value.em + (s.fontSize).value.rem))), sngl_list_float_of(1, (double[]){0.0}))))};
+	s_platform_win32__Look look = (s_platform_win32__Look){.flex = (!(s.flex).ok ? 0.0 : (s.flex).value), .gap = (!(s.gap).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.gap).value.px + (16.0 * ((s.gap).value.em + (s.gap).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .padTop = s_platform_win32__inset(((s.paddingTop).ok ? s.paddingTop : ((s.paddingY).ok ? s.paddingY : s.padding))), .padRight = s_platform_win32__inset(((s.paddingRight).ok ? s.paddingRight : ((s.paddingX).ok ? s.paddingX : s.padding))), .padBottom = s_platform_win32__inset(((s.paddingBottom).ok ? s.paddingBottom : ((s.paddingY).ok ? s.paddingY : s.padding))), .padLeft = s_platform_win32__inset(((s.paddingLeft).ok ? s.paddingLeft : ((s.paddingX).ok ? s.paddingX : s.padding))), .minWidth = (!(s.minWidth).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.minWidth).value.px + (16.0 * ((s.minWidth).value.em + (s.minWidth).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .minHeight = (!(s.height).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.height).value.px + (16.0 * ((s.height).value.em + (s.height).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .color = s_platform_win32__rgb(s.color), .background = s_platform_win32__rgb(s.background), .fontPx = (!(s.fontSize).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.fontSize).value.px + (16.0 * ((s.fontSize).value.em + (s.fontSize).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .hidden = ((s.display == 6) ? 1 : 0)};
 	return look;
 }
 
@@ -676,7 +677,7 @@ static s___child0__inst * s___child0__new(s___anon_id_elem_c6a818 __p0, sngl_fn_
 	s___child0__inst * __self = ((s___child0__inst *)sngl_heap_copy(&(s___child0__inst[]){(s___child0__inst){.__prop___p0 = s___anon_id_elem_c6a818__keep(__p0), .__prop___on0 = ((s___ref_func *)sngl_heap_copy(&(s___ref_func[]){(s___ref_func){.value = __on0}}, sizeof(s___ref_func)))}}, sizeof(s___child0__inst)));
 	__self->__n0 = sngl_win32_button();
 	sngl_win32_set_text(__self->__n0, (const unsigned short *)sngl_utf16(__self->__prop___p0.elem));
-	sngl_win32_set_look(__self->__n0, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0}));
+	sngl_win32_set_look(__self->__n0, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 	sngl_win32_on_click(__self->__n0, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){((sngl_fn_void__void){s___lambda0__fn, sngl_heap_copy(&(s___lambda0_caps[]){(s___lambda0_caps){.__prop___on0 = __self->__prop___on0}}, sizeof(s___lambda0_caps))})}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	__self->__root = __self->__n0;
 	return __self;
@@ -729,7 +730,7 @@ static void sngl_build(void) {
 	s___renderSlot0(s___n4);
 	s___n2 = sngl_win32_text();
 	sngl_win32_set_text(s___n2, (const unsigned short *)sngl_utf16(s_picked));
-	sngl_win32_set_look(s___n2, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0}));
+	sngl_win32_set_look(s___n2, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 	sngl_win32_append(s___n4, s___n2);
 	sngl_win32_append(s___n1, s___n4);
 	sngl_win32_attach(s___n1);
@@ -772,6 +773,7 @@ flag -mwindows
 flag -luser32
 flag -lgdi32
 flag -lcomctl32
+flag -lshell32
 target windows/amd64
 -- run/c/win32 --
-pass sha256:d472fc28879bd514229ffca1ede93e5b
+pass sha256:629c476de82e61e24abeb27790db7f51

@@ -976,7 +976,7 @@ component Scroll(
     axes    ui.ScrollDirection,
     look    Look,
     @reachEnd(),
-    content    ...component option[ui.node],
+    content ...component option[ui.node],
 ) ui.node
 
 #[macro.cnative("sngl_win32_scroll")]
@@ -1176,7 +1176,6 @@ func _set_MenuEntry_checked(e MenuEntry, checked bool) {
 func _on_MenuEntry_select(e MenuEntry, select func()) {
     _rtOnClick(e, select)
 }
-
 
 // A list view of rows and columns. `@select` is a row the user selects, and
 // `@sort` a column header they click, where setTable lets them.
@@ -1708,12 +1707,16 @@ const func _treeLines(items list[ui.treeItem], indent string) string {
 // Its nodes are offered whenever they change, those `expanded` lists
 // expanded, and the bound selection whenever it changes.
 const component ui.tree[platform](style, selected, expanded, @select, @expand, items) {
-    Tree #nodes(look=lookOf(style), @select {
-        if chosenNode(nodes) != selected {
-            selected = chosenNode(nodes)
-            select()
-        }
-    }, @expand { expand() }) {}
+    Tree #nodes(
+        look = lookOf(style),
+        @select {
+            if chosenNode(nodes) != selected {
+                selected = chosenNode(nodes)
+                select()
+            }
+        },
+        @expand { expand() },
+    ) {}
     effect(on={lines=_treeLines(items, ""), expanded=expanded.format(","), nodes=nodes}, @mount(k) {
         chooseNode(nodes, selected)
         fillTree(nodes, k.lines, k.expanded)
